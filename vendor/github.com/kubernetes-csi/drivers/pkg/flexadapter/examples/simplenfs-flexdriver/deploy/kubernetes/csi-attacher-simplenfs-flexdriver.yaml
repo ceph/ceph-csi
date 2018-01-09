@@ -1,0 +1,107 @@
+# This YAML file contains all API objects that are necessary to run external
+# CSI attacher for nfs flex adapter
+#
+# In production, this needs to be in separate files, e.g. service account and
+# role and role binding needs to be created once, while stateful set may
+# require some tuning.
+#
+# In addition, mock CSI driver is hardcoded as the CSI driver.
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-attacher
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: external-attacher-runner
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-attacher-role
+subjects:
+  - kind: ServiceAccount
+    name: csi-attacher
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: external-attacher-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-attacher-simplenfs-flexdriver
+  labels:
+    app: csi-attacher-simplenfs-flexdriver
+spec:
+  selector:
+    app: csi-attacher-simplenfs-flexdriver
+  ports:
+    - name: dummy
+      port: 12345
+
+---
+kind: StatefulSet
+apiVersion: apps/v1beta1
+metadata:
+  name: csi-attacher-simplenfs-flexdriver
+spec:
+  serviceName: "csi-attacher"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: csi-attacher-simplenfs-flexdriver
+    spec:
+      serviceAccount: csi-attacher
+      containers:
+        - name: csi-attacher
+          image: docker.io/k8scsi/csi-attacher
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+
+        - name: simplenfs
+          image: docker.io/k8scsi/csi-simplenfs-flexdriver:v0.1
+          args :
+            - "--nodeid=$(NODE_ID)"
+            - "--drivername=csi-simplenfs-flexdriver"
+            - "--endpoint=$(CSI_ENDPOINT)"
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://plugin/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /plugin
+      volumes:
+        - name: socket-dir
+          emptyDir:
+

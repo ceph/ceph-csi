@@ -1,0 +1,65 @@
+kind: DaemonSet
+apiVersion: apps/v1beta2
+metadata:
+  name: csi-nodeplugin-simplenfs
+spec:
+  selector:
+    matchLabels:
+      app: csi-nodeplugin-simplenfs
+  template:
+    metadata:
+      labels:
+        app: csi-nodeplugin-simplenfs
+    spec:
+      serviceAccount: csi-nodeplugin
+      hostNetwork: true
+      containers:
+        - name: driver-registrar
+          image: docker.io/k8scsi/driver-registrar
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /plugin/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /plugin
+        - name: simplenfs
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: docker.io/k8scsi/csi-simplenfs-flexdriver:v0.1
+          args :
+            - "--nodeid=$(NODE_ID)"
+            - "--drivername=csi-simplenfs-flexdriver"
+            - "--endpoint=$(CSI_ENDPOINT)"
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://plugin/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /plugin
+            - name: pods-mount-dir
+              mountPath: /var/lib/kubelet/pods
+              mountPropagation: "Bidirectional"
+      volumes:
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/csi-simplenfs-flexdriver
+            type: Directory
+        - name: pods-mount-dir
+          hostPath:
+            path: /var/lib/kubelet/pods
+            type: Directory
