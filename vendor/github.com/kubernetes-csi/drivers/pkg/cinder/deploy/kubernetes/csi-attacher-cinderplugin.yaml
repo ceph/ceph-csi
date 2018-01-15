@@ -1,0 +1,71 @@
+# This YAML file contains attacher & csi driver API objects,
+# which are necessary to run external csi attacher for cinder.
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-attacher-cinderplugin
+  labels:
+    app: csi-attacher-cinderplugin
+spec:
+  selector:
+    app: csi-attacher-cinderplugin
+  ports:
+    - name: dummy
+      port: 12345
+
+---
+kind: StatefulSet
+apiVersion: apps/v1beta1
+metadata:
+  name: csi-attacher-cinderplugin
+spec:
+  serviceName: "csi-attacher-cinderplugin"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: csi-attacher-cinderplugin
+    spec:
+      serviceAccount: csi-attacher
+      containers:
+        - name: csi-attacher
+          image: docker.io/k8scsi/csi-attacher
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: cinder
+          image: docker.io/k8scsi/cinderplugin
+          args :
+            - "--nodeid=$(NODE_ID)"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--cloud-config=$(CLOUD_CONFIG)"
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix://plugin/csi.sock
+            - name: CLOUD_CONFIG
+              value: /etc/config/cloud.conf
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /plugin
+            - name: secret-cinderplugin
+              mountPath: /etc/config
+              readOnly: true
+      volumes:
+        - name: socket-dir
+          emptyDir:
+        - name: secret-cinderplugin
+          secret:
+            secretName: csi-secret-cinderplugin
