@@ -17,8 +17,10 @@ limitations under the License.
 package rbd
 
 import (
+	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
@@ -40,6 +42,12 @@ type nodeServer struct {
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 
+	if !strings.HasSuffix(targetPath, "/mount") {
+		return nil, fmt.Errorf("rnd: malformed the value of target path: %s", targetPath)
+	}
+	s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
+	volName := s[len(s)-1]
+
 	notMnt, err := mount.New("").IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -59,9 +67,9 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, err
 	}
-
+	volOptions.VolName = volName
 	// Mapping RBD image
-	devicePath, err := attachRBDImage(req.GetVolumeId(), volOptions)
+	devicePath, err := attachRBDImage(volOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +94,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 	// Storing rbd device path
 
-	volOptions.ImageMapping = map[string]string{req.GetVolumeId(): devicePath}
+	volOptions.ImageMapping = map[string]string{volOptions.VolName: devicePath}
 	// Storing volInfo into a persistent file
 	if err := persistVolInfo(req.GetVolumeId(), path.Join(PluginFolder, "node"), volOptions); err != nil {
 		glog.Warningf("rbd: failed to store volInfo with error: %v", err)
@@ -97,11 +105,12 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
-	volName := req.GetVolumeId()
+	volumeID := req.GetVolumeId()
 	volOptions := &rbdVolumeOptions{}
-	if err := loadVolInfo(volName, path.Join(PluginFolder, "node"), volOptions); err != nil {
+	if err := loadVolInfo(volumeID, path.Join(PluginFolder, "node"), volOptions); err != nil {
 		return nil, err
 	}
+	volName := volOptions.VolName
 
 	// Recover rbd secret key value, for now by k8s specific call
 	id := volOptions.AdminID
@@ -131,12 +140,12 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 	// Unmapping rbd device
 	glog.V(4).Infof("deleting volume %s", volName)
-	if err := detachRBDImage(volName, volOptions); err != nil {
+	if err := detachRBDImage(volOptions); err != nil {
 		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", volOptions.ImageMapping[volName], err)
 		return nil, err
 	}
 	// Removing persistent storage file for the unmapped volume
-	if err := deleteVolInfo(volName, path.Join(PluginFolder, "node")); err != nil {
+	if err := deleteVolInfo(volumeID, path.Join(PluginFolder, "node")); err != nil {
 		return nil, err
 	}
 

@@ -47,6 +47,7 @@ const (
 )
 
 type rbdVolumeOptions struct {
+	VolName              string            `json:"volName"`
 	Monitors             string            `json:"monitors"`
 	Pool                 string            `json:"pool"`
 	AdminSecretName      string            `json:"adminSecret"`
@@ -65,12 +66,13 @@ type rbdVolumeOptions struct {
 var attachdetachMutex = keymutex.NewKeyMutex()
 
 // CreateImage creates a new ceph image with provision and volume options.
-func createRBDImage(image string, volSz int, pOpts *rbdVolumeOptions) error {
+func createRBDImage(pOpts *rbdVolumeOptions, volSz int) error {
 	var output []byte
 	var err error
 
 	// rbd create
 	mon := pOpts.Monitors
+	image := pOpts.VolName
 	volSzGB := fmt.Sprintf("%dG", volSz)
 
 	if pOpts.ImageFormat == rbdImageFormat2 {
@@ -96,11 +98,12 @@ func createRBDImage(image string, volSz int, pOpts *rbdVolumeOptions) error {
 
 // rbdStatus checks if there is watcher on the image.
 // It returns true if there is a watcher onthe image, otherwise returns false.
-func rbdStatus(image string, b *rbdVolumeOptions) (bool, string, error) {
+func rbdStatus(b *rbdVolumeOptions) (bool, string, error) {
 	var err error
 	var output string
 	var cmd []byte
 
+	image := b.VolName
 	// If we don't have admin id/secret (e.g. attaching), fallback to user id/secret.
 	id := b.AdminID
 	secret := b.adminSecret
@@ -137,9 +140,10 @@ func rbdStatus(image string, b *rbdVolumeOptions) (bool, string, error) {
 }
 
 // DeleteImage deletes a ceph image with provision and volume options.
-func deleteRBDImage(image string, b *rbdVolumeOptions) error {
+func deleteRBDImage(b *rbdVolumeOptions) error {
 	var output []byte
-	found, _, err := rbdStatus(image, b)
+	image := b.VolName
+	found, _, err := rbdStatus(b)
 	if err != nil {
 		return err
 	}
@@ -242,10 +246,11 @@ func parseStorageClassSecret(secretName string, namespace string, client *kubern
 	return secret, nil
 }
 
-func attachRBDImage(image string, volOptions *rbdVolumeOptions) (string, error) {
+func attachRBDImage(volOptions *rbdVolumeOptions) (string, error) {
 	var err error
 	var output []byte
 
+	image := volOptions.VolName
 	devicePath, found := waitForPath(volOptions.Pool, image, 1)
 	if !found {
 		attachdetachMutex.LockKey(string(volOptions.Pool + image))
@@ -262,7 +267,7 @@ func attachRBDImage(image string, volOptions *rbdVolumeOptions) (string, error) 
 			Steps:    rbdImageWatcherSteps,
 		}
 		err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			used, rbdOutput, err := rbdStatus(image, volOptions)
+			used, rbdOutput, err := rbdStatus(volOptions)
 			if err != nil {
 				return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
 			}
@@ -301,10 +306,11 @@ func attachRBDImage(image string, volOptions *rbdVolumeOptions) (string, error) 
 	return devicePath, nil
 }
 
-func detachRBDImage(image string, volOptions *rbdVolumeOptions) error {
+func detachRBDImage(volOptions *rbdVolumeOptions) error {
 	var err error
 	var output []byte
 
+	image := volOptions.VolName
 	glog.V(1).Infof("rbd: unmap device %s", volOptions.ImageMapping[image])
 	// If we don't have admin id/secret (e.g. attaching), fallback to user id/secret.
 	id := volOptions.AdminID
