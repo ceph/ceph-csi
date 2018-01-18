@@ -25,7 +25,7 @@ test:
 
 rbdplugin:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	go build -i -o _output/rbdplugin ./rbd
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -i -o  _output/rbdplugin ./rbd
 
 container: rbdplugin 
 	cp _output/rbdplugin  deploy/docker
@@ -33,4 +33,5 @@ container: rbdplugin
 
 clean:
 	go clean -r -x
+	rm -f deploy/docker/rbdplugin
 	-rm -rf _output
