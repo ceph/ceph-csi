@@ -21,9 +21,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"io/ioutil"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/util/keymutex"
 	"os"
 	"os/exec"
@@ -47,20 +45,15 @@ const (
 )
 
 type rbdVolumeOptions struct {
-	VolName              string            `json:"volName"`
-	Monitors             string            `json:"monitors"`
-	Pool                 string            `json:"pool"`
-	AdminSecretName      string            `json:"adminSecret"`
-	AdminSecretNamespace string            `json:"adminSecretNamespace"`
-	AdminID              string            `json:"adminID"`
-	UserID               string            `json:"userID"`
-	UserSecretName       string            `json:"userSecret"`
-	UserSecretNamespace  string            `json:"userSecretNamespace"`
-	ImageFormat          string            `json:"imageFormat"`
-	ImageFeatures        []string          `json:"imageFeatures"`
-	ImageMapping         map[string]string `json:"imageMapping"`
-	adminSecret          string
-	userSecret           string
+	VolName       string   `json:"volName"`
+	Monitors      string   `json:"monitors"`
+	Pool          string   `json:"pool"`
+	AdminID       string   `json:"adminID"`
+	AdminSecret   string   `json:"adminSecret"`
+	UserID        string   `json:"userID"`
+	UserSecret    string   `json:"userSecret"`
+	ImageFormat   string   `json:"imageFormat"`
+	ImageFeatures []string `json:"imageFeatures"`
 }
 
 var attachdetachMutex = keymutex.NewKeyMutex()
@@ -76,11 +69,11 @@ func createRBDImage(pOpts *rbdVolumeOptions, volSz int) error {
 	volSzGB := fmt.Sprintf("%dG", volSz)
 
 	if pOpts.ImageFormat == rbdImageFormat2 {
-		glog.V(4).Infof("rbd: create %s size %s format %s (features: %s) using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, pOpts.ImageFeatures, mon, pOpts.Pool, pOpts.AdminID, pOpts.adminSecret)
+		glog.V(4).Infof("rbd: create %s size %s format %s (features: %s) using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, pOpts.ImageFeatures, mon, pOpts.Pool, pOpts.AdminID, pOpts.AdminSecret)
 	} else {
-		glog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, mon, pOpts.Pool, pOpts.AdminID, pOpts.adminSecret)
+		glog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, mon, pOpts.Pool, pOpts.AdminID, pOpts.AdminSecret)
 	}
-	args := []string{"create", image, "--size", volSzGB, "--pool", pOpts.Pool, "--id", pOpts.AdminID, "-m", mon, "--key=" + pOpts.adminSecret, "--image-format", pOpts.ImageFormat}
+	args := []string{"create", image, "--size", volSzGB, "--pool", pOpts.Pool, "--id", pOpts.AdminID, "-m", mon, "--key=" + pOpts.AdminSecret, "--image-format", pOpts.ImageFormat}
 	if pOpts.ImageFormat == rbdImageFormat2 {
 		// if no image features is provided, it results in empty string
 		// which disable all RBD image format 2 features as we expected
@@ -106,10 +99,10 @@ func rbdStatus(b *rbdVolumeOptions) (bool, string, error) {
 	image := b.VolName
 	// If we don't have admin id/secret (e.g. attaching), fallback to user id/secret.
 	id := b.AdminID
-	secret := b.adminSecret
+	secret := b.AdminSecret
 	if id == "" {
 		id = b.UserID
-		secret = b.userSecret
+		secret = b.UserSecret
 	}
 
 	glog.V(4).Infof("rbd: status %s using mon %s, pool %s id %s key %s", image, b.Monitors, b.Pool, id, secret)
@@ -152,10 +145,10 @@ func deleteRBDImage(b *rbdVolumeOptions) error {
 		return fmt.Errorf("rbd %s is still being used", image)
 	}
 	id := b.AdminID
-	secret := b.adminSecret
+	secret := b.AdminSecret
 	if id == "" {
 		id = b.UserID
-		secret = b.userSecret
+		secret = b.UserSecret
 	}
 
 	glog.V(4).Infof("rbd: rm %s using mon %s, pool %s id %s key %s", image, b.Monitors, b.Pool, id, secret)
@@ -173,25 +166,16 @@ func execCommand(command string, args []string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func getRBDVolumeOptions(volOptions map[string]string, client *kubernetes.Clientset) (*rbdVolumeOptions, error) {
+func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolumeOptions, error) {
 	rbdVolume := &rbdVolumeOptions{}
 	var ok bool
-	var err error
-	rbdVolume.AdminID, ok = volOptions["adminId"]
+	rbdVolume.AdminID, ok = volOptions["adminID"]
 	if !ok {
-		return nil, fmt.Errorf("Missing required parameter adminId")
+		return nil, fmt.Errorf("Missing required parameter adminID")
 	}
-	rbdVolume.AdminSecretName, ok = volOptions["adminSecretName"]
+	rbdVolume.AdminSecret, ok = volOptions["adminSecret"]
 	if !ok {
-		return nil, fmt.Errorf("Missing required parameter adminSecretName")
-	}
-	rbdVolume.AdminSecretNamespace, ok = volOptions["adminSecretNamespace"]
-	if !ok {
-		rbdVolume.AdminSecretNamespace = "default"
-	}
-	rbdVolume.adminSecret, err = parseStorageClassSecret(rbdVolume.AdminSecretName, rbdVolume.AdminSecretNamespace, client)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to retrieve Admin secret %v", err)
+		return nil, fmt.Errorf("Missing required parameter adminSecret")
 	}
 	rbdVolume.Pool, ok = volOptions["pool"]
 	if !ok {
@@ -201,23 +185,13 @@ func getRBDVolumeOptions(volOptions map[string]string, client *kubernetes.Client
 	if !ok {
 		return nil, fmt.Errorf("Missing required parameter monitors")
 	}
-	if err != nil {
-		return nil, err
-	}
-	rbdVolume.UserID, ok = volOptions["userId"]
+	rbdVolume.UserID, ok = volOptions["userID"]
 	if !ok {
-		return nil, fmt.Errorf("Missing required parameter userId")
+		return nil, fmt.Errorf("Missing required parameter userID")
 	}
-	rbdVolume.UserSecretName, ok = volOptions["userSecretName"]
-	if ok {
-		rbdVolume.UserSecretNamespace, ok = volOptions["userSecretNamespace"]
-		if !ok {
-			rbdVolume.UserSecretNamespace = "default"
-		}
-		rbdVolume.userSecret, err = parseStorageClassSecret(rbdVolume.UserSecretName, rbdVolume.UserSecretNamespace, client)
-		if err != nil {
-			glog.Errorf("failed to retrieve user's secret: %s/%s  (%v)", rbdVolume.UserSecretName, rbdVolume.UserSecretNamespace, err)
-		}
+	rbdVolume.UserSecret, ok = volOptions["userSecret"]
+	if !ok {
+		return nil, fmt.Errorf("Missing required parameter userSecret")
 	}
 	rbdVolume.ImageFormat, ok = volOptions["imageFormat"]
 	if !ok {
@@ -225,25 +199,6 @@ func getRBDVolumeOptions(volOptions map[string]string, client *kubernetes.Client
 	}
 
 	return rbdVolume, nil
-}
-
-func parseStorageClassSecret(secretName string, namespace string, client *kubernetes.Clientset) (string, error) {
-	if client == nil {
-		return "", fmt.Errorf("Cannot get kube client")
-	}
-	secrets, err := client.CoreV1().Secrets(namespace).Get(secretName, metav1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-	secret := ""
-	for k, v := range secrets.Data {
-		if k == secretName {
-			return string(v), nil
-		}
-		secret = string(v)
-	}
-
-	return secret, nil
 }
 
 func attachRBDImage(volOptions *rbdVolumeOptions) (string, error) {
@@ -283,13 +238,8 @@ func attachRBDImage(volOptions *rbdVolumeOptions) (string, error) {
 		}
 
 		glog.V(1).Infof("rbd: map mon %s", volOptions.Monitors)
-		// If we don't have admin id/secret (e.g. attaching), fallback to user id/secret.
-		id := volOptions.AdminID
-		secret := volOptions.adminSecret
-		if id == "" {
-			id = volOptions.UserID
-			secret = volOptions.userSecret
-		}
+		id := volOptions.UserID
+		secret := volOptions.UserSecret
 
 		output, err = execCommand("rbd", []string{
 			"map", image, "--pool", volOptions.Pool, "--id", id, "-m", volOptions.Monitors, "--key=" + secret})
@@ -311,17 +261,12 @@ func detachRBDImage(volOptions *rbdVolumeOptions) error {
 	var output []byte
 
 	image := volOptions.VolName
-	glog.V(1).Infof("rbd: unmap device %s", volOptions.ImageMapping[image])
-	// If we don't have admin id/secret (e.g. attaching), fallback to user id/secret.
-	id := volOptions.AdminID
-	secret := volOptions.adminSecret
-	if id == "" {
-		id = volOptions.UserID
-		secret = volOptions.userSecret
-	}
+	glog.V(1).Infof("rbd: unmap device %s", image)
+	id := volOptions.UserID
+	secret := volOptions.UserSecret
 
 	output, err = execCommand("rbd", []string{
-		"unmap", volOptions.ImageMapping[image], "--id", id, "--key=" + secret})
+		"unmap", image, "--id", id, "--key=" + secret})
 	if err != nil {
 		glog.V(1).Infof("rbd: unmap error %v, rbd output: %s", err, string(output))
 		return fmt.Errorf("rbd: unmap failed %v, rbd output: %s", err, string(output))

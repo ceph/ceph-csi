@@ -24,8 +24,6 @@ import (
 	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
 
-	"k8s.io/client-go/kubernetes"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
@@ -36,7 +34,6 @@ const (
 
 type controllerServer struct {
 	*csicommon.DefaultControllerServer
-	clientSet *kubernetes.Clientset
 }
 
 func GetVersionString(ver *csi.Version) string {
@@ -49,7 +46,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	volOptions, err := getRBDVolumeOptions(req.Parameters, cs.clientSet)
+	volOptions, err := getRBDVolumeOptions(req.GetParameters())
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +98,25 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, err
 	}
 
+	// For now the image get unconditionally deleted, but here retention policy can be checked
+	volumeID := req.GetVolumeId()
+	volOptions := &rbdVolumeOptions{}
+	if err := loadVolInfo(volumeID, path.Join(PluginFolder, "controller"), volOptions); err != nil {
+		return nil, err
+	}
+
+	volName := volOptions.VolName
+	// Deleting rbd image
+	glog.V(4).Infof("deleting volume %s", volName)
+	if err := deleteRBDImage(volOptions); err != nil {
+		glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", volOptions.Pool, volName, err)
+		return nil, err
+	}
+	// Removing persistent storage file for the unmapped volume
+	if err := deleteVolInfo(volumeID, path.Join(PluginFolder, "controller")); err != nil {
+		return nil, err
+	}
+
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
@@ -114,44 +130,9 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 }
 
 func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
-
-	// For now the image get unconditionally deleted, but here retention policy can be checked
-	volumeID := req.GetVolumeId()
-	volOptions := &rbdVolumeOptions{}
-	if err := loadVolInfo(volumeID, path.Join(PluginFolder, "controller"), volOptions); err != nil {
-		return nil, err
-	}
-
-	volName := volOptions.VolName
-	// Recover rbd secret key value, for now by k8s specific call
-	id := volOptions.AdminID
-	secretName := volOptions.AdminSecretName
-	secretNamespace := volOptions.AdminSecretNamespace
-	if id == "" {
-		secretName = volOptions.UserSecretName
-		secretNamespace = volOptions.UserSecretNamespace
-	}
-	if key, err := parseStorageClassSecret(secretName, secretNamespace, cs.clientSet); err != nil {
-		return nil, err
-	} else {
-		volOptions.adminSecret = key
-	}
-
-	// Deleting rbd image
-	glog.V(4).Infof("deleting volume %s", volName)
-	if err := deleteRBDImage(volOptions); err != nil {
-		glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", volOptions.Pool, volName, err)
-		return nil, err
-	}
-	// Removing persistent storage file for the unmapped volume
-	if err := deleteVolInfo(volumeID, path.Join(PluginFolder, "controller")); err != nil {
-		return nil, err
-	}
-
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
 func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-
 	return &csi.ControllerPublishVolumeResponse{}, nil
 }

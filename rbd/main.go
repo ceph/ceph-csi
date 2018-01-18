@@ -18,13 +18,11 @@ package main
 
 import (
 	"flag"
-	"github.com/golang/glog"
 	"os"
 	"path"
 
 	"github.com/ceph/ceph-csi/pkg/rbd"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"github.com/golang/glog"
 )
 
 func init() {
@@ -40,17 +38,6 @@ var (
 func main() {
 	flag.Parse()
 
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err.Error())
-	}
-	// creates the clientset
-	clientSet, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
 	if err := createPersistentStorage(path.Join(rbd.PluginFolder, "controller")); err != nil {
 		glog.Errorf("failed to create persistent storage for controller %v", err)
 		os.Exit(1)
@@ -60,13 +47,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	handle(clientSet)
+	handle()
 	os.Exit(0)
 }
 
-func handle(clientSet *kubernetes.Clientset) {
+func handle() {
 	driver := rbd.GetRBDDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, clientSet)
+	driver.Run(*driverName, *nodeID, *endpoint)
 }
 
 func createPersistentStorage(persistentStoragePath string) error {

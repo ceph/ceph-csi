@@ -28,7 +28,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/client-go/kubernetes"
+
 	"k8s.io/kubernetes/pkg/util/mount"
 
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -36,7 +36,6 @@ import (
 
 type nodeServer struct {
 	*csicommon.DefaultNodeServer
-	clientSet *kubernetes.Clientset
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
@@ -63,7 +62,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if !notMnt {
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
-	volOptions, err := getRBDVolumeOptions(req.VolumeAttributes, ns.clientSet)
+	volOptions, err := getRBDVolumeOptions(req.VolumeAttributes)
 	if err != nil {
 		return nil, err
 	}
@@ -92,9 +91,6 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err := diskMounter.FormatAndMount(devicePath, targetPath, fsType, options); err != nil {
 		return nil, err
 	}
-	// Storing rbd device path
-
-	volOptions.ImageMapping = map[string]string{volOptions.VolName: devicePath}
 	// Storing volInfo into a persistent file
 	if err := persistVolInfo(req.GetVolumeId(), path.Join(PluginFolder, "node"), volOptions); err != nil {
 		glog.Warningf("rbd: failed to store volInfo with error: %v", err)
@@ -112,20 +108,6 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 	volName := volOptions.VolName
 
-	// Recover rbd secret key value, for now by k8s specific call
-	id := volOptions.AdminID
-	secretName := volOptions.AdminSecretName
-	secretNamespace := volOptions.AdminSecretNamespace
-	if id == "" {
-		secretName = volOptions.UserSecretName
-		secretNamespace = volOptions.UserSecretNamespace
-	}
-	if key, err := parseStorageClassSecret(secretName, secretNamespace, ns.clientSet); err != nil {
-		return nil, err
-	} else {
-		volOptions.adminSecret = key
-	}
-
 	notMnt, err := mount.New("").IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -141,7 +123,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	// Unmapping rbd device
 	glog.V(4).Infof("deleting volume %s", volName)
 	if err := detachRBDImage(volOptions); err != nil {
-		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", volOptions.ImageMapping[volName], err)
+		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", volOptions.VolName, err)
 		return nil, err
 	}
 	// Removing persistent storage file for the unmapped volume
