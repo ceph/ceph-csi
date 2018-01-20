@@ -47,9 +47,9 @@ const (
 )
 
 type rbdVolumeOptions struct {
-	VolName              string            `json:"volName"`
-	Monitors             string            `json:"monitors"`
-	Pool                 string            `json:"pool"`
+	VolName  string `json:"volName"`
+	Monitors string `json:"monitors"`
+	Pool     string `json:"pool"`
 	AdminSecretName      string            `json:"adminSecret"`
 	AdminSecretNamespace string            `json:"adminSecretNamespace"`
 	AdminID              string            `json:"adminID"`
@@ -218,6 +218,38 @@ func getRBDVolumeOptions(volOptions map[string]string, client *kubernetes.Client
 		if err != nil {
 			glog.Errorf("failed to retrieve user's secret: %s/%s  (%v)", rbdVolume.UserSecretName, rbdVolume.UserSecretNamespace, err)
 		}
+	}
+	rbdVolume.ImageFormat, ok = volOptions["imageFormat"]
+	if !ok {
+		rbdVolume.ImageFormat = "2"
+	}
+
+	return rbdVolume, nil
+}
+
+func getRBDVolumeOptionsV2(volOptions map[string]string, credentials map[string]string) (*rbdVolumeOptions, error) {
+	rbdVolume := &rbdVolumeOptions{}
+	var ok bool
+	var err error
+
+	if credentials != nil {
+		// If credentials has more than 1 user/key pair, only 1st will be used
+		for user, key := range credentials {
+			rbdVolume.AdminID = user
+			rbdVolume.adminSecret = key
+			break
+		}
+	}
+	rbdVolume.Pool, ok = volOptions["pool"]
+	if !ok {
+		return nil, fmt.Errorf("Missing required parameter pool")
+	}
+	rbdVolume.Monitors, ok = volOptions["monitors"]
+	if !ok {
+		return nil, fmt.Errorf("Missing required parameter monitors")
+	}
+	if err != nil {
+		return nil, err
 	}
 	rbdVolume.ImageFormat, ok = volOptions["imageFormat"]
 	if !ok {

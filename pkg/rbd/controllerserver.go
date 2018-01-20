@@ -49,11 +49,11 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	volOptions, err := getRBDVolumeOptions(req.Parameters, cs.clientSet)
+	volOptions, err := getRBDVolumeOptionsV2(req.Parameters, req.UserCredentials)
 	if err != nil {
 		return nil, err
 	}
-
+        fmt.Printf("><SB> volOptions %+v\n",volOptions)
 	// Generating Volume Name and Volume ID, as accoeding to CSI spec they MUST be different
 	volName := req.GetName()
 	uniqueID := uuid.NewUUID().String()
