@@ -75,7 +75,7 @@ spec:
       serviceAccount: csi-provisioner
       containers:
         - name: csi-provisioner
-          image: csi_images/csi-provisioner:latest
+          image: docker.io/k8scsi/csi-provisioner:latest
           args:
             - "--provisioner=rbdplugin"
             - "--csi-address=$(ADDRESS)"
@@ -91,4 +91,4 @@ spec:
         - name: socket-dir
           hostPath:
             path: /var/lib/kubelet/plugins/rbdplugin
-            type: Directory
+            type: DirectoryOrCreate
