@@ -81,7 +81,7 @@ $ kubectl create -f ./deploy/kubernetes/rbd-secrets.yaml
 ```
 $ kubectl create -f ./deploy/kubernetes/rbd-storage-class.yaml
 ```
-**Important:** rbd-secrets.yaml, must be customized to match your ceph environment.
+**Important:** rbd-storage-class.yaml, must be customized to match your ceph environment.
 
 #### Step 3: Start CSI CEPH RBD plugin
 ```
@@ -155,7 +155,7 @@ Source:
 # kubectl create -f ./deploy/pod.yaml
 ```
 
-## CepgFS plugin
+## CephFS plugin
 
 TODO 
 
