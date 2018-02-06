@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: rbd-pv 
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rbd-csi-provisioner 
+  resources:
+    requests:
+      storage: 1Gi

@@ -17,11 +17,10 @@ limitations under the License.
 package rbd
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/glog"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
-	"k8s.io/client-go/kubernetes"
 )
 
 // PluginFolder defines the location of rbdplugin
@@ -61,21 +60,19 @@ func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
 	}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver, clientSet *kubernetes.Clientset) *controllerServer {
+func NewControllerServer(d *csicommon.CSIDriver) *controllerServer {
 	return &controllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
-		clientSet:               clientSet,
 	}
 }
 
-func NewNodeServer(d *csicommon.CSIDriver, clientSet *kubernetes.Clientset) *nodeServer {
+func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
 	return &nodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
-		clientSet:         clientSet,
 	}
 }
 
-func (rbd *rbd) Run(driverName, nodeID, endpoint string, clientSet *kubernetes.Clientset) {
+func (rbd *rbd) Run(driverName, nodeID, endpoint string) {
 	glog.Infof("Driver: %v version: %v", driverName, GetVersionString(&version))
 
 	// Initialize default library driver
@@ -91,8 +88,8 @@ func (rbd *rbd) Run(driverName, nodeID, endpoint string, clientSet *kubernetes.C
 
 	// Create GRPC servers
 	rbd.ids = NewIdentityServer(rbd.driver)
-	rbd.ns = NewNodeServer(rbd.driver, clientSet)
-	rbd.cs = NewControllerServer(rbd.driver, clientSet)
+	rbd.ns = NewNodeServer(rbd.driver)
+	rbd.cs = NewControllerServer(rbd.driver)
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(endpoint, rbd.ids, rbd.cs, rbd.ns)
 	s.Wait()

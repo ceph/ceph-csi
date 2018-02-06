@@ -12,6 +12,9 @@ metadata:
   name: csi-nodeplugin
 rules:
   - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "update"]
+  - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list"]
   - apiGroups: [""]
@@ -58,7 +61,7 @@ spec:
       hostNetwork: true
       containers:
         - name: driver-registrar
-          image: csi_images/driver-registrar:latest
+          image: docker.io/k8scsi/driver-registrar:latest
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
