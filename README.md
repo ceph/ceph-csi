@@ -53,8 +53,20 @@ csi-provisioner-0                1/1       Running   0          1m
 
 ### Create a CSI storage class
 
+Replace Ceph mon and secrets in [examples/sc.yaml](examples/sc.yaml)
+
+```bash
+# kubectl create -f examples/sc.yaml
+```
 
 ### Create a PVC
 
+```bash
+# kubectl create -f examples/pvc.yaml
+```
+
 ### Create a Pod
 
+```bash
+# kubectl create -f examples/pod.yaml
+```
