@@ -75,7 +75,7 @@ spec:
       serviceAccount: csi-provisioner
       containers:
         - name: csi-provisioner
-          image: docker.io/k8scsi/csi-provisioner:latest
+          image: quay.io/k8scsi/csi-provisioner:latest
           args:
             - "--provisioner=rbdplugin"
             - "--csi-address=$(ADDRESS)"

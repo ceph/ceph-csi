@@ -8,4 +8,4 @@ spec:
   storageClassName: rbd-csi-provisioner 
   resources:
     requests:
-      storage: 1Mi
+      storage: 1Gi
