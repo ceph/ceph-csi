@@ -14,8 +14,8 @@
 
 .PHONY: all rbdplugin
 
-IMAGE_NAME=csi_images/rbdplugin
-IMAGE_VERSION=latest
+IMAGE_NAME=quay.io/k8scsi/rbdplugin
+IMAGE_VERSION=v0.1.0
 
 all: rbdplugin
 
