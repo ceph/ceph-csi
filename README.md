@@ -26,6 +26,11 @@ workloads.
 
 ### Feature Status
 
+### CSI Spec version
+v0.1.0 branch of ceph-csi repo correpsonds to version 0.1.0 of CSI spec, in order for a  plugin
+to operate sucessfully, other components: external-attacher, external-provisioner and driver-registrar must
+be built for the same CSI spec version.
+ 
 ### 1.9: Alpha
 
 **Important:** `CSIPersistentVolume` and `MountPropagation`
@@ -52,7 +57,7 @@ $ docker images | grep rbdplugin
 ```
 You should see the following line in the output:
 ```
-csi_images/rbdplugin   latest  248ddba297fa        30 seconds ago    431 MB
+csi_images/rbdplugin   v0.1.0  248ddba297fa        30 seconds ago    431 MB
 ```
 
 ### Testing
