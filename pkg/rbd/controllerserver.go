@@ -84,9 +84,9 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	return &csi.CreateVolumeResponse{
-		VolumeInfo: &csi.VolumeInfo{
+		Volume: &csi.Volume{
 			Id:            volumeID,
-			CapacityBytes: uint64(volSizeBytes),
+			CapacityBytes: int64(volSizeBytes),
 			Attributes:    req.GetParameters(),
 		},
 	}, nil

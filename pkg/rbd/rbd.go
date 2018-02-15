@@ -42,7 +42,7 @@ type rbd struct {
 var (
 	rbdDriver *rbd
 	version   = csi.Version{
-		Minor: 1,
+		Minor: 2,
 	}
 )
 

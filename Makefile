@@ -14,8 +14,8 @@
 
 .PHONY: all rbdplugin
 
-IMAGE_NAME=csi_images/rbdplugin
-IMAGE_VERSION=latest
+IMAGE_NAME=quay.io/cephcsi/rbdplugin
+IMAGE_VERSION=v0.2.0
 
 all: rbdplugin
 
@@ -25,7 +25,7 @@ test:
 
 rbdplugin:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -i -o  _output/rbdplugin ./rbd
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/rbdplugin ./rbd
 
 container: rbdplugin 
 	cp _output/rbdplugin  deploy/docker
