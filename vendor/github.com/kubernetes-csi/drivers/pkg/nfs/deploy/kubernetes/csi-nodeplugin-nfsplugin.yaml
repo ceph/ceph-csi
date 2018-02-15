@@ -37,7 +37,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: docker.io/k8s/nfsplugin:v0.1
+          image: docker.io/k8scsi/nfsplugin:v0.1
           args :
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"

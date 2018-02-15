@@ -58,8 +58,6 @@ func NewFlexVolumeDriver(driverName, driverPath string) (*flexVolumeDriver, erro
 		execPath:   driverPath,
 	}
 
-	adapter.flexDriver = flexDriver
-
 	// Initialize the plugin and probe the capabilities
 	call := flexDriver.NewDriverCall(initCmd)
 	ds, err := call.Run()

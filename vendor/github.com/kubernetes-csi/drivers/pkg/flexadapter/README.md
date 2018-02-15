@@ -4,39 +4,39 @@
 
 ### Start Flexvolume adapter for simple nfs flexvolume driver
 ```
-$ sudo ../_output/flexadapter --endpoint tcp://127.0.0.1:10000 --drivername simplenfs --driverpath ./examples/simple-nfs-flexdriver/nfs --nodeid CSINode
+$ sudo ./_output/flexadapter --endpoint tcp://127.0.0.1:10000 --drivername simplenfs --driverpath ./pkg/flexadapter/examples/simplenfs-flexdriver/driver/nfs --nodeid CSINode -v=5
 ```
 
 ### Test using csc
-Get ```csc``` tool from https://github.com/chakri-nelluri/gocsi/tree/master/csc
+Get ```csc``` tool from https://github.com/thecodeteam/gocsi/tree/master/csc
 
 #### Get plugin info
 ```
-$ csc identity plugininfo --endpoint tcp://127.0.0.1:10000
+$ csc identity plugin-info --endpoint tcp://127.0.0.1:10000
 "simplenfs"	"0.1.0"
 ```
 
 ### Get supported versions
 ```
-$ csc identity supportedversions --endpoint tcp://127.0.0.1:10000
+$ csc identity supported-versions --endpoint tcp://127.0.0.1:10000
 0.1.0
 ```
 
 #### NodePublish a volume
 ```
-$ csc node publishvolume --endpoint tcp://127.0.0.1:10000 --target-path /mnt/nfs --attrib server=a.b.c.d --attrib share=nfs_share nfstestvol
+$ csc node publish --endpoint tcp://127.0.0.1:10000 --target-path /mnt/nfs --attrib server=a.b.c.d --attrib share=nfs_share nfstestvol
 nfstestvol
 ```
 
 #### NodeUnpublish a volume
 ```
-$ csc node unpublishvolume --endpoint tcp://127.0.0.1:10000 --target-path /mnt/nfs nfstestvol
+$ csc node unpublish --endpoint tcp://127.0.0.1:10000 --target-path /mnt/nfs nfstestvol
 nfstestvol
 ```
 
 #### Get NodeID
 ```
-$ csc node getid --endpoint tcp://127.0.0.1:10000
+$ csc node get-id --endpoint tcp://127.0.0.1:10000
 CSINode
 ```
 

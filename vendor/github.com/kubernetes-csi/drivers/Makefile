@@ -22,19 +22,19 @@ test:
 
 flexadapter:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	go build -o _output/flexadapter ./app/flexadapter
+	go build -i -o _output/flexadapter ./app/flexadapter
 nfs:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	go build -o _output/nfsplugin ./app/nfsplugin
+	go build -i -o _output/nfsplugin ./app/nfsplugin
 hostpath:
 	if [ ! -d ./vendor ]; then dep ensure; fi
 	go build -i -o _output/hostpathplugin ./app/hostpathplugin
 iscsi:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	go build -o _output/iscsiplugin ./app/iscsiplugin
+	go build -i -o _output/iscsiplugin ./app/iscsiplugin
 cinder:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	go build -o _output/cinderplugin ./app/cinderplugin
+	go build -i -o _output/cinderplugin ./app/cinderplugin
 
 clean:
 	go clean -r -x

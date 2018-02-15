@@ -43,7 +43,7 @@ spec:
               mountPath: /var/lib/csi/sockets/pluginproxy/
 
         - name: nfs
-          image: docker.io/k8s/nfsplugin:v0.1
+          image: docker.io/k8scsi/nfsplugin:v0.1
           args :
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"

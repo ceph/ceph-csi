@@ -33,10 +33,10 @@ const (
 var (
 	fakeVersion           = csi.Version{Major: 5, Minor: 2, Patch: 0}
 	fakeVersionsSupported = []*csi.Version{
-		&csi.Version{
+		{
 			Major: 4, Minor: 0, Patch: 0,
 		},
-		&csi.Version{
+		{
 			Major: 4, Minor: 1, Patch: 0,
 		},
 	}
@@ -45,10 +45,10 @@ var (
 func NewFakeDriver() *CSIDriver {
 	fakeVersion = csi.Version{Major: 5, Minor: 2, Patch: 0}
 	fakeVersionsSupported = []*csi.Version{
-		&csi.Version{
+		{
 			Major: 4, Minor: 0, Patch: 0,
 		},
-		&csi.Version{
+		{
 			Major: 4, Minor: 1, Patch: 0,
 		},
 	}

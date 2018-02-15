@@ -59,7 +59,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	s := req.GetVolumeAttributes()["server"]
-	ep := req.GetVolumeAttributes()["exportPath"]
+	ep := req.GetVolumeAttributes()["share"]
 	source := fmt.Sprintf("%s:%s", s, ep)
 
 	mounter := mount.New("")

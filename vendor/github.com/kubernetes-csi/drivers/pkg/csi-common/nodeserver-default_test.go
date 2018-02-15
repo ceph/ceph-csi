@@ -26,21 +26,21 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestGetNodeID(t *testing.T) {
+func TestNodeGetId(t *testing.T) {
 	d := NewFakeDriver()
 
 	ns := NewDefaultNodeServer(d)
 
 	// Test invalid request
-	req := csi.GetNodeIDRequest{}
-	_, err := ns.GetNodeID(context.Background(), &req)
+	req := csi.NodeGetIdRequest{}
+	_, err := ns.NodeGetId(context.Background(), &req)
 	s, ok := status.FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, s.Code(), codes.InvalidArgument)
 
 	// Test valid request
 	req.Version = &fakeVersion
-	resp, err := ns.GetNodeID(context.Background(), &req)
+	resp, err := ns.NodeGetId(context.Background(), &req)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.GetNodeId(), fakeNodeID)
 }

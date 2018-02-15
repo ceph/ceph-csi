@@ -18,7 +18,6 @@ package flexadapter
 
 import (
 	"os"
-	"sync"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/glog"
@@ -39,8 +38,6 @@ type flexAdapter struct {
 }
 
 var (
-	adapter *flexAdapter
-	runOnce sync.Once
 	version = csi.Version{
 		Minor: 1,
 	}
@@ -50,15 +47,13 @@ func GetSupportedVersions() []*csi.Version {
 	return []*csi.Version{&version}
 }
 
-func GetFlexAdapter() *flexAdapter {
-	runOnce.Do(func() {
-		adapter = &flexAdapter{}
-	})
-	return adapter
+func New() *flexAdapter {
+	return &flexAdapter{}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver) *controllerServer {
+func NewControllerServer(d *csicommon.CSIDriver, f *flexVolumeDriver) *controllerServer {
 	return &controllerServer{
+		flexDriver:              f,
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 	}
 }
@@ -76,22 +71,22 @@ func (f *flexAdapter) Run(driverName, driverPath, nodeID, endpoint string) {
 	glog.Infof("Driver: %v version: %v", driverName, GetVersionString(&version))
 
 	// Create flex volume driver
-	adapter.flexDriver, err = NewFlexVolumeDriver(driverName, driverPath)
+	f.flexDriver, err = NewFlexVolumeDriver(driverName, driverPath)
 	if err != nil {
 		glog.Errorf("Failed to initialize flex volume driver, error: %v", err.Error())
 		os.Exit(1)
 	}
 
 	// Initialize default library driver
-	adapter.driver = csicommon.NewCSIDriver(driverName, &version, GetSupportedVersions(), nodeID)
-	if adapter.flexDriver.capabilities.Attach {
-		adapter.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME})
+	f.driver = csicommon.NewCSIDriver(driverName, &version, GetSupportedVersions(), nodeID)
+	if f.flexDriver.capabilities.Attach {
+		f.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME})
 	}
-	adapter.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
+	f.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
 
 	// Create GRPC servers
-	f.ns = NewNodeServer(adapter.driver, adapter.flexDriver)
-	f.cs = NewControllerServer(adapter.driver)
+	f.ns = NewNodeServer(f.driver, f.flexDriver)
+	f.cs = NewControllerServer(f.driver, f.flexDriver)
 
-	csicommon.RunControllerandNodePublishServer(endpoint, adapter.driver, f.cs, f.ns)
+	csicommon.RunControllerandNodePublishServer(endpoint, f.driver, f.cs, f.ns)
 }

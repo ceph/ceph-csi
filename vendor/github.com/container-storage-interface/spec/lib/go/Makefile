@@ -21,7 +21,7 @@ export GOPATH
 
 # Only set PROTOC_VER if it has an empty value.
 ifeq (,$(strip $(PROTOC_VER)))
-PROTOC_VER := 3.3.0
+PROTOC_VER := 3.5.1
 endif
 
 PROTOC_OS := $(shell uname -s)

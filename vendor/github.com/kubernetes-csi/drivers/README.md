@@ -1,6 +1,6 @@
 # CSI Drivers
 
-These drivers are provided puerly for illustrative purposes, and should not be used for production workloads. 
+These drivers are provided purely for illustrative purposes, and should not be used for production workloads.
 
 ## Other sample drivers
 Please read [Drivers](https://github.com/kubernetes-csi/docs/wiki/Drivers) for more information

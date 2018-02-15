@@ -32,6 +32,7 @@ const (
 )
 
 type controllerServer struct {
+	flexDriver *flexVolumeDriver
 	*csicommon.DefaultControllerServer
 }
 
@@ -44,9 +45,14 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, err
 	}
 
-	call := GetFlexAdapter().flexDriver.NewDriverCall(attachCmd)
+	cap := req.GetVolumeCapability()
+	fsType := "ext4"
+	if cap != nil {
+		mount := req.GetVolumeCapability().GetMount()
+		fsType = mount.FsType
+	}
 
-	fsType := req.GetVolumeCapability().GetMount().FsType
+	call := cs.flexDriver.NewDriverCall(attachCmd)
 	call.AppendSpec(req.GetVolumeId(), fsType, req.GetReadonly(), req.GetVolumeAttributes())
 	call.Append(req.GetNodeId())
 
@@ -62,7 +68,7 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 	pvInfo[deviceID] = callStatus.DevicePath
 
 	return &csi.ControllerPublishVolumeResponse{
-		PublishVolumeInfo: pvInfo,
+		PublishInfo: pvInfo,
 	}, nil
 }
 
@@ -71,7 +77,7 @@ func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 		return nil, err
 	}
 
-	call := GetFlexAdapter().flexDriver.NewDriverCall(detachCmd)
+	call := cs.flexDriver.NewDriverCall(detachCmd)
 	call.Append(req.GetVolumeId())
 	call.Append(req.GetNodeId())
 
