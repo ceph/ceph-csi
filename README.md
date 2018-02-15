@@ -52,7 +52,7 @@ $ docker images | grep rbdplugin
 ```
 You should see the following line in the output:
 ```
-csi_images/rbdplugin   latest  248ddba297fa        30 seconds ago    431 MB
+quay.io/cephcsi/rbdplugin              v0.2.0                            76369a8f8528        15 minutes ago      372.5 MB
 ```
 
 ### Testing
