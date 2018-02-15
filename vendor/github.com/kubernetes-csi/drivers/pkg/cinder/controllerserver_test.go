@@ -61,11 +61,11 @@ func TestCreateVolume(t *testing.T) {
 	}
 
 	// Assert
-	assert.NotNil(actualRes.VolumeInfo)
+	assert.NotNil(actualRes.Volume)
 
-	assert.NotEqual(0, len(actualRes.VolumeInfo.Id), "Volume Id is nil")
+	assert.NotEqual(0, len(actualRes.Volume.Id), "Volume Id is nil")
 
-	assert.Equal(fakeAvailability, actualRes.VolumeInfo.Attributes["availability"])
+	assert.Equal(fakeAvailability, actualRes.Volume.Attributes["availability"])
 }
 
 // Test DeleteVolume
@@ -126,7 +126,7 @@ func TestControllerPublishVolume(t *testing.T) {
 
 	// Expected Result
 	expectedRes := &csi.ControllerPublishVolumeResponse{
-		PublishVolumeInfo: map[string]string{
+		PublishInfo: map[string]string{
 			"DevicePath": fakeDevicePath,
 		},
 	}

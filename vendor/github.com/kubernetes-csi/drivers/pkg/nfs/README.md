@@ -28,9 +28,14 @@ Please update the NFS Server & share information in nginx.yaml file.
 
 ## Using CSC tool
 
+### Build nfsplugin
+```
+$ make nfs
+```
+
 ### Start NFS driver
 ```
-$ sudo ../../_output/flexadapter --endpoint tcp://127.0.0.1:10000 --drivername simplenfs --driverpath ./examples/simplenfs-flexdriver/driver/nfs --nodeid CSINode -v=3
+$ sudo ./_output/nfsplugin --endpoint tcp://127.0.0.1:10000 --nodeid CSINode -v=5
 ```
 
 ## Test
@@ -38,13 +43,13 @@ Get ```csc``` tool from https://github.com/thecodeteam/gocsi/tree/master/csc
 
 #### Get plugin info
 ```
-$ csc identity plugininfo --endpoint tcp://127.0.0.1:10000
+$ csc identity plugin-info --endpoint tcp://127.0.0.1:10000
 "NFS"	"0.1.0"
 ```
 
 ### Get supported versions
 ```
-$ csc identity supportedversions --endpoint tcp://127.0.0.1:10000
+$ csc identity supported-versions --endpoint tcp://127.0.0.1:10000
 0.1.0
 ```
 
@@ -52,19 +57,19 @@ $ csc identity supportedversions --endpoint tcp://127.0.0.1:10000
 ```
 $ export NFS_SERVER="Your Server IP (Ex: 10.10.10.10)"
 $ export NFS_SHARE="Your NFS share"
-$ csc node publishvolume --endpoint tcp://127.0.0.1:10000 --target-path /mnt/nfs --attrib server=$NFS_SERVER --attrib share=$NFS_SHARE nfstestvol
+$ csc node publish --endpoint tcp://127.0.0.1:10000 --target-path /mnt/nfs --attrib server=$NFS_SERVER --attrib share=$NFS_SHARE nfstestvol
 nfstestvol
 ```
 
 #### NodeUnpublish a volume
 ```
-$ csc node unpublishvolume --endpoint tcp://127.0.0.1:10000 --target-path /mnt/nfs nfstestvol
+$ csc node unpublish --endpoint tcp://127.0.0.1:10000 --target-path /mnt/nfs nfstestvol
 nfstestvol
 ```
 
 #### Get NodeID
 ```
-$ csc node getid --endpoint tcp://127.0.0.1:10000
+$ csc node get-id --endpoint tcp://127.0.0.1:10000
 CSINode
 ```
 

@@ -46,7 +46,37 @@ func mountDevice(devicePath, targetPath, fsType string, readOnly bool, mountOpti
 
 	diskMounter := &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: mount.NewOsExec()}
 
-	return diskMounter.FormatAndMount(deviceID, targetPath, fsType, options)
+	return diskMounter.FormatAndMount(devicePath, targetPath, fsType, options)
+}
+
+func (ns *nodeServer) waitForAttach(req *csi.NodePublishVolumeRequest, fsType string) error {
+
+	var dID string
+
+	if req.GetPublishInfo() != nil {
+		var ok bool
+		dID, ok = req.GetPublishInfo()[deviceID]
+		if !ok {
+			return status.Error(codes.InvalidArgument, "Missing device ID")
+		}
+	} else {
+		return status.Error(codes.InvalidArgument, "Missing publish info and device ID")
+	}
+
+	call := ns.flexDriver.NewDriverCall(waitForAttachCmd)
+	call.Append(dID)
+	call.AppendSpec(req.GetVolumeId(), fsType, req.GetReadonly(), req.GetVolumeAttributes())
+
+	_, err := call.Run()
+	if isCmdNotSupportedErr(err) {
+		return nil
+	}
+
+	if err != nil {
+		status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
@@ -70,11 +100,24 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
-	call := GetFlexAdapter().flexDriver.NewDriverCall(mountCmd)
+	var call *DriverCall
+
+	// Attachable driver.
+	if ns.flexDriver.capabilities.Attach {
+		err = ns.waitForAttach(req, fsType)
+		if err != nil {
+			return nil, err
+		}
+
+		call = ns.flexDriver.NewDriverCall(mountDeviceCmd)
+	} else {
+		call = ns.flexDriver.NewDriverCall(mountCmd)
+	}
+
 	call.Append(req.GetTargetPath())
 
-	if req.GetPublishVolumeInfo() != nil {
-		call.Append(req.GetPublishVolumeInfo()[deviceID])
+	if req.GetPublishInfo() != nil {
+		call.Append(req.GetPublishInfo()[deviceID])
 	}
 
 	call.AppendSpec(req.GetVolumeId(), fsType, req.GetReadonly(), req.GetVolumeAttributes())
@@ -98,7 +141,12 @@ func unmountDevice(path string) error {
 
 func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 
-	call := GetFlexAdapter().flexDriver.NewDriverCall(unmountCmd)
+	var call *DriverCall
+	if ns.flexDriver.capabilities.Attach {
+		call = ns.flexDriver.NewDriverCall(unmountDeviceCmd)
+	} else {
+		call = ns.flexDriver.NewDriverCall(unmountCmd)
+	}
 	call.Append(req.GetTargetPath())
 
 	_, err := call.Run()
@@ -109,5 +157,6 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// WaitForDetach is ignored in current K8S plugins
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }

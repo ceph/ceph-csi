@@ -31,9 +31,9 @@ func TestGetVersionFromString(t *testing.T) {
 
 	v, err := GetVersionFromString("1.2.3")
 	assert.NoError(t, err)
-	assert.Equal(t, v.GetMajor(), uint32(1))
-	assert.Equal(t, v.GetMinor(), uint32(2))
-	assert.Equal(t, v.GetPatch(), uint32(3))
+	assert.Equal(t, v.GetMajor(), int32(1))
+	assert.Equal(t, v.GetMinor(), int32(2))
+	assert.Equal(t, v.GetPatch(), int32(3))
 
 	// Invalid version
 	_, err = GetVersionFromString("1.2")

@@ -37,7 +37,7 @@ type hostPath struct {
 var (
 	hostPathDriver *hostPath
 	version        = csi.Version{
-		Minor: 1,
+		Minor: 2,
 	}
 )
 
@@ -72,6 +72,9 @@ func (hp *hostPath) Run(driverName, nodeID, endpoint string) {
 
 	// Initialize default library driver
 	hp.driver = csicommon.NewCSIDriver(driverName, &version, GetSupportedVersions(), nodeID)
+	if hp.driver == nil {
+		glog.Fatalln("Failed to initialize CSI Driver.")
+	}
 	hp.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME})
 	hp.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
 

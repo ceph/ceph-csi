@@ -4,11 +4,11 @@
 
 ### Start ISCSI driver
 ```
-$ sudo ../_output/iscsidriver --endpoint tcp://127.0.0.1:10000 --nodeid CSINode
+$ sudo ./_output/iscsidriver --endpoint tcp://127.0.0.1:10000 --nodeid CSINode
 ```
 
 ### Test using csc
-Get ```csc``` tool from https://github.com/chakri-nelluri/gocsi/tree/master/csc
+Get ```csc``` tool from https://github.com/thecodeteam/gocsi/tree/master/csc
 
 #### Get plugin info
 ```

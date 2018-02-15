@@ -35,8 +35,8 @@ func init() {
 	}
 }
 
-// Test GetNodeID
-func TestGetNodeID(t *testing.T) {
+// Test NodeGetId
+func TestNodeGetId(t *testing.T) {
 
 	// mock MountMock
 	mmock := new(mount.MountMock)
@@ -48,19 +48,19 @@ func TestGetNodeID(t *testing.T) {
 	assert := assert.New(t)
 
 	// Expected Result
-	expectedRes := &csi.GetNodeIDResponse{
+	expectedRes := &csi.NodeGetIdResponse{
 		NodeId: fakeNodeID,
 	}
 
 	// Fake request
-	fakeReq := &csi.GetNodeIDRequest{
+	fakeReq := &csi.NodeGetIdRequest{
 		Version: &version,
 	}
 
-	// Invoke GetNodeID
-	actualRes, err := fakeNs.GetNodeID(fakeCtx, fakeReq)
+	// Invoke NodeGetId
+	actualRes, err := fakeNs.NodeGetId(fakeCtx, fakeReq)
 	if err != nil {
-		t.Errorf("failed to GetNodeID: %v", err)
+		t.Errorf("failed to NodeGetId: %v", err)
 	}
 
 	// Assert
@@ -88,12 +88,12 @@ func TestNodePublishVolume(t *testing.T) {
 
 	// Fake request
 	fakeReq := &csi.NodePublishVolumeRequest{
-		Version:           &version,
-		VolumeId:          fakeVolID,
-		PublishVolumeInfo: map[string]string{"DevicePath": fakeDevicePath},
-		TargetPath:        fakeTargetPath,
-		VolumeCapability:  nil,
-		Readonly:          false,
+		Version:          &version,
+		VolumeId:         fakeVolID,
+		PublishInfo:      map[string]string{"DevicePath": fakeDevicePath},
+		TargetPath:       fakeTargetPath,
+		VolumeCapability: nil,
+		Readonly:         false,
 	}
 
 	// Invoke NodePublishVolume

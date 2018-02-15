@@ -41,7 +41,7 @@ func GetVersionString(v *csi.Version) string {
 }
 
 func GetVersionFromString(v string) (*csi.Version, error) {
-	var major, minor, patch uint32
+	var major, minor, patch int32
 
 	n, err := fmt.Sscanf(v, "%d.%d.%d", &major, &minor, &patch)
 	if err != nil {

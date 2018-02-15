@@ -22,8 +22,8 @@
 
 
 [[constraint]]
-  branch = "master"
   name = "github.com/container-storage-interface/spec"
+  branch = "master"
 
 [[constraint]]
   branch = "master"
@@ -39,8 +39,16 @@
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "v1.9.0-beta.2"
+  branch = "master"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kubernetes-csi/csi-test"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.9.0-beta.2"
+  branch = "master"
+
+[[constraint]]
+  name = "k8s.io/api"
+  branch = "master"

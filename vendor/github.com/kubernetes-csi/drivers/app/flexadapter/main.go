@@ -72,6 +72,6 @@ func main() {
 }
 
 func handle() {
-	adapter := flexadapter.GetFlexAdapter()
+	adapter := flexadapter.New()
 	adapter.Run(driverName, driverPath, nodeID, endpoint)
 }

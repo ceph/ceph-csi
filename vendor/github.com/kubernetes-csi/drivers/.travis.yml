@@ -1,19 +1,15 @@
-# Setting "sudo" to false forces Travis-CI to use its
-# container-based build infrastructure, which has shorter
-# queue times.
-sudo: false
-
-# Use the newer Travis-CI build templates based on the
-# Debian Linux distribution "Trusty" release.
-dist: trusty
-
-# Select Go as the language used to run the build.
 language: go
+
+# Needed for e2e tests
+sudo: true
 go: 1.9.x
 go_import_path: github.com/kubernetes-csi/drivers
-
 install:
+  - go get -u github.com/golang/dep/cmd/dep
+  - dep ensure -vendor-only
   - make
-
 script:
-  - go test -v github.com/kubernetes-csi/drivers/... -cover
+- go fmt $(go list ./... | grep -v vendor) | wc -l | grep 0
+- go vet $(go list ./... | grep -v vendor)
+- go test $(go list ./... | grep -v vendor)
+- ./hack/e2e-hostpath.sh

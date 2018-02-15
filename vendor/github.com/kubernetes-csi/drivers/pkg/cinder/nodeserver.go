@@ -31,7 +31,7 @@ type nodeServer struct {
 	*csicommon.DefaultNodeServer
 }
 
-func (ns *nodeServer) GetNodeID(ctx context.Context, req *csi.GetNodeIDRequest) (*csi.GetNodeIDResponse, error) {
+func (ns *nodeServer) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (*csi.NodeGetIdResponse, error) {
 
 	// Get Mount Provider
 	m, err := mount.GetMountProvider()
@@ -47,20 +47,20 @@ func (ns *nodeServer) GetNodeID(ctx context.Context, req *csi.GetNodeIDRequest) 
 	}
 
 	if len(nodeID) > 0 {
-		return &csi.GetNodeIDResponse{
+		return &csi.NodeGetIdResponse{
 			NodeId: nodeID,
 		}, nil
 	}
 
 	// Using default function
-	return ns.DefaultNodeServer.GetNodeID(ctx, req)
+	return ns.DefaultNodeServer.NodeGetId(ctx, req)
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 
 	targetPath := req.GetTargetPath()
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
-	devicePath := req.GetPublishVolumeInfo()["DevicePath"]
+	devicePath := req.GetPublishInfo()["DevicePath"]
 
 	// Get Mount Provider
 	m, err := mount.GetMountProvider()

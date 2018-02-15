@@ -39,8 +39,8 @@ by using the result of the above command.
 $ sudo ./_output/cinderplugin --endpoint tcp://127.0.0.1:10000 --cloud-config /etc/cloud.conf --nodeid CSINodeID
 ```
 
-### Test
-Get ```csc``` tool from https://github.com/chakri-nelluri/gocsi/tree/master/csc
+### Test using csc
+Get ```csc``` tool from https://github.com/thecodeteam/gocsi/tree/master/csc
 
 #### Get plugin info
 ```
