@@ -1,3 +1,6 @@
+# need for docker build
+sudo: true
+
 language: go
 branches:
   only:
