@@ -31,6 +31,8 @@ container: rbdplugin
 	cp _output/rbdplugin  deploy/docker
 	docker build -t $(IMAGE_NAME):$(IMAGE_VERSION) deploy/docker
 
+push-container: container
+	docker push $(IMAGE_NAME):$(IMAGE_VERSION)
 clean:
 	go clean -r -x
 	rm -f deploy/docker/rbdplugin
