@@ -12,6 +12,6 @@ spec:
   volumes:
    - name: mypvc
      persistentVolumeClaim:
-       claimName: rbd-pv
+       claimName: rbd-pvc
        readOnly: false
 
