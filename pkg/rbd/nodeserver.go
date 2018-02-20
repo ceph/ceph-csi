@@ -19,7 +19,6 @@ package rbd
 import (
 	"fmt"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/golang/glog"
@@ -91,43 +90,41 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err := diskMounter.FormatAndMount(devicePath, targetPath, fsType, options); err != nil {
 		return nil, err
 	}
-	// Storing volInfo into a persistent file
-	if err := persistVolInfo(req.GetVolumeId(), path.Join(PluginFolder, "node"), volOptions); err != nil {
-		glog.Warningf("rbd: failed to store volInfo with error: %v", err)
-	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
 func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
-	volumeID := req.GetVolumeId()
-	volOptions := &rbdVolumeOptions{}
-	if err := loadVolInfo(volumeID, path.Join(PluginFolder, "node"), volOptions); err != nil {
-		return nil, err
-	}
-	volName := volOptions.VolName
+	mounter := mount.New("")
 
-	notMnt, err := mount.New("").IsLikelyNotMountPoint(targetPath)
+	notMnt, err := mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if notMnt {
 		return nil, status.Error(codes.NotFound, "Volume not mounted")
 	}
-	// Unmounting the image
-	err = mount.New("").Unmount(req.GetTargetPath())
+
+	devicePath, cnt, err := mount.GetDeviceNameFromMount(mounter, targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	// Unmapping rbd device
-	glog.V(4).Infof("deleting volume %s", volName)
-	if err := detachRBDImage(volOptions); err != nil {
-		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", volOptions.VolName, err)
-		return nil, err
+
+	// Unmounting the image
+	err = mounter.Unmount(targetPath)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-	// Removing persistent storage file for the unmapped volume
-	if err := deleteVolInfo(volumeID, path.Join(PluginFolder, "node")); err != nil {
+
+	cnt--
+	if cnt != 0 {
+		return &csi.NodeUnpublishVolumeResponse{}, nil
+	}
+
+	// Unmapping rbd device
+	if err := detachRBDDevice(devicePath); err != nil {
+		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", devicePath, err)
 		return nil, err
 	}
 
