@@ -256,19 +256,14 @@ func attachRBDImage(volOptions *rbdVolumeOptions) (string, error) {
 	return devicePath, nil
 }
 
-func detachRBDImage(volOptions *rbdVolumeOptions) error {
+func detachRBDDevice(devicePath string) error {
 	var err error
 	var output []byte
 
-	image := volOptions.VolName
-	glog.V(1).Infof("rbd: unmap device %s", image)
-	id := volOptions.UserID
-	secret := volOptions.UserSecret
+	glog.V(3).Infof("rbd: unmap device %s", devicePath)
 
-	output, err = execCommand("rbd", []string{
-		"unmap", image, "--id", id, "--key=" + secret})
+	output, err = execCommand("rbd", []string{"unmap", devicePath})
 	if err != nil {
-		glog.V(1).Infof("rbd: unmap error %v, rbd output: %s", err, string(output))
 		return fmt.Errorf("rbd: unmap failed %v, rbd output: %s", err, string(output))
 	}
 
