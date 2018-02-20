@@ -31,6 +31,8 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+
+	"github.com/ceph/ceph-csi/pkg/decorator"
 )
 
 type nodeServer struct {
@@ -72,6 +74,13 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, err
 	}
 	glog.V(4).Infof("rbd image: %s/%s was succesfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
+	splits := strings.Split(devicePath, "/")
+	prefix := splits[len(splits)-1] + "-"
+	processed, newDevicePath, err := decorator.Open(devicePath, prefix, req.VolumeAttributes)
+	glog.V(4).Infof("processed %v, error %v, new path %s", processed, err, newDevicePath)
+	if processed && err == nil {
+		devicePath = newDevicePath
+	}
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 
 	readOnly := req.GetReadonly()
@@ -122,8 +131,15 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return &csi.NodeUnpublishVolumeResponse{}, nil
 	}
 
+	splits := strings.Split(devicePath, "/")
+	device := strings.Split(splits[len(splits)-1], "-")[0]
+	devicePath = "/dev/" + device
+	err = decorator.Close(devicePath)
+	if err != nil {
+		glog.Warningf("failed to close device %s: %v", devicePath, err)
+	}
 	// Unmapping rbd device
-	if err := detachRBDDevice(devicePath); err != nil {
+	if err = detachRBDDevice(devicePath); err != nil {
 		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", devicePath, err)
 		return nil, err
 	}

@@ -10,4 +10,5 @@ parameters:
     adminSecret: AQAmsGBap4EoBhAAET/Hc7fBqAZj/cy7cDcoQA==
     userID: kube
     userSecret: AQAMgXhVwBCeDhAA9nlPaFyfUSatGD4drFWDvQ==
+    # node-attribute-enable-dmcrypt: "true"
 reclaimPolicy: Delete 

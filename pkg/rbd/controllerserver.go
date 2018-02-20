@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/ceph/ceph-csi/pkg/decorator"
+
 	"github.com/golang/glog"
 	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
@@ -83,11 +85,13 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		glog.Warningf("rbd: failed to store volInfo with error: %v", err)
 	}
 
+	attr := req.GetParameters()
+	attr = decorator.GenerateAttributes(attr)
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            volumeID,
 			CapacityBytes: int64(volSizeBytes),
-			Attributes:    req.GetParameters(),
+			Attributes:    attr,
 		},
 	}, nil
 }
