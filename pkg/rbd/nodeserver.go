@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
@@ -38,11 +39,46 @@ type nodeServer struct {
 	*csicommon.DefaultNodeServer
 }
 
+var (
+	pendingVols    = make(map[string]byte)
+	pendingVolsMtx sync.Mutex
+)
+
+func isVolumePending(volID string) bool {
+	pendingVolsMtx.Lock()
+	defer pendingVolsMtx.Unlock()
+
+	_, found := pendingVols[volID]
+	return found
+}
+
+func markPending(volID string) {
+	pendingVolsMtx.Lock()
+	defer pendingVolsMtx.Unlock()
+
+	pendingVols[volID] = 0
+}
+
+func unmarkPending(volID string) {
+	pendingVolsMtx.Lock()
+	defer pendingVolsMtx.Unlock()
+
+	delete(pendingVols, volID)
+}
+
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
+	volumeID := req.GetVolumeId()
+
+	if isVolumePending(req) {
+		return nil, fmt.Errorf("rbd: NodePublishVolume for %s is pending", volumeID)
+	}
+
+	markPending(volumeID)
+	defer unmarkPending(volumeID)
 
 	if !strings.HasSuffix(targetPath, "/mount") {
-		return nil, fmt.Errorf("rnd: malformed the value of target path: %s", targetPath)
+		return nil, fmt.Errorf("rbd: malformed the value of target path: %s", targetPath)
 	}
 	s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
 	volName := s[len(s)-1]
@@ -72,7 +108,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, err
 	}
-	glog.V(4).Infof("rbd image: %s/%s was succesfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
+	glog.V(4).Infof("rbd image: %s/%s was succesfully mapped at %s\n", volumeID, volOptions.Pool, devicePath)
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 
 	readOnly := req.GetReadonly()
@@ -92,7 +128,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, err
 	}
 	// Storing volInfo into a persistent file
-	if err := persistVolInfo(req.GetVolumeId(), path.Join(PluginFolder, "node"), volOptions); err != nil {
+	if err := persistVolInfo(volumeID, path.Join(PluginFolder, "node"), volOptions); err != nil {
 		glog.Warningf("rbd: failed to store volInfo with error: %v", err)
 	}
 
@@ -103,6 +139,14 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	targetPath := req.GetTargetPath()
 	volumeID := req.GetVolumeId()
 	volOptions := &rbdVolumeOptions{}
+
+	if isVolumePending(volumeID) {
+		return nil, fmt.Errorf("rbd: NodeUnpublishVolume for %s is pending", volumeID)
+	}
+
+	markPending(volumeID)
+	defer unmarkPending(volumeID)
+
 	if err := loadVolInfo(volumeID, path.Join(PluginFolder, "node"), volOptions); err != nil {
 		return nil, err
 	}
