@@ -70,7 +70,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	targetPath := req.GetTargetPath()
 	volumeID := req.GetVolumeId()
 
-	if isVolumePending(req) {
+	if isVolumePending(volumeID) {
 		return nil, fmt.Errorf("rbd: NodePublishVolume for %s is pending", volumeID)
 	}
 
