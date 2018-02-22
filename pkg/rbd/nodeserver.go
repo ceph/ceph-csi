@@ -71,7 +71,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	volumeID := req.GetVolumeId()
 
 	if isVolumePending(volumeID) {
-		return nil, fmt.Errorf("rbd: NodePublishVolume for %s is pending", volumeID)
+		return nil, status.Errorf(codes.Aborted, "rbd: NodePublishVolume for %s is pending", volumeID)
 	}
 
 	markPending(volumeID)
@@ -141,7 +141,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	volOptions := &rbdVolumeOptions{}
 
 	if isVolumePending(volumeID) {
-		return nil, fmt.Errorf("rbd: NodeUnpublishVolume for %s is pending", volumeID)
+		return nil, status.Errorf(codes.Aborted, "rbd: NodeUnpublishVolume for %s is pending", volumeID)
 	}
 
 	markPending(volumeID)
