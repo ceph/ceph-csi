@@ -17,7 +17,7 @@ limitations under the License.
 package hostpath
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -36,14 +36,8 @@ type hostPath struct {
 
 var (
 	hostPathDriver *hostPath
-	version        = csi.Version{
-		Minor: 2,
-	}
+	vendorVersion  = "0.2.0"
 )
-
-func GetSupportedVersions() []*csi.Version {
-	return []*csi.Version{&version}
-}
 
 func GetHostPathDriver() *hostPath {
 	return &hostPath{}
@@ -68,10 +62,10 @@ func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
 }
 
 func (hp *hostPath) Run(driverName, nodeID, endpoint string) {
-	glog.Infof("Driver: %v version: %v", driverName, GetVersionString(&version))
+	glog.Infof("Driver: %v ", driverName)
 
 	// Initialize default library driver
-	hp.driver = csicommon.NewCSIDriver(driverName, &version, GetSupportedVersions(), nodeID)
+	hp.driver = csicommon.NewCSIDriver(driverName, vendorVersion, nodeID)
 	if hp.driver == nil {
 		glog.Fatalln("Failed to initialize CSI Driver.")
 	}

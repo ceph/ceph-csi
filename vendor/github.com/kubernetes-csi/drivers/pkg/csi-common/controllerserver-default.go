@@ -17,7 +17,7 @@ limitations under the License.
 package csicommon
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -76,24 +76,10 @@ func (cs *DefaultControllerServer) GetCapacity(ctx context.Context, req *csi.Get
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (cs *DefaultControllerServer) ControllerProbe(ctx context.Context, req *csi.ControllerProbeRequest) (*csi.ControllerProbeResponse, error) {
-	glog.V(5).Infof("Using default ControllerProbe")
-
-	if err := cs.Driver.ValidateControllerServiceRequest(req.Version, csi.ControllerServiceCapability_RPC_UNKNOWN); err != nil {
-		return nil, err
-	}
-	return &csi.ControllerProbeResponse{}, nil
-}
-
 // ControllerGetCapabilities implements the default GRPC callout.
 // Default supports all capabilities
 func (cs *DefaultControllerServer) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
 	glog.V(5).Infof("Using default ControllerGetCapabilities")
-
-	// Check arguments
-	if req.GetVersion() == nil {
-		return nil, status.Error(codes.InvalidArgument, "Version missing in request")
-	}
 
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: cs.Driver.cap,

@@ -13,6 +13,7 @@ CSI_MOUNTPOINT="/mnt"
 APP=hostpathplugin
 
 SKIP="WithCapacity"
+SKIP=""
 if [ x${TRAVIS} = x"true" ] ; then
 	SKIP="WithCapacity|NodeUnpublishVolume|NodePublishVolume"
 fi

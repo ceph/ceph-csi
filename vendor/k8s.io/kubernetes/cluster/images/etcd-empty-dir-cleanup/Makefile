@@ -14,9 +14,9 @@
 
 .PHONY:	build push
 
-ETCD_VERSION = 3.0.14
-IMAGE = gcr.io/google-containers/etcd-empty-dir-cleanup
-TAG = 3.0.14.0
+ETCD_VERSION = 3.1.10
+IMAGE = staging-k8s.gcr.io/etcd-empty-dir-cleanup
+TAG = 3.1.10.0
 
 clean:
 	rm -rf etcdctl etcd-v$(ETCD_VERSION)-linux-amd64 etcd-v$(ETCD_VERSION)-linux-amd64.tar.gz
@@ -29,4 +29,4 @@ build: clean
 	rm -rf etcdctl etcd-v$(ETCD_VERSION)-linux-amd64 etcd-v$(ETCD_VERSION)-linux-amd64.tar.gz
 
 push: build
-	gcloud docker -- push $(IMAGE):$(TAG)
+	docker push $(IMAGE):$(TAG)

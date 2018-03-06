@@ -17,7 +17,7 @@ limitations under the License.
 package cinder
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 
 	"github.com/kubernetes-csi/drivers/pkg/cinder/openstack"
@@ -42,24 +42,18 @@ const (
 )
 
 var (
-	version = csi.Version{
-		Minor: 1,
-	}
+	version = "0.2.0"
 )
 
-func GetSupportedVersions() []*csi.Version {
-	return []*csi.Version{&version}
-}
-
 func NewDriver(nodeID, endpoint string, cloudconfig string) *driver {
-	glog.Infof("Driver: %v version: %v", driverName, csicommon.GetVersionString(&version))
+	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	d := &driver{}
 
 	d.endpoint = endpoint
 	d.cloudconfig = cloudconfig
 
-	csiDriver := csicommon.NewCSIDriver(driverName, &version, GetSupportedVersions(), nodeID)
+	csiDriver := csicommon.NewCSIDriver(driverName, version, nodeID)
 	csiDriver.AddControllerServiceCapabilities(
 		[]csi.ControllerServiceCapability_RPC_Type{
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,

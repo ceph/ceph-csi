@@ -19,7 +19,7 @@ package flexadapter
 import (
 	"os"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -38,14 +38,8 @@ type flexAdapter struct {
 }
 
 var (
-	version = csi.Version{
-		Minor: 1,
-	}
+	version = "0.2.0"
 )
-
-func GetSupportedVersions() []*csi.Version {
-	return []*csi.Version{&version}
-}
 
 func New() *flexAdapter {
 	return &flexAdapter{}
@@ -68,7 +62,7 @@ func NewNodeServer(d *csicommon.CSIDriver, f *flexVolumeDriver) *nodeServer {
 func (f *flexAdapter) Run(driverName, driverPath, nodeID, endpoint string) {
 	var err error
 
-	glog.Infof("Driver: %v version: %v", driverName, GetVersionString(&version))
+	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Create flex volume driver
 	f.flexDriver, err = NewFlexVolumeDriver(driverName, driverPath)
@@ -78,7 +72,7 @@ func (f *flexAdapter) Run(driverName, driverPath, nodeID, endpoint string) {
 	}
 
 	// Initialize default library driver
-	f.driver = csicommon.NewCSIDriver(driverName, &version, GetSupportedVersions(), nodeID)
+	f.driver = csicommon.NewCSIDriver(driverName, version, nodeID)
 	if f.flexDriver.capabilities.Attach {
 		f.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME})
 	}

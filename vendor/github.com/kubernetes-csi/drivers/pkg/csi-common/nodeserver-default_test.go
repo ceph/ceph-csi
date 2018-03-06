@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,15 +31,8 @@ func TestNodeGetId(t *testing.T) {
 
 	ns := NewDefaultNodeServer(d)
 
-	// Test invalid request
-	req := csi.NodeGetIdRequest{}
-	_, err := ns.NodeGetId(context.Background(), &req)
-	s, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, s.Code(), codes.InvalidArgument)
-
 	// Test valid request
-	req.Version = &fakeVersion
+	req := csi.NodeGetIdRequest{}
 	resp, err := ns.NodeGetId(context.Background(), &req)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.GetNodeId(), fakeNodeID)
@@ -50,34 +43,9 @@ func TestNodeGetCapabilities(t *testing.T) {
 
 	ns := NewDefaultNodeServer(d)
 
-	// Test invalid request
+	// Test valid request
 	req := csi.NodeGetCapabilitiesRequest{}
 	_, err := ns.NodeGetCapabilities(context.Background(), &req)
-	s, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, s.Code(), codes.InvalidArgument)
-
-	// Test valid request
-	req.Version = &fakeVersion
-	_, err = ns.NodeGetCapabilities(context.Background(), &req)
-	assert.NoError(t, err)
-}
-
-func TestNodeProbe(t *testing.T) {
-	d := NewFakeDriver()
-
-	ns := NewDefaultNodeServer(d)
-
-	// Test invalid request
-	req := csi.NodeProbeRequest{}
-	_, err := ns.NodeProbe(context.Background(), &req)
-	s, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, s.Code(), codes.InvalidArgument)
-
-	// Test valid request
-	req.Version = &fakeVersion
-	_, err = ns.NodeProbe(context.Background(), &req)
 	assert.NoError(t, err)
 }
 
@@ -91,13 +59,6 @@ func TestNodePublishVolume(t *testing.T) {
 	_, err := ns.NodePublishVolume(context.Background(), &req)
 	s, ok := status.FromError(err)
 	assert.True(t, ok)
-	assert.Equal(t, s.Code(), codes.InvalidArgument)
-
-	// Test valid node publish request
-	req.Version = &fakeVersion
-	_, err = ns.NodePublishVolume(context.Background(), &req)
-	s, ok = status.FromError(err)
-	assert.True(t, ok)
 	assert.Equal(t, s.Code(), codes.Unimplemented)
 }
 
@@ -110,13 +71,6 @@ func TestNodeUnpublishVolume(t *testing.T) {
 	req := csi.NodeUnpublishVolumeRequest{}
 	_, err := ns.NodeUnpublishVolume(context.Background(), &req)
 	s, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, s.Code(), codes.InvalidArgument)
-
-	// Test valid node publish request
-	req.Version = &fakeVersion
-	_, err = ns.NodeUnpublishVolume(context.Background(), &req)
-	s, ok = status.FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, s.Code(), codes.Unimplemented)
 }

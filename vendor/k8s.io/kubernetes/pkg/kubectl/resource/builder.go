@@ -341,6 +341,10 @@ func (b *Builder) LabelSelectorParam(s string) *Builder {
 // LabelSelector accepts a selector directly and will filter the resulting list by that object.
 // Use LabelSelectorParam instead for user input.
 func (b *Builder) LabelSelector(selector string) *Builder {
+	if len(selector) == 0 {
+		return b
+	}
+
 	b.labelSelector = &selector
 	return b
 }
@@ -594,10 +598,27 @@ func (b *Builder) SingleResourceType() *Builder {
 	return b
 }
 
-// mappingFor returns the RESTMapping for the Kind referenced by the resource.
-// prefers a fully specified GroupVersionResource match.  If we don't have one match on GroupResource
-func (b *Builder) mappingFor(resourceArg string) (*meta.RESTMapping, error) {
-	fullySpecifiedGVR, groupResource := schema.ParseResourceArg(resourceArg)
+// mappingFor returns the RESTMapping for the Kind given, or the Kind referenced by the resource.
+// prefers a fully specified GroupVersionKind match. If we don't have one, match on a fully specified
+// GroupVersionResource, or fallback to a match on GroupResource.
+func (b *Builder) mappingFor(resourceOrKindArg string) (*meta.RESTMapping, error) {
+	fullySpecifiedGVK, groupKind := schema.ParseKindArg(resourceOrKindArg)
+	if fullySpecifiedGVK == nil {
+		gvk := groupKind.WithVersion("")
+		fullySpecifiedGVK = &gvk
+	}
+
+	if !fullySpecifiedGVK.Empty() {
+		if mapping, err := b.mapper.RESTMapping(fullySpecifiedGVK.GroupKind(), fullySpecifiedGVK.Version); err == nil {
+			return mapping, nil
+		} else {
+			if mapping, err := b.mapper.RESTMapping(groupKind, ""); err == nil {
+				return mapping, nil
+			}
+		}
+	}
+
+	fullySpecifiedGVR, groupResource := schema.ParseResourceArg(resourceOrKindArg)
 	gvk := schema.GroupVersionKind{}
 	if fullySpecifiedGVR != nil {
 		gvk, _ = b.mapper.KindFor(*fullySpecifiedGVR)
@@ -618,11 +639,17 @@ func (b *Builder) resourceMappings() ([]*meta.RESTMapping, error) {
 		return nil, fmt.Errorf("you may only specify a single resource type")
 	}
 	mappings := []*meta.RESTMapping{}
+	seen := map[schema.GroupVersionKind]bool{}
 	for _, r := range b.resources {
 		mapping, err := b.mappingFor(r)
 		if err != nil {
 			return nil, err
 		}
+		// This ensures the mappings for resources(shortcuts, plural) unique
+		if seen[mapping.GroupVersionKind] {
+			continue
+		}
+		seen[mapping.GroupVersionKind] = true
 
 		mappings = append(mappings, mapping)
 	}

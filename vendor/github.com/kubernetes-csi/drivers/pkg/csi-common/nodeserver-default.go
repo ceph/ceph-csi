@@ -17,7 +17,7 @@ limitations under the License.
 package csicommon
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -29,52 +29,23 @@ type DefaultNodeServer struct {
 }
 
 func (ns *DefaultNodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	err := ns.Driver.CheckVersion(req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 func (ns *DefaultNodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
-	err := ns.Driver.CheckVersion(req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 func (ns *DefaultNodeServer) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (*csi.NodeGetIdResponse, error) {
 	glog.V(5).Infof("Using default NodeGetId")
 
-	err := ns.Driver.CheckVersion(req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
-
 	return &csi.NodeGetIdResponse{
 		NodeId: ns.Driver.nodeID,
 	}, nil
 }
 
-func (ns *DefaultNodeServer) NodeProbe(ctx context.Context, req *csi.NodeProbeRequest) (*csi.NodeProbeResponse, error) {
-	glog.V(5).Infof("Using default NodeProbe")
-
-	err := ns.Driver.CheckVersion(req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
-
-	return &csi.NodeProbeResponse{}, nil
-}
-
 func (ns *DefaultNodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	glog.V(5).Infof("Using default NodeGetCapabilities")
-
-	err := ns.Driver.CheckVersion(req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
 
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{

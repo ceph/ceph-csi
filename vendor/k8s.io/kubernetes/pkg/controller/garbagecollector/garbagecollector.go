@@ -197,7 +197,7 @@ func (gc *GarbageCollector) Sync(discoveryClient discovery.DiscoveryInterface, p
 		// discovered by restMapper during the call to Reset, since they are
 		// distinct discovery clients invalidated at different times. For example,
 		// newResources may contain resources not returned in the restMapper's
-		// discovery call if the resources appeared inbetween the calls. In that
+		// discovery call if the resources appeared in-between the calls. In that
 		// case, the restMapper will fail to map some of newResources until the next
 		// sync period.
 		if err := gc.resyncMonitors(newResources); err != nil {
@@ -214,7 +214,7 @@ func (gc *GarbageCollector) Sync(discoveryClient discovery.DiscoveryInterface, p
 
 		// Finally, keep track of our new state. Do this after all preceding steps
 		// have succeeded to ensure we'll retry on subsequent syncs if an error
-		// occured.
+		// occurred.
 		oldResources = newResources
 		glog.V(2).Infof("synced garbage collector")
 	}, period, stopCh)
@@ -587,9 +587,9 @@ func GetDeletableResources(discoveryClient discovery.ServerResourcesInterface) m
 	preferredResources, err := discoveryClient.ServerPreferredResources()
 	if err != nil {
 		if discovery.IsGroupDiscoveryFailedError(err) {
-			glog.Warning("failed to discover some groups: %v", err.(*discovery.ErrGroupDiscoveryFailed).Groups)
+			glog.Warningf("failed to discover some groups: %v", err.(*discovery.ErrGroupDiscoveryFailed).Groups)
 		} else {
-			glog.Warning("failed to discover preferred resources: %v", err)
+			glog.Warningf("failed to discover preferred resources: %v", err)
 		}
 	}
 	if preferredResources == nil {
@@ -603,7 +603,7 @@ func GetDeletableResources(discoveryClient discovery.ServerResourcesInterface) m
 	for _, rl := range deletableResources {
 		gv, err := schema.ParseGroupVersion(rl.GroupVersion)
 		if err != nil {
-			glog.Warning("ignoring invalid discovered resource %q: %v", rl.GroupVersion, err)
+			glog.Warningf("ignoring invalid discovered resource %q: %v", rl.GroupVersion, err)
 			continue
 		}
 		for i := range rl.APIResources {

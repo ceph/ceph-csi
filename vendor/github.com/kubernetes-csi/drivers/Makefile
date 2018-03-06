@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+REGISTRY_NAME = quay.io/k8scsi
+IMAGE_VERSION = v0.2.0
+
 .PHONY: all flexadapter nfs hostpath iscsi cinder clean
 
 all: flexadapter nfs hostpath iscsi cinder
@@ -22,19 +25,24 @@ test:
 
 flexadapter:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	go build -i -o _output/flexadapter ./app/flexadapter
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o _output/flexadapter ./app/flexadapter
 nfs:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	go build -i -o _output/nfsplugin ./app/nfsplugin
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o _output/nfsplugin ./app/nfsplugin
 hostpath:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	go build -i -o _output/hostpathplugin ./app/hostpathplugin
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o _output/hostpathplugin ./app/hostpathplugin
+
+hostpath-container: hostpath
+	cp _output/hostpathplugin pkg/hostpath/extras/docker 
+	docker build -t $(REGISTRY_NAME)/hostpathplugin:$(IMAGE_VERSION) ./pkg/hostpath/extras/docker
+
 iscsi:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	go build -i -o _output/iscsiplugin ./app/iscsiplugin
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o _output/iscsiplugin ./app/iscsiplugin
 cinder:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	go build -i -o _output/cinderplugin ./app/cinderplugin
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o _output/cinderplugin ./app/cinderplugin
 
 clean:
 	go clean -r -x

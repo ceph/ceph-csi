@@ -19,7 +19,7 @@ package cinder
 import (
 	"testing"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/cinder/mount"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -53,9 +53,7 @@ func TestNodeGetId(t *testing.T) {
 	}
 
 	// Fake request
-	fakeReq := &csi.NodeGetIdRequest{
-		Version: &version,
-	}
+	fakeReq := &csi.NodeGetIdRequest{}
 
 	// Invoke NodeGetId
 	actualRes, err := fakeNs.NodeGetId(fakeCtx, fakeReq)
@@ -88,7 +86,6 @@ func TestNodePublishVolume(t *testing.T) {
 
 	// Fake request
 	fakeReq := &csi.NodePublishVolumeRequest{
-		Version:          &version,
 		VolumeId:         fakeVolID,
 		PublishInfo:      map[string]string{"DevicePath": fakeDevicePath},
 		TargetPath:       fakeTargetPath,
@@ -126,7 +123,6 @@ func TestNodeUnpublishVolume(t *testing.T) {
 
 	// Fake request
 	fakeReq := &csi.NodeUnpublishVolumeRequest{
-		Version:    &version,
 		VolumeId:   fakeVolID,
 		TargetPath: fakeTargetPath,
 	}
