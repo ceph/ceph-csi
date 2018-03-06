@@ -1,13 +1,11 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-   name: rbd
-provisioner: rbdplugin 
+   name: csi-rbd
+provisioner: csi-rbdplugin 
 parameters:
     monitors: 192.168.80.233:6789
     pool: kubernetes
-    adminID: admin
-    adminSecret: AQAmsGBap4EoBhAAET/Hc7fBqAZj/cy7cDcoQA==
-    userID: kube
-    userSecret: AQAMgXhVwBCeDhAA9nlPaFyfUSatGD4drFWDvQ==
+    csiProvisionerSecretName: csi-ceph-secret 
+    csiProvisionerSecretNamespace: default 
 reclaimPolicy: Delete 

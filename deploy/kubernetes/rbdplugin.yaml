@@ -3,20 +3,17 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-nodeplugin
+  name: csi-rbdplugin
 
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-nodeplugin
+  name: csi-rbdplugin
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "update"]
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get", "list"]
@@ -30,14 +27,14 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-nodeplugin
+  name: csi-rbdplugin
 subjects:
   - kind: ServiceAccount
-    name: csi-nodeplugin
+    name: csi-rbdplugin
     namespace: default
 roleRef:
   kind: ClusterRole
-  name: csi-nodeplugin
+  name: csi-rbdplugin
   apiGroup: rbac.authorization.k8s.io          
 
 ---
@@ -47,35 +44,35 @@ roleRef:
 kind: DaemonSet
 apiVersion: apps/v1beta2
 metadata:
-  name: csi-nodeplugin-rbdplugin
+  name: csi-rbdplugin
 spec:
   selector:
     matchLabels:
-      app: csi-nodeplugin-rbdplugin
+      app: csi-rbdplugin
   template:
     metadata:
       labels:
-        app: csi-nodeplugin-rbdplugin
+        app: csi-rbdplugin
     spec:
-      serviceAccount: csi-nodeplugin
+      serviceAccount: csi-rbdplugin
       hostNetwork: true
       containers:
         - name: driver-registrar
-          image: docker.io/k8scsi/driver-registrar:latest
+          image: quay.io/k8scsi/driver-registrar:v0.2.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/rbdplugin/csi.sock
+              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/rbdplugin
-        - name: rbdplugin 
+              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+        - name: csi-rbdplugin 
           securityContext:
             privileged: true
             capabilities:
@@ -86,18 +83,18 @@ spec:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
-            - "--drivername=rbdplugin"
+            - "--drivername=csi-rbdplugin"
           env:
             - name: NODE_ID
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
-              value: unix://var/lib/kubelet/plugins/rbdplugin/csi.sock
+              value: unix://var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: plugin-dir
-              mountPath: /var/lib/kubelet/plugins/rbdplugin
+              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
@@ -111,7 +108,7 @@ spec:
       volumes:
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/rbdplugin
+            path: /var/lib/kubelet/plugins/csi-rbdplugin
             type: DirectoryOrCreate
         - name: pods-mount-dir
           hostPath:
@@ -119,7 +116,7 @@ spec:
             type: Directory
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/rbdplugin
+            path: /var/lib/kubelet/plugins/csi-rbdplugin
             type: DirectoryOrCreate
         - name: host-dev
           hostPath:

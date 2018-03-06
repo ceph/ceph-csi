@@ -24,7 +24,7 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -67,7 +67,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 	volOptions.VolName = volName
 	// Mapping RBD image
-	devicePath, err := attachRBDImage(volOptions)
+	devicePath, err := attachRBDImage(volOptions, req.GetNodePublishSecrets())
 	if err != nil {
 		return nil, err
 	}
@@ -129,4 +129,20 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
+}
+
+func (ns *nodeServer) NodeStageVolume(
+	ctx context.Context,
+	req *csi.NodeStageVolumeRequest) (
+	*csi.NodeStageVolumeResponse, error) {
+
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
+func (ns *nodeServer) NodeUnstageVolume(
+	ctx context.Context,
+	req *csi.NodeUnstageVolumeRequest) (
+	*csi.NodeUnstageVolumeResponse, error) {
+
+	return nil, status.Error(codes.Unimplemented, "")
 }

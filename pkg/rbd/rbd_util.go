@@ -19,15 +19,16 @@ package rbd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
 	"io/ioutil"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/kubernetes/pkg/util/keymutex"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/golang/glog"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/kubernetes/pkg/util/keymutex"
 )
 
 const (
@@ -44,22 +45,29 @@ const (
 	rbdImageWatcherSteps     = 10
 )
 
-type rbdVolumeOptions struct {
-	VolName       string   `json:"volName"`
-	Monitors      string   `json:"monitors"`
-	Pool          string   `json:"pool"`
-	AdminID       string   `json:"adminID"`
-	AdminSecret   string   `json:"adminSecret"`
-	UserID        string   `json:"userID"`
-	UserSecret    string   `json:"userSecret"`
-	ImageFormat   string   `json:"imageFormat"`
+type rbdVolume struct {
+	VolName     string `json:"volName"`
+	VolID       string `json:"volID"`
+	Monitors    string `json:"monitors"`
+	Pool        string `json:"pool"`
+	ImageFormat string `json:"imageFormat"`
+	// TODO (sbezverk) check if it is used and how
 	ImageFeatures []string `json:"imageFeatures"`
+	VolSize       int64    `json:"volSize"`
 }
 
 var attachdetachMutex = keymutex.NewKeyMutex()
 
+func getRBDKey(id string, credentials map[string]string) (string, error) {
+
+	if key, ok := credentials[id]; ok {
+		return key, nil
+	}
+	return "", fmt.Errorf("RBD key for ID: %s not found", id)
+}
+
 // CreateImage creates a new ceph image with provision and volume options.
-func createRBDImage(pOpts *rbdVolumeOptions, volSz int) error {
+func createRBDImage(pOpts *rbdVolume, volSz int, credentials map[string]string) error {
 	var output []byte
 	var err error
 
@@ -68,12 +76,16 @@ func createRBDImage(pOpts *rbdVolumeOptions, volSz int) error {
 	image := pOpts.VolName
 	volSzGB := fmt.Sprintf("%dG", volSz)
 
-	if pOpts.ImageFormat == rbdImageFormat2 {
-		glog.V(4).Infof("rbd: create %s size %s format %s (features: %s) using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, pOpts.ImageFeatures, mon, pOpts.Pool, pOpts.AdminID, pOpts.AdminSecret)
-	} else {
-		glog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, mon, pOpts.Pool, pOpts.AdminID, pOpts.AdminSecret)
+	key, err := getRBDKey(RBDUserID, credentials)
+	if err != nil {
+		return err
 	}
-	args := []string{"create", image, "--size", volSzGB, "--pool", pOpts.Pool, "--id", pOpts.AdminID, "-m", mon, "--key=" + pOpts.AdminSecret, "--image-format", pOpts.ImageFormat}
+	if pOpts.ImageFormat == rbdImageFormat2 {
+		glog.V(4).Infof("rbd: create %s size %s format %s (features: %s) using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, pOpts.ImageFeatures, mon, pOpts.Pool, RBDUserID, key)
+	} else {
+		glog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, mon, pOpts.Pool, RBDUserID, key)
+	}
+	args := []string{"create", image, "--size", volSzGB, "--pool", pOpts.Pool, "--id", RBDUserID, "-m", mon, "--key=" + key, "--image-format", pOpts.ImageFormat}
 	if pOpts.ImageFormat == rbdImageFormat2 {
 		// if no image features is provided, it results in empty string
 		// which disable all RBD image format 2 features as we expected
@@ -91,22 +103,20 @@ func createRBDImage(pOpts *rbdVolumeOptions, volSz int) error {
 
 // rbdStatus checks if there is watcher on the image.
 // It returns true if there is a watcher onthe image, otherwise returns false.
-func rbdStatus(b *rbdVolumeOptions) (bool, string, error) {
+func rbdStatus(pOpts *rbdVolume, credentials map[string]string) (bool, string, error) {
 	var err error
 	var output string
 	var cmd []byte
 
-	image := b.VolName
+	image := pOpts.VolName
 	// If we don't have admin id/secret (e.g. attaching), fallback to user id/secret.
-	id := b.AdminID
-	secret := b.AdminSecret
-	if id == "" {
-		id = b.UserID
-		secret = b.UserSecret
+	key, err := getRBDKey(RBDUserID, credentials)
+	if err != nil {
+		return false, "", err
 	}
 
-	glog.V(4).Infof("rbd: status %s using mon %s, pool %s id %s key %s", image, b.Monitors, b.Pool, id, secret)
-	args := []string{"status", image, "--pool", b.Pool, "-m", b.Monitors, "--id", id, "--key=" + secret}
+	glog.V(4).Infof("rbd: status %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
+	args := []string{"status", image, "--pool", pOpts.Pool, "-m", pOpts.Monitors, "--id", RBDUserID, "--key=" + key}
 	cmd, err = execCommand("rbd", args)
 	output = string(cmd)
 
@@ -133,10 +143,10 @@ func rbdStatus(b *rbdVolumeOptions) (bool, string, error) {
 }
 
 // DeleteImage deletes a ceph image with provision and volume options.
-func deleteRBDImage(b *rbdVolumeOptions) error {
+func deleteRBDImage(pOpts *rbdVolume, credentials map[string]string) error {
 	var output []byte
-	image := b.VolName
-	found, _, err := rbdStatus(b)
+	image := pOpts.VolName
+	found, _, err := rbdStatus(pOpts, credentials)
 	if err != nil {
 		return err
 	}
@@ -144,15 +154,13 @@ func deleteRBDImage(b *rbdVolumeOptions) error {
 		glog.Info("rbd is still being used ", image)
 		return fmt.Errorf("rbd %s is still being used", image)
 	}
-	id := b.AdminID
-	secret := b.AdminSecret
-	if id == "" {
-		id = b.UserID
-		secret = b.UserSecret
+	key, err := getRBDKey(RBDUserID, credentials)
+	if err != nil {
+		return err
 	}
 
-	glog.V(4).Infof("rbd: rm %s using mon %s, pool %s id %s key %s", image, b.Monitors, b.Pool, id, secret)
-	args := []string{"rm", image, "--pool", b.Pool, "--id", id, "-m", b.Monitors, "--key=" + secret}
+	glog.V(4).Infof("rbd: rm %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
+	args := []string{"rm", image, "--pool", pOpts.Pool, "--id", RBDUserID, "-m", pOpts.Monitors, "--key=" + key}
 	output, err = execCommand("rbd", args)
 	if err == nil {
 		return nil
@@ -166,42 +174,26 @@ func execCommand(command string, args []string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolumeOptions, error) {
-	rbdVolume := &rbdVolumeOptions{}
+func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 	var ok bool
-	rbdVolume.AdminID, ok = volOptions["adminID"]
-	if !ok {
-		return nil, fmt.Errorf("Missing required parameter adminID")
-	}
-	rbdVolume.AdminSecret, ok = volOptions["adminSecret"]
-	if !ok {
-		return nil, fmt.Errorf("Missing required parameter adminSecret")
-	}
-	rbdVolume.Pool, ok = volOptions["pool"]
+	rbdVol := &rbdVolume{}
+	rbdVol.Pool, ok = volOptions["pool"]
 	if !ok {
 		return nil, fmt.Errorf("Missing required parameter pool")
 	}
-	rbdVolume.Monitors, ok = volOptions["monitors"]
+	rbdVol.Monitors, ok = volOptions["monitors"]
 	if !ok {
 		return nil, fmt.Errorf("Missing required parameter monitors")
 	}
-	rbdVolume.UserID, ok = volOptions["userID"]
+	rbdVol.ImageFormat, ok = volOptions["imageFormat"]
 	if !ok {
-		return nil, fmt.Errorf("Missing required parameter userID")
-	}
-	rbdVolume.UserSecret, ok = volOptions["userSecret"]
-	if !ok {
-		return nil, fmt.Errorf("Missing required parameter userSecret")
-	}
-	rbdVolume.ImageFormat, ok = volOptions["imageFormat"]
-	if !ok {
-		rbdVolume.ImageFormat = "2"
+		rbdVol.ImageFormat = "2"
 	}
 
-	return rbdVolume, nil
+	return rbdVol, nil
 }
 
-func attachRBDImage(volOptions *rbdVolumeOptions) (string, error) {
+func attachRBDImage(volOptions *rbdVolume, credentials map[string]string) (string, error) {
 	var err error
 	var output []byte
 
@@ -222,7 +214,7 @@ func attachRBDImage(volOptions *rbdVolumeOptions) (string, error) {
 			Steps:    rbdImageWatcherSteps,
 		}
 		err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			used, rbdOutput, err := rbdStatus(volOptions)
+			used, rbdOutput, err := rbdStatus(volOptions, credentials)
 			if err != nil {
 				return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
 			}
@@ -238,11 +230,13 @@ func attachRBDImage(volOptions *rbdVolumeOptions) (string, error) {
 		}
 
 		glog.V(1).Infof("rbd: map mon %s", volOptions.Monitors)
-		id := volOptions.UserID
-		secret := volOptions.UserSecret
+		key, err := getRBDKey(RBDUserID, credentials)
+		if err != nil {
+			return "", err
+		}
 
 		output, err = execCommand("rbd", []string{
-			"map", image, "--pool", volOptions.Pool, "--id", id, "-m", volOptions.Monitors, "--key=" + secret})
+			"map", image, "--pool", volOptions.Pool, "--id", RBDUserID, "-m", volOptions.Monitors, "--key=" + key})
 		if err != nil {
 			glog.V(1).Infof("rbd: map error %v, rbd output: %s", err, string(output))
 			return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
@@ -322,23 +316,24 @@ func waitForPath(pool, image string, maxRetries int) (string, bool) {
 	return "", false
 }
 
-func persistVolInfo(image string, persistentStoragePath string, volInfo *rbdVolumeOptions) error {
+func persistVolInfo(image string, persistentStoragePath string, volInfo *rbdVolume) error {
 	file := path.Join(persistentStoragePath, image+".json")
 	fp, err := os.Create(file)
 	if err != nil {
+		glog.Errorf("rbd: failed to create persistent storage file %s with error: %v\n", file, err)
 		return fmt.Errorf("rbd: create err %s/%s", file, err)
 	}
 	defer fp.Close()
-
 	encoder := json.NewEncoder(fp)
 	if err = encoder.Encode(volInfo); err != nil {
-		return fmt.Errorf("rbd: encode err: %v.", err)
+		glog.Errorf("rbd: failed to encode volInfo: %+v for file: %s with error: %v\n", volInfo, file, err)
+		return fmt.Errorf("rbd: encode err: %v", err)
 	}
-
+	glog.Infof("rbd: successfully saved volInfo: %+v into file: %s\n", volInfo, file)
 	return nil
 }
 
-func loadVolInfo(image string, persistentStoragePath string, volInfo *rbdVolumeOptions) error {
+func loadVolInfo(image string, persistentStoragePath string, volInfo *rbdVolume) error {
 	file := path.Join(persistentStoragePath, image+".json")
 	fp, err := os.Open(file)
 	if err != nil {
@@ -356,11 +351,28 @@ func loadVolInfo(image string, persistentStoragePath string, volInfo *rbdVolumeO
 
 func deleteVolInfo(image string, persistentStoragePath string) error {
 	file := path.Join(persistentStoragePath, image+".json")
+	glog.Infof("rbd: Deleting file for Volume: %s at: %s resulting path: %+v\n", image, persistentStoragePath, file)
 	err := os.Remove(file)
 	if err != nil {
 		if err != os.ErrNotExist {
-			return fmt.Errorf("rbd: open err %s/%s", file, err)
+			return fmt.Errorf("rbd: error removing file: %s/%s", file, err)
 		}
 	}
 	return nil
+}
+
+func getRBDVolumeByID(volumeID string) (rbdVolume, error) {
+	if rbdVol, ok := rbdVolumes[volumeID]; ok {
+		return rbdVol, nil
+	}
+	return rbdVolume{}, fmt.Errorf("volume id %s does not exit in the volumes list", volumeID)
+}
+
+func getRBDVolumeByName(volName string) (rbdVolume, error) {
+	for _, rbdVol := range rbdVolumes {
+		if rbdVol.VolName == volName {
+			return rbdVol, nil
+		}
+	}
+	return rbdVolume{}, fmt.Errorf("volume name %s does not exit in the volumes list", volName)
 }
