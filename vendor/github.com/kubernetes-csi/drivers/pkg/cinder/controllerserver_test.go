@@ -19,7 +19,7 @@ package cinder
 import (
 	"testing"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/cinder/openstack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -49,7 +49,6 @@ func TestCreateVolume(t *testing.T) {
 
 	// Fake request
 	fakeReq := &csi.CreateVolumeRequest{
-		Version:            &version,
 		Name:               fakeVolName,
 		VolumeCapabilities: nil,
 	}
@@ -82,7 +81,6 @@ func TestDeleteVolume(t *testing.T) {
 
 	// Fake request
 	fakeReq := &csi.DeleteVolumeRequest{
-		Version:  &version,
 		VolumeId: fakeVolID,
 	}
 
@@ -117,7 +115,6 @@ func TestControllerPublishVolume(t *testing.T) {
 
 	// Fake request
 	fakeReq := &csi.ControllerPublishVolumeRequest{
-		Version:          &version,
 		VolumeId:         fakeVolID,
 		NodeId:           fakeNodeID,
 		VolumeCapability: nil,
@@ -157,7 +154,6 @@ func TestControllerUnpublishVolume(t *testing.T) {
 
 	// Fake request
 	fakeReq := &csi.ControllerUnpublishVolumeRequest{
-		Version:  &version,
 		VolumeId: fakeVolID,
 		NodeId:   fakeNodeID,
 	}

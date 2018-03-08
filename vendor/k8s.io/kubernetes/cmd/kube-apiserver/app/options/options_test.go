@@ -26,8 +26,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/diff"
 	apiserveroptions "k8s.io/apiserver/pkg/server/options"
+	genericoptions "k8s.io/apiserver/pkg/server/options"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
-	utilconfig "k8s.io/apiserver/pkg/util/flag"
+	utilflag "k8s.io/apiserver/pkg/util/flag"
 	auditwebhook "k8s.io/apiserver/plugin/pkg/audit/webhook"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
@@ -43,7 +44,7 @@ func TestAddFlags(t *testing.T) {
 	s.AddFlags(f)
 
 	args := []string{
-		"--admission-control=AlwaysDeny",
+		"--enable-admission-plugins=AlwaysDeny",
 		"--admission-control-config-file=/admission-control-config",
 		"--advertise-address=192.168.10.10",
 		"--allow-privileged=false",
@@ -83,6 +84,7 @@ func TestAddFlags(t *testing.T) {
 		"--etcd-keyfile=/var/run/kubernetes/etcd.key",
 		"--etcd-certfile=/var/run/kubernetes/etcdce.crt",
 		"--etcd-cafile=/var/run/kubernetes/etcdca.crt",
+		"--http2-max-streams-per-connection=42",
 		"--kubelet-https=true",
 		"--kubelet-read-only-port=10255",
 		"--kubelet-timeout=5s",
@@ -99,6 +101,7 @@ func TestAddFlags(t *testing.T) {
 	// This is a snapshot of expected options parsed by args.
 	expected := &ServerRunOptions{
 		ServiceNodePortRange:   kubeoptions.DefaultServiceNodePortRange,
+		ServiceClusterIPRange:  kubeoptions.DefaultServiceIPCIDR,
 		MasterCount:            5,
 		EndpointReconcilerType: string(reconcilers.MasterCountReconcilerType),
 		AllowPrivileged:        false,
@@ -110,12 +113,14 @@ func TestAddFlags(t *testing.T) {
 			RequestTimeout:              time.Duration(2) * time.Minute,
 			MinRequestTimeout:           1800,
 		},
-		Admission: &apiserveroptions.AdmissionOptions{
-			RecommendedPluginOrder: []string{"NamespaceLifecycle", "Initializers", "MutatingAdmissionWebhook", "ValidatingAdmissionWebhook"},
-			DefaultOffPlugins:      []string{"Initializers", "MutatingAdmissionWebhook", "ValidatingAdmissionWebhook"},
-			PluginNames:            []string{"AlwaysDeny"},
-			ConfigFile:             "/admission-control-config",
-			Plugins:                s.Admission.Plugins,
+		Admission: &kubeoptions.AdmissionOptions{
+			GenericAdmission: &apiserveroptions.AdmissionOptions{
+				RecommendedPluginOrder: s.Admission.GenericAdmission.RecommendedPluginOrder,
+				DefaultOffPlugins:      s.Admission.GenericAdmission.DefaultOffPlugins,
+				EnablePlugins:          []string{"AlwaysDeny"},
+				ConfigFile:             "/admission-control-config",
+				Plugins:                s.Admission.GenericAdmission.Plugins,
+			},
 		},
 		Etcd: &apiserveroptions.EtcdOptions{
 			StorageConfig: storagebackend.Config{
@@ -123,11 +128,12 @@ func TestAddFlags(t *testing.T) {
 				ServerList: nil,
 				Prefix:     "/registry",
 				DeserializationCacheSize: 0,
-				Quorum:             false,
-				KeyFile:            "/var/run/kubernetes/etcd.key",
-				CAFile:             "/var/run/kubernetes/etcdca.crt",
-				CertFile:           "/var/run/kubernetes/etcdce.crt",
-				CompactionInterval: storagebackend.DefaultCompactInterval,
+				Quorum:                false,
+				KeyFile:               "/var/run/kubernetes/etcd.key",
+				CAFile:                "/var/run/kubernetes/etcdca.crt",
+				CertFile:              "/var/run/kubernetes/etcdce.crt",
+				CompactionInterval:    storagebackend.DefaultCompactInterval,
+				CountMetricPollPeriod: time.Minute,
 			},
 			DefaultStorageMediaType: "application/vnd.kubernetes.protobuf",
 			DeleteCollectionWorkers: 1,
@@ -135,14 +141,15 @@ func TestAddFlags(t *testing.T) {
 			EnableWatchCache:        true,
 			DefaultWatchCacheSize:   100,
 		},
-		SecureServing: &apiserveroptions.SecureServingOptions{
+		SecureServing: genericoptions.WithLoopback(&apiserveroptions.SecureServingOptions{
 			BindAddress: net.ParseIP("192.168.10.20"),
 			BindPort:    6443,
 			ServerCert: apiserveroptions.GeneratableKeyCert{
 				CertDirectory: "/var/run/kubernetes",
 				PairName:      "apiserver",
 			},
-		},
+			HTTP2MaxStreamsPerConnection: 42,
+		}),
 		InsecureServing: &kubeoptions.InsecureServingOptions{
 			BindAddress: net.ParseIP("127.0.0.1"),
 			BindPort:    8080,
@@ -205,9 +212,9 @@ func TestAddFlags(t *testing.T) {
 				ConfigFile: "/token-webhook-config",
 			},
 			BootstrapToken: &kubeoptions.BootstrapTokenAuthenticationOptions{},
-			Keystone:       &kubeoptions.KeystoneAuthenticationOptions{},
 			OIDC: &kubeoptions.OIDCAuthenticationOptions{
 				UsernameClaim: "sub",
+				SigningAlgs:   []string{"RS256"},
 			},
 			PasswordFile:  &kubeoptions.PasswordFileAuthenticationOptions{},
 			RequestHeader: &apiserveroptions.RequestHeaderAuthenticationOptions{},
@@ -233,8 +240,8 @@ func TestAddFlags(t *testing.T) {
 			StorageVersions:        legacyscheme.Registry.AllPreferredGroupVersions(),
 			DefaultStorageVersions: legacyscheme.Registry.AllPreferredGroupVersions(),
 		},
-		APIEnablement: &kubeoptions.APIEnablementOptions{
-			RuntimeConfig: utilconfig.ConfigurationMap{},
+		APIEnablement: &apiserveroptions.APIEnablementOptions{
+			RuntimeConfig: utilflag.ConfigurationMap{},
 		},
 		EnableLogsHandler:       false,
 		EnableAggregatorRouting: true,

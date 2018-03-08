@@ -17,15 +17,25 @@ limitations under the License.
 package rbd
 
 import (
+	"encoding/json"
+	"io/ioutil"
+	"os"
+	"path"
+	"strings"
+
 	"github.com/golang/glog"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
 // PluginFolder defines the location of rbdplugin
 const (
-	PluginFolder = "/var/lib/kubelet/plugins/rbdplugin"
+	PluginFolder = "/var/lib/kubelet/plugins/csi-rbdplugin"
+	// RBDUserID used as a key in credentials map to extract the key which is
+	// passed be the provisioner, the value od RBDUserID must match to the key used
+	// in Secret object.
+	RBDUserID = "admin"
 )
 
 type rbd struct {
@@ -41,13 +51,54 @@ type rbd struct {
 
 var (
 	rbdDriver *rbd
-	version   = csi.Version{
-		Minor: 2,
-	}
+	version   = "0.2.0"
 )
 
-func GetSupportedVersions() []*csi.Version {
-	return []*csi.Version{&version}
+var rbdVolumes map[string]rbdVolume
+
+// Init checks for the persistent volume file and loads all found volumes
+// into a memory structure
+func init() {
+	rbdVolumes = map[string]rbdVolume{}
+	if _, err := os.Stat(path.Join(PluginFolder, "controller")); os.IsNotExist(err) {
+		glog.Infof("rbd: folder %s not found. Creating... \n", path.Join(PluginFolder, "controller"))
+		if err := os.Mkdir(path.Join(PluginFolder, "controller"), 0755); err != nil {
+			glog.Fatalf("Failed to create a controller's volumes folder with error: %v\n", err)
+		}
+		return
+	}
+	// Since "controller" folder exists, it means the rbdplugin has already been running, it means
+	// there might be some volumes left, they must be re-inserted into rbdVolumes map
+	loadExVolumes()
+}
+
+// loadExVolumes check for any *.json files in the  PluginFolder/controller folder
+// and loads then into rbdVolumes map
+func loadExVolumes() {
+	rbdVol := rbdVolume{}
+	files, err := ioutil.ReadDir(path.Join(PluginFolder, "controller"))
+	if err != nil {
+		glog.Infof("rbd: failed to read  controller's volumes folder: %s error:%v", path.Join(PluginFolder, "controller"), err)
+		return
+	}
+	for _, f := range files {
+		if !strings.HasSuffix(f.Name(), ".json") {
+			continue
+		}
+		fp, err := os.Open(path.Join(PluginFolder, "controller", f.Name()))
+		if err != nil {
+			glog.Infof("rbd: open file: %s err %%v", f.Name(), err)
+			continue
+		}
+		decoder := json.NewDecoder(fp)
+		if err = decoder.Decode(&rbdVol); err != nil {
+			glog.Infof("rbd: decode file: %s err: %v", f.Name(), err)
+			fp.Close()
+			continue
+		}
+		rbdVolumes[rbdVol.VolID] = rbdVol
+	}
+	glog.Infof("rbd: Loaded %d volumes from %s", len(rbdVolumes), path.Join(PluginFolder, "controller"))
 }
 
 func GetRBDDriver() *rbd {
@@ -73,10 +124,10 @@ func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
 }
 
 func (rbd *rbd) Run(driverName, nodeID, endpoint string) {
-	glog.Infof("Driver: %v version: %v", driverName, GetVersionString(&version))
+	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Initialize default library driver
-	rbd.driver = csicommon.NewCSIDriver(driverName, &version, GetSupportedVersions(), nodeID)
+	rbd.driver = csicommon.NewCSIDriver(driverName, version, nodeID)
 	if rbd.driver == nil {
 		glog.Fatalln("Failed to initialize CSI Driver.")
 	}

@@ -22,7 +22,7 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -37,9 +37,6 @@ type nodeServer struct {
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 
 	// Check arguments
-	if req.GetVersion() == nil {
-		return nil, status.Error(codes.InvalidArgument, "Version missing in request")
-	}
 	if req.GetVolumeCapability() == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume capability missing in request")
 	}
@@ -98,15 +95,47 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 
 	// Check arguments
-	if req.GetVersion() == nil {
-		return nil, status.Error(codes.InvalidArgument, "Version missing in request")
-	}
 	if len(req.GetVolumeId()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
 	if len(req.GetTargetPath()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
+	targetPath := req.GetTargetPath()
+	volumeID := req.GetVolumeId()
+
+	// Unmounting the image
+	err := mount.New("").Unmount(req.GetTargetPath())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	glog.V(4).Infof("hostpath: volume %s/%s has been unmounted.", targetPath, volumeID)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
+}
+
+func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+
+	// Check arguments
+	if len(req.GetVolumeId()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
+	}
+	if len(req.GetStagingTargetPath()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
+	}
+
+	return &csi.NodeStageVolumeResponse{}, nil
+}
+
+func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+
+	// Check arguments
+	if len(req.GetVolumeId()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
+	}
+	if len(req.GetStagingTargetPath()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
+	}
+
+	return &csi.NodeUnstageVolumeResponse{}, nil
 }

@@ -17,9 +17,7 @@ limitations under the License.
 package flexadapter
 
 import (
-	"fmt"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -36,12 +34,8 @@ type controllerServer struct {
 	*csicommon.DefaultControllerServer
 }
 
-func GetVersionString(ver *csi.Version) string {
-	return fmt.Sprintf("%d.%d.%d", ver.Major, ver.Minor, ver.Patch)
-}
-
 func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-	if err := cs.Driver.ValidateControllerServiceRequest(req.Version, csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME); err != nil {
 		return nil, err
 	}
 
@@ -73,7 +67,7 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 }
 
 func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
-	if err := cs.Driver.ValidateControllerServiceRequest(req.Version, csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME); err != nil {
 		return nil, err
 	}
 

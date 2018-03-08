@@ -2,10 +2,10 @@
 
 
 [[projects]]
-  branch = "master"
   name = "github.com/container-storage-interface/spec"
-  packages = ["lib/go/csi"]
-  revision = "7ab01a90da87f9fef3ee1de0494962fdefaf7db7"
+  packages = ["lib/go/csi/v0"]
+  revision = "35d9f9d77954980e449e52c3f3e43c21bd8171f5"
+  version = "v0.2.0"
 
 [[projects]]
   branch = "master"
@@ -14,16 +14,22 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  branch = "master"
   name = "github.com/golang/protobuf"
-  packages = ["proto","ptypes","ptypes/any","ptypes/duration","ptypes/timestamp"]
-  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
+  packages = [
+    "proto",
+    "ptypes",
+    "ptypes/any",
+    "ptypes/duration",
+    "ptypes/timestamp"
+  ]
+  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/kubernetes-csi/drivers"
   packages = ["pkg/csi-common"]
-  revision = "d1ab787ad5510df08a3a98a091a41adeae4647b4"
+  revision = "1853bd0038cd634f277efda5c6548766a2a51ff3"
 
 [[projects]]
   name = "github.com/pborman/uuid"
@@ -34,54 +40,110 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["context","http2","http2/hpack","idna","internal/timeseries","lex/httplex","trace"]
-  revision = "42fe2e1c20de1054d3d30f82cc9fb5b41e2e3767"
+  packages = [
+    "context",
+    "http2",
+    "http2/hpack",
+    "idna",
+    "internal/timeseries",
+    "lex/httplex",
+    "trace"
+  ]
+  revision = "d25186b37f34ebdbbea8f488ef055638dfab272d"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "1792d66dc88e503d3cb2400578221cdf1f7fe26f"
+  revision = "dd2ff4accc098aceecb86b36eaa7829b2a17b1c9"
 
 [[projects]]
-  branch = "master"
   name = "golang.org/x/text"
-  packages = ["collate","collate/build","internal/colltab","internal/gen","internal/tag","internal/triegen","internal/ucd","language","secure/bidirule","transform","unicode/bidi","unicode/cldr","unicode/norm","unicode/rangetable"]
-  revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
+  packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable"
+  ]
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "a8101f21cf983e773d0c1133ebc5424792003214"
+  revision = "df60624c1e9b9d2973e889c7a1cff73155da81c4"
 
 [[projects]]
   name = "google.golang.org/grpc"
-  packages = [".","balancer","balancer/base","balancer/roundrobin","codes","connectivity","credentials","encoding","grpclb/grpc_lb_v1/messages","grpclog","internal","keepalive","metadata","naming","peer","resolver","resolver/dns","resolver/passthrough","stats","status","tap","transport"]
-  revision = "f3955b8e9e244dd4dd4bc4f7b7a23a8445400a76"
-  version = "v1.9.0"
+  packages = [
+    ".",
+    "balancer",
+    "balancer/base",
+    "balancer/roundrobin",
+    "codes",
+    "connectivity",
+    "credentials",
+    "encoding",
+    "encoding/proto",
+    "grpclb/grpc_lb_v1/messages",
+    "grpclog",
+    "internal",
+    "keepalive",
+    "metadata",
+    "naming",
+    "peer",
+    "resolver",
+    "resolver/dns",
+    "resolver/passthrough",
+    "stats",
+    "status",
+    "tap",
+    "transport"
+  ]
+  revision = "8e4536a86ab602859c20df5ebfd0bd4228d08655"
+  version = "v1.10.0"
 
 [[projects]]
-  branch = "release-1.9"
   name = "k8s.io/apimachinery"
-  packages = ["pkg/util/runtime","pkg/util/sets","pkg/util/wait"]
-  revision = "68f9c3a1feb3140df59c67ced62d3a5df8e6c9c2"
+  packages = [
+    "pkg/util/runtime",
+    "pkg/util/sets",
+    "pkg/util/wait"
+  ]
+  revision = "302974c03f7e50f16561ba237db776ab93594ef6"
+  version = "kubernetes-1.10.0-beta.1"
 
 [[projects]]
   name = "k8s.io/kubernetes"
-  packages = ["pkg/util/io","pkg/util/keymutex","pkg/util/mount","pkg/util/nsenter"]
-  revision = "3a1c9449a956b6026f075fa3134ff92f7d55f812"
-  version = "v1.9.1"
+  packages = [
+    "pkg/util/io",
+    "pkg/util/keymutex",
+    "pkg/util/mount",
+    "pkg/util/nsenter"
+  ]
+  revision = "37555e6d24c2f951c40660ea59a80fa251982005"
+  version = "v1.10.0-beta.1"
 
 [[projects]]
   branch = "master"
   name = "k8s.io/utils"
   packages = ["exec"]
-  revision = "a99a3e11a96751670db62ba77c6d278d1136931e"
+  revision = "258e2a2fa64568210fbd6267cf1d8fd87c3cb86e"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8908f89154f277d98fd83b22edf73652d4c4e37bbd827bf11d9605c58ae3fd0e"
+  inputs-digest = "d409396ee410b5443abac732df725cb70ef9e0c940c1b807c0ff2698bab5d102"
   solver-name = "gps-cdcl"
   solver-version = 1

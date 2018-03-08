@@ -17,7 +17,7 @@ limitations under the License.
 package nfs
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -39,23 +39,17 @@ const (
 )
 
 var (
-	version = csi.Version{
-		Minor: 1,
-	}
+	version = "0.2.0"
 )
 
-func GetSupportedVersions() []*csi.Version {
-	return []*csi.Version{&version}
-}
-
 func NewDriver(nodeID, endpoint string) *driver {
-	glog.Infof("Driver: %v version: %v", driverName, csicommon.GetVersionString(&version))
+	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	d := &driver{}
 
 	d.endpoint = endpoint
 
-	csiDriver := csicommon.NewCSIDriver(driverName, &version, GetSupportedVersions(), nodeID)
+	csiDriver := csicommon.NewCSIDriver(driverName, version, nodeID)
 	csiDriver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
 
 	d.csiDriver = csiDriver

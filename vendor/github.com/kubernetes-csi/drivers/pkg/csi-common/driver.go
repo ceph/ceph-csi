@@ -17,25 +17,25 @@ limitations under the License.
 package csicommon
 
 import (
+	"fmt"
 	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 )
 
 type CSIDriver struct {
 	name    string
 	nodeID  string
-	version *csi.Version
-	supVers []*csi.Version
+	version string
 	cap     []*csi.ControllerServiceCapability
 	vc      []*csi.VolumeCapability_AccessMode
 }
 
 // Creates a NewCSIDriver object. Assumes vendor version is equal to driver version &
 // does not support optional driver plugin info manifest field. Refer to CSI spec for more details.
-func NewCSIDriver(name string, v *csi.Version, supVers []*csi.Version, nodeID string) *CSIDriver {
+func NewCSIDriver(name string, v string, nodeID string) *CSIDriver {
 	if name == "" {
 		glog.Errorf("Driver name missing")
 		return nil
@@ -45,57 +45,22 @@ func NewCSIDriver(name string, v *csi.Version, supVers []*csi.Version, nodeID st
 		glog.Errorf("NodeID missing")
 		return nil
 	}
-
-	if v == nil {
+	// TODO version format and validation
+	if len(v) == 0 {
 		glog.Errorf("Version argument missing")
 		return nil
-	}
-
-	found := false
-	for _, sv := range supVers {
-		if sv.GetMajor() == v.GetMajor() && sv.GetMinor() == v.GetMinor() && sv.GetPatch() == v.GetPatch() {
-			found = true
-		}
-	}
-
-	if !found {
-		supVers = append(supVers, v)
 	}
 
 	driver := CSIDriver{
 		name:    name,
 		version: v,
-		supVers: supVers,
 		nodeID:  nodeID,
 	}
 
 	return &driver
 }
 
-func (d *CSIDriver) CheckVersion(v *csi.Version) error {
-	if v == nil {
-		return status.Error(codes.InvalidArgument, "Version missing")
-	}
-
-	// Assumes always backward compatible
-	for _, sv := range d.supVers {
-		if v.Major == sv.Major && v.Minor <= sv.Minor {
-			return nil
-		}
-	}
-
-	return status.Error(codes.InvalidArgument, "Unsupported version: "+GetVersionString(v))
-}
-
-func (d *CSIDriver) ValidateControllerServiceRequest(v *csi.Version, c csi.ControllerServiceCapability_RPC_Type) error {
-	if v == nil {
-		return status.Error(codes.InvalidArgument, "Version not specified")
-	}
-
-	if err := d.CheckVersion(v); err != nil {
-		return status.Error(codes.InvalidArgument, "Unsupported version")
-	}
-
+func (d *CSIDriver) ValidateControllerServiceRequest(c csi.ControllerServiceCapability_RPC_Type) error {
 	if c == csi.ControllerServiceCapability_RPC_UNKNOWN {
 		return nil
 	}
@@ -105,8 +70,7 @@ func (d *CSIDriver) ValidateControllerServiceRequest(v *csi.Version, c csi.Contr
 			return nil
 		}
 	}
-
-	return status.Error(codes.InvalidArgument, "Unsupported version: "+GetVersionString(v))
+	return status.Error(codes.InvalidArgument, fmt.Sprintf("%s", c))
 }
 
 func (d *CSIDriver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapability_RPC_Type) {

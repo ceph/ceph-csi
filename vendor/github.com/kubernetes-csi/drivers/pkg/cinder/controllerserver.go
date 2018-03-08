@@ -17,13 +17,13 @@ limitations under the License.
 package cinder
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"github.com/kubernetes-csi/drivers/pkg/cinder/openstack"
 	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
-	"k8s.io/kubernetes/pkg/volume"
+	"k8s.io/kubernetes/pkg/volume/util"
 )
 
 type controllerServer struct {
@@ -43,7 +43,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if req.GetCapacityRange() != nil {
 		volSizeBytes = int64(req.GetCapacityRange().GetRequiredBytes())
 	}
-	volSizeGB := int(volume.RoundUpSize(volSizeBytes, 1024*1024*1024))
+	volSizeGB := int(util.RoundUpSize(volSizeBytes, 1024*1024*1024))
 
 	// Volume Type
 	volType := req.GetParameters()["type"]

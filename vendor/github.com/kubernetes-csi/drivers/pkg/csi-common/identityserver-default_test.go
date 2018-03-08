@@ -20,49 +20,18 @@ import (
 	"context"
 	"testing"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
-
-func TestGetSupportedVersions(t *testing.T) {
-	d := NewFakeDriver()
-
-	ids := NewDefaultIdentityServer(d)
-
-	req := csi.GetSupportedVersionsRequest{}
-
-	// Test Get supported versions are valid.
-	resp, err := ids.GetSupportedVersions(context.Background(), &req)
-	assert.NoError(t, err)
-
-	for _, fv := range fakeVersionsSupported {
-		found := false
-		for _, rv := range resp.GetSupportedVersions() {
-			if fv.GetMajor() == rv.GetMajor() && fv.GetMinor() == rv.GetMinor() && fv.GetPatch() == rv.GetPatch() {
-				found = true
-			}
-		}
-		assert.True(t, found)
-	}
-}
 
 func TestGetPluginInfo(t *testing.T) {
 	d := NewFakeDriver()
 
 	ids := NewDefaultIdentityServer(d)
 
-	// Test invalid request
 	req := csi.GetPluginInfoRequest{}
 	resp, err := ids.GetPluginInfo(context.Background(), &req)
-	s, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, s.Code(), codes.InvalidArgument)
-
-	// Test valid request
-	req.Version = &fakeVersion
-	resp, err = ids.GetPluginInfo(context.Background(), &req)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.GetName(), fakeDriverName)
+	assert.Equal(t, resp.GetVendorVersion(), vendorVersion)
 }

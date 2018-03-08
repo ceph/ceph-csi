@@ -110,7 +110,7 @@ The following output should be displayed:
 ```
 NAMESPACE     NAME                                                READY     STATUS    RESTARTS   AGE          
 default       csi-attacher-0                                      1/1       Running   0          1d           
-default       csi-nodeplugin-rbdplugin-qxqtl                      2/2       Running   0          1d           
+default       csi-rbdplugin-qxqtl                                 2/2       Running   0          1d           
 default       csi-provisioner-0                                   1/1       Running   0          1d           
 ```
 

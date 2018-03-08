@@ -28,12 +28,10 @@ rbdplugin:
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/rbdplugin ./rbd
 
 container: rbdplugin 
-	cp _output/rbdplugin  deploy/docker
-	docker build -t $(IMAGE_NAME):$(IMAGE_VERSION) deploy/docker
+	docker build -t $(IMAGE_NAME):$(IMAGE_VERSION) .
 
 push-container: container
 	docker push $(IMAGE_NAME):$(IMAGE_VERSION)
 clean:
 	go clean -r -x
-	rm -f deploy/docker/rbdplugin
 	-rm -rf _output

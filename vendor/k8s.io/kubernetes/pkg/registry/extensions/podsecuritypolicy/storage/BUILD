@@ -9,8 +9,7 @@ load(
 go_test(
     name = "go_default_test",
     srcs = ["storage_test.go"],
-    importpath = "k8s.io/kubernetes/pkg/registry/extensions/podsecuritypolicy/storage",
-    library = ":go_default_library",
+    embed = [":go_default_library"],
     deps = [
         "//pkg/apis/extensions:go_default_library",
         "//pkg/registry/registrytest:go_default_library",

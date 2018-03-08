@@ -44,13 +44,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest/fake"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
-	"k8s.io/kubernetes/pkg/api/ref"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
 const (
@@ -150,7 +150,10 @@ func TestCordon(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f, tf, codec, ns := cmdtesting.NewAPIFactory()
+		tf := cmdtesting.NewTestFactory()
+		codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+		ns := legacyscheme.Codecs
+
 		new_node := &corev1.Node{}
 		updated := false
 		tf.Client = &fake.RESTClient{
@@ -191,10 +194,10 @@ func TestCordon(t *testing.T) {
 				}
 			}),
 		}
-		tf.ClientConfig = defaultClientConfig()
+		tf.ClientConfigVal = defaultClientConfig()
 
 		buf := bytes.NewBuffer([]byte{})
-		cmd := test.cmd(f, buf)
+		cmd := test.cmd(tf, buf)
 
 		saw_fatal := false
 		func() {
@@ -217,7 +220,7 @@ func TestCordon(t *testing.T) {
 				t.Fatalf("%s: unexpected non-error", test.description)
 			}
 			if updated {
-				t.Fatalf("%s: unexpcted update", test.description)
+				t.Fatalf("%s: unexpected update", test.description)
 			}
 		}
 
@@ -301,6 +304,34 @@ func TestDrain(t *testing.T) {
 		},
 		Spec: corev1.PodSpec{
 			NodeName: "node",
+		},
+	}
+
+	ds_pod_with_emptyDir := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "bar",
+			Namespace:         "default",
+			CreationTimestamp: metav1.Time{Time: time.Now()},
+			Labels:            labels,
+			SelfLink:          testapi.Default.SelfLink("pods", "bar"),
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "extensions/v1beta1",
+					Kind:               "DaemonSet",
+					Name:               "ds",
+					BlockOwnerDeletion: boolptr(true),
+					Controller:         boolptr(true),
+				},
+			},
+		},
+		Spec: corev1.PodSpec{
+			NodeName: "node",
+			Volumes: []corev1.Volume{
+				{
+					Name:         "scratch",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: ""}},
+				},
+			},
 		},
 	}
 
@@ -414,15 +445,16 @@ func TestDrain(t *testing.T) {
 	}
 
 	tests := []struct {
-		description  string
-		node         *corev1.Node
-		expected     *corev1.Node
-		pods         []corev1.Pod
-		rcs          []api.ReplicationController
-		replicaSets  []extensions.ReplicaSet
-		args         []string
-		expectFatal  bool
-		expectDelete bool
+		description   string
+		node          *corev1.Node
+		expected      *corev1.Node
+		pods          []corev1.Pod
+		rcs           []api.ReplicationController
+		replicaSets   []extensions.ReplicaSet
+		args          []string
+		expectWarning string
+		expectFatal   bool
+		expectDelete  bool
 	}{
 		{
 			description:  "RC-managed pod",
@@ -473,6 +505,17 @@ func TestDrain(t *testing.T) {
 			args:         []string{"node", "--ignore-daemonsets"},
 			expectFatal:  false,
 			expectDelete: false,
+		},
+		{
+			description:   "DS-managed pod with emptyDir with --ignore-daemonsets",
+			node:          node,
+			expected:      cordoned_node,
+			pods:          []corev1.Pod{ds_pod_with_emptyDir},
+			rcs:           []api.ReplicationController{rc},
+			args:          []string{"node", "--ignore-daemonsets"},
+			expectWarning: "WARNING: Ignoring DaemonSet-managed pods: bar\n",
+			expectFatal:   false,
+			expectDelete:  false,
 		},
 		{
 			description:  "Job-managed pod",
@@ -557,7 +600,10 @@ func TestDrain(t *testing.T) {
 			new_node := &corev1.Node{}
 			deleted := false
 			evicted := false
-			f, tf, codec, ns := cmdtesting.NewAPIFactory()
+			tf := cmdtesting.NewTestFactory()
+			codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+			ns := legacyscheme.Codecs
+
 			tf.Client = &fake.RESTClient{
 				GroupVersion:         legacyscheme.Registry.GroupOrDie(api.GroupName).GroupVersion,
 				NegotiatedSerializer: ns,
@@ -654,13 +700,14 @@ func TestDrain(t *testing.T) {
 					}
 				}),
 			}
-			tf.ClientConfig = defaultClientConfig()
+			tf.ClientConfigVal = defaultClientConfig()
 
 			buf := bytes.NewBuffer([]byte{})
 			errBuf := bytes.NewBuffer([]byte{})
-			cmd := NewCmdDrain(f, buf, errBuf)
+			cmd := NewCmdDrain(tf, buf, errBuf)
 
 			saw_fatal := false
+			fatal_msg := ""
 			func() {
 				defer func() {
 					// Recover from the panic below.
@@ -668,13 +715,18 @@ func TestDrain(t *testing.T) {
 					// Restore cmdutil behavior
 					cmdutil.DefaultBehaviorOnFatal()
 				}()
-				cmdutil.BehaviorOnFatal(func(e string, code int) { saw_fatal = true; panic(e) })
+				cmdutil.BehaviorOnFatal(func(e string, code int) { saw_fatal = true; fatal_msg = e; panic(e) })
 				cmd.SetArgs(test.args)
 				cmd.Execute()
 			}()
 			if test.expectFatal {
 				if !saw_fatal {
 					t.Fatalf("%s: unexpected non-error when using %s", test.description, currMethod)
+				}
+			} else {
+				if saw_fatal {
+					t.Fatalf("%s: unexpected error when using %s: %s", test.description, currMethod, fatal_msg)
+
 				}
 			}
 
@@ -691,6 +743,16 @@ func TestDrain(t *testing.T) {
 			if !test.expectDelete {
 				if deleted {
 					t.Fatalf("%s: unexpected delete when using %s", test.description, currMethod)
+				}
+			}
+
+			if len(test.expectWarning) > 0 {
+				if len(errBuf.String()) == 0 {
+					t.Fatalf("%s: expected warning, but found no stderr output", test.description)
+				}
+
+				if errBuf.String() != test.expectWarning {
+					t.Fatalf("%s: actual warning message did not match expected warning message.\n Expecting: %s\n  Got: %s", test.description, test.expectWarning, errBuf.String())
 				}
 			}
 		}
@@ -762,9 +824,9 @@ func TestDeletePods(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f, _, _, _ := cmdtesting.NewAPIFactory()
-		o := DrainOptions{Factory: f}
-		o.mapper, _ = f.Object()
+		tf := cmdtesting.NewTestFactory()
+		o := DrainOptions{Factory: tf}
+		o.mapper, _ = tf.Object()
 		o.Out = os.Stdout
 		_, pods := createPods(false)
 		pendingPods, err := o.waitForDelete(pods, test.interval, test.timeout, false, test.getPodFn)
@@ -825,19 +887,4 @@ func (m *MyReq) isFor(method string, path string) bool {
 		req.URL.Path == strings.Join([]string{"/api/v1", path}, "") ||
 		req.URL.Path == strings.Join([]string{"/apis/extensions/v1beta1", path}, "") ||
 		req.URL.Path == strings.Join([]string{"/apis/batch/v1", path}, ""))
-}
-
-func refJson(t *testing.T, o runtime.Object) string {
-	ref, err := ref.GetReference(legacyscheme.Scheme, o)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	_, _, codec, _ := cmdtesting.NewAPIFactory()
-	json, err := runtime.Encode(codec, &api.SerializedReference{Reference: *ref})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	return string(json)
 }

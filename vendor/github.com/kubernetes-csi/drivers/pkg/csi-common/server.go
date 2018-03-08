@@ -24,7 +24,7 @@ import (
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 )
 
 // Defines Non blocking GRPC server interfaces
