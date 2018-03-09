@@ -4,5 +4,9 @@ metadata:
   name: cephfs
 provisioner: cephfsplugin
 parameters:
-  provisionRoot: /cephfs
-reclaimPolicy: Delete 
+  adminID: admin
+  adminSecret: AQCdsp9aaowqEhAAHx5EFnTQBnTU7Dr1UzHwmQ==
+  clusterName: ceph
+  pool: cephfs
+  monitor: 192.168.122.11:6789
+reclaimPolicy: Delete

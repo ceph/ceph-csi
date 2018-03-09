@@ -18,7 +18,6 @@ package cephfs
 
 import (
 	"context"
-	"path"
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
@@ -27,7 +26,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"k8s.io/kubernetes/pkg/util/keymutex"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 type nodeServer struct {
@@ -51,6 +49,16 @@ func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 
 	if req.GetTargetPath() == "" {
 		return status.Error(codes.InvalidArgument, "Target path missing in request")
+	}
+
+	attrs := req.GetVolumeAttributes()
+
+	if _, ok := attrs["path"]; !ok {
+		return status.Error(codes.InvalidArgument, "Missing path attribute")
+	}
+
+	if _, ok := attrs["user"]; !ok {
+		return status.Error(codes.InvalidArgument, "Missing user attribute")
 	}
 
 	return nil
@@ -105,20 +113,19 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
-	// It's not, do the bind-mount now
+	// It's not, exec ceph-fuse now
 
-	options := []string{"bind"}
-	if req.GetReadonly() {
-		options = append(options, "ro")
-	}
+	// TODO honor req.GetReadOnly()
 
-	volPath := path.Join(provisionRoot, req.GetVolumeId())
-	if err := mount.New("").Mount(volPath, targetPath, "", options); err != nil {
-		glog.Errorf("bind-mounting %s to %s failed: %v", volPath, targetPath, err)
+	attrs := req.GetVolumeAttributes()
+	vol := volume{Root: attrs["path"], User: attrs["user"]}
+
+	if err := vol.mount(targetPath); err != nil {
+		glog.Errorf("mounting volume %s to %s failed: %v", vol.Root, targetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	glog.V(4).Infof("cephfs: volume %s successfuly mounted to %s", volPath, targetPath)
+	glog.V(4).Infof("cephfs: volume %s successfuly mounted to %s", vol.Root, targetPath)
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }
@@ -129,14 +136,13 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	volId := req.GetVolumeId()
-	targetPath := req.GetTargetPath()
 
 	if err := tryLock(volId, nsMtx, "NodeServer"); err != nil {
 		return nil, err
 	}
 	defer nsMtx.UnlockKey(volId)
 
-	if err := mount.New("").Unmount(targetPath); err != nil {
+	if err := unmountVolume(req.GetTargetPath()); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

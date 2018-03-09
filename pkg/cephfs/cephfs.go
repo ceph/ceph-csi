@@ -39,8 +39,6 @@ type cephfsDriver struct {
 }
 
 var (
-	provisionRoot = "/cephfs"
-
 	driver  *cephfsDriver
 	version = csi.Version{
 		Minor: 1,

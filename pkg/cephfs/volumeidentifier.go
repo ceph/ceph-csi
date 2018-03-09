@@ -31,7 +31,7 @@ func newVolumeIdentifier(volOptions *volumeOptions, req *csi.CreateVolumeRequest
 		uuid: uuid.NewUUID().String(),
 	}
 
-	volId.id = "csi-rbd-" + volId.uuid
+	volId.id = "csi-cephfs-" + volId.uuid
 
 	if volId.name == "" {
 		volId.name = volOptions.Pool + "-dynamic-pvc-" + volId.uuid

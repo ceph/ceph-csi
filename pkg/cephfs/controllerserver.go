@@ -18,8 +18,6 @@ package cephfs
 
 import (
 	"fmt"
-	"os"
-	"path"
 
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
@@ -56,8 +54,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	// Configuration
-
 	volOptions, err := newVolumeOptions(req.GetParameters())
 	if err != nil {
 		return nil, err
@@ -70,49 +66,19 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		volSz = int64(req.GetCapacityRange().GetRequiredBytes())
 	}
 
-	if err := createMountPoint(provisionRoot); err != nil {
-		glog.Errorf("failed to create provision root at %s: %v", provisionRoot, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	// Exec ceph-fuse only if cephfs has not been not mounted yet
-
-	isMnt, err := isMountPoint(provisionRoot)
-
+	vol, err := newVolume(volId, volOptions)
 	if err != nil {
-		glog.Errorf("stat failed: %v", err)
+		glog.Errorf("failed to create a volume: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if !isMnt {
-		if err = mountFuse(provisionRoot); err != nil {
-			glog.Error(err)
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	}
-
-	// Create a new directory inside the provision root for bind-mounting done by NodePublishVolume
-
-	volPath := path.Join(provisionRoot, volId.id)
-	if err := os.Mkdir(volPath, 0750); err != nil {
-		glog.Errorf("failed to create volume %s: %v", volPath, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	// Set attributes & quotas
-
-	if err = setVolAttributes(volPath, volSz); err != nil {
-		glog.Errorf("failed to set attributes for volume %s: %v", volPath, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	glog.V(4).Infof("cephfs: created volume %s", volPath)
+	glog.V(4).Infof("cephfs: volume created at %s", vol.Root)
 
 	return &csi.CreateVolumeResponse{
 		VolumeInfo: &csi.VolumeInfo{
 			Id:            volId.id,
 			CapacityBytes: uint64(volSz),
-			Attributes:    req.GetParameters(),
+			Attributes:    vol.makeMap(),
 		},
 	}, nil
 }
@@ -123,28 +89,11 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, err
 	}
 
-	volId := req.GetVolumeId()
-	volPath := path.Join(provisionRoot, volId)
-
-	glog.V(4).Infof("deleting volume %s", volPath)
-
-	if err := deleteVolumePath(volPath); err != nil {
-		glog.Errorf("failed to delete volume %s: %v", volPath, err)
-		return nil, err
-	}
+	// TODO
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
 func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	res := &csi.ValidateVolumeCapabilitiesResponse{}
-
-	for _, capability := range req.VolumeCapabilities {
-		if capability.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
-			return res, nil
-		}
-	}
-
-	res.Supported = true
-	return res, nil
+	return &csi.ValidateVolumeCapabilitiesResponse{Supported: true}, nil
 }

@@ -19,9 +19,9 @@ package cephfs
 import "errors"
 
 type volumeOptions struct {
-	VolName     string `json:"volName"`
 	Monitor     string `json:"monitor"`
 	Pool        string `json:"pool"`
+	ClusterName string `json:"clusterName"`
 	AdminId     string `json:"adminID"`
 	AdminSecret string `json:"adminSecret"`
 }
@@ -37,27 +37,26 @@ func extractOption(dest *string, optionLabel string, options map[string]string) 
 
 func newVolumeOptions(volOptions map[string]string) (*volumeOptions, error) {
 	var opts volumeOptions
-	// XXX early return - we're not reading credentials from volOptions for now...
-	// i'll finish this once ceph-fuse accepts passing credentials through cmd args
+
+	if err := extractOption(&opts.AdminId, "adminID", volOptions); err != nil {
+		return nil, err
+	}
+
+	if err := extractOption(&opts.AdminSecret, "adminSecret", volOptions); err != nil {
+		return nil, err
+	}
+
+	if err := extractOption(&opts.Monitor, "monitor", volOptions); err != nil {
+		return nil, err
+	}
+
+	if err := extractOption(&opts.Pool, "pool", volOptions); err != nil {
+		return nil, err
+	}
+
+	if err := extractOption(&opts.ClusterName, "clusterName", volOptions); err != nil {
+		return nil, err
+	}
+
 	return &opts, nil
-
-	/*
-		if err := extractOption(&opts.AdminId, "adminID", volOptions); err != nil {
-			return nil, err
-		}
-
-		if err := extractOption(&opts.AdminSecret, "adminSecret", volOptions); err != nil {
-			return nil, err
-		}
-
-		if err := extractOption(&opts.Monitors, "monitors", volOptions); err != nil {
-			return nil, err
-		}
-
-		if err := extractOption(&opts.Pool, "pool", volOptions); err != nil {
-			return nil, err
-		}
-
-		return &opts, nil
-	*/
 }
