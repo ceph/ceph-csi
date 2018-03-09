@@ -14,18 +14,6 @@ rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "update"]
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get", "list"]
-  - apiGroups: [""]
-    resources: ["namespaces"]
-    verbs: ["get", "list"]
-  - apiGroups: [""]
-    resources: ["persistentvolumes"]
-    verbs: ["get", "list", "watch", "update"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments"]
-    verbs: ["get", "list", "watch", "update"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -81,7 +69,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: csi_images/cephfsplugin:latest
+          image: cephfsplugin:latest
           args :
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
@@ -101,15 +89,13 @@ spec:
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
-            - mountPath: /dev
-              name: host-dev
             - mountPath: /sys
               name: host-sys
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
-            - name: cephfs-config
-              mountPath: /etc/ceph
+            #- name: cephfs-config
+            #  mountPath: /etc/ceph
       volumes:
         - name: plugin-dir
           hostPath:
@@ -123,15 +109,12 @@ spec:
           hostPath:
             path: /var/lib/kubelet/plugins/cephfsplugin
             type: DirectoryOrCreate
-        - name: host-dev
-          hostPath:
-            path: /dev
         - name: host-sys
           hostPath:
             path: /sys
         - name: lib-modules
           hostPath:
             path: /lib/modules
-        - name: cephfs-config
-          hostPath:
-            path: /etc/ceph
+        #- name: cephfs-config
+        #  hostPath:
+        #    path: /etc/ceph

@@ -30,7 +30,7 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list", "watch", "create", "update", "patch"]
-    
+   
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -76,7 +76,6 @@ spec:
       containers:
         - name: csi-provisioner
           image: quay.io/k8scsi/csi-provisioner:latest
-          # image: quay.io/k8scsi/csi-provisioner:latest
           args:
             - "--provisioner=cephfsplugin"
             - "--csi-address=$(ADDRESS)"
