@@ -42,8 +42,11 @@ cephfsplugin-container: cephfsplugin
 	cp _output/cephfsplugin deploy/cephfs/docker
 	docker build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) deploy/cephfs/docker
 
-push-container: rbdplugin-container
+push-rbdplugin-container: rbdplugin-container
 	docker push $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION)
+
+push-cephfsplugin-container: cephfsplugin-container
+	docker push $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION)
 
 clean:
 	go clean -r -x
