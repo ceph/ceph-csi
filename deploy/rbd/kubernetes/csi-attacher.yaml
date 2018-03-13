@@ -13,6 +13,9 @@ metadata:
   name: external-attacher-runner
 rules:
   - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
     resources: ["persistentvolumes"]
     verbs: ["get", "list", "watch", "update"]
   - apiGroups: [""]
@@ -66,19 +69,19 @@ spec:
       serviceAccount: csi-attacher
       containers:
         - name: csi-attacher
-          image: docker.io/k8scsi/csi-attacher:latest
+          image: quay.io/k8scsi/csi-attacher:v0.2.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/rbdplugin/csi.sock
+              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/rbdplugin
+              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/rbdplugin
+            path: /var/lib/kubelet/plugins/csi-rbdplugin
             type: DirectoryOrCreate

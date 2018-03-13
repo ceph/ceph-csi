@@ -7,7 +7,7 @@ go_import_path: github.com/kubernetes-csi/drivers
 install:
   - go get -u github.com/golang/dep/cmd/dep
   - dep ensure -vendor-only
-  - make
+  - make hostpath
 script:
 - go fmt $(go list ./... | grep -v vendor) | wc -l | grep 0
 - go vet $(go list ./... | grep -v vendor)

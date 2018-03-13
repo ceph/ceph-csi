@@ -7,6 +7,9 @@
 /deploy/rbd/docker/rbdplugin
 /deploy/cephfs/docker/cephfsplugin
 
+# rbdplugin executable
+rbdplugin
+
 # Emacs save files
 *~
 \#*\#

@@ -20,12 +20,13 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
+	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/pborman/uuid"
 	"golang.org/x/net/context"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -36,17 +37,42 @@ type controllerServer struct {
 	*csicommon.DefaultControllerServer
 }
 
-func GetVersionString(ver *csi.Version) string {
-	return fmt.Sprintf("%d.%d.%d", ver.Major, ver.Minor, ver.Patch)
-}
-
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	if err := cs.Driver.ValidateControllerServiceRequest(req.Version, csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		glog.V(3).Infof("invalid create volume req: %v", req)
 		return nil, err
 	}
+	// Check sanity of request Name, Volume Capabilities
+	if len(req.Name) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume Name cannot be empty")
+	}
+	if req.VolumeCapabilities == nil {
+		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
+	}
 
-	volOptions, err := getRBDVolumeOptions(req.GetParameters())
+	// Need to check for already existing volume name, and if found
+	// check for the requested capacity and already allocated capacity
+	if exVol, err := getRBDVolumeByName(req.GetName()); err == nil {
+		// Since err is nil, it means the volume with the same name already exists
+		// need to check if the size of exisiting volume is the same as in new
+		// request
+		if exVol.VolSize >= int64(req.GetCapacityRange().GetRequiredBytes()) {
+			// exisiting volume is compatible with new request and should be reused.
+			// TODO (sbezverk) Do I need to make sure that RBD volume still exists?
+			return &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					Id:            exVol.VolID,
+					CapacityBytes: int64(exVol.VolSize),
+					Attributes:    req.GetParameters(),
+				},
+			}, nil
+		}
+		return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("Volume with the same name: %s but with different size already exist", req.GetName()))
+	}
+
+	// TODO (sbezverk) Last check for not exceeding total storage capacity
+
+	rbdVol, err := getRBDVolumeOptions(req.GetParameters())
 	if err != nil {
 		return nil, err
 	}
@@ -55,21 +81,23 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	volName := req.GetName()
 	uniqueID := uuid.NewUUID().String()
 	if len(volName) == 0 {
-		volName = volOptions.Pool + "-dynamic-pvc-" + uniqueID
+		volName = rbdVol.Pool + "-dynamic-pvc-" + uniqueID
 	}
-	volOptions.VolName = volName
+	rbdVol.VolName = volName
 	volumeID := "csi-rbd-" + uniqueID
+	rbdVol.VolID = volumeID
 	// Volume Size - Default is 1 GiB
 	volSizeBytes := int64(oneGB)
 	if req.GetCapacityRange() != nil {
 		volSizeBytes = int64(req.GetCapacityRange().GetRequiredBytes())
 	}
+	rbdVol.VolSize = volSizeBytes
 	volSizeGB := int(volSizeBytes / 1024 / 1024 / 1024)
 
 	// Check if there is already RBD image with requested name
-	found, _, _ := rbdStatus(volOptions)
+	found, _, _ := rbdStatus(rbdVol, req.GetControllerCreateSecrets())
 	if !found {
-		if err := createRBDImage(volOptions, volSizeGB); err != nil {
+		if err := createRBDImage(rbdVol, volSizeGB, req.GetControllerCreateSecrets()); err != nil {
 			if err != nil {
 				glog.Warningf("failed to create volume: %v", err)
 				return nil, err
@@ -77,12 +105,11 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 		glog.V(4).Infof("create volume %s", volName)
 	}
-	// Storing volInfo into a persistent file, will need info to delete rbd image
-	// in ControllerUnpublishVolume
-	if err := persistVolInfo(volumeID, path.Join(PluginFolder, "controller"), volOptions); err != nil {
+	// Storing volInfo into a persistent file.
+	if err := persistVolInfo(volumeID, path.Join(PluginFolder, "controller"), rbdVol); err != nil {
 		glog.Warningf("rbd: failed to store volInfo with error: %v", err)
 	}
-
+	rbdVolumes[volumeID] = *rbdVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            volumeID,
@@ -93,23 +120,21 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 }
 
 func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	if err := cs.Driver.ValidateControllerServiceRequest(req.Version, csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		glog.Warningf("invalid delete volume req: %v", req)
 		return nil, err
 	}
-
 	// For now the image get unconditionally deleted, but here retention policy can be checked
 	volumeID := req.GetVolumeId()
-	volOptions := &rbdVolumeOptions{}
-	if err := loadVolInfo(volumeID, path.Join(PluginFolder, "controller"), volOptions); err != nil {
+	rbdVol := &rbdVolume{}
+	if err := loadVolInfo(volumeID, path.Join(PluginFolder, "controller"), rbdVol); err != nil {
 		return nil, err
 	}
-
-	volName := volOptions.VolName
+	volName := rbdVol.VolName
 	// Deleting rbd image
 	glog.V(4).Infof("deleting volume %s", volName)
-	if err := deleteRBDImage(volOptions); err != nil {
-		glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", volOptions.Pool, volName, err)
+	if err := deleteRBDImage(rbdVol, req.GetControllerDeleteSecrets()); err != nil {
+		glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, volName, err)
 		return nil, err
 	}
 	// Removing persistent storage file for the unmapped volume
@@ -117,6 +142,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, err
 	}
 
+	delete(rbdVolumes, volumeID)
 	return &csi.DeleteVolumeResponse{}, nil
 }
 

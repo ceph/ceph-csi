@@ -17,7 +17,6 @@ limitations under the License.
 package hostpath
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/golang/glog"
@@ -26,7 +25,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
@@ -39,16 +38,9 @@ type controllerServer struct {
 	*csicommon.DefaultControllerServer
 }
 
-func GetVersionString(ver *csi.Version) string {
-	return fmt.Sprintf("%d.%d.%d", ver.Major, ver.Minor, ver.Patch)
-}
-
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 
 	// Check arguments
-	if req.GetVersion() == nil {
-		return nil, status.Error(codes.InvalidArgument, "Version missing in request")
-	}
 	if len(req.GetName()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Name missing in request")
 	}
@@ -56,7 +48,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities missing in request")
 	}
 
-	if err := cs.Driver.ValidateControllerServiceRequest(req.Version, csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		glog.V(3).Infof("invalid create volume req: %v", req)
 		return nil, err
 	}
@@ -70,7 +62,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	glog.V(4).Infof("create volume %s", path)
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			Id: volumeId,
+			Id:            volumeId,
+			CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
 		},
 	}, nil
 }
@@ -78,14 +71,11 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 
 	// Check arguments
-	if req.GetVersion() == nil {
-		return nil, status.Error(codes.InvalidArgument, "Version missing in request")
-	}
 	if len(req.GetVolumeId()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
 
-	if err := cs.Driver.ValidateControllerServiceRequest(req.Version, csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		glog.V(3).Infof("invalid delete volume req: %v", req)
 		return nil, err
 	}
@@ -100,9 +90,6 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 
 	// Check arguments
-	if req.GetVersion() == nil {
-		return nil, status.Error(codes.InvalidArgument, "Version missing in request")
-	}
 	if len(req.GetVolumeId()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}

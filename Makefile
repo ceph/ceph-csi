@@ -52,4 +52,3 @@ clean:
 	go clean -r -x
 	rm -f deploy/rbd/docker/rbdplugin
 	rm -f deploy/cephfs/docker/rbdplugin
-	-rm -rf _output

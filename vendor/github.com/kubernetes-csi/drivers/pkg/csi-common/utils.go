@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -34,28 +34,6 @@ func ParseEndpoint(ep string) (string, string, error) {
 		}
 	}
 	return "", "", fmt.Errorf("Invalid endpoint: %v", ep)
-}
-
-func GetVersionString(v *csi.Version) string {
-	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
-}
-
-func GetVersionFromString(v string) (*csi.Version, error) {
-	var major, minor, patch int32
-
-	n, err := fmt.Sscanf(v, "%d.%d.%d", &major, &minor, &patch)
-	if err != nil {
-		return nil, err
-	}
-	if n != 3 {
-		return nil, fmt.Errorf("Invalid format. Specify version in x.y.z format")
-	}
-
-	return &csi.Version{
-		Major: major,
-		Minor: minor,
-		Patch: patch,
-	}, nil
 }
 
 func NewVolumeCapabilityAccessMode(mode csi.VolumeCapability_AccessMode_Mode) *csi.VolumeCapability_AccessMode {

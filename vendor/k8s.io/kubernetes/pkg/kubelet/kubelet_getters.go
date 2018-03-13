@@ -179,9 +179,8 @@ func (kl *Kubelet) GetHostname() string {
 	return kl.hostname
 }
 
-// GetRuntime returns the current Runtime implementation in use by the kubelet. This func
-// is exported to simplify integration with third party kubelet extensions (e.g. kubernetes-mesos).
-func (kl *Kubelet) GetRuntime() kubecontainer.Runtime {
+// getRuntime returns the current Runtime implementation in use by the kubelet.
+func (kl *Kubelet) getRuntime() kubecontainer.Runtime {
 	return kl.containerRuntime
 }
 
@@ -210,6 +209,11 @@ func (kl *Kubelet) getNodeAnyWay() (*v1.Node, error) {
 // GetNodeConfig returns the container manager node config.
 func (kl *Kubelet) GetNodeConfig() cm.NodeConfig {
 	return kl.containerManager.GetNodeConfig()
+}
+
+// GetPodCgroupRoot returns the listeral cgroupfs value for the cgroup containing all pods
+func (kl *Kubelet) GetPodCgroupRoot() string {
+	return kl.containerManager.GetPodCgroupRoot()
 }
 
 // GetHostIP returns host IP or nil in case of error.

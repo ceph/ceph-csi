@@ -31,7 +31,7 @@ func init() {
 
 var (
 	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName = flag.String("drivername", "rbdplugin", "name of the driver")
+	driverName = flag.String("drivername", "csi-rbdplugin", "name of the driver")
 	nodeID     = flag.String("nodeid", "", "node id")
 )
 

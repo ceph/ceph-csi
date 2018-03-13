@@ -19,6 +19,9 @@ metadata:
   name: external-provisioner-runner
 rules:
   - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
     resources: ["persistentvolumes"]
     verbs: ["get", "list", "watch", "create", "delete"]
   - apiGroups: [""]
@@ -75,20 +78,20 @@ spec:
       serviceAccount: csi-provisioner
       containers:
         - name: csi-provisioner
-          image: quay.io/k8scsi/csi-provisioner:latest
+          image: quay.io/k8scsi/csi-provisioner:v0.2.0
           args:
-            - "--provisioner=rbdplugin"
+            - "--provisioner=csi-rbdplugin"
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/rbdplugin/csi.sock
+              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/rbdplugin
+              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/rbdplugin
+            path: /var/lib/kubelet/plugins/csi-rbdplugin
             type: DirectoryOrCreate

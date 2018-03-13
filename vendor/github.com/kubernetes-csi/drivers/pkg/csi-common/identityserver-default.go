@@ -17,7 +17,7 @@ limitations under the License.
 package csicommon
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -28,15 +28,6 @@ type DefaultIdentityServer struct {
 	Driver *CSIDriver
 }
 
-//GetSupportedVersions(context.Context, *GetSupportedVersionsRequest) (*GetSupportedVersionsResponse, error)
-//GetPluginInfo(context.Context, *GetPluginInfoRequest) (*GetPluginInfoResponse, error)
-func (ids *DefaultIdentityServer) GetSupportedVersions(ctx context.Context, req *csi.GetSupportedVersionsRequest) (*csi.GetSupportedVersionsResponse, error) {
-	glog.V(5).Infof("Using default GetSupportedVersions")
-	return &csi.GetSupportedVersionsResponse{
-		SupportedVersions: ids.Driver.supVers,
-	}, nil
-}
-
 func (ids *DefaultIdentityServer) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
 	glog.V(5).Infof("Using default GetPluginInnfo")
 
@@ -44,15 +35,31 @@ func (ids *DefaultIdentityServer) GetPluginInfo(ctx context.Context, req *csi.Ge
 		return nil, status.Error(codes.Unavailable, "Driver name not configured")
 	}
 
-	err := ids.Driver.CheckVersion(req.GetVersion())
-	if err != nil {
-		return nil, err
+	if ids.Driver.version == "" {
+		return nil, status.Error(codes.Unavailable, "Driver is missing version")
 	}
-
-	version := GetVersionString(ids.Driver.version)
 
 	return &csi.GetPluginInfoResponse{
 		Name:          ids.Driver.name,
-		VendorVersion: version,
+		VendorVersion: ids.Driver.version,
+	}, nil
+}
+
+func (ids *DefaultIdentityServer) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
+	return &csi.ProbeResponse{}, nil
+}
+
+func (ids *DefaultIdentityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
+	glog.V(5).Infof("Using default capabilities")
+	return &csi.GetPluginCapabilitiesResponse{
+		Capabilities: []*csi.PluginCapability{
+			{
+				Type: &csi.PluginCapability_Service_{
+					Service: &csi.PluginCapability_Service{
+						Type: csi.PluginCapability_Service_UNKNOWN,
+					},
+				},
+			},
+		},
 	}, nil
 }
