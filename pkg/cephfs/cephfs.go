@@ -41,7 +41,7 @@ type cephfsDriver struct {
 var (
 	driver  *cephfsDriver
 	version = csi.Version{
-		Minor: 1,
+		Minor: 2,
 	}
 )
 
