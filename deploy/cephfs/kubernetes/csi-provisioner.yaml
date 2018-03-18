@@ -19,6 +19,9 @@ metadata:
   name: external-provisioner-runner
 rules:
   - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
     resources: ["persistentvolumes"]
     verbs: ["get", "list", "watch", "create", "delete"]
   - apiGroups: [""]
@@ -77,18 +80,18 @@ spec:
         - name: csi-provisioner
           image: quay.io/k8scsi/csi-provisioner:v0.2.0
           args:
-            - "--provisioner=cephfsplugin"
+            - "--provisioner=csi-cephfsplugin"
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/cephfsplugin/csi.sock
+              value: /var/lib/kubelet/plugins/csi-cephfsplugin/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/cephfsplugin
+              mountPath: /var/lib/kubelet/plugins/csi-cephfsplugin
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/cephfsplugin
+            path: /var/lib/kubelet/plugins/csi-cephfsplugin
             type: DirectoryOrCreate

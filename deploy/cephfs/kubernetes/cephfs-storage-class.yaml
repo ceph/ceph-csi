@@ -1,12 +1,12 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: cephfs
-provisioner: cephfsplugin
+  name: csi-cephfs
+provisioner: csi-cephfsplugin
 parameters:
-  adminID: admin
-  adminSecret: AQCdsp9aaowqEhAAHx5EFnTQBnTU7Dr1UzHwmQ==
-  clusterName: ceph
-  pool: cephfs
-  monitor: 192.168.122.11:6789
+  monitors: 192.168.122.11:6789
+  rootPath: /
+  user: admin
+  csiProvisionerSecretName: csi-cephfs-secret
+  csiProvisionerSecretNameSpace: default
 reclaimPolicy: Delete

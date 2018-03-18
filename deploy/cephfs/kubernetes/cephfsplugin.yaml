@@ -3,30 +3,39 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-nodeplugin
+  name: csi-cephfsplugin
 
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-nodeplugin
+  name: csi-cephfsplugin
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "update"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-nodeplugin
+  name: csi-cephfsplugin
 subjects:
   - kind: ServiceAccount
-    name: csi-nodeplugin
+    name: csi-cephfsplugin
     namespace: default
 roleRef:
   kind: ClusterRole
-  name: csi-nodeplugin
-  apiGroup: rbac.authorization.k8s.io          
+  name: csi-cephfsplugin
+  apiGroup: rbac.authorization.k8s.io
 
 ---
 # This YAML file contains driver-registrar & csi driver nodeplugin API objects,
@@ -35,17 +44,17 @@ roleRef:
 kind: DaemonSet
 apiVersion: apps/v1beta2
 metadata:
-  name: csi-nodeplugin-cephfsplugin
+  name: csi-cephfsplugin
 spec:
   selector:
     matchLabels:
-      app: csi-nodeplugin-cephfsplugin
+      app: csi-cephfsplugin
   template:
     metadata:
       labels:
-        app: csi-nodeplugin-cephfsplugin
+        app: csi-cephfsplugin
     spec:
-      serviceAccount: csi-nodeplugin
+      serviceAccount: csi-cephfsplugin
       hostNetwork: true
       containers:
         - name: driver-registrar
@@ -55,15 +64,15 @@ spec:
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/cephfsplugin/csi.sock
+              value: /var/lib/kubelet/plugins/csi-cephfsplugin/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/cephfsplugin
-        - name: cephfsplugin 
+              mountPath: /var/lib/kubelet/plugins/csi-cephfsplugin
+        - name: csi-cephfsplugin
           securityContext:
             privileged: true
             capabilities:
@@ -74,18 +83,18 @@ spec:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
-            - "--drivername=cephfsplugin"
+            - "--drivername=csi-cephfsplugin"
           env:
             - name: NODE_ID
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
-              value: unix://var/lib/kubelet/plugins/cephfsplugin/csi.sock
+              value: unix://var/lib/kubelet/plugins/csi-cephfsplugin/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: plugin-dir
-              mountPath: /var/lib/kubelet/plugins/cephfsplugin
+              mountPath: /var/lib/kubelet/plugins/csi-cephfsplugin
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
@@ -94,12 +103,10 @@ spec:
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
-            #- name: cephfs-config
-            #  mountPath: /etc/ceph
       volumes:
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/cephfsplugin
+            path: /var/lib/kubelet/plugins/csi-cephfsplugin
             type: DirectoryOrCreate
         - name: pods-mount-dir
           hostPath:
@@ -107,7 +114,7 @@ spec:
             type: Directory
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/cephfsplugin
+            path: /var/lib/kubelet/plugins/csi-cephfsplugin
             type: DirectoryOrCreate
         - name: host-sys
           hostPath:
@@ -115,6 +122,3 @@ spec:
         - name: lib-modules
           hostPath:
             path: /lib/modules
-        #- name: cephfs-config
-        #  hostPath:
-        #    path: /etc/ceph
