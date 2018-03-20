@@ -17,7 +17,7 @@ limitations under the License.
 package cephfs
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/pborman/uuid"
 )
 
@@ -32,10 +32,6 @@ func newVolumeIdentifier(volOptions *volumeOptions, req *csi.CreateVolumeRequest
 	}
 
 	volId.id = "csi-cephfs-" + volId.uuid
-
-	if volId.name == "" {
-		volId.name = volOptions.Pool + "-dynamic-pvc-" + volId.uuid
-	}
 
 	return &volId
 }
