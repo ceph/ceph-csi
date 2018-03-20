@@ -17,7 +17,7 @@ limitations under the License.
 package cephfs
 
 import (
-	// "fmt"
+	"fmt"
 	"os/exec"
 
 	"google.golang.org/grpc/codes"
@@ -53,4 +53,12 @@ func tryLock(id string, mtx keymutex.KeyMutex, name string) error {
 	*/
 
 	return nil
+}
+
+func getKeyFromCredentials(creds map[string]string) (string, error) {
+	if key, ok := creds["key"]; ok {
+		return key, nil
+	} else {
+		return "", fmt.Errorf("missing key in credentials")
+	}
 }
