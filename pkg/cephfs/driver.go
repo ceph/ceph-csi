@@ -19,12 +19,12 @@ package cephfs
 import (
 	"github.com/golang/glog"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
 const (
-	PluginFolder = "/var/lib/kubelet/plugins/cephfsplugin"
+	PluginFolder = "/var/lib/kubelet/plugins/csi-cephfsplugin"
 )
 
 type cephfsDriver struct {
@@ -40,14 +40,8 @@ type cephfsDriver struct {
 
 var (
 	driver  *cephfsDriver
-	version = csi.Version{
-		Minor: 2,
-	}
+	version = "0.2.0"
 )
-
-func GetSupportedVersions() []*csi.Version {
-	return []*csi.Version{&version}
-}
 
 func NewCephFSDriver() *cephfsDriver {
 	return &cephfsDriver{}
@@ -72,11 +66,11 @@ func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
 }
 
 func (fs *cephfsDriver) Run(driverName, nodeId, endpoint string) {
-	glog.Infof("Driver: %v version: %v", driverName, GetVersionString(&version))
+	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Initialize default library driver
 
-	fs.driver = csicommon.NewCSIDriver(driverName, &version, GetSupportedVersions(), nodeId)
+	fs.driver = csicommon.NewCSIDriver(driverName, version, nodeId)
 	if fs.driver == nil {
 		glog.Fatalln("Failed to initialize CSI driver")
 	}
