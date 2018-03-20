@@ -19,11 +19,9 @@ package cephfs
 import "errors"
 
 type volumeOptions struct {
-	Monitor     string `json:"monitor"`
-	Pool        string `json:"pool"`
-	ClusterName string `json:"clusterName"`
-	AdminId     string `json:"adminID"`
-	AdminSecret string `json:"adminSecret"`
+	Monitors string `json:"monitors"`
+	RootPath string `json:"rootPath"`
+	User     string `json:"user"`
 }
 
 func extractOption(dest *string, optionLabel string, options map[string]string) error {
@@ -38,23 +36,15 @@ func extractOption(dest *string, optionLabel string, options map[string]string) 
 func newVolumeOptions(volOptions map[string]string) (*volumeOptions, error) {
 	var opts volumeOptions
 
-	if err := extractOption(&opts.AdminId, "adminID", volOptions); err != nil {
+	if err := extractOption(&opts.Monitors, "monitors", volOptions); err != nil {
 		return nil, err
 	}
 
-	if err := extractOption(&opts.AdminSecret, "adminSecret", volOptions); err != nil {
+	if err := extractOption(&opts.RootPath, "rootPath", volOptions); err != nil {
 		return nil, err
 	}
 
-	if err := extractOption(&opts.Monitor, "monitor", volOptions); err != nil {
-		return nil, err
-	}
-
-	if err := extractOption(&opts.Pool, "pool", volOptions); err != nil {
-		return nil, err
-	}
-
-	if err := extractOption(&opts.ClusterName, "clusterName", volOptions); err != nil {
+	if err := extractOption(&opts.User, "user", volOptions); err != nil {
 		return nil, err
 	}
 
