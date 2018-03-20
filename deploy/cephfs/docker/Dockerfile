@@ -5,10 +5,12 @@ LABEL description="CephFS CSI Plugin"
 ENV CEPH_VERSION "luminous"
 
 RUN apt-get update && \
-    apt-get install -y ceph-common ceph-fuse && \
+    apt-get install -y ceph-fuse && \
     rm -rf /var/lib/apt/lists/*
 
 COPY cephfsplugin /cephfsplugin
-COPY cephfs_provisioner.py /cephfs_provisioner.py
-RUN chmod +x /cephfsplugin && chmod +x /cephfs_provisioner.py
+
+RUN chmod +x /cephfsplugin && \
+    mkdir -p /var/log/ceph
+
 ENTRYPOINT ["/cephfsplugin"]
