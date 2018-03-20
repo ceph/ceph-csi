@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
@@ -36,56 +36,64 @@ const (
 	oneGB = 1073741824
 )
 
-func GetVersionString(v *csi.Version) string {
-	return fmt.Sprintf("%d.%d.%d", v.GetMajor(), v.GetMinor(), v.GetPatch())
-}
-
-func (cs *controllerServer) validateRequest(v *csi.Version) error {
-	if v == nil {
-		return status.Error(codes.InvalidArgument, "Version missing in request")
+func (cs *controllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+		return fmt.Errorf("Invalid CreateVolumeRequest: %v", err)
 	}
 
-	return cs.Driver.ValidateControllerServiceRequest(v, csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME)
+	if req.GetName() == "" {
+		return status.Error(codes.InvalidArgument, "Volume Name cannot be empty")
+	}
+
+	if req.GetVolumeCapabilities() == nil {
+		return status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
+	}
+
+	return nil
+}
+
+func (cs *controllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+		return fmt.Errorf("Invalid DeleteVolumeRequest: %v", err)
+	}
+
+	return nil
 }
 
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	if err := cs.validateRequest(req.Version); err != nil {
-		glog.Warningf("invalid create volume request: %v", req)
+	if err := cs.validateCreateVolumeRequest(req); err != nil {
+		glog.Errorf("CreateVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
 
 	volOptions, err := newVolumeOptions(req.GetParameters())
 	if err != nil {
-		return nil, err
+		glog.Errorf("error reading volume options: %v", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	volId := newVolumeIdentifier(volOptions, req)
-	volSz := int64(oneGB)
 
-	if req.GetCapacityRange() != nil {
-		volSz = int64(req.GetCapacityRange().GetRequiredBytes())
-	}
-
-	vol, err := newVolume(volId, volOptions)
-	if err != nil {
-		glog.Errorf("failed to create a volume: %v", err)
+	conf := cephConfigData{Monitors: volOptions.Monitors}
+	if err = conf.writeToFile(); err != nil {
+		glog.Errorf("couldn't generate ceph.conf: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	glog.V(4).Infof("cephfs: volume created at %s", vol.Root)
+	glog.V(4).Infof("cephfs: volume %s successfuly created", volId.id)
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            volId.id,
-			CapacityBytes: volSz,
-			Attributes:    vol.makeMap(),
+			CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
+			Attributes:    req.GetParameters(),
 		},
 	}, nil
 }
 
 func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	if err := cs.validateRequest(req.Version); err != nil {
-		glog.Warningf("invalid delete volume request: %v", req)
+	if err := cs.validateDeleteVolumeRequest(req); err != nil {
+		glog.Errorf("DeleteVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
 
