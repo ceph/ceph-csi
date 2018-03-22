@@ -21,13 +21,19 @@ import (
 	"os"
 )
 
-type volume struct {
-	RootPath string
-	User     string
+const (
+	volumeMounter_fuse   = "fuse"
+	volumeMounter_kernel = "kernel"
+)
+
+type volumeMounter interface {
+	mount(mountPoint string, volOptions *volumeOptions) error
 }
 
-func (vol *volume) mount(mountPoint string) error {
-	out, err := execCommand("ceph-fuse", mountPoint, "-n", "client."+vol.User, "-r", vol.RootPath)
+type fuseMounter struct{}
+
+func (m *fuseMounter) mount(mountPoint string, volOptions *volumeOptions) error {
+	out, err := execCommand("ceph-fuse", mountPoint, "-n", "client."+volOptions.User, "-r", volOptions.RootPath)
 	if err != nil {
 		return fmt.Errorf("cephfs: ceph-fuse failed with following error: %s\ncephfs: cephf-fuse output: %s", err, out)
 	}
@@ -35,19 +41,34 @@ func (vol *volume) mount(mountPoint string) error {
 	return nil
 }
 
-func (vol *volume) unmount() error {
-	out, err := execCommand("fusermount", "-u", vol.RootPath)
+type kernelMounter struct{}
+
+func (m *kernelMounter) mount(mountPoint string, volOptions *volumeOptions) error {
+	out, err := execCommand("modprobe", "ceph")
 	if err != nil {
-		return fmt.Errorf("cephfs: fusermount failed with following error: %v\ncephfs: fusermount output: %s", err, out)
+		return fmt.Errorf("cephfs: modprobe failed with following error, %s\ncephfs: modprobe output: %s", err, out)
+	}
+
+	args := [...]string{
+		"-t", "ceph",
+		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
+		mountPoint,
+		"-o",
+		fmt.Sprintf("name=%s,secretfile=%s", volOptions.User, getCephSecretPath(volOptions.User)),
+	}
+
+	out, err = execCommand("mount", args[:]...)
+	if err != nil {
+		return fmt.Errorf("cephfs: mount.ceph failed with following error: %s\ncephfs: mount.ceph output: %s", err, out)
 	}
 
 	return nil
 }
 
-func unmountVolume(root string) error {
-	out, err := execCommand("fusermount", "-u", root)
+func unmountVolume(mountPoint string) error {
+	out, err := execCommand("umount", mountPoint)
 	if err != nil {
-		return fmt.Errorf("cephfs: fusermount failed with following error: %v\ncephfs: fusermount output: %s", err, out)
+		return fmt.Errorf("cephfs: umount failed with following error: %v\ncephfs: umount output: %s", err, out)
 	}
 
 	return nil

@@ -37,15 +37,19 @@ caps mon = "allow r"
 caps osd = "allow {{perms .ReadOnly}}"
 `
 
+const cephSecret = `{{.Key}}`
+
 const (
 	cephConfigRoot         = "/etc/ceph"
 	cephConfigFileName     = "ceph.conf"
 	cephKeyringFileNameFmt = "ceph.client.%s.keyring"
+	cephSecretFileNameFmt  = "ceph.client.%s.secret"
 )
 
 var (
 	cephConfigTempl  *template.Template
 	cephKeyringTempl *template.Template
+	cephSecretTempl  *template.Template
 )
 
 func init() {
@@ -61,6 +65,7 @@ func init() {
 
 	cephConfigTempl = template.Must(template.New("config").Parse(cephConfig))
 	cephKeyringTempl = template.Must(template.New("keyring").Funcs(fm).Parse(cephKeyring))
+	cephSecretTempl = template.Must(template.New("secret").Parse(cephSecret))
 }
 
 type cephConfigWriter interface {
@@ -101,4 +106,16 @@ type cephKeyringData struct {
 
 func (d *cephKeyringData) writeToFile() error {
 	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.User), 0600, cephKeyringTempl, d)
+}
+
+type cephSecretData struct {
+	User, Key string
+}
+
+func (d *cephSecretData) writeToFile() error {
+	return writeCephTemplate(fmt.Sprintf(cephSecretFileNameFmt, d.User), 0600, cephSecretTempl, d)
+}
+
+func getCephSecretPath(user string) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephSecretFileNameFmt, user))
 }
