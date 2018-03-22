@@ -100,9 +100,11 @@ spec:
               mountPropagation: "Bidirectional"
             - mountPath: /sys
               name: host-sys
-            - mountPath: /lib/modules
-              name: lib-modules
+            - name: lib-modules
+              mountPath: /lib/modules
               readOnly: true
+            - name: host-dev
+              mountPath: /dev
       volumes:
         - name: plugin-dir
           hostPath:
@@ -122,3 +124,6 @@ spec:
         - name: lib-modules
           hostPath:
             path: /lib/modules
+        - name: host-dev
+          hostPath:
+            path: /dev
