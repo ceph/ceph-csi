@@ -74,12 +74,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	volId := newVolumeIdentifier(volOptions, req)
 
-	conf := cephConfigData{Monitors: volOptions.Monitors}
-	if err = conf.writeToFile(); err != nil {
-		glog.Errorf("couldn't generate ceph.conf: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
 	glog.V(4).Infof("cephfs: volume %s successfuly created", volId.id)
 
 	return &csi.CreateVolumeResponse{

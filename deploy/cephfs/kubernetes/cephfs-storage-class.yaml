@@ -4,9 +4,13 @@ metadata:
   name: csi-cephfs
 provisioner: csi-cephfsplugin
 parameters:
-  monitors: 192.168.122.11:6789
+  # The driver can use either ceph-fuse (fuse) or ceph kernel client (kernel)
+  mounter: fuse
+
+  monitors: mon1:port,mon2:port
   rootPath: /
   user: admin
+
   csiProvisionerSecretName: csi-cephfs-secret
   csiProvisionerSecretNameSpace: default
 reclaimPolicy: Delete

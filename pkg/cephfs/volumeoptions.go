@@ -16,12 +16,16 @@ limitations under the License.
 
 package cephfs
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 type volumeOptions struct {
 	Monitors string `json:"monitors"`
 	RootPath string `json:"rootPath"`
 	User     string `json:"user"`
+	Mounter  string `json:"mounter"`
 }
 
 func extractOption(dest *string, optionLabel string, options map[string]string) error {
@@ -31,6 +35,17 @@ func extractOption(dest *string, optionLabel string, options map[string]string) 
 		*dest = opt
 		return nil
 	}
+}
+
+func validateMounter(m string) error {
+	switch m {
+	case volumeMounter_fuse:
+	case volumeMounter_kernel:
+	default:
+		return fmt.Errorf("Unknown mounter '%s'. Valid options are 'fuse' and 'kernel'", m)
+	}
+
+	return nil
 }
 
 func newVolumeOptions(volOptions map[string]string) (*volumeOptions, error) {
@@ -45,6 +60,14 @@ func newVolumeOptions(volOptions map[string]string) (*volumeOptions, error) {
 	}
 
 	if err := extractOption(&opts.User, "user", volOptions); err != nil {
+		return nil, err
+	}
+
+	if err := extractOption(&opts.Mounter, "mounter", volOptions); err != nil {
+		return nil, err
+	}
+
+	if err := validateMounter(opts.Mounter); err != nil {
 		return nil, err
 	}
 

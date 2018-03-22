@@ -63,32 +63,63 @@ func validateNodeUnpublishVolumeRequest(req *csi.NodeUnpublishVolumeRequest) err
 	return nil
 }
 
+func newMounter(volOptions *volumeOptions, key string, readOnly bool) (volumeMounter, error) {
+	var m volumeMounter
+
+	if volOptions.Mounter == volumeMounter_fuse {
+		keyring := cephKeyringData{
+			User:     volOptions.User,
+			Key:      key,
+			RootPath: volOptions.RootPath,
+			ReadOnly: readOnly,
+		}
+
+		if err := keyring.writeToFile(); err != nil {
+			msg := fmt.Sprintf("couldn't write ceph keyring for user %s: %v", volOptions.User, err)
+			glog.Error(msg)
+			return nil, status.Error(codes.Internal, msg)
+		}
+
+		m = &fuseMounter{}
+	} else if volOptions.Mounter == volumeMounter_kernel {
+		secret := cephSecretData{
+			User: volOptions.User,
+			Key:  key,
+		}
+
+		if err := secret.writeToFile(); err != nil {
+			msg := fmt.Sprintf("couldn't write ceph secret for user %s: %v", volOptions.User, err)
+			glog.Error(msg)
+			return nil, status.Error(codes.Internal, msg)
+		}
+
+		m = &kernelMounter{}
+	}
+
+	return m, nil
+}
+
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	if err := validateNodePublishVolumeRequest(req); err != nil {
 		return nil, err
 	}
 
-	// Configuration
-
-	targetPath := req.GetTargetPath()
-
-	volOptions, err := newVolumeOptions(req.GetVolumeAttributes())
-	if err != nil {
-		glog.Errorf("error reading volume options: %v", err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
 	/*
-		volId := req.GetVolumeId()
 		if err = tryLock(volId, nsMtx, "NodeServer"); err != nil {
 			return nil, err
 		}
 		defer nsMtx.UnlockKey(volId)
 	*/
 
-	if err = createMountPoint(targetPath); err != nil {
-		glog.Errorf("failed to create mount point at %s: %v", targetPath, err)
-		return nil, status.Error(codes.Internal, err.Error())
+	// Configuration
+
+	targetPath := req.GetTargetPath()
+	volId := req.GetVolumeId()
+
+	volOptions, err := newVolumeOptions(req.GetVolumeAttributes())
+	if err != nil {
+		glog.Errorf("error reading volume options: %v", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	key, err := getKeyFromCredentials(req.GetNodePublishSecrets())
@@ -97,17 +128,15 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	keyring := cephKeyringData{
-		User:     volOptions.User,
-		Key:      key,
-		RootPath: volOptions.RootPath,
-		ReadOnly: req.GetReadonly(),
+	if err = createMountPoint(targetPath); err != nil {
+		glog.Errorf("failed to create mount point at %s: %v", targetPath, err)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = keyring.writeToFile(); err != nil {
-		msg := fmt.Sprintf("couldn't write ceph keyring for user %s: %v", volOptions.User, err)
-		glog.Error(msg)
-		return nil, status.Error(codes.Internal, msg)
+	conf := cephConfigData{Monitors: volOptions.Monitors}
+	if err = conf.writeToFile(); err != nil {
+		glog.Errorf("couldn't generate ceph.conf: %v", err)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// Check if the volume is already mounted
@@ -120,19 +149,24 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	if isMnt {
+		glog.V(4).Infof("cephfs: volume %s is already mounted to %s", volId, targetPath)
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
 	// It's not, exec ceph-fuse now
 
-	vol := volume{RootPath: volOptions.RootPath, User: volOptions.User}
-
-	if err := vol.mount(targetPath); err != nil {
-		glog.Errorf("mounting volume %s to %s failed: %v", vol.RootPath, targetPath, err)
+	m, err := newMounter(volOptions, key, req.GetReadonly())
+	if err != nil {
+		glog.Errorf("error while creating volumeMounter: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	glog.V(4).Infof("cephfs: volume %s successfuly mounted to %s", vol.RootPath, targetPath)
+	if err = m.mount(targetPath, volOptions); err != nil {
+		glog.Errorf("mounting volume %s to %s failed: %v", volId, targetPath, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	glog.V(4).Infof("cephfs: volume %s successfuly mounted to %s", volId, targetPath)
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }
@@ -142,8 +176,9 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, err
 	}
 
+	volId := req.GetVolumeId()
+
 	/*
-		volId := req.GetVolumeId()
 		if err := tryLock(volId, nsMtx, "NodeServer"); err != nil {
 			return nil, err
 		}
@@ -153,6 +188,8 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if err := unmountVolume(req.GetTargetPath()); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	glog.V(4).Infof("cephfs: volume %s successfuly unmounted from %s", volId, req.GetTargetPath())
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
