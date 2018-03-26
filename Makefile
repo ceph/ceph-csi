@@ -17,8 +17,8 @@
 RBD_IMAGE_NAME=quay.io/cephcsi/rbdplugin
 RBD_IMAGE_VERSION=v0.2.0
 
-CEPHFS_IMAGE_NAME=cephfsplugin
-CEPHFS_IMAGE_VERSION=latest
+CEPHFS_IMAGE_NAME=quay.io/cephcsi/cephfsplugin
+CEPHFS_IMAGE_VERSION=v0.2.0
 
 all: rbdplugin cephfsplugin
 
