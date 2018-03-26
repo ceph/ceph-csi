@@ -32,46 +32,37 @@ type volumeMounter interface {
 
 type fuseMounter struct{}
 
-func (m *fuseMounter) mount(mountPoint string, volOptions *volumeOptions) error {
-	out, err := execCommand("ceph-fuse", mountPoint, "-n", "client."+volOptions.User, "-r", volOptions.RootPath)
+func execCommandAndValidate(program string, args ...string) error {
+	out, err := execCommand(program, args...)
 	if err != nil {
-		return fmt.Errorf("cephfs: ceph-fuse failed with following error: %s\ncephfs: cephf-fuse output: %s", err, out)
+		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
 	}
 
 	return nil
+}
+
+func (m *fuseMounter) mount(mountPoint string, volOptions *volumeOptions) error {
+	return execCommandAndValidate("ceph-fuse", mountPoint, "-n", "client."+volOptions.User, "-r", volOptions.RootPath)
 }
 
 type kernelMounter struct{}
 
 func (m *kernelMounter) mount(mountPoint string, volOptions *volumeOptions) error {
-	out, err := execCommand("modprobe", "ceph")
-	if err != nil {
-		return fmt.Errorf("cephfs: modprobe failed with following error, %s\ncephfs: modprobe output: %s", err, out)
+	if err := execCommandAndValidate("modprobe", "ceph"); err != nil {
+		return err
 	}
 
-	args := [...]string{
+	return execCommandAndValidate("mount",
 		"-t", "ceph",
 		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
 		mountPoint,
 		"-o",
 		fmt.Sprintf("name=%s,secretfile=%s", volOptions.User, getCephSecretPath(volOptions.User)),
-	}
-
-	out, err = execCommand("mount", args[:]...)
-	if err != nil {
-		return fmt.Errorf("cephfs: mount.ceph failed with following error: %s\ncephfs: mount.ceph output: %s", err, out)
-	}
-
-	return nil
+	)
 }
 
 func unmountVolume(mountPoint string) error {
-	out, err := execCommand("umount", mountPoint)
-	if err != nil {
-		return fmt.Errorf("cephfs: umount failed with following error: %v\ncephfs: umount output: %s", err, out)
-	}
-
-	return nil
+	return execCommandAndValidate("umount", mountPoint)
 }
 
 func createMountPoint(root string) error {

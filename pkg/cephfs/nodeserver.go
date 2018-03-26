@@ -18,7 +18,6 @@ package cephfs
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
@@ -26,14 +25,11 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
-	"k8s.io/kubernetes/pkg/util/keymutex"
 )
 
 type nodeServer struct {
 	*csicommon.DefaultNodeServer
 }
-
-var nsMtx = keymutex.NewKeyMutex()
 
 func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 	if req.GetVolumeCapability() == nil {
@@ -63,53 +59,10 @@ func validateNodeUnpublishVolumeRequest(req *csi.NodeUnpublishVolumeRequest) err
 	return nil
 }
 
-func newMounter(volOptions *volumeOptions, key string, readOnly bool) (volumeMounter, error) {
-	var m volumeMounter
-
-	if volOptions.Mounter == volumeMounter_fuse {
-		keyring := cephKeyringData{
-			User:     volOptions.User,
-			Key:      key,
-			RootPath: volOptions.RootPath,
-			ReadOnly: readOnly,
-		}
-
-		if err := keyring.writeToFile(); err != nil {
-			msg := fmt.Sprintf("couldn't write ceph keyring for user %s: %v", volOptions.User, err)
-			glog.Error(msg)
-			return nil, status.Error(codes.Internal, msg)
-		}
-
-		m = &fuseMounter{}
-	} else if volOptions.Mounter == volumeMounter_kernel {
-		secret := cephSecretData{
-			User: volOptions.User,
-			Key:  key,
-		}
-
-		if err := secret.writeToFile(); err != nil {
-			msg := fmt.Sprintf("couldn't write ceph secret for user %s: %v", volOptions.User, err)
-			glog.Error(msg)
-			return nil, status.Error(codes.Internal, msg)
-		}
-
-		m = &kernelMounter{}
-	}
-
-	return m, nil
-}
-
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	if err := validateNodePublishVolumeRequest(req); err != nil {
 		return nil, err
 	}
-
-	/*
-		if err = tryLock(volId, nsMtx, "NodeServer"); err != nil {
-			return nil, err
-		}
-		defer nsMtx.UnlockKey(volId)
-	*/
 
 	// Configuration
 
@@ -177,13 +130,6 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	volId := req.GetVolumeId()
-
-	/*
-		if err := tryLock(volId, nsMtx, "NodeServer"); err != nil {
-			return nil, err
-		}
-		defer nsMtx.UnlockKey(volId)
-	*/
 
 	if err := unmountVolume(req.GetTargetPath()); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -61,4 +62,40 @@ func getKeyFromCredentials(creds map[string]string) (string, error) {
 	} else {
 		return "", fmt.Errorf("missing key in credentials")
 	}
+}
+
+func newMounter(volOptions *volumeOptions, key string, readOnly bool) (volumeMounter, error) {
+	var m volumeMounter
+
+	if volOptions.Mounter == volumeMounter_fuse {
+		keyring := cephKeyringData{
+			User:     volOptions.User,
+			Key:      key,
+			RootPath: volOptions.RootPath,
+			ReadOnly: readOnly,
+		}
+
+		if err := keyring.writeToFile(); err != nil {
+			msg := fmt.Sprintf("couldn't write ceph keyring for user %s: %v", volOptions.User, err)
+			glog.Error(msg)
+			return nil, status.Error(codes.Internal, msg)
+		}
+
+		m = &fuseMounter{}
+	} else if volOptions.Mounter == volumeMounter_kernel {
+		secret := cephSecretData{
+			User: volOptions.User,
+			Key:  key,
+		}
+
+		if err := secret.writeToFile(); err != nil {
+			msg := fmt.Sprintf("couldn't write ceph secret for user %s: %v", volOptions.User, err)
+			glog.Error(msg)
+			return nil, status.Error(codes.Internal, msg)
+		}
+
+		m = &kernelMounter{}
+	}
+
+	return m, nil
 }
