@@ -28,6 +28,9 @@ mon_host = {{.Monitors}}
 auth_cluster_required = cephx
 auth_service_required = cephx
 auth_client_required = cephx
+
+# Workaround for http://tracker.ceph.com/issues/23446
+fuse_set_user_groups = false
 `
 
 const cephKeyring = `[client.{{.User}}]
