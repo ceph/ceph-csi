@@ -179,10 +179,10 @@ PV object gets dynamically created and becomes ready to be used by workloads.
 [feature gates must be enabled starting in 1.9](#enabling-the-alpha-feature-gates).
 Also API server must run with running config set to: `storage.k8s.io/v1alpha1`
 
-* `kube-apiserver` must be launched with `--feature-gate=CSIPersistentVolume=true,MountPropagation=true`
+* `kube-apiserver` must be launched with `--feature-gates=CSIPersistentVolume=true,MountPropagation=true`
   and `--runtime-config=storage.k8s.io/v1alpha1=true`
-* `kube-controller-manager` must be launched with `--feature-gate=CSIPersistentVolume=true`
-* `kubelet` must be launched with `--feature-gate=CSIPersistentVolume=true,MountPropagation=true`
+* `kube-controller-manager` must be launched with `--feature-gates=CSIPersistentVolume=true`
+* `kubelet` must be launched with `--feature-gates=CSIPersistentVolume=true,MountPropagation=true`
 
 ### Compiling
 CSI CephFS plugin can be compiled in a form of a binary file or in a form of a container. When compiled
