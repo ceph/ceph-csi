@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
@@ -66,15 +67,50 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
+	// Configuration
+
 	volOptions, err := newVolumeOptions(req.GetParameters())
 	if err != nil {
-		glog.Errorf("error reading volume options: %v", err)
+		glog.Errorf("validation of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	volId := newVolumeIdentifier(volOptions, req)
 
-	glog.V(4).Infof("cephfs: volume %s successfuly created", volId.id)
+	conf := cephConfigData{Monitors: volOptions.Monitors}
+	if err = conf.writeToFile(); err != nil {
+		glog.Errorf("couldn't generate ceph.conf: %v", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Create a volume in case the user didn't provide one
+
+	if volOptions.ProvisionVolume {
+		// Admin access is required
+
+		cr, err := getAdminCredentials(req.GetControllerCreateSecrets())
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		if err = storeCephAdminCredentials(cr); err != nil {
+			glog.Errorf("failed to store admin credentials for '%s': %v", cr.id, err)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		if err = createVolume(volOptions, cr, volId.uuid, req.GetCapacityRange().GetRequiredBytes()); err != nil {
+			glog.Errorf("failed to create volume %s: %v", volId.name, err)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		glog.V(4).Infof("cephfs: volume %s successfuly created", volId.id)
+	} else {
+		glog.V(4).Infof("cephfs: volume %s is provisioned statically", volId.id)
+	}
+
+	if err = volCache.insert(&volumeCacheEntry{Identifier: *volId, VolOptions: *volOptions}); err != nil {
+		glog.Warningf("failed to store a volume cache entry: %v", err)
+	}
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
@@ -91,11 +127,72 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, err
 	}
 
-	// TODO
+	var (
+		cr      *credentials
+		err     error
+		volId   = req.GetVolumeId()
+		volUuid = uuidFromVolumeId(volId)
+	)
+
+	// Load volume info from cache
+
+	ent, found := volCache.get(volUuid)
+	if !found {
+		msg := fmt.Sprintf("failed to retrieve cache entry for volume %s", volId)
+		glog.Error(msg)
+		return nil, status.Error(codes.Internal, msg)
+	}
+
+	// Set the correct user for mounting
+
+	if ent.VolOptions.ProvisionVolume {
+		// Admin access is required
+
+		cr, err = getAdminCredentials(req.GetControllerDeleteSecrets())
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+	} else {
+		cr, err = getUserCredentials(req.GetControllerDeleteSecrets())
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+	}
+
+	// Delete the volume contents
+
+	if err := purgeVolume(volId, cr, &ent.VolOptions); err != nil {
+		glog.Error(err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Clean up remaining files
+
+	if ent.VolOptions.ProvisionVolume {
+		// The user is no longer needed
+		if err := deleteCephUser(volUuid); err != nil {
+			glog.Warningf("failed to delete ceph user '%s': %v", cr.id, err)
+		}
+
+		userId := getCephUserName(volUuid)
+		os.Remove(getCephKeyringPath(userId))
+		os.Remove(getCephSecretPath(userId))
+	} else {
+		os.Remove(getCephKeyringPath(cr.id))
+		os.Remove(getCephSecretPath(cr.id))
+	}
+
+	if err := volCache.erase(volUuid); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	glog.V(4).Infof("cephfs: volume %s successfuly deleted", volId)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
-func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+func (cs *controllerServer) ValidateVolumeCapabilities(
+	ctx context.Context,
+	req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	return &csi.ValidateVolumeCapabilitiesResponse{Supported: true}, nil
 }
