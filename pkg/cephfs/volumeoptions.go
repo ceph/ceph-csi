@@ -19,18 +19,59 @@ package cephfs
 import (
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 type volumeOptions struct {
 	Monitors string `json:"monitors"`
+	Pool     string `json:"pool"`
 	RootPath string `json:"rootPath"`
-	User     string `json:"user"`
-	Mounter  string `json:"mounter"`
+
+	Mounter         string `json:"mounter"`
+	ProvisionVolume bool   `json:"provisionVolume"`
+}
+
+func validateNonEmptyField(field, fieldName string) error {
+	if field == "" {
+		return fmt.Errorf("Parameter '%s' cannot be empty", fieldName)
+	}
+
+	return nil
+}
+
+func (o *volumeOptions) validate() error {
+	if err := validateNonEmptyField(o.Monitors, "monitors"); err != nil {
+		return err
+	}
+
+	if err := validateNonEmptyField(o.RootPath, "rootPath"); err != nil {
+		if !o.ProvisionVolume {
+			return err
+		}
+	} else {
+		if o.ProvisionVolume {
+			return fmt.Errorf("Non-empty field rootPath is in conflict with provisionVolume=true")
+		}
+	}
+
+	if o.ProvisionVolume {
+		if err := validateNonEmptyField(o.Pool, "pool"); err != nil {
+			return err
+		}
+	}
+
+	if o.Mounter != "" {
+		if err := validateMounter(o.Mounter); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func extractOption(dest *string, optionLabel string, options map[string]string) error {
 	if opt, ok := options[optionLabel]; !ok {
-		return errors.New("Missing required parameter " + optionLabel)
+		return errors.New("Missing required field " + optionLabel)
 	} else {
 		*dest = opt
 		return nil
@@ -49,25 +90,38 @@ func validateMounter(m string) error {
 }
 
 func newVolumeOptions(volOptions map[string]string) (*volumeOptions, error) {
-	var opts volumeOptions
+	var (
+		opts                volumeOptions
+		provisionVolumeBool string
+		err                 error
+	)
 
-	if err := extractOption(&opts.Monitors, "monitors", volOptions); err != nil {
+	if err = extractOption(&opts.Monitors, "monitors", volOptions); err != nil {
 		return nil, err
 	}
 
-	if err := extractOption(&opts.RootPath, "rootPath", volOptions); err != nil {
+	if err = extractOption(&provisionVolumeBool, "provisionVolume", volOptions); err != nil {
 		return nil, err
 	}
 
-	if err := extractOption(&opts.User, "user", volOptions); err != nil {
-		return nil, err
+	if opts.ProvisionVolume, err = strconv.ParseBool(provisionVolumeBool); err != nil {
+		return nil, fmt.Errorf("Failed to parse provisionVolume: %v", err)
 	}
 
-	if err := extractOption(&opts.Mounter, "mounter", volOptions); err != nil {
-		return nil, err
+	if opts.ProvisionVolume {
+		if err = extractOption(&opts.Pool, "pool", volOptions); err != nil {
+			return nil, err
+		}
+	} else {
+		if err = extractOption(&opts.RootPath, "rootPath", volOptions); err != nil {
+			return nil, err
+		}
 	}
 
-	if err := validateMounter(opts.Mounter); err != nil {
+	// This field is optional, don't check for its presence
+	extractOption(&opts.Mounter, "mounter", volOptions)
+
+	if err = opts.validate(); err != nil {
 		return nil, err
 	}
 
