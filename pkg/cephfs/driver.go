@@ -17,6 +17,8 @@ limitations under the License.
 package cephfs
 
 import (
+	"os"
+
 	"github.com/golang/glog"
 
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
@@ -25,23 +27,32 @@ import (
 
 const (
 	PluginFolder = "/var/lib/kubelet/plugins/csi-cephfsplugin"
+	Version      = "0.2.0"
 )
 
 type cephfsDriver struct {
 	driver *csicommon.CSIDriver
 
-	ids *identityServer
-	ns  *nodeServer
-	cs  *controllerServer
+	is *identityServer
+	ns *nodeServer
+	cs *controllerServer
 
 	caps   []*csi.VolumeCapability_AccessMode
 	cscaps []*csi.ControllerServiceCapability
 }
 
 var (
-	driver  *cephfsDriver
-	version = "0.2.0"
+	driver               *cephfsDriver
+	DefaultVolumeMounter string
 )
+
+func getVolumeMounterByProbing() string {
+	if execCommandAndValidate("ceph-fuse", "--version") == nil {
+		return volumeMounter_fuse
+	} else {
+		return volumeMounter_kernel
+	}
+}
 
 func NewCephFSDriver() *cephfsDriver {
 	return &cephfsDriver{}
@@ -65,12 +76,35 @@ func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
 	}
 }
 
-func (fs *cephfsDriver) Run(driverName, nodeId, endpoint string) {
-	glog.Infof("Driver: %v version: %v", driverName, version)
+func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string) {
+	glog.Infof("Driver: %v version: %v", driverName, Version)
+
+	// Configuration
+
+	if err := os.MkdirAll(volumeCacheRoot, 0755); err != nil {
+		glog.Fatalf("cephfs: failed to create %s: %v", volumeCacheRoot, err)
+		return
+	}
+
+	if err := loadVolumeCache(); err != nil {
+		glog.Errorf("cephfs: failed to read volume cache: %v", err)
+	}
+
+	if volumeMounter != "" {
+		if err := validateMounter(volumeMounter); err != nil {
+			glog.Fatalln(err)
+		} else {
+			DefaultVolumeMounter = volumeMounter
+		}
+	} else {
+		DefaultVolumeMounter = getVolumeMounterByProbing()
+	}
+
+	glog.Infof("cephfs: setting default volume mounter to %s", DefaultVolumeMounter)
 
 	// Initialize default library driver
 
-	fs.driver = csicommon.NewCSIDriver(driverName, version, nodeId)
+	fs.driver = csicommon.NewCSIDriver(driverName, Version, nodeId)
 	if fs.driver == nil {
 		glog.Fatalln("Failed to initialize CSI driver")
 	}
@@ -85,11 +119,11 @@ func (fs *cephfsDriver) Run(driverName, nodeId, endpoint string) {
 
 	// Create gRPC servers
 
-	fs.ids = NewIdentityServer(fs.driver)
+	fs.is = NewIdentityServer(fs.driver)
 	fs.ns = NewNodeServer(fs.driver)
 	fs.cs = NewControllerServer(fs.driver)
 
 	server := csicommon.NewNonBlockingGRPCServer()
-	server.Start(endpoint, fs.ids, fs.cs, fs.ns)
+	server.Start(endpoint, fs.is, fs.cs, fs.ns)
 	server.Wait()
 }
