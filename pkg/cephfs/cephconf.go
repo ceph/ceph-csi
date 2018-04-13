@@ -33,11 +33,18 @@ auth_client_required = cephx
 fuse_set_user_groups = false
 `
 
-const cephKeyring = `[client.{{.User}}]
+const cephKeyring = `[client.{{.UserId}}]
 key = {{.Key}}
-caps mds = "allow {{perms .ReadOnly}} path={{.RootPath}}"
+caps mds = "allow rw path={{.RootPath}}"
 caps mon = "allow r"
-caps osd = "allow {{perms .ReadOnly}}"
+caps osd = "allow rw{{if .Pool}} pool={{.Pool}}{{end}}{{if .Namespace}} namespace={{.Namespace}}{{end}}"
+`
+
+const cephFullCapsKeyring = `[client.{{.UserId}}]
+key = {{.Key}}
+caps mds = "allow"
+caps mon = "allow *"
+caps osd = "allow *"
 `
 
 const cephSecret = `{{.Key}}`
@@ -50,9 +57,10 @@ const (
 )
 
 var (
-	cephConfigTempl  *template.Template
-	cephKeyringTempl *template.Template
-	cephSecretTempl  *template.Template
+	cephConfigTempl          *template.Template
+	cephKeyringTempl         *template.Template
+	cephFullCapsKeyringTempl *template.Template
+	cephSecretTempl          *template.Template
 )
 
 func init() {
@@ -68,6 +76,7 @@ func init() {
 
 	cephConfigTempl = template.Must(template.New("config").Parse(cephConfig))
 	cephKeyringTempl = template.Must(template.New("keyring").Funcs(fm).Parse(cephKeyring))
+	cephFullCapsKeyringTempl = template.Must(template.New("keyringFullCaps").Parse(cephFullCapsKeyring))
 	cephSecretTempl = template.Must(template.New("secret").Parse(cephSecret))
 }
 
@@ -102,23 +111,39 @@ func (d *cephConfigData) writeToFile() error {
 }
 
 type cephKeyringData struct {
-	User, Key string
-	RootPath  string
-	ReadOnly  bool
+	UserId, Key     string
+	RootPath        string
+	Pool, Namespace string
 }
 
 func (d *cephKeyringData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.User), 0600, cephKeyringTempl, d)
+	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.UserId), 0600, cephKeyringTempl, d)
+}
+
+type cephFullCapsKeyringData struct {
+	UserId, Key string
+}
+
+func (d *cephFullCapsKeyringData) writeToFile() error {
+	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.UserId), 0600, cephFullCapsKeyringTempl, d)
 }
 
 type cephSecretData struct {
-	User, Key string
+	UserId, Key string
 }
 
 func (d *cephSecretData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephSecretFileNameFmt, d.User), 0600, cephSecretTempl, d)
+	return writeCephTemplate(fmt.Sprintf(cephSecretFileNameFmt, d.UserId), 0600, cephSecretTempl, d)
 }
 
-func getCephSecretPath(user string) string {
-	return path.Join(cephConfigRoot, fmt.Sprintf(cephSecretFileNameFmt, user))
+func getCephSecretPath(userId string) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephSecretFileNameFmt, userId))
+}
+
+func getCephKeyringPath(userId string) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephKeyringFileNameFmt, userId))
+}
+
+func getCephConfPath() string {
+	return path.Join(cephConfigRoot, cephConfigFileName)
 }
