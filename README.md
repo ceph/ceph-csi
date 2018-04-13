@@ -164,12 +164,17 @@ PV object gets dynamically created and becomes ready to be used by workloads.
 
 ### Configuration Requirements
 
-* Secret object with the authentication key for ceph cluster
+* Secret object with the authentication user ID `userID` and key `userKey` for ceph cluster
 * StorageClass with csi-cephfsplugin (default CSI CephFS plugin name) as a provisioner name
-  and information about ceph cluster (mounter, monitors, user name, secret)
-* CephFS root path, which is then mounted by either `ceph-fuse` or `mount.ceph` - configurable
-  through the StorageClass
-* Service Accounts with required RBAC permissions   
+  and information about ceph cluster (monitors, pool, rootPath, ...)
+* Service Accounts with required RBAC permissions
+
+Mounter options: specifies whether to use FUSE or ceph kernel client for mounting. By default, the plugin will probe for `ceph-fuse`. If this fails, the kernel client will be used instead. Command line argument `--volumemounter=[fuse|kernel]` overrides this behaviour.
+
+StorageClass options:
+* `provisionVolume: "bool"`: if set to true, the plugin will provision and mount a new volume. Admin credentials `adminID` and `adminKey` are required in the secret object, since this also creates a dedicated RADOS user used for mounting the volume.
+* `rootPath: /path-in-cephfs`: required field if `provisionVolume=true`. CephFS is mounted from the specified path. User credentials `userID` and `userKey` are required in the secret object.
+* `mounter: "kernel" or "fuse"`: (optional) per-StorageClass mounter configuration. Overrides the default mounter.
 
 ### Feature Status
 
