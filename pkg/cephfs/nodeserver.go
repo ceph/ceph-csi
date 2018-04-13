@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"context"
+	"os"
 
 	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
@@ -59,6 +60,43 @@ func validateNodeUnpublishVolumeRequest(req *csi.NodeUnpublishVolumeRequest) err
 	return nil
 }
 
+func handleUser(volOptions *volumeOptions, volUuid string, req *csi.NodePublishVolumeRequest) (*credentials, error) {
+	var (
+		cr  = &credentials{}
+		err error
+	)
+
+	// Retrieve the credentials (possibly create a new user as well)
+
+	if volOptions.ProvisionVolume {
+		// The volume is provisioned dynamically, create a dedicated user
+
+		if ent, err := createCephUser(volOptions, volUuid, req.GetReadonly()); err != nil {
+			return nil, err
+		} else {
+			cr.id = ent.Entity[len(cephEntityClientPrefix):]
+			cr.key = ent.Key
+		}
+
+		// Set the correct volume root path
+		volOptions.RootPath = getVolumeRootPath_ceph(volUuid)
+	} else {
+		// The volume is pre-made, credentials are supplied by the user
+
+		cr, err = getUserCredentials(req.GetNodePublishSecrets())
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err = storeCephUserCredentials(volUuid, cr, volOptions); err != nil {
+		return nil, err
+	}
+
+	return cr, nil
+}
+
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	if err := validateNodePublishVolumeRequest(req); err != nil {
 		return nil, err
@@ -68,6 +106,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	targetPath := req.GetTargetPath()
 	volId := req.GetVolumeId()
+	volUuid := uuidFromVolumeId(volId)
 
 	volOptions, err := newVolumeOptions(req.GetVolumeAttributes())
 	if err != nil {
@@ -75,20 +114,8 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	key, err := getKeyFromCredentials(req.GetNodePublishSecrets())
-	if err != nil {
-		glog.Error(err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
 	if err = createMountPoint(targetPath); err != nil {
 		glog.Errorf("failed to create mount point at %s: %v", targetPath, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	conf := cephConfigData{Monitors: volOptions.Monitors}
-	if err = conf.writeToFile(); err != nil {
-		glog.Errorf("couldn't generate ceph.conf: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -106,16 +133,18 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
-	// It's not, exec ceph-fuse now
+	// It's not, mount now
 
-	m, err := newMounter(volOptions, key, req.GetReadonly())
+	cr, err := handleUser(volOptions, volUuid, req)
+
 	if err != nil {
-		glog.Errorf("error while creating volumeMounter: %v", err)
+		glog.Error(err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = m.mount(targetPath, volOptions); err != nil {
-		glog.Errorf("mounting volume %s to %s failed: %v", volId, targetPath, err)
+	m := newMounter(volOptions)
+	if err = m.mount(targetPath, cr, volOptions, volUuid, req.GetReadonly()); err != nil {
+		glog.Errorf("failed to mount volume %s: %v", volId, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -130,10 +159,21 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	volId := req.GetVolumeId()
+	targetPath := req.GetTargetPath()
 
-	if err := unmountVolume(req.GetTargetPath()); err != nil {
+	// Unmount the bind-mount
+	if err := unmountVolume(targetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	localVolRoot := getVolumeRootPath_local(uuidFromVolumeId(volId))
+
+	// Unmount the volume root
+	if err := unmountVolume(localVolRoot); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	os.Remove(localVolRoot)
 
 	glog.V(4).Infof("cephfs: volume %s successfuly unmounted from %s", volId, req.GetTargetPath())
 
