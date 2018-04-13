@@ -17,10 +17,11 @@ limitations under the License.
 package cephfs
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 
-	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -31,6 +32,26 @@ import (
 func execCommand(command string, args ...string) ([]byte, error) {
 	cmd := exec.Command(command, args...)
 	return cmd.CombinedOutput()
+}
+
+func execCommandAndValidate(program string, args ...string) error {
+	out, err := execCommand(program, args...)
+	if err != nil {
+		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
+	}
+
+	return nil
+}
+
+func execCommandJson(v interface{}, program string, args ...string) error {
+	cmd := exec.Command(program, args...)
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return err
+	}
+
+	return json.NewDecoder(bytes.NewReader(out)).Decode(v)
 }
 
 func isMountPoint(p string) (bool, error) {
@@ -56,46 +77,55 @@ func tryLock(id string, mtx keymutex.KeyMutex, name string) error {
 	return nil
 }
 
-func getKeyFromCredentials(creds map[string]string) (string, error) {
-	if key, ok := creds["key"]; ok {
-		return key, nil
-	} else {
-		return "", fmt.Errorf("missing key in credentials")
+func storeCephUserCredentials(volUuid string, cr *credentials, volOptions *volumeOptions) error {
+	keyringData := cephKeyringData{
+		UserId:   cr.id,
+		Key:      cr.key,
+		RootPath: volOptions.RootPath,
 	}
+
+	if volOptions.ProvisionVolume {
+		keyringData.Pool = volOptions.Pool
+		keyringData.Namespace = getVolumeNamespace(volUuid)
+	}
+
+	return storeCephCredentials(cr, &keyringData)
 }
 
-func newMounter(volOptions *volumeOptions, key string, readOnly bool) (volumeMounter, error) {
-	var m volumeMounter
+func storeCephAdminCredentials(cr *credentials) error {
+	return storeCephCredentials(cr, &cephFullCapsKeyringData{UserId: cr.id, Key: cr.key})
+}
 
-	if volOptions.Mounter == volumeMounter_fuse {
-		keyring := cephKeyringData{
-			User:     volOptions.User,
-			Key:      key,
-			RootPath: volOptions.RootPath,
-			ReadOnly: readOnly,
-		}
-
-		if err := keyring.writeToFile(); err != nil {
-			msg := fmt.Sprintf("couldn't write ceph keyring for user %s: %v", volOptions.User, err)
-			glog.Error(msg)
-			return nil, status.Error(codes.Internal, msg)
-		}
-
-		m = &fuseMounter{}
-	} else if volOptions.Mounter == volumeMounter_kernel {
-		secret := cephSecretData{
-			User: volOptions.User,
-			Key:  key,
-		}
-
-		if err := secret.writeToFile(); err != nil {
-			msg := fmt.Sprintf("couldn't write ceph secret for user %s: %v", volOptions.User, err)
-			glog.Error(msg)
-			return nil, status.Error(codes.Internal, msg)
-		}
-
-		m = &kernelMounter{}
+func storeCephCredentials(cr *credentials, keyringData cephConfigWriter) error {
+	if err := keyringData.writeToFile(); err != nil {
+		return err
 	}
 
-	return m, nil
+	secret := cephSecretData{
+		UserId: cr.id,
+		Key:    cr.key,
+	}
+
+	if err := secret.writeToFile(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func newMounter(volOptions *volumeOptions) volumeMounter {
+	mounter := volOptions.Mounter
+
+	if mounter == "" {
+		mounter = DefaultVolumeMounter
+	}
+
+	switch mounter {
+	case volumeMounter_fuse:
+		return &fuseMounter{}
+	case volumeMounter_kernel:
+		return &kernelMounter{}
+	}
+
+	return nil
 }
