@@ -21,6 +21,12 @@ import (
 	"github.com/pborman/uuid"
 )
 
+const (
+	dynamicallyProvisionedVolumePrefix = "csi-cephfs-dyn-"
+	staticallyProvisionedVolumePrefix  = "csi-cephfs-sta-"
+	volumePrefixLen                    = len(dynamicallyProvisionedVolumePrefix)
+)
+
 type volumeIdentifier struct {
 	name, uuid, id string
 }
@@ -31,7 +37,24 @@ func newVolumeIdentifier(volOptions *volumeOptions, req *csi.CreateVolumeRequest
 		uuid: uuid.NewUUID().String(),
 	}
 
-	volId.id = "csi-cephfs-" + volId.uuid
+	prefix := staticallyProvisionedVolumePrefix
+	if volOptions.ProvisionVolume {
+		prefix = dynamicallyProvisionedVolumePrefix
+	}
+
+	volId.id = prefix + volId.uuid
 
 	return &volId
+}
+
+func uuidFromVolumeId(volId string) string {
+	return volId[volumePrefixLen:]
+}
+
+func isDynProvision(volId string) bool {
+	if len(volId) <= volumePrefixLen {
+		return false
+	}
+
+	return volId[:volumePrefixLen] == dynamicallyProvisionedVolumePrefix
 }
