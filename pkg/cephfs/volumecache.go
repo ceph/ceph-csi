@@ -103,7 +103,7 @@ func (vc *volumeCache) insert(ent *volumeCacheEntry) error {
 
 	e := json.NewEncoder(f)
 	if err = e.Encode(ent); err != nil {
-		return fmt.Errorf("failed to encode cache entry for volume %s: %v", ent.Identifier.id)
+		return fmt.Errorf("failed to encode cache entry for volume %s: %v", ent.Identifier.id, err)
 	}
 
 	vc.entries[ent.Identifier.uuid] = ent
