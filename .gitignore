@@ -4,7 +4,8 @@
 /_output
 
 # docker build
-/deploy/docker/rbdplugin
+/deploy/rbd/docker/rbdplugin
+/deploy/cephfs/docker/cephfsplugin
 
 # rbdplugin executable
 rbdplugin
