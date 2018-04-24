@@ -45,7 +45,7 @@ $ make rbdplugin
 
 To build a container:
 ```
-$ make container-rbdplugin
+$ make rbdplugin-container
 ```
 By running:
 ```
