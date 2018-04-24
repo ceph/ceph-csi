@@ -16,8 +16,10 @@ script:
   - test -z $(gofmt -s -l $GO_FILES)
   - go vet -v $(go list ./... | grep -v /vendor/)
   - make rbdplugin
+  - make cephfsplugin
 
 deploy:
   - provider: script
     script:
-      - ./deploy.sh
+      - ./deploy-rbd.sh
+      - ./deploy-cephfs.sh
