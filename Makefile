@@ -32,7 +32,7 @@ rbdplugin:
 
 rbdplugin-container: rbdplugin 
 	cp _output/rbdplugin  deploy/rbd/docker
-	docker build -t $(IMAGE_NAME):$(IMAGE_VERSION) deploy/rbd/docker
+	docker build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
 
 cephfsplugin:
 	if [ ! -d ./vendor ]; then dep ensure; fi
