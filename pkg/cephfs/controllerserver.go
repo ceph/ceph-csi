@@ -77,12 +77,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	volId := newVolumeIdentifier(volOptions, req)
 
-	conf := cephConfigData{Monitors: volOptions.Monitors}
-	if err = conf.writeToFile(); err != nil {
-		glog.Errorf("couldn't generate ceph.conf: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
 	// Create a volume in case the user didn't provide one
 
 	if volOptions.ProvisionVolume {
