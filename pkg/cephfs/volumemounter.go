@@ -33,10 +33,12 @@ type volumeMounter interface {
 
 type fuseMounter struct{}
 
-func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
+func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, volUuid string) error {
 	args := [...]string{
 		mountPoint,
+		"-c", getCephConfPath(volUuid),
 		"-n", cephEntityClientPrefix + cr.id,
+		"--keyring", getCephKeyringPath(cr.id),
 		"-r", volOptions.RootPath,
 	}
 
@@ -45,7 +47,7 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions) er
 		return fmt.Errorf("cephfs: ceph-fuse failed with following error: %s\ncephfs: ceph-fuse output: %s", err, out)
 	}
 
-	if !bytes.Contains(out, []byte("starting fuse"[:])) {
+	if !bytes.Contains(out, []byte("starting fuse")) {
 		return fmt.Errorf("cephfs: ceph-fuse failed:\ncephfs: ceph-fuse output: %s", out)
 	}
 
@@ -63,7 +65,7 @@ func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volu
 		return err
 	}
 
-	if err := mountFuse(localVolRoot, cr, volOptions); err != nil {
+	if err := mountFuse(localVolRoot, cr, volOptions, volUuid); err != nil {
 		return err
 	}
 
