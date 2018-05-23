@@ -51,7 +51,7 @@ const cephSecret = `{{.Key}}`
 
 const (
 	cephConfigRoot         = "/etc/ceph"
-	cephConfigFileName     = "ceph.conf"
+	cephConfigFileNameFmt  = "ceph.share.%s.conf"
 	cephKeyringFileNameFmt = "ceph.client.%s.keyring"
 	cephSecretFileNameFmt  = "ceph.client.%s.secret"
 )
@@ -85,7 +85,8 @@ type cephConfigWriter interface {
 }
 
 type cephConfigData struct {
-	Monitors string
+	Monitors   string
+	VolumeUuid string
 }
 
 func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, data interface{}) error {
@@ -107,7 +108,7 @@ func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, dat
 }
 
 func (d *cephConfigData) writeToFile() error {
-	return writeCephTemplate(cephConfigFileName, 0640, cephConfigTempl, d)
+	return writeCephTemplate(fmt.Sprintf(cephConfigFileNameFmt, d.VolumeUuid), 0640, cephConfigTempl, d)
 }
 
 type cephKeyringData struct {
@@ -144,6 +145,6 @@ func getCephKeyringPath(userId string) string {
 	return path.Join(cephConfigRoot, fmt.Sprintf(cephKeyringFileNameFmt, userId))
 }
 
-func getCephConfPath() string {
-	return path.Join(cephConfigRoot, cephConfigFileName)
+func getCephConfPath(volUuid string) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephConfigFileNameFmt, volUuid))
 }

@@ -119,6 +119,12 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeUuid: volUuid}
+	if err = conf.writeToFile(); err != nil {
+		glog.Errorf("failed to write ceph config file to %s: %v", getCephConfPath(volUuid), err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	// Check if the volume is already mounted
 
 	isMnt, err := isMountPoint(targetPath)
