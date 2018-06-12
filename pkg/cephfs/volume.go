@@ -88,7 +88,7 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volUuid strin
 	// Access to cephfs's / is required
 	volOptions.RootPath = "/"
 
-	if err := mountKernel(cephRoot, adminCr, volOptions); err != nil {
+	if err := mountKernel(cephRoot, adminCr, volOptions, volUuid); err != nil {
 		return fmt.Errorf("error mounting ceph root: %v", err)
 	}
 
@@ -144,7 +144,7 @@ func purgeVolume(volId string, cr *credentials, volOptions *volumeOptions) error
 		return err
 	}
 
-	if err := mountKernel(volRoot, cr, volOptions); err != nil {
+	if err := mountKernel(volRoot, cr, volOptions, volUuid); err != nil {
 		return err
 	}
 

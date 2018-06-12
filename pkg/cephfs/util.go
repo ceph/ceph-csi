@@ -79,9 +79,10 @@ func tryLock(id string, mtx keymutex.KeyMutex, name string) error {
 
 func storeCephUserCredentials(volUuid string, cr *credentials, volOptions *volumeOptions) error {
 	keyringData := cephKeyringData{
-		UserId:   cr.id,
-		Key:      cr.key,
-		RootPath: volOptions.RootPath,
+		UserId:     cr.id,
+		Key:        cr.key,
+		RootPath:   volOptions.RootPath,
+		VolumeUuid: volUuid,
 	}
 
 	if volOptions.ProvisionVolume {
@@ -89,21 +90,22 @@ func storeCephUserCredentials(volUuid string, cr *credentials, volOptions *volum
 		keyringData.Namespace = getVolumeNamespace(volUuid)
 	}
 
-	return storeCephCredentials(cr, &keyringData)
+	return storeCephCredentials(volUuid, cr, &keyringData)
 }
 
-func storeCephAdminCredentials(cr *credentials) error {
-	return storeCephCredentials(cr, &cephFullCapsKeyringData{UserId: cr.id, Key: cr.key})
+func storeCephAdminCredentials(volUuid string, cr *credentials) error {
+	return storeCephCredentials(volUuid, cr, &cephFullCapsKeyringData{UserId: cr.id, Key: cr.key, VolumeUuid: volUuid})
 }
 
-func storeCephCredentials(cr *credentials, keyringData cephConfigWriter) error {
+func storeCephCredentials(volUuid string, cr *credentials, keyringData cephConfigWriter) error {
 	if err := keyringData.writeToFile(); err != nil {
 		return err
 	}
 
 	secret := cephSecretData{
-		UserId: cr.id,
-		Key:    cr.key,
+		UserId:     cr.id,
+		Key:        cr.key,
+		VolumeUuid: volUuid,
 	}
 
 	if err := secret.writeToFile(); err != nil {

@@ -38,7 +38,7 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, vo
 		mountPoint,
 		"-c", getCephConfPath(volUuid),
 		"-n", cephEntityClientPrefix + cr.id,
-		"--keyring", getCephKeyringPath(cr.id),
+		"--keyring", getCephKeyringPath(volUuid, cr.id),
 		"-r", volOptions.RootPath,
 	}
 
@@ -74,7 +74,7 @@ func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volu
 
 type kernelMounter struct{}
 
-func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
+func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, volUuid string) error {
 	if err := execCommandAndValidate("modprobe", "ceph"); err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions) 
 		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
 		mountPoint,
 		"-o",
-		fmt.Sprintf("name=%s,secretfile=%s", cr.id, getCephSecretPath(cr.id)),
+		fmt.Sprintf("name=%s,secretfile=%s", cr.id, getCephSecretPath(volUuid, cr.id)),
 	)
 }
 
@@ -99,7 +99,7 @@ func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *vo
 		return err
 	}
 
-	if err := mountKernel(localVolRoot, cr, volOptions); err != nil {
+	if err := mountKernel(localVolRoot, cr, volOptions, volUuid); err != nil {
 		return err
 	}
 
