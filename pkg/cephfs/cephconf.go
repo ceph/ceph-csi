@@ -52,8 +52,8 @@ const cephSecret = `{{.Key}}`
 const (
 	cephConfigRoot         = "/etc/ceph"
 	cephConfigFileNameFmt  = "ceph.share.%s.conf"
-	cephKeyringFileNameFmt = "ceph.client.%s.keyring"
-	cephSecretFileNameFmt  = "ceph.client.%s.secret"
+	cephKeyringFileNameFmt = "ceph.share.%s.client.%s.keyring"
+	cephSecretFileNameFmt  = "ceph.share.%s.client.%s.secret"
 )
 
 var (
@@ -115,34 +115,37 @@ type cephKeyringData struct {
 	UserId, Key     string
 	RootPath        string
 	Pool, Namespace string
+	VolumeUuid      string
 }
 
 func (d *cephKeyringData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.UserId), 0600, cephKeyringTempl, d)
+	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.VolumeUuid, d.UserId), 0600, cephKeyringTempl, d)
 }
 
 type cephFullCapsKeyringData struct {
 	UserId, Key string
+	VolumeUuid  string
 }
 
 func (d *cephFullCapsKeyringData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.UserId), 0600, cephFullCapsKeyringTempl, d)
+	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.VolumeUuid, d.UserId), 0600, cephFullCapsKeyringTempl, d)
 }
 
 type cephSecretData struct {
 	UserId, Key string
+	VolumeUuid  string
 }
 
 func (d *cephSecretData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephSecretFileNameFmt, d.UserId), 0600, cephSecretTempl, d)
+	return writeCephTemplate(fmt.Sprintf(cephSecretFileNameFmt, d.VolumeUuid, d.UserId), 0600, cephSecretTempl, d)
 }
 
-func getCephSecretPath(userId string) string {
-	return path.Join(cephConfigRoot, fmt.Sprintf(cephSecretFileNameFmt, userId))
+func getCephSecretPath(volUuid, userId string) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephSecretFileNameFmt, volUuid, userId))
 }
 
-func getCephKeyringPath(userId string) string {
-	return path.Join(cephConfigRoot, fmt.Sprintf(cephKeyringFileNameFmt, userId))
+func getCephKeyringPath(volUuid, userId string) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephKeyringFileNameFmt, volUuid, userId))
 }
 
 func getCephConfPath(volUuid string) string {

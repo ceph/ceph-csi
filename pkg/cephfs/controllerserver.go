@@ -77,6 +77,12 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	volId := newVolumeIdentifier(volOptions, req)
 
+	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeUuid: volId.uuid}
+	if err = conf.writeToFile(); err != nil {
+		glog.Errorf("failed to write ceph config file to %s: %v", getCephConfPath(volId.uuid), err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	// Create a volume in case the user didn't provide one
 
 	if volOptions.ProvisionVolume {
@@ -87,7 +93,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		if err = storeCephAdminCredentials(cr); err != nil {
+		if err = storeCephAdminCredentials(volId.uuid, cr); err != nil {
 			glog.Errorf("failed to store admin credentials for '%s': %v", cr.id, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -164,16 +170,16 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	if ent.VolOptions.ProvisionVolume {
 		// The user is no longer needed
-		if err := deleteCephUser(volUuid); err != nil {
+		if err := deleteCephUser(cr, volUuid); err != nil {
 			glog.Warningf("failed to delete ceph user '%s': %v", cr.id, err)
 		}
 
 		userId := getCephUserName(volUuid)
-		os.Remove(getCephKeyringPath(userId))
-		os.Remove(getCephSecretPath(userId))
+		os.Remove(getCephKeyringPath(volUuid, userId))
+		os.Remove(getCephSecretPath(volUuid, userId))
 	} else {
-		os.Remove(getCephKeyringPath(cr.id))
-		os.Remove(getCephSecretPath(cr.id))
+		os.Remove(getCephKeyringPath(volUuid, cr.id))
+		os.Remove(getCephSecretPath(volUuid, cr.id))
 	}
 
 	if err := volCache.erase(volUuid); err != nil {

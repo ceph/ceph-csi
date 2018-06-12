@@ -57,26 +57,16 @@ func getCephUser(userId string) (*cephEntity, error) {
 	return &ents[0], nil
 }
 
-func (e *cephEntity) create() error {
-	return execCommandJson(e, "ceph", "auth", "get-or-create", e.Entity, "mds", e.Caps.Mds, "osd", e.Caps.Osd, "mon", e.Caps.Mon)
-
-}
-
-func createCephUser(volOptions *volumeOptions, volUuid string, readOnly bool) (*cephEntity, error) {
-	access := "rw"
-	if readOnly {
-		access = "r"
-	}
-
+func createCephUser(volOptions *volumeOptions, cr *credentials, volUuid string) (*cephEntity, error) {
 	caps := cephEntityCaps{
-		Mds: fmt.Sprintf("allow %s path=%s", access, getVolumeRootPath_ceph(volUuid)),
+		Mds: fmt.Sprintf("allow rw path=%s", getVolumeRootPath_ceph(volUuid)),
 		Mon: "allow r",
-		Osd: fmt.Sprintf("allow %s pool=%s namespace=%s", access, volOptions.Pool, getVolumeNamespace(volUuid)),
+		Osd: fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volUuid)),
 	}
 
 	var ents []cephEntity
 	args := [...]string{
-		"auth", "-f", "json",
+		"auth", "-f", "json", "-c", getCephConfPath(volUuid), "-n", cephEntityClientPrefix + cr.id,
 		"get-or-create", cephEntityClientPrefix + getCephUserName(volUuid),
 		"mds", caps.Mds,
 		"mon", caps.Mon,
@@ -90,15 +80,20 @@ func createCephUser(volOptions *volumeOptions, volUuid string, readOnly bool) (*
 	return &ents[0], nil
 }
 
-func deleteCephUser(volUuid string) error {
+func deleteCephUser(cr *credentials, volUuid string) error {
 	userId := getCephUserName(volUuid)
 
-	if err := execCommandAndValidate("ceph", "auth", "rm", cephEntityClientPrefix+userId); err != nil {
+	args := [...]string{
+		"-c", getCephConfPath(volUuid), "-n", cephEntityClientPrefix + cr.id,
+		"auth", "rm", cephEntityClientPrefix + userId,
+	}
+
+	if err := execCommandAndValidate("ceph", args[:]...); err != nil {
 		return err
 	}
 
-	os.Remove(getCephKeyringPath(userId))
-	os.Remove(getCephSecretPath(userId))
+	os.Remove(getCephKeyringPath(volUuid, userId))
+	os.Remove(getCephSecretPath(volUuid, userId))
 
 	return nil
 }

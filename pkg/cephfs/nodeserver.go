@@ -71,7 +71,20 @@ func handleUser(volOptions *volumeOptions, volUuid string, req *csi.NodePublishV
 	if volOptions.ProvisionVolume {
 		// The volume is provisioned dynamically, create a dedicated user
 
-		if ent, err := createCephUser(volOptions, volUuid, req.GetReadonly()); err != nil {
+		// First, store admin credentials - those are needed for creating a user
+
+		adminCr, err := getAdminCredentials(req.GetNodePublishSecrets())
+		if err != nil {
+			return nil, err
+		}
+
+		if err = storeCephAdminCredentials(volUuid, adminCr); err != nil {
+			return nil, err
+		}
+
+		// Then create the user
+
+		if ent, err := createCephUser(volOptions, adminCr, volUuid); err != nil {
 			return nil, err
 		} else {
 			cr.id = ent.Entity[len(cephEntityClientPrefix):]
