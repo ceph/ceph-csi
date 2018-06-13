@@ -31,9 +31,6 @@ const (
 	cephVolumePrefix = PluginFolder + "/controller/volumes/vol-"
 	cephVolumesRoot  = "csi-volumes"
 
-	volumeDataSuffix     = "volume-data"
-	volumeDeletingSuffix = "volume-deleting"
-
 	namespacePrefix = "csi-ns-"
 )
 
@@ -45,28 +42,12 @@ func getCephRootVolumePath_local(volUuid string) string {
 	return path.Join(getCephRootPath_local(volUuid), cephVolumesRoot, volUuid)
 }
 
-func getCephRootVolumeDataPath_local(volUuid string) string {
-	return path.Join(getCephRootVolumePath_local(volUuid), volumeDataSuffix)
-}
-
-func getCephRootVolumeDeletingPath_local(volUuid string) string {
-	return path.Join(getCephRootVolumePath_local(volUuid), volumeDeletingSuffix)
-}
-
 func getVolumeRootPath_local(volUuid string) string {
 	return cephVolumePrefix + volUuid
 }
 
 func getVolumeRootPath_ceph(volUuid string) string {
 	return path.Join("/", cephVolumesRoot, volUuid)
-}
-
-func getVolumeDataPath_local(volUuid string) string {
-	return path.Join(getVolumeRootPath_local(volUuid), volumeDataSuffix)
-}
-
-func getVolumeDeletingPath_local(volUuid string) string {
-	return path.Join(getVolumeRootPath_local(volUuid), volumeDeletingSuffix)
 }
 
 func getVolumeNamespace(volUuid string) string {
@@ -120,54 +101,35 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volUuid strin
 }
 
 func purgeVolume(volId string, cr *credentials, volOptions *volumeOptions) error {
+	// Root path is not set for dynamically provisioned volumes
+	volOptions.RootPath = "/"
+
 	var (
-		volUuid  = uuidFromVolumeId(volId)
-		volRoot  string
-		dataPath string
-		delPath  string
+		volUuid         = uuidFromVolumeId(volId)
+		root            = getCephRootPath_local(volUuid)
+		volRoot         = getCephRootVolumePath_local(volUuid)
+		volRootDeleting = volRoot + "-deleting"
 	)
 
-	if volOptions.ProvisionVolume {
-		// RootPath is not set for a dynamically provisioned volume
-		volOptions.RootPath = "/"
-
-		volRoot = getCephRootPath_local(volUuid)
-		dataPath = getCephRootVolumeDataPath_local(volUuid)
-		delPath = getCephRootVolumeDeletingPath_local(volUuid)
-	} else {
-		volRoot = getVolumeRootPath_local(volUuid)
-		dataPath = getVolumeDataPath_local(volUuid)
-		delPath = getVolumeDeletingPath_local(volUuid)
-	}
-
-	if err := createMountPoint(volRoot); err != nil {
+	if err := createMountPoint(root); err != nil {
 		return err
 	}
 
-	if err := mountKernel(volRoot, cr, volOptions, volUuid); err != nil {
+	if err := mountKernel(root, cr, volOptions, volUuid); err != nil {
 		return err
 	}
 
 	defer func() {
-		if volOptions.ProvisionVolume {
-			os.Remove(getCephRootVolumePath_local(volUuid))
-		}
-
 		unmountVolume(volRoot)
 		os.Remove(volRoot)
 	}()
 
-	if err := os.Rename(dataPath, delPath); err != nil {
-		if os.IsNotExist(err) {
-			// dataPath doesn't exist if NodePublishVolume wasn't called
-			return nil
-		} else {
-			return fmt.Errorf("couldn't mark volume %s for deletion: %v", volId, err)
-		}
+	if err := os.Rename(volRoot, volRootDeleting); err != nil {
+		return fmt.Errorf("coudln't mark volume %s for deletion: %v", volId, err)
 	}
 
-	if err := os.RemoveAll(delPath); err != nil {
-		return fmt.Errorf("couldn't delete volume %s: %v", volId, err)
+	if err := os.RemoveAll(volRootDeleting); err != nil {
+		return fmt.Errorf("failed to delete volume %s: %v", volId, err)
 	}
 
 	return nil
