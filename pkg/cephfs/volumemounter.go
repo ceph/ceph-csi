@@ -121,7 +121,7 @@ func bindMount(from, to string, readOnly bool) error {
 }
 
 func bindVolume(volUuid, target string, readOnly bool) error {
-	volDataRoot := getVolumeDataPath_local(volUuid)
+	volDataRoot := getVolumeRootPath_local(volUuid)
 
 	if err := createMountPoint(volDataRoot); err != nil {
 		return err

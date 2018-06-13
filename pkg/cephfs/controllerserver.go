@@ -18,7 +18,6 @@ package cephfs
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
@@ -39,7 +38,7 @@ const (
 
 func (cs *controllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		return fmt.Errorf("Invalid CreateVolumeRequest: %v", err)
+		return fmt.Errorf("invalid CreateVolumeRequest: %v", err)
 	}
 
 	if req.GetName() == "" {
@@ -55,7 +54,7 @@ func (cs *controllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 
 func (cs *controllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		return fmt.Errorf("Invalid DeleteVolumeRequest: %v", err)
+		return fmt.Errorf("invalid DeleteVolumeRequest: %v", err)
 	}
 
 	return nil
@@ -112,10 +111,15 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		glog.Warningf("failed to store a volume cache entry: %v", err)
 	}
 
+	sz := req.GetCapacityRange().GetRequiredBytes()
+	if sz == 0 {
+		sz = oneGB
+	}
+
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            volId.id,
-			CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
+			CapacityBytes: sz,
 			Attributes:    req.GetParameters(),
 		},
 	}, nil
@@ -128,8 +132,6 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	var (
-		cr      *credentials
-		err     error
 		volId   = req.GetVolumeId()
 		volUuid = uuidFromVolumeId(volId)
 	)
@@ -143,46 +145,35 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, msg)
 	}
 
-	// Set the correct user for mounting
-
-	if ent.VolOptions.ProvisionVolume {
-		// Admin access is required
-
-		cr, err = getAdminCredentials(req.GetControllerDeleteSecrets())
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-	} else {
-		cr, err = getUserCredentials(req.GetControllerDeleteSecrets())
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
+	if !ent.VolOptions.ProvisionVolume {
+		// DeleteVolume() is forbidden for statically provisioned volumes!
+		msg := fmt.Sprintf("volume %s is provisioned statically, aborting delete", volId)
+		glog.Warningf(msg)
+		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	// Delete the volume contents
+	// Requires admin credentials
 
-	if err := purgeVolume(volId, cr, &ent.VolOptions); err != nil {
-		glog.Error(err)
+	cr, err := getAdminCredentials(req.GetControllerDeleteSecrets())
+	if err != nil {
+		glog.Errorf("failed to retrieve admin credentials: %v", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// Remove the volume, the user and the volume cache entry
+
+	if err = purgeVolume(volId, cr, &ent.VolOptions); err != nil {
+		glog.Errorf("failed to delete volume %s: %v", volId, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Clean up remaining files
-
-	if ent.VolOptions.ProvisionVolume {
-		// The user is no longer needed
-		if err := deleteCephUser(cr, volUuid); err != nil {
-			glog.Warningf("failed to delete ceph user '%s': %v", cr.id, err)
-		}
-
-		userId := getCephUserName(volUuid)
-		os.Remove(getCephKeyringPath(volUuid, userId))
-		os.Remove(getCephSecretPath(volUuid, userId))
-	} else {
-		os.Remove(getCephKeyringPath(volUuid, cr.id))
-		os.Remove(getCephSecretPath(volUuid, cr.id))
+	if err = deleteCephUser(cr, volUuid); err != nil {
+		glog.Errorf("failed to delete ceph user %s: %v", getCephUserName(volUuid), err)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := volCache.erase(volUuid); err != nil {
+	if err = volCache.erase(volUuid); err != nil {
+		glog.Errorf("failed to delete cache entry for volume %s: %v", volId, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
