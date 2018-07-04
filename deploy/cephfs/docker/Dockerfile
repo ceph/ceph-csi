@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 LABEL maintainers="Kubernetes Authors"
 LABEL description="CephFS CSI Plugin"
 
-ENV CEPH_VERSION "luminous"
+ENV CEPH_VERSION "mimic"
 
 RUN apt-get update && apt-get install -y wget && \
     wget -q -O- 'https://download.ceph.com/keys/release.asc' | apt-key add - && \
