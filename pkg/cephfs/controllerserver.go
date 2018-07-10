@@ -185,5 +185,11 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 func (cs *controllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	// Cephfs doesn't support Block volume
+	for _, cap := range req.VolumeCapabilities {
+		if cap.GetBlock() != nil {
+			return &csi.ValidateVolumeCapabilitiesResponse{Supported: false, Message: ""}, nil
+		}
+	}
 	return &csi.ValidateVolumeCapabilitiesResponse{Supported: true}, nil
 }
