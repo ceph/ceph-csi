@@ -1,0 +1,24 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+   name: csi-rbd
+provisioner: csi-rbdplugin 
+parameters:
+    # Comma separated list of Ceph monitors
+    monitors: mon1:port,mon2:port,...
+
+    # Ceph pool into which the RBD image shall be created
+    pool: rbd
+
+    # RBD image format. Defaults to "2".
+    imageFormat: "2"
+
+    # RBD image features. Available for imageFormat: "2". CSI RBD currently supports only `layering` feature.
+    imageFeatures: layering
+    
+    # The secrets have to contain Ceph admin credentials.
+    csiProvisionerSecretName: csi-rbd-secret
+    csiProvisionerSecretNamespace: default
+    csiNodePublishSecretName: csi-rbd-secret
+    csiNodePublishSecretNamespace: default
+reclaimPolicy: Delete
