@@ -1,0 +1,45 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-cephfsplugin-attacher
+  labels:
+    app: csi-cephfsplugin-attacher
+spec:
+  selector:
+    app: csi-cephfsplugin-attacher
+  ports:
+    - name: dummy
+      port: 12345
+
+---
+kind: StatefulSet
+apiVersion: apps/v1beta1
+metadata:
+  name: csi-cephfsplugin-attacher
+spec:
+  serviceName: "csi-cephfsplugin-attacher"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: csi-cephfsplugin-attacher
+    spec:
+      serviceAccount: csi-attacher
+      containers:
+        - name: csi-cephfsplugin-attacher
+          image: quay.io/k8scsi/csi-attacher:v0.3.0
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/kubelet/plugins/csi-cephfsplugin/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/kubelet/plugins/csi-cephfsplugin
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/csi-cephfsplugin
+            type: DirectoryOrCreate

@@ -15,10 +15,10 @@
 .PHONY: all rbdplugin
 
 RBD_IMAGE_NAME=quay.io/cephcsi/rbdplugin
-RBD_IMAGE_VERSION=v0.2.0
+RBD_IMAGE_VERSION=v0.3.0
 
 CEPHFS_IMAGE_NAME=quay.io/cephcsi/cephfsplugin
-CEPHFS_IMAGE_VERSION=v0.2.0
+CEPHFS_IMAGE_VERSION=v0.3.0
 
 all: rbdplugin cephfsplugin
 
@@ -30,7 +30,7 @@ rbdplugin:
 	if [ ! -d ./vendor ]; then dep ensure; fi
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/rbdplugin ./rbd
 
-rbdplugin-container: rbdplugin 
+image-rbdplugin: rbdplugin
 	cp _output/rbdplugin  deploy/rbd/docker
 	docker build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
 
@@ -38,14 +38,14 @@ cephfsplugin:
 	if [ ! -d ./vendor ]; then dep ensure; fi
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephfsplugin ./cephfs
 
-cephfsplugin-container: cephfsplugin 
+image-cephfsplugin: cephfsplugin
 	cp _output/cephfsplugin deploy/cephfs/docker
 	docker build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) deploy/cephfs/docker
 
-push-rbdplugin-container: rbdplugin-container
+push-image-rbdplugin: image-rbdplugin
 	docker push $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION)
 
-push-cephfsplugin-container: cephfsplugin-container
+push-image-cephfsplugin: image-cephfsplugin
 	docker push $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION)
 
 clean:

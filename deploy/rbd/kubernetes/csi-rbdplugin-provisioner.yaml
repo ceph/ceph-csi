@@ -1,0 +1,46 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-rbdplugin-provisioner
+  labels:
+    app: csi-rbdplugin-provisioner
+spec:
+  selector:
+    app: csi-rbdplugin-provisioner
+  ports:
+    - name: dummy
+      port: 12345
+
+---
+kind: StatefulSet
+apiVersion: apps/v1beta1
+metadata:
+  name: csi-rbdplugin-provisioner
+spec:
+  serviceName: "csi-rbdplugin-provisioner"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: csi-rbdplugin-provisioner
+    spec:
+      serviceAccount: csi-provisioner
+      containers:
+        - name: csi-provisioner
+          image: quay.io/k8scsi/csi-provisioner:v0.3.0
+          args:
+            - "--provisioner=csi-rbdplugin"
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/csi-rbdplugin
+            type: DirectoryOrCreate
