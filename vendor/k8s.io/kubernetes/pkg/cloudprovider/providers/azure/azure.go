@@ -49,6 +49,14 @@ const (
 
 	vmTypeVMSS     = "vmss"
 	vmTypeStandard = "standard"
+
+	loadBalancerSkuBasic    = "basic"
+	loadBalancerSkuStandard = "standard"
+)
+
+var (
+	// Master nodes are not added to standard load balancer by default.
+	defaultExcludeMasterFromStandardLB = true
 )
 
 // Config holds the configuration parsed from the --cloud-config flag
@@ -109,11 +117,15 @@ type Config struct {
 	// Use instance metadata service where possible
 	UseInstanceMetadata bool `json:"useInstanceMetadata" yaml:"useInstanceMetadata"`
 
-	// Use managed service identity for the virtual machine to access Azure ARM APIs
-	UseManagedIdentityExtension bool `json:"useManagedIdentityExtension"`
+	// Sku of Load Balancer and Public IP. Candidate values are: basic and standard.
+	// If not set, it will be default to basic.
+	LoadBalancerSku string `json:"loadBalancerSku" yaml:"loadBalancerSku"`
+	// ExcludeMasterFromStandardLB excludes master nodes from standard load balancer.
+	// If not set, it will be default to true.
+	ExcludeMasterFromStandardLB *bool `json:"excludeMasterFromStandardLB" yaml:"excludeMasterFromStandardLB"`
 
 	// Maximum allowed LoadBalancer Rule Count is the limit enforced by Azure Load balancer
-	MaximumLoadBalancerRuleCount int `json:"maximumLoadBalancerRuleCount"`
+	MaximumLoadBalancerRuleCount int `json:"maximumLoadBalancerRuleCount" yaml:"maximumLoadBalancerRuleCount"`
 }
 
 // Cloud holds the config and clients
@@ -158,6 +170,11 @@ func NewCloud(configReader io.Reader) (cloudprovider.Interface, error) {
 	config, err := parseConfig(configReader)
 	if err != nil {
 		return nil, err
+	}
+
+	if config.VMType == "" {
+		// default to standard vmType if not set.
+		config.VMType = vmTypeStandard
 	}
 
 	env, err := auth.ParseAzureEnvironment(config.Cloud)
@@ -206,7 +223,11 @@ func NewCloud(configReader io.Reader) (cloudprovider.Interface, error) {
 		glog.V(2).Infof("Azure cloudprovider (write ops) using rate limit config: QPS=%g, bucket=%d",
 			config.CloudProviderRateLimitQPSWrite,
 			config.CloudProviderRateLimitBucketWrite)
+	}
 
+	// Do not add master nodes to standard LB by default.
+	if config.ExcludeMasterFromStandardLB == nil {
+		config.ExcludeMasterFromStandardLB = &defaultExcludeMasterFromStandardLB
 	}
 
 	azClientConfig := &azClientConfig{

@@ -174,6 +174,16 @@ func (kl *Kubelet) GetPodByName(namespace, name string) (*v1.Pod, bool) {
 	return kl.podManager.GetPodByName(namespace, name)
 }
 
+// GetPodByCgroupfs provides the pod that maps to the specified cgroup, as well
+// as whether the pod was found.
+func (kl *Kubelet) GetPodByCgroupfs(cgroupfs string) (*v1.Pod, bool) {
+	pcm := kl.containerManager.NewPodContainerManager()
+	if result, podUID := pcm.IsPodCgroup(cgroupfs); result {
+		return kl.podManager.GetPodByUID(podUID)
+	}
+	return nil, false
+}
+
 // GetHostname Returns the hostname as the kubelet sees it.
 func (kl *Kubelet) GetHostname() string {
 	return kl.hostname
@@ -274,6 +284,24 @@ func (kl *Kubelet) getPodVolumePathListFromDisk(podUID types.UID) ([]string, err
 	return volumes, nil
 }
 
+func (kl *Kubelet) getMountedVolumePathListFromDisk(podUID types.UID) ([]string, error) {
+	mountedVolumes := []string{}
+	volumePaths, err := kl.getPodVolumePathListFromDisk(podUID)
+	if err != nil {
+		return mountedVolumes, err
+	}
+	for _, volumePath := range volumePaths {
+		isNotMount, err := kl.mounter.IsLikelyNotMountPoint(volumePath)
+		if err != nil {
+			return mountedVolumes, err
+		}
+		if !isNotMount {
+			mountedVolumes = append(mountedVolumes, volumePath)
+		}
+	}
+	return mountedVolumes, nil
+}
+
 // GetVersionInfo returns information about the version of cAdvisor in use.
 func (kl *Kubelet) GetVersionInfo() (*cadvisorapiv1.VersionInfo, error) {
 	return kl.cadvisor.VersionInfo()
@@ -281,12 +309,5 @@ func (kl *Kubelet) GetVersionInfo() (*cadvisorapiv1.VersionInfo, error) {
 
 // GetCachedMachineInfo assumes that the machine info can't change without a reboot
 func (kl *Kubelet) GetCachedMachineInfo() (*cadvisorapiv1.MachineInfo, error) {
-	if kl.machineInfo == nil {
-		info, err := kl.cadvisor.MachineInfo()
-		if err != nil {
-			return nil, err
-		}
-		kl.machineInfo = info
-	}
 	return kl.machineInfo, nil
 }

@@ -8,9 +8,13 @@ load(
 
 go_test(
     name = "go_default_test",
-    srcs = ["util_test.go"],
+    srcs = [
+        "util_test.go",
+    ],
     embed = [":go_default_library"],
-    deps = ["//vendor/github.com/stretchr/testify/assert:go_default_library"],
+    deps = [
+        "//vendor/github.com/stretchr/testify/assert:go_default_library",
+    ],
 )
 
 go_library(
@@ -88,9 +92,12 @@ filegroup(
         "//pkg/kubelet/util/cache:all-srcs",
         "//pkg/kubelet/util/format:all-srcs",
         "//pkg/kubelet/util/ioutils:all-srcs",
+        "//pkg/kubelet/util/manager:all-srcs",
+        "//pkg/kubelet/util/pluginwatcher:all-srcs",
         "//pkg/kubelet/util/queue:all-srcs",
         "//pkg/kubelet/util/sliceutils:all-srcs",
         "//pkg/kubelet/util/store:all-srcs",
     ],
     tags = ["automanaged"],
+    visibility = ["//visibility:public"],
 )

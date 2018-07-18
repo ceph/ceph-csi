@@ -29,7 +29,7 @@ import (
 	"k8s.io/client-go/rest/fake"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
@@ -321,39 +321,45 @@ func TestLabelErrors(t *testing.T) {
 	}
 
 	for k, testCase := range testCases {
-		tf := cmdtesting.NewTestFactory()
-		tf.Namespace = "test"
-		tf.ClientConfigVal = defaultClientConfig()
+		t.Run(k, func(t *testing.T) {
+			tf := cmdtesting.NewTestFactory().WithNamespace("test")
+			defer tf.Cleanup()
 
-		buf := bytes.NewBuffer([]byte{})
-		cmd := NewCmdLabel(tf, buf)
-		cmd.SetOutput(buf)
+			tf.ClientConfigVal = defaultClientConfig()
 
-		for k, v := range testCase.flags {
-			cmd.Flags().Set(k, v)
-		}
-		opts := LabelOptions{}
-		err := opts.Complete(buf, cmd, testCase.args)
-		if err == nil {
-			err = opts.Validate()
-		}
-		if err == nil {
-			err = opts.RunLabel(tf, cmd)
-		}
-		if !testCase.errFn(err) {
-			t.Errorf("%s: unexpected error: %v", k, err)
-			continue
-		}
-		if buf.Len() > 0 {
-			t.Errorf("buffer should be empty: %s", string(buf.Bytes()))
-		}
+			ioStreams, _, _, _ := genericclioptions.NewTestIOStreams()
+			buf := bytes.NewBuffer([]byte{})
+			cmd := NewCmdLabel(tf, ioStreams)
+			cmd.SetOutput(buf)
+
+			for k, v := range testCase.flags {
+				cmd.Flags().Set(k, v)
+			}
+			opts := NewLabelOptions(ioStreams)
+			err := opts.Complete(tf, cmd, testCase.args)
+			if err == nil {
+				err = opts.Validate()
+			}
+			if err == nil {
+				err = opts.RunLabel()
+			}
+			if !testCase.errFn(err) {
+				t.Errorf("%s: unexpected error: %v", k, err)
+				return
+			}
+			if buf.Len() > 0 {
+				t.Errorf("buffer should be empty: %s", string(buf.Bytes()))
+			}
+		})
 	}
 }
 
 func TestLabelForResourceFromFile(t *testing.T) {
 	pods, _, _ := testData()
-	tf := cmdtesting.NewTestFactory()
-	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	defer tf.Cleanup()
+
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
 	tf.UnstructuredClient = &fake.RESTClient{
 		NegotiatedSerializer: unstructuredSerializer,
@@ -381,19 +387,18 @@ func TestLabelForResourceFromFile(t *testing.T) {
 			}
 		}),
 	}
-	tf.Namespace = "test"
 	tf.ClientConfigVal = defaultClientConfig()
 
-	buf := bytes.NewBuffer([]byte{})
-	cmd := NewCmdLabel(tf, buf)
-	opts := LabelOptions{FilenameOptions: resource.FilenameOptions{
-		Filenames: []string{"../../../test/e2e/testing-manifests/statefulset/cassandra/controller.yaml"}}}
-	err := opts.Complete(buf, cmd, []string{"a=b"})
+	ioStreams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	cmd := NewCmdLabel(tf, ioStreams)
+	opts := NewLabelOptions(ioStreams)
+	opts.Filenames = []string{"../../../test/e2e/testing-manifests/statefulset/cassandra/controller.yaml"}
+	err := opts.Complete(tf, cmd, []string{"a=b"})
 	if err == nil {
 		err = opts.Validate()
 	}
 	if err == nil {
-		err = opts.RunLabel(tf, cmd)
+		err = opts.RunLabel()
 	}
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -404,7 +409,9 @@ func TestLabelForResourceFromFile(t *testing.T) {
 }
 
 func TestLabelLocal(t *testing.T) {
-	tf := cmdtesting.NewTestFactory()
+	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	defer tf.Cleanup()
+
 	tf.UnstructuredClient = &fake.RESTClient{
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
@@ -412,20 +419,19 @@ func TestLabelLocal(t *testing.T) {
 			return nil, nil
 		}),
 	}
-	tf.Namespace = "test"
 	tf.ClientConfigVal = defaultClientConfig()
 
-	buf := bytes.NewBuffer([]byte{})
-	cmd := NewCmdLabel(tf, buf)
-	opts := LabelOptions{FilenameOptions: resource.FilenameOptions{
-		Filenames: []string{"../../../test/e2e/testing-manifests/statefulset/cassandra/controller.yaml"}},
-		local: true}
-	err := opts.Complete(buf, cmd, []string{"a=b"})
+	ioStreams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	cmd := NewCmdLabel(tf, ioStreams)
+	opts := NewLabelOptions(ioStreams)
+	opts.Filenames = []string{"../../../test/e2e/testing-manifests/statefulset/cassandra/controller.yaml"}
+	opts.local = true
+	err := opts.Complete(tf, cmd, []string{"a=b"})
 	if err == nil {
 		err = opts.Validate()
 	}
 	if err == nil {
-		err = opts.RunLabel(tf, cmd)
+		err = opts.RunLabel()
 	}
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -437,8 +443,10 @@ func TestLabelLocal(t *testing.T) {
 
 func TestLabelMultipleObjects(t *testing.T) {
 	pods, _, _ := testData()
-	tf := cmdtesting.NewTestFactory()
-	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+	tf := cmdtesting.NewTestFactory().WithNamespace("test")
+	defer tf.Cleanup()
+
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
 	tf.UnstructuredClient = &fake.RESTClient{
 		NegotiatedSerializer: unstructuredSerializer,
@@ -468,18 +476,18 @@ func TestLabelMultipleObjects(t *testing.T) {
 			}
 		}),
 	}
-	tf.Namespace = "test"
 	tf.ClientConfigVal = defaultClientConfig()
 
-	buf := bytes.NewBuffer([]byte{})
-	cmd := NewCmdLabel(tf, buf)
-	opts := LabelOptions{all: true}
-	err := opts.Complete(buf, cmd, []string{"pods", "a=b"})
+	ioStreams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	opts := NewLabelOptions(ioStreams)
+	opts.all = true
+	cmd := NewCmdLabel(tf, ioStreams)
+	err := opts.Complete(tf, cmd, []string{"pods", "a=b"})
 	if err == nil {
 		err = opts.Validate()
 	}
 	if err == nil {
-		err = opts.RunLabel(tf, cmd)
+		err = opts.RunLabel()
 	}
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

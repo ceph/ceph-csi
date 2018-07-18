@@ -13,35 +13,34 @@ CSI_MOUNTPOINT="/mnt"
 APP=hostpathplugin
 
 SKIP="WithCapacity"
-SKIP=""
 if [ x${TRAVIS} = x"true" ] ; then
 	SKIP="WithCapacity|NodeUnpublishVolume|NodePublishVolume"
 fi
 
 # Get csi-sanity
-git clone https://github.com/kubernetes-csi/csi-test $GOPATH/src/github.com/kubernetes-csi/csi-test
-pushd $GOPATH/src/github.com/kubernetes-csi/csi-test/cmd/csi-sanity
-make all
-make install
-popd
+if [ ! -x $GOPATH/bin/csi-sanity ] ; then
+	go get -u github.com/kubernetes-csi/csi-test
+	pushd $GOPATH/src/github.com/kubernetes-csi/csi-test/cmd/csi-sanity
+	make all
+	make install
+	popd
 #./hack/get-sanity.sh
+fi
 
 # Build
-cd app/hostpathplugin
-  go install || exit 1
-cd ../..
+make hostpath
 
 # Cleanup
 rm -f $UDS
 
 # Start the application in the background
-sudo $GOPATH/bin/$APP --endpoint=$CSI_ENDPOINT --nodeid=1 &
+sudo _output/$APP --endpoint=$CSI_ENDPOINT --nodeid=1 &
 pid=$!
 
 # Need to skip Capacity testing since hostpath does not support it
 sudo $GOPATH/bin/csi-sanity $@ \
     --ginkgo.skip=${SKIP} \
-    --csi.mountpoint=$CSI_MOUNTPOINT \
+    --csi.mountdir=$CSI_MOUNTPOINT \
     --csi.endpoint=$CSI_ENDPOINT ; ret=$?
 sudo kill -9 $pid
 sudo rm -f $UDS

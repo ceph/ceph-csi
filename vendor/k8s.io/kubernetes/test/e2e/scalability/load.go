@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -54,6 +53,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 )
 
@@ -248,7 +248,7 @@ var _ = SIGDescribe("Load capacity", func() {
 					framework.Logf("Starting to delete services...")
 					deleteService := func(i int) {
 						defer GinkgoRecover()
-						framework.ExpectNoError(clientset.CoreV1().Services(services[i].Namespace).Delete(services[i].Name, nil))
+						framework.ExpectNoError(testutils.DeleteResourceWithRetries(clientset, api.Kind("Service"), services[i].Namespace, services[i].Name, nil))
 					}
 					workqueue.Parallelize(serviceOperationsParallelism, len(services), deleteService)
 					framework.Logf("Services deleted")
@@ -286,9 +286,8 @@ var _ = SIGDescribe("Load capacity", func() {
 				}
 				daemonConfig.Run()
 				defer func(config *testutils.DaemonConfig) {
-					framework.ExpectNoError(framework.DeleteResourceAndPods(
+					framework.ExpectNoError(framework.DeleteResourceAndWaitForGC(
 						f.ClientSet,
-						f.InternalClientset,
 						extensions.Kind("DaemonSet"),
 						config.Namespace,
 						config.Name,
@@ -372,10 +371,10 @@ func createClients(numberOfClients int) ([]clientset.Interface, []internalclient
 			TLSHandshakeTimeout: 10 * time.Second,
 			TLSClientConfig:     tlsConfig,
 			MaxIdleConnsPerHost: 100,
-			Dial: (&net.Dialer{
+			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
-			}).Dial,
+			}).DialContext,
 		})
 		// Overwrite TLS-related fields from config to avoid collision with
 		// Transport field.
@@ -409,7 +408,7 @@ func createClients(numberOfClients int) ([]clientset.Interface, []internalclient
 			return nil, nil, nil, err
 		}
 		cachedDiscoClient := cacheddiscovery.NewMemCacheClient(discoClient)
-		restMapper := discovery.NewDeferredDiscoveryRESTMapper(cachedDiscoClient, meta.InterfacesForUnstructured)
+		restMapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscoClient)
 		restMapper.Reset()
 		resolver := scaleclient.NewDiscoveryScaleKindResolver(cachedDiscoClient)
 		scalesClients[i] = scaleclient.New(restClient, restMapper, dynamic.LegacyAPIPathResolverFunc, resolver)
@@ -648,7 +647,6 @@ func scaleResource(wg *sync.WaitGroup, config testutils.RunObjectConfig, scaling
 	newSize := uint(rand.Intn(config.GetReplicas()) + config.GetReplicas()/2)
 	framework.ExpectNoError(framework.ScaleResource(
 		config.GetClient(),
-		config.GetInternalClient(),
 		config.GetScalesGetter(),
 		config.GetNamespace(),
 		config.GetName(),
@@ -670,7 +668,7 @@ func scaleResource(wg *sync.WaitGroup, config testutils.RunObjectConfig, scaling
 			return true, nil
 		}
 		framework.Logf("Failed to list pods from %v %v due to: %v", config.GetKind(), config.GetName(), err)
-		if framework.IsRetryableAPIError(err) {
+		if testutils.IsRetryableAPIError(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("Failed to list pods from %v %v with non-retriable error: %v", config.GetKind(), config.GetName(), err)
@@ -694,15 +692,9 @@ func deleteResource(wg *sync.WaitGroup, config testutils.RunObjectConfig, deleti
 	defer wg.Done()
 
 	sleepUpTo(deletingTime)
-	if framework.TestContext.GarbageCollectorEnabled && config.GetKind() != extensions.Kind("Deployment") {
-		framework.ExpectNoError(framework.DeleteResourceAndWaitForGC(
-			config.GetClient(), config.GetKind(), config.GetNamespace(), config.GetName()),
-			fmt.Sprintf("deleting %v %s", config.GetKind(), config.GetName()))
-	} else {
-		framework.ExpectNoError(framework.DeleteResourceAndPods(
-			config.GetClient(), config.GetInternalClient(), config.GetKind(), config.GetNamespace(), config.GetName()),
-			fmt.Sprintf("deleting %v %s", config.GetKind(), config.GetName()))
-	}
+	framework.ExpectNoError(framework.DeleteResourceAndWaitForGC(
+		config.GetClient(), config.GetKind(), config.GetNamespace(), config.GetName()),
+		fmt.Sprintf("deleting %v %s", config.GetKind(), config.GetName()))
 }
 
 func CreateNamespaces(f *framework.Framework, namespaceCount int, namePrefix string, testPhase *timer.Phase) ([]*v1.Namespace, error) {

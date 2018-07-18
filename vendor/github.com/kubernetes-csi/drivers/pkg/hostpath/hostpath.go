@@ -17,10 +17,21 @@ limitations under the License.
 package hostpath
 
 import (
+	"fmt"
+
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+)
+
+const (
+	kib    int64 = 1024
+	mib    int64 = kib * 1024
+	gib    int64 = mib * 1024
+	gib100 int64 = gib * 100
+	tib    int64 = gib * 1024
+	tib100 int64 = tib * 100
 )
 
 type hostPath struct {
@@ -34,10 +45,23 @@ type hostPath struct {
 	cscap []*csi.ControllerServiceCapability
 }
 
+type hostPathVolume struct {
+	VolName string `json:"volName"`
+	VolID   string `json:"volID"`
+	VolSize int64  `json:"volSize"`
+	VolPath string `json:"volPath"`
+}
+
+var hostPathVolumes map[string]hostPathVolume
+
 var (
 	hostPathDriver *hostPath
-	vendorVersion  = "0.2.0"
+	vendorVersion  = "0.3.0"
 )
+
+func init() {
+	hostPathVolumes = map[string]hostPathVolume{}
+}
 
 func GetHostPathDriver() *hostPath {
 	return &hostPath{}
@@ -80,4 +104,20 @@ func (hp *hostPath) Run(driverName, nodeID, endpoint string) {
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(endpoint, hp.ids, hp.cs, hp.ns)
 	s.Wait()
+}
+
+func getVolumeByID(volumeID string) (hostPathVolume, error) {
+	if hostPathVol, ok := hostPathVolumes[volumeID]; ok {
+		return hostPathVol, nil
+	}
+	return hostPathVolume{}, fmt.Errorf("volume id %s does not exit in the volumes list", volumeID)
+}
+
+func getVolumeByName(volName string) (hostPathVolume, error) {
+	for _, hostPathVol := range hostPathVolumes {
+		if hostPathVol.VolName == volName {
+			return hostPathVol, nil
+		}
+	}
+	return hostPathVolume{}, fmt.Errorf("volume name %s does not exit in the volumes list", volName)
 }

@@ -58,6 +58,10 @@ func VisitPodSecretNames(pod *api.Pod, visitor Visitor) bool {
 			if source.CephFS.SecretRef != nil && !visitor(source.CephFS.SecretRef.Name) {
 				return false
 			}
+		case source.Cinder != nil:
+			if source.Cinder.SecretRef != nil && !visitor(source.Cinder.SecretRef.Name) {
+				return false
+			}
 		case source.FlexVolume != nil:
 			if source.FlexVolume.SecretRef != nil && !visitor(source.FlexVolume.SecretRef.Name) {
 				return false
@@ -256,6 +260,28 @@ func DropDisabledAlphaFields(podSpec *api.PodSpec) {
 	}
 
 	DropDisabledVolumeDevicesAlphaFields(podSpec)
+
+	DropDisabledRunAsGroupField(podSpec)
+}
+
+// DropDisabledRunAsGroupField removes disabled fields from PodSpec related
+// to RunAsGroup
+func DropDisabledRunAsGroupField(podSpec *api.PodSpec) {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.RunAsGroup) {
+		if podSpec.SecurityContext != nil {
+			podSpec.SecurityContext.RunAsGroup = nil
+		}
+		for i := range podSpec.Containers {
+			if podSpec.Containers[i].SecurityContext != nil {
+				podSpec.Containers[i].SecurityContext.RunAsGroup = nil
+			}
+		}
+		for i := range podSpec.InitContainers {
+			if podSpec.InitContainers[i].SecurityContext != nil {
+				podSpec.InitContainers[i].SecurityContext.RunAsGroup = nil
+			}
+		}
+	}
 }
 
 // DropDisabledVolumeMountsAlphaFields removes disabled fields from []VolumeMount.

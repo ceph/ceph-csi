@@ -18,7 +18,6 @@ package azure
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
@@ -31,9 +30,39 @@ import (
 
 // NodeAddresses returns the addresses of the specified instance.
 func (az *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.NodeAddress, error) {
+	addressGetter := func(nodeName types.NodeName) ([]v1.NodeAddress, error) {
+		ip, publicIP, err := az.GetIPForMachineWithRetry(nodeName)
+		if err != nil {
+			glog.V(2).Infof("NodeAddresses(%s) abort backoff: %v", nodeName, err)
+			return nil, err
+		}
+
+		addresses := []v1.NodeAddress{
+			{Type: v1.NodeInternalIP, Address: ip},
+			{Type: v1.NodeHostName, Address: string(name)},
+		}
+		if len(publicIP) > 0 {
+			addresses = append(addresses, v1.NodeAddress{
+				Type:    v1.NodeExternalIP,
+				Address: publicIP,
+			})
+		}
+		return addresses, nil
+	}
+
 	if az.UseInstanceMetadata {
+		isLocalInstance, err := az.isCurrentInstance(name)
+		if err != nil {
+			return nil, err
+		}
+
+		// Not local instance, get addresses from Azure ARM API.
+		if !isLocalInstance {
+			return addressGetter(name)
+		}
+
 		ipAddress := IPAddress{}
-		err := az.metadata.Object("instance/network/interface/0/ipv4/ipAddress/0", &ipAddress)
+		err = az.metadata.Object("instance/network/interface/0/ipv4/ipAddress/0", &ipAddress)
 		if err != nil {
 			return nil, err
 		}
@@ -51,16 +80,7 @@ func (az *Cloud) NodeAddresses(ctx context.Context, name types.NodeName) ([]v1.N
 		return addresses, nil
 	}
 
-	ip, err := az.GetIPForMachineWithRetry(name)
-	if err != nil {
-		glog.V(2).Infof("NodeAddresses(%s) abort backoff", name)
-		return nil, err
-	}
-
-	return []v1.NodeAddress{
-		{Type: v1.NodeInternalIP, Address: ip},
-		{Type: v1.NodeHostName, Address: string(name)},
-	}, nil
+	return addressGetter(name)
 }
 
 // NodeAddressesByProviderID returns the node addresses of an instances with the specified unique providerID
@@ -73,11 +93,6 @@ func (az *Cloud) NodeAddressesByProviderID(ctx context.Context, providerID strin
 	}
 
 	return az.NodeAddresses(ctx, name)
-}
-
-// ExternalID returns the cloud provider ID of the specified instance (deprecated).
-func (az *Cloud) ExternalID(ctx context.Context, name types.NodeName) (string, error) {
-	return az.InstanceID(ctx, name)
 }
 
 // InstanceExistsByProviderID returns true if the instance with the given provider id still exists and is running.
@@ -97,6 +112,11 @@ func (az *Cloud) InstanceExistsByProviderID(ctx context.Context, providerID stri
 	}
 
 	return true, nil
+}
+
+// InstanceShutdownByProviderID returns true if the instance is in safe state to detach volumes
+func (az *Cloud) InstanceShutdownByProviderID(ctx context.Context, providerID string) (bool, error) {
+	return false, cloudprovider.NotImplemented
 }
 
 func (az *Cloud) isCurrentInstance(name types.NodeName) (bool, error) {
@@ -146,6 +166,10 @@ func (az *Cloud) InstanceID(ctx context.Context, name types.NodeName) (string, e
 		}
 		ssName, instanceID, err := extractVmssVMName(metadataName)
 		if err != nil {
+			if err == ErrorNotVmssInstance {
+				// Compose machineID for standard Node.
+				return az.getStandardMachineID(nodeName), nil
+			}
 			return "", err
 		}
 		// Compose instanceID based on ssName and instanceID for vmss instance.
@@ -191,7 +215,7 @@ func (az *Cloud) InstanceType(ctx context.Context, name types.NodeName) (string,
 // AddSSHKeyToAllInstances adds an SSH public key as a legal identity for all instances
 // expected format for the key is standard ssh-keygen format: <protocol> <blob>
 func (az *Cloud) AddSSHKeyToAllInstances(ctx context.Context, user string, keyData []byte) error {
-	return fmt.Errorf("not supported")
+	return cloudprovider.NotImplemented
 }
 
 // CurrentNodeName returns the name of the node we are currently running on.

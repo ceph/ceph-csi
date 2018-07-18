@@ -40,18 +40,12 @@ $ sudo ./_output/cinderplugin --endpoint tcp://127.0.0.1:10000 --cloud-config /e
 ```
 
 ### Test using csc
-Get ```csc``` tool from https://github.com/thecodeteam/gocsi/tree/master/csc
+Get ```csc``` tool from https://github.com/rexray/gocsi/tree/master/csc
 
 #### Get plugin info
 ```
 $ csc identity plugin-info --endpoint tcp://127.0.0.1:10000
 "csi-cinderplugin"	"0.1.0"
-```
-
-#### Get supported versions
-```
-$ csc identity supported-versions --endpoint tcp://127.0.0.1:10000
-0.1.0
 ```
 
 #### Create a volume

@@ -32,7 +32,7 @@ func makeExpectedConfig(m *kubeGenericRuntimeManager, pod *v1.Pod, containerInde
 	container := &pod.Spec.Containers[containerIndex]
 	podIP := ""
 	restartCount := 0
-	opts, _ := m.runtimeHelper.GenerateRunContainerOptions(pod, container, podIP)
+	opts, _, _ := m.runtimeHelper.GenerateRunContainerOptions(pod, container, podIP)
 	containerLogsPath := buildContainerLogsPath(container.Name, restartCount)
 	restartCountUint32 := uint32(restartCount)
 	envs := make([]*runtimeapi.KeyValue, len(opts.Envs))
@@ -64,6 +64,8 @@ func TestGenerateContainerConfig(t *testing.T) {
 	_, imageService, m, err := createTestRuntimeManager()
 	assert.NoError(t, err)
 
+	runAsUser := int64(1000)
+	runAsGroup := int64(2000)
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			UID:       "12345678",
@@ -78,17 +80,23 @@ func TestGenerateContainerConfig(t *testing.T) {
 					ImagePullPolicy: v1.PullIfNotPresent,
 					Command:         []string{"testCommand"},
 					WorkingDir:      "testWorkingDir",
+					SecurityContext: &v1.SecurityContext{
+						RunAsUser:  &runAsUser,
+						RunAsGroup: &runAsGroup,
+					},
 				},
 			},
 		},
 	}
 
 	expectedConfig := makeExpectedConfig(m, pod, 0)
-	containerConfig, err := m.generateContainerConfig(&pod.Spec.Containers[0], pod, 0, "", pod.Spec.Containers[0].Image, kubecontainer.ContainerTypeRegular)
+	containerConfig, _, err := m.generateContainerConfig(&pod.Spec.Containers[0], pod, 0, "", pod.Spec.Containers[0].Image, kubecontainer.ContainerTypeRegular)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedConfig, containerConfig, "generate container config for kubelet runtime v1.")
+	assert.Equal(t, runAsUser, containerConfig.GetLinux().GetSecurityContext().GetRunAsUser().GetValue(), "RunAsUser should be set")
+	assert.Equal(t, runAsGroup, containerConfig.GetLinux().GetSecurityContext().GetRunAsGroup().GetValue(), "RunAsGroup should be set")
 
-	runAsUser := int64(0)
+	runAsRoot := int64(0)
 	runAsNonRootTrue := true
 	podWithContainerSecurityContext := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -106,14 +114,14 @@ func TestGenerateContainerConfig(t *testing.T) {
 					WorkingDir:      "testWorkingDir",
 					SecurityContext: &v1.SecurityContext{
 						RunAsNonRoot: &runAsNonRootTrue,
-						RunAsUser:    &runAsUser,
+						RunAsUser:    &runAsRoot,
 					},
 				},
 			},
 		},
 	}
 
-	_, err = m.generateContainerConfig(&podWithContainerSecurityContext.Spec.Containers[0], podWithContainerSecurityContext, 0, "", podWithContainerSecurityContext.Spec.Containers[0].Image, kubecontainer.ContainerTypeRegular)
+	_, _, err = m.generateContainerConfig(&podWithContainerSecurityContext.Spec.Containers[0], podWithContainerSecurityContext, 0, "", podWithContainerSecurityContext.Spec.Containers[0].Image, kubecontainer.ContainerTypeRegular)
 	assert.Error(t, err)
 
 	imageId, _ := imageService.PullImage(&runtimeapi.ImageSpec{Image: "busybox"}, nil)
@@ -125,6 +133,6 @@ func TestGenerateContainerConfig(t *testing.T) {
 	podWithContainerSecurityContext.Spec.Containers[0].SecurityContext.RunAsUser = nil
 	podWithContainerSecurityContext.Spec.Containers[0].SecurityContext.RunAsNonRoot = &runAsNonRootTrue
 
-	_, err = m.generateContainerConfig(&podWithContainerSecurityContext.Spec.Containers[0], podWithContainerSecurityContext, 0, "", podWithContainerSecurityContext.Spec.Containers[0].Image, kubecontainer.ContainerTypeRegular)
+	_, _, err = m.generateContainerConfig(&podWithContainerSecurityContext.Spec.Containers[0], podWithContainerSecurityContext, 0, "", podWithContainerSecurityContext.Spec.Containers[0].Image, kubecontainer.ContainerTypeRegular)
 	assert.Error(t, err, "RunAsNonRoot should fail for non-numeric username")
 }

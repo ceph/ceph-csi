@@ -29,7 +29,7 @@ type DefaultIdentityServer struct {
 }
 
 func (ids *DefaultIdentityServer) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
-	glog.V(5).Infof("Using default GetPluginInnfo")
+	glog.V(5).Infof("Using default GetPluginInfo")
 
 	if ids.Driver.name == "" {
 		return nil, status.Error(codes.Unavailable, "Driver name not configured")
@@ -56,7 +56,7 @@ func (ids *DefaultIdentityServer) GetPluginCapabilities(ctx context.Context, req
 			{
 				Type: &csi.PluginCapability_Service_{
 					Service: &csi.PluginCapability_Service{
-						Type: csi.PluginCapability_Service_UNKNOWN,
+						Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
 					},
 				},
 			},

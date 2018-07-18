@@ -10,8 +10,10 @@ go_library(
     srcs = [
         "conditions.go",
         "create_resources.go",
+        "delete_resources.go",
         "density_utils.go",
         "deployment.go",
+        "paths.go",
         "pod_store.go",
         "replicaset.go",
         "runners.go",
@@ -21,6 +23,7 @@ go_library(
     importpath = "k8s.io/kubernetes/test/utils",
     deps = [
         "//pkg/api/v1/pod:go_default_library",
+        "//pkg/apis/apps:go_default_library",
         "//pkg/apis/batch:go_default_library",
         "//pkg/apis/core:go_default_library",
         "//pkg/apis/extensions:go_default_library",
@@ -30,6 +33,7 @@ go_library(
         "//pkg/util/labels:go_default_library",
         "//vendor/github.com/davecgh/go-spew/spew:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
+        "//vendor/k8s.io/api/apps/v1:go_default_library",
         "//vendor/k8s.io/api/batch/v1:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/api/extensions/v1beta1:go_default_library",

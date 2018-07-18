@@ -72,7 +72,7 @@ spec:
       serviceAccount: csi-attacher
       containers:
         - name: csi-attacher
-          image: docker.io/k8scsi/csi-attacher
+          image: quay.io/k8scsi/csi-attacher:v0.3.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"

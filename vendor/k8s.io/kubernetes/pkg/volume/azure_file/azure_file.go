@@ -18,6 +18,7 @@ package azure_file
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"runtime"
 
@@ -149,7 +150,7 @@ func (plugin *azureFilePlugin) ExpandVolumeDevice(
 	newSize resource.Quantity,
 	oldSize resource.Quantity) (resource.Quantity, error) {
 
-	if spec.PersistentVolume != nil || spec.PersistentVolume.Spec.AzureFile == nil {
+	if spec.PersistentVolume == nil || spec.PersistentVolume.Spec.AzureFile == nil {
 		return oldSize, fmt.Errorf("invalid PV spec")
 	}
 	shareName := spec.PersistentVolume.Spec.AzureFile.ShareName
@@ -241,8 +242,20 @@ func (b *azureFileMounter) SetUpAt(dir string, fsGroup *int64) error {
 		return err
 	}
 	if !notMnt {
-		return nil
+		// testing original mount point, make sure the mount link is valid
+		if _, err := ioutil.ReadDir(dir); err == nil {
+			glog.V(4).Infof("azureFile - already mounted to target %s", dir)
+			return nil
+		}
+		// mount link is invalid, now unmount and remount later
+		glog.Warningf("azureFile - ReadDir %s failed with %v, unmount this directory", dir, err)
+		if err := b.mounter.Unmount(dir); err != nil {
+			glog.Errorf("azureFile - Unmount directory %s failed with %v", dir, err)
+			return err
+		}
+		notMnt = true
 	}
+
 	var accountKey, accountName string
 	if accountName, accountKey, err = b.util.GetAzureCredentials(b.plugin.host, b.secretNamespace, b.secretName); err != nil {
 		return err
