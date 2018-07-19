@@ -178,7 +178,7 @@ StorageClass options:
 
 ### Feature Status
 
-### 1.10: Alpha
+### 1.9: Alpha
 
 **Important:** `CSIPersistentVolume` and `MountPropagation`
 [feature gates must be enabled starting in 1.9](#enabling-the-alpha-feature-gates).
