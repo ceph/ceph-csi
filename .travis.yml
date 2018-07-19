@@ -21,5 +21,4 @@ script:
 deploy:
   - provider: script
     script:
-      - ./deploy-rbd.sh
-      - ./deploy-cephfs.sh
+      - ./deploy.sh
