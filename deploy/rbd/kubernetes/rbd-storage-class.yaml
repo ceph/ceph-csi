@@ -8,4 +8,6 @@ parameters:
     pool: kubernetes
     csiProvisionerSecretName: csi-ceph-secret 
     csiProvisionerSecretNamespace: default 
+    imageFormat: "2"
+    imageFeatures: layering
 reclaimPolicy: Delete 
