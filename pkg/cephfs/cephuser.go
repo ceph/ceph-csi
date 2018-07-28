@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	cephUserPrefix         = "csi-user-"
+	cephUserPrefix         = "user-"
 	cephEntityClientPrefix = "client."
 )
 
@@ -38,8 +38,8 @@ type cephEntity struct {
 	Caps   cephEntityCaps `json:"caps"`
 }
 
-func getCephUserName(volUuid string) string {
-	return cephUserPrefix + volUuid
+func getCephUserName(volId volumeID) string {
+	return cephUserPrefix + string(volId)
 }
 
 func getCephUser(userId string) (*cephEntity, error) {
@@ -57,17 +57,17 @@ func getCephUser(userId string) (*cephEntity, error) {
 	return &ents[0], nil
 }
 
-func createCephUser(volOptions *volumeOptions, cr *credentials, volUuid string) (*cephEntity, error) {
+func createCephUser(volOptions *volumeOptions, cr *credentials, volId volumeID) (*cephEntity, error) {
 	caps := cephEntityCaps{
-		Mds: fmt.Sprintf("allow rw path=%s", getVolumeRootPath_ceph(volUuid)),
+		Mds: fmt.Sprintf("allow rw path=%s", getVolumeRootPath_ceph(volId)),
 		Mon: "allow r",
-		Osd: fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volUuid)),
+		Osd: fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volId)),
 	}
 
 	var ents []cephEntity
 	args := [...]string{
-		"auth", "-f", "json", "-c", getCephConfPath(volUuid), "-n", cephEntityClientPrefix + cr.id,
-		"get-or-create", cephEntityClientPrefix + getCephUserName(volUuid),
+		"auth", "-f", "json", "-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + cr.id,
+		"get-or-create", cephEntityClientPrefix + getCephUserName(volId),
 		"mds", caps.Mds,
 		"mon", caps.Mon,
 		"osd", caps.Osd,
@@ -80,11 +80,11 @@ func createCephUser(volOptions *volumeOptions, cr *credentials, volUuid string) 
 	return &ents[0], nil
 }
 
-func deleteCephUser(cr *credentials, volUuid string) error {
-	userId := getCephUserName(volUuid)
+func deleteCephUser(adminCr *credentials, volId volumeID) error {
+	userId := getCephUserName(volId)
 
 	args := [...]string{
-		"-c", getCephConfPath(volUuid), "-n", cephEntityClientPrefix + cr.id,
+		"-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + adminCr.id,
 		"auth", "rm", cephEntityClientPrefix + userId,
 	}
 
@@ -92,8 +92,8 @@ func deleteCephUser(cr *credentials, volUuid string) error {
 		return err
 	}
 
-	os.Remove(getCephKeyringPath(volUuid, userId))
-	os.Remove(getCephSecretPath(volUuid, userId))
+	os.Remove(getCephKeyringPath(volId, userId))
+	os.Remove(getCephSecretPath(volId, userId))
 
 	return nil
 }

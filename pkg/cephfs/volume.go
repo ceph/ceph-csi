@@ -22,44 +22,35 @@ import (
 	"path"
 )
 
-// Volumes are mounted in .../controller/volumes/vol-{UUID}
-// The actual user data resides in .../vol-{UUID}/volume-data
-// purgeVolume moves the user data to .../vol-{UUID}/volume-deleting and only then calls os.RemoveAll
-
 const (
-	cephRootPrefix   = PluginFolder + "/controller/volumes/root-"
-	cephVolumePrefix = PluginFolder + "/controller/volumes/vol-"
-	cephVolumesRoot  = "csi-volumes"
+	cephRootPrefix  = PluginFolder + "/controller/volumes/root-"
+	cephVolumesRoot = "csi-volumes"
 
-	namespacePrefix = "csi-ns-"
+	namespacePrefix = "ns-"
 )
 
-func getCephRootPath_local(volUuid string) string {
-	return cephRootPrefix + volUuid
+func getCephRootPath_local(volId volumeID) string {
+	return cephRootPrefix + string(volId)
 }
 
-func getCephRootVolumePath_local(volUuid string) string {
-	return path.Join(getCephRootPath_local(volUuid), cephVolumesRoot, volUuid)
+func getCephRootVolumePath_local(volId volumeID) string {
+	return path.Join(getCephRootPath_local(volId), cephVolumesRoot, string(volId))
 }
 
-func getVolumeRootPath_local(volUuid string) string {
-	return cephVolumePrefix + volUuid
+func getVolumeRootPath_ceph(volId volumeID) string {
+	return path.Join("/", cephVolumesRoot, string(volId))
 }
 
-func getVolumeRootPath_ceph(volUuid string) string {
-	return path.Join("/", cephVolumesRoot, volUuid)
-}
-
-func getVolumeNamespace(volUuid string) string {
-	return namespacePrefix + volUuid
+func getVolumeNamespace(volId volumeID) string {
+	return namespacePrefix + string(volId)
 }
 
 func setVolumeAttribute(root, attrName, attrValue string) error {
 	return execCommandAndValidate("setfattr", "-n", attrName, "-v", attrValue, root)
 }
 
-func createVolume(volOptions *volumeOptions, adminCr *credentials, volUuid string, bytesQuota int64) error {
-	cephRoot := getCephRootPath_local(volUuid)
+func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeID, bytesQuota int64) error {
+	cephRoot := getCephRootPath_local(volId)
 
 	if err := createMountPoint(cephRoot); err != nil {
 		return err
@@ -69,7 +60,7 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volUuid strin
 	// Access to cephfs's / is required
 	volOptions.RootPath = "/"
 
-	if err := mountKernel(cephRoot, adminCr, volOptions, volUuid); err != nil {
+	if err := mountKernel(cephRoot, adminCr, volOptions, volId); err != nil {
 		return fmt.Errorf("error mounting ceph root: %v", err)
 	}
 
@@ -78,8 +69,8 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volUuid strin
 		os.Remove(cephRoot)
 	}()
 
-	volOptions.RootPath = getVolumeRootPath_ceph(volUuid)
-	localVolRoot := getCephRootVolumePath_local(volUuid)
+	volOptions.RootPath = getVolumeRootPath_ceph(volId)
+	localVolRoot := getCephRootVolumePath_local(volId)
 
 	if err := createMountPoint(localVolRoot); err != nil {
 		return err
@@ -93,21 +84,20 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volUuid strin
 		return fmt.Errorf("%v\ncephfs: Does pool '%s' exist?", err, volOptions.Pool)
 	}
 
-	if err := setVolumeAttribute(localVolRoot, "ceph.dir.layout.pool_namespace", getVolumeNamespace(volUuid)); err != nil {
+	if err := setVolumeAttribute(localVolRoot, "ceph.dir.layout.pool_namespace", getVolumeNamespace(volId)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func purgeVolume(volId string, cr *credentials, volOptions *volumeOptions) error {
+func purgeVolume(volId volumeID, cr *credentials, volOptions *volumeOptions) error {
 	// Root path is not set for dynamically provisioned volumes
 	volOptions.RootPath = "/"
 
 	var (
-		volUuid         = uuidFromVolumeId(volId)
-		root            = getCephRootPath_local(volUuid)
-		volRoot         = getCephRootVolumePath_local(volUuid)
+		root            = getCephRootPath_local(volId)
+		volRoot         = getCephRootVolumePath_local(volId)
 		volRootDeleting = volRoot + "-deleting"
 	)
 
@@ -115,7 +105,7 @@ func purgeVolume(volId string, cr *credentials, volOptions *volumeOptions) error
 		return err
 	}
 
-	if err := mountKernel(root, cr, volOptions, volUuid); err != nil {
+	if err := mountKernel(root, cr, volOptions, volId); err != nil {
 		return err
 	}
 

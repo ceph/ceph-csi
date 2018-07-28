@@ -28,17 +28,18 @@ const (
 )
 
 type volumeMounter interface {
-	mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volUuid string, readOnly bool) error
+	mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error
+	name() string
 }
 
 type fuseMounter struct{}
 
-func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, volUuid string) error {
+func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
 	args := [...]string{
 		mountPoint,
-		"-c", getCephConfPath(volUuid),
+		"-c", getCephConfPath(volId),
 		"-n", cephEntityClientPrefix + cr.id,
-		"--keyring", getCephKeyringPath(volUuid, cr.id),
+		"--keyring", getCephKeyringPath(volId, cr.id),
 		"-r", volOptions.RootPath,
 		"-o", "nonempty",
 	}
@@ -55,27 +56,19 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, vo
 	return nil
 }
 
-func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volUuid string, readOnly bool) error {
+func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
 	if err := createMountPoint(mountPoint); err != nil {
 		return err
 	}
 
-	localVolRoot := getVolumeRootPath_local(volUuid)
-
-	if err := createMountPoint(localVolRoot); err != nil {
-		return err
-	}
-
-	if err := mountFuse(localVolRoot, cr, volOptions, volUuid); err != nil {
-		return err
-	}
-
-	return bindVolume(volUuid, mountPoint, readOnly)
+	return mountFuse(mountPoint, cr, volOptions, volId)
 }
+
+func (m *fuseMounter) name() string { return "Ceph FUSE driver" }
 
 type kernelMounter struct{}
 
-func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, volUuid string) error {
+func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
 	if err := execCommandAndValidate("modprobe", "ceph"); err != nil {
 		return err
 	}
@@ -85,50 +78,32 @@ func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, 
 		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
 		mountPoint,
 		"-o",
-		fmt.Sprintf("name=%s,secretfile=%s", cr.id, getCephSecretPath(volUuid, cr.id)),
+		fmt.Sprintf("name=%s,secretfile=%s", cr.id, getCephSecretPath(volId, cr.id)),
 	)
 }
 
-func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volUuid string, readOnly bool) error {
+func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
 	if err := createMountPoint(mountPoint); err != nil {
 		return err
 	}
 
-	localVolRoot := getVolumeRootPath_local(volUuid)
-
-	if err := createMountPoint(localVolRoot); err != nil {
-		return err
-	}
-
-	if err := mountKernel(localVolRoot, cr, volOptions, volUuid); err != nil {
-		return err
-	}
-
-	return bindVolume(volUuid, mountPoint, readOnly)
+	return mountKernel(mountPoint, cr, volOptions, volId)
 }
+
+func (m *kernelMounter) name() string { return "Ceph kernel client" }
 
 func bindMount(from, to string, readOnly bool) error {
 	if err := execCommandAndValidate("mount", "--bind", from, to); err != nil {
-		return fmt.Errorf("failed bind-mount of %s to %s: %v", from, to, err)
+		return fmt.Errorf("failed to bind-mount %s to %s: %v", from, to, err)
 	}
 
 	if readOnly {
 		if err := execCommandAndValidate("mount", "-o", "remount,ro,bind", to); err != nil {
-			return err
+			return fmt.Errorf("failed read-only remount of %s: %v", to, err)
 		}
 	}
 
 	return nil
-}
-
-func bindVolume(volUuid, target string, readOnly bool) error {
-	volDataRoot := getVolumeRootPath_local(volUuid)
-
-	if err := createMountPoint(volDataRoot); err != nil {
-		return err
-	}
-
-	return bindMount(volDataRoot, target, readOnly)
 }
 
 func unmountVolume(mountPoint string) error {

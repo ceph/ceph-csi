@@ -27,7 +27,7 @@ import (
 
 const (
 	PluginFolder = "/var/lib/kubelet/plugins/csi-cephfsplugin"
-	Version      = "0.2.0"
+	Version      = "0.3.0"
 )
 
 type cephfsDriver struct {
@@ -81,12 +81,12 @@ func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string) 
 
 	// Configuration
 
-	if err := os.MkdirAll(volumeCacheRoot, 0755); err != nil {
-		glog.Fatalf("cephfs: failed to create %s: %v", volumeCacheRoot, err)
+	if err := os.MkdirAll(controllerCacheRoot, 0755); err != nil {
+		glog.Fatalf("cephfs: failed to create %s: %v", controllerCacheRoot, err)
 		return
 	}
 
-	if err := loadVolumeCache(); err != nil {
+	if err := loadControllerCache(); err != nil {
 		glog.Errorf("cephfs: failed to read volume cache: %v", err)
 	}
 

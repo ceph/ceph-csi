@@ -26,17 +26,25 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"k8s.io/kubernetes/pkg/util/keymutex"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/pborman/uuid"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
 
+type volumeID string
+
+func newVolumeID() volumeID {
+	return volumeID("csi-cephfs-" + uuid.NewUUID().String())
+}
+
 func execCommand(command string, args ...string) ([]byte, error) {
+	glog.V(4).Infof("cephfs: EXEC %s %s", command, args)
+
 	cmd := exec.Command(command, args...)
 	return cmd.CombinedOutput()
 }
 
 func execCommandAndValidate(program string, args ...string) error {
-	glog.V(4).Infof("cephfs: executing command: %s with args: %s", program, args)
 	out, err := execCommand(program, args...)
 	if err != nil {
 		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
@@ -65,49 +73,21 @@ func isMountPoint(p string) (bool, error) {
 	return !notMnt, nil
 }
 
-func tryLock(id string, mtx keymutex.KeyMutex, name string) error {
-	// TODO uncomment this once TryLockKey gets into Kubernetes
-	/*
-		if !mtx.TryLockKey(id) {
-			msg := fmt.Sprintf("%s has a pending operation on %s", name, req.GetVolumeId())
-			glog.Infoln(msg)
-
-			return status.Error(codes.Aborted, msg)
-		}
-	*/
-
-	return nil
-}
-
-func storeCephUserCredentials(volUuid string, cr *credentials, volOptions *volumeOptions) error {
+func storeCephCredentials(volId volumeID, cr *credentials) error {
 	keyringData := cephKeyringData{
-		UserId:     cr.id,
-		Key:        cr.key,
-		RootPath:   volOptions.RootPath,
-		VolumeUuid: volUuid,
+		UserId:   cr.id,
+		Key:      cr.key,
+		VolumeID: volId,
 	}
 
-	if volOptions.ProvisionVolume {
-		keyringData.Pool = volOptions.Pool
-		keyringData.Namespace = getVolumeNamespace(volUuid)
-	}
-
-	return storeCephCredentials(volUuid, cr, &keyringData)
-}
-
-func storeCephAdminCredentials(volUuid string, cr *credentials) error {
-	return storeCephCredentials(volUuid, cr, &cephFullCapsKeyringData{UserId: cr.id, Key: cr.key, VolumeUuid: volUuid})
-}
-
-func storeCephCredentials(volUuid string, cr *credentials, keyringData cephConfigWriter) error {
 	if err := keyringData.writeToFile(); err != nil {
 		return err
 	}
 
 	secret := cephSecretData{
-		UserId:     cr.id,
-		Key:        cr.key,
-		VolumeUuid: volUuid,
+		UserId:   cr.id,
+		Key:      cr.key,
+		VolumeID: volId,
 	}
 
 	if err := secret.writeToFile(); err != nil {
@@ -124,13 +104,103 @@ func newMounter(volOptions *volumeOptions) volumeMounter {
 		mounter = DefaultVolumeMounter
 	}
 
-	glog.V(4).Infof("cephfs: setting volume mounter to: %s", mounter)
-
 	switch mounter {
 	case volumeMounter_fuse:
 		return &fuseMounter{}
 	case volumeMounter_kernel:
 		return &kernelMounter{}
+	}
+
+	return nil
+}
+
+//
+// Controller service request validation
+//
+
+func (cs *controllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+		return fmt.Errorf("invalid CreateVolumeRequest: %v", err)
+	}
+
+	if req.GetName() == "" {
+		return status.Error(codes.InvalidArgument, "Volume Name cannot be empty")
+	}
+
+	if req.GetVolumeCapabilities() == nil {
+		return status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
+	}
+
+	return nil
+}
+
+func (cs *controllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+		return fmt.Errorf("invalid DeleteVolumeRequest: %v", err)
+	}
+
+	return nil
+}
+
+//
+// Node service request validation
+//
+
+func validateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
+	if req.GetVolumeCapability() == nil {
+		return fmt.Errorf("volume capability missing in request")
+	}
+
+	if req.GetVolumeId() == "" {
+		return fmt.Errorf("volume ID missing in request")
+	}
+
+	if req.GetStagingTargetPath() == "" {
+		return fmt.Errorf("staging target path missing in request")
+	}
+
+	if req.GetNodeStageSecrets() == nil || len(req.GetNodeStageSecrets()) == 0 {
+		return fmt.Errorf("stage secrets cannot be nil or empty")
+	}
+
+	return nil
+}
+
+func validateNodeUnstageVolumeRequest(req *csi.NodeUnstageVolumeRequest) error {
+	if req.GetVolumeId() == "" {
+		return fmt.Errorf("volume ID missing in request")
+	}
+
+	if req.GetStagingTargetPath() == "" {
+		return fmt.Errorf("staging target path missing in request")
+	}
+
+	return nil
+}
+
+func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
+	if req.GetVolumeCapability() == nil {
+		return fmt.Errorf("volume capability missing in request")
+	}
+
+	if req.GetVolumeId() == "" {
+		return fmt.Errorf("volume ID missing in request")
+	}
+
+	if req.GetTargetPath() == "" {
+		return fmt.Errorf("varget path missing in request")
+	}
+
+	return nil
+}
+
+func validateNodeUnpublishVolumeRequest(req *csi.NodeUnpublishVolumeRequest) error {
+	if req.GetVolumeId() == "" {
+		return fmt.Errorf("volume ID missing in request")
+	}
+
+	if req.GetTargetPath() == "" {
+		return fmt.Errorf("target path missing in request")
 	}
 
 	return nil
