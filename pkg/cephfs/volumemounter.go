@@ -40,6 +40,7 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, vo
 		"-n", cephEntityClientPrefix + cr.id,
 		"--keyring", getCephKeyringPath(volUuid, cr.id),
 		"-r", volOptions.RootPath,
+		"-o", "nonempty",
 	}
 
 	out, err := execCommand("ceph-fuse", args[:]...)
