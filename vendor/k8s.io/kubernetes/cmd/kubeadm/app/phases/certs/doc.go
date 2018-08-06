@@ -24,8 +24,8 @@ package certs
 		From MasterConfiguration
 			.API.AdvertiseAddress is an optional parameter that can be passed for an extra addition to the SAN IPs
 			.APIServerCertSANs is an optional parameter for adding DNS names and IPs to the API Server serving cert SAN
-			.Etcd.ServerCertSANs is an optional parameter for adding DNS names and IPs to the etcd serving cert SAN
-			.Etcd.PeerCertSANs is an optional parameter for adding DNS names and IPs to the etcd peer cert SAN
+			.Etcd.Local.ServerCertSANs is an optional parameter for adding DNS names and IPs to the etcd serving cert SAN
+			.Etcd.Local.PeerCertSANs is an optional parameter for adding DNS names and IPs to the etcd peer cert SAN
 			.Networking.DNSDomain is needed for knowing which DNS name the internal kubernetes service has
 			.Networking.ServiceSubnet is needed for knowing which IP the internal kubernetes service is going to point to
 			.CertificatesDir is required for knowing where all certificates should be stored
@@ -40,10 +40,14 @@ package certs
 		 - apiserver-kubelet-client.key
 		 - apiserver-etcd-client.crt
 		 - apiserver-etcd-client.key
+		 - etcd/ca.crt
+		 - etcd/ca.key
 		 - etcd/server.crt
 		 - etcd/server.key
 		 - etcd/peer.crt
 		 - etcd/peer.key
+		 - etcd/healthcheck-client.crt
+		 - etcd/healthcheck-client.key
 		 - sa.pub
 		 - sa.key
 		 - front-proxy-ca.crt

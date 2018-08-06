@@ -28,8 +28,8 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 )
 
-// The plugin name reported in error metrics.
-const pluginName = "buffered"
+// PluginName is the name reported in error metrics.
+const PluginName = "buffered"
 
 const (
 	// Default configuration values for ModeBatch.
@@ -54,7 +54,7 @@ type BatchConfig struct {
 	ThrottleEnable bool
 	// ThrottleQPS defines the allowed rate of batches per second sent to the delegate backend.
 	ThrottleQPS float32
-	// ThrottleBurst defines the maximum rate of batches per second sent to the delegate backend in case
+	// ThrottleBurst defines the maximum number of requests sent to the delegate backend at the same moment in case
 	// the capacity defined by ThrottleQPS was not utilized.
 	ThrottleBurst int
 }
@@ -102,6 +102,7 @@ type bufferedBackend struct {
 var _ audit.Backend = &bufferedBackend{}
 
 // NewBackend returns a buffered audit backend that wraps delegate backend.
+// Buffered backend automatically runs and shuts down the delegate backend.
 func NewBackend(delegate audit.Backend, config BatchConfig) audit.Backend {
 	var throttle flowcontrol.RateLimiter
 	if config.ThrottleEnable {
@@ -153,6 +154,12 @@ func (b *bufferedBackend) Shutdown() {
 	<-b.shutdownCh
 
 	// Wait until all sending routines exit.
+	//
+	// - When b.shutdownCh is closed, we know that the goroutine in Run has terminated.
+	// - This means that processIncomingEvents has terminated.
+	// - Which means that b.buffer is closed and cannot accept any new events anymore.
+	// - Because processEvents is called synchronously from the Run goroutine, the waitgroup has its final value.
+	// Hence wg.Wait will not miss any more outgoing batches.
 	b.wg.Wait()
 
 	b.delegateBackend.Shutdown()
@@ -250,10 +257,10 @@ func (b *bufferedBackend) ProcessEvents(ev ...*auditinternal.Event) {
 	// recover from.
 	defer func() {
 		if err := recover(); err != nil {
-			sendErr = fmt.Errorf("panic when processing events: %v", err)
+			sendErr = fmt.Errorf("audit backend shut down")
 		}
 		if sendErr != nil {
-			audit.HandlePluginError(pluginName, sendErr, ev[evIndex:]...)
+			audit.HandlePluginError(PluginName, sendErr, ev[evIndex:]...)
 		}
 	}()
 
@@ -270,4 +277,8 @@ func (b *bufferedBackend) ProcessEvents(ev ...*auditinternal.Event) {
 			return
 		}
 	}
+}
+
+func (b *bufferedBackend) String() string {
+	return fmt.Sprintf("%s<%s>", PluginName, b.delegateBackend)
 }

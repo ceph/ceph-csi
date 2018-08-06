@@ -15,7 +15,7 @@ spec:
       hostNetwork: true
       containers:
         - name: driver-registrar
-          image: docker.io/k8scsi/driver-registrar
+          image: quay.io/k8scsi/driver-registrar:v0.3.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"

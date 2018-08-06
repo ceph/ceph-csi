@@ -65,6 +65,36 @@ func TestNodeGetId(t *testing.T) {
 	assert.Equal(expectedRes, actualRes)
 }
 
+// Test NodeGetInfo
+func TestNodeGetInfo(t *testing.T) {
+
+	// mock MountMock
+	mmock := new(mount.MountMock)
+	// GetInstanceID() (string, error)
+	mmock.On("GetInstanceID").Return(fakeNodeID, nil)
+	mount.MInstance = mmock
+
+	// Init assert
+	assert := assert.New(t)
+
+	// Expected Result
+	expectedRes := &csi.NodeGetInfoResponse{
+		NodeId: fakeNodeID,
+	}
+
+	// Fake request
+	fakeReq := &csi.NodeGetInfoRequest{}
+
+	// Invoke NodeGetId
+	actualRes, err := fakeNs.NodeGetInfo(fakeCtx, fakeReq)
+	if err != nil {
+		t.Errorf("failed to NodeGetInfo: %v", err)
+	}
+
+	// Assert
+	assert.Equal(expectedRes, actualRes)
+}
+
 // Test NodePublishVolume
 func TestNodePublishVolume(t *testing.T) {
 

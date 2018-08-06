@@ -4,16 +4,17 @@ metadata:
   name: data-nfsplugin
   labels:
     name: data-nfsplugin
-  annotations:
-    csi.volume.kubernetes.io/volume-attributes: '{"server": "10.10.10.10", "share": "share"}'
 spec:
   accessModes:
-  - ReadWriteOnce
+  - ReadWriteMany
   capacity:
     storage: 100Gi
   csi:
     driver: csi-nfsplugin
     volumeHandle: data-id
+    volumeAttributes: 
+      server: 127.0.0.1
+      share: /export
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -21,7 +22,7 @@ metadata:
   name: data-nfsplugin
 spec:
   accessModes:
-  - ReadWriteOnce
+  - ReadWriteMany
   resources:
     requests:
       storage: 100Gi

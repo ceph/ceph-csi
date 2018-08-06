@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/kubernetes-csi/drivers.svg?branch=master)](https://travis-ci.org/kubernetes-csi/drivers)
 # CSI Drivers
 
 These drivers are provided purely for illustrative purposes, and should not be used for production workloads.

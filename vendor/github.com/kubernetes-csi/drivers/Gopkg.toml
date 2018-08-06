@@ -23,7 +23,7 @@
 
 [[constraint]]
   name = "github.com/container-storage-interface/spec"
-  version = "~0.2.0"
+  version = "~0.3.0"
 
 [[constraint]]
   branch = "master"
@@ -72,3 +72,7 @@
 [[override]]
   version = "kubernetes-1.10.0-beta.1"
   name = "k8s.io/api"
+
+[[override]]
+  name = "github.com/golang/protobuf"
+  version = "v1.1.0"

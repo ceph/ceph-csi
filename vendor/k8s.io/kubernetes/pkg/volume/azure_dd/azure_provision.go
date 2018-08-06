@@ -17,12 +17,15 @@ limitations under the License.
 package azure_dd
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util"
 )
@@ -46,7 +49,7 @@ func (d *azureDiskDeleter) GetPath() string {
 }
 
 func (d *azureDiskDeleter) Delete() error {
-	volumeSource, err := getVolumeSource(d.spec)
+	volumeSource, _, err := getVolumeSource(d.spec)
 	if err != nil {
 		return err
 	}
@@ -65,7 +68,7 @@ func (d *azureDiskDeleter) Delete() error {
 	return diskController.DeleteBlobDisk(volumeSource.DataDiskURI)
 }
 
-func (p *azureDiskProvisioner) Provision() (*v1.PersistentVolume, error) {
+func (p *azureDiskProvisioner) Provision(selectedNode *v1.Node, allowedTopologies []v1.TopologySelectorTerm) (*v1.PersistentVolume, error) {
 	if !util.AccessModesContainedInAll(p.plugin.GetAccessModes(), p.options.PVC.Spec.AccessModes) {
 		return nil, fmt.Errorf("invalid AccessModes %v: only AccessModes %v are supported", p.options.PVC.Spec.AccessModes, p.plugin.GetAccessModes())
 	}
@@ -92,6 +95,7 @@ func (p *azureDiskProvisioner) Provision() (*v1.PersistentVolume, error) {
 		cachingMode                v1.AzureDataDiskCachingMode
 		strKind                    string
 		err                        error
+		resourceGroup              string
 	)
 	// maxLength = 79 - (4 for ".vhd") = 75
 	name := util.GenerateVolumeName(p.options.ClusterName, p.options.PVName, 75)
@@ -115,13 +119,14 @@ func (p *azureDiskProvisioner) Provision() (*v1.PersistentVolume, error) {
 			cachingMode = v1.AzureDataDiskCachingMode(v)
 		case volume.VolumeParameterFSType:
 			fsType = strings.ToLower(v)
+		case "resourcegroup":
+			resourceGroup = v
 		default:
 			return nil, fmt.Errorf("AzureDisk - invalid option %s in storage class", k)
 		}
 	}
 
 	// normalize values
-	fsType = normalizeFsType(fsType)
 	skuName, err := normalizeStorageAccountType(storageAccountType)
 	if err != nil {
 		return nil, err
@@ -141,10 +146,18 @@ func (p *azureDiskProvisioner) Provision() (*v1.PersistentVolume, error) {
 		return nil, err
 	}
 
+	if resourceGroup != "" && kind != v1.AzureManagedDisk {
+		return nil, errors.New("StorageClass option 'resourceGroup' can be used only for managed disks")
+	}
+
 	// create disk
 	diskURI := ""
 	if kind == v1.AzureManagedDisk {
-		diskURI, err = diskController.CreateManagedDisk(name, skuName, requestGB, *(p.options.CloudTags))
+		tags := make(map[string]string)
+		if p.options.CloudTags != nil {
+			tags = *(p.options.CloudTags)
+		}
+		diskURI, err = diskController.CreateManagedDisk(name, skuName, resourceGroup, requestGB, tags)
 		if err != nil {
 			return nil, err
 		}
@@ -188,5 +201,10 @@ func (p *azureDiskProvisioner) Provision() (*v1.PersistentVolume, error) {
 			MountOptions: p.options.MountOptions,
 		},
 	}
+
+	if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) {
+		pv.Spec.VolumeMode = p.options.PVC.Spec.VolumeMode
+	}
+
 	return pv, nil
 }

@@ -19,6 +19,7 @@ package eviction
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -27,12 +28,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/features"
 	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
-	"k8s.io/kubernetes/pkg/quota"
 )
 
 func quantityMustParse(value string) *resource.Quantity {
@@ -468,7 +467,7 @@ func TestOrderedByExceedsRequestDisk(t *testing.T) {
 		return result, found
 	}
 	pods := []*v1.Pod{below, exceeds}
-	orderedBy(exceedDiskRequests(statsFn, []fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceDisk)).Sort(pods)
+	orderedBy(exceedDiskRequests(statsFn, []fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, v1.ResourceEphemeralStorage)).Sort(pods)
 
 	expected := []*v1.Pod{exceeds, below}
 	for i := range expected {
@@ -582,7 +581,7 @@ func TestOrderedbyDisk(t *testing.T) {
 		return result, found
 	}
 	pods := []*v1.Pod{pod1, pod2, pod3, pod4, pod5, pod6}
-	orderedBy(disk(statsFn, []fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceDisk)).Sort(pods)
+	orderedBy(disk(statsFn, []fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, v1.ResourceEphemeralStorage)).Sort(pods)
 	expected := []*v1.Pod{pod1, pod3, pod2, pod4, pod5, pod6}
 	for i := range expected {
 		if pods[i] != expected[i] {
@@ -649,7 +648,7 @@ func TestOrderedbyDiskDisableLocalStorage(t *testing.T) {
 		return result, found
 	}
 	pods := []*v1.Pod{pod1, pod3, pod2, pod4, pod5, pod6}
-	orderedBy(disk(statsFn, []fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, resourceDisk)).Sort(pods)
+	orderedBy(disk(statsFn, []fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}, v1.ResourceEphemeralStorage)).Sort(pods)
 	expected := []*v1.Pod{pod5, pod3, pod1, pod6, pod4, pod2}
 	for i := range expected {
 		if pods[i] != expected[i] {
@@ -778,7 +777,7 @@ func TestOrderedByPriorityDisk(t *testing.T) {
 	pods := []*v1.Pod{pod8, pod7, pod6, pod5, pod4, pod3, pod2, pod1}
 	expected := []*v1.Pod{pod1, pod2, pod3, pod4, pod5, pod6, pod7, pod8}
 	fsStatsToMeasure := []fsStatsType{fsStatsRoot, fsStatsLogs, fsStatsLocalVolumeSource}
-	orderedBy(exceedDiskRequests(statsFn, fsStatsToMeasure, resourceDisk), priority, disk(statsFn, fsStatsToMeasure, resourceDisk)).Sort(pods)
+	orderedBy(exceedDiskRequests(statsFn, fsStatsToMeasure, v1.ResourceEphemeralStorage), priority, disk(statsFn, fsStatsToMeasure, v1.ResourceEphemeralStorage)).Sort(pods)
 	for i := range expected {
 		if pods[i] != expected[i] {
 			t.Errorf("Expected pod[%d]: %s, but got: %s", i, expected[i].Name, pods[i].Name)
@@ -927,6 +926,80 @@ func TestOrderedByPriorityMemory(t *testing.T) {
 		if pods[i] != expected[i] {
 			t.Errorf("Expected pod[%d]: %s, but got: %s", i, expected[i].Name, pods[i].Name)
 		}
+	}
+}
+
+func TestSortByEvictionPriority(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		thresholds []evictionapi.Threshold
+		expected   []evictionapi.Threshold
+	}{
+		{
+			name:       "empty threshold list",
+			thresholds: []evictionapi.Threshold{},
+			expected:   []evictionapi.Threshold{},
+		},
+		{
+			name: "memory first, PID last",
+			thresholds: []evictionapi.Threshold{
+				{
+					Signal: evictionapi.SignalPIDAvailable,
+				},
+				{
+					Signal: evictionapi.SignalNodeFsAvailable,
+				},
+				{
+					Signal: evictionapi.SignalMemoryAvailable,
+				},
+			},
+			expected: []evictionapi.Threshold{
+				{
+					Signal: evictionapi.SignalMemoryAvailable,
+				},
+				{
+					Signal: evictionapi.SignalNodeFsAvailable,
+				},
+				{
+					Signal: evictionapi.SignalPIDAvailable,
+				},
+			},
+		},
+		{
+			name: "allocatable memory first, PID last",
+			thresholds: []evictionapi.Threshold{
+				{
+					Signal: evictionapi.SignalPIDAvailable,
+				},
+				{
+					Signal: evictionapi.SignalNodeFsAvailable,
+				},
+				{
+					Signal: evictionapi.SignalAllocatableMemoryAvailable,
+				},
+			},
+			expected: []evictionapi.Threshold{
+				{
+					Signal: evictionapi.SignalAllocatableMemoryAvailable,
+				},
+				{
+					Signal: evictionapi.SignalNodeFsAvailable,
+				},
+				{
+					Signal: evictionapi.SignalPIDAvailable,
+				},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sort.Sort(byEvictionPriority(tc.thresholds))
+			for i := range tc.expected {
+				if tc.thresholds[i].Signal != tc.expected[i].Signal {
+					t.Errorf("At index %d, expected threshold with signal %s, but got %s", i, tc.expected[i].Signal, tc.thresholds[i].Signal)
+				}
+			}
+
+		})
 	}
 }
 
@@ -1616,47 +1689,6 @@ func TestHasNodeConditions(t *testing.T) {
 	for testName, testCase := range testCases {
 		if actual := hasNodeCondition(testCase.inputs, testCase.item); actual != testCase.result {
 			t.Errorf("Test case: %s, expected: %v, actual: %v", testName, testCase.result, actual)
-		}
-	}
-}
-
-func TestGetStarvedResources(t *testing.T) {
-	testCases := map[string]struct {
-		inputs []evictionapi.Threshold
-		result []v1.ResourceName
-	}{
-		"memory.available": {
-			inputs: []evictionapi.Threshold{
-				{Signal: evictionapi.SignalMemoryAvailable},
-			},
-			result: []v1.ResourceName{v1.ResourceMemory},
-		},
-		"imagefs.available": {
-			inputs: []evictionapi.Threshold{
-				{Signal: evictionapi.SignalImageFsAvailable},
-			},
-			result: []v1.ResourceName{resourceImageFs},
-		},
-		"nodefs.available": {
-			inputs: []evictionapi.Threshold{
-				{Signal: evictionapi.SignalNodeFsAvailable},
-			},
-			result: []v1.ResourceName{resourceNodeFs},
-		},
-	}
-	var internalResourceNames = func(in []v1.ResourceName) []api.ResourceName {
-		var out []api.ResourceName
-		for _, name := range in {
-			out = append(out, api.ResourceName(name))
-		}
-		return out
-	}
-	for testName, testCase := range testCases {
-		actual := getStarvedResources(testCase.inputs)
-		actualSet := quota.ToSet(internalResourceNames(actual))
-		expectedSet := quota.ToSet(internalResourceNames(testCase.result))
-		if !actualSet.Equal(expectedSet) {
-			t.Errorf("Test case: %s, expected: %v, actual: %v", testName, expectedSet, actualSet)
 		}
 	}
 }

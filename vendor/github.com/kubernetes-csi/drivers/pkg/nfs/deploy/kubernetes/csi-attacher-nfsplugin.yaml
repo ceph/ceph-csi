@@ -30,7 +30,7 @@ spec:
       serviceAccount: csi-attacher
       containers:
         - name: csi-attacher
-          image: docker.io/k8scsi/csi-attacher
+          image: quay.io/k8scsi/csi-attacher:v0.3.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
@@ -43,7 +43,7 @@ spec:
               mountPath: /var/lib/csi/sockets/pluginproxy/
 
         - name: nfs
-          image: docker.io/k8scsi/nfsplugin:v0.1
+          image: quay.io/k8scsi/nfsplugin:v0.3.0
           args :
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"

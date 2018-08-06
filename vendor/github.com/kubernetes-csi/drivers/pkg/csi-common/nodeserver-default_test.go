@@ -38,6 +38,18 @@ func TestNodeGetId(t *testing.T) {
 	assert.Equal(t, resp.GetNodeId(), fakeNodeID)
 }
 
+func TestNodeGetInfo(t *testing.T) {
+	d := NewFakeDriver()
+
+	ns := NewDefaultNodeServer(d)
+
+	// Test valid request
+	req := csi.NodeGetInfoRequest{}
+	resp, err := ns.NodeGetInfo(context.Background(), &req)
+	assert.NoError(t, err)
+	assert.Equal(t, resp.GetNodeId(), fakeNodeID)
+}
+
 func TestNodeGetCapabilities(t *testing.T) {
 	d := NewFakeDriver()
 

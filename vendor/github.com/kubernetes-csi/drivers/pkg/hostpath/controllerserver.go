@@ -17,6 +17,7 @@ limitations under the License.
 package hostpath
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/golang/glog"
@@ -30,8 +31,9 @@ import (
 )
 
 const (
-	deviceID      = "deviceID"
-	provisionRoot = "/tmp/"
+	deviceID           = "deviceID"
+	provisionRoot      = "/tmp/"
+	maxStorageCapacity = tib
 )
 
 type controllerServer struct {
@@ -39,6 +41,10 @@ type controllerServer struct {
 }
 
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+		glog.V(3).Infof("invalid create volume req: %v", req)
+		return nil, err
+	}
 
 	// Check arguments
 	if len(req.GetName()) == 0 {
@@ -47,23 +53,49 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if req.GetVolumeCapabilities() == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities missing in request")
 	}
-
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		glog.V(3).Infof("invalid create volume req: %v", req)
-		return nil, err
+	// Need to check for already existing volume name, and if found
+	// check for the requested capacity and already allocated capacity
+	if exVol, err := getVolumeByName(req.GetName()); err == nil {
+		// Since err is nil, it means the volume with the same name already exists
+		// need to check if the size of exisiting volume is the same as in new
+		// request
+		if exVol.VolSize >= int64(req.GetCapacityRange().GetRequiredBytes()) {
+			// exisiting volume is compatible with new request and should be reused.
+			// TODO (sbezverk) Do I need to make sure that RBD volume still exists?
+			return &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					Id:            exVol.VolID,
+					CapacityBytes: int64(exVol.VolSize),
+					Attributes:    req.GetParameters(),
+				},
+			}, nil
+		}
+		return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("Volume with the same name: %s but with different size already exist", req.GetName()))
 	}
-	volumeId := uuid.NewUUID().String()
-	path := provisionRoot + volumeId
+	// Check for maximum available capacity
+	capacity := int64(req.GetCapacityRange().GetRequiredBytes())
+	if capacity >= maxStorageCapacity {
+		return nil, status.Errorf(codes.OutOfRange, "Requested capacity %d exceeds maximum allowed %d", capacity, maxStorageCapacity)
+	}
+	volumeID := uuid.NewUUID().String()
+	path := provisionRoot + volumeID
 	err := os.MkdirAll(path, 0777)
 	if err != nil {
 		glog.V(3).Infof("failed to create volume: %v", err)
 		return nil, err
 	}
 	glog.V(4).Infof("create volume %s", path)
+	hostPathVol := hostPathVolume{}
+	hostPathVol.VolName = req.GetName()
+	hostPathVol.VolID = volumeID
+	hostPathVol.VolSize = capacity
+	hostPathVol.VolPath = path
+	hostPathVolumes[volumeID] = hostPathVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			Id:            volumeId,
+			Id:            volumeID,
 			CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
+			Attributes:    req.GetParameters(),
 		},
 	}, nil
 }
@@ -79,11 +111,11 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		glog.V(3).Infof("invalid delete volume req: %v", req)
 		return nil, err
 	}
-	volumeId := req.VolumeId
-	glog.V(4).Infof("deleting volume %s", volumeId)
-	path := provisionRoot + volumeId
+	volumeID := req.VolumeId
+	glog.V(4).Infof("deleting volume %s", volumeID)
+	path := provisionRoot + volumeID
 	os.RemoveAll(path)
-
+	delete(hostPathVolumes, volumeID)
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
@@ -95,6 +127,9 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	}
 	if req.GetVolumeCapabilities() == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume capabilities missing in request")
+	}
+	if _, ok := hostPathVolumes[req.GetVolumeId()]; !ok {
+		return nil, status.Error(codes.NotFound, "Volume does not exist")
 	}
 
 	for _, cap := range req.VolumeCapabilities {

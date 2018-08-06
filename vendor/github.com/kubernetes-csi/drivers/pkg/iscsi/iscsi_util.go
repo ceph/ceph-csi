@@ -268,7 +268,7 @@ func (util *ISCSIUtil) AttachDisk(b iscsiDiskMounter) (string, error) {
 	devicePath = devicePaths[0]
 
 	// Mount device
-	mntPath := path.Join(b.targetPath, b.VolName)
+	mntPath := b.targetPath
 	notMnt, err := b.mounter.IsLikelyNotMountPoint(mntPath)
 	if err != nil && !os.IsNotExist(err) {
 		return "", fmt.Errorf("Heuristic determination of mount point failed:%v", err)
@@ -320,21 +320,20 @@ func (util *ISCSIUtil) AttachDisk(b iscsiDiskMounter) (string, error) {
 }
 
 func (util *ISCSIUtil) DetachDisk(c iscsiDiskUnmounter, targetPath string) error {
-	mntPath := path.Join(targetPath, c.VolName)
-	_, cnt, err := mount.GetDeviceNameFromMount(c.mounter, mntPath)
+	_, cnt, err := mount.GetDeviceNameFromMount(c.mounter, targetPath)
 	if err != nil {
-		glog.Errorf("iscsi detach disk: failed to get device from mnt: %s\nError: %v", mntPath, err)
+		glog.Errorf("iscsi detach disk: failed to get device from mnt: %s\nError: %v", targetPath, err)
 		return err
 	}
 
-	if pathExists, pathErr := volumeutil.PathExists(mntPath); pathErr != nil {
+	if pathExists, pathErr := volumeutil.PathExists(targetPath); pathErr != nil {
 		return fmt.Errorf("Error checking if path exists: %v", pathErr)
 	} else if !pathExists {
-		glog.Warningf("Warning: Unmount skipped because path does not exist: %v", mntPath)
+		glog.Warningf("Warning: Unmount skipped because path does not exist: %v", targetPath)
 		return nil
 	}
-	if err = c.mounter.Unmount(mntPath); err != nil {
-		glog.Errorf("iscsi detach disk: failed to unmount: %s\nError: %v", mntPath, err)
+	if err = c.mounter.Unmount(targetPath); err != nil {
+		glog.Errorf("iscsi detach disk: failed to unmount: %s\nError: %v", targetPath, err)
 		return err
 	}
 	cnt--

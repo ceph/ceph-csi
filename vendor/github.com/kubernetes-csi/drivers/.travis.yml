@@ -1,8 +1,9 @@
 language: go
-
+services:
+  - docker
 # Needed for e2e tests
 sudo: true
-go: 1.9.x
+go: 1.10.3
 go_import_path: github.com/kubernetes-csi/drivers
 install:
   - go get -u github.com/golang/dep/cmd/dep
@@ -13,3 +14,9 @@ script:
 - go vet $(go list ./... | grep -v vendor)
 - go test $(go list ./... | grep -v vendor)
 - ./hack/e2e-hostpath.sh
+after_success:
+  - if [ "${TRAVIS_BRANCH}" == "master" ] && [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
+      docker login -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}" quay.io;
+      make hostpath-container;
+      docker push quay.io/k8scsi/hostpathplugin:canary;
+    fi
