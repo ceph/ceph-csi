@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csicephfs-demo-depl
+  labels:
+    app: web-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-server
+  template:
+    metadata:
+      labels:
+        app: web-server
+    spec:
+      containers:
+       - name: web-server
+         image: nginx
+         volumeMounts:
+           - name: mypvc
+             mountPath: /var/lib/www/html
+      volumes:
+       - name: mypvc
+         persistentVolumeClaim:
+           claimName: csi-cephfs-pvc
+           readOnly: false

@@ -4,22 +4,27 @@ metadata:
   name: csi-cephfs
 provisioner: csi-cephfsplugin
 parameters:
-  monitors: mon1:port,mon2:port
+  # Comma separated list of Ceph monitors
+  monitors: mon1:port,mon2:port,...
 
   # If set to true, a new volume will be created along with a RADOS user - this requires admin access.
   # If set to false, it is assumed the volume already exists and the user is expected to provide
   # a rootPath to a cephfs volume and user credentials.
   provisionVolume: "true"
 
-  # Required if provisionVolume is set to false
-  # rootPath: /path-in-cephfs
+  # Ceph pool into which the volume shall be created
+  # Required for provisionVolume: "true"
+  pool: cephfs_data
 
-  # Required if provisionVolume is set to true
-  # pool: cephfs_data
+  # Root path of an existing CephFS volume
+  # Required for provisionVolume: "false"
+  # rootPath: /absolute/path
 
-  # The secret has to contain user and/or admin credentials.
+  # The secrets have to contain user and/or Ceph admin credentials.
   csiProvisionerSecretName: csi-cephfs-secret
-  csiProvisionerSecretNameSpace: default
+  csiProvisionerSecretNamespace: default
+  csiNodeStageSecretName: csi-cephfs-secret
+  csiNodeStageSecretNamespace: default
 
   # (optional) The driver can use either ceph-fuse (fuse) or ceph kernel client (kernel)
   # If left out, default volume mounter will be used - this is determined by probing for ceph-fuse
