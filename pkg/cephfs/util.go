@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -35,6 +36,7 @@ func execCommand(command string, args ...string) ([]byte, error) {
 }
 
 func execCommandAndValidate(program string, args ...string) error {
+	glog.V(4).Infof("cephfs: executing command: %s with args: %s", program, args)
 	out, err := execCommand(program, args...)
 	if err != nil {
 		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
@@ -121,6 +123,8 @@ func newMounter(volOptions *volumeOptions) volumeMounter {
 	if mounter == "" {
 		mounter = DefaultVolumeMounter
 	}
+
+	glog.V(4).Infof("cephfs: setting volume mounter to: %s", mounter)
 
 	switch mounter {
 	case volumeMounter_fuse:
