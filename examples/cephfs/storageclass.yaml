@@ -7,9 +7,12 @@ parameters:
   # Comma separated list of Ceph monitors
   monitors: mon1:port,mon2:port,...
 
-  # If set to true, a new volume will be created along with a RADOS user - this requires admin access.
-  # If set to false, it is assumed the volume already exists and the user is expected to provide
-  # a rootPath to a cephfs volume and user credentials.
+  # For provisionVolume: "true":
+  #   A new volume will be created along with a new Ceph user.
+  #   Requires admin credentials (adminID, adminKey).
+  # For provisionVolume: "false":
+  #   It is assumed the volume already exists and the user is expected
+  #   to provide path to that volume (rootPath) and user credentials (userID, userKey).
   provisionVolume: "true"
 
   # Ceph pool into which the volume shall be created
@@ -27,7 +30,7 @@ parameters:
   csiNodeStageSecretNamespace: default
 
   # (optional) The driver can use either ceph-fuse (fuse) or ceph kernel client (kernel)
-  # If left out, default volume mounter will be used - this is determined by probing for ceph-fuse
+  # If omitted, default volume mounter will be used - this is determined by probing for ceph-fuse
   # or by setting the default mounter explicitly via --volumemounter command-line argument.
   # mounter: kernel
 reclaimPolicy: Delete
