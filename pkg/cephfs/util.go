@@ -48,7 +48,7 @@ func execCommandJson(v interface{}, program string, args ...string) error {
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return err
+		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
 	}
 
 	return json.NewDecoder(bytes.NewReader(out)).Decode(v)
