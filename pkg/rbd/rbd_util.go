@@ -56,6 +56,17 @@ type rbdVolume struct {
 	VolSize       int64  `json:"volSize"`
 }
 
+type rbdSnapshot struct {
+	SourceVolumeID string `json:"sourceVolumeID"`
+	VolName        string `json:"volName"`
+	SnapName       string `json:"snapName"`
+	SnapID         string `json:"sanpID"`
+	Monitors       string `json:"monitors"`
+	Pool           string `json:"pool"`
+	CreatedAt      int64  `json:"createdAt"`
+	SizeBytes      int64  `json:"sizeBytes"`
+}
+
 var (
 	attachdetachMutex = keymutex.NewKeyMutex()
 	supportedFeatures = sets.NewString("layering")
@@ -206,6 +217,21 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 	}
 
 	return rbdVol, nil
+}
+
+func getRBDSnapshotOptions(snapOptions map[string]string) (*rbdSnapshot, error) {
+	var ok bool
+	rbdSnap := &rbdSnapshot{}
+	rbdSnap.Pool, ok = snapOptions["pool"]
+	if !ok {
+		return nil, fmt.Errorf("Missing required parameter pool")
+	}
+	rbdSnap.Monitors, ok = snapOptions["monitors"]
+	if !ok {
+		return nil, fmt.Errorf("Missing required parameter monitors")
+	}
+
+	return rbdSnap, nil
 }
 
 func attachRBDImage(volOptions *rbdVolume, credentials map[string]string) (string, error) {
@@ -376,6 +402,50 @@ func deleteVolInfo(image string, persistentStoragePath string) error {
 	return nil
 }
 
+func persistSnapInfo(snapshot string, persistentStoragePath string, snapInfo *rbdSnapshot) error {
+	file := path.Join(persistentStoragePath, snapshot+".json")
+	fp, err := os.Create(file)
+	if err != nil {
+		glog.Errorf("rbd: failed to create persistent storage file %s with error: %v\n", file, err)
+		return fmt.Errorf("rbd: create err %s/%s", file, err)
+	}
+	defer fp.Close()
+	encoder := json.NewEncoder(fp)
+	if err = encoder.Encode(snapInfo); err != nil {
+		glog.Errorf("rbd: failed to encode snapInfo: %+v for file: %s with error: %v\n", snapInfo, file, err)
+		return fmt.Errorf("rbd: encode err: %v", err)
+	}
+	glog.Infof("rbd: successfully saved snapInfo: %+v into file: %s\n", snapInfo, file)
+	return nil
+}
+
+func loadSnapInfo(snapshot string, persistentStoragePath string, snapInfo *rbdSnapshot) error {
+	file := path.Join(persistentStoragePath, snapshot+".json")
+	fp, err := os.Open(file)
+	if err != nil {
+		return fmt.Errorf("rbd: open err %s/%s", file, err)
+	}
+	defer fp.Close()
+
+	decoder := json.NewDecoder(fp)
+	if err = decoder.Decode(snapInfo); err != nil {
+		return fmt.Errorf("rbd: decode err: %v.", err)
+	}
+	return nil
+}
+
+func deleteSnapInfo(snapshot string, persistentStoragePath string) error {
+	file := path.Join(persistentStoragePath, snapshot+".json")
+	glog.Infof("rbd: Deleting file for Snapshot: %s at: %s resulting path: %+v\n", snapshot, persistentStoragePath, file)
+	err := os.Remove(file)
+	if err != nil {
+		if err != os.ErrNotExist {
+			return fmt.Errorf("rbd: error removing file: %s/%s", file, err)
+		}
+	}
+	return nil
+}
+
 func getRBDVolumeByID(volumeID string) (rbdVolume, error) {
 	if rbdVol, ok := rbdVolumes[volumeID]; ok {
 		return rbdVol, nil
@@ -390,4 +460,133 @@ func getRBDVolumeByName(volName string) (rbdVolume, error) {
 		}
 	}
 	return rbdVolume{}, fmt.Errorf("volume name %s does not exit in the volumes list", volName)
+}
+
+func getRBDSnapshotByName(snapName string) (rbdSnapshot, error) {
+	for _, rbdSnap := range rbdSnapshots {
+		if rbdSnap.SnapName == snapName {
+			return rbdSnap, nil
+		}
+	}
+	return rbdSnapshot{}, fmt.Errorf("snapshot name %s does not exit in the snapshots list", snapName)
+}
+
+func protectSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
+	var output []byte
+	var err error
+
+	mon := pOpts.Monitors
+	image := pOpts.VolName
+	snapID := pOpts.SnapID
+
+	key, err := getRBDKey(RBDUserID, credentials)
+	if err != nil {
+		return err
+	}
+	glog.V(4).Infof("rbd: snap protect %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
+	args := []string{"snap", "protect", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", RBDUserID, "-m", mon, "--key=" + key}
+
+	output, err = execCommand("rbd", args)
+
+	if err != nil {
+		return fmt.Errorf("failed to protect snapshot: %v, command output: %s", err, string(output))
+	}
+
+	return nil
+}
+
+func createSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
+	var output []byte
+	var err error
+
+	mon := pOpts.Monitors
+	image := pOpts.VolName
+	snapID := pOpts.SnapID
+
+	key, err := getRBDKey(RBDUserID, credentials)
+	if err != nil {
+		return err
+	}
+	glog.V(4).Infof("rbd: snap create %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
+	args := []string{"snap", "create", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", RBDUserID, "-m", mon, "--key=" + key}
+
+	output, err = execCommand("rbd", args)
+
+	if err != nil {
+		return fmt.Errorf("failed to create snapshot: %v, command output: %s", err, string(output))
+	}
+
+	return nil
+}
+
+func unprotectSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
+	var output []byte
+	var err error
+
+	mon := pOpts.Monitors
+	image := pOpts.VolName
+	snapID := pOpts.SnapID
+
+	key, err := getRBDKey(RBDUserID, credentials)
+	if err != nil {
+		return err
+	}
+	glog.V(4).Infof("rbd: snap unprotect %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
+	args := []string{"snap", "unprotect", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", RBDUserID, "-m", mon, "--key=" + key}
+
+	output, err = execCommand("rbd", args)
+
+	if err != nil {
+		return fmt.Errorf("failed to unprotect snapshot: %v, command output: %s", err, string(output))
+	}
+
+	return nil
+}
+
+func deleteSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
+	var output []byte
+	var err error
+
+	mon := pOpts.Monitors
+	image := pOpts.VolName
+	snapID := pOpts.SnapID
+
+	key, err := getRBDKey(RBDUserID, credentials)
+	if err != nil {
+		return err
+	}
+	glog.V(4).Infof("rbd: snap rm %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
+	args := []string{"snap", "rm", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", RBDUserID, "-m", mon, "--key=" + key}
+
+	output, err = execCommand("rbd", args)
+
+	if err != nil {
+		return fmt.Errorf("failed to delete snapshot: %v, command output: %s", err, string(output))
+	}
+
+	return nil
+}
+
+func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, credentials map[string]string) error {
+	var output []byte
+	var err error
+
+	mon := pVolOpts.Monitors
+	image := pVolOpts.VolName
+	snapID := pSnapOpts.SnapID
+
+	key, err := getRBDKey(RBDUserID, credentials)
+	if err != nil {
+		return err
+	}
+	glog.V(4).Infof("rbd: clone %s using mon %s, pool %s id %s key %s", image, pVolOpts.Monitors, pVolOpts.Pool, RBDUserID, key)
+	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.VolName + "@" + snapID, pVolOpts.Pool + "/" + image, "--id", RBDUserID, "-m", mon, "--key=" + key}
+
+	output, err = execCommand("rbd", args)
+
+	if err != nil {
+		return fmt.Errorf("failed to restore snapshot: %v, command output: %s", err, string(output))
+	}
+
+	return nil
 }
