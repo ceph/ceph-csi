@@ -254,6 +254,16 @@ func getRBDSnapshotOptions(snapOptions map[string]string) (*rbdSnapshot, error) 
 	return rbdSnap, nil
 }
 
+func hasSnapshotFeature(imageFeatures string) bool {
+	arr := strings.Split(imageFeatures, ",")
+	for _, f := range arr {
+		if f == "layering" {
+			return true
+		}
+	}
+	return false
+}
+
 func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string]string) (string, error) {
 	var err error
 	var output []byte

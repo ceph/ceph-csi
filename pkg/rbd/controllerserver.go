@@ -236,6 +236,10 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	if err != nil {
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("Source Volume ID %s cannot found", req.GetSourceVolumeId()))
 	}
+	if !hasSnapshotFeature(rbdVolume.ImageFeatures) {
+		return nil, fmt.Errorf("Volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
+	}
+
 	rbdSnap.VolName = rbdVolume.VolName
 	rbdSnap.SnapName = snapName
 	snapshotID := "csi-rbd-" + rbdVolume.VolName + "-snap-" + uniqueID
