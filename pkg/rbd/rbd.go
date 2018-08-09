@@ -54,14 +54,14 @@ var (
 	version   = "0.3.0"
 )
 
-var rbdVolumes map[string]rbdVolume
-var rbdSnapshots map[string]rbdSnapshot
+var rbdVolumes map[string]*rbdVolume
+var rbdSnapshots map[string]*rbdSnapshot
 
 // Init checks for the persistent volume file and loads all found volumes
 // into a memory structure
 func init() {
-	rbdVolumes = map[string]rbdVolume{}
-	rbdSnapshots = map[string]rbdSnapshot{}
+	rbdVolumes = map[string]*rbdVolume{}
+	rbdSnapshots = map[string]*rbdSnapshot{}
 	if _, err := os.Stat(path.Join(PluginFolder, "controller")); os.IsNotExist(err) {
 		glog.Infof("rbd: folder %s not found. Creating... \n", path.Join(PluginFolder, "controller"))
 		if err := os.Mkdir(path.Join(PluginFolder, "controller"), 0755); err != nil {
@@ -108,7 +108,7 @@ func loadExSnapshots() {
 			fp.Close()
 			continue
 		}
-		rbdSnapshots[rbdSnap.SnapID] = rbdSnap
+		rbdSnapshots[rbdSnap.SnapID] = &rbdSnap
 	}
 	glog.Infof("rbd: Loaded %d snapshots from %s", len(rbdSnapshots), path.Join(PluginFolder, "controller-snap"))
 }
@@ -137,7 +137,7 @@ func loadExVolumes() {
 			fp.Close()
 			continue
 		}
-		rbdVolumes[rbdVol.VolID] = rbdVol
+		rbdVolumes[rbdVol.VolID] = &rbdVol
 	}
 	glog.Infof("rbd: Loaded %d volumes from %s", len(rbdVolumes), path.Join(PluginFolder, "controller"))
 }

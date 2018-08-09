@@ -108,7 +108,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			}
 
 			snapshotID := snapshot.GetId()
-			if snapshotID == "" {
+			if len(snapshotID) == 0 {
 				return nil, status.Error(codes.InvalidArgument, "Volume Snapshot ID cannot be empty")
 			}
 
@@ -137,7 +137,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err := persistVolInfo(volumeID, path.Join(PluginFolder, "controller"), rbdVol); err != nil {
 		glog.Warningf("rbd: failed to store volInfo with error: %v", err)
 	}
-	rbdVolumes[volumeID] = *rbdVol
+	rbdVolumes[volumeID] = rbdVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            volumeID,
@@ -238,7 +238,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 	rbdSnap.VolName = rbdVolume.VolName
 	rbdSnap.SnapName = snapName
-	snapshotID := "csi-rbd-snapshot-" + uniqueID
+	snapshotID := "csi-rbd-" + rbdVolume.VolName + "-snap-" + uniqueID
 	rbdSnap.SnapID = snapshotID
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
 	rbdSnap.SizeBytes = rbdVolume.VolSize
@@ -280,9 +280,10 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	// Storing snapInfo into a persistent file.
 	if err := persistSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
 		glog.Warningf("rbd: failed to store sanpInfo with error: %v", err)
+
 		return nil, err
 	}
-	rbdSnapshots[snapshotID] = *rbdSnap
+	rbdSnapshots[snapshotID] = rbdSnap
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
 			SizeBytes:      rbdSnap.SizeBytes,
@@ -303,7 +304,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	snapshotID := req.GetSnapshotId()
-	if snapshotID == "" {
+	if len(snapshotID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Snapshot ID cannot be empty")
 	}
 	rbdSnap := &rbdSnapshot{}
@@ -344,10 +345,10 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	// TODO (sngchlko) list with token
 
 	// list only a specific snapshot which has snapshot ID
-	if snapshotID := req.GetSnapshotId(); snapshotID != "" {
+	if snapshotID := req.GetSnapshotId(); len(snapshotID) != 0 {
 		if rbdSnap, ok := rbdSnapshots[snapshotID]; ok {
 			// if source volume ID also set, check source volume id on the cache.
-			if sourceVolumeId != "" && rbdSnap.SourceVolumeID != sourceVolumeId {
+			if len(sourceVolumeId) != 0 && rbdSnap.SourceVolumeID != sourceVolumeId {
 				return nil, status.Error(codes.Unknown, fmt.Sprintf("Requested Source Volume ID %s is different from %s", sourceVolumeId, rbdSnap.SourceVolumeID))
 			}
 			return &csi.ListSnapshotsResponse{
@@ -373,7 +374,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	entries := []*csi.ListSnapshotsResponse_Entry{}
 	for _, rbdSnap := range rbdSnapshots {
 		// if source volume ID also set, check source volume id on the cache.
-		if sourceVolumeId != "" && rbdSnap.SourceVolumeID != sourceVolumeId {
+		if len(sourceVolumeId) != 0 && rbdSnap.SourceVolumeID != sourceVolumeId {
 			continue
 		}
 		entries = append(entries, &csi.ListSnapshotsResponse_Entry{

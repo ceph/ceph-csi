@@ -446,29 +446,29 @@ func deleteSnapInfo(snapshot string, persistentStoragePath string) error {
 	return nil
 }
 
-func getRBDVolumeByID(volumeID string) (rbdVolume, error) {
+func getRBDVolumeByID(volumeID string) (*rbdVolume, error) {
 	if rbdVol, ok := rbdVolumes[volumeID]; ok {
 		return rbdVol, nil
 	}
-	return rbdVolume{}, fmt.Errorf("volume id %s does not exit in the volumes list", volumeID)
+	return nil, fmt.Errorf("volume id %s does not exit in the volumes list", volumeID)
 }
 
-func getRBDVolumeByName(volName string) (rbdVolume, error) {
+func getRBDVolumeByName(volName string) (*rbdVolume, error) {
 	for _, rbdVol := range rbdVolumes {
 		if rbdVol.VolName == volName {
 			return rbdVol, nil
 		}
 	}
-	return rbdVolume{}, fmt.Errorf("volume name %s does not exit in the volumes list", volName)
+	return nil, fmt.Errorf("volume name %s does not exit in the volumes list", volName)
 }
 
-func getRBDSnapshotByName(snapName string) (rbdSnapshot, error) {
+func getRBDSnapshotByName(snapName string) (*rbdSnapshot, error) {
 	for _, rbdSnap := range rbdSnapshots {
 		if rbdSnap.SnapName == snapName {
 			return rbdSnap, nil
 		}
 	}
-	return rbdSnapshot{}, fmt.Errorf("snapshot name %s does not exit in the snapshots list", snapName)
+	return nil, fmt.Errorf("snapshot name %s does not exit in the snapshots list", snapName)
 }
 
 func protectSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
