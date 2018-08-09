@@ -279,7 +279,19 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// Storing snapInfo into a persistent file.
 	if err := persistSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
-		glog.Warningf("rbd: failed to store sanpInfo with error: %v", err)
+		glog.Warningf("rbd: failed to store snapInfo with error: %v", err)
+
+		// Unprotect snapshot
+		err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetCreateSnapshotSecrets())
+		if err != nil {
+			return nil, status.Error(codes.Unknown, fmt.Sprintf("This Snapshot should be removed but failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
+		}
+
+		// Deleting snapshot
+		glog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
+		if err := deleteSnapshot(rbdSnap, rbdSnap.AdminId, req.GetCreateSnapshotSecrets()); err != nil {
+			return nil, status.Error(codes.Unknown, fmt.Sprintf("This Snapshot should be removed but failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
+		}
 
 		return nil, err
 	}
