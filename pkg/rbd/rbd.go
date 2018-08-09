@@ -31,11 +31,9 @@ import (
 
 // PluginFolder defines the location of rbdplugin
 const (
-	PluginFolder = "/var/lib/kubelet/plugins/csi-rbdplugin"
-	// RBDUserID used as a key in credentials map to extract the key which is
-	// passed be the provisioner, the value od RBDUserID must match to the key used
-	// in Secret object.
-	RBDUserID = "admin"
+	PluginFolder      = "/var/lib/kubelet/plugins/csi-rbdplugin"
+	rbdDefaultAdminId = "admin"
+	rbdDefaultUserId  = rbdDefaultAdminId
 )
 
 type rbd struct {

@@ -54,6 +54,8 @@ type rbdVolume struct {
 	ImageFormat   string `json:"imageFormat"`
 	ImageFeatures string `json:"imageFeatures"`
 	VolSize       int64  `json:"volSize"`
+	AdminId       string `json:"adminId"`
+	UserId        string `json:"userId"`
 }
 
 type rbdSnapshot struct {
@@ -65,6 +67,8 @@ type rbdSnapshot struct {
 	Pool           string `json:"pool"`
 	CreatedAt      int64  `json:"createdAt"`
 	SizeBytes      int64  `json:"sizeBytes"`
+	AdminId        string `json:"adminId"`
+	UserId         string `json:"userId"`
 }
 
 var (
@@ -81,7 +85,7 @@ func getRBDKey(id string, credentials map[string]string) (string, error) {
 }
 
 // CreateImage creates a new ceph image with provision and volume options.
-func createRBDImage(pOpts *rbdVolume, volSz int, credentials map[string]string) error {
+func createRBDImage(pOpts *rbdVolume, volSz int, adminId string, credentials map[string]string) error {
 	var output []byte
 	var err error
 
@@ -90,16 +94,16 @@ func createRBDImage(pOpts *rbdVolume, volSz int, credentials map[string]string) 
 	image := pOpts.VolName
 	volSzGB := fmt.Sprintf("%dG", volSz)
 
-	key, err := getRBDKey(RBDUserID, credentials)
+	key, err := getRBDKey(adminId, credentials)
 	if err != nil {
 		return err
 	}
 	if pOpts.ImageFormat == rbdImageFormat2 {
-		glog.V(4).Infof("rbd: create %s size %s format %s (features: %s) using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, pOpts.ImageFeatures, mon, pOpts.Pool, RBDUserID, key)
+		glog.V(4).Infof("rbd: create %s size %s format %s (features: %s) using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, pOpts.ImageFeatures, mon, pOpts.Pool, adminId, key)
 	} else {
-		glog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, mon, pOpts.Pool, RBDUserID, key)
+		glog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, mon, pOpts.Pool, adminId, key)
 	}
-	args := []string{"create", image, "--size", volSzGB, "--pool", pOpts.Pool, "--id", RBDUserID, "-m", mon, "--key=" + key, "--image-format", pOpts.ImageFormat}
+	args := []string{"create", image, "--size", volSzGB, "--pool", pOpts.Pool, "--id", adminId, "-m", mon, "--key=" + key, "--image-format", pOpts.ImageFormat}
 	if pOpts.ImageFormat == rbdImageFormat2 {
 		args = append(args, "--image-feature", pOpts.ImageFeatures)
 	}
@@ -114,20 +118,21 @@ func createRBDImage(pOpts *rbdVolume, volSz int, credentials map[string]string) 
 
 // rbdStatus checks if there is watcher on the image.
 // It returns true if there is a watcher onthe image, otherwise returns false.
-func rbdStatus(pOpts *rbdVolume, credentials map[string]string) (bool, string, error) {
+func rbdStatus(pOpts *rbdVolume, userId string, credentials map[string]string) (bool, string, error) {
 	var err error
 	var output string
 	var cmd []byte
 
 	image := pOpts.VolName
 	// If we don't have admin id/secret (e.g. attaching), fallback to user id/secret.
-	key, err := getRBDKey(RBDUserID, credentials)
+
+	key, err := getRBDKey(userId, credentials)
 	if err != nil {
 		return false, "", err
 	}
 
-	glog.V(4).Infof("rbd: status %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
-	args := []string{"status", image, "--pool", pOpts.Pool, "-m", pOpts.Monitors, "--id", RBDUserID, "--key=" + key}
+	glog.V(4).Infof("rbd: status %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, userId, key)
+	args := []string{"status", image, "--pool", pOpts.Pool, "-m", pOpts.Monitors, "--id", userId, "--key=" + key}
 	cmd, err = execCommand("rbd", args)
 	output = string(cmd)
 
@@ -154,10 +159,10 @@ func rbdStatus(pOpts *rbdVolume, credentials map[string]string) (bool, string, e
 }
 
 // DeleteImage deletes a ceph image with provision and volume options.
-func deleteRBDImage(pOpts *rbdVolume, credentials map[string]string) error {
+func deleteRBDImage(pOpts *rbdVolume, adminId string, credentials map[string]string) error {
 	var output []byte
 	image := pOpts.VolName
-	found, _, err := rbdStatus(pOpts, credentials)
+	found, _, err := rbdStatus(pOpts, adminId, credentials)
 	if err != nil {
 		return err
 	}
@@ -165,13 +170,13 @@ func deleteRBDImage(pOpts *rbdVolume, credentials map[string]string) error {
 		glog.Info("rbd is still being used ", image)
 		return fmt.Errorf("rbd %s is still being used", image)
 	}
-	key, err := getRBDKey(RBDUserID, credentials)
+	key, err := getRBDKey(adminId, credentials)
 	if err != nil {
 		return err
 	}
 
-	glog.V(4).Infof("rbd: rm %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
-	args := []string{"rm", image, "--pool", pOpts.Pool, "--id", RBDUserID, "-m", pOpts.Monitors, "--key=" + key}
+	glog.V(4).Infof("rbd: rm %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, adminId, key)
+	args := []string{"rm", image, "--pool", pOpts.Pool, "--id", adminId, "-m", pOpts.Monitors, "--key=" + key}
 	output, err = execCommand("rbd", args)
 	if err == nil {
 		return nil
@@ -215,7 +220,14 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 		}
 
 	}
-
+	rbdVol.AdminId, ok = volOptions["adminid"]
+	if !ok {
+		rbdVol.AdminId = rbdDefaultAdminId
+	}
+	rbdVol.UserId, ok = volOptions["userid"]
+	if !ok {
+		rbdVol.UserId = rbdDefaultUserId
+	}
 	return rbdVol, nil
 }
 
@@ -230,11 +242,19 @@ func getRBDSnapshotOptions(snapOptions map[string]string) (*rbdSnapshot, error) 
 	if !ok {
 		return nil, fmt.Errorf("Missing required parameter monitors")
 	}
+	rbdSnap.AdminId, ok = snapOptions["adminid"]
+	if !ok {
+		rbdSnap.AdminId = rbdDefaultAdminId
+	}
+	rbdSnap.UserId, ok = snapOptions["userid"]
+	if !ok {
+		rbdSnap.UserId = rbdDefaultUserId
+	}
 
 	return rbdSnap, nil
 }
 
-func attachRBDImage(volOptions *rbdVolume, credentials map[string]string) (string, error) {
+func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string]string) (string, error) {
 	var err error
 	var output []byte
 
@@ -255,7 +275,7 @@ func attachRBDImage(volOptions *rbdVolume, credentials map[string]string) (strin
 			Steps:    rbdImageWatcherSteps,
 		}
 		err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			used, rbdOutput, err := rbdStatus(volOptions, credentials)
+			used, rbdOutput, err := rbdStatus(volOptions, userId, credentials)
 			if err != nil {
 				return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
 			}
@@ -271,13 +291,13 @@ func attachRBDImage(volOptions *rbdVolume, credentials map[string]string) (strin
 		}
 
 		glog.V(1).Infof("rbd: map mon %s", volOptions.Monitors)
-		key, err := getRBDKey(RBDUserID, credentials)
+		key, err := getRBDKey(userId, credentials)
 		if err != nil {
 			return "", err
 		}
 
 		output, err = execCommand("rbd", []string{
-			"map", image, "--pool", volOptions.Pool, "--id", RBDUserID, "-m", volOptions.Monitors, "--key=" + key})
+			"map", image, "--pool", volOptions.Pool, "--id", userId, "-m", volOptions.Monitors, "--key=" + key})
 		if err != nil {
 			glog.V(1).Infof("rbd: map error %v, rbd output: %s", err, string(output))
 			return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
@@ -471,7 +491,7 @@ func getRBDSnapshotByName(snapName string) (*rbdSnapshot, error) {
 	return nil, fmt.Errorf("snapshot name %s does not exit in the snapshots list", snapName)
 }
 
-func protectSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
+func protectSnapshot(pOpts *rbdSnapshot, adminId string, credentials map[string]string) error {
 	var output []byte
 	var err error
 
@@ -479,12 +499,12 @@ func protectSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
 	image := pOpts.VolName
 	snapID := pOpts.SnapID
 
-	key, err := getRBDKey(RBDUserID, credentials)
+	key, err := getRBDKey(adminId, credentials)
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("rbd: snap protect %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
-	args := []string{"snap", "protect", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", RBDUserID, "-m", mon, "--key=" + key}
+	glog.V(4).Infof("rbd: snap protect %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, adminId, key)
+	args := []string{"snap", "protect", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminId, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)
 
@@ -495,7 +515,7 @@ func protectSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
 	return nil
 }
 
-func createSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
+func createSnapshot(pOpts *rbdSnapshot, adminId string, credentials map[string]string) error {
 	var output []byte
 	var err error
 
@@ -503,12 +523,12 @@ func createSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
 	image := pOpts.VolName
 	snapID := pOpts.SnapID
 
-	key, err := getRBDKey(RBDUserID, credentials)
+	key, err := getRBDKey(adminId, credentials)
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("rbd: snap create %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
-	args := []string{"snap", "create", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", RBDUserID, "-m", mon, "--key=" + key}
+	glog.V(4).Infof("rbd: snap create %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, adminId, key)
+	args := []string{"snap", "create", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminId, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)
 
@@ -519,7 +539,7 @@ func createSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
 	return nil
 }
 
-func unprotectSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
+func unprotectSnapshot(pOpts *rbdSnapshot, adminId string, credentials map[string]string) error {
 	var output []byte
 	var err error
 
@@ -527,12 +547,12 @@ func unprotectSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error 
 	image := pOpts.VolName
 	snapID := pOpts.SnapID
 
-	key, err := getRBDKey(RBDUserID, credentials)
+	key, err := getRBDKey(adminId, credentials)
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("rbd: snap unprotect %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
-	args := []string{"snap", "unprotect", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", RBDUserID, "-m", mon, "--key=" + key}
+	glog.V(4).Infof("rbd: snap unprotect %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, adminId, key)
+	args := []string{"snap", "unprotect", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminId, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)
 
@@ -543,7 +563,7 @@ func unprotectSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error 
 	return nil
 }
 
-func deleteSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
+func deleteSnapshot(pOpts *rbdSnapshot, adminId string, credentials map[string]string) error {
 	var output []byte
 	var err error
 
@@ -551,12 +571,12 @@ func deleteSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
 	image := pOpts.VolName
 	snapID := pOpts.SnapID
 
-	key, err := getRBDKey(RBDUserID, credentials)
+	key, err := getRBDKey(adminId, credentials)
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("rbd: snap rm %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, RBDUserID, key)
-	args := []string{"snap", "rm", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", RBDUserID, "-m", mon, "--key=" + key}
+	glog.V(4).Infof("rbd: snap rm %s using mon %s, pool %s id %s key %s", image, pOpts.Monitors, pOpts.Pool, adminId, key)
+	args := []string{"snap", "rm", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminId, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)
 
@@ -567,7 +587,7 @@ func deleteSnapshot(pOpts *rbdSnapshot, credentials map[string]string) error {
 	return nil
 }
 
-func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, credentials map[string]string) error {
+func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, adminId string, credentials map[string]string) error {
 	var output []byte
 	var err error
 
@@ -575,12 +595,12 @@ func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, credentials ma
 	image := pVolOpts.VolName
 	snapID := pSnapOpts.SnapID
 
-	key, err := getRBDKey(RBDUserID, credentials)
+	key, err := getRBDKey(adminId, credentials)
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("rbd: clone %s using mon %s, pool %s id %s key %s", image, pVolOpts.Monitors, pVolOpts.Pool, RBDUserID, key)
-	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.VolName + "@" + snapID, pVolOpts.Pool + "/" + image, "--id", RBDUserID, "-m", mon, "--key=" + key}
+	glog.V(4).Infof("rbd: clone %s using mon %s, pool %s id %s key %s", image, pVolOpts.Monitors, pVolOpts.Pool, adminId, key)
+	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.VolName + "@" + snapID, pVolOpts.Pool + "/" + image, "--id", adminId, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)
 
