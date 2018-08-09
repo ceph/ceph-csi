@@ -67,7 +67,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 	volOptions.VolName = volName
 	// Mapping RBD image
-	devicePath, err := attachRBDImage(volOptions, req.GetNodePublishSecrets())
+	devicePath, err := attachRBDImage(volOptions, volOptions.UserId, req.GetNodePublishSecrets())
 	if err != nil {
 		return nil, err
 	}

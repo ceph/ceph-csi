@@ -21,4 +21,8 @@ parameters:
     csiProvisionerSecretNamespace: default
     csiNodePublishSecretName: csi-rbd-secret
     csiNodePublishSecretNamespace: default
+
+    # Ceph users for operating RBD
+    adminid: admin
+    userid: kubernetes
 reclaimPolicy: Delete
