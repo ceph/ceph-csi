@@ -46,14 +46,6 @@ var (
 	DefaultVolumeMounter string
 )
 
-func getVolumeMounterByProbing() string {
-	if execCommandAndValidate("ceph-fuse", "--version") == nil {
-		return volumeMounter_fuse
-	} else {
-		return volumeMounter_kernel
-	}
-}
-
 func NewCephFSDriver() *cephfsDriver {
 	return &cephfsDriver{}
 }
@@ -97,7 +89,12 @@ func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string) 
 			DefaultVolumeMounter = volumeMounter
 		}
 	} else {
-		DefaultVolumeMounter = getVolumeMounterByProbing()
+		availableMounters := getAvailableMounters()
+		if len(availableMounters) == 0 {
+			glog.Fatal("no ceph mounters found on system")
+		}
+
+		DefaultVolumeMounter = availableMounters[0]
 	}
 
 	glog.Infof("cephfs: setting default volume mounter to %s", DefaultVolumeMounter)

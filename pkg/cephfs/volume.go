@@ -60,7 +60,12 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeI
 	// Access to cephfs's / is required
 	volOptions.RootPath = "/"
 
-	if err := mountKernel(cephRoot, adminCr, volOptions, volId); err != nil {
+	m, err := newMounter(volOptions)
+	if err != nil {
+		return fmt.Errorf("failed to create mounter: %v", err)
+	}
+
+	if err = m.mount(cephRoot, adminCr, volOptions, volId); err != nil {
 		return fmt.Errorf("error mounting ceph root: %v", err)
 	}
 
@@ -91,22 +96,28 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeI
 	return nil
 }
 
-func purgeVolume(volId volumeID, cr *credentials, volOptions *volumeOptions) error {
-	// Root path is not set for dynamically provisioned volumes
-	volOptions.RootPath = "/"
-
+func purgeVolume(volId volumeID, adminCr *credentials, volOptions *volumeOptions) error {
 	var (
-		root            = getCephRootPath_local(volId)
+		cephRoot        = getCephRootPath_local(volId)
 		volRoot         = getCephRootVolumePath_local(volId)
 		volRootDeleting = volRoot + "-deleting"
 	)
 
-	if err := createMountPoint(root); err != nil {
+	if err := createMountPoint(cephRoot); err != nil {
 		return err
 	}
 
-	if err := mountKernel(root, cr, volOptions, volId); err != nil {
-		return err
+	// Root path is not set for dynamically provisioned volumes
+	// Access to cephfs's / is required
+	volOptions.RootPath = "/"
+
+	m, err := newMounter(volOptions)
+	if err != nil {
+		return fmt.Errorf("failed to create mounter: %v", err)
+	}
+
+	if err = m.mount(cephRoot, adminCr, volOptions, volId); err != nil {
+		return fmt.Errorf("error mounting ceph root: %v", err)
 	}
 
 	defer func() {

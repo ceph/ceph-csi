@@ -134,9 +134,12 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	m := newMounter(volOptions)
-	glog.V(4).Infof("cephfs: mounting volume %s with %s", volId, m.name())
+	m, err := newMounter(volOptions)
+	if err != nil {
+		glog.Errorf("failed to create mounter for volume %s: %v", volId, err)
+	}
 
+	glog.V(4).Infof("cephfs: mounting volume %s with %s", volId, m.name())
 	if err = m.mount(stagingTargetPath, cr, volOptions, volId); err != nil {
 		glog.Errorf("failed to mount volume %s: %v", volId, err)
 		return nil, status.Error(codes.Internal, err.Error())

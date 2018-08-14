@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 )
 
 const (
@@ -112,4 +113,64 @@ func unmountVolume(mountPoint string) error {
 
 func createMountPoint(root string) error {
 	return os.MkdirAll(root, 0750)
+}
+
+func getAvailableMounters() []string {
+	var ms []string
+
+	fuseMounterProbe := exec.Command("ceph-fuse", "--version")
+	kernelMounterProbe := exec.Command("mount.ceph")
+
+	if fuseMounterProbe.Run() == nil {
+		ms = append(ms, volumeMounter_fuse)
+	}
+
+	if kernelMounterProbe.Run() == nil {
+		ms = append(ms, volumeMounter_kernel)
+	}
+
+	return ms
+}
+
+func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
+	// Get the mounter from the configuration
+
+	wantMounter := volOptions.Mounter
+
+	if wantMounter == "" {
+		wantMounter = DefaultVolumeMounter
+	}
+
+	// Verify that it's available
+
+	availableMounters := getAvailableMounters()
+	if len(availableMounters) == 0 {
+		return nil, fmt.Errorf("no ceph mounters found on system")
+	}
+
+	var chosenMounter string
+
+	for _, availMounter := range getAvailableMounters() {
+		if chosenMounter == "" {
+			if availMounter == wantMounter {
+				chosenMounter = wantMounter
+			}
+		}
+	}
+
+	if chosenMounter == "" {
+		// Otherwise pick whatever is left
+		chosenMounter = availableMounters[0]
+	}
+
+	// Create the mounter
+
+	switch chosenMounter {
+	case volumeMounter_fuse:
+		return &fuseMounter{}, nil
+	case volumeMounter_kernel:
+		return &kernelMounter{}, nil
+	}
+
+	return nil, fmt.Errorf("unknown mounter '%s'", chosenMounter)
 }
