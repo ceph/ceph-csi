@@ -82,6 +82,10 @@ func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string) 
 		glog.Errorf("cephfs: failed to read volume cache: %v", err)
 	}
 
+	if err := loadAvailableMounters(); err != nil {
+		glog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
+	}
+
 	if volumeMounter != "" {
 		if err := validateMounter(volumeMounter); err != nil {
 			glog.Fatalln(err)
@@ -89,11 +93,9 @@ func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string) 
 			DefaultVolumeMounter = volumeMounter
 		}
 	} else {
-		availableMounters := getAvailableMounters()
-		if len(availableMounters) == 0 {
-			glog.Fatal("no ceph mounters found on system")
-		}
-
+		// Pick the first available mounter as the default one.
+		// The choice is biased towards "fuse" in case both
+		// ceph fuse and kernel mounters are available.
 		DefaultVolumeMounter = availableMounters[0]
 	}
 
