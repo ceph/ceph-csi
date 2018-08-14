@@ -97,23 +97,6 @@ func storeCephCredentials(volId volumeID, cr *credentials) error {
 	return nil
 }
 
-func newMounter(volOptions *volumeOptions) volumeMounter {
-	mounter := volOptions.Mounter
-
-	if mounter == "" {
-		mounter = DefaultVolumeMounter
-	}
-
-	switch mounter {
-	case volumeMounter_fuse:
-		return &fuseMounter{}
-	case volumeMounter_kernel:
-		return &kernelMounter{}
-	}
-
-	return nil
-}
-
 //
 // Controller service request validation
 //
