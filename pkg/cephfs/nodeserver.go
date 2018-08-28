@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/golang/glog"
@@ -32,54 +33,45 @@ type nodeServer struct {
 	*csicommon.DefaultNodeServer
 }
 
-func getOrCreateUser(volOptions *volumeOptions, volId volumeID, req *csi.NodeStageVolumeRequest) (*credentials, error) {
+func getCredentialsForVolume(volOptions *volumeOptions, volId volumeID, req *csi.NodeStageVolumeRequest) (*credentials, error) {
 	var (
 		userCr = &credentials{}
 		err    error
 	)
 
-	// Retrieve the credentials (possibly create a new user as well)
-
 	if volOptions.ProvisionVolume {
-		// The volume is provisioned dynamically, create a dedicated user
+		// The volume is provisioned dynamically, get the credentials directly from Ceph
 
-		// First, store admin credentials - those are needed for creating a user
+		// First, store admin credentials - those are needed for retrieving the user credentials
 
 		adminCr, err := getAdminCredentials(req.GetNodeStageSecrets())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
 		}
 
 		if err = storeCephCredentials(volId, adminCr); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to store ceph admin credentials: %v", err)
 		}
 
-		nodeCache.insert(volId, &nodeCacheEntry{volOptions: volOptions, cephAdminID: adminCr.id})
+		// Then get the ceph user
 
-		// Then create the user
-
-		if ent, err := createCephUser(volOptions, adminCr, volId); err != nil {
-			return nil, err
-		} else {
-			userCr.id = ent.Entity[len(cephEntityClientPrefix):]
-			userCr.key = ent.Key
+		entity, err := getCephUser(adminCr, volId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get ceph user: %v", err)
 		}
 
-		// Set the correct volume root path
-		volOptions.RootPath = getVolumeRootPath_ceph(volId)
+		userCr = entity.toCredentials()
 	} else {
-		// The volume is pre-made, credentials are supplied by the user
+		// The volume is pre-made, credentials are in node stage secrets
 
 		userCr, err = getUserCredentials(req.GetNodeStageSecrets())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
 		}
-
-		nodeCache.insert(volId, &nodeCacheEntry{volOptions: volOptions})
 	}
 
 	if err = storeCephCredentials(volId, userCr); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to store ceph user credentials: %v", err)
 	}
 
 	return userCr, nil
@@ -99,6 +91,11 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	if err != nil {
 		glog.Errorf("error reading volume options for volume %s: %v", volId, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if volOptions.ProvisionVolume {
+		// Dynamically provisioned volumes don't have their root path set, do it here
+		volOptions.RootPath = getVolumeRootPath_ceph(volId)
 	}
 
 	if err = createMountPoint(stagingTargetPath); err != nil {
@@ -128,9 +125,9 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	// It's not, mount now
 
-	cr, err := getOrCreateUser(volOptions, volId, req)
+	cr, err := getCredentialsForVolume(volOptions, volId, req)
 	if err != nil {
-		glog.Error(err)
+		glog.Errorf("failed to get ceph credentials for volume %s: %v", volId, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -140,6 +137,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	glog.V(4).Infof("cephfs: mounting volume %s with %s", volId, m.name())
+
 	if err = m.mount(stagingTargetPath, cr, volOptions, volId); err != nil {
 		glog.Errorf("failed to mount volume %s: %v", volId, err)
 		return nil, status.Error(codes.Internal, err.Error())
@@ -215,7 +213,6 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	volId := volumeID(req.GetVolumeId())
 	stagingTargetPath := req.GetStagingTargetPath()
 
 	// Unmount the volume
@@ -224,26 +221,6 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	}
 
 	os.Remove(stagingTargetPath)
-
-	ent, err := nodeCache.pop(volId)
-	if err != nil {
-		glog.Error(err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	if ent.volOptions.ProvisionVolume {
-		// We've created a dedicated Ceph user in NodeStageVolume,
-		// it's about to be deleted here.
-
-		if err = deleteCephUser(&credentials{id: ent.cephAdminID}, volId); err != nil {
-			glog.Errorf("failed to delete ceph user %s for volume %s: %v", getCephUserName(volId), volId, err)
-
-			// Reinsert cache entry for retry
-			nodeCache.insert(volId, ent)
-
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	}
 
 	glog.Infof("cephfs: successfuly umounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
 

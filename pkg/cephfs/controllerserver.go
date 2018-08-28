@@ -76,6 +76,11 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
+		if _, err = createCephUser(volOptions, cr, volId); err != nil {
+			glog.Errorf("failed to create ceph user for volume %s: %v", req.GetName(), err)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
 		glog.Infof("cephfs: successfuly created volume %s", volId)
 	} else {
 		glog.Infof("cephfs: volume %s is provisioned statically", volId)
@@ -145,6 +150,11 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	if err = purgeVolume(volId, cr, &ent.VolOptions); err != nil {
 		glog.Errorf("failed to delete volume %s: %v", volId, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if err = deleteCephUser(cr, volId); err != nil {
+		glog.Errorf("failed to delete ceph user for volume %s: %v", volId, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
