@@ -17,6 +17,8 @@ limitations under the License.
 package cephfs
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 )
@@ -38,26 +40,47 @@ type cephEntity struct {
 	Caps   cephEntityCaps `json:"caps"`
 }
 
+func (ent *cephEntity) toCredentials() *credentials {
+	return &credentials{
+		id:  ent.Entity[len(cephEntityClientPrefix):],
+		key: ent.Key,
+	}
+}
+
 func getCephUserName(volId volumeID) string {
 	return cephUserPrefix + string(volId)
 }
 
-func getCephUser(userId string) (*cephEntity, error) {
-	entityName := cephEntityClientPrefix + userId
-	var ents []cephEntity
+func getCephUser(adminCr *credentials, volId volumeID) (*cephEntity, error) {
+	entityName := cephEntityClientPrefix + getCephUserName(volId)
 
-	if err := execCommandJson(&ents, "ceph", "auth", "get", entityName); err != nil {
-		return nil, err
+	var ents []cephEntity
+	args := [...]string{
+		"auth", "-f", "json", "-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + adminCr.id,
+		"get", entityName,
+	}
+
+	out, err := execCommand("ceph", args[:]...)
+	if err != nil {
+		return nil, fmt.Errorf("cephfs: ceph failed with following error: %s\ncephfs: ceph output: %s", err, out)
+	}
+
+	// Workaround for output from `ceph auth get`
+	// Contains non-json data: "exported keyring for ENTITY\n\n"
+	offset := bytes.Index(out, []byte("[{"))
+
+	if json.NewDecoder(bytes.NewReader(out[offset:])).Decode(&ents); err != nil {
+		return nil, fmt.Errorf("failed to decode json: %v", err)
 	}
 
 	if len(ents) != 1 {
-		return nil, fmt.Errorf("error retrieving entity %s", entityName)
+		return nil, fmt.Errorf("got unexpected number of entities for %s: expected 1, got %d", entityName, len(ents))
 	}
 
 	return &ents[0], nil
 }
 
-func createCephUser(volOptions *volumeOptions, cr *credentials, volId volumeID) (*cephEntity, error) {
+func createCephUser(volOptions *volumeOptions, adminCr *credentials, volId volumeID) (*cephEntity, error) {
 	caps := cephEntityCaps{
 		Mds: fmt.Sprintf("allow rw path=%s", getVolumeRootPath_ceph(volId)),
 		Mon: "allow r",
@@ -66,7 +89,7 @@ func createCephUser(volOptions *volumeOptions, cr *credentials, volId volumeID) 
 
 	var ents []cephEntity
 	args := [...]string{
-		"auth", "-f", "json", "-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + cr.id,
+		"auth", "-f", "json", "-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + adminCr.id,
 		"get-or-create", cephEntityClientPrefix + getCephUserName(volId),
 		"mds", caps.Mds,
 		"mon", caps.Mon,

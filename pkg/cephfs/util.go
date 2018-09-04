@@ -54,8 +54,7 @@ func execCommandAndValidate(program string, args ...string) error {
 }
 
 func execCommandJson(v interface{}, program string, args ...string) error {
-	cmd := exec.Command(program, args...)
-	out, err := cmd.CombinedOutput()
+	out, err := execCommand(program, args...)
 
 	if err != nil {
 		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
@@ -64,8 +63,11 @@ func execCommandJson(v interface{}, program string, args ...string) error {
 	return json.NewDecoder(bytes.NewReader(out)).Decode(v)
 }
 
+// Used in isMountPoint()
+var dummyMount = mount.New("")
+
 func isMountPoint(p string) (bool, error) {
-	notMnt, err := mount.New("").IsLikelyNotMountPoint(p)
+	notMnt, err := dummyMount.IsLikelyNotMountPoint(p)
 	if err != nil {
 		return false, status.Error(codes.Internal, err.Error())
 	}
