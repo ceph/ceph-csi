@@ -34,7 +34,7 @@ spec:
               mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
             - name: registration-dir
               mountPath: /registration
-        - name: csi-rbdplugin 
+        - name: csi-rbdplugin
           securityContext:
             privileged: true
             capabilities:
@@ -47,6 +47,8 @@ spec:
             - "--v=5"
             - "--drivername=csi-rbdplugin"
           env:
+            - name: HOST_ROOTFS
+              value: "/host"
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -62,6 +64,8 @@ spec:
               mountPropagation: "Bidirectional"
             - mountPath: /dev
               name: host-dev
+            - mountPath: /host
+              name: host-rootfs            
             - mountPath: /sys
               name: host-sys
             - mountPath: /lib/modules
@@ -87,6 +91,9 @@ spec:
         - name: host-dev
           hostPath:
             path: /dev
+        - name: host-rootfs
+          hostPath:
+            path: /            
         - name: host-sys
           hostPath:
             path: /sys
