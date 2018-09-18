@@ -42,6 +42,7 @@ const (
 	rbdImageWatcherInitDelay = 1 * time.Second
 	rbdImageWatcherFactor    = 1.4
 	rbdImageWatcherSteps     = 10
+	rbdDefaultMounter        = "rbd"
 )
 
 type rbdVolume struct {
@@ -54,6 +55,7 @@ type rbdVolume struct {
 	VolSize       int64  `json:"volSize"`
 	AdminId       string `json:"adminId"`
 	UserId        string `json:"userId"`
+	Mounter       string `json:"mounter"`
 }
 
 type rbdSnapshot struct {
@@ -225,6 +227,10 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 	rbdVol.UserId, ok = volOptions["userid"]
 	if !ok {
 		rbdVol.UserId = rbdDefaultUserId
+	}
+	rbdVol.Mounter, ok = volOptions["mounter"]
+	if !ok {
+		rbdVol.Mounter = rbdDefaultMounter
 	}
 	return rbdVol, nil
 }

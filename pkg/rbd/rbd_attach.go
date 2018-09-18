@@ -35,7 +35,7 @@ const (
 
 var (
 	hostRootFS = "/"
-	useNBD     = false
+	hasNBD     = false
 )
 
 func init() {
@@ -43,7 +43,7 @@ func init() {
 	if len(host) > 0 {
 		hostRootFS = host
 	}
-	useNBD = checkRbdNbdTools()
+	hasNBD = checkRbdNbdTools()
 }
 
 func getDevFromImageAndPool(pool, image string) (string, bool) {
@@ -226,12 +226,15 @@ func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string
 	image := volOptions.VolName
 	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
 
+	useNBD := false
 	cmdName := "rbd"
 	moduleName := "rbd"
-	if useNBD {
+	if volOptions.Mounter == "rbd-nbd" && hasNBD {
+		useNBD = true
 		cmdName = "rbd-nbd"
 		moduleName = "nbd"
 	}
+
 	devicePath, found := waitForPath(volOptions.Pool, image, 1, useNBD)
 	if !found {
 		attachdetachMutex.LockKey(string(imagePath))
@@ -258,7 +261,7 @@ func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string
 		if err == wait.ErrWaitTimeout {
 			return "", fmt.Errorf("rbd image %s is still being used", imagePath)
 		}
-		// return error if any other errors were encountered during wating for the image to becme avialble
+		// return error if any other errors were encountered during wating for the image to become available
 		if err != nil {
 			return "", err
 		}
