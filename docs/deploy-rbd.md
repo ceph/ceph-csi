@@ -26,6 +26,9 @@ Option | Default value | Description
 `--drivername` | `csi-cephfsplugin` | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
 `--nodeid` | _empty_ | This node's ID
 
+**Available environmental variables:**
+`HOST_ROOTFS`: rbdplugin searches `/proc` directory under the directory set by `HOST_ROOTFS`.
+
 **Available volume parameters:**
 
 Parameter | Required | Description
@@ -36,6 +39,7 @@ Parameter | Required | Description
 `imageFeatures` | no | RBD image features. Available for `imageFormat=2`. CSI RBD currently supports only `layering` feature. See [man pages](http://docs.ceph.com/docs/mimic/man/8/rbd/#cmdoption-rbd-image-feature)
 `csiProvisionerSecretName`, `csiNodePublishSecretName` | for Kubernetes | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
 `csiProvisionerSecretNamespace`, `csiNodePublishSecretNamespace` | for Kubernetes | namespaces of the above Secret objects
+`mounter`| no | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images
 
 **Required secrets:**  
 Admin credentials are required for provisioning new RBD images
