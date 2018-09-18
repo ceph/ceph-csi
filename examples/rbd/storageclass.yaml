@@ -25,4 +25,6 @@ parameters:
     # Ceph users for operating RBD
     adminid: admin
     userid: kubernetes
+    # uncomment the following to use rbd-nbd as mounter on supported nodes
+    #mounter: rbd-nbd
 reclaimPolicy: Delete

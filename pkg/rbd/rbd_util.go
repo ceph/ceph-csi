@@ -19,7 +19,6 @@ package rbd
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -28,7 +27,6 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/util/keymutex"
 )
 
@@ -44,6 +42,7 @@ const (
 	rbdImageWatcherInitDelay = 1 * time.Second
 	rbdImageWatcherFactor    = 1.4
 	rbdImageWatcherSteps     = 10
+	rbdDefaultMounter        = "rbd"
 )
 
 type rbdVolume struct {
@@ -56,6 +55,7 @@ type rbdVolume struct {
 	VolSize       int64  `json:"volSize"`
 	AdminId       string `json:"adminId"`
 	UserId        string `json:"userId"`
+	Mounter       string `json:"mounter"`
 }
 
 type rbdSnapshot struct {
@@ -228,6 +228,10 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 	if !ok {
 		rbdVol.UserId = rbdDefaultUserId
 	}
+	rbdVol.Mounter, ok = volOptions["mounter"]
+	if !ok {
+		rbdVol.Mounter = rbdDefaultMounter
+	}
 	return rbdVol, nil
 }
 
@@ -262,129 +266,6 @@ func hasSnapshotFeature(imageFeatures string) bool {
 		}
 	}
 	return false
-}
-
-func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string]string) (string, error) {
-	var err error
-	var output []byte
-
-	image := volOptions.VolName
-	devicePath, found := waitForPath(volOptions.Pool, image, 1)
-	if !found {
-		attachdetachMutex.LockKey(string(volOptions.Pool + image))
-		defer attachdetachMutex.UnlockKey(string(volOptions.Pool + image))
-
-		_, err = execCommand("modprobe", []string{"rbd"})
-		if err != nil {
-			glog.Warningf("rbd: failed to load rbd kernel module:%v", err)
-		}
-
-		backoff := wait.Backoff{
-			Duration: rbdImageWatcherInitDelay,
-			Factor:   rbdImageWatcherFactor,
-			Steps:    rbdImageWatcherSteps,
-		}
-		err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			used, rbdOutput, err := rbdStatus(volOptions, userId, credentials)
-			if err != nil {
-				return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
-			}
-			return !used, nil
-		})
-		// return error if rbd image has not become available for the specified timeout
-		if err == wait.ErrWaitTimeout {
-			return "", fmt.Errorf("rbd image %s/%s is still being used", volOptions.Pool, image)
-		}
-		// return error if any other errors were encountered during wating for the image to becme avialble
-		if err != nil {
-			return "", err
-		}
-
-		glog.V(1).Infof("rbd: map mon %s", volOptions.Monitors)
-		key, err := getRBDKey(userId, credentials)
-		if err != nil {
-			return "", err
-		}
-
-		output, err = execCommand("rbd", []string{
-			"map", image, "--pool", volOptions.Pool, "--id", userId, "-m", volOptions.Monitors, "--key=" + key})
-		if err != nil {
-			glog.V(1).Infof("rbd: map error %v, rbd output: %s", err, string(output))
-			return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
-		}
-		devicePath, found = waitForPath(volOptions.Pool, image, 10)
-		if !found {
-			return "", fmt.Errorf("Could not map image %s/%s, Timeout after 10s", volOptions.Pool, image)
-		}
-	}
-
-	return devicePath, nil
-}
-
-func detachRBDDevice(devicePath string) error {
-	var err error
-	var output []byte
-
-	glog.V(3).Infof("rbd: unmap device %s", devicePath)
-
-	output, err = execCommand("rbd", []string{"unmap", devicePath})
-	if err != nil {
-		return fmt.Errorf("rbd: unmap failed %v, rbd output: %s", err, string(output))
-	}
-
-	return nil
-}
-
-func getDevFromImageAndPool(pool, image string) (string, bool) {
-	// /sys/bus/rbd/devices/X/name and /sys/bus/rbd/devices/X/pool
-	sys_path := "/sys/bus/rbd/devices"
-	if dirs, err := ioutil.ReadDir(sys_path); err == nil {
-		for _, f := range dirs {
-			name := f.Name()
-			// first match pool, then match name
-			poolFile := path.Join(sys_path, name, "pool")
-			poolBytes, err := ioutil.ReadFile(poolFile)
-			if err != nil {
-				glog.V(4).Infof("Error reading %s: %v", poolFile, err)
-				continue
-			}
-			if strings.TrimSpace(string(poolBytes)) != pool {
-				glog.V(4).Infof("Device %s is not %q: %q", name, pool, string(poolBytes))
-				continue
-			}
-			imgFile := path.Join(sys_path, name, "name")
-			imgBytes, err := ioutil.ReadFile(imgFile)
-			if err != nil {
-				glog.V(4).Infof("Error reading %s: %v", imgFile, err)
-				continue
-			}
-			if strings.TrimSpace(string(imgBytes)) != image {
-				glog.V(4).Infof("Device %s is not %q: %q", name, image, string(imgBytes))
-				continue
-			}
-			// found a match, check if device exists
-			devicePath := "/dev/rbd" + name
-			if _, err := os.Lstat(devicePath); err == nil {
-				return devicePath, true
-			}
-		}
-	}
-	return "", false
-}
-
-// stat a path, if not exists, retry maxRetries times
-func waitForPath(pool, image string, maxRetries int) (string, bool) {
-	for i := 0; i < maxRetries; i++ {
-		devicePath, found := getDevFromImageAndPool(pool, image)
-		if found {
-			return devicePath, true
-		}
-		if i == maxRetries-1 {
-			break
-		}
-		time.Sleep(time.Second)
-	}
-	return "", false
 }
 
 func persistVolInfo(image string, persistentStoragePath string, volInfo *rbdVolume) error {
