@@ -212,7 +212,7 @@ func checkRbdNbdTools() bool {
 		return false
 	}
 	if _, err := execCommand("rbd-nbd", []string{"--version"}); err != nil {
-		glog.V(3).Infof("rbd-nbd: running rbd-nbd -h failed with error %v", err)
+		glog.V(3).Infof("rbd-nbd: running rbd-nbd --version failed with error %v", err)
 		return false
 	}
 	glog.V(3).Infof("rbd-nbd tools were found.")
@@ -234,7 +234,7 @@ func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string
 	}
 	devicePath, found := waitForPath(volOptions.Pool, image, 1, useNBD)
 	if !found {
-		attachdetachMutex.LockKey(string(volOptions.Pool + image))
+		attachdetachMutex.LockKey(string(imagePath))
 		defer attachdetachMutex.UnlockKey(string(imagePath))
 
 		_, err = execCommand("modprobe", []string{moduleName})
