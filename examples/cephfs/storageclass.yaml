@@ -5,6 +5,7 @@ metadata:
 provisioner: csi-cephfsplugin
 parameters:
   # Comma separated list of Ceph monitors
+  # if using FQDN, make sure csi plugin's dns policy is appropriate.  
   monitors: mon1:port,mon2:port,...
 
   # For provisionVolume: "true":

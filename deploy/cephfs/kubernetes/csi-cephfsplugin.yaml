@@ -13,6 +13,9 @@ spec:
     spec:
       serviceAccount: csi-nodeplugin
       hostNetwork: true
+      # to use e.g. Rook orchestrated cluster, and mons' FQDN is
+      # resolved through k8s service, set dns policy to cluster first
+      dnsPolicy: ClusterFirstWithHostNet      
       containers:
         - name: driver-registrar
           image: quay.io/k8scsi/driver-registrar:v0.3.0
