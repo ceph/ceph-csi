@@ -8,6 +8,12 @@ parameters:
     # if using FQDN, make sure csi plugin's dns policy is appropriate.
     monitors: mon1:port,mon2:port,...
 
+    # if "monitors" parameter is not set, driver to get monitors from same
+    # secret as admin/user credentials. "monValueFromSecret" provides the
+    # key in the secret whose value is the mons
+    #monValueFromSecret: "monitors"
+
+    
     # Ceph pool into which the RBD image shall be created
     pool: rbd
 
