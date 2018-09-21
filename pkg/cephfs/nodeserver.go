@@ -184,7 +184,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	glog.Infof("cephfs: successfuly bind-mounted volume %s to %s", volId, targetPath)
+	glog.Infof("cephfs: successfully bind-mounted volume %s to %s", volId, targetPath)
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }
@@ -203,7 +203,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 
 	os.Remove(targetPath)
 
-	glog.Infof("cephfs: successfuly unbinded volume %s from %s", req.GetVolumeId(), targetPath)
+	glog.Infof("cephfs: successfully unbinded volume %s from %s", req.GetVolumeId(), targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
@@ -222,7 +222,7 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	os.Remove(stagingTargetPath)
 
-	glog.Infof("cephfs: successfuly umounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
+	glog.Infof("cephfs: successfully umounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }

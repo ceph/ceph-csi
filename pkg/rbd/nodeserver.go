@@ -71,7 +71,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, err
 	}
-	glog.V(4).Infof("rbd image: %s/%s was succesfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
+	glog.V(4).Infof("rbd image: %s/%s was successfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 
 	readOnly := req.GetReadonly()

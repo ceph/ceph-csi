@@ -81,7 +81,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		glog.Infof("cephfs: successfuly created volume %s", volId)
+		glog.Infof("cephfs: successfully created volume %s", volId)
 	} else {
 		glog.Infof("cephfs: volume %s is provisioned statically", volId)
 	}
@@ -158,7 +158,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	glog.Infof("cephfs: successfuly deleted volume %s", volId)
+	glog.Infof("cephfs: successfully deleted volume %s", volId)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
