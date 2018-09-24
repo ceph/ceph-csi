@@ -266,13 +266,18 @@ func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string
 			return "", err
 		}
 
-		glog.V(3).Infof("rbd: map mon %s", volOptions.Monitors)
+		mon, err := getMon(volOptions, credentials)
+		if err != nil {
+			return "", err
+		}
+
+		glog.V(5).Infof("rbd: map mon %s", mon)
 		key, err := getRBDKey(userId, credentials)
 		if err != nil {
 			return "", err
 		}
 		output, err = execCommand(cmdName, []string{
-			"map", imagePath, "--id", userId, "-m", volOptions.Monitors, "--key=" + key})
+			"map", imagePath, "--id", userId, "-m", mon, "--key=" + key})
 		if err != nil {
 			glog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
 			return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
