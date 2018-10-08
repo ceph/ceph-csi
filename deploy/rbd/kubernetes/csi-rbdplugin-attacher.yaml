@@ -1,17 +1,3 @@
-kind: Service
-apiVersion: v1
-metadata:
-  name: csi-rbdplugin-attacher
-  labels:
-    app: csi-rbdplugin-attacher
-spec:
-  selector:
-    app: csi-rbdplugin-attacher
-  ports:
-    - name: dummy
-      port: 12345
-
----
 kind: StatefulSet
 apiVersion: apps/v1beta1
 metadata:

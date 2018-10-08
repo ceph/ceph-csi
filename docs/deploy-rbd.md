@@ -94,10 +94,6 @@ pod/csi-rbdplugin-attacher-0      1/1       Running   0          23s
 pod/csi-rbdplugin-fptqr           2/2       Running   0          21s
 pod/csi-rbdplugin-provisioner-0   1/1       Running   0          22s
 
-NAME                                TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)     AGE
-service/csi-rbdplugin-attacher      ClusterIP   10.109.15.54   <none>        12345/TCP   26s
-service/csi-rbdplugin-provisioner   ClusterIP   10.104.2.130   <none>        12345/TCP   23s
-
 ...
 ```
 

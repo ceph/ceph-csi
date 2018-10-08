@@ -94,10 +94,6 @@ pod/csi-cephfsplugin-attacher-0      1/1       Running   0          26s
 pod/csi-cephfsplugin-provisioner-0   1/1       Running   0          25s
 pod/csi-cephfsplugin-rljcv           2/2       Running   0          24s
 
-NAME                                   TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)     AGE
-service/csi-cephfsplugin-attacher      ClusterIP   10.104.116.218   <none>        12345/TCP   27s
-service/csi-cephfsplugin-provisioner   ClusterIP   10.101.78.75     <none>        12345/TCP   26s
-
 ...
 ```
 
