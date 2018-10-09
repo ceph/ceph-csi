@@ -49,6 +49,14 @@
   version = "v1.1"
 
 [[projects]]
+  digest = "1:7365acd48986e205ccb8652cc746f09c8b7876030d53710ea6ef7d0bd0dcd7ca"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = ""
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
   branch = "master"
   digest = "1:96d281cfaaa12ac602772da38ac85f00d59b1d3aa7bfe69d8ba334d6ee41e3e6"
   name = "golang.org/x/net"
@@ -179,6 +187,7 @@
     "github.com/golang/glog",
     "github.com/kubernetes-csi/drivers/pkg/csi-common",
     "github.com/pborman/uuid",
+    "github.com/pkg/errors",
     "golang.org/x/net/context",
     "google.golang.org/grpc/codes",
     "google.golang.org/grpc/status",

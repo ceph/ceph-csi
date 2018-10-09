@@ -18,6 +18,7 @@ package rbd
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path"
 	"syscall"
@@ -27,6 +28,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -156,17 +158,24 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	volumeID := req.GetVolumeId()
 	rbdVol := &rbdVolume{}
 	if err := loadVolInfo(volumeID, path.Join(PluginFolder, "controller"), rbdVol); err != nil {
+		if os.IsNotExist(errors.Cause(err)) {
+			// Must have been deleted already. This is not an error (idempotency!).
+			return &csi.DeleteVolumeResponse{}, nil
+		}
 		return nil, err
 	}
 	volName := rbdVol.VolName
 	// Deleting rbd image
 	glog.V(4).Infof("deleting volume %s", volName)
 	if err := deleteRBDImage(rbdVol, rbdVol.AdminId, req.GetControllerDeleteSecrets()); err != nil {
+		// TODO: can we detect "already deleted" situations here and proceed?
 		glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, volName, err)
 		return nil, err
 	}
 	// Removing persistent storage file for the unmapped volume
 	if err := deleteVolInfo(volumeID, path.Join(PluginFolder, "controller")); err != nil {
+		// TODO: we can theoretically end up here when two DeleteVolume calls
+		// get invoked concurrently. Serialize?
 		return nil, err
 	}
 
