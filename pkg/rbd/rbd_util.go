@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/util/keymutex"
 )
@@ -131,7 +132,7 @@ func createRBDImage(pOpts *rbdVolume, volSz int, adminId string, credentials map
 	output, err = execCommand("rbd", args)
 
 	if err != nil {
-		return fmt.Errorf("failed to create rbd image: %v, command output: %s", err, string(output))
+		return errors.Wrapf(err, "failed to create rbd image, command output: %s", string(output))
 	}
 
 	return nil
@@ -308,13 +309,13 @@ func persistVolInfo(image string, persistentStoragePath string, volInfo *rbdVolu
 	fp, err := os.Create(file)
 	if err != nil {
 		glog.Errorf("rbd: failed to create persistent storage file %s with error: %v\n", file, err)
-		return fmt.Errorf("rbd: create err %s/%s", file, err)
+		return errors.Wrapf(err, "rbd: create error for %s", file)
 	}
 	defer fp.Close()
 	encoder := json.NewEncoder(fp)
 	if err = encoder.Encode(volInfo); err != nil {
 		glog.Errorf("rbd: failed to encode volInfo: %+v for file: %s with error: %v\n", volInfo, file, err)
-		return fmt.Errorf("rbd: encode err: %v", err)
+		return errors.Wrap(err, "rbd: encode error")
 	}
 	glog.Infof("rbd: successfully saved volInfo: %+v into file: %s\n", volInfo, file)
 	return nil
@@ -324,13 +325,13 @@ func loadVolInfo(image string, persistentStoragePath string, volInfo *rbdVolume)
 	file := path.Join(persistentStoragePath, image+".json")
 	fp, err := os.Open(file)
 	if err != nil {
-		return fmt.Errorf("rbd: open err %s/%s", file, err)
+		return errors.Wrapf(err, "rbd: open error for %s", file)
 	}
 	defer fp.Close()
 
 	decoder := json.NewDecoder(fp)
 	if err = decoder.Decode(volInfo); err != nil {
-		return fmt.Errorf("rbd: decode err: %v.", err)
+		return errors.Wrap(err, "rbd: decode error")
 	}
 
 	return nil
@@ -342,7 +343,7 @@ func deleteVolInfo(image string, persistentStoragePath string) error {
 	err := os.Remove(file)
 	if err != nil {
 		if err != os.ErrNotExist {
-			return fmt.Errorf("rbd: error removing file: %s/%s", file, err)
+			return errors.Wrapf(err, "rbd: error removing file %s", file)
 		}
 	}
 	return nil
@@ -353,13 +354,13 @@ func persistSnapInfo(snapshot string, persistentStoragePath string, snapInfo *rb
 	fp, err := os.Create(file)
 	if err != nil {
 		glog.Errorf("rbd: failed to create persistent storage file %s with error: %v\n", file, err)
-		return fmt.Errorf("rbd: create err %s/%s", file, err)
+		return errors.Wrapf(err, "rbd: create error for %s", file)
 	}
 	defer fp.Close()
 	encoder := json.NewEncoder(fp)
 	if err = encoder.Encode(snapInfo); err != nil {
 		glog.Errorf("rbd: failed to encode snapInfo: %+v for file: %s with error: %v\n", snapInfo, file, err)
-		return fmt.Errorf("rbd: encode err: %v", err)
+		return errors.Wrap(err, "rbd: encode error")
 	}
 	glog.Infof("rbd: successfully saved snapInfo: %+v into file: %s\n", snapInfo, file)
 	return nil
@@ -369,13 +370,13 @@ func loadSnapInfo(snapshot string, persistentStoragePath string, snapInfo *rbdSn
 	file := path.Join(persistentStoragePath, snapshot+".json")
 	fp, err := os.Open(file)
 	if err != nil {
-		return fmt.Errorf("rbd: open err %s/%s", file, err)
+		return errors.Wrapf(err, "rbd: open error for %s", file)
 	}
 	defer fp.Close()
 
 	decoder := json.NewDecoder(fp)
 	if err = decoder.Decode(snapInfo); err != nil {
-		return fmt.Errorf("rbd: decode err: %v.", err)
+		return errors.Wrap(err, "rbd: decode error")
 	}
 	return nil
 }
@@ -386,7 +387,7 @@ func deleteSnapInfo(snapshot string, persistentStoragePath string) error {
 	err := os.Remove(file)
 	if err != nil {
 		if err != os.ErrNotExist {
-			return fmt.Errorf("rbd: error removing file: %s/%s", file, err)
+			return errors.Wrapf(err, "rbd: error removing file %s", file)
 		}
 	}
 	return nil
@@ -455,7 +456,7 @@ func protectSnapshot(pOpts *rbdSnapshot, adminId string, credentials map[string]
 	output, err = execCommand("rbd", args)
 
 	if err != nil {
-		return fmt.Errorf("failed to protect snapshot: %v, command output: %s", err, string(output))
+		return errors.Wrapf(err, "failed to protect snapshot, command output: %s", string(output))
 	}
 
 	return nil
@@ -482,7 +483,7 @@ func createSnapshot(pOpts *rbdSnapshot, adminId string, credentials map[string]s
 	output, err = execCommand("rbd", args)
 
 	if err != nil {
-		return fmt.Errorf("failed to create snapshot: %v, command output: %s", err, string(output))
+		return errors.Wrapf(err, "failed to create snapshot, command output: %s", string(output))
 	}
 
 	return nil
@@ -509,7 +510,7 @@ func unprotectSnapshot(pOpts *rbdSnapshot, adminId string, credentials map[strin
 	output, err = execCommand("rbd", args)
 
 	if err != nil {
-		return fmt.Errorf("failed to unprotect snapshot: %v, command output: %s", err, string(output))
+		return errors.Wrapf(err, "failed to unprotect snapshot, command output: %s", string(output))
 	}
 
 	return nil
@@ -536,7 +537,7 @@ func deleteSnapshot(pOpts *rbdSnapshot, adminId string, credentials map[string]s
 	output, err = execCommand("rbd", args)
 
 	if err != nil {
-		return fmt.Errorf("failed to delete snapshot: %v, command output: %s", err, string(output))
+		return errors.Wrapf(err, "failed to delete snapshot, command output: %s", string(output))
 	}
 
 	return nil
@@ -563,7 +564,7 @@ func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, adminId string
 	output, err = execCommand("rbd", args)
 
 	if err != nil {
-		return fmt.Errorf("failed to restore snapshot: %v, command output: %s", err, string(output))
+		return errors.Wrapf(err, "failed to restore snapshot, command output: %s", string(output))
 	}
 
 	return nil
