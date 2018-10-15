@@ -25,6 +25,8 @@ Option | Default value | Description
 `--endpoint` | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket
 `--drivername` | `csi-cephfsplugin` | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
 `--nodeid` | _empty_ | This node's ID
+`--containerized` | true | Whether running in containerized mode
+
 
 **Available environmental variables:**
 `HOST_ROOTFS`: rbdplugin searches `/proc` directory under the directory set by `HOST_ROOTFS`.

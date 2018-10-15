@@ -27,6 +27,10 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+
+	"k8s.io/kubernetes/pkg/util/mount"
+	"k8s.io/kubernetes/pkg/util/nsenter"
+	"k8s.io/utils/exec"
 )
 
 // PluginFolder defines the location of rbdplugin
@@ -156,13 +160,23 @@ func NewControllerServer(d *csicommon.CSIDriver) *controllerServer {
 	}
 }
 
-func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
+func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, error) {
+	mounter := mount.New("")
+	if containerized {
+		ne, err := nsenter.NewNsenter(nsenter.DefaultHostRootFsPath, exec.New())
+		if err != nil {
+			return nil, err
+		}
+		mounter = mount.NewNsenterMounter("", ne)
+	}
 	return &nodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
-	}
+		mounter:           mounter,
+	}, nil
 }
 
-func (rbd *rbd) Run(driverName, nodeID, endpoint string) {
+func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool) {
+	var err error
 	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Initialize default library driver
@@ -180,7 +194,10 @@ func (rbd *rbd) Run(driverName, nodeID, endpoint string) {
 
 	// Create GRPC servers
 	rbd.ids = NewIdentityServer(rbd.driver)
-	rbd.ns = NewNodeServer(rbd.driver)
+	rbd.ns, err = NewNodeServer(rbd.driver, containerized)
+	if err != nil {
+		glog.Fatalln("failed to start node server, err %v", err)
+	}
 	rbd.cs = NewControllerServer(rbd.driver)
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(endpoint, rbd.ids, rbd.cs, rbd.ns)
