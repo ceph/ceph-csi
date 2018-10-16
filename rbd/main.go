@@ -30,9 +30,10 @@ func init() {
 }
 
 var (
-	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName = flag.String("drivername", "csi-rbdplugin", "name of the driver")
-	nodeID     = flag.String("nodeid", "", "node id")
+	endpoint      = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	driverName    = flag.String("drivername", "csi-rbdplugin", "name of the driver")
+	nodeID        = flag.String("nodeid", "", "node id")
+	containerized = flag.Bool("containerized", true, "whether run as containerized")
 )
 
 func main() {
@@ -53,7 +54,7 @@ func main() {
 
 func handle() {
 	driver := rbd.GetRBDDriver()
-	driver.Run(*driverName, *nodeID, *endpoint)
+	driver.Run(*driverName, *nodeID, *endpoint, *containerized)
 }
 
 func createPersistentStorage(persistentStoragePath string) error {

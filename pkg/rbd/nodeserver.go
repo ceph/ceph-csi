@@ -35,6 +35,7 @@ import (
 
 type nodeServer struct {
 	*csicommon.DefaultNodeServer
+	mounter mount.Interface
 }
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
@@ -46,7 +47,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
 	volName := s[len(s)-1]
 
-	notMnt, err := mount.New("").IsLikelyNotMountPoint(targetPath)
+	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if err = os.MkdirAll(targetPath, 0750); err != nil {
@@ -86,7 +87,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		options = append(options, "ro")
 	}
 
-	diskMounter := &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: mount.NewOsExec()}
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
 	if err := diskMounter.FormatAndMount(devicePath, targetPath, fsType, options); err != nil {
 		return nil, err
 	}
@@ -96,9 +97,8 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
-	mounter := mount.New("")
 
-	notMnt, err := mounter.IsLikelyNotMountPoint(targetPath)
+	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -106,13 +106,13 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.NotFound, "Volume not mounted")
 	}
 
-	devicePath, cnt, err := mount.GetDeviceNameFromMount(mounter, targetPath)
+	devicePath, cnt, err := mount.GetDeviceNameFromMount(ns.mounter, targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// Unmounting the image
-	err = mounter.Unmount(targetPath)
+	err = ns.mounter.Unmount(targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

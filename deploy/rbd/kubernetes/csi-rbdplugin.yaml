@@ -13,6 +13,7 @@ spec:
     spec:
       serviceAccount: csi-nodeplugin
       hostNetwork: true
+      hostPID: true      
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
       # resolved through k8s service, set dns policy to cluster first
       dnsPolicy: ClusterFirstWithHostNet      
@@ -49,9 +50,10 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=csi-rbdplugin"
+            - "--containerized=true"            
           env:
             - name: HOST_ROOTFS
-              value: "/host"
+              value: "/rootfs"
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -67,7 +69,7 @@ spec:
               mountPropagation: "Bidirectional"
             - mountPath: /dev
               name: host-dev
-            - mountPath: /host
+            - mountPath: /rootfs
               name: host-rootfs            
             - mountPath: /sys
               name: host-sys
