@@ -75,7 +75,19 @@ type rbdSnapshot struct {
 }
 
 var (
+	// serializes operations based on "<rbd pool>/<rbd image>" as key
 	attachdetachMutex = keymutex.NewKeyMutex()
+	// serializes operations based on "volume name" as key
+	volumeNameMutex = keymutex.NewKeyMutex()
+	// serializes operations based on "volume id" as key
+	volumeIDMutex = keymutex.NewKeyMutex()
+	// serializes operations based on "snapshot name" as key
+	snapshotNameMutex = keymutex.NewKeyMutex()
+	// serializes operations based on "snapshot id" as key
+	snapshotIDMutex = keymutex.NewKeyMutex()
+	// serializes operations based on "mount target path" as key
+	targetPathMutex = keymutex.NewKeyMutex()
+
 	supportedFeatures = sets.NewString("layering")
 )
 

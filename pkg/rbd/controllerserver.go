@@ -55,6 +55,9 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
 	}
 
+	volumeNameMutex.LockKey(req.GetName())
+	defer volumeNameMutex.UnlockKey(req.GetName())
+
 	// Need to check for already existing volume name, and if found
 	// check for the requested capacity and already allocated capacity
 	if exVol, err := getRBDVolumeByName(req.GetName()); err == nil {
@@ -156,6 +159,8 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	// For now the image get unconditionally deleted, but here retention policy can be checked
 	volumeID := req.GetVolumeId()
+	volumeIDMutex.LockKey(volumeID)
+	defer volumeIDMutex.UnlockKey(volumeID)
 	rbdVol := &rbdVolume{}
 	if err := loadVolInfo(volumeID, path.Join(PluginFolder, "controller"), rbdVol); err != nil {
 		if os.IsNotExist(errors.Cause(err)) {
@@ -174,8 +179,6 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	// Removing persistent storage file for the unmapped volume
 	if err := deleteVolInfo(volumeID, path.Join(PluginFolder, "controller")); err != nil {
-		// TODO: we can theoretically end up here when two DeleteVolume calls
-		// get invoked concurrently. Serialize?
 		return nil, err
 	}
 
@@ -213,6 +216,9 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	if len(req.SourceVolumeId) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Source Volume ID cannot be empty")
 	}
+
+	snapshotNameMutex.LockKey(req.GetName())
+	defer snapshotNameMutex.UnlockKey(req.GetName())
 
 	// Need to check for already existing snapshot name, and if found
 	// check for the requested source volume id and already allocated source volume id
@@ -332,6 +338,9 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	if len(snapshotID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Snapshot ID cannot be empty")
 	}
+	snapshotIDMutex.LockKey(snapshotID)
+	defer snapshotIDMutex.UnlockKey(snapshotID)
+
 	rbdSnap := &rbdSnapshot{}
 	if err := loadSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
 		return nil, err
@@ -368,6 +377,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	sourceVolumeId := req.GetSourceVolumeId()
 
 	// TODO (sngchlko) list with token
+	// TODO (#94) protect concurrent access to global data structures
 
 	// list only a specific snapshot which has snapshot ID
 	if snapshotID := req.GetSnapshotId(); len(snapshotID) != 0 {
