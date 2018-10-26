@@ -47,6 +47,9 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
 	volName := s[len(s)-1]
 
+	targetPathMutex.LockKey(targetPath)
+	defer targetPathMutex.UnlockKey(targetPath)
+
 	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -97,6 +100,8 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
+	targetPathMutex.LockKey(targetPath)
+	defer targetPathMutex.UnlockKey(targetPath)
 
 	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
