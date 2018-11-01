@@ -64,6 +64,9 @@ spec:
           volumeMounts:
             - name: plugin-dir
               mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+            - name: plugin-mount-dir
+              mountPath: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/
+              mountPropagation: "Bidirectional"
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
@@ -80,6 +83,10 @@ spec:
         - name: plugin-dir
           hostPath:
             path: /var/lib/kubelet/plugins/csi-rbdplugin
+            type: DirectoryOrCreate
+        - name: plugin-mount-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
