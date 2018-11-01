@@ -86,6 +86,10 @@ spec:
           hostPath:
             path: /var/lib/kubelet/plugins_registry/csi-rbdplugin
             type: DirectoryOrCreate
+        - name: plugin-mount-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/
+            type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
             path: /var/lib/kubelet/plugins_registry/

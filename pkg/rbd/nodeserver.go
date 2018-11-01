@@ -40,30 +40,53 @@ type nodeServer struct {
 
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
-
-	if !strings.HasSuffix(targetPath, "/mount") {
-		return nil, fmt.Errorf("rnd: malformed the value of target path: %s", targetPath)
-	}
-	s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
-	volName := s[len(s)-1]
-
 	targetPathMutex.LockKey(targetPath)
 	defer targetPathMutex.UnlockKey(targetPath)
 
-	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			if err = os.MkdirAll(targetPath, 0750); err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
+	var volName string
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+
+	if isBlock {
+		// Get volName from targetPath
+		s := strings.Split(targetPath, "/")
+		volName = s[len(s)-1]
+
+		// Check if that target path exists properly
+		// targetPath should exists and should be a file
+		st, err := os.Stat(targetPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil, status.Error(codes.NotFound, "targetPath not mounted")
 			}
-			notMnt = true
-		} else {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-	}
+		if !st.Mode().IsRegular() {
+			return nil, status.Error(codes.Internal, "targetPath is not regular file")
+		}
+	} else {
+		// Get volName from targetPath
+		if !strings.HasSuffix(targetPath, "/mount") {
+			return nil, fmt.Errorf("rnd: malformed the value of target path: %s", targetPath)
+		}
+		s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
+		volName = s[len(s)-1]
 
-	if !notMnt {
-		return &csi.NodePublishVolumeResponse{}, nil
+		// Check if that target path exists properly
+		notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				if err = os.MkdirAll(targetPath, 0750); err != nil {
+					return nil, status.Error(codes.Internal, err.Error())
+				}
+				notMnt = true
+			} else {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
+
+		if !notMnt {
+			return &csi.NodePublishVolumeResponse{}, nil
+		}
 	}
 	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext())
 	if err != nil {
@@ -76,23 +99,31 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, err
 	}
 	glog.V(4).Infof("rbd image: %s/%s was successfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
-	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 
+	// Publish Path
+	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	readOnly := req.GetReadonly()
 	attrib := req.GetVolumeContext()
 	mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
 
-	glog.V(4).Infof("target %v\nfstype %v\ndevice %v\nreadonly %v\nattributes %v\n mountflags %v\n",
-		targetPath, fsType, devicePath, readOnly, attrib, mountFlags)
-
-	options := []string{}
-	if readOnly {
-		options = append(options, "ro")
-	}
+	glog.V(4).Infof("target %v\nisBlock %v\nfstype %v\ndevice %v\nreadonly %v\nattributes %v\n mountflags %v\n",
+		targetPath, isBlock, fsType, devicePath, readOnly, attrib, mountFlags)
 
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
-	if err := diskMounter.FormatAndMount(devicePath, targetPath, fsType, options); err != nil {
-		return nil, err
+	if isBlock {
+		options := []string{"bind"}
+		if err := diskMounter.Mount(devicePath, targetPath, fsType, options); err != nil {
+			return nil, err
+		}
+	} else {
+		options := []string{}
+		if readOnly {
+			options = append(options, "ro")
+		}
+
+		if err := diskMounter.FormatAndMount(devicePath, targetPath, fsType, options); err != nil {
+			return nil, err
+		}
 	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
@@ -102,14 +133,6 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	targetPath := req.GetTargetPath()
 	targetPathMutex.LockKey(targetPath)
 	defer targetPathMutex.UnlockKey(targetPath)
-
-	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if notMnt {
-		return nil, status.Error(codes.NotFound, "Volume not mounted")
-	}
 
 	devicePath, cnt, err := mount.GetDeviceNameFromMount(ns.mounter, targetPath)
 	if err != nil {
