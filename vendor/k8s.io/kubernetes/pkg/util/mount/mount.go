@@ -72,6 +72,9 @@ type Interface interface {
 	// GetDeviceNameFromMount finds the device name by checking the mount path
 	// to get the global mount path which matches its plugin directory
 	GetDeviceNameFromMount(mountPath, pluginDir string) (string, error)
+	// ResolveBindMountedBlockDevice resolves the bind mounted block device path
+	// that can not be resolved by the output of List()
+	ResolveBindMountedBlockDevice(mountPath string) (string, error)
 	// MakeRShared checks that given path is on a mount with 'rshared' mount
 	// propagation. If not, it bind-mounts the path as rshared.
 	MakeRShared(path string) error
@@ -218,7 +221,7 @@ func GetDeviceNameFromMount(mounter Interface, mountPath string) (string, int, e
 	}
 
 	// Find the device name.
-	// FIXME if multiple devices mounted on the same mount path, only the first one is returned
+	// FIXME if multiple devices mounted on the same mount path, only the last one is returned
 	device := ""
 	// If mountPath is symlink, need get its target path.
 	slTarget, err := filepath.EvalSymlinks(mountPath)
@@ -226,9 +229,18 @@ func GetDeviceNameFromMount(mounter Interface, mountPath string) (string, int, e
 		slTarget = mountPath
 	}
 	for i := range mps {
+		if mps[i].Device == "devtmpfs" {
+			dev, err := mounter.ResolveBindMountedBlockDevice(mps[i].Path)
+			if err != nil {
+				// This mount point is not resolved properly skip checking
+				continue
+			}
+			// update to the resolved name
+			mps[i].Device = dev
+		}
 		if mps[i].Path == slTarget {
 			device = mps[i].Device
-			break
+			// Continue this loop to update the device with resolved name for refCount
 		}
 	}
 

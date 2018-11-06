@@ -112,6 +112,12 @@ func (m *execMounter) GetDeviceNameFromMount(mountPath, pluginDir string) (strin
 	return m.wrappedMounter.GetDeviceNameFromMount(mountPath, pluginDir)
 }
 
+// ResolveBindMountedBlockDevice resolves a block device bind mounted on mountPath by calling findmnt
+// in the host's root mount namespace.
+func (m *execMounter) ResolveBindMountedBlockDevice(mountPath string) (string, error) {
+	return m.wrappedMounter.ResolveBindMountedBlockDevice(mountPath)
+}
+
 func (m *execMounter) IsMountPointMatch(mp MountPoint, dir string) bool {
 	return m.wrappedMounter.IsMountPointMatch(mp, dir)
 }

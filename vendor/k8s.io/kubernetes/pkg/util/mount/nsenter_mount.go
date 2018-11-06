@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -205,6 +206,42 @@ func parseFindMnt(out string) (string, error) {
 		return "", fmt.Errorf("error parsing findmnt output, expected at least one space: %q", out)
 	}
 	return out[:i], nil
+}
+
+// ResolveBindMountedBlockDevice resolves a block device bind mounted on mountPath by calling findmnt
+// in the host's root mount namespace.
+func (n *NsenterMounter) ResolveBindMountedBlockDevice(mountPath string) (string, error) {
+	args := []string{"-n", "-o", "SOURCE", "--first-only", "--target", mountPath}
+	glog.V(5).Infof("nsenter findmnt args: %v", args)
+	out, err := n.ne.Exec("findmnt", args).CombinedOutput()
+	if err != nil {
+		glog.V(2).Infof("Failed findmnt command for path %s: %s %v", mountPath, out, err)
+		// Different operating systems behave differently for paths which are not mount points.
+		// On older versions (e.g. 2.20.1) we'd get error, on newer ones (e.g. 2.26.2) we'd get "/".
+		// It's safer to assume that it's not a mount point.
+		return "", err
+	}
+
+	return parseFindMntResolveSource(string(out))
+}
+
+// parse output of "findmnt -o SOURCE --first-only --target" and return just the SOURCE
+func parseFindMntResolveSource(out string) (string, error) {
+	// cut trailing newline
+	out = strings.TrimSuffix(out, "\n")
+	// Check if out is a mounted device
+	reMnt := regexp.MustCompile("^(/[^/]+(?:/[^/]*)*)$")
+	if match := reMnt.FindStringSubmatch(out); match != nil {
+		return match[1], nil
+	}
+
+	// Check if out is a block device
+	reBlk := regexp.MustCompile("^devtmpfs\\[(/[^/]+(?:/[^/]*)*)\\]$")
+	if match := reBlk.FindStringSubmatch(out); match != nil {
+		return fmt.Sprintf("/dev%s", match[1]), nil
+	}
+
+	return "", fmt.Errorf("parseFindMntResolveSource: %s doesn't match to any expected findMnt output", out)
 }
 
 // DeviceOpened checks if block device in use by calling Open with O_EXCL flag.

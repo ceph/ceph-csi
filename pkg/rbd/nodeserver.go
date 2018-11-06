@@ -140,6 +140,8 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	glog.V(4).Infof("NodeUnpublishVolume: targetPath: %s, devicePath: %s\n", targetPath, devicePath)
+
 	// Unmounting the image
 	err = ns.mounter.Unmount(targetPath)
 	if err != nil {
