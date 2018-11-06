@@ -56,7 +56,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		st, err := os.Stat(targetPath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return nil, status.Error(codes.NotFound, "targetPath not mounted")
+				return nil, status.Error(codes.NotFound, "targetPath not exist")
 			}
 			return nil, status.Error(codes.Internal, err.Error())
 		}
