@@ -185,11 +185,6 @@ func (f *FakeMounter) GetDeviceNameFromMount(mountPath, pluginDir string) (strin
 	return getDeviceNameFromMount(f, mountPath, pluginDir)
 }
 
-func (f *FakeMounter) ResolveBindMountedBlockDevice(mountPath string) (string, error) {
-	// TODO implement properly
-	return "", nil
-}
-
 func (f *FakeMounter) MakeRShared(path string) error {
 	return nil
 }

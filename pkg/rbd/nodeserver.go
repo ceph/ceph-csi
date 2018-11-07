@@ -19,6 +19,8 @@ package rbd
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/golang/glog"
@@ -140,6 +142,15 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// Bind mounted device needs to be resolved by using resolveBindMountedBlockDevice
+	if devicePath == "devtmpfs" {
+		var err error
+		devicePath, err = resolveBindMountedBlockDevice(targetPath)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	glog.V(4).Infof("NodeUnpublishVolume: targetPath: %s, devicePath: %s\n", targetPath, devicePath)
 
 	// Unmounting the image
@@ -176,4 +187,31 @@ func (ns *nodeServer) NodeUnstageVolume(
 	*csi.NodeUnstageVolumeResponse, error) {
 
 	return nil, status.Error(codes.Unimplemented, "")
+}
+
+func resolveBindMountedBlockDevice(mountPath string) (string, error) {
+	cmd := exec.Command("findmnt", "-n", "-o", "SOURCE", "--first-only", "--target", mountPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		glog.V(2).Infof("Failed findmnt command for path %s: %s %v", mountPath, out, err)
+		return "", err
+	}
+	return parseFindMntResolveSource(string(out))
+}
+
+// parse output of "findmnt -o SOURCE --first-only --target" and return just the SOURCE
+func parseFindMntResolveSource(out string) (string, error) {
+	// cut trailing newline
+	out = strings.TrimSuffix(out, "\n")
+	// Check if out is a mounted device
+	reMnt := regexp.MustCompile("^(/[^/]+(?:/[^/]*)*)$")
+	if match := reMnt.FindStringSubmatch(out); match != nil {
+		return match[1], nil
+	}
+	// Check if out is a block device
+	reBlk := regexp.MustCompile("^devtmpfs\\[(/[^/]+(?:/[^/]*)*)\\]$")
+	if match := reBlk.FindStringSubmatch(out); match != nil {
+		return fmt.Sprintf("/dev%s", match[1]), nil
+	}
+	return "", fmt.Errorf("parseFindMntResolveSource: %s doesn't match to any expected findMnt output", out)
 }

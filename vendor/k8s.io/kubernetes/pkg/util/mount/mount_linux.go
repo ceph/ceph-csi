@@ -376,11 +376,6 @@ func getDeviceNameFromMount(mounter Interface, mountPath, pluginDir string) (str
 	return path.Base(mountPath), nil
 }
 
-func (mounter *Mounter) ResolveBindMountedBlockDevice(mountPath string) (string, error) {
-	// TODO implement properly
-	return "", nil
-}
-
 func listProcMounts(mountFilePath string) ([]MountPoint, error) {
 	content, err := utilio.ConsistentRead(mountFilePath, maxListTries)
 	if err != nil {
