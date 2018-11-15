@@ -60,9 +60,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	// Check if that target path exists properly
-	// IsLikelyNotMountPoint doesn't return right result to bind mount of device file
-	// TODO: Need to fix this to a proper check
-	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
+	notMnt, err := ns.mounter.IsNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if isBlock {
@@ -137,10 +135,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	targetPathMutex.LockKey(targetPath)
 	defer targetPathMutex.UnlockKey(targetPath)
 
-	// IsLikelyNotMountPoint doesn't return right result to bind mount of device file
-	// So, just use it to check if file exists, not a mount point
-	// TODO: Need to fix this to a proper check
-	_, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
+	notMnt, err := ns.mounter.IsNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
@@ -149,11 +144,33 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		}
 		return nil, status.Error(codes.NotFound, err.Error())
 	}
+	if notMnt {
+		// TODO should consider deleting path instead of returning error,
+		// once all codes become ready for csi 1.0.
+		return nil, status.Error(codes.NotFound, "Volume not mounted")
+	}
 
 	devicePath, cnt, err := mount.GetDeviceNameFromMount(ns.mounter, targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	// Bind mounted device needs to be resolved by using resolveBindMountedBlockDevice
+	if devicePath == "devtmpfs" {
+		var err error
+		devicePath, err = resolveBindMountedBlockDevice(targetPath)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		glog.V(4).Infof("NodeUnpublishVolume: devicePath: %s, (original)cnt: %d\n", devicePath, cnt)
+		// cnt for GetDeviceNameFromMount is broken for bind mouted device,
+		// it counts total number of mounted "devtmpfs", instead of counting this device.
+		// So, forcibly setting cnt to 1 here.
+		// TODO : fix this properly
+		cnt = 1
+	}
+
+	glog.V(4).Infof("NodeUnpublishVolume: targetPath: %s, devicePath: %s\n", targetPath, devicePath)
 
 	// Unmounting the image
 	err = ns.mounter.Unmount(targetPath)
@@ -164,6 +181,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 
 	cnt--
 	if cnt != 0 {
+		// TODO should this be fixed not to success, so that driver can retry unmounting?
 		return &csi.NodeUnpublishVolumeResponse{}, nil
 	}
 
