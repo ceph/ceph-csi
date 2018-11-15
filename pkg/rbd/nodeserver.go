@@ -52,19 +52,6 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		// Get volName from targetPath
 		s := strings.Split(targetPath, "/")
 		volName = s[len(s)-1]
-
-		// Check if that target path exists properly
-		// targetPath should exists and should be a file
-		st, err := os.Stat(targetPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil, status.Error(codes.NotFound, "targetPath not exist")
-			}
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		if !st.Mode().IsRegular() {
-			return nil, status.Error(codes.Internal, "targetPath is not regular file")
-		}
 	} else {
 		// Get volName from targetPath
 		if !strings.HasSuffix(targetPath, "/mount") {
@@ -72,23 +59,39 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		}
 		s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
 		volName = s[len(s)-1]
+	}
 
-		// Check if that target path exists properly
-		notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
-		if err != nil {
-			if os.IsNotExist(err) {
+	// Check if that target path exists properly
+	// IsLikelyNotMountPoint doesn't return right result to bind mount of device file
+	// TODO: Need to fix this to a proper check
+	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if isBlock {
+				// create an empty file
+				targetPathFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, 0750)
+				if err != nil {
+					glog.V(4).Infof("Failed to create targetPath:%s with error: %v", targetPath, err)
+					return nil, status.Error(codes.Internal, err.Error())
+				}
+				if err := targetPathFile.Close(); err != nil {
+					glog.V(4).Infof("Failed to close targetPath:%s with error: %v", targetPath, err)
+					return nil, status.Error(codes.Internal, err.Error())
+				}
+			} else {
+				// Create a directory
 				if err = os.MkdirAll(targetPath, 0750); err != nil {
 					return nil, status.Error(codes.Internal, err.Error())
 				}
-				notMnt = true
-			} else {
-				return nil, status.Error(codes.Internal, err.Error())
 			}
+			notMnt = true
+		} else {
+			return nil, status.Error(codes.Internal, err.Error())
 		}
+	}
 
-		if !notMnt {
-			return &csi.NodePublishVolumeResponse{}, nil
-		}
+	if !notMnt {
+		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
 	// Mapping RBD image
@@ -137,6 +140,19 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	targetPathMutex.LockKey(targetPath)
 	defer targetPathMutex.UnlockKey(targetPath)
 
+	// IsLikelyNotMountPoint doesn't return right result to bind mount of device file
+	// So, just use it to check if file exists, not a mount point
+	// TODO: Need to fix this to a proper check
+	_, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// targetPath has already been deleted
+			glog.V(4).Infof("targetPath: %s has already been deleted", targetPath)
+			return &csi.NodeUnpublishVolumeResponse{}, nil
+		}
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
 	devicePath, cnt, err := mount.GetDeviceNameFromMount(ns.mounter, targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -156,6 +172,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	// Unmounting the image
 	err = ns.mounter.Unmount(targetPath)
 	if err != nil {
+		glog.V(3).Infof("failed to unmount targetPath: %s with error: %v", targetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -167,6 +184,12 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	// Unmapping rbd device
 	if err := detachRBDDevice(devicePath); err != nil {
 		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", devicePath, err)
+		return nil, err
+	}
+
+	// Remove targetPath
+	if err := os.RemoveAll(targetPath); err != nil {
+		glog.V(3).Infof("failed to remove targetPath: %s with error: %v", targetPath, err)
 		return nil, err
 	}
 
