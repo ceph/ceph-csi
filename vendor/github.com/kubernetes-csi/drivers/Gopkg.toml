@@ -23,7 +23,7 @@
 
 [[constraint]]
   name = "github.com/container-storage-interface/spec"
-  version = "~0.3.0"
+  version = "1.0.0"
 
 [[constraint]]
   branch = "master"
@@ -32,10 +32,6 @@
 [[override]]
   revision = "5db89f0ca68677abc5eefce8f2a0a772c98ba52d"
   name = "github.com/docker/distribution"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/gophercloud/gophercloud"
 
 [[constraint]]
   name = "github.com/pborman/uuid"
@@ -58,21 +54,25 @@
   version = "1.10.0"
 
 [[constraint]]
-  name = "gopkg.in/gcfg.v1"
-  version = "1.2.1"
-
-[[constraint]]
-  version = "kubernetes-1.10.0-beta.1"
-  name = "k8s.io/apimachinery"
-
-[[constraint]]
   name = "k8s.io/kubernetes"
-  version = "v1.10.0-beta.1"
+  version = "v1.12.0"
 
 [[override]]
-  version = "kubernetes-1.10.0-beta.1"
+  version = "kubernetes-1.12.0"
   name = "k8s.io/api"
+
+[[override]]
+  version = "kubernetes-1.12.0"
+  name = "k8s.io/apiserver"
 
 [[override]]
   name = "github.com/golang/protobuf"
   version = "v1.1.0"
+
+[[override]]
+  name = "github.com/json-iterator/go"
+  version = "1.1.4"
+
+[[override]]
+  name = "gopkg.in/square/go-jose.v2"
+  version = "2.1.7"

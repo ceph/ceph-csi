@@ -21,7 +21,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -58,8 +58,8 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		mo = append(mo, "ro")
 	}
 
-	s := req.GetVolumeAttributes()["server"]
-	ep := req.GetVolumeAttributes()["share"]
+	s := req.GetVolumeContext()["server"]
+	ep := req.GetVolumeContext()["share"]
 	source := fmt.Sprintf("%s:%s", s, ep)
 
 	mounter := mount.New("")

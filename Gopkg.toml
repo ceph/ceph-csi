@@ -1,6 +1,6 @@
 [[constraint]]
   name = "github.com/container-storage-interface/spec"
-  version = "~0.3.0"
+  version = "v1.0.0"
 
 [[constraint]]
   branch = "master"

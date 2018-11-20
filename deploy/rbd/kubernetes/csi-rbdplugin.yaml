@@ -19,16 +19,12 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet      
       containers:
         - name: driver-registrar
-          image: quay.io/k8scsi/driver-registrar:v0.3.0
+          image: gcr.io/gke-release/csi-driver-registrar:v1.0.0-gke.0
           args:
             - "--v=5"
-            - "--csi-address=$(ADDRESS)"
-            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+            - "--csi-address=/var/lib/kubelet/plugins/csi-rbdplugin/csi.sock"
+            - "--kubelet-registration-path=/var/lib/kubelet/plugins/csi-rbdplugin/csi.sock"
           env:
-            - name: ADDRESS
-              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
-            - name: DRIVER_REG_SOCK_PATH
-              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -47,7 +43,7 @@ spec:
           image: quay.io/cephcsi/rbdplugin:v0.3.0
           args :
             - "--nodeid=$(NODE_ID)"
-            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--endpoint=unix://var/lib/kubelet/plugins/csi-rbdplugin/csi.sock"
             - "--v=5"
             - "--drivername=csi-rbdplugin"
             - "--containerized=true"            
@@ -58,8 +54,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            - name: CSI_ENDPOINT
-              value: unix://var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: plugin-dir
@@ -90,8 +84,8 @@ spec:
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/
-            type: Directory
+            path: /var/lib/kubelet/plugins_registry
+            type: DirectoryOrCreate
         - name: pods-mount-dir
           hostPath:
             path: /var/lib/kubelet/pods

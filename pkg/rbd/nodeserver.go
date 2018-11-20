@@ -26,7 +26,7 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -93,12 +93,12 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	// Mapping RBD image
-	volOptions, err := getRBDVolumeOptions(req.VolumeAttributes)
+	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext())
 	if err != nil {
 		return nil, err
 	}
 	volOptions.VolName = volName
-	devicePath, err := attachRBDImage(volOptions, volOptions.UserId, req.GetNodePublishSecrets())
+	devicePath, err := attachRBDImage(volOptions, volOptions.UserId, req.GetSecrets())
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	readOnly := req.GetReadonly()
-	attrib := req.GetVolumeAttributes()
+	attrib := req.GetVolumeContext()
 	mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
 
 	glog.V(4).Infof("target %v\nisBlock %v\nfstype %v\ndevice %v\nreadonly %v\nattributes %v\n mountflags %v\n",
@@ -244,4 +244,8 @@ func parseFindMntResolveSource(out string) (string, error) {
 		return fmt.Sprintf("/dev%s", match[1]), nil
 	}
 	return "", fmt.Errorf("parseFindMntResolveSource: %s doesn't match to any expected findMnt output", out)
+}
+
+func (ns *nodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, fmt.Sprintf("NodeGetVolumeStats is not yet implemented"))
 }

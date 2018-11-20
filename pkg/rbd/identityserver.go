@@ -19,7 +19,7 @@ package rbd
 import (
 	"context"
 
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
@@ -34,6 +34,13 @@ func (is *identityServer) GetPluginCapabilities(ctx context.Context, req *csi.Ge
 				Type: &csi.PluginCapability_Service_{
 					Service: &csi.PluginCapability_Service{
 						Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
+					},
+				},
+			},
+			{
+				Type: &csi.PluginCapability_Service_{
+					Service: &csi.PluginCapability_Service{
+						Type: csi.PluginCapability_Service_VOLUME_ACCESSIBILITY_CONSTRAINTS,
 					},
 				},
 			},
