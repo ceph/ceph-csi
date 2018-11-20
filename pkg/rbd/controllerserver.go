@@ -40,6 +40,7 @@ const (
 
 type controllerServer struct {
 	*csicommon.DefaultControllerServer
+	persistMetadata bool
 }
 
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
@@ -118,7 +119,11 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			}
 
 			rbdSnap := &rbdSnapshot{}
-			if err := loadSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
+			sm, err := newSnapMeta(cs.persistMetadata)
+			if err != nil {
+				return nil, err
+			}
+			if err := sm.loadSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
 				return nil, err
 			}
 
@@ -137,11 +142,14 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			glog.V(4).Infof("create volume %s", volName)
 		}
 	}
-
-	// Storing volInfo into a persistent file.
-	if err := persistVolInfo(volumeID, path.Join(PluginFolder, "controller"), rbdVol); err != nil {
-		glog.Warningf("rbd: failed to store volInfo with error: %v", err)
+	vm, err := newVolMeta(cs.persistMetadata)
+	if err != nil {
+		return nil, err
 	}
+	if err := vm.persistVolInfo(volumeID, path.Join(PluginFolder, "controller-snap"), rbdVol); err != nil {
+		return nil, err
+	}
+
 	rbdVolumes[volumeID] = rbdVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
@@ -162,9 +170,13 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	volumeIDMutex.LockKey(volumeID)
 	defer volumeIDMutex.UnlockKey(volumeID)
 	rbdVol := &rbdVolume{}
-	if err := loadVolInfo(volumeID, path.Join(PluginFolder, "controller"), rbdVol); err != nil {
+
+	vm, err := newVolMeta(cs.persistMetadata)
+	if err != nil {
+		return nil, err
+	}
+	if err := vm.loadVolInfo(volumeID, path.Join(PluginFolder, "controller-snap"), rbdVol); err != nil {
 		if os.IsNotExist(errors.Cause(err)) {
-			// Must have been deleted already. This is not an error (idempotency!).
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 		return nil, err
@@ -177,8 +189,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, volName, err)
 		return nil, err
 	}
-	// Removing persistent storage file for the unmapped volume
-	if err := deleteVolInfo(volumeID, path.Join(PluginFolder, "controller")); err != nil {
+	if err := vm.deleteVolInfo(volumeID, path.Join(PluginFolder, "controller")); err != nil {
 		return nil, err
 	}
 
@@ -296,24 +307,26 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	rbdSnap.CreatedAt = time.Now().UnixNano()
 
-	// Storing snapInfo into a persistent file.
-	if err := persistSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
-		glog.Warningf("rbd: failed to store snapInfo with error: %v", err)
 
+	sm, err := newSnapMeta(cs.persistMetadata)
+	if err != nil {
+		return nil, err
+	}
+	if err := sm.persistSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
+		glog.Warningf("rbd: failed to store snapInfo with error: %v", err)
 		// Unprotect snapshot
 		err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetCreateSnapshotSecrets())
 		if err != nil {
 			return nil, status.Error(codes.Unknown, fmt.Sprintf("This Snapshot should be removed but failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
 		}
-
 		// Deleting snapshot
 		glog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
 		if err := deleteSnapshot(rbdSnap, rbdSnap.AdminId, req.GetCreateSnapshotSecrets()); err != nil {
 			return nil, status.Error(codes.Unknown, fmt.Sprintf("This Snapshot should be removed but failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
 		}
-
 		return nil, err
 	}
+
 	rbdSnapshots[snapshotID] = rbdSnap
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
@@ -342,12 +355,16 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	defer snapshotIDMutex.UnlockKey(snapshotID)
 
 	rbdSnap := &rbdSnapshot{}
-	if err := loadSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
+	sm, err := newSnapMeta(cs.persistMetadata)
+	if err != nil {
+		return nil, err
+	}
+	if err := sm.loadSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
 		return nil, err
 	}
 
 	// Unprotect snapshot
-	err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetDeleteSnapshotSecrets())
+	err = unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetDeleteSnapshotSecrets())
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
 	}
@@ -358,8 +375,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
 	}
 
-	// Removing persistent storage file for the unmapped snapshot
-	if err := deleteSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap")); err != nil {
+	if err := sm.deleteSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap")); err != nil {
 		return nil, err
 	}
 

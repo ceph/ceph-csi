@@ -84,6 +84,9 @@ func init() {
 		// there might be some snapshots left, they must be re-inserted into rbdSnapshots map
 		loadExSnapshots()
 	}
+	if cm, err := getMetadataCM(); err == nil {
+		loadExDataFromCM(cm)
+	}
 }
 
 // loadExSnapshots check for any *.json files in the  PluginFolder/controller-snap folder
@@ -154,9 +157,10 @@ func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
 	}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver) *controllerServer {
+func NewControllerServer(d *csicommon.CSIDriver, persistMetadata bool) *controllerServer {
 	return &controllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
+		persistMetadata: persistMetadata,
 	}
 }
 
@@ -175,7 +179,7 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, err
 	}, nil
 }
 
-func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool) {
+func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool, persistMetadata bool) {
 	var err error
 	glog.Infof("Driver: %v version: %v", driverName, version)
 
@@ -198,7 +202,7 @@ func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool) {
 	if err != nil {
 		glog.Fatalln("failed to start node server, err %v", err)
 	}
-	rbd.cs = NewControllerServer(rbd.driver)
+	rbd.cs = NewControllerServer(rbd.driver, persistMetadata)
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(endpoint, rbd.ids, rbd.cs, rbd.ns)
 	s.Wait()

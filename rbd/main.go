@@ -30,10 +30,11 @@ func init() {
 }
 
 var (
-	endpoint      = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName    = flag.String("drivername", "csi-rbdplugin", "name of the driver")
-	nodeID        = flag.String("nodeid", "", "node id")
-	containerized = flag.Bool("containerized", true, "whether run as containerized")
+	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	driverName      = flag.String("drivername", "csi-rbdplugin", "name of the driver")
+	nodeID          = flag.String("nodeid", "", "node id")
+	containerized   = flag.Bool("containerized", true, "whether run as containerized")
+	persistMetadata = flag.Bool("persistmetadata", false, "whether should volume and snapshot metadata be persisted as a k8s configmap")
 )
 
 func main() {
@@ -48,13 +49,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	if *persistMetadata {
+		rbd.Client = rbd.NewK8sClient()
+		rbd.CreateMetadataCM()
+	}
+
 	handle()
 	os.Exit(0)
 }
 
 func handle() {
 	driver := rbd.GetRBDDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *containerized)
+	driver.Run(*driverName, *nodeID, *endpoint, *containerized, *persistMetadata)
 }
 
 func createPersistentStorage(persistentStoragePath string) error {
