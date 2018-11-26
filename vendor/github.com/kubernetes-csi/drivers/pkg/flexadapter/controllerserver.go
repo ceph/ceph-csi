@@ -17,7 +17,7 @@ limitations under the License.
 package flexadapter
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -47,7 +47,7 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 	}
 
 	call := cs.flexDriver.NewDriverCall(attachCmd)
-	call.AppendSpec(req.GetVolumeId(), fsType, req.GetReadonly(), req.GetVolumeAttributes())
+	call.AppendSpec(req.GetVolumeId(), fsType, req.GetReadonly(), req.GetVolumeContext())
 	call.Append(req.GetNodeId())
 
 	callStatus, err := call.Run()
@@ -57,12 +57,12 @@ func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	pvInfo := map[string]string{}
+	publishContext := map[string]string{}
 
-	pvInfo[deviceID] = callStatus.DevicePath
+	publishContext[deviceID] = callStatus.DevicePath
 
 	return &csi.ControllerPublishVolumeResponse{
-		PublishInfo: pvInfo,
+		PublishContext: publishContext,
 	}, nil
 }
 
@@ -86,10 +86,5 @@ func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *
 }
 
 func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	for _, cap := range req.VolumeCapabilities {
-		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
-			return &csi.ValidateVolumeCapabilitiesResponse{Supported: false, Message: ""}, nil
-		}
-	}
-	return &csi.ValidateVolumeCapabilitiesResponse{Supported: true, Message: ""}, nil
+	return cs.DefaultControllerServer.ValidateVolumeCapabilities(ctx, req)
 }

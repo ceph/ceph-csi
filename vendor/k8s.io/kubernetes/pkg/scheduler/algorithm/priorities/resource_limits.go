@@ -23,7 +23,7 @@ import (
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	schedulercache "k8s.io/kubernetes/pkg/scheduler/cache"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 // ResourceLimitsPriorityMap is a priority function that increases score of input node by 1 if the node satisfies
@@ -52,10 +52,10 @@ func ResourceLimitsPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedule
 		score = 1
 	}
 
-	if glog.V(10) {
-		// We explicitly don't do glog.V(10).Infof() to avoid computing all the parameters if this is
+	if klog.V(10) {
+		// We explicitly don't do klog.V(10).Infof() to avoid computing all the parameters if this is
 		// not logged. There is visible performance gain from it.
-		glog.Infof(
+		klog.Infof(
 			"%v -> %v: Resource Limits Priority, allocatable %d millicores %d memory bytes, pod limits %d millicores %d memory bytes, score %d",
 			pod.Name, node.Name,
 			allocatableResources.MilliCPU, allocatableResources.Memory,
@@ -70,7 +70,7 @@ func ResourceLimitsPriorityMap(pod *v1.Pod, meta interface{}, nodeInfo *schedule
 	}, nil
 }
 
-// computeScore return 1 if limit value is less than or equal to allocable
+// computeScore returns 1 if limit value is less than or equal to allocatable
 // value, otherwise it returns 0.
 func computeScore(limit, allocatable int64) int64 {
 	if limit != 0 && allocatable != 0 && limit <= allocatable {

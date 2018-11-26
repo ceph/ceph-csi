@@ -6,5 +6,15 @@ These drivers are provided purely for illustrative purposes, and should not be u
 ## Other sample drivers
 Please read [Drivers](https://kubernetes-csi.github.io/docs/Drivers.html) for more information
 
-## Adding new sample drivers
-Please, DO NOT submit PRs to add new drivers here unless they are just examples. Real CSI drivers are to be housed on their own repo separate from this one. You are then welcomed to send a PR to https://github.com/kubernetes-csi/docs to add the [Driver](https://github.com/kubernetes-csi/docs/wiki/Drivers) page.
+## Community, discussion, contribution, and support
+
+Learn how to engage with the Kubernetes community on the [community page](http://kubernetes.io/community/).
+
+You can reach the maintainers of this project at:
+
+- [Slack channel](https://kubernetes.slack.com/messages/sig-storage)
+- [Mailing list](https://groups.google.com/forum/#!forum/kubernetes-sig-storage)
+
+### Code of conduct
+
+Participation in the Kubernetes community is governed by the [Kubernetes Code of Conduct](code-of-conduct.md).

@@ -22,13 +22,14 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 // FakeMounter implements mount.Interface for tests.
 type FakeMounter struct {
 	MountPoints []MountPoint
 	Log         []FakeAction
+	Filesystem  map[string]FileType
 	// Some tests run things in parallel, make sure the mounter does not produce
 	// any golang's DATA RACE warnings.
 	mutex sync.Mutex
@@ -82,11 +83,8 @@ func (f *FakeMounter) Mount(source string, target string, fstype string, options
 				}
 			}
 		}
-		// find 'ro' option
-		if option == "ro" {
-			// reuse MountPoint.Opts field to mark mount as readonly
-			opts = append(opts, "ro")
-		}
+		// reuse MountPoint.Opts field to mark mount as readonly
+		opts = append(opts, option)
 	}
 
 	// If target is a symlink, get its absolute path
@@ -94,9 +92,8 @@ func (f *FakeMounter) Mount(source string, target string, fstype string, options
 	if err != nil {
 		absTarget = target
 	}
-
 	f.MountPoints = append(f.MountPoints, MountPoint{Device: source, Path: absTarget, Type: fstype, Opts: opts})
-	glog.V(5).Infof("Fake mounter: mounted %s to %s", source, absTarget)
+	klog.V(5).Infof("Fake mounter: mounted %s to %s", source, absTarget)
 	f.Log = append(f.Log, FakeAction{Action: FakeActionMount, Target: absTarget, Source: source, FSType: fstype})
 	return nil
 }
@@ -114,7 +111,7 @@ func (f *FakeMounter) Unmount(target string) error {
 	newMountpoints := []MountPoint{}
 	for _, mp := range f.MountPoints {
 		if mp.Path == absTarget {
-			glog.V(5).Infof("Fake mounter: unmounted %s from %s", mp.Device, absTarget)
+			klog.V(5).Infof("Fake mounter: unmounted %s from %s", mp.Device, absTarget)
 			// Don't copy it to newMountpoints
 			continue
 		}
@@ -157,11 +154,11 @@ func (f *FakeMounter) IsLikelyNotMountPoint(file string) (bool, error) {
 
 	for _, mp := range f.MountPoints {
 		if mp.Path == absFile {
-			glog.V(5).Infof("isLikelyNotMountPoint for %s: mounted %s, false", file, mp.Path)
+			klog.V(5).Infof("isLikelyNotMountPoint for %s: mounted %s, false", file, mp.Path)
 			return false, nil
 		}
 	}
-	glog.V(5).Infof("isLikelyNotMountPoint for %s: true", file)
+	klog.V(5).Infof("isLikelyNotMountPoint for %s: true", file)
 	return true, nil
 }
 
@@ -190,7 +187,10 @@ func (f *FakeMounter) MakeRShared(path string) error {
 }
 
 func (f *FakeMounter) GetFileType(pathname string) (FileType, error) {
-	return FileType("fake"), nil
+	if t, ok := f.Filesystem[pathname]; ok {
+		return t, nil
+	}
+	return FileType("Directory"), nil
 }
 
 func (f *FakeMounter) MakeDir(pathname string) error {
@@ -202,7 +202,14 @@ func (f *FakeMounter) MakeFile(pathname string) error {
 }
 
 func (f *FakeMounter) ExistsPath(pathname string) (bool, error) {
-	return false, errors.New("not implemented")
+	if _, ok := f.Filesystem[pathname]; ok {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (f *FakeMounter) EvalHostSymlinks(pathname string) (string, error) {
+	return pathname, nil
 }
 
 func (f *FakeMounter) PrepareSafeSubpath(subPath Subpath) (newHostPath string, cleanupAction func(), err error) {
