@@ -1,4 +1,4 @@
-# Ceph CSI 0.3.0
+# Ceph CSI 1.0.0
 
 [Container Storage Interface (CSI)](https://github.com/container-storage-interface/) driver, provisioner, and attacher for Ceph RBD and CephFS.
 
