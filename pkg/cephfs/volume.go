@@ -81,8 +81,10 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeI
 		return err
 	}
 
-	if err := setVolumeAttribute(localVolRoot, "ceph.quota.max_bytes", fmt.Sprintf("%d", bytesQuota)); err != nil {
-		return err
+	if bytesQuota > 0 {
+		if err := setVolumeAttribute(localVolRoot, "ceph.quota.max_bytes", fmt.Sprintf("%d", bytesQuota)); err != nil {
+			return err
+		}
 	}
 
 	if err := setVolumeAttribute(localVolRoot, "ceph.dir.layout.pool", volOptions.Pool); err != nil {

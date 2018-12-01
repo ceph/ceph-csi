@@ -30,10 +30,6 @@ type controllerServer struct {
 	*csicommon.DefaultControllerServer
 }
 
-const (
-	oneGB = 1073741824
-)
-
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
 		glog.Errorf("CreateVolumeRequest validation failed: %v", err)
@@ -86,11 +82,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		glog.Infof("cephfs: volume %s is provisioned statically", volId)
 	}
 
-	sz := req.GetCapacityRange().GetRequiredBytes()
-	if sz == 0 {
-		sz = oneGB
-	}
-
 	if err = ctrCache.insert(&controllerCacheEntry{VolOptions: *volOptions, VolumeID: volId}); err != nil {
 		glog.Errorf("failed to store a cache entry for volume %s: %v", volId, err)
 		return nil, status.Error(codes.Internal, err.Error())
@@ -99,7 +90,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            string(volId),
-			CapacityBytes: sz,
+			CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
 			Attributes:    req.GetParameters(),
 		},
 	}, nil
