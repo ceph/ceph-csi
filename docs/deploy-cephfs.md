@@ -33,7 +33,7 @@ Parameter | Required | Description
 --------- | -------- | -----------
 `monitors` | yes | Comma separated list of Ceph monitors (e.g. `192.168.100.1:6789,192.168.100.2:6789,192.168.100.3:6789`)
 `mounter` | no | Mount method to be used for this volume. Available options are `kernel` for Ceph kernel client and `fuse` for Ceph FUSE driver. Defaults to "default mounter", see command line arguments.
-`provisionVolume` | yes | Mode of operation. BOOL value. If `true`, a new CephFS volume will be provisioned. If `false`, an existing CephFS will be used.
+`provisionVolume` | yes | Mode of operation. BOOL value. If `true`, a new CephFS volume will be provisioned. If `false`, an existing volume will be used.
 `pool` | for `provisionVolume=true` | Ceph pool into which the volume shall be created
 `rootPath` | for `provisionVolume=false` | Root path of an existing CephFS volume
 `csiProvisionerSecretName`, `csiNodeStageSecretName` | for Kubernetes | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
@@ -48,6 +48,8 @@ Admin credentials are required for provisioning new volumes
 User credentials with access to an existing volume
 * `userID`: ID of a user client
 * `userKey`: key of a user client
+
+Notes on volume size: when provisioning a new volume, `max_bytes` quota attribute for this volume will be set to the requested volume size (see [Ceph quota documentation](http://docs.ceph.com/docs/mimic/cephfs/quota/)). A request for a zero-sized volume means no quota attribute will be set.
 
 ## Deployment with Kubernetes
 
