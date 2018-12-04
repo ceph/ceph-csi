@@ -26,16 +26,16 @@ spec:
             - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
+              value: /var/lib/kubelet/plugins_registry/csi-rbdplugin/csi.sock
             - name: DRIVER_REG_SOCK_PATH
-              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
+              value: /var/lib/kubelet/plugins_registry/csi-rbdplugin/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+              mountPath: /var/lib/kubelet/plugins_registry/csi-rbdplugin
             - name: registration-dir
               mountPath: /registration
         - name: csi-rbdplugin
@@ -59,11 +59,11 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
-              value: unix://var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
+              value: unix://var/lib/kubelet/plugins_registry/csi-rbdplugin/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: plugin-dir
-              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+              mountPath: /var/lib/kubelet/plugins_registry/csi-rbdplugin
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
@@ -79,11 +79,11 @@ spec:
       volumes:
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-rbdplugin
+            path: /var/lib/kubelet/plugins_registry/csi-rbdplugin
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/
+            path: /var/lib/kubelet/plugins_registry/
             type: Directory
         - name: pods-mount-dir
           hostPath:
@@ -91,7 +91,7 @@ spec:
             type: Directory
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-rbdplugin
+            path: /var/lib/kubelet/plugins_registry/csi-rbdplugin
             type: DirectoryOrCreate
         - name: host-dev
           hostPath:
