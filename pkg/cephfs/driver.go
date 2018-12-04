@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	PluginFolder = "/var/lib/kubelet/plugins/csi-cephfsplugin"
+	PluginFolder = "/var/lib/kubelet/plugins_registry/csi-cephfsplugin"
 	Version      = "1.0.0"
 )
 
