@@ -43,7 +43,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	volId := newVolumeID()
+	volId := makeVolumeID(req.GetName())
 
 	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volId}
 	if err = conf.writeToFile(); err != nil {

@@ -27,14 +27,13 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/pborman/uuid"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 type volumeID string
 
-func newVolumeID() volumeID {
-	return volumeID("csi-cephfs-" + uuid.NewUUID().String())
+func makeVolumeID(volName string) volumeID {
+	return volumeID("csi-cephfs-" + volName)
 }
 
 func execCommand(command string, args ...string) ([]byte, error) {
