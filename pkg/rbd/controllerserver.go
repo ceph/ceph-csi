@@ -234,10 +234,10 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 					SizeBytes:      exSnap.SizeBytes,
 					SnapshotId:     exSnap.SnapID,
 					SourceVolumeId: exSnap.SourceVolumeID,
-					CreationTime:   &timestamp.Timestamp{
+					CreationTime: &timestamp.Timestamp{
 						Seconds: exSnap.CreatedAt,
 					},
-					ReadyToUse:     true,
+					ReadyToUse: true,
 				},
 			}, nil
 		}
@@ -325,10 +325,10 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			SizeBytes:      rbdSnap.SizeBytes,
 			SnapshotId:     snapshotID,
 			SourceVolumeId: req.GetSourceVolumeId(),
-			CreationTime:   &timestamp.Timestamp{
+			CreationTime: &timestamp.Timestamp{
 				Seconds: rbdSnap.CreatedAt,
 			},
-			ReadyToUse:     true,
+			ReadyToUse: true,
 		},
 	}, nil
 }
@@ -398,10 +398,10 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 							SizeBytes:      rbdSnap.SizeBytes,
 							SnapshotId:     rbdSnap.SnapID,
 							SourceVolumeId: rbdSnap.SourceVolumeID,
-							CreationTime:   &timestamp.Timestamp{
+							CreationTime: &timestamp.Timestamp{
 								Seconds: rbdSnap.CreatedAt,
 							},
-							ReadyToUse:     true,
+							ReadyToUse: true,
 						},
 					},
 				},
@@ -422,10 +422,10 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 				SizeBytes:      rbdSnap.SizeBytes,
 				SnapshotId:     rbdSnap.SnapID,
 				SourceVolumeId: rbdSnap.SourceVolumeID,
-				CreationTime:   &timestamp.Timestamp{
+				CreationTime: &timestamp.Timestamp{
 					Seconds: rbdSnap.CreatedAt,
 				},
-				ReadyToUse:     true,
+				ReadyToUse: true,
 			},
 		})
 	}
