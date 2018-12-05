@@ -101,7 +101,7 @@ func loadExSnapshots() {
 		}
 		fp, err := os.Open(path.Join(PluginFolder, "controller-snap", f.Name()))
 		if err != nil {
-			glog.Infof("rbd: open file: %s err %%v", f.Name(), err)
+			glog.Infof("rbd: open file: %s err %v", f.Name(), err)
 			continue
 		}
 		decoder := json.NewDecoder(fp)
@@ -130,7 +130,7 @@ func loadExVolumes() {
 		}
 		fp, err := os.Open(path.Join(PluginFolder, "controller", f.Name()))
 		if err != nil {
-			glog.Infof("rbd: open file: %s err %%v", f.Name(), err)
+			glog.Infof("rbd: open file: %s err %v", f.Name(), err)
 			continue
 		}
 		decoder := json.NewDecoder(fp)
@@ -196,7 +196,7 @@ func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool) {
 	rbd.ids = NewIdentityServer(rbd.driver)
 	rbd.ns, err = NewNodeServer(rbd.driver, containerized)
 	if err != nil {
-		glog.Fatalln("failed to start node server, err %v", err)
+		glog.Fatalf("failed to start node server, err %v\n", err)
 	}
 	rbd.cs = NewControllerServer(rbd.driver)
 	s := csicommon.NewNonBlockingGRPCServer()
