@@ -54,6 +54,11 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if req.VolumeCapabilities == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
 	}
+	for _, cap := range req.VolumeCapabilities {
+		if cap.GetBlock() != nil {
+			return nil, status.Error(codes.Unimplemented, "Block Volume not supported")
+		}
+	}
 
 	volumeNameMutex.LockKey(req.GetName())
 	defer volumeNameMutex.UnlockKey(req.GetName())
