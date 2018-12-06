@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/ceph/ceph-csi/pkg/rbd"
 	"github.com/golang/glog"
 )
@@ -34,7 +35,7 @@ var (
 	driverName      = flag.String("drivername", "csi-rbdplugin", "name of the driver")
 	nodeID          = flag.String("nodeid", "", "node id")
 	containerized   = flag.Bool("containerized", true, "whether run as containerized")
-	persistMetadata = flag.Bool("persistmetadata", false, "whether should volume and snapshot metadata be persisted as a k8s configmap")
+	metadataStorage = flag.String("metadatastorage", "node", "metadata persistance method [node|k8s_configmap]")
 )
 
 func main() {
@@ -49,18 +50,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *persistMetadata {
-		rbd.Client = rbd.NewK8sClient()
-		rbd.CreateMetadataCM()
-	}
+	cp := util.NewCachePersister(*metadataStorage, *driverName)
 
-	handle()
-	os.Exit(0)
-}
-
-func handle() {
 	driver := rbd.GetRBDDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *containerized, *persistMetadata)
+	driver.Run(*driverName, *nodeID, *endpoint, *containerized, cp)
+
+	os.Exit(0)
 }
 
 func createPersistentStorage(persistentStoragePath string) error {

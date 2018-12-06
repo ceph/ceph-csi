@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -40,7 +41,45 @@ const (
 
 type controllerServer struct {
 	*csicommon.DefaultControllerServer
-	persistMetadata bool
+	MetadataStore util.CachePersister
+}
+
+var (
+	volPath = "controller"
+	snapPath = "controller-snap"
+
+	rbdVolumes = map[string]*rbdVolume{}
+	rbdSnapshots = map[string]*rbdSnapshot{}
+)
+
+func (cs *controllerServer) LoadExDataFromMetadataStore() {
+	if _, err := os.Stat(path.Join(PluginFolder, volPath)); os.IsNotExist(err) {
+		glog.Infof("rbd: folder %s not found. Creating... \n", path.Join(PluginFolder, volPath))
+		if err := os.Mkdir(path.Join(PluginFolder, volPath), 0755); err != nil {
+			glog.Fatalf("Failed to create a controller's volumes folder with error: %v\n", err)
+		}
+	} else {
+		vol := &rbdVolume{}
+		util.CacheSubPath = volPath
+		cs.MetadataStore.ForAll("csi-rbd-vol-", vol, func(identifier string) error {
+			rbdVolumes[identifier] = vol
+			return nil
+		})
+	}
+	if _, err := os.Stat(path.Join(PluginFolder, snapPath)); os.IsNotExist(err) {
+		glog.Infof("rbd: folder %s not found. Creating... \n", path.Join(PluginFolder, snapPath))
+		if err := os.Mkdir(path.Join(PluginFolder, snapPath), 0755); err != nil {
+			glog.Fatalf("Failed to create a controller's snapshots folder with error: %v\n", err)
+		}
+	} else {
+		snap := &rbdSnapshot{}
+		util.CacheSubPath = snapPath
+		cs.MetadataStore.ForAll("csi-rbd-(.*)-snap-", snap, func(identifier string) error {
+			rbdSnapshots[identifier] = snap
+			return nil
+		})
+	}
+	glog.Infof("Loaded %d volumes and %d snapshots from metadata store", len(rbdVolumes), len(rbdSnapshots))
 }
 
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
@@ -93,7 +132,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		volName = rbdVol.Pool + "-dynamic-pvc-" + uniqueID
 	}
 	rbdVol.VolName = volName
-	volumeID := "csi-rbd-" + uniqueID
+	volumeID := "csi-rbd-vol-" + uniqueID
 	rbdVol.VolID = volumeID
 	// Volume Size - Default is 1 GiB
 	volSizeBytes := int64(oneGB)
@@ -119,11 +158,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			}
 
 			rbdSnap := &rbdSnapshot{}
-			sm, err := newSnapMeta(cs.persistMetadata)
-			if err != nil {
-				return nil, err
-			}
-			if err := sm.loadSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
+			util.CacheSubPath = snapPath
+			if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
 				return nil, err
 			}
 
@@ -142,11 +178,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			glog.V(4).Infof("create volume %s", volName)
 		}
 	}
-	vm, err := newVolMeta(cs.persistMetadata)
-	if err != nil {
-		return nil, err
-	}
-	if err := vm.persistVolInfo(volumeID, path.Join(PluginFolder, "controller-snap"), rbdVol); err != nil {
+	util.CacheSubPath = volPath
+	if err := cs.MetadataStore.Create(volumeID, rbdVol); err != nil {
 		return nil, err
 	}
 
@@ -169,18 +202,16 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	volumeID := req.GetVolumeId()
 	volumeIDMutex.LockKey(volumeID)
 	defer volumeIDMutex.UnlockKey(volumeID)
-	rbdVol := &rbdVolume{}
 
-	vm, err := newVolMeta(cs.persistMetadata)
-	if err != nil {
-		return nil, err
-	}
-	if err := vm.loadVolInfo(volumeID, path.Join(PluginFolder, "controller-snap"), rbdVol); err != nil {
+	rbdVol := &rbdVolume{}
+	util.CacheSubPath = volPath
+	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
 		if os.IsNotExist(errors.Cause(err)) {
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 		return nil, err
 	}
+
 	volName := rbdVol.VolName
 	// Deleting rbd image
 	glog.V(4).Infof("deleting volume %s", volName)
@@ -189,7 +220,8 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, volName, err)
 		return nil, err
 	}
-	if err := vm.deleteVolInfo(volumeID, path.Join(PluginFolder, "controller")); err != nil {
+
+	if err := cs.MetadataStore.Delete(volumeID); err != nil {
 		return nil, err
 	}
 
@@ -307,12 +339,8 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	rbdSnap.CreatedAt = time.Now().UnixNano()
 
-
-	sm, err := newSnapMeta(cs.persistMetadata)
-	if err != nil {
-		return nil, err
-	}
-	if err := sm.persistSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
+	util.CacheSubPath = snapPath
+	if err := cs.MetadataStore.Create(snapshotID, rbdSnap); err != nil {
 		glog.Warningf("rbd: failed to store snapInfo with error: %v", err)
 		// Unprotect snapshot
 		err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetCreateSnapshotSecrets())
@@ -355,16 +383,13 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	defer snapshotIDMutex.UnlockKey(snapshotID)
 
 	rbdSnap := &rbdSnapshot{}
-	sm, err := newSnapMeta(cs.persistMetadata)
-	if err != nil {
-		return nil, err
-	}
-	if err := sm.loadSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap"), rbdSnap); err != nil {
+	util.CacheSubPath = snapPath
+	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
 		return nil, err
 	}
 
 	// Unprotect snapshot
-	err = unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetDeleteSnapshotSecrets())
+	err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetDeleteSnapshotSecrets())
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
 	}
@@ -375,7 +400,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
 	}
 
-	if err := sm.deleteSnapInfo(snapshotID, path.Join(PluginFolder, "controller-snap")); err != nil {
+	if err := cs.MetadataStore.Delete(snapshotID); err != nil {
 		return nil, err
 	}
 

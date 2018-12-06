@@ -18,7 +18,6 @@ package rbd
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -112,14 +111,6 @@ func getMon(pOpts *rbdVolume, credentials map[string]string) (string, error) {
 		}
 	}
 	return mon, nil
-}
-
-func getNamespace() string {
-	namespace := os.Getenv("POD_NAMESPACE")
-	if namespace == "" {
-		return defaultNamespace
-	}
-	return namespace
 }
 
 // CreateImage creates a new ceph image with provision and volume options.
