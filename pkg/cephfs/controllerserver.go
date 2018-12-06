@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
@@ -37,14 +37,13 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	// Configuration
-
 	volOptions, err := newVolumeOptions(req.GetParameters())
 	if err != nil {
 		glog.Errorf("validation of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	volId := newVolumeID()
+	volId := makeVolumeID(req.GetName())
 
 	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volId}
 	if err = conf.writeToFile(); err != nil {
@@ -57,7 +56,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if volOptions.ProvisionVolume {
 		// Admin credentials are required
 
-		cr, err := getAdminCredentials(req.GetControllerCreateSecrets())
+		cr, err := getAdminCredentials(req.GetSecrets())
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
@@ -89,9 +88,9 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			Id:            string(volId),
+			VolumeId:      string(volId),
 			CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
-			Attributes:    req.GetParameters(),
+			VolumeContext: req.GetParameters(),
 		},
 	}, nil
 }
@@ -133,7 +132,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	// Deleting a volume requires admin credentials
 
-	cr, err := getAdminCredentials(req.GetControllerDeleteSecrets())
+	cr, err := getAdminCredentials(req.GetSecrets())
 	if err != nil {
 		glog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -160,8 +159,12 @@ func (cs *controllerServer) ValidateVolumeCapabilities(
 	// Cephfs doesn't support Block volume
 	for _, cap := range req.VolumeCapabilities {
 		if cap.GetBlock() != nil {
-			return &csi.ValidateVolumeCapabilitiesResponse{Supported: false, Message: ""}, nil
+			return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
 		}
 	}
-	return &csi.ValidateVolumeCapabilitiesResponse{Supported: true}, nil
+	return &csi.ValidateVolumeCapabilitiesResponse{
+		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
+			VolumeCapabilities: req.VolumeCapabilities,
+		},
+	}, nil
 }

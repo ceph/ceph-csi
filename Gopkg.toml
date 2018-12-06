@@ -1,6 +1,6 @@
 [[constraint]]
   name = "github.com/container-storage-interface/spec"
-  version = "~0.3.0"
+  version = "~1.0.0"
 
 [[constraint]]
   branch = "master"
@@ -19,15 +19,15 @@
   version = "1.10.0"
 
 [[constraint]]
-  version = "kubernetes-1.10.0-beta.1"
+  version = "kubernetes-1.13.0"
   name = "k8s.io/apimachinery"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "v1.10.0-beta.1"
+  version = "v1.13.0"
 
 [[override]]
-  version = "kubernetes-1.10.0-beta.1"
+  version = "kubernetes-1.13.0"
   name = "k8s.io/api"
 
 [[override]]

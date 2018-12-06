@@ -21,13 +21,13 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
 const (
-	PluginFolder = "/var/lib/kubelet/plugins/csi-cephfsplugin"
-	Version      = "0.3.0"
+	PluginFolder = "/var/lib/kubelet/plugins_registry/csi-cephfsplugin"
+	Version      = "1.0.0"
 )
 
 type cephfsDriver struct {

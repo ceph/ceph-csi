@@ -24,8 +24,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -69,9 +70,9 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			// TODO (sbezverk) Do I need to make sure that RBD volume still exists?
 			return &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
-					Id:            exVol.VolID,
+					VolumeId:      exVol.VolID,
 					CapacityBytes: int64(exVol.VolSize),
-					Attributes:    req.GetParameters(),
+					VolumeContext: req.GetParameters(),
 				},
 			}, nil
 		}
@@ -103,7 +104,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	volSizeGB := int(volSizeBytes / 1024 / 1024 / 1024)
 
 	// Check if there is already RBD image with requested name
-	found, _, _ := rbdStatus(rbdVol, rbdVol.UserId, req.GetControllerCreateSecrets())
+	found, _, _ := rbdStatus(rbdVol, rbdVol.UserId, req.GetSecrets())
 	if !found {
 		// if VolumeContentSource is not nil, this request is for snapshot
 		if req.VolumeContentSource != nil {
@@ -112,7 +113,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				return nil, status.Error(codes.InvalidArgument, "Volume Snapshot cannot be empty")
 			}
 
-			snapshotID := snapshot.GetId()
+			snapshotID := snapshot.GetSnapshotId()
 			if len(snapshotID) == 0 {
 				return nil, status.Error(codes.InvalidArgument, "Volume Snapshot ID cannot be empty")
 			}
@@ -122,13 +123,13 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				return nil, err
 			}
 
-			err = restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminId, req.GetControllerCreateSecrets())
+			err = restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminId, req.GetSecrets())
 			if err != nil {
 				return nil, err
 			}
 			glog.V(4).Infof("create volume %s from snapshot %s", volName, rbdSnap.SnapName)
 		} else {
-			if err := createRBDImage(rbdVol, volSizeGB, rbdVol.AdminId, req.GetControllerCreateSecrets()); err != nil {
+			if err := createRBDImage(rbdVol, volSizeGB, rbdVol.AdminId, req.GetSecrets()); err != nil {
 				if err != nil {
 					glog.Warningf("failed to create volume: %v", err)
 					return nil, err
@@ -145,9 +146,9 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	rbdVolumes[volumeID] = rbdVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			Id:            volumeID,
+			VolumeId:      volumeID,
 			CapacityBytes: int64(volSizeBytes),
-			Attributes:    req.GetParameters(),
+			VolumeContext: req.GetParameters(),
 		},
 	}, nil
 }
@@ -172,7 +173,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	volName := rbdVol.VolName
 	// Deleting rbd image
 	glog.V(4).Infof("deleting volume %s", volName)
-	if err := deleteRBDImage(rbdVol, rbdVol.AdminId, req.GetControllerDeleteSecrets()); err != nil {
+	if err := deleteRBDImage(rbdVol, rbdVol.AdminId, req.GetSecrets()); err != nil {
 		// TODO: can we detect "already deleted" situations here and proceed?
 		glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, volName, err)
 		return nil, err
@@ -189,10 +190,14 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	for _, cap := range req.VolumeCapabilities {
 		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
-			return &csi.ValidateVolumeCapabilitiesResponse{Supported: false, Message: ""}, nil
+			return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
 		}
 	}
-	return &csi.ValidateVolumeCapabilitiesResponse{Supported: true, Message: ""}, nil
+	return &csi.ValidateVolumeCapabilitiesResponse{
+		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
+			VolumeCapabilities: req.VolumeCapabilities,
+		},
+	}, nil
 }
 
 func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
@@ -227,12 +232,12 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			return &csi.CreateSnapshotResponse{
 				Snapshot: &csi.Snapshot{
 					SizeBytes:      exSnap.SizeBytes,
-					Id:             exSnap.SnapID,
+					SnapshotId:     exSnap.SnapID,
 					SourceVolumeId: exSnap.SourceVolumeID,
-					CreatedAt:      exSnap.CreatedAt,
-					Status: &csi.SnapshotStatus{
-						Type: csi.SnapshotStatus_READY,
+					CreationTime: &timestamp.Timestamp{
+						Seconds: exSnap.CreatedAt,
 					},
+					ReadyToUse: true,
 				},
 			}, nil
 		}
@@ -262,7 +267,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
 	rbdSnap.SizeBytes = rbdVolume.VolSize
 
-	err = createSnapshot(rbdSnap, rbdSnap.AdminId, req.GetCreateSnapshotSecrets())
+	err = createSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets())
 	// if we already have the snapshot, return the snapshot
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
@@ -283,10 +288,10 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 	} else {
 		glog.V(4).Infof("create snapshot %s", snapName)
-		err = protectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetCreateSnapshotSecrets())
+		err = protectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets())
 
 		if err != nil {
-			err = deleteSnapshot(rbdSnap, rbdSnap.AdminId, req.GetCreateSnapshotSecrets())
+			err = deleteSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets())
 			if err != nil {
 				return nil, fmt.Errorf("snapshot is created but failed to protect and delete snapshot: %v", err)
 			}
@@ -301,14 +306,14 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		glog.Warningf("rbd: failed to store snapInfo with error: %v", err)
 
 		// Unprotect snapshot
-		err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetCreateSnapshotSecrets())
+		err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets())
 		if err != nil {
 			return nil, status.Error(codes.Unknown, fmt.Sprintf("This Snapshot should be removed but failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
 		}
 
 		// Deleting snapshot
 		glog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
-		if err := deleteSnapshot(rbdSnap, rbdSnap.AdminId, req.GetCreateSnapshotSecrets()); err != nil {
+		if err := deleteSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets()); err != nil {
 			return nil, status.Error(codes.Unknown, fmt.Sprintf("This Snapshot should be removed but failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
 		}
 
@@ -318,12 +323,12 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
 			SizeBytes:      rbdSnap.SizeBytes,
-			Id:             snapshotID,
+			SnapshotId:     snapshotID,
 			SourceVolumeId: req.GetSourceVolumeId(),
-			CreatedAt:      rbdSnap.CreatedAt,
-			Status: &csi.SnapshotStatus{
-				Type: csi.SnapshotStatus_READY,
+			CreationTime: &timestamp.Timestamp{
+				Seconds: rbdSnap.CreatedAt,
 			},
+			ReadyToUse: true,
 		},
 	}, nil
 }
@@ -347,14 +352,14 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	// Unprotect snapshot
-	err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetDeleteSnapshotSecrets())
+	err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
 	}
 
 	// Deleting snapshot
 	glog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
-	if err := deleteSnapshot(rbdSnap, rbdSnap.AdminId, req.GetDeleteSnapshotSecrets()); err != nil {
+	if err := deleteSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets()); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
 	}
 
@@ -391,12 +396,12 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 					{
 						Snapshot: &csi.Snapshot{
 							SizeBytes:      rbdSnap.SizeBytes,
-							Id:             rbdSnap.SnapID,
+							SnapshotId:     rbdSnap.SnapID,
 							SourceVolumeId: rbdSnap.SourceVolumeID,
-							CreatedAt:      rbdSnap.CreatedAt,
-							Status: &csi.SnapshotStatus{
-								Type: csi.SnapshotStatus_READY,
+							CreationTime: &timestamp.Timestamp{
+								Seconds: rbdSnap.CreatedAt,
 							},
+							ReadyToUse: true,
 						},
 					},
 				},
@@ -415,12 +420,12 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		entries = append(entries, &csi.ListSnapshotsResponse_Entry{
 			Snapshot: &csi.Snapshot{
 				SizeBytes:      rbdSnap.SizeBytes,
-				Id:             rbdSnap.SnapID,
+				SnapshotId:     rbdSnap.SnapID,
 				SourceVolumeId: rbdSnap.SourceVolumeID,
-				CreatedAt:      rbdSnap.CreatedAt,
-				Status: &csi.SnapshotStatus{
-					Type: csi.SnapshotStatus_READY,
+				CreationTime: &timestamp.Timestamp{
+					Seconds: rbdSnap.CreatedAt,
 				},
+				ReadyToUse: true,
 			},
 		})
 	}

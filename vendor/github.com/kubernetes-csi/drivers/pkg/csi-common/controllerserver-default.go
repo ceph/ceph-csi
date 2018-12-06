@@ -17,7 +17,7 @@ limitations under the License.
 package csicommon
 
 import (
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -45,27 +45,7 @@ func (cs *DefaultControllerServer) ControllerUnpublishVolume(ctx context.Context
 }
 
 func (cs *DefaultControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	glog.V(5).Infof("Using default ValidateVolumeCapabilities")
-
-	for _, c := range req.GetVolumeCapabilities() {
-		found := false
-		for _, c1 := range cs.Driver.vc {
-			if c1.GetMode() == c.GetAccessMode().GetMode() {
-				found = true
-			}
-		}
-		if !found {
-			return &csi.ValidateVolumeCapabilitiesResponse{
-				Supported: false,
-				Message:   "Driver doesnot support mode:" + c.GetAccessMode().GetMode().String(),
-			}, status.Error(codes.InvalidArgument, "Driver doesnot support mode:"+c.GetAccessMode().GetMode().String())
-		}
-		// TODO: Ignoring mount & block tyeps for now.
-	}
-
-	return &csi.ValidateVolumeCapabilitiesResponse{
-		Supported: true,
-	}, nil
+	return nil, status.Error(codes.Unimplemented, "")
 }
 
 func (cs *DefaultControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {

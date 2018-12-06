@@ -17,14 +17,16 @@ limitations under the License.
 package get
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"k8s.io/klog"
 
+	corev1 "k8s.io/api/core/v1"
 	kapierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,23 +37,23 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 	"k8s.io/client-go/rest"
+	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
-	api "k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
-	"k8s.io/kubernetes/pkg/printers"
+	utilprinters "k8s.io/kubernetes/pkg/kubectl/util/printers"
+	"k8s.io/kubernetes/pkg/kubectl/util/templates"
 	"k8s.io/kubernetes/pkg/util/interrupt"
 )
 
 // GetOptions contains the input to the get command.
 type GetOptions struct {
 	PrintFlags             *PrintFlags
-	ToPrinter              func(*meta.RESTMapping, bool) (printers.ResourcePrinterFunc, error)
+	ToPrinter              func(*meta.RESTMapping, bool, bool) (printers.ResourcePrinterFunc, error)
 	IsHumanReadablePrinter bool
 	PrintWithOpenAPICols   bool
 
@@ -148,11 +150,11 @@ func NewCmdGet(parent string, f cmdutil.Factory, streams genericclioptions.IOStr
 	o := NewGetOptions(parent, streams)
 
 	cmd := &cobra.Command{
-		Use: "get [(-o|--output=)json|yaml|wide|custom-columns=...|custom-columns-file=...|go-template=...|go-template-file=...|jsonpath=...|jsonpath-file=...] (TYPE[.VERSION][.GROUP] [NAME | -l label] | TYPE[.VERSION][.GROUP]/NAME ...) [flags]",
+		Use:                   "get [(-o|--output=)json|yaml|wide|custom-columns=...|custom-columns-file=...|go-template=...|go-template-file=...|jsonpath=...|jsonpath-file=...] (TYPE[.VERSION][.GROUP] [NAME | -l label] | TYPE[.VERSION][.GROUP]/NAME ...) [flags]",
 		DisableFlagsInUseLine: true,
-		Short:   i18n.T("Display one or many resources"),
-		Long:    getLong + "\n\n" + cmdutil.SuggestApiResources(parent),
-		Example: getExample,
+		Short:                 i18n.T("Display one or many resources"),
+		Long:                  getLong + "\n\n" + cmdutil.SuggestApiResources(parent),
+		Example:               getExample,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(o.Complete(f, cmd, args))
 			cmdutil.CheckErr(o.Validate(cmd))
@@ -205,10 +207,10 @@ func (o *GetOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 
 	o.NoHeaders = cmdutil.GetFlagBool(cmd, "no-headers")
 
-	// TODO (soltysh): currently we don't support sorting and custom columns
+	// TODO (soltysh): currently we don't support custom columns
 	// with server side print. So in these cases force the old behavior.
 	outputOption := cmd.Flags().Lookup("output").Value.String()
-	if o.Sort && outputOption == "custom-columns" {
+	if outputOption == "custom-columns" {
 		o.ServerPrint = false
 	}
 
@@ -224,10 +226,7 @@ func (o *GetOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 
 	o.IncludeUninitialized = cmdutil.ShouldIncludeUninitialized(cmd, false)
 
-	if resource.MultipleTypesRequested(args) {
-		o.PrintFlags.EnsureWithKind()
-	}
-	o.ToPrinter = func(mapping *meta.RESTMapping, withNamespace bool) (printers.ResourcePrinterFunc, error) {
+	o.ToPrinter = func(mapping *meta.RESTMapping, withNamespace bool, withKind bool) (printers.ResourcePrinterFunc, error) {
 		// make a new copy of current flags / opts before mutating
 		printFlags := o.PrintFlags.Copy()
 
@@ -241,6 +240,9 @@ func (o *GetOptions) Complete(f cmdutil.Factory, cmd *cobra.Command, args []stri
 		}
 		if withNamespace {
 			printFlags.EnsureWithNamespace()
+		}
+		if withKind {
+			printFlags.EnsureWithKind()
 		}
 
 		printer, err := printFlags.ToPrinter()
@@ -294,6 +296,99 @@ func (o *GetOptions) Validate(cmd *cobra.Command) error {
 	return nil
 }
 
+type OriginalPositioner interface {
+	OriginalPosition(int) int
+}
+
+type NopPositioner struct{}
+
+func (t *NopPositioner) OriginalPosition(ix int) int {
+	return ix
+}
+
+type RuntimeSorter struct {
+	field      string
+	decoder    runtime.Decoder
+	objects    []runtime.Object
+	positioner OriginalPositioner
+}
+
+func (r *RuntimeSorter) Sort() error {
+	// a list is only considered "sorted" if there are 0 or 1 items in it
+	// AND (if 1 item) the item is not a Table object
+	if len(r.objects) == 0 {
+		return nil
+	}
+	if len(r.objects) == 1 {
+		_, isTable := r.objects[0].(*metav1beta1.Table)
+		if !isTable {
+			return nil
+		}
+	}
+
+	includesTable := false
+	includesRuntimeObjs := false
+
+	for _, obj := range r.objects {
+		switch t := obj.(type) {
+		case *metav1beta1.Table:
+			includesTable = true
+
+			if err := NewTableSorter(t, r.field).Sort(); err != nil {
+				continue
+			}
+		default:
+			includesRuntimeObjs = true
+		}
+	}
+
+	// we use a NopPositioner when dealing with Table objects
+	// because the objects themselves are not swapped, but rather
+	// the rows in each object are swapped / sorted.
+	r.positioner = &NopPositioner{}
+
+	if includesRuntimeObjs && includesTable {
+		return fmt.Errorf("sorting is not supported on mixed Table and non-Table object lists")
+	}
+	if includesTable {
+		return nil
+	}
+
+	// if not dealing with a Table response from the server, assume
+	// all objects are runtime.Object as usual, and sort using old method.
+	var err error
+	if r.positioner, err = SortObjects(r.decoder, r.objects, r.field); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *RuntimeSorter) OriginalPosition(ix int) int {
+	if r.positioner == nil {
+		return 0
+	}
+	return r.positioner.OriginalPosition(ix)
+}
+
+// allows custom decoder to be set for testing
+func (r *RuntimeSorter) WithDecoder(decoder runtime.Decoder) *RuntimeSorter {
+	r.decoder = decoder
+	return r
+}
+
+func NewRuntimeSorter(objects []runtime.Object, sortBy string) *RuntimeSorter {
+	parsedField, err := RelaxedJSONPathExpression(sortBy)
+	if err != nil {
+		parsedField = sortBy
+	}
+
+	return &RuntimeSorter{
+		field:   parsedField,
+		decoder: legacyscheme.Codecs.UniversalDecoder(),
+		objects: objects,
+	}
+}
+
 // Run performs the get operation.
 // TODO: remove the need to pass these arguments, like other commands.
 func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) error {
@@ -304,6 +399,18 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 		return o.watch(f, cmd, args)
 	}
 
+	// openapi printing is mutually exclusive with server side printing
+	if o.PrintWithOpenAPICols && o.ServerPrint {
+		fmt.Fprintf(o.IOStreams.ErrOut, "warning: --%s requested, --%s will be ignored\n", useOpenAPIPrintColumnFlagLabel, useServerPrintColumns)
+	}
+
+	chunkSize := o.ChunkSize
+	if o.Sort {
+		// TODO(juanvallejo): in the future, we could have the client use chunking
+		// to gather all results, then sort them all at the end to reduce server load.
+		chunkSize = 0
+	}
+
 	r := f.NewBuilder().
 		Unstructured().
 		NamespaceParam(o.Namespace).DefaultNamespace().AllNamespaces(o.AllNamespaces).
@@ -311,7 +418,7 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 		LabelSelectorParam(o.LabelSelector).
 		FieldSelectorParam(o.FieldSelector).
 		ExportParam(o.Export).
-		RequestChunksOf(o.ChunkSize).
+		RequestChunksOf(chunkSize).
 		IncludeUninitialized(o.IncludeUninitialized).
 		ResourceTypeOrNameArgs(true, args...).
 		ContinueOnError().
@@ -322,12 +429,19 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 			if o.PrintWithOpenAPICols {
 				return
 			}
-			if o.ServerPrint && o.IsHumanReadablePrinter && !o.Sort {
-				group := metav1beta1.GroupName
-				version := metav1beta1.SchemeGroupVersion.Version
+			if !o.ServerPrint || !o.IsHumanReadablePrinter {
+				return
+			}
 
-				tableParam := fmt.Sprintf("application/json;as=Table;v=%s;g=%s, application/json", version, group)
-				req.SetHeader("Accept", tableParam)
+			group := metav1beta1.GroupName
+			version := metav1beta1.SchemeGroupVersion.Version
+
+			tableParam := fmt.Sprintf("application/json;as=Table;v=%s;g=%s, application/json", version, group)
+			req.SetHeader("Accept", tableParam)
+
+			// if sorting, ensure we receive the full object in order to introspect its fields via jsonpath
+			if o.Sort {
+				req.Param("includeObject", "Object")
 			}
 		}).
 		Do()
@@ -349,6 +463,7 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 	if err != nil {
 		allErrs = append(allErrs, err)
 	}
+	printWithKind := multipleGVKsRequested(infos)
 
 	objs := make([]runtime.Object, len(infos))
 	for ix := range infos {
@@ -359,7 +474,7 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 			} else {
 				// if we are unable to decode server response into a v1beta1.Table,
 				// fallback to client-side printing with whatever info the server returned.
-				glog.V(2).Infof("Unable to decode server response into a Table. Falling back to hardcoded types: %v", err)
+				klog.V(2).Infof("Unable to decode server response into a Table. Falling back to hardcoded types: %v", err)
 			}
 		}
 
@@ -370,23 +485,25 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 	if err != nil {
 		return err
 	}
-	var sorter *kubectl.RuntimeSort
-	if o.Sort && len(objs) > 1 {
-		// TODO: questionable
-		if sorter, err = kubectl.SortObjects(cmdutil.InternalVersionDecoder(), objs, sorting); err != nil {
+
+	var positioner OriginalPositioner
+	if o.Sort {
+		sorter := NewRuntimeSorter(objs, sorting)
+		if err := sorter.Sort(); err != nil {
 			return err
 		}
+		positioner = sorter
 	}
 
 	var printer printers.ResourcePrinter
 	var lastMapping *meta.RESTMapping
 	nonEmptyObjCount := 0
-	w := printers.GetNewTabWriter(o.Out)
+	w := utilprinters.GetNewTabWriter(o.Out)
 	for ix := range objs {
 		var mapping *meta.RESTMapping
 		var info *resource.Info
-		if sorter != nil {
-			info = infos[sorter.OriginalPosition(ix)]
+		if positioner != nil {
+			info = infos[positioner.OriginalPosition(ix)]
 			mapping = info.Mapping
 		} else {
 			info = infos[ix]
@@ -404,6 +521,7 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 		nonEmptyObjCount++
 
 		printWithNamespace := o.AllNamespaces
+
 		if mapping != nil && mapping.Scope.Name() == meta.RESTScopeNameRoot {
 			printWithNamespace = false
 		}
@@ -418,7 +536,7 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 				fmt.Fprintln(o.ErrOut)
 			}
 
-			printer, err = o.ToPrinter(mapping, printWithNamespace)
+			printer, err = o.ToPrinter(mapping, printWithNamespace, printWithKind)
 			if err != nil {
 				if !errs.Has(err.Error()) {
 					errs.Insert(err.Error())
@@ -440,14 +558,14 @@ func (o *GetOptions) Run(f cmdutil.Factory, cmd *cobra.Command, args []string) e
 		internalObj, err := legacyscheme.Scheme.ConvertToVersion(info.Object, info.Mapping.GroupVersionKind.GroupKind().WithVersion(runtime.APIVersionInternal).GroupVersion())
 		if err != nil {
 			// if there's an error, try to print what you have (mirrors old behavior).
-			glog.V(1).Info(err)
+			klog.V(1).Info(err)
 			printer.PrintObj(info.Object, w)
 		} else {
 			printer.PrintObj(internalObj, w)
 		}
 	}
 	w.Flush()
-	if nonEmptyObjCount == 0 && !o.IgnoreNotFound {
+	if nonEmptyObjCount == 0 && !o.IgnoreNotFound && len(allErrs) == 0 {
 		fmt.Fprintln(o.ErrOut, "No resources found.")
 	}
 	return utilerrors.NewAggregate(allErrs)
@@ -497,30 +615,13 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 	if err != nil {
 		return err
 	}
-	if len(infos) > 1 {
-		gvk := infos[0].Mapping.GroupVersionKind
-		uniqueGVKs := 1
-
-		// If requesting a resource count greater than a request's --chunk-size,
-		// we will end up making multiple requests to the server, with each
-		// request producing its own "Info" object. Although overall we are
-		// dealing with a single resource type, we will end up with multiple
-		// infos returned by the builder. To handle this case, only fail if we
-		// have at least one info with a different GVK than the others.
-		for _, info := range infos {
-			if info.Mapping.GroupVersionKind != gvk {
-				uniqueGVKs++
-			}
-		}
-
-		if uniqueGVKs > 1 {
-			return i18n.Errorf("watch is only supported on individual resources and resource collections - %d resources were found", uniqueGVKs)
-		}
+	if multipleGVKsRequested(infos) {
+		return i18n.Errorf("watch is only supported on individual resources and resource collections - more than 1 resources were found")
 	}
 
 	info := infos[0]
 	mapping := info.ResourceMapping()
-	printer, err := o.ToPrinter(mapping, o.AllNamespaces)
+	printer, err := o.ToPrinter(mapping, o.AllNamespaces, false)
 	if err != nil {
 		return err
 	}
@@ -547,7 +648,7 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 	// print the current object
 	if !o.WatchOnly {
 		var objsToPrint []runtime.Object
-		writer := printers.GetNewTabWriter(o.Out)
+		writer := utilprinters.GetNewTabWriter(o.Out)
 
 		if isList {
 			objsToPrint, _ = meta.ExtractList(obj)
@@ -574,9 +675,11 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 	}
 
 	first := true
-	intr := interrupt.New(nil, w.Stop)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	intr := interrupt.New(nil, cancel)
 	intr.Run(func() error {
-		_, err := watch.Until(0, w, func(e watch.Event) (bool, error) {
+		_, err := watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
 			if !isList && first {
 				// drop the initial watch event in the single resource case
 				first = false
@@ -585,8 +688,12 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 
 			// printing always takes the internal version, but the watch event uses externals
 			// TODO fix printing to use server-side or be version agnostic
-			internalGV := mapping.GroupVersionKind.GroupKind().WithVersion(runtime.APIVersionInternal).GroupVersion()
-			if err := printer.PrintObj(attemptToConvertToInternal(e.Object, legacyscheme.Scheme, internalGV), o.Out); err != nil {
+			objToPrint := e.Object
+			if o.IsHumanReadablePrinter {
+				internalGV := mapping.GroupVersionKind.GroupKind().WithVersion(runtime.APIVersionInternal).GroupVersion()
+				objToPrint = attemptToConvertToInternal(e.Object, legacyscheme.Scheme, internalGV)
+			}
+			if err := printer.PrintObj(objToPrint, o.Out); err != nil {
 				return false, err
 			}
 			return false, nil
@@ -600,7 +707,7 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 func attemptToConvertToInternal(obj runtime.Object, converter runtime.ObjectConvertor, targetVersion schema.GroupVersion) runtime.Object {
 	internalObject, err := converter.ConvertToVersion(obj, targetVersion)
 	if err != nil {
-		glog.V(1).Infof("Unable to convert %T to %v: err", obj, targetVersion, err)
+		klog.V(1).Infof("Unable to convert %T to %v: %v", obj, targetVersion, err)
 		return obj
 	}
 	return internalObject
@@ -654,7 +761,7 @@ func (o *GetOptions) printGeneric(r *resource.Result) error {
 		return utilerrors.Reduce(utilerrors.Flatten(utilerrors.NewAggregate(errs)))
 	}
 
-	printer, err := o.ToPrinter(nil, false)
+	printer, err := o.ToPrinter(nil, false, false)
 	if err != nil {
 		return err
 	}
@@ -664,8 +771,8 @@ func (o *GetOptions) printGeneric(r *resource.Result) error {
 		// we have more than one item, so coerce all items into a list.
 		// we don't want an *unstructured.Unstructured list yet, as we
 		// may be dealing with non-unstructured objects. Compose all items
-		// into an api.List, and then decode using an unstructured scheme.
-		list := api.List{
+		// into an corev1.List, and then decode using an unstructured scheme.
+		list := corev1.List{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "List",
 				APIVersion: "v1",
@@ -673,7 +780,7 @@ func (o *GetOptions) printGeneric(r *resource.Result) error {
 			ListMeta: metav1.ListMeta{},
 		}
 		for _, info := range infos {
-			list.Items = append(list.Items, info.Object)
+			list.Items = append(list.Items, runtime.RawExtension{Object: info.Object})
 		}
 
 		listData, err := json.Marshal(list)
@@ -731,6 +838,7 @@ func (o *GetOptions) printGeneric(r *resource.Result) error {
 
 func addOpenAPIPrintColumnFlags(cmd *cobra.Command, opt *GetOptions) {
 	cmd.Flags().BoolVar(&opt.PrintWithOpenAPICols, useOpenAPIPrintColumnFlagLabel, opt.PrintWithOpenAPICols, "If true, use x-kubernetes-print-column metadata (if present) from the OpenAPI schema for displaying a resource.")
+	cmd.Flags().MarkDeprecated(useOpenAPIPrintColumnFlagLabel, "deprecated in favor of server-side printing")
 }
 
 func addServerPrintColumnFlags(cmd *cobra.Command, opt *GetOptions) {
@@ -747,10 +855,23 @@ func cmdSpecifiesOutputFmt(cmd *cobra.Command) bool {
 
 func maybeWrapSortingPrinter(printer printers.ResourcePrinter, sortBy string) printers.ResourcePrinter {
 	if len(sortBy) != 0 {
-		return &kubectl.SortingPrinter{
+		return &SortingPrinter{
 			Delegate:  printer,
 			SortField: fmt.Sprintf("%s", sortBy),
 		}
 	}
 	return printer
+}
+
+func multipleGVKsRequested(infos []*resource.Info) bool {
+	if len(infos) < 2 {
+		return false
+	}
+	gvk := infos[0].Mapping.GroupVersionKind
+	for _, info := range infos {
+		if info.Mapping.GroupVersionKind != gvk {
+			return true
+		}
+	}
+	return false
 }

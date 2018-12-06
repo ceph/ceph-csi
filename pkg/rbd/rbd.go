@@ -25,7 +25,7 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -35,7 +35,7 @@ import (
 
 // PluginFolder defines the location of rbdplugin
 const (
-	PluginFolder      = "/var/lib/kubelet/plugins/csi-rbdplugin"
+	PluginFolder      = "/var/lib/kubelet/plugins_registry/csi-rbdplugin"
 	rbdDefaultAdminId = "admin"
 	rbdDefaultUserId  = rbdDefaultAdminId
 )
@@ -53,7 +53,7 @@ type rbd struct {
 
 var (
 	rbdDriver *rbd
-	version   = "0.3.0"
+	version   = "1.0.0"
 )
 
 var rbdVolumes map[string]*rbdVolume
@@ -101,7 +101,7 @@ func loadExSnapshots() {
 		}
 		fp, err := os.Open(path.Join(PluginFolder, "controller-snap", f.Name()))
 		if err != nil {
-			glog.Infof("rbd: open file: %s err %%v", f.Name(), err)
+			glog.Infof("rbd: open file: %s err %v", f.Name(), err)
 			continue
 		}
 		decoder := json.NewDecoder(fp)
@@ -130,7 +130,7 @@ func loadExVolumes() {
 		}
 		fp, err := os.Open(path.Join(PluginFolder, "controller", f.Name()))
 		if err != nil {
-			glog.Infof("rbd: open file: %s err %%v", f.Name(), err)
+			glog.Infof("rbd: open file: %s err %v", f.Name(), err)
 			continue
 		}
 		decoder := json.NewDecoder(fp)
@@ -196,7 +196,7 @@ func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool) {
 	rbd.ids = NewIdentityServer(rbd.driver)
 	rbd.ns, err = NewNodeServer(rbd.driver, containerized)
 	if err != nil {
-		glog.Fatalln("failed to start node server, err %v", err)
+		glog.Fatalf("failed to start node server, err %v\n", err)
 	}
 	rbd.cs = NewControllerServer(rbd.driver)
 	s := csicommon.NewNonBlockingGRPCServer()

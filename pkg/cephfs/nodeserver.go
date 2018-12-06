@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
@@ -44,7 +44,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, volId volumeID, req *csi
 
 		// First, store admin credentials - those are needed for retrieving the user credentials
 
-		adminCr, err := getAdminCredentials(req.GetNodeStageSecrets())
+		adminCr, err := getAdminCredentials(req.GetSecrets())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
 		}
@@ -64,7 +64,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, volId volumeID, req *csi
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
-		userCr, err = getUserCredentials(req.GetNodeStageSecrets())
+		userCr, err = getUserCredentials(req.GetSecrets())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
 		}
@@ -87,7 +87,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	stagingTargetPath := req.GetStagingTargetPath()
 	volId := volumeID(req.GetVolumeId())
 
-	volOptions, err := newVolumeOptions(req.GetVolumeAttributes())
+	volOptions, err := newVolumeOptions(req.GetVolumeContext())
 	if err != nil {
 		glog.Errorf("error reading volume options for volume %s: %v", volId, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())

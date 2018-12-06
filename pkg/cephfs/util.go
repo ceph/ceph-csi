@@ -26,15 +26,14 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
-	"github.com/pborman/uuid"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 type volumeID string
 
-func newVolumeID() volumeID {
-	return volumeID("csi-cephfs-" + uuid.NewUUID().String())
+func makeVolumeID(volName string) volumeID {
+	return volumeID("csi-cephfs-" + volName)
 }
 
 func execCommand(command string, args ...string) ([]byte, error) {
@@ -144,7 +143,7 @@ func validateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 		return fmt.Errorf("staging target path missing in request")
 	}
 
-	if req.GetNodeStageSecrets() == nil || len(req.GetNodeStageSecrets()) == 0 {
+	if req.GetSecrets() == nil || len(req.GetSecrets()) == 0 {
 		return fmt.Errorf("stage secrets cannot be nil or empty")
 	}
 
