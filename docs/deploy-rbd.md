@@ -26,7 +26,7 @@ Option | Default value | Description
 `--drivername` | `csi-cephfsplugin` | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
 `--nodeid` | _empty_ | This node's ID
 `--containerized` | true | Whether running in containerized mode
-`--persistmetadata` | false | Whether should volume and snapshot metadata be persisted in a k8s configmap
+`--metadatastorage` | `node` | Whether should metadata be kept on node as file or in a k8s configmap [node|k8s_configmap]
 
 **Available environmental variables:**
 `HOST_ROOTFS`: rbdplugin searches `/proc` directory under the directory set by `HOST_ROOTFS`.
