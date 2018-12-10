@@ -5,6 +5,7 @@ language: go
 branches:
   only:
     - master
+    - csi-v1.0
 
 go: 1.9.x
 
