@@ -1,0 +1,18 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
+  labels:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    chart: {{ include "ceph-csi-rbd.chart" . }}
+    component: {{ .Values.provisioner.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  selector:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    component: {{ .Values.provisioner.name }}
+    release: {{ .Release.Name }}
+  ports:
+    - name: dummy
+      port: 12345
