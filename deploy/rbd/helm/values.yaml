@@ -1,0 +1,77 @@
+rbac:
+  create: true
+
+serviceAccounts:
+  attacher:
+    create: true
+    name:
+  nodeplugin:
+    create: true
+    name:
+  provisioner:
+    create: true
+    name:
+
+socketDir: /var/lib/kubelet/plugins/csi-rbdplugin
+socketFile: csi.sock
+
+attacher:
+  name: attacher
+
+  replicaCount: 1
+
+  image:
+    repository: quay.io/k8scsi/csi-attacher
+    tag: v0.3.0
+    pullPolicy: IfNotPresent
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+nodeplugin:
+  name: nodeplugin
+
+  registrar:
+    image:
+      repository: quay.io/k8scsi/driver-registrar
+      tag: v0.3.0
+      pullPolicy: IfNotPresent
+    
+    resources: {}
+
+  plugin:
+    image:
+      repository: quay.io/cephcsi/rbdplugin
+      tag: v0.3.0
+      pullPolicy: IfNotPresent
+    
+    resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+provisioner:
+  name: provisioner
+
+  replicaCount: 1
+
+  image:
+    repository: quay.io/k8scsi/csi-provisioner
+    tag: v0.3.0
+    pullPolicy: IfNotPresent
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
