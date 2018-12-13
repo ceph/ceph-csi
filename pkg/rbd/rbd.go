@@ -19,9 +19,9 @@ package rbd
 import (
 	"github.com/golang/glog"
 
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
-	"github.com/ceph/ceph-csi/pkg/util"
 
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/nsenter"
@@ -64,7 +64,7 @@ func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
 func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *controllerServer {
 	return &controllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
-		MetadataStore: cachePersister,
+		MetadataStore:           cachePersister,
 	}
 }
 

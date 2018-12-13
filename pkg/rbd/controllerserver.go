@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"syscall"
 	"time"
 
@@ -45,41 +44,24 @@ type controllerServer struct {
 }
 
 var (
-	volPath = "controller"
-	snapPath = "controller-snap"
-
-	rbdVolumes = map[string]*rbdVolume{}
+	rbdVolumes   = map[string]*rbdVolume{}
 	rbdSnapshots = map[string]*rbdSnapshot{}
 )
 
-func (cs *controllerServer) LoadExDataFromMetadataStore() {
-	if _, err := os.Stat(path.Join(PluginFolder, volPath)); os.IsNotExist(err) {
-		glog.Infof("rbd: folder %s not found. Creating... \n", path.Join(PluginFolder, volPath))
-		if err := os.Mkdir(path.Join(PluginFolder, volPath), 0755); err != nil {
-			glog.Fatalf("Failed to create a controller's volumes folder with error: %v\n", err)
-		}
-	} else {
-		vol := &rbdVolume{}
-		util.CacheSubPath = volPath
-		cs.MetadataStore.ForAll("csi-rbd-vol-", vol, func(identifier string) error {
-			rbdVolumes[identifier] = vol
-			return nil
-		})
-	}
-	if _, err := os.Stat(path.Join(PluginFolder, snapPath)); os.IsNotExist(err) {
-		glog.Infof("rbd: folder %s not found. Creating... \n", path.Join(PluginFolder, snapPath))
-		if err := os.Mkdir(path.Join(PluginFolder, snapPath), 0755); err != nil {
-			glog.Fatalf("Failed to create a controller's snapshots folder with error: %v\n", err)
-		}
-	} else {
-		snap := &rbdSnapshot{}
-		util.CacheSubPath = snapPath
-		cs.MetadataStore.ForAll("csi-rbd-(.*)-snap-", snap, func(identifier string) error {
-			rbdSnapshots[identifier] = snap
-			return nil
-		})
-	}
+func (cs *controllerServer) LoadExDataFromMetadataStore() error {
+	vol := &rbdVolume{}
+	cs.MetadataStore.ForAll("csi-rbd-vol-", vol, func(identifier string) error {
+		rbdVolumes[identifier] = vol
+		return nil
+	})
+
+	snap := &rbdSnapshot{}
+	cs.MetadataStore.ForAll("csi-rbd-(.*)-snap-", snap, func(identifier string) error {
+		rbdSnapshots[identifier] = snap
+		return nil
+	})
 	glog.Infof("Loaded %d volumes and %d snapshots from metadata store", len(rbdVolumes), len(rbdSnapshots))
+	return nil
 }
 
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
@@ -158,7 +140,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			}
 
 			rbdSnap := &rbdSnapshot{}
-			util.CacheSubPath = snapPath
 			if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
 				return nil, err
 			}
@@ -178,7 +159,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			glog.V(4).Infof("create volume %s", volName)
 		}
 	}
-	util.CacheSubPath = volPath
 	if err := cs.MetadataStore.Create(volumeID, rbdVol); err != nil {
 		return nil, err
 	}
@@ -204,7 +184,6 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	defer volumeIDMutex.UnlockKey(volumeID)
 
 	rbdVol := &rbdVolume{}
-	util.CacheSubPath = volPath
 	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
 		if os.IsNotExist(errors.Cause(err)) {
 			return &csi.DeleteVolumeResponse{}, nil
@@ -339,7 +318,6 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	rbdSnap.CreatedAt = time.Now().UnixNano()
 
-	util.CacheSubPath = snapPath
 	if err := cs.MetadataStore.Create(snapshotID, rbdSnap); err != nil {
 		glog.Warningf("rbd: failed to store snapInfo with error: %v", err)
 		// Unprotect snapshot
@@ -383,7 +361,6 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	defer snapshotIDMutex.UnlockKey(snapshotID)
 
 	rbdSnap := &rbdSnapshot{}
-	util.CacheSubPath = snapPath
 	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
 		return nil, err
 	}

@@ -21,8 +21,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/ceph/ceph-csi/pkg/rbd"
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/golang/glog"
 )
 
@@ -35,7 +35,7 @@ var (
 	driverName      = flag.String("drivername", "csi-rbdplugin", "name of the driver")
 	nodeID          = flag.String("nodeid", "", "node id")
 	containerized   = flag.Bool("containerized", true, "whether run as containerized")
-	metadataStorage = flag.String("metadatastorage", "node", "metadata persistance method [node|k8s_configmap]")
+	metadataStorage = flag.String("metadatastorage", "", "metadata persistance method [node|k8s_configmap]")
 )
 
 func main() {
@@ -50,7 +50,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	cp := util.NewCachePersister(*metadataStorage, *driverName)
+	cp, err := util.NewCachePersister(*metadataStorage, *driverName)
+	if err != nil {
+		glog.Errorf("failed to define cache persistance method: %v", err)
+		os.Exit(1)
+	}
 
 	driver := rbd.GetRBDDriver()
 	driver.Run(*driverName, *nodeID, *endpoint, *containerized, cp)

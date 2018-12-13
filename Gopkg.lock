@@ -349,7 +349,7 @@
   version = "kubernetes-1.10.0-beta.1"
 
 [[projects]]
-  digest = "1:071cc2f032b701b9dba26568e040940f26931a49e3a3985f3375f17f7f6d9c5f"
+  digest = "1:4e43ae063c506514708f015c8ebf145456174116dd04c7fd3eab89ebb22def35"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -383,10 +383,7 @@
     "kubernetes/typed/storage/v1",
     "kubernetes/typed/storage/v1alpha1",
     "kubernetes/typed/storage/v1beta1",
-    "pkg/apis/clientauthentication",
-    "pkg/apis/clientauthentication/v1alpha1",
     "pkg/version",
-    "plugin/pkg/client/auth/exec",
     "rest",
     "rest/watch",
     "tools/auth",
@@ -403,8 +400,8 @@
     "util/integer",
   ]
   pruneopts = ""
-  revision = "23781f4d6632d88e869066eaebb743857aa1ef9b"
-  version = "v7.0.0"
+  revision = "82eadfdc39007c2eb47e3ddeb7ed7d96365e409d"
+  version = "kubernetes-1.10.0-beta.1"
 
 [[projects]]
   digest = "1:7107d2e83c67ac0dbd9b62e8e2bfe1a75b194864ea4fe30778f4842151cd356d"
