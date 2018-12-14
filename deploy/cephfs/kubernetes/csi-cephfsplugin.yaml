@@ -63,8 +63,8 @@ spec:
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
-            - mountPath: /sys
-              name: host-sys
+            - name: host-sys
+              mountPath: /sys
             - name: lib-modules
               mountPath: /lib/modules
               readOnly: true
