@@ -60,11 +60,14 @@ spec:
           volumeMounts:
             - name: plugin-dir
               mountPath: /var/lib/kubelet/plugins_registry/csi-cephfsplugin
+            - name: csi-plugins-dir
+              mountPath: /var/lib/kubelet/plugins/kubernetes.io/csi
+              mountPropagation: "Bidirectional"
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
-            - mountPath: /sys
-              name: host-sys
+            - name: host-sys
+              mountPath: /sys
             - name: lib-modules
               mountPath: /lib/modules
               readOnly: true
@@ -74,6 +77,10 @@ spec:
         - name: plugin-dir
           hostPath:
             path: /var/lib/kubelet/plugins_registry/csi-cephfsplugin
+            type: DirectoryOrCreate
+        - name: csi-plugins-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/kubernetes.io/csi
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
