@@ -52,7 +52,7 @@ func main() {
 	}
 
 	cp, err := util.NewCachePersister(*metadataStorage, *driverName)
-	if err != nil{
+	if err != nil {
 		glog.Errorf("failed to define cache persistence method: %v", err)
 		os.Exit(1)
 	}
