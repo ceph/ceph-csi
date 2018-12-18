@@ -24,22 +24,42 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+
+	"github.com/ceph/ceph-csi/pkg/util"
 )
 
 type controllerServer struct {
 	*csicommon.DefaultControllerServer
+	MetadataStore util.CachePersister
 }
 
 const (
 	oneGB = 1073741824
 )
 
+type controllerCacheEntry struct {
+	VolOptions volumeOptions
+	VolumeID   volumeID
+}
+
+var (
+	controllerCacheMap = make(map[volumeID]*controllerCacheEntry)
+)
+
+func (cs *controllerServer) LoadExDataFromMetadataStore() {
+	ce := &controllerCacheEntry{}
+	cs.MetadataStore.ForAll("csi-cephfs-", ce, func(identifier string) error {
+		controllerCacheMap[volumeID(identifier)] = ce
+		return nil
+	})
+	glog.Infof("Loaded %d cache entries from metadata store", len(controllerCacheMap))
+}
+
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
 		glog.Errorf("CreateVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
-
 	// Configuration
 
 	volOptions, err := newVolumeOptions(req.GetParameters())
@@ -60,7 +80,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	if volOptions.ProvisionVolume {
 		// Admin credentials are required
-
 		cr, err := getAdminCredentials(req.GetControllerCreateSecrets())
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -91,11 +110,14 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		sz = oneGB
 	}
 
-	if err = ctrCache.insert(&controllerCacheEntry{VolOptions: *volOptions, VolumeID: volId}); err != nil {
+
+	ce := &controllerCacheEntry{VolOptions: *volOptions, VolumeID: volId}
+	if err := cs.MetadataStore.Create(string(volId), ce); err != nil {
 		glog.Errorf("failed to store a cache entry for volume %s: %v", volId, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	controllerCacheMap[volId] = ce
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            string(volId),
@@ -116,15 +138,15 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		err   error
 	)
 
-	// Load volume info from cache
-
-	ent, err := ctrCache.pop(volId)
-	if err != nil {
-		glog.Error(err)
+	ce := &controllerCacheEntry{}
+	if err := cs.MetadataStore.Get(string(volId), ce); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if err := cs.MetadataStore.Delete(string(volId)); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if !ent.VolOptions.ProvisionVolume {
+	if !ce.VolOptions.ProvisionVolume {
 		// DeleteVolume() is forbidden for statically provisioned volumes!
 
 		glog.Warningf("volume %s is provisioned statically, aborting delete", volId)
@@ -134,9 +156,10 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	defer func() {
 		if err != nil {
 			// Reinsert cache entry for retry
-			if insErr := ctrCache.insert(ent); insErr != nil {
+			if err := cs.MetadataStore.Create(string(volId), ce); err != nil {
 				glog.Errorf("failed to reinsert volume cache entry in rollback procedure for volume %s: %v", volId, err)
 			}
+
 		}
 	}()
 
@@ -148,7 +171,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err = purgeVolume(volId, cr, &ent.VolOptions); err != nil {
+	if err = purgeVolume(volId, cr, &ce.VolOptions); err != nil {
 		glog.Errorf("failed to delete volume %s: %v", volId, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}

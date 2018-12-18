@@ -22,6 +22,7 @@ import (
 	"path"
 
 	"github.com/ceph/ceph-csi/pkg/cephfs"
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/golang/glog"
 )
 
@@ -30,10 +31,11 @@ func init() {
 }
 
 var (
-	endpoint      = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName    = flag.String("drivername", "csi-cephfsplugin", "name of the driver")
-	nodeId        = flag.String("nodeid", "", "node id")
-	volumeMounter = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
+	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	driverName      = flag.String("drivername", "csi-cephfsplugin", "name of the driver")
+	nodeId          = flag.String("nodeid", "", "node id")
+	volumeMounter   = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
+	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
 )
 
 func main() {
@@ -49,8 +51,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	cp, err := util.NewCachePersister(*metadataStorage, *driverName)
+	if err != nil{
+		glog.Errorf("failed to define cache persistence method: %v", err)
+		os.Exit(1)
+	}
+
 	driver := cephfs.NewCephFSDriver()
-	driver.Run(*driverName, *nodeId, *endpoint, *volumeMounter)
+	driver.Run(*driverName, *nodeId, *endpoint, *volumeMounter, cp)
 
 	os.Exit(0)
 }
