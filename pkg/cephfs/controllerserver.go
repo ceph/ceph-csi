@@ -110,7 +110,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		sz = oneGB
 	}
 
-
 	ce := &controllerCacheEntry{VolOptions: *volOptions, VolumeID: volId}
 	if err := cs.MetadataStore.Create(string(volId), ce); err != nil {
 		glog.Errorf("failed to store a cache entry for volume %s: %v", volId, err)
@@ -121,7 +120,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            string(volId),
-			CapacityBytes: sz,
+			CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
 			Attributes:    req.GetParameters(),
 		},
 	}, nil

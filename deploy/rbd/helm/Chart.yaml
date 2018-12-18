@@ -1,0 +1,12 @@
+apiVersion: v1
+appVersion: "0.3.0"
+description: Container Storage Interface (CSI) driver, provisioner, and attacher for Ceph RBD
+name: ceph-csi-rbd
+version: 0.1.0
+keywords:
+- ceph
+- rbd
+- ceph-csi
+home: https://github.com/ceph/ceph-csi
+sources:
+- https://github.com/ceph/ceph-csi/tree/master/deploy/rbd/kubernetes

@@ -1,0 +1,136 @@
+kind: DaemonSet
+apiVersion: apps/v1beta2
+metadata:
+  name: {{ include "ceph-csi-rbd.nodeplugin.fullname" . }}
+  labels:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    chart: {{ include "ceph-csi-rbd.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "ceph-csi-rbd.name" . }}
+      component: {{ .Values.nodeplugin.name }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "ceph-csi-rbd.name" . }}
+        chart: {{ include "ceph-csi-rbd.chart" . }}
+        component: {{ .Values.nodeplugin.name }}
+        release: {{ .Release.Name }}
+        heritage: {{ .Release.Service }}
+    spec:
+      serviceAccountName: {{ include "ceph-csi-rbd.serviceAccountName.nodeplugin" . }}
+      hostNetwork: true
+      hostPID: true      
+      # to use e.g. Rook orchestrated cluster, and mons' FQDN is
+      # resolved through k8s service, set dns policy to cluster first
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: driver-registrar
+          image: "{{ .Values.nodeplugin.registrar.image.repository }}:{{ .Values.nodeplugin.registrar.image.tag }}"
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+          env:
+            - name: ADDRESS
+              value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
+            - name: DRIVER_REG_SOCK_PATH
+              value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          imagePullPolicy: {{ .Values.nodeplugin.registrar.image.imagePullPolicy }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: {{ .Values.socketDir }}
+            - name: registration-dir
+              mountPath: /registration
+          resources:
+{{ toYaml .Values.nodeplugin.registrar.resources | indent 12 }}
+        - name: csi-rbdplugin
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          args :
+            - "--nodeid=$(NODE_ID)"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--v=5"
+            - "--drivername=csi-rbdplugin"
+            - "--containerized=true"            
+          env:
+            - name: HOST_ROOTFS
+              value: "/rootfs"
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: "unix:/{{ .Values.socketDir }}/{{ .Values.socketFile }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.imagePullPolicy }}
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: {{ .Values.socketDir }}
+            - name: pods-mount-dir
+              mountPath: /var/lib/kubelet/pods
+              mountPropagation: "Bidirectional"
+            - mountPath: /dev
+              name: host-dev
+            - mountPath: /rootfs
+              name: host-rootfs            
+            - mountPath: /sys
+              name: host-sys
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
+      volumes:
+        - name: plugin-dir
+          hostPath:
+            path: {{ .Values.socketDir }}
+            type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/
+            type: Directory
+        - name: pods-mount-dir
+          hostPath:
+            path: /var/lib/kubelet/pods
+            type: Directory
+        - name: socket-dir
+          hostPath:
+            path: {{ .Values.socketDir }}
+            type: DirectoryOrCreate
+        - name: host-dev
+          hostPath:
+            path: /dev
+        - name: host-rootfs
+          hostPath:
+            path: /            
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+    {{- if .Values.nodeplugin.affinity -}}
+      affinity:
+{{ toYaml .Values.nodeplugin.affinity . | indent 8 }}
+    {{- end -}}
+    {{- if .Values.nodeplugin.nodeSelector -}}
+      nodeSelector:
+{{ toYaml .Values.nodeplugin.nodeSelector | indent 8 }}
+    {{- end -}}
+    {{- if .Values.nodeplugin.tolerations -}}
+      tolerations:
+{{ toYaml .Values.nodeplugin.tolerations | indent 8 }}
+    {{- end -}}
