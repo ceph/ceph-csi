@@ -27,6 +27,9 @@ Option | Default value | Description
 `--nodeid` | _empty_ | This node's ID
 `--volumemounter` | _empty_ | default volume mounter. Available options are `kernel` and `fuse`. This is the mount method used if volume parameters don't specify otherwise. If left unspecified, the driver will first probe for `ceph-fuse` in system's path and will choose Ceph kernel client if probing failed.
 
+**Available environmental variables:**
+`KUBERNETES_CONFIG_PATH`: if you use `k8s_configmap` as metadata store, specify the path of your k8s config file (if not specified, the plugin will assume you're running it inside a k8s cluster and find the config itself).
+
 **Available volume parameters:**
 
 Parameter | Required | Description
