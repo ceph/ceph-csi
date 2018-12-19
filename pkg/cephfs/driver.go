@@ -114,7 +114,6 @@ func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string, 
 	fs.ns = NewNodeServer(fs.driver)
 
 	fs.cs = NewControllerServer(fs.driver, cachePersister)
-	//fs.cs.LoadExDataFromMetadataStore()
 
 	server := csicommon.NewNonBlockingGRPCServer()
 	server.Start(endpoint, fs.is, fs.cs, fs.ns)
