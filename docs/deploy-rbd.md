@@ -33,6 +33,8 @@ Option | Default value | Description
 
 `KUBERNETES_CONFIG_PATH`: if you use `k8s_configmap` as metadata store, specify the path of your k8s config file (if not specified, the plugin will assume you're running it inside a k8s cluster and find the config itself).
 
+`POD_NAMESPACE`: if you use `k8s_configmap` as metadata store, `POD_NAMESPACE` is used to define in which namespace you want the configmaps to be stored
+
 **Available volume parameters:**
 
 Parameter | Required | Description
