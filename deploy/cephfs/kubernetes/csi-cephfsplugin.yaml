@@ -18,7 +18,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet      
       containers:
         - name: driver-registrar
-          image: quay.io/k8scsi/driver-registrar:v1.0.0
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
