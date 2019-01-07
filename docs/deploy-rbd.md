@@ -105,3 +105,19 @@ service/csi-rbdplugin-provisioner   ClusterIP   10.104.2.130   <none>        123
 
 You can try deploying a demo pod from `examples/rbd` to test the deployment further.
 
+## Deployment with Helm
+
+The same requirements from the Kubernetes section apply here, i.e. Kubernetes
+version, privileged flag and shared mounts.
+
+The Helm chart is located in `deploy/rbd/helm`.
+
+**Deploy Helm Chart:**
+
+```bash
+$ helm install ./deploy/rbd/helm
+```
+
+The Helm chart deploys all of the required resources to use the CSI RBD driver.
+After deploying the chart you can verify the deployment using the instructions
+above for verifying the deployment with Kubernetes
