@@ -51,7 +51,7 @@ spec:
             - "--v=5"
             - "--drivername=csi-rbdplugin"
             - "--containerized=true"
-            - "--metadatastorage=node"
+            - "--metadatastorage=k8s_configmap"
           env:
             - name: HOST_ROOTFS
               value: "/rootfs"
