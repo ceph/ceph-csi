@@ -17,11 +17,8 @@ limitations under the License.
 package rbd
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
-	"path"
 	"strings"
 	"time"
 
@@ -314,95 +311,6 @@ func hasSnapshotFeature(imageFeatures string) bool {
 		}
 	}
 	return false
-}
-
-func persistVolInfo(image string, persistentStoragePath string, volInfo *rbdVolume) error {
-	file := path.Join(persistentStoragePath, image+".json")
-	fp, err := os.Create(file)
-	if err != nil {
-		glog.Errorf("rbd: failed to create persistent storage file %s with error: %v\n", file, err)
-		return errors.Wrapf(err, "rbd: create error for %s", file)
-	}
-	defer fp.Close()
-	encoder := json.NewEncoder(fp)
-	if err = encoder.Encode(volInfo); err != nil {
-		glog.Errorf("rbd: failed to encode volInfo: %+v for file: %s with error: %v\n", volInfo, file, err)
-		return errors.Wrap(err, "rbd: encode error")
-	}
-	glog.Infof("rbd: successfully saved volInfo: %+v into file: %s\n", volInfo, file)
-	return nil
-}
-
-func loadVolInfo(image string, persistentStoragePath string, volInfo *rbdVolume) error {
-	file := path.Join(persistentStoragePath, image+".json")
-	fp, err := os.Open(file)
-	if err != nil {
-		return errors.Wrapf(err, "rbd: open error for %s", file)
-	}
-	defer fp.Close()
-
-	decoder := json.NewDecoder(fp)
-	if err = decoder.Decode(volInfo); err != nil {
-		return errors.Wrap(err, "rbd: decode error")
-	}
-
-	return nil
-}
-
-func deleteVolInfo(image string, persistentStoragePath string) error {
-	file := path.Join(persistentStoragePath, image+".json")
-	glog.Infof("rbd: Deleting file for Volume: %s at: %s resulting path: %+v\n", image, persistentStoragePath, file)
-	err := os.Remove(file)
-	if err != nil {
-		if err != os.ErrNotExist {
-			return errors.Wrapf(err, "rbd: error removing file %s", file)
-		}
-	}
-	return nil
-}
-
-func persistSnapInfo(snapshot string, persistentStoragePath string, snapInfo *rbdSnapshot) error {
-	file := path.Join(persistentStoragePath, snapshot+".json")
-	fp, err := os.Create(file)
-	if err != nil {
-		glog.Errorf("rbd: failed to create persistent storage file %s with error: %v\n", file, err)
-		return errors.Wrapf(err, "rbd: create error for %s", file)
-	}
-	defer fp.Close()
-	encoder := json.NewEncoder(fp)
-	if err = encoder.Encode(snapInfo); err != nil {
-		glog.Errorf("rbd: failed to encode snapInfo: %+v for file: %s with error: %v\n", snapInfo, file, err)
-		return errors.Wrap(err, "rbd: encode error")
-	}
-	glog.Infof("rbd: successfully saved snapInfo: %+v into file: %s\n", snapInfo, file)
-	return nil
-}
-
-func loadSnapInfo(snapshot string, persistentStoragePath string, snapInfo *rbdSnapshot) error {
-	file := path.Join(persistentStoragePath, snapshot+".json")
-	fp, err := os.Open(file)
-	if err != nil {
-		return errors.Wrapf(err, "rbd: open error for %s", file)
-	}
-	defer fp.Close()
-
-	decoder := json.NewDecoder(fp)
-	if err = decoder.Decode(snapInfo); err != nil {
-		return errors.Wrap(err, "rbd: decode error")
-	}
-	return nil
-}
-
-func deleteSnapInfo(snapshot string, persistentStoragePath string) error {
-	file := path.Join(persistentStoragePath, snapshot+".json")
-	glog.Infof("rbd: Deleting file for Snapshot: %s at: %s resulting path: %+v\n", snapshot, persistentStoragePath, file)
-	err := os.Remove(file)
-	if err != nil {
-		if err != os.ErrNotExist {
-			return errors.Wrapf(err, "rbd: error removing file %s", file)
-		}
-	}
-	return nil
 }
 
 func getRBDVolumeByID(volumeID string) (*rbdVolume, error) {

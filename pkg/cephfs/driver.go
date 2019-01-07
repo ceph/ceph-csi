@@ -17,12 +17,12 @@ limitations under the License.
 package cephfs
 
 import (
-	"os"
-
 	"github.com/golang/glog"
 
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+
+	"github.com/ceph/ceph-csi/pkg/util"
 )
 
 const (
@@ -56,9 +56,10 @@ func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
 	}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver) *controllerServer {
+func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *controllerServer {
 	return &controllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
+		MetadataStore:           cachePersister,
 	}
 }
 
@@ -68,19 +69,10 @@ func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
 	}
 }
 
-func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string) {
+func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string, cachePersister util.CachePersister) {
 	glog.Infof("Driver: %v version: %v", driverName, Version)
 
 	// Configuration
-
-	if err := os.MkdirAll(controllerCacheRoot, 0755); err != nil {
-		glog.Fatalf("cephfs: failed to create %s: %v", controllerCacheRoot, err)
-		return
-	}
-
-	if err := loadControllerCache(); err != nil {
-		glog.Errorf("cephfs: failed to read volume cache: %v", err)
-	}
 
 	if err := loadAvailableMounters(); err != nil {
 		glog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
@@ -120,7 +112,8 @@ func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string) 
 
 	fs.is = NewIdentityServer(fs.driver)
 	fs.ns = NewNodeServer(fs.driver)
-	fs.cs = NewControllerServer(fs.driver)
+
+	fs.cs = NewControllerServer(fs.driver, cachePersister)
 
 	server := csicommon.NewNonBlockingGRPCServer()
 	server.Start(endpoint, fs.is, fs.cs, fs.ns)

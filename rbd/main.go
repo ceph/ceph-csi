@@ -22,6 +22,7 @@ import (
 	"path"
 
 	"github.com/ceph/ceph-csi/pkg/rbd"
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/golang/glog"
 )
 
@@ -30,10 +31,11 @@ func init() {
 }
 
 var (
-	endpoint      = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName    = flag.String("drivername", "csi-rbdplugin", "name of the driver")
-	nodeID        = flag.String("nodeid", "", "node id")
-	containerized = flag.Bool("containerized", true, "whether run as containerized")
+	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	driverName      = flag.String("drivername", "csi-rbdplugin", "name of the driver")
+	nodeID          = flag.String("nodeid", "", "node id")
+	containerized   = flag.Bool("containerized", true, "whether run as containerized")
+	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
 )
 
 func main() {
@@ -48,13 +50,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	handle()
-	os.Exit(0)
-}
+	cp, err := util.NewCachePersister(*metadataStorage, *driverName)
+	if err != nil {
+		glog.Errorf("failed to define cache persistence method: %v", err)
+		os.Exit(1)
+	}
 
-func handle() {
 	driver := rbd.GetRBDDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *containerized)
+	driver.Run(*driverName, *nodeID, *endpoint, *containerized, cp)
+
+	os.Exit(0)
 }
 
 func createPersistentStorage(persistentStoragePath string) error {
