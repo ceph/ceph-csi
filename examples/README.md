@@ -21,7 +21,7 @@ Other helper scripts:
 
 Before continuing, make sure you enabled the required [feature gate](https://kubernetes-csi.github.io/docs/Setup.html#csi-volume-snapshot-support) in your Kubernetes cluster.
 
-In the `examples/rbd` directory you will find four files related to snapshots: `csi-snapshotter-rbac.yaml`, `csi-snapshotter.yaml`, `snapshotclass.yaml` and `snapshot.yaml`.
+In the `examples/rbd` directory you will find four files related to snapshots: [csi-snapshotter-rbac.yaml](./rbd/csi-snapshotter-rbac.yaml), [csi-snapshotter.yaml](./rbd/csi-snapshotter.yaml), [snapshotclass.yaml](./rbd/snapshotclass.yaml) and [snapshot.yaml](./rbd/snapshot.yaml).
 
 Once you created your RBD volume, you'll need to customize at least `snapshotclass.yaml` and make sure the `monitors` and `pool` parameters match your Ceph cluster setup. If you followed the documentation to create the rbdplugin, you shouldn't have to edit any other file. If you didn't, make sure every parameters in `csi-snapshotter.yaml` reflect your configuration.
 
