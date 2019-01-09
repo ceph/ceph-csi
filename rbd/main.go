@@ -50,10 +50,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *metadataStorage != "node" && *metadataStorage != "k8s_configmap" {
-		glog.Errorf("invalid cache persistent option: %s", *metadataStorage)
-		os.Exit(1)
-	}
 	cp, err := util.NewCachePersister(*metadataStorage, *driverName)
 	if err != nil {
 		glog.Errorf("failed to define cache persistence method: %v", err)
