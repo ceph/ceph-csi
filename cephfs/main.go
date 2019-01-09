@@ -35,7 +35,7 @@ var (
 	driverName      = flag.String("drivername", "csi-cephfsplugin", "name of the driver")
 	nodeId          = flag.String("nodeid", "", "node id")
 	volumeMounter   = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
-	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
+	metadataStorage = flag.String("metadatastorage", "node", "metadata persistence method [node|k8s_configmap]")
 )
 
 func main() {
