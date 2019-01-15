@@ -86,9 +86,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	volumeNameMutex.LockKey(req.GetName())
 	defer volumeNameMutex.UnlockKey(req.GetName())
 
-	volumeNameMutex.LockKey(req.GetName())
-	defer volumeNameMutex.UnlockKey(req.GetName())
-
 	// Need to check for already existing volume name, and if found
 	// check for the requested capacity and already allocated capacity
 	if exVol, err := getRBDVolumeByName(req.GetName()); err == nil {
