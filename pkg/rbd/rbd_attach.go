@@ -61,15 +61,15 @@ func getDevFromImageAndPool(pool, image string) (string, bool) {
 // Search /sys/bus for rbd device that matches given pool and image.
 func getRbdDevFromImageAndPool(pool string, image string) (string, bool) {
 	// /sys/bus/rbd/devices/X/name and /sys/bus/rbd/devices/X/pool
-	sys_path := "/sys/bus/rbd/devices"
-	if dirs, err := ioutil.ReadDir(sys_path); err == nil {
+	sysPath := "/sys/bus/rbd/devices"
+	if dirs, err := ioutil.ReadDir(sysPath); err == nil {
 		for _, f := range dirs {
 			// Pool and name format:
 			// see rbd_pool_show() and rbd_name_show() at
 			// https://github.com/torvalds/linux/blob/master/drivers/block/rbd.c
 			name := f.Name()
 			// First match pool, then match name.
-			poolFile := path.Join(sys_path, name, "pool")
+			poolFile := path.Join(sysPath, name, "pool")
 			poolBytes, err := ioutil.ReadFile(poolFile)
 			if err != nil {
 				glog.V(4).Infof("error reading %s: %v", poolFile, err)
@@ -79,7 +79,7 @@ func getRbdDevFromImageAndPool(pool string, image string) (string, bool) {
 				glog.V(4).Infof("device %s is not %q: %q", name, pool, string(poolBytes))
 				continue
 			}
-			imgFile := path.Join(sys_path, name, "name")
+			imgFile := path.Join(sysPath, name, "name")
 			imgBytes, err := ioutil.ReadFile(imgFile)
 			if err != nil {
 				glog.V(4).Infof("error reading %s: %v", imgFile, err)

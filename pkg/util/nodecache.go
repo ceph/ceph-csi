@@ -65,7 +65,7 @@ func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) e
 		}
 		fp, err := os.Open(path.Join(nc.BasePath, cacheDir, file.Name()))
 		if err != nil {
-			glog.Infof("node-cache: open file: %s err %%v", file.Name(), err)
+			glog.Infof("node-cache: open file: %s err %v", file.Name(), err)
 			continue
 		}
 		decoder := json.NewDecoder(fp)
