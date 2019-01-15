@@ -71,7 +71,7 @@ func (x ListAssetsResponse_ListAssetsResult_State) String() string {
 	return proto.EnumName(ListAssetsResponse_ListAssetsResult_State_name, int32(x))
 }
 func (ListAssetsResponse_ListAssetsResult_State) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{12, 0, 0}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{12, 0, 0}
 }
 
 // Request message for creating a finding.
@@ -95,7 +95,7 @@ func (m *CreateFindingRequest) Reset()         { *m = CreateFindingRequest{} }
 func (m *CreateFindingRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateFindingRequest) ProtoMessage()    {}
 func (*CreateFindingRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{0}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{0}
 }
 func (m *CreateFindingRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateFindingRequest.Unmarshal(m, b)
@@ -153,7 +153,7 @@ func (m *CreateSourceRequest) Reset()         { *m = CreateSourceRequest{} }
 func (m *CreateSourceRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateSourceRequest) ProtoMessage()    {}
 func (*CreateSourceRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{1}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{1}
 }
 func (m *CreateSourceRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateSourceRequest.Unmarshal(m, b)
@@ -201,7 +201,7 @@ func (m *GetOrganizationSettingsRequest) Reset()         { *m = GetOrganizationS
 func (m *GetOrganizationSettingsRequest) String() string { return proto.CompactTextString(m) }
 func (*GetOrganizationSettingsRequest) ProtoMessage()    {}
 func (*GetOrganizationSettingsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{2}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{2}
 }
 func (m *GetOrganizationSettingsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetOrganizationSettingsRequest.Unmarshal(m, b)
@@ -242,7 +242,7 @@ func (m *GetSourceRequest) Reset()         { *m = GetSourceRequest{} }
 func (m *GetSourceRequest) String() string { return proto.CompactTextString(m) }
 func (*GetSourceRequest) ProtoMessage()    {}
 func (*GetSourceRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{3}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{3}
 }
 func (m *GetSourceRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetSourceRequest.Unmarshal(m, b)
@@ -360,7 +360,7 @@ func (m *GroupAssetsRequest) Reset()         { *m = GroupAssetsRequest{} }
 func (m *GroupAssetsRequest) String() string { return proto.CompactTextString(m) }
 func (*GroupAssetsRequest) ProtoMessage()    {}
 func (*GroupAssetsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{4}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{4}
 }
 func (m *GroupAssetsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GroupAssetsRequest.Unmarshal(m, b)
@@ -449,7 +449,7 @@ func (m *GroupAssetsResponse) Reset()         { *m = GroupAssetsResponse{} }
 func (m *GroupAssetsResponse) String() string { return proto.CompactTextString(m) }
 func (*GroupAssetsResponse) ProtoMessage()    {}
 func (*GroupAssetsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{5}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{5}
 }
 func (m *GroupAssetsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GroupAssetsResponse.Unmarshal(m, b)
@@ -556,7 +556,7 @@ func (m *GroupFindingsRequest) Reset()         { *m = GroupFindingsRequest{} }
 func (m *GroupFindingsRequest) String() string { return proto.CompactTextString(m) }
 func (*GroupFindingsRequest) ProtoMessage()    {}
 func (*GroupFindingsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{6}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{6}
 }
 func (m *GroupFindingsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GroupFindingsRequest.Unmarshal(m, b)
@@ -638,7 +638,7 @@ func (m *GroupFindingsResponse) Reset()         { *m = GroupFindingsResponse{} }
 func (m *GroupFindingsResponse) String() string { return proto.CompactTextString(m) }
 func (*GroupFindingsResponse) ProtoMessage()    {}
 func (*GroupFindingsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{7}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{7}
 }
 func (m *GroupFindingsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GroupFindingsResponse.Unmarshal(m, b)
@@ -694,7 +694,7 @@ func (m *GroupResult) Reset()         { *m = GroupResult{} }
 func (m *GroupResult) String() string { return proto.CompactTextString(m) }
 func (*GroupResult) ProtoMessage()    {}
 func (*GroupResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{8}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{8}
 }
 func (m *GroupResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GroupResult.Unmarshal(m, b)
@@ -749,7 +749,7 @@ func (m *ListSourcesRequest) Reset()         { *m = ListSourcesRequest{} }
 func (m *ListSourcesRequest) String() string { return proto.CompactTextString(m) }
 func (*ListSourcesRequest) ProtoMessage()    {}
 func (*ListSourcesRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{9}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{9}
 }
 func (m *ListSourcesRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListSourcesRequest.Unmarshal(m, b)
@@ -806,7 +806,7 @@ func (m *ListSourcesResponse) Reset()         { *m = ListSourcesResponse{} }
 func (m *ListSourcesResponse) String() string { return proto.CompactTextString(m) }
 func (*ListSourcesResponse) ProtoMessage()    {}
 func (*ListSourcesResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{10}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{10}
 }
 func (m *ListSourcesResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListSourcesResponse.Unmarshal(m, b)
@@ -933,7 +933,7 @@ func (m *ListAssetsRequest) Reset()         { *m = ListAssetsRequest{} }
 func (m *ListAssetsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListAssetsRequest) ProtoMessage()    {}
 func (*ListAssetsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{11}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{11}
 }
 func (m *ListAssetsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListAssetsRequest.Unmarshal(m, b)
@@ -1029,7 +1029,7 @@ func (m *ListAssetsResponse) Reset()         { *m = ListAssetsResponse{} }
 func (m *ListAssetsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListAssetsResponse) ProtoMessage()    {}
 func (*ListAssetsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{12}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{12}
 }
 func (m *ListAssetsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListAssetsResponse.Unmarshal(m, b)
@@ -1092,7 +1092,7 @@ func (m *ListAssetsResponse_ListAssetsResult) Reset()         { *m = ListAssetsR
 func (m *ListAssetsResponse_ListAssetsResult) String() string { return proto.CompactTextString(m) }
 func (*ListAssetsResponse_ListAssetsResult) ProtoMessage()    {}
 func (*ListAssetsResponse_ListAssetsResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{12, 0}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{12, 0}
 }
 func (m *ListAssetsResponse_ListAssetsResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListAssetsResponse_ListAssetsResult.Unmarshal(m, b)
@@ -1194,7 +1194,7 @@ func (m *ListFindingsRequest) Reset()         { *m = ListFindingsRequest{} }
 func (m *ListFindingsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListFindingsRequest) ProtoMessage()    {}
 func (*ListFindingsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{13}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{13}
 }
 func (m *ListFindingsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListFindingsRequest.Unmarshal(m, b)
@@ -1283,7 +1283,7 @@ func (m *ListFindingsResponse) Reset()         { *m = ListFindingsResponse{} }
 func (m *ListFindingsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListFindingsResponse) ProtoMessage()    {}
 func (*ListFindingsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{14}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{14}
 }
 func (m *ListFindingsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListFindingsResponse.Unmarshal(m, b)
@@ -1351,7 +1351,7 @@ func (m *SetFindingStateRequest) Reset()         { *m = SetFindingStateRequest{}
 func (m *SetFindingStateRequest) String() string { return proto.CompactTextString(m) }
 func (*SetFindingStateRequest) ProtoMessage()    {}
 func (*SetFindingStateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{15}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{15}
 }
 func (m *SetFindingStateRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SetFindingStateRequest.Unmarshal(m, b)
@@ -1406,7 +1406,7 @@ func (m *RunAssetDiscoveryRequest) Reset()         { *m = RunAssetDiscoveryReque
 func (m *RunAssetDiscoveryRequest) String() string { return proto.CompactTextString(m) }
 func (*RunAssetDiscoveryRequest) ProtoMessage()    {}
 func (*RunAssetDiscoveryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{16}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{16}
 }
 func (m *RunAssetDiscoveryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RunAssetDiscoveryRequest.Unmarshal(m, b)
@@ -1442,8 +1442,8 @@ type UpdateFindingRequest struct {
 	// alphanumeric and less than or equal to 32 characters and greater than 0
 	// characters in length.
 	Finding *Finding `protobuf:"bytes,1,opt,name=finding,proto3" json:"finding,omitempty"`
-	// The FieldMask to use when updating the finding resource. This field is
-	// ignored if the finding does not already exist and the finding is created.
+	// The FieldMask to use when updating the finding resource. This field should
+	// not be specified when creating a finding.
 	UpdateMask           *field_mask.FieldMask `protobuf:"bytes,2,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
 	XXX_unrecognized     []byte                `json:"-"`
@@ -1454,7 +1454,7 @@ func (m *UpdateFindingRequest) Reset()         { *m = UpdateFindingRequest{} }
 func (m *UpdateFindingRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateFindingRequest) ProtoMessage()    {}
 func (*UpdateFindingRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{17}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{17}
 }
 func (m *UpdateFindingRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateFindingRequest.Unmarshal(m, b)
@@ -1503,7 +1503,7 @@ func (m *UpdateOrganizationSettingsRequest) Reset()         { *m = UpdateOrganiz
 func (m *UpdateOrganizationSettingsRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateOrganizationSettingsRequest) ProtoMessage()    {}
 func (*UpdateOrganizationSettingsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{18}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{18}
 }
 func (m *UpdateOrganizationSettingsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateOrganizationSettingsRequest.Unmarshal(m, b)
@@ -1552,7 +1552,7 @@ func (m *UpdateSourceRequest) Reset()         { *m = UpdateSourceRequest{} }
 func (m *UpdateSourceRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateSourceRequest) ProtoMessage()    {}
 func (*UpdateSourceRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{19}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{19}
 }
 func (m *UpdateSourceRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateSourceRequest.Unmarshal(m, b)
@@ -1603,7 +1603,7 @@ func (m *UpdateSecurityMarksRequest) Reset()         { *m = UpdateSecurityMarksR
 func (m *UpdateSecurityMarksRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateSecurityMarksRequest) ProtoMessage()    {}
 func (*UpdateSecurityMarksRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_securitycenter_service_04d508c1925341a7, []int{20}
+	return fileDescriptor_securitycenter_service_c243892a08857f74, []int{20}
 }
 func (m *UpdateSecurityMarksRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateSecurityMarksRequest.Unmarshal(m, b)
@@ -2371,10 +2371,10 @@ var _SecurityCenter_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("google/cloud/securitycenter/v1beta1/securitycenter_service.proto", fileDescriptor_securitycenter_service_04d508c1925341a7)
+	proto.RegisterFile("google/cloud/securitycenter/v1beta1/securitycenter_service.proto", fileDescriptor_securitycenter_service_c243892a08857f74)
 }
 
-var fileDescriptor_securitycenter_service_04d508c1925341a7 = []byte{
+var fileDescriptor_securitycenter_service_c243892a08857f74 = []byte{
 	// 1902 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xdc, 0x5a, 0xdb, 0x6f, 0x1b, 0x59,
 	0x19, 0xe7, 0x38, 0x71, 0x12, 0x7f, 0x6e, 0x5a, 0xf7, 0x24, 0x2d, 0xde, 0xd9, 0xee, 0x12, 0x06,

@@ -23,8 +23,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/ceph/ceph-csi/pkg/util"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -170,7 +170,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	if err := cs.MetadataStore.Create(volumeID, rbdVol); err != nil {
 		glog.Warningf("failed to store volume metadata with error: %v", err)
-		if err := deleteRBDImage(rbdVol, rbdVol.AdminId, req.GetControllerCreateSecrets()); err != nil {
+		if err := deleteRBDImage(rbdVol, rbdVol.AdminId, req.GetSecrets()); err != nil {
 			glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
 			return nil, err
 		}

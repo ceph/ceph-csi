@@ -22,9 +22,8 @@ import (
 	"regexp"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -362,6 +361,31 @@ func testSubPath(input *subPathTestInput) {
 		testReadFile(input.f, input.filePathInSubpath, input.pod, 0)
 	})
 
+	It("should be able to unmount after the subpath directory is deleted", func() {
+		// Change volume container to busybox so we can exec later
+		input.pod.Spec.Containers[1].Image = imageutils.GetE2EImage(imageutils.BusyBox)
+		input.pod.Spec.Containers[1].Command = []string{"/bin/sh", "-ec", "sleep 100000"}
+
+		By(fmt.Sprintf("Creating pod %s", input.pod.Name))
+		pod, err := input.f.ClientSet.CoreV1().Pods(input.f.Namespace.Name).Create(input.pod)
+		Expect(err).ToNot(HaveOccurred(), "while creating pod")
+		defer func() {
+			By(fmt.Sprintf("Deleting pod %s", pod.Name))
+			framework.DeletePodWithWait(input.f, input.f.ClientSet, pod)
+		}()
+
+		// Wait for pod to be running
+		err = framework.WaitForPodRunningInNamespace(input.f.ClientSet, pod)
+		Expect(err).ToNot(HaveOccurred(), "while waiting for pod to be running")
+
+		// Exec into container that mounted the volume, delete subpath directory
+		rmCmd := fmt.Sprintf("rm -rf %s", input.subPathDir)
+		_, err = podContainerExec(pod, 1, rmCmd)
+		Expect(err).ToNot(HaveOccurred(), "while removing subpath directory")
+
+		// Delete pod (from defer) and wait for it to be successfully deleted
+	})
+
 	// TODO: add a test case for the same disk with two partitions
 }
 
@@ -587,16 +611,54 @@ func testPodFailSubpathError(f *framework.Framework, pod *v1.Pod, errorMsg strin
 	defer func() {
 		framework.DeletePodWithWait(f, f.ClientSet, pod)
 	}()
+	By("Checking for subpath error in container status")
+	err = waitForPodSubpathError(f, pod)
+	Expect(err).NotTo(HaveOccurred(), "while waiting for subpath failure")
+}
 
-	By("Checking for subpath error event")
-	selector := fields.Set{
-		"involvedObject.kind":      "Pod",
-		"involvedObject.name":      pod.Name,
-		"involvedObject.namespace": f.Namespace.Name,
-		"reason":                   "Failed",
-	}.AsSelector().String()
-	err = framework.WaitTimeoutForPodEvent(f.ClientSet, pod.Name, f.Namespace.Name, selector, errorMsg, framework.PodStartTimeout)
-	Expect(err).NotTo(HaveOccurred(), "while waiting for failed event to occur")
+func findSubpathContainerName(pod *v1.Pod) string {
+	for _, container := range pod.Spec.Containers {
+		for _, mount := range container.VolumeMounts {
+			if mount.SubPath != "" {
+				return container.Name
+			}
+		}
+	}
+	return ""
+}
+
+func waitForPodSubpathError(f *framework.Framework, pod *v1.Pod) error {
+	subpathContainerName := findSubpathContainerName(pod)
+	if subpathContainerName == "" {
+		return fmt.Errorf("failed to find container that uses subpath")
+	}
+
+	return wait.PollImmediate(framework.Poll, framework.PodStartTimeout, func() (bool, error) {
+		pod, err := f.ClientSet.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		for _, status := range pod.Status.ContainerStatuses {
+			// 0 is the container that uses subpath
+			if status.Name == subpathContainerName {
+				switch {
+				case status.State.Running != nil:
+					return false, fmt.Errorf("subpath container unexpectedly became running")
+				case status.State.Terminated != nil:
+					return false, fmt.Errorf("subpath container unexpectedly terminated")
+				case status.State.Waiting != nil:
+					if status.State.Waiting.Reason == "CreateContainerConfigError" &&
+						strings.Contains(status.State.Waiting.Message, "subPath") {
+						return true, nil
+					}
+					return false, nil
+				default:
+					return false, nil
+				}
+			}
+		}
+		return false, nil
+	})
 }
 
 // Tests that the existing subpath mount is detected when a container restarts

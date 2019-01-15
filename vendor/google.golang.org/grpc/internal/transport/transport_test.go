@@ -21,6 +21,7 @@ package transport
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -36,11 +37,11 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/internal/leakcheck"
+	"google.golang.org/grpc/internal/syscall"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 )
@@ -2027,13 +2028,10 @@ func setUpHTTPStatusTest(t *testing.T, httpStatus int, wh writeHeaders) (*Stream
 		wh:         wh,
 	}
 	server.start(t, lis)
-	// TODO(deklerk): we can `defer cancel()` here after we drop Go 1.6 support. Until then,
-	// doing a `defer cancel()` could cause the dialer to become broken:
-	// https://github.com/golang/go/issues/15078, https://github.com/golang/go/issues/15035
 	connectCtx, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
+	defer cancel()
 	client, err := newHTTP2Client(connectCtx, context.Background(), TargetInfo{Addr: lis.Addr().String()}, ConnectOptions{}, func() {}, func(GoAwayReason) {}, func() {})
 	if err != nil {
-		cancel() // Do not cancel in success path.
 		lis.Close()
 		t.Fatalf("Error creating client. Err: %v", err)
 	}
@@ -2315,5 +2313,63 @@ func TestHeaderTblSize(t *testing.T) {
 	}
 	if i == 1000 {
 		t.Fatalf("expected len(limits) = 2 within 10s, got != 2")
+	}
+}
+
+// TestTCPUserTimeout tests that the TCP_USER_TIMEOUT socket option is set to the
+// keepalive timeout, as detailed in proposal A18
+func TestTCPUserTimeout(t *testing.T) {
+	tests := []struct {
+		time    time.Duration
+		timeout time.Duration
+	}{
+		{
+			10 * time.Second,
+			10 * time.Second,
+		},
+		{
+			0,
+			0,
+		},
+	}
+	for _, tt := range tests {
+		server, client, cancel := setUpWithOptions(
+			t,
+			0,
+			&ServerConfig{
+				KeepaliveParams: keepalive.ServerParameters{
+					Time:    tt.timeout,
+					Timeout: tt.timeout,
+				},
+			},
+			normal,
+			ConnectOptions{
+				KeepaliveParams: keepalive.ClientParameters{
+					Time:    tt.time,
+					Timeout: tt.timeout,
+				},
+			},
+		)
+		defer cancel()
+		defer server.stop()
+		defer client.Close()
+
+		stream, err := client.NewStream(context.Background(), &CallHdr{})
+		if err != nil {
+			t.Fatalf("Client failed to create RPC request: %v", err)
+		}
+		client.closeStream(stream, io.EOF, true, http2.ErrCodeCancel, nil, nil, false)
+
+		opt, err := syscall.GetTCPUserTimeout(client.conn)
+		if err != nil {
+			t.Fatalf("GetTCPUserTimeout error: %v", err)
+		}
+		if opt < 0 {
+			t.Skipf("skipping test on unsupported environment")
+		}
+		if timeoutMS := int(tt.timeout / time.Millisecond); timeoutMS != opt {
+			t.Fatalf("wrong TCP_USER_TIMEOUT set on conn. expected %d. got %d",
+				timeoutMS, opt)
+		}
 	}
 }

@@ -49,7 +49,7 @@ func (x Finding_State) String() string {
 	return proto.EnumName(Finding_State_name, int32(x))
 }
 func (Finding_State) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_finding_2c388f0a3f99b762, []int{0, 0}
+	return fileDescriptor_finding_67aa433c3f84c505, []int{0, 0}
 }
 
 // Cloud Security Command Center (Cloud SCC) finding.
@@ -77,7 +77,7 @@ type Finding struct {
 	ResourceName string `protobuf:"bytes,3,opt,name=resource_name,json=resourceName,proto3" json:"resource_name,omitempty"`
 	// The state of the finding.
 	State Finding_State `protobuf:"varint,4,opt,name=state,proto3,enum=google.cloud.securitycenter.v1beta1.Finding_State" json:"state,omitempty"`
-	// The additional taxonomy group within findings from a give source.
+	// The additional taxonomy group within findings from a given source.
 	// This field is immutable after creation time.
 	// Example: "XSS_FLASH_INJECTION"
 	Category string `protobuf:"bytes,5,opt,name=category,proto3" json:"category,omitempty"`
@@ -86,7 +86,9 @@ type Finding struct {
 	// guaranteed to be either empty or a well formed URL.
 	ExternalUri string `protobuf:"bytes,6,opt,name=external_uri,json=externalUri,proto3" json:"external_uri,omitempty"`
 	// Source specific properties. These properties are managed by the source
-	// that writes the finding.
+	// that writes the finding. The key names in the source_properties map must be
+	// between 1 and 255 characters, and must start with a letter and contain
+	// alphanumeric characters or underscores only.
 	SourceProperties map[string]*_struct.Value `protobuf:"bytes,7,rep,name=source_properties,json=sourceProperties,proto3" json:"source_properties,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// Output only. User specified security marks. These marks are entirely
 	// managed by the user and come from the SecurityMarks resource that belongs
@@ -107,7 +109,7 @@ func (m *Finding) Reset()         { *m = Finding{} }
 func (m *Finding) String() string { return proto.CompactTextString(m) }
 func (*Finding) ProtoMessage()    {}
 func (*Finding) Descriptor() ([]byte, []int) {
-	return fileDescriptor_finding_2c388f0a3f99b762, []int{0}
+	return fileDescriptor_finding_67aa433c3f84c505, []int{0}
 }
 func (m *Finding) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Finding.Unmarshal(m, b)
@@ -204,10 +206,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("google/cloud/securitycenter/v1beta1/finding.proto", fileDescriptor_finding_2c388f0a3f99b762)
+	proto.RegisterFile("google/cloud/securitycenter/v1beta1/finding.proto", fileDescriptor_finding_67aa433c3f84c505)
 }
 
-var fileDescriptor_finding_2c388f0a3f99b762 = []byte{
+var fileDescriptor_finding_67aa433c3f84c505 = []byte{
 	// 510 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x93, 0x41, 0x6f, 0xda, 0x30,
 	0x14, 0xc7, 0x17, 0x28, 0x14, 0x1e, 0xb4, 0xa2, 0x96, 0x5a, 0x45, 0x68, 0xd2, 0x58, 0x7b, 0x18,
