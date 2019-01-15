@@ -24,9 +24,9 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // Cloud Security Command Center's (Cloud SCC) representation of a Google Cloud
 // Platform (GCP) resource.
 //
-// The Asset is a Cloud SCC resource that captures information about a single GCP
-// resource. All modifications to an Asset are only within the context of Cloud
-// SCC and don't affect the referenced GCP resource.
+// The Asset is a Cloud SCC resource that captures information about a single
+// GCP resource. All modifications to an Asset are only within the context of
+// Cloud SCC and don't affect the referenced GCP resource.
 type Asset struct {
 	// The relative resource name of this asset. See:
 	// https://cloud.google.com/apis/design/resource_names#relative_resource_name
@@ -56,7 +56,7 @@ func (m *Asset) Reset()         { *m = Asset{} }
 func (m *Asset) String() string { return proto.CompactTextString(m) }
 func (*Asset) ProtoMessage()    {}
 func (*Asset) Descriptor() ([]byte, []int) {
-	return fileDescriptor_asset_7db002f1bdd144f0, []int{0}
+	return fileDescriptor_asset_43df7b06a0eb9ff3, []int{0}
 }
 func (m *Asset) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Asset.Unmarshal(m, b)
@@ -147,7 +147,7 @@ func (m *Asset_SecurityCenterProperties) Reset()         { *m = Asset_SecurityCe
 func (m *Asset_SecurityCenterProperties) String() string { return proto.CompactTextString(m) }
 func (*Asset_SecurityCenterProperties) ProtoMessage()    {}
 func (*Asset_SecurityCenterProperties) Descriptor() ([]byte, []int) {
-	return fileDescriptor_asset_7db002f1bdd144f0, []int{0, 0}
+	return fileDescriptor_asset_43df7b06a0eb9ff3, []int{0, 0}
 }
 func (m *Asset_SecurityCenterProperties) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Asset_SecurityCenterProperties.Unmarshal(m, b)
@@ -209,10 +209,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("google/cloud/securitycenter/v1beta1/asset.proto", fileDescriptor_asset_7db002f1bdd144f0)
+	proto.RegisterFile("google/cloud/securitycenter/v1beta1/asset.proto", fileDescriptor_asset_43df7b06a0eb9ff3)
 }
 
-var fileDescriptor_asset_7db002f1bdd144f0 = []byte{
+var fileDescriptor_asset_43df7b06a0eb9ff3 = []byte{
 	// 490 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x54, 0x5d, 0x6b, 0xd4, 0x40,
 	0x14, 0x25, 0xdd, 0x6e, 0xb5, 0x77, 0xed, 0x07, 0x23, 0xe8, 0x10, 0x04, 0x17, 0xfb, 0xd0, 0x15,

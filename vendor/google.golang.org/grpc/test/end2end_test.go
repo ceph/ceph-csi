@@ -23,6 +23,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"errors"
 	"flag"
@@ -43,7 +44,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	anypb "github.com/golang/protobuf/ptypes/any"
-	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
@@ -2481,6 +2481,50 @@ func testHealthWatchMultipleClients(t *testing.T, e env) {
 	healthWatchChecker(t, stream2, healthpb.HealthCheckResponse_NOT_SERVING)
 }
 
+func TestHealthWatchSameStatus(t *testing.T) {
+	defer leakcheck.Check(t)
+	for _, e := range listTestEnv() {
+		testHealthWatchSameStatus(t, e)
+	}
+}
+
+func testHealthWatchSameStatus(t *testing.T, e env) {
+	const service = "grpc.health.v1.Health1"
+
+	hs := health.NewServer()
+
+	te := newTest(t, e)
+	te.healthServer = hs
+	te.startServer(&testServer{security: e.security})
+	defer te.tearDown()
+
+	cc := te.clientConn()
+	hc := healthgrpc.NewHealthClient(cc)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	req := &healthpb.HealthCheckRequest{
+		Service: service,
+	}
+
+	stream1, err := hc.Watch(ctx, req)
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	healthWatchChecker(t, stream1, healthpb.HealthCheckResponse_SERVICE_UNKNOWN)
+
+	hs.SetServingStatus(service, healthpb.HealthCheckResponse_SERVING)
+
+	healthWatchChecker(t, stream1, healthpb.HealthCheckResponse_SERVING)
+
+	hs.SetServingStatus(service, healthpb.HealthCheckResponse_SERVING)
+	hs.SetServingStatus(service, healthpb.HealthCheckResponse_NOT_SERVING)
+
+	healthWatchChecker(t, stream1, healthpb.HealthCheckResponse_NOT_SERVING)
+}
+
 func TestHealthWatchServiceStatusSetBeforeStartingServer(t *testing.T) {
 	defer leakcheck.Check(t)
 	for _, e := range listTestEnv() {
@@ -2634,7 +2678,7 @@ func testHealthWatchOverallServerHealthChange(t *testing.T, e env) {
 	healthWatchChecker(t, stream, healthpb.HealthCheckResponse_NOT_SERVING)
 }
 
-func healthWatchChecker(t *testing.T, stream healthpb.Health_WatchClient, expectedServingStatus healthpb.HealthCheckResponse_ServingStatus) {
+func healthWatchChecker(t *testing.T, stream healthgrpc.Health_WatchClient, expectedServingStatus healthpb.HealthCheckResponse_ServingStatus) {
 	response, err := stream.Recv()
 	if err != nil {
 		t.Fatalf("error on %v.Recv(): %v", stream, err)
@@ -7102,4 +7146,56 @@ type notifyingListener struct {
 func (lis notifyingListener) Accept() (net.Conn, error) {
 	defer lis.connEstablished.Fire()
 	return lis.Listener.Accept()
+}
+
+func TestRPCWaitsForResolver(t *testing.T) {
+	te := testServiceConfigSetup(t, tcpClearRREnv)
+	te.startServer(&testServer{security: tcpClearRREnv.security})
+	defer te.tearDown()
+	r, rcleanup := manual.GenerateAndRegisterManualResolver()
+	defer rcleanup()
+
+	te.resolverScheme = r.Scheme()
+	te.nonBlockingDial = true
+	cc := te.clientConn()
+	tc := testpb.NewTestServiceClient(cc)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	// With no resolved addresses yet, this will timeout.
+	if _, err := tc.EmptyCall(ctx, &testpb.Empty{}); status.Code(err) != codes.DeadlineExceeded {
+		t.Fatalf("TestService/EmptyCall(_, _) = _, %v, want _, %s", err, codes.DeadlineExceeded)
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	go func() {
+		time.Sleep(time.Second)
+		r.NewServiceConfig(`{
+		    "methodConfig": [
+		        {
+		            "name": [
+		                {
+		                    "service": "grpc.testing.TestService",
+		                    "method": "UnaryCall"
+		                }
+		            ],
+                    "maxRequestMessageBytes": 0
+		        }
+		    ]
+		}`)
+		r.NewAddress([]resolver.Address{{Addr: te.srvAddr}})
+	}()
+	// We wait a second before providing a service config and resolving
+	// addresses.  So this will wait for that and then honor the
+	// maxRequestMessageBytes it contains.
+	if _, err := tc.UnaryCall(ctx, &testpb.SimpleRequest{ResponseType: testpb.PayloadType_UNCOMPRESSABLE}); status.Code(err) != codes.ResourceExhausted {
+		t.Fatalf("TestService/UnaryCall(_, _) = _, %v, want _, nil", err)
+	}
+	if got := ctx.Err(); got != nil {
+		t.Fatalf("ctx.Err() = %v; want nil (deadline should be set short by service config)", got)
+	}
+	if _, err := tc.UnaryCall(ctx, &testpb.SimpleRequest{}); err != nil {
+		t.Fatalf("TestService/UnaryCall(_, _) = _, %v, want _, nil", err)
+	}
 }

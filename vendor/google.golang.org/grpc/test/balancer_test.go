@@ -19,11 +19,11 @@
 package test
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/connectivity"
@@ -68,7 +68,7 @@ func (b *testBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error) 
 			grpclog.Errorf("testBalancer: failed to NewSubConn: %v", err)
 			return
 		}
-		b.cc.UpdateBalancerState(connectivity.Idle, &picker{sc: b.sc, bal: b})
+		b.cc.UpdateBalancerState(connectivity.Connecting, &picker{sc: b.sc, bal: b})
 		b.sc.Connect()
 	}
 }

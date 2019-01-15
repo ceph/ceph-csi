@@ -57,9 +57,21 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if len(req.GetName()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Name missing in request")
 	}
-	if req.GetVolumeCapabilities() == nil {
+	caps := req.GetVolumeCapabilities()
+	if caps == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities missing in request")
 	}
+	for _, cap := range caps {
+		if cap.GetBlock() != nil {
+			return nil, status.Error(codes.Unimplemented, "Block Volume not supported")
+		}
+	}
+	// A real driver would also need to check that the other
+	// fields in VolumeCapabilities are sane. The check above is
+	// just enough to pass the "[Testpattern: Dynamic PV (block
+	// volmode)] volumeMode should fail in binding dynamic
+	// provisioned PV to PVC" storage E2E test.
+
 	// Need to check for already existing volume name, and if found
 	// check for the requested capacity and already allocated capacity
 	if exVol, err := getVolumeByName(req.GetName()); err == nil {

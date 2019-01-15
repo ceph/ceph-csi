@@ -20,6 +20,9 @@
 #  name = "github.com/x/y"
 #  version = "2.4.0"
 
+[prune]
+  go-tests = true
+  unused-packages = true
 
 [[constraint]]
   name = "github.com/container-storage-interface/spec"
@@ -76,3 +79,7 @@
 [[override]]
   name = "gopkg.in/square/go-jose.v2"
   version = "2.1.7"
+
+[[constraint]]
+  name = "github.com/kubernetes-csi/csi-lib-utils"
+  version = "0.2.0"

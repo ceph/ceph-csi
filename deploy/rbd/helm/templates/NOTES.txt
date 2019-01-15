@@ -1,0 +1,1 @@
+The Ceph RBD Container Storage Interface has been deployed.
