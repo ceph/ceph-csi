@@ -26,10 +26,14 @@ Option | Default value | Description
 `--drivername` | `csi-cephfsplugin` | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
 `--nodeid` | _empty_ | This node's ID
 `--containerized` | true | Whether running in containerized mode
-
+`--metadatastorage` | _empty_ | Whether should metadata be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
 
 **Available environmental variables:**
 `HOST_ROOTFS`: rbdplugin searches `/proc` directory under the directory set by `HOST_ROOTFS`.
+
+`KUBERNETES_CONFIG_PATH`: if you use `k8s_configmap` as metadata store, specify the path of your k8s config file (if not specified, the plugin will assume you're running it inside a k8s cluster and find the config itself).
+
+`POD_NAMESPACE`: if you use `k8s_configmap` as metadata store, `POD_NAMESPACE` is used to define in which namespace you want the configmaps to be stored
 
 **Available volume parameters:**
 
@@ -105,3 +109,19 @@ service/csi-rbdplugin-provisioner   ClusterIP   10.104.2.130   <none>        123
 
 You can try deploying a demo pod from `examples/rbd` to test the deployment further.
 
+## Deployment with Helm
+
+The same requirements from the Kubernetes section apply here, i.e. Kubernetes
+version, privileged flag and shared mounts.
+
+The Helm chart is located in `deploy/rbd/helm`.
+
+**Deploy Helm Chart:**
+
+```bash
+$ helm install ./deploy/rbd/helm
+```
+
+The Helm chart deploys all of the required resources to use the CSI RBD driver.
+After deploying the chart you can verify the deployment using the instructions
+above for verifying the deployment with Kubernetes
