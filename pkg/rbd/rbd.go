@@ -104,7 +104,7 @@ func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool, cac
 	rbd.ids = NewIdentityServer(rbd.driver)
 	rbd.ns, err = NewNodeServer(rbd.driver, containerized)
 	if err != nil {
-		glog.Fatalln("failed to start node server, err %v", err)
+		glog.Fatalf("failed to start node server, err %v \n", err)
 	}
 
 	rbd.cs = NewControllerServer(rbd.driver, cachePersister)
