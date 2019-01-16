@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -47,7 +48,7 @@ func loadAvailableMounters() error {
 	}
 
 	if len(availableMounters) == 0 {
-		return fmt.Errorf("no ceph mounters found on system")
+		return errors.New("no ceph mounters found on system")
 	}
 
 	return nil

@@ -102,7 +102,7 @@ func getMon(pOpts *rbdVolume, credentials map[string]string) (string, error) {
 		// if mons are set in secret, retrieve them
 		if len(pOpts.MonValueFromSecret) == 0 {
 			// yet another sanity check
-			return "", fmt.Errorf("either monitors or monValueFromSecret must be set")
+			return "", errors.New("either monitors or monValueFromSecret must be set")
 		}
 		val, ok := credentials[pOpts.MonValueFromSecret]
 		if !ok {
@@ -344,7 +344,7 @@ func getSnapMon(pOpts *rbdSnapshot, credentials map[string]string) (string, erro
 		// if mons are set in secret, retrieve them
 		if len(pOpts.MonValueFromSecret) == 0 {
 			// yet another sanity check
-			return "", fmt.Errorf("either monitors or monValueFromSecret must be set")
+			return "", errors.New("either monitors or monValueFromSecret must be set")
 		}
 		val, ok := credentials[pOpts.MonValueFromSecret]
 		if !ok {
