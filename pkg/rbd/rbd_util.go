@@ -104,11 +104,12 @@ func getMon(pOpts *rbdVolume, credentials map[string]string) (string, error) {
 			// yet another sanity check
 			return "", fmt.Errorf("either monitors or monValueFromSecret must be set")
 		}
-		if val, ok := credentials[pOpts.MonValueFromSecret]; !ok {
+		val, ok := credentials[pOpts.MonValueFromSecret]
+		if !ok {
 			return "", fmt.Errorf("mon data %s is not set in secret", pOpts.MonValueFromSecret)
-		} else {
-			mon = val
 		}
+		mon = val
+
 	}
 	return mon, nil
 }
@@ -187,10 +188,9 @@ func rbdStatus(pOpts *rbdVolume, userId string, credentials map[string]string) (
 	if strings.Contains(output, imageWatcherStr) {
 		glog.V(4).Infof("rbd: watchers on %s: %s", image, output)
 		return true, output, nil
-	} else {
-		glog.Warningf("rbd: no watchers on %s", image)
-		return false, output, nil
 	}
+	glog.Warningf("rbd: no watchers on %s", image)
+	return false, output, nil
 }
 
 // DeleteImage deletes a ceph image with provision and volume options.
@@ -346,11 +346,11 @@ func getSnapMon(pOpts *rbdSnapshot, credentials map[string]string) (string, erro
 			// yet another sanity check
 			return "", fmt.Errorf("either monitors or monValueFromSecret must be set")
 		}
-		if val, ok := credentials[pOpts.MonValueFromSecret]; !ok {
+		val, ok := credentials[pOpts.MonValueFromSecret]
+		if !ok {
 			return "", fmt.Errorf("mon data %s is not set in secret", pOpts.MonValueFromSecret)
-		} else {
-			mon = val
 		}
+		mon = val
 	}
 	return mon, nil
 }

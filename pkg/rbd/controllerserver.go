@@ -433,9 +433,9 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 					},
 				},
 			}, nil
-		} else {
-			return nil, status.Error(codes.NotFound, fmt.Sprintf("Snapshot ID %s cannot found", snapshotID))
 		}
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("Snapshot ID %s cannot found", snapshotID))
+
 	}
 
 	entries := []*csi.ListSnapshotsResponse_Entry{}
