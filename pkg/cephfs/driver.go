@@ -26,8 +26,10 @@ import (
 )
 
 const (
+	// PluginFolder is the kubelet plugin directory for cephfs plugin
 	PluginFolder = "/var/lib/kubelet/plugins/csi-cephfsplugin"
-	Version      = "0.3.0"
+	// Version of the cephfs csi driver
+	Version = "0.3.0"
 )
 
 type cephfsDriver struct {
@@ -46,6 +48,7 @@ var (
 	DefaultVolumeMounter string
 )
 
+// NewCephFSDriver provides a remote csi cephfs driver object.
 func NewCephFSDriver() *cephfsDriver {
 	return &cephfsDriver{}
 }
