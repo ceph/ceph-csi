@@ -7,26 +7,28 @@ The CSI CephFS plugin is able to both provision new CephFS volumes and attach an
 CSI CephFS plugin can be compiled in a form of a binary file or in a form of a Docker image. When compiled as a binary file, the result is stored in `_output/` directory with the name `cephfsplugin`. When compiled as an image, it's stored in the local Docker image store.
 
 Building binary:
+
 ```bash
-$ make cephfsplugin
+make cephfsplugin
 ```
 
 Building Docker image:
+
 ```bash
-$ make image-cephfsplugin
+make image-cephfsplugin
 ```
 
 ## Configuration
 
 **Available command line arguments:**
 
-Option | Default value | Description
------- | ------------- | -----------
-`--endpoint` | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket
-`--drivername` | `csi-cephfsplugin` | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
-`--nodeid` | _empty_ | This node's ID
-`--volumemounter` | _empty_ | default volume mounter. Available options are `kernel` and `fuse`. This is the mount method used if volume parameters don't specify otherwise. If left unspecified, the driver will first probe for `ceph-fuse` in system's path and will choose Ceph kernel client if probing failed.
-`--metadatastorage` | _empty_ | Whether should metadata be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
+Option              | Default value         | Description
+--------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+`--endpoint`        | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket
+`--drivername`      | `csi-cephfsplugin`    | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
+`--nodeid`          | _empty_               | This node's ID
+`--volumemounter`   | _empty_               | default volume mounter. Available options are `kernel` and `fuse`. This is the mount method used if volume parameters don't specify otherwise. If left unspecified, the driver will first probe for `ceph-fuse` in system's path and will choose Ceph kernel client if probing failed.
+`--metadatastorage` | _empty_               | Whether should metadata be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
 
 **Available environmental variables:**
 `KUBERNETES_CONFIG_PATH`: if you use `k8s_configmap` as metadata store, specify the path of your k8s config file (if not specified, the plugin will assume you're running it inside a k8s cluster and find the config itself).
@@ -35,23 +37,25 @@ Option | Default value | Description
 
 **Available volume parameters:**
 
-Parameter | Required | Description
---------- | -------- | -----------
-`monitors` | yes | Comma separated list of Ceph monitors (e.g. `192.168.100.1:6789,192.168.100.2:6789,192.168.100.3:6789`)
-`mounter` | no | Mount method to be used for this volume. Available options are `kernel` for Ceph kernel client and `fuse` for Ceph FUSE driver. Defaults to "default mounter", see command line arguments.
-`provisionVolume` | yes | Mode of operation. BOOL value. If `true`, a new CephFS volume will be provisioned. If `false`, an existing volume will be used.
-`pool` | for `provisionVolume=true` | Ceph pool into which the volume shall be created
-`rootPath` | for `provisionVolume=false` | Root path of an existing CephFS volume
-`csiProvisionerSecretName`, `csiNodeStageSecretName` | for Kubernetes | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
-`csiProvisionerSecretNamespace`, `csiNodeStageSecretNamespace` | for Kubernetes | namespaces of the above Secret objects
+Parameter                                                      | Required                    | Description
+---------------------------------------------------------------|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+`monitors`                                                     | yes                         | Comma separated list of Ceph monitors (e.g. `192.168.100.1:6789,192.168.100.2:6789,192.168.100.3:6789`)
+`mounter`                                                      | no                          | Mount method to be used for this volume. Available options are `kernel` for Ceph kernel client and `fuse` for Ceph FUSE driver. Defaults to "default mounter", see command line arguments.
+`provisionVolume`                                              | yes                         | Mode of operation. BOOL value. If `true`, a new CephFS volume will be provisioned. If `false`, an existing volume will be used.
+`pool`                                                         | for `provisionVolume=true`  | Ceph pool into which the volume shall be created
+`rootPath`                                                     | for `provisionVolume=false` | Root path of an existing CephFS volume
+`csiProvisionerSecretName`, `csiNodeStageSecretName`           | for Kubernetes              | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
+`csiProvisionerSecretNamespace`, `csiNodeStageSecretNamespace` | for Kubernetes              | namespaces of the above Secret objects
 
 **Required secrets for `provisionVolume=true`:**  
 Admin credentials are required for provisioning new volumes
+
 * `adminID`: ID of an admin client
 * `adminKey`: key of the admin client
 
 **Required secrets for `provisionVolume=false`:**  
 User credentials with access to an existing volume
+
 * `userID`: ID of a user client
 * `userKey`: key of a user client
 
@@ -68,9 +72,9 @@ YAML manifests are located in `deploy/cephfs/kubernetes`.
 **Deploy RBACs for sidecar containers and node plugins:**
 
 ```bash
-$ kubectl create -f csi-attacher-rbac.yaml
-$ kubectl create -f csi-provisioner-rbac.yaml
-$ kubectl create -f csi-nodeplugin-rbac.yaml
+kubectl create -f csi-attacher-rbac.yaml
+kubectl create -f csi-provisioner-rbac.yaml
+kubectl create -f csi-nodeplugin-rbac.yaml
 ```
 
 Those manifests deploy service accounts, cluster roles and cluster role bindings. These are shared for both RBD and CephFS CSI plugins, as they require the same permissions.
@@ -78,8 +82,8 @@ Those manifests deploy service accounts, cluster roles and cluster role bindings
 **Deploy CSI sidecar containers:**
 
 ```bash
-$ kubectl create -f csi-cephfsplugin-attacher.yaml
-$ kubectl create -f csi-cephfsplugin-provisioner.yaml
+kubectl create -f csi-cephfsplugin-attacher.yaml
+kubectl create -f csi-cephfsplugin-provisioner.yaml
 ```
 
 Deploys stateful sets for external-attacher and external-provisioner sidecar containers for CSI CephFS.
@@ -87,7 +91,7 @@ Deploys stateful sets for external-attacher and external-provisioner sidecar con
 **Deploy CSI CephFS driver:**
 
 ```bash
-$ kubectl create -f csi-cephfsplugin.yaml
+kubectl create -f csi-cephfsplugin.yaml
 ```
 
 Deploys a daemon set with two containers: CSI driver-registrar and the CSI CephFS driver.
@@ -95,8 +99,9 @@ Deploys a daemon set with two containers: CSI driver-registrar and the CSI CephF
 ## Verifying the deployment in Kubernetes
 
 After successfuly completing the steps above, you should see output similar to this:
+
 ```bash
-$ kubectl get all
+kubectl get all
 NAME                                 READY     STATUS    RESTARTS   AGE
 pod/csi-cephfsplugin-attacher-0      1/1       Running   0          26s
 pod/csi-cephfsplugin-provisioner-0   1/1       Running   0          25s
@@ -114,4 +119,3 @@ You can try deploying a demo pod from `examples/cephfs` to test the deployment f
 ### Notes on volume deletion
 
 Volumes that were provisioned dynamically (i.e. `provisionVolume=true`) are allowed to be deleted by the driver as well, if the user chooses to do so. Otherwise, the driver is forbidden to delete such volumes - attempting to delete them is a no-op.
-
