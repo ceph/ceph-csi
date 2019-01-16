@@ -103,7 +103,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				},
 			}, nil
 		}
-		return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("Volume with the same name: %s but with different size already exist", req.GetName()))
+		return nil, status.Errorf(codes.AlreadyExists, "Volume with the same name: %s but with different size already exist", req.GetName())
 	}
 
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
@@ -272,7 +272,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 				},
 			}, nil
 		}
-		return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("Snapshot with the same name: %s but with different source volume id already exist", req.GetName()))
+		return nil, status.Errorf(codes.AlreadyExists, "Snapshot with the same name: %s but with different source volume id already exist", req.GetName())
 	}
 
 	rbdSnap, err := getRBDSnapshotOptions(req.GetParameters())
@@ -285,7 +285,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	uniqueID := uuid.NewUUID().String()
 	rbdVolume, err := getRBDVolumeByID(req.GetSourceVolumeId())
 	if err != nil {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("Source Volume ID %s cannot found", req.GetSourceVolumeId()))
+		return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", req.GetSourceVolumeId())
 	}
 	if !hasSnapshotFeature(rbdVolume.ImageFeatures) {
 		return nil, fmt.Errorf("Volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
@@ -337,12 +337,12 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		// Unprotect snapshot
 		err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets())
 		if err != nil {
-			return nil, status.Error(codes.Unknown, fmt.Sprintf("This Snapshot should be removed but failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
+			return nil, status.Errorf(codes.Unknown, "This Snapshot should be removed but failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
 		}
 		// Deleting snapshot
 		glog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
 		if err := deleteSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets()); err != nil {
-			return nil, status.Error(codes.Unknown, fmt.Sprintf("This Snapshot should be removed but failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
+			return nil, status.Errorf(codes.Unknown, "This Snapshot should be removed but failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
 		}
 		return nil, err
 	}
@@ -382,13 +382,13 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	// Unprotect snapshot
 	err := unprotectSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets())
 	if err != nil {
-		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
+		return nil, status.Errorf(codes.FailedPrecondition, "failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
 	}
 
 	// Deleting snapshot
 	glog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
 	if err := deleteSnapshot(rbdSnap, rbdSnap.AdminId, req.GetSecrets()); err != nil {
-		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err))
+		return nil, status.Errorf(codes.FailedPrecondition, "failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
 	}
 
 	if err := cs.MetadataStore.Delete(snapshotID); err != nil {
@@ -416,7 +416,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		if rbdSnap, ok := rbdSnapshots[snapshotID]; ok {
 			// if source volume ID also set, check source volume id on the cache.
 			if len(sourceVolumeId) != 0 && rbdSnap.SourceVolumeID != sourceVolumeId {
-				return nil, status.Error(codes.Unknown, fmt.Sprintf("Requested Source Volume ID %s is different from %s", sourceVolumeId, rbdSnap.SourceVolumeID))
+				return nil, status.Errorf(codes.Unknown, "Requested Source Volume ID %s is different from %s", sourceVolumeId, rbdSnap.SourceVolumeID)
 			}
 			return &csi.ListSnapshotsResponse{
 				Entries: []*csi.ListSnapshotsResponse_Entry{
@@ -434,7 +434,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 				},
 			}, nil
 		}
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("Snapshot ID %s cannot found", snapshotID))
+		return nil, status.Errorf(codes.NotFound, "Snapshot ID %s cannot found", snapshotID)
 
 	}
 
