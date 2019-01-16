@@ -96,7 +96,7 @@ func createCephUser(volOptions *volumeOptions, adminCr *credentials, volId volum
 		"osd", caps.Osd,
 	}
 
-	if err := execCommandJson(&ents, "ceph", args[:]...); err != nil {
+	if err := execCommandJSON(&ents, "ceph", args[:]...); err != nil {
 		return nil, fmt.Errorf("error creating ceph user: %v", err)
 	}
 
