@@ -35,7 +35,7 @@ type nodeServer struct {
 
 func getCredentialsForVolume(volOptions *volumeOptions, volId volumeID, req *csi.NodeStageVolumeRequest) (*credentials, error) {
 	var (
-		userCr = &credentials{}
+		userCr *credentials
 		err    error
 	)
 
@@ -95,7 +95,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	if volOptions.ProvisionVolume {
 		// Dynamically provisioned volumes don't have their root path set, do it here
-		volOptions.RootPath = getVolumeRootPath_ceph(volId)
+		volOptions.RootPath = getVolumeRootPathCeph(volId)
 	}
 
 	if err = createMountPoint(stagingTargetPath); err != nil {

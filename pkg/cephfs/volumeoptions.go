@@ -17,7 +17,6 @@ limitations under the License.
 package cephfs
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 )
@@ -70,18 +69,19 @@ func (o *volumeOptions) validate() error {
 }
 
 func extractOption(dest *string, optionLabel string, options map[string]string) error {
-	if opt, ok := options[optionLabel]; !ok {
-		return errors.New("Missing required field " + optionLabel)
-	} else {
-		*dest = opt
-		return nil
+	opt, ok := options[optionLabel]
+	if !ok {
+		return fmt.Errorf("Missing required field %s", optionLabel)
 	}
+
+	*dest = opt
+	return nil
 }
 
 func validateMounter(m string) error {
 	switch m {
-	case volumeMounter_fuse:
-	case volumeMounter_kernel:
+	case volumeMounterFuse:
+	case volumeMounterKernel:
 	default:
 		return fmt.Errorf("Unknown mounter '%s'. Valid options are 'fuse' and 'kernel'", m)
 	}

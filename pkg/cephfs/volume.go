@@ -29,15 +29,15 @@ const (
 	namespacePrefix = "ns-"
 )
 
-func getCephRootPath_local(volId volumeID) string {
+func getCephRootPathLocal(volId volumeID) string {
 	return cephRootPrefix + string(volId)
 }
 
-func getCephRootVolumePath_local(volId volumeID) string {
-	return path.Join(getCephRootPath_local(volId), cephVolumesRoot, string(volId))
+func getCephRootVolumePathLocal(volId volumeID) string {
+	return path.Join(getCephRootPathLocal(volId), cephVolumesRoot, string(volId))
 }
 
-func getVolumeRootPath_ceph(volId volumeID) string {
+func getVolumeRootPathCeph(volId volumeID) string {
 	return path.Join("/", cephVolumesRoot, string(volId))
 }
 
@@ -50,7 +50,7 @@ func setVolumeAttribute(root, attrName, attrValue string) error {
 }
 
 func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeID, bytesQuota int64) error {
-	cephRoot := getCephRootPath_local(volId)
+	cephRoot := getCephRootPathLocal(volId)
 
 	if err := createMountPoint(cephRoot); err != nil {
 		return err
@@ -74,8 +74,8 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeI
 		os.Remove(cephRoot)
 	}()
 
-	volOptions.RootPath = getVolumeRootPath_ceph(volId)
-	localVolRoot := getCephRootVolumePath_local(volId)
+	volOptions.RootPath = getVolumeRootPathCeph(volId)
+	localVolRoot := getCephRootVolumePathLocal(volId)
 
 	if err := createMountPoint(localVolRoot); err != nil {
 		return err
@@ -100,8 +100,8 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeI
 
 func purgeVolume(volId volumeID, adminCr *credentials, volOptions *volumeOptions) error {
 	var (
-		cephRoot        = getCephRootPath_local(volId)
-		volRoot         = getCephRootVolumePath_local(volId)
+		cephRoot        = getCephRootPathLocal(volId)
+		volRoot         = getCephRootVolumePathLocal(volId)
 		volRootDeleting = volRoot + "-deleting"
 	)
 

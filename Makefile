@@ -30,7 +30,7 @@ test:
 	go vet github.com/ceph/ceph-csi/pkg/...
 
 rbdplugin:
-	if [ ! -d ./vendor ]; then dep ensure; fi
+	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/rbdplugin ./rbd
 
 image-rbdplugin: rbdplugin
@@ -38,7 +38,7 @@ image-rbdplugin: rbdplugin
 	docker build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
 
 cephfsplugin:
-	if [ ! -d ./vendor ]; then dep ensure; fi
+	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephfsplugin ./cephfs
 
 image-cephfsplugin: cephfsplugin
@@ -55,3 +55,5 @@ clean:
 	go clean -r -x
 	rm -f deploy/rbd/docker/rbdplugin
 	rm -f deploy/cephfs/docker/cephfsplugin
+	rm -f _output/rbdplugin
+	rm -f _output/cephfsplugin

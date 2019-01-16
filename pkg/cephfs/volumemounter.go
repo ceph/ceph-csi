@@ -18,14 +18,15 @@ package cephfs
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 )
 
 const (
-	volumeMounter_fuse   = "fuse"
-	volumeMounter_kernel = "kernel"
+	volumeMounterFuse   = "fuse"
+	volumeMounterKernel = "kernel"
 )
 
 var (
@@ -39,15 +40,15 @@ func loadAvailableMounters() error {
 	kernelMounterProbe := exec.Command("mount.ceph")
 
 	if fuseMounterProbe.Run() == nil {
-		availableMounters = append(availableMounters, volumeMounter_fuse)
+		availableMounters = append(availableMounters, volumeMounterFuse)
 	}
 
 	if kernelMounterProbe.Run() == nil {
-		availableMounters = append(availableMounters, volumeMounter_kernel)
+		availableMounters = append(availableMounters, volumeMounterKernel)
 	}
 
 	if len(availableMounters) == 0 {
-		return fmt.Errorf("no ceph mounters found on system")
+		return errors.New("no ceph mounters found on system")
 	}
 
 	return nil
@@ -87,9 +88,9 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 	// Create the mounter
 
 	switch chosenMounter {
-	case volumeMounter_fuse:
+	case volumeMounterFuse:
 		return &fuseMounter{}, nil
-	case volumeMounter_kernel:
+	case volumeMounterKernel:
 		return &kernelMounter{}, nil
 	}
 

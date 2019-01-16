@@ -82,7 +82,7 @@ func getCephUser(adminCr *credentials, volId volumeID) (*cephEntity, error) {
 
 func createCephUser(volOptions *volumeOptions, adminCr *credentials, volId volumeID) (*cephEntity, error) {
 	caps := cephEntityCaps{
-		Mds: fmt.Sprintf("allow rw path=%s", getVolumeRootPath_ceph(volId)),
+		Mds: fmt.Sprintf("allow rw path=%s", getVolumeRootPathCeph(volId)),
 		Mon: "allow r",
 		Osd: fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volId)),
 	}
