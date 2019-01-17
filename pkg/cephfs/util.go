@@ -75,11 +75,11 @@ func isMountPoint(p string) (bool, error) {
 	return !notMnt, nil
 }
 
-func storeCephCredentials(volId volumeID, cr *credentials) error {
+func storeCephCredentials(volID volumeID, cr *credentials) error {
 	keyringData := cephKeyringData{
-		UserId:   cr.id,
+		UserID:   cr.id,
 		Key:      cr.key,
-		VolumeID: volId,
+		VolumeID: volID,
 	}
 
 	if err := keyringData.writeToFile(); err != nil {
@@ -87,9 +87,9 @@ func storeCephCredentials(volId volumeID, cr *credentials) error {
 	}
 
 	secret := cephSecretData{
-		UserId:   cr.id,
+		UserID:   cr.id,
 		Key:      cr.key,
-		VolumeID: volId,
+		VolumeID: volID,
 	}
 
 	if err := secret.writeToFile(); err != nil {

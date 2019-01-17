@@ -51,10 +51,10 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	volId := makeVolumeID(req.GetName())
-	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volId}
+	volID := makeVolumeID(req.GetName())
+	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volID}
 	if err = conf.writeToFile(); err != nil {
-		glog.Errorf("failed to write ceph config file to %s: %v", getCephConfPath(volId), err)
+		glog.Errorf("failed to write ceph config file to %s: %v", getCephConfPath(volID), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -67,35 +67,35 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		if err = storeCephCredentials(volId, cr); err != nil {
+		if err = storeCephCredentials(volID, cr); err != nil {
 			glog.Errorf("failed to store admin credentials for '%s': %v", cr.id, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		if err = createVolume(volOptions, cr, volId, req.GetCapacityRange().GetRequiredBytes()); err != nil {
+		if err = createVolume(volOptions, cr, volID, req.GetCapacityRange().GetRequiredBytes()); err != nil {
 			glog.Errorf("failed to create volume %s: %v", req.GetName(), err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		if _, err = createCephUser(volOptions, cr, volId); err != nil {
+		if _, err = createCephUser(volOptions, cr, volID); err != nil {
 			glog.Errorf("failed to create ceph user for volume %s: %v", req.GetName(), err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		glog.Infof("cephfs: successfully created volume %s", volId)
+		glog.Infof("cephfs: successfully created volume %s", volID)
 	} else {
-		glog.Infof("cephfs: volume %s is provisioned statically", volId)
+		glog.Infof("cephfs: volume %s is provisioned statically", volID)
 	}
 
-	ce := &controllerCacheEntry{VolOptions: *volOptions, VolumeID: volId}
-	if err := cs.MetadataStore.Create(string(volId), ce); err != nil {
-		glog.Errorf("failed to store a cache entry for volume %s: %v", volId, err)
+	ce := &controllerCacheEntry{VolOptions: *volOptions, VolumeID: volID}
+	if err := cs.MetadataStore.Create(string(volID), ce); err != nil {
+		glog.Errorf("failed to store a cache entry for volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			VolumeId:      string(volId),
+			VolumeId:      string(volID),
 			CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
 			VolumeContext: req.GetParameters(),
 		},
@@ -109,19 +109,19 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	var (
-		volId = volumeID(req.GetVolumeId())
+		volID = volumeID(req.GetVolumeId())
 		err   error
 	)
 
 	ce := &controllerCacheEntry{}
-	if err := cs.MetadataStore.Get(string(volId), ce); err != nil {
+	if err := cs.MetadataStore.Get(string(volID), ce); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if !ce.VolOptions.ProvisionVolume {
 		// DeleteVolume() is forbidden for statically provisioned volumes!
 
-		glog.Warningf("volume %s is provisioned statically, aborting delete", volId)
+		glog.Warningf("volume %s is provisioned statically, aborting delete", volID)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 	// mons may have changed since create volume,
@@ -140,21 +140,21 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err = purgeVolume(volId, cr, &ce.VolOptions); err != nil {
-		glog.Errorf("failed to delete volume %s: %v", volId, err)
+	if err = purgeVolume(volID, cr, &ce.VolOptions); err != nil {
+		glog.Errorf("failed to delete volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = deleteCephUser(cr, volId); err != nil {
-		glog.Errorf("failed to delete ceph user for volume %s: %v", volId, err)
+	if err = deleteCephUser(cr, volID); err != nil {
+		glog.Errorf("failed to delete ceph user for volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := cs.MetadataStore.Delete(string(volId)); err != nil {
+	if err := cs.MetadataStore.Delete(string(volID)); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	glog.Infof("cephfs: successfully deleted volume %s", volId)
+	glog.Infof("cephfs: successfully deleted volume %s", volID)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
