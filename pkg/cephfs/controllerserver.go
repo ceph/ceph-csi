@@ -103,7 +103,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 }
 
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	if err := cs.validateDeleteVolumeRequest(req); err != nil {
+	if err := cs.validateDeleteVolumeRequest(); err != nil {
 		glog.Errorf("DeleteVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
