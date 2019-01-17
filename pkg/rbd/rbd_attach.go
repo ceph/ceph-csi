@@ -31,6 +31,9 @@ import (
 
 const (
 	envHostRootFS = "HOST_ROOTFS"
+	rbdTonbd      = "rbd-nbd"
+	rbd           = "rbd"
+	nbd           = "nbd"
 )
 
 var (
@@ -154,7 +157,7 @@ func getNbdDevFromImageAndPool(pool string, image string) (string, bool) {
 		// Check if this process is mapping a rbd device.
 		// Only accepted pattern of cmdline is from execRbdMap:
 		// rbd-nbd map pool/image ...
-		if len(cmdlineArgs) < 3 || cmdlineArgs[0] != "rbd-nbd" || cmdlineArgs[1] != "map" {
+		if len(cmdlineArgs) < 3 || cmdlineArgs[0] != rbdTonbd || cmdlineArgs[1] != "map" {
 			glog.V(4).Infof("nbd device %s is not used by rbd", nbdPath)
 			continue
 		}
@@ -199,7 +202,7 @@ func checkRbdNbdTools() bool {
 		glog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err)
 		return false
 	}
-	if _, err := execCommand("rbd-nbd", []string{"--version"}); err != nil {
+	if _, err := execCommand(rbdTonbd, []string{"--version"}); err != nil {
 		glog.V(3).Infof("rbd-nbd: running rbd-nbd --version failed with error %v", err)
 		return false
 	}
@@ -215,12 +218,12 @@ func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string
 	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
 
 	useNBD := false
-	cmdName := "rbd"
-	moduleName := "rbd"
-	if volOptions.Mounter == "rbd-nbd" && hasNBD {
+	cmdName := rbd
+	moduleName := rbd
+	if volOptions.Mounter == rbdTonbd && hasNBD {
 		useNBD = true
-		cmdName = "rbd-nbd"
-		moduleName = "nbd"
+		cmdName = rbdTonbd
+		moduleName = nbd
 	}
 
 	devicePath, found := waitForPath(volOptions.Pool, image, 1, useNBD)
@@ -285,9 +288,9 @@ func detachRBDDevice(devicePath string) error {
 
 	glog.V(3).Infof("rbd: unmap device %s", devicePath)
 
-	cmdName := "rbd"
+	cmdName := rbd
 	if strings.HasPrefix(devicePath, "/dev/nbd") {
-		cmdName = "rbd-nbd"
+		cmdName = rbdTonbd
 	}
 
 	output, err = execCommand(cmdName, []string{"unmap", devicePath})
