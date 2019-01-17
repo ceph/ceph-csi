@@ -30,8 +30,8 @@ const (
 	Version      = "1.0.0"
 )
 
-type cephfsDriver struct {
-	driver *csicommon.CSIDriver
+type driver struct {
+	cd *csicommon.CSIDriver
 
 	is *identityServer
 	ns *nodeServer
@@ -39,12 +39,12 @@ type cephfsDriver struct {
 }
 
 var (
-	driver               *cephfsDriver
+	cephDriver           *driver
 	DefaultVolumeMounter string
 )
 
-func NewCephFSDriver() *cephfsDriver {
-	return &cephfsDriver{}
+func NewDriver() *driver {
+	return &driver{}
 }
 
 func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
@@ -66,7 +66,7 @@ func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
 	}
 }
 
-func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string, cachePersister util.CachePersister) {
+func (fs *driver) Run(driverName, nodeId, endpoint, volumeMounter string, cachePersister util.CachePersister) {
 	glog.Infof("Driver: %v version: %v", driverName, Version)
 
 	// Configuration
@@ -92,25 +92,25 @@ func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string, 
 
 	// Initialize default library driver
 
-	fs.driver = csicommon.NewCSIDriver(driverName, Version, nodeId)
-	if fs.driver == nil {
+	fs.cd = csicommon.NewCSIDriver(driverName, Version, nodeId)
+	if fs.cd == nil {
 		glog.Fatalln("Failed to initialize CSI driver")
 	}
 
-	fs.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+	fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 	})
 
-	fs.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
+	fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
 		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 	})
 
 	// Create gRPC servers
 
-	fs.is = NewIdentityServer(fs.driver)
-	fs.ns = NewNodeServer(fs.driver)
+	fs.is = NewIdentityServer(fs.cd)
+	fs.ns = NewNodeServer(fs.cd)
 
-	fs.cs = NewControllerServer(fs.driver, cachePersister)
+	fs.cs = NewControllerServer(fs.cd, cachePersister)
 
 	server := csicommon.NewNonBlockingGRPCServer()
 	server.Start(endpoint, fs.is, fs.cs, fs.ns)

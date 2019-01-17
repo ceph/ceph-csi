@@ -35,8 +35,8 @@ const (
 	rbdDefaultUserID  = rbdDefaultAdminID
 )
 
-type rbd struct {
-	driver *csicommon.CSIDriver
+type driver struct {
+	cd *csicommon.CSIDriver
 
 	ids *identityServer
 	ns  *nodeServer
@@ -47,8 +47,8 @@ var (
 	version = "1.0.0"
 )
 
-func GetRBDDriver() *rbd {
-	return &rbd{}
+func GetDriver() *driver {
+	return &driver{}
 }
 
 func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
@@ -79,34 +79,34 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, err
 	}, nil
 }
 
-func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
+func (r *driver) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
 	var err error
 	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Initialize default library driver
-	rbd.driver = csicommon.NewCSIDriver(driverName, version, nodeID)
-	if rbd.driver == nil {
+	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
+	if r.cd == nil {
 		glog.Fatalln("Failed to initialize CSI Driver.")
 	}
-	rbd.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+	r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
 	})
-	rbd.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
+	r.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
 
 	// Create GRPC servers
-	rbd.ids = NewIdentityServer(rbd.driver)
-	rbd.ns, err = NewNodeServer(rbd.driver, containerized)
+	r.ids = NewIdentityServer(r.cd)
+	r.ns, err = NewNodeServer(r.cd, containerized)
 	if err != nil {
 		glog.Fatalf("failed to start node server, err %v\n", err)
 	}
 
-	rbd.cs = NewControllerServer(rbd.driver, cachePersister)
-	rbd.cs.LoadExDataFromMetadataStore()
+	r.cs = NewControllerServer(r.cd, cachePersister)
+	r.cs.LoadExDataFromMetadataStore()
 
 	s := csicommon.NewNonBlockingGRPCServer()
-	s.Start(endpoint, rbd.ids, rbd.cs, rbd.ns)
+	s.Start(endpoint, r.ids, r.cs, r.ns)
 	s.Wait()
 }

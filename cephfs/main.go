@@ -57,7 +57,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	driver := cephfs.NewCephFSDriver()
+	driver := cephfs.NewDriver()
 	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, cp)
 
 	os.Exit(0)
