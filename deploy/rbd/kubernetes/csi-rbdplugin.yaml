@@ -72,6 +72,9 @@ spec:
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
+            - name: plugin-mount-dir
+              mountPath: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/
+              mountPropagation: "Bidirectional"
             - mountPath: /dev
               name: host-dev
             - mountPath: /rootfs

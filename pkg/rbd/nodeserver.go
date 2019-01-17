@@ -55,7 +55,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	} else {
 		// Get volName from targetPath
 		if !strings.HasSuffix(targetPath, "/mount") {
-			return nil, fmt.Errorf("rnd: malformed the value of target path: %s", targetPath)
+			return nil, fmt.Errorf("rbd: malformed the value of target path: %s", targetPath)
 		}
 		s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
 		volName = s[len(s)-1]
