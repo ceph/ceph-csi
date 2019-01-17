@@ -30,11 +30,7 @@ import (
 
 const (
 	imageWatcherStr = "watcher="
-	rbdImageFormat1 = "1"
 	rbdImageFormat2 = "2"
-	imageSizeStr    = "size "
-	sizeDivStr      = " MB in"
-	kubeLockMagic   = "kubelet_lock_magic_"
 	// The following three values are used for 30 seconds timeout
 	// while waiting for RBD Watcher to expire.
 	rbdImageWatcherInitDelay = 1 * time.Second

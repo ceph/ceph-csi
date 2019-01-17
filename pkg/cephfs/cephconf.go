@@ -68,10 +68,6 @@ func init() {
 	cephSecretTempl = template.Must(template.New("secret").Parse(cephSecret))
 }
 
-type cephConfigWriter interface {
-	writeToFile() error
-}
-
 type cephConfigData struct {
 	Monitors string
 	VolumeID volumeID

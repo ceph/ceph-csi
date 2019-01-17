@@ -46,18 +46,6 @@ func init() {
 	hasNBD = checkRbdNbdTools()
 }
 
-func getDevFromImageAndPool(pool, image string) (string, bool) {
-	device, found := getRbdDevFromImageAndPool(pool, image)
-	if found {
-		return device, true
-	}
-	device, found = getNbdDevFromImageAndPool(pool, image)
-	if found {
-		return device, true
-	}
-	return "", false
-}
-
 // Search /sys/bus for rbd device that matches given pool and image.
 func getRbdDevFromImageAndPool(pool string, image string) (string, bool) {
 	// /sys/bus/rbd/devices/X/name and /sys/bus/rbd/devices/X/pool
