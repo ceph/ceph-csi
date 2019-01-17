@@ -69,7 +69,7 @@ func getCephUser(adminCr *credentials, volID volumeID) (*cephEntity, error) {
 	// Contains non-json data: "exported keyring for ENTITY\n\n"
 	offset := bytes.Index(out, []byte("[{"))
 
-	if json.NewDecoder(bytes.NewReader(out[offset:])).Decode(&ents); err != nil {
+	if err = json.NewDecoder(bytes.NewReader(out[offset:])).Decode(&ents); err != nil {
 		return nil, fmt.Errorf("failed to decode json: %v", err)
 	}
 
