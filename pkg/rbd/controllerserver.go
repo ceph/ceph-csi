@@ -65,19 +65,26 @@ func (cs *controllerServer) LoadExDataFromMetadataStore() error {
 	return nil
 }
 
-func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+func (cs *controllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		glog.V(3).Infof("invalid create volume req: %v", req)
-		return nil, err
+		return err
 	}
 	// Check sanity of request Name, Volume Capabilities
 	if len(req.Name) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Volume Name cannot be empty")
+		return status.Error(codes.InvalidArgument, "Volume Name cannot be empty")
 	}
 	if req.VolumeCapabilities == nil {
-		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
+		return status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
 	}
+	return nil
+}
 
+func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+
+	if err := cs.validateVolumeReq(req); err != nil {
+		return nil, err
+	}
 	volumeNameMutex.LockKey(req.GetName())
 	defer volumeNameMutex.UnlockKey(req.GetName())
 
@@ -130,33 +137,16 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if !found {
 		// if VolumeContentSource is not nil, this request is for snapshot
 		if req.VolumeContentSource != nil {
-			snapshot := req.VolumeContentSource.GetSnapshot()
-			if snapshot == nil {
-				return nil, status.Error(codes.InvalidArgument, "Volume Snapshot cannot be empty")
-			}
-
-			snapshotID := snapshot.GetSnapshotId()
-			if len(snapshotID) == 0 {
-				return nil, status.Error(codes.InvalidArgument, "Volume Snapshot ID cannot be empty")
-			}
-
-			rbdSnap := &rbdSnapshot{}
-			if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
+			if err = cs.checkSnapshot(req, rbdVol); err != nil {
 				return nil, err
 			}
-
-			err = restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminId, req.GetSecrets())
-			if err != nil {
-				return nil, err
-			}
-			glog.V(4).Infof("create volume %s from snapshot %s", volName, rbdSnap.SnapName)
 		} else {
-			if err := createRBDImage(rbdVol, volSizeGB, rbdVol.AdminId, req.GetSecrets()); err != nil {
-				if err != nil {
-					glog.Warningf("failed to create volume: %v", err)
-					return nil, err
-				}
+			err := createRBDImage(rbdVol, volSizeGB, rbdVol.AdminId, req.GetSecrets())
+			if err != nil {
+				glog.Warningf("failed to create volume: %v", err)
+				return nil, err
 			}
+
 			glog.V(4).Infof("create volume %s", volName)
 		}
 	}
@@ -179,6 +169,29 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
+func (cs *controllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
+	snapshot := req.VolumeContentSource.GetSnapshot()
+	if snapshot == nil {
+		return status.Error(codes.InvalidArgument, "Volume Snapshot cannot be empty")
+	}
+
+	snapshotID := snapshot.GetSnapshotId()
+	if len(snapshotID) == 0 {
+		return status.Error(codes.InvalidArgument, "Volume Snapshot ID cannot be empty")
+	}
+
+	rbdSnap := &rbdSnapshot{}
+	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
+		return err
+	}
+
+	err := restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminId, req.GetSecrets())
+	if err != nil {
+		return err
+	}
+	glog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
+	return nil
+}
 func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		glog.Warningf("invalid delete volume req: %v", req)
