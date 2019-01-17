@@ -36,7 +36,6 @@ type nodeServer struct {
 func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi.NodeStageVolumeRequest) (*credentials, error) {
 	var (
 		userCr *credentials
-		err    error
 	)
 	secret := req.GetSecrets()
 	if volOptions.ProvisionVolume {
@@ -64,13 +63,14 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
-		userCr, err = getUserCredentials(secret)
+		uCr, err := getUserCredentials(req.GetSecrets())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
 		}
+		userCr = uCr
 	}
 
-	if err = storeCephCredentials(volID, userCr); err != nil {
+	if err := storeCephCredentials(volID, userCr); err != nil {
 		return nil, fmt.Errorf("failed to store ceph user credentials: %v", err)
 	}
 

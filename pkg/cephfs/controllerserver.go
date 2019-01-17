@@ -114,7 +114,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	)
 
 	ce := &controllerCacheEntry{}
-	if err := cs.MetadataStore.Get(string(volID), ce); err != nil {
+	if err = cs.MetadataStore.Get(string(volID), ce); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -150,7 +150,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := cs.MetadataStore.Delete(string(volID)); err != nil {
+	if err = cs.MetadataStore.Delete(string(volID)); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

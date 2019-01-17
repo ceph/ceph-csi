@@ -104,7 +104,7 @@ func (k8scm *K8sCMCache) ForAll(pattern string, destObj interface{}, f ForAllFun
 		if !match {
 			continue
 		}
-		if err := json.Unmarshal([]byte(data), destObj); err != nil {
+		if err = json.Unmarshal([]byte(data), destObj); err != nil {
 			return errors.Wrap(err, "k8s-cm-cache: unmarshal error")
 		}
 		if err = f(cm.ObjectMeta.Name); err != nil {

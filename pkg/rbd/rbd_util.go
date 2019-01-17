@@ -246,8 +246,8 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 	if rbdVol.ImageFormat == rbdImageFormat2 {
 		// if no image features is provided, it results in empty string
 		// which disable all RBD image format 2 features as we expected
-		imageFeatures, ok := volOptions["imageFeatures"]
-		if ok {
+		imageFeatures, found := volOptions["imageFeatures"]
+		if found {
 			arr := strings.Split(imageFeatures, ",")
 			for _, f := range arr {
 				if !supportedFeatures.Has(f) {

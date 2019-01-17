@@ -141,7 +141,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				return nil, err
 			}
 		} else {
-			err := createRBDImage(rbdVol, volSizeGB, rbdVol.AdminID, req.GetSecrets())
+			err = createRBDImage(rbdVol, volSizeGB, rbdVol.AdminID, req.GetSecrets())
 			if err != nil {
 				glog.Warningf("failed to create volume: %v", err)
 				return nil, err
@@ -150,9 +150,9 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			glog.V(4).Infof("create volume %s", volName)
 		}
 	}
-	if err := cs.MetadataStore.Create(volumeID, rbdVol); err != nil {
+	if err = cs.MetadataStore.Create(volumeID, rbdVol); err != nil {
 		glog.Warningf("failed to store volume metadata with error: %v", err)
-		if err := deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
+		if err = deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
 			glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
 			return nil, err
 		}
@@ -192,6 +192,7 @@ func (cs *controllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	glog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
 	return nil
 }
+
 func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		glog.Warningf("invalid delete volume req: %v", req)
@@ -340,16 +341,16 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	rbdSnap.CreatedAt = time.Now().UnixNano()
 
-	if err := cs.MetadataStore.Create(snapshotID, rbdSnap); err != nil {
+	if err = cs.MetadataStore.Create(snapshotID, rbdSnap); err != nil {
 		glog.Warningf("rbd: failed to store snapInfo with error: %v", err)
 		// Unprotect snapshot
-		err := unprotectSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets())
+		err = unprotectSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets())
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, "This Snapshot should be removed but failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
 		}
 		// Deleting snapshot
 		glog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
-		if err := deleteSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets()); err != nil {
+		if err = deleteSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets()); err != nil {
 			return nil, status.Errorf(codes.Unknown, "This Snapshot should be removed but failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
 		}
 		return nil, err
