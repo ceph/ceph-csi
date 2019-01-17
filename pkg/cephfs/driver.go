@@ -65,7 +65,7 @@ func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
 	}
 }
 
-func (fs *driver) Run(driverName, nodeId, endpoint, volumeMounter string, cachePersister util.CachePersister) {
+func (fs *driver) Run(driverName, nodeID, endpoint, volumeMounter string, cachePersister util.CachePersister) {
 	glog.Infof("Driver: %v version: %v", driverName, Version)
 
 	// Configuration
@@ -91,7 +91,7 @@ func (fs *driver) Run(driverName, nodeId, endpoint, volumeMounter string, cacheP
 
 	// Initialize default library driver
 
-	fs.cd = csicommon.NewCSIDriver(driverName, Version, nodeId)
+	fs.cd = csicommon.NewCSIDriver(driverName, Version, nodeID)
 	if fs.cd == nil {
 		glog.Fatalln("Failed to initialize CSI driver")
 	}

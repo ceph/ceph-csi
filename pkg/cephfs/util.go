@@ -53,7 +53,7 @@ func execCommandAndValidate(program string, args ...string) error {
 	return nil
 }
 
-func execCommandJson(v interface{}, program string, args ...string) error {
+func execCommandJSON(v interface{}, program string, args ...string) error {
 	out, err := execCommand(program, args...)
 
 	if err != nil {

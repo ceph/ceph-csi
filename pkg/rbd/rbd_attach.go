@@ -210,7 +210,7 @@ func checkRbdNbdTools() bool {
 	return true
 }
 
-func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string]string) (string, error) {
+func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string]string) (string, error) {
 	var err error
 	var output []byte
 
@@ -242,7 +242,7 @@ func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string
 			Steps:    rbdImageWatcherSteps,
 		}
 		err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			used, rbdOutput, err := rbdStatus(volOptions, userId, credentials)
+			used, rbdOutput, err := rbdStatus(volOptions, userID, credentials)
 			if err != nil {
 				return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
 			}
@@ -263,12 +263,12 @@ func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string
 		}
 
 		glog.V(5).Infof("rbd: map mon %s", mon)
-		key, err := getRBDKey(userId, credentials)
+		key, err := getRBDKey(userID, credentials)
 		if err != nil {
 			return "", err
 		}
 		output, err = execCommand(cmdName, []string{
-			"map", imagePath, "--id", userId, "-m", mon, "--key=" + key})
+			"map", imagePath, "--id", userID, "-m", mon, "--key=" + key})
 		if err != nil {
 			glog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
 			return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))

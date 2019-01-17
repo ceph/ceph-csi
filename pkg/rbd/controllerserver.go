@@ -415,7 +415,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		return nil, err
 	}
 
-	sourceVolumeId := req.GetSourceVolumeId()
+	sourceVolumeID := req.GetSourceVolumeId()
 
 	// TODO (sngchlko) list with token
 	// TODO (#94) protect concurrent access to global data structures
@@ -424,8 +424,8 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	if snapshotID := req.GetSnapshotId(); len(snapshotID) != 0 {
 		if rbdSnap, ok := rbdSnapshots[snapshotID]; ok {
 			// if source volume ID also set, check source volume id on the cache.
-			if len(sourceVolumeId) != 0 && rbdSnap.SourceVolumeID != sourceVolumeId {
-				return nil, status.Errorf(codes.Unknown, "Requested Source Volume ID %s is different from %s", sourceVolumeId, rbdSnap.SourceVolumeID)
+			if len(sourceVolumeID) != 0 && rbdSnap.SourceVolumeID != sourceVolumeID {
+				return nil, status.Errorf(codes.Unknown, "Requested Source Volume ID %s is different from %s", sourceVolumeID, rbdSnap.SourceVolumeID)
 			}
 			return &csi.ListSnapshotsResponse{
 				Entries: []*csi.ListSnapshotsResponse_Entry{
@@ -450,7 +450,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	entries := []*csi.ListSnapshotsResponse_Entry{}
 	for _, rbdSnap := range rbdSnapshots {
 		// if source volume ID also set, check source volume id on the cache.
-		if len(sourceVolumeId) != 0 && rbdSnap.SourceVolumeID != sourceVolumeId {
+		if len(sourceVolumeID) != 0 && rbdSnap.SourceVolumeID != sourceVolumeID {
 			continue
 		}
 		entries = append(entries, &csi.ListSnapshotsResponse_Entry{
