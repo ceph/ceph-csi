@@ -94,13 +94,13 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		// Since err is nil, it means the volume with the same name already exists
 		// need to check if the size of exisiting volume is the same as in new
 		// request
-		if exVol.VolSize >= int64(req.GetCapacityRange().GetRequiredBytes()) {
+		if exVol.VolSize >= req.GetCapacityRange().GetRequiredBytes() {
 			// exisiting volume is compatible with new request and should be reused.
 			// TODO (sbezverk) Do I need to make sure that RBD volume still exists?
 			return &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
 					VolumeId:      exVol.VolID,
-					CapacityBytes: int64(exVol.VolSize),
+					CapacityBytes: exVol.VolSize,
 					VolumeContext: req.GetParameters(),
 				},
 			}, nil
@@ -127,7 +127,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	// Volume Size - Default is 1 GiB
 	volSizeBytes := int64(oneGB)
 	if req.GetCapacityRange() != nil {
-		volSizeBytes = int64(req.GetCapacityRange().GetRequiredBytes())
+		volSizeBytes = req.GetCapacityRange().GetRequiredBytes()
 	}
 	rbdVol.VolSize = volSizeBytes
 	volSizeGB := int(volSizeBytes / 1024 / 1024 / 1024)
@@ -163,7 +163,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			VolumeId:      volumeID,
-			CapacityBytes: int64(volSizeBytes),
+			CapacityBytes: volSizeBytes,
 			VolumeContext: req.GetParameters(),
 		},
 	}, nil
