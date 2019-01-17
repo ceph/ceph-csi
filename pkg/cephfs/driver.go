@@ -36,9 +36,6 @@ type cephfsDriver struct {
 	is *identityServer
 	ns *nodeServer
 	cs *controllerServer
-
-	caps   []*csi.VolumeCapability_AccessMode
-	cscaps []*csi.ControllerServiceCapability
 }
 
 var (

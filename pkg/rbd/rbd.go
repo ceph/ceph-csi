@@ -41,9 +41,6 @@ type rbd struct {
 	ids *identityServer
 	ns  *nodeServer
 	cs  *controllerServer
-
-	cap   []*csi.VolumeCapability_AccessMode
-	cscap []*csi.ControllerServiceCapability
 }
 
 var (
