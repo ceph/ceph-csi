@@ -39,7 +39,7 @@ const (
 	oneGB = 1073741824
 )
 
-type controllerServer struct {
+type ControllerServer struct {
 	*csicommon.DefaultControllerServer
 	MetadataStore util.CachePersister
 }
@@ -49,7 +49,7 @@ var (
 	rbdSnapshots = map[string]*rbdSnapshot{}
 )
 
-func (cs *controllerServer) LoadExDataFromMetadataStore() error {
+func (cs *ControllerServer) LoadExDataFromMetadataStore() error {
 	vol := &rbdVolume{}
 	cs.MetadataStore.ForAll("csi-rbd-vol-", vol, func(identifier string) error {
 		rbdVolumes[identifier] = vol
@@ -65,7 +65,7 @@ func (cs *controllerServer) LoadExDataFromMetadataStore() error {
 	return nil
 }
 
-func (cs *controllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) error {
+func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		glog.V(3).Infof("invalid create volume req: %v", req)
 		return err
@@ -80,7 +80,7 @@ func (cs *controllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 	return nil
 }
 
-func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 
 	if err := cs.validateVolumeReq(req); err != nil {
 		return nil, err
@@ -169,7 +169,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-func (cs *controllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
+func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
 	snapshot := req.VolumeContentSource.GetSnapshot()
 	if snapshot == nil {
 		return status.Error(codes.InvalidArgument, "Volume Snapshot cannot be empty")
@@ -193,7 +193,7 @@ func (cs *controllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	return nil
 }
 
-func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		glog.Warningf("invalid delete volume req: %v", req)
 		return nil, err
@@ -227,7 +227,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
-func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	for _, cap := range req.VolumeCapabilities {
 		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
 			return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
@@ -240,15 +240,15 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	}, nil
 }
 
-func (cs *controllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
+func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
-func (cs *controllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
+func (cs *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	return &csi.ControllerPublishVolumeResponse{}, nil
 }
 
-func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
+func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		glog.Warningf("invalid create snapshot req: %v", req)
 		return nil, err
@@ -370,7 +370,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}, nil
 }
 
-func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		glog.Warningf("invalid delete snapshot req: %v", req)
 		return nil, err
@@ -409,7 +409,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 
-func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
+func (cs *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS); err != nil {
 		glog.Warningf("invalid list snapshot req: %v", req)
 		return nil, err

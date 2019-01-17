@@ -30,42 +30,42 @@ const (
 	Version      = "1.0.0"
 )
 
-type driver struct {
+type Driver struct {
 	cd *csicommon.CSIDriver
 
-	is *identityServer
-	ns *nodeServer
-	cs *controllerServer
+	is *IdentityServer
+	ns *NodeServer
+	cs *ControllerServer
 }
 
 var (
 	DefaultVolumeMounter string
 )
 
-func NewDriver() *driver {
-	return &driver{}
+func NewDriver() *Driver {
+	return &Driver{}
 }
 
-func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
-	return &identityServer{
+func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
+	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *controllerServer {
-	return &controllerServer{
+func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
+	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		MetadataStore:           cachePersister,
 	}
 }
 
-func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
-	return &nodeServer{
+func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
+	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
 	}
 }
 
-func (fs *driver) Run(driverName, nodeID, endpoint, volumeMounter string, cachePersister util.CachePersister) {
+func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cachePersister util.CachePersister) {
 	glog.Infof("Driver: %v version: %v", driverName, Version)
 
 	// Configuration

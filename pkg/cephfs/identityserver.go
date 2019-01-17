@@ -23,11 +23,11 @@ import (
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
-type identityServer struct {
+type IdentityServer struct {
 	*csicommon.DefaultIdentityServer
 }
 
-func (is *identityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
+func (is *IdentityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
 			{

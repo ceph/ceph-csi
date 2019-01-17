@@ -35,12 +35,12 @@ import (
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
-type nodeServer struct {
+type NodeServer struct {
 	*csicommon.DefaultNodeServer
 	mounter mount.Interface
 }
 
-func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	targetPathMutex.LockKey(targetPath)
 	defer targetPathMutex.UnlockKey(targetPath)
@@ -132,7 +132,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
-func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	targetPathMutex.LockKey(targetPath)
 	defer targetPathMutex.UnlockKey(targetPath)
@@ -202,7 +202,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-func (ns *nodeServer) NodeStageVolume(
+func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest) (
 	*csi.NodeStageVolumeResponse, error) {
@@ -210,7 +210,7 @@ func (ns *nodeServer) NodeStageVolume(
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (ns *nodeServer) NodeUnstageVolume(
+func (ns *NodeServer) NodeUnstageVolume(
 	ctx context.Context,
 	req *csi.NodeUnstageVolumeRequest) (
 	*csi.NodeUnstageVolumeResponse, error) {

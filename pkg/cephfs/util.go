@@ -103,7 +103,7 @@ func storeCephCredentials(volID volumeID, cr *credentials) error {
 // Controller service request validation
 //
 
-func (cs *controllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
+func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid CreateVolumeRequest: %v", err)
 	}
@@ -126,7 +126,7 @@ func (cs *controllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 	return nil
 }
 
-func (cs *controllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
+func (cs *ControllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid DeleteVolumeRequest: %v", err)
 	}

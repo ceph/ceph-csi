@@ -28,7 +28,7 @@ import (
 	"github.com/ceph/ceph-csi/pkg/util"
 )
 
-type controllerServer struct {
+type ControllerServer struct {
 	*csicommon.DefaultControllerServer
 	MetadataStore util.CachePersister
 }
@@ -38,7 +38,7 @@ type controllerCacheEntry struct {
 	VolumeID   volumeID
 }
 
-func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
 		glog.Errorf("CreateVolumeRequest validation failed: %v", err)
 		return nil, err
@@ -102,7 +102,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(req); err != nil {
 		glog.Errorf("DeleteVolumeRequest validation failed: %v", err)
 		return nil, err
@@ -159,7 +159,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
-func (cs *controllerServer) ValidateVolumeCapabilities(
+func (cs *ControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	// Cephfs doesn't support Block volume

@@ -35,36 +35,36 @@ const (
 	rbdDefaultUserID  = rbdDefaultAdminID
 )
 
-type driver struct {
+type Driver struct {
 	cd *csicommon.CSIDriver
 
-	ids *identityServer
-	ns  *nodeServer
-	cs  *controllerServer
+	ids *IdentityServer
+	ns  *NodeServer
+	cs  *ControllerServer
 }
 
 var (
 	version = "1.0.0"
 )
 
-func GetDriver() *driver {
-	return &driver{}
+func GetDriver() *Driver {
+	return &Driver{}
 }
 
-func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
-	return &identityServer{
+func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
+	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *controllerServer {
-	return &controllerServer{
+func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
+	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		MetadataStore:           cachePersister,
 	}
 }
 
-func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, error) {
+func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, error) {
 	mounter := mount.New("")
 	if containerized {
 		ne, err := nsenter.NewNsenter(nsenter.DefaultHostRootFsPath, exec.New())
@@ -73,13 +73,13 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, err
 		}
 		mounter = mount.NewNsenterMounter("", ne)
 	}
-	return &nodeServer{
+	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
 		mounter:           mounter,
 	}, nil
 }
 
-func (r *driver) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
+func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
 	var err error
 	glog.Infof("Driver: %v version: %v", driverName, version)
 
