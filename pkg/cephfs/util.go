@@ -93,11 +93,8 @@ func storeCephCredentials(volID volumeID, cr *credentials) error {
 		VolumeID: volID,
 	}
 
-	if err := secret.writeToFile(); err != nil {
-		return err
-	}
-
-	return nil
+	err := secret.writeToFile()
+	return err
 }
 
 //
