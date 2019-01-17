@@ -39,7 +39,6 @@ type driver struct {
 }
 
 var (
-	cephDriver           *driver
 	DefaultVolumeMounter string
 )
 
