@@ -28,6 +28,8 @@ type volumeOptions struct {
 
 	Mounter         string `json:"mounter"`
 	ProvisionVolume bool   `json:"provisionVolume"`
+
+	MonValueFromSecret string `json:"monValueFromSecret"`
 }
 
 func validateNonEmptyField(field, fieldName string) error {
@@ -40,7 +42,9 @@ func validateNonEmptyField(field, fieldName string) error {
 
 func (o *volumeOptions) validate() error {
 	if err := validateNonEmptyField(o.Monitors, "monitors"); err != nil {
-		return err
+		if err = validateNonEmptyField(o.MonValueFromSecret, "monValueFromSecret"); err != nil {
+			return err
+		}
 	}
 
 	if err := validateNonEmptyField(o.RootPath, "rootPath"); err != nil {
@@ -97,7 +101,9 @@ func newVolumeOptions(volOptions map[string]string) (*volumeOptions, error) {
 	)
 
 	if err = extractOption(&opts.Monitors, "monitors", volOptions); err != nil {
-		return nil, err
+		if err = extractOption(&opts.MonValueFromSecret, "monValueFromSecret", volOptions); err != nil {
+			return nil, err
+		}
 	}
 
 	if err = extractOption(&provisionVolumeBool, "provisionVolume", volOptions); err != nil {

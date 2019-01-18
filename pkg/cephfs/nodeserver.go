@@ -38,13 +38,13 @@ func getCredentialsForVolume(volOptions *volumeOptions, volId volumeID, req *csi
 		userCr *credentials
 		err    error
 	)
-
+	secret := req.GetSecrets()
 	if volOptions.ProvisionVolume {
 		// The volume is provisioned dynamically, get the credentials directly from Ceph
 
 		// First, store admin credentials - those are needed for retrieving the user credentials
 
-		adminCr, err := getAdminCredentials(req.GetSecrets())
+		adminCr, err := getAdminCredentials(secret)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
 		}
@@ -64,7 +64,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, volId volumeID, req *csi
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
-		userCr, err = getUserCredentials(req.GetSecrets())
+		userCr, err = getUserCredentials(secret)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
 		}
@@ -103,6 +103,13 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// mons may have changed since create volume,
+	// retrieve the latest mons and override old mons
+	secret := req.GetSecrets()
+	if mon, err := getMonValFromSecret(secret); err == nil && len(mon) > 0 {
+		glog.Infof("override old mons [%q] with [%q]", volOptions.Monitors, mon)
+		volOptions.Monitors = mon
+	}
 	cephConf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volId}
 	if err = cephConf.writeToFile(); err != nil {
 		glog.Errorf("failed to write ceph config file to %s for volume %s: %v", getCephConfPath(volId), volId, err)
