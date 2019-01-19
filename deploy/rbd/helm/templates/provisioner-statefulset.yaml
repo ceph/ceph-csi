@@ -11,6 +11,11 @@ metadata:
 spec:
   serviceName: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
   replicas: {{ .Values.provisioner.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "ceph-csi-rbd.name" . }}
+      component: {{ .Values.provisioner.name }}
+      release: {{ .Release.Name }}
   template:
     metadata:
       labels:
@@ -25,7 +30,6 @@ spec:
         - name: csi-provisioner
           image: "{{ .Values.provisioner.image.repository }}:{{ .Values.provisioner.image.tag }}"
           args:
-            - "--provisioner=csi-rbdplugin"
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
           env:
@@ -37,11 +41,44 @@ spec:
               mountPath: {{ .Values.socketDir }}
           resources:
 {{ toYaml .Values.provisioner.resources | indent 12 }}
+        - name: csi-rbdplugin
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          args :
+            - "--nodeid=$(NODE_ID)"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--v=5"
+            - "--drivername=csi-rbdplugin"
+            - "--containerized=true"
+            - "--metadatastorage=k8s_configmap"
+          env:
+            - name: HOST_ROOTFS
+              value: "/rootfs"
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: "unix:/{{ .Values.socketDir }}/{{ .Values.socketFile }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.imagePullPolicy }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: {{ .Values.socketDir }}
+            - name: host-rootfs
+              mountPath: "/rootfs"
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
       volumes:
         - name: socket-dir
+          emptyDir: {}
+#FIXME this seems way too much. Why is it needed at all for this?
+        - name: host-rootfs
           hostPath:
-            path: {{ .Values.socketDir }}
-            type: DirectoryOrCreate
+            path: /            
     {{- if .Values.provisioner.affinity -}}
       affinity:
 {{ toYaml .Values.provisioner.affinity . | indent 8 }}
