@@ -23,6 +23,7 @@ const (
 	credUserKey  = "userKey"
 	credAdminId  = "adminID"
 	credAdminKey = "adminKey"
+	credMonitors = "monitors"
 )
 
 type credentials struct {
@@ -53,4 +54,11 @@ func getUserCredentials(secrets map[string]string) (*credentials, error) {
 
 func getAdminCredentials(secrets map[string]string) (*credentials, error) {
 	return getCredentials(credAdminId, credAdminKey, secrets)
+}
+
+func getMonValFromSecret(secrets map[string]string) (string, error) {
+	if mons, ok := secrets[credMonitors]; ok {
+		return mons, nil
+	}
+	return "", fmt.Errorf("missing %q", credMonitors)
 }

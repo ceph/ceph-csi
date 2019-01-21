@@ -38,13 +38,13 @@ func getCredentialsForVolume(volOptions *volumeOptions, volId volumeID, req *csi
 		userCr *credentials
 		err    error
 	)
-
+	secret := req.GetSecrets()
 	if volOptions.ProvisionVolume {
 		// The volume is provisioned dynamically, get the credentials directly from Ceph
 
 		// First, store admin credentials - those are needed for retrieving the user credentials
 
-		adminCr, err := getAdminCredentials(req.GetSecrets())
+		adminCr, err := getAdminCredentials(secret)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
 		}
@@ -64,7 +64,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, volId volumeID, req *csi
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
-		userCr, err = getUserCredentials(req.GetSecrets())
+		userCr, err = getUserCredentials(secret)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
 		}
@@ -87,7 +87,8 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	stagingTargetPath := req.GetStagingTargetPath()
 	volId := volumeID(req.GetVolumeId())
 
-	volOptions, err := newVolumeOptions(req.GetVolumeContext())
+	secret := req.GetSecrets()
+	volOptions, err := newVolumeOptions(req.GetVolumeContext(), secret)
 	if err != nil {
 		glog.Errorf("error reading volume options for volume %s: %v", volId, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())

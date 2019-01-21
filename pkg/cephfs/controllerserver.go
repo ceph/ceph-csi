@@ -44,14 +44,14 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 	// Configuration
-	volOptions, err := newVolumeOptions(req.GetParameters())
+	secret := req.GetSecrets()
+	volOptions, err := newVolumeOptions(req.GetParameters(), secret)
 	if err != nil {
 		glog.Errorf("validation of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	volId := makeVolumeID(req.GetName())
-
 	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volId}
 	if err = conf.writeToFile(); err != nil {
 		glog.Errorf("failed to write ceph config file to %s: %v", getCephConfPath(volId), err)
@@ -62,7 +62,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	if volOptions.ProvisionVolume {
 		// Admin credentials are required
-		cr, err := getAdminCredentials(req.GetSecrets())
+		cr, err := getAdminCredentials(secret)
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
@@ -124,10 +124,17 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		glog.Warningf("volume %s is provisioned statically, aborting delete", volId)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
+	// mons may have changed since create volume,
+	// retrieve the latest mons and override old mons
+	secret := req.GetSecrets()
+	if mon, err := getMonValFromSecret(secret); err == nil && len(mon) > 0 {
+		glog.Infof("override old mons [%q] with [%q]", ce.VolOptions.Monitors, mon)
+		ce.VolOptions.Monitors = mon
+	}
 
 	// Deleting a volume requires admin credentials
 
-	cr, err := getAdminCredentials(req.GetSecrets())
+	cr, err := getAdminCredentials(secret)
 	if err != nil {
 		glog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
