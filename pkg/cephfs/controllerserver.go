@@ -44,19 +44,14 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 	// Configuration
-	volOptions, err := newVolumeOptions(req.GetParameters())
+	secret := req.GetSecrets()
+	volOptions, err := newVolumeOptions(req.GetParameters(), secret)
 	if err != nil {
 		glog.Errorf("validation of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	volId := makeVolumeID(req.GetName())
-	secret := req.GetSecrets()
-	if len(volOptions.Monitors) == 0 {
-		if mon, err := getMonValFromSecret(secret); err == nil && len(mon) > 0 {
-			volOptions.Monitors = mon
-		}
-	}
 	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volId}
 	if err = conf.writeToFile(); err != nil {
 		glog.Errorf("failed to write ceph config file to %s: %v", getCephConfPath(volId), err)

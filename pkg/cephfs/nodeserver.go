@@ -87,7 +87,8 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	stagingTargetPath := req.GetStagingTargetPath()
 	volId := volumeID(req.GetVolumeId())
 
-	volOptions, err := newVolumeOptions(req.GetVolumeContext())
+	secret := req.GetSecrets()
+	volOptions, err := newVolumeOptions(req.GetVolumeContext(), secret)
 	if err != nil {
 		glog.Errorf("error reading volume options for volume %s: %v", volId, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -103,13 +104,6 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// mons may have changed since create volume,
-	// retrieve the latest mons and override old mons
-	secret := req.GetSecrets()
-	if mon, err := getMonValFromSecret(secret); err == nil && len(mon) > 0 {
-		glog.Infof("override old mons [%q] with [%q]", volOptions.Monitors, mon)
-		volOptions.Monitors = mon
-	}
 	cephConf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volId}
 	if err = cephConf.writeToFile(); err != nil {
 		glog.Errorf("failed to write ceph config file to %s for volume %s: %v", getCephConfPath(volId), volId, err)

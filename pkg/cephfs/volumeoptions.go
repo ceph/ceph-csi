@@ -93,19 +93,25 @@ func validateMounter(m string) error {
 	return nil
 }
 
-func newVolumeOptions(volOptions map[string]string) (*volumeOptions, error) {
+func newVolumeOptions(volOptions, secret map[string]string) (*volumeOptions, error) {
 	var (
 		opts                volumeOptions
 		provisionVolumeBool string
 		err                 error
 	)
 
-	if err = extractOption(&opts.Monitors, "monitors", volOptions); err != nil {
-		if err = extractOption(&opts.MonValueFromSecret, "monValueFromSecret", volOptions); err != nil {
-			return nil, err
+	// extract mon from secret first
+	if err = extractOption(&opts.MonValueFromSecret, "monValueFromSecret", volOptions); err == nil {
+		if mon, err := getMonValFromSecret(secret); err == nil && len(mon) > 0 {
+			opts.Monitors = mon
 		}
 	}
-
+	if len(opts.Monitors) == 0 {
+		// if not set in secret, get it from parameter
+		if err = extractOption(&opts.Monitors, "monitors", volOptions); err != nil {
+			return nil, fmt.Errorf("either monitors or monValueFromSecret should be set")
+		}
+	}
 	if err = extractOption(&provisionVolumeBool, "provisionVolume", volOptions); err != nil {
 		return nil, err
 	}
