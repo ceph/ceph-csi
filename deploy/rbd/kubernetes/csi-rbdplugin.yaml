@@ -19,23 +19,23 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet      
       containers:
         - name: driver-registrar
-          image: quay.io/k8scsi/driver-registrar:canary
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
           args:
             - "--v=5"
-            - "--csi-address=$(ADDRESS)"
-            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+            - "--csi-address=/csi/csi.sock"
+            - "--kubelet-registration-path=/var/lib/kubelet/plugins/csi-rbdplugin/csi.sock"
+          lifecycle:
+            preStop:
+              exec:
+                  command: ["/bin/sh", "-c", "rm -rf /registration/csi-rbdplugin /registration/csi-rbdplugin-reg.sock"]          
           env:
-            - name: ADDRESS
-              value: /var/lib/kubelet/plugins_registry/csi-rbdplugin/csi.sock
-            - name: DRIVER_REG_SOCK_PATH
-              value: /var/lib/kubelet/plugins_registry/csi-rbdplugin/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
-            - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins_registry/csi-rbdplugin
+            - name: plugin-dir
+              mountPath: /csi
             - name: registration-dir
               mountPath: /registration
         - name: csi-rbdplugin
@@ -54,7 +54,7 @@ spec:
             - "--metadatastorage=k8s_configmap"
           env:
             - name: HOST_ROOTFS
-              value: "/rootfs"
+              value: "/rootfs" 
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -87,10 +87,10 @@ spec:
       volumes:
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins_registry/csi-rbdplugin
+            path: /var/lib/kubelet/plugins/csi-rbdplugin
             type: DirectoryOrCreate
         - name: plugin-mount-dir
-          hostPath:
+          hostPath: 
             path: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/
             type: DirectoryOrCreate
         - name: registration-dir
@@ -101,10 +101,6 @@ spec:
           hostPath:
             path: /var/lib/kubelet/pods
             type: Directory
-        - name: socket-dir
-          hostPath:
-            path: /var/lib/kubelet/plugins_registry/csi-rbdplugin
-            type: DirectoryOrCreate
         - name: host-dev
           hostPath:
             path: /dev

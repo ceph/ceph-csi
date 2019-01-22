@@ -30,7 +30,7 @@ import (
 
 // PluginFolder defines the location of rbdplugin
 const (
-	PluginFolder      = "/var/lib/kubelet/plugins_registry/csi-rbdplugin"
+	PluginFolder      = "/var/lib/kubelet/plugins/csi-rbdplugin"
 	rbdDefaultAdminId = "admin"
 	rbdDefaultUserId  = rbdDefaultAdminId
 )
