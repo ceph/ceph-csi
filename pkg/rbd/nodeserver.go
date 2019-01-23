@@ -218,6 +218,10 @@ func (ns *nodeServer) NodeUnstageVolume(
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
+func (ns *nodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+	return ns.DefaultNodeServer.NodeGetInfo(ctx, req)
+}
+
 func resolveBindMountedBlockDevice(mountPath string) (string, error) {
 	cmd := exec.Command("findmnt", "-n", "-o", "SOURCE", "--first-only", "--target", mountPath)
 	out, err := cmd.CombinedOutput()

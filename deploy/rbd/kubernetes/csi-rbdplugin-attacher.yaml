@@ -24,7 +24,7 @@ spec:
       labels:
         app: csi-rbdplugin-attacher
     spec:
-      serviceAccount: csi-attacher
+      serviceAccount: rbd-csi-attacher
       containers:
         - name: csi-rbdplugin-attacher
           image: quay.io/k8scsi/csi-attacher:v1.0.0
@@ -33,13 +33,13 @@ spec:
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins_registry/csi-rbdplugin/csi.sock
+              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins_registry/csi-rbdplugin
+              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins_registry/csi-rbdplugin
+            path: /var/lib/kubelet/plugins/csi-rbdplugin
             type: DirectoryOrCreate

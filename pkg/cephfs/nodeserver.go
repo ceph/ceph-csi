@@ -241,3 +241,7 @@ func (ns *nodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 		},
 	}, nil
 }
+
+func (ns *nodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+	return ns.DefaultNodeServer.NodeGetInfo(ctx, req)
+}

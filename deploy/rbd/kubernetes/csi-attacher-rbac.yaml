@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-attacher
+  name: rbd-csi-attacher
 
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: external-attacher-runner
+  name: rbd-external-attacher-runner
 rules:
   - apiGroups: [""]
     resources: ["events"]
@@ -26,12 +26,12 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-attacher-role
+  name: rbd-csi-attacher-role
 subjects:
   - kind: ServiceAccount
-    name: csi-attacher
+    name: rbd-csi-attacher
     namespace: default
 roleRef:
   kind: ClusterRole
-  name: external-attacher-runner
+  name: rbd-external-attacher-runner
   apiGroup: rbac.authorization.k8s.io

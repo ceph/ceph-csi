@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-nodeplugin
+  name: cephfs-csi-nodeplugin
 
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-nodeplugin
+  name: cephfs-csi-nodeplugin
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
@@ -23,18 +23,18 @@ rules:
     verbs: ["get", "list", "watch", "update"]
   - apiGroups: [""]
     resources: ["configmaps"]
-    verbs: ["get", "list", "create", "delete"]
+    verbs: ["get", "list"]
 
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-nodeplugin
+  name: cephfs-csi-nodeplugin
 subjects:
   - kind: ServiceAccount
-    name: csi-nodeplugin
+    name: cephfs-csi-nodeplugin
     namespace: default
 roleRef:
   kind: ClusterRole
-  name: csi-nodeplugin
+  name: cephfs-csi-nodeplugin
   apiGroup: rbac.authorization.k8s.io          
