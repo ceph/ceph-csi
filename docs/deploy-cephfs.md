@@ -43,8 +43,8 @@ Parameter | Required | Description
 `provisionVolume` | yes | Mode of operation. BOOL value. If `true`, a new CephFS volume will be provisioned. If `false`, an existing volume will be used.
 `pool` | for `provisionVolume=true` | Ceph pool into which the volume shall be created
 `rootPath` | for `provisionVolume=false` | Root path of an existing CephFS volume
-`csiProvisionerSecretName`, `csiNodeStageSecretName` | for Kubernetes | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
-`csiProvisionerSecretNamespace`, `csiNodeStageSecretNamespace` | for Kubernetes | namespaces of the above Secret objects
+`csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-stage-secret-name` | for Kubernetes | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
+`csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-stage-secret-namespace` | for Kubernetes | namespaces of the above Secret objects
 
 **Required secrets for `provisionVolume=true`:**  
 Admin credentials are required for provisioning new volumes
