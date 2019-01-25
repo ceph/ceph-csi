@@ -21,11 +21,11 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
-	"time"
 
 	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/pborman/uuid"
@@ -325,7 +325,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 	}
 
-	rbdSnap.CreatedAt = time.Now().UnixNano()
+	rbdSnap.CreatedAt = ptypes.TimestampNow().GetSeconds()
 
 	if err := cs.MetadataStore.Create(snapshotID, rbdSnap); err != nil {
 		glog.Warningf("rbd: failed to store snapInfo with error: %v", err)
