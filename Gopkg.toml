@@ -19,15 +19,15 @@
   version = "1.10.0"
 
 [[constraint]]
-  version = "kubernetes-1.13.0"
+  version = "kubernetes-1.13.2"
   name = "k8s.io/apimachinery"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "v1.13.0"
+  version = "v1.13.2"
 
 [[override]]
-  version = "kubernetes-1.13.0"
+  version = "kubernetes-1.13.2"
   name = "k8s.io/api"
 
 [[override]]
@@ -36,7 +36,7 @@
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.13.0"
+  version = "kubernetes-1.13.2"
 
 [prune]
   go-tests = true
