@@ -33,7 +33,7 @@ auth_client_required = cephx
 fuse_set_user_groups = false
 `
 
-const cephKeyring = `[client.{{.UserId}}]
+const cephKeyring = `[client.{{.UserID}}]
 key = {{.Key}}
 `
 

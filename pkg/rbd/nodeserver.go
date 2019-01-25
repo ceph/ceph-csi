@@ -218,7 +218,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (ns *nodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+func (ns *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	return ns.DefaultNodeServer.NodeGetInfo(ctx, req)
 }
 
