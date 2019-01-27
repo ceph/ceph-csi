@@ -31,6 +31,9 @@ import (
 
 const (
 	envHostRootFS = "HOST_ROOTFS"
+	rbdTonbd      = "rbd-nbd"
+	rbd           = "rbd"
+	nbd           = "nbd"
 )
 
 var (
@@ -44,18 +47,6 @@ func init() {
 		hostRootFS = host
 	}
 	hasNBD = checkRbdNbdTools()
-}
-
-func getDevFromImageAndPool(pool, image string) (string, bool) {
-	device, found := getRbdDevFromImageAndPool(pool, image)
-	if found {
-		return device, true
-	}
-	device, found = getNbdDevFromImageAndPool(pool, image)
-	if found {
-		return device, true
-	}
-	return "", false
 }
 
 // Search /sys/bus for rbd device that matches given pool and image.
@@ -166,7 +157,7 @@ func getNbdDevFromImageAndPool(pool string, image string) (string, bool) {
 		// Check if this process is mapping a rbd device.
 		// Only accepted pattern of cmdline is from execRbdMap:
 		// rbd-nbd map pool/image ...
-		if len(cmdlineArgs) < 3 || cmdlineArgs[0] != "rbd-nbd" || cmdlineArgs[1] != "map" {
+		if len(cmdlineArgs) < 3 || cmdlineArgs[0] != rbdTonbd || cmdlineArgs[1] != "map" {
 			glog.V(4).Infof("nbd device %s is not used by rbd", nbdPath)
 			continue
 		}
@@ -211,7 +202,7 @@ func checkRbdNbdTools() bool {
 		glog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err)
 		return false
 	}
-	if _, err := execCommand("rbd-nbd", []string{"--version"}); err != nil {
+	if _, err := execCommand(rbdTonbd, []string{"--version"}); err != nil {
 		glog.V(3).Infof("rbd-nbd: running rbd-nbd --version failed with error %v", err)
 		return false
 	}
@@ -219,7 +210,7 @@ func checkRbdNbdTools() bool {
 	return true
 }
 
-func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string]string) (string, error) {
+func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string]string) (string, error) {
 	var err error
 	var output []byte
 
@@ -227,18 +218,18 @@ func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string
 	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
 
 	useNBD := false
-	cmdName := "rbd"
-	moduleName := "rbd"
-	if volOptions.Mounter == "rbd-nbd" && hasNBD {
+	cmdName := rbd
+	moduleName := rbd
+	if volOptions.Mounter == rbdTonbd && hasNBD {
 		useNBD = true
-		cmdName = "rbd-nbd"
-		moduleName = "nbd"
+		cmdName = rbdTonbd
+		moduleName = nbd
 	}
 
 	devicePath, found := waitForPath(volOptions.Pool, image, 1, useNBD)
 	if !found {
-		attachdetachMutex.LockKey(string(imagePath))
-		defer attachdetachMutex.UnlockKey(string(imagePath))
+		attachdetachMutex.LockKey(imagePath)
+		defer attachdetachMutex.UnlockKey(imagePath)
 
 		_, err = execCommand("modprobe", []string{moduleName})
 		if err != nil {
@@ -251,7 +242,7 @@ func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string
 			Steps:    rbdImageWatcherSteps,
 		}
 		err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			used, rbdOutput, err := rbdStatus(volOptions, userId, credentials)
+			used, rbdOutput, err := rbdStatus(volOptions, userID, credentials)
 			if err != nil {
 				return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
 			}
@@ -272,12 +263,12 @@ func attachRBDImage(volOptions *rbdVolume, userId string, credentials map[string
 		}
 
 		glog.V(5).Infof("rbd: map mon %s", mon)
-		key, err := getRBDKey(userId, credentials)
+		key, err := getRBDKey(userID, credentials)
 		if err != nil {
 			return "", err
 		}
 		output, err = execCommand(cmdName, []string{
-			"map", imagePath, "--id", userId, "-m", mon, "--key=" + key})
+			"map", imagePath, "--id", userID, "-m", mon, "--key=" + key})
 		if err != nil {
 			glog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
 			return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
@@ -297,9 +288,9 @@ func detachRBDDevice(devicePath string) error {
 
 	glog.V(3).Infof("rbd: unmap device %s", devicePath)
 
-	cmdName := "rbd"
+	cmdName := rbd
 	if strings.HasPrefix(devicePath, "/dev/nbd") {
-		cmdName = "rbd-nbd"
+		cmdName = rbdTonbd
 	}
 
 	output, err = execCommand(cmdName, []string{"unmap", devicePath})

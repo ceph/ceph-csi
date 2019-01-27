@@ -55,7 +55,7 @@ func loadAvailableMounters() error {
 }
 
 type volumeMounter interface {
-	mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error
+	mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error
 	name() string
 }
 
@@ -99,12 +99,12 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 
 type fuseMounter struct{}
 
-func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
+func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
 	args := [...]string{
 		mountPoint,
-		"-c", getCephConfPath(volId),
+		"-c", getCephConfPath(volID),
 		"-n", cephEntityClientPrefix + cr.id,
-		"--keyring", getCephKeyringPath(volId, cr.id),
+		"--keyring", getCephKeyringPath(volID, cr.id),
 		"-r", volOptions.RootPath,
 		"-o", "nonempty",
 	}
@@ -121,19 +121,19 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, vo
 	return nil
 }
 
-func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
+func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
 	if err := createMountPoint(mountPoint); err != nil {
 		return err
 	}
 
-	return mountFuse(mountPoint, cr, volOptions, volId)
+	return mountFuse(mountPoint, cr, volOptions, volID)
 }
 
 func (m *fuseMounter) name() string { return "Ceph FUSE driver" }
 
 type kernelMounter struct{}
 
-func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
+func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
 	if err := execCommandAndValidate("modprobe", "ceph"); err != nil {
 		return err
 	}
@@ -143,16 +143,16 @@ func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, 
 		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
 		mountPoint,
 		"-o",
-		fmt.Sprintf("name=%s,secretfile=%s", cr.id, getCephSecretPath(volId, cr.id)),
+		fmt.Sprintf("name=%s,secretfile=%s", cr.id, getCephSecretPath(volID, cr.id)),
 	)
 }
 
-func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
+func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
 	if err := createMountPoint(mountPoint); err != nil {
 		return err
 	}
 
-	return mountKernel(mountPoint, cr, volOptions, volId)
+	return mountKernel(mountPoint, cr, volOptions, volID)
 }
 
 func (m *kernelMounter) name() string { return "Ceph kernel client" }

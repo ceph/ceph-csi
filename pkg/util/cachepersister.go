@@ -35,7 +35,7 @@ type CachePersister interface {
 	Delete(identifier string) error
 }
 
-func NewCachePersister(metadataStore string, driverName string) (CachePersister, error) {
+func NewCachePersister(metadataStore, driverName string) (CachePersister, error) {
 	if metadataStore == "k8s_configmap" {
 		glog.Infof("cache-perister: using kubernetes configmap as metadata cache persister")
 		k8scm := &K8sCMCache{}

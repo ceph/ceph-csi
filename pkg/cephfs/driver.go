@@ -30,46 +30,42 @@ const (
 	Version      = "1.0.0"
 )
 
-type cephfsDriver struct {
-	driver *csicommon.CSIDriver
+type Driver struct {
+	cd *csicommon.CSIDriver
 
-	is *identityServer
-	ns *nodeServer
-	cs *controllerServer
-
-	caps   []*csi.VolumeCapability_AccessMode
-	cscaps []*csi.ControllerServiceCapability
+	is *IdentityServer
+	ns *NodeServer
+	cs *ControllerServer
 }
 
 var (
-	driver               *cephfsDriver
 	DefaultVolumeMounter string
 )
 
-func NewCephFSDriver() *cephfsDriver {
-	return &cephfsDriver{}
+func NewDriver() *Driver {
+	return &Driver{}
 }
 
-func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
-	return &identityServer{
+func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
+	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *controllerServer {
-	return &controllerServer{
+func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
+	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		MetadataStore:           cachePersister,
 	}
 }
 
-func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
-	return &nodeServer{
+func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
+	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
 	}
 }
 
-func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string, cachePersister util.CachePersister) {
+func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cachePersister util.CachePersister) {
 	glog.Infof("Driver: %v version: %v", driverName, Version)
 
 	// Configuration
@@ -95,25 +91,25 @@ func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string, 
 
 	// Initialize default library driver
 
-	fs.driver = csicommon.NewCSIDriver(driverName, Version, nodeId)
-	if fs.driver == nil {
+	fs.cd = csicommon.NewCSIDriver(driverName, Version, nodeID)
+	if fs.cd == nil {
 		glog.Fatalln("Failed to initialize CSI driver")
 	}
 
-	fs.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+	fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 	})
 
-	fs.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
+	fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
 		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 	})
 
 	// Create gRPC servers
 
-	fs.is = NewIdentityServer(fs.driver)
-	fs.ns = NewNodeServer(fs.driver)
+	fs.is = NewIdentityServer(fs.cd)
+	fs.ns = NewNodeServer(fs.cd)
 
-	fs.cs = NewControllerServer(fs.driver, cachePersister)
+	fs.cs = NewControllerServer(fs.cd, cachePersister)
 
 	server := csicommon.NewNonBlockingGRPCServer()
 	server.Start(endpoint, fs.is, fs.cs, fs.ns)

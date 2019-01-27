@@ -47,16 +47,16 @@ func (ent *cephEntity) toCredentials() *credentials {
 	}
 }
 
-func getCephUserName(volId volumeID) string {
-	return cephUserPrefix + string(volId)
+func getCephUserName(volID volumeID) string {
+	return cephUserPrefix + string(volID)
 }
 
-func getCephUser(adminCr *credentials, volId volumeID) (*cephEntity, error) {
-	entityName := cephEntityClientPrefix + getCephUserName(volId)
+func getCephUser(adminCr *credentials, volID volumeID) (*cephEntity, error) {
+	entityName := cephEntityClientPrefix + getCephUserName(volID)
 
 	var ents []cephEntity
 	args := [...]string{
-		"auth", "-f", "json", "-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + adminCr.id,
+		"auth", "-f", "json", "-c", getCephConfPath(volID), "-n", cephEntityClientPrefix + adminCr.id,
 		"get", entityName,
 	}
 
@@ -69,7 +69,7 @@ func getCephUser(adminCr *credentials, volId volumeID) (*cephEntity, error) {
 	// Contains non-json data: "exported keyring for ENTITY\n\n"
 	offset := bytes.Index(out, []byte("[{"))
 
-	if json.NewDecoder(bytes.NewReader(out[offset:])).Decode(&ents); err != nil {
+	if err = json.NewDecoder(bytes.NewReader(out[offset:])).Decode(&ents); err != nil {
 		return nil, fmt.Errorf("failed to decode json: %v", err)
 	}
 
@@ -80,43 +80,43 @@ func getCephUser(adminCr *credentials, volId volumeID) (*cephEntity, error) {
 	return &ents[0], nil
 }
 
-func createCephUser(volOptions *volumeOptions, adminCr *credentials, volId volumeID) (*cephEntity, error) {
+func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
 	caps := cephEntityCaps{
-		Mds: fmt.Sprintf("allow rw path=%s", getVolumeRootPathCeph(volId)),
+		Mds: fmt.Sprintf("allow rw path=%s", getVolumeRootPathCeph(volID)),
 		Mon: "allow r",
-		Osd: fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volId)),
+		Osd: fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volID)),
 	}
 
 	var ents []cephEntity
 	args := [...]string{
-		"auth", "-f", "json", "-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + adminCr.id,
-		"get-or-create", cephEntityClientPrefix + getCephUserName(volId),
+		"auth", "-f", "json", "-c", getCephConfPath(volID), "-n", cephEntityClientPrefix + adminCr.id,
+		"get-or-create", cephEntityClientPrefix + getCephUserName(volID),
 		"mds", caps.Mds,
 		"mon", caps.Mon,
 		"osd", caps.Osd,
 	}
 
-	if err := execCommandJson(&ents, "ceph", args[:]...); err != nil {
+	if err := execCommandJSON(&ents, args[:]...); err != nil {
 		return nil, fmt.Errorf("error creating ceph user: %v", err)
 	}
 
 	return &ents[0], nil
 }
 
-func deleteCephUser(adminCr *credentials, volId volumeID) error {
-	userId := getCephUserName(volId)
+func deleteCephUser(adminCr *credentials, volID volumeID) error {
+	userID := getCephUserName(volID)
 
 	args := [...]string{
-		"-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + adminCr.id,
-		"auth", "rm", cephEntityClientPrefix + userId,
+		"-c", getCephConfPath(volID), "-n", cephEntityClientPrefix + adminCr.id,
+		"auth", "rm", cephEntityClientPrefix + userID,
 	}
 
 	if err := execCommandAndValidate("ceph", args[:]...); err != nil {
 		return err
 	}
 
-	os.Remove(getCephKeyringPath(volId, userId))
-	os.Remove(getCephSecretPath(volId, userId))
+	os.Remove(getCephKeyringPath(volID, userID))
+	os.Remove(getCephSecretPath(volID, userID))
 
 	return nil
 }

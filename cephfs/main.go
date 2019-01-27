@@ -33,7 +33,7 @@ func init() {
 var (
 	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
 	driverName      = flag.String("drivername", "csi-cephfsplugin", "name of the driver")
-	nodeId          = flag.String("nodeid", "", "node id")
+	nodeID          = flag.String("nodeid", "", "node id")
 	volumeMounter   = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
 )
@@ -57,8 +57,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	driver := cephfs.NewCephFSDriver()
-	driver.Run(*driverName, *nodeId, *endpoint, *volumeMounter, cp)
+	driver := cephfs.NewDriver()
+	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, cp)
 
 	os.Exit(0)
 }

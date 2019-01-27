@@ -33,7 +33,7 @@ auth_client_required = cephx
 fuse_set_user_groups = false
 `
 
-const cephKeyring = `[client.{{.UserId}}]
+const cephKeyring = `[client.{{.UserID}}]
 key = {{.Key}}
 `
 
@@ -68,10 +68,6 @@ func init() {
 	cephSecretTempl = template.Must(template.New("secret").Parse(cephSecret))
 }
 
-type cephConfigWriter interface {
-	writeToFile() error
-}
-
 type cephConfigData struct {
 	Monitors string
 	VolumeID volumeID
@@ -100,31 +96,31 @@ func (d *cephConfigData) writeToFile() error {
 }
 
 type cephKeyringData struct {
-	UserId, Key string
+	UserID, Key string
 	VolumeID    volumeID
 }
 
 func (d *cephKeyringData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.VolumeID, d.UserId), 0600, cephKeyringTempl, d)
+	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.VolumeID, d.UserID), 0600, cephKeyringTempl, d)
 }
 
 type cephSecretData struct {
-	UserId, Key string
+	UserID, Key string
 	VolumeID    volumeID
 }
 
 func (d *cephSecretData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephSecretFileNameFmt, d.VolumeID, d.UserId), 0600, cephSecretTempl, d)
+	return writeCephTemplate(fmt.Sprintf(cephSecretFileNameFmt, d.VolumeID, d.UserID), 0600, cephSecretTempl, d)
 }
 
-func getCephSecretPath(volId volumeID, userId string) string {
-	return path.Join(cephConfigRoot, fmt.Sprintf(cephSecretFileNameFmt, volId, userId))
+func getCephSecretPath(volID volumeID, userID string) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephSecretFileNameFmt, volID, userID))
 }
 
-func getCephKeyringPath(volId volumeID, userId string) string {
-	return path.Join(cephConfigRoot, fmt.Sprintf(cephKeyringFileNameFmt, volId, userId))
+func getCephKeyringPath(volID volumeID, userID string) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephKeyringFileNameFmt, volID, userID))
 }
 
-func getCephConfPath(volId volumeID) string {
-	return path.Join(cephConfigRoot, fmt.Sprintf(cephConfigFileNameFmt, volId))
+func getCephConfPath(volID volumeID) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephConfigFileNameFmt, volID))
 }

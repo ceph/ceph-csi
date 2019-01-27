@@ -53,7 +53,8 @@ func execCommandAndValidate(program string, args ...string) error {
 	return nil
 }
 
-func execCommandJson(v interface{}, program string, args ...string) error {
+func execCommandJSON(v interface{}, args ...string) error {
+	program := "ceph"
 	out, err := execCommand(program, args...)
 
 	if err != nil {
@@ -75,11 +76,11 @@ func isMountPoint(p string) (bool, error) {
 	return !notMnt, nil
 }
 
-func storeCephCredentials(volId volumeID, cr *credentials) error {
+func storeCephCredentials(volID volumeID, cr *credentials) error {
 	keyringData := cephKeyringData{
-		UserId:   cr.id,
+		UserID:   cr.id,
 		Key:      cr.key,
-		VolumeID: volId,
+		VolumeID: volID,
 	}
 
 	if err := keyringData.writeToFile(); err != nil {
@@ -87,23 +88,20 @@ func storeCephCredentials(volId volumeID, cr *credentials) error {
 	}
 
 	secret := cephSecretData{
-		UserId:   cr.id,
+		UserID:   cr.id,
 		Key:      cr.key,
-		VolumeID: volId,
+		VolumeID: volID,
 	}
 
-	if err := secret.writeToFile(); err != nil {
-		return err
-	}
-
-	return nil
+	err := secret.writeToFile()
+	return err
 }
 
 //
 // Controller service request validation
 //
 
-func (cs *controllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
+func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid CreateVolumeRequest: %v", err)
 	}
@@ -126,7 +124,7 @@ func (cs *controllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 	return nil
 }
 
-func (cs *controllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
+func (cs *ControllerServer) validateDeleteVolumeRequest() error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid DeleteVolumeRequest: %v", err)
 	}

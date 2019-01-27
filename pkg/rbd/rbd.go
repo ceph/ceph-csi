@@ -31,44 +31,40 @@ import (
 // PluginFolder defines the location of rbdplugin
 const (
 	PluginFolder      = "/var/lib/kubelet/plugins/csi-rbdplugin"
-	rbdDefaultAdminId = "admin"
-	rbdDefaultUserId  = rbdDefaultAdminId
+	rbdDefaultAdminID = "admin"
+	rbdDefaultUserID  = rbdDefaultAdminID
 )
 
-type rbd struct {
-	driver *csicommon.CSIDriver
+type Driver struct {
+	cd *csicommon.CSIDriver
 
-	ids *identityServer
-	ns  *nodeServer
-	cs  *controllerServer
-
-	cap   []*csi.VolumeCapability_AccessMode
-	cscap []*csi.ControllerServiceCapability
+	ids *IdentityServer
+	ns  *NodeServer
+	cs  *ControllerServer
 }
 
 var (
-	rbdDriver *rbd
-	version   = "1.0.0"
+	version = "1.0.0"
 )
 
-func GetRBDDriver() *rbd {
-	return &rbd{}
+func GetDriver() *Driver {
+	return &Driver{}
 }
 
-func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
-	return &identityServer{
+func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
+	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *controllerServer {
-	return &controllerServer{
+func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
+	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		MetadataStore:           cachePersister,
 	}
 }
 
-func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, error) {
+func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, error) {
 	mounter := mount.New("")
 	if containerized {
 		ne, err := nsenter.NewNsenter(nsenter.DefaultHostRootFsPath, exec.New())
@@ -77,40 +73,40 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, err
 		}
 		mounter = mount.NewNsenterMounter("", ne)
 	}
-	return &nodeServer{
+	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
 		mounter:           mounter,
 	}, nil
 }
 
-func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
+func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
 	var err error
 	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Initialize default library driver
-	rbd.driver = csicommon.NewCSIDriver(driverName, version, nodeID)
-	if rbd.driver == nil {
+	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
+	if r.cd == nil {
 		glog.Fatalln("Failed to initialize CSI Driver.")
 	}
-	rbd.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+	r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
 	})
-	rbd.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
+	r.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
 
 	// Create GRPC servers
-	rbd.ids = NewIdentityServer(rbd.driver)
-	rbd.ns, err = NewNodeServer(rbd.driver, containerized)
+	r.ids = NewIdentityServer(r.cd)
+	r.ns, err = NewNodeServer(r.cd, containerized)
 	if err != nil {
 		glog.Fatalf("failed to start node server, err %v\n", err)
 	}
 
-	rbd.cs = NewControllerServer(rbd.driver, cachePersister)
-	rbd.cs.LoadExDataFromMetadataStore()
+	r.cs = NewControllerServer(r.cd, cachePersister)
+	r.cs.LoadExDataFromMetadataStore()
 
 	s := csicommon.NewNonBlockingGRPCServer()
-	s.Start(endpoint, rbd.ids, rbd.cs, rbd.ns)
+	s.Start(endpoint, r.ids, r.cs, r.ns)
 	s.Wait()
 }

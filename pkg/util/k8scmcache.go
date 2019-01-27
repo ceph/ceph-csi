@@ -104,7 +104,7 @@ func (k8scm *K8sCMCache) ForAll(pattern string, destObj interface{}, f ForAllFun
 		if !match {
 			continue
 		}
-		if err := json.Unmarshal([]byte(data), destObj); err != nil {
+		if err = json.Unmarshal([]byte(data), destObj); err != nil {
 			return errors.Wrap(err, "k8s-cm-cache: unmarshal error")
 		}
 		if err = f(cm.ObjectMeta.Name); err != nil {
@@ -119,33 +119,32 @@ func (k8scm *K8sCMCache) Create(identifier string, data interface{}) error {
 	if cm != nil && err == nil {
 		glog.V(4).Infof("k8s-cm-cache: configmap already exists, skipping configmap creation")
 		return nil
-	} else {
-		dataJson, err := json.Marshal(data)
-		if err != nil {
-			return errors.Wrap(err, "k8s-cm-cache: marshal error")
-		}
-		cm := &v1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      identifier,
-				Namespace: k8scm.Namespace,
-				Labels: map[string]string{
-					csiMetadataLabelAttr: cmLabel,
-				},
-			},
-			Data: map[string]string{},
-		}
-		cm.Data[cmDataKey] = string(dataJson)
-
-		_, err = k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Create(cm)
-		if err != nil {
-			if apierrs.IsAlreadyExists(err) {
-				glog.V(4).Infof("k8s-cm-cache: configmap already exists")
-				return nil
-			}
-			return errors.Wrapf(err, "k8s-cm-cache: couldn't persist %s metadata as configmap", identifier)
-		}
-
 	}
+	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrap(err, "k8s-cm-cache: marshal error")
+	}
+	cm = &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      identifier,
+			Namespace: k8scm.Namespace,
+			Labels: map[string]string{
+				csiMetadataLabelAttr: cmLabel,
+			},
+		},
+		Data: map[string]string{},
+	}
+	cm.Data[cmDataKey] = string(dataJSON)
+
+	_, err = k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Create(cm)
+	if err != nil {
+		if apierrs.IsAlreadyExists(err) {
+			glog.V(4).Infof("k8s-cm-cache: configmap already exists")
+			return nil
+		}
+		return errors.Wrapf(err, "k8s-cm-cache: couldn't persist %s metadata as configmap", identifier)
+	}
+
 	glog.V(4).Infof("k8s-cm-cache: configmap %s successfully created\n", identifier)
 	return nil
 }

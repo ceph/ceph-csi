@@ -56,7 +56,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	driver := rbd.GetRBDDriver()
+	driver := rbd.GetDriver()
 	driver.Run(*driverName, *nodeID, *endpoint, *containerized, cp)
 
 	os.Exit(0)

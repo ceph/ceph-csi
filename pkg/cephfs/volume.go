@@ -29,28 +29,28 @@ const (
 	namespacePrefix = "ns-"
 )
 
-func getCephRootPathLocal(volId volumeID) string {
-	return cephRootPrefix + string(volId)
+func getCephRootPathLocal(volID volumeID) string {
+	return cephRootPrefix + string(volID)
 }
 
-func getCephRootVolumePathLocal(volId volumeID) string {
-	return path.Join(getCephRootPathLocal(volId), cephVolumesRoot, string(volId))
+func getCephRootVolumePathLocal(volID volumeID) string {
+	return path.Join(getCephRootPathLocal(volID), cephVolumesRoot, string(volID))
 }
 
-func getVolumeRootPathCeph(volId volumeID) string {
-	return path.Join("/", cephVolumesRoot, string(volId))
+func getVolumeRootPathCeph(volID volumeID) string {
+	return path.Join("/", cephVolumesRoot, string(volID))
 }
 
-func getVolumeNamespace(volId volumeID) string {
-	return namespacePrefix + string(volId)
+func getVolumeNamespace(volID volumeID) string {
+	return namespacePrefix + string(volID)
 }
 
 func setVolumeAttribute(root, attrName, attrValue string) error {
 	return execCommandAndValidate("setfattr", "-n", attrName, "-v", attrValue, root)
 }
 
-func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeID, bytesQuota int64) error {
-	cephRoot := getCephRootPathLocal(volId)
+func createVolume(volOptions *volumeOptions, adminCr *credentials, volID volumeID, bytesQuota int64) error {
+	cephRoot := getCephRootPathLocal(volID)
 
 	if err := createMountPoint(cephRoot); err != nil {
 		return err
@@ -65,7 +65,7 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeI
 		return fmt.Errorf("failed to create mounter: %v", err)
 	}
 
-	if err = m.mount(cephRoot, adminCr, volOptions, volId); err != nil {
+	if err = m.mount(cephRoot, adminCr, volOptions, volID); err != nil {
 		return fmt.Errorf("error mounting ceph root: %v", err)
 	}
 
@@ -74,8 +74,8 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeI
 		os.Remove(cephRoot)
 	}()
 
-	volOptions.RootPath = getVolumeRootPathCeph(volId)
-	localVolRoot := getCephRootVolumePathLocal(volId)
+	volOptions.RootPath = getVolumeRootPathCeph(volID)
+	localVolRoot := getCephRootVolumePathLocal(volID)
 
 	if err := createMountPoint(localVolRoot); err != nil {
 		return err
@@ -91,17 +91,17 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeI
 		return fmt.Errorf("%v\ncephfs: Does pool '%s' exist?", err, volOptions.Pool)
 	}
 
-	if err := setVolumeAttribute(localVolRoot, "ceph.dir.layout.pool_namespace", getVolumeNamespace(volId)); err != nil {
+	if err := setVolumeAttribute(localVolRoot, "ceph.dir.layout.pool_namespace", getVolumeNamespace(volID)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func purgeVolume(volId volumeID, adminCr *credentials, volOptions *volumeOptions) error {
+func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions) error {
 	var (
-		cephRoot        = getCephRootPathLocal(volId)
-		volRoot         = getCephRootVolumePathLocal(volId)
+		cephRoot        = getCephRootPathLocal(volID)
+		volRoot         = getCephRootVolumePathLocal(volID)
 		volRootDeleting = volRoot + "-deleting"
 	)
 
@@ -118,7 +118,7 @@ func purgeVolume(volId volumeID, adminCr *credentials, volOptions *volumeOptions
 		return fmt.Errorf("failed to create mounter: %v", err)
 	}
 
-	if err = m.mount(cephRoot, adminCr, volOptions, volId); err != nil {
+	if err = m.mount(cephRoot, adminCr, volOptions, volID); err != nil {
 		return fmt.Errorf("error mounting ceph root: %v", err)
 	}
 
@@ -128,11 +128,11 @@ func purgeVolume(volId volumeID, adminCr *credentials, volOptions *volumeOptions
 	}()
 
 	if err := os.Rename(volRoot, volRootDeleting); err != nil {
-		return fmt.Errorf("coudln't mark volume %s for deletion: %v", volId, err)
+		return fmt.Errorf("coudln't mark volume %s for deletion: %v", volID, err)
 	}
 
 	if err := os.RemoveAll(volRootDeleting); err != nil {
-		return fmt.Errorf("failed to delete volume %s: %v", volId, err)
+		return fmt.Errorf("failed to delete volume %s: %v", volID, err)
 	}
 
 	return nil
