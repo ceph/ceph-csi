@@ -150,13 +150,13 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			glog.V(4).Infof("create volume %s", volName)
 		}
 	}
-	if err = cs.MetadataStore.Create(volumeID, rbdVol); err != nil {
+	if createErr := cs.MetadataStore.Create(volumeID, rbdVol); createErr != nil {
 		glog.Warningf("failed to store volume metadata with error: %v", err)
 		if err = deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
 			glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
 			return nil, err
 		}
-		return nil, err
+		return nil, createErr
 	}
 
 	rbdVolumes[volumeID] = rbdVol
@@ -341,7 +341,8 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	rbdSnap.CreatedAt = ptypes.TimestampNow().GetSeconds()
 
-	if err = cs.MetadataStore.Create(snapshotID, rbdSnap); err != nil {
+	if createErr := cs.MetadataStore.Create(snapshotID, rbdSnap); createErr != nil {
+
 		glog.Warningf("rbd: failed to store snapInfo with error: %v", err)
 		// Unprotect snapshot
 		err = unprotectSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets())
@@ -353,7 +354,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		if err = deleteSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets()); err != nil {
 			return nil, status.Errorf(codes.Unknown, "This Snapshot should be removed but failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
 		}
-		return nil, err
+		return nil, createErr
 	}
 
 	rbdSnapshots[snapshotID] = rbdSnap
