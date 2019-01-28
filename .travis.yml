@@ -7,7 +7,7 @@ branches:
     - master
     - csi-v1.0
 
-go: 1.10.x
+go: 1.11.x
 
 install:
   - curl -L https://git.io/vp6lP | sh
