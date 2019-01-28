@@ -31,7 +31,7 @@ test:
 
 rbdplugin:
 	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/rbdplugin ./rbd
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/rbdplugin ./cmd/rbd
 
 image-rbdplugin: rbdplugin
 	cp _output/rbdplugin  deploy/rbd/docker
@@ -39,7 +39,7 @@ image-rbdplugin: rbdplugin
 
 cephfsplugin:
 	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephfsplugin ./cephfs
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephfsplugin ./cmd/cephfs
 
 image-cephfsplugin: cephfsplugin
 	cp _output/cephfsplugin deploy/cephfs/docker
