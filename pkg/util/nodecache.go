@@ -40,6 +40,7 @@ var cacheDir = "controller"
 func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 	fullPath := path.Join(nc.BasePath, cacheDir)
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		// #nosec
 		if err := os.Mkdir(fullPath, 0755); err != nil {
 			return errors.Wrapf(err, "node-cache: failed to create %s folder with error: %v", fullPath, err)
 		}
@@ -66,6 +67,7 @@ func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) e
 		if !strings.HasSuffix(file.Name(), ".json") {
 			continue
 		}
+		// #nosec
 		fp, err := os.Open(path.Join(nc.BasePath, cacheDir, file.Name()))
 		if err != nil {
 			glog.Infof("node-cache: open file: %s err %v", file.Name(), err)
@@ -111,6 +113,7 @@ func (nc *NodeCache) Create(identifier string, data interface{}) error {
 // Get retrieves the metadata from cache directory with identifier name
 func (nc *NodeCache) Get(identifier string, data interface{}) error {
 	file := path.Join(nc.BasePath, cacheDir, identifier+".json")
+	// #nosec
 	fp, err := os.Open(file)
 	if err != nil {
 		return errors.Wrapf(err, "node-cache: open error for %s", file)

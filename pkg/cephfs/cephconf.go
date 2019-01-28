@@ -39,15 +39,13 @@ const cephKeyring = `[client.{{.UserID}}]
 key = {{.Key}}
 `
 
-// gosec
-const cephSecret = `{{.Key}}`
+const cephSecret = `{{.Key}}` // #nosec
 
-// gosec
 const (
 	cephConfigRoot         = "/etc/ceph"
 	cephConfigFileNameFmt  = "ceph.share.%s.conf"
 	cephKeyringFileNameFmt = "ceph.share.%s.client.%s.keyring"
-	cephSecretFileNameFmt  = "ceph.share.%s.client.%s.secret"
+	cephSecretFileNameFmt  = "ceph.share.%s.client.%s.secret" // #nosec
 )
 
 var (
@@ -78,7 +76,7 @@ type cephConfigData struct {
 }
 
 func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, data interface{}) error {
-	// gosec
+	// #nosec
 	if err := os.MkdirAll(cephConfigRoot, 0755); err != nil {
 		return err
 	}

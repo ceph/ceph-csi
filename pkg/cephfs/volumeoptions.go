@@ -132,8 +132,8 @@ func newVolumeOptions(volOptions, secret map[string]string) (*volumeOptions, err
 	}
 
 	// This field is optional, don't check for its presence
-	// nolint: errcheck
-	//  (skip errcheck as this is optional)
+	// nolint
+	//  (skip errcheck  and gosec as this is optional)
 	extractOption(&opts.Mounter, "mounter", volOptions)
 
 	if err = opts.validate(); err != nil {

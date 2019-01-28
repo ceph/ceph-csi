@@ -67,47 +67,16 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		}
 	}()
 
-	var volName string
-	isBlock := req.GetVolumeCapability().GetBlock() != nil
-
-	if isBlock {
-		// Get volName from targetPath
-		s := strings.Split(targetPath, "/")
-		volName = s[len(s)-1]
-	} else {
-		// Get volName from targetPath
-		if !strings.HasSuffix(targetPath, "/mount") {
-			return nil, fmt.Errorf("rbd: malformed the value of target path: %s", targetPath)
-		}
-		s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
-		volName = s[len(s)-1]
+	volName, err := ns.getVolumeName(req)
+	if err != nil {
+		return nil, err
 	}
 
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	// Check if that target path exists properly
-	notMnt, err := ns.mounter.IsNotMountPoint(targetPath)
+	notMnt, err := ns.createTargetPath(targetPath, isBlock)
 	if err != nil {
-		if os.IsNotExist(err) {
-			if isBlock {
-				// create an empty file
-				targetPathFile, e := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, 0750)
-				if e != nil {
-					glog.V(4).Infof("Failed to create targetPath:%s with error: %v", targetPath, err)
-					return nil, status.Error(codes.Internal, e.Error())
-				}
-				if err = targetPathFile.Close(); err != nil {
-					glog.V(4).Infof("Failed to close targetPath:%s with error: %v", targetPath, err)
-					return nil, status.Error(codes.Internal, err.Error())
-				}
-			} else {
-				// Create a directory
-				if err = os.MkdirAll(targetPath, 0750); err != nil {
-					return nil, status.Error(codes.Internal, err.Error())
-				}
-			}
-			notMnt = true
-		} else {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+		return nil, err
 	}
 
 	if !notMnt {
@@ -126,10 +95,40 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	glog.V(4).Infof("rbd image: %s/%s was successfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
 
 	// Publish Path
+	err = ns.mountVolume(req, devicePath)
+	if err != nil {
+		return nil, err
+	}
+	return &csi.NodePublishVolumeResponse{}, nil
+}
+
+func (ns *NodeServer) getVolumeName(req *csi.NodePublishVolumeRequest) (string, error) {
+	var volName string
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+	targetPath := req.GetTargetPath()
+	if isBlock {
+		// Get volName from targetPath
+		s := strings.Split(targetPath, "/")
+		volName = s[len(s)-1]
+	} else {
+		// Get volName from targetPath
+		if !strings.HasSuffix(targetPath, "/mount") {
+			return "", fmt.Errorf("rbd: malformed the value of target path: %s", targetPath)
+		}
+		s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
+		volName = s[len(s)-1]
+	}
+	return volName, nil
+}
+
+func (ns *NodeServer) mountVolume(req *csi.NodePublishVolumeRequest, devicePath string) error {
+	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	readOnly := req.GetReadonly()
 	attrib := req.GetVolumeContext()
 	mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+	targetPath := req.GetTargetPath()
 
 	glog.V(4).Infof("target %v\nisBlock %v\nfstype %v\ndevice %v\nreadonly %v\nattributes %v\n mountflags %v\n",
 		targetPath, isBlock, fsType, devicePath, readOnly, attrib, mountFlags)
@@ -138,7 +137,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if isBlock {
 		options := []string{"bind"}
 		if err := diskMounter.Mount(devicePath, targetPath, fsType, options); err != nil {
-			return nil, err
+			return err
 		}
 	} else {
 		options := []string{}
@@ -147,11 +146,42 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		}
 
 		if err := diskMounter.FormatAndMount(devicePath, targetPath, fsType, options); err != nil {
-			return nil, err
+			return err
 		}
 	}
+	return nil
+}
 
-	return &csi.NodePublishVolumeResponse{}, nil
+func (ns *NodeServer) createTargetPath(targetPath string, isBlock bool) (bool, error) {
+	// Check if that target path exists properly
+	notMnt, err := ns.mounter.IsNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if isBlock {
+				// create an empty file
+				// #nosec
+				targetPathFile, e := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, 0750)
+				if e != nil {
+					glog.V(4).Infof("Failed to create targetPath:%s with error: %v", targetPath, err)
+					return notMnt, status.Error(codes.Internal, e.Error())
+				}
+				if err = targetPathFile.Close(); err != nil {
+					glog.V(4).Infof("Failed to close targetPath:%s with error: %v", targetPath, err)
+					return notMnt, status.Error(codes.Internal, err.Error())
+				}
+			} else {
+				// Create a directory
+				if err = os.MkdirAll(targetPath, 0750); err != nil {
+					return notMnt, status.Error(codes.Internal, err.Error())
+				}
+			}
+			notMnt = true
+		} else {
+			return false, status.Error(codes.Internal, err.Error())
+		}
+	}
+	return notMnt, err
+
 }
 
 // NodeUnpublishVolume unmounts the volume from the target path
@@ -230,6 +260,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 }
 
 func resolveBindMountedBlockDevice(mountPath string) (string, error) {
+	// #nosec
 	cmd := exec.Command("findmnt", "-n", "-o", "SOURCE", "--first-only", "--target", mountPath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -244,7 +275,7 @@ func parseFindMntResolveSource(out string) (string, error) {
 	// cut trailing newline
 	out = strings.TrimSuffix(out, "\n")
 	// Check if out is a mounted device
-	reMnt := regexp.MustCompile("^(/[^/]+(?:/[^/]*)*)$")
+	reMnt := regexp.MustCompile(`^(/[^/]+(?:/[^/]*)*)$`)
 	if match := reMnt.FindStringSubmatch(out); match != nil {
 		return match[1], nil
 	}

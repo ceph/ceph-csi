@@ -61,6 +61,7 @@ func getRbdDevFromImageAndPool(pool string, image string) (string, bool) {
 			name := f.Name()
 			// First match pool, then match name.
 			poolFile := path.Join(sysPath, name, "pool")
+			// #nosec
 			poolBytes, err := ioutil.ReadFile(poolFile)
 			if err != nil {
 				glog.V(4).Infof("error reading %s: %v", poolFile, err)
@@ -71,6 +72,7 @@ func getRbdDevFromImageAndPool(pool string, image string) (string, bool) {
 				continue
 			}
 			imgFile := path.Join(sysPath, name, "name")
+			// #nosec
 			imgBytes, err := ioutil.ReadFile(imgFile)
 			if err != nil {
 				glog.V(4).Infof("error reading %s: %v", imgFile, err)
@@ -140,12 +142,14 @@ func getNbdDevFromImageAndPool(pool string, image string) (string, bool) {
 			glog.V(4).Infof("error reading nbd info directory %s: %v", nbdPath, err)
 			continue
 		}
+		// #nosec
 		pidBytes, err := ioutil.ReadFile(path.Join(nbdPath, "pid"))
 		if err != nil {
 			glog.V(5).Infof("did not find valid pid file in dir %s: %v", nbdPath, err)
 			continue
 		}
 		cmdlineFileName := path.Join(hostRootFS, "/proc", strings.TrimSpace(string(pidBytes)), "cmdline")
+		// #nosec
 		rawCmdline, err := ioutil.ReadFile(cmdlineFileName)
 		if err != nil {
 			glog.V(4).Infof("failed to read cmdline file %s: %v", cmdlineFileName, err)
@@ -246,22 +250,11 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 			Factor:   rbdImageWatcherFactor,
 			Steps:    rbdImageWatcherSteps,
 		}
-		err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			used, rbdOutput, err := rbdStatus(volOptions, userID, credentials)
-			if err != nil {
-				return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
-			}
-			return !used, nil
-		})
-		// return error if rbd image has not become available for the specified timeout
-		if err == wait.ErrWaitTimeout {
-			return "", fmt.Errorf("rbd image %s is still being used", imagePath)
-		}
-		// return error if any other errors were encountered during wating for the image to become available
+		err := waitForrbdImage(backoff, volOptions, userID, credentials)
+
 		if err != nil {
 			return "", err
 		}
-
 		mon, err := getMon(volOptions, credentials)
 		if err != nil {
 			return "", err
@@ -285,6 +278,25 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 	}
 
 	return devicePath, nil
+}
+
+func waitForrbdImage(backoff wait.Backoff, volOptions *rbdVolume, userID string, credentials map[string]string) error {
+	image := volOptions.VolName
+	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
+
+	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
+		used, rbdOutput, err := rbdStatus(volOptions, userID, credentials)
+		if err != nil {
+			return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
+		}
+		return !used, nil
+	})
+	// return error if rbd image has not become available for the specified timeout
+	if err == wait.ErrWaitTimeout {
+		return fmt.Errorf("rbd image %s is still being used", imagePath)
+	}
+	// return error if any other errors were encountered during waiting for the image to become available
+	return err
 }
 
 func detachRBDDevice(devicePath string) error {
