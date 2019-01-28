@@ -29,12 +29,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+// NodeCache to store metadata
 type NodeCache struct {
 	BasePath string
 }
 
 var cacheDir = "controller"
 
+// EnsureCacheDirectory creates cache directory if not present
 func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 	fullPath := path.Join(nc.BasePath, cacheDir)
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
@@ -45,6 +47,7 @@ func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 	return nil
 }
 
+//ForAll list the metadata in Nodecache and filters outs based on the pattern
 func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) error {
 	err := nc.EnsureCacheDirectory(cacheDir)
 	if err != nil {
@@ -80,6 +83,7 @@ func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) e
 	return nil
 }
 
+// Create creates the metadata file in cache directory with identifier name
 func (nc *NodeCache) Create(identifier string, data interface{}) error {
 	file := path.Join(nc.BasePath, cacheDir, identifier+".json")
 	fp, err := os.Create(file)
@@ -95,6 +99,7 @@ func (nc *NodeCache) Create(identifier string, data interface{}) error {
 	return nil
 }
 
+// Get retrieves the metadata from cache directory with identifier name
 func (nc *NodeCache) Get(identifier string, data interface{}) error {
 	file := path.Join(nc.BasePath, cacheDir, identifier+".json")
 	fp, err := os.Open(file)
@@ -111,6 +116,7 @@ func (nc *NodeCache) Get(identifier string, data interface{}) error {
 	return nil
 }
 
+// Delete deletes the metadata file from cache directory with identifier name
 func (nc *NodeCache) Delete(identifier string) error {
 	file := path.Join(nc.BasePath, cacheDir, identifier+".json")
 	err := os.Remove(file)

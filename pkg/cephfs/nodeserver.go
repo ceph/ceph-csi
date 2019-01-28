@@ -29,6 +29,8 @@ import (
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
+// NodeServer struct of ceph CSI driver with supported methods of CSI
+// node server spec.
 type NodeServer struct {
 	*csicommon.DefaultNodeServer
 }
@@ -77,6 +79,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 	return userCr, nil
 }
 
+// NodeStageVolume mounts the volume to a staging path on the node.
 func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	if err := validateNodeStageVolumeRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -149,6 +152,8 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
+// NodePublishVolume mounts the volume mounted to the staging path to the target
+// path
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	if err := validateNodePublishVolumeRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -190,6 +195,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
+// NodeUnpublishVolume unmounts the volume from the target path
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	if err := validateNodeUnpublishVolumeRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -209,6 +215,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
+// NodeUnstageVolume unstages the volume from the staging path
 func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	if err := validateNodeUnstageVolumeRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -228,6 +235,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
+// NodeGetCapabilities returns the supported capabilities of the node server
 func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
@@ -240,8 +248,4 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 			},
 		},
 	}, nil
-}
-
-func (ns *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	return ns.DefaultNodeServer.NodeGetInfo(ctx, req)
 }

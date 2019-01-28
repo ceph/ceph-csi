@@ -23,11 +23,14 @@ import (
 )
 
 const (
+	//PluginFolder defines location of plugins
 	PluginFolder = "/var/lib/kubelet/plugins"
 )
 
+// ForAllFunc stores metdata with identifier
 type ForAllFunc func(identifier string) error
 
+// CachePersister interface implemented for store
 type CachePersister interface {
 	Create(identifier string, data interface{}) error
 	Get(identifier string, data interface{}) error
@@ -35,6 +38,7 @@ type CachePersister interface {
 	Delete(identifier string) error
 }
 
+// NewCachePersister returns CachePersister based on store
 func NewCachePersister(metadataStore, driverName string) (CachePersister, error) {
 	if metadataStore == "k8s_configmap" {
 		glog.Infof("cache-perister: using kubernetes configmap as metadata cache persister")

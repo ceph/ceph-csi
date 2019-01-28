@@ -35,11 +35,28 @@ import (
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
+// NodeServer struct of ceph rbd driver with supported methods of CSI
+// node server spec
 type NodeServer struct {
 	*csicommon.DefaultNodeServer
 	mounter mount.Interface
 }
 
+//TODO remove both stage and unstage methods
+//once https://github.com/kubernetes-csi/drivers/pull/145 is merged
+
+// NodeStageVolume returns unimplemented response
+func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
+// NodeUnstageVolume returns unimplemented response
+func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
+// NodePublishVolume mounts the volume mounted to the device path to the target
+// path
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	targetPathMutex.LockKey(targetPath)
@@ -132,6 +149,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
+// NodeUnpublishVolume unmounts the volume from the target path
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	targetPathMutex.LockKey(targetPath)
@@ -200,26 +218,6 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
-}
-
-func (ns *NodeServer) NodeStageVolume(
-	ctx context.Context,
-	req *csi.NodeStageVolumeRequest) (
-	*csi.NodeStageVolumeResponse, error) {
-
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-func (ns *NodeServer) NodeUnstageVolume(
-	ctx context.Context,
-	req *csi.NodeUnstageVolumeRequest) (
-	*csi.NodeUnstageVolumeResponse, error) {
-
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-func (ns *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	return ns.DefaultNodeServer.NodeGetInfo(ctx, req)
 }
 
 func resolveBindMountedBlockDevice(mountPath string) (string, error) {

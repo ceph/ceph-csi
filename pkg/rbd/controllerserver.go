@@ -39,6 +39,8 @@ const (
 	oneGB = 1073741824
 )
 
+// ControllerServer struct of rbd CSI driver with supported methods of CSI
+// controller server spec.
 type ControllerServer struct {
 	*csicommon.DefaultControllerServer
 	MetadataStore util.CachePersister
@@ -49,6 +51,8 @@ var (
 	rbdSnapshots = map[string]*rbdSnapshot{}
 )
 
+// LoadExDataFromMetadataStore loads the rbd volume and snapshot
+// info from metadata store
 func (cs *ControllerServer) LoadExDataFromMetadataStore() error {
 	vol := &rbdVolume{}
 	cs.MetadataStore.ForAll("csi-rbd-vol-", vol, func(identifier string) error {
@@ -80,6 +84,7 @@ func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 	return nil
 }
 
+// CreateVolume creates the volume in backend and store the volume metadata
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 
 	if err := cs.validateVolumeReq(req); err != nil {
@@ -193,6 +198,8 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	return nil
 }
 
+// DeleteVolume deletes the volume in backend and removes the volume metadata
+// from store
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		glog.Warningf("invalid delete volume req: %v", req)
@@ -227,6 +234,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
+// ValidateVolumeCapabilities checks whether the volume capabilities requested
+// are supported.
 func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	for _, cap := range req.VolumeCapabilities {
 		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
@@ -240,14 +249,18 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	}, nil
 }
 
+// ControllerUnpublishVolume returns success response
 func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
+// ControllerPublishVolume returns success response
 func (cs *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	return &csi.ControllerPublishVolumeResponse{}, nil
 }
 
+// CreateSnapshot creates the snapshot in backend and stores metadata
+// in store
 func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		glog.Warningf("invalid create snapshot req: %v", req)
@@ -371,6 +384,8 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}, nil
 }
 
+// DeleteSnapshot deletes the snapshot in backend and removes the
+//snapshot metadata from store
 func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		glog.Warningf("invalid delete snapshot req: %v", req)
@@ -410,6 +425,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 
+// ListSnapshots lists the snapshots in the store
 func (cs *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS); err != nil {
 		glog.Warningf("invalid list snapshot req: %v", req)
