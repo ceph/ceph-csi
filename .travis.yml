@@ -9,13 +9,16 @@ branches:
 
 go: 1.10.x
 
+install:
+  - curl -L https://git.io/vp6lP | sh
+
 before_script:
   - GO_FILES=$(find . -iname '*.go' -type f | grep -v /vendor/)
   - go get -u golang.org/x/lint/golint #go get github.com/golang/lint/golint
 
 script:
+  - gometalinter --deadline=10m -j 4 --disable=gocyclo --enable=gosimple --enable=misspell --enable=unused --enable=unparam --enable=staticcheck --vendor ./...
   - test -z $(gofmt -s -l $GO_FILES)
-  - go vet -v $(go list ./... | grep -v /vendor/)
   - make rbdplugin
   - make cephfsplugin
 
