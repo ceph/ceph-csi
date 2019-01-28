@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+
+	"github.com/golang/glog"
 )
 
 const (
@@ -70,8 +72,7 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volID volumeI
 	}
 
 	defer func() {
-		unmountVolume(cephRoot)
-		os.Remove(cephRoot)
+		umountAndRemove(cephRoot)
 	}()
 
 	volOptions.RootPath = getVolumeRootPathCeph(volID)
@@ -123,8 +124,7 @@ func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions
 	}
 
 	defer func() {
-		unmountVolume(volRoot)
-		os.Remove(volRoot)
+		umountAndRemove(volRoot)
 	}()
 
 	if err := os.Rename(volRoot, volRootDeleting); err != nil {
@@ -136,4 +136,15 @@ func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions
 	}
 
 	return nil
+}
+
+func umountAndRemove(mountPoint string) {
+	var err error
+	if err = unmountVolume(mountPoint); err != nil {
+		glog.Errorf("failed to unmount %s with error %s", mountPoint, err)
+	}
+
+	if err = os.Remove(mountPoint); err != nil {
+		glog.Errorf("failed to remove %s with error %s", mountPoint, err)
+	}
 }

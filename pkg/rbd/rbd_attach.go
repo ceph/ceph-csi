@@ -229,7 +229,12 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 	devicePath, found := waitForPath(volOptions.Pool, image, 1, useNBD)
 	if !found {
 		attachdetachMutex.LockKey(imagePath)
-		defer attachdetachMutex.UnlockKey(imagePath)
+
+		defer func() {
+			if err = attachdetachMutex.UnlockKey(imagePath); err != nil {
+				glog.Warningf("failed to unlock mutex imagepath:%s %v", imagePath, err)
+			}
+		}()
 
 		_, err = execCommand("modprobe", []string{moduleName})
 		if err != nil {

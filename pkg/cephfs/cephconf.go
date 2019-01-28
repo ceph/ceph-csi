@@ -21,6 +21,8 @@ import (
 	"os"
 	"path"
 	"text/template"
+
+	"github.com/golang/glog"
 )
 
 const cephConfig = `[global]
@@ -89,7 +91,11 @@ func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, dat
 		return err
 	}
 
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			glog.Errorf("failed to close file %s with error %s", f.Name(), err)
+		}
+	}()
 
 	return t.Execute(f, data)
 }

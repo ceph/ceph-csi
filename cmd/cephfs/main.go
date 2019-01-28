@@ -27,7 +27,10 @@ import (
 )
 
 func init() {
-	flag.Set("logtostderr", "true")
+	if err := flag.Set("logtostderr", "true"); err != nil {
+		glog.Errorf("failed to set logtostderr flag: %v", err)
+		os.Exit(1)
+	}
 }
 
 var (

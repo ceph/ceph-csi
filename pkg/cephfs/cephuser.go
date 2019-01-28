@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/golang/glog"
 )
 
 const (
@@ -111,12 +113,20 @@ func deleteCephUser(adminCr *credentials, volID volumeID) error {
 		"auth", "rm", cephEntityClientPrefix + userID,
 	}
 
-	if err := execCommandAndValidate("ceph", args[:]...); err != nil {
+	var err error
+	if err = execCommandAndValidate("ceph", args[:]...); err != nil {
 		return err
 	}
 
-	os.Remove(getCephKeyringPath(volID, userID))
-	os.Remove(getCephSecretPath(volID, userID))
+	keyringPath := getCephKeyringPath(volID, userID)
+	if err = os.Remove(keyringPath); err != nil {
+		glog.Errorf("failed to remove keyring file %s with error %s", keyringPath, err)
+	}
+
+	secretPath := getCephSecretPath(volID, userID)
+	if err = os.Remove(secretPath); err != nil {
+		glog.Errorf("failed to remove secret file %s with error %s", secretPath, err)
+	}
 
 	return nil
 }

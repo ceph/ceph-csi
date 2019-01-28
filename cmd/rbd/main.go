@@ -27,7 +27,10 @@ import (
 )
 
 func init() {
-	flag.Set("logtostderr", "true")
+	if err := flag.Set("logtostderr", "true"); err != nil {
+		glog.Errorf("failed to set logtostderr flag: %v", err)
+		os.Exit(1)
+	}
 }
 
 var (
@@ -64,10 +67,11 @@ func main() {
 
 func createPersistentStorage(persistentStoragePath string) error {
 	if _, err := os.Stat(persistentStoragePath); os.IsNotExist(err) {
-		if err := os.MkdirAll(persistentStoragePath, os.FileMode(0755)); err != nil {
+		if err = os.MkdirAll(persistentStoragePath, os.FileMode(0755)); err != nil {
 			return err
 		}
 	} else {
+		return err
 	}
 	return nil
 }

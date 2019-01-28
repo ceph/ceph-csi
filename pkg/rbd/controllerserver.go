@@ -55,16 +55,19 @@ var (
 // info from metadata store
 func (cs *ControllerServer) LoadExDataFromMetadataStore() error {
 	vol := &rbdVolume{}
+	// nolint: errcheck
 	cs.MetadataStore.ForAll("csi-rbd-vol-", vol, func(identifier string) error {
 		rbdVolumes[identifier] = vol
 		return nil
 	})
 
 	snap := &rbdSnapshot{}
+	// nolint: errcheck
 	cs.MetadataStore.ForAll("csi-rbd-(.*)-snap-", snap, func(identifier string) error {
 		rbdSnapshots[identifier] = snap
 		return nil
 	})
+
 	glog.Infof("Loaded %d volumes and %d snapshots from metadata store", len(rbdVolumes), len(rbdSnapshots))
 	return nil
 }
@@ -91,7 +94,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 	volumeNameMutex.LockKey(req.GetName())
-	defer volumeNameMutex.UnlockKey(req.GetName())
+	defer func() {
+		if err := volumeNameMutex.UnlockKey(req.GetName()); err != nil {
+			glog.Warningf("failed to unlock mutex volume:%s %v", req.GetName(), err)
+		}
+	}()
 
 	// Need to check for already existing volume name, and if found
 	// check for the requested capacity and already allocated capacity
@@ -208,7 +215,13 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// For now the image get unconditionally deleted, but here retention policy can be checked
 	volumeID := req.GetVolumeId()
 	volumeIDMutex.LockKey(volumeID)
-	defer volumeIDMutex.UnlockKey(volumeID)
+
+	defer func() {
+		if err := volumeIDMutex.UnlockKey(volumeID); err != nil {
+			glog.Warningf("failed to unlock mutex volume:%s %v", volumeID, err)
+		}
+	}()
+
 	rbdVol := &rbdVolume{}
 	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
 		if os.IsNotExist(errors.Cause(err)) {
@@ -276,7 +289,12 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 
 	snapshotNameMutex.LockKey(req.GetName())
-	defer snapshotNameMutex.UnlockKey(req.GetName())
+
+	defer func() {
+		if err := snapshotNameMutex.UnlockKey(req.GetName()); err != nil {
+			glog.Warningf("failed to unlock mutex snapshot:%s %v", req.GetName(), err)
+		}
+	}()
 
 	// Need to check for already existing snapshot name, and if found
 	// check for the requested source volume id and already allocated source volume id
@@ -397,7 +415,12 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return nil, status.Error(codes.InvalidArgument, "Snapshot ID cannot be empty")
 	}
 	snapshotIDMutex.LockKey(snapshotID)
-	defer snapshotIDMutex.UnlockKey(snapshotID)
+
+	defer func() {
+		if err := snapshotIDMutex.UnlockKey(snapshotID); err != nil {
+			glog.Warningf("failed to unlock mutex snapshot:%s %v", snapshotID, err)
+		}
+	}()
 
 	rbdSnap := &rbdSnapshot{}
 	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {

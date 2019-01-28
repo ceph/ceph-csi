@@ -102,7 +102,8 @@ func newVolumeOptions(volOptions, secret map[string]string) (*volumeOptions, err
 
 	// extract mon from secret first
 	if err = extractOption(&opts.MonValueFromSecret, "monValueFromSecret", volOptions); err == nil {
-		if mon, err := getMonValFromSecret(secret); err == nil && len(mon) > 0 {
+		mon := ""
+		if mon, err = getMonValFromSecret(secret); err == nil && len(mon) > 0 {
 			opts.Monitors = mon
 		}
 	}
@@ -131,6 +132,8 @@ func newVolumeOptions(volOptions, secret map[string]string) (*volumeOptions, err
 	}
 
 	// This field is optional, don't check for its presence
+	// nolint: errcheck
+	//  (skip errcheck as this is optional)
 	extractOption(&opts.Mounter, "mounter", volOptions)
 
 	if err = opts.validate(); err != nil {

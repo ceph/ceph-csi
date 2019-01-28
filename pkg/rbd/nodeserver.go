@@ -60,7 +60,12 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	targetPathMutex.LockKey(targetPath)
-	defer targetPathMutex.UnlockKey(targetPath)
+
+	defer func() {
+		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
+			glog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
+		}
+	}()
 
 	var volName string
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
@@ -84,12 +89,12 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		if os.IsNotExist(err) {
 			if isBlock {
 				// create an empty file
-				targetPathFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, 0750)
-				if err != nil {
+				targetPathFile, e := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, 0750)
+				if e != nil {
 					glog.V(4).Infof("Failed to create targetPath:%s with error: %v", targetPath, err)
-					return nil, status.Error(codes.Internal, err.Error())
+					return nil, status.Error(codes.Internal, e.Error())
 				}
-				if err := targetPathFile.Close(); err != nil {
+				if err = targetPathFile.Close(); err != nil {
 					glog.V(4).Infof("Failed to close targetPath:%s with error: %v", targetPath, err)
 					return nil, status.Error(codes.Internal, err.Error())
 				}
@@ -153,7 +158,12 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	targetPathMutex.LockKey(targetPath)
-	defer targetPathMutex.UnlockKey(targetPath)
+
+	defer func() {
+		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
+			glog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
+		}
+	}()
 
 	notMnt, err := ns.mounter.IsNotMountPoint(targetPath)
 	if err != nil {
@@ -177,7 +187,6 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 
 	// Bind mounted device needs to be resolved by using resolveBindMountedBlockDevice
 	if devicePath == "devtmpfs" {
-		var err error
 		devicePath, err = resolveBindMountedBlockDevice(targetPath)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
@@ -206,13 +215,13 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	// Unmapping rbd device
-	if err := detachRBDDevice(devicePath); err != nil {
+	if err = detachRBDDevice(devicePath); err != nil {
 		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", devicePath, err)
 		return nil, err
 	}
 
 	// Remove targetPath
-	if err := os.RemoveAll(targetPath); err != nil {
+	if err = os.RemoveAll(targetPath); err != nil {
 		glog.V(3).Infof("failed to remove targetPath: %s with error: %v", targetPath, err)
 		return nil, err
 	}
@@ -240,7 +249,7 @@ func parseFindMntResolveSource(out string) (string, error) {
 		return match[1], nil
 	}
 	// Check if out is a block device
-	reBlk := regexp.MustCompile("^devtmpfs\\[(/[^/]+(?:/[^/]*)*)\\]$")
+	reBlk := regexp.MustCompile(`^devtmpfs\\[(/[^/]+(?:/[^/]*)*)\\]$`)
 	if match := reBlk.FindStringSubmatch(out); match != nil {
 		return fmt.Sprintf("/dev%s", match[1]), nil
 	}

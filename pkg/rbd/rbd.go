@@ -112,7 +112,10 @@ func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, ca
 	}
 
 	r.cs = NewControllerServer(r.cd, cachePersister)
-	r.cs.LoadExDataFromMetadataStore()
+
+	if err = r.cs.LoadExDataFromMetadataStore(); err != nil {
+		glog.Fatalf("failed to load metadata from store, err %v\n", err)
+	}
 
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(endpoint, r.ids, r.cs, r.ns)

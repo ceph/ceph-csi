@@ -132,7 +132,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// mons may have changed since create volume,
 	// retrieve the latest mons and override old mons
 	secret := req.GetSecrets()
-	if mon, err := getMonValFromSecret(secret); err == nil && len(mon) > 0 {
+	mon := ""
+	if mon, err = getMonValFromSecret(secret); err == nil && len(mon) > 0 {
 		glog.Infof("override old mons [%q] with [%q]", ce.VolOptions.Monitors, mon)
 		ce.VolOptions.Monitors = mon
 	}

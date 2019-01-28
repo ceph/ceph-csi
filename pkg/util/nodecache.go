@@ -73,7 +73,10 @@ func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) e
 		}
 		decoder := json.NewDecoder(fp)
 		if err = decoder.Decode(destObj); err != nil {
-			fp.Close()
+			if err = fp.Close(); err != nil {
+				return errors.Wrapf(err, "failed to close file %s", file.Name())
+
+			}
 			return errors.Wrapf(err, "node-cache: couldn't decode file %s", file.Name())
 		}
 		if err := f(strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))); err != nil {
@@ -90,7 +93,13 @@ func (nc *NodeCache) Create(identifier string, data interface{}) error {
 	if err != nil {
 		return errors.Wrapf(err, "node-cache: failed to create metadata storage file %s\n", file)
 	}
-	defer fp.Close()
+
+	defer func() {
+		if err = fp.Close(); err != nil {
+			glog.Warningf("failed to close file:%s %v", fp.Name(), err)
+		}
+	}()
+
 	encoder := json.NewEncoder(fp)
 	if err = encoder.Encode(data); err != nil {
 		return errors.Wrapf(err, "node-cache: failed to encode metadata for file: %s\n", file)
@@ -106,7 +115,12 @@ func (nc *NodeCache) Get(identifier string, data interface{}) error {
 	if err != nil {
 		return errors.Wrapf(err, "node-cache: open error for %s", file)
 	}
-	defer fp.Close()
+
+	defer func() {
+		if err = fp.Close(); err != nil {
+			glog.Warningf("failed to close file:%s %v", fp.Name(), err)
+		}
+	}()
 
 	decoder := json.NewDecoder(fp)
 	if err = decoder.Decode(data); err != nil {
