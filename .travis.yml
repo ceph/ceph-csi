@@ -17,7 +17,7 @@ before_script:
   - go get -u golang.org/x/lint/golint #go get github.com/golang/lint/golint
 
 script:
-  - gometalinter --deadline=10m -j 4 --disable=gocyclo --enable=gosimple --enable=misspell --enable=unused --enable=unparam --enable=staticcheck --vendor ./...
+  - gometalinter --deadline=10m -j 4 --disable=gocyclo --enable=megacheck --enable=misspell --enable=unparam --vendor ./...
   - test -z $(gofmt -s -l $GO_FILES)
   - make rbdplugin
   - make cephfsplugin
