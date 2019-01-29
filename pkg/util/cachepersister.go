@@ -27,7 +27,7 @@ const (
 	PluginFolder = "/var/lib/kubelet/plugins"
 )
 
-// ForAllFunc stores metdata with identifier
+// ForAllFunc stores metadata with identifier
 type ForAllFunc func(identifier string) error
 
 // CachePersister interface implemented for store

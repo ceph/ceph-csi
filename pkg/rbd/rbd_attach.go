@@ -237,7 +237,7 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 		moduleName = nbd
 	}
 
-	_, found := waitForPath(volOptions.Pool, image, 1, useNBD)
+	devicePath, found := waitForPath(volOptions.Pool, image, 1, useNBD)
 	if !found {
 		attachdetachMutex.LockKey(imagePath)
 
@@ -263,9 +263,8 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 		if err != nil {
 			return "", err
 		}
-
+		devicePath, err = createPath(volOptions, userID, credentials)
 	}
-	devicePath, err := createPath(volOptions, userID, credentials)
 
 	return devicePath, err
 }
