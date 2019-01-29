@@ -155,7 +155,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	volSizeGB := int(rbdVol.VolSize / 1024 / 1024 / 1024)
 
 	// Check if there is already RBD image with requested name
-	err = cs.checkrbdStatus(rbdVol, req, volSizeGB)
+	err = cs.checkRBDStatus(rbdVol, req, volSizeGB)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-func (cs *ControllerServer) checkrbdStatus(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeGB int) error {
+func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeGB int) error {
 	var err error
 	// Check if there is already RBD image with requested name
 	found, _, _ := rbdStatus(rbdVol, rbdVol.UserID, req.GetSecrets()) // #nosec
