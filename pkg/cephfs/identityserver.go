@@ -23,10 +23,13 @@ import (
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
+// IdentityServer struct of ceph CSI driver with supported methods of CSI
+// identity server spec.
 type IdentityServer struct {
 	*csicommon.DefaultIdentityServer
 }
 
+// GetPluginCapabilities returns available capabilities of the ceph driver
 func (is *IdentityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{

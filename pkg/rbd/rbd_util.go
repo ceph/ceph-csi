@@ -145,7 +145,7 @@ func createRBDImage(pOpts *rbdVolume, volSz int, adminID string, credentials map
 }
 
 // rbdStatus checks if there is watcher on the image.
-// It returns true if there is a watcher onthe image, otherwise returns false.
+// It returns true if there is a watcher on the image, otherwise returns false.
 func rbdStatus(pOpts *rbdVolume, userID string, credentials map[string]string) (bool, string, error) {
 	var output string
 	var cmd []byte
@@ -221,6 +221,7 @@ func deleteRBDImage(pOpts *rbdVolume, adminID string, credentials map[string]str
 }
 
 func execCommand(command string, args []string) ([]byte, error) {
+	// #nosec
 	cmd := exec.Command(command, args...)
 	return cmd.CombinedOutput()
 }
@@ -258,6 +259,12 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 		}
 
 	}
+	getCredsFromVol(rbdVol, volOptions)
+	return rbdVol, nil
+}
+
+func getCredsFromVol(rbdVol *rbdVolume, volOptions map[string]string) {
+	var ok bool
 	rbdVol.AdminID, ok = volOptions["adminid"]
 	if !ok {
 		rbdVol.AdminID = rbdDefaultAdminID
@@ -270,9 +277,7 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 	if !ok {
 		rbdVol.Mounter = rbdDefaultMounter
 	}
-	return rbdVol, nil
 }
-
 func getRBDSnapshotOptions(snapOptions map[string]string) (*rbdSnapshot, error) {
 	var ok bool
 	rbdSnap := &rbdSnapshot{}

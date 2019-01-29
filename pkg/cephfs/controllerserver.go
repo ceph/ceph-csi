@@ -28,6 +28,8 @@ import (
 	"github.com/ceph/ceph-csi/pkg/util"
 )
 
+// ControllerServer struct of CEPH CSI driver with supported methods of CSI
+// controller server spec.
 type ControllerServer struct {
 	*csicommon.DefaultControllerServer
 	MetadataStore util.CachePersister
@@ -38,6 +40,7 @@ type controllerCacheEntry struct {
 	VolumeID   volumeID
 }
 
+// CreateVolume creates the volume in backend and store the volume metadata
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
 		glog.Errorf("CreateVolumeRequest validation failed: %v", err)
@@ -102,6 +105,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
+// DeleteVolume deletes the volume in backend and removes the volume metadata
+// from store
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(); err != nil {
 		glog.Errorf("DeleteVolumeRequest validation failed: %v", err)
@@ -127,7 +132,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// mons may have changed since create volume,
 	// retrieve the latest mons and override old mons
 	secret := req.GetSecrets()
-	if mon, err := getMonValFromSecret(secret); err == nil && len(mon) > 0 {
+	mon := ""
+	if mon, err = getMonValFromSecret(secret); err == nil && len(mon) > 0 {
 		glog.Infof("override old mons [%q] with [%q]", ce.VolOptions.Monitors, mon)
 		ce.VolOptions.Monitors = mon
 	}
@@ -159,6 +165,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
+// ValidateVolumeCapabilities checks whether the volume capabilities requested
+// are supported.
 func (cs *ControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {

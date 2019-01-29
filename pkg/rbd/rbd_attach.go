@@ -61,6 +61,7 @@ func getRbdDevFromImageAndPool(pool string, image string) (string, bool) {
 			name := f.Name()
 			// First match pool, then match name.
 			poolFile := path.Join(sysPath, name, "pool")
+			// #nosec
 			poolBytes, err := ioutil.ReadFile(poolFile)
 			if err != nil {
 				glog.V(4).Infof("error reading %s: %v", poolFile, err)
@@ -71,6 +72,7 @@ func getRbdDevFromImageAndPool(pool string, image string) (string, bool) {
 				continue
 			}
 			imgFile := path.Join(sysPath, name, "name")
+			// #nosec
 			imgBytes, err := ioutil.ReadFile(imgFile)
 			if err != nil {
 				glog.V(4).Infof("error reading %s: %v", imgFile, err)
@@ -135,45 +137,57 @@ func getNbdDevFromImageAndPool(pool string, image string) (string, bool) {
 
 	for i := 0; i < maxNbds; i++ {
 		nbdPath := basePath + strconv.Itoa(i)
-		_, err := os.Lstat(nbdPath)
+		devicePath, err := getnbdDevicePath(nbdPath, imgPath, i)
 		if err != nil {
-			glog.V(4).Infof("error reading nbd info directory %s: %v", nbdPath, err)
-			continue
-		}
-		pidBytes, err := ioutil.ReadFile(path.Join(nbdPath, "pid"))
-		if err != nil {
-			glog.V(5).Infof("did not find valid pid file in dir %s: %v", nbdPath, err)
-			continue
-		}
-		cmdlineFileName := path.Join(hostRootFS, "/proc", strings.TrimSpace(string(pidBytes)), "cmdline")
-		rawCmdline, err := ioutil.ReadFile(cmdlineFileName)
-		if err != nil {
-			glog.V(4).Infof("failed to read cmdline file %s: %v", cmdlineFileName, err)
-			continue
-		}
-		cmdlineArgs := strings.FieldsFunc(string(rawCmdline), func(r rune) bool {
-			return r == '\u0000'
-		})
-		// Check if this process is mapping a rbd device.
-		// Only accepted pattern of cmdline is from execRbdMap:
-		// rbd-nbd map pool/image ...
-		if len(cmdlineArgs) < 3 || cmdlineArgs[0] != rbdTonbd || cmdlineArgs[1] != "map" {
-			glog.V(4).Infof("nbd device %s is not used by rbd", nbdPath)
-			continue
-		}
-		if cmdlineArgs[2] != imgPath {
-			glog.V(4).Infof("rbd-nbd device %s did not match expected image path: %s with path found: %s",
-				nbdPath, imgPath, cmdlineArgs[2])
-			continue
-		}
-		devicePath := path.Join("/dev", "nbd"+strconv.Itoa(i))
-		if _, err := os.Lstat(devicePath); err != nil {
-			glog.Warningf("Stat device %s for imgpath %s failed %v", devicePath, imgPath, err)
 			continue
 		}
 		return devicePath, true
 	}
 	return "", false
+}
+
+func getnbdDevicePath(nbdPath, imgPath string, count int) (string, error) {
+
+	_, err := os.Lstat(nbdPath)
+	if err != nil {
+		glog.V(4).Infof("error reading nbd info directory %s: %v", nbdPath, err)
+		return "", err
+	}
+	// #nosec
+	pidBytes, err := ioutil.ReadFile(path.Join(nbdPath, "pid"))
+	if err != nil {
+		glog.V(5).Infof("did not find valid pid file in dir %s: %v", nbdPath, err)
+		return "", err
+	}
+	cmdlineFileName := path.Join(hostRootFS, "/proc", strings.TrimSpace(string(pidBytes)), "cmdline")
+	// #nosec
+	rawCmdline, err := ioutil.ReadFile(cmdlineFileName)
+	if err != nil {
+		glog.V(4).Infof("failed to read cmdline file %s: %v", cmdlineFileName, err)
+		return "", err
+	}
+	cmdlineArgs := strings.FieldsFunc(string(rawCmdline), func(r rune) bool {
+		return r == '\u0000'
+	})
+	// Check if this process is mapping a rbd device.
+	// Only accepted pattern of cmdline is from execRbdMap:
+	// rbd-nbd map pool/image ...
+	if len(cmdlineArgs) < 3 || cmdlineArgs[0] != rbdTonbd || cmdlineArgs[1] != "map" {
+		glog.V(4).Infof("nbd device %s is not used by rbd", nbdPath)
+		return "", err
+
+	}
+	if cmdlineArgs[2] != imgPath {
+		glog.V(4).Infof("rbd-nbd device %s did not match expected image path: %s with path found: %s",
+			nbdPath, imgPath, cmdlineArgs[2])
+		return "", err
+	}
+	devicePath := path.Join("/dev", "nbd"+strconv.Itoa(count))
+	if _, err := os.Lstat(devicePath); err != nil {
+		glog.Warningf("Stat device %s for imgpath %s failed %v", devicePath, imgPath, err)
+		return "", err
+	}
+	return devicePath, nil
 }
 
 // Stat a path, if it doesn't exist, retry maxRetries times.
@@ -212,28 +226,31 @@ func checkRbdNbdTools() bool {
 
 func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string]string) (string, error) {
 	var err error
-	var output []byte
 
 	image := volOptions.VolName
 	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
 
 	useNBD := false
-	cmdName := rbd
 	moduleName := rbd
 	if volOptions.Mounter == rbdTonbd && hasNBD {
 		useNBD = true
-		cmdName = rbdTonbd
 		moduleName = nbd
 	}
 
 	devicePath, found := waitForPath(volOptions.Pool, image, 1, useNBD)
 	if !found {
 		attachdetachMutex.LockKey(imagePath)
-		defer attachdetachMutex.UnlockKey(imagePath)
+
+		defer func() {
+			if err = attachdetachMutex.UnlockKey(imagePath); err != nil {
+				glog.Warningf("failed to unlock mutex imagepath:%s %v", imagePath, err)
+			}
+		}()
 
 		_, err = execCommand("modprobe", []string{moduleName})
 		if err != nil {
 			glog.Warningf("rbd: failed to load rbd kernel module:%v", err)
+			return "", err
 		}
 
 		backoff := wait.Backoff{
@@ -241,45 +258,69 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 			Factor:   rbdImageWatcherFactor,
 			Steps:    rbdImageWatcherSteps,
 		}
-		err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-			used, rbdOutput, err := rbdStatus(volOptions, userID, credentials)
-			if err != nil {
-				return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
-			}
-			return !used, nil
-		})
-		// return error if rbd image has not become available for the specified timeout
-		if err == wait.ErrWaitTimeout {
-			return "", fmt.Errorf("rbd image %s is still being used", imagePath)
-		}
-		// return error if any other errors were encountered during wating for the image to become available
-		if err != nil {
-			return "", err
-		}
+		err = waitForrbdImage(backoff, volOptions, userID, credentials)
 
-		mon, err := getMon(volOptions, credentials)
 		if err != nil {
 			return "", err
 		}
-
-		glog.V(5).Infof("rbd: map mon %s", mon)
-		key, err := getRBDKey(userID, credentials)
-		if err != nil {
-			return "", err
-		}
-		output, err = execCommand(cmdName, []string{
-			"map", imagePath, "--id", userID, "-m", mon, "--key=" + key})
-		if err != nil {
-			glog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
-			return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
-		}
-		devicePath, found = waitForPath(volOptions.Pool, image, 10, useNBD)
-		if !found {
-			return "", fmt.Errorf("Could not map image %s, Timeout after 10s", imagePath)
-		}
+		devicePath, err = createPath(volOptions, userID, credentials)
 	}
 
+	return devicePath, err
+}
+
+func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (string, error) {
+	image := volOpt.VolName
+	imagePath := fmt.Sprintf("%s/%s", volOpt.Pool, image)
+
+	mon, err := getMon(volOpt, creds)
+	if err != nil {
+		return "", err
+	}
+
+	glog.V(5).Infof("rbd: map mon %s", mon)
+	key, err := getRBDKey(userID, creds)
+	if err != nil {
+		return "", err
+	}
+
+	useNBD := false
+	cmdName := rbd
+	if volOpt.Mounter == rbdTonbd && hasNBD {
+		useNBD = true
+		cmdName = rbdTonbd
+	}
+
+	output, err := execCommand(cmdName, []string{
+		"map", imagePath, "--id", userID, "-m", mon, "--key=" + key})
+	if err != nil {
+		glog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
+		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
+	}
+	devicePath, found := waitForPath(volOpt.Pool, image, 10, useNBD)
+	if !found {
+		return "", fmt.Errorf("Could not map image %s, Timeout after 10s", imagePath)
+	}
 	return devicePath, nil
+}
+
+func waitForrbdImage(backoff wait.Backoff, volOptions *rbdVolume, userID string, credentials map[string]string) error {
+	image := volOptions.VolName
+	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
+
+	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
+		used, rbdOutput, err := rbdStatus(volOptions, userID, credentials)
+		if err != nil {
+			return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
+		}
+		return !used, nil
+	})
+	// return error if rbd image has not become available for the specified timeout
+	if err == wait.ErrWaitTimeout {
+		return fmt.Errorf("rbd image %s is still being used", imagePath)
+	}
+	// return error if any other errors were encountered during waiting for the image to become available
+	return err
 }
 
 func detachRBDDevice(devicePath string) error {

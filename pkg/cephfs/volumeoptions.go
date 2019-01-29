@@ -95,14 +95,14 @@ func validateMounter(m string) error {
 
 func newVolumeOptions(volOptions, secret map[string]string) (*volumeOptions, error) {
 	var (
-		opts                volumeOptions
-		provisionVolumeBool string
-		err                 error
+		opts volumeOptions
+		err  error
 	)
 
 	// extract mon from secret first
 	if err = extractOption(&opts.MonValueFromSecret, "monValueFromSecret", volOptions); err == nil {
-		if mon, err := getMonValFromSecret(secret); err == nil && len(mon) > 0 {
+		mon := ""
+		if mon, err = getMonValFromSecret(secret); err == nil && len(mon) > 0 {
 			opts.Monitors = mon
 		}
 	}
@@ -112,30 +112,44 @@ func newVolumeOptions(volOptions, secret map[string]string) (*volumeOptions, err
 			return nil, fmt.Errorf("either monitors or monValueFromSecret should be set")
 		}
 	}
-	if err = extractOption(&provisionVolumeBool, "provisionVolume", volOptions); err != nil {
+
+	if err = extractNewVolOpt(&opts, volOptions); err != nil {
 		return nil, err
 	}
-
-	if opts.ProvisionVolume, err = strconv.ParseBool(provisionVolumeBool); err != nil {
-		return nil, fmt.Errorf("Failed to parse provisionVolume: %v", err)
-	}
-
-	if opts.ProvisionVolume {
-		if err = extractOption(&opts.Pool, "pool", volOptions); err != nil {
-			return nil, err
-		}
-	} else {
-		if err = extractOption(&opts.RootPath, "rootPath", volOptions); err != nil {
-			return nil, err
-		}
-	}
-
-	// This field is optional, don't check for its presence
-	extractOption(&opts.Mounter, "mounter", volOptions)
 
 	if err = opts.validate(); err != nil {
 		return nil, err
 	}
 
 	return &opts, nil
+}
+
+func extractNewVolOpt(opts *volumeOptions, volOpt map[string]string) error {
+	var (
+		provisionVolumeBool string
+		err                 error
+	)
+	if err = extractOption(&provisionVolumeBool, "provisionVolume", volOpt); err != nil {
+		return err
+	}
+
+	if opts.ProvisionVolume, err = strconv.ParseBool(provisionVolumeBool); err != nil {
+		return fmt.Errorf("Failed to parse provisionVolume: %v", err)
+	}
+
+	if opts.ProvisionVolume {
+		if err = extractOption(&opts.Pool, "pool", volOpt); err != nil {
+			return err
+		}
+	} else {
+		if err = extractOption(&opts.RootPath, "rootPath", volOpt); err != nil {
+			return err
+		}
+	}
+
+	// This field is optional, don't check for its presence
+	// nolint
+	//  (skip errcheck  and gosec as this is optional)
+	extractOption(&opts.Mounter, "mounter", volOpt)
+	return nil
 }

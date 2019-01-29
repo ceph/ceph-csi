@@ -26,10 +26,13 @@ import (
 )
 
 const (
+	// PluginFolder defines the location of ceph plugin
 	PluginFolder = "/var/lib/kubelet/plugins/csi-cephfsplugin"
-	Version      = "1.0.0"
+	// version of ceph driver
+	version = "1.0.0"
 )
 
+// Driver contains the default identity,node and controller struct
 type Driver struct {
 	cd *csicommon.CSIDriver
 
@@ -39,19 +42,23 @@ type Driver struct {
 }
 
 var (
+	// DefaultVolumeMounter for mounting volumes
 	DefaultVolumeMounter string
 )
 
+// NewDriver returns new ceph driver
 func NewDriver() *Driver {
 	return &Driver{}
 }
 
+// NewIdentityServer initialize a identity server for ceph CSI driver
 func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
 	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
+// NewControllerServer initialize a controller server for ceph CSI driver
 func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
 	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
@@ -59,14 +66,17 @@ func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersis
 	}
 }
 
+// NewNodeServer initialize a node server for ceph CSI driver.
 func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
 	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
 	}
 }
 
+// Run start a non-blocking grpc controller,node and identityserver for
+// ceph CSI driver which can serve multiple parallel requests
 func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cachePersister util.CachePersister) {
-	glog.Infof("Driver: %v version: %v", driverName, Version)
+	glog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Configuration
 
@@ -91,7 +101,7 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cacheP
 
 	// Initialize default library driver
 
-	fs.cd = csicommon.NewCSIDriver(driverName, Version, nodeID)
+	fs.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
 	if fs.cd == nil {
 		glog.Fatalln("Failed to initialize CSI driver")
 	}

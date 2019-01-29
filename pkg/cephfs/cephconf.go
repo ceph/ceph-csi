@@ -21,6 +21,8 @@ import (
 	"os"
 	"path"
 	"text/template"
+
+	"github.com/golang/glog"
 )
 
 const cephConfig = `[global]
@@ -37,13 +39,13 @@ const cephKeyring = `[client.{{.UserID}}]
 key = {{.Key}}
 `
 
-const cephSecret = `{{.Key}}`
+const cephSecret = `{{.Key}}` // #nosec
 
 const (
 	cephConfigRoot         = "/etc/ceph"
 	cephConfigFileNameFmt  = "ceph.share.%s.conf"
 	cephKeyringFileNameFmt = "ceph.share.%s.client.%s.keyring"
-	cephSecretFileNameFmt  = "ceph.share.%s.client.%s.secret"
+	cephSecretFileNameFmt  = "ceph.share.%s.client.%s.secret" // #nosec
 )
 
 var (
@@ -74,6 +76,7 @@ type cephConfigData struct {
 }
 
 func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, data interface{}) error {
+	// #nosec
 	if err := os.MkdirAll(cephConfigRoot, 0755); err != nil {
 		return err
 	}
@@ -86,7 +89,11 @@ func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, dat
 		return err
 	}
 
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			glog.Errorf("failed to close file %s with error %s", f.Name(), err)
+		}
+	}()
 
 	return t.Execute(f, data)
 }

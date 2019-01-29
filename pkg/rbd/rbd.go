@@ -35,6 +35,7 @@ const (
 	rbdDefaultUserID  = rbdDefaultAdminID
 )
 
+// Driver contains the default identity,node and controller struct
 type Driver struct {
 	cd *csicommon.CSIDriver
 
@@ -47,16 +48,19 @@ var (
 	version = "1.0.0"
 )
 
-func GetDriver() *Driver {
+// NewDriver returns new rbd driver
+func NewDriver() *Driver {
 	return &Driver{}
 }
 
+// NewIdentityServer initialize a identity server for rbd CSI driver
 func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
 	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
+// NewControllerServer initialize a controller server for rbd CSI driver
 func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
 	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
@@ -64,6 +68,7 @@ func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersis
 	}
 }
 
+// NewNodeServer initialize a node server for rbd CSI driver.
 func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, error) {
 	mounter := mount.New("")
 	if containerized {
@@ -79,6 +84,8 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 	}, nil
 }
 
+// Run start a non-blocking grpc controller,node and identityserver for
+// rbd CSI driver which can serve multiple parallel requests
 func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
 	var err error
 	glog.Infof("Driver: %v version: %v", driverName, version)
@@ -105,7 +112,10 @@ func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, ca
 	}
 
 	r.cs = NewControllerServer(r.cd, cachePersister)
-	r.cs.LoadExDataFromMetadataStore()
+
+	if err = r.cs.LoadExDataFromMetadataStore(); err != nil {
+		glog.Fatalf("failed to load metadata from store, err %v\n", err)
+	}
 
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(endpoint, r.ids, r.cs, r.ns)

@@ -7,15 +7,17 @@ branches:
     - master
     - csi-v1.0
 
-go: 1.10.x
+go: 1.11.x
+
+install:
+  - curl -L https://git.io/vp6lP | sh
 
 before_script:
   - GO_FILES=$(find . -iname '*.go' -type f | grep -v /vendor/)
-  - go get -u golang.org/x/lint/golint #go get github.com/golang/lint/golint
 
 script:
+  - gometalinter --deadline=10m -j 4  --enable=megacheck --enable=misspell  --vendor ./...
   - test -z $(gofmt -s -l $GO_FILES)
-  - go vet -v $(go list ./... | grep -v /vendor/)
   - make rbdplugin
   - make cephfsplugin
 

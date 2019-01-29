@@ -29,6 +29,8 @@ import (
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
+// NodeServer struct of ceph CSI driver with supported methods of CSI
+// node server spec.
 type NodeServer struct {
 	*csicommon.DefaultNodeServer
 }
@@ -77,6 +79,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 	return userCr, nil
 }
 
+// NodeStageVolume mounts the volume to a staging path on the node.
 func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	if err := validateNodeStageVolumeRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -125,23 +128,8 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	// It's not, mount now
-
-	cr, err := getCredentialsForVolume(volOptions, volID, req)
-	if err != nil {
-		glog.Errorf("failed to get ceph credentials for volume %s: %v", volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	m, err := newMounter(volOptions)
-	if err != nil {
-		glog.Errorf("failed to create mounter for volume %s: %v", volID, err)
-	}
-
-	glog.V(4).Infof("cephfs: mounting volume %s with %s", volID, m.name())
-
-	if err = m.mount(stagingTargetPath, cr, volOptions, volID); err != nil {
-		glog.Errorf("failed to mount volume %s: %v", volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
+	if err = ns.mount(volOptions, req); err != nil {
+		return nil, err
 	}
 
 	glog.Infof("cephfs: successfully mounted volume %s to %s", volID, stagingTargetPath)
@@ -149,6 +137,33 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
+func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) error {
+	stagingTargetPath := req.GetStagingTargetPath()
+	volID := volumeID(req.GetVolumeId())
+
+	cr, err := getCredentialsForVolume(volOptions, volID, req)
+	if err != nil {
+		glog.Errorf("failed to get ceph credentials for volume %s: %v", volID, err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	m, err := newMounter(volOptions)
+	if err != nil {
+		glog.Errorf("failed to create mounter for volume %s: %v", volID, err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	glog.V(4).Infof("cephfs: mounting volume %s with %s", volID, m.name())
+
+	if err = m.mount(stagingTargetPath, cr, volOptions, volID); err != nil {
+		glog.Errorf("failed to mount volume %s: %v", volID, err)
+		return status.Error(codes.Internal, err.Error())
+	}
+	return nil
+}
+
+// NodePublishVolume mounts the volume mounted to the staging path to the target
+// path
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	if err := validateNodePublishVolumeRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -190,44 +205,53 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
+// NodeUnpublishVolume unmounts the volume from the target path
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
-	if err := validateNodeUnpublishVolumeRequest(req); err != nil {
+	var err error
+	if err = validateNodeUnpublishVolumeRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	targetPath := req.GetTargetPath()
 
 	// Unmount the bind-mount
-	if err := unmountVolume(targetPath); err != nil {
+	if err = unmountVolume(targetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	os.Remove(targetPath)
+	if err = os.Remove(targetPath); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
 	glog.Infof("cephfs: successfully unbinded volume %s from %s", req.GetVolumeId(), targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
+// NodeUnstageVolume unstages the volume from the staging path
 func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-	if err := validateNodeUnstageVolumeRequest(req); err != nil {
+	var err error
+	if err = validateNodeUnstageVolumeRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	stagingTargetPath := req.GetStagingTargetPath()
 
 	// Unmount the volume
-	if err := unmountVolume(stagingTargetPath); err != nil {
+	if err = unmountVolume(stagingTargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	os.Remove(stagingTargetPath)
+	if err = os.Remove(stagingTargetPath); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
 	glog.Infof("cephfs: successfully umounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
+// NodeGetCapabilities returns the supported capabilities of the node server
 func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
@@ -240,8 +264,4 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 			},
 		},
 	}, nil
-}
-
-func (ns *NodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	return ns.DefaultNodeServer.NodeGetInfo(ctx, req)
 }

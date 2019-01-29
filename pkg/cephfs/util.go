@@ -40,7 +40,7 @@ func makeVolumeID(volName string) volumeID {
 func execCommand(command string, args ...string) ([]byte, error) {
 	glog.V(4).Infof("cephfs: EXEC %s %s", command, args)
 
-	cmd := exec.Command(command, args...)
+	cmd := exec.Command(command, args...) // #nosec
 	return cmd.CombinedOutput()
 }
 
