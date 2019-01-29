@@ -128,28 +128,38 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	// It's not, mount now
+	if err = ns.mount(volOptions, req); err != nil {
+		return nil, err
+	}
+
+	glog.Infof("cephfs: successfully mounted volume %s to %s", volID, stagingTargetPath)
+
+	return &csi.NodeStageVolumeResponse{}, nil
+}
+
+func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) error {
+	stagingTargetPath := req.GetStagingTargetPath()
+	volID := volumeID(req.GetVolumeId())
 
 	cr, err := getCredentialsForVolume(volOptions, volID, req)
 	if err != nil {
 		glog.Errorf("failed to get ceph credentials for volume %s: %v", volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	m, err := newMounter(volOptions)
 	if err != nil {
 		glog.Errorf("failed to create mounter for volume %s: %v", volID, err)
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	glog.V(4).Infof("cephfs: mounting volume %s with %s", volID, m.name())
 
 	if err = m.mount(stagingTargetPath, cr, volOptions, volID); err != nil {
 		glog.Errorf("failed to mount volume %s: %v", volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
-
-	glog.Infof("cephfs: successfully mounted volume %s to %s", volID, stagingTargetPath)
-
-	return &csi.NodeStageVolumeResponse{}, nil
+	return nil
 }
 
 // NodePublishVolume mounts the volume mounted to the staging path to the target

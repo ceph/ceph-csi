@@ -36,6 +36,8 @@ type NodeCache struct {
 
 var cacheDir = "controller"
 
+var errDec = errors.New("file not found")
+
 // EnsureCacheDirectory creates cache directory if not present
 func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 	fullPath := path.Join(nc.BasePath, cacheDir)
@@ -58,34 +60,46 @@ func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) e
 	if err != nil {
 		return errors.Wrapf(err, "node-cache: failed to read %s folder", nc.BasePath)
 	}
-
+	path := path.Join(nc.BasePath, cacheDir)
 	for _, file := range files {
-		match, err := regexp.MatchString(pattern, file.Name())
-		if err != nil || !match {
+		err = decodeObj(path, pattern, file, destObj)
+		if err == errDec {
 			continue
-		}
-		if !strings.HasSuffix(file.Name(), ".json") {
-			continue
-		}
-		// #nosec
-		fp, err := os.Open(path.Join(nc.BasePath, cacheDir, file.Name()))
-		if err != nil {
-			glog.Infof("node-cache: open file: %s err %v", file.Name(), err)
-			continue
-		}
-		decoder := json.NewDecoder(fp)
-		if err = decoder.Decode(destObj); err != nil {
-			if err = fp.Close(); err != nil {
-				return errors.Wrapf(err, "failed to close file %s", file.Name())
-
+		} else if err == nil {
+			if err = f(strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))); err != nil {
+				return err
 			}
-			return errors.Wrapf(err, "node-cache: couldn't decode file %s", file.Name())
 		}
-		if err := f(strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))); err != nil {
-			return err
-		}
+		return err
+
 	}
 	return nil
+}
+
+func decodeObj(filepath, pattern string, file os.FileInfo, destObj interface{}) error {
+	match, err := regexp.MatchString(pattern, file.Name())
+	if err != nil || !match {
+		return errDec
+	}
+	if !strings.HasSuffix(file.Name(), ".json") {
+		return errDec
+	}
+	// #nosec
+	fp, err := os.Open(path.Join(filepath, file.Name()))
+	if err != nil {
+		glog.Infof("node-cache: open file: %s err %v", file.Name(), err)
+		return errDec
+	}
+	decoder := json.NewDecoder(fp)
+	if err = decoder.Decode(destObj); err != nil {
+		if err = fp.Close(); err != nil {
+			return errors.Wrapf(err, "failed to close file %s", file.Name())
+
+		}
+		return errors.Wrapf(err, "node-cache: couldn't decode file %s", file.Name())
+	}
+	return nil
+
 }
 
 // Create creates the metadata file in cache directory with identifier name

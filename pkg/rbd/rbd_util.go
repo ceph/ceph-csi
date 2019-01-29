@@ -259,6 +259,12 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 		}
 
 	}
+	getCredsFromVol(rbdVol, volOptions)
+	return rbdVol, nil
+}
+
+func getCredsFromVol(rbdVol *rbdVolume, volOptions map[string]string) {
+	var ok bool
 	rbdVol.AdminID, ok = volOptions["adminid"]
 	if !ok {
 		rbdVol.AdminID = rbdDefaultAdminID
@@ -271,9 +277,7 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 	if !ok {
 		rbdVol.Mounter = rbdDefaultMounter
 	}
-	return rbdVol, nil
 }
-
 func getRBDSnapshotOptions(snapOptions map[string]string) (*rbdSnapshot, error) {
 	var ok bool
 	rbdSnap := &rbdSnapshot{}

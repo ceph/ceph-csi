@@ -87,6 +87,33 @@ func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 	return nil
 }
 
+func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
+	// TODO (sbezverk) Last check for not exceeding total storage capacity
+
+	rbdVol, err := getRBDVolumeOptions(req.GetParameters())
+	if err != nil {
+		return nil, err
+	}
+
+	// Generating Volume Name and Volume ID, as according to CSI spec they MUST be different
+	volName := req.GetName()
+	uniqueID := uuid.NewUUID().String()
+	if len(volName) == 0 {
+		volName = rbdVol.Pool + "-dynamic-pvc-" + uniqueID
+	}
+	rbdVol.VolName = volName
+	volumeID := "csi-rbd-vol-" + uniqueID
+	rbdVol.VolID = volumeID
+	// Volume Size - Default is 1 GiB
+	volSizeBytes := int64(oneGB)
+	if req.GetCapacityRange() != nil {
+		volSizeBytes = req.GetCapacityRange().GetRequiredBytes()
+	}
+	rbdVol.VolSize = volSizeBytes
+
+	return rbdVol, nil
+}
+
 // CreateVolume creates the volume in backend and store the volume metadata
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 
@@ -120,36 +147,19 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Errorf(codes.AlreadyExists, "Volume with the same name: %s but with different size already exist", req.GetName())
 	}
 
-	// TODO (sbezverk) Last check for not exceeding total storage capacity
-
-	rbdVol, err := getRBDVolumeOptions(req.GetParameters())
+	rbdVol, err := parseVolCreateRequest(req)
 	if err != nil {
 		return nil, err
 	}
 
-	// Generating Volume Name and Volume ID, as according to CSI spec they MUST be different
-	volName := req.GetName()
-	uniqueID := uuid.NewUUID().String()
-	if len(volName) == 0 {
-		volName = rbdVol.Pool + "-dynamic-pvc-" + uniqueID
-	}
-	rbdVol.VolName = volName
-	volumeID := "csi-rbd-vol-" + uniqueID
-	rbdVol.VolID = volumeID
-	// Volume Size - Default is 1 GiB
-	volSizeBytes := int64(oneGB)
-	if req.GetCapacityRange() != nil {
-		volSizeBytes = req.GetCapacityRange().GetRequiredBytes()
-	}
-	rbdVol.VolSize = volSizeBytes
-	volSizeGB := int(volSizeBytes / 1024 / 1024 / 1024)
+	volSizeGB := int(rbdVol.VolSize / 1024 / 1024 / 1024)
 
 	// Check if there is already RBD image with requested name
 	err = cs.checkrbdStatus(rbdVol, req, volSizeGB)
 	if err != nil {
 		return nil, err
 	}
-	if createErr := cs.MetadataStore.Create(volumeID, rbdVol); createErr != nil {
+	if createErr := cs.MetadataStore.Create(rbdVol.VolID, rbdVol); createErr != nil {
 		glog.Warningf("failed to store volume metadata with error: %v", err)
 		if err = deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
 			glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
@@ -158,11 +168,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, createErr
 	}
 
-	rbdVolumes[volumeID] = rbdVol
+	rbdVolumes[rbdVol.VolID] = rbdVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			VolumeId:      volumeID,
-			CapacityBytes: volSizeBytes,
+			VolumeId:      rbdVol.VolID,
+			CapacityBytes: rbdVol.VolSize,
 			VolumeContext: req.GetParameters(),
 		},
 	}, nil

@@ -215,11 +215,20 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	if err = ns.unmount(targetPath, devicePath, cnt); err != nil {
+		return nil, err
+	}
+
+	return &csi.NodeUnpublishVolumeResponse{}, nil
+}
+
+func (ns *NodeServer) unmount(targetPath, devicePath string, cnt int) error {
+	var err error
 	// Bind mounted device needs to be resolved by using resolveBindMountedBlockDevice
 	if devicePath == "devtmpfs" {
 		devicePath, err = resolveBindMountedBlockDevice(targetPath)
 		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+			return status.Error(codes.Internal, err.Error())
 		}
 		glog.V(4).Infof("NodeUnpublishVolume: devicePath: %s, (original)cnt: %d\n", devicePath, cnt)
 		// cnt for GetDeviceNameFromMount is broken for bind mouted device,
@@ -235,30 +244,27 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	err = ns.mounter.Unmount(targetPath)
 	if err != nil {
 		glog.V(3).Infof("failed to unmount targetPath: %s with error: %v", targetPath, err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	cnt--
 	if cnt != 0 {
 		// TODO should this be fixed not to success, so that driver can retry unmounting?
-		return &csi.NodeUnpublishVolumeResponse{}, nil
+		return nil
 	}
 
 	// Unmapping rbd device
 	if err = detachRBDDevice(devicePath); err != nil {
 		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", devicePath, err)
-		return nil, err
+		return err
 	}
 
 	// Remove targetPath
 	if err = os.RemoveAll(targetPath); err != nil {
 		glog.V(3).Infof("failed to remove targetPath: %s with error: %v", targetPath, err)
-		return nil, err
 	}
-
-	return &csi.NodeUnpublishVolumeResponse{}, nil
+	return err
 }
-
 func resolveBindMountedBlockDevice(mountPath string) (string, error) {
 	// #nosec
 	cmd := exec.Command("findmnt", "-n", "-o", "SOURCE", "--first-only", "--target", mountPath)
@@ -275,12 +281,13 @@ func parseFindMntResolveSource(out string) (string, error) {
 	// cut trailing newline
 	out = strings.TrimSuffix(out, "\n")
 	// Check if out is a mounted device
-	reMnt := regexp.MustCompile(`^(/[^/]+(?:/[^/]*)*)$`)
+	reMnt := regexp.MustCompile("^(/[^/]+(?:/[^/]*)*)$")
 	if match := reMnt.FindStringSubmatch(out); match != nil {
 		return match[1], nil
 	}
 	// Check if out is a block device
-	reBlk := regexp.MustCompile(`^devtmpfs\\[(/[^/]+(?:/[^/]*)*)\\]$`)
+	// nolint
+	reBlk := regexp.MustCompile("^devtmpfs\\[(/[^/]+(?:/[^/]*)*)\\]$")
 	if match := reBlk.FindStringSubmatch(out); match != nil {
 		return fmt.Sprintf("/dev%s", match[1]), nil
 	}
