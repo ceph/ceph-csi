@@ -299,7 +299,7 @@ func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (stri
 	}
 	devicePath, found := waitForPath(volOpt.Pool, image, 10, useNBD)
 	if !found {
-		return "", fmt.Errorf("Could not map image %s, Timeout after 10s", imagePath)
+		return "", fmt.Errorf("could not map image %s, Timeout after 10s", imagePath)
 	}
 	return devicePath, nil
 }
