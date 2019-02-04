@@ -23,9 +23,9 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/klog"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -38,7 +38,7 @@ func makeVolumeID(volName string) volumeID {
 }
 
 func execCommand(command string, args ...string) ([]byte, error) {
-	glog.V(4).Infof("cephfs: EXEC %s %s", command, args)
+	klog.V(4).Infof("cephfs: EXEC %s %s", command, args)
 
 	cmd := exec.Command(command, args...) // #nosec
 	return cmd.CombinedOutput()

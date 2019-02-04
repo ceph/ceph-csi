@@ -17,10 +17,10 @@ limitations under the License.
 package cephfs
 
 import (
-	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/klog"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -43,21 +43,21 @@ type controllerCacheEntry struct {
 // CreateVolume creates the volume in backend and store the volume metadata
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
-		glog.Errorf("CreateVolumeRequest validation failed: %v", err)
+		klog.Errorf("CreateVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
 	// Configuration
 	secret := req.GetSecrets()
 	volOptions, err := newVolumeOptions(req.GetParameters(), secret)
 	if err != nil {
-		glog.Errorf("validation of volume options failed: %v", err)
+		klog.Errorf("validation of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	volID := makeVolumeID(req.GetName())
 	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volID}
 	if err = conf.writeToFile(); err != nil {
-		glog.Errorf("failed to write ceph config file to %s: %v", getCephConfPath(volID), err)
+		klog.Errorf("failed to write ceph config file to %s: %v", getCephConfPath(volID), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -71,28 +71,28 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 
 		if err = storeCephCredentials(volID, cr); err != nil {
-			glog.Errorf("failed to store admin credentials for '%s': %v", cr.id, err)
+			klog.Errorf("failed to store admin credentials for '%s': %v", cr.id, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		if err = createVolume(volOptions, cr, volID, req.GetCapacityRange().GetRequiredBytes()); err != nil {
-			glog.Errorf("failed to create volume %s: %v", req.GetName(), err)
+			klog.Errorf("failed to create volume %s: %v", req.GetName(), err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		if _, err = createCephUser(volOptions, cr, volID); err != nil {
-			glog.Errorf("failed to create ceph user for volume %s: %v", req.GetName(), err)
+			klog.Errorf("failed to create ceph user for volume %s: %v", req.GetName(), err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		glog.Infof("cephfs: successfully created volume %s", volID)
+		klog.Infof("cephfs: successfully created volume %s", volID)
 	} else {
-		glog.Infof("cephfs: volume %s is provisioned statically", volID)
+		klog.Infof("cephfs: volume %s is provisioned statically", volID)
 	}
 
 	ce := &controllerCacheEntry{VolOptions: *volOptions, VolumeID: volID}
 	if err := cs.MetadataStore.Create(string(volID), ce); err != nil {
-		glog.Errorf("failed to store a cache entry for volume %s: %v", volID, err)
+		klog.Errorf("failed to store a cache entry for volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -109,7 +109,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 // from store
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(); err != nil {
-		glog.Errorf("DeleteVolumeRequest validation failed: %v", err)
+		klog.Errorf("DeleteVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
 
@@ -126,7 +126,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if !ce.VolOptions.ProvisionVolume {
 		// DeleteVolume() is forbidden for statically provisioned volumes!
 
-		glog.Warningf("volume %s is provisioned statically, aborting delete", volID)
+		klog.Warningf("volume %s is provisioned statically, aborting delete", volID)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 	// mons may have changed since create volume,
@@ -134,7 +134,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	secret := req.GetSecrets()
 	mon := ""
 	if mon, err = getMonValFromSecret(secret); err == nil && len(mon) > 0 {
-		glog.Infof("override old mons [%q] with [%q]", ce.VolOptions.Monitors, mon)
+		klog.Infof("override old mons [%q] with [%q]", ce.VolOptions.Monitors, mon)
 		ce.VolOptions.Monitors = mon
 	}
 
@@ -142,17 +142,17 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	cr, err := getAdminCredentials(secret)
 	if err != nil {
-		glog.Errorf("failed to retrieve admin credentials: %v", err)
+		klog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if err = purgeVolume(volID, cr, &ce.VolOptions); err != nil {
-		glog.Errorf("failed to delete volume %s: %v", volID, err)
+		klog.Errorf("failed to delete volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if err = deleteCephUser(cr, volID); err != nil {
-		glog.Errorf("failed to delete ceph user for volume %s: %v", volID, err)
+		klog.Errorf("failed to delete ceph user for volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -160,7 +160,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	glog.Infof("cephfs: successfully deleted volume %s", volID)
+	klog.Infof("cephfs: successfully deleted volume %s", volID)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
