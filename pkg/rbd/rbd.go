@@ -17,7 +17,7 @@ limitations under the License.
 package rbd
 
 import (
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -88,12 +88,12 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 // rbd CSI driver which can serve multiple parallel requests
 func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
 	var err error
-	glog.Infof("Driver: %v version: %v", driverName, version)
+	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
 	if r.cd == nil {
-		glog.Fatalln("Failed to initialize CSI Driver.")
+		klog.Fatalln("Failed to initialize CSI Driver.")
 	}
 	r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
@@ -108,13 +108,13 @@ func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, ca
 	r.ids = NewIdentityServer(r.cd)
 	r.ns, err = NewNodeServer(r.cd, containerized)
 	if err != nil {
-		glog.Fatalf("failed to start node server, err %v\n", err)
+		klog.Fatalf("failed to start node server, err %v\n", err)
 	}
 
 	r.cs = NewControllerServer(r.cd, cachePersister)
 
 	if err = r.cs.LoadExDataFromMetadataStore(); err != nil {
-		glog.Fatalf("failed to load metadata from store, err %v\n", err)
+		klog.Fatalf("failed to load metadata from store, err %v\n", err)
 	}
 
 	s := csicommon.NewNonBlockingGRPCServer()

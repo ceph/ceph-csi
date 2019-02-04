@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
 )
 
 const (
@@ -64,22 +64,22 @@ func getRbdDevFromImageAndPool(pool string, image string) (string, bool) {
 			// #nosec
 			poolBytes, err := ioutil.ReadFile(poolFile)
 			if err != nil {
-				glog.V(4).Infof("error reading %s: %v", poolFile, err)
+				klog.V(4).Infof("error reading %s: %v", poolFile, err)
 				continue
 			}
 			if strings.TrimSpace(string(poolBytes)) != pool {
-				glog.V(4).Infof("device %s is not %q: %q", name, pool, string(poolBytes))
+				klog.V(4).Infof("device %s is not %q: %q", name, pool, string(poolBytes))
 				continue
 			}
 			imgFile := path.Join(sysPath, name, "name")
 			// #nosec
 			imgBytes, err := ioutil.ReadFile(imgFile)
 			if err != nil {
-				glog.V(4).Infof("error reading %s: %v", imgFile, err)
+				klog.V(4).Infof("error reading %s: %v", imgFile, err)
 				continue
 			}
 			if strings.TrimSpace(string(imgBytes)) != image {
-				glog.V(4).Infof("device %s is not %q: %q", name, image, string(imgBytes))
+				klog.V(4).Infof("device %s is not %q: %q", name, image, string(imgBytes))
 				continue
 			}
 			// Found a match, check if device exists.
@@ -102,7 +102,7 @@ func getMaxNbds() (int, error) {
 		return 0, fmt.Errorf("rbd-nbd: failed to retrieve max_nbds from %s err: %q", maxNbdsPath, err)
 	}
 
-	glog.V(4).Infof("found nbds max parameters file at %s", maxNbdsPath)
+	klog.V(4).Infof("found nbds max parameters file at %s", maxNbdsPath)
 
 	maxNbdBytes, err := ioutil.ReadFile(maxNbdsPath)
 	if err != nil {
@@ -114,7 +114,7 @@ func getMaxNbds() (int, error) {
 		return 0, fmt.Errorf("rbd-nbd: failed to read max_nbds err: %q", err)
 	}
 
-	glog.V(4).Infof("rbd-nbd: max_nbds: %d", maxNbds)
+	klog.V(4).Infof("rbd-nbd: max_nbds: %d", maxNbds)
 	return maxNbds, nil
 }
 
@@ -131,7 +131,7 @@ func getNbdDevFromImageAndPool(pool string, image string) (string, bool) {
 
 	maxNbds, maxNbdsErr := getMaxNbds()
 	if maxNbdsErr != nil {
-		glog.V(4).Infof("error reading nbds_max %v", maxNbdsErr)
+		klog.V(4).Infof("error reading nbds_max %v", maxNbdsErr)
 		return "", false
 	}
 
@@ -150,20 +150,20 @@ func getnbdDevicePath(nbdPath, imgPath string, count int) (string, error) {
 
 	_, err := os.Lstat(nbdPath)
 	if err != nil {
-		glog.V(4).Infof("error reading nbd info directory %s: %v", nbdPath, err)
+		klog.V(4).Infof("error reading nbd info directory %s: %v", nbdPath, err)
 		return "", err
 	}
 	// #nosec
 	pidBytes, err := ioutil.ReadFile(path.Join(nbdPath, "pid"))
 	if err != nil {
-		glog.V(5).Infof("did not find valid pid file in dir %s: %v", nbdPath, err)
+		klog.V(5).Infof("did not find valid pid file in dir %s: %v", nbdPath, err)
 		return "", err
 	}
 	cmdlineFileName := path.Join(hostRootFS, "/proc", strings.TrimSpace(string(pidBytes)), "cmdline")
 	// #nosec
 	rawCmdline, err := ioutil.ReadFile(cmdlineFileName)
 	if err != nil {
-		glog.V(4).Infof("failed to read cmdline file %s: %v", cmdlineFileName, err)
+		klog.V(4).Infof("failed to read cmdline file %s: %v", cmdlineFileName, err)
 		return "", err
 	}
 	cmdlineArgs := strings.FieldsFunc(string(rawCmdline), func(r rune) bool {
@@ -173,18 +173,18 @@ func getnbdDevicePath(nbdPath, imgPath string, count int) (string, error) {
 	// Only accepted pattern of cmdline is from execRbdMap:
 	// rbd-nbd map pool/image ...
 	if len(cmdlineArgs) < 3 || cmdlineArgs[0] != rbdTonbd || cmdlineArgs[1] != "map" {
-		glog.V(4).Infof("nbd device %s is not used by rbd", nbdPath)
+		klog.V(4).Infof("nbd device %s is not used by rbd", nbdPath)
 		return "", err
 
 	}
 	if cmdlineArgs[2] != imgPath {
-		glog.V(4).Infof("rbd-nbd device %s did not match expected image path: %s with path found: %s",
+		klog.V(4).Infof("rbd-nbd device %s did not match expected image path: %s with path found: %s",
 			nbdPath, imgPath, cmdlineArgs[2])
 		return "", err
 	}
 	devicePath := path.Join("/dev", "nbd"+strconv.Itoa(count))
 	if _, err := os.Lstat(devicePath); err != nil {
-		glog.Warningf("Stat device %s for imgpath %s failed %v", devicePath, imgPath, err)
+		klog.Warningf("Stat device %s for imgpath %s failed %v", devicePath, imgPath, err)
 		return "", err
 	}
 	return devicePath, nil
@@ -213,14 +213,14 @@ func waitForPath(pool, image string, maxRetries int, useNbdDriver bool) (string,
 func checkRbdNbdTools() bool {
 	_, err := execCommand("modprobe", []string{"nbd"})
 	if err != nil {
-		glog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err)
+		klog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err)
 		return false
 	}
 	if _, err := execCommand(rbdTonbd, []string{"--version"}); err != nil {
-		glog.V(3).Infof("rbd-nbd: running rbd-nbd --version failed with error %v", err)
+		klog.V(3).Infof("rbd-nbd: running rbd-nbd --version failed with error %v", err)
 		return false
 	}
-	glog.V(3).Infof("rbd-nbd tools were found.")
+	klog.V(3).Infof("rbd-nbd tools were found.")
 	return true
 }
 
@@ -243,13 +243,13 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 
 		defer func() {
 			if err = attachdetachMutex.UnlockKey(imagePath); err != nil {
-				glog.Warningf("failed to unlock mutex imagepath:%s %v", imagePath, err)
+				klog.Warningf("failed to unlock mutex imagepath:%s %v", imagePath, err)
 			}
 		}()
 
 		_, err = execCommand("modprobe", []string{moduleName})
 		if err != nil {
-			glog.Warningf("rbd: failed to load rbd kernel module:%v", err)
+			klog.Warningf("rbd: failed to load rbd kernel module:%v", err)
 			return "", err
 		}
 
@@ -278,7 +278,7 @@ func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (stri
 		return "", err
 	}
 
-	glog.V(5).Infof("rbd: map mon %s", mon)
+	klog.V(5).Infof("rbd: map mon %s", mon)
 	key, err := getRBDKey(userID, creds)
 	if err != nil {
 		return "", err
@@ -294,7 +294,7 @@ func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (stri
 	output, err := execCommand(cmdName, []string{
 		"map", imagePath, "--id", userID, "-m", mon, "--key=" + key})
 	if err != nil {
-		glog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
+		klog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
 		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
 	}
 	devicePath, found := waitForPath(volOpt.Pool, image, 10, useNBD)
@@ -327,7 +327,7 @@ func detachRBDDevice(devicePath string) error {
 	var err error
 	var output []byte
 
-	glog.V(3).Infof("rbd: unmap device %s", devicePath)
+	klog.V(3).Infof("rbd: unmap device %s", devicePath)
 
 	cmdName := rbd
 	if strings.HasPrefix(devicePath, "/dev/nbd") {
