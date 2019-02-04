@@ -23,7 +23,7 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/cephfs"
 	"github.com/ceph/ceph-csi/pkg/util"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 func init() {
@@ -42,21 +42,22 @@ var (
 )
 
 func main() {
+	klog.InitFlags(nil)
 	flag.Parse()
 
 	if err := createPersistentStorage(path.Join(cephfs.PluginFolder, "controller")); err != nil {
-		glog.Errorf("failed to create persistent storage for controller: %v", err)
+		klog.Errorf("failed to create persistent storage for controller: %v", err)
 		os.Exit(1)
 	}
 
 	if err := createPersistentStorage(path.Join(cephfs.PluginFolder, "node")); err != nil {
-		glog.Errorf("failed to create persistent storage for node: %v", err)
+		klog.Errorf("failed to create persistent storage for node: %v", err)
 		os.Exit(1)
 	}
 
 	cp, err := util.NewCachePersister(*metadataStorage, *driverName)
 	if err != nil {
-		glog.Errorf("failed to define cache persistence method: %v", err)
+		klog.Errorf("failed to define cache persistence method: %v", err)
 		os.Exit(1)
 	}
 
