@@ -24,10 +24,10 @@ parameters:
     imageFeatures: layering
     
     # The secrets have to contain Ceph admin credentials.
-    csiProvisionerSecretName: csi-rbd-secret
-    csiProvisionerSecretNamespace: default
-    csiNodePublishSecretName: csi-rbd-secret
-    csiNodePublishSecretNamespace: default
+    csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
+    csi.storage.k8s.io/provisioner-secret-namespace: default
+    csi.storage.k8s.io/node-publish-secret-name: csi-rbd-secret
+    csi.storage.k8s.io/node-publish-secret-namespace: default
 
     # Ceph users for operating RBD
     adminid: admin
