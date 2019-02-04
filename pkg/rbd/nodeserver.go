@@ -23,8 +23,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang/glog"
 	"golang.org/x/net/context"
+	"k8s.io/klog"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -63,7 +63,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	defer func() {
 		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
-			glog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
+			klog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
 		}
 	}()
 
@@ -92,7 +92,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, err
 	}
-	glog.V(4).Infof("rbd image: %s/%s was successfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
+	klog.V(4).Infof("rbd image: %s/%s was successfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
 
 	// Publish Path
 	err = ns.mountVolume(req, devicePath)
@@ -130,7 +130,7 @@ func (ns *NodeServer) mountVolume(req *csi.NodePublishVolumeRequest, devicePath 
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	targetPath := req.GetTargetPath()
 
-	glog.V(4).Infof("target %v\nisBlock %v\nfstype %v\ndevice %v\nreadonly %v\nattributes %v\n mountflags %v\n",
+	klog.V(4).Infof("target %v\nisBlock %v\nfstype %v\ndevice %v\nreadonly %v\nattributes %v\n mountflags %v\n",
 		targetPath, isBlock, fsType, devicePath, readOnly, attrib, mountFlags)
 
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
@@ -162,11 +162,11 @@ func (ns *NodeServer) createTargetPath(targetPath string, isBlock bool) (bool, e
 				// #nosec
 				targetPathFile, e := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, 0750)
 				if e != nil {
-					glog.V(4).Infof("Failed to create targetPath:%s with error: %v", targetPath, err)
+					klog.V(4).Infof("Failed to create targetPath:%s with error: %v", targetPath, err)
 					return notMnt, status.Error(codes.Internal, e.Error())
 				}
 				if err = targetPathFile.Close(); err != nil {
-					glog.V(4).Infof("Failed to close targetPath:%s with error: %v", targetPath, err)
+					klog.V(4).Infof("Failed to close targetPath:%s with error: %v", targetPath, err)
 					return notMnt, status.Error(codes.Internal, err.Error())
 				}
 			} else {
@@ -191,7 +191,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 
 	defer func() {
 		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
-			glog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
+			klog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
 		}
 	}()
 
@@ -199,7 +199,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if err != nil {
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
-			glog.V(4).Infof("targetPath: %s has already been deleted", targetPath)
+			klog.V(4).Infof("targetPath: %s has already been deleted", targetPath)
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
 		return nil, status.Error(codes.NotFound, err.Error())
@@ -230,7 +230,7 @@ func (ns *NodeServer) unmount(targetPath, devicePath string, cnt int) error {
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
-		glog.V(4).Infof("NodeUnpublishVolume: devicePath: %s, (original)cnt: %d\n", devicePath, cnt)
+		klog.V(4).Infof("NodeUnpublishVolume: devicePath: %s, (original)cnt: %d\n", devicePath, cnt)
 		// cnt for GetDeviceNameFromMount is broken for bind mouted device,
 		// it counts total number of mounted "devtmpfs", instead of counting this device.
 		// So, forcibly setting cnt to 1 here.
@@ -238,12 +238,12 @@ func (ns *NodeServer) unmount(targetPath, devicePath string, cnt int) error {
 		cnt = 1
 	}
 
-	glog.V(4).Infof("NodeUnpublishVolume: targetPath: %s, devicePath: %s\n", targetPath, devicePath)
+	klog.V(4).Infof("NodeUnpublishVolume: targetPath: %s, devicePath: %s\n", targetPath, devicePath)
 
 	// Unmounting the image
 	err = ns.mounter.Unmount(targetPath)
 	if err != nil {
-		glog.V(3).Infof("failed to unmount targetPath: %s with error: %v", targetPath, err)
+		klog.V(3).Infof("failed to unmount targetPath: %s with error: %v", targetPath, err)
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -255,13 +255,13 @@ func (ns *NodeServer) unmount(targetPath, devicePath string, cnt int) error {
 
 	// Unmapping rbd device
 	if err = detachRBDDevice(devicePath); err != nil {
-		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", devicePath, err)
+		klog.V(3).Infof("failed to unmap rbd device: %s with error: %v", devicePath, err)
 		return err
 	}
 
 	// Remove targetPath
 	if err = os.RemoveAll(targetPath); err != nil {
-		glog.V(3).Infof("failed to remove targetPath: %s with error: %v", targetPath, err)
+		klog.V(3).Infof("failed to remove targetPath: %s with error: %v", targetPath, err)
 	}
 	return err
 }
@@ -270,7 +270,7 @@ func resolveBindMountedBlockDevice(mountPath string) (string, error) {
 	cmd := exec.Command("findmnt", "-n", "-o", "SOURCE", "--first-only", "--target", mountPath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		glog.V(2).Infof("Failed findmnt command for path %s: %s %v", mountPath, out, err)
+		klog.V(2).Infof("Failed findmnt command for path %s: %s %v", mountPath, out, err)
 		return "", err
 	}
 	return parseFindMntResolveSource(string(out))

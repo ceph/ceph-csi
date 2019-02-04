@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/keymutex"
 )
 
@@ -127,9 +127,9 @@ func createRBDImage(pOpts *rbdVolume, volSz int, adminID string, credentials map
 		return err
 	}
 	if pOpts.ImageFormat == rbdImageFormat2 {
-		glog.V(4).Infof("rbd: create %s size %s format %s (features: %s) using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, pOpts.ImageFeatures, mon, pOpts.Pool, adminID, key)
+		klog.V(4).Infof("rbd: create %s size %s format %s (features: %s) using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, pOpts.ImageFeatures, mon, pOpts.Pool, adminID, key)
 	} else {
-		glog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, mon, pOpts.Pool, adminID, key)
+		klog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s id %s key %s", image, volSzGB, pOpts.ImageFormat, mon, pOpts.Pool, adminID, key)
 	}
 	args := []string{"create", image, "--size", volSzGB, "--pool", pOpts.Pool, "--id", adminID, "-m", mon, "--key=" + key, "--image-format", pOpts.ImageFormat}
 	if pOpts.ImageFormat == rbdImageFormat2 {
@@ -163,14 +163,14 @@ func rbdStatus(pOpts *rbdVolume, userID string, credentials map[string]string) (
 		return false, "", err
 	}
 
-	glog.V(4).Infof("rbd: status %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, userID, key)
+	klog.V(4).Infof("rbd: status %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, userID, key)
 	args := []string{"status", image, "--pool", pOpts.Pool, "-m", mon, "--id", userID, "--key=" + key}
 	cmd, err = execCommand("rbd", args)
 	output = string(cmd)
 
 	if err, ok := err.(*exec.Error); ok {
 		if err.Err == exec.ErrNotFound {
-			glog.Errorf("rbd cmd not found")
+			klog.Errorf("rbd cmd not found")
 			// fail fast if command not found
 			return false, output, err
 		}
@@ -182,10 +182,10 @@ func rbdStatus(pOpts *rbdVolume, userID string, credentials map[string]string) (
 	}
 
 	if strings.Contains(output, imageWatcherStr) {
-		glog.V(4).Infof("rbd: watchers on %s: %s", image, output)
+		klog.V(4).Infof("rbd: watchers on %s: %s", image, output)
 		return true, output, nil
 	}
-	glog.Warningf("rbd: no watchers on %s", image)
+	klog.Warningf("rbd: no watchers on %s", image)
 	return false, output, nil
 }
 
@@ -198,7 +198,7 @@ func deleteRBDImage(pOpts *rbdVolume, adminID string, credentials map[string]str
 		return err
 	}
 	if found {
-		glog.Info("rbd is still being used ", image)
+		klog.Info("rbd is still being used ", image)
 		return fmt.Errorf("rbd %s is still being used", image)
 	}
 	key, err := getRBDKey(adminID, credentials)
@@ -210,13 +210,13 @@ func deleteRBDImage(pOpts *rbdVolume, adminID string, credentials map[string]str
 		return err
 	}
 
-	glog.V(4).Infof("rbd: rm %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, adminID, key)
+	klog.V(4).Infof("rbd: rm %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, adminID, key)
 	args := []string{"rm", image, "--pool", pOpts.Pool, "--id", adminID, "-m", mon, "--key=" + key}
 	output, err = execCommand("rbd", args)
 	if err == nil {
 		return nil
 	}
-	glog.Errorf("failed to delete rbd image: %v, command output: %s", err, string(output))
+	klog.Errorf("failed to delete rbd image: %v, command output: %s", err, string(output))
 	return err
 }
 
@@ -371,7 +371,7 @@ func protectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]
 		return err
 	}
 
-	glog.V(4).Infof("rbd: snap protect %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, adminID, key)
+	klog.V(4).Infof("rbd: snap protect %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, adminID, key)
 	args := []string{"snap", "protect", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminID, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)
@@ -398,7 +398,7 @@ func createSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("rbd: snap create %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, adminID, key)
+	klog.V(4).Infof("rbd: snap create %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, adminID, key)
 	args := []string{"snap", "create", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminID, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)
@@ -425,7 +425,7 @@ func unprotectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[strin
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("rbd: snap unprotect %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, adminID, key)
+	klog.V(4).Infof("rbd: snap unprotect %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, adminID, key)
 	args := []string{"snap", "unprotect", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminID, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)
@@ -452,7 +452,7 @@ func deleteSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("rbd: snap rm %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, adminID, key)
+	klog.V(4).Infof("rbd: snap rm %s using mon %s, pool %s id %s key %s", image, mon, pOpts.Pool, adminID, key)
 	args := []string{"snap", "rm", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminID, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)
@@ -479,7 +479,7 @@ func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, adminID string
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("rbd: clone %s using mon %s, pool %s id %s key %s", image, mon, pVolOpts.Pool, adminID, key)
+	klog.V(4).Infof("rbd: clone %s using mon %s, pool %s id %s key %s", image, mon, pVolOpts.Pool, adminID, key)
 	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.VolName + "@" + snapID, pVolOpts.Pool + "/" + image, "--id", adminID, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)

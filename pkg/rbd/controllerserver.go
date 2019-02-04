@@ -24,7 +24,6 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/golang/glog"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -33,6 +32,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/klog"
 )
 
 const (
@@ -68,13 +68,13 @@ func (cs *ControllerServer) LoadExDataFromMetadataStore() error {
 		return nil
 	})
 
-	glog.Infof("Loaded %d volumes and %d snapshots from metadata store", len(rbdVolumes), len(rbdSnapshots))
+	klog.Infof("Loaded %d volumes and %d snapshots from metadata store", len(rbdVolumes), len(rbdSnapshots))
 	return nil
 }
 
 func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		glog.V(3).Infof("invalid create volume req: %v", req)
+		klog.V(3).Infof("invalid create volume req: %v", req)
 		return err
 	}
 	// Check sanity of request Name, Volume Capabilities
@@ -123,7 +123,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	volumeNameMutex.LockKey(req.GetName())
 	defer func() {
 		if err := volumeNameMutex.UnlockKey(req.GetName()); err != nil {
-			glog.Warningf("failed to unlock mutex volume:%s %v", req.GetName(), err)
+			klog.Warningf("failed to unlock mutex volume:%s %v", req.GetName(), err)
 		}
 	}()
 
@@ -160,9 +160,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 	if createErr := cs.MetadataStore.Create(rbdVol.VolID, rbdVol); createErr != nil {
-		glog.Warningf("failed to store volume metadata with error: %v", err)
+		klog.Warningf("failed to store volume metadata with error: %v", err)
 		if err = deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
-			glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
+			klog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
 			return nil, err
 		}
 		return nil, createErr
@@ -191,11 +191,11 @@ func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVol
 		} else {
 			err = createRBDImage(rbdVol, volSizeGB, rbdVol.AdminID, req.GetSecrets())
 			if err != nil {
-				glog.Warningf("failed to create volume: %v", err)
+				klog.Warningf("failed to create volume: %v", err)
 				return err
 			}
 
-			glog.V(4).Infof("create volume %s", rbdVol.VolName)
+			klog.V(4).Infof("create volume %s", rbdVol.VolName)
 		}
 	}
 	return nil
@@ -220,7 +220,7 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	if err != nil {
 		return err
 	}
-	glog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
+	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
 	return nil
 }
 
@@ -228,7 +228,7 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 // from store
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		glog.Warningf("invalid delete volume req: %v", req)
+		klog.Warningf("invalid delete volume req: %v", req)
 		return nil, err
 	}
 	// For now the image get unconditionally deleted, but here retention policy can be checked
@@ -237,7 +237,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	defer func() {
 		if err := volumeIDMutex.UnlockKey(volumeID); err != nil {
-			glog.Warningf("failed to unlock mutex volume:%s %v", volumeID, err)
+			klog.Warningf("failed to unlock mutex volume:%s %v", volumeID, err)
 		}
 	}()
 
@@ -251,10 +251,10 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	volName := rbdVol.VolName
 	// Deleting rbd image
-	glog.V(4).Infof("deleting volume %s", volName)
+	klog.V(4).Infof("deleting volume %s", volName)
 	if err := deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
 		// TODO: can we detect "already deleted" situations here and proceed?
-		glog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, volName, err)
+		klog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, volName, err)
 		return nil, err
 	}
 
@@ -302,7 +302,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	defer func() {
 		if err := snapshotNameMutex.UnlockKey(req.GetName()); err != nil {
-			glog.Warningf("failed to unlock mutex snapshot:%s %v", req.GetName(), err)
+			klog.Warningf("failed to unlock mutex snapshot:%s %v", req.GetName(), err)
 		}
 	}()
 
@@ -377,14 +377,14 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 func (cs *ControllerServer) storeSnapMetadata(rbdSnap *rbdSnapshot, secret map[string]string) error {
 	errCreate := cs.MetadataStore.Create(rbdSnap.SnapID, rbdSnap)
 	if errCreate != nil {
-		glog.Warningf("rbd: failed to store snapInfo with error: %v", errCreate)
+		klog.Warningf("rbd: failed to store snapInfo with error: %v", errCreate)
 		// Unprotect snapshot
 		err := unprotectSnapshot(rbdSnap, rbdSnap.AdminID, secret)
 		if err != nil {
 			return status.Errorf(codes.Unknown, "This Snapshot should be removed but failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
 		}
 		// Deleting snapshot
-		glog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
+		klog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
 		if err = deleteSnapshot(rbdSnap, rbdSnap.AdminID, secret); err != nil {
 			return status.Errorf(codes.Unknown, "This Snapshot should be removed but failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
 		}
@@ -394,7 +394,7 @@ func (cs *ControllerServer) storeSnapMetadata(rbdSnap *rbdSnapshot, secret map[s
 
 func (cs *ControllerServer) validateSnapshotReq(req *csi.CreateSnapshotRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
-		glog.Warningf("invalid create snapshot req: %v", req)
+		klog.Warningf("invalid create snapshot req: %v", req)
 		return err
 	}
 
@@ -415,21 +415,21 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]s
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				if status.ExitStatus() == int(syscall.EEXIST) {
-					glog.Warningf("Snapshot with the same name: %s, we return this.", rbdSnap.SnapName)
+					klog.Warningf("Snapshot with the same name: %s, we return this.", rbdSnap.SnapName)
 				} else {
-					glog.Warningf("failed to create snapshot: %v", err)
+					klog.Warningf("failed to create snapshot: %v", err)
 					return err
 				}
 			} else {
-				glog.Warningf("failed to create snapshot: %v", err)
+				klog.Warningf("failed to create snapshot: %v", err)
 				return err
 			}
 		} else {
-			glog.Warningf("failed to create snapshot: %v", err)
+			klog.Warningf("failed to create snapshot: %v", err)
 			return err
 		}
 	} else {
-		glog.V(4).Infof("create snapshot %s", rbdSnap.SnapName)
+		klog.V(4).Infof("create snapshot %s", rbdSnap.SnapName)
 		err = protectSnapshot(rbdSnap, rbdSnap.AdminID, secret)
 
 		if err != nil {
@@ -447,7 +447,7 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]s
 //snapshot metadata from store
 func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
-		glog.Warningf("invalid delete snapshot req: %v", req)
+		klog.Warningf("invalid delete snapshot req: %v", req)
 		return nil, err
 	}
 
@@ -459,7 +459,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	defer func() {
 		if err := snapshotIDMutex.UnlockKey(snapshotID); err != nil {
-			glog.Warningf("failed to unlock mutex snapshot:%s %v", snapshotID, err)
+			klog.Warningf("failed to unlock mutex snapshot:%s %v", snapshotID, err)
 		}
 	}()
 
@@ -475,7 +475,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	// Deleting snapshot
-	glog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
+	klog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
 	if err := deleteSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets()); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
 	}
@@ -492,7 +492,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 // ListSnapshots lists the snapshots in the store
 func (cs *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS); err != nil {
-		glog.Warningf("invalid list snapshot req: %v", req)
+		klog.Warningf("invalid list snapshot req: %v", req)
 		return nil, err
 	}
 
