@@ -17,7 +17,7 @@ limitations under the License.
 package cephfs
 
 import (
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -76,17 +76,17 @@ func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests
 func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cachePersister util.CachePersister) {
-	glog.Infof("Driver: %v version: %v", driverName, version)
+	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Configuration
 
 	if err := loadAvailableMounters(); err != nil {
-		glog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
+		klog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
 	}
 
 	if volumeMounter != "" {
 		if err := validateMounter(volumeMounter); err != nil {
-			glog.Fatalln(err)
+			klog.Fatalln(err)
 		} else {
 			DefaultVolumeMounter = volumeMounter
 		}
@@ -97,13 +97,13 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cacheP
 		DefaultVolumeMounter = availableMounters[0]
 	}
 
-	glog.Infof("cephfs: setting default volume mounter to %s", DefaultVolumeMounter)
+	klog.Infof("cephfs: setting default volume mounter to %s", DefaultVolumeMounter)
 
 	// Initialize default library driver
 
 	fs.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
 	if fs.cd == nil {
-		glog.Fatalln("Failed to initialize CSI driver")
+		klog.Fatalln("Failed to initialize CSI driver")
 	}
 
 	fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
