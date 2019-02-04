@@ -25,10 +25,10 @@ parameters:
   # rootPath: /absolute/path
 
   # The secrets have to contain user and/or Ceph admin credentials.
-  csiProvisionerSecretName: csi-cephfs-secret
-  csiProvisionerSecretNamespace: default
-  csiNodeStageSecretName: csi-cephfs-secret
-  csiNodeStageSecretNamespace: default
+  csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+  csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: default
 
   # (optional) The driver can use either ceph-fuse (fuse) or ceph kernel client (kernel)
   # If omitted, default volume mounter will be used - this is determined by probing for ceph-fuse
