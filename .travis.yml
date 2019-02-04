@@ -15,9 +15,8 @@ env:
 
 install:
   # install gometalinter
-  - >
-    curl -L
-    'https://github.com/alecthomas/gometalinter/blob/v3.0.0/scripts/install.sh'
+  - curl -L
+    "https://raw.githubusercontent.com/alecthomas/gometalinter/"${GO_METALINTER_VERSION}"/scripts/install.sh"
     | bash -s -- -b $GOPATH/bin "${GO_METALINTER_VERSION}"
 
 before_script:
