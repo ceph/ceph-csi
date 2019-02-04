@@ -22,8 +22,8 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
+	"k8s.io/klog"
 
 	"k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -66,19 +66,19 @@ func NewK8sClient() *k8s.Clientset {
 	if cPath != "" {
 		cfg, err = clientcmd.BuildConfigFromFlags("", cPath)
 		if err != nil {
-			glog.Errorf("Failed to get cluster config with error: %v\n", err)
+			klog.Errorf("Failed to get cluster config with error: %v\n", err)
 			os.Exit(1)
 		}
 	} else {
 		cfg, err = rest.InClusterConfig()
 		if err != nil {
-			glog.Errorf("Failed to get cluster config with error: %v\n", err)
+			klog.Errorf("Failed to get cluster config with error: %v\n", err)
 			os.Exit(1)
 		}
 	}
 	client, err := k8s.NewForConfig(cfg)
 	if err != nil {
-		glog.Errorf("Failed to create client with error: %v\n", err)
+		klog.Errorf("Failed to create client with error: %v\n", err)
 		os.Exit(1)
 	}
 	return client
@@ -123,7 +123,7 @@ func (k8scm *K8sCMCache) ForAll(pattern string, destObj interface{}, f ForAllFun
 func (k8scm *K8sCMCache) Create(identifier string, data interface{}) error {
 	cm, err := k8scm.getMetadataCM(identifier)
 	if cm != nil && err == nil {
-		glog.V(4).Infof("k8s-cm-cache: configmap already exists, skipping configmap creation")
+		klog.V(4).Infof("k8s-cm-cache: configmap already exists, skipping configmap creation")
 		return nil
 	}
 	dataJSON, err := json.Marshal(data)
@@ -145,13 +145,13 @@ func (k8scm *K8sCMCache) Create(identifier string, data interface{}) error {
 	_, err = k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Create(cm)
 	if err != nil {
 		if apierrs.IsAlreadyExists(err) {
-			glog.V(4).Infof("k8s-cm-cache: configmap already exists")
+			klog.V(4).Infof("k8s-cm-cache: configmap already exists")
 			return nil
 		}
 		return errors.Wrapf(err, "k8s-cm-cache: couldn't persist %s metadata as configmap", identifier)
 	}
 
-	glog.V(4).Infof("k8s-cm-cache: configmap %s successfully created\n", identifier)
+	klog.V(4).Infof("k8s-cm-cache: configmap %s successfully created\n", identifier)
 	return nil
 }
 
@@ -174,6 +174,6 @@ func (k8scm *K8sCMCache) Delete(identifier string) error {
 	if err != nil {
 		return errors.Wrapf(err, "k8s-cm-cache: couldn't delete metadata configmap %s", identifier)
 	}
-	glog.V(4).Infof("k8s-cm-cache: successfully deleted metadata configmap %s", identifier)
+	klog.V(4).Infof("k8s-cm-cache: successfully deleted metadata configmap %s", identifier)
 	return nil
 }
