@@ -27,9 +27,8 @@ spec:
       serviceAccount: cephfs-csi-provisioner
       containers:
         - name: csi-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v1.0.0
+          image: quay.io/k8scsi/csi-provisioner:canary
           args:
-            - "--provisioner=csi-cephfsplugin"
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
           env:
