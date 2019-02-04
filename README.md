@@ -1,4 +1,10 @@
-# Ceph CSI 0.3.0
+# Ceph CSI
+
+# Supported platforms
+
+For Kubernetes 1.12 and below, please use [0.3 images and deployments](https://github.com/ceph/ceph-csi/tree/master/deploy/rbd/kubernetes).
+
+For Kubernetes 1.13 and above, please use [1.0 images and deployments](https://github.com/ceph/ceph-csi/tree/csi-v1.0/deploy/rbd/kubernetes).
 
 [Container Storage Interface (CSI)](https://github.com/container-storage-interface/) driver, provisioner, and attacher for Ceph RBD and CephFS.
 
