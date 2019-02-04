@@ -27,7 +27,7 @@ spec:
       serviceAccount: rbd-csi-attacher
       containers:
         - name: csi-rbdplugin-attacher
-          image: quay.io/k8scsi/csi-attacher:v1.0.0
+          image: quay.io/k8scsi/csi-attacher:v1.0.1
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
