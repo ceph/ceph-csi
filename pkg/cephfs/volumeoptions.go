@@ -34,7 +34,7 @@ type volumeOptions struct {
 
 func validateNonEmptyField(field, fieldName string) error {
 	if field == "" {
-		return fmt.Errorf("Parameter '%s' cannot be empty", fieldName)
+		return fmt.Errorf("parameter '%s' cannot be empty", fieldName)
 	}
 
 	return nil
@@ -53,7 +53,7 @@ func (o *volumeOptions) validate() error {
 		}
 	} else {
 		if o.ProvisionVolume {
-			return fmt.Errorf("Non-empty field rootPath is in conflict with provisionVolume=true")
+			return fmt.Errorf("non-empty field rootPath is in conflict with provisionVolume=true")
 		}
 	}
 
@@ -75,7 +75,7 @@ func (o *volumeOptions) validate() error {
 func extractOption(dest *string, optionLabel string, options map[string]string) error {
 	opt, ok := options[optionLabel]
 	if !ok {
-		return fmt.Errorf("Missing required field %s", optionLabel)
+		return fmt.Errorf("missing required field %s", optionLabel)
 	}
 
 	*dest = opt
@@ -87,7 +87,7 @@ func validateMounter(m string) error {
 	case volumeMounterFuse:
 	case volumeMounterKernel:
 	default:
-		return fmt.Errorf("Unknown mounter '%s'. Valid options are 'fuse' and 'kernel'", m)
+		return fmt.Errorf("unknown mounter '%s'. Valid options are 'fuse' and 'kernel'", m)
 	}
 
 	return nil
@@ -134,7 +134,7 @@ func extractNewVolOpt(opts *volumeOptions, volOpt map[string]string) error {
 	}
 
 	if opts.ProvisionVolume, err = strconv.ParseBool(provisionVolumeBool); err != nil {
-		return fmt.Errorf("Failed to parse provisionVolume: %v", err)
+		return fmt.Errorf("failed to parse provisionVolume: %v", err)
 	}
 
 	if opts.ProvisionVolume {
