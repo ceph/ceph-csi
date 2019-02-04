@@ -9,8 +9,16 @@ branches:
 
 go: 1.11.x
 
+env:
+  global:
+    - GO_METALINTER_VERSION="v3.0.0"
+
 install:
-  - curl -L https://git.io/vp6lP | sh
+  # install gometalinter
+  - >
+    curl -L
+    'https://github.com/alecthomas/gometalinter/blob/v3.0.0/scripts/install.sh'
+    | bash -s -- -b $GOPATH/bin "${GO_METALINTER_VERSION}"
 
 before_script:
   - GO_FILES=$(find . -iname '*.go' -type f | grep -v /vendor/)
