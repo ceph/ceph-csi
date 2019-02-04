@@ -25,8 +25,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
+	"k8s.io/klog"
 )
 
 // NodeCache to store metadata
@@ -87,7 +87,7 @@ func decodeObj(filepath, pattern string, file os.FileInfo, destObj interface{}) 
 	// #nosec
 	fp, err := os.Open(path.Join(filepath, file.Name()))
 	if err != nil {
-		glog.Infof("node-cache: open file: %s err %v", file.Name(), err)
+		klog.Infof("node-cache: open file: %s err %v", file.Name(), err)
 		return errDec
 	}
 	decoder := json.NewDecoder(fp)
@@ -112,7 +112,7 @@ func (nc *NodeCache) Create(identifier string, data interface{}) error {
 
 	defer func() {
 		if err = fp.Close(); err != nil {
-			glog.Warningf("failed to close file:%s %v", fp.Name(), err)
+			klog.Warningf("failed to close file:%s %v", fp.Name(), err)
 		}
 	}()
 
@@ -120,7 +120,7 @@ func (nc *NodeCache) Create(identifier string, data interface{}) error {
 	if err = encoder.Encode(data); err != nil {
 		return errors.Wrapf(err, "node-cache: failed to encode metadata for file: %s\n", file)
 	}
-	glog.V(4).Infof("node-cache: successfully saved metadata into file: %s\n", file)
+	klog.V(4).Infof("node-cache: successfully saved metadata into file: %s\n", file)
 	return nil
 }
 
@@ -135,7 +135,7 @@ func (nc *NodeCache) Get(identifier string, data interface{}) error {
 
 	defer func() {
 		if err = fp.Close(); err != nil {
-			glog.Warningf("failed to close file:%s %v", fp.Name(), err)
+			klog.Warningf("failed to close file:%s %v", fp.Name(), err)
 		}
 	}()
 
@@ -156,6 +156,6 @@ func (nc *NodeCache) Delete(identifier string) error {
 			return errors.Wrapf(err, "node-cache: error removing file %s", file)
 		}
 	}
-	glog.V(4).Infof("node-cache: successfully deleted metadata storage file at: %+v\n", file)
+	klog.V(4).Infof("node-cache: successfully deleted metadata storage file at: %+v\n", file)
 	return nil
 }

@@ -19,7 +19,7 @@ package util
 import (
 	"errors"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 const (
@@ -41,13 +41,13 @@ type CachePersister interface {
 // NewCachePersister returns CachePersister based on store
 func NewCachePersister(metadataStore, driverName string) (CachePersister, error) {
 	if metadataStore == "k8s_configmap" {
-		glog.Infof("cache-perister: using kubernetes configmap as metadata cache persister")
+		klog.Infof("cache-perister: using kubernetes configmap as metadata cache persister")
 		k8scm := &K8sCMCache{}
 		k8scm.Client = NewK8sClient()
 		k8scm.Namespace = GetK8sNamespace()
 		return k8scm, nil
 	} else if metadataStore == "node" {
-		glog.Infof("cache-persister: using node as metadata cache persister")
+		klog.Infof("cache-persister: using node as metadata cache persister")
 		nc := &NodeCache{}
 		nc.BasePath = PluginFolder + "/" + driverName
 		return nc, nil
