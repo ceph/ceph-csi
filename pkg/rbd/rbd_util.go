@@ -231,13 +231,13 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 	rbdVol := &rbdVolume{}
 	rbdVol.Pool, ok = volOptions["pool"]
 	if !ok {
-		return nil, fmt.Errorf("Missing required parameter pool")
+		return nil, fmt.Errorf("missing required parameter pool")
 	}
 	rbdVol.Monitors, ok = volOptions["monitors"]
 	if !ok {
 		// if mons are not set in options, check if they are set in secret
 		if rbdVol.MonValueFromSecret, ok = volOptions["monValueFromSecret"]; !ok {
-			return nil, fmt.Errorf("Either monitors or monValueFromSecret must be set")
+			return nil, fmt.Errorf("either monitors or monValueFromSecret must be set")
 		}
 	}
 	rbdVol.ImageFormat, ok = volOptions["imageFormat"]
@@ -283,13 +283,13 @@ func getRBDSnapshotOptions(snapOptions map[string]string) (*rbdSnapshot, error) 
 	rbdSnap := &rbdSnapshot{}
 	rbdSnap.Pool, ok = snapOptions["pool"]
 	if !ok {
-		return nil, fmt.Errorf("Missing required parameter pool")
+		return nil, fmt.Errorf("missing required parameter pool")
 	}
 	rbdSnap.Monitors, ok = snapOptions["monitors"]
 	if !ok {
 		// if mons are not set in options, check if they are set in secret
 		if rbdSnap.MonValueFromSecret, ok = snapOptions["monValueFromSecret"]; !ok {
-			return nil, fmt.Errorf("Either monitors or monValueFromSecret must be set")
+			return nil, fmt.Errorf("either monitors or monValueFromSecret must be set")
 		}
 	}
 	rbdSnap.AdminID, ok = snapOptions["adminid"]

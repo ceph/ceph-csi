@@ -9,14 +9,21 @@ branches:
 
 go: 1.11.x
 
+env:
+  global:
+    - GO_METALINTER_VERSION="v3.0.0"
+
 install:
-  - curl -L https://git.io/vp6lP | sh
+  # install gometalinter
+  - curl -L
+    "https://raw.githubusercontent.com/alecthomas/gometalinter/"${GO_METALINTER_VERSION}"/scripts/install.sh"
+    | bash -s -- -b $GOPATH/bin "${GO_METALINTER_VERSION}"
 
 before_script:
   - GO_FILES=$(find . -iname '*.go' -type f | grep -v /vendor/)
 
 script:
-  - gometalinter --deadline=10m -j 4  --enable=megacheck --enable=misspell  --vendor ./...
+  - gometalinter --deadline=10m -j 4 --enable=misspell --enable=staticcheck --vendor ./...
   - test -z $(gofmt -s -l $GO_FILES)
   - make rbdplugin
   - make cephfsplugin

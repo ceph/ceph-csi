@@ -44,8 +44,8 @@ Parameter | Required | Description
 `pool` | yes | Ceph pool into which the RBD image shall be created
 `imageFormat` | no | RBD image format. Defaults to `2`. See [man pages](http://docs.ceph.com/docs/mimic/man/8/rbd/#cmdoption-rbd-image-format)
 `imageFeatures` | no | RBD image features. Available for `imageFormat=2`. CSI RBD currently supports only `layering` feature. See [man pages](http://docs.ceph.com/docs/mimic/man/8/rbd/#cmdoption-rbd-image-feature)
-`csiProvisionerSecretName`, `csiNodePublishSecretName` | for Kubernetes | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
-`csiProvisionerSecretNamespace`, `csiNodePublishSecretNamespace` | for Kubernetes | namespaces of the above Secret objects
+`csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-publish-secret-name` | for Kubernetes | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
+`csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-publish-secret-namespace` | for Kubernetes | namespaces of the above Secret objects
 `mounter`| no | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images
 
 **Required secrets:**  

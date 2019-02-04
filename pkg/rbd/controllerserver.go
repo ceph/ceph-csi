@@ -338,7 +338,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", req.GetSourceVolumeId())
 	}
 	if !hasSnapshotFeature(rbdVolume.ImageFeatures) {
-		return nil, fmt.Errorf("Volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
+		return nil, fmt.Errorf("volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
 	}
 
 	rbdSnap.VolName = rbdVolume.VolName
@@ -437,7 +437,7 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]s
 			if err != nil {
 				return fmt.Errorf("snapshot is created but failed to protect and delete snapshot: %v", err)
 			}
-			return fmt.Errorf("Snapshot is created but failed to protect snapshot")
+			return fmt.Errorf("snapshot is created but failed to protect snapshot")
 		}
 	}
 	return nil
