@@ -20,10 +20,6 @@ import (
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
-var cephfsDirPath = "../deploy/cephfs/kubernetes/"
-
-var cephfsExamplePath = "../examples/cephfs"
-
 var ns = "rook-ceph"
 
 func getCephfsTemp() []os.FileInfo {
@@ -141,6 +137,62 @@ func deleteSc() {
 	framework.RunKubectl("delete", "-f", scPath)
 }
 
+func createPVC(c kubernetes.Interface, path string, timeout time.Duration) error {
+	pvc := v1.PersistentVolumeClaim{}
+	err := unmarshal(path, &pvc)
+	Expect(err).Should(BeNil())
+	_, err = c.CoreV1().PersistentVolumeClaims("default").Create(&pvc)
+	Expect(err).Should(BeNil())
+	name := pvc.Name
+	start := time.Now()
+	framework.Logf("Waiting up to %v to be in Bound state", pvc)
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		pv, err := c.CoreV1().PersistentVolumeClaims(ns).Get(name, metav1.GetOptions{})
+		if err != nil {
+			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
+			if testutils.IsRetryableAPIError(err) {
+				return false, nil
+			}
+			return false, err
+		}
+
+		framework.Logf("%s pvc  is  in %s state expected to be in Bound  state (%d seconds elapsed)", name, pv.Status.String(), int(time.Since(start).Seconds()))
+		if pv.Status.String() != "Bound" {
+			return false, nil
+		}
+
+		return true, nil
+	})
+}
+
+func createApp(c kubernetes.Interface, path string, timeout time.Duration) error {
+	app := v1.Pod{}
+	err := unmarshal(path, &app)
+	Expect(err).Should(BeNil())
+	_, err = c.CoreV1().Pods("default").Create(&app)
+	name := app.Name
+	start := time.Now()
+	framework.Logf("Waiting up to %v to be in Bound state", app.Name)
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		ap, err := c.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
+		if err != nil {
+			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
+			if testutils.IsRetryableAPIError(err) {
+				return false, nil
+			}
+			return false, err
+		}
+
+		framework.Logf("%s app  is  in %s state expected to be in Bound  state (%d seconds elapsed)", name, ap.Status.String(), int(time.Since(start).Seconds()))
+		if ap.Status.String() != "Running" {
+			return false, nil
+		}
+
+		return true, nil
+	})
+}
 func unmarshal(fileName string, obj interface{}) error {
 	f, err := ioutil.ReadFile(fileName)
 	if err != nil {
