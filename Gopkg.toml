@@ -10,6 +10,10 @@
   name = "google.golang.org/grpc"
   version = "1.10.0"
 
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "https://github.com/fsnotify/fsnotify.git"
+
 [[constraint]]
   version = "kubernetes-1.13.3"
   name = "k8s.io/apimachinery"
@@ -19,8 +23,16 @@
   version = "v1.13.3"
 
 [[override]]
-  version = "kubernetes-1.13.3"
+  name = "k8s.io/apiserver"
+  version = "kubernetes-1.13.2"
+
+[[override]]
+  version = "kubernetes-1.13.2"
   name = "k8s.io/api"
+
+[[override]]
+  version = "kubernetes-1.13.2"
+  name = "k8s.io/apiextensions-apiserver"
 
 [[override]]
   name = "github.com/golang/protobuf"
@@ -29,6 +41,14 @@
 [[constraint]]
   name = "k8s.io/client-go"
   version = "kubernetes-1.13.3"
+
+[[override]]
+  name = "github.com/onsi/ginkgo"
+  version = "v1.7.0"
+
+[[override]]
+  name = "github.com/onsi/gomega"
+  version = "v1.4.3"
 
 [prune]
   go-tests = true
