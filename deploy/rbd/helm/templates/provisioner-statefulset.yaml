@@ -41,6 +41,23 @@ spec:
               mountPath: {{ .Values.socketDir }}
           resources:
 {{ toYaml .Values.provisioner.resources | indent 12 }}
+        - name: csi-snapshotter
+          image: {{ .Values.snapshotter.image.repository }}:{{ .Values.snapshotter.image.tag }}
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.imagePullPolicy }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--connection-timeout=15s"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: socket-dir
+              mountPath: {{ .Values.socketDir }}
+          resources:
+{{ toYaml .Values.snapshotter.resources | indent 12 }}
         - name: csi-rbdplugin
           securityContext:
             privileged: true
