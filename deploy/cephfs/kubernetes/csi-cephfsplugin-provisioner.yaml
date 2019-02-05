@@ -1,18 +1,4 @@
 ---
-kind: Service
-apiVersion: v1
-metadata:
-  name: csi-cephfsplugin-provisioner
-  labels:
-    app: csi-cephfsplugin-provisioner
-spec:
-  selector:
-    app: csi-cephfsplugin-provisioner
-  ports:
-    - name: dummy
-      port: 12345
-
----
 kind: StatefulSet
 apiVersion: apps/v1beta1
 metadata:
