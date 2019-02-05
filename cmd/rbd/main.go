@@ -42,7 +42,6 @@ var (
 )
 
 func main() {
-	klog.InitFlags(nil)
 	flag.Parse()
 
 	if err := createPersistentStorage(path.Join(rbd.PluginFolder, "controller")); err != nil {
