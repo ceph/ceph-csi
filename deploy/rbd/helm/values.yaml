@@ -12,7 +12,7 @@ serviceAccounts:
     create: true
     name:
 
-socketDir: /var/lib/kubelet/plugins_registry/csi-rbdplugin
+socketDir: /var/lib/kubelet/plugins/csi-rbdplugin
 socketFile: csi.sock
 registrationDir: /var/lib/kubelet/plugins_registry
 volumeDevicesDir: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices
@@ -24,7 +24,7 @@ attacher:
 
   image:
     repository: quay.io/k8scsi/csi-attacher
-    tag: v1.0.0
+    tag: v1.0.1
     pullPolicy: IfNotPresent
 
   resources: {}
@@ -40,8 +40,8 @@ nodeplugin:
 
   registrar:
     image:
-      repository: quay.io/k8scsi/driver-registrar
-      tag: canary
+      repository: quay.io/k8scsi/csi-node-driver-registrar
+      tag: v1.0.2
       pullPolicy: IfNotPresent
     
     resources: {}
@@ -67,7 +67,7 @@ provisioner:
 
   image:
     repository: quay.io/k8scsi/csi-provisioner
-    tag: canary
+    tag: v1.0.1
     pullPolicy: IfNotPresent
 
   resources: {}
@@ -77,3 +77,11 @@ provisioner:
   tolerations: []
 
   affinity: {}
+
+snapshotter:
+  image:
+    repository: quay.io/k8scsi/csi-snapshotter
+    tag: v1.0.1
+    pullPolicy: IfNotPresent
+
+  resources: {}

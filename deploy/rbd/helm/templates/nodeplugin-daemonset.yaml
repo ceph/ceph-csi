@@ -34,21 +34,21 @@ spec:
           image: "{{ .Values.nodeplugin.registrar.image.repository }}:{{ .Values.nodeplugin.registrar.image.tag }}"
           args:
             - "--v=5"
-            - "--csi-address=$(ADDRESS)"
-            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+            - "--csi-address=/csi/{{ .Values.socketFile }}"
+            - "--kubelet-registration-path={{ .Values.socketDir }}/{{ .Values.socketFile }}"
+          lifecycle:
+            preStop:
+              exec:
+                  command: ["/bin/sh", "-c", "rm -rf /registration/csi-rbdplugin /registration/csi-rbdplugin-reg.sock"]          
           env:
-            - name: ADDRESS
-              value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
-            - name: DRIVER_REG_SOCK_PATH
-              value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           imagePullPolicy: {{ .Values.nodeplugin.registrar.image.imagePullPolicy }}
           volumeMounts:
-            - name: socket-dir
-              mountPath: {{ .Values.socketDir }}
+            - name: plugin-dir
+              mountPath: /csi
             - name: registration-dir
               mountPath: /registration
           resources:
@@ -114,10 +114,6 @@ spec:
           hostPath:
             path: /var/lib/kubelet/pods
             type: Directory
-        - name: socket-dir
-          hostPath:
-            path: {{ .Values.socketDir }}
-            type: DirectoryOrCreate
         - name: host-dev
           hostPath:
             path: /dev
