@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-cephfsplugin-attacher
+  labels:
+    app: csi-cephfsplugin-attacher
+spec:
+  selector:
+    app: csi-cephfsplugin-attacher
+  ports:
+    - name: dummy
+      port: 12345

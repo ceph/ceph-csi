@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"flag"
 	"log"
 	"testing"
 
@@ -9,13 +10,36 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
+var (
+	RookVersion  string
+	rookRequired bool
+)
+
 func init() {
 	log.SetOutput(GinkgoWriter)
+	flag.StringVar(&RookVersion, "rook-version", "master", "rook version to pull yaml files")
 
+	flag.BoolVar(&rookRequired, "deploy-rook", false, "deploy rook on e2e")
 	// Register framework flags, then handle flags
 	framework.HandleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
+
+	formRookURL(RookVersion)
 }
+
+//BeforeSuite deploys the rook-operator and ceph cluster
+var _ = BeforeSuite(func() {
+	if rookRequired {
+		deployRook()
+	}
+})
+
+//AfterSuite removes the rook-operator and ceph cluster
+var _ = AfterSuite(func() {
+	if rookRequired {
+		tearDownRook()
+	}
+})
 
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)

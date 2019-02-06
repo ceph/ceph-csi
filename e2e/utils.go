@@ -9,6 +9,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,6 +17,7 @@ import (
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/test/e2e/framework"
 	testutils "k8s.io/kubernetes/test/utils"
 )
@@ -42,6 +44,9 @@ func waitForDaemonSets(name, ns string, c clientset.Interface, timeout time.Dura
 		ds, err := c.AppsV1().DaemonSets(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
 			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
+			if strings.Contains(err.Error(), "not found") {
+				return false, nil
+			}
 			if testutils.IsRetryableAPIError(err) {
 				return false, nil
 			}
@@ -57,6 +62,44 @@ func waitForDaemonSets(name, ns string, c clientset.Interface, timeout time.Dura
 	})
 }
 
+// Waits for the deployment to complete.
+
+func waitForDeploymentComplete(name, ns string, c clientset.Interface, pOut time.Duration) error {
+	var (
+		deployment *apps.Deployment
+		reason     string
+	)
+
+	err := wait.PollImmediate(poll, pOut, func() (bool, error) {
+		var err error
+		deployment, err = c.AppsV1().Deployments(ns).Get(name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		//TODO need to check rolling update
+
+		// When the deployment status and its underlying resources reach the
+		// desired state, we're done
+		if deployment.Status.Replicas == deployment.Status.ReadyReplicas {
+			return true, nil
+		}
+
+		reason = fmt.Sprintf("deployment status: %#v", deployment.Status)
+		framework.Logf(reason)
+
+		return false, nil
+	})
+
+	if err == wait.ErrWaitTimeout {
+		err = fmt.Errorf("%s", reason)
+	}
+	if err != nil {
+		return fmt.Errorf("error waiting for deployment %q status to match expectation: %v", name, err)
+	}
+	return nil
+}
+
 func getAdminCreds(f *framework.Framework, c string) string {
 
 	ns := "rook-ceph"
@@ -66,7 +109,7 @@ func getAdminCreds(f *framework.Framework, c string) string {
 	}
 	podList, err := f.PodClientNS(ns).List(opt)
 	framework.ExpectNoError(err)
-	Expect(podList).NotTo(BeNil())
+	Expect(podList.Items).NotTo(BeNil())
 	Expect(err).Should(BeNil())
 
 	podPot := framework.ExecOptions{
@@ -171,26 +214,45 @@ func createApp(c kubernetes.Interface, path string, timeout time.Duration) error
 	err := unmarshal(path, &app)
 	Expect(err).Should(BeNil())
 	_, err = c.CoreV1().Pods("default").Create(&app)
-	name := app.Name
-	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Bound state", app.Name)
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		ap, err := c.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
-		if err != nil {
-			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
-			if testutils.IsRetryableAPIError(err) {
-				return false, nil
+	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout)
+}
+
+func getPodName(ns string, c kubernetes.Interface, opt metav1.ListOptions) string {
+
+	ticker := time.NewTicker(1 * time.Second)
+	//TODO add stop logic
+	for {
+		select {
+		case <-ticker.C:
+			podList, err := c.CoreV1().Pods(ns).List(opt)
+			framework.ExpectNoError(err)
+			Expect(podList.Items).NotTo(BeNil())
+			Expect(err).Should(BeNil())
+
+			if len(podList.Items) != 0 {
+				return podList.Items[0].Name
 			}
+		}
+
+	}
+}
+func waitForPodInRunningState(name, ns string, c kubernetes.Interface, timeout time.Duration) error {
+	start := time.Now()
+	framework.Logf("Waiting up to %v to be in Running state", name)
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		pod, err := c.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
+		if err != nil {
 			return false, err
 		}
-
-		framework.Logf("%s app  is  in %s state expected to be in Bound  state (%d seconds elapsed)", name, ap.Status.String(), int(time.Since(start).Seconds()))
-		if ap.Status.String() != "Running" {
-			return false, nil
+		switch pod.Status.Phase {
+		case v1.PodRunning:
+			return true, nil
+		case v1.PodFailed, v1.PodSucceeded:
+			return false, conditions.ErrPodCompleted
 		}
-
-		return true, nil
+		framework.Logf("%s app  is  in %s phase expected to be in Running  state (%d seconds elapsed)", name, pod.Status.Phase, int(time.Since(start).Seconds()))
+		return false, nil
 	})
 }
 func unmarshal(fileName string, obj interface{}) error {
@@ -205,4 +267,26 @@ func unmarshal(fileName string, obj interface{}) error {
 
 	err = json.Unmarshal(data, obj)
 	return err
+}
+
+//TODO what should be the count of mon pods?
+//how to get the mon count for pod validation?
+func checkMonPods(ns string, c kubernetes.Interface, count int, timeout time.Duration, opt metav1.ListOptions) error {
+	start := time.Now()
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		podList, err := c.CoreV1().Pods(ns).List(opt)
+		if err != nil {
+			return false, err
+		}
+
+		framework.Logf("mon pod  count is %d  expected count %d (%d seconds elapsed)", len(podList.Items), count, int(time.Since(start).Seconds()))
+
+		if len(podList.Items) == count {
+			return true, nil
+		}
+
+		return false, nil
+	})
+
 }
