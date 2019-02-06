@@ -26,7 +26,8 @@ if [ "${TRAVIS_BRANCH}" == "master" ] && [ "${TRAVIS_PULL_REQUEST}" == "false" ]
     if [ ! -f "../csi-charts/docs/ceph-csi-rbd-$VERSION.tgz" ]; then
         CHANGED=1
         ln -s deploy/rbd/helm/ deploy/rbd/ceph-csi-rbd
-	pushd ../csi-charts/docs/ > /dev/null
+        mkdir -p ../csi-charts/docs/rbd
+	pushd ../csi-charts/docs/rbd > /dev/null
         helm package ../ceph-csi/deploy/rbd/ceph-csi-rbd
         popd > /dev/null
     fi
