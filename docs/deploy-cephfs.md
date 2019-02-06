@@ -64,7 +64,7 @@ Notes on volume size: when provisioning a new volume, `max_bytes` quota attribut
 
 ## Deployment with Kubernetes
 
-Requires Kubernetes 1.11
+Requires Kubernetes 1.13
 
 Your Kubernetes cluster must allow privileged pods (i.e. `--allow-privileged` flag must be set to true for both the API server and the kubelet). Moreover, as stated in the [mount propagation docs](https://kubernetes.io/docs/concepts/storage/volumes/#mount-propagation), the Docker daemon of the cluster nodes must allow shared mounts.
 
