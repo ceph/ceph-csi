@@ -15,7 +15,7 @@ if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
 	docker login -u "${QUAY_IO_USERNAME}" -p "${QUAY_IO_PASSWORD}" quay.io
 	make push-image-rbdplugin push-image-cephfsplugin
 
-	set -e
+	set -xe
 	
 	mkdir -p tmp
 	pushd tmp > /dev/null
@@ -34,7 +34,7 @@ if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
 	
 	if [ ! -f "tmp/csi-charts/docs/rbd/ceph-csi-rbd-$VERSION.tgz" ]; then
 	    CHANGED=1
-	    ln -s deploy/rbd/helm/ deploy/rbd/ceph-csi-rbd
+	    ln -s helm deploy/rbd/ceph-csi-rbd
 	    mkdir -p tmp/csi-charts/docs/rbd
 	    pushd tmp/csi-charts/docs/rbd > /dev/null
 	    helm package ../../../../deploy/rbd/ceph-csi-rbd
