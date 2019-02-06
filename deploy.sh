@@ -23,6 +23,8 @@ if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
 	curl https://raw.githubusercontent.com/helm/helm/master/scripts/get > get_helm.sh
 	chmod 700 get_helm.sh
 	./get_helm.sh
+
+        helm init --client-only
 	
 	git clone https://github.com/ceph/csi-charts
 	
