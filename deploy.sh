@@ -23,7 +23,7 @@ if [ "${TRAVIS_BRANCH}" == "master" ] && [ "${TRAVIS_PULL_REQUEST}" == "false" ]
     CHANGED=0
     VERSION=$(cat deploy/rbd/helm/Chart.yaml | awk '{if(/^version:/){print $2}}')
 
-    if [ ! -f "../csi-charts/docs/ceph-csi-rbd-$VERSION.tgz" ]; then
+    if [ ! -f "../csi-charts/docs/rbd/ceph-csi-rbd-$VERSION.tgz" ]; then
         CHANGED=1
         ln -s deploy/rbd/helm/ deploy/rbd/ceph-csi-rbd
         mkdir -p ../csi-charts/docs/rbd
