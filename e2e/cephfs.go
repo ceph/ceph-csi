@@ -5,6 +5,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	apps "k8s.io/api/apps/v1"
+	v1beta1 "k8s.io/api/apps/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
@@ -12,8 +14,10 @@ import (
 var (
 	cephProvisioner     = "csi-cephfsplugin-provisioner.yaml"
 	cephProvisionerRBAC = "csi-provisioner-rbac.yaml"
+	cephProvisionerSVC  = "csi-cephfsplugin-provisioner-svc.yaml"
 	cephAttacher        = "csi-cephfsplugin-attacher.yaml"
 	cephAttacherRBAC    = "csi-attacher-rbac.yaml"
+	cephAttacherSVC     = "csi-cephfsplugin-attacher-svc.yaml"
 	cephNodePlugin      = "csi-cephfsplugin.yaml"
 	cephNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
 )
@@ -25,14 +29,23 @@ var (
 	defaultNS         = "default"
 )
 
+func createService(c kubernetes.Interface, ns, sPath string) {
+	svc := &v1.Service{}
+	err := unmarshal(sPath, svc)
+	framework.ExpectNoError(err)
+	_, err = c.CoreV1().Services(defaultNS).Create(svc)
+	framework.ExpectNoError(err)
+}
 func deployProvisioner(c kubernetes.Interface) {
-	pro := &apps.StatefulSet{}
+	pro := &v1beta1.StatefulSet{}
 	pPath := cephfsDirPath + cephProvisioner
 	err := unmarshal(pPath, pro)
 	framework.ExpectNoError(err)
 	//TODO need to update the image name
-	_, err = c.AppsV1().StatefulSets(defaultNS).Create(pro)
+	_, err = c.AppsV1beta1().StatefulSets(defaultNS).Create(pro)
 	framework.ExpectNoError(err)
+	sPath := cephfsDirPath + cephProvisionerSVC
+	createService(c, defaultNS, sPath)
 	//create provisoner RBAC
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephProvisionerRBAC)
 }
@@ -50,42 +63,54 @@ func deployNodePlugin(c kubernetes.Interface) {
 }
 
 func deployAttacher(c kubernetes.Interface) {
-	pro := &apps.StatefulSet{}
+	pro := &v1beta1.StatefulSet{}
 	pPath := cephfsDirPath + cephAttacher
 	err := unmarshal(pPath, pro)
 	framework.ExpectNoError(err)
 	//TODO need to update the image name
-	_, err = c.AppsV1().StatefulSets(defaultNS).Create(pro)
+	_, err = c.AppsV1beta1().StatefulSets(defaultNS).Create(pro)
 	framework.ExpectNoError(err)
 	//create provisoner RBAC
+	sPath := cephfsDirPath + cephAttacherSVC
+	createService(c, defaultNS, sPath)
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephAttacherRBAC)
 }
 
 var f = framework.NewDefaultFramework("cephfs")
 
-var _ = BeforeSuite(func() {
-	deployProvisioner(f.ClientSet)
-	deployNodePlugin(f.ClientSet)
-	deployAttacher(f.ClientSet)
-})
+var beforeFirst = true
+var c kubernetes.Interface
 
-var _ = AfterSuite(func() {
-	cephfsFiles := getCephfsTemp()
-	for _, file := range cephfsFiles {
-		framework.RunKubectl("delete", "-f", cephfsDirPath+file.Name())
-		deleteSecret()
-		deleteSc()
-	}
-})
+//BeforeAll will get executed only once for each Describe
+func BeforeAll(fn func()) {
+	BeforeEach(func() {
+		c = f.ClientSet
+		if beforeFirst {
+			fn()
+			beforeFirst = false
+		}
+	})
+}
 
 var _ = Describe("cephfs", func() {
 	//f := framework.NewDefaultFramework("cephfs")
-	var c kubernetes.Interface
-	BeforeEach(func() {
-		//set the client object
-		c = f.ClientSet
-
+	//deploy ceph CSI
+	BeforeAll(func() {
+		framework.Logf("----------------------------- is this getting called?")
+		deployProvisioner(f.ClientSet)
+		deployNodePlugin(f.ClientSet)
+		deployAttacher(f.ClientSet)
 	})
+
+	//teardown the ceph CSI
+	defer func() {
+		cephfsFiles := getCephfsTemp()
+		for _, file := range cephfsFiles {
+			framework.RunKubectl("delete", "-f", cephfsDirPath+file.Name())
+			deleteSecret()
+			deleteSc()
+		}
+	}()
 
 	Describe("check ceph CSI driver is up", func() {
 		It("check ceph csi is up", func() {
