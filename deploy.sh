@@ -37,6 +37,7 @@ if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
 	    ln -s helm deploy/rbd/ceph-csi-rbd
 	    mkdir -p tmp/csi-charts/docs/rbd
 	    pushd tmp/csi-charts/docs/rbd > /dev/null
+	    helm init --client-only
 	    helm package ../../../../deploy/rbd/ceph-csi-rbd
 	    popd > /dev/null
 	fi
