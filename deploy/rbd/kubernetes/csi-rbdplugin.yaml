@@ -1,3 +1,4 @@
+---
 kind: DaemonSet
 apiVersion: apps/v1beta2
 metadata:
@@ -13,10 +14,10 @@ spec:
     spec:
       serviceAccount: rbd-csi-nodeplugin
       hostNetwork: true
-      hostPID: true      
+      hostPID: true
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
       # resolved through k8s service, set dns policy to cluster first
-      dnsPolicy: ClusterFirstWithHostNet      
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: driver-registrar
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
@@ -27,7 +28,11 @@ spec:
           lifecycle:
             preStop:
               exec:
-                  command: ["/bin/sh", "-c", "rm -rf /registration/csi-rbdplugin /registration/csi-rbdplugin-reg.sock"]          
+                command: [
+                  "/bin/sh", "-c",
+                  "rm -rf /registration/csi-rbdplugin \
+                  /registration/csi-rbdplugin-reg.sock"
+                ]
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
@@ -45,7 +50,7 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
           image: quay.io/cephcsi/rbdplugin:v1.0.0
-          args :
+          args:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
@@ -54,7 +59,7 @@ spec:
             - "--metadatastorage=k8s_configmap"
           env:
             - name: HOST_ROOTFS
-              value: "/rootfs" 
+              value: "/rootfs"
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -78,7 +83,7 @@ spec:
             - mountPath: /dev
               name: host-dev
             - mountPath: /rootfs
-              name: host-rootfs            
+              name: host-rootfs
             - mountPath: /sys
               name: host-sys
             - mountPath: /lib/modules
@@ -90,7 +95,7 @@ spec:
             path: /var/lib/kubelet/plugins/csi-rbdplugin
             type: DirectoryOrCreate
         - name: plugin-mount-dir
-          hostPath: 
+          hostPath:
             path: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/
             type: DirectoryOrCreate
         - name: registration-dir
@@ -106,7 +111,7 @@ spec:
             path: /dev
         - name: host-rootfs
           hostPath:
-            path: /            
+            path: /
         - name: host-sys
           hostPath:
             path: /sys

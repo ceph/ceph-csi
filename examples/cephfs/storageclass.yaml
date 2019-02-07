@@ -1,3 +1,4 @@
+---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -5,7 +6,7 @@ metadata:
 provisioner: csi-cephfsplugin
 parameters:
   # Comma separated list of Ceph monitors
-  # if using FQDN, make sure csi plugin's dns policy is appropriate.  
+  # if using FQDN, make sure csi plugin's dns policy is appropriate.
   monitors: mon1:port,mon2:port,...
 
   # For provisionVolume: "true":
@@ -13,7 +14,8 @@ parameters:
   #   Requires admin credentials (adminID, adminKey).
   # For provisionVolume: "false":
   #   It is assumed the volume already exists and the user is expected
-  #   to provide path to that volume (rootPath) and user credentials (userID, userKey).
+  #   to provide path to that volume (rootPath) and user credentials
+  #   (userID, userKey).
   provisionVolume: "true"
 
   # Ceph pool into which the volume shall be created
@@ -30,8 +32,11 @@ parameters:
   csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/node-stage-secret-namespace: default
 
-  # (optional) The driver can use either ceph-fuse (fuse) or ceph kernel client (kernel)
-  # If omitted, default volume mounter will be used - this is determined by probing for ceph-fuse
-  # or by setting the default mounter explicitly via --volumemounter command-line argument.
+  # (optional) The driver can use either ceph-fuse (fuse) or
+  # ceph kernelclient (kernel).
+  # If omitted, default volume mounter will be used - this is
+  # determined by probing for ceph-fuse
+  # or by setting the default mounter explicitly via
+  # --volumemounter command-line argument.
   # mounter: kernel
 reclaimPolicy: Delete
