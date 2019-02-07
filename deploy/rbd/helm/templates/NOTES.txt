@@ -1,1 +1,2 @@
-The Ceph RBD Container Storage Interface has been deployed.
+Examples on how to configure a storage class and start using the driver are here:
+https://github.com/ceph/ceph-csi/tree/master/examples/rbd
