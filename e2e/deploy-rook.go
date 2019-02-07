@@ -17,11 +17,7 @@ var (
 var rook = []string{"operator.yaml", "cluster.yaml", "toolbox.yaml"}
 
 func formRookURL(version string) {
-
-	framework.Logf("----------------setting the rook version", version)
-	framework.Logf("------------------ before", rookURL)
 	rookURL = strings.Replace(rookURL, "version", version, 1)
-	framework.Logf("---------- after", rookURL)
 }
 
 func getK8sClient() kubernetes.Interface {
@@ -48,11 +44,11 @@ func deployCluster(c kubernetes.Interface) {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-mon",
 	}
-	checkMonPods("rook-ceph", c, 3, 5*time.Minute)
+	checkMonPods("rook-ceph", c, 3, 5*time.Minute, opt)
 	opt = metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-mgr",
 	}
-	checkMonPods("rook-ceph", c, 3, 5*time.Minute)
+	checkMonPods("rook-ceph", c, 3, 5*time.Minute, opt)
 }
 
 func deployToolBox(c kubernetes.Interface) {
@@ -75,8 +71,13 @@ func deployRook() {
 }
 
 func tearDownRook() {
-	for _, temp := range rook {
-		opPath := fmt.Sprintf("%s/%s", rookURL, temp)
-		framework.RunKubectl("delete", "-f", opPath)
-	}
+	opPath := fmt.Sprintf("%s/%s", rookURL, "cluster.yaml")
+	framework.Cleanup(opPath, "rook-ceph-system", "app=rook-ceph-mgr", "app=rook-ceph-mon")
+	opPath = fmt.Sprintf("%s/%s", rookURL, "toolbox.yaml")
+	framework.Cleanup(opPath, "rook-ceph-system", "app=rook-ceph-tools")
+
+	opPath = fmt.Sprintf("%s/%s", rookURL, "operator.yaml")
+	//TODO need to add selector for cleanup validation
+	framework.Cleanup(opPath, "rook-ceph-system")
+
 }

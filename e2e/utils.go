@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -180,41 +182,104 @@ func deleteSc() {
 	framework.RunKubectl("delete", "-f", scPath)
 }
 
-func createPVC(c kubernetes.Interface, path string, timeout time.Duration) error {
-	pvc := v1.PersistentVolumeClaim{}
+func loadPVC(path string) *v1.PersistentVolumeClaim {
+	pvc := &v1.PersistentVolumeClaim{}
 	err := unmarshal(path, &pvc)
 	Expect(err).Should(BeNil())
-	_, err = c.CoreV1().PersistentVolumeClaims("default").Create(&pvc)
+	return pvc
+}
+
+func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, timeout time.Duration) error {
+	pv := &v1.PersistentVolume{}
+	var err error
+	_, err = c.CoreV1().PersistentVolumeClaims("default").Create(pvc)
 	Expect(err).Should(BeNil())
 	name := pvc.Name
 	start := time.Now()
 	framework.Logf("Waiting up to %v to be in Bound state", pvc)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		pv, err := c.CoreV1().PersistentVolumeClaims(ns).Get(name, metav1.GetOptions{})
+		framework.Logf("waiting for PVC %s (%d seconds elapsed)", pvc.Name, int(time.Since(start).Seconds()))
+		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
-			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
+			framework.Logf("Error getting pvc in namespace: '%s': %v", ns, err)
 			if testutils.IsRetryableAPIError(err) {
+				return false, nil
+			}
+			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
 		}
-
-		framework.Logf("%s pvc  is  in %s state expected to be in Bound  state (%d seconds elapsed)", name, pv.Status.String(), int(time.Since(start).Seconds()))
-		if pv.Status.String() != "Bound" {
+		pv, err = c.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if apierrs.IsNotFound(err) {
 			return false, nil
 		}
-
 		return true, nil
 	})
+
+	err = framework.WaitOnPVandPVC(c, ns, pv, pvc)
+	return err
 }
 
-func createApp(c kubernetes.Interface, path string, timeout time.Duration) error {
+func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, timeout time.Duration) error {
+	framework.Logf("Deleting PersistentVolumeClaim %v to trigger PV Recycling", pvc.Name)
+
+	pv, err := c.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	err = c.CoreV1().PersistentVolumeClaims(ns).Delete(pvc.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("Delete of PVC %v failed: %v", pvc.Name, err)
+	}
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		// Check that the PVC is really deleted.
+		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get(pvc.Name, metav1.GetOptions{})
+		if err == nil {
+			return false, nil
+		}
+		if !apierrs.IsNotFound(err) {
+			return false, fmt.Errorf("Get on deleted PVC %v failed with error other than \"not found\": %v", pvc.Name, err)
+		}
+
+		// Examine the pv.ClaimRef and UID. Expect nil values.
+		pv, err = c.CoreV1().PersistentVolumes().Get(pv.Name, metav1.GetOptions{})
+		if err == nil {
+			return false, err
+		}
+		if !apierrs.IsNotFound(err) {
+			return false, fmt.Errorf("deleted PV %v failed with error other than \"not found\": %v", pv.Name, err)
+		}
+		if pv.Spec.ClaimRef != nil && len(pv.Spec.ClaimRef.UID) > 0 {
+			crJSON, _ := json.Marshal(pv.Spec.ClaimRef)
+			return false, fmt.Errorf("Expected PV %v's ClaimRef to be nil, or the claimRef's UID to be blank. Instead claimRef is: %v", pv.Name, string(crJSON))
+		}
+		return true, nil
+	})
+
+	return nil
+
+}
+
+func loadApp(path string) *v1.Pod {
 	app := v1.Pod{}
 	err := unmarshal(path, &app)
-	Expect(err).Should(BeNil())
-	_, err = c.CoreV1().Pods("default").Create(&app)
-
+	if err != nil {
+		return nil
+	}
+	return &app
+}
+func createApp(c kubernetes.Interface, app *v1.Pod, timeout time.Duration) error {
+	_, err := c.CoreV1().Pods("default").Create(app)
+	if err != nil {
+		return err
+	}
 	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout)
 }
 
@@ -252,6 +317,27 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, timeout t
 			return false, conditions.ErrPodCompleted
 		}
 		framework.Logf("%s app  is  in %s phase expected to be in Running  state (%d seconds elapsed)", name, pod.Status.Phase, int(time.Since(start).Seconds()))
+		return false, nil
+	})
+}
+
+func deletePod(name, ns string, c kubernetes.Interface, timeout time.Duration) error {
+	err := c.CoreV1().Pods(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	start := time.Now()
+	framework.Logf("Waiting for pod %v to be deleted", name)
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err := c.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
+
+		if apierrs.IsNotFound(err) {
+			return true, nil
+		}
+		framework.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+		if err != nil {
+			return false, err
+		}
 		return false, nil
 	})
 }
