@@ -25,9 +25,14 @@ $(info cephfs image settings: $(CEPHFS_IMAGE_NAME) version $(CEPHFS_IMAGE_VERSIO
 
 all: rbdplugin cephfsplugin
 
-test:
-	go test github.com/ceph/ceph-csi/pkg/... -cover
-	go vet github.com/ceph/ceph-csi/pkg/...
+test: go-test static-check
+
+go-test:
+	./scripts/test-go.sh
+
+static-check:
+	./scripts/lint-go.sh  
+	./scripts/lint-text.sh
 
 rbdplugin:
 	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
