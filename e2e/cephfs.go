@@ -92,68 +92,95 @@ func BeforeAll(fn func()) {
 	})
 }
 
+//teardown the ceph CSI
+func Cleanup() {
+	cephfsFiles := getCephfsTemp()
+	for _, file := range cephfsFiles {
+		framework.RunKubectl("delete", "-f", cephfsDirPath+file.Name())
+		deleteSecret()
+		deleteSc()
+	}
+}
+
 var _ = Describe("cephfs", func() {
 	//f := framework.NewDefaultFramework("cephfs")
 	//deploy ceph CSI
 	BeforeAll(func() {
-		framework.Logf("----------------------------- is this getting called?")
 		deployProvisioner(f.ClientSet)
 		deployNodePlugin(f.ClientSet)
 		deployAttacher(f.ClientSet)
 	})
-
-	//teardown the ceph CSI
-	defer func() {
-		cephfsFiles := getCephfsTemp()
-		for _, file := range cephfsFiles {
-			framework.RunKubectl("delete", "-f", cephfsDirPath+file.Name())
-			deleteSecret()
-			deleteSc()
-		}
-	}()
 
 	Describe("check ceph CSI driver is up", func() {
 		It("check ceph csi is up", func() {
 
 			By("checking provisioner statefulset is running")
 			err := framework.WaitForStatefulSetReplicasReady("csi-cephfsplugin-provisioner", "default", c, 2*time.Second, 2*time.Minute)
-			framework.ExpectNoError(err)
+			if err != nil {
+				Fail(err.Error())
+			}
 
 			By("checking nodeplugin deamonsets is running")
 			err = waitForDaemonSets("csi-cephfsplugin", "default", c, 2*time.Minute)
-			framework.ExpectNoError(err)
+			if err != nil {
+				Fail(err.Error())
+			}
 
 			By("checking attacher statefulset is running")
 			err = framework.WaitForStatefulSetReplicasReady("csi-cephfsplugin-attacher", "default", c, 2*time.Second, 2*time.Minute)
-			framework.ExpectNoError(err)
+			if err != nil {
+				Fail(err.Error())
+			}
 		})
 	})
 
-	Describe("create a PVC and Bind it to an app", func() {
-		It("create a PVC and Bind it to an app", func() {
+	Describe("Test PVC Binding", func() {
 
-			By("create storage class")
-			//TODO need to move all resource to test namespace
+		It("create storage class", func() {
 			createStorageClass(c)
-			By("create secret")
-			createSecret(c, f)
-			By("create PVC and check PVC state")
-			pvcPath := cephfsExamplePath + "pvc.yaml"
-			err := createPVC(c, pvcPath, 2*time.Minute)
-			framework.ExpectNoError(err)
-			//defer to  delete  PVC
-			//TODO check  pvc  and PV after deleting
-			defer func(pvc string) {
-				framework.RunKubectl("delete", "-f", pvc)
-			}(pvcPath)
-
-			By("create app and bind PVC to app")
-			appPath := cephfsExamplePath + "pod.yaml"
-			err = createApp(c, appPath, 2*time.Minute)
-			framework.ExpectNoError(err)
-			//TODO check app is deleted or  not
-			framework.RunKubectl("delete", "-f", appPath)
-
 		})
+
+		It("create secret", func() {
+			createSecret(c, f)
+		})
+
+		By("load pvc")
+		pvcPath := cephfsExamplePath + "pvc.yaml"
+		pvc := loadPVC(pvcPath)
+
+		It("create a PVC", func() {
+			err := createPVCAndvalidatePV(c, pvc, 2*time.Minute)
+			if err != nil {
+				Fail(err.Error())
+			}
+		})
+
+		appPath := cephfsExamplePath + "pod.yaml"
+		app := loadApp(appPath)
+		It("create app and bind PVC to app", func() {
+			err := createApp(c, app, 2*time.Minute)
+			if err != nil {
+				Fail(err.Error())
+			}
+		})
+
+		//TODO need to check mount writable
+
+		It("delete app", func() {
+			err := deletePod(app.Name, app.Namespace, c, 2*time.Minute)
+			if err != nil {
+				Fail(err.Error())
+			}
+		})
+
+		It("delete PVC and check PV", func() {
+			err := deletePVCAndValidatePV(c, pvc, 2*time.Minute)
+			if err != nil {
+				Fail(err.Error())
+			}
+		})
+
+		Cleanup()
+
 	})
 })
