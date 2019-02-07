@@ -10,6 +10,6 @@ cd "$deployment_base" || exit 1
 
 objects=(csi-attacher-rbac csi-provisioner-rbac csi-nodeplugin-rbac csi-rbdplugin-attacher csi-rbdplugin-provisioner csi-rbdplugin)
 
-for obj in ${objects[@]}; do
+for obj in "${objects[@]}"; do
 	kubectl create -f "./$obj.yaml"
 done
