@@ -1,3 +1,4 @@
+---
 rbac:
   create: true
 
@@ -43,7 +44,7 @@ nodeplugin:
       repository: quay.io/k8scsi/csi-node-driver-registrar
       tag: v1.0.2
       pullPolicy: IfNotPresent
-    
+
     resources: {}
 
   plugin:
@@ -51,7 +52,7 @@ nodeplugin:
       repository: quay.io/cephcsi/rbdplugin
       tag: v1.0.0
       pullPolicy: IfNotPresent
-    
+
     resources: {}
 
   nodeSelector: {}

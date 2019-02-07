@@ -1,3 +1,4 @@
+---
 kind: DaemonSet
 apiVersion: apps/v1beta2
 metadata:
@@ -15,7 +16,7 @@ spec:
       hostNetwork: true
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
       # resolved through k8s service, set dns policy to cluster first
-      dnsPolicy: ClusterFirstWithHostNet      
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: driver-registrar
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
@@ -26,7 +27,11 @@ spec:
           lifecycle:
             preStop:
               exec:
-                  command: ["/bin/sh", "-c", "rm -rf /registration/csi-cephfsplugin /registration/csi-cephfsplugin-reg.sock"]          
+                command: [
+                  "/bin/sh", "-c",
+                  "rm -rf /registration/csi-cephfsplugin \
+                  /registration/csi-cephfsplugin-reg.sock"
+                ]
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
@@ -44,7 +49,7 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
           image: quay.io/cephcsi/cephfsplugin:v1.0.0
-          args :
+          args:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"

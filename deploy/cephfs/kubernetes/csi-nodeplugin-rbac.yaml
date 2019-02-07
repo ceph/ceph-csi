@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -37,4 +38,4 @@ subjects:
 roleRef:
   kind: ClusterRole
   name: cephfs-csi-nodeplugin
-  apiGroup: rbac.authorization.k8s.io          
+  apiGroup: rbac.authorization.k8s.io

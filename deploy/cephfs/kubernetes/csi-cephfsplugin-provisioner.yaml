@@ -1,3 +1,4 @@
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -44,7 +45,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
           image: quay.io/cephcsi/cephfsplugin:v1.0.0
-          args :
+          args:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
@@ -64,14 +65,14 @@ spec:
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/csi-cephfsplugin            
+              mountPath: /var/lib/kubelet/plugins/csi-cephfsplugin
             - name: host-sys
               mountPath: /sys
             - name: lib-modules
               mountPath: /lib/modules
               readOnly: true
             - name: host-dev
-              mountPath: /dev              
+              mountPath: /dev
       volumes:
         - name: socket-dir
           hostPath:

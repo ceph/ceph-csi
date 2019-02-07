@@ -1,3 +1,4 @@
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -59,7 +60,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
           image: quay.io/cephcsi/rbdplugin:v1.0.0
-          args :
+          args:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
@@ -68,7 +69,7 @@ spec:
             - "--metadatastorage=k8s_configmap"
           env:
             - name: HOST_ROOTFS
-              value: "/rootfs" 
+              value: "/rootfs"
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -86,7 +87,7 @@ spec:
             - mountPath: /dev
               name: host-dev
             - mountPath: /rootfs
-              name: host-rootfs            
+              name: host-rootfs
             - mountPath: /sys
               name: host-sys
             - mountPath: /lib/modules
@@ -98,13 +99,13 @@ spec:
             path: /dev
         - name: host-rootfs
           hostPath:
-            path: /            
+            path: /
         - name: host-sys
           hostPath:
             path: /sys
         - name: lib-modules
           hostPath:
-            path: /lib/modules              
+            path: /lib/modules
         - name: socket-dir
           hostPath:
             path: /var/lib/kubelet/plugins/csi-rbdplugin
