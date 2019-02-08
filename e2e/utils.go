@@ -220,11 +220,12 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		if apierrs.IsNotFound(err) {
 			return false, nil
 		}
+		err = framework.WaitOnPVandPVC(c, ns, pv, pvc)
+		if err != nil {
+			return false, nil
+		}
 		return true, nil
 	})
-
-	err = framework.WaitOnPVandPVC(c, ns, pv, pvc)
-	return err
 }
 
 func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, timeout time.Duration) error {
