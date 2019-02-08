@@ -26,6 +26,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -74,7 +75,7 @@ func (cs *ControllerServer) LoadExDataFromMetadataStore() error {
 
 func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		klog.V(3).Infof("invalid create volume req: %v", req)
+		klog.V(3).Infof("invalid create volume req: %v", protosanitizer.StripSecrets(req))
 		return err
 	}
 	// Check sanity of request Name, Volume Capabilities
@@ -228,7 +229,7 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 // from store
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		klog.Warningf("invalid delete volume req: %v", req)
+		klog.Warningf("invalid delete volume req: %v", protosanitizer.StripSecrets(req))
 		return nil, err
 	}
 	// For now the image get unconditionally deleted, but here retention policy can be checked
@@ -394,7 +395,7 @@ func (cs *ControllerServer) storeSnapMetadata(rbdSnap *rbdSnapshot, secret map[s
 
 func (cs *ControllerServer) validateSnapshotReq(req *csi.CreateSnapshotRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
-		klog.Warningf("invalid create snapshot req: %v", req)
+		klog.Warningf("invalid create snapshot req: %v", protosanitizer.StripSecrets(req))
 		return err
 	}
 
@@ -447,7 +448,7 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]s
 //snapshot metadata from store
 func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
-		klog.Warningf("invalid delete snapshot req: %v", req)
+		klog.Warningf("invalid delete snapshot req: %v", protosanitizer.StripSecrets(req))
 		return nil, err
 	}
 
