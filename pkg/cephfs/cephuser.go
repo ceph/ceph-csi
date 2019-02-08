@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 const (
@@ -120,12 +120,12 @@ func deleteCephUser(adminCr *credentials, volID volumeID) error {
 
 	keyringPath := getCephKeyringPath(volID, userID)
 	if err = os.Remove(keyringPath); err != nil {
-		glog.Errorf("failed to remove keyring file %s with error %s", keyringPath, err)
+		klog.Errorf("failed to remove keyring file %s with error %s", keyringPath, err)
 	}
 
 	secretPath := getCephSecretPath(volID, userID)
 	if err = os.Remove(secretPath); err != nil {
-		glog.Errorf("failed to remove secret file %s with error %s", secretPath, err)
+		klog.Errorf("failed to remove secret file %s with error %s", secretPath, err)
 	}
 
 	return nil
