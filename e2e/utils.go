@@ -185,7 +185,9 @@ func deleteSc() {
 func loadPVC(path string) *v1.PersistentVolumeClaim {
 	pvc := &v1.PersistentVolumeClaim{}
 	err := unmarshal(path, &pvc)
-	Expect(err).Should(BeNil())
+	if err != nil {
+		return nil
+	}
 	return pvc
 }
 
