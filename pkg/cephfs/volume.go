@@ -21,7 +21,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 const (
@@ -141,10 +141,10 @@ func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions
 func umountAndRemove(mountPoint string) {
 	var err error
 	if err = unmountVolume(mountPoint); err != nil {
-		glog.Errorf("failed to unmount %s with error %s", mountPoint, err)
+		klog.Errorf("failed to unmount %s with error %s", mountPoint, err)
 	}
 
 	if err = os.Remove(mountPoint); err != nil {
-		glog.Errorf("failed to remove %s with error %s", mountPoint, err)
+		klog.Errorf("failed to remove %s with error %s", mountPoint, err)
 	}
 }

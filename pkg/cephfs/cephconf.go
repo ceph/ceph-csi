@@ -22,7 +22,7 @@ import (
 	"path"
 	"text/template"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 const cephConfig = `[global]
@@ -91,7 +91,7 @@ func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, dat
 
 	defer func() {
 		if err := f.Close(); err != nil {
-			glog.Errorf("failed to close file %s with error %s", f.Name(), err)
+			klog.Errorf("failed to close file %s with error %s", f.Name(), err)
 		}
 	}()
 
