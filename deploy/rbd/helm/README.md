@@ -2,7 +2,6 @@
 
 The ceph-csi-rbd chart adds rbd volume support to your cluster.
 
-
 ## Install Chart
 
 To install the Chart into your Kubernetes cluster :
