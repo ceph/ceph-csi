@@ -19,3 +19,7 @@ For example usage of RBD and CephFS CSI plugins, see examples in `examples/`.
 ## Troubleshooting
 
 Please submit an issue at: [Issues](https://github.com/ceph/ceph-csi/issues)
+
+## Slack Channels
+
+Join us at [Rook ceph-csi Channel](https://rook-io.slack.com/messages/CG3HUV94J/details/)
