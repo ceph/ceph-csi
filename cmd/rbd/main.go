@@ -26,13 +26,6 @@ import (
 	"k8s.io/klog"
 )
 
-func init() {
-	if err := flag.Set("logtostderr", "true"); err != nil {
-		klog.Errorf("failed to set logtostderr flag: %v", err)
-		os.Exit(1)
-	}
-}
-
 var (
 	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
 	driverName      = flag.String("drivername", "csi-rbdplugin", "name of the driver")
@@ -42,7 +35,7 @@ var (
 )
 
 func main() {
-	flag.Parse()
+	util.InitLogging()
 
 	if err := createPersistentStorage(path.Join(rbd.PluginFolder, "controller")); err != nil {
 		klog.Errorf("failed to create persistent storage for controller %v", err)
