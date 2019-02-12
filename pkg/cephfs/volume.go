@@ -71,9 +71,7 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volID volumeI
 		return fmt.Errorf("error mounting ceph root: %v", err)
 	}
 
-	defer func() {
-		umountAndRemove(cephRoot)
-	}()
+	defer unmountAndRemove(cephRoot)
 
 	volOptions.RootPath = getVolumeRootPathCeph(volID)
 	localVolRoot := getCephRootVolumePathLocal(volID)
@@ -123,9 +121,7 @@ func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions
 		return fmt.Errorf("error mounting ceph root: %v", err)
 	}
 
-	defer func() {
-		umountAndRemove(volRoot)
-	}()
+	defer unmountAndRemove(cephRoot)
 
 	if err := os.Rename(volRoot, volRootDeleting); err != nil {
 		return fmt.Errorf("coudln't mark volume %s for deletion: %v", volID, err)
@@ -138,7 +134,7 @@ func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions
 	return nil
 }
 
-func umountAndRemove(mountPoint string) {
+func unmountAndRemove(mountPoint string) {
 	var err error
 	if err = unmountVolume(mountPoint); err != nil {
 		klog.Errorf("failed to unmount %s with error %s", mountPoint, err)
