@@ -35,26 +35,7 @@ var (
 )
 
 func main() {
-	if err := flag.Set("logtostderr", "true"); err != nil {
-		klog.Errorf("failed to set logtostderr flag: %v", err)
-		os.Exit(1)
-	}
-
-	flag.Parse()
-
-	// TODO: remove this once github.com/kubernetes-csi/drivers/pkg/csi-common pkg moves to klog
-	klogFlags := flag.NewFlagSet("klog", flag.ExitOnError)
-	klog.InitFlags(klogFlags)
-
-	// Sync klog flags with glog
-	flag.CommandLine.VisitAll(func(f1 *flag.Flag) {
-		if f2 := klogFlags.Lookup(f1.Name); f2 != nil {
-			if err := f2.Value.Set(f1.Value.String()); err != nil {
-				klog.Errorf("failed to set %s flag: %v", f1.Name, err)
-				os.Exit(1)
-			}
-		}
-	})
+	util.InitLogging()
 
 	if err := createPersistentStorage(path.Join(cephfs.PluginFolder, "controller")); err != nil {
 		klog.Errorf("failed to create persistent storage for controller: %v", err)
