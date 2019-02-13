@@ -1,6 +1,6 @@
 # CSI RBD Plugin
 
-The RBD CSI plugin is able to provision new RBD images and attach and mount those to worlkoads.
+The RBD CSI plugin is able to provision new RBD images and attach and mount those to workloads.
 
 ## Building
 
@@ -31,6 +31,7 @@ Option              | Default value         | Description
 `--metadatastorage` | _empty_               | Whether should metadata be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
 
 **Available environmental variables:**
+
 `HOST_ROOTFS`: rbdplugin searches `/proc` directory under the directory set by `HOST_ROOTFS`.
 
 `KUBERNETES_CONFIG_PATH`: if you use `k8s_configmap` as metadata store, specify the path of your k8s config file (if not specified, the plugin will assume you're running it inside a k8s cluster and find the config itself).
