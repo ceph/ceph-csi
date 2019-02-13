@@ -46,7 +46,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		klog.Errorf("CreateVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
+
 	// Configuration
+
 	secret := req.GetSecrets()
 	volOptions, err := newVolumeOptions(req.GetParameters(), secret)
 	if err != nil {
@@ -55,11 +57,6 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	volID := makeVolumeID(req.GetName())
-	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volID}
-	if err = conf.writeToFile(); err != nil {
-		klog.Errorf("failed to write ceph config file to %s: %v", getCephConfPath(volID), err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
 
 	// Create a volume in case the user didn't provide one
 
@@ -114,8 +111,9 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	var (
-		volID = volumeID(req.GetVolumeId())
-		err   error
+		volID   = volumeID(req.GetVolumeId())
+		secrets = req.GetSecrets()
+		err     error
 	)
 
 	ce := &controllerCacheEntry{}
@@ -129,18 +127,17 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		klog.Warningf("volume %s is provisioned statically, aborting delete", volID)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
+
 	// mons may have changed since create volume,
 	// retrieve the latest mons and override old mons
-	secret := req.GetSecrets()
-	mon := ""
-	if mon, err = getMonValFromSecret(secret); err == nil && len(mon) > 0 {
-		klog.Infof("override old mons [%q] with [%q]", ce.VolOptions.Monitors, mon)
+	if mon, secretsErr := getMonValFromSecret(secrets); secretsErr == nil && len(mon) > 0 {
+		klog.Infof("overriding monitors [%q] with [%q] for volume %s", ce.VolOptions.Monitors, mon, volID)
 		ce.VolOptions.Monitors = mon
 	}
 
 	// Deleting a volume requires admin credentials
 
-	cr, err := getAdminCredentials(secret)
+	cr, err := getAdminCredentials(secrets)
 	if err != nil {
 		klog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -151,7 +148,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = deleteCephUser(cr, volID); err != nil {
+	if err = deleteCephUser(&ce.VolOptions, cr, volID); err != nil {
 		klog.Errorf("failed to delete ceph user for volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}

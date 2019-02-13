@@ -37,15 +37,16 @@ type NodeServer struct {
 
 func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi.NodeStageVolumeRequest) (*credentials, error) {
 	var (
-		userCr *credentials
+		cr      *credentials
+		secrets = req.GetSecrets()
 	)
-	secret := req.GetSecrets()
+
 	if volOptions.ProvisionVolume {
 		// The volume is provisioned dynamically, get the credentials directly from Ceph
 
 		// First, store admin credentials - those are needed for retrieving the user credentials
 
-		adminCr, err := getAdminCredentials(secret)
+		adminCr, err := getAdminCredentials(secrets)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
 		}
@@ -56,27 +57,28 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 
 		// Then get the ceph user
 
-		entity, err := getCephUser(adminCr, volID)
+		entity, err := getCephUser(volOptions, adminCr, volID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get ceph user: %v", err)
 		}
 
-		userCr = entity.toCredentials()
+		cr = entity.toCredentials()
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
-		uCr, err := getUserCredentials(req.GetSecrets())
+		userCr, err := getUserCredentials(req.GetSecrets())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
 		}
-		userCr = uCr
+
+		cr = userCr
 	}
 
-	if err := storeCephCredentials(volID, userCr); err != nil {
+	if err := storeCephCredentials(volID, cr); err != nil {
 		return nil, fmt.Errorf("failed to store ceph user credentials: %v", err)
 	}
 
-	return userCr, nil
+	return cr, nil
 }
 
 // NodeStageVolume mounts the volume to a staging path on the node.
@@ -90,8 +92,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	stagingTargetPath := req.GetStagingTargetPath()
 	volID := volumeID(req.GetVolumeId())
 
-	secret := req.GetSecrets()
-	volOptions, err := newVolumeOptions(req.GetVolumeContext(), secret)
+	volOptions, err := newVolumeOptions(req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
 		klog.Errorf("error reading volume options for volume %s: %v", volID, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -104,12 +105,6 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	if err = createMountPoint(stagingTargetPath); err != nil {
 		klog.Errorf("failed to create staging mount point at %s for volume %s: %v", stagingTargetPath, volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	cephConf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volID}
-	if err = cephConf.writeToFile(); err != nil {
-		klog.Errorf("failed to write ceph config file to %s for volume %s: %v", getCephConfPath(volID), volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

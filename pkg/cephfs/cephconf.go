@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"text/template"
@@ -25,15 +26,14 @@ import (
 	"k8s.io/klog"
 )
 
-const cephConfig = `[global]
-mon_host = {{.Monitors}}
+var cephConfig = []byte(`[global]
 auth_cluster_required = cephx
 auth_service_required = cephx
 auth_client_required = cephx
 
 # Workaround for http://tracker.ceph.com/issues/23446
 fuse_set_user_groups = false
-`
+`)
 
 const cephKeyring = `[client.{{.UserID}}]
 key = {{.Key}}
@@ -43,13 +43,12 @@ const cephSecret = `{{.Key}}` // #nosec
 
 const (
 	cephConfigRoot         = "/etc/ceph"
-	cephConfigFileNameFmt  = "ceph.share.%s.conf"
+	cephConfigPath         = "/etc/ceph/ceph.conf"
 	cephKeyringFileNameFmt = "ceph.share.%s.client.%s.keyring"
 	cephSecretFileNameFmt  = "ceph.share.%s.client.%s.secret" // #nosec
 )
 
 var (
-	cephConfigTempl  *template.Template
 	cephKeyringTempl *template.Template
 	cephSecretTempl  *template.Template
 )
@@ -65,19 +64,24 @@ func init() {
 		},
 	}
 
-	cephConfigTempl = template.Must(template.New("config").Parse(cephConfig))
 	cephKeyringTempl = template.Must(template.New("keyring").Funcs(fm).Parse(cephKeyring))
 	cephSecretTempl = template.Must(template.New("secret").Parse(cephSecret))
 }
 
-type cephConfigData struct {
-	Monitors string
-	VolumeID volumeID
+func createCephConfigRoot() error {
+	return os.MkdirAll(cephConfigRoot, 0755) // #nosec
+}
+
+func writeCephConfig() error {
+	if err := createCephConfigRoot(); err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(cephConfigPath, cephConfig, 0640)
 }
 
 func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, data interface{}) error {
-	// #nosec
-	if err := os.MkdirAll(cephConfigRoot, 0755); err != nil {
+	if err := createCephConfigRoot(); err != nil {
 		return err
 	}
 
@@ -96,10 +100,6 @@ func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, dat
 	}()
 
 	return t.Execute(f, data)
-}
-
-func (d *cephConfigData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephConfigFileNameFmt, d.VolumeID), 0640, cephConfigTempl, d)
 }
 
 type cephKeyringData struct {
@@ -126,8 +126,4 @@ func getCephSecretPath(volID volumeID, userID string) string {
 
 func getCephKeyringPath(volID volumeID, userID string) string {
 	return path.Join(cephConfigRoot, fmt.Sprintf(cephKeyringFileNameFmt, volID, userID))
-}
-
-func getCephConfPath(volID volumeID) string {
-	return path.Join(cephConfigRoot, fmt.Sprintf(cephConfigFileNameFmt, volID))
 }
