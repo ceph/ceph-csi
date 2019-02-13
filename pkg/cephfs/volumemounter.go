@@ -104,7 +104,8 @@ type fuseMounter struct{}
 func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
 	args := [...]string{
 		mountPoint,
-		"-c", getCephConfPath(volID),
+		"-m", volOptions.Monitors,
+		"-c", cephConfigPath,
 		"-n", cephEntityClientPrefix + cr.id,
 		"--keyring", getCephKeyringPath(volID, cr.id),
 		"-r", volOptions.RootPath,

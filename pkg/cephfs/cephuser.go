@@ -53,12 +53,13 @@ func getCephUserName(volID volumeID) string {
 	return cephUserPrefix + string(volID)
 }
 
-func getCephUser(adminCr *credentials, volID volumeID) (*cephEntity, error) {
+func getCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
 	entityName := cephEntityClientPrefix + getCephUserName(volID)
 
 	var ents []cephEntity
 	args := [...]string{
-		"auth", "-f", "json", "-c", getCephConfPath(volID), "-n", cephEntityClientPrefix + adminCr.id,
+		"-m", volOptions.Monitors,
+		"auth", "-f", "json", "-c", cephConfigPath, "-n", cephEntityClientPrefix + adminCr.id, "--keyring", getCephKeyringPath(volID, adminCr.id),
 		"get", entityName,
 	}
 
@@ -91,7 +92,8 @@ func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volum
 
 	var ents []cephEntity
 	args := [...]string{
-		"auth", "-f", "json", "-c", getCephConfPath(volID), "-n", cephEntityClientPrefix + adminCr.id,
+		"-m", volOptions.Monitors,
+		"auth", "-f", "json", "-c", cephConfigPath, "-n", cephEntityClientPrefix + adminCr.id, "--keyring", getCephKeyringPath(volID, adminCr.id),
 		"get-or-create", cephEntityClientPrefix + getCephUserName(volID),
 		"mds", caps.Mds,
 		"mon", caps.Mon,
@@ -105,11 +107,12 @@ func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volum
 	return &ents[0], nil
 }
 
-func deleteCephUser(adminCr *credentials, volID volumeID) error {
+func deleteCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) error {
 	userID := getCephUserName(volID)
 
 	args := [...]string{
-		"-c", getCephConfPath(volID), "-n", cephEntityClientPrefix + adminCr.id,
+		"-m", volOptions.Monitors,
+		"-c", cephConfigPath, "-n", cephEntityClientPrefix + adminCr.id, "--keyring", getCephKeyringPath(volID, adminCr.id),
 		"auth", "rm", cephEntityClientPrefix + userID,
 	}
 
@@ -118,12 +121,12 @@ func deleteCephUser(adminCr *credentials, volID volumeID) error {
 		return err
 	}
 
-	keyringPath := getCephKeyringPath(volID, userID)
+	keyringPath := getCephKeyringPath(volID, adminCr.id)
 	if err = os.Remove(keyringPath); err != nil {
 		klog.Errorf("failed to remove keyring file %s with error %s", keyringPath, err)
 	}
 
-	secretPath := getCephSecretPath(volID, userID)
+	secretPath := getCephSecretPath(volID, adminCr.id)
 	if err = os.Remove(secretPath); err != nil {
 		klog.Errorf("failed to remove secret file %s with error %s", secretPath, err)
 	}

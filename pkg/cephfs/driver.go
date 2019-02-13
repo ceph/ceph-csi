@@ -99,11 +99,15 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cacheP
 
 	klog.Infof("cephfs: setting default volume mounter to %s", DefaultVolumeMounter)
 
+	if err := writeCephConfig(); err != nil {
+		klog.Fatalf("failed to write ceph configuration file: %v", err)
+	}
+
 	// Initialize default library driver
 
 	fs.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
 	if fs.cd == nil {
-		klog.Fatalln("Failed to initialize CSI driver")
+		klog.Fatalln("failed to initialize CSI driver")
 	}
 
 	fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
