@@ -23,6 +23,7 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/rbd"
 	"github.com/ceph/ceph-csi/pkg/util"
+
 	"k8s.io/klog"
 )
 
@@ -35,6 +36,8 @@ var (
 )
 
 func main() {
+	flag.IntVar(&util.Timeout, "execTimeout", 30, "timeout in seconds for exec commands (default is  30)")
+
 	util.InitLogging()
 
 	if err := createPersistentStorage(path.Join(rbd.PluginFolder, "controller")); err != nil {

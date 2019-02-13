@@ -21,13 +21,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os/exec"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"k8s.io/klog"
+	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
 
@@ -37,15 +36,8 @@ func makeVolumeID(volName string) volumeID {
 	return volumeID("csi-cephfs-" + volName)
 }
 
-func execCommand(command string, args ...string) ([]byte, error) {
-	klog.V(4).Infof("cephfs: EXEC %s %s", command, args)
-
-	cmd := exec.Command(command, args...) // #nosec
-	return cmd.CombinedOutput()
-}
-
 func execCommandAndValidate(program string, args ...string) error {
-	out, err := execCommand(program, args...)
+	out, err := util.ExecCommand(program, args...)
 	if err != nil {
 		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
 	}
@@ -55,7 +47,7 @@ func execCommandAndValidate(program string, args ...string) error {
 
 func execCommandJSON(v interface{}, args ...string) error {
 	program := "ceph"
-	out, err := execCommand(program, args...)
+	out, err := util.ExecCommand(program, args...)
 
 	if err != nil {
 		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)

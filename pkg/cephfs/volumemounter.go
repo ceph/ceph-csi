@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"github.com/ceph/ceph-csi/pkg/util"
 )
 
 const (
@@ -111,7 +113,7 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, vo
 		"-o", "nonempty",
 	}
 
-	out, err := execCommand("ceph-fuse", args[:]...)
+	out, err := util.ExecCommand("ceph-fuse", args[:]...)
 	if err != nil {
 		return fmt.Errorf("cephfs: ceph-fuse failed with following error: %s\ncephfs: ceph-fuse output: %s", err, out)
 	}

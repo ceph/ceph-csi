@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/pkg/util"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 )
@@ -211,12 +213,13 @@ func waitForPath(pool, image string, maxRetries int, useNbdDriver bool) (string,
 
 // Check if rbd-nbd tools are installed.
 func checkRbdNbdTools() bool {
-	_, err := execCommand("modprobe", []string{"nbd"})
+
+	_, err := util.ExecCommand("modprobe", []string{"nbd"}...)
 	if err != nil {
 		klog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err)
 		return false
 	}
-	if _, err := execCommand(rbdTonbd, []string{"--version"}); err != nil {
+	if _, err := util.ExecCommand(rbdTonbd, []string{"--version"}...); err != nil {
 		klog.V(3).Infof("rbd-nbd: running rbd-nbd --version failed with error %v", err)
 		return false
 	}
@@ -247,7 +250,7 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 			}
 		}()
 
-		_, err = execCommand("modprobe", []string{moduleName})
+		_, err = util.ExecCommand("modprobe", []string{moduleName}...)
 		if err != nil {
 			klog.Warningf("rbd: failed to load rbd kernel module:%v", err)
 			return "", err
@@ -291,8 +294,8 @@ func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (stri
 		cmdName = rbdTonbd
 	}
 
-	output, err := execCommand(cmdName, []string{
-		"map", imagePath, "--id", userID, "-m", mon, "--key=" + key})
+	output, err := util.ExecCommand(cmdName, []string{
+		"map", imagePath, "--id", userID, "-m", mon, "--key=" + key}...)
 	if err != nil {
 		klog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
 		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
@@ -334,7 +337,7 @@ func detachRBDDevice(devicePath string) error {
 		cmdName = rbdTonbd
 	}
 
-	output, err = execCommand(cmdName, []string{"unmap", devicePath})
+	output, err = util.ExecCommand(cmdName, []string{"unmap", devicePath}...)
 	if err != nil {
 		return fmt.Errorf("rbd: unmap failed %v, rbd output: %s", err, string(output))
 	}

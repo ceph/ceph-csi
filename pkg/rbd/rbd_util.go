@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/pkg/util"
+
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
@@ -135,7 +137,7 @@ func createRBDImage(pOpts *rbdVolume, volSz int, adminID string, credentials map
 	if pOpts.ImageFormat == rbdImageFormat2 {
 		args = append(args, "--image-feature", pOpts.ImageFeatures)
 	}
-	output, err = execCommand("rbd", args)
+	output, err = util.ExecCommand("rbd", args...)
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to create rbd image, command output: %s", string(output))
@@ -165,7 +167,7 @@ func rbdStatus(pOpts *rbdVolume, userID string, credentials map[string]string) (
 
 	klog.V(4).Infof("rbd: status %s using mon %s, pool %s", image, mon, pOpts.Pool)
 	args := []string{"status", image, "--pool", pOpts.Pool, "-m", mon, "--id", userID, "--key=" + key}
-	cmd, err = execCommand("rbd", args)
+	cmd, err = util.ExecCommand("rbd", args...)
 	output = string(cmd)
 
 	if err, ok := err.(*exec.Error); ok {
@@ -212,18 +214,12 @@ func deleteRBDImage(pOpts *rbdVolume, adminID string, credentials map[string]str
 
 	klog.V(4).Infof("rbd: rm %s using mon %s, pool %s", image, mon, pOpts.Pool)
 	args := []string{"rm", image, "--pool", pOpts.Pool, "--id", adminID, "-m", mon, "--key=" + key}
-	output, err = execCommand("rbd", args)
+	output, err = util.ExecCommand("rbd", args...)
 	if err == nil {
 		return nil
 	}
 	klog.Errorf("failed to delete rbd image: %v, command output: %s", err, string(output))
 	return err
-}
-
-func execCommand(command string, args []string) ([]byte, error) {
-	// #nosec
-	cmd := exec.Command(command, args...)
-	return cmd.CombinedOutput()
 }
 
 func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
@@ -374,7 +370,7 @@ func protectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]
 	klog.V(4).Infof("rbd: snap protect %s using mon %s, pool %s ", image, mon, pOpts.Pool)
 	args := []string{"snap", "protect", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminID, "-m", mon, "--key=" + key}
 
-	output, err = execCommand("rbd", args)
+	output, err = util.ExecCommand("rbd", args...)
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to protect snapshot, command output: %s", string(output))
@@ -401,7 +397,7 @@ func createSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 	klog.V(4).Infof("rbd: snap create %s using mon %s, pool %s", image, mon, pOpts.Pool)
 	args := []string{"snap", "create", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminID, "-m", mon, "--key=" + key}
 
-	output, err = execCommand("rbd", args)
+	output, err = util.ExecCommand("rbd", args...)
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to create snapshot, command output: %s", string(output))
@@ -428,8 +424,7 @@ func unprotectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[strin
 	klog.V(4).Infof("rbd: snap unprotect %s using mon %s, pool %s", image, mon, pOpts.Pool)
 	args := []string{"snap", "unprotect", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminID, "-m", mon, "--key=" + key}
 
-	output, err = execCommand("rbd", args)
-
+	output, err = util.ExecCommand("rbd", args...)
 	if err != nil {
 		return errors.Wrapf(err, "failed to unprotect snapshot, command output: %s", string(output))
 	}
@@ -455,7 +450,7 @@ func deleteSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 	klog.V(4).Infof("rbd: snap rm %s using mon %s, pool %s", image, mon, pOpts.Pool)
 	args := []string{"snap", "rm", "--pool", pOpts.Pool, "--snap", snapID, image, "--id", adminID, "-m", mon, "--key=" + key}
 
-	output, err = execCommand("rbd", args)
+	output, err = util.ExecCommand("rbd", args...)
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to delete snapshot, command output: %s", string(output))
@@ -482,7 +477,7 @@ func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, adminID string
 	klog.V(4).Infof("rbd: clone %s using mon %s, pool %s", image, mon, pVolOpts.Pool)
 	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.VolName + "@" + snapID, pVolOpts.Pool + "/" + image, "--id", adminID, "-m", mon, "--key=" + key}
 
-	output, err = execCommand("rbd", args)
+	output, err = util.ExecCommand("rbd", args...)
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to restore snapshot, command output: %s", string(output))

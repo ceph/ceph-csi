@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ceph/ceph-csi/pkg/util"
+
 	"k8s.io/klog"
 )
 
@@ -62,7 +64,7 @@ func getCephUser(adminCr *credentials, volID volumeID) (*cephEntity, error) {
 		"get", entityName,
 	}
 
-	out, err := execCommand("ceph", args[:]...)
+	out, err := util.ExecCommand("ceph", args[:]...)
 	if err != nil {
 		return nil, fmt.Errorf("cephfs: ceph failed with following error: %s\ncephfs: ceph output: %s", err, out)
 	}
