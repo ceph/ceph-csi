@@ -51,10 +51,6 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
 		}
 
-		if err = storeCephCredentials(volID, adminCr); err != nil {
-			return nil, fmt.Errorf("failed to store ceph admin credentials: %v", err)
-		}
-
 		// Then get the ceph user
 
 		entity, err := getCephUser(volOptions, adminCr, volID)
@@ -72,10 +68,6 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 		}
 
 		cr = userCr
-	}
-
-	if err := storeCephCredentials(volID, cr); err != nil {
-		return nil, fmt.Errorf("failed to store ceph user credentials: %v", err)
 	}
 
 	return cr, nil
@@ -241,7 +233,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof("cephfs: successfully umounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
+	klog.Infof("cephfs: successfully unmounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }

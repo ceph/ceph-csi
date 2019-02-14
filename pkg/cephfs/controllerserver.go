@@ -67,11 +67,6 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		if err = storeCephCredentials(volID, cr); err != nil {
-			klog.Errorf("failed to store admin credentials for '%s': %v", cr.id, err)
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
 		if err = createVolume(volOptions, cr, volID, req.GetCapacityRange().GetRequiredBytes()); err != nil {
 			klog.Errorf("failed to create volume %s: %v", req.GetName(), err)
 			return nil, status.Error(codes.Internal, err.Error())
