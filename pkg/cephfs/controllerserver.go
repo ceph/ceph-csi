@@ -17,143 +17,154 @@ limitations under the License.
 package cephfs
 
 import (
-	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/klog"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+
+	"github.com/ceph/ceph-csi/pkg/util"
 )
 
-type controllerServer struct {
+// ControllerServer struct of CEPH CSI driver with supported methods of CSI
+// controller server spec.
+type ControllerServer struct {
 	*csicommon.DefaultControllerServer
+	MetadataStore util.CachePersister
 }
 
-func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+type controllerCacheEntry struct {
+	VolOptions volumeOptions
+	VolumeID   volumeID
+}
+
+// CreateVolume creates the volume in backend and store the volume metadata
+func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
-		glog.Errorf("CreateVolumeRequest validation failed: %v", err)
+		klog.Errorf("CreateVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
 
 	// Configuration
-	volOptions, err := newVolumeOptions(req.GetParameters())
+
+	secret := req.GetSecrets()
+	volOptions, err := newVolumeOptions(req.GetParameters(), secret)
 	if err != nil {
-		glog.Errorf("validation of volume options failed: %v", err)
+		klog.Errorf("validation of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	volId := makeVolumeID(req.GetName())
-
-	conf := cephConfigData{Monitors: volOptions.Monitors, VolumeID: volId}
-	if err = conf.writeToFile(); err != nil {
-		glog.Errorf("failed to write ceph config file to %s: %v", getCephConfPath(volId), err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	volID := makeVolumeID(req.GetName())
 
 	// Create a volume in case the user didn't provide one
 
 	if volOptions.ProvisionVolume {
 		// Admin credentials are required
-
-		cr, err := getAdminCredentials(req.GetSecrets())
+		cr, err := getAdminCredentials(secret)
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		if err = storeCephCredentials(volId, cr); err != nil {
-			glog.Errorf("failed to store admin credentials for '%s': %v", cr.id, err)
+		if err = storeCephCredentials(volID, cr); err != nil {
+			klog.Errorf("failed to store admin credentials for '%s': %v", cr.id, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		if err = createVolume(volOptions, cr, volId, req.GetCapacityRange().GetRequiredBytes()); err != nil {
-			glog.Errorf("failed to create volume %s: %v", req.GetName(), err)
+		if err = createVolume(volOptions, cr, volID, req.GetCapacityRange().GetRequiredBytes()); err != nil {
+			klog.Errorf("failed to create volume %s: %v", req.GetName(), err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		if _, err = createCephUser(volOptions, cr, volId); err != nil {
-			glog.Errorf("failed to create ceph user for volume %s: %v", req.GetName(), err)
+		if _, err = createCephUser(volOptions, cr, volID); err != nil {
+			klog.Errorf("failed to create ceph user for volume %s: %v", req.GetName(), err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		glog.Infof("cephfs: successfully created volume %s", volId)
+		klog.Infof("cephfs: successfully created volume %s", volID)
 	} else {
-		glog.Infof("cephfs: volume %s is provisioned statically", volId)
+		klog.Infof("cephfs: volume %s is provisioned statically", volID)
 	}
 
-	if err = ctrCache.insert(&controllerCacheEntry{VolOptions: *volOptions, VolumeID: volId}); err != nil {
-		glog.Errorf("failed to store a cache entry for volume %s: %v", volId, err)
+	ce := &controllerCacheEntry{VolOptions: *volOptions, VolumeID: volID}
+	if err := cs.MetadataStore.Create(string(volID), ce); err != nil {
+		klog.Errorf("failed to store a cache entry for volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			VolumeId:      string(volId),
+			VolumeId:      string(volID),
 			CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
 			VolumeContext: req.GetParameters(),
 		},
 	}, nil
 }
 
-func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	if err := cs.validateDeleteVolumeRequest(req); err != nil {
-		glog.Errorf("DeleteVolumeRequest validation failed: %v", err)
+// DeleteVolume deletes the volume in backend and removes the volume metadata
+// from store
+func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+	if err := cs.validateDeleteVolumeRequest(); err != nil {
+		klog.Errorf("DeleteVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
 
 	var (
-		volId = volumeID(req.GetVolumeId())
-		err   error
+		volID   = volumeID(req.GetVolumeId())
+		secrets = req.GetSecrets()
+		err     error
 	)
 
-	// Load volume info from cache
-
-	ent, err := ctrCache.pop(volId)
-	if err != nil {
-		glog.Error(err)
+	ce := &controllerCacheEntry{}
+	if err = cs.MetadataStore.Get(string(volID), ce); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if !ent.VolOptions.ProvisionVolume {
+	if !ce.VolOptions.ProvisionVolume {
 		// DeleteVolume() is forbidden for statically provisioned volumes!
 
-		glog.Warningf("volume %s is provisioned statically, aborting delete", volId)
+		klog.Warningf("volume %s is provisioned statically, aborting delete", volID)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	defer func() {
-		if err != nil {
-			// Reinsert cache entry for retry
-			if insErr := ctrCache.insert(ent); insErr != nil {
-				glog.Errorf("failed to reinsert volume cache entry in rollback procedure for volume %s: %v", volId, err)
-			}
-		}
-	}()
+	// mons may have changed since create volume,
+	// retrieve the latest mons and override old mons
+	if mon, secretsErr := getMonValFromSecret(secrets); secretsErr == nil && len(mon) > 0 {
+		klog.Infof("overriding monitors [%q] with [%q] for volume %s", ce.VolOptions.Monitors, mon, volID)
+		ce.VolOptions.Monitors = mon
+	}
 
 	// Deleting a volume requires admin credentials
 
-	cr, err := getAdminCredentials(req.GetSecrets())
+	cr, err := getAdminCredentials(secrets)
 	if err != nil {
-		glog.Errorf("failed to retrieve admin credentials: %v", err)
+		klog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err = purgeVolume(volId, cr, &ent.VolOptions); err != nil {
-		glog.Errorf("failed to delete volume %s: %v", volId, err)
+	if err = purgeVolume(volID, cr, &ce.VolOptions); err != nil {
+		klog.Errorf("failed to delete volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = deleteCephUser(cr, volId); err != nil {
-		glog.Errorf("failed to delete ceph user for volume %s: %v", volId, err)
+	if err = deleteCephUser(&ce.VolOptions, cr, volID); err != nil {
+		klog.Errorf("failed to delete ceph user for volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	glog.Infof("cephfs: successfully deleted volume %s", volId)
+	if err = cs.MetadataStore.Delete(string(volID)); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	klog.Infof("cephfs: successfully deleted volume %s", volID)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
-func (cs *controllerServer) ValidateVolumeCapabilities(
+// ValidateVolumeCapabilities checks whether the volume capabilities requested
+// are supported.
+func (cs *ControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	// Cephfs doesn't support Block volume

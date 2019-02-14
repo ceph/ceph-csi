@@ -1,5 +1,12 @@
+---
 # need for docker build
 sudo: true
+
+addons:
+  apt:
+    packages:
+      - realpath
+      - ruby
 
 language: go
 branches:
@@ -7,21 +14,41 @@ branches:
     - master
     - csi-v1.0
 
-go: 1.9.x
+go: 1.11.x
 
-before_script:
-  - GO_FILES=$(find . -iname '*.go' -type f | grep -v /vendor/)
-  - go get -u golang.org/x/lint/golint #go get github.com/golang/lint/golint
+env:
+  global:
+    - GO_METALINTER_VERSION="v3.0.0"
+    - TEST_COVERAGE=stdout
+    - GO_METALINTER_THREADS=1
+    - GO_COVER_DIR=_output
 
-script:
-  - test -z $(gofmt -s -l $GO_FILES)
-  - go vet -v $(go list ./... | grep -v /vendor/)
-  - make rbdplugin
-  - make cephfsplugin
+jobs:
+  include:
+    - name: Linter
+      install:
+        - gem install mdl
+        - pip install --user --upgrade pip
+        - pip install --user yamllint
+        # install gometalinter
+        - curl -L
+         "https://raw.githubusercontent.com/alecthomas/gometalinter/"${GO_METALINTER_VERSION}"/scripts/install.sh"
+         | bash -s -- -b $GOPATH/bin "${GO_METALINTER_VERSION}"
+      script:
+        - scripts/lint-text.sh --require-all
+        - scripts/lint-go.sh
+        - scripts/test-go.sh
+
+    - name: rbdplugin
+      script:
+        - make rbdplugin
+
+    - name: cephfsplugin
+      script:
+        - make cephfsplugin
 
 deploy:
   - provider: script
-    script:
-      - ./deploy.sh
-    on:
+    on:  # yamllint disable-line rule:truthy
       all_branches: true
+    script: ./deploy.sh

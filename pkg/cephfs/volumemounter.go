@@ -18,14 +18,15 @@ package cephfs
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 )
 
 const (
-	volumeMounter_fuse   = "fuse"
-	volumeMounter_kernel = "kernel"
+	volumeMounterFuse   = "fuse"
+	volumeMounterKernel = "kernel"
 )
 
 var (
@@ -35,26 +36,28 @@ var (
 // Load available ceph mounters installed on system into availableMounters
 // Called from driver.go's Run()
 func loadAvailableMounters() error {
+	// #nosec
 	fuseMounterProbe := exec.Command("ceph-fuse", "--version")
+	// #nosec
 	kernelMounterProbe := exec.Command("mount.ceph")
 
 	if fuseMounterProbe.Run() == nil {
-		availableMounters = append(availableMounters, volumeMounter_fuse)
+		availableMounters = append(availableMounters, volumeMounterFuse)
 	}
 
 	if kernelMounterProbe.Run() == nil {
-		availableMounters = append(availableMounters, volumeMounter_kernel)
+		availableMounters = append(availableMounters, volumeMounterKernel)
 	}
 
 	if len(availableMounters) == 0 {
-		return fmt.Errorf("no ceph mounters found on system")
+		return errors.New("no ceph mounters found on system")
 	}
 
 	return nil
 }
 
 type volumeMounter interface {
-	mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error
+	mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error
 	name() string
 }
 
@@ -87,9 +90,9 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 	// Create the mounter
 
 	switch chosenMounter {
-	case volumeMounter_fuse:
+	case volumeMounterFuse:
 		return &fuseMounter{}, nil
-	case volumeMounter_kernel:
+	case volumeMounterKernel:
 		return &kernelMounter{}, nil
 	}
 
@@ -98,12 +101,13 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 
 type fuseMounter struct{}
 
-func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
+func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
 	args := [...]string{
 		mountPoint,
-		"-c", getCephConfPath(volId),
+		"-m", volOptions.Monitors,
+		"-c", cephConfigPath,
 		"-n", cephEntityClientPrefix + cr.id,
-		"--keyring", getCephKeyringPath(volId, cr.id),
+		"--keyring", getCephKeyringPath(volID, cr.id),
 		"-r", volOptions.RootPath,
 		"-o", "nonempty",
 	}
@@ -120,19 +124,19 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, vo
 	return nil
 }
 
-func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
+func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
 	if err := createMountPoint(mountPoint); err != nil {
 		return err
 	}
 
-	return mountFuse(mountPoint, cr, volOptions, volId)
+	return mountFuse(mountPoint, cr, volOptions, volID)
 }
 
 func (m *fuseMounter) name() string { return "Ceph FUSE driver" }
 
 type kernelMounter struct{}
 
-func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
+func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
 	if err := execCommandAndValidate("modprobe", "ceph"); err != nil {
 		return err
 	}
@@ -142,16 +146,16 @@ func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, 
 		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
 		mountPoint,
 		"-o",
-		fmt.Sprintf("name=%s,secretfile=%s", cr.id, getCephSecretPath(volId, cr.id)),
+		fmt.Sprintf("name=%s,secretfile=%s", cr.id, getCephSecretPath(volID, cr.id)),
 	)
 }
 
-func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volId volumeID) error {
+func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
 	if err := createMountPoint(mountPoint); err != nil {
 		return err
 	}
 
-	return mountKernel(mountPoint, cr, volOptions, volId)
+	return mountKernel(mountPoint, cr, volOptions, volID)
 }
 
 func (m *kernelMounter) name() string { return "Ceph kernel client" }

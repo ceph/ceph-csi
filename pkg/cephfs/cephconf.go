@@ -18,36 +18,37 @@ package cephfs
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"text/template"
+
+	"k8s.io/klog"
 )
 
-const cephConfig = `[global]
-mon_host = {{.Monitors}}
+var cephConfig = []byte(`[global]
 auth_cluster_required = cephx
 auth_service_required = cephx
 auth_client_required = cephx
 
 # Workaround for http://tracker.ceph.com/issues/23446
 fuse_set_user_groups = false
-`
+`)
 
-const cephKeyring = `[client.{{.UserId}}]
+const cephKeyring = `[client.{{.UserID}}]
 key = {{.Key}}
 `
 
-const cephSecret = `{{.Key}}`
+const cephSecret = `{{.Key}}` // #nosec
 
 const (
 	cephConfigRoot         = "/etc/ceph"
-	cephConfigFileNameFmt  = "ceph.share.%s.conf"
+	cephConfigPath         = "/etc/ceph/ceph.conf"
 	cephKeyringFileNameFmt = "ceph.share.%s.client.%s.keyring"
-	cephSecretFileNameFmt  = "ceph.share.%s.client.%s.secret"
+	cephSecretFileNameFmt  = "ceph.share.%s.client.%s.secret" // #nosec
 )
 
 var (
-	cephConfigTempl  *template.Template
 	cephKeyringTempl *template.Template
 	cephSecretTempl  *template.Template
 )
@@ -63,22 +64,24 @@ func init() {
 		},
 	}
 
-	cephConfigTempl = template.Must(template.New("config").Parse(cephConfig))
 	cephKeyringTempl = template.Must(template.New("keyring").Funcs(fm).Parse(cephKeyring))
 	cephSecretTempl = template.Must(template.New("secret").Parse(cephSecret))
 }
 
-type cephConfigWriter interface {
-	writeToFile() error
+func createCephConfigRoot() error {
+	return os.MkdirAll(cephConfigRoot, 0755) // #nosec
 }
 
-type cephConfigData struct {
-	Monitors string
-	VolumeID volumeID
+func writeCephConfig() error {
+	if err := createCephConfigRoot(); err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(cephConfigPath, cephConfig, 0640)
 }
 
 func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, data interface{}) error {
-	if err := os.MkdirAll(cephConfigRoot, 0755); err != nil {
+	if err := createCephConfigRoot(); err != nil {
 		return err
 	}
 
@@ -90,41 +93,37 @@ func writeCephTemplate(fileName string, m os.FileMode, t *template.Template, dat
 		return err
 	}
 
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			klog.Errorf("failed to close file %s with error %s", f.Name(), err)
+		}
+	}()
 
 	return t.Execute(f, data)
 }
 
-func (d *cephConfigData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephConfigFileNameFmt, d.VolumeID), 0640, cephConfigTempl, d)
-}
-
 type cephKeyringData struct {
-	UserId, Key string
+	UserID, Key string
 	VolumeID    volumeID
 }
 
 func (d *cephKeyringData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.VolumeID, d.UserId), 0600, cephKeyringTempl, d)
+	return writeCephTemplate(fmt.Sprintf(cephKeyringFileNameFmt, d.VolumeID, d.UserID), 0600, cephKeyringTempl, d)
 }
 
 type cephSecretData struct {
-	UserId, Key string
+	UserID, Key string
 	VolumeID    volumeID
 }
 
 func (d *cephSecretData) writeToFile() error {
-	return writeCephTemplate(fmt.Sprintf(cephSecretFileNameFmt, d.VolumeID, d.UserId), 0600, cephSecretTempl, d)
+	return writeCephTemplate(fmt.Sprintf(cephSecretFileNameFmt, d.VolumeID, d.UserID), 0600, cephSecretTempl, d)
 }
 
-func getCephSecretPath(volId volumeID, userId string) string {
-	return path.Join(cephConfigRoot, fmt.Sprintf(cephSecretFileNameFmt, volId, userId))
+func getCephSecretPath(volID volumeID, userID string) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephSecretFileNameFmt, volID, userID))
 }
 
-func getCephKeyringPath(volId volumeID, userId string) string {
-	return path.Join(cephConfigRoot, fmt.Sprintf(cephKeyringFileNameFmt, volId, userId))
-}
-
-func getCephConfPath(volId volumeID) string {
-	return path.Join(cephConfigRoot, fmt.Sprintf(cephConfigFileNameFmt, volId))
+func getCephKeyringPath(volID volumeID, userID string) string {
+	return path.Join(cephConfigRoot, fmt.Sprintf(cephKeyringFileNameFmt, volID, userID))
 }

@@ -19,12 +19,13 @@ package cephfs
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 
-	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/klog"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -37,9 +38,9 @@ func makeVolumeID(volName string) volumeID {
 }
 
 func execCommand(command string, args ...string) ([]byte, error) {
-	glog.V(4).Infof("cephfs: EXEC %s %s", command, args)
+	klog.V(4).Infof("cephfs: EXEC %s %s", command, args)
 
-	cmd := exec.Command(command, args...)
+	cmd := exec.Command(command, args...) // #nosec
 	return cmd.CombinedOutput()
 }
 
@@ -52,7 +53,8 @@ func execCommandAndValidate(program string, args ...string) error {
 	return nil
 }
 
-func execCommandJson(v interface{}, program string, args ...string) error {
+func execCommandJSON(v interface{}, args ...string) error {
+	program := "ceph"
 	out, err := execCommand(program, args...)
 
 	if err != nil {
@@ -74,11 +76,11 @@ func isMountPoint(p string) (bool, error) {
 	return !notMnt, nil
 }
 
-func storeCephCredentials(volId volumeID, cr *credentials) error {
+func storeCephCredentials(volID volumeID, cr *credentials) error {
 	keyringData := cephKeyringData{
-		UserId:   cr.id,
+		UserID:   cr.id,
 		Key:      cr.key,
-		VolumeID: volId,
+		VolumeID: volID,
 	}
 
 	if err := keyringData.writeToFile(); err != nil {
@@ -86,23 +88,20 @@ func storeCephCredentials(volId volumeID, cr *credentials) error {
 	}
 
 	secret := cephSecretData{
-		UserId:   cr.id,
+		UserID:   cr.id,
 		Key:      cr.key,
-		VolumeID: volId,
+		VolumeID: volID,
 	}
 
-	if err := secret.writeToFile(); err != nil {
-		return err
-	}
-
-	return nil
+	err := secret.writeToFile()
+	return err
 }
 
 //
 // Controller service request validation
 //
 
-func (cs *controllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
+func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid CreateVolumeRequest: %v", err)
 	}
@@ -111,14 +110,21 @@ func (cs *controllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 		return status.Error(codes.InvalidArgument, "Volume Name cannot be empty")
 	}
 
-	if req.GetVolumeCapabilities() == nil {
+	reqCaps := req.GetVolumeCapabilities()
+	if reqCaps == nil {
 		return status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
+	}
+
+	for _, cap := range reqCaps {
+		if cap.GetBlock() != nil {
+			return status.Error(codes.Unimplemented, "block volume not supported")
+		}
 	}
 
 	return nil
 }
 
-func (cs *controllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeRequest) error {
+func (cs *ControllerServer) validateDeleteVolumeRequest() error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid DeleteVolumeRequest: %v", err)
 	}
@@ -132,19 +138,19 @@ func (cs *controllerServer) validateDeleteVolumeRequest(req *csi.DeleteVolumeReq
 
 func validateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 	if req.GetVolumeCapability() == nil {
-		return fmt.Errorf("volume capability missing in request")
+		return errors.New("volume capability missing in request")
 	}
 
 	if req.GetVolumeId() == "" {
-		return fmt.Errorf("volume ID missing in request")
+		return errors.New("volume ID missing in request")
 	}
 
 	if req.GetStagingTargetPath() == "" {
-		return fmt.Errorf("staging target path missing in request")
+		return errors.New("staging target path missing in request")
 	}
 
 	if req.GetSecrets() == nil || len(req.GetSecrets()) == 0 {
-		return fmt.Errorf("stage secrets cannot be nil or empty")
+		return errors.New("stage secrets cannot be nil or empty")
 	}
 
 	return nil
@@ -152,11 +158,11 @@ func validateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 
 func validateNodeUnstageVolumeRequest(req *csi.NodeUnstageVolumeRequest) error {
 	if req.GetVolumeId() == "" {
-		return fmt.Errorf("volume ID missing in request")
+		return errors.New("volume ID missing in request")
 	}
 
 	if req.GetStagingTargetPath() == "" {
-		return fmt.Errorf("staging target path missing in request")
+		return errors.New("staging target path missing in request")
 	}
 
 	return nil
@@ -164,15 +170,15 @@ func validateNodeUnstageVolumeRequest(req *csi.NodeUnstageVolumeRequest) error {
 
 func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 	if req.GetVolumeCapability() == nil {
-		return fmt.Errorf("volume capability missing in request")
+		return errors.New("volume capability missing in request")
 	}
 
 	if req.GetVolumeId() == "" {
-		return fmt.Errorf("volume ID missing in request")
+		return errors.New("volume ID missing in request")
 	}
 
 	if req.GetTargetPath() == "" {
-		return fmt.Errorf("varget path missing in request")
+		return errors.New("varget path missing in request")
 	}
 
 	return nil
@@ -180,11 +186,11 @@ func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 
 func validateNodeUnpublishVolumeRequest(req *csi.NodeUnpublishVolumeRequest) error {
 	if req.GetVolumeId() == "" {
-		return fmt.Errorf("volume ID missing in request")
+		return errors.New("volume ID missing in request")
 	}
 
 	if req.GetTargetPath() == "" {
-		return fmt.Errorf("target path missing in request")
+		return errors.New("target path missing in request")
 	}
 
 	return nil

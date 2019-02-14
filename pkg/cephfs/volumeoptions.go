@@ -17,7 +17,6 @@ limitations under the License.
 package cephfs
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 )
@@ -29,11 +28,13 @@ type volumeOptions struct {
 
 	Mounter         string `json:"mounter"`
 	ProvisionVolume bool   `json:"provisionVolume"`
+
+	MonValueFromSecret string `json:"monValueFromSecret"`
 }
 
 func validateNonEmptyField(field, fieldName string) error {
 	if field == "" {
-		return fmt.Errorf("Parameter '%s' cannot be empty", fieldName)
+		return fmt.Errorf("parameter '%s' cannot be empty", fieldName)
 	}
 
 	return nil
@@ -41,7 +42,9 @@ func validateNonEmptyField(field, fieldName string) error {
 
 func (o *volumeOptions) validate() error {
 	if err := validateNonEmptyField(o.Monitors, "monitors"); err != nil {
-		return err
+		if err = validateNonEmptyField(o.MonValueFromSecret, "monValueFromSecret"); err != nil {
+			return err
+		}
 	}
 
 	if err := validateNonEmptyField(o.RootPath, "rootPath"); err != nil {
@@ -50,7 +53,7 @@ func (o *volumeOptions) validate() error {
 		}
 	} else {
 		if o.ProvisionVolume {
-			return fmt.Errorf("Non-empty field rootPath is in conflict with provisionVolume=true")
+			return fmt.Errorf("non-empty field rootPath is in conflict with provisionVolume=true")
 		}
 	}
 
@@ -70,60 +73,83 @@ func (o *volumeOptions) validate() error {
 }
 
 func extractOption(dest *string, optionLabel string, options map[string]string) error {
-	if opt, ok := options[optionLabel]; !ok {
-		return errors.New("Missing required field " + optionLabel)
-	} else {
-		*dest = opt
-		return nil
+	opt, ok := options[optionLabel]
+	if !ok {
+		return fmt.Errorf("missing required field %s", optionLabel)
 	}
+
+	*dest = opt
+	return nil
 }
 
 func validateMounter(m string) error {
 	switch m {
-	case volumeMounter_fuse:
-	case volumeMounter_kernel:
+	case volumeMounterFuse:
+	case volumeMounterKernel:
 	default:
-		return fmt.Errorf("Unknown mounter '%s'. Valid options are 'fuse' and 'kernel'", m)
+		return fmt.Errorf("unknown mounter '%s'. Valid options are 'fuse' and 'kernel'", m)
 	}
 
 	return nil
 }
 
-func newVolumeOptions(volOptions map[string]string) (*volumeOptions, error) {
+func newVolumeOptions(volOptions, secret map[string]string) (*volumeOptions, error) {
 	var (
-		opts                volumeOptions
-		provisionVolumeBool string
-		err                 error
+		opts volumeOptions
+		err  error
 	)
 
-	if err = extractOption(&opts.Monitors, "monitors", volOptions); err != nil {
-		return nil, err
-	}
-
-	if err = extractOption(&provisionVolumeBool, "provisionVolume", volOptions); err != nil {
-		return nil, err
-	}
-
-	if opts.ProvisionVolume, err = strconv.ParseBool(provisionVolumeBool); err != nil {
-		return nil, fmt.Errorf("Failed to parse provisionVolume: %v", err)
-	}
-
-	if opts.ProvisionVolume {
-		if err = extractOption(&opts.Pool, "pool", volOptions); err != nil {
-			return nil, err
+	// extract mon from secret first
+	if err = extractOption(&opts.MonValueFromSecret, "monValueFromSecret", volOptions); err == nil {
+		mon := ""
+		if mon, err = getMonValFromSecret(secret); err == nil && len(mon) > 0 {
+			opts.Monitors = mon
 		}
-	} else {
-		if err = extractOption(&opts.RootPath, "rootPath", volOptions); err != nil {
-			return nil, err
+	}
+	if len(opts.Monitors) == 0 {
+		// if not set in secret, get it from parameter
+		if err = extractOption(&opts.Monitors, "monitors", volOptions); err != nil {
+			return nil, fmt.Errorf("either monitors or monValueFromSecret should be set")
 		}
 	}
 
-	// This field is optional, don't check for its presence
-	extractOption(&opts.Mounter, "mounter", volOptions)
+	if err = extractNewVolOpt(&opts, volOptions); err != nil {
+		return nil, err
+	}
 
 	if err = opts.validate(); err != nil {
 		return nil, err
 	}
 
 	return &opts, nil
+}
+
+func extractNewVolOpt(opts *volumeOptions, volOpt map[string]string) error {
+	var (
+		provisionVolumeBool string
+		err                 error
+	)
+	if err = extractOption(&provisionVolumeBool, "provisionVolume", volOpt); err != nil {
+		return err
+	}
+
+	if opts.ProvisionVolume, err = strconv.ParseBool(provisionVolumeBool); err != nil {
+		return fmt.Errorf("failed to parse provisionVolume: %v", err)
+	}
+
+	if opts.ProvisionVolume {
+		if err = extractOption(&opts.Pool, "pool", volOpt); err != nil {
+			return err
+		}
+	} else {
+		if err = extractOption(&opts.RootPath, "rootPath", volOpt); err != nil {
+			return err
+		}
+	}
+
+	// This field is optional, don't check for its presence
+	// nolint
+	//  (skip errcheck  and gosec as this is optional)
+	extractOption(&opts.Mounter, "mounter", volOpt)
+	return nil
 }

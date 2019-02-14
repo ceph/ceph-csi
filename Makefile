@@ -25,21 +25,26 @@ $(info cephfs image settings: $(CEPHFS_IMAGE_NAME) version $(CEPHFS_IMAGE_VERSIO
 
 all: rbdplugin cephfsplugin
 
-test:
-	go test github.com/ceph/ceph-csi/pkg/... -cover
-	go vet github.com/ceph/ceph-csi/pkg/...
+test: go-test static-check
+
+go-test:
+	./scripts/test-go.sh
+
+static-check:
+	./scripts/lint-go.sh  
+	./scripts/lint-text.sh
 
 rbdplugin:
-	if [ ! -d ./vendor ]; then dep ensure; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/rbdplugin ./rbd
+	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/rbdplugin ./cmd/rbd
 
 image-rbdplugin: rbdplugin
 	cp _output/rbdplugin  deploy/rbd/docker
 	docker build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
 
 cephfsplugin:
-	if [ ! -d ./vendor ]; then dep ensure; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephfsplugin ./cephfs
+	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephfsplugin ./cmd/cephfs
 
 image-cephfsplugin: cephfsplugin
 	cp _output/cephfsplugin deploy/cephfs/docker
@@ -55,3 +60,5 @@ clean:
 	go clean -r -x
 	rm -f deploy/rbd/docker/rbdplugin
 	rm -f deploy/cephfs/docker/cephfsplugin
+	rm -f _output/rbdplugin
+	rm -f _output/cephfsplugin

@@ -23,11 +23,14 @@ import (
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
-type identityServer struct {
+// IdentityServer struct of rbd CSI driver with supported methods of CSI
+// identity server spec.
+type IdentityServer struct {
 	*csicommon.DefaultIdentityServer
 }
 
-func (is *identityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
+// GetPluginCapabilities returns available capabilities of the rbd driver
+func (is *IdentityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
 			{

@@ -17,14 +17,9 @@ limitations under the License.
 package rbd
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"os"
-	"path"
-	"strings"
+	"k8s.io/klog"
 
-	"github.com/golang/glog"
-
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 
@@ -35,132 +30,46 @@ import (
 
 // PluginFolder defines the location of rbdplugin
 const (
-	PluginFolder      = "/var/lib/kubelet/plugins_registry/csi-rbdplugin"
-	rbdDefaultAdminId = "admin"
-	rbdDefaultUserId  = rbdDefaultAdminId
+	PluginFolder      = "/var/lib/kubelet/plugins/csi-rbdplugin"
+	rbdDefaultAdminID = "admin"
+	rbdDefaultUserID  = rbdDefaultAdminID
 )
 
-type rbd struct {
-	driver *csicommon.CSIDriver
+// Driver contains the default identity,node and controller struct
+type Driver struct {
+	cd *csicommon.CSIDriver
 
-	ids *identityServer
-	ns  *nodeServer
-	cs  *controllerServer
-
-	cap   []*csi.VolumeCapability_AccessMode
-	cscap []*csi.ControllerServiceCapability
+	ids *IdentityServer
+	ns  *NodeServer
+	cs  *ControllerServer
 }
 
 var (
-	rbdDriver *rbd
-	version   = "1.0.0"
+	version = "1.0.0"
 )
 
-var rbdVolumes map[string]*rbdVolume
-var rbdSnapshots map[string]*rbdSnapshot
-
-// Init checks for the persistent volume file and loads all found volumes
-// into a memory structure
-func init() {
-	rbdVolumes = map[string]*rbdVolume{}
-	rbdSnapshots = map[string]*rbdSnapshot{}
-	if _, err := os.Stat(path.Join(PluginFolder, "controller")); os.IsNotExist(err) {
-		glog.Infof("rbd: folder %s not found. Creating... \n", path.Join(PluginFolder, "controller"))
-		if err := os.Mkdir(path.Join(PluginFolder, "controller"), 0755); err != nil {
-			glog.Fatalf("Failed to create a controller's volumes folder with error: %v\n", err)
-		}
-	} else {
-		// Since "controller" folder exists, it means the rbdplugin has already been running, it means
-		// there might be some volumes left, they must be re-inserted into rbdVolumes map
-		loadExVolumes()
-	}
-	if _, err := os.Stat(path.Join(PluginFolder, "controller-snap")); os.IsNotExist(err) {
-		glog.Infof("rbd: folder %s not found. Creating... \n", path.Join(PluginFolder, "controller-snap"))
-		if err := os.Mkdir(path.Join(PluginFolder, "controller-snap"), 0755); err != nil {
-			glog.Fatalf("Failed to create a controller's snapshots folder with error: %v\n", err)
-		}
-	} else {
-		// Since "controller-snap" folder exists, it means the rbdplugin has already been running, it means
-		// there might be some snapshots left, they must be re-inserted into rbdSnapshots map
-		loadExSnapshots()
-	}
+// NewDriver returns new rbd driver
+func NewDriver() *Driver {
+	return &Driver{}
 }
 
-// loadExSnapshots check for any *.json files in the  PluginFolder/controller-snap folder
-// and loads then into rbdSnapshots map
-func loadExSnapshots() {
-	rbdSnap := rbdSnapshot{}
-	files, err := ioutil.ReadDir(path.Join(PluginFolder, "controller-snap"))
-	if err != nil {
-		glog.Infof("rbd: failed to read controller's snapshots folder: %s error:%v", path.Join(PluginFolder, "controller-snap"), err)
-		return
-	}
-	for _, f := range files {
-		if !strings.HasSuffix(f.Name(), ".json") {
-			continue
-		}
-		fp, err := os.Open(path.Join(PluginFolder, "controller-snap", f.Name()))
-		if err != nil {
-			glog.Infof("rbd: open file: %s err %v", f.Name(), err)
-			continue
-		}
-		decoder := json.NewDecoder(fp)
-		if err = decoder.Decode(&rbdSnap); err != nil {
-			glog.Infof("rbd: decode file: %s err: %v", f.Name(), err)
-			fp.Close()
-			continue
-		}
-		rbdSnapshots[rbdSnap.SnapID] = &rbdSnap
-	}
-	glog.Infof("rbd: Loaded %d snapshots from %s", len(rbdSnapshots), path.Join(PluginFolder, "controller-snap"))
-}
-
-// loadExVolumes check for any *.json files in the  PluginFolder/controller folder
-// and loads then into rbdVolumes map
-func loadExVolumes() {
-	rbdVol := rbdVolume{}
-	files, err := ioutil.ReadDir(path.Join(PluginFolder, "controller"))
-	if err != nil {
-		glog.Infof("rbd: failed to read controller's volumes folder: %s error:%v", path.Join(PluginFolder, "controller"), err)
-		return
-	}
-	for _, f := range files {
-		if !strings.HasSuffix(f.Name(), ".json") {
-			continue
-		}
-		fp, err := os.Open(path.Join(PluginFolder, "controller", f.Name()))
-		if err != nil {
-			glog.Infof("rbd: open file: %s err %v", f.Name(), err)
-			continue
-		}
-		decoder := json.NewDecoder(fp)
-		if err = decoder.Decode(&rbdVol); err != nil {
-			glog.Infof("rbd: decode file: %s err: %v", f.Name(), err)
-			fp.Close()
-			continue
-		}
-		rbdVolumes[rbdVol.VolID] = &rbdVol
-	}
-	glog.Infof("rbd: Loaded %d volumes from %s", len(rbdVolumes), path.Join(PluginFolder, "controller"))
-}
-
-func GetRBDDriver() *rbd {
-	return &rbd{}
-}
-
-func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
-	return &identityServer{
+// NewIdentityServer initialize a identity server for rbd CSI driver
+func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
+	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver) *controllerServer {
-	return &controllerServer{
+// NewControllerServer initialize a controller server for rbd CSI driver
+func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
+	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
+		MetadataStore:           cachePersister,
 	}
 }
 
-func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, error) {
+// NewNodeServer initialize a node server for rbd CSI driver.
+func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, error) {
 	mounter := mount.New("")
 	if containerized {
 		ne, err := nsenter.NewNsenter(nsenter.DefaultHostRootFsPath, exec.New())
@@ -169,37 +78,46 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, err
 		}
 		mounter = mount.NewNsenterMounter("", ne)
 	}
-	return &nodeServer{
+	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
 		mounter:           mounter,
 	}, nil
 }
 
-func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool) {
+// Run start a non-blocking grpc controller,node and identityserver for
+// rbd CSI driver which can serve multiple parallel requests
+func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
 	var err error
-	glog.Infof("Driver: %v version: %v", driverName, version)
+	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Initialize default library driver
-	rbd.driver = csicommon.NewCSIDriver(driverName, version, nodeID)
-	if rbd.driver == nil {
-		glog.Fatalln("Failed to initialize CSI Driver.")
+	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
+	if r.cd == nil {
+		klog.Fatalln("Failed to initialize CSI Driver.")
 	}
-	rbd.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+	r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
+		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	})
-	rbd.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
+	r.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
 
 	// Create GRPC servers
-	rbd.ids = NewIdentityServer(rbd.driver)
-	rbd.ns, err = NewNodeServer(rbd.driver, containerized)
+	r.ids = NewIdentityServer(r.cd)
+	r.ns, err = NewNodeServer(r.cd, containerized)
 	if err != nil {
-		glog.Fatalf("failed to start node server, err %v\n", err)
+		klog.Fatalf("failed to start node server, err %v\n", err)
 	}
-	rbd.cs = NewControllerServer(rbd.driver)
+
+	r.cs = NewControllerServer(r.cd, cachePersister)
+
+	if err = r.cs.LoadExDataFromMetadataStore(); err != nil {
+		klog.Fatalf("failed to load metadata from store, err %v\n", err)
+	}
+
 	s := csicommon.NewNonBlockingGRPCServer()
-	s.Start(endpoint, rbd.ids, rbd.cs, rbd.ns)
+	s.Start(endpoint, r.ids, r.cs, r.ns)
 	s.Wait()
 }
