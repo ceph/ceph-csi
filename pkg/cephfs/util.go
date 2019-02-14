@@ -17,16 +17,18 @@ limitations under the License.
 package cephfs
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os/exec"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
 
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
@@ -37,31 +39,72 @@ func makeVolumeID(volName string) volumeID {
 	return volumeID("csi-cephfs-" + volName)
 }
 
-func execCommand(command string, args ...string) ([]byte, error) {
-	klog.V(4).Infof("cephfs: EXEC %s %s", command, args)
-
-	cmd := exec.Command(command, args...) // #nosec
-	return cmd.CombinedOutput()
+func closePipeOnError(pipe io.Closer, err error) {
+	if err != nil {
+		if err = pipe.Close(); err != nil {
+			klog.Warningf("failed to close pipe: %v", err)
+		}
+	}
 }
 
-func execCommandAndValidate(program string, args ...string) error {
-	out, err := execCommand(program, args...)
+func execCommand(program string, args ...string) (stdout, stderr []byte, err error) {
+	cmd := exec.Command(program, args...) // nolint: gosec
+	klog.V(4).Infof("cephfs: EXEC %s %s", program, util.StripSecretInArgs(args))
+
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
+		return nil, nil, fmt.Errorf("cannot open stdout pipe for %s %v: %v", program, args, err)
+	}
+
+	defer closePipeOnError(stdoutPipe, err)
+
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot open stdout pipe for %s %v: %v", program, args, err)
+	}
+
+	defer closePipeOnError(stderrPipe, err)
+
+	if err = cmd.Start(); err != nil {
+		return nil, nil, fmt.Errorf("failed to run %s %v: %v", program, args, err)
+	}
+
+	stdout, err = ioutil.ReadAll(stdoutPipe)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read from stdout for %s %v: %v", program, args, err)
+	}
+
+	stderr, err = ioutil.ReadAll(stderrPipe)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read from stderr for %s %v: %v", program, args, err)
+	}
+
+	if waitErr := cmd.Wait(); waitErr != nil {
+		return nil, nil, fmt.Errorf("an error occurred while running %s %v: %v: %s", program, args, waitErr, stderr)
+	}
+
+	return
+}
+
+func execCommandErr(program string, args ...string) error {
+	if _, _, err := execCommand(program, args...); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func execCommandJSON(v interface{}, args ...string) error {
-	program := "ceph"
-	out, err := execCommand(program, args...)
-
+func execCommandJSON(v interface{}, program string, args ...string) error {
+	stdout, _, err := execCommand(program, args...)
 	if err != nil {
-		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
+		return err
 	}
 
-	return json.NewDecoder(bytes.NewReader(out)).Decode(v)
+	if err = json.Unmarshal(stdout, v); err != nil {
+		return fmt.Errorf("failed to unmarshal JSON for %s %v: %s: %v", program, args, stdout, err)
+	}
+
+	return nil
 }
 
 // Used in isMountPoint()
@@ -74,27 +117,6 @@ func isMountPoint(p string) (bool, error) {
 	}
 
 	return !notMnt, nil
-}
-
-func storeCephCredentials(volID volumeID, cr *credentials) error {
-	keyringData := cephKeyringData{
-		UserID:   cr.id,
-		Key:      cr.key,
-		VolumeID: volID,
-	}
-
-	if err := keyringData.writeToFile(); err != nil {
-		return err
-	}
-
-	secret := cephSecretData{
-		UserID:   cr.id,
-		Key:      cr.key,
-		VolumeID: volID,
-	}
-
-	err := secret.writeToFile()
-	return err
 }
 
 //
