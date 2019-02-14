@@ -61,23 +61,34 @@ func getSingleCephEntity(args ...string) (*cephEntity, error) {
 	return &ents[0], nil
 }
 
+func genUserIDs(adminCr *credentials, volID volumeID) (adminID, userID string) {
+	return cephEntityClientPrefix + adminCr.id, cephEntityClientPrefix + getCephUserName(volID)
+}
+
 func getCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
+	adminID, userID := genUserIDs(adminCr, volID)
+
 	return getSingleCephEntity(
 		"-m", volOptions.Monitors,
-		"-n", cephEntityClientPrefix+adminCr.id, "--key="+adminCr.key,
+		"-n", adminID,
+		"--key="+adminCr.key,
 		"-c", cephConfigPath,
 		"-f", "json",
-		"auth", "get", cephEntityClientPrefix+getCephUserName(volID),
+		"auth", "get", userID,
 	)
 }
 
 func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
+	adminID, userID := genUserIDs(adminCr, volID)
+
 	return getSingleCephEntity(
 		"-m", volOptions.Monitors,
-		"-n", cephEntityClientPrefix+adminCr.id, "--key="+adminCr.key,
+		"-n", adminID,
+		"--key="+adminCr.key,
 		"-c", cephConfigPath,
 		"-f", "json",
-		"auth", "get-or-create", cephEntityClientPrefix+getCephUserName(volID),
+		"auth", "get-or-create", userID,
+		// User capabilities
 		"mds", fmt.Sprintf("allow rw path=%s", getVolumeRootPathCeph(volID)),
 		"mon", "allow r",
 		"osd", fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volID)),
@@ -85,10 +96,13 @@ func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volum
 }
 
 func deleteCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) error {
+	adminID, userID := genUserIDs(adminCr, volID)
+
 	return execCommandErr("ceph",
 		"-m", volOptions.Monitors,
-		"-n", cephEntityClientPrefix+adminCr.id, "--key="+adminCr.key,
+		"-n", adminID,
+		"--key="+adminCr.key,
 		"-c", cephConfigPath,
-		"auth", "rm", cephEntityClientPrefix+getCephUserName(volID),
+		"auth", "rm", userID,
 	)
 }
