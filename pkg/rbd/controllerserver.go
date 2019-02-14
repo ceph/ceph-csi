@@ -305,6 +305,7 @@ func (cs *ControllerServer) ControllerPublishVolume(ctx context.Context, req *cs
 
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
+// nolint: gocyclo
 func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 
 	if err := cs.validateSnapshotReq(req); err != nil {
