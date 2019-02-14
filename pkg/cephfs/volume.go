@@ -48,7 +48,7 @@ func getVolumeNamespace(volID volumeID) string {
 }
 
 func setVolumeAttribute(root, attrName, attrValue string) error {
-	return execCommandAndValidate("setfattr", "-n", attrName, "-v", attrValue, root)
+	return execCommandErr("setfattr", "-n", attrName, "-v", attrValue, root)
 }
 
 func createVolume(volOptions *volumeOptions, adminCr *credentials, volID volumeID, bytesQuota int64) error {
@@ -124,7 +124,7 @@ func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions
 	defer unmountAndRemove(cephRoot)
 
 	if err := os.Rename(volRoot, volRootDeleting); err != nil {
-		return fmt.Errorf("coudln't mark volume %s for deletion: %v", volID, err)
+		return fmt.Errorf("couldn't mark volume %s for deletion: %v", volID, err)
 	}
 
 	if err := os.RemoveAll(volRootDeleting); err != nil {

@@ -106,19 +106,18 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, vo
 		mountPoint,
 		"-m", volOptions.Monitors,
 		"-c", cephConfigPath,
-		"-n", cephEntityClientPrefix + cr.id,
-		"--keyring", getCephKeyringPath(volID, cr.id),
+		"-n", cephEntityClientPrefix + cr.id, "--key=" + cr.key,
 		"-r", volOptions.RootPath,
 		"-o", "nonempty",
 	}
 
-	out, err := execCommand("ceph-fuse", args[:]...)
+	_, stderr, err := execCommand("ceph-fuse", args[:]...)
 	if err != nil {
-		return fmt.Errorf("cephfs: ceph-fuse failed with following error: %s\ncephfs: ceph-fuse output: %s", err, out)
+		return err
 	}
 
-	if !bytes.Contains(out, []byte("starting fuse")) {
-		return fmt.Errorf("cephfs: ceph-fuse failed:\ncephfs: ceph-fuse output: %s", out)
+	if !bytes.Contains(stderr, []byte("starting fuse")) {
+		return fmt.Errorf("ceph-fuse failed: %s", stderr)
 	}
 
 	return nil
@@ -137,16 +136,15 @@ func (m *fuseMounter) name() string { return "Ceph FUSE driver" }
 type kernelMounter struct{}
 
 func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
-	if err := execCommandAndValidate("modprobe", "ceph"); err != nil {
+	if err := execCommandErr("modprobe", "ceph"); err != nil {
 		return err
 	}
 
-	return execCommandAndValidate("mount",
+	return execCommandErr("mount",
 		"-t", "ceph",
 		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
 		mountPoint,
-		"-o",
-		fmt.Sprintf("name=%s,secretfile=%s", cr.id, getCephSecretPath(volID, cr.id)),
+		"-o", fmt.Sprintf("name=%s,secret=%s", cr.id, cr.key),
 	)
 }
 
@@ -161,12 +159,12 @@ func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *vo
 func (m *kernelMounter) name() string { return "Ceph kernel client" }
 
 func bindMount(from, to string, readOnly bool) error {
-	if err := execCommandAndValidate("mount", "--bind", from, to); err != nil {
+	if err := execCommandErr("mount", "--bind", from, to); err != nil {
 		return fmt.Errorf("failed to bind-mount %s to %s: %v", from, to, err)
 	}
 
 	if readOnly {
-		if err := execCommandAndValidate("mount", "-o", "remount,ro,bind", to); err != nil {
+		if err := execCommandErr("mount", "-o", "remount,ro,bind", to); err != nil {
 			return fmt.Errorf("failed read-only remount of %s: %v", to, err)
 		}
 	}
@@ -175,7 +173,7 @@ func bindMount(from, to string, readOnly bool) error {
 }
 
 func unmountVolume(mountPoint string) error {
-	return execCommandAndValidate("umount", mountPoint)
+	return execCommandErr("umount", mountPoint)
 }
 
 func createMountPoint(root string) error {
