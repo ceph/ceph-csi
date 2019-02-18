@@ -376,11 +376,11 @@
     "storage/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "67edc246be36579e46a89e29a2f165d47e012109"
-  version = "kubernetes-1.13.2"
+  revision = "74b699b93c15473932b89e3d1818ba8282f3b5ab"
+  version = "kubernetes-1.13.3"
 
 [[projects]]
-  digest = "1:a2da0cbc8dfda27eeffa54b53195e607497c6cac737d17f45a667963aeae5f02"
+  digest = "1:09dee8b7c6cb2fc9c6bee525de3b95199a82a8647a189e153d072a1dfce17de7"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/errors",
@@ -421,8 +421,8 @@
     "third_party/forked/golang/reflect",
   ]
   pruneopts = "NUT"
-  revision = "2b1284ed4c93a43499e781493253e2ac5959c4fd"
-  version = "kubernetes-1.13.2"
+  revision = "572dfc7bdfcb4531361a17d27b92851f59acf0dc"
+  version = "kubernetes-1.13.3"
 
 [[projects]]
   digest = "1:638623327cb201b425a328d0bddb3379b05eb05ef4cab589380f0be07ac1dc17"
@@ -485,8 +485,8 @@
     "util/integer",
   ]
   pruneopts = "NUT"
-  revision = "6bf63545bd0257ed9e701ad95307ffa51b4407c0"
-  version = "kubernetes-1.13.2"
+  revision = "6e4752048fde21176ab35eb54ec1117359830d8a"
+  version = "kubernetes-1.13.3"
 
 [[projects]]
   digest = "1:9cc257b3c9ff6a0158c9c661ab6eebda1fe8a4a4453cd5c4044dc9a2ebfb992b"
@@ -507,8 +507,8 @@
     "pkg/util/nsenter",
   ]
   pruneopts = "NUT"
-  revision = "cff46ab41ff0bb44d8584413b598ad8360ec1def"
-  version = "v1.13.2"
+  revision = "721bfa751924da8d1680787490c54b9179b1fed0"
+  version = "v1.13.3"
 
 [[projects]]
   branch = "master"
@@ -533,6 +533,7 @@
     "github.com/container-storage-interface/spec/lib/go/csi",
     "github.com/golang/protobuf/ptypes",
     "github.com/golang/protobuf/ptypes/timestamp",
+    "github.com/kubernetes-csi/csi-lib-utils/protosanitizer",
     "github.com/kubernetes-csi/drivers/pkg/csi-common",
     "github.com/pborman/uuid",
     "github.com/pkg/errors",
