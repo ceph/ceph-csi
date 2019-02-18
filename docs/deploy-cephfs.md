@@ -5,8 +5,8 @@ and attach and mount existing ones to workloads.
 
 ## Building
 
-CSI CephFS plugin can be compiled in a form of a binary file or in a form of a
-Docker image.
+CSI CephFS plugin can be compiled in the form of a binary file or in the form
+of a Docker image.
 When compiled as a binary file, the result is stored in `_output/`
 directory with the name `cephfsplugin`.
 When compiled as an image, it's stored in the local Docker image store.
@@ -33,12 +33,13 @@ Option              | Default value         | Description
 `--drivername`      | `csi-cephfsplugin`    | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
 `--nodeid`          | _empty_               | This node's ID
 `--volumemounter`   | _empty_               | default volume mounter. Available options are `kernel` and `fuse`. This is the mount method used if volume parameters don't specify otherwise. If left unspecified, the driver will first probe for `ceph-fuse` in system's path and will choose Ceph kernel client if probing failed.
-`--metadatastorage` | _empty_               | Whether should metadata be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
+`--metadatastorage` | _empty_               | Whether metadata should be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
 
-**Available environmental variables:** `KUBERNETES_CONFIG_PATH`: if you use
-`k8s_configmap` as metadata store, specify the path of your k8s config file (if
-not specified, the plugin will assume you're running it inside a k8s cluster and
-find the config itself).
+**Available environmental variables:**
+
+`KUBERNETES_CONFIG_PATH`: if you use `k8s_configmap` as metadata store, specify
+the path of your k8s config file (if not specified, the plugin will assume
+you're running it inside a k8s cluster and find the config itself).
 
 `POD_NAMESPACE`: if you use `k8s_configmap` as metadata store, `POD_NAMESPACE`
 is used to define in which namespace you want the configmaps to be stored
