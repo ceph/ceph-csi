@@ -28,7 +28,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
-	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -64,7 +63,7 @@ func (cs *ControllerServer) LoadExDataFromMetadataStore() error {
 
 	snap := &rbdSnapshot{}
 	// nolint
-	cs.MetadataStore.ForAll("csi-rbd-(.*)-snap-", snap, func(identifier string) error {
+	cs.MetadataStore.ForAll("csi-rbd-snap-", snap, func(identifier string) error {
 		rbdSnapshots[identifier] = snap
 		return nil
 	})
@@ -96,12 +95,10 @@ func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 		return nil, err
 	}
 
-	// Generating Volume Name and Volume ID, as according to CSI spec they MUST be different
 	volName := req.GetName()
-	uniqueID := uuid.NewUUID().String()
 	rbdVol.VolName = volName
-	volumeID := "csi-rbd-vol-" + uniqueID
-	rbdVol.VolID = volumeID
+	// Generating Volume ID
+	rbdVol.VolID = "csi-rbd-vol-" + volName
 	// Volume Size - Default is 1 GiB
 	volSizeBytes := int64(oneGB)
 	if req.GetCapacityRange() != nil {
@@ -344,9 +341,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, err
 	}
 
-	// Generating Snapshot Name and Snapshot ID, as according to CSI spec they MUST be different
 	snapName := req.GetName()
-	uniqueID := uuid.NewUUID().String()
 	rbdVolume, err := getRBDVolumeByID(req.GetSourceVolumeId())
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", req.GetSourceVolumeId())
@@ -357,7 +352,8 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	rbdSnap.VolName = rbdVolume.VolName
 	rbdSnap.SnapName = snapName
-	snapshotID := "csi-rbd-" + rbdVolume.VolName + "-snap-" + uniqueID
+	//Generating Snapshot ID
+	snapshotID := "csi-rbd-snap-" + rbdVolume.VolName + "-" + snapName
 	rbdSnap.SnapID = snapshotID
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
 	rbdSnap.SizeBytes = rbdVolume.VolSize
