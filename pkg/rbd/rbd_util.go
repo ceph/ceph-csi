@@ -383,6 +383,37 @@ func protectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]
 	return nil
 }
 
+func extractStoredVolOpt(r *rbdVolume) map[string]string {
+	volOptions := make(map[string]string)
+	volOptions["pool"] = r.Pool
+
+	if len(r.Monitors) > 0 {
+		volOptions["monitors"] = r.Monitors
+	}
+
+	if len(r.MonValueFromSecret) > 0 {
+		volOptions["monValueFromSecret"] = r.MonValueFromSecret
+	}
+
+	volOptions["imageFormat"] = r.ImageFormat
+
+	if len(r.ImageFeatures) > 0 {
+		volOptions["imageFeatures"] = r.ImageFeatures
+	}
+
+	if len(r.AdminID) > 0 {
+		volOptions["adminid"] = r.AdminID
+	}
+
+	if len(r.UserID) > 0 {
+		volOptions["userid"] = r.UserID
+	}
+	if len(r.Mounter) > 0 {
+		volOptions["mounter"] = r.Mounter
+	}
+	return volOptions
+}
+
 func createSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]string) error {
 	var output []byte
 
