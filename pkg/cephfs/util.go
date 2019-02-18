@@ -87,11 +87,8 @@ func execCommand(program string, args ...string) (stdout, stderr []byte, err err
 }
 
 func execCommandErr(program string, args ...string) error {
-	if _, _, err := execCommand(program, args...); err != nil {
-		return err
-	}
-
-	return nil
+	_, _, err := execCommand(program, args...)
+	return err
 }
 
 func execCommandJSON(v interface{}, program string, args ...string) error {
@@ -119,10 +116,7 @@ func isMountPoint(p string) (bool, error) {
 	return !notMnt, nil
 }
 
-//
 // Controller service request validation
-//
-
 func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid CreateVolumeRequest: %v", err)
@@ -154,10 +148,7 @@ func (cs *ControllerServer) validateDeleteVolumeRequest() error {
 	return nil
 }
 
-//
 // Node service request validation
-//
-
 func validateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 	if req.GetVolumeCapability() == nil {
 		return errors.New("volume capability missing in request")
@@ -200,7 +191,7 @@ func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 	}
 
 	if req.GetTargetPath() == "" {
-		return errors.New("varget path missing in request")
+		return errors.New("target path missing in request")
 	}
 
 	return nil
