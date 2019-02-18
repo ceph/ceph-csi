@@ -21,13 +21,12 @@ import (
 	"os"
 	"sync"
 
-	"github.com/golang/glog"
-	"google.golang.org/grpc"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"google.golang.org/grpc"
+	"k8s.io/klog"
 )
 
-// Defines Non blocking GRPC server interfaces
+// NonBlockingGRPCServer defines Non blocking GRPC server interfaces
 type NonBlockingGRPCServer interface {
 	// Start services at the endpoint
 	Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer)
@@ -39,6 +38,7 @@ type NonBlockingGRPCServer interface {
 	ForceStop()
 }
 
+// NewNonBlockingGRPCServer return non-blocking GRPC
 func NewNonBlockingGRPCServer() NonBlockingGRPCServer {
 	return &nonBlockingGRPCServer{}
 }
@@ -49,44 +49,45 @@ type nonBlockingGRPCServer struct {
 	server *grpc.Server
 }
 
+// Start start service on endpoint
 func (s *nonBlockingGRPCServer) Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer) {
 
 	s.wg.Add(1)
-
 	go s.serve(endpoint, ids, cs, ns)
-
-	return
 }
 
+// Wait blocks until the WaitGroup counter
 func (s *nonBlockingGRPCServer) Wait() {
 	s.wg.Wait()
 }
 
+// GracefulStop stops the gRPC server gracefully.
 func (s *nonBlockingGRPCServer) Stop() {
 	s.server.GracefulStop()
 }
 
+// Stop stops the gRPC server.
 func (s *nonBlockingGRPCServer) ForceStop() {
 	s.server.Stop()
 }
 
 func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer) {
 
-	proto, addr, err := ParseEndpoint(endpoint)
+	proto, addr, err := parseEndpoint(endpoint)
 	if err != nil {
-		glog.Fatal(err.Error())
+		klog.Fatal(err.Error())
 	}
 
 	if proto == "unix" {
 		addr = "/" + addr
-		if err := os.Remove(addr); err != nil && !os.IsNotExist(err) {
-			glog.Fatalf("Failed to remove %s, error: %s", addr, err.Error())
+		if e := os.Remove(addr); e != nil && !os.IsNotExist(e) {
+			klog.Fatalf("Failed to remove %s, error: %s", addr, e.Error())
 		}
 	}
 
 	listener, err := net.Listen(proto, addr)
 	if err != nil {
-		glog.Fatalf("Failed to listen: %v", err)
+		klog.Fatalf("Failed to listen: %v", err)
 	}
 
 	opts := []grpc.ServerOption{
@@ -105,8 +106,10 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, c
 		csi.RegisterNodeServer(server, ns)
 	}
 
-	glog.Infof("Listening for connections on address: %#v", listener.Addr())
+	klog.Infof("Listening for connections on address: %#v", listener.Addr())
 
-	server.Serve(listener)
-
+	err = server.Serve(listener)
+	if err != nil {
+		klog.Fatalf("Failed to server: %v", err)
+	}
 }

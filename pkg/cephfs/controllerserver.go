@@ -17,16 +17,15 @@ limitations under the License.
 package cephfs
 
 import (
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
+	"github.com/ceph/ceph-csi/pkg/util"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"k8s.io/kubernetes/pkg/util/keymutex"
-
-	"github.com/ceph/ceph-csi/pkg/util"
 )
 
 // ControllerServer struct of CEPH CSI driver with supported methods of CSI

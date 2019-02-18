@@ -19,8 +19,9 @@ package cephfs
 import (
 	"context"
 
+	"github.com/ceph/ceph-csi/pkg/csi-common"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
 // IdentityServer struct of ceph CSI driver with supported methods of CSI

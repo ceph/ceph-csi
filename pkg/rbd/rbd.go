@@ -17,12 +17,11 @@ limitations under the License.
 package rbd
 
 import (
-	"k8s.io/klog"
-
+	"github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/nsenter"
 	"k8s.io/utils/exec"

@@ -19,10 +19,10 @@ package cephfs
 import (
 	"k8s.io/klog"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
-
+	"github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 const (
