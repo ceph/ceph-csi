@@ -99,9 +99,6 @@ func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// Generating Volume Name and Volume ID, as according to CSI spec they MUST be different
 	volName := req.GetName()
 	uniqueID := uuid.NewUUID().String()
-	if len(volName) == 0 {
-		volName = rbdVol.Pool + "-dynamic-pvc-" + uniqueID
-	}
 	rbdVol.VolName = volName
 	volumeID := "csi-rbd-vol-" + uniqueID
 	rbdVol.VolID = volumeID
