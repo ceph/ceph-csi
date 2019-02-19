@@ -19,11 +19,9 @@ package main
 import (
 	"flag"
 	"os"
-	"path"
 
 	"github.com/ceph/ceph-csi/pkg/rbd"
 	"github.com/ceph/ceph-csi/pkg/util"
-	"k8s.io/klog"
 )
 
 var (
@@ -37,18 +35,8 @@ var (
 func main() {
 	util.InitLogging()
 
-	if err := createPersistentStorage(path.Join(rbd.PluginFolder, "controller")); err != nil {
-		klog.Errorf("failed to create persistent storage for controller %v", err)
-		os.Exit(1)
-	}
-	if err := createPersistentStorage(path.Join(rbd.PluginFolder, "node")); err != nil {
-		klog.Errorf("failed to create persistent storage for node %v", err)
-		os.Exit(1)
-	}
-
-	cp, err := util.NewCachePersister(*metadataStorage, *driverName)
+	cp, err := util.CreatePersistanceStorage(rbd.PluginFolder, *metadataStorage, *driverName)
 	if err != nil {
-		klog.Errorf("failed to define cache persistence method: %v", err)
 		os.Exit(1)
 	}
 
@@ -56,15 +44,4 @@ func main() {
 	driver.Run(*driverName, *nodeID, *endpoint, *containerized, cp)
 
 	os.Exit(0)
-}
-
-func createPersistentStorage(persistentStoragePath string) error {
-	if _, err := os.Stat(persistentStoragePath); os.IsNotExist(err) {
-		if err = os.MkdirAll(persistentStoragePath, os.FileMode(0755)); err != nil {
-			return err
-		}
-	} else {
-		return err
-	}
-	return nil
 }
