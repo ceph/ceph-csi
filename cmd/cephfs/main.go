@@ -19,11 +19,9 @@ package main
 import (
 	"flag"
 	"os"
-	"path"
 
 	"github.com/ceph/ceph-csi/pkg/cephfs"
 	"github.com/ceph/ceph-csi/pkg/util"
-	"k8s.io/klog"
 )
 
 var (
@@ -37,19 +35,8 @@ var (
 func main() {
 	util.InitLogging()
 
-	if err := createPersistentStorage(path.Join(cephfs.PluginFolder, "controller")); err != nil {
-		klog.Errorf("failed to create persistent storage for controller: %v", err)
-		os.Exit(1)
-	}
-
-	if err := createPersistentStorage(path.Join(cephfs.PluginFolder, "node")); err != nil {
-		klog.Errorf("failed to create persistent storage for node: %v", err)
-		os.Exit(1)
-	}
-
-	cp, err := util.NewCachePersister(*metadataStorage, *driverName)
+	cp, err := util.CreatePersistanceStorage(cephfs.PluginFolder, *metadataStorage, *driverName)
 	if err != nil {
-		klog.Errorf("failed to define cache persistence method: %v", err)
 		os.Exit(1)
 	}
 
@@ -57,8 +44,4 @@ func main() {
 	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, cp)
 
 	os.Exit(0)
-}
-
-func createPersistentStorage(persistentStoragePath string) error {
-	return os.MkdirAll(persistentStoragePath, os.FileMode(0755))
 }
