@@ -63,7 +63,7 @@ func (cs *ControllerServer) LoadExDataFromMetadataStore() error {
 
 	snap := &rbdSnapshot{}
 	// nolint
-	cs.MetadataStore.ForAll("csi-rbd-snap-", snap, func(identifier string) error {
+	cs.MetadataStore.ForAll("csi-rbd-(.*)-snap-", snap, func(identifier string) error {
 		rbdSnapshots[identifier] = snap
 		return nil
 	})
@@ -353,7 +353,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	rbdSnap.VolName = rbdVolume.VolName
 	rbdSnap.SnapName = snapName
 	//Generating Snapshot ID
-	snapshotID := "csi-rbd-snap-" + rbdVolume.VolName + "-" + snapName
+	snapshotID := "csi-rbd-" + rbdVolume.VolName + "-snap-" + snapName
 	rbdSnap.SnapID = snapshotID
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
 	rbdSnap.SizeBytes = rbdVolume.VolSize
