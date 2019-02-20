@@ -111,7 +111,7 @@ Deploys a daemon set with two containers: CSI driver-registrar and the CSI RBD d
 
 ## Verifying the deployment in Kubernetes
 
-After successfuly completing the steps above, you should see output similar to this:
+After successfully completing the steps above, you should see output similar to this:
 
 ```bash
 $ kubectl get all
