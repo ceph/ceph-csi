@@ -44,7 +44,7 @@ func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 		// #nosec
 		if err := os.Mkdir(fullPath, 0755); err != nil {
-			return errors.Wrapf(err, "node-cache: failed to create %s folder with error: %v", fullPath, err)
+			return errors.Wrapf(err, "node-cache: failed to create %s folder", fullPath)
 		}
 	}
 	return nil
@@ -152,9 +152,13 @@ func (nc *NodeCache) Delete(identifier string) error {
 	file := path.Join(nc.BasePath, cacheDir, identifier+".json")
 	err := os.Remove(file)
 	if err != nil {
-		if err != os.ErrNotExist {
-			return errors.Wrapf(err, "node-cache: error removing file %s", file)
+		if err == os.ErrNotExist {
+			klog.V(4).Infof("node-cache: cannot delete missing metadata storage file %s, assuming it's already deleted", file)
+			return nil
 		}
+
+		return errors.Wrapf(err, "node-cache: error removing file %s", file)
+
 	}
 	klog.V(4).Infof("node-cache: successfully deleted metadata storage file at: %+v\n", file)
 	return nil
