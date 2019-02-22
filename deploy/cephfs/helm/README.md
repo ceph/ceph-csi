@@ -7,7 +7,7 @@ The ceph-csi-cephfs chart adds cephfs volume support to your cluster.
 To install the Chart into your Kubernetes cluster
 
 ```bash
-helm install  --name "ceph-csi-cephfs" ceph-csi/ceph-csi-cephfs
+helm install --namespace "ceph-csi-cephfs" --name "ceph-csi-cephfs" ceph-csi/ceph-csi-cephfs
 ```
 
 After installation succeeds, you can get a status of Chart
@@ -19,5 +19,5 @@ helm status "ceph-csi-cephfs"
 If you want to delete your Chart, use this command
 
 ```bash
-helm delete  --purge "ceph-csi-cephfs"
+helm delete --purge "ceph-csi-cephfs"
 ```
