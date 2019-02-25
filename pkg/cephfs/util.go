@@ -17,11 +17,12 @@ limitations under the License.
 package cephfs
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"os/exec"
 
 	"google.golang.org/grpc/codes"
@@ -30,61 +31,41 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"k8s.io/kubernetes/pkg/util/keymutex"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 type volumeID string
 
+func checkedKeyUnlock(m keymutex.KeyMutex, key string) {
+	if err := m.UnlockKey(key); err != nil {
+		klog.Fatalf("failed to unlock mutex for %s: %v", key, err)
+	}
+}
+
 func makeVolumeID(volName string) volumeID {
 	return volumeID("csi-cephfs-" + volName)
 }
 
-func closePipeOnError(pipe io.Closer, err error) {
-	if err != nil {
-		if err = pipe.Close(); err != nil {
-			klog.Warningf("failed to close pipe: %v", err)
-		}
-	}
-}
-
 func execCommand(program string, args ...string) (stdout, stderr []byte, err error) {
-	cmd := exec.Command(program, args...) // nolint: gosec
-	stripArgs := util.StripSecretInArgs(args)
-	klog.V(4).Infof("cephfs: EXEC %s %s", program, stripArgs)
+	var (
+		cmd           = exec.Command(program, args...) // nolint: gosec
+		sanitizedArgs = util.StripSecretInArgs(args)
+		stdoutBuf     bytes.Buffer
+		stderrBuf     bytes.Buffer
+	)
 
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot open stdout pipe for %s %v: %v", program, stripArgs, err)
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	klog.V(4).Infof("cephfs: EXEC %s %s", program, sanitizedArgs)
+
+	if err := cmd.Run(); err != nil {
+		return nil, nil, fmt.Errorf("an error occurred while running (%d) %s %v: %v: %s",
+			cmd.Process.Pid, program, sanitizedArgs, err, stderrBuf.Bytes())
 	}
 
-	defer closePipeOnError(stdoutPipe, err)
-
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot open stdout pipe for %s %v: %v", program, stripArgs, err)
-	}
-
-	defer closePipeOnError(stderrPipe, err)
-
-	if err = cmd.Start(); err != nil {
-		return nil, nil, fmt.Errorf("failed to run %s %v: %v", program, stripArgs, err)
-	}
-
-	stdout, err = ioutil.ReadAll(stdoutPipe)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read from stdout for %s %v: %v", program, stripArgs, err)
-	}
-
-	stderr, err = ioutil.ReadAll(stderrPipe)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read from stderr for %s %v: %v", program, stripArgs, err)
-	}
-
-	if waitErr := cmd.Wait(); waitErr != nil {
-		return nil, nil, fmt.Errorf("an error occurred while running %s %v: %v: %s", program, stripArgs, waitErr, stderr)
-	}
-
-	return
+	return stdoutBuf.Bytes(), stderrBuf.Bytes(), nil
 }
 
 func execCommandErr(program string, args ...string) error {
@@ -115,6 +96,11 @@ func isMountPoint(p string) (bool, error) {
 	}
 
 	return !notMnt, nil
+}
+
+func pathExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }
 
 // Controller service request validation

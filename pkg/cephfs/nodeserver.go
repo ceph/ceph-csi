@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/util/keymutex"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
@@ -35,6 +36,10 @@ type NodeServer struct {
 	*csicommon.DefaultNodeServer
 }
 
+var (
+	mtxNodeStageVolume = keymutex.NewHashed(0)
+)
+
 func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi.NodeStageVolumeRequest) (*credentials, error) {
 	var (
 		cr      *credentials
@@ -44,7 +49,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 	if volOptions.ProvisionVolume {
 		// The volume is provisioned dynamically, get the credentials directly from Ceph
 
-		// First, store admin credentials - those are needed for retrieving the user credentials
+		// First, get admin credentials - those are needed for retrieving the user credentials
 
 		adminCr, err := getAdminCredentials(secrets)
 		if err != nil {
@@ -99,6 +104,9 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		klog.Errorf("failed to create staging mount point at %s for volume %s: %v", stagingTargetPath, volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	mtxNodeStageVolume.LockKey(string(volID))
+	defer checkedKeyUnlock(mtxNodeStageVolume, string(volID))
 
 	// Check if the volume is already mounted
 
