@@ -49,38 +49,39 @@ func closePipeOnError(pipe io.Closer, err error) {
 
 func execCommand(program string, args ...string) (stdout, stderr []byte, err error) {
 	cmd := exec.Command(program, args...) // nolint: gosec
-	klog.V(4).Infof("cephfs: EXEC %s %s", program, util.StripSecretInArgs(args))
+	stripArgs := util.StripSecretInArgs(args)
+	klog.V(4).Infof("cephfs: EXEC %s %s", program, stripArgs)
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot open stdout pipe for %s %v: %v", program, args, err)
+		return nil, nil, fmt.Errorf("cannot open stdout pipe for %s %v: %v", program, stripArgs, err)
 	}
 
 	defer closePipeOnError(stdoutPipe, err)
 
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot open stdout pipe for %s %v: %v", program, args, err)
+		return nil, nil, fmt.Errorf("cannot open stdout pipe for %s %v: %v", program, stripArgs, err)
 	}
 
 	defer closePipeOnError(stderrPipe, err)
 
 	if err = cmd.Start(); err != nil {
-		return nil, nil, fmt.Errorf("failed to run %s %v: %v", program, args, err)
+		return nil, nil, fmt.Errorf("failed to run %s %v: %v", program, stripArgs, err)
 	}
 
 	stdout, err = ioutil.ReadAll(stdoutPipe)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read from stdout for %s %v: %v", program, args, err)
+		return nil, nil, fmt.Errorf("failed to read from stdout for %s %v: %v", program, stripArgs, err)
 	}
 
 	stderr, err = ioutil.ReadAll(stderrPipe)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read from stderr for %s %v: %v", program, args, err)
+		return nil, nil, fmt.Errorf("failed to read from stderr for %s %v: %v", program, stripArgs, err)
 	}
 
 	if waitErr := cmd.Wait(); waitErr != nil {
-		return nil, nil, fmt.Errorf("an error occurred while running %s %v: %v: %s", program, args, waitErr, stderr)
+		return nil, nil, fmt.Errorf("an error occurred while running %s %v: %v: %s", program, stripArgs, waitErr, stderr)
 	}
 
 	return
@@ -98,7 +99,7 @@ func execCommandJSON(v interface{}, program string, args ...string) error {
 	}
 
 	if err = json.Unmarshal(stdout, v); err != nil {
-		return fmt.Errorf("failed to unmarshal JSON for %s %v: %s: %v", program, args, stdout, err)
+		return fmt.Errorf("failed to unmarshal JSON for %s %v: %s: %v", program, util.StripSecretInArgs(args), stdout, err)
 	}
 
 	return nil
