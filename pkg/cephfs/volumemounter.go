@@ -22,6 +22,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
+	"sync"
+
+	"k8s.io/klog"
 )
 
 const (
@@ -31,6 +35,10 @@ const (
 
 var (
 	availableMounters []string
+
+	// maps a mountpoint to PID of its FUSE daemon
+	fusePidMap    = make(map[string]int)
+	fusePidMapMtx sync.Mutex
 )
 
 // Load available ceph mounters installed on system into availableMounters
@@ -116,9 +124,35 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, vo
 		return err
 	}
 
-	if !bytes.Contains(stderr, []byte("starting fuse")) {
+	// Parse the output:
+	// We need "starting fuse" meaning the mount is ok
+	// and PID of the ceph-fuse daemon for unmount
+
+	idx := bytes.Index(stderr, []byte("starting fuse"))
+	if idx < 0 {
 		return fmt.Errorf("ceph-fuse failed: %s", stderr)
 	}
+
+	pidParseErr := fmt.Errorf("failed to read FUSE daemon PID: %s", stderr)
+
+	pidEnd := bytes.LastIndexByte(stderr[:idx], ']')
+	if pidEnd < 0 {
+		return pidParseErr
+	}
+
+	pidStart := bytes.LastIndexByte(stderr[:pidEnd], '[')
+	if pidStart < 0 {
+		return pidParseErr
+	}
+
+	pid, err := strconv.Atoi(string(stderr[pidStart+1 : pidEnd]))
+	if err != nil {
+		return fmt.Errorf("failed to parse FUSE daemon PID: %v", err)
+	}
+
+	fusePidMapMtx.Lock()
+	fusePidMap[mountPoint] = pid
+	fusePidMapMtx.Unlock()
 
 	return nil
 }
@@ -173,7 +207,30 @@ func bindMount(from, to string, readOnly bool) error {
 }
 
 func unmountVolume(mountPoint string) error {
-	return execCommandErr("umount", mountPoint)
+	if err := execCommandErr("umount", mountPoint); err != nil {
+		return err
+	}
+
+	fusePidMapMtx.Lock()
+	pid, ok := fusePidMap[mountPoint]
+	if ok {
+		delete(fusePidMap, mountPoint)
+	}
+	fusePidMapMtx.Unlock()
+
+	if ok {
+		p, err := os.FindProcess(pid)
+		if err != nil {
+			klog.Warningf("failed to find process %d: %v", pid, err)
+			return nil
+		}
+
+		if _, waitErr := p.Wait(); err != nil {
+			klog.Warningf("%d is not a child process: %v", pid, waitErr)
+		}
+	}
+
+	return nil
 }
 
 func createMountPoint(root string) error {
