@@ -65,8 +65,6 @@ Admin credentials are required for provisioning new RBD images `ADMIN_NAME`:
 `ADMIN_PASSWORD` - note that the key of the key-value pair is the name of the
 client with admin privileges, and the value is its password
 
-Also note that CSI RBD expects admin keyring and Ceph config file in `/etc/ceph`.
-
 ## Deployment with Kubernetes
 
 Requires Kubernetes 1.11
