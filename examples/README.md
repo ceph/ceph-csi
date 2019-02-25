@@ -2,7 +2,7 @@
 
 Both `rbd` and `cephfs` directories contain `plugin-deploy.sh` and `plugin-teardown.sh` helper scripts. You can use those to help you deploy/tear down RBACs, sidecar containers and the plugin in one go. By default, they look for the YAML manifests in `../../deploy/{rbd,cephfs}/kubernetes`. You can override this path by running `$ ./plugin-deploy.sh /path/to/my/manifests`.
 
-Once the plugin is successfuly deployed, you'll need to customize `storageclass.yaml` and `secret.yaml` manifests to reflect your Ceph cluster setup. Please consult the documentation for info about available parameters.
+Once the plugin is successfully deployed, you'll need to customize `storageclass.yaml` and `secret.yaml` manifests to reflect your Ceph cluster setup. Please consult the documentation for info about available parameters.
 
 After configuring the secrets, monitors, etc. you can deploy a testing Pod mounting a RBD image / CephFS volume:
 
@@ -20,7 +20,7 @@ Other helper scripts:
 
 ## How to test RBD Snapshot feature
 
-Before continuing, make sure you enabled the required [feature gate](https://kubernetes-csi.github.io/docs/Setup.html#csi-volume-snapshot-support) in your Kubernetes cluster.
+Before continuing, make sure you enabled the required [feature gate](https://kubernetes-csi.github.io/docs/snapshot-restore-feature.html#snapshot-apis) in your Kubernetes cluster.
 
 In the `examples/rbd` directory you will find four files related to snapshots: [csi-snapshotter-rbac.yaml](./rbd/csi-snapshotter-rbac.yaml), [csi-snapshotter.yaml](./rbd/csi-snapshotter.yaml), [snapshotclass.yaml](./rbd/snapshotclass.yaml) and [snapshot.yaml](./rbd/snapshot.yaml).
 
@@ -47,3 +47,15 @@ rbd-pvc-snapshot   6s
 ```
 
 To be sure everything is OK you can run `rbd snap ls [your-pvc-name]` inside one of your Ceph pod.
+
+## How to test RBD Block Volume
+
+Before continuing, make sure you enabled the required [feature gate](https://kubernetes-csi.github.io/docs/raw-block.html#usage) in your Kubernetes cluster.
+
+In order to create a PVC in Block mode, you need to specify `volumeMode: Block` in the PVC spec.
+In the `examples/rbd` directory, you can test RBD block volume by running:
+
+```bash
+kubectl create -f pvc-block.yaml
+kubectl create -f pod-block.yaml
+```
