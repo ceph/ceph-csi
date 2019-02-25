@@ -18,7 +18,6 @@ package rbd
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"syscall"
 
@@ -29,7 +28,6 @@ import (
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -252,9 +250,11 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	rbdVol := &rbdVolume{}
 	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
-		if os.IsNotExist(errors.Cause(err)) {
+		if err, ok := err.(*util.CacheEntryNotFound); ok {
+			klog.V(3).Infof("metadata for volume %s not found, assuming the volume to be already deleted (%v)", volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
+
 		return nil, err
 	}
 
@@ -471,6 +471,11 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	rbdSnap := &rbdSnapshot{}
 	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
+		if err, ok := err.(*util.CacheEntryNotFound); ok {
+			klog.V(3).Infof("metadata for snapshot %s not found, assuming the snapshot to be already deleted (%v)", snapshotID, err)
+			return &csi.DeleteSnapshotResponse{}, nil
+		}
+
 		return nil, err
 	}
 

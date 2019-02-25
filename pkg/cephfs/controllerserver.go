@@ -97,8 +97,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-// DeleteVolume deletes the volume in backend and removes the volume metadata
-// from store
+// DeleteVolume deletes the volume in backend
+// and removes the volume metadata from store
+// nolint: gocyclo
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(); err != nil {
 		klog.Errorf("DeleteVolumeRequest validation failed: %v", err)
@@ -108,11 +109,15 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	var (
 		volID   = volumeID(req.GetVolumeId())
 		secrets = req.GetSecrets()
-		err     error
 	)
 
 	ce := &controllerCacheEntry{}
-	if err = cs.MetadataStore.Get(string(volID), ce); err != nil {
+	if err := cs.MetadataStore.Get(string(volID), ce); err != nil {
+		if err, ok := err.(*util.CacheEntryNotFound); ok {
+			klog.Infof("cephfs: metadata for volume %s not found, assuming the volume to be already deleted (%v)", volID, err)
+			return &csi.DeleteVolumeResponse{}, nil
+		}
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

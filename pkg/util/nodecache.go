@@ -130,6 +130,10 @@ func (nc *NodeCache) Get(identifier string, data interface{}) error {
 	// #nosec
 	fp, err := os.Open(file)
 	if err != nil {
+		if os.IsNotExist(errors.Cause(err)) {
+			return &CacheEntryNotFound{err}
+		}
+
 		return errors.Wrapf(err, "node-cache: open error for %s", file)
 	}
 
