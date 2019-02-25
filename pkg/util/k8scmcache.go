@@ -159,6 +159,10 @@ func (k8scm *K8sCMCache) Create(identifier string, data interface{}) error {
 func (k8scm *K8sCMCache) Get(identifier string, data interface{}) error {
 	cm, err := k8scm.getMetadataCM(identifier)
 	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return &CacheEntryNotFound{err}
+		}
+
 		return err
 	}
 	err = json.Unmarshal([]byte(cm.Data[cmDataKey]), data)
