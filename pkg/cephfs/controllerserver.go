@@ -24,6 +24,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+	"k8s.io/kubernetes/pkg/util/keymutex"
 
 	"github.com/ceph/ceph-csi/pkg/util"
 )
@@ -39,6 +40,11 @@ type controllerCacheEntry struct {
 	VolOptions volumeOptions
 	VolumeID   volumeID
 }
+
+var (
+	mtxCreateVolume = keymutex.NewHashed(0)
+	mtxDeleteVolume = keymutex.NewHashed(0)
+)
 
 // CreateVolume creates the volume in backend and store the volume metadata
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
@@ -57,6 +63,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	volID := makeVolumeID(req.GetName())
+
+	mtxCreateVolume.LockKey(string(volID))
+	defer mustUnlock(mtxCreateVolume, string(volID))
 
 	// Create a volume in case the user didn't provide one
 
@@ -142,6 +151,9 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		klog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+
+	mtxDeleteVolume.LockKey(string(volID))
+	defer mustUnlock(mtxDeleteVolume, string(volID))
 
 	if err = purgeVolume(volID, cr, &ce.VolOptions); err != nil {
 		klog.Errorf("failed to delete volume %s: %v", volID, err)
