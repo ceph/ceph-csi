@@ -402,11 +402,11 @@ func extractStoredVolOpt(r *rbdVolume) map[string]string {
 	}
 
 	if len(r.AdminID) > 0 {
-		volOptions["adminid"] = r.AdminID
+		volOptions["adminId"] = r.AdminID
 	}
 
 	if len(r.UserID) > 0 {
-		volOptions["userid"] = r.UserID
+		volOptions["userId"] = r.UserID
 	}
 	if len(r.Mounter) > 0 {
 		volOptions["mounter"] = r.Mounter
