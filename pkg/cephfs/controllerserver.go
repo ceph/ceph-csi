@@ -42,8 +42,7 @@ type controllerCacheEntry struct {
 }
 
 var (
-	mtxCreateVolume = keymutex.NewHashed(0)
-	mtxDeleteVolume = keymutex.NewHashed(0)
+	mtxControllerVolumeID = keymutex.NewHashed(0)
 )
 
 // CreateVolume creates the volume in backend and store the volume metadata
@@ -64,8 +63,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	volID := makeVolumeID(req.GetName())
 
-	mtxCreateVolume.LockKey(string(volID))
-	defer mustUnlock(mtxCreateVolume, string(volID))
+	mtxControllerVolumeID.LockKey(string(volID))
+	defer mustUnlock(mtxControllerVolumeID, string(volID))
 
 	// Create a volume in case the user didn't provide one
 
@@ -152,8 +151,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	mtxDeleteVolume.LockKey(string(volID))
-	defer mustUnlock(mtxDeleteVolume, string(volID))
+	mtxControllerVolumeID.LockKey(string(volID))
+	defer mustUnlock(mtxControllerVolumeID, string(volID))
 
 	if err = purgeVolume(volID, cr, &ce.VolOptions); err != nil {
 		klog.Errorf("failed to delete volume %s: %v", volID, err)

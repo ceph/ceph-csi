@@ -37,7 +37,7 @@ type NodeServer struct {
 }
 
 var (
-	mtxNodeStageVolume = keymutex.NewHashed(0)
+	mtxNodeVolumeID = keymutex.NewHashed(0)
 )
 
 func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi.NodeStageVolumeRequest) (*credentials, error) {
@@ -105,8 +105,8 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	mtxNodeStageVolume.LockKey(string(volID))
-	defer mustUnlock(mtxNodeStageVolume, string(volID))
+	mtxNodeVolumeID.LockKey(string(volID))
+	defer mustUnlock(mtxNodeVolumeID, string(volID))
 
 	// Check if the volume is already mounted
 
