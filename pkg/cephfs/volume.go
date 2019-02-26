@@ -149,9 +149,9 @@ func unmountCephRoot(volID volumeID) {
 
 	if err := unmountVolume(cephRoot); err != nil {
 		klog.Errorf("failed to unmount %s with error %s", cephRoot, err)
-	}
-
-	if err := os.Remove(cephRoot); err != nil {
-		klog.Errorf("failed to remove %s with error %s", cephRoot, err)
+	} else {
+		if err := os.Remove(cephRoot); err != nil {
+			klog.Errorf("failed to remove %s with error %s", cephRoot, err)
+		}
 	}
 }
