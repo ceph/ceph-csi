@@ -19,6 +19,7 @@ package rbd
 import (
 	"fmt"
 	"os/exec"
+	"sort"
 	"strconv"
 	"syscall"
 
@@ -278,7 +279,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 // ListVolumes returns a list of volumes stored in memory
 func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-
+	var startToken int
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_LIST_VOLUMES); err != nil {
 		klog.Warningf("invalid list volume req: %v", req)
 		return nil, err
@@ -294,16 +295,26 @@ func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolume
 		if len(rbdVolumes) < int(i) {
 			return nil, status.Errorf(codes.Aborted, "invalid starting token %s", parseErr.Error())
 		}
+		startToken = int(i)
 	}
 
 	var entries []*csi.ListVolumesResponse_Entry
 
-	for _, vol := range rbdVolumes {
+	keys := make([]string, 0)
+	for k := range rbdVolumes {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for index, k := range keys {
+		if index < startToken {
+			continue
+		}
 		entries = append(entries, &csi.ListVolumesResponse_Entry{
 			Volume: &csi.Volume{
-				VolumeId:      vol.VolID,
-				CapacityBytes: vol.VolSize,
-				VolumeContext: extractStoredVolOpt(vol),
+				VolumeId:      rbdVolumes[k].VolID,
+				CapacityBytes: rbdVolumes[k].VolSize,
+				VolumeContext: extractStoredVolOpt(rbdVolumes[k]),
 			},
 		})
 	}
