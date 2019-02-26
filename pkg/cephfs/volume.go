@@ -52,79 +52,66 @@ func setVolumeAttribute(root, attrName, attrValue string) error {
 }
 
 func createVolume(volOptions *volumeOptions, adminCr *credentials, volID volumeID, bytesQuota int64) error {
-	cephRoot := getCephRootPathLocal(volID)
-
-	if err := createMountPoint(cephRoot); err != nil {
+	if err := mountCephRoot(volID, volOptions, adminCr); err != nil {
 		return err
 	}
+	defer unmountCephRoot(volID)
 
-	// RootPath is not set for a dynamically provisioned volume
-	// Access to cephfs's / is required
-	volOptions.RootPath = "/"
+	var (
+		volRoot         = getCephRootVolumePathLocal(volID)
+		volRootCreating = volRoot + "-creating"
+	)
 
-	m, err := newMounter(volOptions)
-	if err != nil {
-		return fmt.Errorf("failed to create mounter: %v", err)
+	if pathExists(volRoot) {
+		klog.V(4).Infof("cephfs: volume %s already exists, skipping creation", volID)
+		return nil
 	}
 
-	if err = m.mount(cephRoot, adminCr, volOptions, volID); err != nil {
-		return fmt.Errorf("error mounting ceph root: %v", err)
-	}
-
-	defer unmountAndRemove(cephRoot)
-
-	volOptions.RootPath = getVolumeRootPathCeph(volID)
-	localVolRoot := getCephRootVolumePathLocal(volID)
-
-	if err := createMountPoint(localVolRoot); err != nil {
+	if err := createMountPoint(volRootCreating); err != nil {
 		return err
 	}
 
 	if bytesQuota > 0 {
-		if err := setVolumeAttribute(localVolRoot, "ceph.quota.max_bytes", fmt.Sprintf("%d", bytesQuota)); err != nil {
+		if err := setVolumeAttribute(volRootCreating, "ceph.quota.max_bytes", fmt.Sprintf("%d", bytesQuota)); err != nil {
 			return err
 		}
 	}
 
-	if err := setVolumeAttribute(localVolRoot, "ceph.dir.layout.pool", volOptions.Pool); err != nil {
+	if err := setVolumeAttribute(volRootCreating, "ceph.dir.layout.pool", volOptions.Pool); err != nil {
 		return fmt.Errorf("%v\ncephfs: Does pool '%s' exist?", err, volOptions.Pool)
 	}
 
-	if err := setVolumeAttribute(localVolRoot, "ceph.dir.layout.pool_namespace", getVolumeNamespace(volID)); err != nil {
+	if err := setVolumeAttribute(volRootCreating, "ceph.dir.layout.pool_namespace", getVolumeNamespace(volID)); err != nil {
 		return err
+	}
+
+	if err := os.Rename(volRootCreating, volRoot); err != nil {
+		return fmt.Errorf("couldn't mark volume %s as created: %v", volID, err)
 	}
 
 	return nil
 }
 
 func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions) error {
+	if err := mountCephRoot(volID, volOptions, adminCr); err != nil {
+		return err
+	}
+	defer unmountCephRoot(volID)
+
 	var (
-		cephRoot        = getCephRootPathLocal(volID)
 		volRoot         = getCephRootVolumePathLocal(volID)
 		volRootDeleting = volRoot + "-deleting"
 	)
 
-	if err := createMountPoint(cephRoot); err != nil {
-		return err
-	}
-
-	// Root path is not set for dynamically provisioned volumes
-	// Access to cephfs's / is required
-	volOptions.RootPath = "/"
-
-	m, err := newMounter(volOptions)
-	if err != nil {
-		return fmt.Errorf("failed to create mounter: %v", err)
-	}
-
-	if err = m.mount(cephRoot, adminCr, volOptions, volID); err != nil {
-		return fmt.Errorf("error mounting ceph root: %v", err)
-	}
-
-	defer unmountAndRemove(cephRoot)
-
-	if err := os.Rename(volRoot, volRootDeleting); err != nil {
-		return fmt.Errorf("couldn't mark volume %s for deletion: %v", volID, err)
+	if pathExists(volRoot) {
+		if err := os.Rename(volRoot, volRootDeleting); err != nil {
+			return fmt.Errorf("couldn't mark volume %s for deletion: %v", volID, err)
+		}
+	} else {
+		if !pathExists(volRootDeleting) {
+			klog.V(4).Infof("cephfs: volume %s not found, assuming it to be already deleted", volID)
+			return nil
+		}
 	}
 
 	if err := os.RemoveAll(volRootDeleting); err != nil {
@@ -134,13 +121,37 @@ func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions
 	return nil
 }
 
-func unmountAndRemove(mountPoint string) {
-	var err error
-	if err = unmountVolume(mountPoint); err != nil {
-		klog.Errorf("failed to unmount %s with error %s", mountPoint, err)
+func mountCephRoot(volID volumeID, volOptions *volumeOptions, adminCr *credentials) error {
+	cephRoot := getCephRootPathLocal(volID)
+
+	// Root path is not set for dynamically provisioned volumes
+	// Access to cephfs's / is required
+	volOptions.RootPath = "/"
+
+	if err := createMountPoint(cephRoot); err != nil {
+		return err
 	}
 
-	if err = os.Remove(mountPoint); err != nil {
-		klog.Errorf("failed to remove %s with error %s", mountPoint, err)
+	m, err := newMounter(volOptions)
+	if err != nil {
+		return fmt.Errorf("failed to create mounter: %v", err)
+	}
+
+	if err = m.mount(cephRoot, adminCr, volOptions, volID); err != nil {
+		return fmt.Errorf("error mounting ceph root: %v", err)
+	}
+
+	return nil
+}
+
+func unmountCephRoot(volID volumeID) {
+	cephRoot := getCephRootPathLocal(volID)
+
+	if err := unmountVolume(cephRoot); err != nil {
+		klog.Errorf("failed to unmount %s with error %s", cephRoot, err)
+	} else {
+		if err := os.Remove(cephRoot); err != nil {
+			klog.Errorf("failed to remove %s with error %s", cephRoot, err)
+		}
 	}
 }
