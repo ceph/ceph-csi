@@ -17,11 +17,11 @@ limitations under the License.
 package cephfs
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"sync"
 
@@ -39,6 +39,8 @@ var (
 	// maps a mountpoint to PID of its FUSE daemon
 	fusePidMap    = make(map[string]int)
 	fusePidMapMtx sync.Mutex
+
+	fusePidRx = regexp.MustCompile(`(?m)^ceph-fuse\[(.+)\]: starting fuse$`)
 )
 
 // Load available ceph mounters installed on system into availableMounters
@@ -128,24 +130,12 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, vo
 	// We need "starting fuse" meaning the mount is ok
 	// and PID of the ceph-fuse daemon for unmount
 
-	idx := bytes.Index(stderr, []byte("starting fuse"))
-	if idx < 0 {
+	match := fusePidRx.FindSubmatch(stderr)
+	if len(match) != 2 {
 		return fmt.Errorf("ceph-fuse failed: %s", stderr)
 	}
 
-	pidParseErr := fmt.Errorf("failed to read FUSE daemon PID: %s", stderr)
-
-	pidEnd := bytes.LastIndexByte(stderr[:idx], ']')
-	if pidEnd < 0 {
-		return pidParseErr
-	}
-
-	pidStart := bytes.LastIndexByte(stderr[:pidEnd], '[')
-	if pidStart < 0 {
-		return pidParseErr
-	}
-
-	pid, err := strconv.Atoi(string(stderr[pidStart+1 : pidEnd]))
+	pid, err := strconv.Atoi(string(match[1]))
 	if err != nil {
 		return fmt.Errorf("failed to parse FUSE daemon PID: %v", err)
 	}
