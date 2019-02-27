@@ -23,16 +23,14 @@ import (
 	"regexp"
 	"strings"
 
-	"golang.org/x/net/context"
-	"k8s.io/klog"
+	"github.com/ceph/ceph-csi/pkg/csi-common"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
-
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
 // NodeServer struct of ceph rbd driver with supported methods of CSI
@@ -44,16 +42,6 @@ type NodeServer struct {
 
 //TODO remove both stage and unstage methods
 //once https://github.com/kubernetes-csi/drivers/pull/145 is merged
-
-// NodeStageVolume returns unimplemented response
-func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// NodeUnstageVolume returns unimplemented response
-func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
 
 // NodePublishVolume mounts the volume mounted to the device path to the target
 // path

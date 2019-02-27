@@ -2,10 +2,6 @@
   name = "github.com/container-storage-interface/spec"
   version = "~1.0.0"
 
-[[constraint]]
-  branch = "master"
-  name = "github.com/kubernetes-csi/drivers"
-
 [[override]]
   revision = "5db89f0ca68677abc5eefce8f2a0a772c98ba52d"
   name = "github.com/docker/distribution"

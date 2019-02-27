@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"os"
 
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/keymutex"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
 // NodeServer struct of ceph CSI driver with supported methods of CSI

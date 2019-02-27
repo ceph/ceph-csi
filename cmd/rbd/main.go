@@ -22,6 +22,7 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/rbd"
 	"github.com/ceph/ceph-csi/pkg/util"
+	"k8s.io/klog"
 )
 
 var (
@@ -32,8 +33,15 @@ var (
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
 )
 
+func init() {
+	klog.InitFlags(nil)
+	if err := flag.Set("logtostderr", "true"); err != nil {
+		klog.Exitf("failed to set logtostderr flag: %v", err)
+	}
+	flag.Parse()
+}
+
 func main() {
-	util.InitLogging()
 
 	cp, err := util.CreatePersistanceStorage(rbd.PluginFolder, *metadataStorage, *driverName)
 	if err != nil {
