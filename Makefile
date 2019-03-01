@@ -31,7 +31,7 @@ go-test:
 	./scripts/test-go.sh
 
 static-check:
-	./scripts/lint-go.sh  
+	./scripts/lint-go.sh
 	./scripts/lint-text.sh
 
 rbdplugin:
