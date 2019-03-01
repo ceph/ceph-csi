@@ -51,6 +51,7 @@ type rbdVolume struct {
 	AdminID            string `json:"adminId"`
 	UserID             string `json:"userId"`
 	Mounter            string `json:"mounter"`
+	MultiNodeWritable  string `json:"multiNodeWritable"`
 }
 
 type rbdSnapshot struct {
@@ -226,7 +227,7 @@ func execCommand(command string, args []string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
+func getRBDVolumeOptions(volOptions map[string]string, ignoreMultiNodeWritable bool) (*rbdVolume, error) {
 	var ok bool
 	rbdVol := &rbdVolume{}
 	rbdVol.Pool, ok = volOptions["pool"]
@@ -260,6 +261,12 @@ func getRBDVolumeOptions(volOptions map[string]string) (*rbdVolume, error) {
 
 	}
 	getCredsFromVol(rbdVol, volOptions)
+
+	klog.V(3).Infof("ignoreMultiNodeWritable flag in parse getRBDVolumeOptions is: %v", ignoreMultiNodeWritable)
+	// If the volume we're working with is NOT requesting multi-node attach then don't treat it special, ignore the setting in the SC and just keep our watcher checks
+	if !ignoreMultiNodeWritable {
+		rbdVol.MultiNodeWritable = volOptions["multiNodeWritable"]
+	}
 	return rbdVol, nil
 }
 

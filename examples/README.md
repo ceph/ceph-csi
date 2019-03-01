@@ -114,3 +114,105 @@ To restore the snapshot to a new PVC, deploy
 kubectl create -f pvc-restore.yaml
 kubectl create -f pod-restore.yaml
 ```
+
+## How to enable multi node attach support for RBD
+
+*WARNING*  This feature is strictly for workloads that know how to deal
+with concurrent acces to the Volume (eg Active/Passive applications).
+Using RWX modes on non clustered file systems with applications trying
+to simultaneously access the Volume will likely result in data corruption!
+
+### Example process to test the multiNodeWritable feature
+
+Modify your current storage class, or create a new storage class specifically
+for multi node writers by adding the `multiNodeWritable: "enabled"` entry to
+your parameters.  Here's an example:
+
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+   name: csi-rbd
+provisioner: csi-rbdplugin
+parameters:
+    monitors: rook-ceph-mon-b.rook-ceph.svc.cluster.local:6789
+    pool: rbd
+    imageFormat: "2"
+    imageFeatures: layering
+    csiProvisionerSecretName: csi-rbd-secret
+    csiProvisionerSecretNamespace: default
+    csiNodePublishSecretName: csi-rbd-secret
+    csiNodePublishSecretNamespace: default
+    adminid: admin
+    userid: admin
+    fsType: xfs
+    multiNodeWritable: "enabled"
+reclaimPolicy: Delete
+```
+
+Now, you can request Claims from the configured storage class that include
+the `ReadWriteMany` access mode:
+
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-1
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-rbd
+```
+
+Create a POD that uses this PVC:
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-1
+spec:
+  containers:
+   - name: web-server
+     image: nginx
+     volumeMounts:
+       - name: mypvc
+         mountPath: /var/lib/www/html
+  volumes:
+   - name: mypvc
+     persistentVolumeClaim:
+       claimName: pvc-1
+       readOnly: false
+```
+
+Wait for the POD to enter Running state, write some data to
+`/var/lib/www/html`
+
+Now, we can create a second POD (ensure the POD is scheduled on a different
+node; multiwriter single node works without this feature) that also uses this
+PVC at the same time
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-2
+spec:
+  containers:
+   - name: web-server
+     image: nginx
+     volumeMounts:
+       - name: mypvc
+         mountPath: /var/lib/www/html
+  volumes:
+   - name: mypvc
+     persistentVolumeClaim:
+       claimName: pvc-1
+       readOnly: false
+```
+
+If you access the pod you can check that your data is avaialable at
+`/var/lib/www/html`
