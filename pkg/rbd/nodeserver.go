@@ -71,6 +71,8 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
+	// if our access mode is a simple SINGLE_NODE_WRITER we're going to ignore the SC directive and use the
+	// watcher still
 	ignoreMultiWriterEnabled := true
 	if req.VolumeCapability.AccessMode.Mode != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
 		ignoreMultiWriterEnabled = false
@@ -80,7 +82,6 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, err
 	}
-	// Check access mode settings in the request, even if SC is RW-Many, if the request is a normal Single Writer volume, we ignore this setting and proceed as normal
 
 	volOptions.VolName = volName
 	// Mapping RBD image
