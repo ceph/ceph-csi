@@ -24,7 +24,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/ceph/ceph-csi/pkg/csi-common"
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -118,7 +118,8 @@ func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	if req.GetCapacityRange() != nil {
 		volSizeBytes = req.GetCapacityRange().GetRequiredBytes()
 	}
-	rbdVol.VolSize = volSizeBytes
+
+	rbdVol.VolSize = util.RoundUpToMiB(volSizeBytes)
 
 	return rbdVol, nil
 }
@@ -175,10 +176,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	volSizeGB := int(rbdVol.VolSize / 1024 / 1024 / 1024)
-
 	// Check if there is already RBD image with requested name
-	err = cs.checkRBDStatus(rbdVol, req, volSizeGB)
+	err = cs.checkRBDStatus(rbdVol, req, int(rbdVol.VolSize))
 	if err != nil {
 		return nil, err
 	}
@@ -192,13 +191,13 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			VolumeId:      rbdVol.VolID,
-			CapacityBytes: rbdVol.VolSize,
+			CapacityBytes: rbdVol.VolSize * util.MiB,
 			VolumeContext: req.GetParameters(),
 		},
 	}, nil
 }
 
-func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeGB int) error {
+func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeMiB int) error {
 	var err error
 	// Check if there is already RBD image with requested name
 	found, _, _ := rbdStatus(rbdVol, rbdVol.UserID, req.GetSecrets()) // #nosec
@@ -209,7 +208,7 @@ func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVol
 				return err
 			}
 		} else {
-			err = createRBDImage(rbdVol, volSizeGB, rbdVol.AdminID, req.GetSecrets())
+			err = createRBDImage(rbdVol, volSizeMiB, rbdVol.AdminID, req.GetSecrets())
 			if err != nil {
 				klog.Warningf("failed to create volume: %v", err)
 				return err

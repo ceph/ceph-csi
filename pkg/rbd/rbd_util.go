@@ -121,18 +121,18 @@ func createRBDImage(pOpts *rbdVolume, volSz int, adminID string, credentials map
 	}
 
 	image := pOpts.VolName
-	volSzGB := fmt.Sprintf("%dG", volSz)
+	volSzMiB := fmt.Sprintf("%dM", volSz)
 
 	key, err := getRBDKey(adminID, credentials)
 	if err != nil {
 		return err
 	}
 	if pOpts.ImageFormat == rbdImageFormat2 {
-		klog.V(4).Infof("rbd: create %s size %s format %s (features: %s) using mon %s, pool %s ", image, volSzGB, pOpts.ImageFormat, pOpts.ImageFeatures, mon, pOpts.Pool)
+		klog.V(4).Infof("rbd: create %s size %s format %s (features: %s) using mon %s, pool %s ", image, volSzMiB, pOpts.ImageFormat, pOpts.ImageFeatures, mon, pOpts.Pool)
 	} else {
-		klog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s", image, volSzGB, pOpts.ImageFormat, mon, pOpts.Pool)
+		klog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s", image, volSzMiB, pOpts.ImageFormat, mon, pOpts.Pool)
 	}
-	args := []string{"create", image, "--size", volSzGB, "--pool", pOpts.Pool, "--id", adminID, "-m", mon, "--key=" + key, "--image-format", pOpts.ImageFormat}
+	args := []string{"create", image, "--size", volSzMiB, "--pool", pOpts.Pool, "--id", adminID, "-m", mon, "--key=" + key, "--image-format", pOpts.ImageFormat}
 	if pOpts.ImageFormat == rbdImageFormat2 {
 		args = append(args, "--image-feature", pOpts.ImageFeatures)
 	}
