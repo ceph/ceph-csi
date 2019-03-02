@@ -12,6 +12,11 @@ Once the plugin is successfully deployed, you'll need to customize
 setup.
 Please consult the documentation for info about available parameters.
 
+**NOTE:** See section
+[Cluster ID based configuration](#cluster-id-based-configuration) if using
+the `clusterID` instead of `monitors` or `monValueFromSecret` options in the
+storage class for RBD based provisioning before proceeding.
+
 After configuring the secrets, monitors, etc. you can deploy a
 testing Pod mounting a RBD image / CephFS volume:
 
@@ -213,3 +218,34 @@ Units: sectors of 1 * 512 = 512 bytes
 Sector size (logical/physical): 512 bytes / 512 bytes
 I/O size (minimum/optimal): 4194304 bytes / 4194304 bytes
 ```
+
+## Cluster ID based configuration
+
+Before creating a storage class that uses the option `clusterID` to refer to a
+Ceph cluster,
+
+**NOTE**: Substitute the output of `ceph fsid` instead of `<cluster-fsid>` in
+    the mentioned template YAML files, and also the Ceph admin ID and
+    credentials in their respective options. Further, update options like
+    `monitors` and `pools` in the respective YAML files to contain the
+    appropriate information.
+
+Create the following config maps and secrets
+
+* `kubectl create -f ./rbd/template-ceph-cluster-ID-provisioner-secret.yaml`
+* `kubectl create -f ./rbd/template-ceph-cluster-ID-publish-secret.yaml`
+* `kubectl create -f ./rbd/template-ceph-cluster-ID-config.yaml`
+
+Modify the deployed CSI pods to additionally pass in the config maps and
+secrets as volumes,
+
+* `kubectl patch daemonset csi-rbdplugin --patch "$(cat ./rbd/template-csi-rbdplugin-patch.yaml)"`
+* `kubectl patch statefulset csi-rbdplugin-provisioner --patch "$(cat ./rbd/template-csi-rbdplugin-provisioner-patch.yaml)"`
+
+Restart the provisioner and node plugin daemonset.
+
+Storage class and snapshot class, using the `<cluster-fsid>` as the value for
+    the option `clusterID`, can now be created on the cluster.
+
+Remaining steps to test functionality remains the same as mentioned in the
+sections above.

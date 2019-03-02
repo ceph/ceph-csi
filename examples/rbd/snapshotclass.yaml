@@ -6,6 +6,12 @@ metadata:
 snapshotter: rbd.csi.ceph.com
 parameters:
   pool: rbd
+  # Comma separated list of Ceph monitors
+  # if using FQDN, make sure csi plugin's dns policy is appropriate.
   monitors: mon1:port,mon2:port,...
+  # OR,
+  # Ceph cluster fsid, of the cluster to provision storage from
+  # clusterID: <ceph-fsid>
+
   csi.storage.k8s.io/snapshotter-secret-name: csi-rbd-secret
   csi.storage.k8s.io/snapshotter-secret-namespace: default

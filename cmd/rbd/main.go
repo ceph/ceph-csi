@@ -31,6 +31,7 @@ var (
 	nodeID          = flag.String("nodeid", "", "node id")
 	containerized   = flag.Bool("containerized", true, "whether run as containerized")
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
+	configRoot      = flag.String("configroot", "/etc", "Directory under which Ceph CSI configuration files will be present")
 )
 
 func init() {
@@ -56,7 +57,7 @@ func main() {
 	}
 
 	driver := rbd.NewDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *containerized, cp)
+	driver.Run(*driverName, *nodeID, *endpoint, *containerized, *configRoot, cp)
 
 	os.Exit(0)
 }
