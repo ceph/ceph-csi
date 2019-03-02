@@ -1,0 +1,33 @@
+---
+# This is a patch to the existing daemonset deployment of CSI rbdplugin.
+# This is to be used when adding a new Ceph cluster to the CSI plugin.
+# NOTE: Update csi-rbdplugin-provisioner StatefulSet as well with similar patch
+# Post substituting the <cluster-fsid> in all places execute,
+#   `kubectl patch daemonset csi-rbdplugin --patch\
+#         "$(cat template-csi-rbdplugin-patch.yaml)"`
+#   to patch the statefulset deployment.
+spec:
+  template:
+    spec:
+      containers:
+        - name: csi-rbdplugin
+          volumeMounts:
+            - name: provisioner-secret-<cluster-fsid>
+              mountPath: "/etc/ceph-cluster-<cluster-fsid>-provisioner-secret"
+              readOnly: true
+            - name: publish-secret-<cluster-fsid>
+              mountPath: "/etc/ceph-cluster-<cluster-fsid>-publish-secret"
+              readOnly: true
+            - name: ceph-cluster-<cluster-fsid>
+              mountPath: "/etc/ceph-cluster-<cluster-fsid>/"
+              readOnly: true
+      volumes:
+        - name: provisioner-secret-<cluster-fsid>
+          secret:
+            secretName: ceph-cluster-<cluster-fsid>-provisioner-secret
+        - name: publish-secret-<cluster-fsid>
+          secret:
+            secretName: ceph-cluster-<cluster-fsid>-publish-secret
+        - name: ceph-cluster-<cluster-fsid>
+          configMap:
+            name: ceph-cluster-<cluster-fsid>
