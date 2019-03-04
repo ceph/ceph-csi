@@ -150,7 +150,7 @@ func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequ
 
 	klog.V(4).Infof("cephfs: mounting volume %s with %s", volID, m.name())
 
-	if err = m.mount(stagingTargetPath, cr, volOptions, volID); err != nil {
+	if err = m.mount(stagingTargetPath, cr, volOptions); err != nil {
 		klog.Errorf("failed to mount volume %s: %v", volID, err)
 		return status.Error(codes.Internal, err.Error())
 	}
