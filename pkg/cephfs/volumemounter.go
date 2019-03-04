@@ -67,7 +67,7 @@ func loadAvailableMounters() error {
 }
 
 type volumeMounter interface {
-	mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error
+	mount(mountPoint string, cr *credentials, volOptions *volumeOptions) error
 	name() string
 }
 
@@ -111,7 +111,7 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 
 type fuseMounter struct{}
 
-func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
+func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
 	args := [...]string{
 		mountPoint,
 		"-m", volOptions.Monitors,
@@ -147,19 +147,19 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions, vo
 	return nil
 }
 
-func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
+func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
 	if err := createMountPoint(mountPoint); err != nil {
 		return err
 	}
 
-	return mountFuse(mountPoint, cr, volOptions, volID)
+	return mountFuse(mountPoint, cr, volOptions)
 }
 
 func (m *fuseMounter) name() string { return "Ceph FUSE driver" }
 
 type kernelMounter struct{}
 
-func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
+func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
 	if err := execCommandErr("modprobe", "ceph"); err != nil {
 		return err
 	}
@@ -172,12 +172,12 @@ func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions, 
 	)
 }
 
-func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions, volID volumeID) error {
+func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
 	if err := createMountPoint(mountPoint); err != nil {
 		return err
 	}
 
-	return mountKernel(mountPoint, cr, volOptions, volID)
+	return mountKernel(mountPoint, cr, volOptions)
 }
 
 func (m *kernelMounter) name() string { return "Ceph kernel client" }
