@@ -24,7 +24,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/ceph/ceph-csi/pkg/csi-common"
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -201,7 +201,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeGB int) error {
 	var err error
 	// Check if there is already RBD image with requested name
-	found, _, _ := rbdStatus(rbdVol, rbdVol.UserID, req.GetSecrets()) // #nosec
+	//nolint
+	found, _, _ := rbdStatus(rbdVol, rbdVol.UserID, req.GetSecrets())
 	if !found {
 		// if VolumeContentSource is not nil, this request is for snapshot
 		if req.VolumeContentSource != nil {
