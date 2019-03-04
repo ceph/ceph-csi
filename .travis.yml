@@ -49,6 +49,6 @@ jobs:
 
 deploy:
   - provider: script
-    on: # yamllint disable-line rule:truthy
+    on:  # yamllint disable-line rule:truthy
       all_branches: true
     script: ./deploy.sh

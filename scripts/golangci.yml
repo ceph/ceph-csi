@@ -33,7 +33,8 @@ run:
 
 # output configuration options
 output:
-  # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
+  # colored-line-number|line-number|json|tab|checkstyle|code-climate,
+  # default is "colored-line-number"
   format: colored-line-number
 
   # print lines of code with issue, default is true
@@ -45,17 +46,19 @@ output:
 # all available settings of specific linters
 linters-settings:
   errcheck:
-    # report about not checking of errors in type assetions: `a := b.(MyStruct)`;
+    # report about not checking of errors in type assetions:
+    #  `a := b.(MyStruct)`;
     # default is false: such cases aren't reported by default.
     check-type-assertions: true
 
-    # report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`;
+    # report about assignment of errors to blank identifier:
+    # `num, _ := strconv.Atoi(numStr)`;
     # default is false: such cases aren't reported by default.
     check-blank: true
 
     # path to a file containing a list of functions to exclude from checking
     # see https://github.com/kisielk/errcheck#excluding-functions for details
-    #exclude: /path/to/file.txt
+    # exclude: /path/to/file.txt
   govet:
     # report about shadowed variables
     check-shadowing: true
@@ -91,7 +94,8 @@ linters-settings:
   misspell:
     # Correct spellings using locale preferences for US or UK.
     # Default is to use a neutral variety of English.
-    # Setting locale to US will correct the British spelling of 'colour' to 'color'.
+    # Setting locale to US will correct the British spelling of 'colour' to
+    # 'color'.
     locale: US
     ignore-words:
       - someword
@@ -104,19 +108,26 @@ linters-settings:
     # tab width in spaces. Default to 1.
     tab-width: 1
   unused:
-    # treat code as a program (not a library) and report unused exported identifiers; default is false.
-    # XXX: if you enable this setting, unused will report a lot of false-positives in text editors:
-    # if it's called for subdir of a project it can't find funcs usages. All text editor integrations
+    # treat code as a program (not a library) and report unused exported
+    # identifiers; default is false.
+    # XXX: if you enable this setting, unused will report a lot of
+    # false-positives in text editors:
+    # if it's called for subdir of a project it can't find funcs usages.
+    # All text editor integrations
     # with golangci-lint call it on a directory with the changed file.
     check-exported: false
   unparam:
-    # Inspect exported functions, default is false. Set to true if no external program/library imports your code.
-    # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
-    # if it's called for subdir of a project it can't find external interfaces. All text editor integrations
+    # Inspect exported functions, default is false. Set to true if no external
+    # program/library imports your code.
+    # XXX: if you enable this setting, unparam will report a lot of
+    # false-positives in text editors:
+    # if it's called for subdir of a project it can't find external
+    # interfaces. All text editor integrations
     # with golangci-lint call it on a directory with the changed file.
     check-exported: false
   nakedret:
-    # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
+    # make an issue if func has more lines of code than this setting and
+    # it has naked returns; default is 30
     max-func-lines: 30
 
 linters:
