@@ -23,6 +23,27 @@ import (
 	"k8s.io/klog"
 )
 
+// remove this once kubernetes v1.14.0 release is done
+// https://github.com/kubernetes/cloud-provider/blob/master/volume/helpers/rounding.go
+const (
+	// MiB - MebiByte size
+	MiB = 1024 * 1024
+)
+
+// RoundUpToMiB rounds up given quantity upto chunks of MiB
+func RoundUpToMiB(size int64) int64 {
+	requestBytes := size
+	return roundUpSize(requestBytes, MiB)
+}
+
+func roundUpSize(volumeSizeBytes int64, allocationUnitBytes int64) int64 {
+	roundedUp := volumeSizeBytes / allocationUnitBytes
+	if volumeSizeBytes%allocationUnitBytes > 0 {
+		roundedUp++
+	}
+	return roundedUp
+}
+
 // CreatePersistanceStorage creates storage path and initializes new cache
 func CreatePersistanceStorage(sPath, metaDataStore, driverName string) (CachePersister, error) {
 	var err error
