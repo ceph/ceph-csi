@@ -128,7 +128,7 @@ Modify your current storage class, or create a new storage class specifically
 for multi node writers by adding the `multiNodeWritable: "enabled"` entry to
 your parameters.  Here's an example:
 
-```
+```yaml
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -153,7 +153,7 @@ reclaimPolicy: Delete
 Now, you can request Claims from the configured storage class that include
 the `ReadWriteMany` access mode:
 
-```
+```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -169,7 +169,7 @@ spec:
 
 Create a POD that uses this PVC:
 
-```
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -195,7 +195,7 @@ Now, we can create a second POD (ensure the POD is scheduled on a different
 node; multiwriter single node works without this feature) that also uses this
 PVC at the same time
 
-```
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
