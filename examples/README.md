@@ -14,7 +14,7 @@ Please consult the documentation for info about available parameters.
 
 **NOTE:** See section
 [Cluster ID based configuration](#cluster-id-based-configuration) if using
-the `clusterID` instead of `monitors` or `monValueFromSecret` options in the
+the `clusterID` instead of `monitors` or `monValueFromSecret` option in the
 storage class for RBD based provisioning before proceeding.
 
 After configuring the secrets, monitors, etc. you can deploy a
@@ -222,30 +222,29 @@ I/O size (minimum/optimal): 4194304 bytes / 4194304 bytes
 ## Cluster ID based configuration
 
 Before creating a storage class that uses the option `clusterID` to refer to a
-Ceph cluster,
+Ceph cluster, the following actions need to be completed.
 
-**NOTE**: Substitute the output of `ceph fsid` instead of `<cluster-fsid>` in
-    the mentioned template YAML files, and also the Ceph admin ID and
-    credentials in their respective options. Further, update options like
-    `monitors` and `pools` in the respective YAML files to contain the
-    appropriate information.
+Get the following information from the Ceph cluster,
 
-Create the following config maps and secrets
+* Ceph Cluster fsid
+  * Output of `ceph fsid`
+  * Used to substitute `<cluster-fsid>` references in the files below
+* Admin ID and key, that has privileges to perform CRUD operations on the Ceph
+  cluster and pools of choice
+  * Key is typically the output of, `ceph auth get-key client.admin` where
+    `admin` is the Admin ID
+  * Used to substitute admin/user id and key values in the files below
+* Ceph monitor list
+  * Typically in the output of `ceph mon dump`
+  * Used to prepare comma separated MON list where required in the files below
 
-* `kubectl create -f ./rbd/template-ceph-cluster-ID-provisioner-secret.yaml`
-* `kubectl create -f ./rbd/template-ceph-cluster-ID-publish-secret.yaml`
-* `kubectl create -f ./rbd/template-ceph-cluster-ID-config.yaml`
+Update the template `rbd/template-ceph-cluster-ID-secret.yaml` with values from
+a Ceph cluster and create the following secret,
 
-Modify the deployed CSI pods to additionally pass in the config maps and
-secrets as volumes,
+* `kubectl create -f rbd/template-ceph-cluster-ID-secret.yaml`
 
-* `kubectl patch daemonset csi-rbdplugin --patch "$(cat ./rbd/template-csi-rbdplugin-patch.yaml)"`
-* `kubectl patch statefulset csi-rbdplugin-provisioner --patch "$(cat ./rbd/template-csi-rbdplugin-provisioner-patch.yaml)"`
-
-Restart the provisioner and node plugin daemonset.
-
-Storage class and snapshot class, using the `<cluster-fsid>` as the value for
-    the option `clusterID`, can now be created on the cluster.
+Storage class and snapshot class, using `<cluster-fsid>` as the value for the
+    option `clusterID`, can now be created on the cluster.
 
 Remaining steps to test functionality remains the same as mentioned in the
 sections above.

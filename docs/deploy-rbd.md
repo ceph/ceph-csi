@@ -33,6 +33,7 @@ Option | Default value | Description
 `--nodeid` | _empty_ | This node's ID
 `--containerized` | true | Whether running in containerized mode
 `--metadatastorage` | _empty_ | Whether should metadata be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
+`--configroot` | `/etc/csi-config` | Directory in which CSI specific Ceph cluster configurations are present, OR the value `k8s_objects` if present as kubernetes secrets"
 
 **Available environmental variables:**
 
@@ -52,13 +53,18 @@ Parameter | Required | Description
 --------- | -------- | -----------
 `monitors` | one of `monitors`, `clusterID` or `monValueFromSecret` must be set | Comma separated list of Ceph monitors (e.g. `192.168.100.1:6789,192.168.100.2:6789,192.168.100.3:6789`)
 `monValueFromSecret` | one of `monitors`, `clusterID` or and `monValueFromSecret` must be set | a string pointing the key in the credential secret, whose value is the mon. This is used for the case when the monitors' IP or hostnames are changed, the secret can be updated to pick up the new monitors.
-`clusterID` | one of `monitors`, `clusterID` or `monValueFromSecret` must be set | Value of Ceph cluster fsid, into which RBD images shall be created (e.g. `4ae5ae3d-ebfb-4150-bfc8-798970f4e3d9`)
+`clusterID` | one of `monitors`, `clusterID` or `monValueFromSecret` must be set | Value of `ceph fsid`, into which RBD images shall be created (e.g. `4ae5ae3d-ebfb-4150-bfc8-798970f4e3d9`)
 `pool` | yes | Ceph pool into which the RBD image shall be created
 `imageFormat` | no | RBD image format. Defaults to `2`. See [man pages](http://docs.ceph.com/docs/mimic/man/8/rbd/#cmdoption-rbd-image-format)
 `imageFeatures` | no | RBD image features. Available for `imageFormat=2`. CSI RBD currently supports only `layering` feature. See [man pages](http://docs.ceph.com/docs/mimic/man/8/rbd/#cmdoption-rbd-image-feature)
 `csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-publish-secret-name` | for Kubernetes | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
 `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-publish-secret-namespace` | for Kubernetes | namespaces of the above Secret objects
 `mounter`| no | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images
+
+NOTE: If `clusterID` parameter is used, then an accompanying Ceph cluster
+configuration secret or config files needs to be provided to the running pods.
+Refer to `examples/README.md` section titled "Cluster ID based configuration"
+for more information.
 
 **Required secrets:**
 
