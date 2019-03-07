@@ -11,6 +11,9 @@ parameters:
    # OR,
    # Ceph cluster fsid, of the cluster to provision storage from
    # clusterID: <ceph-fsid>
+   # If using clusterID based configuration, CSI pods need to be passed in a
+   # secret named ceph-cluster-<cluster-fsid> that contains the cluster
+   # information. (as in the provided template-ceph-cluster-ID-secret.yaml)
    # OR,
    # if "monitors" parameter is not set, driver to get monitors from same
    # secret as admin/user credentials. "monValueFromSecret" provides the
@@ -28,12 +31,18 @@ parameters:
    imageFeatures: layering
 
    # The secrets have to contain Ceph admin credentials.
+   # NOTE: If using "clusterID" instead of "monitors" above, the following
+   # secrets MAY be added to the ceph-cluster-<cluster-fsid> secret and skipped
+   # here
    csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
    csi.storage.k8s.io/provisioner-secret-namespace: default
    csi.storage.k8s.io/node-publish-secret-name: csi-rbd-secret
    csi.storage.k8s.io/node-publish-secret-namespace: default
 
    # Ceph users for operating RBD
+   # NOTE: If using "clusterID" instead of "monitors" above, the following
+   # IDs MAY be added to the ceph-cluster-<cluster-fsid> secret and skipped
+   # here
    adminid: admin
    userid: kubernetes
    # uncomment the following to use rbd-nbd as mounter on supported nodes

@@ -91,9 +91,10 @@ func getRBDKey(fsid string, id string, credentials map[string]string) (string, e
 	var ok bool
 	var err error
 	var key string
+
 	if key, ok = credentials[id]; !ok {
 		if fsid != "" {
-			key, err = Fc.GetCredentialForSubject(fsid, id)
+			key, err = ConfStore.CredentialForUser(fsid, id)
 			if err != nil {
 				klog.Errorf("failed getting credentials (%s)", err)
 				return "", fmt.Errorf("RBD key for ID: %s not found in config store", id)
@@ -240,8 +241,7 @@ func execCommand(command string, args []string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func getMonsAndFsID(options map[string]string) (monitors, fsID, monInSecret string, noerr error) {
-	var err error
+func getMonsAndFsID(options map[string]string) (monitors, fsID, monInSecret string, err error) {
 	var ok bool
 
 	monitors, ok = options["monitors"]
@@ -250,11 +250,14 @@ func getMonsAndFsID(options map[string]string) (monitors, fsID, monInSecret stri
 		if monInSecret, ok = options["monValueFromSecret"]; !ok {
 			// if mons are not in secret, check if we have a cluster-fsid
 			if fsID, ok = options["clusterID"]; !ok {
-				return "", "", "", fmt.Errorf("either monitors or monValueFromSecret or clusterID must be set")
+				err = errors.New("either monitors or monValueFromSecret or clusterID must be set")
+				return
 			}
-			if monitors, err = Fc.GetMons(fsID); err != nil {
+
+			if monitors, err = ConfStore.Mons(fsID); err != nil {
 				klog.Errorf("failed getting mons (%s)", err)
-				return "", "", "", fmt.Errorf("failed to fetch monitor list using clusterID (%s)", fsID)
+				err = fmt.Errorf("failed to fetch monitor list using clusterID (%s)", fsID)
+				return
 			}
 		}
 	}
@@ -262,35 +265,34 @@ func getMonsAndFsID(options map[string]string) (monitors, fsID, monInSecret stri
 	return
 }
 
-func getIDs(options map[string]string, fsID string) (adminID, userID string, noerr error) {
-	var err error
+func getIDs(options map[string]string, fsID string) (adminID, userID string, err error) {
 	var ok bool
 
 	adminID, ok = options["adminid"]
-	if !ok {
-		if fsID != "" {
-			if adminID, err = Fc.GetProvisionerSubjectID(fsID); err != nil {
-				klog.Errorf("failed getting subject (%s)", err)
-				return "", "", fmt.Errorf("failed to fetch provisioner ID using clusterID (%s)", fsID)
-			}
-		} else {
-			adminID = rbdDefaultAdminID
+	switch {
+	case ok:
+	case fsID != "":
+		if adminID, err = ConfStore.AdminID(fsID); err != nil {
+			klog.Errorf("failed getting subject (%s)", err)
+			return "", "", fmt.Errorf("failed to fetch provisioner ID using clusterID (%s)", fsID)
 		}
+	default:
+		adminID = rbdDefaultAdminID
 	}
 
 	userID, ok = options["userid"]
-	if !ok {
-		if fsID != "" {
-			if userID, err = Fc.GetPublishSubjectID(fsID); err != nil {
-				klog.Errorf("failed getting subject (%s)", err)
-				return "", "", fmt.Errorf("failed to fetch publisher ID using clusterID (%s)", fsID)
-			}
-		} else {
-			userID = rbdDefaultUserID
+	switch {
+	case ok:
+	case fsID != "":
+		if userID, err = ConfStore.UserID(fsID); err != nil {
+			klog.Errorf("failed getting subject (%s)", err)
+			return "", "", fmt.Errorf("failed to fetch publisher ID using clusterID (%s)", fsID)
 		}
+	default:
+		userID = rbdDefaultUserID
 	}
 
-	return
+	return adminID, userID, err
 }
 
 func getRBDVolumeOptions(volOptions map[string]string, disableInUseChecks bool) (*rbdVolume, error) {

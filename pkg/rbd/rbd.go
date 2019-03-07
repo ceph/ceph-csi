@@ -47,9 +47,8 @@ type Driver struct {
 
 var (
 	version = "1.0.0"
-	// Fc is the global file config type, and stores the top level directory
-	// under which rest of the Ceph config files can be found
-	Fc util.FileConfig
+	// ConfStore is the global config store
+	ConfStore *util.ConfigStore
 )
 
 // NewDriver returns new rbd driver
@@ -94,8 +93,11 @@ func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, co
 	var err error
 	klog.Infof("Driver: %v version: %v", driverName, version)
 
-	// Initialize fileconfig base path
-	Fc.BasePath = configroot
+	// Initialize config store
+	ConfStore, err = util.NewConfigStore(configroot)
+	if err != nil {
+		klog.Fatalln("Failed to initialize config store.")
+	}
 
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
