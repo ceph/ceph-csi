@@ -32,6 +32,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -104,7 +105,7 @@ func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 
 	rbdVol, err := getRBDVolumeOptions(req.GetParameters(), disableMultiWriter)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// Generating Volume Name and Volume ID, as according to CSI spec they MUST be different
@@ -212,7 +213,7 @@ func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVol
 			err = createRBDImage(rbdVol, volSizeMiB, rbdVol.AdminID, req.GetSecrets())
 			if err != nil {
 				klog.Warningf("failed to create volume: %v", err)
-				return err
+				return status.Error(codes.Internal, err.Error())
 			}
 
 			klog.V(4).Infof("create volume %s", rbdVol.VolName)
@@ -233,12 +234,12 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 
 	rbdSnap := &rbdSnapshot{}
 	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
-		return err
+		return status.Error(codes.NotFound, err.Error())
 	}
 
 	err := restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminID, req.GetSecrets())
 	if err != nil {
-		return err
+		return status.Error(codes.Internal, err.Error())
 	}
 	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
 	return nil
@@ -277,11 +278,11 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err := deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
 		// TODO: can we detect "already deleted" situations here and proceed?
 		klog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, volName, err)
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if err := cs.MetadataStore.Delete(volumeID); err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	delete(rbdVolumes, volumeID)
@@ -412,7 +413,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	rbdSnap, err := getRBDSnapshotOptions(req.GetParameters())
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// Generating Snapshot Name and Snapshot ID, as according to CSI spec they MUST be different
@@ -423,7 +424,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", req.GetSourceVolumeId())
 	}
 	if !hasSnapshotFeature(rbdVolume.ImageFeatures) {
-		return nil, fmt.Errorf("volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
+		return nil, status.Errorf(codes.InvalidArgument, "volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
 	}
 
 	rbdSnap.VolName = rbdVolume.VolName
@@ -436,7 +437,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	err = cs.doSnapshot(rbdSnap, req.GetSecrets())
 	// if we already have the snapshot, return the snapshot
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	rbdSnap.CreatedAt = ptypes.TimestampNow().GetSeconds()
@@ -514,7 +515,7 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]s
 			if err != nil {
 				return fmt.Errorf("snapshot is created but failed to protect and delete snapshot: %v", err)
 			}
-			return fmt.Errorf("snapshot is created but failed to protect snapshot")
+			return errors.New("snapshot is created but failed to protect snapshot")
 		}
 	}
 	return nil
@@ -563,7 +564,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	if err := cs.MetadataStore.Delete(snapshotID); err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	delete(rbdSnapshots, snapshotID)
