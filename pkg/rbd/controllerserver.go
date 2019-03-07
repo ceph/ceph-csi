@@ -17,7 +17,6 @@ limitations under the License.
 package rbd
 
 import (
-	"fmt"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -203,9 +202,10 @@ func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVol
 	//nolint
 	found, _, _ := rbdStatus(rbdVol, rbdVol.UserID, req.GetSecrets())
 	if !found {
-		// if VolumeContentSource is not nil, this request is for snapshot
+		// if VolumeContentSource is not nil, this request is for snapshot or
+		// smart volume clone
 		if req.VolumeContentSource != nil {
-			if err = cs.checkSnapshot(req, rbdVol); err != nil {
+			if err = cs.cloneVolumeFromSource(req, rbdVol); err != nil {
 				return err
 			}
 		} else {
@@ -220,6 +220,52 @@ func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVol
 	}
 	return nil
 }
+
+func (cs *ControllerServer) cloneVolumeFromSource(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
+	var err error
+	volumeSource := req.VolumeContentSource
+	// type
+	switch volumeSource.Type.(type) {
+	case *csi.VolumeContentSource_Snapshot:
+		snapName := volumeSource.GetSnapshot().GetSnapshotId()
+		klog.V(2).Infof("creating volume from snapshot %s", snapName)
+		if err = cs.checkSnapshot(req, rbdVol); err != nil {
+			return err
+		}
+	case *csi.VolumeContentSource_Volume:
+		parentVol := volumeSource.GetVolume().GetVolumeId()
+		//check parent volume is present or not
+		//create snapshot
+		//restore snapshot
+		uniqueID := uuid.NewUUID().String()
+		snapName := parentVol + uniqueID
+		snapshotID := "csi-rbd-" + parentVol + "-snap-" + uniqueID
+		//snapName, snapID, VolID string, options, secret
+		rbdSnap, snapErr := cs.doSnapshot(snapName, snapshotID, parentVol, req.GetParameters(), req.GetSecrets())
+		if snapErr != nil {
+			return snapErr
+		}
+
+		err = restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminID, req.GetSecrets())
+		if err != nil {
+			return err
+		}
+		klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
+		// Unprotect snapshot
+		err = unprotectAndDeleteSnapshot(rbdSnap, req.GetSecrets())
+		if err != nil {
+			klog.Error(err)
+			// discard delete snapshot failure error
+			// if deletion fails, needs to manually delete it
+			return nil
+		}
+	default:
+		err = status.Errorf(codes.InvalidArgument, "Not a proper volume source")
+		klog.Error(err)
+	}
+	return err
+}
+
 func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
 	snapshot := req.VolumeContentSource.GetSnapshot()
 	if snapshot == nil {
@@ -233,12 +279,12 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 
 	rbdSnap := &rbdSnapshot{}
 	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
-		return err
+		return status.Error(codes.NotFound, err.Error())
 	}
 
 	err := restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminID, req.GetSecrets())
 	if err != nil {
-		return err
+		return status.Error(codes.Internal, err.Error())
 	}
 	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
 	return nil
@@ -410,30 +456,11 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.AlreadyExists, "Snapshot with the same name: %s but with different source volume id already exist", req.GetName())
 	}
 
-	rbdSnap, err := getRBDSnapshotOptions(req.GetParameters())
-	if err != nil {
-		return nil, err
-	}
-
 	// Generating Snapshot Name and Snapshot ID, as according to CSI spec they MUST be different
 	snapName := req.GetName()
-	uniqueID := uuid.NewUUID().String()
-	rbdVolume, err := getRBDVolumeByID(req.GetSourceVolumeId())
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", req.GetSourceVolumeId())
-	}
-	if !hasSnapshotFeature(rbdVolume.ImageFeatures) {
-		return nil, fmt.Errorf("volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
-	}
 
-	rbdSnap.VolName = rbdVolume.VolName
-	rbdSnap.SnapName = snapName
-	snapshotID := "csi-rbd-" + rbdVolume.VolName + "-snap-" + uniqueID
-	rbdSnap.SnapID = snapshotID
-	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
-	rbdSnap.SizeBytes = rbdVolume.VolSize
-
-	err = cs.doSnapshot(rbdSnap, req.GetSecrets())
+	//snapName, snapID, VolID string, options, secret
+	rbdSnap, err := cs.doSnapshot(snapName, "", req.GetSourceVolumeId(), req.GetParameters(), req.GetSecrets())
 	// if we already have the snapshot, return the snapshot
 	if err != nil {
 		return nil, err
@@ -441,7 +468,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	rbdSnap.CreatedAt = ptypes.TimestampNow().GetSeconds()
 
-	rbdSnapshots[snapshotID] = rbdSnap
+	rbdSnapshots[rbdSnap.SnapID] = rbdSnap
 
 	if err = storeSnapshotMetadata(rbdSnap, cs.MetadataStore); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -450,7 +477,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
 			SizeBytes:      rbdSnap.SizeBytes,
-			SnapshotId:     snapshotID,
+			SnapshotId:     rbdSnap.SnapID,
 			SourceVolumeId: req.GetSourceVolumeId(),
 			CreationTime: &timestamp.Timestamp{
 				Seconds: rbdSnap.CreatedAt,
@@ -485,25 +512,46 @@ func (cs *ControllerServer) validateSnapshotReq(req *csi.CreateSnapshotRequest) 
 	return nil
 }
 
-func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]string) error {
-	err := createSnapshot(rbdSnap, rbdSnap.AdminID, secret)
+func (cs *ControllerServer) doSnapshot(snapName, snapID, VolID string, options, secret map[string]string) (*rbdSnapshot, error) {
+	rbdSnap, err := getRBDSnapshotOptions(options)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	uniqueID := uuid.NewUUID().String()
+	rbdVolume, err := getRBDVolumeByID(VolID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", VolID)
+	}
+	if !hasSnapshotFeature(rbdVolume.ImageFeatures) {
+		return nil, status.Errorf(codes.InvalidArgument, "volume(%s) has not snapshot feature(layering)", VolID)
+	}
+	rbdSnap.VolName = rbdVolume.VolName
+	rbdSnap.SnapName = snapName
+	if snapID == "" {
+		snapID = "csi-rbd-" + rbdVolume.VolName + "-snap-" + uniqueID
+	}
+	rbdSnap.SnapID = snapID
+	rbdSnap.SourceVolumeID = VolID
+	rbdSnap.SizeBytes = rbdVolume.VolSize
+
+	err = createSnapshot(rbdSnap, rbdSnap.AdminID, secret)
 	// if we already have the snapshot, return the snapshot
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-				if status.ExitStatus() == int(syscall.EEXIST) {
+			if s, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+				if s.ExitStatus() == int(syscall.EEXIST) {
 					klog.Warningf("Snapshot with the same name: %s, we return this.", rbdSnap.SnapName)
 				} else {
 					klog.Warningf("failed to create snapshot: %v", err)
-					return err
+					return nil, status.Error(codes.Internal, err.Error())
 				}
 			} else {
 				klog.Warningf("failed to create snapshot: %v", err)
-				return err
+				return nil, status.Error(codes.Internal, err.Error())
 			}
 		} else {
 			klog.Warningf("failed to create snapshot: %v", err)
-			return err
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 	} else {
 		klog.V(4).Infof("create snapshot %s", rbdSnap.SnapName)
@@ -512,12 +560,12 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]s
 		if err != nil {
 			err = deleteSnapshot(rbdSnap, rbdSnap.AdminID, secret)
 			if err != nil {
-				return fmt.Errorf("snapshot is created but failed to protect and delete snapshot: %v", err)
+				return nil, status.Errorf(codes.Internal, "snapshot is created but failed to protect and delete snapshot: %v", err)
 			}
-			return fmt.Errorf("snapshot is created but failed to protect snapshot")
+			return nil, status.Errorf(codes.Internal, "snapshot is created but failed to protect snapshot")
 		}
 	}
-	return nil
+	return rbdSnap, nil
 }
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
@@ -550,16 +598,10 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return nil, err
 	}
 
-	// Unprotect snapshot
-	err := unprotectSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets())
+	// Unprotect and delete  snapshot
+	err := unprotectAndDeleteSnapshot(rbdSnap, req.GetSecrets())
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
-	}
-
-	// Deleting snapshot
-	klog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
-	if err := deleteSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets()); err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
 
 	if err := cs.MetadataStore.Delete(snapshotID); err != nil {

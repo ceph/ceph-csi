@@ -290,13 +290,13 @@ func getRBDSnapshotOptions(snapOptions map[string]string) (*rbdSnapshot, error) 
 	rbdSnap := &rbdSnapshot{}
 	rbdSnap.Pool, ok = snapOptions["pool"]
 	if !ok {
-		return nil, fmt.Errorf("missing required parameter pool")
+		return nil, errors.New("missing required parameter pool")
 	}
 	rbdSnap.Monitors, ok = snapOptions["monitors"]
 	if !ok {
 		// if mons are not set in options, check if they are set in secret
 		if rbdSnap.MonValueFromSecret, ok = snapOptions["monValueFromSecret"]; !ok {
-			return nil, fmt.Errorf("either monitors or monValueFromSecret must be set")
+			return nil, errors.New("either monitors or monValueFromSecret must be set")
 		}
 	}
 	rbdSnap.AdminID, ok = snapOptions["adminid"]
@@ -448,6 +448,21 @@ func createSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 	return nil
 }
 
+func unprotectAndDeleteSnapshot(rbdSnap *rbdSnapshot, credentials map[string]string) error {
+
+	// Unprotect snapshot
+	err := unprotectSnapshot(rbdSnap, rbdSnap.AdminID, credentials)
+	if err != nil {
+		return fmt.Errorf("failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
+	}
+
+	// Deleting snapshot
+	klog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
+	if err := deleteSnapshot(rbdSnap, rbdSnap.AdminID, credentials); err != nil {
+		return fmt.Errorf("failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
+	}
+	return nil
+}
 func unprotectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]string) error {
 	var output []byte
 
