@@ -128,7 +128,7 @@ Modify your current storage class, or create a new storage class specifically
 for multi node writers by adding the `multiNodeWritable: "enabled"` entry to
 your parameters.  Here's an example:
 
-```
+```yaml
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -153,7 +153,7 @@ reclaimPolicy: Delete
 Now, you can request Claims from the configured storage class that include
 the `ReadWriteMany` access mode:
 
-```
+```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -169,7 +169,7 @@ spec:
 
 Create a POD that uses this PVC:
 
-```
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -195,7 +195,7 @@ Now, we can create a second POD (ensure the POD is scheduled on a different
 node; multiwriter single node works without this feature) that also uses this
 PVC at the same time
 
-```
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -216,3 +216,65 @@ spec:
 
 If you access the pod you can check that your data is avaialable at
 `/var/lib/www/html`
+
+## Testing Raw Block feature in kubernetes with RBD volumes
+
+CSI block volume support is feature-gated and turned off by default. To run CSI
+with block volume support enabled, a cluster administrator must enable the
+feature for each Kubernetes component using the following feature gate flags:
+
+--feature-gates=BlockVolume=true,CSIBlockVolume=true
+
+these feature-gates must be enabled on both api-server and kubelet
+
+### create a raw-block PVC
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: raw-block-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Block
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-rbd
+```
+
+create raw block pvc
+
+```console
+kubectl create -f raw-block-pvc.yaml
+```
+
+### create a pod to mount raw-block PVC
+
+```yaml
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-raw-block-volume
+spec:
+  containers:
+    - name: fc-container
+      image: fedora:26
+      command: ["/bin/sh", "-c"]
+      args: [ "tail -f /dev/null" ]
+      volumeDevices:
+        - name: data
+          devicePath: /dev/xvda
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: raw-block-pvc
+```
+
+Create a POD that uses raw block PVC
+
+```console
+kubectl create -f raw-block-pod.yaml
+```
