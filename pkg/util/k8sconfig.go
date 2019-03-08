@@ -20,7 +20,6 @@ import (
 	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
 )
 
 /*
@@ -54,6 +53,5 @@ func (kc *K8sConfig) DataForKey(fsid string, key string) (data string, err error
 	}
 
 	data = string(content)
-	klog.V(3).Infof("returning data (%s) for key (%s) against cluster (%s)", data, key, fsid)
 	return
 }

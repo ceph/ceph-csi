@@ -19,7 +19,6 @@ package util
 import (
 	"fmt"
 	"io/ioutil"
-	"k8s.io/klog"
 	"path"
 )
 
@@ -53,6 +52,5 @@ func (fc *FileConfig) DataForKey(fsid string, key string) (data string, err erro
 	}
 
 	data = string(content)
-	klog.V(3).Infof("returning data (%s) for key (%s) against cluster (%s)", data, key, fsid)
 	return
 }
