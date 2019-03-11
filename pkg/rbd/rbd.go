@@ -47,8 +47,8 @@ type Driver struct {
 
 var (
 	version = "1.0.0"
-	// ConfStore is the global config store
-	ConfStore *util.ConfigStore
+	// confStore is the global config store
+	confStore *util.ConfigStore
 )
 
 // NewDriver returns new rbd driver
@@ -94,7 +94,7 @@ func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, co
 	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Initialize config store
-	ConfStore, err = util.NewConfigStore(configroot)
+	confStore, err = util.NewConfigStore(configroot)
 	if err != nil {
 		klog.Fatalln("Failed to initialize config store.")
 	}

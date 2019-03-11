@@ -94,7 +94,7 @@ func getRBDKey(fsid string, id string, credentials map[string]string) (string, e
 
 	if key, ok = credentials[id]; !ok {
 		if fsid != "" {
-			key, err = ConfStore.CredentialForUser(fsid, id)
+			key, err = confStore.CredentialForUser(fsid, id)
 			if err != nil {
 				klog.Errorf("failed getting credentials (%s)", err)
 				return "", fmt.Errorf("RBD key for ID: %s not found in config store", id)
@@ -254,7 +254,7 @@ func getMonsAndFsID(options map[string]string) (monitors, fsID, monInSecret stri
 				return
 			}
 
-			if monitors, err = ConfStore.Mons(fsID); err != nil {
+			if monitors, err = confStore.Mons(fsID); err != nil {
 				klog.Errorf("failed getting mons (%s)", err)
 				err = fmt.Errorf("failed to fetch monitor list using clusterID (%s)", fsID)
 				return
@@ -272,7 +272,7 @@ func getIDs(options map[string]string, fsID string) (adminID, userID string, err
 	switch {
 	case ok:
 	case fsID != "":
-		if adminID, err = ConfStore.AdminID(fsID); err != nil {
+		if adminID, err = confStore.AdminID(fsID); err != nil {
 			klog.Errorf("failed getting subject (%s)", err)
 			return "", "", fmt.Errorf("failed to fetch provisioner ID using clusterID (%s)", fsID)
 		}
@@ -284,7 +284,7 @@ func getIDs(options map[string]string, fsID string) (adminID, userID string, err
 	switch {
 	case ok:
 	case fsID != "":
-		if userID, err = ConfStore.UserID(fsID); err != nil {
+		if userID, err = confStore.UserID(fsID); err != nil {
 			klog.Errorf("failed getting subject (%s)", err)
 			return "", "", fmt.Errorf("failed to fetch publisher ID using clusterID (%s)", fsID)
 		}
