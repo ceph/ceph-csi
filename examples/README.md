@@ -226,9 +226,6 @@ Ceph cluster, the following actions need to be completed.
 
 Get the following information from the Ceph cluster,
 
-* Ceph Cluster fsid
-  * Output of `ceph fsid`
-  * Used to substitute `<cluster-fsid>` references in the files below
 * Admin ID and key, that has privileges to perform CRUD operations on the Ceph
   cluster and pools of choice
   * Key is typically the output of, `ceph auth get-key client.admin` where
@@ -237,14 +234,19 @@ Get the following information from the Ceph cluster,
 * Ceph monitor list
   * Typically in the output of `ceph mon dump`
   * Used to prepare comma separated MON list where required in the files below
+* Ceph Cluster fsid
+  * If choosing to use the Ceph cluster fsid as the unique value of clusterID,
+  * Output of `ceph fsid`
+  * Used to substitute `<cluster-id>` references in the files below
 
 Update the template `rbd/template-ceph-cluster-ID-secret.yaml` with values from
-a Ceph cluster and create the following secret,
+a Ceph cluster and replace `<cluster-id>` with the chosen clusterID to create
+the following secret,
 
 * `kubectl create -f rbd/template-ceph-cluster-ID-secret.yaml`
 
-Storage class and snapshot class, using `<cluster-fsid>` as the value for the
-    option `clusterID`, can now be created on the cluster.
+Storage class and snapshot class, using `<cluster-id>` as the value for the
+option `clusterID`, can now be created on the cluster.
 
 Remaining steps to test functionality remains the same as mentioned in the
 sections above.

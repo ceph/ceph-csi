@@ -52,7 +52,7 @@ type rbdVolume struct {
 	UserID             string `json:"userId"`
 	Mounter            string `json:"mounter"`
 	DisableInUseChecks bool   `json:"disableInUseChecks"`
-	FsID               string `json:"fsid"`
+	ClusterID          string `json:"clusterId"`
 }
 
 type rbdSnapshot struct {
@@ -67,7 +67,7 @@ type rbdSnapshot struct {
 	SizeBytes          int64  `json:"sizeBytes"`
 	AdminID            string `json:"adminId"`
 	UserID             string `json:"userId"`
-	FsID               string `json:"fsid"`
+	ClusterID          string `json:"clusterId"`
 }
 
 var (
@@ -87,17 +87,16 @@ var (
 	supportedFeatures = sets.NewString("layering")
 )
 
-func getRBDKey(fsid string, id string, credentials map[string]string) (string, error) {
+func getRBDKey(clusterid string, id string, credentials map[string]string) (string, error) {
 	var ok bool
 	var err error
 	var key string
 
 	if key, ok = credentials[id]; !ok {
-		if fsid != "" {
-			key, err = confStore.CredentialForUser(fsid, id)
+		if clusterid != "" {
+			key, err = confStore.KeyForUser(clusterid, id)
 			if err != nil {
-				klog.Errorf("failed getting credentials (%s)", err)
-				return "", fmt.Errorf("RBD key for ID: %s not found in config store", id)
+				return "", fmt.Errorf("RBD key for ID: %s not found in config store of clusterID (%s)", id, clusterid)
 			}
 		} else {
 			return "", fmt.Errorf("RBD key for ID: %s not found", id)
@@ -137,7 +136,7 @@ func createRBDImage(pOpts *rbdVolume, volSz int, adminID string, credentials map
 	image := pOpts.VolName
 	volSzMiB := fmt.Sprintf("%dM", volSz)
 
-	key, err := getRBDKey(pOpts.FsID, adminID, credentials)
+	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -168,7 +167,7 @@ func rbdStatus(pOpts *rbdVolume, userID string, credentials map[string]string) (
 	image := pOpts.VolName
 	// If we don't have admin id/secret (e.g. attaching), fallback to user id/secret.
 
-	key, err := getRBDKey(pOpts.FsID, userID, credentials)
+	key, err := getRBDKey(pOpts.ClusterID, userID, credentials)
 	if err != nil {
 		return false, "", err
 	}
@@ -216,7 +215,7 @@ func deleteRBDImage(pOpts *rbdVolume, adminID string, credentials map[string]str
 		klog.Info("rbd is still being used ", image)
 		return fmt.Errorf("rbd %s is still being used", image)
 	}
-	key, err := getRBDKey(pOpts.FsID, adminID, credentials)
+	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -241,22 +240,22 @@ func execCommand(command string, args []string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func getMonsAndFsID(options map[string]string) (monitors, fsID, monInSecret string, err error) {
+func getMonsAndClusterID(options map[string]string) (monitors, clusterID, monInSecret string, err error) {
 	var ok bool
 
 	monitors, ok = options["monitors"]
 	if !ok {
 		// if mons are not set in options, check if they are set in secret
 		if monInSecret, ok = options["monValueFromSecret"]; !ok {
-			// if mons are not in secret, check if we have a cluster-fsid
-			if fsID, ok = options["clusterID"]; !ok {
+			// if mons are not in secret, check if we have a cluster-id
+			if clusterID, ok = options["clusterID"]; !ok {
 				err = errors.New("either monitors or monValueFromSecret or clusterID must be set")
 				return
 			}
 
-			if monitors, err = confStore.Mons(fsID); err != nil {
+			if monitors, err = confStore.Mons(clusterID); err != nil {
 				klog.Errorf("failed getting mons (%s)", err)
-				err = fmt.Errorf("failed to fetch monitor list using clusterID (%s)", fsID)
+				err = fmt.Errorf("failed to fetch monitor list using clusterID (%s)", clusterID)
 				return
 			}
 		}
@@ -265,16 +264,16 @@ func getMonsAndFsID(options map[string]string) (monitors, fsID, monInSecret stri
 	return
 }
 
-func getIDs(options map[string]string, fsID string) (adminID, userID string, err error) {
+func getIDs(options map[string]string, clusterID string) (adminID, userID string, err error) {
 	var ok bool
 
 	adminID, ok = options["adminid"]
 	switch {
 	case ok:
-	case fsID != "":
-		if adminID, err = confStore.AdminID(fsID); err != nil {
+	case clusterID != "":
+		if adminID, err = confStore.AdminID(clusterID); err != nil {
 			klog.Errorf("failed getting subject (%s)", err)
-			return "", "", fmt.Errorf("failed to fetch provisioner ID using clusterID (%s)", fsID)
+			return "", "", fmt.Errorf("failed to fetch admin ID for clusterID (%s)", clusterID)
 		}
 	default:
 		adminID = rbdDefaultAdminID
@@ -283,10 +282,10 @@ func getIDs(options map[string]string, fsID string) (adminID, userID string, err
 	userID, ok = options["userid"]
 	switch {
 	case ok:
-	case fsID != "":
-		if userID, err = confStore.UserID(fsID); err != nil {
+	case clusterID != "":
+		if userID, err = confStore.UserID(clusterID); err != nil {
 			klog.Errorf("failed getting subject (%s)", err)
-			return "", "", fmt.Errorf("failed to fetch publisher ID using clusterID (%s)", fsID)
+			return "", "", fmt.Errorf("failed to fetch user ID using clusterID (%s)", clusterID)
 		}
 	default:
 		userID = rbdDefaultUserID
@@ -305,7 +304,7 @@ func getRBDVolumeOptions(volOptions map[string]string, disableInUseChecks bool) 
 		return nil, errors.New("missing required parameter pool")
 	}
 
-	rbdVol.Monitors, rbdVol.FsID, rbdVol.MonValueFromSecret, err = getMonsAndFsID(volOptions)
+	rbdVol.Monitors, rbdVol.ClusterID, rbdVol.MonValueFromSecret, err = getMonsAndClusterID(volOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +345,7 @@ func getCredsFromVol(rbdVol *rbdVolume, volOptions map[string]string) error {
 	var ok bool
 	var err error
 
-	rbdVol.AdminID, rbdVol.UserID, err = getIDs(volOptions, rbdVol.FsID)
+	rbdVol.AdminID, rbdVol.UserID, err = getIDs(volOptions, rbdVol.ClusterID)
 	if err != nil {
 		return err
 	}
@@ -369,12 +368,12 @@ func getRBDSnapshotOptions(snapOptions map[string]string) (*rbdSnapshot, error) 
 		return nil, errors.New("missing required parameter pool")
 	}
 
-	rbdSnap.Monitors, rbdSnap.FsID, rbdSnap.MonValueFromSecret, err = getMonsAndFsID(snapOptions)
+	rbdSnap.Monitors, rbdSnap.ClusterID, rbdSnap.MonValueFromSecret, err = getMonsAndClusterID(snapOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	rbdSnap.AdminID, rbdSnap.UserID, err = getIDs(snapOptions, rbdSnap.FsID)
+	rbdSnap.AdminID, rbdSnap.UserID, err = getIDs(snapOptions, rbdSnap.ClusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +438,7 @@ func protectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]
 	image := pOpts.VolName
 	snapID := pOpts.SnapID
 
-	key, err := getRBDKey(pOpts.FsID, adminID, credentials)
+	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -502,7 +501,7 @@ func createSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 	image := pOpts.VolName
 	snapID := pOpts.SnapID
 
-	key, err := getRBDKey(pOpts.FsID, adminID, credentials)
+	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -529,7 +528,7 @@ func unprotectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[strin
 	image := pOpts.VolName
 	snapID := pOpts.SnapID
 
-	key, err := getRBDKey(pOpts.FsID, adminID, credentials)
+	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -556,7 +555,7 @@ func deleteSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 	image := pOpts.VolName
 	snapID := pOpts.SnapID
 
-	key, err := getRBDKey(pOpts.FsID, adminID, credentials)
+	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -583,7 +582,7 @@ func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, adminID string
 	image := pVolOpts.VolName
 	snapID := pSnapOpts.SnapID
 
-	key, err := getRBDKey(pVolOpts.FsID, adminID, credentials)
+	key, err := getRBDKey(pVolOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
