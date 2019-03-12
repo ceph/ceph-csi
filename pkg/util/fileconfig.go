@@ -30,7 +30,8 @@ BasePath defines the directory under which FileConfig will attempt to open and
 read contents of various Ceph cluster configurations.
 
 Each Ceph cluster configuration is stored under a directory named,
-BasePath/ceph-cluster-<fsid>, where <fsid> is the Ceph cluster fsid.
+BasePath/ceph-cluster-<clusterid>, where <clusterid> uniquely identifies and
+separates the each Ceph cluster configuration.
 
 Under each Ceph cluster configuration directory, individual files named as per
 the ConfigKeys constants in the ConfigStore interface, store the required
@@ -42,12 +43,12 @@ type FileConfig struct {
 
 // DataForKey reads the appropriate config file, named using key, and returns
 // the contents of the file to the caller
-func (fc *FileConfig) DataForKey(fsid string, key string) (data string, err error) {
-	pathToKey := path.Join(fc.BasePath, "ceph-cluster-"+fsid, key)
+func (fc *FileConfig) DataForKey(clusterid string, key string) (data string, err error) {
+	pathToKey := path.Join(fc.BasePath, "ceph-cluster-"+clusterid, key)
 	// #nosec
 	content, err := ioutil.ReadFile(pathToKey)
 	if err != nil || string(content) == "" {
-		err = fmt.Errorf("error fetching configuration for cluster ID (%s). (%s)", fsid, err)
+		err = fmt.Errorf("error fetching configuration for cluster ID (%s). (%s)", clusterid, err)
 		return
 	}
 

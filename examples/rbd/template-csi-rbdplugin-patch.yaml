@@ -1,8 +1,17 @@
 ---
 # This is a patch to the existing daemonset deployment of CSI rbdplugin.
-# This is to be used when adding a new Ceph cluster to the CSI plugin.
+#
+# This is to be used when using `clusterID` instead of monitors or
+# monValueFromSecret in the StorageClass to specify the Ceph cluster to
+# provision storage from, AND when the value of `--configroot` option to the
+# CSI pods is NOT "k8s_objects".
+#
+# This patch file, patches in the specified secret for the 'clusterID' as a
+# volume, instead of the Ceph CSI plugin actively fetching and using kubernetes
+# secrets.
+#
 # NOTE: Update csi-rbdplugin-provisioner StatefulSet as well with similar patch
-# Post substituting the <cluster-fsid> in all places execute,
+# Post substituting the <cluster-id> in all places execute,
 #   `kubectl patch daemonset csi-rbdplugin --patch\
 #         "$(cat template-csi-rbdplugin-patch.yaml)"`
 #   to patch the statefulset deployment.
@@ -12,10 +21,10 @@ spec:
       containers:
         - name: csi-rbdplugin
           volumeMounts:
-            - name: ceph-cluster-<cluster-fsid>
-              mountPath: "/etc/csi-config/ceph-cluster-<cluster-fsid>"
+            - name: ceph-cluster-<cluster-id>
+              mountPath: "/etc/csi-config/ceph-cluster-<cluster-id>"
               readOnly: true
       volumes:
-        - name: ceph-cluster-<cluster-fsid>
+        - name: ceph-cluster-<cluster-id>
           secret:
-            secretName: ceph-cluster-<cluster-fsid>
+            secretName: ceph-cluster-<cluster-id>

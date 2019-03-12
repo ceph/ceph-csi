@@ -27,7 +27,7 @@ import (
 // StoreReader interface enables plugging different stores, that contain the
 // keys and data. (e.g k8s secrets or local files)
 type StoreReader interface {
-	DataForKey(fsid string, key string) (string, error)
+	DataForKey(clusterID string, key string) (string, error)
 }
 
 /* ConfigKeys contents and format,
@@ -55,23 +55,23 @@ type ConfigStore struct {
 }
 
 // dataForKey returns data from the config store for the provided key
-func (dc *ConfigStore) dataForKey(fsid string, key string) (string, error) {
+func (dc *ConfigStore) dataForKey(clusterID string, key string) (string, error) {
 	if dc.StoreReader != nil {
-		return dc.StoreReader.DataForKey(fsid, key)
+		return dc.StoreReader.DataForKey(clusterID, key)
 	}
 
 	err := errors.New("config store location uninitialized")
 	return "", err
 }
 
-// Mons returns a comma separated MON list from the cluster config represented by fsid
-func (dc *ConfigStore) Mons(fsid string) (string, error) {
-	return dc.dataForKey(fsid, csMonitors)
+// Mons returns a comma separated MON list from the cluster config represented by clusterID
+func (dc *ConfigStore) Mons(clusterID string) (string, error) {
+	return dc.dataForKey(clusterID, csMonitors)
 }
 
-// Pools returns a list of pool names from the cluster config represented by fsid
-func (dc *ConfigStore) Pools(fsid string) ([]string, error) {
-	content, err := dc.dataForKey(fsid, csPools)
+// Pools returns a list of pool names from the cluster config represented by clusterID
+func (dc *ConfigStore) Pools(clusterID string) ([]string, error) {
+	content, err := dc.dataForKey(clusterID, csPools)
 	if err != nil {
 		return nil, err
 	}
@@ -79,42 +79,42 @@ func (dc *ConfigStore) Pools(fsid string) ([]string, error) {
 	return strings.Split(content, ","), nil
 }
 
-// AdminID returns the admin ID from the cluster config represented by fsid
-func (dc *ConfigStore) AdminID(fsid string) (string, error) {
-	return dc.dataForKey(fsid, csAdminID)
+// AdminID returns the admin ID from the cluster config represented by clusterID
+func (dc *ConfigStore) AdminID(clusterID string) (string, error) {
+	return dc.dataForKey(clusterID, csAdminID)
 }
 
-// UserID returns the user ID from the cluster config represented by fsid
-func (dc *ConfigStore) UserID(fsid string) (string, error) {
-	return dc.dataForKey(fsid, csUserID)
+// UserID returns the user ID from the cluster config represented by clusterID
+func (dc *ConfigStore) UserID(clusterID string) (string, error) {
+	return dc.dataForKey(clusterID, csUserID)
 }
 
-// CredentialForUser returns the credentials for the requested user ID
-// from the cluster config represented by fsid
-func (dc *ConfigStore) CredentialForUser(fsid, userID string) (data string, err error) {
-	var credkey string
-	user, err := dc.AdminID(fsid)
+// KeyForUser returns the key for the requested user ID from the cluster config
+// represented by clusterID
+func (dc *ConfigStore) KeyForUser(clusterID, userID string) (data string, err error) {
+	var fetchKey string
+	user, err := dc.AdminID(clusterID)
 	if err != nil {
 		return
 	}
 
 	if user == userID {
-		credkey = csAdminKey
+		fetchKey = csAdminKey
 	} else {
-		user, err = dc.UserID(fsid)
+		user, err = dc.UserID(clusterID)
 		if err != nil {
 			return
 		}
 
 		if user != userID {
-			err = fmt.Errorf("requested user (%s) not found in cluster configuration of (%s)", userID, fsid)
+			err = fmt.Errorf("requested user (%s) not found in cluster configuration of (%s)", userID, clusterID)
 			return
 		}
 
-		credkey = csUserKey
+		fetchKey = csUserKey
 	}
 
-	return dc.dataForKey(fsid, credkey)
+	return dc.dataForKey(clusterID, fetchKey)
 }
 
 // NewConfigStore returns a config store based on value of configRoot. If

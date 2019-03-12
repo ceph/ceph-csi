@@ -10,8 +10,14 @@ parameters:
   # if using FQDN, make sure csi plugin's dns policy is appropriate.
   monitors: mon1:port,mon2:port,...
   # OR,
-  # Ceph cluster fsid, of the cluster to provision storage from
-  # clusterID: <ceph-fsid>
+  # String representing a Ceph cluster to provision storage from.
+  # Should be unique unique across all Ceph clusters in use for provisioning,
+  # cannot be greater than 36 bytes in length, and should remain immutable for
+  # the lifetime of the StorageClass in use.
+  # If using clusterID, ensure to create a secret, as in
+  # template-ceph-cluster-ID-secret.yaml, to accompany the string chosen to
+  # represent the Ceph cluster in clusterID
+  # clusterID: <cluster-id>
 
   csi.storage.k8s.io/snapshotter-secret-name: csi-rbd-secret
   csi.storage.k8s.io/snapshotter-secret-namespace: default

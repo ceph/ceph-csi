@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// nolint: gocyclo
-
 package util
 
 import (
@@ -26,6 +24,7 @@ import (
 )
 
 var basePath = "./test_artifacts"
+var clusterID = "testclusterid"
 var cs *ConfigStore
 
 func cleanupTestData() {
@@ -51,20 +50,20 @@ func TestConfigStore(t *testing.T) {
 		t.Errorf("Test setup error %s", err)
 	}
 
-	// TEST: Should fail as fsid directory is missing
-	_, err = cs.Mons("testfsid")
+	// TEST: Should fail as clusterid directory is missing
+	_, err = cs.Mons(clusterID)
 	if err == nil {
 		t.Errorf("Failed: expected error due to missing parent directory")
 	}
 
-	testDir = basePath + "/" + "ceph-cluster-testfsid"
+	testDir = basePath + "/" + "ceph-cluster-" + clusterID
 	err = os.MkdirAll(testDir, 0700)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
 
 	// TEST: Should fail as mons file is missing
-	_, err = cs.Mons("testfsid")
+	_, err = cs.Mons(clusterID)
 	if err == nil {
 		t.Errorf("Failed: expected error due to missing mons file")
 	}
@@ -76,7 +75,7 @@ func TestConfigStore(t *testing.T) {
 	}
 
 	// TEST: Should fail as MONs is an empty string
-	content, err = cs.Mons("testfsid")
+	content, err = cs.Mons(clusterID)
 	if err == nil {
 		t.Errorf("Failed: want (%s), got (%s)", data, content)
 	}
@@ -88,7 +87,7 @@ func TestConfigStore(t *testing.T) {
 	}
 
 	// TEST: Fetching MONs should succeed
-	content, err = cs.Mons("testfsid")
+	content, err = cs.Mons(clusterID)
 	if err != nil || content != data {
 		t.Errorf("Failed: want (%s), got (%s), err (%s)", data, content, err)
 	}
@@ -100,7 +99,7 @@ func TestConfigStore(t *testing.T) {
 	}
 
 	// TEST: Fetching MONs should succeed
-	listContent, err := cs.Pools("testfsid")
+	listContent, err := cs.Pools(clusterID)
 	if err != nil || strings.Join(listContent, ",") != data {
 		t.Errorf("Failed: want (%s), got (%s), err (%s)", data, content, err)
 	}
@@ -112,7 +111,7 @@ func TestConfigStore(t *testing.T) {
 	}
 
 	// TEST: Fetching provuser should succeed
-	content, err = cs.AdminID("testfsid")
+	content, err = cs.AdminID(clusterID)
 	if err != nil || content != data {
 		t.Errorf("Failed: want (%s), got (%s), err (%s)", data, content, err)
 	}
@@ -124,7 +123,7 @@ func TestConfigStore(t *testing.T) {
 	}
 
 	// TEST: Fetching pubuser should succeed
-	content, err = cs.UserID("testfsid")
+	content, err = cs.UserID(clusterID)
 	if err != nil || content != data {
 		t.Errorf("Failed: want (%s), got (%s), err (%s)", data, content, err)
 	}
@@ -136,7 +135,7 @@ func TestConfigStore(t *testing.T) {
 	}
 
 	// TEST: Fetching provkey should succeed
-	content, err = cs.CredentialForUser("testfsid", "provuser")
+	content, err = cs.KeyForUser(clusterID, "provuser")
 	if err != nil || content != data {
 		t.Errorf("Failed: want (%s), got (%s), err (%s)", data, content, err)
 	}
@@ -148,13 +147,13 @@ func TestConfigStore(t *testing.T) {
 	}
 
 	// TEST: Fetching pubkey should succeed
-	content, err = cs.CredentialForUser("testfsid", "pubuser")
+	content, err = cs.KeyForUser(clusterID, "pubuser")
 	if err != nil || content != data {
 		t.Errorf("Failed: want (%s), got (%s), err (%s)", data, content, err)
 	}
 
 	// TEST: Fetching random user key should fail
-	_, err = cs.CredentialForUser("testfsid", "random")
+	_, err = cs.KeyForUser(clusterID, "random")
 	if err == nil {
 		t.Errorf("Failed: Expected to fail fetching random user key")
 	}

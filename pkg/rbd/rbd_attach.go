@@ -280,7 +280,7 @@ func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (stri
 	}
 
 	klog.V(5).Infof("rbd: map mon %s", mon)
-	key, err := getRBDKey(volOpt.FsID, userID, creds)
+	key, err := getRBDKey(volOpt.ClusterID, userID, creds)
 	if err != nil {
 		return "", err
 	}

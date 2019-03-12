@@ -27,7 +27,8 @@ K8sConfig is a ConfigStore interface implementation that reads configuration
 information from k8s secrets.
 
 Each Ceph cluster configuration secret is expected to be named,
-ceph-cluster-<fsid>, where <fsid> is the Ceph cluster fsid.
+ceph-cluster-<clusterid>, where <clusterid> uniquely identifies and
+separates the each Ceph cluster configuration.
 
 The secret is expected to contain keys, as defined by the ConfigKeys constants
 in the ConfigStore interface.
@@ -37,18 +38,18 @@ type K8sConfig struct {
 	Namespace string
 }
 
-// DataForKey reads the appropriate k8s secret, named using fsid, and returns
-// the contents of key within the secret
-func (kc *K8sConfig) DataForKey(fsid string, key string) (data string, err error) {
-	secret, err := kc.Client.CoreV1().Secrets(kc.Namespace).Get("ceph-cluster-"+fsid, metav1.GetOptions{})
+// DataForKey reads the appropriate k8s secret, named using clusterid, and
+// returns the contents of key within the secret
+func (kc *K8sConfig) DataForKey(clusterid string, key string) (data string, err error) {
+	secret, err := kc.Client.CoreV1().Secrets(kc.Namespace).Get("ceph-cluster-"+clusterid, metav1.GetOptions{})
 	if err != nil {
-		err = fmt.Errorf("error fetching configuration for cluster ID (%s). (%s)", fsid, err)
+		err = fmt.Errorf("error fetching configuration for cluster ID (%s). (%s)", clusterid, err)
 		return
 	}
 
 	content, ok := secret.Data[key]
 	if !ok {
-		err = fmt.Errorf("missing data for key (%s) in cluster configuration of (%s)", key, fsid)
+		err = fmt.Errorf("missing data for key (%s) in cluster configuration of (%s)", key, clusterid)
 		return
 	}
 
