@@ -181,6 +181,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err != nil {
 		return nil, err
 	}
+	// store volume size in  bytes (snapshot and check existing volume needs volume
+	// size in bytes)
+	rbdVol.VolSize = rbdVol.VolSize * util.MiB
 
 	rbdVolumes[rbdVol.VolID] = rbdVol
 
@@ -191,7 +194,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			VolumeId:      rbdVol.VolID,
-			CapacityBytes: rbdVol.VolSize * util.MiB,
+			CapacityBytes: rbdVol.VolSize,
 			VolumeContext: req.GetParameters(),
 		},
 	}, nil
