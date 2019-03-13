@@ -58,7 +58,7 @@ func main() {
 	}
 
 	driver := rbd.NewDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *containerized, *configRoot, cp)
+	driver.Run(*driverName, *nodeID, *endpoint, *configRoot, *containerized, cp)
 
 	os.Exit(0)
 }

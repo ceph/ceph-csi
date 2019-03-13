@@ -239,7 +239,9 @@ Get the following information from the Ceph cluster,
   * Output of `ceph fsid`
   * Used to substitute `<cluster-id>` references in the files below
 
-Update the template `rbd/template-ceph-cluster-ID-secret.yaml` with values from
+Update the template
+[template-ceph-cluster-ID-secret.yaml](./rbd/template-ceph-cluster-ID-secret.yaml)
+with values from
 a Ceph cluster and replace `<cluster-id>` with the chosen clusterID to create
 the following secret,
 

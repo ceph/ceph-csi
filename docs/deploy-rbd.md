@@ -63,7 +63,7 @@ Parameter | Required | Description
 
 NOTE: If `clusterID` parameter is used, then an accompanying Ceph cluster
 configuration secret or config files needs to be provided to the running pods.
-Refer to `examples/README.md` section titled "Cluster ID based configuration"
+Refer to [Cluster ID based configuration](../examples/README.md#cluster-id-based-configuration)
 for more information. A suggested way to populate the clusterID is to use the
 output of `ceph fsid` of the Ceph cluster to be used for provisioning.
 

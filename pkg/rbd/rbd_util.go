@@ -87,10 +87,12 @@ var (
 	supportedFeatures = sets.NewString("layering")
 )
 
-func getRBDKey(clusterid string, id string, credentials map[string]string) (string, error) {
-	var ok bool
-	var err error
-	var key string
+func getRBDKey(clusterid, id string, credentials map[string]string) (string, error) {
+	var (
+		ok  bool
+		err error
+		key string
+	)
 
 	if key, ok = credentials[id]; !ok {
 		if clusterid != "" {
@@ -272,8 +274,8 @@ func getIDs(options map[string]string, clusterID string) (adminID, userID string
 	case ok:
 	case clusterID != "":
 		if adminID, err = confStore.AdminID(clusterID); err != nil {
-			klog.Errorf("failed getting subject (%s)", err)
-			return "", "", fmt.Errorf("failed to fetch admin ID for clusterID (%s)", clusterID)
+			klog.Errorf("failed getting adminID (%s)", err)
+			return "", "", fmt.Errorf("failed to fetch adminID for clusterID (%s)", clusterID)
 		}
 	default:
 		adminID = rbdDefaultAdminID
@@ -284,8 +286,8 @@ func getIDs(options map[string]string, clusterID string) (adminID, userID string
 	case ok:
 	case clusterID != "":
 		if userID, err = confStore.UserID(clusterID); err != nil {
-			klog.Errorf("failed getting subject (%s)", err)
-			return "", "", fmt.Errorf("failed to fetch user ID using clusterID (%s)", clusterID)
+			klog.Errorf("failed getting userID (%s)", err)
+			return "", "", fmt.Errorf("failed to fetch userID using clusterID (%s)", clusterID)
 		}
 	default:
 		userID = rbdDefaultUserID
@@ -295,8 +297,10 @@ func getIDs(options map[string]string, clusterID string) (adminID, userID string
 }
 
 func getRBDVolumeOptions(volOptions map[string]string, disableInUseChecks bool) (*rbdVolume, error) {
-	var ok bool
-	var err error
+	var (
+		ok  bool
+		err error
+	)
 
 	rbdVol := &rbdVolume{}
 	rbdVol.Pool, ok = volOptions["pool"]
@@ -342,8 +346,10 @@ func getRBDVolumeOptions(volOptions map[string]string, disableInUseChecks bool) 
 }
 
 func getCredsFromVol(rbdVol *rbdVolume, volOptions map[string]string) error {
-	var ok bool
-	var err error
+	var (
+		ok  bool
+		err error
+	)
 
 	rbdVol.AdminID, rbdVol.UserID, err = getIDs(volOptions, rbdVol.ClusterID)
 	if err != nil {
@@ -355,12 +361,14 @@ func getCredsFromVol(rbdVol *rbdVolume, volOptions map[string]string) error {
 		rbdVol.Mounter = rbdDefaultMounter
 	}
 
-	return nil
+	return err
 }
 
 func getRBDSnapshotOptions(snapOptions map[string]string) (*rbdSnapshot, error) {
-	var ok bool
-	var err error
+	var (
+		ok  bool
+		err error
+	)
 
 	rbdSnap := &rbdSnapshot{}
 	rbdSnap.Pool, ok = snapOptions["pool"]

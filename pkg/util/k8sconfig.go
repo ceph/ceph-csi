@@ -40,7 +40,7 @@ type K8sConfig struct {
 
 // DataForKey reads the appropriate k8s secret, named using clusterid, and
 // returns the contents of key within the secret
-func (kc *K8sConfig) DataForKey(clusterid string, key string) (data string, err error) {
+func (kc *K8sConfig) DataForKey(clusterid, key string) (data string, err error) {
 	secret, err := kc.Client.CoreV1().Secrets(kc.Namespace).Get("ceph-cluster-"+clusterid, metav1.GetOptions{})
 	if err != nil {
 		err = fmt.Errorf("error fetching configuration for cluster ID (%s). (%s)", clusterid, err)

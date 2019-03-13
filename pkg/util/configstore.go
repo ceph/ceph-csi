@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Ceph-CSI Authors.
+Copyright 2019 The Ceph-CSI Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ type StoreReader interface {
 - csMonitors: MON list, comma separated
 - csAdminID: adminID, used for provisioning
 - csUserID: userID, used for publishing
-- csAdminKey: key, for userID in csProvisionerUser
+- csAdminKey: key, for adminID in csProvisionerUser
 - csUserKey: key, for userID in csPublisherUser
 - csPools: Pool list, comma separated
 */
@@ -55,13 +55,12 @@ type ConfigStore struct {
 }
 
 // dataForKey returns data from the config store for the provided key
-func (dc *ConfigStore) dataForKey(clusterID string, key string) (string, error) {
+func (dc *ConfigStore) dataForKey(clusterID, key string) (string, error) {
 	if dc.StoreReader != nil {
 		return dc.StoreReader.DataForKey(clusterID, key)
 	}
 
-	err := errors.New("config store location uninitialized")
-	return "", err
+	return "", errors.New("config store location uninitialized")
 }
 
 // Mons returns a comma separated MON list from the cluster config represented by clusterID

@@ -43,7 +43,7 @@ type FileConfig struct {
 
 // DataForKey reads the appropriate config file, named using key, and returns
 // the contents of the file to the caller
-func (fc *FileConfig) DataForKey(clusterid string, key string) (data string, err error) {
+func (fc *FileConfig) DataForKey(clusterid, key string) (data string, err error) {
 	pathToKey := path.Join(fc.BasePath, "ceph-cluster-"+clusterid, key)
 	// #nosec
 	content, err := ioutil.ReadFile(pathToKey)
