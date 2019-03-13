@@ -89,12 +89,12 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // rbd CSI driver which can serve multiple parallel requests
-func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, configroot string, cachePersister util.CachePersister) {
+func (r *Driver) Run(driverName, nodeID, endpoint, configRoot string, containerized bool, cachePersister util.CachePersister) {
 	var err error
 	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Initialize config store
-	confStore, err = util.NewConfigStore(configroot)
+	confStore, err = util.NewConfigStore(configRoot)
 	if err != nil {
 		klog.Fatalln("Failed to initialize config store.")
 	}
