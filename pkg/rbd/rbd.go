@@ -17,7 +17,7 @@ limitations under the License.
 package rbd
 
 import (
-	"github.com/ceph/ceph-csi/pkg/csi-common"
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -29,10 +29,12 @@ import (
 
 // PluginFolder defines the location of rbdplugin
 const (
-	PluginFolder      = "/var/lib/kubelet/plugins/csi-rbdplugin"
 	rbdDefaultAdminID = "admin"
 	rbdDefaultUserID  = rbdDefaultAdminID
 )
+
+// PluginFolder defines the location of ceph plugin
+var PluginFolder = "/var/lib/kubelet/plugins/"
 
 // Driver contains the default identity,node and controller struct
 type Driver struct {
