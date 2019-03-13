@@ -244,6 +244,19 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
+
+	//resize volume if required
+	if (rbdVol.VolSize * util.MiB) > rbdSnap.SizeBytes {
+		if err := resizeRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
+			klog.V(3).Infof("failed to resize rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
+			if e := deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); e != nil {
+				klog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, e)
+			}
+			return status.Error(codes.Internal, err.Error())
+		}
+
+	}
+
 	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
 	return nil
 }

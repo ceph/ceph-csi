@@ -145,6 +145,33 @@ func createRBDImage(pOpts *rbdVolume, volSz int, adminID string, credentials map
 	return nil
 }
 
+// resizeRBDImage resizes the given volume to new size
+func resizeRBDImage(pOpts *rbdVolume, adminID string, credentials map[string]string) error {
+	var output []byte
+
+	mon, err := getMon(pOpts, credentials)
+	if err != nil {
+		return err
+	}
+
+	image := pOpts.VolName
+	volSzMiB := fmt.Sprintf("%dM", pOpts.VolSize)
+
+	key, err := getRBDKey(adminID, credentials)
+	if err != nil {
+		return err
+	}
+	klog.V(4).Infof("rbd: resize %s size %s using mon %s, pool %s ", image, volSzMiB, mon, pOpts.Pool)
+	args := []string{"resize", image, "--size", volSzMiB, "--pool", pOpts.Pool, "--id", adminID, "-m", mon, "--key=" + key}
+	output, err = execCommand("rbd", args)
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to resize rbd image, command output: %s", string(output))
+	}
+
+	return nil
+}
+
 // rbdStatus checks if there is watcher on the image.
 // It returns true if there is a watcher on the image, otherwise returns false.
 func rbdStatus(pOpts *rbdVolume, userID string, credentials map[string]string) (bool, string, error) {
