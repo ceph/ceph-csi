@@ -209,7 +209,7 @@ func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVol
 	if !found {
 		// if VolumeContentSource is not nil, this request is for snapshot
 		if req.VolumeContentSource != nil {
-			if err = cs.checkSnapshot(req, rbdVol); err != nil {
+			if err = cs.createVolumeFromExistingSource(req, rbdVol); err != nil {
 				return err
 			}
 		} else {
@@ -224,41 +224,68 @@ func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVol
 	}
 	return nil
 }
-func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
+
+func (cs *ControllerServer) createVolumeFromExistingSource(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
+	var (
+		err           error
+		parentVolSize int64
+	)
+	volumeSource := req.VolumeContentSource
+
+	switch volumeSource.Type.(type) {
+	case *csi.VolumeContentSource_Snapshot:
+		snapName := volumeSource.GetSnapshot().GetSnapshotId()
+		klog.V(2).Infof("creating volume from snapshot %s", snapName)
+		parentVolSize, err = cs.checkSnapshot(req, rbdVol)
+
+	case *csi.VolumeContentSource_Volume:
+
+	default:
+		err = status.Errorf(codes.InvalidArgument, "not a proper volume source")
+		klog.Error(err)
+	}
+
+	//resize volume if required
+	if err == nil && (rbdVol.VolSize*util.MiB) > parentVolSize {
+		if e := resizeRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); e != nil {
+			klog.V(3).Infof("failed to resize rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, e)
+			if e = deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); e != nil {
+				klog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, e)
+			}
+			err = status.Error(codes.Internal, err.Error())
+		}
+
+	}
+	return err
+}
+
+func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) (int64, error) {
 	snapshot := req.VolumeContentSource.GetSnapshot()
 	if snapshot == nil {
-		return status.Error(codes.InvalidArgument, "Volume Snapshot cannot be empty")
+		return 0, status.Error(codes.InvalidArgument, "Volume Snapshot cannot be empty")
 	}
 
 	snapshotID := snapshot.GetSnapshotId()
 	if len(snapshotID) == 0 {
-		return status.Error(codes.InvalidArgument, "Volume Snapshot ID cannot be empty")
+		return 0, status.Error(codes.InvalidArgument, "Volume Snapshot ID cannot be empty")
 	}
 
 	rbdSnap := &rbdSnapshot{}
 	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
-		return status.Error(codes.NotFound, err.Error())
+		return 0, status.Error(codes.NotFound, err.Error())
+	}
+
+	if (rbdVol.VolSize * util.MiB) < rbdSnap.SizeBytes {
+		return 0, status.Errorf(codes.InvalidArgument, "requested volume size %d bytes is less than the parent volume size %d bytes", rbdVol.VolSize*util.MiB, rbdSnap.SizeBytes)
 	}
 
 	err := restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminID, req.GetSecrets())
 	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-
-	//resize volume if required
-	if (rbdVol.VolSize * util.MiB) > rbdSnap.SizeBytes {
-		if err := resizeRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
-			klog.V(3).Infof("failed to resize rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
-			if e := deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); e != nil {
-				klog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, e)
-			}
-			return status.Error(codes.Internal, err.Error())
-		}
-
+		return 0, status.Error(codes.Internal, err.Error())
 	}
 
 	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
-	return nil
+	return rbdSnap.SizeBytes, nil
 }
 
 // DeleteVolume deletes the volume in backend and removes the volume metadata
