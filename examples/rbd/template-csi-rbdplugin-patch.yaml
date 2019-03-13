@@ -10,9 +10,12 @@
 # volume, instead of the Ceph CSI plugin actively fetching and using kubernetes
 # secrets.
 #
-# NOTE: Update csi-rbdplugin-provisioner StatefulSet as well with similar patch
 # Post substituting the <cluster-id> in all places execute,
 #   `kubectl patch daemonset csi-rbdplugin --patch\
+#         "$(cat template-csi-rbdplugin-patch.yaml)"`
+#   to patch the daemonset deployment.
+#
+#   `kubectl patch statefulset csi-rbdplugin-provisioner --patch\
 #         "$(cat template-csi-rbdplugin-patch.yaml)"`
 #   to patch the statefulset deployment.
 spec:
