@@ -102,12 +102,7 @@ func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, ca
 		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
 		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	})
-
-	// TODO: JDG Should also look at remaining modes like MULT_NODE_READER (SINGLE_READER)
-	r.cd.AddVolumeCapabilityAccessModes(
-		[]csi.VolumeCapability_AccessMode_Mode{
-			csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
+	r.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
 
 	// Create GRPC servers
 	r.ids = NewIdentityServer(r.cd)

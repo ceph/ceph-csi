@@ -70,19 +70,10 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if !notMnt {
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
-
-	// if our access mode is a simple SINGLE_NODE_WRITER we're going to ignore the SC directive and use the
-	// watcher still
-	ignoreMultiWriterEnabled := true
-	if req.VolumeCapability.AccessMode.Mode != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
-		ignoreMultiWriterEnabled = false
-	}
-
-	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext(), ignoreMultiWriterEnabled)
+	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext())
 	if err != nil {
 		return nil, err
 	}
-
 	volOptions.VolName = volName
 	// Mapping RBD image
 	devicePath, err := attachRBDImage(volOptions, volOptions.UserID, req.GetSecrets())

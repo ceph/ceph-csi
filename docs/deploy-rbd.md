@@ -58,21 +58,6 @@ Parameter | Required | Description
 `csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-publish-secret-name` | for Kubernetes | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
 `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-publish-secret-namespace` | for Kubernetes | namespaces of the above Secret objects
 `mounter`| no | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images
-`fsType` | no | allows setting to `ext3 | ext-4 | xfs`, default is `ext-4`
-`multiNodeWritable` | no | if set to `enabled` allows RBD volumes with MultiNode Access Modes to bypass watcher checks.  By default multiple attachments of an RBD volume are NOT allowed. Even if this option is set in the StorageClass, it's ignored if a standard SingleNodeWriter Access Mode is requested
-
-**Warning for multiNodeWritable:**
-
-*NOTE* the `multiNodeWritable` setting is NOT safe for use by workloads
-that are not designed to coordinate access.  This does NOT add any sort
-of a clustered filesystem or write syncronization, it's specifically for
-special workloads that handle access coordination on their own
-(ie Active/Passive scenarios).
-
-Using this mode for general purposes *WILL RESULT IN DATA CORRUPTION*.
-We attempt to limit exposure to trouble here but ignoring the Storage Class
-setting unless your Volume explicitly asks for multi node access, and assume
-you know what you're doing.
 
 **Required secrets:**
 

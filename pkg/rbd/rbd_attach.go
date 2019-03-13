@@ -313,16 +313,8 @@ func waitForrbdImage(backoff wait.Backoff, volOptions *rbdVolume, userID string,
 		if err != nil {
 			return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
 		}
-		// In the case of multiattach we want to short circuit the retries when used (so r`if used; return used`)
-		// otherwise we're setting this to false which translates to !ok, which means backoff and try again
-		// NOTE: we ONLY do this if an multi-node access mode is requested for this volume
-		if (strings.ToLower(volOptions.MultiNodeWritable) == "enabled") && (used) {
-			klog.V(2).Info("detected MultiNodeWritable enabled, ignoring watcher in-use result")
-			return used, nil
-		}
 		return !used, nil
 	})
-
 	// return error if rbd image has not become available for the specified timeout
 	if err == wait.ErrWaitTimeout {
 		return fmt.Errorf("rbd image %s is still being used", imagePath)
