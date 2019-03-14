@@ -108,7 +108,7 @@ one of your Ceph pod.
 
 To restore the snapshot to a new PVC, deploy
 [pvc-restore.yaml](./rbd/pvc-restore.yaml) and a testing pod
-[pod-restore.yaml](./rbd/pvc-restore.yaml):
+[pod-restore.yaml](./rbd/pod-restore.yaml):
 
 ```bash
 kubectl create -f pvc-restore.yaml
@@ -133,7 +133,7 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
    name: csi-rbd
-provisioner: csi-rbdplugin
+provisioner: rbd.csi.ceph.com
 parameters:
     monitors: rook-ceph-mon-b.rook-ceph.svc.cluster.local:6789
     pool: rbd

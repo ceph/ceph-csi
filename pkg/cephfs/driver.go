@@ -19,18 +19,20 @@ package cephfs
 import (
 	"k8s.io/klog"
 
-	"github.com/ceph/ceph-csi/pkg/csi-common"
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 const (
-	// PluginFolder defines the location of ceph plugin
-	PluginFolder = "/var/lib/kubelet/plugins/csi-cephfsplugin"
+
 	// version of ceph driver
 	version = "1.0.0"
 )
+
+// PluginFolder defines the location of ceph plugin
+var PluginFolder = "/var/lib/kubelet/plugins/"
 
 // Driver contains the default identity,node and controller struct
 type Driver struct {

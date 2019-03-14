@@ -13,11 +13,11 @@ serviceAccounts:
     create: true
     name:
 
-socketDir: /var/lib/kubelet/plugins/csi-cephfsplugin
+socketDir: /var/lib/kubelet/plugins/cephfs.csi.ceph.com
 socketFile: csi.sock
 registrationDir: /var/lib/kubelet/plugins_registry
 volumeDevicesDir: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices
-
+driverName: cephfs.csi.ceph.com
 attacher:
   name: attacher
 
