@@ -15,7 +15,7 @@ spec:
       hostNetwork: true
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
       # resolved through k8s service, set dns policy to cluster first
-      dnsPolicy: ClusterFirstWithHostNet      
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: driver-registrar
           image: quay.io/k8scsi/driver-registrar:v0.3.0
@@ -25,16 +25,16 @@ spec:
             - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/csi-cephfsplugin/csi.sock
+              value: /var/lib/kubelet/plugins/cephfs.csi.ceph.com/csi.sock
             - name: DRIVER_REG_SOCK_PATH
-              value: /var/lib/kubelet/plugins/csi-cephfsplugin/csi.sock
+              value: /var/lib/kubelet/plugins/cephfs.csi.ceph.com/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/csi-cephfsplugin
+              mountPath: /var/lib/kubelet/plugins/cephfs.csi.ceph.com
             - name: registration-dir
               mountPath: /registration
         - name: csi-cephfsplugin
@@ -44,11 +44,11 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
           image: quay.io/cephcsi/cephfsplugin:v0.3.0
-          args :
+          args:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
-            - "--drivername=csi-cephfsplugin"
+            - "--drivername=cephfs.csi.ceph.com"
             - "--metadatastorage=k8s_configmap"
           env:
             - name: NODE_ID
@@ -60,11 +60,11 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: CSI_ENDPOINT
-              value: unix://var/lib/kubelet/plugins/csi-cephfsplugin/csi.sock
+              value: unix://var/lib/kubelet/plugins/cephfs.csi.ceph.com/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: plugin-dir
-              mountPath: /var/lib/kubelet/plugins/csi-cephfsplugin
+              mountPath: /var/lib/kubelet/plugins/cephfs.csi.ceph.com
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
@@ -78,7 +78,7 @@ spec:
       volumes:
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-cephfsplugin
+            path: /var/lib/kubelet/plugins/cephfs.csi.ceph.com
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
@@ -90,7 +90,7 @@ spec:
             type: Directory
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-cephfsplugin
+            path: /var/lib/kubelet/plugins/cephfs.csi.ceph.com
             type: DirectoryOrCreate
         - name: host-sys
           hostPath:

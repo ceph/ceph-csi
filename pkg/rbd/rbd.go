@@ -21,18 +21,21 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/nsenter"
 	"k8s.io/utils/exec"
 )
 
-// PluginFolder defines the location of rbdplugin
 const (
-	PluginFolder      = "/var/lib/kubelet/plugins/csi-rbdplugin"
 	rbdDefaultAdminId = "admin"
 	rbdDefaultUserId  = rbdDefaultAdminId
+)
+
+var (
+	// PluginFolder defines the location of rbdplugin
+	PluginFolder = "/var/lib/kubelet/plugins/"
 )
 
 type rbd struct {

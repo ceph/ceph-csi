@@ -25,7 +25,7 @@ make image-cephfsplugin
 Option              | Default value         | Description
 --------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 `--endpoint`        | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket
-`--drivername`      | `csi-cephfsplugin`    | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
+`--drivername`      | `cephfs.csi.ceph.com`    | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
 `--nodeid`          | _empty_               | This node's ID
 `--volumemounter`   | _empty_               | default volume mounter. Available options are `kernel` and `fuse`. This is the mount method used if volume parameters don't specify otherwise. If left unspecified, the driver will first probe for `ceph-fuse` in system's path and will choose Ceph kernel client if probing failed.
 `--metadatastorage` | _empty_               | Whether metadata should be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
