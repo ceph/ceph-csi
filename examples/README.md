@@ -114,3 +114,102 @@ To restore the snapshot to a new PVC, deploy
 kubectl create -f pvc-restore.yaml
 kubectl create -f pod-restore.yaml
 ```
+
+## How to test RBD MULTI_NODE_MULTI_WRITER BLOCK feature
+
+Requires feature-gates: `BlockVolume=true` `CSIBlockVolume=true`
+
+*NOTE* The MULTI_NODE_MULTI_WRITER capability is only available for
+Volumes that are of access_type `block`
+
+*WARNING*  This feature is strictly for workloads that know how to deal
+with concurrent access to the Volume (eg Active/Passive applications).
+Using RWX modes on non clustered file systems with applications trying
+to simultaneously access the Volume will likely result in data corruption!
+
+Following are examples for issuing a request for a `Block`
+`ReadWriteMany` Claim, and using the resultant Claim for a POD
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: block-pvc
+spec:
+  accessModes:
+  - ReadWriteMany
+  volumeMode: Block
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-rbd
+```
+
+Create a POD that uses this PVC:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+    - name: my-container
+      image: debian
+      command: ["/bin/bash", "-c"]
+      args: [ "tail -f /dev/null" ]
+      volumeDevices:
+        - devicePath: /dev/rbdblock
+          name: my-volume
+      imagePullPolicy: IfNotPresent
+  volumes:
+    - name: my-volume
+      persistentVolumeClaim:
+        claimName: block-pvc
+
+```
+
+Now, we can create a second POD (ensure the POD is scheduled on a different
+node; multiwriter single node works without this feature) that also uses this
+PVC at the same time, again wait for the pod to enter running state, and verify
+the block device is available.
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: another-pod
+spec:
+  containers:
+    - name: my-container
+      image: debian
+      command: ["/bin/bash", "-c"]
+      args: [ "tail -f /dev/null" ]
+      volumeDevices:
+        - devicePath: /dev/rbdblock
+          name: my-volume
+      imagePullPolicy: IfNotPresent
+  volumes:
+    - name: my-volume
+      persistentVolumeClaim:
+        claimName: block-pvc
+```
+
+Wait for the PODs to enter Running state, check that our block device
+is available in the container at `/dev/rdbblock` in both containers:
+
+```bash
+$ kubectl exec -it my-pod -- fdisk -l /dev/rbdblock
+Disk /dev/rbdblock: 1 GiB, 1073741824 bytes, 2097152 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 4194304 bytes / 4194304 bytes
+```
+
+```bash
+$ kubectl exec -it another-pod -- fdisk -l /dev/rbdblock
+Disk /dev/rbdblock: 1 GiB, 1073741824 bytes, 2097152 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 4194304 bytes / 4194304 bytes
+```

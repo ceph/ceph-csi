@@ -93,7 +93,25 @@ func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
-	rbdVol, err := getRBDVolumeOptions(req.GetParameters())
+	isMultiNode := false
+	isBlock := false
+	for _, cap := range req.VolumeCapabilities {
+		// Only checking SINGLE_NODE_SINGLE_WRITER here because regardless of the other types (MULTI READER) we need to implement the same logic to ignore the in-use response
+		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
+			isMultiNode = true
+		}
+		if cap.GetBlock() != nil {
+			isBlock = true
+		}
+	}
+
+	// We want to fail early if the user is trying to create a RWX on a non-block type device
+	if isMultiNode && !isBlock {
+		return nil, status.Error(codes.InvalidArgument, "multi node access modes are only supported on rbd `block` type volumes")
+	}
+
+	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
+	rbdVol, err := getRBDVolumeOptions(req.GetParameters(), (isMultiNode && isBlock))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

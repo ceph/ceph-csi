@@ -48,6 +48,7 @@ type NodeServer struct {
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	targetPathMutex.LockKey(targetPath)
+	disableInUseChecks := false
 
 	defer func() {
 		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
@@ -70,7 +71,19 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if !notMnt {
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
-	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext())
+
+	// MULTI_NODE_MULTI_WRITER is supported by default for Block access type volumes
+	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+		if isBlock {
+			disableInUseChecks = true
+		} else {
+			klog.Warningf("MULTI_NODE_MULTI_WRITER currently only supported with volumes of access type `block`, invalid AccessMode for volume: %v", req.GetVolumeId())
+			e := fmt.Errorf("rbd: MULTI_NODE_MULTI_WRITER access mode only allowed with BLOCK access type")
+			return nil, status.Error(codes.InvalidArgument, e.Error())
+		}
+	}
+
+	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext(), disableInUseChecks)
 	if err != nil {
 		return nil, err
 	}
