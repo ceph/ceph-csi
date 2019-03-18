@@ -78,8 +78,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			disableInUseChecks = true
 		} else {
 			klog.Warningf("MULTI_NODE_MULTI_WRITER currently only supported with volumes of access type `block`, invalid AccessMode for volume: %v", req.GetVolumeId())
-			e := fmt.Errorf("rbd: MULTI_NODE_MULTI_WRITER access mode only allowed with BLOCK access type")
-			return nil, status.Error(codes.InvalidArgument, e.Error())
+			return nil, status.Error(codes.InvalidArgument, "rbd: RWX access mode request is only valid for volumes with access type `block`")
 		}
 	}
 

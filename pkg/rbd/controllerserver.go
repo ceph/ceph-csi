@@ -96,8 +96,8 @@ func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	isMultiNode := false
 	isBlock := false
 	for _, cap := range req.VolumeCapabilities {
-		// Only checking SINGLE_NODE_SINGLE_WRITER here because regardless of the other types (MULTI READER) we need to implement the same logic to ignore the in-use response
-		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
+		// RO modes need to be handled indepedently (ie right now even if access mode is RO, they'll be RW upon attach)
+		if cap.GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
 			isMultiNode = true
 		}
 		if cap.GetBlock() != nil {

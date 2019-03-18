@@ -108,7 +108,7 @@ one of your Ceph pod.
 
 To restore the snapshot to a new PVC, deploy
 [pvc-restore.yaml](./rbd/pvc-restore.yaml) and a testing pod
-[pod-restore.yaml](./rbd/pvc-restore.yaml):
+[pod-restore.yaml](./rbd/pod-restore.yaml):
 
 ```bash
 kubectl create -f pvc-restore.yaml

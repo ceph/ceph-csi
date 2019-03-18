@@ -34,11 +34,11 @@ spec:
             - "--v=5"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi-provisioner.sock
+              value: /var/lib/kubelet/plugins/rbd.csi.ceph.com/csi-provisioner.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+              mountPath: /var/lib/kubelet/plugins/rbd.csi.ceph.com
         - name: csi-snapshotter
           image: quay.io/k8scsi/csi-snapshotter:v1.0.1
           args:
@@ -47,13 +47,13 @@ spec:
             - "--v=5"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi-provisioner.sock
+              value: /var/lib/kubelet/plugins/rbd.csi.ceph.com/csi-provisioner.sock
           imagePullPolicy: Always
           securityContext:
             privileged: true
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+              mountPath: /var/lib/kubelet/plugins/rbd.csi.ceph.com
         - name: csi-rbdplugin
           securityContext:
             privileged: true
@@ -64,7 +64,7 @@ spec:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
-            - "--drivername=csi-rbdplugin"
+            - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
             - "--metadatastorage=k8s_configmap"
           env:
@@ -79,11 +79,11 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: CSI_ENDPOINT
-              value: unix://var/lib/kubelet/plugins/csi-rbdplugin/csi-provisioner.sock
+              value: unix://var/lib/kubelet/plugins/rbd.csi.ceph.com/csi-provisioner.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+              mountPath: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             - mountPath: /dev
               name: host-dev
             - mountPath: /rootfs
@@ -108,5 +108,5 @@ spec:
             path: /lib/modules
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-rbdplugin
+            path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             type: DirectoryOrCreate
