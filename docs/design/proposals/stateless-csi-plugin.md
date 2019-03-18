@@ -272,46 +272,59 @@ about the *volume_id*,
   - The same also applies when dealing with different CSI plugin instance in
     the same CO system, using the same Ceph cluster
 
+#### Using Ceph OMaps for idempotence
+
+To preserve the idempotence requirement, across *ImageName* for a given
+*volume_name*, it is proposed to use a per-CSI instance Ceph omap named
+`csi_volumes_[csi-id]`, to store keys named `csi.volume.[volume_name]` with the
+CO generated *volume_name*.
+
+The value stored in `csi.volume.[volume_name]` is the *ImageName* that is to be
+used for the requested *volume_name*.
+
+A create volume request would hence operate as follows,
+
+- Use CO passed *volume_name* to generate the required key name
+- Check if key exists and read the value of the same, if it does
+- If key exists and value points to an image that satisfies the create request
+  return with success
+- If not, generate an *ImageName* and store the key and value into the omap
+- Proceed with image creation operations as required
+
+Racy key creations/accesses are prevented by locking on the *volume_name* that
+the create request carries, thus ensuring that only one such transaction for
+the key named with the *volume_name* is in flight at any given time.
+
+One other advantage of using this omap is, list operations can be performed
+more easily using the omap, rather than listing all images in the pool.
+
 #### Naming scheme
 
-ImageName format: `[csi-id]-xxhash([volume_name])`
+ImageName format: `csi-vol-[uuid]`
 
-volume_id format: `[cluster-id]-[pool-name]-xxhash([volume_name])`
+volume_id format: `[version]-[cluster-id]-[pool-id]-[ImageName]`
 
 The spec states strings are a maximum of 128 bytes in length. Both
 *volume_name* and *volume_id* are strings, hence interpolating one into the
-other can break the size rules. To avoid overflowing the string, we use a hash
-(suggested xxhash) of the *volume_name* instead. This brings a potential
-collision problem when 2 *volume_name* hashes clash, to resolve the same the
-following scheme would be used in CreateVolume,
+other can break the size rules and rules out such encoding schemes.
 
-1. Generate *ImageName* based in passed in *volume_name*
-1. If creation of the image on the Ceph cluster succeeds, stash the
-  *volume_name* as an attribute of the image or an attribute on the root of
-  the FS sub-directory
-1. If creation of the image on the Ceph cluster fails as pre-existing,
-  - Check the *volume_name* attribute of the image to compare against the
-    passed in *volume_name* by the CO
-  - If this matches, the request is a duplicate, and respond with required
-    return codes
-  - If this fails to match, generate *ImageName* with a trailing monotonically
-    increasing number (called *instance-n*) and repeat from step 2
+Due to the existence of the omap, we choose to create an ImageName that
+is independent of any implicit *volume_name* or *csi-id* encoding. The image
+once created would carry a `image-meta` key:value with, the key named
+`csi.volume.name` and the value containing the CO generated *volume_name*. This
+key helps retain the images relationship with its *volume_name* omap key where
+required.
 
-*volume_id* hence would be of the following format and size,
-`[volume_id_version=1:2byte]
-[cluster-id:32bytes]
-[pool-name:80bytes]
-[xxhash(<volume_name>):8bytes]
-[instance-n:6bytes]`
+If an *ImageName* is generated that already exists in the pool, the create
+request fails with required internal errors, and a retry would hence attempt to
+generate a new *ImageName* with a new uuid as required.
 
-*ImageName* would be, `[csi-id]-xxhash([volume_name])-[instance-n]`
+The *volume_id* encoding helps identify the cluster, pool and *ImageName* to use
+for RPCs that only carry the *volume_id* in its requests.
 
-**Needs Investigation** Each field is padded to reserve/save space if possible,
-else scheme would shift to using a non-conflicting separator between the same
-(using up to 4 bytes) or serialized structure elements (as appropriate).
-
-**Needs Investigation** Need to understand maximum Ceph pool names, and if
-76-80 bytes are enough to represent the same.
+The size of each element encoded into the *volume_id* are,
+[2 bytes]-[MAX:37 Bytes]-[4 bytes]-[44 Bytes] respectively, thus bringing its
+total lenght to 90 bytes, within the given 128 byte limits.
 
 ## Open questions/observations
 
@@ -321,8 +334,6 @@ else scheme would shift to using a non-conflicting separator between the same
   intends to store multiple cluster information.
 - Need to determine and understand how to share config maps and secrets across
   namespaces in the CO environment
-- Ceph pool names seem arbitrarily long, need to investigate if pools also have
-  an unique ID that can be leveraged
 - Topology constraints as supported by CSI spec, seem to indicate that the CSI
   plugin can support provisioning volumes for specific zones, which in turn
   means the ability to process a request from a zone and choose a cluster that
