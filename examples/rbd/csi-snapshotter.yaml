@@ -51,6 +51,6 @@ spec:
           imagePullPolicy: Always
       volumes:
         - hostPath:
-            path: /var/lib/kubelet/plugins/csi-rbdplugin
+            path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             type: DirectoryOrCreate
           name: socket-dir

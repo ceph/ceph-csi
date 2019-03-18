@@ -12,7 +12,7 @@ serviceAccounts:
     create: true
     name:
 
-socketDir: /var/lib/kubelet/plugins/csi-rbdplugin
+socketDir: /var/lib/kubelet/plugins/rbd.csi.ceph.com
 socketFile: csi.sock
 
 attacher:

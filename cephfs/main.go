@@ -32,7 +32,7 @@ func init() {
 
 var (
 	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName      = flag.String("drivername", "csi-cephfsplugin", "name of the driver")
+	driverName      = flag.String("drivername", "cephfs.csi.ceph.com", "name of the driver")
 	nodeId          = flag.String("nodeid", "", "node id")
 	volumeMounter   = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
 	metadataStorage = flag.String("metadatastorage", "node", "metadata persistence method [node|k8s_configmap]")
@@ -40,6 +40,14 @@ var (
 
 func main() {
 	flag.Parse()
+
+	err := util.ValidateDriverName(*driverName)
+	if err != nil {
+		glog.Errorf("failed to validate driver name: %v", err)
+		os.Exit(1)
+	}
+	//update plugin name
+	cephfs.PluginFolder = cephfs.PluginFolder + *driverName
 
 	if err := createPersistentStorage(path.Join(cephfs.PluginFolder, "controller")); err != nil {
 		glog.Errorf("failed to create persistent storage for controller: %v", err)

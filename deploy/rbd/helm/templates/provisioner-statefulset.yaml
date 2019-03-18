@@ -25,7 +25,7 @@ spec:
         - name: csi-provisioner
           image: "{{ .Values.provisioner.image.repository }}:{{ .Values.provisioner.image.tag }}"
           args:
-            - "--provisioner=csi-rbdplugin"
+            - "--provisioner=rbd.csi.ceph.com"
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
           env:

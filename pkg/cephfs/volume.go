@@ -23,10 +23,13 @@ import (
 )
 
 const (
-	cephRootPrefix  = PluginFolder + "/controller/volumes/root-"
 	cephVolumesRoot = "csi-volumes"
 
 	namespacePrefix = "ns-"
+)
+
+var (
+	cephRootPrefix = PluginFolder + "/controller/volumes/root-"
 )
 
 func getCephRootPathLocal(volId volumeID) string {

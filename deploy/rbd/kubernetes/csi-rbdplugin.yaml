@@ -13,10 +13,10 @@ spec:
     spec:
       serviceAccount: csi-nodeplugin
       hostNetwork: true
-      hostPID: true      
+      hostPID: true
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
       # resolved through k8s service, set dns policy to cluster first
-      dnsPolicy: ClusterFirstWithHostNet      
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: driver-registrar
           image: quay.io/k8scsi/driver-registrar:v0.3.0
@@ -26,16 +26,16 @@ spec:
             - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
+              value: /var/lib/kubelet/plugins/rbd.csi.ceph.com/csi.sock
             - name: DRIVER_REG_SOCK_PATH
-              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
+              value: /var/lib/kubelet/plugins/rbd.csi.ceph.com/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+              mountPath: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             - name: registration-dir
               mountPath: /registration
         - name: csi-rbdplugin
@@ -45,11 +45,11 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
           image: quay.io/cephcsi/rbdplugin:v0.3.0
-          args :
+          args:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
-            - "--drivername=csi-rbdplugin"
+            - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
             - "--metadatastorage=k8s_configmap"
           env:
@@ -64,18 +64,18 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: CSI_ENDPOINT
-              value: unix://var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
+              value: unix://var/lib/kubelet/plugins/rbd.csi.ceph.com/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: plugin-dir
-              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+              mountPath: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
             - mountPath: /dev
               name: host-dev
             - mountPath: /rootfs
-              name: host-rootfs            
+              name: host-rootfs
             - mountPath: /sys
               name: host-sys
             - mountPath: /lib/modules
@@ -84,7 +84,7 @@ spec:
       volumes:
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-rbdplugin
+            path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
@@ -96,14 +96,14 @@ spec:
             type: Directory
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-rbdplugin
+            path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             type: DirectoryOrCreate
         - name: host-dev
           hostPath:
             path: /dev
         - name: host-rootfs
           hostPath:
-            path: /            
+            path: /
         - name: host-sys
           hostPath:
             path: /sys

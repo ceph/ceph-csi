@@ -33,13 +33,13 @@ spec:
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/csi-cephfsplugin/csi.sock
+              value: /var/lib/kubelet/plugins/cephfs.csi.ceph.com/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/csi-cephfsplugin
+              mountPath: /var/lib/kubelet/plugins/cephfs.csi.ceph.com
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-cephfsplugin
+            path: /var/lib/kubelet/plugins/cephfs.csi.ceph.com
             type: DirectoryOrCreate

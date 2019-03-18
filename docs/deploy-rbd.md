@@ -25,7 +25,7 @@ make image-rbdplugin
 Option              | Default value         | Description
 --------------------|-----------------------|---------------------------------------------------------------------------------------------------
 `--endpoint`        | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket
-`--drivername`      | `csi-cephfsplugin`    | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
+`--drivername`      | `rbd.csi.ceph.com`    | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
 `--nodeid`          | _empty_               | This node's ID
 `--containerized`   | true                  | Whether running in containerized mode
 `--metadatastorage` | _empty_               | Whether should metadata be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)

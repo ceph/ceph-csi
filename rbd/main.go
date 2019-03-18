@@ -32,7 +32,7 @@ func init() {
 
 var (
 	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName      = flag.String("drivername", "csi-rbdplugin", "name of the driver")
+	driverName      = flag.String("drivername", "rbd.csi.ceph.com", "name of the driver")
 	nodeID          = flag.String("nodeid", "", "node id")
 	containerized   = flag.Bool("containerized", true, "whether run as containerized")
 	metadataStorage = flag.String("metadatastorage", "node", "metadata persistence method [node|k8s_configmap]")
@@ -40,6 +40,14 @@ var (
 
 func main() {
 	flag.Parse()
+
+	err := util.ValidateDriverName(*driverName)
+	if err != nil {
+		glog.Errorf("failed to validate driver name: %v", err)
+		os.Exit(1)
+	}
+	//update plugin name
+	rbd.PluginFolder = rbd.PluginFolder + *driverName
 
 	if err := createPersistentStorage(path.Join(rbd.PluginFolder, "controller")); err != nil {
 		glog.Errorf("failed to create persistent storage for controller %v", err)
