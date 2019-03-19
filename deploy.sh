@@ -36,7 +36,7 @@ else
 fi
 
 if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
-	docker login -u "${QUAY_IO_USERNAME}" -p "${QUAY_IO_PASSWORD}" quay.io
+	"${CONTAINER_CMD:-docker}" login -u "${QUAY_IO_USERNAME}" -p "${QUAY_IO_PASSWORD}" quay.io
 	make push-image-rbdplugin push-image-cephfsplugin
 
 	set -xe
