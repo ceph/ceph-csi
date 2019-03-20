@@ -22,6 +22,9 @@ RBD_IMAGE_VERSION=$(if $(ENV_RBD_IMAGE_VERSION),$(ENV_RBD_IMAGE_VERSION),v1.0.0)
 CEPHFS_IMAGE_NAME=$(if $(ENV_CEPHFS_IMAGE_NAME),$(ENV_CEPHFS_IMAGE_NAME),quay.io/cephcsi/cephfsplugin)
 CEPHFS_IMAGE_VERSION=$(if $(ENV_CEPHFS_IMAGE_VERSION),$(ENV_CEPHFS_IMAGE_VERSION),v1.0.0)
 
+CSI_IMAGE_NAME?=quay.io/cephcsi/cephcsi
+CSI_IMAGE_VERSION?=v1.0.0
+
 $(info rbd    image settings: $(RBD_IMAGE_NAME) version $(RBD_IMAGE_VERSION))
 $(info cephfs image settings: $(CEPHFS_IMAGE_NAME) version $(CEPHFS_IMAGE_VERSION))
 
@@ -36,20 +39,21 @@ static-check:
 	./scripts/lint-go.sh
 	./scripts/lint-text.sh
 
-rbdplugin:
+.PHONY: cephcsi
+cephcsi:
 	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/rbdplugin ./cmd/rbd
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephcsi ./cmd/
 
-image-rbdplugin: rbdplugin
-	cp _output/rbdplugin  deploy/rbd/docker
+image-cephcsi: cephcsi
+	cp deploy/cephcsi/image/Dockerfile _output
+	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION) _output
+
+image-rbdplugin: cephcsi
+	cp _output/cephcsi deploy/rbd/docker/rbdplugin
 	$(CONTAINER_CMD) build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
 
-cephfsplugin:
-	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephfsplugin ./cmd/cephfs
-
-image-cephfsplugin: cephfsplugin
-	cp _output/cephfsplugin deploy/cephfs/docker
+image-cephfsplugin: cephcsi
+	cp _output/cephsci deploy/cephfs/docker/cephfsplugin
 	$(CONTAINER_CMD) build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) deploy/cephfs/docker
 
 push-image-rbdplugin: image-rbdplugin
