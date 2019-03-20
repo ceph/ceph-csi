@@ -105,10 +105,12 @@ func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, ca
 		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	})
 
-	// TODO: JDG Should also look at remaining modes like MULT_NODE_READER (SINGLE_READER)
+	// We only support the multi-writer option when using block, but it's a supported capability for the plugin in general
+	// In addition, we want to add the remaining modes like MULTI_NODE_READER_ONLY,
+	// MULTI_NODE_SINGLE_WRITER etc, but need to do some verification of RO modes first
+	// will work those as follow up features
 	r.cd.AddVolumeCapabilityAccessModes(
-		[]csi.VolumeCapability_AccessMode_Mode{
-			csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+		[]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
 
 	// Create GRPC servers

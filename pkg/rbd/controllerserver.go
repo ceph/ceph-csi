@@ -21,7 +21,6 @@ import (
 	"os/exec"
 	"sort"
 	"strconv"
-	"strings"
 	"syscall"
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
@@ -94,16 +93,25 @@ func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
-	// MultiNodeWriters are accepted but they're only for special cases, and we skip the watcher checks for them which isn't the greatest
-	// let's make sure we ONLY skip that if the user is requesting a MULTI Node accessible mode
-	disableMultiWriter := true
-	for _, am := range req.VolumeCapabilities {
-		if am.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
-			disableMultiWriter = false
+	isMultiNode := false
+	isBlock := false
+	for _, cap := range req.VolumeCapabilities {
+		// RO modes need to be handled indepedently (ie right now even if access mode is RO, they'll be RW upon attach)
+		if cap.GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+			isMultiNode = true
+		}
+		if cap.GetBlock() != nil {
+			isBlock = true
 		}
 	}
 
-	rbdVol, err := getRBDVolumeOptions(req.GetParameters(), disableMultiWriter)
+	// We want to fail early if the user is trying to create a RWX on a non-block type device
+	if isMultiNode && !isBlock {
+		return nil, status.Error(codes.InvalidArgument, "multi node access modes are only supported on rbd `block` type volumes")
+	}
+
+	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
+	rbdVol, err := getRBDVolumeOptions(req.GetParameters(), (isMultiNode && isBlock))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -344,20 +352,11 @@ func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolume
 // ValidateVolumeCapabilities checks whether the volume capabilities requested
 // are supported.
 func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	params := req.GetParameters()
-	multiWriter := params["multiNodeWritable"]
-	if strings.ToLower(multiWriter) == "enabled" {
-		klog.V(3).Info("detected multiNodeWritable parameter in Storage Class, allowing multi-node access modes")
-
-	} else {
-		for _, cap := range req.VolumeCapabilities {
-			if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
-				return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
-			}
+	for _, cap := range req.VolumeCapabilities {
+		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
+			return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
 		}
-
 	}
-
 	return &csi.ValidateVolumeCapabilitiesResponse{
 		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
 			VolumeCapabilities: req.VolumeCapabilities,

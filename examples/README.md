@@ -115,52 +115,30 @@ kubectl create -f pvc-restore.yaml
 kubectl create -f pod-restore.yaml
 ```
 
-## How to enable multi node attach support for RBD
+## How to test RBD MULTI_NODE_MULTI_WRITER BLOCK feature
+
+Requires feature-gates: `BlockVolume=true` `CSIBlockVolume=true`
+
+*NOTE* The MULTI_NODE_MULTI_WRITER capability is only available for
+Volumes that are of access_type `block`
 
 *WARNING*  This feature is strictly for workloads that know how to deal
-with concurrent acces to the Volume (eg Active/Passive applications).
+with concurrent access to the Volume (eg Active/Passive applications).
 Using RWX modes on non clustered file systems with applications trying
 to simultaneously access the Volume will likely result in data corruption!
 
-### Example process to test the multiNodeWritable feature
-
-Modify your current storage class, or create a new storage class specifically
-for multi node writers by adding the `multiNodeWritable: "enabled"` entry to
-your parameters.  Here's an example:
-
-```yaml
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-   name: csi-rbd
-provisioner: rbd.csi.ceph.com
-parameters:
-    monitors: rook-ceph-mon-b.rook-ceph.svc.cluster.local:6789
-    pool: rbd
-    imageFormat: "2"
-    imageFeatures: layering
-    csiProvisionerSecretName: csi-rbd-secret
-    csiProvisionerSecretNamespace: default
-    csiNodePublishSecretName: csi-rbd-secret
-    csiNodePublishSecretNamespace: default
-    adminid: admin
-    userid: admin
-    fsType: xfs
-    multiNodeWritable: "enabled"
-reclaimPolicy: Delete
-```
-
-Now, you can request Claims from the configured storage class that include
-the `ReadWriteMany` access mode:
+Following are examples for issuing a request for a `Block`
+`ReadWriteMany` Claim, and using the resultant Claim for a POD
 
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pvc-1
+  name: block-pvc
 spec:
   accessModes:
   - ReadWriteMany
+  volumeMode: Block
   resources:
     requests:
       storage: 1Gi
@@ -173,108 +151,65 @@ Create a POD that uses this PVC:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: test-1
+  name: my-pod
 spec:
   containers:
-   - name: web-server
-     image: nginx
-     volumeMounts:
-       - name: mypvc
-         mountPath: /var/lib/www/html
+    - name: my-container
+      image: debian
+      command: ["/bin/bash", "-c"]
+      args: [ "tail -f /dev/null" ]
+      volumeDevices:
+        - devicePath: /dev/rbdblock
+          name: my-volume
+      imagePullPolicy: IfNotPresent
   volumes:
-   - name: mypvc
-     persistentVolumeClaim:
-       claimName: pvc-1
-       readOnly: false
-```
+    - name: my-volume
+      persistentVolumeClaim:
+        claimName: block-pvc
 
-Wait for the POD to enter Running state, write some data to
-`/var/lib/www/html`
+```
 
 Now, we can create a second POD (ensure the POD is scheduled on a different
 node; multiwriter single node works without this feature) that also uses this
-PVC at the same time
+PVC at the same time, again wait for the pod to enter running state, and verify
+the block device is available.
 
 ```yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: test-2
+  name: another-pod
 spec:
   containers:
-   - name: web-server
-     image: nginx
-     volumeMounts:
-       - name: mypvc
-         mountPath: /var/lib/www/html
-  volumes:
-   - name: mypvc
-     persistentVolumeClaim:
-       claimName: pvc-1
-       readOnly: false
-```
-
-If you access the pod you can check that your data is avaialable at
-`/var/lib/www/html`
-
-## Testing Raw Block feature in kubernetes with RBD volumes
-
-CSI block volume support is feature-gated and turned off by default. To run CSI
-with block volume support enabled, a cluster administrator must enable the
-feature for each Kubernetes component using the following feature gate flags:
-
---feature-gates=BlockVolume=true,CSIBlockVolume=true
-
-these feature-gates must be enabled on both api-server and kubelet
-
-### create a raw-block PVC
-
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: raw-block-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  volumeMode: Block
-  resources:
-    requests:
-      storage: 1Gi
-  storageClassName: csi-rbd
-```
-
-create raw block pvc
-
-```console
-kubectl create -f raw-block-pvc.yaml
-```
-
-### create a pod to mount raw-block PVC
-
-```yaml
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: pod-with-raw-block-volume
-spec:
-  containers:
-    - name: fc-container
-      image: fedora:26
-      command: ["/bin/sh", "-c"]
+    - name: my-container
+      image: debian
+      command: ["/bin/bash", "-c"]
       args: [ "tail -f /dev/null" ]
       volumeDevices:
-        - name: data
-          devicePath: /dev/xvda
+        - devicePath: /dev/rbdblock
+          name: my-volume
+      imagePullPolicy: IfNotPresent
   volumes:
-    - name: data
+    - name: my-volume
       persistentVolumeClaim:
-        claimName: raw-block-pvc
+        claimName: block-pvc
 ```
 
-Create a POD that uses raw block PVC
+Wait for the PODs to enter Running state, check that our block device
+is available in the container at `/dev/rdbblock` in both containers:
 
-```console
-kubectl create -f raw-block-pod.yaml
+```bash
+$ kubectl exec -it my-pod -- fdisk -l /dev/rbdblock
+Disk /dev/rbdblock: 1 GiB, 1073741824 bytes, 2097152 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 4194304 bytes / 4194304 bytes
+```
+
+```bash
+$ kubectl exec -it another-pod -- fdisk -l /dev/rbdblock
+Disk /dev/rbdblock: 1 GiB, 1073741824 bytes, 2097152 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 4194304 bytes / 4194304 bytes
 ```
