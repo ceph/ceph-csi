@@ -4,7 +4,7 @@ sudo: true
 language: go
 branches:
   only:
-    - master
+    - csi-v0.3
 
 go: 1.9.x
 
