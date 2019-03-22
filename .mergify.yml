@@ -1,3 +1,4 @@
+---
 pull_request_rules:
   - name: automatic merge
     conditions:
