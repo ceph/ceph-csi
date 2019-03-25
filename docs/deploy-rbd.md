@@ -67,7 +67,7 @@ client with admin privileges, and the value is its password
 
 ## Deployment with Kubernetes
 
-Requires Kubernetes 1.11
+Requires Kubernetes 1.13
 
 Your Kubernetes cluster must allow privileged pods (i.e. `--allow-privileged`
 flag must be set to true for both the API server and the kubelet). Moreover, as
@@ -75,12 +75,20 @@ stated in the [mount propagation
 docs](https://kubernetes.io/docs/concepts/storage/volumes/#mount-propagation),
 the Docker daemon of the cluster nodes must allow shared mounts.
 
+### Enable CSIDriver Feature-gate for rbd
+
+The CSIDriver object is available as alpha starting with
+Kubernetes v1.12. Because it is an alpha feature, it is disabled by default. It
+is planned to be moved to beta in Kubernetes v1.14 and enabled by default.
+
+Ensure the feature gate is enabled via the following Kubernetes feature flag:
+--feature-gates=CSIDriverRegistry=true
+
 YAML manifests are located in `deploy/rbd/kubernetes`.
 
 **Deploy RBACs for sidecar containers and node plugins:**
 
 ```bash
-kubectl create -f csi-attacher-rbac.yaml
 kubectl create -f csi-provisioner-rbac.yaml
 kubectl create -f csi-nodeplugin-rbac.yaml
 ```
@@ -92,12 +100,10 @@ the same permissions.
 **Deploy CSI sidecar containers:**
 
 ```bash
-kubectl create -f csi-rbdplugin-attacher.yaml
 kubectl create -f csi-rbdplugin-provisioner.yaml
 ```
 
-Deploys stateful sets for external-attacher and external-provisioner
-sidecar containers for CSI RBD.
+Deploys stateful set for external-provisioner sidecar containers for CSI RBD.
 
 **Deploy RBD CSI driver:**
 
@@ -114,12 +120,10 @@ After successfully completing the steps above, you should see output similar to 
 ```bash
 $ kubectl get all
 NAME                              READY     STATUS    RESTARTS   AGE
-pod/csi-rbdplugin-attacher-0      1/1       Running   0          23s
 pod/csi-rbdplugin-fptqr           2/2       Running   0          21s
-pod/csi-rbdplugin-provisioner-0   1/1       Running   0          22s
+pod/csi-rbdplugin-provisioner-0   4/4       Running   0          22s
 
 NAME                                TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)     AGE
-service/csi-rbdplugin-attacher      ClusterIP   10.109.15.54   <none>        12345/TCP   26s
 service/csi-rbdplugin-provisioner   ClusterIP   10.104.2.130   <none>        12345/TCP   23s
 
 ...

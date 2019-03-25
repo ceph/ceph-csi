@@ -84,12 +84,20 @@ stated in the [mount propagation
 docs](https://kubernetes.io/docs/concepts/storage/volumes/#mount-propagation),
 the Docker daemon of the cluster nodes must allow shared mounts.
 
+### Enable CSIDriver Feature-gate for cephfs
+
+The CSIDriver object is available as alpha starting with
+Kubernetes v1.12. Because it is an alpha feature, it is disabled by default. It
+is planned to be moved to beta in Kubernetes v1.14 and enabled by default.
+
+Ensure the feature gate is enabled via the following Kubernetes feature flag:
+--feature-gates=CSIDriverRegistry=true
+
 YAML manifests are located in `deploy/cephfs/kubernetes`.
 
 **Deploy RBACs for sidecar containers and node plugins:**
 
 ```bash
-kubectl create -f csi-attacher-rbac.yaml
 kubectl create -f csi-provisioner-rbac.yaml
 kubectl create -f csi-nodeplugin-rbac.yaml
 ```
@@ -101,12 +109,11 @@ the same permissions.
 **Deploy CSI sidecar containers:**
 
 ```bash
-kubectl create -f csi-cephfsplugin-attacher.yaml
 kubectl create -f csi-cephfsplugin-provisioner.yaml
 ```
 
-Deploys stateful sets for external-attacher and external-provisioner
-sidecar containers for CSI CephFS.
+Deploys stateful set for and external-provisioner sidecar containers for CSI
+CephFS.
 
 **Deploy CSI CephFS driver:**
 
@@ -124,12 +131,10 @@ After successfully completing the steps above, you should see output similar to 
 ```bash
 $ kubectl get all
 NAME                                 READY     STATUS    RESTARTS   AGE
-pod/csi-cephfsplugin-attacher-0      1/1       Running   0          26s
-pod/csi-cephfsplugin-provisioner-0   1/1       Running   0          25s
+pod/csi-cephfsplugin-provisioner-0   3/3       Running   0          25s
 pod/csi-cephfsplugin-rljcv           2/2       Running   0          24s
 
 NAME                                   TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)     AGE
-service/csi-cephfsplugin-attacher      ClusterIP   10.104.116.218   <none>        12345/TCP   27s
 service/csi-cephfsplugin-provisioner   ClusterIP   10.101.78.75     <none>        12345/TCP   26s
 
 ...
