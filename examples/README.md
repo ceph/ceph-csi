@@ -1,5 +1,14 @@
 # How to test RBD and CephFS plugins with Kubernetes 1.13
 
+## Enable CSIDriver Feature-gate for both cephfs and rbd
+
+The CSIDriver object is available as alpha starting with
+Kubernetes v1.12. Because it is an alpha feature, it is disabled by default. It
+is planned to be moved to beta in Kubernetes v1.14 and enabled by default.
+
+Ensure the feature gate is enabled via the following Kubernetes feature flag:
+--feature-gates=CSIDriverRegistry=true
+
 Both `rbd` and `cephfs` directories contain `plugin-deploy.sh` and
 `plugin-teardown.sh` helper scripts.  You can use those to help you
 deploy/teardown RBACs, sidecar containers and the plugin in one go.
