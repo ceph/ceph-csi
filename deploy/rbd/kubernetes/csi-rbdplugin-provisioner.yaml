@@ -54,6 +54,19 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+        - name: cluster-driver-registrar
+          image: quay.io/k8scsi/csi-cluster-driver-registrar:v1.0.1
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+            - "--driver-requires-attachment=false"
+          env:
+            - name: ADDRESS
+              value: /csi/csi-provisioner.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
         - name: csi-rbdplugin
           securityContext:
             privileged: true
