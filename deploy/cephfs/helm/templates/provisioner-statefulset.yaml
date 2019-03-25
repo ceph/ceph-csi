@@ -41,6 +41,19 @@ spec:
               mountPath: {{ .Values.socketDir }}
           resources:
 {{ toYaml .Values.provisioner.resources | indent 12 }}
+        - name: cluster-driver-registrar
+          image: "{{ .Values.provisioner.clusterRegistrar.image.repository }}:{{ .Values.provisioner.clusterRegistrar.image.tag }}"
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+            - "--driver-requires-attachment=false"
+          env:
+            - name: ADDRESS
+              value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
+          imagePullPolicy: {{ .Values.provisioner.clusterRegistrar.image.pullPolicy }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: {{ .Values.socketDir }}
         - name: csi-cephfsplugin
           securityContext:
             privileged: true
@@ -79,7 +92,7 @@ spec:
 #FIXME this seems way too much. Why is it needed at all for this?
         - name: host-rootfs
           hostPath:
-            path: /            
+            path: /
     {{- if .Values.provisioner.affinity -}}
       affinity:
 {{ toYaml .Values.provisioner.affinity . | indent 8 }}
