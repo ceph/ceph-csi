@@ -105,6 +105,10 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cacheP
 		klog.Fatalf("failed to write ceph configuration file: %v", err)
 	}
 
+	if err := remountHisMountedPath(driverName, version, nodeID, cachePersister); err != nil {
+		klog.Warningf("failed to remounted history mounted path: %v", err)
+		//ignore remount fail
+	}
 	// Initialize default library driver
 
 	fs.cd = csicommon.NewCSIDriver(driverName, version, nodeID)

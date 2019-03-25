@@ -56,6 +56,7 @@ func NewCachePersister(metadataStore, driverName string) (CachePersister, error)
 		klog.Infof("cache-persister: using node as metadata cache persister")
 		nc := &NodeCache{}
 		nc.BasePath = PluginFolder + "/" + driverName
+		nc.CacheDir = "controller"
 		return nc, nil
 	}
 	return nil, errors.New("cache-persister: couldn't parse metadatastorage flag")
