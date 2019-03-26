@@ -11,8 +11,9 @@ addons:
 language: go
 branches:
   only:
+    - csi-v0.3
     - master
-    - csi-v1.0
+    - csi-v1.0  # remove this once csi-v1.0 becomes master
 
 go: 1.11.x
 

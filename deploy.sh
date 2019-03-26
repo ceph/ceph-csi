@@ -24,7 +24,7 @@ push_helm_chats() {
 	fi
 }
 
-if [ "${TRAVIS_BRANCH}" == 'master' ]; then
+if [ "${TRAVIS_BRANCH}" == 'csi-v0.3' ]; then
 	export RBD_IMAGE_VERSION='v0.3.0'
 	export CEPHFS_IMAGE_VERSION='v0.3.0'
 elif [ "${TRAVIS_BRANCH}" == 'csi-v1.0' ]; then
