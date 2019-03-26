@@ -18,6 +18,8 @@ package cephfs
 
 import (
 	"fmt"
+
+	"github.com/ceph/ceph-csi/pkg/util"
 )
 
 const (
@@ -72,7 +74,7 @@ func getCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID
 		"-m", volOptions.Monitors,
 		"-n", adminID,
 		"--key="+adminCr.key,
-		"-c", cephConfigPath,
+		"-c", util.CephConfigPath,
 		"-f", "json",
 		"auth", "get", userID,
 	)
@@ -85,7 +87,7 @@ func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volum
 		"-m", volOptions.Monitors,
 		"-n", adminID,
 		"--key="+adminCr.key,
-		"-c", cephConfigPath,
+		"-c", util.CephConfigPath,
 		"-f", "json",
 		"auth", "get-or-create", userID,
 		// User capabilities
@@ -102,7 +104,7 @@ func deleteCephUser(volOptions *volumeOptions, adminCr *credentials, volID volum
 		"-m", volOptions.Monitors,
 		"-n", adminID,
 		"--key="+adminCr.key,
-		"-c", cephConfigPath,
+		"-c", util.CephConfigPath,
 		"auth", "rm", userID,
 	)
 }
