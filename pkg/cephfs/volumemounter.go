@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/ceph/ceph-csi/pkg/util"
 	"k8s.io/klog"
 )
 
@@ -115,7 +116,7 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions) er
 	args := [...]string{
 		mountPoint,
 		"-m", volOptions.Monitors,
-		"-c", cephConfigPath,
+		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix + cr.id, "--key=" + cr.key,
 		"-r", volOptions.RootPath,
 		"-o", "nonempty",
