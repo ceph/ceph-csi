@@ -31,6 +31,8 @@ var (
 	nodeID          = flag.String("nodeid", "", "node id")
 	containerized   = flag.Bool("containerized", true, "whether run as containerized")
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
+	configRoot      = flag.String("configroot", "/etc/csi-config", "directory in which CSI specific Ceph"+
+		" cluster configurations are present, OR the value \"k8s_objects\" if present as kubernetes secrets")
 )
 
 func init() {
@@ -56,7 +58,7 @@ func main() {
 	}
 
 	driver := rbd.NewDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *containerized, cp)
+	driver.Run(*driverName, *nodeID, *endpoint, *configRoot, *containerized, cp)
 
 	os.Exit(0)
 }

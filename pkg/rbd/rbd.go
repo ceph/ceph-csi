@@ -47,6 +47,8 @@ type Driver struct {
 
 var (
 	version = "1.0.0"
+	// confStore is the global config store
+	confStore *util.ConfigStore
 )
 
 // NewDriver returns new rbd driver
@@ -87,9 +89,15 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // rbd CSI driver which can serve multiple parallel requests
-func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
+func (r *Driver) Run(driverName, nodeID, endpoint, configRoot string, containerized bool, cachePersister util.CachePersister) {
 	var err error
 	klog.Infof("Driver: %v version: %v", driverName, version)
+
+	// Initialize config store
+	confStore, err = util.NewConfigStore(configRoot)
+	if err != nil {
+		klog.Fatalln("Failed to initialize config store.")
+	}
 
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)

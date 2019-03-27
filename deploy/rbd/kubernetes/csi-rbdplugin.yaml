@@ -57,6 +57,7 @@ spec:
             - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
             - "--metadatastorage=k8s_configmap"
+            - "--configroot=k8s_objects"
           env:
             - name: HOST_ROOTFS
               value: "/rootfs"

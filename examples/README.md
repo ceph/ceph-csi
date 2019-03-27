@@ -12,6 +12,11 @@ Once the plugin is successfully deployed, you'll need to customize
 setup.
 Please consult the documentation for info about available parameters.
 
+**NOTE:** See section
+[Cluster ID based configuration](#cluster-id-based-configuration) if using
+the `clusterID` instead of `monitors` or `monValueFromSecret` option in the
+storage class for RBD based provisioning before proceeding.
+
 After configuring the secrets, monitors, etc. you can deploy a
 testing Pod mounting a RBD image / CephFS volume:
 
@@ -213,3 +218,37 @@ Units: sectors of 1 * 512 = 512 bytes
 Sector size (logical/physical): 512 bytes / 512 bytes
 I/O size (minimum/optimal): 4194304 bytes / 4194304 bytes
 ```
+
+## Cluster ID based configuration
+
+Before creating a storage class that uses the option `clusterID` to refer to a
+Ceph cluster, the following actions need to be completed.
+
+Get the following information from the Ceph cluster,
+
+* Admin ID and key, that has privileges to perform CRUD operations on the Ceph
+  cluster and pools of choice
+  * Key is typically the output of, `ceph auth get-key client.admin` where
+    `admin` is the Admin ID
+  * Used to substitute admin/user id and key values in the files below
+* Ceph monitor list
+  * Typically in the output of `ceph mon dump`
+  * Used to prepare comma separated MON list where required in the files below
+* Ceph Cluster fsid
+  * If choosing to use the Ceph cluster fsid as the unique value of clusterID,
+  * Output of `ceph fsid`
+  * Used to substitute `<cluster-id>` references in the files below
+
+Update the template
+[template-ceph-cluster-ID-secret.yaml](./rbd/template-ceph-cluster-ID-secret.yaml)
+with values from
+a Ceph cluster and replace `<cluster-id>` with the chosen clusterID to create
+the following secret,
+
+* `kubectl create -f rbd/template-ceph-cluster-ID-secret.yaml`
+
+Storage class and snapshot class, using `<cluster-id>` as the value for the
+option `clusterID`, can now be created on the cluster.
+
+Remaining steps to test functionality remains the same as mentioned in the
+sections above.
