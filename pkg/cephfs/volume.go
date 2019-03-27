@@ -31,11 +31,11 @@ const (
 )
 
 var (
-	cephRootPrefix = PluginFolder + "/controller/volumes/root-"
+	cephRootPrefix = "/controller/volumes/root-"
 )
 
 func getCephRootPathLocal(volID volumeID) string {
-	return cephRootPrefix + string(volID)
+	return PluginFolder + cephRootPrefix + string(volID)
 }
 
 func getCephRootVolumePathLocal(volID volumeID) string {
