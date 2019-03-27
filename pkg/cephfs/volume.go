@@ -30,12 +30,8 @@ const (
 	namespacePrefix = "ns-"
 )
 
-var (
-	cephRootPrefix = "/controller/volumes/root-"
-)
-
 func getCephRootPathLocal(volID volumeID) string {
-	return PluginFolder + cephRootPrefix + string(volID)
+	return fmt.Sprintf("%s/controller/volumes/root-%s", PluginFolder, string(volID))
 }
 
 func getCephRootVolumePathLocal(volID volumeID) string {
