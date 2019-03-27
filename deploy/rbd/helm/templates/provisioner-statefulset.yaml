@@ -58,6 +58,18 @@ spec:
               mountPath: {{ .Values.socketDir }}
           resources:
 {{ toYaml .Values.snapshotter.resources | indent 12 }}
+        - name: csi-attacher
+          image: "{{ .Values.attacher.image.repository }}:{{ .Values.attacher.image.tag }}"
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
+          imagePullPolicy: {{ .Values.attacher.image.pullPolicy }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: {{ .Values.socketDir }}
         - name: csi-rbdplugin
           securityContext:
             privileged: true
@@ -97,7 +109,7 @@ spec:
 #FIXME this seems way too much. Why is it needed at all for this?
         - name: host-rootfs
           hostPath:
-            path: /            
+            path: /
     {{- if .Values.provisioner.affinity -}}
       affinity:
 {{ toYaml .Values.provisioner.affinity . | indent 8 }}
