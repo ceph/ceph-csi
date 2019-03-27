@@ -14,6 +14,8 @@
 
 .PHONY: all rbdplugin cephfsplugin
 
+CONTAINER_CMD?=docker
+
 RBD_IMAGE_NAME=$(if $(ENV_RBD_IMAGE_NAME),$(ENV_RBD_IMAGE_NAME),quay.io/cephcsi/rbdplugin)
 RBD_IMAGE_VERSION=$(if $(ENV_RBD_IMAGE_VERSION),$(ENV_RBD_IMAGE_VERSION),v1.0.0)
 
@@ -40,7 +42,7 @@ rbdplugin:
 
 image-rbdplugin: rbdplugin
 	cp _output/rbdplugin  deploy/rbd/docker
-	docker build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
+	$(CONTAINER_CMD) build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
 
 cephfsplugin:
 	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
@@ -48,13 +50,13 @@ cephfsplugin:
 
 image-cephfsplugin: cephfsplugin
 	cp _output/cephfsplugin deploy/cephfs/docker
-	docker build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) deploy/cephfs/docker
+	$(CONTAINER_CMD) build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) deploy/cephfs/docker
 
 push-image-rbdplugin: image-rbdplugin
-	docker push $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION)
+	$(CONTAINER_CMD) push $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION)
 
 push-image-cephfsplugin: image-cephfsplugin
-	docker push $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION)
+	$(CONTAINER_CMD) push $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION)
 
 clean:
 	go clean -r -x
