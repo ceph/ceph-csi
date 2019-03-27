@@ -101,20 +101,6 @@ func decodeObj(filepath, pattern string, file os.FileInfo, destObj interface{}) 
 
 }
 
-func (nc *NodeCache) Update(identifier string, data interface{}) error {
-	file := path.Join(nc.BasePath, nc.CacheDir, identifier+".json")
-	identifierTmp := identifier + ".creating"
-	fileTmp := path.Join(nc.BasePath, nc.CacheDir, identifierTmp+".json")
-	os.Remove(fileTmp)
-	if err := nc.Create(identifierTmp, data); err != nil {
-		return errors.Wrapf(err, "node-cache: failed to create metadata storage file %s\n", file)
-	}
-	if err := os.Rename(fileTmp, file); err != nil {
-		return errors.Wrapf(err, "node-cache: couldn't rename %s as %s", fileTmp, file)
-	}
-	return nil
-}
-
 // Create creates the metadata file in cache directory with identifier name
 func (nc *NodeCache) Create(identifier string, data interface{}) error {
 	file := path.Join(nc.BasePath, nc.CacheDir, identifier+".json")

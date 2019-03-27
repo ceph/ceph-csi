@@ -40,10 +40,10 @@ type volumeMountCacheMap struct {
 }
 
 var (
-	csiPersistentVolumeRoot = "/var/lib/kubelet/plugins/kubernetes.io/csi"
-	volumeMountCachePrefix  = "cephfs-mount-cache-"
-	volumeMountCache        volumeMountCacheMap
-	volumeMountCacheMtx     sync.Mutex
+	MountCacheDir          = ""
+	volumeMountCachePrefix = "cephfs-mount-cache-"
+	volumeMountCache       volumeMountCacheMap
+	volumeMountCacheMtx    sync.Mutex
 )
 
 func remountHisMountedPath(name string, v string, nodeID string, cachePersister util.CachePersister) error {
@@ -56,16 +56,18 @@ func remountHisMountedPath(name string, v string, nodeID string, cachePersister 
 
 	volumeMountCache.MetadataStore = cachePersister
 
-	volumeMountCache.NodeCacheStore.BasePath = PluginFolder
-	volumeMountCache.NodeCacheStore.CacheDir = "volumes-mount-cache"
+	volumeMountCache.NodeCacheStore.BasePath = MountCacheDir
+	volumeMountCache.NodeCacheStore.CacheDir = ""
 
-	if _, err := os.Stat(csiPersistentVolumeRoot); err != nil {
-		klog.Infof("mount-cache: csi pv root path %s stat fail %v, may not in daemonset csi plugin, exit", csiPersistentVolumeRoot, err)
-		return err
+	if len(MountCacheDir) == 0 {
+		//if mount cache dir unset, disable remount
+		klog.Infof("mount-cache: mountcachedir no define disalbe mount cache.")
+		return nil
 	}
 
+	klog.Infof("mount-cache: MountCacheDir: %s", MountCacheDir)
 	if err := os.MkdirAll(volumeMountCache.NodeCacheStore.BasePath, 0755); err != nil {
-		klog.Fatalf("mount-cache: failed to create %s: %v", volumeMountCache.NodeCacheStore.BasePath, err)
+		klog.Errorf("mount-cache: failed to create %s: %v", volumeMountCache.NodeCacheStore.BasePath, err)
 		return err
 	}
 	me := &volumeMountEntry{}
@@ -203,6 +205,10 @@ func genVolumeMountCacheFileName(volID string) string {
 }
 
 func (mc *volumeMountCacheMap) nodeStageVolume(volID string, stagingTargetPath string, secrets map[string]string) error {
+	if len(MountCacheDir) == 0 {
+		//if mount cache dir unset, disable remount
+		return nil
+	}
 	volumeMountCacheMtx.Lock()
 	defer volumeMountCacheMtx.Unlock()
 
@@ -210,8 +216,7 @@ func (mc *volumeMountCacheMap) nodeStageVolume(volID string, stagingTargetPath s
 	me, ok := volumeMountCache.Volumes[volID]
 	if ok {
 		if me.StagingPath == stagingTargetPath {
-			klog.Infof("mount-cache: node stage volume last cache entry for volume %s stagingTargetPath %s no equal %s",
-				volID, me.StagingPath, stagingTargetPath)
+			klog.Warningf("mount-cache: node unexpected restage volume for volume %s", volID)
 			return nil
 		}
 		lastTargetPaths = me.TargetPaths
@@ -239,6 +244,10 @@ func (mc *volumeMountCacheMap) nodeStageVolume(volID string, stagingTargetPath s
 }
 
 func (mc *volumeMountCacheMap) nodeUnStageVolume(volID string, stagingTargetPath string) error {
+	if len(MountCacheDir) == 0 {
+		//if mount cache dir unset, disable remount
+		return nil
+	}
 	volumeMountCacheMtx.Lock()
 	defer volumeMountCacheMtx.Unlock()
 	delete(volumeMountCache.Volumes, volID)
@@ -250,6 +259,10 @@ func (mc *volumeMountCacheMap) nodeUnStageVolume(volID string, stagingTargetPath
 }
 
 func (mc *volumeMountCacheMap) nodePublishVolume(volID string, targetPath string, readOnly bool) error {
+	if len(MountCacheDir) == 0 {
+		//if mount cache dir unset, disable remount
+		return nil
+	}
 	volumeMountCacheMtx.Lock()
 	defer volumeMountCacheMtx.Unlock()
 
@@ -259,15 +272,14 @@ func (mc *volumeMountCacheMap) nodePublishVolume(volID string, targetPath string
 		return errors.New("mount-cache: node publish volume failed to find cache entry for volume")
 	}
 	volumeMountCache.Volumes[volID].TargetPaths[targetPath] = readOnly
-	me := volumeMountCache.Volumes[volID]
-	if err := mc.NodeCacheStore.Update(genVolumeMountCacheFileName(volID), me); err != nil {
-		klog.Errorf("mount-cache: node publish volume failed to store a cache entry for volume %s: %v", volID, err)
-		return err
-	}
-	return nil
+	return mc.updateNodeCache(volID)
 }
 
 func (mc *volumeMountCacheMap) nodeUnPublishVolume(volID string, targetPath string) error {
+	if len(MountCacheDir) == 0 {
+		//if mount cache dir unset, disable remount
+		return nil
+	}
 	volumeMountCacheMtx.Lock()
 	defer volumeMountCacheMtx.Unlock()
 
@@ -277,9 +289,16 @@ func (mc *volumeMountCacheMap) nodeUnPublishVolume(volID string, targetPath stri
 		return errors.New("mount-cache: node unpublish volume failed to find cache entry for volume")
 	}
 	delete(volumeMountCache.Volumes[volID].TargetPaths, targetPath)
+	return mc.updateNodeCache(volID)
+}
+
+func (mc *volumeMountCacheMap) updateNodeCache(volID string) error {
 	me := volumeMountCache.Volumes[volID]
-	if err := mc.NodeCacheStore.Update(genVolumeMountCacheFileName(volID), me); err != nil {
-		klog.Errorf("mount-cache: node unpublish volume failed to store a cache entry for volume %s: %v", volID, err)
+	if err := volumeMountCache.NodeCacheStore.Delete(genVolumeMountCacheFileName(volID)); err == nil {
+		klog.Infof("mount-cache: metadata nofound, delete mount cache failed for volume %s", volID)
+	}
+	if err := mc.NodeCacheStore.Create(genVolumeMountCacheFileName(volID), me); err != nil {
+		klog.Errorf("mount-cache: mount cache failed to update for volume %s: %v", volID, err)
 		return err
 	}
 	return nil
