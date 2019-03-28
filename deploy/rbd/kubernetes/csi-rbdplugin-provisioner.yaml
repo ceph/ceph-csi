@@ -61,7 +61,7 @@ spec:
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
-              value: /csi/csi.sock
+              value: /csi/csi-provisioner.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
