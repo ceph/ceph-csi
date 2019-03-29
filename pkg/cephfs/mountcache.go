@@ -39,7 +39,7 @@ func initVolumeMountCache(driverName string, mountCacheDir string, cachePersiste
 
 	volumeMountCache.metadataStore = cachePersister
 	volumeMountCache.nodeCacheStore.BasePath = mountCacheDir
-	volumeMountCache.nodeCacheStore.CacheDir = ""
+	volumeMountCache.nodeCacheStore.CacheDir = driverName
 	klog.Infof("mount-cache: name: %s, version: %s, mountCacheDir: %s", driverName, version, mountCacheDir)
 }
 
