@@ -13,7 +13,6 @@ import (
 )
 
 type volumeMountCacheEntry struct {
-	DriverName    string `json:"driverName"`
 	DriverVersion string `json:"driverVersion"`
 
 	VolumeID    string            `json:"volumeID"`
@@ -24,7 +23,6 @@ type volumeMountCacheEntry struct {
 }
 
 type volumeMountCacheMap struct {
-	driverName     string
 	volumes        map[string]volumeMountCacheEntry
 	nodeCacheStore util.NodeCache
 	metadataStore  util.CachePersister
@@ -39,7 +37,6 @@ var (
 func initVolumeMountCache(driverName string, mountCacheDir string, cachePersister util.CachePersister) {
 	volumeMountCache.volumes = make(map[string]volumeMountCacheEntry)
 
-	volumeMountCache.driverName = driverName
 	volumeMountCache.metadataStore = cachePersister
 	volumeMountCache.nodeCacheStore.BasePath = mountCacheDir
 	volumeMountCache.nodeCacheStore.CacheDir = ""
@@ -58,19 +55,19 @@ func remountCachedVolumes() error {
 		volID := me.VolumeID
 		if err := volumeMountCache.metadataStore.Get(volID, ce); err != nil {
 			if err, ok := err.(*util.CacheEntryNotFound); ok {
-				klog.Infof("mount-cache: metadata for volume %s not found, assuming the volume to be already deleted (%v)", volID, err)
+				klog.Infof("mount-cache: metadata not found, assuming the volume %s to be already deleted (%v)", volID, err)
 				if err := volumeMountCache.nodeCacheStore.Delete(genVolumeMountCacheFileName(volID)); err == nil {
-					klog.Infof("mount-cache: metadata nofound, delete volume cache entry for volume %s", volID)
+					klog.Infof("mount-cache: metadata not found, delete volume cache entry for volume %s", volID)
 				}
 			}
 		} else {
 			if err := mountOneCacheEntry(ce, me); err == nil {
 				remountSuccCount++
 				volumeMountCache.volumes[me.VolumeID] = *me
-				klog.Infof("mount-cache: remount volume %s succ", volID)
+				klog.Infof("mount-cache: remount volume %s success", volID)
 			} else {
 				remountFailCount++
-				klog.Infof("mount-cache: remount volume cache %s fail", volID)
+				klog.Errorf("mount-cache: remount volume cache %s fail", volID)
 			}
 		}
 		return nil
@@ -80,7 +77,7 @@ func remountCachedVolumes() error {
 		return err
 	}
 	if remountFailCount > 0 {
-		klog.Infof("mount-cache: succ remount %d volumes, fail remount %d volumes", remountSuccCount, remountFailCount)
+		klog.Infof("mount-cache: success remount %d volumes, fail remount %d volumes", remountSuccCount, remountFailCount)
 	} else {
 		klog.Infof("mount-cache: volume cache num %d, all succ remount", remountSuccCount)
 	}
@@ -146,7 +143,7 @@ func mountOneCacheEntry(ce *controllerCacheEntry, me *volumeMountCacheEntry) err
 				klog.Errorf("mount-cache: failed to bind-mount volume %s: %s %s %v %v",
 					volID, me.StagingPath, targetPath, readOnly, err)
 			} else {
-				klog.Infof("mount-cache: succ bind-mount volume %s: %s %s %v",
+				klog.Infof("mount-cache: successfully bind-mount volume %s: %s %s %v",
 					volID, me.StagingPath, targetPath, readOnly)
 			}
 		}
@@ -173,9 +170,6 @@ func cleanupMountPoint(mountPoint string) error {
 }
 
 func isCorruptedMnt(err error) bool {
-	if err == nil {
-		return false
-	}
 	var underlyingError error
 	switch pe := err.(type) {
 	case nil:
@@ -186,9 +180,19 @@ func isCorruptedMnt(err error) bool {
 		underlyingError = pe.Err
 	case *os.SyscallError:
 		underlyingError = pe.Err
+	default:
+		return false
 	}
 
-	return underlyingError == syscall.ENOTCONN || underlyingError == syscall.ESTALE || underlyingError == syscall.EIO || underlyingError == syscall.EACCES
+	CorruptedErrors := []error{
+		syscall.ENOTCONN, syscall.ESTALE, syscall.EIO, syscall.EACCES}
+
+	for _, v := range CorruptedErrors {
+		if underlyingError == v {
+			return true
+		}
+	}
+	return false
 }
 
 func genVolumeMountCacheFileName(volID string) string {
@@ -218,7 +222,7 @@ func (mc *volumeMountCacheMap) nodeStageVolume(volID string, stagingTargetPath s
 		klog.Warningf("mount-cache: node stage volume ignore last cache entry for volume %s", volID)
 	}
 
-	me = volumeMountCacheEntry{DriverName: mc.driverName, DriverVersion: version}
+	me = volumeMountCacheEntry{DriverVersion: version}
 
 	me.VolumeID = volID
 	me.Secrets = encodeCredentials(secrets)
@@ -227,10 +231,7 @@ func (mc *volumeMountCacheMap) nodeStageVolume(volID string, stagingTargetPath s
 
 	me.CreateTime = time.Now()
 	volumeMountCache.volumes[volID] = me
-	if err := mc.nodeCacheStore.Create(genVolumeMountCacheFileName(volID), me); err != nil {
-		return err
-	}
-	return nil
+	return mc.nodeCacheStore.Create(genVolumeMountCacheFileName(volID), me)
 }
 
 func (mc *volumeMountCacheMap) nodeUnStageVolume(volID string) error {
@@ -240,10 +241,7 @@ func (mc *volumeMountCacheMap) nodeUnStageVolume(volID string) error {
 	volumeMountCacheMtx.Lock()
 	defer volumeMountCacheMtx.Unlock()
 	delete(volumeMountCache.volumes, volID)
-	if err := mc.nodeCacheStore.Delete(genVolumeMountCacheFileName(volID)); err != nil {
-		return err
-	}
-	return nil
+	return mc.nodeCacheStore.Delete(genVolumeMountCacheFileName(volID))
 }
 
 func (mc *volumeMountCacheMap) nodePublishVolume(volID string, targetPath string, readOnly bool) error {
@@ -279,12 +277,9 @@ func (mc *volumeMountCacheMap) nodeUnPublishVolume(volID string, targetPath stri
 func (mc *volumeMountCacheMap) updateNodeCache(volID string) error {
 	me := volumeMountCache.volumes[volID]
 	if err := volumeMountCache.nodeCacheStore.Delete(genVolumeMountCacheFileName(volID)); err == nil {
-		klog.Infof("mount-cache: metadata nofound, delete mount cache failed for volume %s", volID)
+		klog.Infof("mount-cache: metadata notfound, delete mount cache failed for volume %s", volID)
 	}
-	if err := mc.nodeCacheStore.Create(genVolumeMountCacheFileName(volID), me); err != nil {
-		return err
-	}
-	return nil
+	return mc.nodeCacheStore.Create(genVolumeMountCacheFileName(volID), me)
 }
 
 func encodeCredentials(input map[string]string) (output map[string]string) {
