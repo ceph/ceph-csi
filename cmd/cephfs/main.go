@@ -50,7 +50,6 @@ func main() {
 	}
 	//update plugin name
 	cephfs.PluginFolder = cephfs.PluginFolder + *driverName
-	cephfs.MountCacheDir = *mountCacheDir
 
 	cp, err := util.CreatePersistanceStorage(cephfs.PluginFolder, *metadataStorage, *driverName)
 	if err != nil {
@@ -58,7 +57,7 @@ func main() {
 	}
 
 	driver := cephfs.NewDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, cp)
+	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, cp)
 
 	os.Exit(0)
 }

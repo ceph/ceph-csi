@@ -77,7 +77,7 @@ func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests
-func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cachePersister util.CachePersister) {
+func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir string, cachePersister util.CachePersister) {
 	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Configuration
@@ -105,9 +105,12 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cacheP
 		klog.Fatalf("failed to write ceph configuration file: %v", err)
 	}
 
-	if err := remountHisMountedPath(driverName, version, nodeID, cachePersister); err != nil {
-		klog.Warningf("failed to remounted history mounted path: %v", err)
-		//ignore remount fail
+	initVolumeMountCache(driverName, mountCacheDir, cachePersister)
+	if mountCacheDir != "" {
+		if err := remountCachedVolumes(); err != nil {
+			klog.Warningf("failed to remount cached volumes: %v", err)
+			//ignore remount fail
+		}
 	}
 	// Initialize default library driver
 

@@ -245,7 +245,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	stagingTargetPath := req.GetStagingTargetPath()
 
 	volID := req.GetVolumeId()
-	if err = volumeMountCache.nodeUnStageVolume(volID, stagingTargetPath); err != nil {
+	if err = volumeMountCache.nodeUnStageVolume(volID); err != nil {
 		klog.Warningf("mount-cache: failed unstage volume %s %s: %v", volID, stagingTargetPath, err)
 	}
 
