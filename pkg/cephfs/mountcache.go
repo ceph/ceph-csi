@@ -16,12 +16,11 @@ type volumeMountCacheEntry struct {
 	DriverName    string `json:"driverName"`
 	DriverVersion string `json:"driverVersion"`
 
-	VolumeID      string            `json:"volumeID"`
-	Secrets       map[string]string `json:"secrets"`
-	StagingPath   string            `json:"stagingPath"`
-	TargetPaths   map[string]bool   `json:"targetPaths"`
-	CreateTime    time.Time         `json:"createTime"`
-	LastMountTime time.Time         `json:"lastMountTime"`
+	VolumeID    string            `json:"volumeID"`
+	Secrets     map[string]string `json:"secrets"`
+	StagingPath string            `json:"stagingPath"`
+	TargetPaths map[string]bool   `json:"targetPaths"`
+	CreateTime  time.Time         `json:"createTime"`
 }
 
 type volumeMountCacheMap struct {
