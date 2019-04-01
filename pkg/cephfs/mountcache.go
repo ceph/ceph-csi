@@ -143,7 +143,7 @@ func mountOneCacheEntry(ce *controllerCacheEntry, me *volumeMountCacheEntry) err
 				klog.Errorf("mount-cache: failed to bind-mount volume %s: %s %s %v %v",
 					volID, me.StagingPath, targetPath, readOnly, err)
 			} else {
-				klog.Infof("mount-cache: successfully bind-mount volume %s: %s %s %v",
+				klog.Infof("mount-cache: successfully bind-mounted volume %s: %s %s %v",
 					volID, me.StagingPath, targetPath, readOnly)
 			}
 		}
@@ -277,7 +277,7 @@ func (mc *volumeMountCacheMap) nodeUnPublishVolume(volID string, targetPath stri
 func (mc *volumeMountCacheMap) updateNodeCache(volID string) error {
 	me := volumeMountCache.volumes[volID]
 	if err := volumeMountCache.nodeCacheStore.Delete(genVolumeMountCacheFileName(volID)); err == nil {
-		klog.Infof("mount-cache: metadata notfound, delete mount cache failed for volume %s", volID)
+		klog.Infof("mount-cache: metadata not found, delete mount cache failed for volume %s", volID)
 	}
 	return mc.nodeCacheStore.Create(genVolumeMountCacheFileName(volID), me)
 }

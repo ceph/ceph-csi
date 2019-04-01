@@ -32,7 +32,7 @@ func TestEncodeDecodeCredentials(t *testing.T) {
 	deSecrets := decodeCredentials(enSecrets)
 	for key, value := range secrets {
 		if deSecrets[key] != value {
-			t.Errorf("key %s value %s  not equal %s after encode decode", key, value, deSecrets[key])
+			t.Errorf("key %s of credentials's value %s change after decode %s ", key, value, deSecrets[key])
 		}
 	}
 }
