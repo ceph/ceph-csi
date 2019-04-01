@@ -64,10 +64,10 @@ func remountCachedVolumes() error {
 			if err := mountOneCacheEntry(ce, me); err == nil {
 				remountSuccCount++
 				volumeMountCache.volumes[me.VolumeID] = *me
-				klog.Infof("mount-cache: remount volume %s success", volID)
+				klog.Infof("mount-cache: successfully remounted volume %s", volID)
 			} else {
 				remountFailCount++
-				klog.Errorf("mount-cache: remount volume cache %s fail", volID)
+				klog.Errorf("mount-cache: failed to remount volume %s", volID)
 			}
 		}
 		return nil
@@ -77,9 +77,9 @@ func remountCachedVolumes() error {
 		return err
 	}
 	if remountFailCount > 0 {
-		klog.Infof("mount-cache: success remount %d volumes, fail remount %d volumes", remountSuccCount, remountFailCount)
+		klog.Infof("mount-cache: successfully remounted %d volumes, failed to remount %d volumes", remountSuccCount, remountFailCount)
 	} else {
-		klog.Infof("mount-cache: volume cache num %d, all succ remount", remountSuccCount)
+		klog.Infof("mount-cache: successfully remounted %d volumes", remountSuccCount)
 	}
 	return nil
 }
@@ -157,13 +157,13 @@ func cleanupMountPoint(mountPoint string) error {
 			klog.Infof("mount-cache: corrupted mount point %s, need unmount", mountPoint)
 			err := execCommandErr("umount", mountPoint)
 			if err != nil {
-				klog.Infof("mount-cache: unmount %s fail %v", mountPoint, err)
+				klog.Infof("mount-cache: failed to umount %s %v", mountPoint, err)
 				//ignore error return err
 			}
 		}
 	}
 	if _, err := os.Stat(mountPoint); err != nil {
-		klog.Errorf("mount-cache: mount point %s stat fail %v", mountPoint, err)
+		klog.Errorf("mount-cache: failed to stat mount point %s %v", mountPoint, err)
 		return err
 	}
 	return nil
