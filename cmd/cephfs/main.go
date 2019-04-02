@@ -31,6 +31,7 @@ var (
 	nodeID          = flag.String("nodeid", "", "node id")
 	volumeMounter   = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
+	mountCacheDir   = flag.String("mountcachedir", "", "mount info cache save dir")
 )
 
 func init() {
@@ -56,7 +57,7 @@ func main() {
 	}
 
 	driver := cephfs.NewDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, cp)
+	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, cp)
 
 	os.Exit(0)
 }

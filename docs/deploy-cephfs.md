@@ -34,6 +34,7 @@ Option              | Default value         | Description
 `--nodeid`          | _empty_               | This node's ID
 `--volumemounter`   | _empty_               | default volume mounter. Available options are `kernel` and `fuse`. This is the mount method used if volume parameters don't specify otherwise. If left unspecified, the driver will first probe for `ceph-fuse` in system's path and will choose Ceph kernel client if probing failed.
 `--metadatastorage` | _empty_               | Whether metadata should be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
+`--mountcachedir` | _empty_               | volume mount cache info save dir. If left unspecified, the dirver will not record mount info, or it will save mount info and when driver restart it will remount volume it cached.
 
 **Available environmental variables:**
 
