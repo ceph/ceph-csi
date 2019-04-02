@@ -58,6 +58,7 @@ spec:
               mountPath: {{ .Values.socketDir }}
           resources:
 {{ toYaml .Values.snapshotter.resources | indent 12 }}
+        {{ if .Values.attacher.enabled }}
         - name: csi-attacher
           image: "{{ .Values.attacher.image.repository }}:{{ .Values.attacher.image.tag }}"
           args:
@@ -70,6 +71,7 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: {{ .Values.socketDir }}
+        {{ end }}
         - name: csi-rbdplugin
           securityContext:
             privileged: true

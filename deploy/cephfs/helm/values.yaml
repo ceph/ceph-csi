@@ -20,7 +20,7 @@ volumeDevicesDir: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices
 driverName: cephfs.csi.ceph.com
 attacher:
   name: attacher
-
+  enabled: true
   replicaCount: 1
 
   image:

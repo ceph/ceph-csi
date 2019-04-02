@@ -41,6 +41,7 @@ spec:
               mountPath: {{ .Values.socketDir }}
           resources:
 {{ toYaml .Values.provisioner.resources | indent 12 }}
+        {{ if .Values.attacher.enabled }}
         - name: csi-attacher
           image: "{{ .Values.attacher.image.repository }}:{{ .Values.attacher.image.tag }}"
           args:
@@ -53,6 +54,7 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: {{ .Values.socketDir }}
+        {{ end }}
         - name: csi-cephfsplugin
           securityContext:
             privileged: true
