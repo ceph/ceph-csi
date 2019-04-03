@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/util/keymutex"
+	"k8s.io/utils/keymutex"
 )
 
 const (

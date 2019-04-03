@@ -30,8 +30,8 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"k8s.io/kubernetes/pkg/util/keymutex"
 	"k8s.io/kubernetes/pkg/util/mount"
+	"k8s.io/utils/keymutex"
 )
 
 type volumeID string
