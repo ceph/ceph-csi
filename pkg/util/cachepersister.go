@@ -19,15 +19,24 @@ package util
 import (
 	"errors"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 const (
+	// PluginFolder defines location of plugins
 	PluginFolder = "/var/lib/kubelet/plugins"
 )
 
+// ForAllFunc is a unary predicate for visiting all cache entries
+// matching the `pattern' in CachePersister's ForAll function.
 type ForAllFunc func(identifier string) error
 
+// CacheEntryNotFound is an error type for "Not Found" cache errors
+type CacheEntryNotFound struct {
+	error
+}
+
+// CachePersister interface implemented for store
 type CachePersister interface {
 	Create(identifier string, data interface{}) error
 	Get(identifier string, data interface{}) error
@@ -35,17 +44,19 @@ type CachePersister interface {
 	Delete(identifier string) error
 }
 
-func NewCachePersister(metadataStore string, driverName string) (CachePersister, error) {
+// NewCachePersister returns CachePersister based on store
+func NewCachePersister(metadataStore, driverName string) (CachePersister, error) {
 	if metadataStore == "k8s_configmap" {
-		glog.Infof("cache-perister: using kubernetes configmap as metadata cache persister")
+		klog.Infof("cache-perister: using kubernetes configmap as metadata cache persister")
 		k8scm := &K8sCMCache{}
 		k8scm.Client = NewK8sClient()
 		k8scm.Namespace = GetK8sNamespace()
 		return k8scm, nil
 	} else if metadataStore == "node" {
-		glog.Infof("cache-persister: using node as metadata cache persister")
+		klog.Infof("cache-persister: using node as metadata cache persister")
 		nc := &NodeCache{}
 		nc.BasePath = PluginFolder + "/" + driverName
+		nc.CacheDir = "controller"
 		return nc, nil
 	}
 	return nil, errors.New("cache-persister: couldn't parse metadatastorage flag")

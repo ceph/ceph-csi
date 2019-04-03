@@ -1,24 +1,55 @@
+---
 # need for docker build
 sudo: true
+
+addons:
+  apt:
+    packages:
+      - realpath
+      - ruby
 
 language: go
 branches:
   only:
+    - csi-v0.3
     - master
+    - csi-v1.0  # remove this once csi-v1.0 becomes master
 
-go: 1.9.x
+go: 1.11.x
 
-before_script:
-  - GO_FILES=$(find . -iname '*.go' -type f | grep -v /vendor/)
-  - go get -u golang.org/x/lint/golint #go get github.com/golang/lint/golint
+env:
+  global:
+    - GOLANGCI_VERSION="v1.15.0"
+    - TEST_COVERAGE=stdout
+    - GO_METALINTER_THREADS=1
+    - GO_COVER_DIR=_output
 
-script:
-  - test -z $(gofmt -s -l $GO_FILES)
-  - go vet -v $(go list ./... | grep -v /vendor/)
-  - make rbdplugin
-  - make cephfsplugin
+jobs:
+  include:
+    - name: Linter
+      install:
+        - gem install mdl
+        - pip install --user --upgrade pip
+        - pip install --user yamllint
+        # install golangci-lint
+        - curl -sf
+          "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh"
+          | bash -s -- -b $GOPATH/bin "${GOLANGCI_VERSION}"
+      script:
+        - scripts/lint-text.sh --require-all
+        - scripts/lint-go.sh
+        - scripts/test-go.sh
+
+    - name: rbdplugin
+      script:
+        - make rbdplugin
+
+    - name: cephfsplugin
+      script:
+        - make cephfsplugin
 
 deploy:
   - provider: script
-    script:
-      - ./deploy.sh
+    on:  # yamllint disable-line rule:truthy
+      all_branches: true
+    script: ./deploy.sh

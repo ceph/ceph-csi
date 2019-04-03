@@ -1,3 +1,4 @@
+---
 rbac:
   create: true
 
@@ -14,6 +15,9 @@ serviceAccounts:
 
 socketDir: /var/lib/kubelet/plugins/rbd.csi.ceph.com
 socketFile: csi.sock
+registrationDir: /var/lib/kubelet/plugins_registry
+volumeDevicesDir: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices
+driverName: rbd.csi.ceph.com
 
 attacher:
   name: attacher
@@ -22,7 +26,7 @@ attacher:
 
   image:
     repository: quay.io/k8scsi/csi-attacher
-    tag: v0.3.0
+    tag: v1.0.1
     pullPolicy: IfNotPresent
 
   resources: {}
@@ -38,18 +42,18 @@ nodeplugin:
 
   registrar:
     image:
-      repository: quay.io/k8scsi/driver-registrar
-      tag: v0.3.0
+      repository: quay.io/k8scsi/csi-node-driver-registrar
+      tag: v1.0.2
       pullPolicy: IfNotPresent
-    
+
     resources: {}
 
   plugin:
     image:
       repository: quay.io/cephcsi/rbdplugin
-      tag: v0.3.0
+      tag: v1.0.0
       pullPolicy: IfNotPresent
-    
+
     resources: {}
 
   nodeSelector: {}
@@ -65,7 +69,7 @@ provisioner:
 
   image:
     repository: quay.io/k8scsi/csi-provisioner
-    tag: v0.3.0
+    tag: v1.0.1
     pullPolicy: IfNotPresent
 
   resources: {}
@@ -75,3 +79,11 @@ provisioner:
   tolerations: []
 
   affinity: {}
+
+snapshotter:
+  image:
+    repository: quay.io/k8scsi/csi-snapshotter
+    tag: v1.0.1
+    pullPolicy: IfNotPresent
+
+  resources: {}

@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+
+	"k8s.io/klog"
 )
 
 const (
@@ -28,113 +30,127 @@ const (
 	namespacePrefix = "ns-"
 )
 
-var (
-	cephRootPrefix = PluginFolder + "/controller/volumes/root-"
-)
-
-func getCephRootPathLocal(volId volumeID) string {
-	return cephRootPrefix + string(volId)
+func getCephRootPathLocal(volID volumeID) string {
+	return fmt.Sprintf("%s/controller/volumes/root-%s", PluginFolder, string(volID))
 }
 
-func getCephRootVolumePathLocal(volId volumeID) string {
-	return path.Join(getCephRootPathLocal(volId), cephVolumesRoot, string(volId))
+func getCephRootVolumePathLocal(volID volumeID) string {
+	return path.Join(getCephRootPathLocal(volID), cephVolumesRoot, string(volID))
 }
 
-func getVolumeRootPathCeph(volId volumeID) string {
-	return path.Join("/", cephVolumesRoot, string(volId))
+func getVolumeRootPathCeph(volID volumeID) string {
+	return path.Join("/", cephVolumesRoot, string(volID))
 }
 
-func getVolumeNamespace(volId volumeID) string {
-	return namespacePrefix + string(volId)
+func getVolumeNamespace(volID volumeID) string {
+	return namespacePrefix + string(volID)
 }
 
 func setVolumeAttribute(root, attrName, attrValue string) error {
-	return execCommandAndValidate("setfattr", "-n", attrName, "-v", attrValue, root)
+	return execCommandErr("setfattr", "-n", attrName, "-v", attrValue, root)
 }
 
-func createVolume(volOptions *volumeOptions, adminCr *credentials, volId volumeID, bytesQuota int64) error {
-	cephRoot := getCephRootPathLocal(volId)
-
-	if err := createMountPoint(cephRoot); err != nil {
+func createVolume(volOptions *volumeOptions, adminCr *credentials, volID volumeID, bytesQuota int64) error {
+	if err := mountCephRoot(volID, volOptions, adminCr); err != nil {
 		return err
 	}
+	defer unmountCephRoot(volID)
 
-	// RootPath is not set for a dynamically provisioned volume
-	// Access to cephfs's / is required
-	volOptions.RootPath = "/"
+	var (
+		volRoot         = getCephRootVolumePathLocal(volID)
+		volRootCreating = volRoot + "-creating"
+	)
 
-	m, err := newMounter(volOptions)
-	if err != nil {
-		return fmt.Errorf("failed to create mounter: %v", err)
+	if pathExists(volRoot) {
+		klog.V(4).Infof("cephfs: volume %s already exists, skipping creation", volID)
+		return nil
 	}
 
-	if err = m.mount(cephRoot, adminCr, volOptions, volId); err != nil {
-		return fmt.Errorf("error mounting ceph root: %v", err)
-	}
-
-	defer func() {
-		unmountVolume(cephRoot)
-		os.Remove(cephRoot)
-	}()
-
-	volOptions.RootPath = getVolumeRootPathCeph(volId)
-	localVolRoot := getCephRootVolumePathLocal(volId)
-
-	if err := createMountPoint(localVolRoot); err != nil {
+	if err := createMountPoint(volRootCreating); err != nil {
 		return err
 	}
 
 	if bytesQuota > 0 {
-		if err := setVolumeAttribute(localVolRoot, "ceph.quota.max_bytes", fmt.Sprintf("%d", bytesQuota)); err != nil {
+		if err := setVolumeAttribute(volRootCreating, "ceph.quota.max_bytes", fmt.Sprintf("%d", bytesQuota)); err != nil {
 			return err
 		}
 	}
 
-	if err := setVolumeAttribute(localVolRoot, "ceph.dir.layout.pool", volOptions.Pool); err != nil {
+	if err := setVolumeAttribute(volRootCreating, "ceph.dir.layout.pool", volOptions.Pool); err != nil {
 		return fmt.Errorf("%v\ncephfs: Does pool '%s' exist?", err, volOptions.Pool)
 	}
 
-	err = setVolumeAttribute(localVolRoot, "ceph.dir.layout.pool_namespace", getVolumeNamespace(volId))
+	if err := setVolumeAttribute(volRootCreating, "ceph.dir.layout.pool_namespace", getVolumeNamespace(volID)); err != nil {
+		return err
+	}
 
-	return err
+	if err := os.Rename(volRootCreating, volRoot); err != nil {
+		return fmt.Errorf("couldn't mark volume %s as created: %v", volID, err)
+	}
+
+	return nil
 }
 
-func purgeVolume(volId volumeID, adminCr *credentials, volOptions *volumeOptions) error {
+func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions) error {
+	if err := mountCephRoot(volID, volOptions, adminCr); err != nil {
+		return err
+	}
+	defer unmountCephRoot(volID)
+
 	var (
-		cephRoot        = getCephRootPathLocal(volId)
-		volRoot         = getCephRootVolumePathLocal(volId)
+		volRoot         = getCephRootVolumePathLocal(volID)
 		volRootDeleting = volRoot + "-deleting"
 	)
 
-	if err := createMountPoint(cephRoot); err != nil {
-		return err
+	if pathExists(volRoot) {
+		if err := os.Rename(volRoot, volRootDeleting); err != nil {
+			return fmt.Errorf("couldn't mark volume %s for deletion: %v", volID, err)
+		}
+	} else {
+		if !pathExists(volRootDeleting) {
+			klog.V(4).Infof("cephfs: volume %s not found, assuming it to be already deleted", volID)
+			return nil
+		}
 	}
+
+	if err := os.RemoveAll(volRootDeleting); err != nil {
+		return fmt.Errorf("failed to delete volume %s: %v", volID, err)
+	}
+
+	return nil
+}
+
+func mountCephRoot(volID volumeID, volOptions *volumeOptions, adminCr *credentials) error {
+	cephRoot := getCephRootPathLocal(volID)
 
 	// Root path is not set for dynamically provisioned volumes
 	// Access to cephfs's / is required
 	volOptions.RootPath = "/"
 
+	if err := createMountPoint(cephRoot); err != nil {
+		return err
+	}
+
 	m, err := newMounter(volOptions)
 	if err != nil {
 		return fmt.Errorf("failed to create mounter: %v", err)
 	}
 
-	if err = m.mount(cephRoot, adminCr, volOptions, volId); err != nil {
+	if err = m.mount(cephRoot, adminCr, volOptions); err != nil {
 		return fmt.Errorf("error mounting ceph root: %v", err)
 	}
 
-	defer func() {
-		unmountVolume(volRoot)
-		os.Remove(volRoot)
-	}()
-
-	if err := os.Rename(volRoot, volRootDeleting); err != nil {
-		return fmt.Errorf("coudln't mark volume %s for deletion: %v", volId, err)
-	}
-
-	if err := os.RemoveAll(volRootDeleting); err != nil {
-		return fmt.Errorf("failed to delete volume %s: %v", volId, err)
-	}
-
 	return nil
+}
+
+func unmountCephRoot(volID volumeID) {
+	cephRoot := getCephRootPathLocal(volID)
+
+	if err := unmountVolume(cephRoot); err != nil {
+		klog.Errorf("failed to unmount %s with error %s", cephRoot, err)
+	} else {
+		if err := os.Remove(cephRoot); err != nil {
+			klog.Errorf("failed to remove %s with error %s", cephRoot, err)
+		}
+	}
 }

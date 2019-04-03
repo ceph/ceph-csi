@@ -17,10 +17,7 @@ limitations under the License.
 package cephfs
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"os"
 )
 
 const (
@@ -47,76 +44,65 @@ func (ent *cephEntity) toCredentials() *credentials {
 	}
 }
 
-func getCephUserName(volId volumeID) string {
-	return cephUserPrefix + string(volId)
+func getCephUserName(volID volumeID) string {
+	return cephUserPrefix + string(volID)
 }
 
-func getCephUser(adminCr *credentials, volId volumeID) (*cephEntity, error) {
-	entityName := cephEntityClientPrefix + getCephUserName(volId)
-
+func getSingleCephEntity(args ...string) (*cephEntity, error) {
 	var ents []cephEntity
-	args := [...]string{
-		"auth", "-f", "json", "-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + adminCr.id,
-		"get", entityName,
-	}
-
-	out, err := execCommand("ceph", args[:]...)
-	if err != nil {
-		return nil, fmt.Errorf("cephfs: ceph failed with following error: %s\ncephfs: ceph output: %s", err, out)
-	}
-
-	// Workaround for output from `ceph auth get`
-	// Contains non-json data: "exported keyring for ENTITY\n\n"
-	offset := bytes.Index(out, []byte("[{"))
-
-	if json.NewDecoder(bytes.NewReader(out[offset:])).Decode(&ents); err != nil {
-		return nil, fmt.Errorf("failed to decode json: %v", err)
+	if err := execCommandJSON(&ents, "ceph", args...); err != nil {
+		return nil, err
 	}
 
 	if len(ents) != 1 {
-		return nil, fmt.Errorf("got unexpected number of entities for %s: expected 1, got %d", entityName, len(ents))
+		return nil, fmt.Errorf("got unexpected number of entities: expected 1, got %d", len(ents))
 	}
 
 	return &ents[0], nil
 }
 
-func createCephUser(volOptions *volumeOptions, adminCr *credentials, volId volumeID) (*cephEntity, error) {
-	caps := cephEntityCaps{
-		Mds: fmt.Sprintf("allow rw path=%s", getVolumeRootPathCeph(volId)),
-		Mon: "allow r",
-		Osd: fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volId)),
-	}
-
-	var ents []cephEntity
-	args := [...]string{
-		"auth", "-f", "json", "-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + adminCr.id,
-		"get-or-create", cephEntityClientPrefix + getCephUserName(volId),
-		"mds", caps.Mds,
-		"mon", caps.Mon,
-		"osd", caps.Osd,
-	}
-
-	if err := execCommandJSON(&ents, "ceph", args[:]...); err != nil {
-		return nil, fmt.Errorf("error creating ceph user: %v", err)
-	}
-
-	return &ents[0], nil
+func genUserIDs(adminCr *credentials, volID volumeID) (adminID, userID string) {
+	return cephEntityClientPrefix + adminCr.id, cephEntityClientPrefix + getCephUserName(volID)
 }
 
-func deleteCephUser(adminCr *credentials, volId volumeID) error {
-	userId := getCephUserName(volId)
+func getCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
+	adminID, userID := genUserIDs(adminCr, volID)
 
-	args := [...]string{
-		"-c", getCephConfPath(volId), "-n", cephEntityClientPrefix + adminCr.id,
-		"auth", "rm", cephEntityClientPrefix + userId,
-	}
+	return getSingleCephEntity(
+		"-m", volOptions.Monitors,
+		"-n", adminID,
+		"--key="+adminCr.key,
+		"-c", cephConfigPath,
+		"-f", "json",
+		"auth", "get", userID,
+	)
+}
 
-	if err := execCommandAndValidate("ceph", args[:]...); err != nil {
-		return err
-	}
+func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
+	adminID, userID := genUserIDs(adminCr, volID)
 
-	os.Remove(getCephKeyringPath(volId, userId))
-	os.Remove(getCephSecretPath(volId, userId))
+	return getSingleCephEntity(
+		"-m", volOptions.Monitors,
+		"-n", adminID,
+		"--key="+adminCr.key,
+		"-c", cephConfigPath,
+		"-f", "json",
+		"auth", "get-or-create", userID,
+		// User capabilities
+		"mds", fmt.Sprintf("allow rw path=%s", getVolumeRootPathCeph(volID)),
+		"mon", "allow r",
+		"osd", fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volID)),
+	)
+}
 
-	return nil
+func deleteCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) error {
+	adminID, userID := genUserIDs(adminCr, volID)
+
+	return execCommandErr("ceph",
+		"-m", volOptions.Monitors,
+		"-n", adminID,
+		"--key="+adminCr.key,
+		"-c", cephConfigPath,
+		"auth", "rm", userID,
+	)
 }

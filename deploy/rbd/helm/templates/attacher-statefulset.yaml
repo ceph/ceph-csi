@@ -11,6 +11,11 @@ metadata:
 spec:
   serviceName: {{ include "ceph-csi-rbd.attacher.fullname" . }}
   replicas: {{ .Values.attacher.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "ceph-csi-rbd.name" . }}
+      component: {{ .Values.attacher.name }}
+      release: {{ .Release.Name }}
   template:
     metadata:
       labels:

@@ -34,21 +34,25 @@ spec:
           image: "{{ .Values.nodeplugin.registrar.image.repository }}:{{ .Values.nodeplugin.registrar.image.tag }}"
           args:
             - "--v=5"
-            - "--csi-address=$(ADDRESS)"
-            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+            - "--csi-address=/csi/{{ .Values.socketFile }}"
+            - "--kubelet-registration-path={{ .Values.socketDir }}/{{ .Values.socketFile }}"
+          lifecycle:
+            preStop:
+              exec:
+                  command: [
+                    "/bin/sh", "-c",
+                    'rm -rf /registration/{{ .Values.driverName }} 
+                  /registration/{{ .Values.driverName }}-reg.sock'
+                  ]
           env:
-            - name: ADDRESS
-              value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
-            - name: DRIVER_REG_SOCK_PATH
-              value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           imagePullPolicy: {{ .Values.nodeplugin.registrar.image.imagePullPolicy }}
           volumeMounts:
-            - name: socket-dir
-              mountPath: {{ .Values.socketDir }}
+            - name: plugin-dir
+              mountPath: /csi
             - name: registration-dir
               mountPath: /registration
           resources:
@@ -64,11 +68,14 @@ spec:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
-            - "--drivername=rbd.csi.ceph.com"
-            - "--containerized=true"            
+            - "--drivername=$(DRIVER_NAME)"
+            - "--containerized=true"
+            - "--metadatastorage=k8s_configmap"
           env:
             - name: HOST_ROOTFS
               value: "/rootfs"
+            - name: DRIVER_NAME
+              value: {{ .Values.driverName }}
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -81,6 +88,9 @@ spec:
               mountPath: {{ .Values.socketDir }}
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
+              mountPropagation: "Bidirectional"
+            - name: plugin-mount-dir
+              mountPath: {{ .Values.volumeDevicesDir }}
               mountPropagation: "Bidirectional"
             - mountPath: /dev
               name: host-dev
@@ -98,18 +108,18 @@ spec:
           hostPath:
             path: {{ .Values.socketDir }}
             type: DirectoryOrCreate
+        - name: plugin-mount-dir
+          hostPath:
+            path: {{ .Values.volumeDevicesDir }}
+            type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/
+            path: {{ .Values.registrationDir }}
             type: Directory
         - name: pods-mount-dir
           hostPath:
             path: /var/lib/kubelet/pods
             type: Directory
-        - name: socket-dir
-          hostPath:
-            path: {{ .Values.socketDir }}
-            type: DirectoryOrCreate
         - name: host-dev
           hostPath:
             path: /dev

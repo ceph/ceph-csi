@@ -25,83 +25,122 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
+	"k8s.io/klog"
 )
 
+// NodeCache to store metadata
 type NodeCache struct {
 	BasePath string
+	CacheDir string
 }
 
-var cacheDir = "controller"
+var errDec = errors.New("file not found")
 
+// EnsureCacheDirectory creates cache directory if not present
 func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 	fullPath := path.Join(nc.BasePath, cacheDir)
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		// #nosec
 		if err := os.Mkdir(fullPath, 0755); err != nil {
-			return errors.Wrapf(err, "node-cache: failed to create %s folder with error: %v", fullPath, err)
+			return errors.Wrapf(err, "node-cache: failed to create %s folder", fullPath)
 		}
 	}
 	return nil
 }
 
+//ForAll list the metadata in Nodecache and filters outs based on the pattern
 func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) error {
-	err := nc.EnsureCacheDirectory(cacheDir)
+	err := nc.EnsureCacheDirectory(nc.CacheDir)
 	if err != nil {
 		return errors.Wrap(err, "node-cache: couldn't ensure cache directory exists")
 	}
-	files, err := ioutil.ReadDir(path.Join(nc.BasePath, cacheDir))
+	files, err := ioutil.ReadDir(path.Join(nc.BasePath, nc.CacheDir))
 	if err != nil {
 		return errors.Wrapf(err, "node-cache: failed to read %s folder", nc.BasePath)
 	}
-
+	path := path.Join(nc.BasePath, nc.CacheDir)
 	for _, file := range files {
-		match, err := regexp.MatchString(pattern, file.Name())
-		if err != nil || !match {
+		err = decodeObj(path, pattern, file, destObj)
+		if err == errDec {
 			continue
+		} else if err == nil {
+			if err = f(strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))); err != nil {
+				return err
+			}
 		}
-		if !strings.HasSuffix(file.Name(), ".json") {
-			continue
-		}
-		fp, err := os.Open(path.Join(nc.BasePath, cacheDir, file.Name()))
-		if err != nil {
-			glog.Infof("node-cache: open file: %s err %v", file.Name(), err)
-			continue
-		}
-		decoder := json.NewDecoder(fp)
-		if err = decoder.Decode(destObj); err != nil {
-			fp.Close()
-			return errors.Wrapf(err, "node-cache: couldn't decode file %s", file.Name())
-		}
-		if err := f(strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))); err != nil {
-			return err
-		}
+		return err
+
 	}
 	return nil
 }
 
+func decodeObj(filepath, pattern string, file os.FileInfo, destObj interface{}) error {
+	match, err := regexp.MatchString(pattern, file.Name())
+	if err != nil || !match {
+		return errDec
+	}
+	if !strings.HasSuffix(file.Name(), ".json") {
+		return errDec
+	}
+	// #nosec
+	fp, err := os.Open(path.Join(filepath, file.Name()))
+	if err != nil {
+		klog.Infof("node-cache: open file: %s err %v", file.Name(), err)
+		return errDec
+	}
+	decoder := json.NewDecoder(fp)
+	if err = decoder.Decode(destObj); err != nil {
+		if err = fp.Close(); err != nil {
+			return errors.Wrapf(err, "failed to close file %s", file.Name())
+
+		}
+		return errors.Wrapf(err, "node-cache: couldn't decode file %s", file.Name())
+	}
+	return nil
+
+}
+
+// Create creates the metadata file in cache directory with identifier name
 func (nc *NodeCache) Create(identifier string, data interface{}) error {
-	file := path.Join(nc.BasePath, cacheDir, identifier+".json")
+	file := path.Join(nc.BasePath, nc.CacheDir, identifier+".json")
 	fp, err := os.Create(file)
 	if err != nil {
 		return errors.Wrapf(err, "node-cache: failed to create metadata storage file %s\n", file)
 	}
-	defer fp.Close()
+
+	defer func() {
+		if err = fp.Close(); err != nil {
+			klog.Warningf("failed to close file:%s %v", fp.Name(), err)
+		}
+	}()
+
 	encoder := json.NewEncoder(fp)
 	if err = encoder.Encode(data); err != nil {
 		return errors.Wrapf(err, "node-cache: failed to encode metadata for file: %s\n", file)
 	}
-	glog.V(4).Infof("node-cache: successfully saved metadata into file: %s\n", file)
+	klog.V(4).Infof("node-cache: successfully saved metadata into file: %s\n", file)
 	return nil
 }
 
+// Get retrieves the metadata from cache directory with identifier name
 func (nc *NodeCache) Get(identifier string, data interface{}) error {
-	file := path.Join(nc.BasePath, cacheDir, identifier+".json")
+	file := path.Join(nc.BasePath, nc.CacheDir, identifier+".json")
+	// #nosec
 	fp, err := os.Open(file)
 	if err != nil {
+		if os.IsNotExist(errors.Cause(err)) {
+			return &CacheEntryNotFound{err}
+		}
+
 		return errors.Wrapf(err, "node-cache: open error for %s", file)
 	}
-	defer fp.Close()
+
+	defer func() {
+		if err = fp.Close(); err != nil {
+			klog.Warningf("failed to close file:%s %v", fp.Name(), err)
+		}
+	}()
 
 	decoder := json.NewDecoder(fp)
 	if err = decoder.Decode(data); err != nil {
@@ -111,14 +150,19 @@ func (nc *NodeCache) Get(identifier string, data interface{}) error {
 	return nil
 }
 
+// Delete deletes the metadata file from cache directory with identifier name
 func (nc *NodeCache) Delete(identifier string) error {
-	file := path.Join(nc.BasePath, cacheDir, identifier+".json")
+	file := path.Join(nc.BasePath, nc.CacheDir, identifier+".json")
 	err := os.Remove(file)
 	if err != nil {
-		if err != os.ErrNotExist {
-			return errors.Wrapf(err, "node-cache: error removing file %s", file)
+		if err == os.ErrNotExist {
+			klog.V(4).Infof("node-cache: cannot delete missing metadata storage file %s, assuming it's already deleted", file)
+			return nil
 		}
+
+		return errors.Wrapf(err, "node-cache: error removing file %s", file)
+
 	}
-	glog.V(4).Infof("node-cache: successfully deleted metadata storage file at: %+v\n", file)
+	klog.V(4).Infof("node-cache: successfully deleted metadata storage file at: %+v\n", file)
 	return nil
 }

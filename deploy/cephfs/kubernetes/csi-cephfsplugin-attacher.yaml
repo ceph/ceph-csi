@@ -1,3 +1,4 @@
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -24,10 +25,10 @@ spec:
       labels:
         app: csi-cephfsplugin-attacher
     spec:
-      serviceAccount: csi-attacher
+      serviceAccount: cephfs-csi-attacher
       containers:
         - name: csi-cephfsplugin-attacher
-          image: quay.io/k8scsi/csi-attacher:v0.3.0
+          image: quay.io/k8scsi/csi-attacher:v1.0.1
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"

@@ -19,10 +19,11 @@ package cephfs
 import "fmt"
 
 const (
-	credUserId   = "userID"
+	credUserID   = "userID"
 	credUserKey  = "userKey"
-	credAdminId  = "adminID"
+	credAdminID  = "adminID"
 	credAdminKey = "adminKey"
+	credMonitors = "monitors"
 )
 
 type credentials struct {
@@ -48,9 +49,16 @@ func getCredentials(idField, keyField string, secrets map[string]string) (*crede
 }
 
 func getUserCredentials(secrets map[string]string) (*credentials, error) {
-	return getCredentials(credUserId, credUserKey, secrets)
+	return getCredentials(credUserID, credUserKey, secrets)
 }
 
 func getAdminCredentials(secrets map[string]string) (*credentials, error) {
-	return getCredentials(credAdminId, credAdminKey, secrets)
+	return getCredentials(credAdminID, credAdminKey, secrets)
+}
+
+func getMonValFromSecret(secrets map[string]string) (string, error) {
+	if mons, ok := secrets[credMonitors]; ok {
+		return mons, nil
+	}
+	return "", fmt.Errorf("missing %q", credMonitors)
 }

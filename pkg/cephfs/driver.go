@@ -17,76 +17,78 @@ limitations under the License.
 package cephfs
 
 import (
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
-	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
-
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 const (
-	// Version of the cephfs csi driver
-	Version = "0.3.0"
+
+	// version of ceph driver
+	version = "1.0.0"
 )
 
-var (
-	// PluginFolder is the kubelet plugin directory for cephfs plugin
-	PluginFolder = "/var/lib/kubelet/plugins/"
-)
+// PluginFolder defines the location of ceph plugin
+var PluginFolder = "/var/lib/kubelet/plugins/"
 
-type cephfsDriver struct {
-	driver *csicommon.CSIDriver
+// Driver contains the default identity,node and controller struct
+type Driver struct {
+	cd *csicommon.CSIDriver
 
-	is *identityServer
-	ns *nodeServer
-	cs *controllerServer
-
-	caps   []*csi.VolumeCapability_AccessMode
-	cscaps []*csi.ControllerServiceCapability
+	is *IdentityServer
+	ns *NodeServer
+	cs *ControllerServer
 }
 
 var (
-	driver               *cephfsDriver
+	// DefaultVolumeMounter for mounting volumes
 	DefaultVolumeMounter string
 )
 
-// NewCephFSDriver provides a remote csi cephfs driver object.
-func NewCephFSDriver() *cephfsDriver {
-	return &cephfsDriver{}
+// NewDriver returns new ceph driver
+func NewDriver() *Driver {
+	return &Driver{}
 }
 
-func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
-	return &identityServer{
+// NewIdentityServer initialize a identity server for ceph CSI driver
+func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
+	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *controllerServer {
-	return &controllerServer{
+// NewControllerServer initialize a controller server for ceph CSI driver
+func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
+	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		MetadataStore:           cachePersister,
 	}
 }
 
-func NewNodeServer(d *csicommon.CSIDriver) *nodeServer {
-	return &nodeServer{
+// NewNodeServer initialize a node server for ceph CSI driver.
+func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
+	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
 	}
 }
 
-func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string, cachePersister util.CachePersister) {
-	glog.Infof("Driver: %v version: %v", driverName, Version)
+// Run start a non-blocking grpc controller,node and identityserver for
+// ceph CSI driver which can serve multiple parallel requests
+func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir string, cachePersister util.CachePersister) {
+	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Configuration
 
 	if err := loadAvailableMounters(); err != nil {
-		glog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
+		klog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
 	}
 
 	if volumeMounter != "" {
 		if err := validateMounter(volumeMounter); err != nil {
-			glog.Fatalln(err)
+			klog.Fatalln(err)
 		} else {
 			DefaultVolumeMounter = volumeMounter
 		}
@@ -97,29 +99,40 @@ func (fs *cephfsDriver) Run(driverName, nodeId, endpoint, volumeMounter string, 
 		DefaultVolumeMounter = availableMounters[0]
 	}
 
-	glog.Infof("cephfs: setting default volume mounter to %s", DefaultVolumeMounter)
+	klog.Infof("cephfs: setting default volume mounter to %s", DefaultVolumeMounter)
 
-	// Initialize default library driver
-
-	fs.driver = csicommon.NewCSIDriver(driverName, Version, nodeId)
-	if fs.driver == nil {
-		glog.Fatalln("Failed to initialize CSI driver")
+	if err := writeCephConfig(); err != nil {
+		klog.Fatalf("failed to write ceph configuration file: %v", err)
 	}
 
-	fs.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+	initVolumeMountCache(driverName, mountCacheDir, cachePersister)
+	if mountCacheDir != "" {
+		if err := remountCachedVolumes(); err != nil {
+			klog.Warningf("failed to remount cached volumes: %v", err)
+			//ignore remount fail
+		}
+	}
+	// Initialize default library driver
+
+	fs.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
+	if fs.cd == nil {
+		klog.Fatalln("failed to initialize CSI driver")
+	}
+
+	fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 	})
 
-	fs.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
+	fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
 		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 	})
 
 	// Create gRPC servers
 
-	fs.is = NewIdentityServer(fs.driver)
-	fs.ns = NewNodeServer(fs.driver)
+	fs.is = NewIdentityServer(fs.cd)
+	fs.ns = NewNodeServer(fs.cd)
 
-	fs.cs = NewControllerServer(fs.driver, cachePersister)
+	fs.cs = NewControllerServer(fs.cd, cachePersister)
 
 	server := csicommon.NewNonBlockingGRPCServer()
 	server.Start(endpoint, fs.is, fs.cs, fs.ns)

@@ -17,61 +17,62 @@ limitations under the License.
 package rbd
 
 import (
-	"github.com/golang/glog"
-
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
-	"github.com/container-storage-interface/spec/lib/go/csi/v0"
-	csicommon "github.com/kubernetes-csi/drivers/pkg/csi-common"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/nsenter"
 	"k8s.io/utils/exec"
 )
 
+// PluginFolder defines the location of rbdplugin
 const (
-	rbdDefaultAdminId = "admin"
-	rbdDefaultUserId  = rbdDefaultAdminId
+	rbdDefaultAdminID = "admin"
+	rbdDefaultUserID  = rbdDefaultAdminID
 )
 
-var (
-	// PluginFolder defines the location of rbdplugin
-	PluginFolder = "/var/lib/kubelet/plugins/"
-)
+// PluginFolder defines the location of ceph plugin
+var PluginFolder = "/var/lib/kubelet/plugins/"
 
-type rbd struct {
-	driver *csicommon.CSIDriver
+// Driver contains the default identity,node and controller struct
+type Driver struct {
+	cd *csicommon.CSIDriver
 
-	ids *identityServer
-	ns  *nodeServer
-	cs  *controllerServer
-
-	cap   []*csi.VolumeCapability_AccessMode
-	cscap []*csi.ControllerServiceCapability
+	ids *IdentityServer
+	ns  *NodeServer
+	cs  *ControllerServer
 }
 
 var (
-	rbdDriver *rbd
-	version   = "0.3.0"
+	version = "1.0.0"
+	// confStore is the global config store
+	confStore *util.ConfigStore
 )
 
-func GetRBDDriver() *rbd {
-	return &rbd{}
+// NewDriver returns new rbd driver
+func NewDriver() *Driver {
+	return &Driver{}
 }
 
-func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
-	return &identityServer{
+// NewIdentityServer initialize a identity server for rbd CSI driver
+func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
+	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
-func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *controllerServer {
-	return &controllerServer{
+// NewControllerServer initialize a controller server for rbd CSI driver
+func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
+	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		MetadataStore:           cachePersister,
 	}
 }
 
-func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, error) {
+// NewNodeServer initialize a node server for rbd CSI driver.
+func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, error) {
 	mounter := mount.New("")
 	if containerized {
 		ne, err := nsenter.NewNsenter(nsenter.DefaultHostRootFsPath, exec.New())
@@ -80,40 +81,60 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*nodeServer, err
 		}
 		mounter = mount.NewNsenterMounter("", ne)
 	}
-	return &nodeServer{
+	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
 		mounter:           mounter,
 	}, nil
 }
 
-func (rbd *rbd) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
+// Run start a non-blocking grpc controller,node and identityserver for
+// rbd CSI driver which can serve multiple parallel requests
+func (r *Driver) Run(driverName, nodeID, endpoint, configRoot string, containerized bool, cachePersister util.CachePersister) {
 	var err error
-	glog.Infof("Driver: %v version: %v", driverName, version)
+	klog.Infof("Driver: %v version: %v", driverName, version)
+
+	// Initialize config store
+	confStore, err = util.NewConfigStore(configRoot)
+	if err != nil {
+		klog.Fatalln("Failed to initialize config store.")
+	}
 
 	// Initialize default library driver
-	rbd.driver = csicommon.NewCSIDriver(driverName, version, nodeID)
-	if rbd.driver == nil {
-		glog.Fatalln("Failed to initialize CSI Driver.")
+	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
+	if r.cd == nil {
+		klog.Fatalln("Failed to initialize CSI Driver.")
 	}
-	rbd.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+	r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+		csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
+		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	})
-	rbd.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
+
+	// We only support the multi-writer option when using block, but it's a supported capability for the plugin in general
+	// In addition, we want to add the remaining modes like MULTI_NODE_READER_ONLY,
+	// MULTI_NODE_SINGLE_WRITER etc, but need to do some verification of RO modes first
+	// will work those as follow up features
+	r.cd.AddVolumeCapabilityAccessModes(
+		[]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
 
 	// Create GRPC servers
-	rbd.ids = NewIdentityServer(rbd.driver)
-	rbd.ns, err = NewNodeServer(rbd.driver, containerized)
+	r.ids = NewIdentityServer(r.cd)
+	r.ns, err = NewNodeServer(r.cd, containerized)
 	if err != nil {
-		glog.Fatalf("failed to start node server, err %v \n", err)
+		klog.Fatalf("failed to start node server, err %v\n", err)
 	}
 
-	rbd.cs = NewControllerServer(rbd.driver, cachePersister)
-	rbd.cs.LoadExDataFromMetadataStore()
+	r.cs = NewControllerServer(r.cd, cachePersister)
+
+	if err = r.cs.LoadExDataFromMetadataStore(); err != nil {
+		klog.Fatalf("failed to load metadata from store, err %v\n", err)
+	}
 
 	s := csicommon.NewNonBlockingGRPCServer()
-	s.Start(endpoint, rbd.ids, rbd.cs, rbd.ns)
+	s.Start(endpoint, r.ids, r.cs, r.ns)
 	s.Wait()
 }

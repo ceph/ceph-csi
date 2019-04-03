@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,13 +16,13 @@ spec:
         app: web-server
     spec:
       containers:
-       - name: web-server
-         image: nginx
-         volumeMounts:
-           - name: mypvc
-             mountPath: /var/lib/www/html
+        - name: web-server
+          image: nginx
+          volumeMounts:
+            - name: mypvc
+              mountPath: /var/lib/www/html
       volumes:
-       - name: mypvc
-         persistentVolumeClaim:
-           claimName: csi-cephfs-pvc
-           readOnly: false
+        - name: mypvc
+          persistentVolumeClaim:
+            claimName: csi-cephfs-pvc
+            readOnly: false
