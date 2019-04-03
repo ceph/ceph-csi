@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/util/keymutex"
+	"k8s.io/utils/keymutex"
 )
 
 // NodeServer struct of ceph CSI driver with supported methods of CSI
