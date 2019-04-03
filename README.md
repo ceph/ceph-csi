@@ -20,6 +20,23 @@ CephFS CSI plugins, see documentation in `docs/`.
 
 For example usage of RBD and CephFS CSI plugins, see examples in `examples/`.
 
+## Support Matrix
+
+Here is the matrix that describes the features supported by the different
+versions of Ceph CSI driver
+
+|              |        Features             | CSI driver<br>Version |Kubernetes<br>Version |
+|--------------|-----------------------------|-----------------------|----------------------|
+| **CephFS**   | Snapshot                    |         1.0           |   1.13 - 1.14        |
+|              | Clone from VolumeSnapshot   |          -            |   1.13 - 1.14        |
+|              | Clone from VolumeSource     |          -            |   1.13 - 1.14        |
+|              | Resize                      |          -            |   1.14               |
+|              |                             |                       |                      |
+| **RBD**      | Snapshot                    |       0.3, 1.0        |   1.13 - 1.14        |
+|              | Clone from VolumeSnapshot   |       0.3, 1.0        |   1.13 - 1.14        |
+|              | Clone from VolumeSource     |          -            |   1.13 - 1.14        |
+|              | Resize                      |          -            |   1.14               |
+
 ## Troubleshooting
 
 Please submit an issue at: [Issues](https://github.com/ceph/ceph-csi/issues)
