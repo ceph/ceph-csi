@@ -227,7 +227,7 @@ func checkRbdNbdTools() bool {
 func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string]string) (string, error) {
 	var err error
 
-	image := volOptions.VolName
+	image := volOptions.RbdImageName
 	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
 
 	useNBD := false
@@ -271,7 +271,7 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 }
 
 func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (string, error) {
-	image := volOpt.VolName
+	image := volOpt.RbdImageName
 	imagePath := fmt.Sprintf("%s/%s", volOpt.Pool, image)
 
 	mon, err := getMon(volOpt, creds)
@@ -280,7 +280,7 @@ func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (stri
 	}
 
 	klog.V(5).Infof("rbd: map mon %s", mon)
-	key, err := getRBDKey(volOpt.ClusterID, userID, creds)
+	key, err := getKey(volOpt.ClusterID, userID, creds)
 	if err != nil {
 		return "", err
 	}
@@ -306,7 +306,7 @@ func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (stri
 }
 
 func waitForrbdImage(backoff wait.Backoff, volOptions *rbdVolume, userID string, credentials map[string]string) error {
-	image := volOptions.VolName
+	image := volOptions.RbdImageName
 	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
 
 	err := wait.ExponentialBackoff(backoff, func() (bool, error) {

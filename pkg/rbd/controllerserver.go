@@ -63,7 +63,7 @@ func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 	return nil
 }
 
-func (cs *ControllerServer) genRBDVolFromCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
+func (cs *ControllerServer) genVolFromCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
 	isMultiNode := false
@@ -84,7 +84,7 @@ func (cs *ControllerServer) genRBDVolFromCreateRequest(req *csi.CreateVolumeRequ
 	}
 
 	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
-	rbdVol, err := genRBDVolFromVolumeOptions(req.GetParameters(), (isMultiNode && isBlock))
+	rbdVol, err := genVolFromVolumeOptions(req.GetParameters(), (isMultiNode && isBlock))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -97,9 +97,10 @@ func (cs *ControllerServer) genRBDVolFromCreateRequest(req *csi.CreateVolumeRequ
 		volSizeBytes = req.GetCapacityRange().GetRequiredBytes()
 	}
 
-	rbdVol.VolSize = util.RoundUpToMiB(volSizeBytes)
+	// always round up the request size in bytes to the nearest MiB
+	rbdVol.VolSize = util.MiB * util.RoundUpToMiB(volSizeBytes)
 
-	// NOTE: rbdVol does not contain VolID and VolName populated, everything
+	// NOTE: rbdVol does not contain VolID and RbdImageName populated, everything
 	// else is populated post create request parsing
 	return rbdVol, nil
 }
@@ -117,12 +118,12 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
-	rbdVol, err := cs.genRBDVolFromCreateRequest(req)
+	rbdVol, err := cs.genVolFromCreateRequest(req)
 	if err != nil {
 		return nil, err
 	}
 
-	found, err := checkRBDVolExists(rbdVol, req.GetSecrets())
+	found, err := checkVolExists(rbdVol, req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrVolNameConflict); ok {
 			return nil, status.Error(codes.AlreadyExists, err.Error())
@@ -140,27 +141,23 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}, nil
 	}
 
-	err = reserveRBDVol(rbdVol, req.GetSecrets())
+	err = reserveVol(rbdVol, req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer func() {
 		if err != nil {
-			klog.Warningf("creation failed, undoing reservation of volume: %s", req.GetName())
-			errDefer := unreserveRBDVol(rbdVol, req.GetSecrets())
+			errDefer := unreserveVol(rbdVol, req.GetSecrets())
 			if errDefer != nil {
 				klog.Warningf("failed undoing reservation of volume: %s", req.GetName())
 			}
 		}
 	}()
 
-	err = cs.createRBDVol(rbdVol, req, int(rbdVol.VolSize))
+	err = cs.createBackingImage(rbdVol, req, util.RoundUpToMiB(rbdVol.VolSize))
 	if err != nil {
 		return nil, err
 	}
-	// store volume size in  bytes (snapshot and check existing volume needs volume
-	// size in bytes)
-	rbdVol.VolSize = rbdVol.VolSize * util.MiB
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
@@ -171,7 +168,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-func (cs *ControllerServer) createRBDVol(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeMiB int) error {
+func (cs *ControllerServer) createBackingImage(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeMiB int64) error {
 	var err error
 
 	// if VolumeContentSource is not nil, this request is for snapshot
@@ -180,13 +177,13 @@ func (cs *ControllerServer) createRBDVol(rbdVol *rbdVolume, req *csi.CreateVolum
 			return err
 		}
 	} else {
-		err = createRBDImage(rbdVol, volSizeMiB, rbdVol.AdminID, req.GetSecrets())
+		err = createImage(rbdVol, volSizeMiB, rbdVol.AdminID, req.GetSecrets())
 		if err != nil {
 			klog.Warningf("failed to create volume: %v", err)
 			return status.Error(codes.Internal, err.Error())
 		}
 
-		klog.V(4).Infof("create volume %s", rbdVol.VolName)
+		klog.V(4).Infof("created image %s", rbdVol.RbdImageName)
 	}
 
 	return nil
@@ -203,8 +200,8 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	}
 
 	rbdSnap := &rbdSnapshot{}
-	if err := genRBDSnapFromSnapID(rbdSnap, snapshotID, req.GetSecrets()); err != nil {
-		if _, ok := err.(util.ErrSnapNotFound); !ok {
+	if err := genSnapFromSnapID(rbdSnap, snapshotID, req.GetSecrets()); err != nil {
+		if _, ok := err.(ErrSnapNotFound); !ok {
 			return status.Error(codes.Internal, err.Error())
 		}
 		return status.Error(codes.InvalidArgument, "Missing requested Snapshot ID")
@@ -214,7 +211,7 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
-	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
+	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.RbdSnapName)
 	return nil
 }
 
@@ -235,14 +232,14 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}()
 
 	rbdVol := &rbdVolume{}
-	if err := genRBDVolFromVolID(rbdVol, volumeID, req.GetSecrets()); err != nil {
+	if err := genVolFromVolID(rbdVol, volumeID, req.GetSecrets()); err != nil {
 		// If image key is missing, there can be no unreserve as request name is unknown, and also
 		// means there is no image, hence return success
 		if _, ok := err.(util.ErrKeyNotFound); !ok {
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 
-		if _, ok := err.(util.ErrImageNotFound); !ok {
+		if _, ok := err.(ErrImageNotFound); !ok {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
@@ -255,7 +252,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 			}
 		}()
 
-		if err := unreserveRBDVol(rbdVol, req.GetSecrets()); err != nil {
+		if err := unreserveVol(rbdVol, req.GetSecrets()); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		return &csi.DeleteVolumeResponse{}, nil
@@ -271,10 +268,11 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}()
 
 	// Deleting rbd image
-	klog.V(4).Infof("deleting volume %s", rbdVol.VolName)
-	if err := deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
+	klog.V(4).Infof("deleting image %s", rbdVol.RbdImageName)
+	if err := deleteImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
 		// TODO: can we detect "already deleted" situations here and proceed?
-		klog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
+		klog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v",
+			rbdVol.Pool, rbdVol.RbdImageName, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -315,9 +313,9 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// Fetch source volume information
 	rbdVol = new(rbdVolume)
-	err := genRBDVolFromVolID(rbdVol, req.GetSourceVolumeId(), req.GetSecrets())
+	err := genVolFromVolID(rbdVol, req.GetSourceVolumeId(), req.GetSecrets())
 	if err != nil {
-		if _, ok := err.(util.ErrImageNotFound); ok {
+		if _, ok := err.(ErrImageNotFound); ok {
 			return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", req.GetSourceVolumeId())
 		}
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -329,18 +327,18 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 
 	// Create snap volume
-	rbdSnap, err := genRBDSnapFromOptions(req.GetParameters())
+	rbdSnap, err := genSnapFromOptions(req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	rbdSnap.VolName = rbdVol.VolName
+	rbdSnap.RbdImageName = rbdVol.RbdImageName
 	rbdSnap.SizeBytes = rbdVol.VolSize
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
 	rbdSnap.RequestName = req.GetName()
 
 	// Need to check for already existing snapshot name, and if found
 	// check for the requested source volume id and already allocated source volume id
-	found, err := checkRBDSnapExists(rbdSnap, req.GetSecrets())
+	found, err := checkSnapExists(rbdSnap, req.GetSecrets())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
@@ -356,14 +354,14 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}, nil
 	}
 
-	err = reserveRBDSnap(rbdSnap, req.GetSecrets())
+	err = reserveSnap(rbdSnap, req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer func() {
 		if err != nil {
 			klog.Warningf("snapshot failed, undoing reservation of snap name: %s", req.GetName())
-			errDefer := unreserveRBDSnap(rbdSnap, req.GetSecrets())
+			errDefer := unreserveSnap(rbdSnap, req.GetSecrets())
 			if errDefer != nil {
 				klog.Warningf("failed undoing reservation of snapshot: %s", req.GetName())
 			}
@@ -471,12 +469,12 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}()
 
 	rbdSnap := &rbdSnapshot{}
-	if err := genRBDSnapFromSnapID(rbdSnap, snapshotID, req.GetSecrets()); err != nil {
+	if err := genSnapFromSnapID(rbdSnap, snapshotID, req.GetSecrets()); err != nil {
 		// Consider missing snap as already deleted, and proceed to remove the omap values
-		if _, ok := err.(util.ErrSnapNotFound); !ok {
+		if _, ok := err.(ErrSnapNotFound); !ok {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		if err := unreserveRBDSnap(rbdSnap, req.GetSecrets()); err != nil {
+		if err := unreserveSnap(rbdSnap, req.GetSecrets()); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		return &csi.DeleteSnapshotResponse{}, nil
@@ -496,15 +494,15 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition,
 			"failed to unprotect snapshot: %s/%s with error: %v",
-			rbdSnap.Pool, rbdSnap.SnapName, err)
+			rbdSnap.Pool, rbdSnap.RbdSnapName, err)
 	}
 
 	// Deleting snapshot
-	klog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
+	klog.V(4).Infof("deleting Snaphot %s", rbdSnap.RbdSnapName)
 	if err := deleteSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets()); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition,
 			"failed to delete snapshot: %s/%s with error: %v",
-			rbdSnap.Pool, rbdSnap.SnapName, err)
+			rbdSnap.Pool, rbdSnap.RbdSnapName, err)
 	}
 
 	return &csi.DeleteSnapshotResponse{}, nil

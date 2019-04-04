@@ -35,21 +35,23 @@ between orchestrator (CO) generated Names and plugin generated names for images 
 
 The implementation uses Ceph RADOS omaps to preserve the relationship between request name and
 generated image (or snapshot) name. There are 4 types of omaps in use,
-- A "csi.volumes.directory.[csi-id]" (or volOMap+.+CsiInstanceID), we call this the volOMap
+- A "csi.volumes.[csi-id]" (or "csi.volumes"+.+CsiInstanceID), we call this the csiVolsDirectory
   - stores keys named using the CO generated names for volume requests
   - keys are named "csi.volume."+[CO generated VolName]
-  - Key value contains the RBD image name that is created or will be created, for the CO provided name
+  - Key value contains the RBD image uuid that is created or will be created, for the CO provided
+  name
 
-- A "csi.snaps.directory.[csi-id]" (or snapsOMap+.+CsiInstanceID), we refer to this as the snapsOMap
+- A "csi.snaps.[csi-id]" (or "csi.snaps"+.+CsiInstanceID), we refer to this as the csiSnapsDirectory
   - stores keys named using the CO generated names for snapshot requests
   - keys are named "csi.snap."+[CO generated SnapName]
-  - Key value contains the RBD snapshot name that is created or will be created, for the CO provided name
+  - Key value contains the RBD snapshot uuid that is created or will be created, for the CO
+  provided name
 
-- A per image omap named "csi.volume."+[RBD image name], we refer to this as the imgOMap
+- A per image omap named "rbd.csi.volume."+[RBD image uuid], we refer to this as the rbdImageOMap
   - stores a single key named "csi.volname", that has the value of the CO generated VolName that
   this image refers to
 
-- A per snapshot omap named "csi.snap."+[RBD snapshot name], we refer to this as the snapOMap
+- A per snapshot omap named "rbd.csi.snap."+[RBD snapshot uuid], we refer to this as the snapOMap
   - stores a key named "csi.snapname", that has the value of the CO generated SnapName that this
   snapshot refers to
   - also stores another key named "csi.source", that has the value of the image name that is the
@@ -58,16 +60,19 @@ generated image (or snapshot) name. There are 4 types of omaps in use,
 Creation of omaps:
 When a volume create request is received (or a snapshot create, the snapshot is not detailed in this
 	comment further as the process is similar),
-- The volOMap is consulted to find if there is already a key with the CO VolName, and if present,
+- The csiVolsDirectory is consulted to find if there is already a key with the CO VolName, and if present,
 it is used to read its references to reach the RBD image that backs this VolName, to check if the
 RBD image can satisfy the requirements for the request
   - If during the process of checking the same, it is found that some linking information is stale
-  or missing, the corresponding keys upto the key in the volOMap is cleaned up, to start afresh
-- If the key is not found, or was cleaned up, the request is treated as a fresh create request, and
-a key with the VolName is created in the volOMap
-- This is followed by generating an RBD image name for the VolName, and creating the imgOMap for
-the generated name
-- Finally, the image is created (or promoted from a snapshot, if content source was provided)
+  or missing, the corresponding keys upto the key in the csiVolsDirectory is cleaned up, to start afresh
+- If the key with the CO VolName is not found, or was cleaned up, the request is treated as a
+new create request, and an rbdImageOMap is created first with a generated uuid, this ensures that we
+do not use a uuid that is already in use
+- Next, a key with the VolName is created in the csiVolsDirectory, and its value is updated to store the
+generated uuid
+- This is followed by updating the rbdImageOMap with the VolName in the rbdImageCSIVolNameKey
+- Finally, the image is created (or promoted from a snapshot, if content source was provided) using
+the uuid and a corresponding image name prefix (rbdImgNamePrefix or rbdSnapNamePrefix)
 
 The entire operation is locked based on VolName hash, to ensure there is only ever a single entity
 modifying the related omaps for a given VolName.
@@ -77,9 +82,9 @@ the same RBD image name to serve the request, as the relations are saved in the 
 
 Deletion of omaps:
 Delete requests would not contain the VolName, hence deletion uses the volume ID, which is encoded
-with the image name in it, to find the image and the imgOMap. The imgOMap is read to get the
-VolName that this image points to. This VolName can be further used to read and delete the key from
-the volOMap.
+with the image name in it, to find the image and the rbdImageOMap. The rbdImageOMap is read to get
+the VolName that this image points to. This VolName can be further used to read and delete the key
+from the csiVolsDirectory.
 
 As we trace back and find the VolName, we also take a hash based lock on the VolName before
 proceeding with deleting the image and the related omap entries, to ensure there is only ever a
@@ -91,25 +96,29 @@ const (
 	volIDVersion      uint16 = 1
 	rbdDefaultAdminID        = "admin"
 	rbdDefaultUserID         = rbdDefaultAdminID
-	// volOMap omap key prefix for CSI volume names, suffix is the CSI passed volume name
-	volOMapNameKey = "csi.volume."
-	// per image omap (imgOMap) name prefix created to back a CSI volume name, suffix is the RBD image name
-	imgOMap = "csi.volume."
-	// key in imgOMap containing CSI volume name for which the image was created
-	imgOMapNameKey = "csi.volname"
-	// image name prefix, suffix is a uuid generated per image
-	imgNameHeader = "csi-vol-"
-	// snapsOMap omap key prefix for CSI snapshot names, suffix is the CSI passed snapshot name
-	snapsOMapNameKey = "csi.snap."
-	// per snapshot omap (snapImgOMap) name prefix created to back a CSI snapshot name, suffix is
-	// the RBD image snapshot name
-	snapImgOMap = "csi.snap."
-	// key in snapImgOMap containing CSI snapshot name for which the snapshot was created
-	snapImgOMapNameKey = "csi.snapname"
-	// key in snapImgOMap containing RBD source image name for which the snapshot was created
-	snapImgOMapParentKey = "csi.source"
-	// snapshot name prefix, suffix is a uuid generated per snapshot
-	snapNameHeader = "csi-snap-"
+
+	// CSI volume-name keyname prefix, for key in csiVolsDirectory, suffix is the CSI passed volume name
+	csiVolNameKeyPrefix = "csi.volume."
+	// Per RBD image object map name prefix, suffix is the RBD image uuid
+	rbdImageOMapPrefix = "csi.volume."
+	// CSI volume-name key in per RBD image object map, containing CSI volume-name for which the
+	// image was created
+	rbdImageCSIVolNameKey = "csi.volname"
+	// RBD image name prefix, suffix is a uuid generated per image
+	rbdImgNamePrefix = "csi-vol-"
+
+	//CSI snap-name keyname prefix, for key in csiSnapsDirectory, suffix is the CSI passed snapshot name
+	csiSnapNameKeyPrefix = "csi.snap."
+	// Per RBD snapshot object map name prefix, suffix is the RBD image uuid
+	rbdSnapOMapPrefix = "csi.snap."
+	// CSI snap-name key in per RBD snapshot object map, containing CSI snapshot-name for which the
+	// snapshot was created
+	rbdSnapCSISnapNameKey = "csi.snapname"
+	// source image name key in per RBD snapshot object map, containing RBD source image name for
+	// which the snapshot was created
+	rbdSnapSourceImageKey = "csi.source"
+	// RBD snapshot name prefix, suffix is a uuid generated per snapshot
+	rbdSnapNamePrefix = "csi-snap-"
 )
 
 // PluginFolder defines the location of ceph plugin
@@ -129,12 +138,13 @@ var (
 	// confStore is the global config store
 	confStore *util.ConfigStore
 	// CsiInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
-	// ceph clusters across CSI instances, to dfferentiate omap names per CSI instance
+	// ceph clusters across CSI instances, to differentiate omap names per CSI instance
 	CsiInstanceID = "default"
-	// volOMap is the prefix name of the volumes Omap, its suffix is the CsiInstanceID
-	volOMap = "csi.volumes.directory"
-	// snapsOMap is the prefix name of the snapshots Omap, its suffix is the CsiInstanceID
-	snapsOMap = "csi.snaps.directory"
+	// csiVolsDirectory is the name of the CSI volumes object map that contains CSI volume-name
+	// based keys
+	csiVolsDirectory = "csi.volumes"
+	// csiSnapsDirectory is the name of the CSI snapshots object map that contains CSI snapshot-name based keys
+	csiSnapsDirectory = "csi.snaps"
 )
 
 // NewDriver returns new rbd driver
@@ -194,8 +204,8 @@ func (r *Driver) Run(driverName, nodeID, endpoint, configRoot, instanceID string
 	if instanceID != "" {
 		CsiInstanceID = instanceID
 	}
-	volOMap = volOMap + "." + CsiInstanceID
-	snapsOMap = snapsOMap + "." + CsiInstanceID
+	csiVolsDirectory = csiVolsDirectory + "." + CsiInstanceID
+	csiSnapsDirectory = csiSnapsDirectory + "." + CsiInstanceID
 
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)

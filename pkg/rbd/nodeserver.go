@@ -83,11 +83,11 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		}
 	}
 
-	volOptions, err := genRBDVolFromVolumeOptions(req.GetVolumeContext(), disableInUseChecks)
+	volOptions, err := genVolFromVolumeOptions(req.GetVolumeContext(), disableInUseChecks)
 	if err != nil {
 		return nil, err
 	}
-	volOptions.VolName = volName
+	volOptions.RbdImageName = volName
 	// Mapping RBD image
 	devicePath, err := attachRBDImage(volOptions, volOptions.UserID, req.GetSecrets())
 	if err != nil {
@@ -104,15 +104,15 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 }
 
 func (ns *NodeServer) getVolumeName(req *csi.NodePublishVolumeRequest) (string, error) {
-	var vi util.VolumeIdentifier
+	var vi util.CsiIdentifier
 
-	err := vi.DecomposeVolID(req.GetVolumeId())
+	err := vi.DecomposeCsiID(req.GetVolumeId())
 	if err != nil {
 		klog.V(4).Infof("error decoding volume ID (%s) (%s)", err, req.GetVolumeId())
 		return "", err
 	}
 
-	return vi.ImageName, nil
+	return rbdImgNamePrefix + vi.ObjectUUID, nil
 }
 
 func (ns *NodeServer) mountVolume(req *csi.NodePublishVolumeRequest, devicePath string) error {

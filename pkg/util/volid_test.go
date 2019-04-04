@@ -21,7 +21,7 @@ import (
 )
 
 type testTuple struct {
-	vID           VolumeIdentifier
+	vID           CsiIdentifier
 	composedVolID string
 	wantEnc       bool
 	wantEncError  bool
@@ -32,13 +32,13 @@ type testTuple struct {
 // TODO: Add more test tuples to test out other edge conditions
 var testData = []testTuple{
 	{
-		vID: VolumeIdentifier{
+		vID: CsiIdentifier{
 			PoolID:          0xffff,
 			EncodingVersion: 0xffff,
 			ClusterID:       "01616094-9d93-4178-bf45-c7eac19e8b15",
-			ImageName:       "imagename001",
+			ObjectUUID:      "00000000-1111-2222-bbbb-cacacacacaca",
 		},
-		composedVolID: "ffff-0024-01616094-9d93-4178-bf45-c7eac19e8b15-0000ffff-000c-imagename001",
+		composedVolID: "ffff-0024-01616094-9d93-4178-bf45-c7eac19e8b15-000000000000ffff-00000000-1111-2222-bbbb-cacacacacaca",
 		wantEnc:       true,
 		wantEncError:  false,
 		wantDec:       true,
@@ -49,13 +49,13 @@ var testData = []testTuple{
 func TestComposeDecomposeID(t *testing.T) {
 	var (
 		err           error
-		viDecompose   VolumeIdentifier
+		viDecompose   CsiIdentifier
 		composedVolID string
 	)
 
 	for _, test := range testData {
 		if test.wantEnc {
-			composedVolID, err = test.vID.ComposeVolID()
+			composedVolID, err = test.vID.ComposeCsiID()
 
 			if err != nil && !test.wantEncError {
 				t.Errorf("Composing failed: want (%#v), got (%#v %#v)",
@@ -74,7 +74,7 @@ func TestComposeDecomposeID(t *testing.T) {
 		}
 
 		if test.wantDec {
-			err = viDecompose.DecomposeVolID(test.composedVolID)
+			err = viDecompose.DecomposeCsiID(test.composedVolID)
 
 			if err != nil && !test.wantDecError {
 				t.Errorf("Decomposing failed: want (%#v), got (%#v %#v)",

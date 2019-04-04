@@ -27,7 +27,8 @@ import (
 	"strings"
 )
 
-func execCommand(program string, args ...string) (stdout, stderr []byte, err error) {
+// ExecCommand executes passed in program with args and returns seperate stdout and stderr streams
+func ExecCommand(program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
 		cmd       = exec.Command(program, args...) // nolint: gosec
 		stdoutBuf bytes.Buffer
@@ -45,19 +46,19 @@ func execCommand(program string, args ...string) (stdout, stderr []byte, err err
 	return stdoutBuf.Bytes(), nil, nil
 }
 
-// CephStoragePoolSummary strongly typed JSON spec for osd ls pools output
-type CephStoragePoolSummary struct {
+// cephStoragePoolSummary strongly typed JSON spec for osd ls pools output
+type cephStoragePoolSummary struct {
 	Name   string `json:"poolname"`
-	Number int    `json:"poolnum"`
+	Number int64  `json:"poolnum"`
 }
 
 // GetPoolID searches a list of pools in a cluster and returns the ID of the pool that matches
 // the passed in poolName parameter
-func GetPoolID(monitors string, adminID string, key string, poolName string) (uint32, error) {
+func GetPoolID(monitors string, adminID string, key string, poolName string) (int64, error) {
 	// ceph <options> -f json osd lspools
-	// JSON out: [{"poolnum":<int>,"poolname":<string>}]
+	// JSON out: [{"poolnum":<int64>,"poolname":<string>}]
 
-	stdout, _, err := execCommand(
+	stdout, _, err := ExecCommand(
 		"ceph",
 		"-m", monitors,
 		"--id", adminID,
@@ -70,7 +71,7 @@ func GetPoolID(monitors string, adminID string, key string, poolName string) (ui
 		return 0, err
 	}
 
-	var pools []CephStoragePoolSummary
+	var pools []cephStoragePoolSummary
 	err = json.Unmarshal(stdout, &pools)
 	if err != nil {
 		klog.Errorf("failed to parse JSON output of pool list from cluster (%s)", err)
@@ -79,7 +80,7 @@ func GetPoolID(monitors string, adminID string, key string, poolName string) (ui
 
 	for _, p := range pools {
 		if poolName == p.Name {
-			return uint32(p.Number), nil
+			return p.Number, nil
 		}
 	}
 
@@ -88,11 +89,11 @@ func GetPoolID(monitors string, adminID string, key string, poolName string) (ui
 
 // GetPoolName lists all pools in a ceph cluster, and matches the pool whose pool ID is equal to
 // the requested poolID parameter
-func GetPoolName(monitors string, adminID string, key string, poolID uint32) (string, error) {
+func GetPoolName(monitors string, adminID string, key string, poolID int64) (string, error) {
 	// ceph <options> -f json osd lspools
 	// [{"poolnum":1,"poolname":"replicapool"}]
 
-	stdout, _, err := execCommand(
+	stdout, _, err := ExecCommand(
 		"ceph",
 		"-m", monitors,
 		"--id", adminID,
@@ -105,7 +106,7 @@ func GetPoolName(monitors string, adminID string, key string, poolID uint32) (st
 		return "", err
 	}
 
-	var pools []CephStoragePoolSummary
+	var pools []cephStoragePoolSummary
 	err = json.Unmarshal(stdout, &pools)
 	if err != nil {
 		klog.Errorf("failed to parse JSON output of pool list from cluster (%s)", err)
@@ -113,7 +114,7 @@ func GetPoolName(monitors string, adminID string, key string, poolID uint32) (st
 	}
 
 	for _, p := range pools {
-		if poolID == uint32(p.Number) {
+		if poolID == p.Number {
 			return p.Name, nil
 		}
 	}
@@ -125,7 +126,7 @@ func GetPoolName(monitors string, adminID string, key string, poolID uint32) (st
 func SetOMapKeyValue(monitors, adminID, key, poolName, oMapName, oMapKey, keyValue string) error {
 	// Command: "rados <options> setomapval oMapName oMapKey keyValue"
 
-	_, _, err := execCommand(
+	_, _, err := ExecCommand(
 		"rados",
 		"-m", monitors,
 		"--id", adminID,
@@ -164,7 +165,7 @@ func GetOMapValue(monitors, adminID, key, poolName, oMapName, oMapKey string) (s
 	defer tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
 
-	stdout, _, err := execCommand(
+	stdout, _, err := ExecCommand(
 		"rados",
 		"-m", monitors,
 		"--id", adminID,
@@ -188,7 +189,7 @@ func GetOMapValue(monitors, adminID, key, poolName, oMapName, oMapKey string) (s
 func RemoveOMapKey(monitors, adminID, key, poolName, oMapName, oMapKey string) error {
 	// Command: "rados <options> rmomapkey oMapName oMapKey"
 
-	_, _, err := execCommand(
+	_, _, err := ExecCommand(
 		"rados",
 		"-m", monitors,
 		"--id", adminID,
@@ -206,22 +207,57 @@ func RemoveOMapKey(monitors, adminID, key, poolName, oMapName, oMapKey string) e
 	return nil
 }
 
-// ErrOMapNotFound is returned when named omap is not found in rados
-type ErrOMapNotFound struct {
+// ErrObjectExists is returned when named omap is already present in rados
+type ErrObjectExists struct {
+	objectName string
+	err        error
+}
+
+func (e ErrObjectExists) Error() string {
+	return e.err.Error()
+}
+
+// CreateObject creates the object name passed in and returns ErrObjectExists if the provided object
+// is already present in rados
+func CreateObject(monitors, adminID, key, poolName, objectName string) error {
+	// Command: "rados <options> create objectName"
+
+	stdout, _, err := ExecCommand(
+		"rados",
+		"-m", monitors,
+		"--id", adminID,
+		"--key="+key,
+		"-c", CephConfigPath,
+		"-p", poolName,
+		"create", objectName)
+	if err != nil {
+		klog.Errorf("failed creating omap (%s) in pool (%s): (%v)", objectName, poolName, err)
+		if strings.Contains(string(stdout), "error creating "+poolName+"/"+objectName+
+			": (17) File exists") {
+			return ErrObjectExists{objectName, err}
+		}
+		return err
+	}
+
+	return nil
+}
+
+// ErrObjectNotFound is returned when named omap is not found in rados
+type ErrObjectNotFound struct {
 	oMapName string
 	err      error
 }
 
-func (e ErrOMapNotFound) Error() string {
+func (e ErrObjectNotFound) Error() string {
 	return e.err.Error()
 }
 
-// RemoveOMap removes the entire omap name passed in and returns ErrOMapNotFound is provided omap
+// RemoveObject removes the entire omap name passed in and returns ErrObjectNotFound is provided omap
 // is not found in rados
-func RemoveOMap(monitors, adminID, key, poolName, oMapName string) error {
+func RemoveObject(monitors, adminID, key, poolName, oMapName string) error {
 	// Command: "rados <options> rm oMapName"
 
-	stdout, _, err := execCommand(
+	stdout, _, err := ExecCommand(
 		"rados",
 		"-m", monitors,
 		"--id", adminID,
@@ -233,132 +269,10 @@ func RemoveOMap(monitors, adminID, key, poolName, oMapName string) error {
 		klog.Errorf("failed removing omap (%s) in pool (%s): (%v)", oMapName, poolName, err)
 		if strings.Contains(string(stdout), "error removing "+poolName+">"+oMapName+
 			": (2) No such file or directory") {
-			return ErrOMapNotFound{oMapName, err}
+			return ErrObjectNotFound{oMapName, err}
 		}
 		return err
 	}
 
 	return nil
-}
-
-// RBDImageInfo strongly typed JSON spec for image info
-type RBDImageInfo struct {
-	ImageName string   `json:"name"`
-	Size      int64    `json:"size"`
-	Format    int64    `json:"format"`
-	Features  []string `json:"features"`
-	CreatedAt string   `json:"create_timestamp"`
-}
-
-// ErrImageNotFound is returned when image name is not found in the cluster on the given pool
-type ErrImageNotFound struct {
-	imageName string
-	err       error
-}
-
-func (e ErrImageNotFound) Error() string {
-	return e.err.Error()
-}
-
-// GetImageInfo queries rbd about the given image and returns its metadata, and returns
-// ErrImageNotFound if provided image is not found
-func GetImageInfo(monitors, adminID, key, poolName, imageName string) (RBDImageInfo, error) {
-	// rbd --format=json info [image-spec | snap-spec]
-
-	var imageInfo RBDImageInfo
-
-	stdout, _, err := execCommand(
-		"rbd",
-		"-m", monitors,
-		"--id", adminID,
-		"--key="+key,
-		"-c", CephConfigPath,
-		"--format="+"json",
-		"info", poolName+"/"+imageName)
-	if err != nil {
-		klog.Errorf("failed getting information for image (%s): (%s)", poolName+"/"+imageName, err)
-		if strings.Contains(string(stdout), "rbd: error opening image "+imageName+
-			": (2) No such file or directory") {
-			return imageInfo, ErrImageNotFound{imageName, err}
-		}
-		return imageInfo, err
-	}
-
-	err = json.Unmarshal(stdout, &imageInfo)
-	if err != nil {
-		klog.Errorf("failed to parse JSON output of image info (%s): (%s)",
-			poolName+"/"+imageName, err)
-		return imageInfo, fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s",
-			err, string(stdout))
-	}
-
-	return imageInfo, nil
-}
-
-// RBDSnapInfo strongly typed JSON spec for snap ls rbd output
-type RBDSnapInfo struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	Size      int64  `json:"size"`
-	TimeStamp string `json:"timestamp"`
-}
-
-// ErrSnapNotFound is returned when snap name passed is not found in the list of snapshots for the
-// given image
-type ErrSnapNotFound struct {
-	snapName string
-	err      error
-}
-
-func (e ErrSnapNotFound) Error() string {
-	return e.err.Error()
-}
-
-/*
-GetSnapInfo queries rbd about the snapshots of the given image and returns its metadata, and
-returns ErrImageNotFound if provided image is not found, and ErrSnapNotFound if povided snap
-is not found in the images snapshot list
-*/
-func GetSnapInfo(monitors, adminID, key, poolName, imageName, snapName string) (RBDSnapInfo, error) {
-	// rbd --format=json snap ls [image-spec]
-
-	var (
-		snapInfo RBDSnapInfo
-		snaps    []RBDSnapInfo
-	)
-
-	stdout, _, err := execCommand(
-		"rbd",
-		"-m", monitors,
-		"--id", adminID,
-		"--key="+key,
-		"-c", CephConfigPath,
-		"--format="+"json",
-		"snap", "ls", poolName+"/"+imageName)
-	if err != nil {
-		klog.Errorf("failed getting snap (%s) information from image (%s): (%s)",
-			snapName, poolName+"/"+imageName, err)
-		if strings.Contains(string(stdout), "rbd: error opening image "+imageName+
-			": (2) No such file or directory") {
-			return snapInfo, ErrImageNotFound{imageName, err}
-		}
-		return snapInfo, err
-	}
-
-	err = json.Unmarshal(stdout, &snaps)
-	if err != nil {
-		klog.Errorf("failed to parse JSON output of image snap list (%s): (%s)",
-			poolName+"/"+imageName, err)
-		return snapInfo, fmt.Errorf("unmarshal failed: %+v. raw buffer response: %s",
-			err, string(stdout))
-	}
-
-	for _, snap := range snaps {
-		if snap.Name == snapName {
-			return snap, nil
-		}
-	}
-
-	return snapInfo, ErrSnapNotFound{snapName, fmt.Errorf("snap (%s) for image (%s) not found",
-		snapName, poolName+"/"+imageName)}
 }

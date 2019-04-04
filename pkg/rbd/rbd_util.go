@@ -17,6 +17,7 @@ limitations under the License.
 package rbd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -35,7 +36,6 @@ import (
 
 const (
 	imageWatcherStr = "watcher="
-	rbdImageFormat1 = "1"
 	rbdImageFormat2 = "2"
 	// The following three values are used for 30 seconds timeout
 	// while waiting for RBD Watcher to expire.
@@ -45,48 +45,47 @@ const (
 	rbdDefaultMounter        = "rbd"
 )
 
-// TODO: The following do not come from JSON anymore,  remove the json tags
 // rbdVolume represents a CSI volume and its RBD image specifics
 type rbdVolume struct {
-	// VolName is the name of the RBD image backing this rbdVolume
-	VolName string `json:"volName"`
+	// RbdImageName is the name of the RBD image backing this rbdVolume
 	// VolID is the volume ID that is exchanged with CSI drivers, identifying this rbdVol
-	VolID              string `json:"volID"`
-	Monitors           string `json:"monitors"`
-	MonValueFromSecret string `json:"monValueFromSecret"`
-	Pool               string `json:"pool"`
-	ImageFormat        string `json:"imageFormat"`
-	ImageFeatures      string `json:"imageFeatures"`
-	VolSize            int64  `json:"volSize"`
-	AdminID            string `json:"adminId"`
-	UserID             string `json:"userId"`
-	Mounter            string `json:"mounter"`
-	DisableInUseChecks bool   `json:"disableInUseChecks"`
-	ClusterID          string `json:"clusterId"`
 	// RequestName is the CSI generated volume name for the rbdVolume
-	RequestName string `json:"requestName"`
+	RbdImageName       string
+	VolID              string
+	Monitors           string
+	MonValueFromSecret string
+	Pool               string
+	ImageFormat        string
+	ImageFeatures      string
+	VolSize            int64
+	AdminID            string
+	UserID             string
+	Mounter            string
+	DisableInUseChecks bool
+	ClusterID          string
+	RequestName        string
 }
 
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics
 type rbdSnapshot struct {
-	// SourceVolumeID is the volume ID of VolName, that is exchanged with CSI drivers
-	SourceVolumeID string `json:"sourceVolumeID"`
-	// VolName is the name of the RBD image, that is this rbdSnapshot's source image
-	VolName string `json:"volName"`
-	// SnapName is the name of the RBD snapshot backing this rbdSnapshot
-	SnapName string `json:"snapName"`
+	// SourceVolumeID is the volume ID of RbdImageName, that is exchanged with CSI drivers
+	// RbdImageName is the name of the RBD image, that is this rbdSnapshot's source image
+	// RbdSnapName is the name of the RBD snapshot backing this rbdSnapshot
 	// SnapID is the snapshot ID that is exchanged with CSI drivers, identifying this rbdSnapshot
-	SnapID             string               `json:"snapID"`
-	Monitors           string               `json:"monitors"`
-	MonValueFromSecret string               `json:"monValueFromSecret"`
-	Pool               string               `json:"pool"`
-	CreatedAt          *timestamp.Timestamp `json:"createdAt"`
-	SizeBytes          int64                `json:"sizeBytes"`
-	AdminID            string               `json:"adminId"`
-	UserID             string               `json:"userId"`
-	ClusterID          string               `json:"clusterId"`
 	// RequestName is the CSI generated snapshot name for the rbdSnapshot
-	RequestName string `json:"requestName"`
+	SourceVolumeID     string
+	RbdImageName       string
+	RbdSnapName        string
+	SnapID             string
+	Monitors           string
+	MonValueFromSecret string
+	Pool               string
+	CreatedAt          *timestamp.Timestamp
+	SizeBytes          int64
+	AdminID            string
+	UserID             string
+	ClusterID          string
+	RequestName        string
 }
 
 var (
@@ -106,7 +105,7 @@ var (
 	supportedFeatures = sets.NewString("layering")
 )
 
-func getRBDKey(clusterid, id string, credentials map[string]string) (string, error) {
+func getKey(clusterid, id string, credentials map[string]string) (string, error) {
 	var (
 		ok  bool
 		err error
@@ -145,8 +144,8 @@ func getMon(pOpts *rbdVolume, credentials map[string]string) (string, error) {
 	return mon, nil
 }
 
-// createRBDImage creates a new ceph image with provision and volume options.
-func createRBDImage(pOpts *rbdVolume, volSz int, adminID string, credentials map[string]string) error {
+// createImage creates a new ceph image with provision and volume options.
+func createImage(pOpts *rbdVolume, volSz int64, adminID string, credentials map[string]string) error {
 	var output []byte
 
 	mon, err := getMon(pOpts, credentials)
@@ -154,10 +153,10 @@ func createRBDImage(pOpts *rbdVolume, volSz int, adminID string, credentials map
 		return err
 	}
 
-	image := pOpts.VolName
+	image := pOpts.RbdImageName
 	volSzMiB := fmt.Sprintf("%dM", volSz)
 
-	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
+	key, err := getKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -185,10 +184,10 @@ func rbdStatus(pOpts *rbdVolume, userID string, credentials map[string]string) (
 	var output string
 	var cmd []byte
 
-	image := pOpts.VolName
+	image := pOpts.RbdImageName
 	// If we don't have admin id/secret (e.g. attaching), fallback to user id/secret.
 
-	key, err := getRBDKey(pOpts.ClusterID, userID, credentials)
+	key, err := getKey(pOpts.ClusterID, userID, credentials)
 	if err != nil {
 		return false, "", err
 	}
@@ -225,7 +224,7 @@ func rbdStatus(pOpts *rbdVolume, userID string, credentials map[string]string) (
 }
 
 /*
-checkRBDSnapExists, and its counterpart checkRBDVolExists, function as checks to determine if passed
+checkSnapExists, and its counterpart checkVolExists, function as checks to determine if passed
 in rbdSnapshot or rbdVolume exists on the backend.
 
 **NOTE:** These functions manipulate the rados omaps that hold information regarding
@@ -246,35 +245,35 @@ because, the order of omap creation and deletion are inverse of each other, and 
 request name lock, and hence any stale omaps are leftovers from incomplete transactions and are
 hence safe to garbage collect.
 */
-func checkRBDSnapExists(rbdSnap *rbdSnapshot, credentials map[string]string) (found bool, err error) {
+func checkSnapExists(rbdSnap *rbdSnapshot, credentials map[string]string) (found bool, err error) {
 	// Structure members used to determine if provided rbdSnapshot exists, are checked here, to
 	// provide an easy way to check when this function can be reused
 	if rbdSnap.RequestName == "" || rbdSnap.Monitors == "" || rbdSnap.AdminID == "" ||
-		rbdSnap.Pool == "" || rbdSnap.VolName == "" || rbdSnap.ClusterID == "" {
+		rbdSnap.Pool == "" || rbdSnap.RbdImageName == "" || rbdSnap.ClusterID == "" {
 		return false, errors.New("missing information in rbdSnapshot to check for existence")
 	}
 
-	key, err := getRBDKey(rbdSnap.ClusterID, rbdSnap.AdminID, credentials)
+	key, err := getKey(rbdSnap.ClusterID, rbdSnap.AdminID, credentials)
 	if err != nil {
 		return false, err
 	}
 
 	// check if request name is already part of the snaps omap
-	snapName, err := util.GetOMapValue(rbdSnap.Monitors, rbdSnap.AdminID,
-		key, rbdSnap.Pool, snapsOMap, snapsOMapNameKey+rbdSnap.RequestName)
+	snapUUID, err := util.GetOMapValue(rbdSnap.Monitors, rbdSnap.AdminID,
+		key, rbdSnap.Pool, csiSnapsDirectory, csiSnapNameKeyPrefix+rbdSnap.RequestName)
 	if err != nil {
 		return false, nil
 	}
 
-	rbdSnap.SnapName = snapName
+	rbdSnap.RbdSnapName = rbdSnapNamePrefix + snapUUID
 
 	// TODO: use listomapvals to dump all keys instead of reading them one-by-one
 	// check if the snapshot image omap is present
 	savedSnapName, err := util.GetOMapValue(rbdSnap.Monitors, rbdSnap.AdminID,
-		key, rbdSnap.Pool, snapImgOMap+rbdSnap.SnapName, snapImgOMapNameKey)
+		key, rbdSnap.Pool, rbdSnapOMapPrefix+snapUUID, rbdSnapCSISnapNameKey)
 	if err != nil {
 		if _, ok := err.(util.ErrKeyNotFound); ok {
-			err = unreserveRBDSnap(rbdSnap, credentials)
+			err = unreserveSnap(rbdSnap, credentials)
 		}
 		return false, err
 	}
@@ -285,33 +284,33 @@ func checkRBDSnapExists(rbdSnap *rbdSnapshot, credentials map[string]string) (fo
 		// and return, as cleanup may need to occur manually!
 		return false, fmt.Errorf("internal state inconsistent, omap snap"+
 			" names disagree, request name (%s) snap name (%s) image omap"+
-			" snap name (%s)", rbdSnap.RequestName, rbdSnap.SnapName, savedSnapName)
+			" snap name (%s)", rbdSnap.RequestName, rbdSnap.RbdSnapName, savedSnapName)
 	}
 
 	// check if the snapshot source image omap is present
 	savedVolName, err := util.GetOMapValue(rbdSnap.Monitors, rbdSnap.AdminID,
-		key, rbdSnap.Pool, snapImgOMap+rbdSnap.SnapName, snapImgOMapParentKey)
+		key, rbdSnap.Pool, rbdSnapOMapPrefix+snapUUID, rbdSnapSourceImageKey)
 	if err != nil {
 		if _, ok := err.(util.ErrKeyNotFound); ok {
-			err = unreserveRBDSnap(rbdSnap, credentials)
+			err = unreserveSnap(rbdSnap, credentials)
 		}
 		return false, err
 	}
 
 	// check if snapshot source image omap points back to the source volume passed in
-	if savedVolName != rbdSnap.VolName {
+	if savedVolName != rbdSnap.RbdImageName {
 		// NOTE: This should never be possible, hence no cleanup, but log error
 		// and return, as cleanup may need to occur manually!
 		return false, fmt.Errorf("internal state inconsistent, omap volume"+
 			" names disagree, request name (%s) image name (%s) image omap"+
-			" volume name (%s)", rbdSnap.RequestName, rbdSnap.VolName, savedVolName)
+			" volume name (%s)", rbdSnap.RequestName, rbdSnap.RbdImageName, savedVolName)
 	}
 
 	// Fetch on-disk image attributes
-	err = updateRBDSnapWithImageInfo(rbdSnap, credentials)
+	err = updateSnapWithImageInfo(rbdSnap, credentials)
 	if err != nil {
-		if _, ok := err.(util.ErrSnapNotFound); ok {
-			err = unreserveRBDSnap(rbdSnap, credentials)
+		if _, ok := err.(ErrSnapNotFound); ok {
+			err = unreserveSnap(rbdSnap, credentials)
 			return false, err
 		}
 
@@ -321,23 +320,23 @@ func checkRBDSnapExists(rbdSnap *rbdSnapshot, credentials map[string]string) (fo
 	// found a snapshot already available, process and return its information
 	poolID, err := util.GetPoolID(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool)
 	if err != nil {
-		klog.V(4).Infof("internal error fetching pool ID (%s)", err)
+		klog.Errorf("internal error fetching pool ID (%s)", err)
 		return false, err
 	}
 
-	vi := util.VolumeIdentifier{
+	vi := util.CsiIdentifier{
 		PoolID:          poolID,
 		EncodingVersion: volIDVersion,
 		ClusterID:       rbdSnap.ClusterID,
-		ImageName:       rbdSnap.SnapName,
+		ObjectUUID:      snapUUID,
 	}
-	rbdSnap.SnapID, err = vi.ComposeVolID()
+	rbdSnap.SnapID, err = vi.ComposeCsiID()
 	if err != nil {
 		return false, err
 	}
 
 	klog.V(4).Infof("Found existing snap (%s) with snap name (%s) for request (%s)",
-		rbdSnap.SnapID, rbdSnap.SnapName, rbdSnap.RequestName)
+		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return true, nil
 }
@@ -354,15 +353,15 @@ func (e ErrVolNameConflict) Error() string {
 }
 
 /*
-Check comment on checkRBDSnapExists, to understand how this function behaves
+Check comment on checkSnapExists, to understand how this function behaves
 
 **NOTE:** These functions manipulate the rados omaps that hold information regarding
 volume names as requested by the CSI drivers. Hence, these need to be invoked only when the
 respective CSI snapshot or volume name based locks are held, as otherwise racy access to these
 omaps may end up leaving the ompas in an inconsistent state.
 */
-func checkRBDVolExists(rbdVol *rbdVolume, credentials map[string]string) (found bool, err error) {
-	var vi util.VolumeIdentifier
+func checkVolExists(rbdVol *rbdVolume, credentials map[string]string) (found bool, err error) {
+	var vi util.CsiIdentifier
 
 	// Structure members used to determine if provided rbdVolume exists, are checked here, to
 	// provide an easy way to check when this function can be reused
@@ -371,26 +370,26 @@ func checkRBDVolExists(rbdVol *rbdVolume, credentials map[string]string) (found 
 		return false, errors.New("missing information in rbdVolume to check for existence")
 	}
 
-	key, err := getRBDKey(rbdVol.ClusterID, rbdVol.AdminID, credentials)
+	key, err := getKey(rbdVol.ClusterID, rbdVol.AdminID, credentials)
 	if err != nil {
 		return false, err
 	}
 
 	// check if request name is already part of the volumes omap
-	imageName, err := util.GetOMapValue(rbdVol.Monitors, rbdVol.AdminID,
-		key, rbdVol.Pool, volOMap, volOMapNameKey+rbdVol.RequestName)
+	imageUUID, err := util.GetOMapValue(rbdVol.Monitors, rbdVol.AdminID,
+		key, rbdVol.Pool, csiVolsDirectory, csiVolNameKeyPrefix+rbdVol.RequestName)
 	if err != nil {
 		return false, nil
 	}
 
-	rbdVol.VolName = imageName
+	rbdVol.RbdImageName = rbdImgNamePrefix + imageUUID
 
 	// check if the image omap is present
 	savedVolName, err := util.GetOMapValue(rbdVol.Monitors, rbdVol.AdminID,
-		key, rbdVol.Pool, imgOMap+rbdVol.VolName, imgOMapNameKey)
+		key, rbdVol.Pool, rbdImageOMapPrefix+imageUUID, rbdImageCSIVolNameKey)
 	if err != nil {
 		if _, ok := err.(util.ErrKeyNotFound); ok {
-			err = unreserveRBDVol(rbdVol, credentials)
+			err = unreserveVol(rbdVol, credentials)
 		}
 		return false, err
 	}
@@ -401,17 +400,17 @@ func checkRBDVolExists(rbdVol *rbdVolume, credentials map[string]string) (found 
 		// and return, as cleanup may need to occur manually!
 		return false, fmt.Errorf("internal state inconsistent, omap volume"+
 			" names disagree, request name (%s) image name (%s) image omap"+
-			" volume name (%s)", rbdVol.RequestName, rbdVol.VolName, savedVolName)
+			" volume name (%s)", rbdVol.RequestName, rbdVol.RbdImageName, savedVolName)
 	}
 
 	// NOTE: Return volsize should be on-disk volsize, not request vol size, so
 	// save it for size checks before fetching image data
 	requestSize := rbdVol.VolSize
 	// Fetch on-disk image attributes and compare against request
-	err = updateRBDVolWithImageInfo(rbdVol, credentials)
+	err = updateVolWithImageInfo(rbdVol, credentials)
 	if err != nil {
-		if _, ok := err.(util.ErrImageNotFound); ok {
-			err = unreserveRBDVol(rbdVol, credentials)
+		if _, ok := err.(ErrImageNotFound); ok {
+			err = unreserveVol(rbdVol, credentials)
 			return false, err
 		}
 
@@ -421,110 +420,143 @@ func checkRBDVolExists(rbdVol *rbdVolume, credentials map[string]string) (found 
 	// size checks
 	if rbdVol.VolSize < requestSize {
 		err = fmt.Errorf("image with the same name (%s) but with different size already exists",
-			rbdVol.VolName)
-		return false, ErrVolNameConflict{rbdVol.VolName, err}
+			rbdVol.RbdImageName)
+		return false, ErrVolNameConflict{rbdVol.RbdImageName, err}
 	}
 	// TODO: We should also ensure image features and format is the same
 
 	// found a volume already available, process and return it!
 	poolID, err := util.GetPoolID(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool)
 	if err != nil {
-		klog.V(4).Infof("internal error fetching pool ID (%s)", err)
+		klog.Errorf("internal error fetching pool ID (%s)", err)
 		return false, err
 	}
 
-	vi = util.VolumeIdentifier{
+	vi = util.CsiIdentifier{
 		PoolID:          poolID,
 		EncodingVersion: volIDVersion,
 		ClusterID:       rbdVol.ClusterID,
-		ImageName:       rbdVol.VolName,
+		ObjectUUID:      imageUUID,
 	}
-	rbdVol.VolID, err = vi.ComposeVolID()
+	rbdVol.VolID, err = vi.ComposeCsiID()
 	if err != nil {
 		return false, err
 	}
 
 	klog.V(4).Infof("Found existng volume (%s) with image name (%s) for request (%s)",
-		rbdVol.VolID, rbdVol.VolName, rbdVol.RequestName)
+		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return true, nil
 }
 
 /*
-unreserveRBDSnap and unreserveRBDVol remove omaps associated with the snapshot and the image name,
+unreserveSnap and unreserveVol remove omaps associated with the snapshot and the image name,
 and also remove the corresponding request name key in the snaps or volumes omaps respectively.
 
 This is performed within the request name lock, to ensure that requests with the same name do not
 manipulate the omap entries concurrently.
 */
-func unreserveRBDSnap(rbdSnap *rbdSnapshot, credentials map[string]string) error {
-	key, err := getRBDKey(rbdSnap.ClusterID, rbdSnap.AdminID, credentials)
+func unreserveSnap(rbdSnap *rbdSnapshot, credentials map[string]string) error {
+	key, err := getKey(rbdSnap.ClusterID, rbdSnap.AdminID, credentials)
 	if err != nil {
 		return err
 	}
 
 	// delete snap image omap (first, inverse of create order)
-	err = util.RemoveOMap(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool, snapImgOMap+rbdSnap.SnapName)
+	snapUUID := strings.TrimPrefix(rbdSnap.RbdSnapName, rbdSnapNamePrefix)
+	err = util.RemoveObject(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool, rbdSnapOMapPrefix+snapUUID)
 	if err != nil {
-		if _, ok := err.(util.ErrOMapNotFound); !ok {
-			klog.V(4).Infof("failed removing oMap %s (%s)", snapImgOMap+rbdSnap.SnapName, err)
+		if _, ok := err.(util.ErrObjectNotFound); !ok {
+			klog.V(4).Infof("failed removing oMap %s (%s)", rbdSnapOMapPrefix+snapUUID, err)
 			return err
 		}
 	}
 
 	// delete the request name omap key (last, inverse of create order)
 	err = util.RemoveOMapKey(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool,
-		snapsOMap, snapsOMapNameKey+rbdSnap.RequestName)
+		csiSnapsDirectory, csiSnapNameKeyPrefix+rbdSnap.RequestName)
 	if err != nil {
-		klog.V(4).Infof("failed removing oMap key %s (%s)", snapsOMapNameKey+rbdSnap.RequestName, err)
+		klog.V(4).Infof("failed removing oMap key %s (%s)", csiSnapNameKeyPrefix+rbdSnap.RequestName, err)
 		return err
 	}
 
 	return nil
 }
 
-func unreserveRBDVol(rbdVol *rbdVolume, credentials map[string]string) error {
-	key, err := getRBDKey(rbdVol.ClusterID, rbdVol.AdminID, credentials)
+func unreserveVol(rbdVol *rbdVolume, credentials map[string]string) error {
+	key, err := getKey(rbdVol.ClusterID, rbdVol.AdminID, credentials)
 	if err != nil {
 		return err
 	}
 
 	// delete image omap (first, inverse of create order)
-	err = util.RemoveOMap(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool, imgOMap+rbdVol.VolName)
+	imageUUID := strings.TrimPrefix(rbdVol.RbdImageName, rbdImgNamePrefix)
+	err = util.RemoveObject(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool, rbdImageOMapPrefix+imageUUID)
 	if err != nil {
-		if _, ok := err.(util.ErrOMapNotFound); !ok {
-			klog.V(4).Infof("failed removing oMap %s (%s)", imgOMap+rbdVol.RequestName, err)
+		if _, ok := err.(util.ErrObjectNotFound); !ok {
+			klog.V(4).Infof("failed removing oMap %s (%s)", rbdImageOMapPrefix+imageUUID, err)
 			return err
 		}
 	}
 
 	// delete the request name omap key (last, inverse of create order)
 	err = util.RemoveOMapKey(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool,
-		volOMap, volOMapNameKey+rbdVol.RequestName)
+		csiVolsDirectory, csiVolNameKeyPrefix+rbdVol.RequestName)
 	if err != nil {
-		klog.V(4).Infof("failed removing oMap key %s (%s)", volOMapNameKey+rbdVol.RequestName, err)
+		klog.V(4).Infof("failed removing oMap key %s (%s)", csiVolNameKeyPrefix+rbdVol.RequestName, err)
 		return err
 	}
 
 	return nil
 }
 
+// reserveOMapName creates an omap with passed in oMapNameSuffix and a generated <uuid>.
+// It ensures generated omap name does not already exist and if conflicts are detected, a set
+// number of retires with newer uuids are attempted before returning an error
+func reserveOMapName(monitors, adminID, key, poolName, oMapNameSuffix string) (string, error) {
+	var iterUUID string
+
+	maxAttempts := 5
+	attempt := 1
+	for attempt <= maxAttempts {
+		// generate a uuid for the image name
+		iterUUID = uuid.NewUUID().String()
+
+		err := util.CreateObject(monitors, adminID, key, poolName, oMapNameSuffix+iterUUID)
+		if err != nil {
+			if _, ok := err.(util.ErrObjectExists); ok {
+				attempt++
+				// try again with a different uuid, for maxAttempts tries
+				klog.V(4).Infof("uuid (%s) conflict detected, retrying (attempt %d of %d)",
+					iterUUID, attempt, maxAttempts)
+				continue
+			}
+
+			return "", err
+		}
+
+		break
+	}
+
+	if attempt > maxAttempts {
+		return "", errors.New("uuid conflicts exceeds retry threshold")
+	}
+
+	return iterUUID, nil
+}
+
 /*
-reserverRBDSnap and reserveRBDVol add respective entries to the volumes and snapshots omaps, post
+reserveSnap and reserveVol add respective entries to the volumes and snapshots omaps, post
 generating a target snapshot or image name for use. Further, these functions create the snapshot or
 image name omaps, to store back pointers to the CSI generated request names.
 
 This is performed within the request name lock, to ensure that requests with the same name do not
 manipulate the omap entries concurrently.
 */
-func reserveRBDSnap(rbdSnap *rbdSnapshot, credentials map[string]string) error {
-	var vi util.VolumeIdentifier
+func reserveSnap(rbdSnap *rbdSnapshot, credentials map[string]string) error {
+	var vi util.CsiIdentifier
 
-	// generate a uuid for the snap image name
-	uuid := uuid.NewUUID().String()
-	snapName := snapNameHeader + uuid
-
-	key, err := getRBDKey(rbdSnap.ClusterID, rbdSnap.AdminID, credentials)
+	key, err := getKey(rbdSnap.ClusterID, rbdSnap.AdminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -532,21 +564,31 @@ func reserveRBDSnap(rbdSnap *rbdSnapshot, credentials map[string]string) error {
 	poolID, err := util.GetPoolID(rbdSnap.Monitors, rbdSnap.AdminID, key,
 		rbdSnap.Pool)
 	if err != nil {
-		klog.V(4).Infof("Error fetching pool ID (%s)", err)
+		klog.Errorf("Error fetching pool ID (%s)", err)
 		return err
 	}
 
-	// Create request snapName key in csi snaps omap and store the uuid based
+	// Create the snapUUID based omap first, to reserve the same and avoid conflicts
+	// NOTE: If any service loss occurs post creation of the snap omap, and before
+	// setting the omap key (rbdSnapCSISnapNameKey) to point back to the snaps omap, the
+	// snap omap key will leak
+	snapUUID, err := reserveOMapName(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool,
+		rbdSnapOMapPrefix)
+	if err != nil {
+		return err
+	}
+
+	// Create request snapUUID key in csi snaps omap and store the uuid based
 	// snap name into it
 	err = util.SetOMapKeyValue(rbdSnap.Monitors, rbdSnap.AdminID, key,
-		rbdSnap.Pool, snapsOMap, snapsOMapNameKey+rbdSnap.RequestName, snapName)
+		rbdSnap.Pool, csiSnapsDirectory, csiSnapNameKeyPrefix+rbdSnap.RequestName, snapUUID)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			klog.Warningf("reservation failed for volume: %s", rbdSnap.RequestName)
-			errDefer := unreserveRBDSnap(rbdSnap, credentials)
+			errDefer := unreserveSnap(rbdSnap, credentials)
 			if errDefer != nil {
 				klog.Warningf("failed undoing reservation of snapshot: %s", rbdSnap.RequestName)
 			}
@@ -555,42 +597,38 @@ func reserveRBDSnap(rbdSnap *rbdSnapshot, credentials map[string]string) error {
 
 	// Create snap name based omap and store CSI request name key and source information
 	err = util.SetOMapKeyValue(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool,
-		snapImgOMap+snapName, snapImgOMapNameKey, rbdSnap.RequestName)
+		rbdSnapOMapPrefix+snapUUID, rbdSnapCSISnapNameKey, rbdSnap.RequestName)
 	if err != nil {
 		return err
 	}
 	err = util.SetOMapKeyValue(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool,
-		snapImgOMap+snapName, snapImgOMapParentKey, rbdSnap.VolName)
+		rbdSnapOMapPrefix+snapUUID, rbdSnapSourceImageKey, rbdSnap.RbdImageName)
 	if err != nil {
 		return err
 	}
 
 	// generate the volume ID to return to the CO system
-	vi = util.VolumeIdentifier{
+	vi = util.CsiIdentifier{
 		PoolID:          poolID,
 		EncodingVersion: volIDVersion,
 		ClusterID:       rbdSnap.ClusterID,
-		ImageName:       snapName,
+		ObjectUUID:      snapUUID,
 	}
-	rbdSnap.SnapID, err = vi.ComposeVolID()
+	rbdSnap.SnapID, err = vi.ComposeCsiID()
 	if err != nil {
 		return err
 	}
-	rbdSnap.SnapName = snapName
+	rbdSnap.RbdSnapName = rbdSnapNamePrefix + snapUUID
 	klog.V(4).Infof("Generated Volume ID (%s) and image name (%s) for request name (%s)",
-		rbdSnap.SnapID, rbdSnap.VolName, rbdSnap.RequestName)
+		rbdSnap.SnapID, rbdSnap.RbdImageName, rbdSnap.RequestName)
 
 	return nil
 }
 
-func reserveRBDVol(rbdVol *rbdVolume, credentials map[string]string) error {
-	var vi util.VolumeIdentifier
+func reserveVol(rbdVol *rbdVolume, credentials map[string]string) error {
+	var vi util.CsiIdentifier
 
-	// generate a uuid for the image name
-	uuid := uuid.NewUUID().String()
-	imageName := imgNameHeader + uuid
-
-	key, err := getRBDKey(rbdVol.ClusterID, rbdVol.AdminID, credentials)
+	key, err := getKey(rbdVol.ClusterID, rbdVol.AdminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -598,21 +636,30 @@ func reserveRBDVol(rbdVol *rbdVolume, credentials map[string]string) error {
 	poolID, err := util.GetPoolID(rbdVol.Monitors, rbdVol.AdminID, key,
 		rbdVol.Pool)
 	if err != nil {
-		klog.V(4).Infof("Error fetching pool ID (%s)", err)
+		klog.Errorf("Error fetching pool ID (%s)", err)
+		return err
+	}
+
+	// Create the imageUUID based omap first, to reserve the same and avoid conflicts
+	// NOTE: If any service loss occurs post creation of the image omap, and before
+	// setting the omap key (rbdImageCSIVolNameKey) to point back to the volumes omap,
+	// the image omap key will leak
+	imageUUID, err := reserveOMapName(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool, rbdImageOMapPrefix)
+	if err != nil {
 		return err
 	}
 
 	// Create request volName key in csi volumes omap and store the uuid based
 	// image name into it
 	err = util.SetOMapKeyValue(rbdVol.Monitors, rbdVol.AdminID, key,
-		rbdVol.Pool, volOMap, volOMapNameKey+rbdVol.RequestName, imageName)
+		rbdVol.Pool, csiVolsDirectory, csiVolNameKeyPrefix+rbdVol.RequestName, imageUUID)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			klog.Warningf("reservation failed for volume: %s", rbdVol.RequestName)
-			errDefer := unreserveRBDVol(rbdVol, credentials)
+			errDefer := unreserveVol(rbdVol, credentials)
 			if errDefer != nil {
 				klog.Warningf("failed undoing reservation of volume: %s", rbdVol.RequestName)
 			}
@@ -621,34 +668,34 @@ func reserveRBDVol(rbdVol *rbdVolume, credentials map[string]string) error {
 
 	// Create image name based omap and store CSI request volume name key and data
 	err = util.SetOMapKeyValue(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool,
-		imgOMap+imageName, imgOMapNameKey, rbdVol.RequestName)
+		rbdImageOMapPrefix+imageUUID, rbdImageCSIVolNameKey, rbdVol.RequestName)
 	if err != nil {
 		return err
 	}
 
 	// generate the volume ID to return to the CO system
-	vi = util.VolumeIdentifier{
+	vi = util.CsiIdentifier{
 		PoolID:          poolID,
 		EncodingVersion: volIDVersion,
 		ClusterID:       rbdVol.ClusterID,
-		ImageName:       imageName,
+		ObjectUUID:      imageUUID,
 	}
-	rbdVol.VolID, err = vi.ComposeVolID()
+	rbdVol.VolID, err = vi.ComposeCsiID()
 	if err != nil {
 		return err
 	}
-	rbdVol.VolName = imageName
+	rbdVol.RbdImageName = rbdImgNamePrefix + imageUUID
 	klog.V(4).Infof("Generated Volume ID (%s) and image name (%s) for request name (%s)",
-		rbdVol.VolID, rbdVol.VolName, rbdVol.RequestName)
+		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return nil
 }
 
-// DeleteImage deletes a ceph image with provision and volume options.
-func deleteRBDImage(pOpts *rbdVolume, adminID string, credentials map[string]string) error {
+// deleteImage deletes a ceph image with provision and volume options.
+func deleteImage(pOpts *rbdVolume, adminID string, credentials map[string]string) error {
 	var output []byte
 
-	image := pOpts.VolName
+	image := pOpts.RbdImageName
 	found, _, err := rbdStatus(pOpts, adminID, credentials)
 	if err != nil {
 		return err
@@ -657,7 +704,7 @@ func deleteRBDImage(pOpts *rbdVolume, adminID string, credentials map[string]str
 		klog.Info("rbd is still being used ", image)
 		return fmt.Errorf("rbd %s is still being used", image)
 	}
-	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
+	key, err := getKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -674,26 +721,26 @@ func deleteRBDImage(pOpts *rbdVolume, adminID string, credentials map[string]str
 		return err
 	}
 
-	err = unreserveRBDVol(pOpts, credentials)
+	err = unreserveVol(pOpts, credentials)
 	if err != nil {
 		klog.Errorf("failed to remove reservation for volume (%s) with backing image (%s) (%s)",
-			pOpts.RequestName, pOpts.VolName, err)
+			pOpts.RequestName, pOpts.RbdImageName, err)
 		err = nil
 	}
 
 	return err
 }
 
-// updateRBDSnapWithImageInfo updates provided rbdSnapshot with information from on-disk data
+// updateSnapWithImageInfo updates provided rbdSnapshot with information from on-disk data
 // regarding the same
-func updateRBDSnapWithImageInfo(rbdSnap *rbdSnapshot, credentials map[string]string) error {
-	key, err := getRBDKey(rbdSnap.ClusterID, rbdSnap.AdminID, credentials)
+func updateSnapWithImageInfo(rbdSnap *rbdSnapshot, credentials map[string]string) error {
+	key, err := getKey(rbdSnap.ClusterID, rbdSnap.AdminID, credentials)
 	if err != nil {
 		return err
 	}
 
-	snapInfo, err := util.GetSnapInfo(rbdSnap.Monitors, rbdSnap.AdminID, key,
-		rbdSnap.Pool, rbdSnap.VolName, rbdSnap.SnapName)
+	snapInfo, err := getSnapInfo(rbdSnap.Monitors, rbdSnap.AdminID, key,
+		rbdSnap.Pool, rbdSnap.RbdImageName, rbdSnap.RbdSnapName)
 	if err != nil {
 		return err
 	}
@@ -713,28 +760,26 @@ func updateRBDSnapWithImageInfo(rbdSnap *rbdSnapshot, credentials map[string]str
 	return nil
 }
 
-// updateRBDVolWithImageInfo updates provided rbdVolume with information from on-disk data
+// updateVolWithImageInfo updates provided rbdVolume with information from on-disk data
 // regarding the same
-func updateRBDVolWithImageInfo(rbdVol *rbdVolume, credentials map[string]string) error {
-	key, err := getRBDKey(rbdVol.ClusterID, rbdVol.AdminID, credentials)
+func updateVolWithImageInfo(rbdVol *rbdVolume, credentials map[string]string) error {
+	key, err := getKey(rbdVol.ClusterID, rbdVol.AdminID, credentials)
 	if err != nil {
 		return err
 	}
 
-	imageInfo, err := util.GetImageInfo(rbdVol.Monitors, rbdVol.AdminID, key,
-		rbdVol.Pool, rbdVol.VolName)
+	imageInfo, err := getImageInfo(rbdVol.Monitors, rbdVol.AdminID, key,
+		rbdVol.Pool, rbdVol.RbdImageName)
 	if err != nil {
 		return err
 	}
 
 	switch imageInfo.Format {
-	case 1:
-		rbdVol.ImageFormat = rbdImageFormat1
 	case 2:
 		rbdVol.ImageFormat = rbdImageFormat2
 	default:
-		return fmt.Errorf("unknown image format (%d) returned for image (%s)",
-			imageInfo.Format, rbdVol.VolName)
+		return fmt.Errorf("unknown or unsupported image format (%d) returned for image (%s)",
+			imageInfo.Format, rbdVol.RbdImageName)
 	}
 
 	rbdVol.VolSize = imageInfo.Size
@@ -743,18 +788,18 @@ func updateRBDVolWithImageInfo(rbdVol *rbdVolume, credentials map[string]string)
 	return nil
 }
 
-// genRBDSnapFromSnapID generates a rbdSnapshot structure from the provided identifier, updating
+// genSnapFromSnapID generates a rbdSnapshot structure from the provided identifier, updating
 // the structure with elements from on-disk snapshot metadata as well
-func genRBDSnapFromSnapID(rbdSnap *rbdSnapshot, snapshotID string, credentials map[string]string) error {
+func genSnapFromSnapID(rbdSnap *rbdSnapshot, snapshotID string, credentials map[string]string) error {
 	var (
 		options map[string]string
-		vi      util.VolumeIdentifier
+		vi      util.CsiIdentifier
 	)
 	options = make(map[string]string)
 
 	rbdSnap.SnapID = snapshotID
 
-	err := vi.DecomposeVolID(rbdSnap.SnapID)
+	err := vi.DecomposeCsiID(rbdSnap.SnapID)
 	if err != nil {
 		klog.V(4).Infof("error decoding snapshot ID (%s) (%s)", err, rbdSnap.SnapID)
 		return err
@@ -762,7 +807,7 @@ func genRBDSnapFromSnapID(rbdSnap *rbdSnapshot, snapshotID string, credentials m
 
 	rbdSnap.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdSnap.ClusterID
-	rbdSnap.SnapName = vi.ImageName
+	rbdSnap.RbdSnapName = rbdSnapNamePrefix + vi.ObjectUUID
 
 	rbdSnap.Monitors, _, _, err = getMonsAndClusterID(options)
 	if err != nil {
@@ -774,7 +819,7 @@ func genRBDSnapFromSnapID(rbdSnap *rbdSnapshot, snapshotID string, credentials m
 		return err
 	}
 
-	key, err := getRBDKey(rbdSnap.ClusterID, rbdSnap.AdminID, credentials)
+	key, err := getKey(rbdSnap.ClusterID, rbdSnap.AdminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -785,19 +830,20 @@ func genRBDSnapFromSnapID(rbdSnap *rbdSnapshot, snapshotID string, credentials m
 	}
 
 	// TODO: fetch all omap vals in one call, than make multiple listomapvals
+	snapUUID := strings.TrimPrefix(rbdSnap.RbdSnapName, rbdSnapNamePrefix)
 	rbdSnap.RequestName, err = util.GetOMapValue(rbdSnap.Monitors, rbdSnap.AdminID,
-		key, rbdSnap.Pool, snapImgOMap+rbdSnap.SnapName, snapImgOMapNameKey)
+		key, rbdSnap.Pool, rbdSnapOMapPrefix+snapUUID, rbdSnapCSISnapNameKey)
 	if err != nil {
 		return err
 	}
 
-	rbdSnap.VolName, err = util.GetOMapValue(rbdSnap.Monitors, rbdSnap.AdminID,
-		key, rbdSnap.Pool, snapImgOMap+rbdSnap.SnapName, snapImgOMapParentKey)
+	rbdSnap.RbdImageName, err = util.GetOMapValue(rbdSnap.Monitors, rbdSnap.AdminID,
+		key, rbdSnap.Pool, rbdSnapOMapPrefix+snapUUID, rbdSnapSourceImageKey)
 	if err != nil {
 		return err
 	}
 
-	err = updateRBDSnapWithImageInfo(rbdSnap, credentials)
+	err = updateSnapWithImageInfo(rbdSnap, credentials)
 	if err != nil {
 		return err
 	}
@@ -805,12 +851,12 @@ func genRBDSnapFromSnapID(rbdSnap *rbdSnapshot, snapshotID string, credentials m
 	return nil
 }
 
-// genRBDVolFromVolID generates a rbdVolume structure from the provided identifier, updating
+// genVolFromVolID generates a rbdVolume structure from the provided identifier, updating
 // the structure with elements from on-disk image metadata as well
-func genRBDVolFromVolID(rbdVol *rbdVolume, volumeID string, credentials map[string]string) error {
+func genVolFromVolID(rbdVol *rbdVolume, volumeID string, credentials map[string]string) error {
 	var (
 		options map[string]string
-		vi      util.VolumeIdentifier
+		vi      util.CsiIdentifier
 	)
 	options = make(map[string]string)
 
@@ -818,7 +864,7 @@ func genRBDVolFromVolID(rbdVol *rbdVolume, volumeID string, credentials map[stri
 	//		Mounter, MultiNodeWritable
 	rbdVol.VolID = volumeID
 
-	err := vi.DecomposeVolID(rbdVol.VolID)
+	err := vi.DecomposeCsiID(rbdVol.VolID)
 	if err != nil {
 		klog.V(4).Infof("error decoding volume ID (%s) (%s)", err, rbdVol.VolID)
 		return err
@@ -826,7 +872,7 @@ func genRBDVolFromVolID(rbdVol *rbdVolume, volumeID string, credentials map[stri
 
 	rbdVol.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdVol.ClusterID
-	rbdVol.VolName = vi.ImageName
+	rbdVol.RbdImageName = rbdImgNamePrefix + vi.ObjectUUID
 
 	rbdVol.Monitors, _, _, err = getMonsAndClusterID(options)
 	if err != nil {
@@ -838,7 +884,7 @@ func genRBDVolFromVolID(rbdVol *rbdVolume, volumeID string, credentials map[stri
 		return err
 	}
 
-	key, err := getRBDKey(rbdVol.ClusterID, rbdVol.AdminID, credentials)
+	key, err := getKey(rbdVol.ClusterID, rbdVol.AdminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -849,13 +895,14 @@ func genRBDVolFromVolID(rbdVol *rbdVolume, volumeID string, credentials map[stri
 		return err
 	}
 
+	imageUUID := strings.TrimPrefix(rbdVol.RbdImageName, rbdImgNamePrefix)
 	rbdVol.RequestName, err = util.GetOMapValue(rbdVol.Monitors, rbdVol.AdminID,
-		key, rbdVol.Pool, imgOMap+rbdVol.VolName, imgOMapNameKey)
+		key, rbdVol.Pool, rbdImageOMapPrefix+imageUUID, rbdImageCSIVolNameKey)
 	if err != nil {
 		return err
 	}
 
-	err = updateRBDVolWithImageInfo(rbdVol, credentials)
+	err = updateVolWithImageInfo(rbdVol, credentials)
 	if err != nil {
 		return err
 	}
@@ -923,7 +970,7 @@ func getIDs(options map[string]string, clusterID string) (adminID, userID string
 	return adminID, userID, err
 }
 
-func genRBDVolFromVolumeOptions(volOptions map[string]string, disableInUseChecks bool) (*rbdVolume, error) {
+func genVolFromVolumeOptions(volOptions map[string]string, disableInUseChecks bool) (*rbdVolume, error) {
 	var (
 		ok  bool
 		err error
@@ -992,7 +1039,7 @@ func getCredsFromVol(rbdVol *rbdVolume, volOptions map[string]string) error {
 	return err
 }
 
-func genRBDSnapFromOptions(snapOptions map[string]string) (*rbdSnapshot, error) {
+func genSnapFromOptions(snapOptions map[string]string) (*rbdSnapshot, error) {
 	var (
 		ok  bool
 		err error
@@ -1046,10 +1093,10 @@ func getSnapMon(pOpts *rbdSnapshot, credentials map[string]string) (string, erro
 func protectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]string) error {
 	var output []byte
 
-	image := pOpts.VolName
-	snapName := pOpts.SnapName
+	image := pOpts.RbdImageName
+	snapName := pOpts.RbdSnapName
 
-	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
+	key, err := getKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -1078,10 +1125,10 @@ func createSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 		return err
 	}
 
-	image := pOpts.VolName
-	snapName := pOpts.SnapName
+	image := pOpts.RbdImageName
+	snapName := pOpts.RbdSnapName
 
-	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
+	key, err := getKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -1105,10 +1152,10 @@ func unprotectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[strin
 		return err
 	}
 
-	image := pOpts.VolName
-	snapName := pOpts.SnapName
+	image := pOpts.RbdImageName
+	snapName := pOpts.RbdSnapName
 
-	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
+	key, err := getKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -1132,10 +1179,10 @@ func deleteSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 		return err
 	}
 
-	image := pOpts.VolName
-	snapName := pOpts.SnapName
+	image := pOpts.RbdImageName
+	snapName := pOpts.RbdSnapName
 
-	key, err := getRBDKey(pOpts.ClusterID, adminID, credentials)
+	key, err := getKey(pOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
@@ -1148,9 +1195,9 @@ func deleteSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 		return errors.Wrapf(err, "failed to delete snapshot, command output: %s", string(output))
 	}
 
-	if err := unreserveRBDSnap(pOpts, credentials); err != nil {
+	if err := unreserveSnap(pOpts, credentials); err != nil {
 		klog.Errorf("failed to remove reservation for snapname (%s) with backing snap (%s) on image (%s) (%s)",
-			pOpts.RequestName, pOpts.SnapName, pOpts.VolName, err)
+			pOpts.RequestName, pOpts.RbdSnapName, pOpts.RbdImageName, err)
 	}
 
 	return nil
@@ -1164,15 +1211,16 @@ func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, adminID string
 		return err
 	}
 
-	image := pVolOpts.VolName
-	snapName := pSnapOpts.SnapName
+	image := pVolOpts.RbdImageName
+	snapName := pSnapOpts.RbdSnapName
 
-	key, err := getRBDKey(pVolOpts.ClusterID, adminID, credentials)
+	key, err := getKey(pVolOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
 	klog.V(4).Infof("rbd: clone %s using mon %s, pool %s", image, mon, pVolOpts.Pool)
-	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.VolName + "@" + snapName, pVolOpts.Pool + "/" + image, "--id", adminID, "-m", mon, "--key=" + key}
+	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.RbdImageName + "@" + snapName,
+		pVolOpts.Pool + "/" + image, "--id", adminID, "-m", mon, "--key=" + key}
 
 	output, err = execCommand("rbd", args)
 
@@ -1191,15 +1239,15 @@ func getSnapshotMetadata(pSnapOpts *rbdSnapshot, adminID string, credentials map
 		return err
 	}
 
-	imageName := pSnapOpts.VolName
-	snapName := pSnapOpts.SnapName
+	imageName := pSnapOpts.RbdImageName
+	snapName := pSnapOpts.RbdSnapName
 
-	key, err := getRBDKey(pSnapOpts.ClusterID, adminID, credentials)
+	key, err := getKey(pSnapOpts.ClusterID, adminID, credentials)
 	if err != nil {
 		return err
 	}
 
-	snapInfo, err := util.GetSnapInfo(mon, adminID, key, pSnapOpts.Pool, imageName, snapName)
+	snapInfo, err := getSnapInfo(mon, adminID, key, pSnapOpts.Pool, imageName, snapName)
 	if err != nil {
 		return err
 	}
@@ -1217,4 +1265,126 @@ func getSnapshotMetadata(pSnapOpts *rbdSnapshot, adminID string, credentials map
 	}
 
 	return nil
+}
+
+// imageInfo strongly typed JSON spec for image info
+type imageInfo struct {
+	ObjectUUID string   `json:"name"`
+	Size       int64    `json:"size"`
+	Format     int64    `json:"format"`
+	Features   []string `json:"features"`
+	CreatedAt  string   `json:"create_timestamp"`
+}
+
+// ErrImageNotFound is returned when image name is not found in the cluster on the given pool
+type ErrImageNotFound struct {
+	imageName string
+	err       error
+}
+
+func (e ErrImageNotFound) Error() string {
+	return e.err.Error()
+}
+
+// getImageInfo queries rbd about the given image and returns its metadata, and returns
+// ErrImageNotFound if provided image is not found
+func getImageInfo(monitors, adminID, key, poolName, imageName string) (imageInfo, error) {
+	// rbd --format=json info [image-spec | snap-spec]
+
+	var imgInfo imageInfo
+
+	stdout, _, err := util.ExecCommand(
+		"rbd",
+		"-m", monitors,
+		"--id", adminID,
+		"--key="+key,
+		"-c", util.CephConfigPath,
+		"--format="+"json",
+		"info", poolName+"/"+imageName)
+	if err != nil {
+		klog.Errorf("failed getting information for image (%s): (%s)", poolName+"/"+imageName, err)
+		if strings.Contains(string(stdout), "rbd: error opening image "+imageName+
+			": (2) No such file or directory") {
+			return imgInfo, ErrImageNotFound{imageName, err}
+		}
+		return imgInfo, err
+	}
+
+	err = json.Unmarshal(stdout, &imgInfo)
+	if err != nil {
+		klog.Errorf("failed to parse JSON output of image info (%s): (%s)",
+			poolName+"/"+imageName, err)
+		return imgInfo, fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s",
+			err, string(stdout))
+	}
+
+	return imgInfo, nil
+}
+
+// snapInfo strongly typed JSON spec for snap ls rbd output
+type snapInfo struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+	TimeStamp string `json:"timestamp"`
+}
+
+// ErrSnapNotFound is returned when snap name passed is not found in the list of snapshots for the
+// given image
+type ErrSnapNotFound struct {
+	snapName string
+	err      error
+}
+
+func (e ErrSnapNotFound) Error() string {
+	return e.err.Error()
+}
+
+/*
+getSnapInfo queries rbd about the snapshots of the given image and returns its metadata, and
+returns ErrImageNotFound if provided image is not found, and ErrSnapNotFound if povided snap
+is not found in the images snapshot list
+*/
+func getSnapInfo(monitors, adminID, key, poolName, imageName, snapName string) (snapInfo, error) {
+	// rbd --format=json snap ls [image-spec]
+
+	var (
+		snpInfo snapInfo
+		snaps   []snapInfo
+	)
+
+	stdout, _, err := util.ExecCommand(
+		"rbd",
+		"-m", monitors,
+		"--id", adminID,
+		"--key="+key,
+		"-c", util.CephConfigPath,
+		"--format="+"json",
+		"snap", "ls", poolName+"/"+imageName)
+	if err != nil {
+		klog.Errorf("failed getting snap (%s) information from image (%s): (%s)",
+			snapName, poolName+"/"+imageName, err)
+		if strings.Contains(string(stdout), "rbd: error opening image "+imageName+
+			": (2) No such file or directory") {
+			return snpInfo, ErrImageNotFound{imageName, err}
+		}
+		return snpInfo, err
+	}
+
+	err = json.Unmarshal(stdout, &snaps)
+	if err != nil {
+		klog.Errorf("failed to parse JSON output of image snap list (%s): (%s)",
+			poolName+"/"+imageName, err)
+		return snpInfo, fmt.Errorf("unmarshal failed: %+v. raw buffer response: %s",
+			err, string(stdout))
+	}
+
+	for _, snap := range snaps {
+		if snap.Name == snapName {
+			return snap, nil
+		}
+	}
+
+	return snpInfo, ErrSnapNotFound{snapName, fmt.Errorf("snap (%s) for image (%s) not found",
+		snapName, poolName+"/"+imageName)}
 }
