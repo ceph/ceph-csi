@@ -1,5 +1,10 @@
 # Ceph CSI 1.0.0
 
+[![Go Report
+Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreportcard.com/report/github.com/ceph/ceph-csi)
+[![Build
+Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-ci.org/ceph/ceph-csi)
+
 [Container Storage Interface
 (CSI)](https://github.com/container-storage-interface/) driver, provisioner,
 and attacher for Ceph RBD and CephFS.
