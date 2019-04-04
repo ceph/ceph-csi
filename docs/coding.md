@@ -10,12 +10,11 @@ Please follow coding conventions and guidelines described in the following docum
 Here's a list of some more specific conventions that are often followed in
 the code and will be pointed out in the review process:
 
-### General
+## General
+
 * Keep variable names short for variables that are local to the function.
 * Do not export a function or variable name outside the package until you
   have an external consumer for it.
-* Have setter or getter interfaces/methods to access/manipulate information in
-  a different package.
 * Do not use named return values in function definitions. Use only the type.
   Exception: defer()'d functions.
 
@@ -26,25 +25,24 @@ We use the following convention for specifying imports:
 ```
 <import standard library packages>
 
-<import ceph packages>
-
 <import third-party packages>
+
+<import ceph-csi packages>
 ```
 
 Example:
 
 ```go
 import (
-        "os"
-        "path"
-        "strings"
-        "time"
+ "os"
+ "path"
+ "strings"
+ "time"
 
-        "github.com/ceph/ceph-csi/pkg/util"
+ "github.com/pborman/uuid"
+ "github.com/pkg/errors"
 
-	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
-
+ "github.com/ceph/ceph-csi/pkg/util"
 )
 ```
 
