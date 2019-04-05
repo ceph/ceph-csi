@@ -21,7 +21,7 @@ driverName: rbd.csi.ceph.com
 
 attacher:
   name: attacher
-
+  enabled: true
   replicaCount: 1
 
   image:

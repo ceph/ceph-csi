@@ -364,16 +364,6 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	}, nil
 }
 
-// ControllerUnpublishVolume returns success response
-func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
-	return &csi.ControllerUnpublishVolumeResponse{}, nil
-}
-
-// ControllerPublishVolume returns success response
-func (cs *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-	return &csi.ControllerPublishVolumeResponse{}, nil
-}
-
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
 // nolint: gocyclo
