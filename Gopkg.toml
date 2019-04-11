@@ -24,14 +24,14 @@
 
 [[override]]
   name = "k8s.io/apiserver"
-  version = "kubernetes-1.13.2"
+  version = "kubernetes-1.13.3"
 
 [[override]]
-  version = "kubernetes-1.13.2"
+  version = "kubernetes-1.13.3"
   name = "k8s.io/api"
 
 [[override]]
-  version = "kubernetes-1.13.2"
+  version = "kubernetes-1.13.3"
   name = "k8s.io/apiextensions-apiserver"
 
 [[override]]
