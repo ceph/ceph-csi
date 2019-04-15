@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"k8s.io/klog"
 )
@@ -48,6 +49,19 @@ func getVolumeNamespace(volID volumeID) string {
 
 func setVolumeAttribute(root, attrName, attrValue string) error {
 	return execCommandErr("setfattr", "-n", attrName, "-v", attrValue, root)
+}
+
+func getVolumeAttribute(root, attrName string) (string, error) {
+
+	cmdOut, _, err := execCommand("getfattr", "-n", attrName)
+	if err != nil {
+		return "", err
+	}
+	outS := string(cmdOut)
+	if strings.Contains(outS, attrName) {
+		return strings.Split(outS, "=")[1], nil
+	}
+	return "", fmt.Errorf("failed to get volume attribute: %s", attrName)
 }
 
 func createVolume(volOptions *volumeOptions, adminCr *credentials, volID volumeID, bytesQuota int64) error {
