@@ -9,31 +9,9 @@ metadata:
     component: {{ .Values.provisioner.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
-rules:
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get", "list"]
-  - apiGroups: [""]
-    resources: ["persistentvolumes"]
-    verbs: ["get", "list", "watch", "create", "delete"]
-  - apiGroups: [""]
-    resources: ["persistentvolumeclaims"]
-    verbs: ["get", "list", "watch", "update"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["storageclasses"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["events"]
-    verbs: ["list", "watch", "create", "update", "patch"]
-  - apiGroups: ["csi.storage.k8s.io"]
-    resources: ["csinodeinfos"]
-    verbs: ["get", "list", "watch"]
-  {{ if .Values.attacher.enabled }}
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments"]
-    verbs: ["get", "list", "watch", "update"]
-  {{ end }}
+aggregationRule:
+  clusterRoleSelectors:
+    - matchLabels:
+        rbac.cephfs.csi.ceph.com/aggregate-to-{{ include "ceph-csi-cephfs.provisioner.fullname" . }}: "true"
+rules: []
 {{- end -}}
