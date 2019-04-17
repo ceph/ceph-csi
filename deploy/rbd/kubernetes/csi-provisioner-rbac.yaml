@@ -21,7 +21,7 @@ rules:
     verbs: ["list", "watch", "create", "update", "patch"]
   - apiGroups: [""]
     resources: ["persistentvolumes"]
-    verbs: ["get", "list", "watch", "create", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
   - apiGroups: [""]
     resources: ["persistentvolumeclaims"]
     verbs: ["get", "list", "watch", "update"]
