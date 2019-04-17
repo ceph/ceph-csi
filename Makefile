@@ -53,7 +53,7 @@ image-rbdplugin: cephcsi
 	$(CONTAINER_CMD) build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
 
 image-cephfsplugin: cephcsi
-	cp _output/cephsci deploy/cephfs/docker/cephfsplugin
+	cp _output/cephcsi deploy/cephfs/docker/cephfsplugin
 	$(CONTAINER_CMD) build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) deploy/cephfs/docker
 
 push-image-rbdplugin: image-rbdplugin
