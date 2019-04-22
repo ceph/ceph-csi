@@ -27,10 +27,101 @@ import (
 	"k8s.io/utils/nsenter"
 )
 
-// PluginFolder defines the location of rbdplugin
+/*
+RADOS omaps usage:
+
+This note details how we preserve idempotent nature of create requests and retain the relationship
+between orchestrator (CO) generated Names and plugin generated names for images and snapshots
+
+The implementation uses Ceph RADOS omaps to preserve the relationship between request name and
+generated image (or snapshot) name. There are 4 types of omaps in use,
+- A "csi.volumes.[csi-id]" (or "csi.volumes"+.+CSIInstanceID), we call this the csiVolsDirectory
+  - stores keys named using the CO generated names for volume requests
+  - keys are named "csi.volume."+[CO generated VolName]
+  - Key value contains the RBD image uuid that is created or will be created, for the CO provided
+  name
+
+- A "csi.snaps.[csi-id]" (or "csi.snaps"+.+CSIInstanceID), we refer to this as the csiSnapsDirectory
+  - stores keys named using the CO generated names for snapshot requests
+  - keys are named "csi.snap."+[CO generated SnapName]
+  - Key value contains the RBD snapshot uuid that is created or will be created, for the CO
+  provided name
+
+- A per image omap named "rbd.csi.volume."+[RBD image uuid], we refer to this as the rbdImageOMap
+  - stores a single key named "csi.volname", that has the value of the CO generated VolName that
+  this image refers to
+
+- A per snapshot omap named "rbd.csi.snap."+[RBD snapshot uuid], we refer to this as the snapOMap
+  - stores a key named "csi.snapname", that has the value of the CO generated SnapName that this
+  snapshot refers to
+  - also stores another key named "csi.source", that has the value of the image name that is the
+  source of the snapshot
+
+Creation of omaps:
+When a volume create request is received (or a snapshot create, the snapshot is not detailed in this
+	comment further as the process is similar),
+- The csiVolsDirectory is consulted to find if there is already a key with the CO VolName, and if present,
+it is used to read its references to reach the RBD image that backs this VolName, to check if the
+RBD image can satisfy the requirements for the request
+  - If during the process of checking the same, it is found that some linking information is stale
+  or missing, the corresponding keys upto the key in the csiVolsDirectory is cleaned up, to start afresh
+- If the key with the CO VolName is not found, or was cleaned up, the request is treated as a
+new create request, and an rbdImageOMap is created first with a generated uuid, this ensures that we
+do not use a uuid that is already in use
+- Next, a key with the VolName is created in the csiVolsDirectory, and its value is updated to store the
+generated uuid
+- This is followed by updating the rbdImageOMap with the VolName in the rbdImageCSIVolNameKey
+- Finally, the image is created (or promoted from a snapshot, if content source was provided) using
+the uuid and a corresponding image name prefix (rbdImgNamePrefix or rbdSnapNamePrefix)
+
+The entire operation is locked based on VolName hash, to ensure there is only ever a single entity
+modifying the related omaps for a given VolName.
+
+This ensures idempotent nature of creates, as the same CO generated VolName would attempt to use
+the same RBD image name to serve the request, as the relations are saved in the respective omaps.
+
+Deletion of omaps:
+Delete requests would not contain the VolName, hence deletion uses the volume ID, which is encoded
+with the image name in it, to find the image and the rbdImageOMap. The rbdImageOMap is read to get
+the VolName that this image points to. This VolName can be further used to read and delete the key
+from the csiVolsDirectory.
+
+As we trace back and find the VolName, we also take a hash based lock on the VolName before
+proceeding with deleting the image and the related omap entries, to ensure there is only ever a
+single entity modifying the related omaps for a given VolName.
+*/
+
 const (
-	rbdDefaultAdminID = "admin"
-	rbdDefaultUserID  = rbdDefaultAdminID
+	// volIDVersion is the version number of volume ID encoding scheme
+	volIDVersion      uint16 = 1
+	rbdDefaultAdminID        = "admin"
+	rbdDefaultUserID         = rbdDefaultAdminID
+
+	// csiConfigFile is the location of the CSI config file
+	csiConfigFile = "/etc/ceph-csi-config/config.json"
+
+	// CSI volume-name keyname prefix, for key in csiVolsDirectory, suffix is the CSI passed volume name
+	csiVolNameKeyPrefix = "csi.volume."
+	// Per RBD image object map name prefix, suffix is the RBD image uuid
+	rbdImageOMapPrefix = "csi.volume."
+	// CSI volume-name key in per RBD image object map, containing CSI volume-name for which the
+	// image was created
+	rbdImageCSIVolNameKey = "csi.volname"
+	// RBD image name prefix, suffix is a uuid generated per image
+	rbdImgNamePrefix = "csi-vol-"
+
+	//CSI snap-name keyname prefix, for key in csiSnapsDirectory, suffix is the CSI passed snapshot name
+	csiSnapNameKeyPrefix = "csi.snap."
+	// Per RBD snapshot object map name prefix, suffix is the RBD image uuid
+	rbdSnapOMapPrefix = "csi.snap."
+	// CSI snap-name key in per RBD snapshot object map, containing CSI snapshot-name for which the
+	// snapshot was created
+	rbdSnapCSISnapNameKey = "csi.snapname"
+	// source image name key in per RBD snapshot object map, containing RBD source image name for
+	// which the snapshot was created
+	rbdSnapSourceImageKey = "csi.source"
+	// RBD snapshot name prefix, suffix is a uuid generated per snapshot
+	rbdSnapNamePrefix = "csi-snap-"
 )
 
 // PluginFolder defines the location of ceph plugin
@@ -47,8 +138,14 @@ type Driver struct {
 
 var (
 	version = "1.0.0"
-	// confStore is the global config store
-	confStore *util.ConfigStore
+	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
+	// ceph clusters across CSI instances, to differentiate omap names per CSI instance
+	CSIInstanceID = "default"
+	// csiVolsDirectory is the name of the CSI volumes object map that contains CSI volume-name
+	// based keys
+	csiVolsDirectory = "csi.volumes"
+	// csiSnapsDirectory is the name of the CSI snapshots object map that contains CSI snapshot-name based keys
+	csiSnapsDirectory = "csi.snaps"
 )
 
 // NewDriver returns new rbd driver
@@ -64,10 +161,9 @@ func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
 }
 
 // NewControllerServer initialize a controller server for rbd CSI driver
-func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
+func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
 	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
-		MetadataStore:           cachePersister,
 	}
 }
 
@@ -89,15 +185,22 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // rbd CSI driver which can serve multiple parallel requests
-func (r *Driver) Run(driverName, nodeID, endpoint, configRoot string, containerized bool, cachePersister util.CachePersister) {
+func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containerized bool) {
 	var err error
+
 	klog.Infof("Driver: %v version: %v", driverName, version)
 
-	// Initialize config store
-	confStore, err = util.NewConfigStore(configRoot)
-	if err != nil {
-		klog.Fatalln("Failed to initialize config store.")
+	// Create ceph.conf for use with CLI commands
+	if err = util.WriteCephConfig(); err != nil {
+		klog.Fatalf("failed to write ceph configuration file (%v)", err)
 	}
+
+	// Use passed in instance ID, if provided for omap suffix naming
+	if instanceID != "" {
+		CSIInstanceID = instanceID
+	}
+	csiVolsDirectory = csiVolsDirectory + "." + CSIInstanceID
+	csiSnapsDirectory = csiSnapsDirectory + "." + CSIInstanceID
 
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
@@ -106,9 +209,7 @@ func (r *Driver) Run(driverName, nodeID, endpoint, configRoot string, containeri
 	}
 	r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-		csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
-		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
 		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	})
 
@@ -127,11 +228,7 @@ func (r *Driver) Run(driverName, nodeID, endpoint, configRoot string, containeri
 		klog.Fatalf("failed to start node server, err %v\n", err)
 	}
 
-	r.cs = NewControllerServer(r.cd, cachePersister)
-
-	if err = r.cs.LoadExDataFromMetadataStore(); err != nil {
-		klog.Fatalf("failed to load metadata from store, err %v\n", err)
-	}
+	r.cs = NewControllerServer(r.cd)
 
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(endpoint, r.ids, r.cs, r.ns)

@@ -1,0 +1,32 @@
+---
+# This is a sample config map that helps define a Ceph cluster configuration
+# as required by the CSI plugins.
+apiVersion: v1
+kind: ConfigMap
+# The <cluster-id> is used by the CSI plugin to uniquely identify and use a
+# Ceph cluster, the value MUST match the value provided as `clusterID` in the
+# StorageClass
+# The <MONValue#> fields are the various monitor addresses for the Ceph cluster
+# identified by the <cluster-id>
+# If a CSI plugin is using more than one Ceph cluster, repeat the section for
+# each such cluster in use.
+# To add more clusters or edit MON addresses in an existing config map, use
+# the `kubectl replace` command.
+# NOTE: Changes to the config map is automatically updated in the running pods,
+# thus restarting existing pods using the config map is NOT required on edits
+# to the config map.
+data:
+  config.json: |-
+    [
+      {
+        "clusterID": "<cluster-id>",
+        "monitors": [
+          "<MONValue1>",
+          "<MONValue2>",
+          ...
+          "<MONValueN>"
+        ]
+      }
+    ]
+metadata:
+  name: ceph-csi-config

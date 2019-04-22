@@ -101,7 +101,7 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir
 
 	klog.Infof("cephfs: setting default volume mounter to %s", DefaultVolumeMounter)
 
-	if err := writeCephConfig(); err != nil {
+	if err := util.WriteCephConfig(); err != nil {
 		klog.Fatalf("failed to write ceph configuration file: %v", err)
 	}
 

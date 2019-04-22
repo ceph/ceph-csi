@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMapName | quote }}
+  labels:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    chart: {{ include "ceph-csi-rbd.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  config.json: |-
+    []

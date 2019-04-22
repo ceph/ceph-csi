@@ -38,20 +38,20 @@ const (
 
 var (
 	// common flags
-	vtype           = flag.String("type", "", "driver type [rbd|cephfs]")
-	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName      = flag.String("drivername", "", "name of the driver")
-	nodeID          = flag.String("nodeid", "", "node id")
-	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
+	vtype      = flag.String("type", "", "driver type [rbd|cephfs]")
+	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	driverName = flag.String("drivername", "", "name of the driver")
+	nodeID     = flag.String("nodeid", "", "node id")
 
 	// rbd related flags
 	containerized = flag.Bool("containerized", true, "whether run as containerized")
-	configRoot    = flag.String("configroot", "/etc/csi-config", "directory in which CSI specific Ceph"+
-		" cluster configurations are present, OR the value \"k8s_objects\" if present as kubernetes secrets")
+	instanceID    = flag.String("instanceid", "", "Unique ID distinguishing this instance of Ceph CSI among other"+
+		" instances, when sharing Ceph clusters across CSI instances for provisioning")
 
 	// cephfs related flags
-	volumeMounter = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
-	mountCacheDir = flag.String("mountcachedir", "", "mount info cache save dir")
+	volumeMounter   = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
+	mountCacheDir   = flag.String("mountcachedir", "", "mount info cache save dir")
+	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
 )
 
 func init() {
@@ -107,13 +107,8 @@ func main() {
 	switch driverType {
 	case rbdType:
 		rbd.PluginFolder = rbd.PluginFolder + dname
-		cp, err := util.CreatePersistanceStorage(
-			rbd.PluginFolder, *metadataStorage, dname)
-		if err != nil {
-			os.Exit(1)
-		}
 		driver := rbd.NewDriver()
-		driver.Run(dname, *nodeID, *endpoint, *configRoot, *containerized, cp)
+		driver.Run(dname, *nodeID, *endpoint, *instanceID, *containerized)
 
 	case cephfsType:
 		cephfs.PluginFolder = cephfs.PluginFolder + dname

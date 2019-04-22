@@ -1,5 +1,7 @@
 # How to test RBD and CephFS plugins with Kubernetes 1.13
 
+## Deploying Ceph-CSI services
+
 Both `rbd` and `cephfs` directories contain `plugin-deploy.sh` and
 `plugin-teardown.sh` helper scripts.  You can use those to help you
 deploy/teardown RBACs, sidecar containers and the plugin in one go.
@@ -7,15 +9,44 @@ By default, they look for the YAML manifests in
 `../../deploy/{rbd,cephfs}/kubernetes`.
 You can override this path by running `$ ./plugin-deploy.sh /path/to/my/manifests`.
 
+## Creating CSI configuration for RBD based provisioning
+
+**NOTE:** This section is not required for cephfs based provisioning, and SHOULD
+be skipped.
+
+For RBD based provisioning, the CSI plugin requires configuration information
+regarding the Ceph cluster(s), that would host the RBD based block devices. This
+is provided by adding a per-cluster identifier (referred to as clusterID), and
+the required monitor details for the same, as in the provided [sample config
+ map](./rbd/csi-config-map-sample.yaml).
+
+Gather the following information from the Ceph cluster(s) of choice,
+
+* Ceph monitor list
+  * Typically in the output of `ceph mon dump`
+  * Used to prepare a list of `monitors` in the CSI configuration file
+* Ceph Cluster fsid
+  * If choosing to use the Ceph cluster fsid as the unique value of clusterID,
+    * Output of `ceph fsid`
+  * Alternatively, choose a `<cluster-id>` value that is distinct per Ceph
+    cluster in use by this kubernetes cluster
+
+Update the [sample config map](./rbd/csi-config-map-sample.yaml) with values
+from a Ceph cluster and replace `<cluster-id>` with the chosen clusterID, to
+create the manifest for the config map which can be updated in the cluster
+using the following command,
+
+* `kubectl replace -f rbd/csi-config-map-sample.yaml`
+
+Storage class and snapshot class, using `<cluster-id>` as the value for the
+option `clusterID`, can now be created on the cluster.
+
+## Deploying the storage class
+
 Once the plugin is successfully deployed, you'll need to customize
 `storageclass.yaml` and `secret.yaml` manifests to reflect your Ceph cluster
 setup.
 Please consult the documentation for info about available parameters.
-
-**NOTE:** See section
-[Cluster ID based configuration](#cluster-id-based-configuration) if using
-the `clusterID` instead of `monitors` or `monValueFromSecret` option in the
-storage class for RBD based provisioning before proceeding.
 
 After configuring the secrets, monitors, etc. you can deploy a
 testing Pod mounting a RBD image / CephFS volume:
@@ -32,7 +63,7 @@ Other helper scripts:
 * `logs.sh` output of the plugin
 * `exec-bash.sh` logs into the plugin's container and runs bash
 
-## How to test RBD Snapshot feature
+### How to test RBD Snapshot feature
 
 Before continuing, make sure you enabled the required
 feature gate `VolumeSnapshotDataSource=true` in your Kubernetes cluster.
@@ -42,7 +73,7 @@ In the `examples/rbd` directory you will find two files related to snapshots:
 [snapshot.yaml](./rbd/snapshot.yaml).
 
 Once you created your RBD volume, you'll need to customize at least
-`snapshotclass.yaml` and make sure the `monitors` and `pool` parameters match
+`snapshotclass.yaml` and make sure the `clusterid` and `pool` parameters match
 your Ceph cluster setup.
 If you followed the documentation to create the rbdplugin, you shouldn't
 have to edit any other file.
@@ -120,7 +151,7 @@ kubectl create -f pvc-restore.yaml
 kubectl create -f pod-restore.yaml
 ```
 
-## How to test RBD MULTI_NODE_MULTI_WRITER BLOCK feature
+### How to test RBD MULTI_NODE_MULTI_WRITER BLOCK feature
 
 Requires feature-gates: `BlockVolume=true` `CSIBlockVolume=true`
 
@@ -218,37 +249,3 @@ Units: sectors of 1 * 512 = 512 bytes
 Sector size (logical/physical): 512 bytes / 512 bytes
 I/O size (minimum/optimal): 4194304 bytes / 4194304 bytes
 ```
-
-## Cluster ID based configuration
-
-Before creating a storage class that uses the option `clusterID` to refer to a
-Ceph cluster, the following actions need to be completed.
-
-Get the following information from the Ceph cluster,
-
-* Admin ID and key, that has privileges to perform CRUD operations on the Ceph
-  cluster and pools of choice
-  * Key is typically the output of, `ceph auth get-key client.admin` where
-    `admin` is the Admin ID
-  * Used to substitute admin/user id and key values in the files below
-* Ceph monitor list
-  * Typically in the output of `ceph mon dump`
-  * Used to prepare comma separated MON list where required in the files below
-* Ceph Cluster fsid
-  * If choosing to use the Ceph cluster fsid as the unique value of clusterID,
-  * Output of `ceph fsid`
-  * Used to substitute `<cluster-id>` references in the files below
-
-Update the template
-[template-ceph-cluster-ID-secret.yaml](./rbd/template-ceph-cluster-ID-secret.yaml)
-with values from
-a Ceph cluster and replace `<cluster-id>` with the chosen clusterID to create
-the following secret,
-
-* `kubectl create -f rbd/template-ceph-cluster-ID-secret.yaml`
-
-Storage class and snapshot class, using `<cluster-id>` as the value for the
-option `clusterID`, can now be created on the cluster.
-
-Remaining steps to test functionality remains the same as mentioned in the
-sections above.

@@ -1,0 +1,256 @@
+/*
+Copyright 2019 The Ceph-CSI Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package util
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"k8s.io/klog"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// ExecCommand executes passed in program with args and returns seperate stdout and stderr streams
+func ExecCommand(program string, args ...string) (stdout, stderr []byte, err error) {
+	var (
+		cmd       = exec.Command(program, args...) // nolint: gosec
+		stdoutBuf bytes.Buffer
+		stderrBuf bytes.Buffer
+	)
+
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	if err := cmd.Run(); err != nil {
+		return stdoutBuf.Bytes(), stderrBuf.Bytes(), fmt.Errorf("an error (%v)"+
+			" occurred while running %s", err, program)
+	}
+
+	return stdoutBuf.Bytes(), nil, nil
+}
+
+// cephStoragePoolSummary strongly typed JSON spec for osd ls pools output
+type cephStoragePoolSummary struct {
+	Name   string `json:"poolname"`
+	Number int64  `json:"poolnum"`
+}
+
+// GetPoolID searches a list of pools in a cluster and returns the ID of the pool that matches
+// the passed in poolName parameter
+func GetPoolID(monitors string, adminID string, key string, poolName string) (int64, error) {
+	// ceph <options> -f json osd lspools
+	// JSON out: [{"poolnum":<int64>,"poolname":<string>}]
+
+	stdout, _, err := ExecCommand(
+		"ceph",
+		"-m", monitors,
+		"--id", adminID,
+		"--key="+key,
+		"-c", CephConfigPath,
+		"-f", "json",
+		"osd", "lspools")
+	if err != nil {
+		klog.Errorf("failed getting pool list from cluster (%s)", err)
+		return 0, err
+	}
+
+	var pools []cephStoragePoolSummary
+	err = json.Unmarshal(stdout, &pools)
+	if err != nil {
+		klog.Errorf("failed to parse JSON output of pool list from cluster (%s)", err)
+		return 0, fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s", err, string(stdout))
+	}
+
+	for _, p := range pools {
+		if poolName == p.Name {
+			return p.Number, nil
+		}
+	}
+
+	return 0, fmt.Errorf("pool (%s) not found in Ceph cluster", poolName)
+}
+
+// GetPoolName lists all pools in a ceph cluster, and matches the pool whose pool ID is equal to
+// the requested poolID parameter
+func GetPoolName(monitors string, adminID string, key string, poolID int64) (string, error) {
+	// ceph <options> -f json osd lspools
+	// [{"poolnum":1,"poolname":"replicapool"}]
+
+	stdout, _, err := ExecCommand(
+		"ceph",
+		"-m", monitors,
+		"--id", adminID,
+		"--key="+key,
+		"-c", CephConfigPath,
+		"-f", "json",
+		"osd", "lspools")
+	if err != nil {
+		klog.Errorf("failed getting pool list from cluster (%s)", err)
+		return "", err
+	}
+
+	var pools []cephStoragePoolSummary
+	err = json.Unmarshal(stdout, &pools)
+	if err != nil {
+		klog.Errorf("failed to parse JSON output of pool list from cluster (%s)", err)
+		return "", fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s", err, string(stdout))
+	}
+
+	for _, p := range pools {
+		if poolID == p.Number {
+			return p.Name, nil
+		}
+	}
+
+	return "", fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)
+}
+
+// SetOMapKeyValue sets the given key and value into the provided Ceph omap name
+func SetOMapKeyValue(monitors, adminID, key, poolName, oMapName, oMapKey, keyValue string) error {
+	// Command: "rados <options> setomapval oMapName oMapKey keyValue"
+
+	_, _, err := ExecCommand(
+		"rados",
+		"-m", monitors,
+		"--id", adminID,
+		"--key="+key,
+		"-c", CephConfigPath,
+		"-p", poolName,
+		"setomapval", oMapName, oMapKey, keyValue)
+	if err != nil {
+		klog.Errorf("failed adding key (%s with value %s), to omap (%s) in "+
+			"pool (%s): (%v)", oMapKey, keyValue, oMapName, poolName, err)
+		return err
+	}
+
+	return nil
+}
+
+// GetOMapValue gets the value for the given key from the named omap
+func GetOMapValue(monitors, adminID, key, poolName, oMapName, oMapKey string) (string, error) {
+	// Command: "rados <options> getomapval oMapName oMapKey <outfile>"
+	// No such key: replicapool/csi.volumes.directory.default/csi.volname
+	tmpFile, err := ioutil.TempFile("", "omap-get-")
+	if err != nil {
+		klog.Errorf("failed creating a temporary file for key contents")
+		return "", err
+	}
+	defer tmpFile.Close()
+	defer os.Remove(tmpFile.Name())
+
+	stdout, stderr, err := ExecCommand(
+		"rados",
+		"-m", monitors,
+		"--id", adminID,
+		"--key="+key,
+		"-c", CephConfigPath,
+		"-p", poolName,
+		"getomapval", oMapName, oMapKey, tmpFile.Name())
+	if err != nil {
+		// no logs, as attempting to check for key/value is done even on regular call sequences
+		stdoutanderr := strings.Join([]string{string(stdout), string(stderr)}, " ")
+		if strings.Contains(stdoutanderr, "No such key: "+poolName+"/"+oMapName+"/"+oMapKey) {
+			return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, err}
+		}
+
+		if strings.Contains(stdoutanderr, "error getting omap value "+
+			poolName+"/"+oMapName+"/"+oMapKey+": (2) No such file or directory") {
+			return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, err}
+		}
+
+		return "", fmt.Errorf("error (%v) occured, command output streams is (%s)",
+			err.Error(), stdoutanderr)
+	}
+
+	keyValue, err := ioutil.ReadAll(tmpFile)
+	return string(keyValue), err
+}
+
+// RemoveOMapKey removes the omap key from the given omap name
+func RemoveOMapKey(monitors, adminID, key, poolName, oMapName, oMapKey string) error {
+	// Command: "rados <options> rmomapkey oMapName oMapKey"
+
+	_, _, err := ExecCommand(
+		"rados",
+		"-m", monitors,
+		"--id", adminID,
+		"--key="+key,
+		"-c", CephConfigPath,
+		"-p", poolName,
+		"rmomapkey", oMapName, oMapKey)
+	if err != nil {
+		// NOTE: Missing omap key removal does not return an error
+		klog.Errorf("failed removing key (%s), from omap (%s) in "+
+			"pool (%s): (%v)", oMapKey, oMapName, poolName, err)
+		return err
+	}
+
+	return nil
+}
+
+// CreateObject creates the object name passed in and returns ErrObjectExists if the provided object
+// is already present in rados
+func CreateObject(monitors, adminID, key, poolName, objectName string) error {
+	// Command: "rados <options> create objectName"
+
+	stdout, _, err := ExecCommand(
+		"rados",
+		"-m", monitors,
+		"--id", adminID,
+		"--key="+key,
+		"-c", CephConfigPath,
+		"-p", poolName,
+		"create", objectName)
+	if err != nil {
+		klog.Errorf("failed creating omap (%s) in pool (%s): (%v)", objectName, poolName, err)
+		if strings.Contains(string(stdout), "error creating "+poolName+"/"+objectName+
+			": (17) File exists") {
+			return ErrObjectExists{objectName, err}
+		}
+		return err
+	}
+
+	return nil
+}
+
+// RemoveObject removes the entire omap name passed in and returns ErrObjectNotFound is provided omap
+// is not found in rados
+func RemoveObject(monitors, adminID, key, poolName, oMapName string) error {
+	// Command: "rados <options> rm oMapName"
+
+	stdout, _, err := ExecCommand(
+		"rados",
+		"-m", monitors,
+		"--id", adminID,
+		"--key="+key,
+		"-c", CephConfigPath,
+		"-p", poolName,
+		"rm", oMapName)
+	if err != nil {
+		klog.Errorf("failed removing omap (%s) in pool (%s): (%v)", oMapName, poolName, err)
+		if strings.Contains(string(stdout), "error removing "+poolName+">"+oMapName+
+			": (2) No such file or directory") {
+			return ErrObjectNotFound{oMapName, err}
+		}
+		return err
+	}
+
+	return nil
+}
