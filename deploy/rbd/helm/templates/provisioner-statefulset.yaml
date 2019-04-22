@@ -85,7 +85,6 @@ spec:
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
             - "--containerized=true"
-            - "--metadatastorage=k8s_configmap"
           env:
             - name: HOST_ROOTFS
               value: "/rootfs"
@@ -103,6 +102,8 @@ spec:
               mountPath: {{ .Values.socketDir }}
             - name: host-rootfs
               mountPath: "/rootfs"
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
       volumes:
@@ -112,6 +113,9 @@ spec:
         - name: host-rootfs
           hostPath:
             path: /
+        - name: ceph-csi-config
+          configMap:
+            name: {{ .Values.configMapName | quote }}
     {{- if .Values.provisioner.affinity -}}
       affinity:
 {{ toYaml .Values.provisioner.affinity . | indent 8 }}

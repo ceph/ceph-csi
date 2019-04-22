@@ -18,6 +18,7 @@ socketFile: csi.sock
 registrationDir: /var/lib/kubelet/plugins_registry
 volumeDevicesDir: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices
 driverName: rbd.csi.ceph.com
+configMapName: ceph-csi-config
 
 attacher:
   name: attacher

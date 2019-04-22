@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cephfs
+package util
 
 import (
 	"io/ioutil"
@@ -32,17 +32,19 @@ fuse_set_user_groups = false
 
 const (
 	cephConfigRoot = "/etc/ceph"
-	cephConfigPath = "/etc/ceph/ceph.conf"
+	CephConfigPath = "/etc/ceph/ceph.conf"
 )
 
 func createCephConfigRoot() error {
 	return os.MkdirAll(cephConfigRoot, 0755) // #nosec
 }
 
-func writeCephConfig() error {
+// WriteCephConfig writes out a basic ceph.conf file, making it easy to use
+// ceph related CLIs
+func WriteCephConfig() error {
 	if err := createCephConfigRoot(); err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(cephConfigPath, cephConfig, 0640)
+	return ioutil.WriteFile(CephConfigPath, cephConfig, 0640)
 }

@@ -18,20 +18,12 @@ package rbd
 
 import (
 	"fmt"
-	"os/exec"
-	"sort"
-	"strconv"
-	"syscall"
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
-	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -46,33 +38,6 @@ const (
 // controller server spec.
 type ControllerServer struct {
 	*csicommon.DefaultControllerServer
-	MetadataStore util.CachePersister
-}
-
-var (
-	rbdVolumes   = map[string]rbdVolume{}
-	rbdSnapshots = map[string]rbdSnapshot{}
-)
-
-// LoadExDataFromMetadataStore loads the rbd volume and snapshot
-// info from metadata store
-func (cs *ControllerServer) LoadExDataFromMetadataStore() error {
-	vol := &rbdVolume{}
-	// nolint
-	cs.MetadataStore.ForAll("csi-rbd-vol-", vol, func(identifier string) error {
-		rbdVolumes[identifier] = *vol
-		return nil
-	})
-
-	snap := &rbdSnapshot{}
-	// nolint
-	cs.MetadataStore.ForAll("csi-rbd-(.*)-snap-", snap, func(identifier string) error {
-		rbdSnapshots[identifier] = *snap
-		return nil
-	})
-
-	klog.Infof("Loaded %d volumes and %d snapshots from metadata store", len(rbdVolumes), len(rbdSnapshots))
-	return nil
 }
 
 func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) error {
@@ -87,10 +52,17 @@ func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 	if req.VolumeCapabilities == nil {
 		return status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
 	}
+	options := req.GetParameters()
+	if value, ok := options["clusterID"]; !ok || len(value) == 0 {
+		return status.Error(codes.InvalidArgument, "Missing or empty cluster ID to provision volume from")
+	}
+	if value, ok := options["pool"]; !ok || len(value) == 0 {
+		return status.Error(codes.InvalidArgument, "Missing or empty pool name to provision volume from")
+	}
 	return nil
 }
 
-func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
+func (cs *ControllerServer) parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
 	isMultiNode := false
@@ -111,38 +83,28 @@ func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	}
 
 	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
-	rbdVol, err := getRBDVolumeOptions(req.GetParameters(), (isMultiNode && isBlock))
+	rbdVol, err := genVolFromVolumeOptions(req.GetParameters(), (isMultiNode && isBlock))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// Generating Volume Name and Volume ID, as according to CSI spec they MUST be different
-	volName := req.GetName()
-	uniqueID := uuid.NewUUID().String()
-	rbdVol.VolName = volName
-	volumeID := "csi-rbd-vol-" + uniqueID
-	rbdVol.VolID = volumeID
+	rbdVol.RequestName = req.GetName()
+
 	// Volume Size - Default is 1 GiB
 	volSizeBytes := int64(oneGB)
 	if req.GetCapacityRange() != nil {
 		volSizeBytes = req.GetCapacityRange().GetRequiredBytes()
 	}
 
-	rbdVol.VolSize = util.RoundUpToMiB(volSizeBytes)
+	// always round up the request size in bytes to the nearest MiB
+	rbdVol.VolSize = util.MiB * util.RoundUpToMiB(volSizeBytes)
 
+	// NOTE: rbdVol does not contain VolID and RbdImageName populated, everything
+	// else is populated post create request parsing
 	return rbdVol, nil
 }
 
-func storeVolumeMetadata(vol *rbdVolume, cp util.CachePersister) error {
-	if err := cp.Create(vol.VolID, vol); err != nil {
-		klog.Errorf("failed to store metadata for volume %s: %v", vol.VolID, err)
-		return err
-	}
-
-	return nil
-}
-
-// CreateVolume creates the volume in backend and store the volume metadata
+// CreateVolume creates the volume in backend
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 
 	if err := cs.validateVolumeReq(req); err != nil {
@@ -155,49 +117,45 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
-	// Need to check for already existing volume name, and if found
-	// check for the requested capacity and already allocated capacity
-	if exVol, err := getRBDVolumeByName(req.GetName()); err == nil {
-		// Since err is nil, it means the volume with the same name already exists
-		// need to check if the size of existing volume is the same as in new
-		// request
-		if exVol.VolSize >= req.GetCapacityRange().GetRequiredBytes() {
-			// existing volume is compatible with new request and should be reused.
+	rbdVol, err := cs.parseVolCreateRequest(req)
+	if err != nil {
+		return nil, err
+	}
 
-			if err = storeVolumeMetadata(exVol, cs.MetadataStore); err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			}
-
-			// TODO (sbezverk) Do I need to make sure that RBD volume still exists?
-			return &csi.CreateVolumeResponse{
-				Volume: &csi.Volume{
-					VolumeId:      exVol.VolID,
-					CapacityBytes: exVol.VolSize,
-					VolumeContext: req.GetParameters(),
-				},
-			}, nil
+	found, err := checkVolExists(rbdVol, req.GetSecrets())
+	if err != nil {
+		if _, ok := err.(ErrVolNameConflict); ok {
+			return nil, status.Error(codes.AlreadyExists, err.Error())
 		}
-		return nil, status.Errorf(codes.AlreadyExists, "Volume with the same name: %s but with different size already exist", req.GetName())
-	}
 
-	rbdVol, err := parseVolCreateRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if there is already RBD image with requested name
-	err = cs.checkRBDStatus(rbdVol, req, int(rbdVol.VolSize))
-	if err != nil {
-		return nil, err
-	}
-	// store volume size in  bytes (snapshot and check existing volume needs volume
-	// size in bytes)
-	rbdVol.VolSize = rbdVol.VolSize * util.MiB
-
-	rbdVolumes[rbdVol.VolID] = *rbdVol
-
-	if err = storeVolumeMetadata(rbdVol, cs.MetadataStore); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if found {
+		return &csi.CreateVolumeResponse{
+			Volume: &csi.Volume{
+				VolumeId:      rbdVol.VolID,
+				CapacityBytes: rbdVol.VolSize,
+				VolumeContext: req.GetParameters(),
+			},
+		}, nil
+	}
+
+	err = reserveVol(rbdVol, req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer func() {
+		if err != nil {
+			errDefer := unreserveVol(rbdVol, req.GetSecrets())
+			if errDefer != nil {
+				klog.Warningf("failed undoing reservation of volume: %s (%s)", req.GetName(), errDefer)
+			}
+		}
+	}()
+
+	err = cs.createBackingImage(rbdVol, req, util.RoundUpToMiB(rbdVol.VolSize))
+	if err != nil {
+		return nil, err
 	}
 
 	return &csi.CreateVolumeResponse{
@@ -209,27 +167,24 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeMiB int) error {
+func (cs *ControllerServer) createBackingImage(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeMiB int64) error {
 	var err error
-	// Check if there is already RBD image with requested name
-	//nolint
-	found, _, _ := rbdStatus(rbdVol, rbdVol.UserID, req.GetSecrets())
-	if !found {
-		// if VolumeContentSource is not nil, this request is for snapshot
-		if req.VolumeContentSource != nil {
-			if err = cs.checkSnapshot(req, rbdVol); err != nil {
-				return err
-			}
-		} else {
-			err = createRBDImage(rbdVol, volSizeMiB, rbdVol.AdminID, req.GetSecrets())
-			if err != nil {
-				klog.Warningf("failed to create volume: %v", err)
-				return status.Error(codes.Internal, err.Error())
-			}
 
-			klog.V(4).Infof("create volume %s", rbdVol.VolName)
+	// if VolumeContentSource is not nil, this request is for snapshot
+	if req.VolumeContentSource != nil {
+		if err = cs.checkSnapshot(req, rbdVol); err != nil {
+			return err
 		}
+	} else {
+		err = createImage(rbdVol, volSizeMiB, rbdVol.AdminID, req.GetSecrets())
+		if err != nil {
+			klog.Warningf("failed to create volume: %v", err)
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		klog.V(4).Infof("created image %s", rbdVol.RbdImageName)
 	}
+
 	return nil
 }
 func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
@@ -244,15 +199,18 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	}
 
 	rbdSnap := &rbdSnapshot{}
-	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
-		return status.Error(codes.NotFound, err.Error())
+	if err := genSnapFromSnapID(rbdSnap, snapshotID, req.GetSecrets()); err != nil {
+		if _, ok := err.(ErrSnapNotFound); !ok {
+			return status.Error(codes.Internal, err.Error())
+		}
+		return status.Error(codes.InvalidArgument, "Missing requested Snapshot ID")
 	}
 
 	err := restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminID, req.GetSecrets())
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
-	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
+	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.RbdSnapName)
 	return nil
 }
 
@@ -265,8 +223,10 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	// For now the image get unconditionally deleted, but here retention policy can be checked
 	volumeID := req.GetVolumeId()
+	if volumeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "Empty volume ID in request")
+	}
 	volumeIDMutex.LockKey(volumeID)
-
 	defer func() {
 		if err := volumeIDMutex.UnlockKey(volumeID); err != nil {
 			klog.Warningf("failed to unlock mutex volume:%s %v", volumeID, err)
@@ -274,84 +234,66 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}()
 
 	rbdVol := &rbdVolume{}
-	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
-		if err, ok := err.(*util.CacheEntryNotFound); ok {
-			klog.V(3).Infof("metadata for volume %s not found, assuming the volume to be already deleted (%v)", volumeID, err)
+	if err := genVolFromVolID(rbdVol, volumeID, req.GetSecrets()); err != nil {
+		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
+		// or partially complete (image and imageOMap are garbage collected already), hence return
+		// success as deletion is complete
+		if _, ok := err.(util.ErrKeyNotFound); ok {
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 
-		return nil, err
+		// All errors other than ErrImageNotFound should return an error back to the caller
+		if _, ok := err.(ErrImageNotFound); !ok {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		// If error is ErrImageNotFound then we failed to find the image, but found the imageOMap
+		// to lead us to the image, hence the imageOMap needs to be garbage collected, by calling
+		// unreserve for the same
+		volumeNameMutex.LockKey(rbdVol.RequestName)
+		defer func() {
+			if err := volumeNameMutex.UnlockKey(rbdVol.RequestName); err != nil {
+				klog.Warningf("failed to unlock mutex volume:%s %v", rbdVol.RequestName, err)
+			}
+		}()
+
+		if err := unreserveVol(rbdVol, req.GetSecrets()); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	volName := rbdVol.VolName
+	// lock out parallel create requests against the same volume name as we
+	// cleanup the image and associated omaps for the same
+	volumeNameMutex.LockKey(rbdVol.RequestName)
+	defer func() {
+		if err := volumeNameMutex.UnlockKey(rbdVol.RequestName); err != nil {
+			klog.Warningf("failed to unlock mutex volume:%s %v", rbdVol.RequestName, err)
+		}
+	}()
+
 	// Deleting rbd image
-	klog.V(4).Infof("deleting volume %s", volName)
-	if err := deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
-		// TODO: can we detect "already deleted" situations here and proceed?
-		klog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, volName, err)
+	klog.V(4).Infof("deleting image %s", rbdVol.RbdImageName)
+	if err := deleteImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
+		klog.Errorf("failed to delete rbd image: %s/%s with error: %v",
+			rbdVol.Pool, rbdVol.RbdImageName, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := cs.MetadataStore.Delete(volumeID); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	delete(rbdVolumes, volumeID)
 	return &csi.DeleteVolumeResponse{}, nil
-}
-
-// ListVolumes returns a list of volumes stored in memory
-func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-	var startToken int
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_LIST_VOLUMES); err != nil {
-		klog.Warningf("invalid list volume req: %v", req)
-		return nil, err
-	}
-
-	//validate starting token if present
-	if len(req.GetStartingToken()) > 0 {
-		i, parseErr := strconv.ParseUint(req.StartingToken, 10, 32)
-		if parseErr != nil {
-			return nil, status.Errorf(codes.Aborted, "invalid starting token %s", parseErr.Error())
-		}
-		//check starting Token is greater than list of rbd volumes
-		if len(rbdVolumes) < int(i) {
-			return nil, status.Errorf(codes.Aborted, "invalid starting token %s", parseErr.Error())
-		}
-		startToken = int(i)
-	}
-
-	var entries []*csi.ListVolumesResponse_Entry
-
-	keys := make([]string, 0)
-	for k := range rbdVolumes {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	for index, k := range keys {
-		if index < startToken {
-			continue
-		}
-		entries = append(entries, &csi.ListVolumesResponse_Entry{
-			Volume: &csi.Volume{
-				VolumeId:      rbdVolumes[k].VolID,
-				CapacityBytes: rbdVolumes[k].VolSize,
-				VolumeContext: extractStoredVolOpt(rbdVolumes[k]),
-			},
-		})
-	}
-
-	resp := &csi.ListVolumesResponse{
-		Entries: entries,
-	}
-
-	return resp, nil
 }
 
 // ValidateVolumeCapabilities checks whether the volume capabilities requested
 // are supported.
 func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	if req.GetVolumeId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "Empty volume ID in request")
+	}
+
+	if len(req.VolumeCapabilities) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Empty volume capabilities in request")
+	}
+
 	for _, cap := range req.VolumeCapabilities {
 		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
 			return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
@@ -368,98 +310,88 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 // in store
 // nolint: gocyclo
 func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-
 	if err := cs.validateSnapshotReq(req); err != nil {
 		return nil, err
 	}
-	snapshotNameMutex.LockKey(req.GetName())
 
+	snapshotNameMutex.LockKey(req.GetName())
 	defer func() {
 		if err := snapshotNameMutex.UnlockKey(req.GetName()); err != nil {
 			klog.Warningf("failed to unlock mutex snapshot:%s %v", req.GetName(), err)
 		}
 	}()
 
-	// Need to check for already existing snapshot name, and if found
-	// check for the requested source volume id and already allocated source volume id
-	if exSnap, err := getRBDSnapshotByName(req.GetName()); err == nil {
-		if req.SourceVolumeId == exSnap.SourceVolumeID {
-			if err = storeSnapshotMetadata(exSnap, cs.MetadataStore); err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			}
-
-			return &csi.CreateSnapshotResponse{
-				Snapshot: &csi.Snapshot{
-					SizeBytes:      exSnap.SizeBytes,
-					SnapshotId:     exSnap.SnapID,
-					SourceVolumeId: exSnap.SourceVolumeID,
-					CreationTime: &timestamp.Timestamp{
-						Seconds: exSnap.CreatedAt,
-					},
-					ReadyToUse: true,
-				},
-			}, nil
+	// Fetch source volume information
+	rbdVol := new(rbdVolume)
+	err := genVolFromVolID(rbdVol, req.GetSourceVolumeId(), req.GetSecrets())
+	if err != nil {
+		if _, ok := err.(ErrImageNotFound); ok {
+			return nil, status.Errorf(codes.NotFound, "Source Volume ID %s not found", req.GetSourceVolumeId())
 		}
-		return nil, status.Errorf(codes.AlreadyExists, "Snapshot with the same name: %s but with different source volume id already exist", req.GetName())
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	rbdSnap, err := getRBDSnapshotOptions(req.GetParameters())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	// Generating Snapshot Name and Snapshot ID, as according to CSI spec they MUST be different
-	snapName := req.GetName()
-	uniqueID := uuid.NewUUID().String()
-	rbdVolume, err := getRBDVolumeByID(req.GetSourceVolumeId())
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", req.GetSourceVolumeId())
-	}
-	if !hasSnapshotFeature(rbdVolume.ImageFeatures) {
+	// Check if source volume was created with required image features for snaps
+	if !hasSnapshotFeature(rbdVol.ImageFeatures) {
 		return nil, status.Errorf(codes.InvalidArgument, "volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
 	}
 
-	rbdSnap.VolName = rbdVolume.VolName
-	rbdSnap.SnapName = snapName
-	snapshotID := "csi-rbd-" + rbdVolume.VolName + "-snap-" + uniqueID
-	rbdSnap.SnapID = snapshotID
+	// Create snap volume
+	rbdSnap := genSnapFromOptions(rbdVol, req.GetParameters())
+	rbdSnap.RbdImageName = rbdVol.RbdImageName
+	rbdSnap.SizeBytes = rbdVol.VolSize
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
-	rbdSnap.SizeBytes = rbdVolume.VolSize
+	rbdSnap.RequestName = req.GetName()
 
-	err = cs.doSnapshot(rbdSnap, req.GetSecrets())
-	// if we already have the snapshot, return the snapshot
+	// Need to check for already existing snapshot name, and if found
+	// check for the requested source volume id and already allocated source volume id
+	found, err := checkSnapExists(rbdSnap, req.GetSecrets())
+	if err != nil {
+		if _, ok := err.(ErrSnapNameConflict); ok {
+			return nil, status.Error(codes.AlreadyExists, err.Error())
+		}
+
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	if found {
+		return &csi.CreateSnapshotResponse{
+			Snapshot: &csi.Snapshot{
+				SizeBytes:      rbdSnap.SizeBytes,
+				SnapshotId:     rbdSnap.SnapID,
+				SourceVolumeId: rbdSnap.SourceVolumeID,
+				CreationTime:   rbdSnap.CreatedAt,
+				ReadyToUse:     true,
+			},
+		}, nil
+	}
+
+	err = reserveSnap(rbdSnap, req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	defer func() {
+		if err != nil {
+			errDefer := unreserveSnap(rbdSnap, req.GetSecrets())
+			if errDefer != nil {
+				klog.Warningf("failed undoing reservation of snapshot: %s %v", req.GetName(), errDefer)
+			}
+		}
+	}()
 
-	rbdSnap.CreatedAt = ptypes.TimestampNow().GetSeconds()
-
-	rbdSnapshots[snapshotID] = *rbdSnap
-
-	if err = storeSnapshotMetadata(rbdSnap, cs.MetadataStore); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	err = cs.doSnapshot(rbdSnap, req.GetSecrets())
+	if err != nil {
+		return nil, err
 	}
 
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
 			SizeBytes:      rbdSnap.SizeBytes,
-			SnapshotId:     snapshotID,
+			SnapshotId:     rbdSnap.SnapID,
 			SourceVolumeId: req.GetSourceVolumeId(),
-			CreationTime: &timestamp.Timestamp{
-				Seconds: rbdSnap.CreatedAt,
-			},
-			ReadyToUse: true,
+			CreationTime:   rbdSnap.CreatedAt,
+			ReadyToUse:     true,
 		},
 	}, nil
-}
-
-func storeSnapshotMetadata(rbdSnap *rbdSnapshot, cp util.CachePersister) error {
-	if err := cp.Create(rbdSnap.SnapID, rbdSnap); err != nil {
-		klog.Errorf("failed to store metadata for snapshot %s: %v", rbdSnap.SnapID, err)
-		return err
-	}
-
-	return nil
 }
 
 func (cs *ControllerServer) validateSnapshotReq(req *csi.CreateSnapshotRequest) error {
@@ -475,41 +407,53 @@ func (cs *ControllerServer) validateSnapshotReq(req *csi.CreateSnapshotRequest) 
 	if len(req.SourceVolumeId) == 0 {
 		return status.Error(codes.InvalidArgument, "Source Volume ID cannot be empty")
 	}
+
 	return nil
 }
 
-func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]string) error {
-	err := createSnapshot(rbdSnap, rbdSnap.AdminID, secret)
-	// if we already have the snapshot, return the snapshot
+func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]string) (err error) {
+	err = createSnapshot(rbdSnap, rbdSnap.AdminID, secret)
+	// If snap creation fails, even due to snapname already used, fail, next attempt will get a new
+	// uuid for use as the snap name
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-				if status.ExitStatus() == int(syscall.EEXIST) {
-					klog.Warningf("Snapshot with the same name: %s, we return this.", rbdSnap.SnapName)
-				} else {
-					klog.Warningf("failed to create snapshot: %v", err)
-					return err
-				}
-			} else {
-				klog.Warningf("failed to create snapshot: %v", err)
-				return err
-			}
-		} else {
-			klog.Warningf("failed to create snapshot: %v", err)
-			return err
-		}
-	} else {
-		klog.V(4).Infof("create snapshot %s", rbdSnap.SnapName)
-		err = protectSnapshot(rbdSnap, rbdSnap.AdminID, secret)
-
-		if err != nil {
-			err = deleteSnapshot(rbdSnap, rbdSnap.AdminID, secret)
-			if err != nil {
-				return fmt.Errorf("snapshot is created but failed to protect and delete snapshot: %v", err)
-			}
-			return errors.New("snapshot is created but failed to protect snapshot")
-		}
+		klog.Errorf("failed to create snapshot: %v", err)
+		return status.Error(codes.Internal, err.Error())
 	}
+	defer func() {
+		if err != nil {
+			errDefer := deleteSnapshot(rbdSnap, rbdSnap.AdminID, secret)
+			if errDefer != nil {
+				klog.Errorf("failed to delete snapshot: %v", errDefer)
+				err = fmt.Errorf("snapshot created but failed to delete snapshot due to"+
+					" other failures: %v", err)
+			}
+			err = status.Error(codes.Internal, err.Error())
+		}
+	}()
+
+	err = protectSnapshot(rbdSnap, rbdSnap.AdminID, secret)
+	if err != nil {
+		klog.Errorf("failed to protect snapshot: %v", err)
+		return status.Error(codes.Internal, err.Error())
+	}
+	defer func() {
+		if err != nil {
+			errDefer := unprotectSnapshot(rbdSnap, rbdSnap.AdminID, secret)
+			if errDefer != nil {
+				klog.Errorf("failed to unprotect snapshot: %v", errDefer)
+				err = fmt.Errorf("snapshot created but failed to unprotect snapshot due to"+
+					" other failures: %v", err)
+			}
+			err = status.Error(codes.Internal, err.Error())
+		}
+	}()
+
+	err = getSnapshotMetadata(rbdSnap, rbdSnap.AdminID, secret)
+	if err != nil {
+		klog.Errorf("failed to fetch snapshot metadata: %v", err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
 	return nil
 }
 
@@ -525,8 +469,8 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	if len(snapshotID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Snapshot ID cannot be empty")
 	}
-	snapshotIDMutex.LockKey(snapshotID)
 
+	snapshotIDMutex.LockKey(snapshotID)
 	defer func() {
 		if err := snapshotIDMutex.UnlockKey(snapshotID); err != nil {
 			klog.Warningf("failed to unlock mutex snapshot:%s %v", snapshotID, err)
@@ -534,95 +478,41 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}()
 
 	rbdSnap := &rbdSnapshot{}
-	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
-		if err, ok := err.(*util.CacheEntryNotFound); ok {
-			klog.V(3).Infof("metadata for snapshot %s not found, assuming the snapshot to be already deleted (%v)", snapshotID, err)
-			return &csi.DeleteSnapshotResponse{}, nil
+	if err := genSnapFromSnapID(rbdSnap, snapshotID, req.GetSecrets()); err != nil {
+		// Consider missing snap as already deleted, and proceed to remove the omap values
+		if _, ok := err.(ErrSnapNotFound); !ok {
+			return nil, status.Error(codes.Internal, err.Error())
 		}
-
-		return nil, err
+		if err := unreserveSnap(rbdSnap, req.GetSecrets()); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return &csi.DeleteSnapshotResponse{}, nil
 	}
+
+	// lock out parallel create requests against the same snap name as we
+	// cleanup the image and associated omaps for the same
+	snapshotNameMutex.LockKey(rbdSnap.RequestName)
+	defer func() {
+		if err := snapshotNameMutex.UnlockKey(rbdSnap.RequestName); err != nil {
+			klog.Warningf("failed to unlock mutex snapshot:%s %v", rbdSnap.RequestName, err)
+		}
+	}()
 
 	// Unprotect snapshot
 	err := unprotectSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets())
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "failed to unprotect snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
+		return nil, status.Errorf(codes.FailedPrecondition,
+			"failed to unprotect snapshot: %s/%s with error: %v",
+			rbdSnap.Pool, rbdSnap.RbdSnapName, err)
 	}
 
 	// Deleting snapshot
-	klog.V(4).Infof("deleting Snaphot %s", rbdSnap.SnapName)
+	klog.V(4).Infof("deleting Snaphot %s", rbdSnap.RbdSnapName)
 	if err := deleteSnapshot(rbdSnap, rbdSnap.AdminID, req.GetSecrets()); err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "failed to delete snapshot: %s/%s with error: %v", rbdSnap.Pool, rbdSnap.SnapName, err)
+		return nil, status.Errorf(codes.FailedPrecondition,
+			"failed to delete snapshot: %s/%s with error: %v",
+			rbdSnap.Pool, rbdSnap.RbdSnapName, err)
 	}
-
-	if err := cs.MetadataStore.Delete(snapshotID); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	delete(rbdSnapshots, snapshotID)
 
 	return &csi.DeleteSnapshotResponse{}, nil
-}
-
-// ListSnapshots lists the snapshots in the store
-func (cs *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS); err != nil {
-		klog.Warningf("invalid list snapshot req: %v", req)
-		return nil, err
-	}
-
-	sourceVolumeID := req.GetSourceVolumeId()
-
-	// TODO (sngchlko) list with token
-	// TODO (#94) protect concurrent access to global data structures
-
-	// list only a specific snapshot which has snapshot ID
-	if snapshotID := req.GetSnapshotId(); len(snapshotID) != 0 {
-		if rbdSnap, ok := rbdSnapshots[snapshotID]; ok {
-			// if source volume ID also set, check source volume id on the cache.
-			if len(sourceVolumeID) != 0 && rbdSnap.SourceVolumeID != sourceVolumeID {
-				return nil, status.Errorf(codes.Unknown, "Requested Source Volume ID %s is different from %s", sourceVolumeID, rbdSnap.SourceVolumeID)
-			}
-			return &csi.ListSnapshotsResponse{
-				Entries: []*csi.ListSnapshotsResponse_Entry{
-					{
-						Snapshot: &csi.Snapshot{
-							SizeBytes:      rbdSnap.SizeBytes,
-							SnapshotId:     rbdSnap.SnapID,
-							SourceVolumeId: rbdSnap.SourceVolumeID,
-							CreationTime: &timestamp.Timestamp{
-								Seconds: rbdSnap.CreatedAt,
-							},
-							ReadyToUse: true,
-						},
-					},
-				},
-			}, nil
-		}
-		return nil, status.Errorf(codes.NotFound, "Snapshot ID %s cannot found", snapshotID)
-
-	}
-
-	entries := []*csi.ListSnapshotsResponse_Entry{}
-	for _, rbdSnap := range rbdSnapshots {
-		// if source volume ID also set, check source volume id on the cache.
-		if len(sourceVolumeID) != 0 && rbdSnap.SourceVolumeID != sourceVolumeID {
-			continue
-		}
-		entries = append(entries, &csi.ListSnapshotsResponse_Entry{
-			Snapshot: &csi.Snapshot{
-				SizeBytes:      rbdSnap.SizeBytes,
-				SnapshotId:     rbdSnap.SnapID,
-				SourceVolumeId: rbdSnap.SourceVolumeID,
-				CreationTime: &timestamp.Timestamp{
-					Seconds: rbdSnap.CreatedAt,
-				},
-				ReadyToUse: true,
-			},
-		})
-	}
-
-	return &csi.ListSnapshotsResponse{
-		Entries: entries,
-	}, nil
 }
