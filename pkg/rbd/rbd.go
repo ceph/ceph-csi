@@ -17,12 +17,11 @@ limitations under the License.
 package rbd
 
 import (
-	"k8s.io/klog"
-
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/nsenter"
 	"k8s.io/utils/exec"
@@ -30,10 +29,12 @@ import (
 
 // PluginFolder defines the location of rbdplugin
 const (
-	PluginFolder      = "/var/lib/kubelet/plugins/csi-rbdplugin"
 	rbdDefaultAdminID = "admin"
 	rbdDefaultUserID  = rbdDefaultAdminID
 )
+
+// PluginFolder defines the location of ceph plugin
+var PluginFolder = "/var/lib/kubelet/plugins/"
 
 // Driver contains the default identity,node and controller struct
 type Driver struct {
@@ -46,6 +47,8 @@ type Driver struct {
 
 var (
 	version = "1.0.0"
+	// confStore is the global config store
+	confStore *util.ConfigStore
 )
 
 // NewDriver returns new rbd driver
@@ -86,9 +89,15 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // rbd CSI driver which can serve multiple parallel requests
-func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, cachePersister util.CachePersister) {
+func (r *Driver) Run(driverName, nodeID, endpoint, configRoot string, containerized bool, cachePersister util.CachePersister) {
 	var err error
 	klog.Infof("Driver: %v version: %v", driverName, version)
+
+	// Initialize config store
+	confStore, err = util.NewConfigStore(configRoot)
+	if err != nil {
+		klog.Fatalln("Failed to initialize config store.")
+	}
 
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
@@ -98,11 +107,19 @@ func (r *Driver) Run(driverName, nodeID, endpoint string, containerized bool, ca
 	r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+		csi.ControllerServiceCapability_RPC_LIST_VOLUMES,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
 		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	})
-	r.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
+
+	// We only support the multi-writer option when using block, but it's a supported capability for the plugin in general
+	// In addition, we want to add the remaining modes like MULTI_NODE_READER_ONLY,
+	// MULTI_NODE_SINGLE_WRITER etc, but need to do some verification of RO modes first
+	// will work those as follow up features
+	r.cd.AddVolumeCapabilityAccessModes(
+		[]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
 
 	// Create GRPC servers
 	r.ids = NewIdentityServer(r.cd)

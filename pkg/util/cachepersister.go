@@ -23,12 +23,18 @@ import (
 )
 
 const (
-	//PluginFolder defines location of plugins
+	// PluginFolder defines location of plugins
 	PluginFolder = "/var/lib/kubelet/plugins"
 )
 
-// ForAllFunc stores metadata with identifier
+// ForAllFunc is a unary predicate for visiting all cache entries
+// matching the `pattern' in CachePersister's ForAll function.
 type ForAllFunc func(identifier string) error
+
+// CacheEntryNotFound is an error type for "Not Found" cache errors
+type CacheEntryNotFound struct {
+	error
+}
 
 // CachePersister interface implemented for store
 type CachePersister interface {
@@ -50,6 +56,7 @@ func NewCachePersister(metadataStore, driverName string) (CachePersister, error)
 		klog.Infof("cache-persister: using node as metadata cache persister")
 		nc := &NodeCache{}
 		nc.BasePath = PluginFolder + "/" + driverName
+		nc.CacheDir = "controller"
 		return nc, nil
 	}
 	return nil, errors.New("cache-persister: couldn't parse metadatastorage flag")

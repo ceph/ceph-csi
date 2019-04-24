@@ -23,16 +23,14 @@ import (
 	"regexp"
 	"strings"
 
-	"golang.org/x/net/context"
-	"k8s.io/klog"
+	"github.com/ceph/ceph-csi/pkg/csi-common"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
-
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 )
 
 // NodeServer struct of ceph rbd driver with supported methods of CSI
@@ -45,21 +43,12 @@ type NodeServer struct {
 //TODO remove both stage and unstage methods
 //once https://github.com/kubernetes-csi/drivers/pull/145 is merged
 
-// NodeStageVolume returns unimplemented response
-func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// NodeUnstageVolume returns unimplemented response
-func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
 // NodePublishVolume mounts the volume mounted to the device path to the target
 // path
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	targetPathMutex.LockKey(targetPath)
+	disableInUseChecks := false
 
 	defer func() {
 		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
@@ -82,7 +71,18 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if !notMnt {
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
-	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext())
+
+	// MULTI_NODE_MULTI_WRITER is supported by default for Block access type volumes
+	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+		if isBlock {
+			disableInUseChecks = true
+		} else {
+			klog.Warningf("MULTI_NODE_MULTI_WRITER currently only supported with volumes of access type `block`, invalid AccessMode for volume: %v", req.GetVolumeId())
+			return nil, status.Error(codes.InvalidArgument, "rbd: RWX access mode request is only valid for volumes with access type `block`")
+		}
+	}
+
+	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext(), disableInUseChecks)
 	if err != nil {
 		return nil, err
 	}

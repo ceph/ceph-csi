@@ -17,15 +17,15 @@ limitations under the License.
 package cephfs
 
 import (
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
+	"github.com/ceph/ceph-csi/pkg/util"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
-
-	"github.com/ceph/ceph-csi/pkg/util"
+	"k8s.io/kubernetes/pkg/util/keymutex"
 )
 
 // ControllerServer struct of CEPH CSI driver with supported methods of CSI
@@ -39,6 +39,10 @@ type controllerCacheEntry struct {
 	VolOptions volumeOptions
 	VolumeID   volumeID
 }
+
+var (
+	mtxControllerVolumeID = keymutex.NewHashed(0)
+)
 
 // CreateVolume creates the volume in backend and store the volume metadata
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
@@ -58,6 +62,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	volID := makeVolumeID(req.GetName())
 
+	mtxControllerVolumeID.LockKey(string(volID))
+	defer mustUnlock(mtxControllerVolumeID, string(volID))
+
 	// Create a volume in case the user didn't provide one
 
 	if volOptions.ProvisionVolume {
@@ -65,11 +72,6 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		cr, err := getAdminCredentials(secret)
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-
-		if err = storeCephCredentials(volID, cr); err != nil {
-			klog.Errorf("failed to store admin credentials for '%s': %v", cr.id, err)
-			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		if err = createVolume(volOptions, cr, volID, req.GetCapacityRange().GetRequiredBytes()); err != nil {
@@ -102,8 +104,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-// DeleteVolume deletes the volume in backend and removes the volume metadata
-// from store
+// DeleteVolume deletes the volume in backend
+// and removes the volume metadata from store
+// nolint: gocyclo
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(); err != nil {
 		klog.Errorf("DeleteVolumeRequest validation failed: %v", err)
@@ -113,11 +116,15 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	var (
 		volID   = volumeID(req.GetVolumeId())
 		secrets = req.GetSecrets()
-		err     error
 	)
 
 	ce := &controllerCacheEntry{}
-	if err = cs.MetadataStore.Get(string(volID), ce); err != nil {
+	if err := cs.MetadataStore.Get(string(volID), ce); err != nil {
+		if err, ok := err.(*util.CacheEntryNotFound); ok {
+			klog.Infof("cephfs: metadata for volume %s not found, assuming the volume to be already deleted (%v)", volID, err)
+			return &csi.DeleteVolumeResponse{}, nil
+		}
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -142,6 +149,9 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		klog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+
+	mtxControllerVolumeID.LockKey(string(volID))
+	defer mustUnlock(mtxControllerVolumeID, string(volID))
 
 	if err = purgeVolume(volID, cr, &ce.VolOptions); err != nil {
 		klog.Errorf("failed to delete volume %s: %v", volID, err)

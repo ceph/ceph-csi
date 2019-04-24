@@ -1,6 +1,30 @@
 #!/bin/bash
 
-if [ "${TRAVIS_BRANCH}" == 'master' ]; then
+push_helm_chats() {
+	PACKAGE=$1
+	CHANGED=0
+	VERSION=$(grep 'version:' deploy/"$PACKAGE"/helm/Chart.yaml | awk '{print $2}')
+
+	if [ ! -f "tmp/csi-charts/docs/$PACKAGE/ceph-csi-$PACKAGE-$VERSION.tgz" ]; then
+		CHANGED=1
+		ln -s helm deploy/"$PACKAGE"/ceph-csi-"$PACKAGE"
+		mkdir -p tmp/csi-charts/docs/"$PACKAGE"
+		pushd tmp/csi-charts/docs/"$PACKAGE" >/dev/null
+		helm init --client-only
+		helm package ../../../../deploy/"$PACKAGE"/ceph-csi-"$PACKAGE"
+		popd >/dev/null
+	fi
+
+	if [ $CHANGED -eq 1 ]; then
+		pushd tmp/csi-charts/docs >/dev/null
+		helm repo index .
+		git add --all :/ && git commit -m "Update repo"
+		git push https://"$GITHUB_TOKEN"@github.com/ceph/csi-charts
+		popd >/dev/null
+	fi
+}
+
+if [ "${TRAVIS_BRANCH}" == 'csi-v0.3' ]; then
 	export RBD_IMAGE_VERSION='v0.3.0'
 	export CEPHFS_IMAGE_VERSION='v0.3.0'
 elif [ "${TRAVIS_BRANCH}" == 'csi-v1.0' ]; then
@@ -12,7 +36,7 @@ else
 fi
 
 if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
-	docker login -u "${QUAY_IO_USERNAME}" -p "${QUAY_IO_PASSWORD}" quay.io
+	"${CONTAINER_CMD:-docker}" login -u "${QUAY_IO_USERNAME}" -p "${QUAY_IO_PASSWORD}" quay.io
 	make push-image-rbdplugin push-image-cephfsplugin
 
 	set -xe
@@ -29,25 +53,6 @@ if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
 	mkdir -p csi-charts/docs
 	popd >/dev/null
 
-	CHANGED=0
-	VERSION=$(grep 'version:' deploy/rbd/helm/Chart.yaml | awk '{print $2}')
-
-	if [ ! -f "tmp/csi-charts/docs/rbd/ceph-csi-rbd-$VERSION.tgz" ]; then
-		CHANGED=1
-		ln -s helm deploy/rbd/ceph-csi-rbd
-		mkdir -p tmp/csi-charts/docs/rbd
-		pushd tmp/csi-charts/docs/rbd >/dev/null
-		helm init --client-only
-		helm package ../../../../deploy/rbd/ceph-csi-rbd
-		popd >/dev/null
-	fi
-
-	if [ $CHANGED -eq 1 ]; then
-		pushd tmp/csi-charts/docs >/dev/null
-		helm repo index .
-		git add --all :/ && git commit -m "Update repo"
-		git push https://"$GITHUB_TOKEN"@github.com/ceph/csi-charts
-		popd >/dev/null
-	fi
-
+	push_helm_chats rbd
+	push_helm_chats cephfs
 fi

@@ -258,6 +258,7 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 			Factor:   rbdImageWatcherFactor,
 			Steps:    rbdImageWatcherSteps,
 		}
+
 		err = waitForrbdImage(backoff, volOptions, userID, credentials)
 
 		if err != nil {
@@ -279,7 +280,7 @@ func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (stri
 	}
 
 	klog.V(5).Infof("rbd: map mon %s", mon)
-	key, err := getRBDKey(userID, creds)
+	key, err := getRBDKey(volOpt.ClusterID, userID, creds)
 	if err != nil {
 		return "", err
 	}
@@ -312,6 +313,10 @@ func waitForrbdImage(backoff wait.Backoff, volOptions *rbdVolume, userID string,
 		used, rbdOutput, err := rbdStatus(volOptions, userID, credentials)
 		if err != nil {
 			return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
+		}
+		if (volOptions.DisableInUseChecks) && (used) {
+			klog.V(2).Info("valid multi-node attach requested, ignoring watcher in-use result")
+			return used, nil
 		}
 		return !used, nil
 	})

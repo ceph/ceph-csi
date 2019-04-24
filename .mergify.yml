@@ -1,0 +1,14 @@
+---
+pull_request_rules:
+  - name: automatic merge
+    conditions:
+      - label!=DNM
+      - '#approved-reviews-by>=1'
+      - 'status-success=continuous-integration/travis-ci/pr'
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}

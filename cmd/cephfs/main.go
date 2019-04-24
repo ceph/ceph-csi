@@ -19,7 +19,6 @@ package main
 import (
 	"flag"
 	"os"
-	"path"
 
 	"github.com/ceph/ceph-csi/pkg/cephfs"
 	"github.com/ceph/ceph-csi/pkg/util"
@@ -28,37 +27,37 @@ import (
 
 var (
 	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName      = flag.String("drivername", "csi-cephfsplugin", "name of the driver")
+	driverName      = flag.String("drivername", "cephfs.csi.ceph.com", "name of the driver")
 	nodeID          = flag.String("nodeid", "", "node id")
 	volumeMounter   = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
+	mountCacheDir   = flag.String("mountcachedir", "", "mount info cache save dir")
 )
 
+func init() {
+	klog.InitFlags(nil)
+	if err := flag.Set("logtostderr", "true"); err != nil {
+		klog.Exitf("failed to set logtostderr flag: %v", err)
+	}
+	flag.Parse()
+}
+
 func main() {
-	util.InitLogging()
 
-	if err := createPersistentStorage(path.Join(cephfs.PluginFolder, "controller")); err != nil {
-		klog.Errorf("failed to create persistent storage for controller: %v", err)
-		os.Exit(1)
-	}
-
-	if err := createPersistentStorage(path.Join(cephfs.PluginFolder, "node")); err != nil {
-		klog.Errorf("failed to create persistent storage for node: %v", err)
-		os.Exit(1)
-	}
-
-	cp, err := util.NewCachePersister(*metadataStorage, *driverName)
+	err := util.ValidateDriverName(*driverName)
 	if err != nil {
-		klog.Errorf("failed to define cache persistence method: %v", err)
+		klog.Fatalln(err)
+	}
+	//update plugin name
+	cephfs.PluginFolder = cephfs.PluginFolder + *driverName
+
+	cp, err := util.CreatePersistanceStorage(cephfs.PluginFolder, *metadataStorage, *driverName)
+	if err != nil {
 		os.Exit(1)
 	}
 
 	driver := cephfs.NewDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, cp)
+	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, cp)
 
 	os.Exit(0)
-}
-
-func createPersistentStorage(persistentStoragePath string) error {
-	return os.MkdirAll(persistentStoragePath, os.FileMode(0755))
 }

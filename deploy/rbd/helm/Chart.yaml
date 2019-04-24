@@ -4,7 +4,7 @@ appVersion: "1.0.0"
 description: "Container Storage Interface (CSI) driver,
 provisioner, snapshotter, and attacher for Ceph RBD"
 name: ceph-csi-rbd
-version: 0.4.0
+version: 0.5.1
 keywords:
   - ceph
   - rbd

@@ -17,12 +17,7 @@ limitations under the License.
 package cephfs
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"os"
-
-	"k8s.io/klog"
 )
 
 const (
@@ -53,83 +48,61 @@ func getCephUserName(volID volumeID) string {
 	return cephUserPrefix + string(volID)
 }
 
-func getCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
-	entityName := cephEntityClientPrefix + getCephUserName(volID)
-
+func getSingleCephEntity(args ...string) (*cephEntity, error) {
 	var ents []cephEntity
-	args := [...]string{
-		"-m", volOptions.Monitors,
-		"auth", "-f", "json", "-c", cephConfigPath, "-n", cephEntityClientPrefix + adminCr.id, "--keyring", getCephKeyringPath(volID, adminCr.id),
-		"get", entityName,
-	}
-
-	out, err := execCommand("ceph", args[:]...)
-	if err != nil {
-		return nil, fmt.Errorf("cephfs: ceph failed with following error: %s\ncephfs: ceph output: %s", err, out)
-	}
-
-	// Workaround for output from `ceph auth get`
-	// Contains non-json data: "exported keyring for ENTITY\n\n"
-	offset := bytes.Index(out, []byte("[{"))
-
-	if err = json.NewDecoder(bytes.NewReader(out[offset:])).Decode(&ents); err != nil {
-		return nil, fmt.Errorf("failed to decode json: %v", err)
+	if err := execCommandJSON(&ents, "ceph", args...); err != nil {
+		return nil, err
 	}
 
 	if len(ents) != 1 {
-		return nil, fmt.Errorf("got unexpected number of entities for %s: expected 1, got %d", entityName, len(ents))
+		return nil, fmt.Errorf("got unexpected number of entities: expected 1, got %d", len(ents))
 	}
 
 	return &ents[0], nil
+}
+
+func genUserIDs(adminCr *credentials, volID volumeID) (adminID, userID string) {
+	return cephEntityClientPrefix + adminCr.id, cephEntityClientPrefix + getCephUserName(volID)
+}
+
+func getCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
+	adminID, userID := genUserIDs(adminCr, volID)
+
+	return getSingleCephEntity(
+		"-m", volOptions.Monitors,
+		"-n", adminID,
+		"--key="+adminCr.key,
+		"-c", cephConfigPath,
+		"-f", "json",
+		"auth", "get", userID,
+	)
 }
 
 func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
-	caps := cephEntityCaps{
-		Mds: fmt.Sprintf("allow rw path=%s", getVolumeRootPathCeph(volID)),
-		Mon: "allow r",
-		Osd: fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volID)),
-	}
+	adminID, userID := genUserIDs(adminCr, volID)
 
-	var ents []cephEntity
-	args := [...]string{
+	return getSingleCephEntity(
 		"-m", volOptions.Monitors,
-		"auth", "-f", "json", "-c", cephConfigPath, "-n", cephEntityClientPrefix + adminCr.id, "--keyring", getCephKeyringPath(volID, adminCr.id),
-		"get-or-create", cephEntityClientPrefix + getCephUserName(volID),
-		"mds", caps.Mds,
-		"mon", caps.Mon,
-		"osd", caps.Osd,
-	}
-
-	if err := execCommandJSON(&ents, args[:]...); err != nil {
-		return nil, fmt.Errorf("error creating ceph user: %v", err)
-	}
-
-	return &ents[0], nil
+		"-n", adminID,
+		"--key="+adminCr.key,
+		"-c", cephConfigPath,
+		"-f", "json",
+		"auth", "get-or-create", userID,
+		// User capabilities
+		"mds", fmt.Sprintf("allow rw path=%s", getVolumeRootPathCeph(volID)),
+		"mon", "allow r",
+		"osd", fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volID)),
+	)
 }
 
 func deleteCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) error {
-	userID := getCephUserName(volID)
+	adminID, userID := genUserIDs(adminCr, volID)
 
-	args := [...]string{
+	return execCommandErr("ceph",
 		"-m", volOptions.Monitors,
-		"-c", cephConfigPath, "-n", cephEntityClientPrefix + adminCr.id, "--keyring", getCephKeyringPath(volID, adminCr.id),
-		"auth", "rm", cephEntityClientPrefix + userID,
-	}
-
-	var err error
-	if err = execCommandAndValidate("ceph", args[:]...); err != nil {
-		return err
-	}
-
-	keyringPath := getCephKeyringPath(volID, adminCr.id)
-	if err = os.Remove(keyringPath); err != nil {
-		klog.Errorf("failed to remove keyring file %s with error %s", keyringPath, err)
-	}
-
-	secretPath := getCephSecretPath(volID, adminCr.id)
-	if err = os.Remove(secretPath); err != nil {
-		klog.Errorf("failed to remove secret file %s with error %s", secretPath, err)
-	}
-
-	return nil
+		"-n", adminID,
+		"--key="+adminCr.key,
+		"-c", cephConfigPath,
+		"auth", "rm", userID,
+	)
 }

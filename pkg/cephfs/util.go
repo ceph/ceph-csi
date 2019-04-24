@@ -21,47 +21,68 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
 
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"k8s.io/kubernetes/pkg/util/keymutex"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 type volumeID string
 
+func mustUnlock(m keymutex.KeyMutex, key string) {
+	if err := m.UnlockKey(key); err != nil {
+		klog.Fatalf("failed to unlock mutex for %s: %v", key, err)
+	}
+}
+
 func makeVolumeID(volName string) volumeID {
 	return volumeID("csi-cephfs-" + volName)
 }
 
-func execCommand(command string, args ...string) ([]byte, error) {
-	klog.V(4).Infof("cephfs: EXEC %s %s", command, args)
+func execCommand(program string, args ...string) (stdout, stderr []byte, err error) {
+	var (
+		cmd           = exec.Command(program, args...) // nolint: gosec
+		sanitizedArgs = util.StripSecretInArgs(args)
+		stdoutBuf     bytes.Buffer
+		stderrBuf     bytes.Buffer
+	)
 
-	cmd := exec.Command(command, args...) // #nosec
-	return cmd.CombinedOutput()
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	klog.V(4).Infof("cephfs: EXEC %s %s", program, sanitizedArgs)
+
+	if err := cmd.Run(); err != nil {
+		return nil, nil, fmt.Errorf("an error occurred while running (%d) %s %v: %v: %s",
+			cmd.Process.Pid, program, sanitizedArgs, err, stderrBuf.Bytes())
+	}
+
+	return stdoutBuf.Bytes(), stderrBuf.Bytes(), nil
 }
 
-func execCommandAndValidate(program string, args ...string) error {
-	out, err := execCommand(program, args...)
+func execCommandErr(program string, args ...string) error {
+	_, _, err := execCommand(program, args...)
+	return err
+}
+
+func execCommandJSON(v interface{}, program string, args ...string) error {
+	stdout, _, err := execCommand(program, args...)
 	if err != nil {
-		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
+		return err
+	}
+
+	if err = json.Unmarshal(stdout, v); err != nil {
+		return fmt.Errorf("failed to unmarshal JSON for %s %v: %s: %v", program, util.StripSecretInArgs(args), stdout, err)
 	}
 
 	return nil
-}
-
-func execCommandJSON(v interface{}, args ...string) error {
-	program := "ceph"
-	out, err := execCommand(program, args...)
-
-	if err != nil {
-		return fmt.Errorf("cephfs: %s failed with following error: %s\ncephfs: %s output: %s", program, err, program, out)
-	}
-
-	return json.NewDecoder(bytes.NewReader(out)).Decode(v)
 }
 
 // Used in isMountPoint()
@@ -76,31 +97,12 @@ func isMountPoint(p string) (bool, error) {
 	return !notMnt, nil
 }
 
-func storeCephCredentials(volID volumeID, cr *credentials) error {
-	keyringData := cephKeyringData{
-		UserID:   cr.id,
-		Key:      cr.key,
-		VolumeID: volID,
-	}
-
-	if err := keyringData.writeToFile(); err != nil {
-		return err
-	}
-
-	secret := cephSecretData{
-		UserID:   cr.id,
-		Key:      cr.key,
-		VolumeID: volID,
-	}
-
-	err := secret.writeToFile()
-	return err
+func pathExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }
 
-//
 // Controller service request validation
-//
-
 func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid CreateVolumeRequest: %v", err)
@@ -132,10 +134,7 @@ func (cs *ControllerServer) validateDeleteVolumeRequest() error {
 	return nil
 }
 
-//
 // Node service request validation
-//
-
 func validateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 	if req.GetVolumeCapability() == nil {
 		return errors.New("volume capability missing in request")
@@ -178,7 +177,7 @@ func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 	}
 
 	if req.GetTargetPath() == "" {
-		return errors.New("varget path missing in request")
+		return errors.New("target path missing in request")
 	}
 
 	return nil

@@ -1,7 +1,7 @@
 # CSI RBD Plugin
 
 The RBD CSI plugin is able to provision new RBD images and
-attach and mount those to worlkoads.
+attach and mount those to workloads.
 
 ## Building
 
@@ -29,12 +29,14 @@ make image-rbdplugin
 Option | Default value | Description
 ------ | ------------- | -----------
 `--endpoint` | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket
-`--drivername` | `csi-cephfsplugin` | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
+`--drivername` | `rbd.csi.ceph.com` | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
 `--nodeid` | _empty_ | This node's ID
 `--containerized` | true | Whether running in containerized mode
 `--metadatastorage` | _empty_ | Whether should metadata be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
+`--configroot` | `/etc/csi-config` | Directory in which CSI specific Ceph cluster configurations are present, OR the value `k8s_objects` if present as kubernetes secrets"
 
 **Available environmental variables:**
+
 `HOST_ROOTFS`: rbdplugin searches `/proc` directory under the directory set by `HOST_ROOTFS`.
 
 `KUBERNETES_CONFIG_PATH`: if you use `k8s_configmap` as metadata store, specify
@@ -49,8 +51,9 @@ the configmaps to be stored
 
 Parameter | Required | Description
 --------- | -------- | -----------
-`monitors` | one of `monitors` and `monValueFromSecret` must be set | Comma separated list of Ceph monitors (e.g. `192.168.100.1:6789,192.168.100.2:6789,192.168.100.3:6789`)
-`monValueFromSecret` | one of `monitors` and `monValueFromSecret` must be set | a string pointing the key in the credential secret, whose value is the mon. This is used for the case when the monitors' IP or hostnames are changed, the secret can be updated to pick up the new monitors.
+`monitors` | one of `monitors`, `clusterID` or `monValueFromSecret` must be set | Comma separated list of Ceph monitors (e.g. `192.168.100.1:6789,192.168.100.2:6789,192.168.100.3:6789`)
+`monValueFromSecret` | one of `monitors`, `clusterID` or and `monValueFromSecret` must be set | a string pointing the key in the credential secret, whose value is the mon. This is used for the case when the monitors' IP or hostnames are changed, the secret can be updated to pick up the new monitors.
+`clusterID` | one of `monitors`, `clusterID` or `monValueFromSecret` must be set | String representing a Ceph cluster, must be unique across all Ceph clusters in use for provisioning, cannot be greater than 36 bytes in length, and should remain immutable for the lifetime of the Ceph cluster in use
 `pool` | yes | Ceph pool into which the RBD image shall be created
 `imageFormat` | no | RBD image format. Defaults to `2`. See [man pages](http://docs.ceph.com/docs/mimic/man/8/rbd/#cmdoption-rbd-image-format)
 `imageFeatures` | no | RBD image features. Available for `imageFormat=2`. CSI RBD currently supports only `layering` feature. See [man pages](http://docs.ceph.com/docs/mimic/man/8/rbd/#cmdoption-rbd-image-feature)
@@ -58,13 +61,22 @@ Parameter | Required | Description
 `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-publish-secret-namespace` | for Kubernetes | namespaces of the above Secret objects
 `mounter`| no | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images
 
+NOTE: If `clusterID` parameter is used, then an accompanying Ceph cluster
+configuration secret or config files needs to be provided to the running pods.
+Refer to [Cluster ID based configuration](../examples/README.md#cluster-id-based-configuration)
+for more information. A suggested way to populate the clusterID is to use the
+output of `ceph fsid` of the Ceph cluster to be used for provisioning.
+
 **Required secrets:**
 
 Admin credentials are required for provisioning new RBD images `ADMIN_NAME`:
 `ADMIN_PASSWORD` - note that the key of the key-value pair is the name of the
 client with admin privileges, and the value is its password
 
-Also note that CSI RBD expects admin keyring and Ceph config file in `/etc/ceph`.
+If clusterID is specified, then a secret with various keys and values as
+specified in `examples/rbd/template-ceph-cluster-ID-secret.yaml` needs to be
+created, with the secret name matching the string value provided as the
+`clusterID`.
 
 ## Deployment with Kubernetes
 
@@ -110,7 +122,7 @@ Deploys a daemon set with two containers: CSI driver-registrar and the CSI RBD d
 
 ## Verifying the deployment in Kubernetes
 
-After successfuly completing the steps above, you should see output similar to this:
+After successfully completing the steps above, you should see output similar to this:
 
 ```bash
 $ kubectl get all

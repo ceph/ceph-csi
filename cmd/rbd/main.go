@@ -19,7 +19,6 @@ package main
 import (
 	"flag"
 	"os"
-	"path"
 
 	"github.com/ceph/ceph-csi/pkg/rbd"
 	"github.com/ceph/ceph-csi/pkg/util"
@@ -28,43 +27,38 @@ import (
 
 var (
 	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName      = flag.String("drivername", "csi-rbdplugin", "name of the driver")
+	driverName      = flag.String("drivername", "rbd.csi.ceph.com", "name of the driver")
 	nodeID          = flag.String("nodeid", "", "node id")
 	containerized   = flag.Bool("containerized", true, "whether run as containerized")
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
+	configRoot      = flag.String("configroot", "/etc/csi-config", "directory in which CSI specific Ceph"+
+		" cluster configurations are present, OR the value \"k8s_objects\" if present as kubernetes secrets")
 )
 
+func init() {
+	klog.InitFlags(nil)
+	if err := flag.Set("logtostderr", "true"); err != nil {
+		klog.Exitf("failed to set logtostderr flag: %v", err)
+	}
+	flag.Parse()
+}
+
 func main() {
-	util.InitLogging()
 
-	if err := createPersistentStorage(path.Join(rbd.PluginFolder, "controller")); err != nil {
-		klog.Errorf("failed to create persistent storage for controller %v", err)
-		os.Exit(1)
-	}
-	if err := createPersistentStorage(path.Join(rbd.PluginFolder, "node")); err != nil {
-		klog.Errorf("failed to create persistent storage for node %v", err)
-		os.Exit(1)
-	}
-
-	cp, err := util.NewCachePersister(*metadataStorage, *driverName)
+	err := util.ValidateDriverName(*driverName)
 	if err != nil {
-		klog.Errorf("failed to define cache persistence method: %v", err)
+		klog.Fatalln(err)
+	}
+	//update plugin name
+	rbd.PluginFolder = rbd.PluginFolder + *driverName
+
+	cp, err := util.CreatePersistanceStorage(rbd.PluginFolder, *metadataStorage, *driverName)
+	if err != nil {
 		os.Exit(1)
 	}
 
 	driver := rbd.NewDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *containerized, cp)
+	driver.Run(*driverName, *nodeID, *endpoint, *configRoot, *containerized, cp)
 
 	os.Exit(0)
-}
-
-func createPersistentStorage(persistentStoragePath string) error {
-	if _, err := os.Stat(persistentStoragePath); os.IsNotExist(err) {
-		if err = os.MkdirAll(persistentStoragePath, os.FileMode(0755)); err != nil {
-			return err
-		}
-	} else {
-		return err
-	}
-	return nil
 }

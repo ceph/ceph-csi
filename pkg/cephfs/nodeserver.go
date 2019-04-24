@@ -21,12 +21,13 @@ import (
 	"fmt"
 	"os"
 
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+	"k8s.io/kubernetes/pkg/util/keymutex"
 )
 
 // NodeServer struct of ceph CSI driver with supported methods of CSI
@@ -34,6 +35,10 @@ import (
 type NodeServer struct {
 	*csicommon.DefaultNodeServer
 }
+
+var (
+	mtxNodeVolumeID = keymutex.NewHashed(0)
+)
 
 func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi.NodeStageVolumeRequest) (*credentials, error) {
 	var (
@@ -44,15 +49,11 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 	if volOptions.ProvisionVolume {
 		// The volume is provisioned dynamically, get the credentials directly from Ceph
 
-		// First, store admin credentials - those are needed for retrieving the user credentials
+		// First, get admin credentials - those are needed for retrieving the user credentials
 
 		adminCr, err := getAdminCredentials(secrets)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
-		}
-
-		if err = storeCephCredentials(volID, adminCr); err != nil {
-			return nil, fmt.Errorf("failed to store ceph admin credentials: %v", err)
 		}
 
 		// Then get the ceph user
@@ -72,10 +73,6 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 		}
 
 		cr = userCr
-	}
-
-	if err := storeCephCredentials(volID, cr); err != nil {
-		return nil, fmt.Errorf("failed to store ceph user credentials: %v", err)
 	}
 
 	return cr, nil
@@ -107,6 +104,9 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		klog.Errorf("failed to create staging mount point at %s for volume %s: %v", stagingTargetPath, volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	mtxNodeVolumeID.LockKey(string(volID))
+	defer mustUnlock(mtxNodeVolumeID, string(volID))
 
 	// Check if the volume is already mounted
 
@@ -150,9 +150,12 @@ func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequ
 
 	klog.V(4).Infof("cephfs: mounting volume %s with %s", volID, m.name())
 
-	if err = m.mount(stagingTargetPath, cr, volOptions, volID); err != nil {
+	if err = m.mount(stagingTargetPath, cr, volOptions); err != nil {
 		klog.Errorf("failed to mount volume %s: %v", volID, err)
 		return status.Error(codes.Internal, err.Error())
+	}
+	if err := volumeMountCache.nodeStageVolume(req.GetVolumeId(), stagingTargetPath, req.GetSecrets()); err != nil {
+		klog.Warningf("mount-cache: failed to stage volume %s %s: %v", volID, stagingTargetPath, err)
 	}
 	return nil
 }
@@ -195,6 +198,10 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	if err := volumeMountCache.nodePublishVolume(volID, targetPath, req.GetReadonly()); err != nil {
+		klog.Warningf("mount-cache: failed to publish volume %s %s: %v", volID, targetPath, err)
+	}
+
 	klog.Infof("cephfs: successfully bind-mounted volume %s to %s", volID, targetPath)
 
 	return &csi.NodePublishVolumeResponse{}, nil
@@ -208,6 +215,11 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	targetPath := req.GetTargetPath()
+
+	volID := req.GetVolumeId()
+	if err = volumeMountCache.nodeUnPublishVolume(volID, targetPath); err != nil {
+		klog.Warningf("mount-cache: failed to unpublish volume %s %s: %v", volID, targetPath, err)
+	}
 
 	// Unmount the bind-mount
 	if err = unmountVolume(targetPath); err != nil {
@@ -232,6 +244,11 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	stagingTargetPath := req.GetStagingTargetPath()
 
+	volID := req.GetVolumeId()
+	if err = volumeMountCache.nodeUnStageVolume(volID); err != nil {
+		klog.Warningf("mount-cache: failed to unstage volume %s %s: %v", volID, stagingTargetPath, err)
+	}
+
 	// Unmount the volume
 	if err = unmountVolume(stagingTargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -241,7 +258,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof("cephfs: successfully umounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
+	klog.Infof("cephfs: successfully unmounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
