@@ -400,7 +400,7 @@ func hasSnapshotFeature(imageFeatures string) bool {
 
 func getRBDVolumeByID(volumeID string) (*rbdVolume, error) {
 	if rbdVol, ok := rbdVolumes[volumeID]; ok {
-		return rbdVol, nil
+		return &rbdVol, nil
 	}
 	return nil, fmt.Errorf("volume id %s does not exit in the volumes list", volumeID)
 }
@@ -408,7 +408,7 @@ func getRBDVolumeByID(volumeID string) (*rbdVolume, error) {
 func getRBDVolumeByName(volName string) (*rbdVolume, error) {
 	for _, rbdVol := range rbdVolumes {
 		if rbdVol.VolName == volName {
-			return rbdVol, nil
+			return &rbdVol, nil
 		}
 	}
 	return nil, fmt.Errorf("volume name %s does not exit in the volumes list", volName)
@@ -417,7 +417,7 @@ func getRBDVolumeByName(volName string) (*rbdVolume, error) {
 func getRBDSnapshotByName(snapName string) (*rbdSnapshot, error) {
 	for _, rbdSnap := range rbdSnapshots {
 		if rbdSnap.SnapName == snapName {
-			return rbdSnap, nil
+			return &rbdSnap, nil
 		}
 	}
 	return nil, fmt.Errorf("snapshot name %s does not exit in the snapshots list", snapName)
@@ -467,7 +467,7 @@ func protectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]
 	return nil
 }
 
-func extractStoredVolOpt(r *rbdVolume) map[string]string {
+func extractStoredVolOpt(r rbdVolume) map[string]string {
 	volOptions := make(map[string]string)
 	volOptions["pool"] = r.Pool
 
