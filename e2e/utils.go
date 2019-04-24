@@ -104,7 +104,6 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, pOut time
 
 func getAdminCreds(f *framework.Framework, c string) string {
 
-	ns := "rook-ceph"
 	cmd := []string{"/bin/sh", "-c", c}
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
@@ -360,7 +359,7 @@ func unmarshal(fileName string, obj interface{}) error {
 
 //TODO what should be the count of mon pods?
 //how to get the mon count for pod validation?
-func checkMonPods(ns string, c kubernetes.Interface, count int, timeout time.Duration, opt metav1.ListOptions) error {
+func checkCephPods(ns string, c kubernetes.Interface, count int, timeout time.Duration, opt metav1.ListOptions) error {
 	start := time.Now()
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
@@ -369,7 +368,7 @@ func checkMonPods(ns string, c kubernetes.Interface, count int, timeout time.Dur
 			return false, err
 		}
 
-		framework.Logf("mon pod  count is %d  expected count %d (%d seconds elapsed)", len(podList.Items), count, int(time.Since(start).Seconds()))
+		framework.Logf("pod count is %d  expected count %d (%d seconds elapsed)", len(podList.Items), count, int(time.Since(start).Seconds()))
 
 		if len(podList.Items) == count {
 			return true, nil

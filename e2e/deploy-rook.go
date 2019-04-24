@@ -14,7 +14,7 @@ var (
 	rookURL = "https://raw.githubusercontent.com/rook/rook/version/cluster/examples/kubernetes/ceph"
 )
 
-var rook = []string{"operator.yaml", "cluster.yaml", "toolbox.yaml"}
+var rook = []string{"common.yaml", "operator.yaml", "cluster.yaml", "toolbox.yaml"}
 
 func formRookURL(version string) {
 	rookURL = strings.Replace(rookURL, "version", version, 1)
@@ -22,20 +22,23 @@ func formRookURL(version string) {
 
 func getK8sClient() kubernetes.Interface {
 	framework.Logf("Creating a kubernetes client")
-	//TODO fix err
 	client, _ := framework.LoadClientset()
 	return client
 
 }
-func deployOperator(c kubernetes.Interface) {
-	//opPath := fmt.Sprintf("%s/%s", rookURL, "operator.yaml")
 
-	//TODO need to fix this, currently am using coreos
-	opPath := "https://raw.githubusercontent.com/Madhu-1/rook/fix-misspell/cluster/examples/kubernetes/ceph/operator.yaml"
+func deployCommon(c kubernetes.Interface) {
+	commonPath := fmt.Sprintf("%s/%s", rookURL, "common.yaml")
+	framework.RunKubectlOrDie("create", "-f", commonPath)
+}
+
+func deployOperator(c kubernetes.Interface) {
+	opPath := fmt.Sprintf("%s/%s", rookURL, "operator.yaml")
+
 	framework.RunKubectlOrDie("create", "-f", opPath)
-	waitForDaemonSets("rook-ceph-agent", "rook-ceph-system", c, 5*time.Minute)
-	waitForDaemonSets("rook-discover", "rook-ceph-system", c, 5*time.Minute)
-	waitForDeploymentComplete("rook-ceph-operator", "rook-ceph-system", c, 5*time.Minute)
+	waitForDaemonSets("rook-ceph-agent", "rook-ceph", c, 5*time.Minute)
+	waitForDaemonSets("rook-discover", "rook-ceph", c, 5*time.Minute)
+	waitForDeploymentComplete("rook-ceph-operator", "rook-ceph", c, 5*time.Minute)
 }
 
 func deployCluster(c kubernetes.Interface) {
@@ -44,11 +47,11 @@ func deployCluster(c kubernetes.Interface) {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-mon",
 	}
-	checkMonPods("rook-ceph", c, 3, 5*time.Minute, opt)
-	opt = metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-mgr",
-	}
-	checkMonPods("rook-ceph", c, 3, 5*time.Minute, opt)
+	checkCephPods("rook-ceph", c, 1, 5*time.Minute, opt)
+	//opt = metav1.ListOptions{
+	//	LabelSelector: "app=rook-ceph-mgr",
+	//}
+	//checkCephPods("rook-ceph", c, 1, 5*time.Minute, opt)
 }
 
 func deployToolBox(c kubernetes.Interface) {
@@ -65,6 +68,7 @@ func deployToolBox(c kubernetes.Interface) {
 
 func deployRook() {
 	c := getK8sClient()
+	deployCommon(c)
 	deployOperator(c)
 	deployCluster(c)
 	deployToolBox(c)
@@ -72,12 +76,12 @@ func deployRook() {
 
 func tearDownRook() {
 	opPath := fmt.Sprintf("%s/%s", rookURL, "cluster.yaml")
-	framework.Cleanup(opPath, "rook-ceph-system", "app=rook-ceph-mgr", "app=rook-ceph-mon")
+	framework.Cleanup(opPath, "rook-ceph", "app=rook-ceph-mgr", "app=rook-ceph-mon")
 	opPath = fmt.Sprintf("%s/%s", rookURL, "toolbox.yaml")
-	framework.Cleanup(opPath, "rook-ceph-system", "app=rook-ceph-tools")
+	framework.Cleanup(opPath, "rook-ceph", "app=rook-ceph-tools")
 
 	opPath = fmt.Sprintf("%s/%s", rookURL, "operator.yaml")
 	//TODO need to add selector for cleanup validation
-	framework.Cleanup(opPath, "rook-ceph-system")
+	framework.Cleanup(opPath, "rook-ceph")
 
 }
