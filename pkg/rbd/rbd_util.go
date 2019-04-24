@@ -331,7 +331,8 @@ func getRBDVolumeByID(volumeID string) (*rbdVolume, error) {
 func getRBDVolumeByName(volName string) (*rbdVolume, error) {
 	for _, rbdVol := range rbdVolumes {
 		if rbdVol.VolName == volName {
-			return &rbdVol, nil
+			v := rbdVol
+			return &v, nil
 		}
 	}
 	return nil, fmt.Errorf("volume name %s does not exit in the volumes list", volName)
@@ -340,7 +341,8 @@ func getRBDVolumeByName(volName string) (*rbdVolume, error) {
 func getRBDSnapshotByName(snapName string) (*rbdSnapshot, error) {
 	for _, rbdSnap := range rbdSnapshots {
 		if rbdSnap.SnapName == snapName {
-			return &rbdSnap, nil
+			s := rbdSnap
+			return &s, nil
 		}
 	}
 	return nil, fmt.Errorf("snapshot name %s does not exit in the snapshots list", snapName)

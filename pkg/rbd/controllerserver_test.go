@@ -49,18 +49,18 @@ func TestLoadExDataFromMetadataStore(t *testing.T) {
 	cs := &ControllerServer{
 		MetadataStore: &testCachePersister{
 			volumes: map[string]rbdVolume{
-				"item1": rbdVolume{
+				"item1": {
 					VolID: "1",
 				},
-				"item2": rbdVolume{
+				"item2": {
 					VolID: "2",
 				},
 			},
 			snapshots: map[string]rbdSnapshot{
-				"item1": rbdSnapshot{
+				"item1": {
 					SnapID: "1",
 				},
-				"item2": rbdSnapshot{
+				"item2": {
 					SnapID: "2",
 				},
 			},
