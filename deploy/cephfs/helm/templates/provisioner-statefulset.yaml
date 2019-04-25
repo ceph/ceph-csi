@@ -79,7 +79,7 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: "unix:/{{ .Values.socketDir }}/{{ .Values.socketFile }}"
-          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.imagePullPolicy }}
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: {{ .Values.socketDir }}
