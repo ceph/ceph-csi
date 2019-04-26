@@ -16,7 +16,10 @@ limitations under the License.
 
 package cephfs
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 const (
 	credUserID   = "userID"
@@ -41,9 +44,13 @@ func getCredentials(idField, keyField string, secrets map[string]string) (*crede
 		return nil, fmt.Errorf("missing ID field '%s' in secrets", idField)
 	}
 
+	c.id = strings.TrimSuffix(c.id, "\n")
+
 	if c.key, ok = secrets[keyField]; !ok {
 		return nil, fmt.Errorf("missing key field '%s' in secrets", keyField)
 	}
+
+	c.key = strings.TrimSuffix(c.key, "\n")
 
 	return c, nil
 }
