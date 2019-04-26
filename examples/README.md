@@ -48,14 +48,3 @@ rbd-pvc-snapshot   6s
 
 To be sure everything is OK you can run `rbd snap ls [your-pvc-name]` inside one of your Ceph pod.
 
-## How to test RBD Block Volume
-
-Before continuing, make sure you enabled the required [feature gate](https://kubernetes-csi.github.io/docs/raw-block.html#usage) in your Kubernetes cluster.
-
-In order to create a PVC in Block mode, you need to specify `volumeMode: Block` in the PVC spec.
-In the `examples/rbd` directory, you can test RBD block volume by running:
-
-```bash
-kubectl create -f pvc-block.yaml
-kubectl create -f pod-block.yaml
-```
