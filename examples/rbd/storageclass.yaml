@@ -2,7 +2,8 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
    name: csi-rbd
-provisioner: csi-rbdplugin 
+   # NOTE: provisioner name here should be specified as same as it is declared in the csi-provisioner StatefulSet or it will fail to create PV dynamically.
+provisioner: rbd.csi.ceph.com
 parameters:
     # Comma separated list of Ceph monitors
     # if using FQDN, make sure csi plugin's dns policy is appropriate.
