@@ -24,14 +24,14 @@ spec:
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
-            - "--kubelet-registration-path=/var/lib/kubelet/plugins/csi-rbdplugin/csi.sock"
+            - "--kubelet-registration-path=/var/lib/kubelet/plugins/rbd.csi.ceph.com/csi.sock"
           lifecycle:
             preStop:
               exec:
                 command: [
                   "/bin/sh", "-c",
-                  "rm -rf /registration/csi-rbdplugin \
-                  /registration/csi-rbdplugin-reg.sock"
+                  "rm -rf /registration/rbd.csi.ceph.com \
+                  /registration/rbd.csi.ceph.com-reg.sock"
                 ]
           env:
             - name: KUBE_NODE_NAME
@@ -54,9 +54,10 @@ spec:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
-            - "--drivername=csi-rbdplugin"
+            - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
             - "--metadatastorage=k8s_configmap"
+            - "--configroot=k8s_objects"
           env:
             - name: HOST_ROOTFS
               value: "/rootfs"
@@ -69,11 +70,11 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: CSI_ENDPOINT
-              value: unix://var/lib/kubelet/plugins_registry/csi-rbdplugin/csi.sock
+              value: unix:///csi/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: plugin-dir
-              mountPath: /var/lib/kubelet/plugins_registry/csi-rbdplugin
+              mountPath: /csi
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
@@ -92,7 +93,7 @@ spec:
       volumes:
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-rbdplugin
+            path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             type: DirectoryOrCreate
         - name: plugin-mount-dir
           hostPath:

@@ -48,6 +48,7 @@ type NodeServer struct {
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	targetPathMutex.LockKey(targetPath)
+	disableInUseChecks := false
 
 	defer func() {
 		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
@@ -71,18 +72,20 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
-	// if our access mode is a simple SINGLE_NODE_WRITER we're going to ignore the SC directive and use the
-	// watcher still
-	ignoreMultiWriterEnabled := true
-	if req.VolumeCapability.AccessMode.Mode != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
-		ignoreMultiWriterEnabled = false
+	// MULTI_NODE_MULTI_WRITER is supported by default for Block access type volumes
+	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+		if isBlock {
+			disableInUseChecks = true
+		} else {
+			klog.Warningf("MULTI_NODE_MULTI_WRITER currently only supported with volumes of access type `block`, invalid AccessMode for volume: %v", req.GetVolumeId())
+			return nil, status.Error(codes.InvalidArgument, "rbd: RWX access mode request is only valid for volumes with access type `block`")
+		}
 	}
 
-	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext(), ignoreMultiWriterEnabled)
+	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext(), disableInUseChecks)
 	if err != nil {
 		return nil, err
 	}
-
 	volOptions.VolName = volName
 	// Mapping RBD image
 	devicePath, err := attachRBDImage(volOptions, volOptions.UserID, req.GetSecrets())

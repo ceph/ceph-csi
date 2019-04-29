@@ -21,10 +21,9 @@ import (
 	"os/exec"
 	"sort"
 	"strconv"
-	"strings"
 	"syscall"
 
-	"github.com/ceph/ceph-csi/pkg/csi-common"
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -32,6 +31,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -93,18 +93,27 @@ func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
-	// MultiNodeWriters are accepted but they're only for special cases, and we skip the watcher checks for them which isn't the greatest
-	// let's make sure we ONLY skip that if the user is requesting a MULTI Node accessible mode
-	disableMultiWriter := true
-	for _, am := range req.VolumeCapabilities {
-		if am.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
-			disableMultiWriter = false
+	isMultiNode := false
+	isBlock := false
+	for _, cap := range req.VolumeCapabilities {
+		// RO modes need to be handled indepedently (ie right now even if access mode is RO, they'll be RW upon attach)
+		if cap.GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+			isMultiNode = true
+		}
+		if cap.GetBlock() != nil {
+			isBlock = true
 		}
 	}
 
-	rbdVol, err := getRBDVolumeOptions(req.GetParameters(), disableMultiWriter)
+	// We want to fail early if the user is trying to create a RWX on a non-block type device
+	if isMultiNode && !isBlock {
+		return nil, status.Error(codes.InvalidArgument, "multi node access modes are only supported on rbd `block` type volumes")
+	}
+
+	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
+	rbdVol, err := getRBDVolumeOptions(req.GetParameters(), (isMultiNode && isBlock))
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// Generating Volume Name and Volume ID, as according to CSI spec they MUST be different
@@ -118,7 +127,8 @@ func parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	if req.GetCapacityRange() != nil {
 		volSizeBytes = req.GetCapacityRange().GetRequiredBytes()
 	}
-	rbdVol.VolSize = volSizeBytes
+
+	rbdVol.VolSize = util.RoundUpToMiB(volSizeBytes)
 
 	return rbdVol, nil
 }
@@ -175,13 +185,14 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	volSizeGB := int(rbdVol.VolSize / 1024 / 1024 / 1024)
-
 	// Check if there is already RBD image with requested name
-	err = cs.checkRBDStatus(rbdVol, req, volSizeGB)
+	err = cs.checkRBDStatus(rbdVol, req, int(rbdVol.VolSize))
 	if err != nil {
 		return nil, err
 	}
+	// store volume size in  bytes (snapshot and check existing volume needs volume
+	// size in bytes)
+	rbdVol.VolSize = rbdVol.VolSize * util.MiB
 
 	rbdVolumes[rbdVol.VolID] = *rbdVol
 
@@ -198,10 +209,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeGB int) error {
+func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeMiB int) error {
 	var err error
 	// Check if there is already RBD image with requested name
-	found, _, _ := rbdStatus(rbdVol, rbdVol.UserID, req.GetSecrets()) // #nosec
+	//nolint
+	found, _, _ := rbdStatus(rbdVol, rbdVol.UserID, req.GetSecrets())
 	if !found {
 		// if VolumeContentSource is not nil, this request is for snapshot
 		if req.VolumeContentSource != nil {
@@ -209,10 +221,10 @@ func (cs *ControllerServer) checkRBDStatus(rbdVol *rbdVolume, req *csi.CreateVol
 				return err
 			}
 		} else {
-			err = createRBDImage(rbdVol, volSizeGB, rbdVol.AdminID, req.GetSecrets())
+			err = createRBDImage(rbdVol, volSizeMiB, rbdVol.AdminID, req.GetSecrets())
 			if err != nil {
 				klog.Warningf("failed to create volume: %v", err)
-				return err
+				return status.Error(codes.Internal, err.Error())
 			}
 
 			klog.V(4).Infof("create volume %s", rbdVol.VolName)
@@ -233,12 +245,12 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 
 	rbdSnap := &rbdSnapshot{}
 	if err := cs.MetadataStore.Get(snapshotID, rbdSnap); err != nil {
-		return err
+		return status.Error(codes.NotFound, err.Error())
 	}
 
 	err := restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminID, req.GetSecrets())
 	if err != nil {
-		return err
+		return status.Error(codes.Internal, err.Error())
 	}
 	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.SnapName)
 	return nil
@@ -277,11 +289,11 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err := deleteRBDImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
 		// TODO: can we detect "already deleted" situations here and proceed?
 		klog.V(3).Infof("failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, volName, err)
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if err := cs.MetadataStore.Delete(volumeID); err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	delete(rbdVolumes, volumeID)
@@ -340,20 +352,11 @@ func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolume
 // ValidateVolumeCapabilities checks whether the volume capabilities requested
 // are supported.
 func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	params := req.GetParameters()
-	multiWriter := params["multiNodeWritable"]
-	if strings.ToLower(multiWriter) == "enabled" {
-		klog.V(3).Info("detected multiNodeWritable parameter in Storage Class, allowing multi-node access modes")
-
-	} else {
-		for _, cap := range req.VolumeCapabilities {
-			if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
-				return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
-			}
+	for _, cap := range req.VolumeCapabilities {
+		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
+			return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
 		}
-
 	}
-
 	return &csi.ValidateVolumeCapabilitiesResponse{
 		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
 			VolumeCapabilities: req.VolumeCapabilities,
@@ -412,7 +415,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	rbdSnap, err := getRBDSnapshotOptions(req.GetParameters())
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// Generating Snapshot Name and Snapshot ID, as according to CSI spec they MUST be different
@@ -423,7 +426,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", req.GetSourceVolumeId())
 	}
 	if !hasSnapshotFeature(rbdVolume.ImageFeatures) {
-		return nil, fmt.Errorf("volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
+		return nil, status.Errorf(codes.InvalidArgument, "volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
 	}
 
 	rbdSnap.VolName = rbdVolume.VolName
@@ -436,7 +439,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	err = cs.doSnapshot(rbdSnap, req.GetSecrets())
 	// if we already have the snapshot, return the snapshot
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	rbdSnap.CreatedAt = ptypes.TimestampNow().GetSeconds()
@@ -514,7 +517,7 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]s
 			if err != nil {
 				return fmt.Errorf("snapshot is created but failed to protect and delete snapshot: %v", err)
 			}
-			return fmt.Errorf("snapshot is created but failed to protect snapshot")
+			return errors.New("snapshot is created but failed to protect snapshot")
 		}
 	}
 	return nil
@@ -563,7 +566,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	if err := cs.MetadataStore.Delete(snapshotID); err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	delete(rbdSnapshots, snapshotID)

@@ -11,6 +11,9 @@ metadata:
     heritage: {{ .Release.Service }}
 rules:
   - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "update"]
   - apiGroups: [""]

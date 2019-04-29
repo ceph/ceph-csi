@@ -19,9 +19,33 @@ package util
 import (
 	"os"
 	"path"
+	"strings"
 
+	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog"
 )
+
+// remove this once kubernetes v1.14.0 release is done
+// https://github.com/kubernetes/cloud-provider/blob/master/volume/helpers/rounding.go
+const (
+	// MiB - MebiByte size
+	MiB = 1024 * 1024
+)
+
+// RoundUpToMiB rounds up given quantity upto chunks of MiB
+func RoundUpToMiB(size int64) int64 {
+	requestBytes := size
+	return roundUpSize(requestBytes, MiB)
+}
+
+func roundUpSize(volumeSizeBytes int64, allocationUnitBytes int64) int64 {
+	roundedUp := volumeSizeBytes / allocationUnitBytes
+	if volumeSizeBytes%allocationUnitBytes > 0 {
+		roundedUp++
+	}
+	return roundedUp
+}
 
 // CreatePersistanceStorage creates storage path and initializes new cache
 func CreatePersistanceStorage(sPath, metaDataStore, driverName string) (CachePersister, error) {
@@ -46,4 +70,24 @@ func CreatePersistanceStorage(sPath, metaDataStore, driverName string) (CachePer
 
 func createPersistentStorage(persistentStoragePath string) error {
 	return os.MkdirAll(persistentStoragePath, os.FileMode(0755))
+}
+
+// ValidateDriverName validates the driver name
+func ValidateDriverName(driverName string) error {
+	if len(driverName) == 0 {
+		return errors.New("driver name is empty")
+	}
+
+	if len(driverName) > 63 {
+		return errors.New("driver name length should be less than 63 chars")
+	}
+	var err error
+	for _, msg := range validation.IsDNS1123Subdomain(strings.ToLower(driverName)) {
+		if err == nil {
+			err = errors.New(msg)
+			continue
+		}
+		err = errors.Wrap(err, msg)
+	}
+	return err
 }

@@ -19,18 +19,20 @@ package cephfs
 import (
 	"k8s.io/klog"
 
-	"github.com/ceph/ceph-csi/pkg/csi-common"
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 const (
-	// PluginFolder defines the location of ceph plugin
-	PluginFolder = "/var/lib/kubelet/plugins/csi-cephfsplugin"
+
 	// version of ceph driver
 	version = "1.0.0"
 )
+
+// PluginFolder defines the location of ceph plugin
+var PluginFolder = "/var/lib/kubelet/plugins/"
 
 // Driver contains the default identity,node and controller struct
 type Driver struct {
@@ -75,7 +77,7 @@ func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests
-func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cachePersister util.CachePersister) {
+func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir string, cachePersister util.CachePersister) {
 	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Configuration
@@ -103,6 +105,13 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter string, cacheP
 		klog.Fatalf("failed to write ceph configuration file: %v", err)
 	}
 
+	initVolumeMountCache(driverName, mountCacheDir, cachePersister)
+	if mountCacheDir != "" {
+		if err := remountCachedVolumes(); err != nil {
+			klog.Warningf("failed to remount cached volumes: %v", err)
+			//ignore remount fail
+		}
+	}
 	// Initialize default library driver
 
 	fs.cd = csicommon.NewCSIDriver(driverName, version, nodeID)

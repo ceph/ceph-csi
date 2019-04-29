@@ -21,3 +21,9 @@ If you want to delete your Chart, use this command
 ```bash
 helm delete --purge "ceph-csi-cephfs"
 ```
+
+If you want to delete the namespace, use this command
+
+```bash
+kubectl delete namespace ceph-csi-rbd
+```

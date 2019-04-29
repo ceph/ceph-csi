@@ -27,10 +27,11 @@ import (
 
 var (
 	endpoint        = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	driverName      = flag.String("drivername", "csi-cephfsplugin", "name of the driver")
+	driverName      = flag.String("drivername", "cephfs.csi.ceph.com", "name of the driver")
 	nodeID          = flag.String("nodeid", "", "node id")
 	volumeMounter   = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
+	mountCacheDir   = flag.String("mountcachedir", "", "mount info cache save dir")
 )
 
 func init() {
@@ -43,13 +44,20 @@ func init() {
 
 func main() {
 
+	err := util.ValidateDriverName(*driverName)
+	if err != nil {
+		klog.Fatalln(err)
+	}
+	//update plugin name
+	cephfs.PluginFolder = cephfs.PluginFolder + *driverName
+
 	cp, err := util.CreatePersistanceStorage(cephfs.PluginFolder, *metadataStorage, *driverName)
 	if err != nil {
 		os.Exit(1)
 	}
 
 	driver := cephfs.NewDriver()
-	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, cp)
+	driver.Run(*driverName, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, cp)
 
 	os.Exit(0)
 }

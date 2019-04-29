@@ -11,14 +11,15 @@ addons:
 language: go
 branches:
   only:
+    - csi-v0.3
     - master
-    - csi-v1.0
+    - csi-v1.0  # remove this once csi-v1.0 becomes master
 
 go: 1.11.x
 
 env:
   global:
-    - GO_METALINTER_VERSION="v3.0.0"
+    - GOLANGCI_VERSION="v1.15.0"
     - TEST_COVERAGE=stdout
     - GO_METALINTER_THREADS=1
     - GO_COVER_DIR=_output
@@ -30,10 +31,10 @@ jobs:
         - gem install mdl
         - pip install --user --upgrade pip
         - pip install --user yamllint
-        # install gometalinter
-        - curl -L
-         "https://raw.githubusercontent.com/alecthomas/gometalinter/"${GO_METALINTER_VERSION}"/scripts/install.sh"
-         | bash -s -- -b $GOPATH/bin "${GO_METALINTER_VERSION}"
+        # install golangci-lint
+        - curl -sf
+          "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh"
+          | bash -s -- -b $GOPATH/bin "${GOLANGCI_VERSION}"
       script:
         - scripts/lint-text.sh --require-all
         - scripts/lint-go.sh

@@ -34,13 +34,13 @@ spec:
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/csi-rbdplugin/csi.sock
+              value: unix:///csi/csi-attacher.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/kubelet/plugins/csi-rbdplugin
+              mountPath: /csi
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-rbdplugin
+            path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             type: DirectoryOrCreate

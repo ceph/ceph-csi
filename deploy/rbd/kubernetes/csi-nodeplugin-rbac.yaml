@@ -11,6 +11,9 @@ metadata:
   name: rbd-csi-nodeplugin
 rules:
   - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "update"]
   - apiGroups: [""]

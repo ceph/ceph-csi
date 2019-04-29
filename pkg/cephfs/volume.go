@@ -25,14 +25,13 @@ import (
 )
 
 const (
-	cephRootPrefix  = PluginFolder + "/controller/volumes/root-"
 	cephVolumesRoot = "csi-volumes"
 
 	namespacePrefix = "ns-"
 )
 
 func getCephRootPathLocal(volID volumeID) string {
-	return cephRootPrefix + string(volID)
+	return fmt.Sprintf("%s/controller/volumes/root-%s", PluginFolder, string(volID))
 }
 
 func getCephRootVolumePathLocal(volID volumeID) string {
@@ -137,7 +136,7 @@ func mountCephRoot(volID volumeID, volOptions *volumeOptions, adminCr *credentia
 		return fmt.Errorf("failed to create mounter: %v", err)
 	}
 
-	if err = m.mount(cephRoot, adminCr, volOptions, volID); err != nil {
+	if err = m.mount(cephRoot, adminCr, volOptions); err != nil {
 		return fmt.Errorf("error mounting ceph root: %v", err)
 	}
 
