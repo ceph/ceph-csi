@@ -1,6 +1,6 @@
 #!/bin/bash
 
-push_helm_chats() {
+push_helm_charts() {
 	PACKAGE=$1
 	CHANGED=0
 	VERSION=$(grep 'version:' deploy/"$PACKAGE"/helm/Chart.yaml | awk '{print $2}')
@@ -53,6 +53,6 @@ if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
 	mkdir -p csi-charts/docs
 	popd >/dev/null
 
-	push_helm_chats rbd
-	push_helm_chats cephfs
+	push_helm_charts rbd
+	push_helm_charts cephfs
 fi
