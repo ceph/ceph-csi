@@ -44,6 +44,12 @@ cephcsi:
 	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephcsi ./cmd/
 
+rbdplugin: cephcsi
+	cp _output/cephcsi _output/rbdplugin
+
+cephfsplugin: cephcsi
+	cp _output/cephcsi _output/cephfsplugin
+
 image-cephcsi: cephcsi
 	cp deploy/cephcsi/image/Dockerfile _output
 	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION) _output
@@ -53,7 +59,7 @@ image-rbdplugin: cephcsi
 	$(CONTAINER_CMD) build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
 
 image-cephfsplugin: cephcsi
-	cp _output/cephsci deploy/cephfs/docker/cephfsplugin
+	cp _output/cephcsi deploy/cephfs/docker/cephfsplugin
 	$(CONTAINER_CMD) build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) deploy/cephfs/docker
 
 push-image-rbdplugin: image-rbdplugin
