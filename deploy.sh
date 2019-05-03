@@ -25,11 +25,11 @@ push_helm_charts() {
 }
 
 if [ "${TRAVIS_BRANCH}" == 'csi-v0.3' ]; then
-	export RBD_IMAGE_VERSION='v0.3.0'
-	export CEPHFS_IMAGE_VERSION='v0.3.0'
+	export ENV_RBD_IMAGE_VERSION='v0.3.0'
+	export ENV_CEPHFS_IMAGE_VERSION='v0.3.0'
 elif [ "${TRAVIS_BRANCH}" == 'csi-v1.0' ]; then
-	export RBD_IMAGE_VERSION='v1.0.0'
-	export CEPHFS_IMAGE_VERSION='v1.0.0'
+	export ENV_RBD_IMAGE_VERSION='v1.0-canary'
+	export ENV_CEPHFS_IMAGE_VERSION='v1.0-canary'
 else
 	echo "!!! Branch ${TRAVIS_BRANCH} is not a deployable branch; exiting"
 	exit 0 # Exiting 0 so that this isn't marked as failing
