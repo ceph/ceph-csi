@@ -1,15 +1,12 @@
-FROM centos:7
-LABEL maintainers="Kubernetes Authors"
-LABEL description="CephFS CSI Plugin"
+FROM ceph/ceph:v14.2
+LABEL maintainers="Ceph-CSI Authors"
+LABEL description="Ceph-CSI Plugin"
 
-ENV CEPH_VERSION "mimic"
-RUN yum  install -y centos-release-ceph && \
-    yum install -y kmod ceph-common ceph-fuse attr && \
-    yum clean all
+ENV CSIBIN=/usr/local/bin/cephcsi
 
-COPY cephfsplugin /cephfsplugin
+COPY cephfsplugin $CSIBIN
 
-RUN chmod +x /cephfsplugin && \
-    mkdir -p /var/log/ceph
+RUN chmod +x $CSIBIN && \
+    ln -sf $CSIBIN /usr/local/bin/cephcsi-cephfs
 
-ENTRYPOINT ["/cephfsplugin"]
+ENTRYPOINT ["/usr/local/bin/cephcsi-cephfs"]
