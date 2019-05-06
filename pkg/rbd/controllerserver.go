@@ -50,8 +50,8 @@ type ControllerServer struct {
 }
 
 var (
-	rbdVolumes   = map[string]*rbdVolume{}
-	rbdSnapshots = map[string]*rbdSnapshot{}
+	rbdVolumes   = map[string]rbdVolume{}
+	rbdSnapshots = map[string]rbdSnapshot{}
 )
 
 // LoadExDataFromMetadataStore loads the rbd volume and snapshot
@@ -60,14 +60,14 @@ func (cs *ControllerServer) LoadExDataFromMetadataStore() error {
 	vol := &rbdVolume{}
 	// nolint
 	cs.MetadataStore.ForAll("csi-rbd-vol-", vol, func(identifier string) error {
-		rbdVolumes[identifier] = vol
+		rbdVolumes[identifier] = *vol
 		return nil
 	})
 
 	snap := &rbdSnapshot{}
 	// nolint
 	cs.MetadataStore.ForAll("csi-rbd-(.*)-snap-", snap, func(identifier string) error {
-		rbdSnapshots[identifier] = snap
+		rbdSnapshots[identifier] = *snap
 		return nil
 	})
 
@@ -194,7 +194,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	// size in bytes)
 	rbdVol.VolSize = rbdVol.VolSize * util.MiB
 
-	rbdVolumes[rbdVol.VolID] = rbdVol
+	rbdVolumes[rbdVol.VolID] = *rbdVol
 
 	if err = storeVolumeMetadata(rbdVol, cs.MetadataStore); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -444,7 +444,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	rbdSnap.CreatedAt = ptypes.TimestampNow().GetSeconds()
 
-	rbdSnapshots[snapshotID] = rbdSnap
+	rbdSnapshots[snapshotID] = *rbdSnap
 
 	if err = storeSnapshotMetadata(rbdSnap, cs.MetadataStore); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
