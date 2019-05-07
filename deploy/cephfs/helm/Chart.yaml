@@ -4,11 +4,7 @@ appVersion: "1.0.0"
 description: "Container Storage Interface (CSI) driver,
 provisioner, and attacher for Ceph cephfs"
 name: ceph-csi-cephfs
-<<<<<<< HEAD
 version: 0.6.0
-=======
-version: 0.5.3
->>>>>>> 882bebf1d8507d6bcd4b4bfae23a861057353785
 keywords:
   - ceph
   - cephfs
