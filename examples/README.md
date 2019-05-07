@@ -147,7 +147,7 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: csi-rbd
+  storageClassName: csi-rbd-sc
 ```
 
 Create a POD that uses this PVC:

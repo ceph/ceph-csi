@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: csicephfs-demo-depl
+  name: csi-cephfs-demo-depl
   labels:
     app: web-server
 spec:
