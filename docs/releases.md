@@ -58,14 +58,17 @@ of each release:
 
 - Raise an issue and assign to themselves.
 
-[new issue in this repository](https://github.com/Ceph/Ceph-csi-driver/issues/new)
+[new issue in this repository](https://github.com/ceph/ceph-csi/issues/new)
 
   This issue is used to track the progress of the release with maximum visibility.
 
 - Paste the release checklist into the issue.
 
   This is useful for tracking so that the stage of the release is visible
-  to all interested parties.
+  to all interested parties. This checklist could be a list of issues/PRs
+  tracked for a release. The issues/PRs will be labelled with release tag.
+  For example,  a label called `1.0.0` ( for release version 1.0.0) can be
+  attached to issues and PRs for better tracking release items.
 
 - Once all steps are complete, close the issue.
 
