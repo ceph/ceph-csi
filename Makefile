@@ -25,9 +25,6 @@ CEPHFS_IMAGE_VERSION=$(if $(ENV_CEPHFS_IMAGE_VERSION),$(ENV_CEPHFS_IMAGE_VERSION
 CSI_IMAGE_NAME?=quay.io/cephcsi/cephcsi
 CSI_IMAGE_VERSION?=v1.0.0
 
-CSI_IMAGE_NAME?=quay.io/cephcsi/cephcsi
-CSI_IMAGE_VERSION?=v1.0.0
-
 $(info rbd    image settings: $(RBD_IMAGE_NAME) version $(RBD_IMAGE_VERSION))
 $(info cephfs image settings: $(CEPHFS_IMAGE_NAME) version $(CEPHFS_IMAGE_VERSION))
 
