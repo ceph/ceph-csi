@@ -1,4 +1,4 @@
-# Copyright 2018 The Kubernetes Authors.
+# Copyright 2018 The Ceph-CSI Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,10 +17,13 @@
 CONTAINER_CMD?=docker
 
 RBD_IMAGE_NAME=$(if $(ENV_RBD_IMAGE_NAME),$(ENV_RBD_IMAGE_NAME),quay.io/cephcsi/rbdplugin)
-RBD_IMAGE_VERSION=$(if $(ENV_RBD_IMAGE_VERSION),$(ENV_RBD_IMAGE_VERSION),v1.0.0)
+RBD_IMAGE_VERSION=$(if $(ENV_RBD_IMAGE_VERSION),$(ENV_RBD_IMAGE_VERSION),v1.0.0-canary)
 
 CEPHFS_IMAGE_NAME=$(if $(ENV_CEPHFS_IMAGE_NAME),$(ENV_CEPHFS_IMAGE_NAME),quay.io/cephcsi/cephfsplugin)
-CEPHFS_IMAGE_VERSION=$(if $(ENV_CEPHFS_IMAGE_VERSION),$(ENV_CEPHFS_IMAGE_VERSION),v1.0.0)
+CEPHFS_IMAGE_VERSION=$(if $(ENV_CEPHFS_IMAGE_VERSION),$(ENV_CEPHFS_IMAGE_VERSION),v1.0.0-canary)
+
+CSI_IMAGE_NAME?=quay.io/cephcsi/cephcsi
+CSI_IMAGE_VERSION?=v1.0.0
 
 CSI_IMAGE_NAME?=quay.io/cephcsi/cephcsi
 CSI_IMAGE_VERSION?=v1.0.0
@@ -53,7 +56,7 @@ image-rbdplugin: cephcsi
 	$(CONTAINER_CMD) build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
 
 image-cephfsplugin: cephcsi
-	cp _output/cephsci deploy/cephfs/docker/cephfsplugin
+	cp _output/cephcsi deploy/cephfs/docker/cephfsplugin
 	$(CONTAINER_CMD) build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) deploy/cephfs/docker
 
 push-image-rbdplugin: image-rbdplugin

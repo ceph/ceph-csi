@@ -9,6 +9,18 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: cephfs-external-provisioner-runner
+aggregationRule:
+  clusterRoleSelectors:
+    - matchLabels:
+        rbac.cephfs.csi.ceph.com/aggregate-to-cephfs-external-provisioner-runner: "true"
+rules: []
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cephfs-external-provisioner-runner-rules
+  labels:
+    rbac.cephfs.csi.ceph.com/aggregate-to-cephfs-external-provisioner-runner: "true"
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
@@ -31,6 +43,9 @@ rules:
   - apiGroups: ["csi.storage.k8s.io"]
     resources: ["csinodeinfos"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update"]
 
 ---
 kind: ClusterRoleBinding

@@ -9,6 +9,18 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: rbd-csi-nodeplugin
+aggregationRule:
+  clusterRoleSelectors:
+    - matchLabels:
+        rbac.rbd.csi.ceph.com/aggregate-to-rbd-csi-nodeplugin: "true"
+rules: []
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rbd-csi-nodeplugin-rules
+  labels:
+    rbac.rbd.csi.ceph.com/aggregate-to-rbd-csi-nodeplugin: "true"
 rules:
   - apiGroups: [""]
     resources: ["secrets"]

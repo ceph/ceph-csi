@@ -93,7 +93,6 @@ YAML manifests are located in `deploy/rbd/kubernetes`.
 **Deploy RBACs for sidecar containers and node plugins:**
 
 ```bash
-kubectl create -f csi-attacher-rbac.yaml
 kubectl create -f csi-provisioner-rbac.yaml
 kubectl create -f csi-nodeplugin-rbac.yaml
 ```
@@ -105,12 +104,11 @@ the same permissions.
 **Deploy CSI sidecar containers:**
 
 ```bash
-kubectl create -f csi-rbdplugin-attacher.yaml
 kubectl create -f csi-rbdplugin-provisioner.yaml
 ```
 
-Deploys stateful sets for external-attacher and external-provisioner
-sidecar containers for CSI RBD.
+Deploys stateful set of provision which includes external-provisioner
+,external-attacher,csi-snapshotter sidecar containers and CSI RBD plugin.
 
 **Deploy RBD CSI driver:**
 
@@ -118,7 +116,8 @@ sidecar containers for CSI RBD.
 kubectl create -f csi-rbdplugin.yaml
 ```
 
-Deploys a daemon set with two containers: CSI driver-registrar and the CSI RBD driver.
+Deploys a daemon set with two containers: CSI node-driver-registrar and the CSI
+RBD driver.
 
 ## Verifying the deployment in Kubernetes
 
@@ -127,14 +126,11 @@ After successfully completing the steps above, you should see output similar to 
 ```bash
 $ kubectl get all
 NAME                              READY     STATUS    RESTARTS   AGE
-pod/csi-rbdplugin-attacher-0      1/1       Running   0          23s
 pod/csi-rbdplugin-fptqr           2/2       Running   0          21s
-pod/csi-rbdplugin-provisioner-0   1/1       Running   0          22s
+pod/csi-rbdplugin-provisioner-0   4/4       Running   0          22s
 
 NAME                                TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)     AGE
-service/csi-rbdplugin-attacher      ClusterIP   10.109.15.54   <none>        12345/TCP   26s
 service/csi-rbdplugin-provisioner   ClusterIP   10.104.2.130   <none>        12345/TCP   23s
-
 ...
 ```
 

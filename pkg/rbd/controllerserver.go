@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2018 The Ceph-CSI Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -362,16 +362,6 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 			VolumeCapabilities: req.VolumeCapabilities,
 		},
 	}, nil
-}
-
-// ControllerUnpublishVolume returns success response
-func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
-	return &csi.ControllerUnpublishVolumeResponse{}, nil
-}
-
-// ControllerPublishVolume returns success response
-func (cs *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-	return &csi.ControllerPublishVolumeResponse{}, nil
 }
 
 // CreateSnapshot creates the snapshot in backend and stores metadata
