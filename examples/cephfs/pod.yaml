@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: csicephfs-demo-pod
+  name: csi-cephfs-demo-pod
 spec:
   containers:
     - name: web-server

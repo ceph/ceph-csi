@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: csirbd-demo-pod
+  name: csi-rbd-demo-pod
 spec:
   containers:
     - name: web-server
