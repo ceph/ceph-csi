@@ -8,7 +8,7 @@
 
 ## Introduction
 
-This document provides details about Ceph CSI driver releases.
+This document provides details about Ceph CSI driver release process.
 
 ## Versioning
 
@@ -50,7 +50,7 @@ the [versioning](#versioning) requirements (e.g. a tag of `v1.0.0-rc2` for
 version `1.0.0-rc2`). This tag format is used by the Travis CI infrastructure to
 properly upload and tag releases to Quay and Docker Hub.
 
-## Release process
+## Release process [TBD]
 
 The Release Owner must follow the following process, which is
 designed to ensure clarity, quality, stability, and auditability
