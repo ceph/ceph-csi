@@ -35,159 +35,73 @@ storing and managing provisioned volumes by the plugin.
 The proposal laid out here is to try and retain the ability for a single CSI
 instance to operate across any Ceph cluster, but remove the storage and
 management of provisioned CSI volumes by the plugin, or in short make the
-Ceph-CSI plugin stateless. Further, if this is achieved, it is also possible to
-run multiple replicas of the CS instance, to aid with load balancing of
-requests, than the current one instance limitation due to the existing config
-map.
+Ceph-CSI plugin stateless.
 
 ## Proposed solution details
 
 ### Summary
 
-- Create a config map per Ceph cluster called `ceph-cluster-<cluster-fsid>` and
-  a pair of secrets to go along with the same cluster called
-  `ceph-cluster-<cluster-fsid>-provisioner-secret` and
-  `ceph-cluster-<cluster-fsid>-publish-secret`
-- Allow the CS and NS namespaces access to the above config maps and secrets,
-  in addition to the namespace that is responsible for creating and
-  maintaining it
-  - **Needs Investigation** Unsure if secrets and config maps can be
-    shared (via RBAC?) across namespaces or service accounts. This maybe
-    needed if we need operator managed Ceph instances to be able to pass
-    cluster configuration information to the CSI instance, and are in
-    different namespaces for e.g.
-- Details about the Ceph cluster are maintained in
-  `ceph-cluster-<cluster-fsid>`. Details include cluster-id, MONs, pools, and
-  other relevant data. Also, these and the corresponding secrets are updated
-  when they change, to reflect current values
-- The CSI plugin pod adds these config maps and secrets as volumes to its pod
-  specification, thus ensuring auto-refresh of content when these are updated
-  by the CO environment
-- VolumeCreate requests come against a targeted Ceph cluster-id and pool,
+- Create a config file for the CSI plugins mapped to `/etc/ceph-csi-config/config.json`
+  - **NOTE:** This would get mapped into the plugin container as a config map
+  in kubernetes CO environments
+- Details about the Ceph cluster are maintained in `config.json`. Details
+  include a cluster-id, and MONs. These are updated as new clusters are
+  used to provision volumes from, or as MON addresses are changed for
+  existing clusters
+- VolumeCreate requests come against a targeted Ceph cluster-id and pool or fsname,
   enabling the CSI plugin to locate the appropriate configuration information
-  for the cluster and its secrets to act on the request
-  - **NOTE:** The cluster-id and pool information is specified in the
-    StorageClass for example
-  - **NOTE:** In the **future**, if it is desired that the CSI plugin CS
-    choose which cluster and pool a request should be served from, this
-    information can be omitted from the StorageClass
-- The *volume_id* carries information regarding the *cluster_id* and pool,
-  enabling *volume_id* based RPC requests to operate using the provided
-  configuration information against the respective cluster
-- Usual CSI spec based maps such as, *volume_context* and *publish_context*
+  for the cluster to act on the request
+  - **NOTE:** The cluster-id and pool/fsname information is specified in the
+  StorageClass for example
+- The returned *volume_id* from VolumeCreate requests, carries information
+  regarding the *cluster_id* and encoded pool/fsname IDs, enabling *volume_id* based
+  RPC requests to operate using the provided configuration information
+  against the respective cluster
+- Usual CSI spec based parameter maps such as, *volume_context* and *publish_context*
   continue to carry information regarding required aspects about the
   provisioned volume to dependent RPCs
-- The NS also has access to the config maps and secrets to satisfy required node
+- The NS also has access to the `config.json` data to satisfy required node
   level RPC requests
 
 ### Pros
 
 - Addresses removal of the current config map that maintains list of
   provisioned volumes
-- Provides the ability for the CSI plugin to support all RPCs, as required
-  information is present with the plugin across all Ceph clusters
-- Safeguards secrets and cluster configuration information access to only
-  required namespaces that need to manage and use it
 - Provides the ability to have a single Ceph-CSI plugin instance per CO
   instance, even when the CO instance needs volumes provisioned from multiple
   Ceph clusters
 - Also, does not take away the capability, where needed, to use multiple
   Ceph-CSI plugin instances (specialized using provisioner name) per CO
   instance
-- Leaves the flexibility for the StorageClass to still override secrets, if such
-  requirements arise
-  - **NOTE:** The credentials stored for a cluster and passed to the CSI
-    plugins CS and NS, should be able to list volumes/images created using
-    other secrets (IOW, should act like a supervisor/root) to correctly
-    support ListVolumes and ListSnapshots operations
-- Provides the ability to deal with multi-cluster deployments, and possible
-  best-fit provisioning in the **future**
-  - Enables the ability for the CSI plugin to act on Topology based requests
-  - Simplifies StorageClass definitions, leaving the choice of the
-    cluster/pool to the CSI plugin
 
 ### Cons
 
-- Addition/Removal of Ceph cluster configuration, to the CSI plugin, requires
-  that the pod specification be updated, and thus the CS and NS pods require
-  to be restarted, in order to pick up the latest cluster details
-  - If done right, the NS restarts should not impact existing volumes that
-    are staged on the node, and the CS should have multiple instances
-    running thus enabling restarting instances one at a time without
-    impacting the provisioning service
+- Only RPCs that support passing credentials via secrets to the plugin
+  would work
+  - Some of the RPCs as of v1 of the CSI specification that would hence
+  not be supported are,
+    - Listing volumes and snapshots
+    - Getting capacity of the backing Ceph cluster(s)
 
 ### Configuration specifics
 
-#### `ceph-cluster-<cluster-fsid>` config map contents JSON representation
+#### `config.json` config map contents
 
-```
+```json
 {
   "<clusterID>": {
     "monitors": [
       "IP/DNS:port",
       ...
-    ],
-    "pools": [
-      <pool-name>,
-      ...
     ]
-  }
+  },
+  ...
 }
 ```
 
-#### `ceph-cluster-<cluster-fsid>-[provisioner|publish]-secret` definition
+#### Annotated YAML for RBD StorageClass
 
-```
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ceph-cluster-<cluster-fsid>-*-secret
-  namespace: default
-data:
-  # ID of the admin/user
-  subjectid: BASE64-ENCODED-ID
-  # Credentials of the above admin/user
-  credentials: BASE64-ENCODED-PASSWORD
-```
-
-#### Ceph-CSI pod specification to pass secrets and cluster configuration
-
-```
-...
-    spec:
-      containers:
-      - name: csi-rbdplugin
-        ...
-        volumeMounts:
-        - name: ceph-secrets-<cluster-fsid>
-          mountPath: "/etc/ceph-secrets"
-          readOnly: true
-        volumeMounts:
-        - name: ceph-cluster-<cluster-fsid>-map
-          mountPath: "/etc/ceph-configuration/"
-          readOnly: true
-        ...
-      volumes:
-      ...
-      - name: ceph-secrets-<cluster-fsid>
-        secret:
-          secretName: ceph-<cluster-cluster-fsid>-*-secret
-          items:
-          - key: subjectid
-            path: ceph-cluster-<cluster-fsid>-*-secret/subjectid
-          - key: credentials
-            path: ceph-cluster-<cluster-fsid>-*-secret/credentials
-      - name: ceph-cluster-<cluster-fsid>-map
-        configMap:
-          name: ceph-cluster-<cluster-fsid>
-      ...
-...
-```
-
-#### Annotated YAML for StorageClass
-
-```
+```yaml
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
 metadata:
@@ -207,12 +121,33 @@ parameters:
   # [Mandatory] carries the pool name to use in the Ceph cluster defined
   #     by clusterID
   pool: <pool-name>
-  # [Optional] All of the following are optional, and as described in,
+  # [Mandatory] All of the following are optional, and as described in,
   #     https://kubernetes-csi.github.io/docs/secrets-and-credentials.html
   csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
   csi.storage.k8s.io/provisioner-secret-namespace: default
   csi.storage.k8s.io/node-publish-secret-name: csi-rbd-secret
   csi.storage.k8s.io/node-publish-secret-namespace: default
+```
+
+#### Annotated YAML for CephFS StorageClass
+
+**NOTE:** For terseness only deltas are detailed below
+
+```yaml
+  # [Mandatory]
+  clusterID: <ID>
+  # [Mandatory] carries the filesystem name to use in the Ceph cluster defined
+  #     by clusterID
+  fsname: <fs-name>
+
+  provisionVolume: "true"
+  # Ceph pool into which the volume shall be created
+  # Required for provisionVolume: "true"
+  pool: cephfs_data
+
+  # Root path of an existing CephFS volume
+  # Required for provisionVolume: "false"
+  # rootPath: /absolute/path
 ```
 
 ### VolumeID and Ceph image/sub-directory naming
@@ -247,6 +182,7 @@ about the *volume_id*,
   only during VolumeCreate operation
 - **cluster-id**: Ceph cluster fsid
 - **pool-name**: Ceph pool on which image is created
+- **fsname**: Ceph FS filesystem name, on which volume is created
 
 #### Name interpolation rules
 
@@ -272,11 +208,11 @@ about the *volume_id*,
   - The same also applies when dealing with different CSI plugin instance in
     the same CO system, using the same Ceph cluster
 
-#### Using Ceph OMaps for idempotence
+#### Using Ceph OMaps for idempotent RPCs
 
-To preserve the idempotence requirement, across *ImageName* for a given
-*volume_name*, it is proposed to use a per-CSI instance Ceph omap named
-`csi_volumes_[csi-id]`, to store keys named `csi.volume.[volume_name]` with the
+To preserve the idempotent CreateVolume RPC requirement, across *ImageName* for
+a given *volume_name*, it is proposed to use a per-CSI instance Ceph omap named
+`csi.volumes.[csi-id]`, to store keys named `csi.volume.[volume_name]` with the
 CO generated *volume_name*.
 
 The value stored in `csi.volume.[volume_name]` is the *ImageName* that is to be
@@ -296,13 +232,21 @@ the create request carries, thus ensuring that only one such transaction for
 the key named with the *volume_name* is in flight at any given time.
 
 One other advantage of using this omap is, list operations can be performed
-more easily using the omap, rather than listing all images in the pool.
+more easily using the omap, rather than listing all images in the pool or the FS.
+
+NOTE: For RBD plugin the RADOS objects and omaps would be stored in the same
+pool as the image
+
+NOTE: For CephFS plugin the RADOS objects would be stored in the metadata
+pool of the fsname passed to the create request. With further restrictions
+that the objects would be stored in a special `csicephfs` namespace on the
+metadata pool.
 
 #### Naming scheme
 
 ImageName format: `csi-vol-[uuid]`
 
-volume_id format: `[version]-[cluster-id]-[pool-id]-[ImageName]`
+volume_id format: `[version]-[cluster-id]-[pool-id|fscid]-[uuid]`
 
 The spec states strings are a maximum of 128 bytes in length. Both
 *volume_name* and *volume_id* are strings, hence interpolating one into the
@@ -315,38 +259,90 @@ once created would carry a `image-meta` key:value with, the key named
 key helps retain the images relationship with its *volume_name* omap key where
 required.
 
-If an *ImageName* is generated that already exists in the pool, the create
+If an *ImageName* is generated that already exists in the pool/fsname, the create
 request fails with required internal errors, and a retry would hence attempt to
 generate a new *ImageName* with a new uuid as required.
 
-The *volume_id* encoding helps identify the cluster, pool and *ImageName* to use
-for RPCs that only carry the *volume_id* in its requests.
+The *volume_id* encoding helps identify the cluster, pool/fsname and *ImageName*
+to use for RPCs that only carry the *volume_id* in its requests.
+
+The `pool-id` and `fscid` are the respective pool and fsname IDs.
 
 The size of each element encoded into the *volume_id* are,
-[2 bytes]-[MAX:37 Bytes]-[4 bytes]-[44 Bytes] respectively, thus bringing its
-total lenght to 90 bytes, within the given 128 byte limits.
-
-## Open questions/observations
-
-- Config maps and secrets are length limited in most CO environments and need
-  careful consideration on amount of information put into each. This is of
-  consequence in design alternatives 1 and 2 below, where a single config map
-  intends to store multiple cluster information.
-- Need to determine and understand how to share config maps and secrets across
-  namespaces in the CO environment
-- Topology constraints as supported by CSI spec, seem to indicate that the CSI
-  plugin can support provisioning volumes for specific zones, which in turn
-  means the ability to process a request from a zone and choose a cluster that
-  fits the need best. This in turn means we may need to support multiple
-  clusters per CSI instance and possibly auto choose one for the request,
-  unless Ceph can support pools across different zones (conceptually), but
-  belong to the same Ceph cluster?
+[4 bytes]-[MAX:37 Bytes]-[16 bytes]-[36 Bytes] respectively, thus bringing its
+total length to 93 bytes maximum, within the given 128 byte limits.
 
 ## Appendix
 
 ### Solution Alternative-1
 
-#### Summary alternative-1
+- Create a config map per Ceph cluster called `ceph-cluster-<cluster-fsid>` and
+  a pair of secrets to go along with the same cluster called
+  `ceph-cluster-<cluster-fsid>-provisioner-secret` and
+  `ceph-cluster-<cluster-fsid>-publish-secret`
+- Allow the CS and NS namespaces access to the above config maps and secrets,
+  in addition to the namespace that is responsible for creating and
+  maintaining it
+- Details about the Ceph cluster are maintained in
+  `ceph-cluster-<cluster-fsid>`. Details include cluster-id, MONs, pools, and
+  other relevant data. Also, these and the corresponding secrets are updated
+  when they change, to reflect current values
+- The CSI plugin pod adds these config maps and secrets as volumes to its pod
+  specification, thus ensuring auto-refresh of content when these are updated
+  by the CO environment
+- VolumeCreate requests come against a targeted Ceph cluster-id and pool,
+  enabling the CSI plugin to locate the appropriate configuration information
+  for the cluster and its secrets to act on the request
+  - **NOTE:** The cluster-id and pool information is specified in the
+    StorageClass for example
+- The *volume_id* carries information regarding the *cluster_id* and pool,
+  enabling *volume_id* based RPC requests to operate using the provided
+  configuration information against the respective cluster
+- Usual CSI spec based maps such as, *volume_context* and *publish_context*
+  continue to carry information regarding required aspects about the
+  provisioned volume to dependent RPCs
+- The NS also has access to the config maps and secrets to satisfy required node
+  level RPC requests
+
+### Pros alternative-1
+
+- Addresses removal of the current config map that maintains list of
+  provisioned volumes
+- Provides the ability for the CSI plugin to support all RPCs, as required
+  information is present with the plugin across all Ceph clusters
+- Safeguards secrets and cluster configuration information access to only
+  required namespaces that need to manage and use it
+- Provides the ability to have a single Ceph-CSI plugin instance per CO
+  instance, even when the CO instance needs volumes provisioned from multiple
+  Ceph clusters
+- Also, does not take away the capability, where needed, to use multiple
+  Ceph-CSI plugin instances (specialized using provisioner name) per CO
+  instance
+- Leaves the flexibility for the StorageClass to still override secrets, if such
+  requirements arise
+  - **NOTE:** The credentials stored for a cluster and passed to the CSI
+    plugins CS and NS, should be able to list volumes/images created using
+    other secrets (IOW, should act like a supervisor/root) to correctly
+    support ListVolumes and ListSnapshots operations
+- Provides the ability to deal with multi-cluster deployments, and possible
+  best-fit provisioning in the **future**
+  - Enables the ability for the CSI plugin to act on Topology based requests
+  - Simplifies StorageClass definitions, leaving the choice of the
+    cluster/pool to the CSI plugin
+
+### Cons alternative-1
+
+- Addition/Removal of Ceph cluster configuration, to the CSI plugin, requires
+  that the pod specification be updated, and thus the CS and NS pods require
+  to be restarted, in order to pick up the latest cluster details
+- This scheme makes it so that 2 levels of secrets need to be maintained, one
+  for the storage class and the other for the secret passed to the plugin.
+  Further, the plugin secret capabilities and the storage class passed secrets
+  capabilities are the same.
+
+### Solution Alternative-2
+
+#### Summary alternative-2
 
 - Create a config map (**ceph-clusters**) containing all Ceph clusters that the
   CSI plugin may need to provision storage from, and keep this updated with
@@ -367,7 +363,7 @@ total lenght to 90 bytes, within the given 128 byte limits.
   are not present in the CSI secrets fields (e.g: when not specified in the
   StorageClass)
 
-#### Pros alternative-1
+#### Pros alternative-2
 
 - Addresses removal of the current config map that maintains list of provisioned
   volumes
@@ -380,7 +376,7 @@ total lenght to 90 bytes, within the given 128 byte limits.
 - CS and NS pods do not need a restart when clusters are added or removed from
   the global config map
 
-#### Cons alternative-1
+#### Cons alternative-2
 
 - *ceph-clusters* config map either needs to be exposed to namespaces that need
   to manage their cluster information instance (say multiple Rook instances,
@@ -388,7 +384,7 @@ total lenght to 90 bytes, within the given 128 byte limits.
 - *ceph-cluster-secrets* also, suffers the above constraint and can be a
   security concern as different namespace admins can read/write others secrets
 
-#### Other notes alternative-1
+#### Other notes alternative-2
 
 - GetCapacity request does not have targeted cluster information, hence
   response would be across all clusters in *ceph-clusters* that satisfy the
@@ -398,11 +394,11 @@ total lenght to 90 bytes, within the given 128 byte limits.
   - Assuming ListSnapshots comes with no *source_volume_id* or *snapshot_id*
     as these are optional fields
 
-#### Alternative-1 configuration details
+#### Alternative-2 configuration details
 
 ##### JSON representation of *ceph-clusters*
 
-```
+```json
 {
   "<clusterID>": {
     "monitors": [
@@ -416,7 +412,7 @@ total lenght to 90 bytes, within the given 128 byte limits.
 
 ##### JSON representation of *ceph-cluster-secrets*
 
-```
+```json
 {
   "<clusterID>": {
     "adminId": "kube",
@@ -431,22 +427,22 @@ total lenght to 90 bytes, within the given 128 byte limits.
 }
 ```
 
-### Solution Alternative-2
+### Solution Alternative-3
 
-#### Summary alternative-2
+#### Summary alternative-3
 
 - Primary aim of this alternative is to avoid sharing the *ceph-cluster-secrets*
   across namespaces as in Alternative-1
 - Hence, move *ceph-cluster-secrets* to being mandatory in the StorageClass,
   avoiding sharing cross-cluster secrets in a single secrets blob
 
-#### Pros alternative-2
+#### Pros alternative-3
 
 - Retains all of the prior pros in Alternative-1
 - Does not leak secrets across separate Ceph clusters, possibly managed by
   different namespaces as there exists no *ceph-cluster-secrets*
 
-#### Cons alternative-2
+#### Cons alternative-3
 
 - *ceph-cluster-secrets* is absent and hence following operations **cannot**
   be supported
@@ -456,9 +452,9 @@ total lenght to 90 bytes, within the given 128 byte limits.
 - Bloats every StorageClass making secrets mandatory
 - Retains other cons as in Alternative-1
 
-### Solution Alternative-3
+### Solution Alternative-4
 
-#### Summary alternative-3
+#### Summary alternative-4
 
 - Address *ceph-clusters* being accessible to all namespaces that need to
   manage it
@@ -466,16 +462,16 @@ total lenght to 90 bytes, within the given 128 byte limits.
   monValueFromSecret configuration implementation in the code as of this
   writing)
 
-#### Pros and cons alternative-3
+#### Pros and cons alternative-4
 
 - Cons remains the same, with further added complexity in the StorageClass and
   its secrets
 - Removes the con in Alternate-1 and 2 where the *ceph-clusters* information is
   accessible across namespaces
 
-### Solution Alternative-4
+### Solution Alternative-5
 
-#### Summary alternative-4
+#### Summary alternative-5
 
 - Create a CSI plugin instance per Ceph cluster, with its own unique provisioner
   name
@@ -488,7 +484,7 @@ total lenght to 90 bytes, within the given 128 byte limits.
   than a specific pool, based on the CreateVolume request parameters and
   Topology)
 
-#### Pros alternative-4
+#### Pros alternative-5
 
 - Can support all Operations, as cluster information and secrets are per
   instance
@@ -499,7 +495,7 @@ total lenght to 90 bytes, within the given 128 byte limits.
 - Allows for future merging of the CSI instances, reverting to the StorageClass
   as in the proposed solution
 
-#### Cons alternative-4
+#### Cons alternative-5
 
 - We will have as many NodeService entities as there are clusters in each node
   of the CO environment. This may consume more resources
