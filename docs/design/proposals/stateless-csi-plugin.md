@@ -121,7 +121,7 @@ parameters:
   # [Mandatory] carries the pool name to use in the Ceph cluster defined
   #     by clusterID
   pool: <pool-name>
-  # [Mandatory] All of the following are optional, and as described in,
+  # [Mandatory] All of the following are mandatory, and as described in,
   #     https://kubernetes-csi.github.io/docs/secrets-and-credentials.html
   csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
   csi.storage.k8s.io/provisioner-secret-namespace: default
@@ -174,7 +174,7 @@ about the *volume_id*,
 #### Name terminology
 
 - **ImageName**: Name of the image as created on Ceph (rbd image name, or
-  CephFS sub-directory)
+  CephFS sub-directory name)
 - **volume_id**: Identifier for the *ImageName* as shared with the CO system
 - **csi-id**: Immutable CSI instance ID, to distinguish between different CSI
   instances, within or across CO systems, that may use the same Ceph cluster
@@ -211,11 +211,11 @@ about the *volume_id*,
 #### Using Ceph OMaps for idempotent RPCs
 
 To preserve the idempotent CreateVolume RPC requirement, across *ImageName* for
-a given *volume_name*, it is proposed to use a per-CSI instance Ceph omap named
-`csi.volumes.[csi-id]`, to store keys named `csi.volume.[volume_name]` with the
+a given *volume_name*, it is proposed to use a per-CSI instance Ceph object named
+`csi.volumes.[csi-id]`, with omap keys named `csi.volume.[volume_name]` with the
 CO generated *volume_name*.
 
-The value stored in `csi.volume.[volume_name]` is the *ImageName* that is to be
+The value stored in `csi.volume.[volume_name]` key is the *ImageName* that is
 used for the requested *volume_name*.
 
 A create volume request would hence operate as follows,
@@ -253,11 +253,7 @@ The spec states strings are a maximum of 128 bytes in length. Both
 other can break the size rules and rules out such encoding schemes.
 
 Due to the existence of the omap, we choose to create an ImageName that
-is independent of any implicit *volume_name* or *csi-id* encoding. The image
-once created would carry a `image-meta` key:value with, the key named
-`csi.volume.name` and the value containing the CO generated *volume_name*. This
-key helps retain the images relationship with its *volume_name* omap key where
-required.
+is independent of any implicit *volume_name* or *csi-id* encoding within the name.
 
 If an *ImageName* is generated that already exists in the pool/fsname, the create
 request fails with required internal errors, and a retry would hence attempt to
@@ -267,6 +263,9 @@ The *volume_id* encoding helps identify the cluster, pool/fsname and *ImageName*
 to use for RPCs that only carry the *volume_id* in its requests.
 
 The `pool-id` and `fscid` are the respective pool and fsname IDs.
+
+The `version` is the version of the `volume_id` encoding scheme, for future
+encoding changes as the case may be.
 
 The size of each element encoded into the *volume_id* are,
 [4 bytes]-[MAX:37 Bytes]-[16 bytes]-[36 Bytes] respectively, thus bringing its
