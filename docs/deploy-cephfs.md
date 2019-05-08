@@ -8,13 +8,14 @@ and attach and mount existing ones to workloads.
 CSI CephFS plugin can be compiled in the form of a binary file or in the form
 of a Docker image.
 When compiled as a binary file, the result is stored in `_output/`
-directory with the name `cephfsplugin`.
-When compiled as an image, it's stored in the local Docker image store.
+directory with the name `cephcsi`.
+When compiled as an image, it's stored in the local Docker image store
+with name `cephfsplugin`.
 
 Building binary:
 
 ```bash
-make cephfsplugin
+make cephcsi
 ```
 
 Building Docker image:

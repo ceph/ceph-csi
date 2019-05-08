@@ -40,13 +40,9 @@ jobs:
         - scripts/lint-go.sh
         - scripts/test-go.sh
 
-    - name: rbdplugin
+    - name: cephcsi
       script:
-        - make rbdplugin
-
-    - name: cephfsplugin
-      script:
-        - make cephfsplugin
+        - make cephcsi
 
 deploy:
   - provider: script
