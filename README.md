@@ -25,6 +25,39 @@ CephFS CSI plugins, see documentation in `docs/`.
 
 For example usage of RBD and CephFS CSI plugins, see examples in `examples/`.
 
+## Support Matrix
+
+### Ceph-CSI features and available versions
+
+|   Plugin |        Features                                           | CSI driver Version |
+|----------|-----------------------------------------------------------|--------------------|
+|   CephFS | Dynamically provision, de-provision File mode RWO volume  |      >=v0.3.0      |
+|          | Dynamically provision, de-provision File mode RWX volume  |      >=v0.3.0      |
+|          | Creating and deleting snapshot                            |          -         |
+|          | Provision volume from snapshot                            |          -         |
+|          | Provision volume from another volume                      |          -         |
+|          | Resize volume                                             |          -         |
+|          |                                                           |                    |
+|   RBD    | Dynamically provision, de-provision Block mode RWO volume |      >=v0.3.0      |
+|          | Dynamically provision, de-provision Block mode RWX volume |      >=v0.3.0      |
+|          | Dynamically provision, de-provision File mode RWO volume  |        v1.0.0      |
+|          | Creating and deleting snapshot                            |      >=v0.3.0      |
+|          | Provision volume from snapshot                            |        v1.0.0      |
+|          | Provision volume from another volume                      |          -         |
+|          | Resize volume                                             |          -         |
+
+### Ceph-CSI versions and CSI spec compatibility
+
+| Ceph CSI driver Version | CSI spec version |
+|-------------------------|------------------|
+|         v0.3.0          |     v0.3         |
+|         v1.0.0          |     v1.0.0       |
+
+### CSI spec and Kubernetes version compatibility
+
+Please refer to the [matrix](https://kubernetes-csi.github.io/docs/#kubernetes-releases)
+in the Kubernetes documentation.
+
 ## Troubleshooting
 
 Please submit an issue at: [Issues](https://github.com/ceph/ceph-csi/issues)
