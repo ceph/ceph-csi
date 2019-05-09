@@ -293,3 +293,8 @@ func parseFindMntResolveSource(out string) (string, error) {
 	}
 	return "", fmt.Errorf("parseFindMntResolveSource: %s doesn't match to any expected findMnt output", out)
 }
+
+func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+
+	return nil, status.Error(codes.Unimplemented, "")
+}

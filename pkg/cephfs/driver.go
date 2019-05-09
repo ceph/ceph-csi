@@ -127,10 +127,6 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir
 		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 	})
 
-	fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
-		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
-	})
-
 	// Create gRPC servers
 
 	fs.is = NewIdentityServer(fs.cd)
