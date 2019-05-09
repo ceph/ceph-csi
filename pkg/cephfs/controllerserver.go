@@ -189,3 +189,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 		},
 	}, nil
 }
+
+func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "")
+}

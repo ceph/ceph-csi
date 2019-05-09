@@ -626,3 +626,8 @@ func (cs *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		Entries: entries,
 	}, nil
 }
+
+func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+
+	return nil, status.Error(codes.Unimplemented, "")
+}

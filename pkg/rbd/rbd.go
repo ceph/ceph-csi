@@ -110,6 +110,7 @@ func (r *Driver) Run(driverName, nodeID, endpoint, configRoot string, containeri
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
 		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
+		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 	})
 
 	// We only support the multi-writer option when using block, but it's a supported capability for the plugin in general
