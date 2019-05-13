@@ -15,9 +15,6 @@ var (
 	cephProvisioner     = "csi-cephfsplugin-provisioner.yaml"
 	cephProvisionerRBAC = "csi-provisioner-rbac.yaml"
 	cephProvisionerSVC  = "csi-cephfsplugin-provisioner-svc.yaml"
-	cephAttacher        = "csi-cephfsplugin-attacher.yaml"
-	cephAttacherRBAC    = "csi-attacher-rbac.yaml"
-	cephAttacherSVC     = "csi-cephfsplugin-attacher-svc.yaml"
 	cephNodePlugin      = "csi-cephfsplugin.yaml"
 	cephNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
 )
@@ -62,20 +59,6 @@ func deployNodePlugin(c kubernetes.Interface) {
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephNodePluginRBAC)
 }
 
-func deployAttacher(c kubernetes.Interface) {
-	pro := &v1beta1.StatefulSet{}
-	pPath := cephfsDirPath + cephAttacher
-	err := unmarshal(pPath, pro)
-	framework.ExpectNoError(err)
-	//TODO need to update the image name
-	_, err = c.AppsV1beta1().StatefulSets(defaultNS).Create(pro)
-	framework.ExpectNoError(err)
-	//create provisoner RBAC
-	sPath := cephfsDirPath + cephAttacherSVC
-	createService(c, defaultNS, sPath)
-	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephAttacherRBAC)
-}
-
 var f = framework.NewDefaultFramework("cephfs")
 
 var beforeFirst = true
@@ -108,7 +91,8 @@ var _ = Describe("cephfs", func() {
 	BeforeAll(func() {
 		deployProvisioner(f.ClientSet)
 		deployNodePlugin(f.ClientSet)
-		deployAttacher(f.ClientSet)
+		createStorageClass(c)
+		createSecret(c, f)
 	})
 
 	Describe("check ceph CSI driver is up", func() {
@@ -125,56 +109,34 @@ var _ = Describe("cephfs", func() {
 			if err != nil {
 				Fail(err.Error())
 			}
-
-			By("checking attacher statefulset is running")
-			err = framework.WaitForStatefulSetReplicasReady("csi-cephfsplugin-attacher", "default", c, 2*time.Second, 2*time.Minute)
-			if err != nil {
-				Fail(err.Error())
-			}
 		})
 	})
 
 	Describe("Test PVC Binding", func() {
 
-		It("create storage class", func() {
-			createStorageClass(c)
-		})
-
-		It("create secret", func() {
-			createSecret(c, f)
-		})
-
 		By("load pvc")
 		pvcPath := cephfsExamplePath + "pvc.yaml"
 		pvc := loadPVC(pvcPath)
 
-		It("create a PVC", func() {
+		It("create, write to and delete a PVC", func() {
 			err := createPVCAndvalidatePV(c, pvc, 2*time.Minute)
 			if err != nil {
 				Fail(err.Error())
 			}
-		})
 
-		appPath := cephfsExamplePath + "pod.yaml"
-		app := loadApp(appPath)
-		It("create app and bind PVC to app", func() {
-			err := createApp(c, app, 2*time.Minute)
+			appPath := cephfsExamplePath + "pod.yaml"
+			app := loadApp(appPath)
+			err = createApp(c, app, 2*time.Minute)
 			if err != nil {
 				Fail(err.Error())
 			}
-		})
 
-		//TODO need to check mount writable
-
-		It("delete app", func() {
-			err := deletePod(app.Name, app.Namespace, c, 2*time.Minute)
+			err = deletePod(app.Name, app.Namespace, c, 2*time.Minute)
 			if err != nil {
 				Fail(err.Error())
 			}
-		})
 
-		It("delete PVC and check PV", func() {
-			err := deletePVCAndValidatePV(c, pvc, 2*time.Minute)
+			err = deletePVCAndValidatePV(c, pvc, 2*time.Minute)
 			if err != nil {
 				Fail(err.Error())
 			}

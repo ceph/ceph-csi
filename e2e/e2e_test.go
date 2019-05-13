@@ -19,7 +19,7 @@ func init() {
 	log.SetOutput(GinkgoWriter)
 	flag.StringVar(&RookVersion, "rook-version", "master", "rook version to pull yaml files")
 
-	flag.BoolVar(&rookRequired, "deploy-rook", false, "deploy rook on kubernetes")
+	flag.BoolVar(&rookRequired, "deploy-rook", true, "deploy rook on kubernetes")
 	// Register framework flags, then handle flags
 	framework.HandleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
