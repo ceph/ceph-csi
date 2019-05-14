@@ -146,7 +146,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	defer func() {
 		if err != nil {
-			errDefer := unreserveVol(rbdVol, req.GetSecrets())
+			errDefer := undoVolReservation(rbdVol, req.GetSecrets())
 			if errDefer != nil {
 				klog.Warningf("failed undoing reservation of volume: %s (%s)", req.GetName(), errDefer)
 			}
@@ -257,7 +257,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 			}
 		}()
 
-		if err := unreserveVol(rbdVol, req.GetSecrets()); err != nil {
+		if err := undoVolReservation(rbdVol, req.GetSecrets()); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		return &csi.DeleteVolumeResponse{}, nil
@@ -347,7 +347,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	// check for the requested source volume id and already allocated source volume id
 	found, err := checkSnapExists(rbdSnap, req.GetSecrets())
 	if err != nil {
-		if _, ok := err.(ErrSnapNameConflict); ok {
+		if _, ok := err.(util.ErrSnapNameConflict); ok {
 			return nil, status.Error(codes.AlreadyExists, err.Error())
 		}
 
@@ -371,7 +371,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 	defer func() {
 		if err != nil {
-			errDefer := unreserveSnap(rbdSnap, req.GetSecrets())
+			errDefer := undoSnapReservation(rbdSnap, req.GetSecrets())
 			if errDefer != nil {
 				klog.Warningf("failed undoing reservation of snapshot: %s %v", req.GetName(), errDefer)
 			}
@@ -483,7 +483,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		if _, ok := err.(ErrSnapNotFound); !ok {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		if err := unreserveSnap(rbdSnap, req.GetSecrets()); err != nil {
+		if err := undoSnapReservation(rbdSnap, req.GetSecrets()); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		return &csi.DeleteSnapshotResponse{}, nil

@@ -164,7 +164,8 @@ func GetOMapValue(monitors, adminID, key, poolName, oMapName, oMapKey string) (s
 		"-p", poolName,
 		"getomapval", oMapName, oMapKey, tmpFile.Name())
 	if err != nil {
-		// no logs, as attempting to check for key/value is done even on regular call sequences
+		// no logs, as attempting to check for non-existent key/value is done even on
+		// regular call sequences
 		stdoutanderr := strings.Join([]string{string(stdout), string(stderr)}, " ")
 		if strings.Contains(stdoutanderr, "No such key: "+poolName+"/"+oMapName+"/"+oMapKey) {
 			return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, err}
@@ -174,6 +175,10 @@ func GetOMapValue(monitors, adminID, key, poolName, oMapName, oMapKey string) (s
 			poolName+"/"+oMapName+"/"+oMapKey+": (2) No such file or directory") {
 			return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, err}
 		}
+
+		// log other errors for troubleshooting assistance
+		klog.Errorf("failed getting omap value for key (%s) from omap (%s) in pool (%s): (%v)",
+			oMapKey, oMapName, poolName, err)
 
 		return "", fmt.Errorf("error (%v) occured, command output streams is (%s)",
 			err.Error(), stdoutanderr)

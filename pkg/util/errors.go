@@ -45,3 +45,14 @@ type ErrObjectNotFound struct {
 func (e ErrObjectNotFound) Error() string {
 	return e.err.Error()
 }
+
+// ErrSnapNameConflict is generated when a requested CSI snap name already exists on RBD but with
+// different properties, and hence is in conflict with the passed in CSI volume name
+type ErrSnapNameConflict struct {
+	requestName string
+	err         error
+}
+
+func (e ErrSnapNameConflict) Error() string {
+	return e.err.Error()
+}

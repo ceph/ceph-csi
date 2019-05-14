@@ -211,7 +211,7 @@ func deleteImage(pOpts *rbdVolume, adminID string, credentials map[string]string
 		return err
 	}
 
-	err = unreserveVol(pOpts, credentials)
+	err = undoVolReservation(pOpts, credentials)
 	if err != nil {
 		klog.Errorf("failed to remove reservation for volume (%s) with backing image (%s) (%s)",
 			pOpts.RequestName, pOpts.RbdImageName, err)
@@ -292,7 +292,7 @@ func genSnapFromSnapID(rbdSnap *rbdSnapshot, snapshotID string, credentials map[
 
 	rbdSnap.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdSnap.ClusterID
-	rbdSnap.RbdSnapName = rbdSnapNamePrefix + vi.ObjectUUID
+	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + vi.ObjectUUID
 
 	rbdSnap.Monitors, _, err = getMonsAndClusterID(options)
 	if err != nil {
@@ -311,16 +311,8 @@ func genSnapFromSnapID(rbdSnap *rbdSnapshot, snapshotID string, credentials map[
 		return err
 	}
 
-	// TODO: fetch all omap vals in one call, than make multiple listomapvals
-	snapUUID := strings.TrimPrefix(rbdSnap.RbdSnapName, rbdSnapNamePrefix)
-	rbdSnap.RequestName, err = util.GetOMapValue(rbdSnap.Monitors, rbdSnap.AdminID,
-		key, rbdSnap.Pool, rbdSnapOMapPrefix+snapUUID, rbdSnapCSISnapNameKey)
-	if err != nil {
-		return err
-	}
-
-	rbdSnap.RbdImageName, err = util.GetOMapValue(rbdSnap.Monitors, rbdSnap.AdminID,
-		key, rbdSnap.Pool, rbdSnapOMapPrefix+snapUUID, rbdSnapSourceImageKey)
+	rbdSnap.RequestName, rbdSnap.RbdImageName, err = snapJournal.GetObjectUUIDData(rbdSnap.Monitors,
+		rbdSnap.AdminID, key, rbdSnap.Pool, vi.ObjectUUID, true)
 	if err != nil {
 		return err
 	}
@@ -352,7 +344,7 @@ func genVolFromVolID(rbdVol *rbdVolume, volumeID string, credentials map[string]
 
 	rbdVol.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdVol.ClusterID
-	rbdVol.RbdImageName = rbdImgNamePrefix + vi.ObjectUUID
+	rbdVol.RbdImageName = volJournal.NamingPrefix() + vi.ObjectUUID
 
 	rbdVol.Monitors, _, err = getMonsAndClusterID(options)
 	if err != nil {
@@ -372,9 +364,8 @@ func genVolFromVolID(rbdVol *rbdVolume, volumeID string, credentials map[string]
 		return err
 	}
 
-	imageUUID := strings.TrimPrefix(rbdVol.RbdImageName, rbdImgNamePrefix)
-	rbdVol.RequestName, err = util.GetOMapValue(rbdVol.Monitors, rbdVol.AdminID,
-		key, rbdVol.Pool, rbdImageOMapPrefix+imageUUID, rbdImageCSIVolNameKey)
+	rbdVol.RequestName, _, err = volJournal.GetObjectUUIDData(rbdVol.Monitors,
+		rbdVol.AdminID, key, rbdVol.Pool, vi.ObjectUUID, false)
 	if err != nil {
 		return err
 	}
@@ -608,7 +599,7 @@ func deleteSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 		return errors.Wrapf(err, "failed to delete snapshot, command output: %s", string(output))
 	}
 
-	if err := unreserveSnap(pOpts, credentials); err != nil {
+	if err := undoSnapReservation(pOpts, credentials); err != nil {
 		klog.Errorf("failed to remove reservation for snapname (%s) with backing snap (%s) on image (%s) (%s)",
 			pOpts.RequestName, pOpts.RbdSnapName, pOpts.RbdImageName, err)
 	}
