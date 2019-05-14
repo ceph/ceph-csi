@@ -123,7 +123,7 @@ func (ns *NodeServer) getVolumeName(req *csi.NodePublishVolumeRequest) (string, 
 		return "", status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	return rbdImgNamePrefix + vi.ObjectUUID, nil
+	return volJournal.NamingPrefix() + vi.ObjectUUID, nil
 }
 
 func (ns *NodeServer) mountVolume(req *csi.NodePublishVolumeRequest, devicePath string) error {

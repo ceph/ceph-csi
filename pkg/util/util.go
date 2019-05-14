@@ -91,3 +91,24 @@ func ValidateDriverName(driverName string) error {
 	}
 	return err
 }
+
+// GenerateVolID generates a volume ID based on passed in parameters and version, to be returned
+// to the CO system
+func GenerateVolID(monitors, id, key, pool, clusterID, objUUID string, volIDVersion uint16) (string, error) {
+	poolID, err := GetPoolID(monitors, id, key, pool)
+	if err != nil {
+		return "", err
+	}
+
+	// generate the volume ID to return to the CO system
+	vi := CSIIdentifier{
+		PoolID:          poolID,
+		EncodingVersion: volIDVersion,
+		ClusterID:       clusterID,
+		ObjectUUID:      objUUID,
+	}
+
+	volID, err := vi.ComposeCSIID()
+
+	return volID, err
+}
