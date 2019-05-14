@@ -19,6 +19,7 @@ package csicommon
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
@@ -104,7 +105,21 @@ func RunControllerandNodePublishServer(endpoint string, d *CSIDriver, cs csi.Con
 func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	klog.V(3).Infof("GRPC call: %s", info.FullMethod)
 	klog.V(5).Infof("GRPC request: %s", protosanitizer.StripSecrets(req))
+
+	startTime := time.Now()
+
 	resp, err := handler(ctx, req)
+
+	endTime := time.Now()
+	timeDiff := endTime.Sub(startTime)
+	nanosecs := int(timeDiff.Nanoseconds())
+
+	request := protosanitizer.StripSecrets(req).String()
+	responce := protosanitizer.StripSecrets(resp).String()
+
+	m := Metric{Time: startTime, Call: info.FullMethod, SRT: nanosecs, Request: request, Responce: responce}
+	handleMetric(m)
+
 	if err != nil {
 		klog.Errorf("GRPC error: %v", err)
 	} else {

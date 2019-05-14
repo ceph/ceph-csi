@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/ceph/ceph-csi/pkg/cephfs"
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/rbd"
 	"github.com/ceph/ceph-csi/pkg/util"
 	"k8s.io/klog"
@@ -93,6 +94,9 @@ func getDriverName() string {
 }
 
 func main() {
+
+	csicommon.InitMetrics()
+
 	driverType := getType()
 	if len(driverType) == 0 {
 		klog.Fatalln("driver type not specified")
