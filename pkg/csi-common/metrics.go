@@ -28,24 +28,24 @@ import (
 )
 
 var (
-	requestCounter = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Namespace: "ceph_csi",
-			Name:      "grpc_count",
-			Help:      "Number of requests",
-		})
+	serviceResponseTimes = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "ceph_csi",
+		Name:      "srt",
+		Help:      "Service Responce Times",
+		Buckets:   []float64{1, 2, 5, 10, 20, 60},
+	})
 )
 
 // Metric structure
 type Metric struct {
 	Time     time.Time
 	Call     string
-	SRT      int
+	SRT      float64
 	Request  string
 	Responce string
 }
 
-// InitMetric func
+// InitMetrics func
 func InitMetrics() {
 	klog.V(3).Infof("Init Metrics Collection")
 
@@ -57,11 +57,11 @@ func InitMetrics() {
 		}
 	}()
 
-	prometheus.MustRegister(requestCounter)
+	prometheus.MustRegister(serviceResponseTimes)
 }
 
 func handleMetric(metric Metric) {
-	klog.V(3).Infof("Service responce time: %d , GRPC type: %s", metric.SRT, metric.Call)
+	klog.V(3).Infof("Service responce time: %f , GRPC type: %s", metric.SRT, metric.Call)
 
-	requestCounter.Inc()
+	serviceResponseTimes.Observe(metric.SRT)
 }

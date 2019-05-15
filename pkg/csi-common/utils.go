@@ -112,7 +112,7 @@ func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, h
 
 	endTime := time.Now()
 	timeDiff := endTime.Sub(startTime)
-	nanosecs := int(timeDiff.Nanoseconds())
+	nanosecs := timeDiff.Seconds()
 
 	request := protosanitizer.StripSecrets(req).String()
 	responce := protosanitizer.StripSecrets(resp).String()
