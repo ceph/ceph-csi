@@ -1,12 +1,15 @@
 ---
 # need for docker build
 sudo: true
+dist: xenial
 
 addons:
   apt:
     packages:
       - realpath
       - ruby
+services:
+  - docker
 
 language: go
 branches:
@@ -23,6 +26,10 @@ env:
     - TEST_COVERAGE=stdout
     - GO_METALINTER_THREADS=1
     - GO_COVER_DIR=_output
+    - VM_DRIVER=none
+    - KUBE_VERSION=v1.14.1
+    - MINIKUBE_VERSION=v1.1.0
+    - CHANGE_MINIKUBE_NONE_USER=true
 
 jobs:
   include:
@@ -43,6 +50,11 @@ jobs:
     - name: cephcsi
       script:
         - make cephcsi ||  travis_terminate 1;
+        - sudo scripts/minikube.sh up || travis_terminate 1;
+        # pull docker images to speed up e2e
+        - scripts/minikube.sh cephcsi
+        - scripts/minikube.sh k8s-sidecar
+        - "sudo chown -R travis: $HOME/.minikube /usr/local/bin/kubectl"
 
 deploy:
   - provider: script
