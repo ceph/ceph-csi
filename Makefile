@@ -28,6 +28,8 @@ CSI_IMAGE_VERSION?=canary
 $(info rbd    image settings: $(RBD_IMAGE_NAME) version $(RBD_IMAGE_VERSION))
 $(info cephfs image settings: $(CEPHFS_IMAGE_NAME) version $(CEPHFS_IMAGE_VERSION))
 
+BUILD_IN_DOCKER?=false
+
 all: cephcsi
 
 test: go-test static-check
@@ -41,20 +43,36 @@ static-check:
 
 .PHONY: cephcsi
 cephcsi:
+ifeq "$(BUILD_IN_DOCKER)" "true"
+	$(CONTAINER_CMD) build --target ceph-csi-builder -t ceph-csi-builder -f deploy/cephcsi/image/Dockerfile.builder .
+else
 	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephcsi ./cmd/
+endif
 
 image-cephcsi: cephcsi
+ifeq "$(BUILD_IN_DOCKE)" "true"
+	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION) -f deploy/cephcsi/image/Dockerfile.builder .
+else
 	cp deploy/cephcsi/image/Dockerfile _output
 	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION) _output
+endif
 
 image-rbdplugin: cephcsi
+ifeq "$(BUILD_IN_DOCKER)" "true"
+	$(CONTAINER_CMD) build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) -f deploy/rbd/docker/Dockerfile.builder .
+else
 	cp _output/cephcsi deploy/rbd/docker/rbdplugin
 	$(CONTAINER_CMD) build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
+endif
 
 image-cephfsplugin: cephcsi
+ifeq "$(BUILD_IN_DOCKER)" "true"
+	$(CONTAINER_CMD) build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) -f deploy/cephfs/docker/Dockerfile.builder .
+else
 	cp _output/cephcsi deploy/cephfs/docker/cephfsplugin
 	$(CONTAINER_CMD) build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) deploy/cephfs/docker
+endif
 
 push-image-rbdplugin: image-rbdplugin
 	$(CONTAINER_CMD) push $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION)
