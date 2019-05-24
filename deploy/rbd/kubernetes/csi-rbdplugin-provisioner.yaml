@@ -71,9 +71,11 @@ spec:
             privileged: true
             capabilities:
               add: ["SYS_ADMIN"]
-          image: quay.io/cephcsi/rbdplugin:v1.0.0
+          # for stable functionality replace canary with latest release version
+          image: quay.io/cephcsi/cephcsi:canary
           args:
             - "--nodeid=$(NODE_ID)"
+            - "--type=rbd"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
