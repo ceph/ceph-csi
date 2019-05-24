@@ -5,12 +5,12 @@ and attach and mount existing ones to workloads.
 
 ## Building
 
-CSI CephFS plugin can be compiled in the form of a binary file or in the form
+CSI plugin can be compiled in the form of a binary file or in the form
 of a Docker image.
 When compiled as a binary file, the result is stored in `_output/`
 directory with the name `cephcsi`.
 When compiled as an image, it's stored in the local Docker image store
-with name `cephfsplugin`.
+with name `cephcsi`.
 
 Building binary:
 
@@ -21,21 +21,22 @@ make cephcsi
 Building Docker image:
 
 ```bash
-make image-cephfsplugin
+make image-cephcsi
 ```
 
 ## Configuration
 
 **Available command line arguments:**
 
-Option              | Default value         | Description
---------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-`--endpoint`        | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket
-`--drivername`      | `cephfs.csi.ceph.com`    | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)
-`--nodeid`          | _empty_               | This node's ID
-`--volumemounter`   | _empty_               | default volume mounter. Available options are `kernel` and `fuse`. This is the mount method used if volume parameters don't specify otherwise. If left unspecified, the driver will first probe for `ceph-fuse` in system's path and will choose Ceph kernel client if probing failed.
-`--metadatastorage` | _empty_               | Whether metadata should be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)
-`--mountcachedir` | _empty_               | volume mount cache info save dir. If left unspecified, the dirver will not record mount info, or it will save mount info and when driver restart it will remount volume it cached.
+| Option              | Default value         | Description                                                                                                                                                                                                                                                                            |
+| ------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--endpoint`        | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket                                                                                                                                                                                                                                                    |
+| `--drivername`      | `cephfs.csi.ceph.com` | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)                                                                                                                                                                                     |
+| `--nodeid`          | _empty_               | This node's ID                                                                                                                                                                                                                                                                         |
+| `--type`            | _empty_               | driver type `[rbd | cephfs]` If the driver type is set to  `rbd` it will act as a `rbd plugin` or if it's set to `cephfs` will act as a `cephfs plugin`                                                                                                                                |
+| `--volumemounter`   | _empty_               | default volume mounter. Available options are `kernel` and `fuse`. This is the mount method used if volume parameters don't specify otherwise. If left unspecified, the driver will first probe for `ceph-fuse` in system's path and will choose Ceph kernel client if probing failed. |
+| `--metadatastorage` | _empty_               | Whether metadata should be kept on node as file or in a k8s configmap (`node` or `k8s_configmap`)                                                                                                                                                                                      |
+| `--mountcachedir`   | _empty_               | volume mount cache info save dir. If left unspecified, the dirver will not record mount info, or it will save mount info and when driver restart it will remount volume it cached.                                                                                                     |
 
 **Available environmental variables:**
 
@@ -48,16 +49,16 @@ is used to define in which namespace you want the configmaps to be stored
 
 **Available volume parameters:**
 
-Parameter                                                                                           | Required                                               | Description
-----------------------------------------------------------------------------------------------------|--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-`monitors`                                                                                          | yes                                                    | Comma separated list of Ceph monitors (e.g. `192.168.100.1:6789,192.168.100.2:6789,192.168.100.3:6789`)
-`monValueFromSecret`                                                                                | one of `monitors` and `monValueFromSecret` must be set | a string pointing the key in the credential secret, whose value is the mon. This is used for the case when the monitors' IP or hostnames are changed, the secret can be updated to pick up the new monitors. If both `monitors` and `monValueFromSecret` are set and the monitors set in the secret exists, `monValueFromSecret` takes precedence.
-`mounter`                                                                                           | no                                                     | Mount method to be used for this volume. Available options are `kernel` for Ceph kernel client and `fuse` for Ceph FUSE driver. Defaults to "default mounter", see command line arguments.
-`provisionVolume`                                                                                   | yes                                                    | Mode of operation. BOOL value. If `true`, a new CephFS volume will be provisioned. If `false`, an existing volume will be used.
-`pool`                                                                                              | for `provisionVolume=true`                             | Ceph pool into which the volume shall be created
-`rootPath`                                                                                          | for `provisionVolume=false`                            | Root path of an existing CephFS volume
-`csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-stage-secret-name`           | for Kubernetes                                         | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value
-`csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-stage-secret-namespace` | for Kubernetes                                         | namespaces of the above Secret objects
+| Parameter                                                                                           | Required                                               | Description                                                                                                                                                                                                                                                                                                                                        |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `monitors`                                                                                          | yes                                                    | Comma separated list of Ceph monitors (e.g. `192.168.100.1:6789,192.168.100.2:6789,192.168.100.3:6789`)                                                                                                                                                                                                                                            |
+| `monValueFromSecret`                                                                                | one of `monitors` and `monValueFromSecret` must be set | a string pointing the key in the credential secret, whose value is the mon. This is used for the case when the monitors' IP or hostnames are changed, the secret can be updated to pick up the new monitors. If both `monitors` and `monValueFromSecret` are set and the monitors set in the secret exists, `monValueFromSecret` takes precedence. |
+| `mounter`                                                                                           | no                                                     | Mount method to be used for this volume. Available options are `kernel` for Ceph kernel client and `fuse` for Ceph FUSE driver. Defaults to "default mounter", see command line arguments.                                                                                                                                                         |
+| `provisionVolume`                                                                                   | yes                                                    | Mode of operation. BOOL value. If `true`, a new CephFS volume will be provisioned. If `false`, an existing volume will be used.                                                                                                                                                                                                                    |
+| `pool`                                                                                              | for `provisionVolume=true`                             | Ceph pool into which the volume shall be created                                                                                                                                                                                                                                                                                                   |
+| `rootPath`                                                                                          | for `provisionVolume=false`                            | Root path of an existing CephFS volume                                                                                                                                                                                                                                                                                                             |
+| `csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-stage-secret-name`           | for Kubernetes                                         | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value                                                                                                                                                                                                                                |
+| `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-stage-secret-namespace` | for Kubernetes                                         | namespaces of the above Secret objects                                                                                                                                                                                                                                                                                                             |
 
 **Required secrets for `provisionVolume=true`:**
 Admin credentials are required for provisioning new volumes

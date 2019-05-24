@@ -1,14 +1,8 @@
 # build directory
-/output*/
 /_output*/
-/_output
 
 # docker build
-/deploy/rbd/docker/rbdplugin
-/deploy/cephfs/docker/cephfsplugin
-
-# rbdplugin executable
-rbdplugin
+/deploy/cephcsi/image/cephcsi
 
 # Emacs save files
 *~

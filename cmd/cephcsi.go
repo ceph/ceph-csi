@@ -103,7 +103,7 @@ func main() {
 	if err != nil {
 		klog.Fatalln(err) // calls exit
 	}
-
+	klog.Infof("Starting driver type: %v with name: %v", driverType, dname)
 	switch driverType {
 	case rbdType:
 		rbd.PluginFolder = rbd.PluginFolder + dname

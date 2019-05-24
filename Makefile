@@ -16,17 +16,10 @@
 
 CONTAINER_CMD?=docker
 
-RBD_IMAGE_NAME=$(if $(ENV_RBD_IMAGE_NAME),$(ENV_RBD_IMAGE_NAME),quay.io/cephcsi/rbdplugin)
-RBD_IMAGE_VERSION=$(if $(ENV_RBD_IMAGE_VERSION),$(ENV_RBD_IMAGE_VERSION),canary)
+CSI_IMAGE_NAME=$(if $(ENV_CSI_IMAGE_NAME),$(ENV_CSI_IMAGE_NAME),quay.io/cephcsi/cephcsi)
+CSI_IMAGE_VERSION=$(if $(ENV_CSI_IMAGE_VERSION),$(ENV_CSI_IMAGE_VERSION),canary)
 
-CEPHFS_IMAGE_NAME=$(if $(ENV_CEPHFS_IMAGE_NAME),$(ENV_CEPHFS_IMAGE_NAME),quay.io/cephcsi/cephfsplugin)
-CEPHFS_IMAGE_VERSION=$(if $(ENV_CEPHFS_IMAGE_VERSION),$(ENV_CEPHFS_IMAGE_VERSION),canary)
-
-CSI_IMAGE_NAME?=quay.io/cephcsi/cephcsi
-CSI_IMAGE_VERSION?=canary
-
-$(info rbd    image settings: $(RBD_IMAGE_NAME) version $(RBD_IMAGE_VERSION))
-$(info cephfs image settings: $(CEPHFS_IMAGE_NAME) version $(CEPHFS_IMAGE_VERSION))
+$(info cephcsi image settings: $(CSI_IMAGE_NAME) version $(CSI_IMAGE_VERSION))
 
 all: cephcsi
 
@@ -45,26 +38,14 @@ cephcsi:
 	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephcsi ./cmd/
 
 image-cephcsi: cephcsi
-	cp deploy/cephcsi/image/Dockerfile _output
-	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION) _output
+	cp _output/cephcsi deploy/cephcsi/image/cephcsi
+	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION) deploy/cephcsi/image
 
-image-rbdplugin: cephcsi
-	cp _output/cephcsi deploy/rbd/docker/rbdplugin
-	$(CONTAINER_CMD) build -t $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION) deploy/rbd/docker
+push-image-cephcsi: image-cephcsi
+	$(CONTAINER_CMD) push $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION)
 
-image-cephfsplugin: cephcsi
-	cp _output/cephcsi deploy/cephfs/docker/cephfsplugin
-	$(CONTAINER_CMD) build -t $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION) deploy/cephfs/docker
-
-push-image-rbdplugin: image-rbdplugin
-	$(CONTAINER_CMD) push $(RBD_IMAGE_NAME):$(RBD_IMAGE_VERSION)
-
-push-image-cephfsplugin: image-cephfsplugin
-	$(CONTAINER_CMD) push $(CEPHFS_IMAGE_NAME):$(CEPHFS_IMAGE_VERSION)
 
 clean:
 	go clean -r -x
-	rm -f deploy/rbd/docker/rbdplugin
-	rm -f deploy/cephfs/docker/cephfsplugin
-	rm -f _output/rbdplugin
-	rm -f _output/cephfsplugin
+	rm -f deploy/cephcsi/image/cephcsi
+	rm -f _output/cephcsi

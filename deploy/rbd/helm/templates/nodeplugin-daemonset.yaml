@@ -66,6 +66,7 @@ spec:
           image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
           args :
             - "--nodeid=$(NODE_ID)"
+            - "--type=rbd"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
