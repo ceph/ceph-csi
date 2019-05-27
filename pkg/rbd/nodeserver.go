@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/ceph/ceph-csi/pkg/csi-common"
+	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
@@ -47,14 +48,25 @@ type NodeServer struct {
 // path
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
-	targetPathMutex.LockKey(targetPath)
-	disableInUseChecks := false
+	if targetPath == "" {
+		return nil, status.Error(codes.InvalidArgument, "Empty target path in request")
+	}
 
+	if req.GetVolumeCapability() == nil {
+		return nil, status.Error(codes.InvalidArgument, "Empty volume capability in request")
+	}
+
+	if req.GetVolumeId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "Empty volume ID in request")
+	}
+
+	targetPathMutex.LockKey(targetPath)
 	defer func() {
 		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
 			klog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
 		}
 	}()
+	disableInUseChecks := false
 
 	volName, err := ns.getVolumeName(req)
 	if err != nil {
@@ -82,11 +94,11 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		}
 	}
 
-	volOptions, err := getRBDVolumeOptions(req.GetVolumeContext(), disableInUseChecks)
+	volOptions, err := genVolFromVolumeOptions(req.GetVolumeContext(), disableInUseChecks)
 	if err != nil {
 		return nil, err
 	}
-	volOptions.VolName = volName
+	volOptions.RbdImageName = volName
 	// Mapping RBD image
 	devicePath, err := attachRBDImage(volOptions, volOptions.UserID, req.GetSecrets())
 	if err != nil {
@@ -103,22 +115,15 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 }
 
 func (ns *NodeServer) getVolumeName(req *csi.NodePublishVolumeRequest) (string, error) {
-	var volName string
-	isBlock := req.GetVolumeCapability().GetBlock() != nil
-	targetPath := req.GetTargetPath()
-	if isBlock {
-		// Get volName from targetPath
-		s := strings.Split(targetPath, "/")
-		volName = s[len(s)-1]
-	} else {
-		// Get volName from targetPath
-		if !strings.HasSuffix(targetPath, "/mount") {
-			return "", fmt.Errorf("rbd: malformed the value of target path: %s", targetPath)
-		}
-		s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
-		volName = s[len(s)-1]
+	var vi util.CSIIdentifier
+
+	err := vi.DecomposeCSIID(req.GetVolumeId())
+	if err != nil {
+		klog.Errorf("error decoding volume ID (%s) (%s)", err, req.GetVolumeId())
+		return "", status.Error(codes.InvalidArgument, err.Error())
 	}
-	return volName, nil
+
+	return rbdImgNamePrefix + vi.ObjectUUID, nil
 }
 
 func (ns *NodeServer) mountVolume(req *csi.NodePublishVolumeRequest, devicePath string) error {
@@ -187,6 +192,14 @@ func (ns *NodeServer) createTargetPath(targetPath string, isBlock bool) (bool, e
 // NodeUnpublishVolume unmounts the volume from the target path
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
+	if targetPath == "" {
+		return nil, status.Error(codes.InvalidArgument, "Empty target path in request")
+	}
+
+	if req.GetVolumeId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "Empty volume ID in request")
+	}
+
 	targetPathMutex.LockKey(targetPath)
 
 	defer func() {

@@ -39,6 +39,11 @@ func (ns *DefaultNodeServer) NodeUnstageVolume(ctx context.Context, req *csi.Nod
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
+// NodeExpandVolume returns unimplemented response
+func (ns *DefaultNodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
 // NodeGetInfo returns node ID
 func (ns *DefaultNodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	klog.V(5).Infof("Using default NodeGetInfo")

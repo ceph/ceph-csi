@@ -26,7 +26,7 @@ env:
 
 jobs:
   include:
-    - name: Linter
+    - name: static-check-make
       install:
         - gem install mdl
         - pip install --user --upgrade pip
@@ -42,7 +42,7 @@ jobs:
 
     - name: cephcsi
       script:
-        - make cephcsi
+        - make cephcsi ||  travis_terminate 1;
 
 deploy:
   - provider: script

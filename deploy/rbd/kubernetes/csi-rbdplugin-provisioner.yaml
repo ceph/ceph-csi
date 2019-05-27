@@ -78,8 +78,6 @@ spec:
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
-            - "--metadatastorage=k8s_configmap"
-            - "--configroot=k8s_objects"
           env:
             - name: HOST_ROOTFS
               value: "/rootfs"
@@ -87,10 +85,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
             - name: CSI_ENDPOINT
               value: unix:///csi/csi-provisioner.sock
           imagePullPolicy: "IfNotPresent"
@@ -106,6 +100,8 @@ spec:
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
       volumes:
         - name: host-dev
           hostPath:
@@ -123,3 +119,6 @@ spec:
           hostPath:
             path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             type: DirectoryOrCreate
+        - name: ceph-csi-config
+          configMap:
+            name: ceph-csi-config
