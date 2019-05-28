@@ -43,7 +43,7 @@ spec:
 {{ toYaml .Values.provisioner.resources | indent 12 }}
         - name: csi-snapshotter
           image: {{ .Values.snapshotter.image.repository }}:{{ .Values.snapshotter.image.tag }}
-          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.imagePullPolicy }}
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
             - "--connection-timeout=15s"
@@ -83,7 +83,7 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: "unix:/{{ .Values.socketDir }}/{{ .Values.socketFile }}"
-          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.imagePullPolicy }}
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: {{ .Values.socketDir }}
