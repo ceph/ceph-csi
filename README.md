@@ -46,29 +46,29 @@ deployments](https://github.com/ceph/ceph-csi/tree/csi-v1.0/deploy/).
 
 ### Ceph-CSI features and available versions
 
-|   Plugin |        Features                                           | CSI driver Version |
-|----------|-----------------------------------------------------------|--------------------|
-|   CephFS | Dynamically provision, de-provision File mode RWO volume  |      >=v0.3.0      |
-|          | Dynamically provision, de-provision File mode RWX volume  |      >=v0.3.0      |
-|          | Creating and deleting snapshot                            |          -         |
-|          | Provision volume from snapshot                            |          -         |
-|          | Provision volume from another volume                      |          -         |
-|          | Resize volume                                             |          -         |
-|          |                                                           |                    |
-|   RBD    | Dynamically provision, de-provision Block mode RWO volume |      >=v0.3.0      |
-|          | Dynamically provision, de-provision Block mode RWX volume |      >=v0.3.0      |
-|          | Dynamically provision, de-provision File mode RWO volume  |        v1.0.0      |
-|          | Creating and deleting snapshot                            |      >=v0.3.0      |
-|          | Provision volume from snapshot                            |        v1.0.0      |
-|          | Provision volume from another volume                      |          -         |
-|          | Resize volume                                             |          -         |
+| Plugin | Features                                                  | CSI driver Version |
+|--------|-----------------------------------------------------------|--------------------|
+| CephFS | Dynamically provision, de-provision File mode RWO volume  | >=v0.3.0           |
+|        | Dynamically provision, de-provision File mode RWX volume  | >=v0.3.0           |
+|        | Creating and deleting snapshot                            | -                  |
+|        | Provision volume from snapshot                            | -                  |
+|        | Provision volume from another volume                      | -                  |
+|        | Resize volume                                             | -                  |
+|        |                                                           |                    |
+| RBD    | Dynamically provision, de-provision Block mode RWO volume | >=v0.3.0           |
+|        | Dynamically provision, de-provision Block mode RWX volume | >=v0.3.0           |
+|        | Dynamically provision, de-provision File mode RWO volume  | v1.0.0             |
+|        | Creating and deleting snapshot                            | >=v0.3.0           |
+|        | Provision volume from snapshot                            | v1.0.0             |
+|        | Provision volume from another volume                      | -                  |
+|        | Resize volume                                             | -                  |
 
 ### Ceph-CSI versions and CSI spec compatibility
 
 | Ceph CSI driver Version | CSI spec version |
 |-------------------------|------------------|
-|         v0.3.0          |     v0.3         |
-|         v1.0.0          |     v1.0.0       |
+| v0.3.0                  | v0.3             |
+| v1.0.0                  | v1.0.0           |
 
 ### CSI spec and Kubernetes version compatibility
 
@@ -79,6 +79,10 @@ in the Kubernetes documentation.
 
 Please submit an issue at: [Issues](https://github.com/ceph/ceph-csi/issues)
 
-## Slack Channels
+## Contact
 
-Join us at [Rook ceph-csi Channel](https://rook-io.slack.com/messages/CG3HUV94J/details/)
+Please use the following to reach members of the community:
+
+- Slack: Join our [slack channel](https://cephcsi.slack.com)
+- Forums: [ceph-csi](https://groups.google.com/forum/#!forum/ceph-csi)
+- Twitter: [@CephCsi](https://twitter.com/CephCsi)
