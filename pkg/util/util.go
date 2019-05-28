@@ -102,7 +102,7 @@ func GenerateVolID(monitors, id, key, pool, clusterID, objUUID string, volIDVers
 
 	// generate the volume ID to return to the CO system
 	vi := CSIIdentifier{
-		PoolID:          poolID,
+		LocationID:      poolID,
 		EncodingVersion: volIDVersion,
 		ClusterID:       clusterID,
 		ObjectUUID:      objUUID,

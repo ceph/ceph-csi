@@ -100,6 +100,7 @@ func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volum
 func deleteCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) error {
 	adminID, userID := genUserIDs(adminCr, volID)
 
+	// TODO: Need to return success if userID is not found
 	return execCommandErr("ceph",
 		"-m", volOptions.Monitors,
 		"-n", adminID,

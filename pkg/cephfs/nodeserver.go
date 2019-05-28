@@ -80,6 +80,10 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 
 // NodeStageVolume mounts the volume to a staging path on the node.
 func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+	var (
+		volOptions *volumeOptions
+		vid        *volumeIdentifier
+	)
 	if err := validateNodeStageVolumeRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -89,15 +93,26 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	stagingTargetPath := req.GetStagingTargetPath()
 	volID := volumeID(req.GetVolumeId())
 
-	volOptions, err := newVolumeOptions(req.GetVolumeContext(), req.GetSecrets())
+	volOptions, vid, err := newVolumeOptionsFromVolID(string(volID), req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
-		klog.Errorf("error reading volume options for volume %s: %v", volID, err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
+		if _, ok := err.(ErrInvalidVolID); !ok {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 
-	if volOptions.ProvisionVolume {
-		// Dynamically provisioned volumes don't have their root path set, do it here
-		volOptions.RootPath = getVolumeRootPathCeph(volID)
+		// check for pre-provisioned volumes (plugin versions > 1.0.0)
+		volOptions, vid, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
+		if err != nil {
+			if _, ok := err.(ErrNonStaticVolume); !ok {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+
+			// check for volumes from plugin versions <= 1.0.0
+			volOptions, vid, err = newVolumeOptionsFromVersion1Context(string(volID), req.GetVolumeContext(),
+				req.GetSecrets())
+			if err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
 	}
 
 	if err = createMountPoint(stagingTargetPath); err != nil {
@@ -123,7 +138,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	// It's not, mount now
-	if err = ns.mount(volOptions, req); err != nil {
+	if err = ns.mount(volOptions, req, vid); err != nil {
 		return nil, err
 	}
 
@@ -132,11 +147,11 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) error {
+func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest, vid *volumeIdentifier) error {
 	stagingTargetPath := req.GetStagingTargetPath()
 	volID := volumeID(req.GetVolumeId())
 
-	cr, err := getCredentialsForVolume(volOptions, volID, req)
+	cr, err := getCredentialsForVolume(volOptions, volumeID(vid.FsSubvolName), req)
 	if err != nil {
 		klog.Errorf("failed to get ceph credentials for volume %s: %v", volID, err)
 		return status.Error(codes.Internal, err.Error())
@@ -154,7 +169,7 @@ func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequ
 		klog.Errorf("failed to mount volume %s: %v", volID, err)
 		return status.Error(codes.Internal, err.Error())
 	}
-	if err := volumeMountCache.nodeStageVolume(req.GetVolumeId(), stagingTargetPath, req.GetSecrets()); err != nil {
+	if err := volumeMountCache.nodeStageVolume(req.GetVolumeId(), stagingTargetPath, volOptions.Mounter, req.GetSecrets()); err != nil {
 		klog.Warningf("mount-cache: failed to stage volume %s %s: %v", volID, stagingTargetPath, err)
 	}
 	return nil

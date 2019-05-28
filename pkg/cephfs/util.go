@@ -42,10 +42,6 @@ func mustUnlock(m keymutex.KeyMutex, key string) {
 	}
 }
 
-func makeVolumeID(volName string) volumeID {
-	return volumeID("csi-cephfs-" + volName)
-}
-
 func execCommand(program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
 		cmd           = exec.Command(program, args...) // nolint: gosec
@@ -72,6 +68,7 @@ func execCommandErr(program string, args ...string) error {
 	return err
 }
 
+//nolint: unparam
 func execCommandJSON(v interface{}, program string, args ...string) error {
 	stdout, _, err := execCommand(program, args...)
 	if err != nil {

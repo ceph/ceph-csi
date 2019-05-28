@@ -42,11 +42,11 @@ var (
 	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
 	driverName = flag.String("drivername", "", "name of the driver")
 	nodeID     = flag.String("nodeid", "", "node id")
+	instanceID = flag.String("instanceid", "", "Unique ID distinguishing this instance of Ceph CSI among other"+
+		" instances, when sharing Ceph clusters across CSI instances for provisioning")
 
 	// rbd related flags
 	containerized = flag.Bool("containerized", true, "whether run as containerized")
-	instanceID    = flag.String("instanceid", "", "Unique ID distinguishing this instance of Ceph CSI among other"+
-		" instances, when sharing Ceph clusters across CSI instances for provisioning")
 
 	// cephfs related flags
 	volumeMounter   = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
@@ -93,6 +93,8 @@ func getDriverName() string {
 }
 
 func main() {
+	var cp util.CachePersister
+
 	driverType := getType()
 	if len(driverType) == 0 {
 		klog.Fatalln("driver type not specified")
@@ -112,13 +114,15 @@ func main() {
 
 	case cephfsType:
 		cephfs.PluginFolder = cephfs.PluginFolder + dname
-		cp, err := util.CreatePersistanceStorage(
-			cephfs.PluginFolder, *metadataStorage, dname)
-		if err != nil {
-			os.Exit(1)
+		if *metadataStorage != "" {
+			cp, err = util.CreatePersistanceStorage(
+				cephfs.PluginFolder, *metadataStorage, dname)
+			if err != nil {
+				os.Exit(1)
+			}
 		}
 		driver := cephfs.NewDriver()
-		driver.Run(dname, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, cp)
+		driver.Run(dname, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, *instanceID, cp)
 
 	default:
 		klog.Fatalln("invalid volume type", vtype) // calls exit

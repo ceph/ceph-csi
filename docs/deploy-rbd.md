@@ -52,11 +52,10 @@ make image-cephcsi
 | `mounter`                                                                                             | no                   | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images                                                                                                              |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
-running pods. Refer to [Creating CSI configuration for RBD based
-provisioning](../examples/README.md#creating-csi-configuration-for-rbd-based-provisioning)
+running pods. Refer to [Creating CSI configuration](../examples/README.md#creating-csi-configuration)
 for more information.
 
-**NOTE:** A suggested way to populate and retain uniquness of the clusterID is
+**NOTE:** A suggested way to populate and retain uniqueness of the clusterID is
 to use the output of `ceph fsid` of the Ceph cluster to be used for
 provisioning.
 

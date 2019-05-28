@@ -306,7 +306,7 @@ func genSnapFromSnapID(rbdSnap *rbdSnapshot, snapshotID string, credentials map[
 		return err
 	}
 
-	rbdSnap.Pool, err = util.GetPoolName(rbdSnap.Monitors, rbdSnap.AdminID, key, vi.PoolID)
+	rbdSnap.Pool, err = util.GetPoolName(rbdSnap.Monitors, rbdSnap.AdminID, key, vi.LocationID)
 	if err != nil {
 		return err
 	}
@@ -359,7 +359,7 @@ func genVolFromVolID(rbdVol *rbdVolume, volumeID string, credentials map[string]
 	}
 
 	rbdVol.Pool, err = util.GetPoolName(rbdVol.Monitors, rbdVol.AdminID, key,
-		vi.PoolID)
+		vi.LocationID)
 	if err != nil {
 		return err
 	}

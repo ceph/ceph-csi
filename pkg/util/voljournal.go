@@ -114,6 +114,9 @@ type CSIJournal struct {
 
 	// volume name prefix for naming on Ceph rbd or FS, suffix is a uuid generated per volume
 	namingPrefix string
+
+	// namespace in which the RADOS objects are stored, default is no namespace
+	namespace string
 }
 
 // CSIVolumeJournal returns an instance of volume keys
@@ -125,6 +128,7 @@ func NewCSIVolumeJournal() *CSIJournal {
 		csiNameKey:              "csi.volname",
 		namingPrefix:            "csi-vol-",
 		cephSnapSourceKey:       "",
+		namespace:               "",
 	}
 }
 
@@ -137,6 +141,7 @@ func NewCSISnapshotJournal() *CSIJournal {
 		csiNameKey:              "csi.snapname",
 		namingPrefix:            "csi-snap-",
 		cephSnapSourceKey:       "csi.source",
+		namespace:               "",
 	}
 }
 
@@ -148,6 +153,11 @@ func (cj *CSIJournal) NamingPrefix() string {
 // SetCSIDirectorySuffix sets the given suffix for the csiDirectory omap
 func (cj *CSIJournal) SetCSIDirectorySuffix(suffix string) {
 	cj.csiDirectory = cj.csiDirectory + "." + suffix
+}
+
+// SetNamespace sets the namespace in which all RADOS objects would be created
+func (cj *CSIJournal) SetNamespace(ns string) {
+	cj.namespace = ns
 }
 
 /*
@@ -177,7 +187,7 @@ func (cj *CSIJournal) CheckReservation(monitors, id, key, pool, reqName, parentN
 	}
 
 	// check if request name is already part of the directory omap
-	objUUID, err := GetOMapValue(monitors, id, key, pool, cj.csiDirectory,
+	objUUID, err := GetOMapValue(monitors, id, key, pool, cj.namespace, cj.csiDirectory,
 		cj.csiNameKeyPrefix+reqName)
 	if err != nil {
 		// error should specifically be not found, for volume to be absent, any other error
@@ -237,7 +247,7 @@ func (cj *CSIJournal) UndoReservation(monitors, id, key, pool, volName, reqName 
 	// delete volume UUID omap (first, inverse of create order)
 	// TODO: Check cases where volName can be empty, and we need to just cleanup the reqName
 	imageUUID := strings.TrimPrefix(volName, cj.namingPrefix)
-	err := RemoveObject(monitors, id, key, pool, cj.cephUUIDDirectoryPrefix+imageUUID)
+	err := RemoveObject(monitors, id, key, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+imageUUID)
 	if err != nil {
 		if _, ok := err.(ErrObjectNotFound); !ok {
 			klog.Errorf("failed removing oMap %s (%s)", cj.cephUUIDDirectoryPrefix+imageUUID, err)
@@ -246,7 +256,7 @@ func (cj *CSIJournal) UndoReservation(monitors, id, key, pool, volName, reqName 
 	}
 
 	// delete the request name key (last, inverse of create order)
-	err = RemoveOMapKey(monitors, id, key, pool, cj.csiDirectory,
+	err = RemoveOMapKey(monitors, id, key, pool, cj.namespace, cj.csiDirectory,
 		cj.csiNameKeyPrefix+reqName)
 	if err != nil {
 		klog.Errorf("failed removing oMap key %s (%s)", cj.csiNameKeyPrefix+reqName, err)
@@ -259,7 +269,7 @@ func (cj *CSIJournal) UndoReservation(monitors, id, key, pool, volName, reqName 
 // reserveOMapName creates an omap with passed in oMapNamePrefix and a generated <uuid>.
 // It ensures generated omap name does not already exist and if conflicts are detected, a set
 // number of retires with newer uuids are attempted before returning an error
-func reserveOMapName(monitors, id, key, pool, oMapNamePrefix string) (string, error) {
+func reserveOMapName(monitors, id, key, pool, namespace, oMapNamePrefix string) (string, error) {
 	var iterUUID string
 
 	maxAttempts := 5
@@ -268,7 +278,7 @@ func reserveOMapName(monitors, id, key, pool, oMapNamePrefix string) (string, er
 		// generate a uuid for the image name
 		iterUUID = uuid.NewUUID().String()
 
-		err := CreateObject(monitors, id, key, pool, oMapNamePrefix+iterUUID)
+		err := CreateObject(monitors, id, key, pool, namespace, oMapNamePrefix+iterUUID)
 		if err != nil {
 			if _, ok := err.(ErrObjectExists); ok {
 				attempt++
@@ -315,15 +325,15 @@ func (cj *CSIJournal) ReserveName(monitors, id, key, pool, reqName, parentName s
 	// NOTE: If any service loss occurs post creation of the UUID directory, and before
 	// setting the request name key (csiNameKey) to point back to the UUID directory, the
 	// UUID directory key will be leaked
-	volUUID, err := reserveOMapName(monitors, id, key, pool, cj.cephUUIDDirectoryPrefix)
+	volUUID, err := reserveOMapName(monitors, id, key, pool, cj.namespace, cj.cephUUIDDirectoryPrefix)
 	if err != nil {
 		return "", err
 	}
 
 	// Create request name (csiNameKey) key in csiDirectory and store the UUId based
 	// volume name into it
-	err = SetOMapKeyValue(monitors, id, key, pool, cj.csiDirectory, cj.csiNameKeyPrefix+reqName,
-		volUUID)
+	err = SetOMapKeyValue(monitors, id, key, pool, cj.namespace, cj.csiDirectory,
+		cj.csiNameKeyPrefix+reqName, volUUID)
 	if err != nil {
 		return "", err
 	}
@@ -339,7 +349,7 @@ func (cj *CSIJournal) ReserveName(monitors, id, key, pool, reqName, parentName s
 	}()
 
 	// Update UUID directory to store CSI request name
-	err = SetOMapKeyValue(monitors, id, key, pool, cj.cephUUIDDirectoryPrefix+volUUID,
+	err = SetOMapKeyValue(monitors, id, key, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 		cj.csiNameKey, reqName)
 	if err != nil {
 		return "", err
@@ -347,7 +357,7 @@ func (cj *CSIJournal) ReserveName(monitors, id, key, pool, reqName, parentName s
 
 	if snapSource {
 		// Update UUID directory to store source volume UUID in case of snapshots
-		err = SetOMapKeyValue(monitors, id, key, pool, cj.cephUUIDDirectoryPrefix+volUUID,
+		err = SetOMapKeyValue(monitors, id, key, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 			cj.cephSnapSourceKey, parentName)
 		if err != nil {
 			return "", err
@@ -373,14 +383,14 @@ func (cj *CSIJournal) GetObjectUUIDData(monitors, id, key, pool, objectUUID stri
 	}
 
 	// TODO: fetch all omap vals in one call, than make multiple listomapvals
-	requestName, err := GetOMapValue(monitors, id, key, pool,
+	requestName, err := GetOMapValue(monitors, id, key, pool, cj.namespace,
 		cj.cephUUIDDirectoryPrefix+objectUUID, cj.csiNameKey)
 	if err != nil {
 		return "", "", err
 	}
 
 	if snapSource {
-		sourceName, err = GetOMapValue(monitors, id, key, pool,
+		sourceName, err = GetOMapValue(monitors, id, key, pool, cj.namespace,
 			cj.cephUUIDDirectoryPrefix+objectUUID, cj.cephSnapSourceKey)
 		if err != nil {
 			return "", "", err

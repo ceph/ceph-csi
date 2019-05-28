@@ -16,6 +16,7 @@ type volumeMountCacheEntry struct {
 	DriverVersion string `json:"driverVersion"`
 
 	VolumeID    string            `json:"volumeID"`
+	Mounter     string            `json:"mounter"`
 	Secrets     map[string]string `json:"secrets"`
 	StagingPath string            `json:"stagingPath"`
 	TargetPaths map[string]bool   `json:"targetPaths"`
@@ -25,7 +26,6 @@ type volumeMountCacheEntry struct {
 type volumeMountCacheMap struct {
 	volumes        map[string]volumeMountCacheEntry
 	nodeCacheStore util.NodeCache
-	metadataStore  util.CachePersister
 }
 
 var (
@@ -34,10 +34,9 @@ var (
 	volumeMountCacheMtx    sync.Mutex
 )
 
-func initVolumeMountCache(driverName string, mountCacheDir string, cachePersister util.CachePersister) {
+func initVolumeMountCache(driverName string, mountCacheDir string) {
 	volumeMountCache.volumes = make(map[string]volumeMountCacheEntry)
 
-	volumeMountCache.metadataStore = cachePersister
 	volumeMountCache.nodeCacheStore.BasePath = mountCacheDir
 	volumeMountCache.nodeCacheStore.CacheDir = driverName
 	klog.Infof("mount-cache: name: %s, version: %s, mountCacheDir: %s", driverName, version, mountCacheDir)
@@ -50,18 +49,19 @@ func remountCachedVolumes() error {
 	}
 	var remountFailCount, remountSuccCount int64
 	me := &volumeMountCacheEntry{}
-	ce := &controllerCacheEntry{}
 	err := volumeMountCache.nodeCacheStore.ForAll(volumeMountCachePrefix, me, func(identifier string) error {
 		volID := me.VolumeID
-		if err := volumeMountCache.metadataStore.Get(volID, ce); err != nil {
-			if err, ok := err.(*util.CacheEntryNotFound); ok {
-				klog.Infof("mount-cache: metadata not found, assuming the volume %s to be already deleted (%v)", volID, err)
+		if volOpts, vid, err := newVolumeOptionsFromVolID(me.VolumeID, nil, decodeCredentials(me.Secrets)); err != nil {
+			if err, ok := err.(util.ErrKeyNotFound); ok {
+				klog.Infof("mount-cache: image key not found, assuming the volume %s to be already deleted (%v)", volID, err)
 				if err := volumeMountCache.nodeCacheStore.Delete(genVolumeMountCacheFileName(volID)); err == nil {
 					klog.Infof("mount-cache: metadata not found, delete volume cache entry for volume %s", volID)
 				}
 			}
 		} else {
-			if err := mountOneCacheEntry(ce, me); err == nil {
+			// update Mounter from mount cache
+			volOpts.Mounter = me.Mounter
+			if err := mountOneCacheEntry(volOpts, vid, me); err == nil {
 				remountSuccCount++
 				volumeMountCache.volumes[me.VolumeID] = *me
 				klog.Infof("mount-cache: successfully remounted volume %s", volID)
@@ -84,7 +84,7 @@ func remountCachedVolumes() error {
 	return nil
 }
 
-func mountOneCacheEntry(ce *controllerCacheEntry, me *volumeMountCacheEntry) error {
+func mountOneCacheEntry(volOptions *volumeOptions, vid *volumeIdentifier, me *volumeMountCacheEntry) error {
 	volumeMountCacheMtx.Lock()
 	defer volumeMountCacheMtx.Unlock()
 
@@ -92,17 +92,16 @@ func mountOneCacheEntry(ce *controllerCacheEntry, me *volumeMountCacheEntry) err
 		err error
 		cr  *credentials
 	)
-	volID := ce.VolumeID
-	volOptions := ce.VolOptions
+	volID := vid.VolumeID
 
 	if volOptions.ProvisionVolume {
-		volOptions.RootPath = getVolumeRootPathCeph(volID)
+		volOptions.RootPath = getVolumeRootPathCeph(volumeID(vid.FsSubvolName))
 		cr, err = getAdminCredentials(decodeCredentials(me.Secrets))
 		if err != nil {
 			return err
 		}
 		var entity *cephEntity
-		entity, err = getCephUser(&volOptions, cr, volID)
+		entity, err = getCephUser(volOptions, cr, volumeID(vid.FsSubvolName))
 		if err != nil {
 			return err
 		}
@@ -127,12 +126,12 @@ func mountOneCacheEntry(ce *controllerCacheEntry, me *volumeMountCacheEntry) err
 	}
 
 	if !isMnt {
-		m, err := newMounter(&volOptions)
+		m, err := newMounter(volOptions)
 		if err != nil {
 			klog.Errorf("mount-cache: failed to create mounter for volume %s: %v", volID, err)
 			return err
 		}
-		if err := m.mount(me.StagingPath, cr, &volOptions); err != nil {
+		if err := m.mount(me.StagingPath, cr, volOptions); err != nil {
 			klog.Errorf("mount-cache: failed to mount volume %s: %v", volID, err)
 			return err
 		}
@@ -204,7 +203,7 @@ func (mc *volumeMountCacheMap) isEnable() bool {
 	return mc.nodeCacheStore.BasePath != ""
 }
 
-func (mc *volumeMountCacheMap) nodeStageVolume(volID string, stagingTargetPath string, secrets map[string]string) error {
+func (mc *volumeMountCacheMap) nodeStageVolume(volID, stagingTargetPath, mounter string, secrets map[string]string) error {
 	if !mc.isEnable() {
 		return nil
 	}
@@ -228,6 +227,7 @@ func (mc *volumeMountCacheMap) nodeStageVolume(volID string, stagingTargetPath s
 	me.Secrets = encodeCredentials(secrets)
 	me.StagingPath = stagingTargetPath
 	me.TargetPaths = lastTargetPaths
+	me.Mounter = mounter
 
 	me.CreateTime = time.Now()
 	volumeMountCache.volumes[volID] = me

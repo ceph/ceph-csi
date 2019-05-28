@@ -9,16 +9,13 @@ By default, they look for the YAML manifests in
 `../../deploy/{rbd,cephfs}/kubernetes`.
 You can override this path by running `$ ./plugin-deploy.sh /path/to/my/manifests`.
 
-## Creating CSI configuration for RBD based provisioning
+## Creating CSI configuration
 
-**NOTE:** This section is not required for cephfs based provisioning, and SHOULD
-be skipped.
-
-For RBD based provisioning, the CSI plugin requires configuration information
-regarding the Ceph cluster(s), that would host the RBD based block devices. This
+The CSI plugin requires configuration information regarding the Ceph cluster(s),
+that would host the dynamically or statically provisioned volumes. This
 is provided by adding a per-cluster identifier (referred to as clusterID), and
 the required monitor details for the same, as in the provided [sample config
- map](./rbd/csi-config-map-sample.yaml).
+ map](./csi-config-map-sample.yaml).
 
 Gather the following information from the Ceph cluster(s) of choice,
 
@@ -31,12 +28,12 @@ Gather the following information from the Ceph cluster(s) of choice,
   * Alternatively, choose a `<cluster-id>` value that is distinct per Ceph
     cluster in use by this kubernetes cluster
 
-Update the [sample config map](./rbd/csi-config-map-sample.yaml) with values
+Update the [sample config map](./csi-config-map-sample.yaml) with values
 from a Ceph cluster and replace `<cluster-id>` with the chosen clusterID, to
 create the manifest for the config map which can be updated in the cluster
 using the following command,
 
-* `kubectl replace -f rbd/csi-config-map-sample.yaml`
+* `kubectl replace -f ./csi-config-map-sample.yaml`
 
 Storage class and snapshot class, using `<cluster-id>` as the value for the
 option `clusterID`, can now be created on the cluster.
