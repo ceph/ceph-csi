@@ -49,6 +49,7 @@ jobs:
 
     - name: cephcsi
       script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
         - make cephcsi ||  travis_terminate 1;
         - sudo scripts/minikube.sh up || travis_terminate 1;
         # pull docker images to speed up e2e
