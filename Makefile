@@ -32,6 +32,9 @@ static-check:
 	./scripts/lint-go.sh
 	./scripts/lint-text.sh
 
+func-test:
+	go test github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
+
 .PHONY: cephcsi
 cephcsi:
 	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi

@@ -29,6 +29,7 @@ env:
     - KUBE_VERSION=v1.14.2
     - MINIKUBE_VERSION=v1.1.0
     - CHANGE_MINIKUBE_NONE_USER=true
+    - KUBECONFIG=$HOME/.kube/config
 
 jobs:
   include:
@@ -50,11 +51,15 @@ jobs:
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make cephcsi ||  travis_terminate 1;
+        - make image-cephcsi || travis_terminate 1;
         - sudo scripts/minikube.sh up || travis_terminate 1;
         # pull docker images to speed up e2e
         - scripts/minikube.sh cephcsi
         - scripts/minikube.sh k8s-sidecar
         - "sudo chown -R travis: $HOME/.minikube /usr/local/bin/kubectl"
+        # functional tests
+        - make func-test TESTOPTIONS='--rook-version=v1.0.0 \
+          --deploy-rook=true --deploy-timeout=10  -timeout=20m -v'
 
 deploy:
   - provider: script
