@@ -44,14 +44,14 @@ var (
 	nodeID     = flag.String("nodeid", "", "node id")
 	instanceID = flag.String("instanceid", "", "Unique ID distinguishing this instance of Ceph CSI among other"+
 		" instances, when sharing Ceph clusters across CSI instances for provisioning")
+	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
 
 	// rbd related flags
 	containerized = flag.Bool("containerized", true, "whether run as containerized")
 
 	// cephfs related flags
-	volumeMounter   = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
-	mountCacheDir   = flag.String("mountcachedir", "", "mount info cache save dir")
-	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
+	volumeMounter = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
+	mountCacheDir = flag.String("mountcachedir", "", "mount info cache save dir")
 )
 
 func init() {
@@ -109,8 +109,15 @@ func main() {
 	switch driverType {
 	case rbdType:
 		rbd.PluginFolder += dname
+		if *metadataStorage != "" {
+			cp, err = util.CreatePersistanceStorage(
+				rbd.PluginFolder, *metadataStorage, dname)
+			if err != nil {
+				os.Exit(1)
+			}
+		}
 		driver := rbd.NewDriver()
-		driver.Run(dname, *nodeID, *endpoint, *instanceID, *containerized)
+		driver.Run(dname, *nodeID, *endpoint, *instanceID, *containerized, cp)
 
 	case cephfsType:
 		cephfs.PluginFolder += dname

@@ -27,6 +27,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
@@ -45,20 +46,28 @@ const (
 
 // rbdVolume represents a CSI volume and its RBD image specifics
 type rbdVolume struct {
-	// RbdImageName is the name of the RBD image backing this rbdVolume
+	// RbdImageName is the name of the RBD image backing this rbdVolume. This does not have a
+	//   JSON tag as it is not stashed in JSON encoded config maps in v1.0.0
 	// VolID is the volume ID that is exchanged with CSI drivers, identifying this rbdVol
-	// RequestName is the CSI generated volume name for the rbdVolume
+	// RequestName is the CSI generated volume name for the rbdVolume.  This does not have a
+	//   JSON tag as it is not stashed in JSON encoded config maps in v1.0.0
+	// VolName and MonValueFromSecret are retained from older plugin versions (<= 1.0.0)
+	//   for backward compatibility reasons
 	RbdImageName       string
-	VolID              string
-	Monitors           string
-	Pool               string
-	ImageFormat        string
-	ImageFeatures      string
-	VolSize            int64
-	Mounter            string
-	DisableInUseChecks bool
-	ClusterID          string
+	VolID              string `json:"volID"`
+	Monitors           string `json:"monitors"`
+	Pool               string `json:"pool"`
+	ImageFormat        string `json:"imageFormat"`
+	ImageFeatures      string `json:"imageFeatures"`
+	VolSize            int64  `json:"volSize"`
+	AdminID            string `json:"adminId"`
+	UserID             string `json:"userId"`
+	Mounter            string `json:"mounter"`
+	DisableInUseChecks bool   `json:"disableInUseChecks"`
+	ClusterID          string `json:"clusterId"`
 	RequestName        string
+	VolName            string `json:"volName"`
+	MonValueFromSecret string `json:"monValueFromSecret"`
 }
 
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics
@@ -89,6 +98,8 @@ var (
 	snapshotNameLocker = util.NewIDLocker()
 	// serializes operations based on "mount target path" as key
 	targetPathLocker = util.NewIDLocker()
+	// serializes delete operations on legacy volumes
+	legacyVolumeIDLocker = util.NewIDLocker()
 
 	supportedFeatures = sets.NewString("layering")
 )
@@ -172,14 +183,6 @@ func deleteImage(pOpts *rbdVolume, cr *util.Credentials) error {
 	output, err = execCommand("rbd", args)
 	if err != nil {
 		klog.Errorf("failed to delete rbd image: %v, command output: %s", err, string(output))
-		return err
-	}
-
-	err = undoVolReservation(pOpts, cr)
-	if err != nil {
-		klog.Errorf("failed to remove reservation for volume (%s) with backing image (%s) (%s)",
-			pOpts.RequestName, pOpts.RbdImageName, err)
-		err = nil
 	}
 
 	return err
@@ -283,9 +286,8 @@ func genVolFromVolID(rbdVol *rbdVolume, volumeID string, cr *util.Credentials) e
 
 	err := vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
-		klog.V(4).Infof("error decoding volume ID (%s) (%s)", err, rbdVol.VolID)
-		return err
-
+		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, rbdVol.VolID)
+		return ErrInvalidVolID{err}
 	}
 
 	rbdVol.ClusterID = vi.ClusterID
@@ -336,7 +338,66 @@ func getMonsAndClusterID(options map[string]string) (monitors, clusterID string,
 	return
 }
 
-func genVolFromVolumeOptions(volOptions map[string]string, disableInUseChecks bool) (*rbdVolume, error) {
+// isLegacyVolumeID checks if passed in volume ID string conforms to volume ID naming scheme used
+// by the version 1.0.0 (legacy) of the plugin, and returns true if found to be conforming
+func isLegacyVolumeID(volumeID string) bool {
+	// Version 1.0.0 volumeID format: "csi-rbd-vol-" + UUID string
+	//    length: 12 ("csi-rbd-vol-") + 36 (UUID string)
+
+	// length check
+	if len(volumeID) != 48 {
+		return false
+	}
+
+	// Header check
+	if !strings.HasPrefix(volumeID, "csi-rbd-vol-") {
+		return false
+	}
+
+	// Trailer UUID format check
+	if uuid.Parse(volumeID[12:]) == nil {
+		return false
+	}
+
+	return true
+}
+
+// upadateMons function is used to update the rbdVolume.Monitors for volumes that were provisioned
+// using the 1.0.0 version (legacy) of the plugin.
+func updateMons(rbdVol *rbdVolume, options, credentials map[string]string) error {
+	var ok bool
+
+	// read monitors and MonValueFromSecret from options, else check passed in rbdVolume for
+	// MonValueFromSecret key in credentials
+	monInSecret := ""
+	if options != nil {
+		if rbdVol.Monitors, ok = options["monitors"]; !ok {
+			rbdVol.Monitors = ""
+		}
+		if monInSecret, ok = options["monValueFromSecret"]; !ok {
+			monInSecret = ""
+		}
+	} else {
+		monInSecret = rbdVol.MonValueFromSecret
+	}
+
+	// if monitors are present in secrets and we have the credentials, use monitors from the
+	// credentials overriding monitors from other sources
+	if monInSecret != "" && credentials != nil {
+		monsFromSecret, ok := credentials[monInSecret]
+		if ok {
+			rbdVol.Monitors = monsFromSecret
+		}
+	}
+
+	if rbdVol.Monitors == "" {
+		return errors.New("either monitors or monValueFromSecret must be set")
+	}
+
+	return nil
+}
+
+func genVolFromVolumeOptions(volOptions, credentials map[string]string, disableInUseChecks, isLegacyVolume bool) (*rbdVolume, error) {
 	var (
 		ok  bool
 		err error
@@ -348,9 +409,16 @@ func genVolFromVolumeOptions(volOptions map[string]string, disableInUseChecks bo
 		return nil, errors.New("missing required parameter pool")
 	}
 
-	rbdVol.Monitors, rbdVol.ClusterID, err = getMonsAndClusterID(volOptions)
-	if err != nil {
-		return nil, err
+	if isLegacyVolume {
+		err = updateMons(rbdVol, volOptions, credentials)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		rbdVol.Monitors, rbdVol.ClusterID, err = getMonsAndClusterID(volOptions)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	rbdVol.ImageFormat, ok = volOptions["imageFormat"]
@@ -372,7 +440,6 @@ func genVolFromVolumeOptions(volOptions map[string]string, disableInUseChecks bo
 			}
 			rbdVol.ImageFeatures = imageFeatures
 		}
-
 	}
 
 	klog.V(3).Infof("setting disableInUseChecks on rbd volume to: %v", disableInUseChecks)

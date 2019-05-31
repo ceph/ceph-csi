@@ -47,3 +47,13 @@ type ErrVolNameConflict struct {
 func (e ErrVolNameConflict) Error() string {
 	return e.err.Error()
 }
+
+// ErrInvalidVolID is returned when a CSI passed VolumeID does not conform to any known volume ID
+// formats
+type ErrInvalidVolID struct {
+	err error
+}
+
+func (e ErrInvalidVolID) Error() string {
+	return e.err.Error()
+}
