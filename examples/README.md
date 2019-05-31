@@ -73,7 +73,7 @@ In the `examples/rbd` directory you will find two files related to snapshots:
 [snapshot.yaml](./rbd/snapshot.yaml).
 
 Once you created your RBD volume, you'll need to customize at least
-`snapshotclass.yaml` and make sure the `clusterid` and `pool` parameters match
+`snapshotclass.yaml` and make sure the `clusterid` parameter matches
 your Ceph cluster setup.
 If you followed the documentation to create the rbdplugin, you shouldn't
 have to edit any other file.
