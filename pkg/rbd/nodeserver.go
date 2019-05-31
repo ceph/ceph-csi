@@ -67,6 +67,22 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	disableInUseChecks := false
 
+	isLegacyVolume := false
+	volName, err := getVolumeName(req)
+	if err != nil {
+		// error ErrInvalidVolID may mean this is an 1.0.0 version volume, check for name
+		// pattern match in addition to error to ensure this is a likely v1.0.0 volume
+		if _, ok := err.(ErrInvalidVolID); !ok || !isLegacyVolumeID(req.GetVolumeId()) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		volName, err = getLegacyVolumeName(req)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		isLegacyVolume = true
+	}
+
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	// Check if that target path exists properly
 	notMnt, err := ns.createTargetPath(targetPath, isBlock)
@@ -88,12 +104,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		}
 	}
 
-	volOptions, err := genVolFromVolumeOptions(req.GetVolumeContext(), disableInUseChecks)
-	if err != nil {
-		return nil, err
-	}
-
-	volName, err := ns.getVolumeName(req)
+	volOptions, err := genVolFromVolumeOptions(req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks, isLegacyVolume)
 	if err != nil {
 		return nil, err
 	}
@@ -118,16 +129,38 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
-func (ns *NodeServer) getVolumeName(req *csi.NodePublishVolumeRequest) (string, error) {
+func getVolumeName(req *csi.NodePublishVolumeRequest) (string, error) {
 	var vi util.CSIIdentifier
 
 	err := vi.DecomposeCSIID(req.GetVolumeId())
 	if err != nil {
-		klog.Errorf("error decoding volume ID (%s) (%s)", err, req.GetVolumeId())
-		return "", status.Error(codes.InvalidArgument, err.Error())
+		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, req.GetVolumeId())
+		return "", ErrInvalidVolID{err}
 	}
 
 	return volJournal.NamingPrefix() + vi.ObjectUUID, nil
+}
+
+func getLegacyVolumeName(req *csi.NodePublishVolumeRequest) (string, error) {
+	var volName string
+
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+	targetPath := req.GetTargetPath()
+
+	if isBlock {
+		// Get volName from targetPath
+		s := strings.Split(targetPath, "/")
+		volName = s[len(s)-1]
+	} else {
+		// Get volName from targetPath
+		if !strings.HasSuffix(targetPath, "/mount") {
+			return "", fmt.Errorf("rbd: malformed value of target path: %s", targetPath)
+		}
+		s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
+		volName = s[len(s)-1]
+	}
+
+	return volName, nil
 }
 
 func (ns *NodeServer) mountVolume(req *csi.NodePublishVolumeRequest, devicePath string) error {

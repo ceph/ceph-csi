@@ -26,14 +26,15 @@ make image-cephcsi
 
 **Available command line arguments:**
 
-| Option            | Default value         | Description                                                                                                                                             |
-| ----------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--endpoint`      | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket                                                                                                                     |
-| `--drivername`    | `rbd.csi.ceph.com`    | name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)                                                      |
-| `--nodeid`        | _empty_               | This node's ID                                                                                                                                          |
-| `--type`          | _empty_               | driver type `[rbd | cephfs]` If the driver type is set to  `rbd` it will act as a `rbd plugin` or if it's set to `cephfs` will act as a `cephfs plugin` |
-| `--containerized` | true                  | Whether running in containerized mode                                                                                                                   |
-| `--instanceid`    | "default"             | Unique ID distinguishing this instance of Ceph CSI among other instances, when sharing Ceph clusters across CSI instances for provisioning              |
+| Option              | Default value         | Description                                                                                                                                             |
+| ------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--endpoint`        | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket                                                                                                                     |
+| `--drivername`      | `rbd.csi.ceph.com`    | Name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)                                                      |
+| `--nodeid`          | _empty_               | This node's ID                                                                                                                                          |
+| `--type`            | _empty_               | Driver type `[rbd | cephfs]` If the driver type is set to  `rbd` it will act as a `rbd plugin` or if it's set to `cephfs` will act as a `cephfs plugin` |
+| `--containerized`   | true                  | Whether running in containerized mode                                                                                                                   |
+| `--instanceid`      | "default"             | Unique ID distinguishing this instance of Ceph CSI among other instances, when sharing Ceph clusters across CSI instances for provisioning              |
+| `--metadatastorage` | _empty_               | Points to where legacy (1.0.0 or older plugin versions) metadata about provisioned volumes are kept, as file or in as k8s configmap (`node` or `k8s_configmap` respectively)              |
 
 **Available environmental variables:**
 
