@@ -477,16 +477,10 @@ func getCredsFromVol(rbdVol *rbdVolume, volOptions map[string]string) {
 }
 
 func genSnapFromOptions(rbdVol *rbdVolume, snapOptions map[string]string) *rbdSnapshot {
-	var (
-		err error
-		ok  bool
-	)
+	var err error
 
 	rbdSnap := &rbdSnapshot{}
-	rbdSnap.Pool, ok = snapOptions["pool"]
-	if !ok {
-		rbdSnap.Pool = rbdVol.Pool
-	}
+	rbdSnap.Pool = rbdVol.Pool
 
 	rbdSnap.Monitors, rbdSnap.ClusterID, err = getMonsAndClusterID(snapOptions)
 	if err != nil {
