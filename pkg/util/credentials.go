@@ -14,9 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cephfs
+package util
 
-import "fmt"
+import (
+	"fmt"
+)
 
 const (
 	credUserID   = "userID"
@@ -26,37 +28,37 @@ const (
 	credMonitors = "monitors"
 )
 
-type credentials struct {
-	id  string
-	key string
+type Credentials struct {
+	ID  string
+	Key string
 }
 
-func getCredentials(idField, keyField string, secrets map[string]string) (*credentials, error) {
+func getCredentials(idField, keyField string, secrets map[string]string) (*Credentials, error) {
 	var (
-		c  = &credentials{}
+		c  = &Credentials{}
 		ok bool
 	)
 
-	if c.id, ok = secrets[idField]; !ok {
+	if c.ID, ok = secrets[idField]; !ok {
 		return nil, fmt.Errorf("missing ID field '%s' in secrets", idField)
 	}
 
-	if c.key, ok = secrets[keyField]; !ok {
+	if c.Key, ok = secrets[keyField]; !ok {
 		return nil, fmt.Errorf("missing key field '%s' in secrets", keyField)
 	}
 
 	return c, nil
 }
 
-func getUserCredentials(secrets map[string]string) (*credentials, error) {
+func GetUserCredentials(secrets map[string]string) (*Credentials, error) {
 	return getCredentials(credUserID, credUserKey, secrets)
 }
 
-func getAdminCredentials(secrets map[string]string) (*credentials, error) {
+func GetAdminCredentials(secrets map[string]string) (*Credentials, error) {
 	return getCredentials(credAdminID, credAdminKey, secrets)
 }
 
-func getMonValFromSecret(secrets map[string]string) (string, error) {
+func GetMonValFromSecret(secrets map[string]string) (string, error) {
 	if mons, ok := secrets[credMonitors]; ok {
 		return mons, nil
 	}

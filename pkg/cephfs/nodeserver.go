@@ -22,6 +22,7 @@ import (
 	"os"
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
+	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -40,9 +41,9 @@ var (
 	mtxNodeVolumeID = keymutex.NewHashed(0)
 )
 
-func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi.NodeStageVolumeRequest) (*credentials, error) {
+func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi.NodeStageVolumeRequest) (*util.Credentials, error) {
 	var (
-		cr      *credentials
+		cr      *util.Credentials
 		secrets = req.GetSecrets()
 	)
 
@@ -51,7 +52,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 
 		// First, get admin credentials - those are needed for retrieving the user credentials
 
-		adminCr, err := getAdminCredentials(secrets)
+		adminCr, err := util.GetAdminCredentials(secrets)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
 		}
@@ -67,7 +68,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
-		userCr, err := getUserCredentials(req.GetSecrets())
+		userCr, err := util.GetUserCredentials(req.GetSecrets())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
 		}

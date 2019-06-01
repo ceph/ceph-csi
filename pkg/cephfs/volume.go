@@ -21,6 +21,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/ceph/ceph-csi/pkg/util"
+
 	"k8s.io/klog"
 )
 
@@ -50,7 +52,7 @@ func setVolumeAttribute(root, attrName, attrValue string) error {
 	return execCommandErr("setfattr", "-n", attrName, "-v", attrValue, root)
 }
 
-func createVolume(volOptions *volumeOptions, adminCr *credentials, volID volumeID, bytesQuota int64) error {
+func createVolume(volOptions *volumeOptions, adminCr *util.Credentials, volID volumeID, bytesQuota int64) error {
 	if err := mountCephRoot(volID, volOptions, adminCr); err != nil {
 		return err
 	}
@@ -91,7 +93,7 @@ func createVolume(volOptions *volumeOptions, adminCr *credentials, volID volumeI
 	return nil
 }
 
-func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions) error {
+func purgeVolume(volID volumeID, adminCr *util.Credentials, volOptions *volumeOptions) error {
 	if err := mountCephRoot(volID, volOptions, adminCr); err != nil {
 		return err
 	}
@@ -120,7 +122,7 @@ func purgeVolume(volID volumeID, adminCr *credentials, volOptions *volumeOptions
 	return nil
 }
 
-func mountCephRoot(volID volumeID, volOptions *volumeOptions, adminCr *credentials) error {
+func mountCephRoot(volID volumeID, volOptions *volumeOptions, adminCr *util.Credentials) error {
 	cephRoot := getCephRootPathLocal(volID)
 
 	// Root path is not set for dynamically provisioned volumes

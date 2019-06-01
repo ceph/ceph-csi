@@ -57,9 +57,14 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
+	cr, err := util.GetUserCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	targetPathMutex.LockKey(targetPath)
 	defer func() {
-		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
+		if err = targetPathMutex.UnlockKey(targetPath); err != nil {
 			klog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
 		}
 	}()
@@ -97,7 +102,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 	volOptions.RbdImageName = volName
 	// Mapping RBD image
-	devicePath, err := attachRBDImage(volOptions, volOptions.UserID, req.GetSecrets())
+	devicePath, err := attachRBDImage(volOptions, cr)
 	if err != nil {
 		return nil, err
 	}
