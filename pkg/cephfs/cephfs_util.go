@@ -33,15 +33,15 @@ type CephFilesystemDetails struct {
 	MDSMap MDSMap `json:"mdsmap"`
 }
 
-func getFscID(monitors, id, key, fsName string) (int64, error) {
+func getFscID(monitors string, cr *util.Credentials, fsName string) (int64, error) {
 	// ceph fs get myfs --format=json
 	// {"mdsmap":{...},"id":2}
 	var fsDetails CephFilesystemDetails
 	err := execCommandJSON(&fsDetails,
 		"ceph",
 		"-m", monitors,
-		"--id", id,
-		"--key="+key,
+		"--id", cr.ID,
+		"--key="+cr.Key,
 		"-c", util.CephConfigPath,
 		"fs", "get", fsName, "--format=json",
 	)
@@ -61,15 +61,15 @@ type CephFilesystem struct {
 	DataPoolIDs    []int    `json:"data_pool_ids"`
 }
 
-func getMetadataPool(monitors, id, key, fsName string) (string, error) {
+func getMetadataPool(monitors string, cr *util.Credentials, fsName string) (string, error) {
 	// ./tbox ceph fs ls --format=json
 	// [{"name":"myfs","metadata_pool":"myfs-metadata","metadata_pool_id":4,...},...]
 	var filesystems []CephFilesystem
 	err := execCommandJSON(&filesystems,
 		"ceph",
 		"-m", monitors,
-		"--id", id,
-		"--key="+key,
+		"--id", cr.ID,
+		"--key="+cr.Key,
 		"-c", util.CephConfigPath,
 		"fs", "ls", "--format=json",
 	)
@@ -91,15 +91,15 @@ type CephFilesystemDump struct {
 	Filesystems []CephFilesystemDetails `json:"filesystems"`
 }
 
-func getFsName(monitors, id, key string, fscID int64) (string, error) {
+func getFsName(monitors string, cr *util.Credentials, fscID int64) (string, error) {
 	// ./tbox ceph fs dump --format=json
 	// JSON: {...,"filesystems":[{"mdsmap":{},"id":<n>},...],...}
 	var fsDump CephFilesystemDump
 	err := execCommandJSON(&fsDump,
 		"ceph",
 		"-m", monitors,
-		"--id", id,
-		"--key="+key,
+		"--id", cr.ID,
+		"--key="+cr.Key,
 		"-c", util.CephConfigPath,
 		"fs", "dump", "--format=json",
 	)

@@ -193,7 +193,6 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
 func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
-	delete(sc.Parameters, "userid")
 	sc.Parameters["pool"] = "replicapool"
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
@@ -283,10 +282,10 @@ func createCephfsSecret(c kubernetes.Interface, f *framework.Framework) {
 		LabelSelector: "app=rook-ceph-tools",
 	}
 	adminKey := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
-	sc.Data["adminID"] = []byte("admin")
-	sc.Data["adminKey"] = []byte(adminKey)
-	delete(sc.Data, "userID")
-	delete(sc.Data, "userKey")
+	sc.StringData["adminID"] = "admin"
+	sc.StringData["adminKey"] = adminKey
+	delete(sc.StringData, "userID")
+	delete(sc.StringData, "userKey")
 	_, err := c.CoreV1().Secrets("default").Create(&sc)
 	Expect(err).Should(BeNil())
 }
@@ -298,8 +297,8 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 		LabelSelector: "app=rook-ceph-tools",
 	}
 	adminKey := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
-	sc.Data["admin"] = []byte(adminKey)
-	delete(sc.Data, "kubernetes")
+	sc.StringData["userID"] = "admin"
+	sc.StringData["userKey"] = adminKey
 	_, err := c.CoreV1().Secrets("default").Create(&sc)
 	Expect(err).Should(BeNil())
 }

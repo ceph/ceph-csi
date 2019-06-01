@@ -39,10 +39,10 @@ type cephEntity struct {
 	Caps   cephEntityCaps `json:"caps"`
 }
 
-func (ent *cephEntity) toCredentials() *credentials {
-	return &credentials{
-		id:  ent.Entity[len(cephEntityClientPrefix):],
-		key: ent.Key,
+func (ent *cephEntity) toCredentials() *util.Credentials {
+	return &util.Credentials{
+		ID:  ent.Entity[len(cephEntityClientPrefix):],
+		Key: ent.Key,
 	}
 }
 
@@ -63,30 +63,30 @@ func getSingleCephEntity(args ...string) (*cephEntity, error) {
 	return &ents[0], nil
 }
 
-func genUserIDs(adminCr *credentials, volID volumeID) (adminID, userID string) {
-	return cephEntityClientPrefix + adminCr.id, cephEntityClientPrefix + getCephUserName(volID)
+func genUserIDs(adminCr *util.Credentials, volID volumeID) (adminID, userID string) {
+	return cephEntityClientPrefix + adminCr.ID, cephEntityClientPrefix + getCephUserName(volID)
 }
 
-func getCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
+func getCephUser(volOptions *volumeOptions, adminCr *util.Credentials, volID volumeID) (*cephEntity, error) {
 	adminID, userID := genUserIDs(adminCr, volID)
 
 	return getSingleCephEntity(
 		"-m", volOptions.Monitors,
 		"-n", adminID,
-		"--key="+adminCr.key,
+		"--key="+adminCr.Key,
 		"-c", util.CephConfigPath,
 		"-f", "json",
 		"auth", "get", userID,
 	)
 }
 
-func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) (*cephEntity, error) {
+func createCephUser(volOptions *volumeOptions, adminCr *util.Credentials, volID volumeID) (*cephEntity, error) {
 	adminID, userID := genUserIDs(adminCr, volID)
 
 	return getSingleCephEntity(
 		"-m", volOptions.Monitors,
 		"-n", adminID,
-		"--key="+adminCr.key,
+		"--key="+adminCr.Key,
 		"-c", util.CephConfigPath,
 		"-f", "json",
 		"auth", "get-or-create", userID,
@@ -97,14 +97,14 @@ func createCephUser(volOptions *volumeOptions, adminCr *credentials, volID volum
 	)
 }
 
-func deleteCephUser(volOptions *volumeOptions, adminCr *credentials, volID volumeID) error {
+func deleteCephUser(volOptions *volumeOptions, adminCr *util.Credentials, volID volumeID) error {
 	adminID, userID := genUserIDs(adminCr, volID)
 
 	// TODO: Need to return success if userID is not found
 	return execCommandErr("ceph",
 		"-m", volOptions.Monitors,
 		"-n", adminID,
-		"--key="+adminCr.key,
+		"--key="+adminCr.Key,
 		"-c", util.CephConfigPath,
 		"auth", "rm", userID,
 	)

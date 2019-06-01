@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/pkg/util"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 )
@@ -224,7 +226,7 @@ func checkRbdNbdTools() bool {
 	return true
 }
 
-func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string]string) (string, error) {
+func attachRBDImage(volOptions *rbdVolume, cr *util.Credentials) (string, error) {
 	var err error
 
 	image := volOptions.RbdImageName
@@ -259,26 +261,22 @@ func attachRBDImage(volOptions *rbdVolume, userID string, credentials map[string
 			Steps:    rbdImageWatcherSteps,
 		}
 
-		err = waitForrbdImage(backoff, volOptions, userID, credentials)
+		err = waitForrbdImage(backoff, volOptions, cr)
 
 		if err != nil {
 			return "", err
 		}
-		devicePath, err = createPath(volOptions, userID, credentials)
+		devicePath, err = createPath(volOptions, cr)
 	}
 
 	return devicePath, err
 }
 
-func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (string, error) {
+func createPath(volOpt *rbdVolume, cr *util.Credentials) (string, error) {
 	image := volOpt.RbdImageName
 	imagePath := fmt.Sprintf("%s/%s", volOpt.Pool, image)
 
 	klog.V(5).Infof("rbd: map mon %s", volOpt.Monitors)
-	key, err := getKey(userID, creds)
-	if err != nil {
-		return "", err
-	}
 
 	useNBD := false
 	cmdName := rbd
@@ -288,7 +286,7 @@ func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (stri
 	}
 
 	output, err := execCommand(cmdName, []string{
-		"map", imagePath, "--id", userID, "-m", volOpt.Monitors, "--key=" + key})
+		"map", imagePath, "--id", cr.ID, "-m", volOpt.Monitors, "--key=" + cr.Key})
 	if err != nil {
 		klog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
 		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
@@ -300,12 +298,12 @@ func createPath(volOpt *rbdVolume, userID string, creds map[string]string) (stri
 	return devicePath, nil
 }
 
-func waitForrbdImage(backoff wait.Backoff, volOptions *rbdVolume, userID string, credentials map[string]string) error {
+func waitForrbdImage(backoff wait.Backoff, volOptions *rbdVolume, cr *util.Credentials) error {
 	image := volOptions.RbdImageName
 	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
 
 	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-		used, rbdOutput, err := rbdStatus(volOptions, userID, credentials)
+		used, rbdOutput, err := rbdStatus(volOptions, cr)
 		if err != nil {
 			return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
 		}
