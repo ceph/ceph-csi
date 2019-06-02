@@ -53,7 +53,7 @@ function install_kubectl() {
 
 # configure minikube
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
-KUBE_VERSION=${KUBE_VERSION:-"v1.13.0"}
+KUBE_VERSION=${KUBE_VERSION:-"v1.14.2"}
 MEMORY=${MEMORY:-"3000"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
 #configure image repo
@@ -66,7 +66,7 @@ K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-"BlockVolume=true,CSIBlockVolume=true,Vol
 case "${1:-}" in
 up)
     install_minikube
-    #if driver  is none install kubectl with KUBE_VERSION
+    #if driver  is 'none' install kubectl with KUBE_VERSION
     if [[ "${VM_DRIVER}" == "none" ]]; then
         mkdir -p "$HOME"/.kube "$HOME"/.minikube
         install_kubectl
@@ -104,10 +104,10 @@ cephcsi)
     ;;
 k8s-sidecar)
     echo "copying the kubernetes sidecar images"
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-attacher:v1.0.1 "${K8S_IMAGE_REPO}"/csi-attacher:v1.0.1
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-snapshotter:v1.0.1 $"${K8S_IMAGE_REPO}"/csi-snapshotter:v1.0.1
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-provisioner:v1.0.1 "${K8S_IMAGE_REPO}"/csi-provisioner:v1.0.1
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.0.2 "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.0.2
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-attacher:v1.1.1 "${K8S_IMAGE_REPO}"/csi-attacher:v1.1.1
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-snapshotter:v1.1.0 $"${K8S_IMAGE_REPO}"/csi-snapshotter:v1.1.0
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-provisioner:v1.2.0 "${K8S_IMAGE_REPO}"/csi-provisioner:v1.2.0
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.1.0 "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.1.0
     ;;
 clean)
     minikube delete

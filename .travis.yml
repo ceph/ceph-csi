@@ -27,7 +27,7 @@ env:
     - GO_METALINTER_THREADS=1
     - GO_COVER_DIR=_output
     - VM_DRIVER=none
-    - KUBE_VERSION=v1.14.1
+    - KUBE_VERSION=v1.14.2
     - MINIKUBE_VERSION=v1.1.0
     - CHANGE_MINIKUBE_NONE_USER=true
 
