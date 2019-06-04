@@ -27,7 +27,7 @@ attacher:
 
   image:
     repository: quay.io/k8scsi/csi-attacher
-    tag: v1.0.1
+    tag: v1.1.1
     pullPolicy: IfNotPresent
 
   resources: {}
@@ -44,7 +44,7 @@ nodeplugin:
   registrar:
     image:
       repository: quay.io/k8scsi/csi-node-driver-registrar
-      tag: v1.0.2
+      tag: v1.1.0
       pullPolicy: IfNotPresent
 
     resources: {}
@@ -71,7 +71,7 @@ provisioner:
 
   image:
     repository: quay.io/k8scsi/csi-provisioner
-    tag: v1.0.1
+    tag: v1.2.0
     pullPolicy: IfNotPresent
 
   resources: {}
@@ -85,7 +85,7 @@ provisioner:
 snapshotter:
   image:
     repository: quay.io/k8scsi/csi-snapshotter
-    tag: v1.0.1
+    tag: v1.1.0
     pullPolicy: IfNotPresent
 
   resources: {}
