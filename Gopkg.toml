@@ -6,21 +6,34 @@
   revision = "5db89f0ca68677abc5eefce8f2a0a772c98ba52d"
   name = "github.com/docker/distribution"
 
+#fixes https://github.com/golang/dep/issues/1799
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "https://github.com/fsnotify/fsnotify.git"
+
 [[constraint]]
   name = "google.golang.org/grpc"
   version = "1.10.0"
 
 [[constraint]]
-  version = "kubernetes-1.14.0"
+  version = "kubernetes-1.14.2"
   name = "k8s.io/apimachinery"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "v1.14.0"
+  version = "=v1.14.2"
 
 [[override]]
-  version = "kubernetes-1.14.0"
+  version = "kubernetes-1.14.2"
   name = "k8s.io/api"
+
+[[override]]
+  version = "kubernetes-1.14.2"
+  name = "k8s.io/apiserver"
+
+[[override]]
+  version = "kubernetes-1.14.2"
+  name = "k8s.io/cli-runtime"
 
 [[override]]
   name = "github.com/golang/protobuf"
@@ -28,7 +41,15 @@
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.14.0"
+  version = "kubernetes-1.14.2"
+
+[[override]]
+  name = "k8s.io/apiextensions-apiserver"
+  version = "kubernetes-1.14.2"
+
+[[override]]
+  name = "k8s.io/kube-aggregator"
+  version = "kubernetes-1.14.2"
 
 [prune]
   go-tests = true

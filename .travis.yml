@@ -16,7 +16,6 @@ branches:
   only:
     - csi-v0.3
     - master
-    - csi-v1.0  # remove this once csi-v1.0 becomes master
 
 go: 1.11.x
 
@@ -27,9 +26,10 @@ env:
     - GO_METALINTER_THREADS=1
     - GO_COVER_DIR=_output
     - VM_DRIVER=none
-    - KUBE_VERSION=v1.14.1
+    - KUBE_VERSION=v1.14.2
     - MINIKUBE_VERSION=v1.1.0
     - CHANGE_MINIKUBE_NONE_USER=true
+    - KUBECONFIG=$HOME/.kube/config
 
 jobs:
   include:
@@ -50,12 +50,15 @@ jobs:
     - name: cephcsi
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make cephcsi ||  travis_terminate 1;
+        - make image-cephcsi || travis_terminate 1;
         - sudo scripts/minikube.sh up || travis_terminate 1;
         # pull docker images to speed up e2e
         - scripts/minikube.sh cephcsi
         - scripts/minikube.sh k8s-sidecar
         - "sudo chown -R travis: $HOME/.minikube /usr/local/bin/kubectl"
+        # functional tests
+        - make func-test TESTOPTIONS='--rook-version=v1.0.1 \
+          --deploy-rook=true --deploy-timeout=10  -timeout=30m -v'
 
 deploy:
   - provider: script
