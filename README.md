@@ -5,8 +5,8 @@ Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreport
 [![Build
 Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-ci.org/ceph/ceph-csi)
 
-[Container Storage Interface
-(CSI)](https://github.com/container-storage-interface/) driver, provisioner,
+This repo containes [Container Storage Interface(CSI)]
+(<https://github.com/container-storage-interface/>) driver, provisioner,
 and attacher for Ceph RBD and CephFS.
 
 ## Overview
@@ -74,6 +74,13 @@ deployments](https://github.com/ceph/ceph-csi/tree/csi-v1.0/deploy/).
 
 Please refer to the [matrix](https://kubernetes-csi.github.io/docs/#kubernetes-releases)
 in the Kubernetes documentation.
+
+## Contributing to this repo
+
+Please follow [development-guide]
+(<https://github.com/ceph/ceph-csi/tree/master/docs/development-guide.md>) and
+[coding style guidelines](<https://github.com/ceph/ceph-csi/tree/master/docs/coding.md>)
+if you are interested to contribute to this repo.
 
 ## Troubleshooting
 
