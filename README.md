@@ -5,7 +5,7 @@ Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreport
 [![Build
 Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-ci.org/ceph/ceph-csi)
 
-This repo containes [Container Storage Interface(CSI)]
+This repo contains [Container Storage Interface(CSI)]
 (<https://github.com/container-storage-interface/>) driver, provisioner,
 and attacher for Ceph RBD and CephFS.
 

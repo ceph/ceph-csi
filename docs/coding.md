@@ -15,8 +15,6 @@ the code and will be pointed out in the review process:
 * Keep variable names short for variables that are local to the function.
 * Do not export a function or variable name outside the package until you
   have an external consumer for it.
-* Do not use named return values in function definitions. Use only the type.
-  Exception: defer()'d functions.
 
 ### Imports
 
@@ -60,8 +58,6 @@ import (
 
 ### Logging
 
-* If a function is only invoked as part of a transaction step, always use the
-  transaction's logger to ensure propagation of request ID and transaction ID.
 * The inner-most utility functions should never log. Logging must almost always
   be done by the caller on receiving an `error`.
 * Always use log level `DEBUG` to provide useful **diagnostic information** to
