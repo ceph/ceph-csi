@@ -18,8 +18,10 @@ function wait_for_ssh() {
 function copy_image_to_cluster() {
     local build_image=$1
     local final_image=$2
-    if [[ "${VM_DRIVER}" == "none" ]]; then
+    if [ -z "$(docker images -q "${build_image}")" ]; then
         docker pull "${build_image}"
+    fi
+    if [[ "${VM_DRIVER}" == "none" ]]; then
         docker tag "${build_image}" "${final_image}"
         return
     fi
@@ -98,9 +100,8 @@ ssh)
     minikube ssh
     ;;
 cephcsi)
-    echo "copying the cephcsi images"
-    copy_image_to_cluster "${CEPHCSI_IMAGE_REPO}"/rbdplugin:canary "${CEPHCSI_IMAGE_REPO}"/rbdplugin:v1.0.0
-    copy_image_to_cluster "${CEPHCSI_IMAGE_REPO}"/cephfsplugin:canary "${CEPHCSI_IMAGE_REPO}"/cephfsplugin:v1.0.0
+    echo "copying the cephcsi image"
+    copy_image_to_cluster "${CEPHCSI_IMAGE_REPO}"/cephcsi:canary "${CEPHCSI_IMAGE_REPO}"/cephcsi:canary
     ;;
 k8s-sidecar)
     echo "copying the kubernetes sidecar images"
