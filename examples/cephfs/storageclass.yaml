@@ -40,3 +40,5 @@ parameters:
   # --volumemounter command-line argument.
   # mounter: kernel
 reclaimPolicy: Delete
+mountOptions:
+  - noexec

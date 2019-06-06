@@ -163,6 +163,8 @@ func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequ
 // NodePublishVolume mounts the volume mounted to the staging path to the target
 // path
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+
+	mountOptions := []string{"bind"}
 	if err := validateNodePublishVolumeRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -175,6 +177,28 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err := createMountPoint(targetPath); err != nil {
 		klog.Errorf("failed to create mount point at %s: %v", targetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	volCap := req.GetVolumeCapability()
+
+	if req.GetReadonly() {
+		mountOptions = append(mountOptions, "ro")
+	}
+
+	if m := volCap.GetMount(); m != nil {
+		hasOption := func(options []string, opt string) bool {
+			for _, o := range options {
+				if o == opt {
+					return true
+				}
+			}
+			return false
+		}
+		for _, f := range m.MountFlags {
+			if !hasOption(mountOptions, f) {
+				mountOptions = append(mountOptions, f)
+			}
+		}
 	}
 
 	// Check if the volume is already mounted
@@ -193,7 +217,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	// It's not, mount now
 
-	if err = bindMount(req.GetStagingTargetPath(), req.GetTargetPath(), req.GetReadonly()); err != nil {
+	if err = bindMount(req.GetStagingTargetPath(), req.GetTargetPath(), req.GetReadonly(), mountOptions); err != nil {
 		klog.Errorf("failed to bind-mount volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}

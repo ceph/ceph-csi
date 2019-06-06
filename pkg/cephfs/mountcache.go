@@ -137,9 +137,11 @@ func mountOneCacheEntry(ce *controllerCacheEntry, me *volumeMountCacheEntry) err
 			return err
 		}
 	}
+
+	mountOptions := []string{"bind"}
 	for targetPath, readOnly := range me.TargetPaths {
 		if err := cleanupMountPoint(targetPath); err == nil {
-			if err := bindMount(me.StagingPath, targetPath, readOnly); err != nil {
+			if err := bindMount(me.StagingPath, targetPath, readOnly, mountOptions); err != nil {
 				klog.Errorf("mount-cache: failed to bind-mount volume %s: %s %s %v %v",
 					volID, me.StagingPath, targetPath, readOnly, err)
 			} else {
