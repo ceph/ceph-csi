@@ -180,6 +180,10 @@ func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 		return errors.New("target path missing in request")
 	}
 
+	if req.GetStagingTargetPath() == "" {
+		return errors.New("staging target path missing in request")
+	}
+
 	return nil
 }
 

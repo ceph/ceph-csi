@@ -41,9 +41,6 @@ type NodeServer struct {
 	mounter mount.Interface
 }
 
-//TODO remove both stage and unstage methods
-//once https://github.com/kubernetes-csi/drivers/pull/145 is merged
-
 // NodePublishVolume mounts the volume mounted to the device path to the target
 // path
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
