@@ -104,6 +104,8 @@ spec:
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
       volumes:
@@ -137,6 +139,9 @@ spec:
         - name: lib-modules
           hostPath:
             path: /lib/modules
+        - name: ceph-csi-config
+          configMap:
+            name: {{ .Values.configMapName | quote }}
     {{- if .Values.nodeplugin.affinity -}}
       affinity:
 {{ toYaml .Values.nodeplugin.affinity . | indent 8 }}

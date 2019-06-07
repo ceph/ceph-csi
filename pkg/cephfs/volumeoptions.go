@@ -19,17 +19,22 @@ package cephfs
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/ceph/ceph-csi/pkg/util"
 )
 
 type volumeOptions struct {
-	Monitors string `json:"monitors"`
-	Pool     string `json:"pool"`
-	RootPath string `json:"rootPath"`
-
+	RequestName     string
+	Size            int64
+	ClusterID       string
+	FsName          string
+	FscID           int64
+	MetadataPool    string
+	Monitors        string `json:"monitors"`
+	Pool            string `json:"pool"`
+	RootPath        string `json:"rootPath"`
 	Mounter         string `json:"mounter"`
 	ProvisionVolume bool   `json:"provisionVolume"`
-
-	MonValueFromSecret string `json:"monValueFromSecret"`
 }
 
 func validateNonEmptyField(field, fieldName string) error {
@@ -40,35 +45,18 @@ func validateNonEmptyField(field, fieldName string) error {
 	return nil
 }
 
-func (o *volumeOptions) validate() error {
-	if err := validateNonEmptyField(o.Monitors, "monitors"); err != nil {
-		if err = validateNonEmptyField(o.MonValueFromSecret, "monValueFromSecret"); err != nil {
-			return err
-		}
+func extractOptionalOption(dest *string, optionLabel string, options map[string]string) error {
+	opt, ok := options[optionLabel]
+	if !ok {
+		// Option not found, no error as it is optional
+		return nil
 	}
 
-	if err := validateNonEmptyField(o.RootPath, "rootPath"); err != nil {
-		if !o.ProvisionVolume {
-			return err
-		}
-	} else {
-		if o.ProvisionVolume {
-			return fmt.Errorf("non-empty field rootPath is in conflict with provisionVolume=true")
-		}
+	if err := validateNonEmptyField(opt, optionLabel); err != nil {
+		return err
 	}
 
-	if o.ProvisionVolume {
-		if err := validateNonEmptyField(o.Pool, "pool"); err != nil {
-			return err
-		}
-	}
-
-	if o.Mounter != "" {
-		if err := validateMounter(o.Mounter); err != nil {
-			return err
-		}
-	}
-
+	*dest = opt
 	return nil
 }
 
@@ -76,6 +64,10 @@ func extractOption(dest *string, optionLabel string, options map[string]string) 
 	opt, ok := options[optionLabel]
 	if !ok {
 		return fmt.Errorf("missing required field %s", optionLabel)
+	}
+
+	if err := validateNonEmptyField(opt, optionLabel); err != nil {
+		return err
 	}
 
 	*dest = opt
@@ -93,63 +85,252 @@ func validateMounter(m string) error {
 	return nil
 }
 
-func newVolumeOptions(volOptions, secret map[string]string) (*volumeOptions, error) {
+func extractMounter(dest *string, options map[string]string) error {
+	if err := extractOptionalOption(dest, "mounter", options); err != nil {
+		return err
+	}
+
+	if *dest != "" {
+		if err := validateMounter(*dest); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getMonsAndClusterID(options map[string]string) (string, string, error) {
+	clusterID, ok := options["clusterID"]
+	if !ok {
+		err := fmt.Errorf("clusterID must be set")
+		return "", "", err
+	}
+
+	if err := validateNonEmptyField(clusterID, "clusterID"); err != nil {
+		return "", "", err
+	}
+
+	monitors, err := util.Mons(csiConfigFile, clusterID)
+	if err != nil {
+		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s)", clusterID)
+		return "", "", err
+	}
+
+	return monitors, clusterID, err
+}
+
+// newVolumeOptions generates a new instance of volumeOptions from the provided
+// CSI request parameters
+func newVolumeOptions(requestName string, size int64, volOptions, secret map[string]string) (*volumeOptions, error) {
 	var (
 		opts volumeOptions
 		err  error
 	)
 
-	// extract mon from secret first
-	if err = extractOption(&opts.MonValueFromSecret, "monValueFromSecret", volOptions); err == nil {
-		mon := ""
-		if mon, err = getMonValFromSecret(secret); err == nil && len(mon) > 0 {
-			opts.Monitors = mon
-		}
-	}
-	if len(opts.Monitors) == 0 {
-		// if not set in secret, get it from parameter
-		if err = extractOption(&opts.Monitors, "monitors", volOptions); err != nil {
-			return nil, fmt.Errorf("either monitors or monValueFromSecret should be set")
-		}
-	}
-
-	if err = extractNewVolOpt(&opts, volOptions); err != nil {
+	opts.Monitors, opts.ClusterID, err = getMonsAndClusterID(volOptions)
+	if err != nil {
 		return nil, err
 	}
 
-	if err = opts.validate(); err != nil {
+	if err = extractOption(&opts.Pool, "pool", volOptions); err != nil {
 		return nil, err
 	}
+
+	if err = extractMounter(&opts.Mounter, volOptions); err != nil {
+		return nil, err
+	}
+
+	if err = extractOption(&opts.FsName, "fsName", volOptions); err != nil {
+		return nil, err
+	}
+
+	opts.RequestName = requestName
+	opts.Size = size
+
+	cr, err := getAdminCredentials(secret)
+	if err != nil {
+		return nil, err
+	}
+
+	opts.FscID, err = getFscID(opts.Monitors, cr.id, cr.key, opts.FsName)
+	if err != nil {
+		return nil, err
+	}
+
+	opts.MetadataPool, err = getMetadataPool(opts.Monitors, cr.id, cr.key, opts.FsName)
+	if err != nil {
+		return nil, err
+	}
+
+	opts.ProvisionVolume = true
 
 	return &opts, nil
 }
 
-func extractNewVolOpt(opts *volumeOptions, volOpt map[string]string) error {
+// newVolumeOptionsFromVolID generates a new instance of volumeOptions and volumeIdentifier
+// from the provided CSI VolumeID
+func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
 	var (
+		vi         util.CSIIdentifier
+		volOptions volumeOptions
+		vid        volumeIdentifier
+	)
+
+	// Decode the VolID first, to detect older volumes or pre-provisioned volumes
+	// before other errors
+	err := vi.DecomposeCSIID(volID)
+	if err != nil {
+		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, volID)
+		return nil, nil, ErrInvalidVolID{err}
+	}
+	volOptions.ClusterID = vi.ClusterID
+	vid.FsSubvolName = volJournal.NamingPrefix() + vi.ObjectUUID
+	vid.VolumeID = volID
+	volOptions.FscID = vi.LocationID
+
+	if volOptions.Monitors, err = util.Mons(csiConfigFile, vi.ClusterID); err != nil {
+		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s)", vi.ClusterID)
+		return nil, nil, err
+	}
+
+	cr, err := getAdminCredentials(secrets)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	volOptions.FsName, err = getFsName(volOptions.Monitors, cr.id, cr.key, volOptions.FscID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	volOptions.MetadataPool, err = getMetadataPool(volOptions.Monitors, cr.id, cr.key,
+		volOptions.FsName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	volOptions.RequestName, _, err = volJournal.GetObjectUUIDData(volOptions.Monitors, cr.id, cr.key,
+		volOptions.MetadataPool, vi.ObjectUUID, false)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if volOpt != nil {
+		if err = extractOption(&volOptions.Pool, "pool", volOpt); err != nil {
+			return nil, nil, err
+		}
+
+		if err = extractMounter(&volOptions.Mounter, volOpt); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	volOptions.RootPath = getVolumeRootPathCeph(volumeID(vid.FsSubvolName))
+	volOptions.ProvisionVolume = true
+
+	return &volOptions, &vid, nil
+}
+
+// newVolumeOptionsFromVersion1Context generates a new instance of volumeOptions and
+// volumeIdentifier from the provided CSI volume context, if the provided context was
+// for a volume created by version 1.0.0 (or prior) of the CSI plugin
+func newVolumeOptionsFromVersion1Context(volID string, options, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
+	var (
+		opts                volumeOptions
+		vid                 volumeIdentifier
 		provisionVolumeBool string
 		err                 error
 	)
-	if err = extractOption(&provisionVolumeBool, "provisionVolume", volOpt); err != nil {
-		return err
+
+	// Check if monitors is part of the options, that is an indicator this is an 1.0.0 volume
+	if err = extractOption(&opts.Monitors, "monitors", options); err != nil {
+		return nil, nil, err
+	}
+
+	// check if there are mon values in secret and if so override option retrieved monitors from
+	// monitors in the secret
+	mon, err := getMonValFromSecret(secrets)
+	if err == nil && len(mon) > 0 {
+		opts.Monitors = mon
+	}
+
+	if err = extractOption(&provisionVolumeBool, "provisionVolume", options); err != nil {
+		return nil, nil, err
 	}
 
 	if opts.ProvisionVolume, err = strconv.ParseBool(provisionVolumeBool); err != nil {
-		return fmt.Errorf("failed to parse provisionVolume: %v", err)
+		return nil, nil, fmt.Errorf("failed to parse provisionVolume: %v", err)
 	}
 
 	if opts.ProvisionVolume {
-		if err = extractOption(&opts.Pool, "pool", volOpt); err != nil {
-			return err
+		if err = extractOption(&opts.Pool, "pool", options); err != nil {
+			return nil, nil, err
 		}
+
+		opts.RootPath = getVolumeRootPathCeph(volumeID(volID))
 	} else {
-		if err = extractOption(&opts.RootPath, "rootPath", volOpt); err != nil {
-			return err
+		if err = extractOption(&opts.RootPath, "rootPath", options); err != nil {
+			return nil, nil, err
 		}
 	}
 
-	// This field is optional, don't check for its presence
-	// nolint
-	//  (skip errcheck  and gosec as this is optional)
-	extractOption(&opts.Mounter, "mounter", volOpt)
-	return nil
+	if err = extractMounter(&opts.Mounter, options); err != nil {
+		return nil, nil, err
+	}
+
+	vid.FsSubvolName = volID
+	vid.VolumeID = volID
+
+	return &opts, &vid, nil
+}
+
+// newVolumeOptionsFromStaticVolume generates a new instance of volumeOptions and
+// volumeIdentifier from the provided CSI volume context, if the provided context is
+// detected to be a statically provisioned volume
+func newVolumeOptionsFromStaticVolume(volID string, options map[string]string) (*volumeOptions, *volumeIdentifier, error) {
+	var (
+		opts      volumeOptions
+		vid       volumeIdentifier
+		staticVol bool
+		err       error
+	)
+
+	val, ok := options["staticVolume"]
+	if !ok {
+		return nil, nil, ErrNonStaticVolume{err}
+	}
+
+	if staticVol, err = strconv.ParseBool(val); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse preProvisionedVolume: %v", err)
+	}
+
+	if !staticVol {
+		return nil, nil, ErrNonStaticVolume{err}
+	}
+
+	// Volume is static, and ProvisionVolume carries bool stating if it was provisioned, hence
+	// store NOT of static boolean
+	opts.ProvisionVolume = !staticVol
+
+	opts.Monitors, opts.ClusterID, err = getMonsAndClusterID(options)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err = extractOption(&opts.RootPath, "rootPath", options); err != nil {
+		return nil, nil, err
+	}
+
+	if err = extractOption(&opts.FsName, "fsName", options); err != nil {
+		return nil, nil, err
+	}
+
+	if err = extractMounter(&opts.Mounter, options); err != nil {
+		return nil, nil, err
+	}
+
+	vid.FsSubvolName = opts.RootPath
+	vid.VolumeID = volID
+
+	return &opts, &vid, nil
 }

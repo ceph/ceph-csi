@@ -32,8 +32,8 @@ The CSI identifier is composed as elaborated in the comment against ComposeCSIID
 DecomposeCSIID is the inverse of the same function.
 
 The CSIIdentifier structure carries the following fields,
-- PoolID: 64 bit integer of the pool that the volume belongs to, where the ID comes from Ceph pool
-  identifier for the corresponding pool name.
+- LocationID: 64 bit integer identifier determining the location of the volume on the Ceph cluster.
+  It is the ID of the poolname or fsname, for RBD or CephFS backed volumes respectively.
 - EncodingVersion: Carries the version number of the encoding scheme used to encode the CSI ID,
   and is preserved for any future proofing w.r.t changes in the encoding scheme, and to retain
   ability to parse backward compatible encodings.
@@ -43,7 +43,7 @@ The CSIIdentifier structure carries the following fields,
   corresponds to this CSI ID.
 */
 type CSIIdentifier struct {
-	PoolID          int64 // TODO: Name appropriately when reused for CephFS
+	LocationID      int64
 	EncodingVersion uint16
 	ClusterID       string
 	ObjectUUID      string
@@ -87,7 +87,7 @@ func (ci CSIIdentifier) ComposeCSIID() (string, error) {
 	binary.BigEndian.PutUint16(buf16, uint16(len(ci.ClusterID)))
 	clusterIDLength := hex.EncodeToString(buf16)
 
-	binary.BigEndian.PutUint64(buf64, uint64(ci.PoolID))
+	binary.BigEndian.PutUint64(buf64, uint64(ci.LocationID))
 	poolIDEncodedHex := hex.EncodeToString(buf64)
 
 	return strings.Join([]string{versionEncodedHex, clusterIDLength, ci.ClusterID,
@@ -136,7 +136,7 @@ func (ci *CSIIdentifier) DecomposeCSIID(composedCSIID string) (err error) {
 	if err != nil {
 		return err
 	}
-	ci.PoolID = int64(binary.BigEndian.Uint64(buf64))
+	ci.LocationID = int64(binary.BigEndian.Uint64(buf64))
 	// 16 for poolID encoding and 1 for '-' separator
 	bytesToProcess -= 17
 	nextFieldStartIdx = nextFieldStartIdx + 17

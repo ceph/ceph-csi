@@ -33,7 +33,7 @@ type testTuple struct {
 var testData = []testTuple{
 	{
 		vID: CSIIdentifier{
-			PoolID:          0xffff,
+			LocationID:      0xffff,
 			EncodingVersion: 0xffff,
 			ClusterID:       "01616094-9d93-4178-bf45-c7eac19e8b15",
 			ObjectUUID:      "00000000-1111-2222-bbbb-cacacacacaca",

@@ -114,13 +114,17 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 type fuseMounter struct{}
 
 func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
-	args := [...]string{
+	args := []string{
 		mountPoint,
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix + cr.id, "--key=" + cr.key,
 		"-r", volOptions.RootPath,
 		"-o", "nonempty",
+	}
+
+	if volOptions.FsName != "" {
+		args = append(args, "--client_mds_namespace="+volOptions.FsName)
 	}
 
 	_, stderr, err := execCommand("ceph-fuse", args[:]...)
@@ -166,12 +170,18 @@ func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions) 
 		return err
 	}
 
-	return execCommandErr("mount",
+	args := []string{
 		"-t", "ceph",
 		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
 		mountPoint,
-		"-o", fmt.Sprintf("name=%s,secret=%s", cr.id, cr.key),
-	)
+	}
+	optionsStr := fmt.Sprintf("name=%s,secret=%s", cr.id, cr.key)
+	if volOptions.FsName != "" {
+		optionsStr = optionsStr + fmt.Sprintf(",mds_namespace=%s", volOptions.FsName)
+	}
+	args = append(args, "-o", optionsStr)
+
+	return execCommandErr("mount", args[:]...)
 }
 
 func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions) error {

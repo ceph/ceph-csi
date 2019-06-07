@@ -5,26 +5,20 @@ metadata:
   name: csi-cephfs-sc
 provisioner: cephfs.csi.ceph.com
 parameters:
-  # Comma separated list of Ceph monitors
-  # if using FQDN, make sure csi plugin's dns policy is appropriate.
-  monitors: mon1:port,mon2:port,...
+  # String representing a Ceph cluster to provision storage from.
+  # Should be unique across all Ceph clusters in use for provisioning,
+  # cannot be greater than 36 bytes in length, and should remain immutable for
+  # the lifetime of the StorageClass in use.
+  # Ensure to create an entry in the config map named ceph-csi-config, based on
+  # csi-config-map-sample.yaml, to accompany the string chosen to
+  # represent the Ceph cluster in clusterID below
+  clusterID: <cluster-id>
 
-  # For provisionVolume: "true":
-  #   A new volume will be created along with a new Ceph user.
-  #   Requires admin credentials (adminID, adminKey).
-  # For provisionVolume: "false":
-  #   It is assumed the volume already exists and the user is expected
-  #   to provide path to that volume (rootPath) and user credentials
-  #   (userID, userKey).
-  provisionVolume: "true"
+  # CephFS filesystem name into which the volume shall be created
+  fsName: myfs
 
   # Ceph pool into which the volume shall be created
-  # Required for provisionVolume: "true"
   pool: cephfs_data
-
-  # Root path of an existing CephFS volume
-  # Required for provisionVolume: "false"
-  # rootPath: /absolute/path
 
   # The secrets have to contain user and/or Ceph admin credentials.
   csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret

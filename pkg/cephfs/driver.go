@@ -26,9 +26,17 @@ import (
 )
 
 const (
-
 	// version of ceph driver
 	version = "1.0.0"
+
+	// volIDVersion is the version number of volume ID encoding scheme
+	volIDVersion uint16 = 1
+
+	// csiConfigFile is the location of the CSI config file
+	csiConfigFile = "/etc/ceph-csi-config/config.json"
+
+	// RADOS namespace to store CSI specific objects and keys
+	radosNamespace = "csi"
 )
 
 // PluginFolder defines the location of ceph plugin
@@ -46,6 +54,14 @@ type Driver struct {
 var (
 	// DefaultVolumeMounter for mounting volumes
 	DefaultVolumeMounter string
+
+	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
+	// ceph clusters across CSI instances, to differentiate omap names per CSI instance
+	CSIInstanceID = "default"
+
+	// volJournal is used to maintain RADOS based journals for CO generated
+	// VolumeName to backing CephFS subvolumes
+	volJournal *util.CSIJournal
 )
 
 // NewDriver returns new ceph driver
@@ -77,7 +93,7 @@ func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests
-func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir string, cachePersister util.CachePersister) {
+func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir, instanceID string, cachePersister util.CachePersister) {
 	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Configuration
@@ -105,7 +121,21 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir
 		klog.Fatalf("failed to write ceph configuration file: %v", err)
 	}
 
-	initVolumeMountCache(driverName, mountCacheDir, cachePersister)
+	// Use passed in instance ID, if provided for omap suffix naming
+	if instanceID != "" {
+		CSIInstanceID = instanceID
+	}
+	// Get an instance of the volume journal
+	volJournal = util.NewCSIVolumeJournal()
+
+	// Update keys with CSI instance suffix
+	volJournal.SetCSIDirectorySuffix(CSIInstanceID)
+
+	// Update namespace for storing keys into a specific namespace on RADOS, in the CephFS
+	// metadata pool
+	volJournal.SetNamespace(radosNamespace)
+
+	initVolumeMountCache(driverName, mountCacheDir)
 	if mountCacheDir != "" {
 		if err := remountCachedVolumes(); err != nil {
 			klog.Warningf("failed to remount cached volumes: %v", err)
