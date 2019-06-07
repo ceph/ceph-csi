@@ -154,10 +154,16 @@ func getStorageClass(c kubernetes.Interface, path string) scv1.StorageClass {
 	return sc
 }
 
-func createCephfsStorageClass(c kubernetes.Interface) {
+func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(c, scPath)
 	sc.Parameters["pool"] = "myfs-data0"
+	sc.Parameters["fsName"] = "myfs"
+	fsID := execCommandInToolBox(f, "ceph fsid")
+	//remove new line present in fsID
+	fsID = strings.Trim(fsID, "\n")
+
+	sc.Parameters["clusterID"] = fsID
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
 	Expect(err).Should(BeNil())
 }
@@ -177,7 +183,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	Expect(err).Should(BeNil())
 }
 
-func createRBDConfigMap(c kubernetes.Interface, f *framework.Framework) {
+func createConfigMap(c kubernetes.Interface, f *framework.Framework) {
 	path := rbdDirPath + rbdConfigMap
 	cm := v1.ConfigMap{}
 	err := unmarshal(path, &cm)
