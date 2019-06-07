@@ -48,7 +48,7 @@ func createRBDPool() {
 	framework.RunKubectlOrDie("create", "-f", commonPath)
 }
 func deleteFileSystem() {
-	commonPath := fmt.Sprintf("%s/%s", rookURL, "filesystem.yaml")
+	commonPath := fmt.Sprintf("%s/%s", rookURL, "filesystem-test.yaml")
 	framework.RunKubectlOrDie("delete", "-f", commonPath)
 }
 
