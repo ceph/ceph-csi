@@ -35,8 +35,9 @@ var _ = Describe("cephfs", func() {
 	//deploy cephfs CSI
 	BeforeEach(func() {
 		createFileSystem(f.ClientSet)
+		createConfigMap(f.ClientSet, f)
 		deployCephfsPlugin()
-		createCephfsStorageClass(f.ClientSet)
+		createCephfsStorageClass(f.ClientSet, f)
 		createCephfsSecret(f.ClientSet, f)
 	})
 

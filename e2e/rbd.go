@@ -36,7 +36,7 @@ var _ = Describe("RBD", func() {
 	//deploy RBD CSI
 	BeforeEach(func() {
 		createRBDPool()
-		createRBDConfigMap(f.ClientSet, f)
+		createConfigMap(f.ClientSet, f)
 		deployRBDPlugin()
 		createRBDStorageClass(f.ClientSet, f)
 		createRBDSecret(f.ClientSet, f)
