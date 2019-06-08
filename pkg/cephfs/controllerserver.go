@@ -53,13 +53,13 @@ func (cs *ControllerServer) createBackingVolume(volOptions *volumeOptions, vID *
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err = createVolume(volOptions, cr, volumeID(vID.FsSubvolName), volOptions.Size); err != nil {
+	if err = createVolume(volOptions, volumeID(vID.FsSubvolName), volOptions.Size); err != nil {
 		klog.Errorf("failed to create volume %s: %v", volOptions.RequestName, err)
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer func() {
 		if err != nil {
-			if errDefer := purgeVolume(volumeID(vID.FsSubvolName), cr, volOptions); errDefer != nil {
+			if errDefer := purgeVolume(volumeID(vID.FsSubvolName), volOptions); errDefer != nil {
 				klog.Warningf("failed purging volume: %s (%s)", volOptions.RequestName, errDefer)
 			}
 		}
@@ -184,7 +184,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 	mtxControllerVolumeID.LockKey(string(volID))
 	defer mustUnlock(mtxControllerVolumeID, string(volID))
 
-	if err = purgeVolume(volID, cr, &ce.VolOptions); err != nil {
+	if err = purgeVolume(volID, &ce.VolOptions); err != nil {
 		klog.Errorf("failed to delete volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -243,7 +243,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	mtxControllerVolumeName.LockKey(volOptions.RequestName)
 	defer mustUnlock(mtxControllerVolumeName, volOptions.RequestName)
 
-	if err = purgeVolume(volumeID(vID.FsSubvolName), cr, volOptions); err != nil {
+	if err = purgeVolume(volumeID(vID.FsSubvolName), volOptions); err != nil {
 		klog.Errorf("failed to delete volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
