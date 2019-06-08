@@ -95,11 +95,16 @@ func mountOneCacheEntry(volOptions *volumeOptions, vid *volumeIdentifier, me *vo
 	volID := vid.VolumeID
 
 	if volOptions.ProvisionVolume {
-		volOptions.RootPath = getVolumeRootPathCeph(volumeID(vid.FsSubvolName))
 		cr, err = util.GetAdminCredentials(decodeCredentials(me.Secrets))
 		if err != nil {
 			return err
 		}
+
+		volOptions.RootPath, err = getVolumeRootPathCeph(volOptions, cr, volumeID(vid.FsSubvolName))
+		if err != nil {
+			return err
+		}
+
 		var entity *cephEntity
 		entity, err = getCephUser(volOptions, cr, volumeID(vid.FsSubvolName))
 		if err != nil {

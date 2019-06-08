@@ -82,6 +82,10 @@ func getCephUser(volOptions *volumeOptions, adminCr *util.Credentials, volID vol
 
 func createCephUser(volOptions *volumeOptions, adminCr *util.Credentials, volID volumeID) (*cephEntity, error) {
 	adminID, userID := genUserIDs(adminCr, volID)
+	volRootPath, err := getVolumeRootPathCeph(volOptions, adminCr, volID)
+	if err != nil {
+		return nil, err
+	}
 
 	return getSingleCephEntity(
 		"-m", volOptions.Monitors,
@@ -91,7 +95,7 @@ func createCephUser(volOptions *volumeOptions, adminCr *util.Credentials, volID 
 		"-f", "json",
 		"auth", "get-or-create", userID,
 		// User capabilities
-		"mds", fmt.Sprintf("allow rw path=%s", getVolumeRootPathCeph(volID)),
+		"mds", fmt.Sprintf("allow rw path=%s", volRootPath),
 		"mon", "allow r",
 		"osd", fmt.Sprintf("allow rw pool=%s namespace=%s", volOptions.Pool, getVolumeNamespace(volID)),
 	)

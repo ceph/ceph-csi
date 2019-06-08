@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"fmt"
+	"path"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -225,7 +226,11 @@ func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) 
 		}
 	}
 
-	volOptions.RootPath = getVolumeRootPathCeph(volumeID(vid.FsSubvolName))
+	volOptions.RootPath, err = getVolumeRootPathCeph(&volOptions, cr, volumeID(vid.FsSubvolName))
+	if err != nil {
+		return nil, nil, err
+	}
+
 	volOptions.ProvisionVolume = true
 
 	return &volOptions, &vid, nil
@@ -267,7 +272,7 @@ func newVolumeOptionsFromVersion1Context(volID string, options, secrets map[stri
 			return nil, nil, err
 		}
 
-		opts.RootPath = getVolumeRootPathCeph(volumeID(volID))
+		opts.RootPath = path.Join("/csi-volumes", string(volumeID(volID)))
 	} else {
 		if err = extractOption(&opts.RootPath, "rootPath", options); err != nil {
 			return nil, nil, err

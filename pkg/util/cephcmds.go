@@ -31,9 +31,10 @@ import (
 // ExecCommand executes passed in program with args and returns separate stdout and stderr streams
 func ExecCommand(program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
-		cmd       = exec.Command(program, args...) // nolint: gosec
-		stdoutBuf bytes.Buffer
-		stderrBuf bytes.Buffer
+		cmd           = exec.Command(program, args...) // nolint: gosec
+		sanitizedArgs = StripSecretInArgs(args)
+		stdoutBuf     bytes.Buffer
+		stderrBuf     bytes.Buffer
 	)
 
 	cmd.Stdout = &stdoutBuf
@@ -41,7 +42,7 @@ func ExecCommand(program string, args ...string) (stdout, stderr []byte, err err
 
 	if err := cmd.Run(); err != nil {
 		return stdoutBuf.Bytes(), stderrBuf.Bytes(), fmt.Errorf("an error (%v)"+
-			" occurred while running %s", err, program)
+			" occurred while running %s args: %v", err, program, sanitizedArgs)
 	}
 
 	return stdoutBuf.Bytes(), nil, nil
