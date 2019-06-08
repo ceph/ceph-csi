@@ -89,3 +89,11 @@ snapshotter:
     pullPolicy: IfNotPresent
 
   resources: {}
+
+resizer:
+  image:
+    repository: quay.io/k8scsi/csi-resizer
+    tag: canary
+    pullPolicy: IfNotPresent
+
+  resources: {}
