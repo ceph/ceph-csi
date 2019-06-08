@@ -69,8 +69,6 @@ func deployOperator(c kubernetes.Interface) {
 
 	_, err := framework.RunKubectl("create", "-f", opPath)
 	Expect(err).Should(BeNil())
-	err = waitForDaemonSets("rook-ceph-agent", rookNS, c, deployTimeout)
-	Expect(err).Should(BeNil())
 	err = waitForDaemonSets("rook-discover", rookNS, c, deployTimeout)
 	Expect(err).Should(BeNil())
 	err = waitForDeploymentComplete("rook-ceph-operator", rookNS, c, deployTimeout)
@@ -80,10 +78,12 @@ func deployOperator(c kubernetes.Interface) {
 func deployCluster(c kubernetes.Interface) {
 	opPath := fmt.Sprintf("%s/%s", rookURL, "cluster-test.yaml")
 	framework.RunKubectlOrDie("create", "-f", opPath)
+	err := waitForDaemonSets("rook-ceph-agent", rookNS, c, deployTimeout)
+	Expect(err).Should(BeNil())
 	opt := &metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-mon",
 	}
-	err := checkCephPods(rookNS, c, 1, deployTimeout, opt)
+	err = checkCephPods(rookNS, c, 1, deployTimeout, opt)
 	Expect(err).Should(BeNil())
 }
 
