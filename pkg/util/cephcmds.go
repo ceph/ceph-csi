@@ -21,13 +21,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/klog"
 	"os"
 	"os/exec"
 	"strings"
+
+	"k8s.io/klog"
 )
 
-// ExecCommand executes passed in program with args and returns seperate stdout and stderr streams
+// ExecCommand executes passed in program with args and returns separate stdout and stderr streams
 func ExecCommand(program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
 		cmd       = exec.Command(program, args...) // nolint: gosec
@@ -191,7 +192,7 @@ func GetOMapValue(monitors, adminID, key, poolName, namespace, oMapName, oMapKey
 		klog.Errorf("failed getting omap value for key (%s) from omap (%s) in pool (%s): (%v)",
 			oMapKey, oMapName, poolName, err)
 
-		return "", fmt.Errorf("error (%v) occured, command output streams is (%s)",
+		return "", fmt.Errorf("error (%v) occurred, command output streams is (%s)",
 			err.Error(), stdoutanderr)
 	}
 
