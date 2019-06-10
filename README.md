@@ -6,8 +6,9 @@ Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreport
 Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-ci.org/ceph/ceph-csi)
 
 This repo contains [Container Storage Interface(CSI)]
-(<https://github.com/container-storage-interface/>) driver, provisioner,
-and attacher for Ceph RBD and CephFS.
+(<https://github.com/container-storage-interface/>) Ceph CSI driver for RBD,
+CephFS and kubernetes sidecar deployment yamls of provisioner, attacher,
+node-driver-registrar and snapshotter for supporting CSI functionalities.
 
 ## Overview
 
@@ -17,8 +18,10 @@ attaching them to workloads.
 
 Independent CSI plugins are provided to support RBD and CephFS backed volumes,
 
-- For details about configuration and deployment of RBD and CephFS CSI plugins,
-  see documentation in `docs/`.
+- For details about configuration and deployment of RBD plugin, please refer
+  [rbd doc](https://github.com/ceph/ceph-csi/blob/master/docs/deploy-rbd.md) and
+  for CephFS plugin configuration and deployment please
+  refer [cephfs doc](https://github.com/ceph/ceph-csi/blob/master/docs/deploy-cephfs.md).
 - For example usage of RBD and CephFS CSI plugins, see examples in `examples/`.
 
 ## Project status
