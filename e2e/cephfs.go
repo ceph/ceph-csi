@@ -11,12 +11,10 @@ var (
 	cephfsProvisionerRBAC = "csi-provisioner-rbac.yaml"
 	cephfsNodePlugin      = "csi-cephfsplugin.yaml"
 	cephfsNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
-)
-
-var (
-	cephfsDirPath = "../deploy/cephfs/kubernetes/"
-
-	cephfsExamplePath = "../examples/cephfs/"
+	cephfsDeploymentName  = "csi-cephfsplugin-provisioner"
+	cephfsDeamonSetName   = "csi-cephfsplugin"
+	cephfsDirPath         = "../deploy/cephfs/kubernetes/"
+	cephfsExamplePath     = "../examples/cephfs/"
 )
 
 func deployCephfsPlugin() {
@@ -53,13 +51,13 @@ var _ = Describe("cephfs", func() {
 	Context("Test cephfs CSI", func() {
 		It("Test cephfs CSI", func() {
 			By("checking provisioner deployment is completed")
-			err := waitForDeploymentComplete("csi-cephfsplugin-provisioner", "default", f.ClientSet, deployTimeout)
+			err := waitForDeploymentComplete(cephfsDeploymentName, namespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
 
 			By("checking nodeplugin deamonsets is running")
-			err = waitForDaemonSets("csi-cephfsplugin", "default", f.ClientSet, deployTimeout)
+			err = waitForDaemonSets(cephfsDeamonSetName, namespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
