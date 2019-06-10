@@ -106,12 +106,12 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 	}
 
 	if req.GetName() == "" {
-		return status.Error(codes.InvalidArgument, "Volume Name cannot be empty")
+		return status.Error(codes.InvalidArgument, "volume Name cannot be empty")
 	}
 
 	reqCaps := req.GetVolumeCapabilities()
 	if reqCaps == nil {
-		return status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
+		return status.Error(codes.InvalidArgument, "volume Capabilities cannot be empty")
 	}
 
 	for _, cap := range reqCaps {

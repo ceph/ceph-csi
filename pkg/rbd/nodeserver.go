@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ceph/ceph-csi/pkg/csi-common"
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -46,15 +46,15 @@ type NodeServer struct {
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	if targetPath == "" {
-		return nil, status.Error(codes.InvalidArgument, "Empty target path in request")
+		return nil, status.Error(codes.InvalidArgument, "empty target path in request")
 	}
 
 	if req.GetVolumeCapability() == nil {
-		return nil, status.Error(codes.InvalidArgument, "Empty volume capability in request")
+		return nil, status.Error(codes.InvalidArgument, "empty volume capability in request")
 	}
 
 	if req.GetVolumeId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "Empty volume ID in request")
+		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
 	targetPathMutex.LockKey(targetPath)
@@ -190,11 +190,11 @@ func (ns *NodeServer) createTargetPath(targetPath string, isBlock bool) (bool, e
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	targetPath := req.GetTargetPath()
 	if targetPath == "" {
-		return nil, status.Error(codes.InvalidArgument, "Empty target path in request")
+		return nil, status.Error(codes.InvalidArgument, "empty target path in request")
 	}
 
 	if req.GetVolumeId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "Empty volume ID in request")
+		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
 	targetPathMutex.LockKey(targetPath)
@@ -217,7 +217,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if notMnt {
 		// TODO should consider deleting path instead of returning error,
 		// once all codes become ready for csi 1.0.
-		return nil, status.Error(codes.NotFound, "Volume not mounted")
+		return nil, status.Error(codes.NotFound, "volume not mounted")
 	}
 
 	devicePath, cnt, err := mount.GetDeviceNameFromMount(ns.mounter, targetPath)

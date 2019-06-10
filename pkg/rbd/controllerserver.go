@@ -47,17 +47,17 @@ func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 	}
 	// Check sanity of request Name, Volume Capabilities
 	if len(req.Name) == 0 {
-		return status.Error(codes.InvalidArgument, "Volume Name cannot be empty")
+		return status.Error(codes.InvalidArgument, "volume Name cannot be empty")
 	}
 	if req.VolumeCapabilities == nil {
-		return status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
+		return status.Error(codes.InvalidArgument, "volume Capabilities cannot be empty")
 	}
 	options := req.GetParameters()
 	if value, ok := options["clusterID"]; !ok || len(value) == 0 {
-		return status.Error(codes.InvalidArgument, "Missing or empty cluster ID to provision volume from")
+		return status.Error(codes.InvalidArgument, "missing or empty cluster ID to provision volume from")
 	}
 	if value, ok := options["pool"]; !ok || len(value) == 0 {
-		return status.Error(codes.InvalidArgument, "Missing or empty pool name to provision volume from")
+		return status.Error(codes.InvalidArgument, "missing or empty pool name to provision volume from")
 	}
 	return nil
 }
@@ -190,12 +190,12 @@ func (cs *ControllerServer) createBackingImage(rbdVol *rbdVolume, req *csi.Creat
 func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
 	snapshot := req.VolumeContentSource.GetSnapshot()
 	if snapshot == nil {
-		return status.Error(codes.InvalidArgument, "Volume Snapshot cannot be empty")
+		return status.Error(codes.InvalidArgument, "volume Snapshot cannot be empty")
 	}
 
 	snapshotID := snapshot.GetSnapshotId()
 	if len(snapshotID) == 0 {
-		return status.Error(codes.InvalidArgument, "Volume Snapshot ID cannot be empty")
+		return status.Error(codes.InvalidArgument, "volume Snapshot ID cannot be empty")
 	}
 
 	rbdSnap := &rbdSnapshot{}
@@ -203,7 +203,7 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 		if _, ok := err.(ErrSnapNotFound); !ok {
 			return status.Error(codes.Internal, err.Error())
 		}
-		return status.Error(codes.InvalidArgument, "Missing requested Snapshot ID")
+		return status.Error(codes.InvalidArgument, "missing requested Snapshot ID")
 	}
 
 	err := restoreSnapshot(rbdVol, rbdSnap, rbdVol.AdminID, req.GetSecrets())
@@ -224,7 +224,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// For now the image get unconditionally deleted, but here retention policy can be checked
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "Empty volume ID in request")
+		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 	volumeIDMutex.LockKey(volumeID)
 	defer func() {
@@ -287,11 +287,11 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 // are supported.
 func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	if req.GetVolumeId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "Empty volume ID in request")
+		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
 	if len(req.VolumeCapabilities) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Empty volume capabilities in request")
+		return nil, status.Error(codes.InvalidArgument, "empty volume capabilities in request")
 	}
 
 	for _, cap := range req.VolumeCapabilities {
@@ -326,7 +326,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	err := genVolFromVolID(rbdVol, req.GetSourceVolumeId(), req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
-			return nil, status.Errorf(codes.NotFound, "Source Volume ID %s not found", req.GetSourceVolumeId())
+			return nil, status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
 		}
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
@@ -402,10 +402,10 @@ func (cs *ControllerServer) validateSnapshotReq(req *csi.CreateSnapshotRequest) 
 
 	// Check sanity of request Snapshot Name, Source Volume Id
 	if len(req.Name) == 0 {
-		return status.Error(codes.InvalidArgument, "Snapshot Name cannot be empty")
+		return status.Error(codes.InvalidArgument, "snapshot Name cannot be empty")
 	}
 	if len(req.SourceVolumeId) == 0 {
-		return status.Error(codes.InvalidArgument, "Source Volume ID cannot be empty")
+		return status.Error(codes.InvalidArgument, "source Volume ID cannot be empty")
 	}
 
 	return nil
@@ -467,7 +467,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	snapshotID := req.GetSnapshotId()
 	if len(snapshotID) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Snapshot ID cannot be empty")
+		return nil, status.Error(codes.InvalidArgument, "snapshot ID cannot be empty")
 	}
 
 	snapshotIDMutex.LockKey(snapshotID)
