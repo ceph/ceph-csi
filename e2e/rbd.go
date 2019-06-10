@@ -24,14 +24,14 @@ func deployRBDPlugin() {
 	// deploy provisioner
 	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisioner)
 	framework.RunKubectlOrDie("apply", "-f", rbdDirPath+rbdProvisionerRBAC)
-	//deploy nodeplugin
+	// deploy nodeplugin
 	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePlugin)
 	framework.RunKubectlOrDie("apply", "-f", rbdDirPath+rbdNodePluginRBAC)
 }
 
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework("rbd")
-	//deploy RBD CSI
+	// deploy RBD CSI
 	BeforeEach(func() {
 		createRBDPool()
 		createConfigMap(f.ClientSet, f)

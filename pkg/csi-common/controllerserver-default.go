@@ -39,7 +39,7 @@ func (cs *DefaultControllerServer) ControllerUnpublishVolume(ctx context.Context
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-//ControllerExpandVolume expand volume
+// ControllerExpandVolume expand volume
 func (cs *DefaultControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }

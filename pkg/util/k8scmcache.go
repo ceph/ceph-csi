@@ -92,7 +92,7 @@ func (k8scm *K8sCMCache) getMetadataCM(resourceID string) (*v1.ConfigMap, error)
 	return cm, nil
 }
 
-//ForAll list the metadata in configmaps and filters outs based on the pattern
+// ForAll list the metadata in configmaps and filters outs based on the pattern
 func (k8scm *K8sCMCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) error {
 	listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", csiMetadataLabelAttr, cmLabel)}
 	cms, err := k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).List(listOpts)
@@ -100,9 +100,9 @@ func (k8scm *K8sCMCache) ForAll(pattern string, destObj interface{}, f ForAllFun
 		return errors.Wrap(err, "k8s-cm-cache: failed to list metadata configmaps")
 	}
 
-	for _, cm := range cms.Items {
-		data := cm.Data[cmDataKey]
-		match, err := regexp.MatchString(pattern, cm.ObjectMeta.Name)
+	for i := range cms.Items {
+		data := cms.Items[i].Data[cmDataKey]
+		match, err := regexp.MatchString(pattern, cms.Items[i].ObjectMeta.Name)
 		if err != nil {
 			continue
 		}
@@ -110,9 +110,9 @@ func (k8scm *K8sCMCache) ForAll(pattern string, destObj interface{}, f ForAllFun
 			continue
 		}
 		if err = json.Unmarshal([]byte(data), destObj); err != nil {
-			return errors.Wrapf(err, "k8s-cm-cache: JSON unmarshaling failed for configmap %s", cm.ObjectMeta.Name)
+			return errors.Wrapf(err, "k8s-cm-cache: JSON unmarshaling failed for configmap %s", cms.Items[i].ObjectMeta.Name)
 		}
-		if err = f(cm.ObjectMeta.Name); err != nil {
+		if err = f(cms.Items[i].ObjectMeta.Name); err != nil {
 			return err
 		}
 	}

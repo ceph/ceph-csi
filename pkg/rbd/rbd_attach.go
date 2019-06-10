@@ -50,7 +50,7 @@ func init() {
 }
 
 // Search /sys/bus for rbd device that matches given pool and image.
-func getRbdDevFromImageAndPool(pool string, image string) (string, bool) {
+func getRbdDevFromImageAndPool(pool, image string) (string, bool) {
 	// /sys/bus/rbd/devices/X/name and /sys/bus/rbd/devices/X/pool
 	sysPath := "/sys/bus/rbd/devices"
 	if dirs, err := ioutil.ReadDir(sysPath); err == nil {
@@ -123,7 +123,7 @@ func getMaxNbds() (int, error) {
 // but older versions of list-mapped don't.
 // The implementation below peeks at the command line of nbd bound processes
 // to figure out any mapped images.
-func getNbdDevFromImageAndPool(pool string, image string) (string, bool) {
+func getNbdDevFromImageAndPool(pool, image string) (string, bool) {
 	// nbd module exports the pid of serving process in sysfs
 	basePath := "/sys/block/nbd"
 	// Do not change imgPath format - some tools like rbd-nbd are strict about it.

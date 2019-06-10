@@ -64,11 +64,11 @@ func NewDefaultControllerServer(d *CSIDriver) *DefaultControllerServer {
 }
 
 // NewControllerServiceCapability returns controller capabilities
-func NewControllerServiceCapability(cap csi.ControllerServiceCapability_RPC_Type) *csi.ControllerServiceCapability {
+func NewControllerServiceCapability(ctrlCap csi.ControllerServiceCapability_RPC_Type) *csi.ControllerServiceCapability {
 	return &csi.ControllerServiceCapability{
 		Type: &csi.ControllerServiceCapability_Rpc{
 			Rpc: &csi.ControllerServiceCapability_RPC{
-				Type: cap,
+				Type: ctrlCap,
 			},
 		},
 	}

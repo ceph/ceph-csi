@@ -39,7 +39,7 @@ func RoundUpToMiB(size int64) int64 {
 	return roundUpSize(requestBytes, MiB)
 }
 
-func roundUpSize(volumeSizeBytes int64, allocationUnitBytes int64) int64 {
+func roundUpSize(volumeSizeBytes, allocationUnitBytes int64) int64 {
 	roundedUp := volumeSizeBytes / allocationUnitBytes
 	if volumeSizeBytes%allocationUnitBytes > 0 {
 		roundedUp++
@@ -74,7 +74,7 @@ func createPersistentStorage(persistentStoragePath string) error {
 
 // ValidateDriverName validates the driver name
 func ValidateDriverName(driverName string) error {
-	if len(driverName) == 0 {
+	if driverName == "" {
 		return errors.New("driver name is empty")
 	}
 

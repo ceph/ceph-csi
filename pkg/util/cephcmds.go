@@ -55,7 +55,7 @@ type cephStoragePoolSummary struct {
 
 // GetPoolID searches a list of pools in a cluster and returns the ID of the pool that matches
 // the passed in poolName parameter
-func GetPoolID(monitors string, adminID string, key string, poolName string) (int64, error) {
+func GetPoolID(monitors, adminID, key, poolName string) (int64, error) {
 	// ceph <options> -f json osd lspools
 	// JSON out: [{"poolnum":<int64>,"poolname":<string>}]
 
@@ -90,7 +90,7 @@ func GetPoolID(monitors string, adminID string, key string, poolName string) (in
 
 // GetPoolName lists all pools in a ceph cluster, and matches the pool whose pool ID is equal to
 // the requested poolID parameter
-func GetPoolName(monitors string, adminID string, key string, poolID int64) (string, error) {
+func GetPoolName(monitors, adminID, key string, poolID int64) (string, error) {
 	// ceph <options> -f json osd lspools
 	// [{"poolnum":1,"poolname":"replicapool"}]
 

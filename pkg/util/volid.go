@@ -139,7 +139,7 @@ func (ci *CSIIdentifier) DecomposeCSIID(composedCSIID string) (err error) {
 	ci.LocationID = int64(binary.BigEndian.Uint64(buf64))
 	// 16 for poolID encoding and 1 for '-' separator
 	bytesToProcess -= 17
-	nextFieldStartIdx = nextFieldStartIdx + 17
+	nextFieldStartIdx += 17
 
 	// has to be an exact match
 	if bytesToProcess != uuidSize {

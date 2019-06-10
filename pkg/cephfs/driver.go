@@ -139,7 +139,7 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir
 	if mountCacheDir != "" {
 		if err := remountCachedVolumes(); err != nil {
 			klog.Warningf("failed to remount cached volumes: %v", err)
-			//ignore remount fail
+			// ignore remount fail
 		}
 	}
 	// Initialize default library driver

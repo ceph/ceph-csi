@@ -32,14 +32,14 @@ func init() {
 	fmt.Println("timeout for deploytimeout ", deployTimeout)
 }
 
-//BeforeSuite deploys the rook-operator and ceph cluster
+// BeforeSuite deploys the rook-operator and ceph cluster
 var _ = BeforeSuite(func() {
 	if rookRequired {
 		deployRook()
 	}
 })
 
-//AfterSuite removes the rook-operator and ceph cluster
+// AfterSuite removes the rook-operator and ceph cluster
 var _ = AfterSuite(func() {
 	if rookRequired {
 		tearDownRook()
