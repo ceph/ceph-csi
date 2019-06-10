@@ -21,7 +21,7 @@ go: 1.11.x
 
 env:
   global:
-    - GOLANGCI_VERSION="v1.16.0"
+    - GOLANGCI_VERSION="v1.17.0"
     - TEST_COVERAGE=stdout
     - GO_METALINTER_THREADS=1
     - GO_COVER_DIR=_output

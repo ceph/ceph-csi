@@ -63,7 +63,7 @@ func init() {
 }
 
 func getType() string {
-	if vtype == nil || len(*vtype) == 0 {
+	if vtype == nil || *vtype == "" {
 		a0 := path.Base(os.Args[0])
 		if strings.Contains(a0, rbdType) {
 			return rbdType
@@ -78,7 +78,7 @@ func getType() string {
 
 func getDriverName() string {
 	// was explicitly passed a driver name
-	if driverName != nil && len(*driverName) != 0 {
+	if driverName != nil && *driverName != "" {
 		return *driverName
 	}
 	// select driver name based on volume type
@@ -96,7 +96,7 @@ func main() {
 	var cp util.CachePersister
 
 	driverType := getType()
-	if len(driverType) == 0 {
+	if driverType == "" {
 		klog.Fatalln("driver type not specified")
 	}
 
@@ -108,12 +108,12 @@ func main() {
 	klog.Infof("Starting driver type: %v with name: %v", driverType, dname)
 	switch driverType {
 	case rbdType:
-		rbd.PluginFolder = rbd.PluginFolder + dname
+		rbd.PluginFolder += dname
 		driver := rbd.NewDriver()
 		driver.Run(dname, *nodeID, *endpoint, *instanceID, *containerized)
 
 	case cephfsType:
-		cephfs.PluginFolder = cephfs.PluginFolder + dname
+		cephfs.PluginFolder += dname
 		if *metadataStorage != "" {
 			cp, err = util.CreatePersistanceStorage(
 				cephfs.PluginFolder, *metadataStorage, dname)

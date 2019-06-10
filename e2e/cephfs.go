@@ -18,17 +18,17 @@ var (
 )
 
 func deployCephfsPlugin() {
-	//deploy provisioner
+	// deploy provisioner
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisioner)
 	framework.RunKubectlOrDie("apply", "-f", cephfsDirPath+cephfsProvisionerRBAC)
-	//deploy nodeplugin
+	// deploy nodeplugin
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePlugin)
 	framework.RunKubectlOrDie("apply", "-f", cephfsDirPath+cephfsNodePluginRBAC)
 }
 
 var _ = Describe("cephfs", func() {
 	f := framework.NewDefaultFramework("cephfs")
-	//deploy cephfs CSI
+	// deploy cephfs CSI
 	BeforeEach(func() {
 		createFileSystem(f.ClientSet)
 		createConfigMap(f.ClientSet, f)

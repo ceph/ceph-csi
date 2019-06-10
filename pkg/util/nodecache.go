@@ -49,7 +49,7 @@ func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 	return nil
 }
 
-//ForAll list the metadata in Nodecache and filters outs based on the pattern
+// ForAll list the metadata in Nodecache and filters outs based on the pattern
 func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) error {
 	err := nc.EnsureCacheDirectory(nc.CacheDir)
 	if err != nil {
@@ -59,9 +59,9 @@ func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) e
 	if err != nil {
 		return errors.Wrapf(err, "node-cache: failed to read %s folder", nc.BasePath)
 	}
-	path := path.Join(nc.BasePath, nc.CacheDir)
+	cachePath := path.Join(nc.BasePath, nc.CacheDir)
 	for _, file := range files {
-		err = decodeObj(path, pattern, file, destObj)
+		err = decodeObj(cachePath, pattern, file, destObj)
 		if err == errDec {
 			continue
 		} else if err == nil {
@@ -75,7 +75,7 @@ func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) e
 	return nil
 }
 
-func decodeObj(filepath, pattern string, file os.FileInfo, destObj interface{}) error {
+func decodeObj(fpath, pattern string, file os.FileInfo, destObj interface{}) error {
 	match, err := regexp.MatchString(pattern, file.Name())
 	if err != nil || !match {
 		return errDec
@@ -84,7 +84,7 @@ func decodeObj(filepath, pattern string, file os.FileInfo, destObj interface{}) 
 		return errDec
 	}
 	// #nosec
-	fp, err := os.Open(path.Join(filepath, file.Name()))
+	fp, err := os.Open(path.Join(fpath, file.Name()))
 	if err != nil {
 		klog.Infof("node-cache: open file: %s err %v", file.Name(), err)
 		return errDec

@@ -178,7 +178,7 @@ func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions) 
 	}
 	optionsStr := fmt.Sprintf("name=%s,secret=%s", cr.id, cr.key)
 	if volOptions.FsName != "" {
-		optionsStr = optionsStr + fmt.Sprintf(",mds_namespace=%s", volOptions.FsName)
+		optionsStr += fmt.Sprintf(",mds_namespace=%s", volOptions.FsName)
 	}
 	args = append(args, "-o", optionsStr)
 
@@ -202,7 +202,7 @@ func bindMount(from, to string, readOnly bool, mntOptions []string) error {
 	}
 
 	if readOnly {
-		mntOptionSli = mntOptionSli + ",remount"
+		mntOptionSli += ",remount"
 		if err := execCommandErr("mount", "-o", mntOptionSli, to); err != nil {
 			return fmt.Errorf("failed read-only remount of %s: %v", to, err)
 		}

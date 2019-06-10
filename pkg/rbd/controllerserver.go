@@ -46,17 +46,17 @@ func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 		return err
 	}
 	// Check sanity of request Name, Volume Capabilities
-	if len(req.Name) == 0 {
+	if req.Name == "" {
 		return status.Error(codes.InvalidArgument, "volume Name cannot be empty")
 	}
 	if req.VolumeCapabilities == nil {
 		return status.Error(codes.InvalidArgument, "volume Capabilities cannot be empty")
 	}
 	options := req.GetParameters()
-	if value, ok := options["clusterID"]; !ok || len(value) == 0 {
+	if value, ok := options["clusterID"]; !ok || value == "" {
 		return status.Error(codes.InvalidArgument, "missing or empty cluster ID to provision volume from")
 	}
-	if value, ok := options["pool"]; !ok || len(value) == 0 {
+	if value, ok := options["pool"]; !ok || value == "" {
 		return status.Error(codes.InvalidArgument, "missing or empty pool name to provision volume from")
 	}
 	return nil
@@ -194,7 +194,7 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	}
 
 	snapshotID := snapshot.GetSnapshotId()
-	if len(snapshotID) == 0 {
+	if snapshotID == "" {
 		return status.Error(codes.InvalidArgument, "volume Snapshot ID cannot be empty")
 	}
 
@@ -401,10 +401,10 @@ func (cs *ControllerServer) validateSnapshotReq(req *csi.CreateSnapshotRequest) 
 	}
 
 	// Check sanity of request Snapshot Name, Source Volume Id
-	if len(req.Name) == 0 {
+	if req.Name == "" {
 		return status.Error(codes.InvalidArgument, "snapshot Name cannot be empty")
 	}
-	if len(req.SourceVolumeId) == 0 {
+	if req.SourceVolumeId == "" {
 		return status.Error(codes.InvalidArgument, "source Volume ID cannot be empty")
 	}
 
@@ -458,7 +458,7 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, secret map[string]s
 }
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
-//snapshot metadata from store
+// snapshot metadata from store
 func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		klog.Warningf("invalid delete snapshot req: %v", protosanitizer.StripSecrets(req))
@@ -466,7 +466,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	snapshotID := req.GetSnapshotId()
-	if len(snapshotID) == 0 {
+	if snapshotID == "" {
 		return nil, status.Error(codes.InvalidArgument, "snapshot ID cannot be empty")
 	}
 

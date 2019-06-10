@@ -80,7 +80,7 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 			return false, err
 		}
 
-		//TODO need to check rolling update
+		// TODO need to check rolling update
 
 		// When the deployment status and its underlying resources reach the
 		// desired state, we're done
@@ -137,8 +137,8 @@ func getMons(ns string, c kubernetes.Interface) []string {
 	svcList, err := c.CoreV1().Services(ns).List(opt)
 	Expect(err).Should(BeNil())
 	services := make([]string, 0)
-	for _, svc := range svcList.Items {
-		s := fmt.Sprintf("%s.%s.svc.cluster.local:%d", svc.Name, svc.Namespace, svc.Spec.Ports[0].Port)
+	for i := range svcList.Items {
+		s := fmt.Sprintf("%s.%s.svc.cluster.local:%d", svcList.Items[i].Name, svcList.Items[i].Namespace, svcList.Items[i].Spec.Ports[0].Port)
 		services = append(services, s)
 	}
 	return services
@@ -160,7 +160,7 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	sc.Parameters["pool"] = "myfs-data0"
 	sc.Parameters["fsName"] = "myfs"
 	fsID := execCommandInToolBox(f, "ceph fsid")
-	//remove new line present in fsID
+	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
 
 	sc.Parameters["clusterID"] = fsID
@@ -175,7 +175,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	sc.Parameters["pool"] = "replicapool"
 
 	fsID := execCommandInToolBox(f, "ceph fsid")
-	//remove new line present in fsID
+	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
 
 	sc.Parameters["clusterID"] = fsID
@@ -190,9 +190,9 @@ func createConfigMap(c kubernetes.Interface, f *framework.Framework) {
 	Expect(err).Should(BeNil())
 
 	fsID := execCommandInToolBox(f, "ceph fsid")
-	//remove new line present in fsID
+	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
-	//get mon list
+	// get mon list
 	mons := getMons(rookNS, c)
 	conmap := []struct {
 		Clusterid string   `json:"clusterID"`
@@ -213,7 +213,7 @@ func createConfigMap(c kubernetes.Interface, f *framework.Framework) {
 func getSecret(path string) v1.Secret {
 	sc := v1.Secret{}
 	err := unmarshal(path, &sc)
-	//discard corruptInputError
+	// discard corruptInputError
 	if err != nil {
 		if _, ok := err.(base64.CorruptInputError); !ok {
 			Expect(err).Should(BeNil())
@@ -367,11 +367,11 @@ func createApp(c kubernetes.Interface, app *v1.Pod, timeout int) error {
 	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout)
 }
 
-func getPodName(ns string, c kubernetes.Interface, opt metav1.ListOptions) string {
+func getPodName(ns string, c kubernetes.Interface, opt *metav1.ListOptions) string {
 	ticker := time.NewTicker(1 * time.Second)
-	//TODO add stop logic
+	// TODO add stop logic
 	for range ticker.C {
-		podList, err := c.CoreV1().Pods(ns).List(opt)
+		podList, err := c.CoreV1().Pods(ns).List(*opt)
 		framework.ExpectNoError(err)
 		Expect(podList.Items).NotTo(BeNil())
 		Expect(err).Should(BeNil())
@@ -439,12 +439,12 @@ func unmarshal(fileName string, obj interface{}) error {
 	return err
 }
 
-func checkCephPods(ns string, c kubernetes.Interface, count int, t int, opt metav1.ListOptions) error {
+func checkCephPods(ns string, c kubernetes.Interface, count, t int, opt *metav1.ListOptions) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		podList, err := c.CoreV1().Pods(ns).List(opt)
+		podList, err := c.CoreV1().Pods(ns).List(*opt)
 		if err != nil {
 			return false, err
 		}

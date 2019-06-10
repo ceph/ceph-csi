@@ -107,6 +107,18 @@ linters-settings:
     line-length: 180
     # tab width in spaces. Default to 1.
     tab-width: 1
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+    disabled-checks:
+      - sloppyReassign
+      - elseif
+      - unslice
+      - wrapperFunc
+      - unnamedResult
+      - dupImport  # https://github.com/go-critic/go-critic/issues/845
   unused:
     # treat code as a program (not a library) and report unused exported
     # identifiers; default is false.
@@ -131,23 +143,9 @@ linters-settings:
     max-func-lines: 30
 
 linters:
-  enable:
-    - megacheck
-    - govet
-    - golint
-    - stylecheck
-    - interfacer
-    - unconvert
-    - gofmt
-    - gocyclo
-    - maligned
-    - lll
-    - nakedret
-  enable-all: false
+  enable-all: true
   disable:
     - prealloc
-  disable-all: false
-  presets:
-    - bugs
-    - unused
-  fast: false
+    - dupl
+    - gochecknoinits
+    - gochecknoglobals

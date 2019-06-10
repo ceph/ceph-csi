@@ -36,7 +36,7 @@ func deployCommon() {
 func createFileSystem(c kubernetes.Interface) {
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "filesystem-test.yaml")
 	framework.RunKubectlOrDie("create", "-f", commonPath)
-	opt := metav1.ListOptions{
+	opt := &metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-mds",
 	}
 	err := checkCephPods(rookNS, c, 1, deployTimeout, opt)
@@ -72,7 +72,7 @@ func deployOperator(c kubernetes.Interface) {
 func deployCluster(c kubernetes.Interface) {
 	opPath := fmt.Sprintf("%s/%s", rookURL, "cluster-test.yaml")
 	framework.RunKubectlOrDie("create", "-f", opPath)
-	opt := metav1.ListOptions{
+	opt := &metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-mon",
 	}
 	err := checkCephPods(rookNS, c, 1, deployTimeout, opt)
@@ -82,7 +82,7 @@ func deployCluster(c kubernetes.Interface) {
 func deployToolBox(c kubernetes.Interface) {
 	opPath := fmt.Sprintf("%s/%s", rookURL, "toolbox.yaml")
 	framework.RunKubectlOrDie("create", "-f", opPath)
-	opt := metav1.ListOptions{
+	opt := &metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
 
@@ -106,7 +106,7 @@ func tearDownRook() {
 	framework.Cleanup(opPath, rookNS, "app=rook-ceph-tools")
 
 	opPath = fmt.Sprintf("%s/%s", rookURL, "operator.yaml")
-	//TODO need to add selector for cleanup validation
+	// TODO need to add selector for cleanup validation
 	framework.Cleanup(opPath, rookNS)
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "common.yaml")
 	framework.RunKubectlOrDie("delete", "-f", commonPath)
