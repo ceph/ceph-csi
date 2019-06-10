@@ -12,12 +12,11 @@ var (
 	rbdNodePlugin      = "csi-rbdplugin.yaml"
 	rbdNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
 	rbdConfigMap       = "csi-config-map.yaml"
-)
-
-var (
-	rbdDirPath = "../deploy/rbd/kubernetes/"
-
-	rbdExamplePath = "../examples/rbd/"
+	rbdDirPath         = "../deploy/rbd/kubernetes/"
+	rbdExamplePath     = "../examples/rbd/"
+	rbdDeploymentName  = "csi-rbdplugin-provisioner"
+	rbdDaemonsetName   = "csi-rbdplugin"
+	namespace          = "default"
 )
 
 func deployRBDPlugin() {
@@ -54,13 +53,13 @@ var _ = Describe("RBD", func() {
 	Context("Test RBD CSI", func() {
 		It("Test RBD CSI", func() {
 			By("checking provisioner deployment is completed")
-			err := waitForDeploymentComplete("csi-rbdplugin-provisioner", "default", f.ClientSet, deployTimeout)
+			err := waitForDeploymentComplete(rbdDeploymentName, namespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
 
 			By("checking nodeplugin deamonsets is running")
-			err = waitForDaemonSets("csi-rbdplugin", "default", f.ClientSet, deployTimeout)
+			err = waitForDaemonSets(rbdDaemonsetName, namespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
