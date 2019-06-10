@@ -66,7 +66,7 @@ nodeplugin:
 provisioner:
   name: provisioner
 
-  replicaCount: 1
+  replicaCount: 3
 
   image:
     repository: quay.io/k8scsi/csi-provisioner

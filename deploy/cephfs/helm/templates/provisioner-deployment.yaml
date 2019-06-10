@@ -1,36 +1,36 @@
-kind: StatefulSet
-apiVersion: apps/v1beta1
+kind: Deployment
+apiVersion: apps/v1
 metadata:
-  name: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
+  name: {{ include "ceph-csi-cephfs.provisioner.fullname" . }}
   labels:
-    app: {{ include "ceph-csi-rbd.name" . }}
-    chart: {{ include "ceph-csi-rbd.chart" . }}
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
     component: {{ .Values.provisioner.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
-  serviceName: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
   replicas: {{ .Values.provisioner.replicas }}
   selector:
     matchLabels:
-      app: {{ include "ceph-csi-rbd.name" . }}
+      app: {{ include "ceph-csi-cephfs.name" . }}
       component: {{ .Values.provisioner.name }}
       release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ include "ceph-csi-rbd.name" . }}
-        chart: {{ include "ceph-csi-rbd.chart" . }}
+        app: {{ include "ceph-csi-cephfs.name" . }}
+        chart: {{ include "ceph-csi-cephfs.chart" . }}
         component: {{ .Values.provisioner.name }}
         release: {{ .Release.Name }}
         heritage: {{ .Release.Service }}
     spec:
-      serviceAccountName: {{ include "ceph-csi-rbd.serviceAccountName.provisioner" . }}
+      serviceAccountName: {{ include "ceph-csi-cephfs.serviceAccountName.provisioner" . }}
       containers:
         - name: csi-provisioner
           image: "{{ .Values.provisioner.image.repository }}:{{ .Values.provisioner.image.tag }}"
           args:
             - "--csi-address=$(ADDRESS)"
+            - "--leader-election-type=leases"
             - "--v=5"
           env:
             - name: ADDRESS
@@ -41,23 +41,6 @@ spec:
               mountPath: {{ .Values.socketDir }}
           resources:
 {{ toYaml .Values.provisioner.resources | indent 12 }}
-        - name: csi-snapshotter
-          image: {{ .Values.snapshotter.image.repository }}:{{ .Values.snapshotter.image.tag }}
-          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
-          args:
-            - "--csi-address=$(ADDRESS)"
-            - "--connection-timeout=15s"
-            - "--v=5"
-          env:
-            - name: ADDRESS
-              value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
-          securityContext:
-            privileged: true
-          volumeMounts:
-            - name: socket-dir
-              mountPath: {{ .Values.socketDir }}
-          resources:
-{{ toYaml .Values.snapshotter.resources | indent 12 }}
         {{ if .Values.attacher.enabled }}
         - name: csi-attacher
           image: "{{ .Values.attacher.image.repository }}:{{ .Values.attacher.image.tag }}"
@@ -72,7 +55,7 @@ spec:
             - name: socket-dir
               mountPath: {{ .Values.socketDir }}
         {{ end }}
-        - name: csi-rbdplugin
+        - name: csi-cephfsplugin
           securityContext:
             privileged: true
             capabilities:
@@ -81,11 +64,11 @@ spec:
           image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
           args :
             - "--nodeid=$(NODE_ID)"
-            - "--type=rbd"
+            - "--type=cephfs"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
-            - "--containerized=true"
+            - "--metadatastorage=k8s_configmap"
           env:
             - name: HOST_ROOTFS
               value: "/rootfs"
