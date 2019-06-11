@@ -237,11 +237,17 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := volumeMountCache.nodePublishVolume(volID, targetPath, req.GetReadonly()); err != nil {
+	if err = volumeMountCache.nodePublishVolume(volID, targetPath, req.GetReadonly()); err != nil {
 		klog.Warningf("mount-cache: failed to publish volume %s %s: %v", volID, targetPath, err)
 	}
 
 	klog.Infof("cephfs: successfully bind-mounted volume %s to %s", volID, targetPath)
+
+	err = os.Chmod(targetPath, 0777)
+	if err != nil {
+		klog.Errorf("failed to change targetpath permission for volume %s: %v", volID, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }

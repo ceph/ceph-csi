@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/pkg/errors"
+
 	"github.com/ceph/ceph-csi/pkg/util"
 )
 
@@ -189,8 +191,7 @@ func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) 
 	volOptions.FscID = vi.LocationID
 
 	if volOptions.Monitors, err = util.Mons(csiConfigFile, vi.ClusterID); err != nil {
-		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s)", vi.ClusterID)
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", vi.ClusterID)
 	}
 
 	cr, err := getAdminCredentials(secrets)
