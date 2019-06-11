@@ -27,7 +27,7 @@ env:
     - GO_COVER_DIR=_output
     - VM_DRIVER=none
     - KUBE_VERSION=v1.14.2
-    - MINIKUBE_VERSION=v1.1.0
+    - MINIKUBE_VERSION=v1.1.1
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
 
