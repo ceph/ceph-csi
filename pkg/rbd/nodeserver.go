@@ -108,6 +108,10 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, err
 	}
+	err = os.Chmod(targetPath, 0777)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 

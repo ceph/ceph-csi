@@ -70,6 +70,10 @@ var _ = Describe("cephfs", func() {
 
 				})
 
+				By("create a PVC and Bind it to an app with normal user", func() {
+					pvcPath := cephfsExamplePath + "pvc.yaml"
+					validateNormalUserPVCAccess(pvcPath, f)
+				})
 			})
 		})
 	})

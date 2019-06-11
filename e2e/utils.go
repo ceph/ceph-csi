@@ -103,13 +103,10 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 	return nil
 }
 
-func execCommandInToolBox(f *framework.Framework, c string) string {
+func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) string {
 
 	cmd := []string{"/bin/sh", "-c", c}
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	podList, err := f.PodClientNS(rookNS).List(opt)
+	podList, err := f.PodClientNS(ns).List(*opt)
 	framework.ExpectNoError(err)
 	Expect(podList.Items).NotTo(BeNil())
 	Expect(err).Should(BeNil())
@@ -117,7 +114,7 @@ func execCommandInToolBox(f *framework.Framework, c string) string {
 	podPot := framework.ExecOptions{
 		Command:            cmd,
 		PodName:            podList.Items[0].Name,
-		Namespace:          rookNS,
+		Namespace:          ns,
 		ContainerName:      podList.Items[0].Spec.Containers[0].Name,
 		Stdin:              nil,
 		CaptureStdout:      true,
@@ -159,7 +156,10 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	sc := getStorageClass(c, scPath)
 	sc.Parameters["pool"] = "myfs-data0"
 	sc.Parameters["fsName"] = "myfs"
-	fsID := execCommandInToolBox(f, "ceph fsid")
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	fsID := execCommandInPod(f, "ceph fsid", rookNS, &opt)
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
 
@@ -173,8 +173,10 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	sc := getStorageClass(c, scPath)
 	delete(sc.Parameters, "userid")
 	sc.Parameters["pool"] = "replicapool"
-
-	fsID := execCommandInToolBox(f, "ceph fsid")
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	fsID := execCommandInPod(f, "ceph fsid", rookNS, &opt)
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
 
@@ -188,8 +190,10 @@ func createConfigMap(c kubernetes.Interface, f *framework.Framework) {
 	cm := v1.ConfigMap{}
 	err := unmarshal(path, &cm)
 	Expect(err).Should(BeNil())
-
-	fsID := execCommandInToolBox(f, "ceph fsid")
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	fsID := execCommandInPod(f, "ceph fsid", rookNS, &opt)
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
 	// get mon list
@@ -225,7 +229,10 @@ func getSecret(path string) v1.Secret {
 func createCephfsSecret(c kubernetes.Interface, f *framework.Framework) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "secret.yaml")
 	sc := getSecret(scPath)
-	adminKey := execCommandInToolBox(f, "ceph auth get-key client.admin")
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	adminKey := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
 	sc.Data["adminID"] = []byte("admin")
 	sc.Data["adminKey"] = []byte(adminKey)
 	delete(sc.Data, "userID")
@@ -237,7 +244,10 @@ func createCephfsSecret(c kubernetes.Interface, f *framework.Framework) {
 func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "secret.yaml")
 	sc := getSecret(scPath)
-	adminKey := execCommandInToolBox(f, "ceph auth get-key client.admin")
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	adminKey := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
 	sc.Data["admin"] = []byte(adminKey)
 	delete(sc.Data, "kubernetes")
 	_, err := c.CoreV1().Secrets("default").Create(&sc)
@@ -475,6 +485,79 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 	if err != nil {
 		Fail(err.Error())
 	}
+
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		Fail(err.Error())
+	}
+
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		Fail(err.Error())
+	}
+}
+
+func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
+	pvc := loadPVC(pvcPath)
+	pvc.Namespace = f.UniqueName
+	pvc.Name = f.UniqueName
+	framework.Logf("The PVC  template %+v", pvc)
+	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		Fail(err.Error())
+	}
+	var user int64 = 2000
+	app := &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pod-run-as-non-root",
+			Namespace: f.UniqueName,
+			Labels: map[string]string{
+				"app": "pod-run-as-non-root",
+			},
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:    "write-pod",
+					Image:   "alpine",
+					Command: []string{"/bin/sleep", "999999"},
+					SecurityContext: &v1.SecurityContext{
+						RunAsUser: &user,
+					},
+					VolumeMounts: []v1.VolumeMount{
+						{
+							MountPath: "/target",
+							Name:      "target",
+						},
+					},
+				},
+			},
+			Volumes: []v1.Volume{
+				{
+					Name: "target",
+					VolumeSource: v1.VolumeSource{
+						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvc.Name,
+							ReadOnly:  false},
+					},
+				},
+			},
+		},
+	}
+
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		Fail(err.Error())
+	}
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=pod-run-as-non-root",
+	}
+	execCommandInPod(f, "echo testing > /target/testing", app.Namespace, &opt)
 
 	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 	if err != nil {

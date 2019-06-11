@@ -69,6 +69,11 @@ var _ = Describe("RBD", func() {
 				appPath := rbdExamplePath + "pod.yaml"
 				validatePVCAndAppBinding(pvcPath, appPath, f)
 			})
+
+			By("create a PVC and Bind it to an app with normal user", func() {
+				pvcPath := rbdExamplePath + "pvc.yaml"
+				validateNormalUserPVCAccess(pvcPath, f)
+			})
 		})
 	})
 
