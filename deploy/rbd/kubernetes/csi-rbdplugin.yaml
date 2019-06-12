@@ -19,6 +19,12 @@ spec:
       # resolved through k8s service, set dns policy to cluster first
       dnsPolicy: ClusterFirstWithHostNet
       containers:
+        - name: metrics-server
+          image: localhost:5000/my-go-app
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+          imagePullPolicy: "Always"
         - name: driver-registrar
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
           args:
@@ -49,7 +55,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: quay.io/cephcsi/rbdplugin:v1.0.0
+          image: localhost:5000/rbdplugin:v1.0.0
           args:
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
@@ -71,7 +77,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
-          imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: "Always"
           volumeMounts:
             - name: plugin-dir
               mountPath: /csi

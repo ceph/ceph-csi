@@ -18,6 +18,7 @@ package rbd
 
 import (
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
+	"github.com/ceph/ceph-csi/pkg/metrics"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -43,6 +44,7 @@ type Driver struct {
 	ids *IdentityServer
 	ns  *NodeServer
 	cs  *ControllerServer
+	ms  *metrics.Server
 }
 
 var (
@@ -128,12 +130,13 @@ func (r *Driver) Run(driverName, nodeID, endpoint, configRoot string, containeri
 	}
 
 	r.cs = NewControllerServer(r.cd, cachePersister)
+	r.ms = metrics.NewMetricServer()
 
 	if err = r.cs.LoadExDataFromMetadataStore(); err != nil {
 		klog.Fatalf("failed to load metadata from store, err %v\n", err)
 	}
 
 	s := csicommon.NewNonBlockingGRPCServer()
-	s.Start(endpoint, r.ids, r.cs, r.ns)
+	s.Start(endpoint, r.ids, r.cs, r.ns, r.ms)
 	s.Wait()
 }

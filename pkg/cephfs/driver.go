@@ -20,6 +20,7 @@ import (
 	"k8s.io/klog"
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
+	"github.com/ceph/ceph-csi/pkg/metrics"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -41,6 +42,7 @@ type Driver struct {
 	is *IdentityServer
 	ns *NodeServer
 	cs *ControllerServer
+	ms *metrics.Server
 }
 
 var (
@@ -133,8 +135,9 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir
 	fs.ns = NewNodeServer(fs.cd)
 
 	fs.cs = NewControllerServer(fs.cd, cachePersister)
+	fs.ms = metrics.NewMetricServer()
 
 	server := csicommon.NewNonBlockingGRPCServer()
-	server.Start(endpoint, fs.is, fs.cs, fs.ns)
+	server.Start(endpoint, fs.is, fs.cs, fs.ns, fs.ms)
 	server.Wait()
 }

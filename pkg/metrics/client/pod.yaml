@@ -1,0 +1,9 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: csi-metrics-pod
+spec:
+  containers:
+    - name: metrics-server
+      image: localhost:5000/my-go-app

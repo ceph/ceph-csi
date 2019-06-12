@@ -21,6 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/pkg/metrics"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"golang.org/x/net/context"
@@ -80,7 +82,7 @@ func RunNodePublishServer(endpoint string, d *CSIDriver, ns csi.NodeServer) {
 	ids := NewDefaultIdentityServer(d)
 
 	s := NewNonBlockingGRPCServer()
-	s.Start(endpoint, ids, nil, ns)
+	s.Start(endpoint, ids, nil, ns, nil)
 	s.Wait()
 }
 
@@ -89,7 +91,7 @@ func RunControllerPublishServer(endpoint string, d *CSIDriver, cs csi.Controller
 	ids := NewDefaultIdentityServer(d)
 
 	s := NewNonBlockingGRPCServer()
-	s.Start(endpoint, ids, cs, nil)
+	s.Start(endpoint, ids, cs, nil, nil)
 	s.Wait()
 }
 
@@ -98,7 +100,7 @@ func RunControllerandNodePublishServer(endpoint string, d *CSIDriver, cs csi.Con
 	ids := NewDefaultIdentityServer(d)
 
 	s := NewNonBlockingGRPCServer()
-	s.Start(endpoint, ids, cs, ns)
+	s.Start(endpoint, ids, cs, ns, nil)
 	s.Wait()
 }
 
@@ -117,8 +119,8 @@ func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, h
 	request := protosanitizer.StripSecrets(req).String()
 	responce := protosanitizer.StripSecrets(resp).String()
 
-	m := Metric{Time: startTime, Call: info.FullMethod, SRT: nanosecs, Request: request, Responce: responce}
-	handleMetric(m)
+	m := metrics.Metric{Time: startTime, Call: info.FullMethod, SRT: nanosecs, Request: request, Responce: responce}
+	metrics.HandleMetric(m)
 
 	if err != nil {
 		klog.Errorf("GRPC error: %v", err)

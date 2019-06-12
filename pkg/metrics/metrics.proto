@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package metrics;
+
+// The metric service definition.
+service Metrics {
+  // Get metrics
+  rpc RequestMetrics (MetricRequest) returns (MetricReply) {}
+}
+
+// The request message containing the user's name.
+message MetricRequest {
+  string name = 1;
+}
+
+// The response message containing the greetings
+message MetricReply {
+  repeated double metric = 1;
+}

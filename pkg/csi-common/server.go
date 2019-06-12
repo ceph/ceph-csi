@@ -21,6 +21,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/ceph/ceph-csi/pkg/metrics"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc"
 	"k8s.io/klog"
@@ -29,7 +31,7 @@ import (
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces
 type NonBlockingGRPCServer interface {
 	// Start services at the endpoint
-	Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer)
+	Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, ms metrics.MetricsServer)
 	// Waits for the service to stop
 	Wait()
 	// Stops the service gracefully
@@ -50,10 +52,10 @@ type nonBlockingGRPCServer struct {
 }
 
 // Start start service on endpoint
-func (s *nonBlockingGRPCServer) Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer) {
+func (s *nonBlockingGRPCServer) Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, ms metrics.MetricsServer) {
 
 	s.wg.Add(1)
-	go s.serve(endpoint, ids, cs, ns)
+	go s.serve(endpoint, ids, cs, ns, ms)
 }
 
 // Wait blocks until the WaitGroup counter
@@ -71,7 +73,7 @@ func (s *nonBlockingGRPCServer) ForceStop() {
 	s.server.Stop()
 }
 
-func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer) {
+func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, ms metrics.MetricsServer) {
 
 	proto, addr, err := parseEndpoint(endpoint)
 	if err != nil {
@@ -104,6 +106,9 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, c
 	}
 	if ns != nil {
 		csi.RegisterNodeServer(server, ns)
+	}
+	if ms != nil {
+		metrics.RegisterMetricsServer(server, ms)
 	}
 
 	klog.Infof("Listening for connections on address: %#v", listener.Addr())
