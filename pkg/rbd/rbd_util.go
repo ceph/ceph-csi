@@ -550,6 +550,26 @@ func createSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]s
 	return nil
 }
 
+// flattenImage remove the reference from the child clone to the parent
+// snapshot (refer http://docs.ceph.com/docs/giant/rbd/rbd-snapshot/#flattening-a-cloned-image)
+func flattenImage(vol *rbdVolume, credentials map[string]string) error {
+	var output []byte
+
+	key, err := getKey(vol.AdminID, credentials)
+	if err != nil {
+		return err
+	}
+	klog.V(4).Infof("rbd: flatten image %s using mon %s, pool %s", vol.RbdImageName, vol.Monitors, vol.Pool)
+	args := []string{"flatten", "--pool", vol.Pool, "--image", vol.RbdImageName, "--id", vol.AdminID, "-m", vol.Monitors, "--key=" + key}
+
+	output, err = execCommand("rbd", args)
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to flatten image, command output: %s", string(output))
+	}
+
+	return nil
+}
 func unprotectSnapshot(pOpts *rbdSnapshot, adminID string, credentials map[string]string) error {
 	var output []byte
 
@@ -707,18 +727,8 @@ type snapInfo struct {
 	Timestamp string `json:"timestamp"`
 }
 
-/*
-getSnapInfo queries rbd about the snapshots of the given image and returns its metadata, and
-returns ErrImageNotFound if provided image is not found, and ErrSnapNotFound if provided snap
-is not found in the images snapshot list
-*/
-func getSnapInfo(monitors, adminID, key, poolName, imageName, snapName string) (snapInfo, error) {
-	// rbd --format=json snap ls [image-spec]
-
-	var (
-		snpInfo snapInfo
-		snaps   []snapInfo
-	)
+func listSnapshot(monitors, adminID, key, poolName, imageName string) ([]snapInfo, error) {
+	var snaps []snapInfo
 
 	stdout, _, err := util.ExecCommand(
 		"rbd",
@@ -729,23 +739,41 @@ func getSnapInfo(monitors, adminID, key, poolName, imageName, snapName string) (
 		"--format="+"json",
 		"snap", "ls", poolName+"/"+imageName)
 	if err != nil {
-		klog.Errorf("failed getting snap (%s) information from image (%s): (%s)",
-			snapName, poolName+"/"+imageName, err)
+		klog.Errorf("failed listing snapshot information from image (%s): (%s)",
+			poolName+"/"+imageName, err)
 		if strings.Contains(string(stdout), "rbd: error opening image "+imageName+
 			": (2) No such file or directory") {
-			return snpInfo, ErrImageNotFound{imageName, err}
+			return snaps, ErrImageNotFound{imageName, err}
 		}
-		return snpInfo, err
+		return snaps, err
 	}
 
 	err = json.Unmarshal(stdout, &snaps)
 	if err != nil {
 		klog.Errorf("failed to parse JSON output of image snap list (%s): (%s)",
 			poolName+"/"+imageName, err)
-		return snpInfo, fmt.Errorf("unmarshal failed: %+v. raw buffer response: %s",
+		return snaps, fmt.Errorf("unmarshal failed: %+v. raw buffer response: %s",
 			err, string(stdout))
 	}
+	return snaps, nil
+}
 
+/*
+getSnapInfo queries rbd about the snapshots of the given image and returns its metadata, and
+returns ErrImageNotFound if provided image is not found, and ErrSnapNotFound if provided snap
+is not found in the images snapshot list
+*/
+func getSnapInfo(monitors, adminID, key, poolName, imageName, snapName string) (snapInfo, error) {
+	// rbd --format=json snap ls [image-spec]
+
+	var (
+		snpInfo snapInfo
+	)
+
+	snaps, err := listSnapshot(monitors, adminID, key, poolName, imageName)
+	if err != nil {
+		return snpInfo, err
+	}
 	for _, snap := range snaps {
 		if snap.Name == snapName {
 			return snap, nil

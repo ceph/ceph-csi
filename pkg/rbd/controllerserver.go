@@ -18,6 +18,7 @@ package rbd
 
 import (
 	"fmt"
+	"strings"
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
@@ -210,6 +211,12 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
+
+	err = flattenImage(rbdVol, req.GetSecrets())
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
 	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.RbdSnapName)
 	return nil
 }
@@ -272,6 +279,30 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 	}()
 
+	// check if rbd image has snapshot
+	key, err := getKey(rbdVol.AdminID, req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	snaps, err := listSnapshot(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool,
+		rbdVol.RbdImageName)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// reject volume deletion if it has snapshot
+	if len(snaps) != 0 {
+		return nil, status.Errorf(codes.FailedPrecondition, "%s is having snapshot,please delete snapshot before deleting volume", req.GetVolumeId())
+	}
+
+	// remove the reference from volume and snapshot
+	// this will occur if flatten image failed during volume clone
+	err = flattenImage(rbdVol, req.GetSecrets())
+	// if the image does not contain reference to snapshot, flattern will return
+	// image has no parent error
+
+	if err != nil && !strings.Contains(err.Error(), "image has no parent") {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	// Deleting rbd image
 	klog.V(4).Infof("deleting image %s", rbdVol.RbdImageName)
 	if err := deleteImage(rbdVol, rbdVol.AdminID, req.GetSecrets()); err != nil {
