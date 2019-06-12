@@ -10,7 +10,7 @@ spec:
     kind: VolumeSnapshot
     apiGroup: snapshot.storage.k8s.io
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
