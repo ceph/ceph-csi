@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ceph/ceph-csi/pkg/csi-common"
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
@@ -99,6 +99,12 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, err
 	}
+
+	err = os.Chmod(targetPath, 0777)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
