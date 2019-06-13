@@ -21,12 +21,11 @@ go: 1.11.x
 
 env:
   global:
-    - GOLANGCI_VERSION="v1.17.0"
+    - GOLANGCI_VERSION=v1.17.0
     - TEST_COVERAGE=stdout
     - GO_METALINTER_THREADS=1
     - GO_COVER_DIR=_output
     - VM_DRIVER=none
-    - KUBE_VERSION=v1.14.2
     - MINIKUBE_VERSION=v1.1.1
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
@@ -39,26 +38,26 @@ jobs:
         - pip install --user --upgrade pip
         - pip install --user yamllint
         # install golangci-lint
+        # workaround for https://github.com/golangci/golangci-lint/issues/575
         - curl -sf
-          "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh"
+          "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh"
           | bash -s -- -b $GOPATH/bin "${GOLANGCI_VERSION}"
       script:
         - scripts/lint-text.sh --require-all
         - scripts/lint-go.sh
         - scripts/test-go.sh
 
-    - name: cephcsi
+    - name: cephcsi with kube 1.13.7
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - sudo scripts/minikube.sh up || travis_terminate 1;
-        # pull docker images to speed up e2e
-        - scripts/minikube.sh cephcsi
-        - scripts/minikube.sh k8s-sidecar
-        - "sudo chown -R travis: $HOME/.minikube /usr/local/bin/kubectl"
-        # functional tests
-        - make func-test TESTOPTIONS='--rook-version=v1.0.1 \
-          --deploy-rook=true --deploy-timeout=10  -timeout=30m -v'
+        - scripts/travis-functest.sh v1.13.7 || travis_terminate 1;
+
+    - name: cephcsi with kube 1.14.3
+      script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
+        - make image-cephcsi || travis_terminate 1;
+        - scripts/travis-functest.sh v1.14.3 || travis_terminate 1;
 
 deploy:
   - provider: script
