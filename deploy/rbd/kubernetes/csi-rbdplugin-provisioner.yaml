@@ -21,7 +21,7 @@ spec:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
             - "--enable-leader-election=true"
-            - "--leader-election-type=endpoints"
+            - "--leader-election-type=leases"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
