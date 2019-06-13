@@ -49,12 +49,12 @@ func createRBDPool() {
 }
 func deleteFileSystem() {
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "filesystem-test.yaml")
-	framework.RunKubectlOrDie("delete", "-f", commonPath)
+	framework.RunKubectl("delete", "-f", commonPath)
 }
 
 func deleteRBDPool() {
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "pool-test.yaml")
-	framework.RunKubectlOrDie("delete", "-f", commonPath)
+	framework.RunKubectl("delete", "-f", commonPath)
 }
 
 func deployOperator(c kubernetes.Interface) {
@@ -109,5 +109,5 @@ func tearDownRook() {
 	// TODO need to add selector for cleanup validation
 	framework.Cleanup(opPath, rookNS)
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "common.yaml")
-	framework.RunKubectlOrDie("delete", "-f", commonPath)
+	framework.RunKubectl("delete", "-f", commonPath)
 }

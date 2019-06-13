@@ -470,28 +470,55 @@ func checkCephPods(ns string, c kubernetes.Interface, count, t int, opt *metav1.
 
 }
 
+// createPVCAndApp creates pvc and pod
+// if name is not empty same will be set as pvc and app name
+func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+
+	if name != "" {
+		pvc.Name = name
+		app.Name = name
+		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+	}
+	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return err
+	}
+	err = createApp(f.ClientSet, app, deployTimeout)
+	return err
+}
+
+// deletePVCAndApp delete pvc and pod
+// if name is not empty same will be set as pvc and app name
+func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+
+	if name != "" {
+		pvc.Name = name
+		app.Name = name
+		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+	}
+
+	err := deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return err
+	}
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	return err
+}
+
 func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 	pvc := loadPVC(pvcPath)
 	pvc.Namespace = f.UniqueName
 	framework.Logf("The PVC  template %+v", pvc)
-	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-	if err != nil {
-		Fail(err.Error())
-	}
 
 	app := loadApp(appPath)
 	app.Namespace = f.UniqueName
-	err = createApp(f.ClientSet, app, deployTimeout)
+
+	err := createPVCAndApp("", f, pvc, app)
 	if err != nil {
 		Fail(err.Error())
 	}
 
-	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
-	if err != nil {
-		Fail(err.Error())
-	}
-
-	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	err = deletePVCAndApp("", f, pvc, app)
 	if err != nil {
 		Fail(err.Error())
 	}
@@ -506,6 +533,7 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 	if err != nil {
 		Fail(err.Error())
 	}
+
 	var user int64 = 2000
 	app := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -568,4 +596,21 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 	if err != nil {
 		Fail(err.Error())
 	}
+
+}
+
+func listRBDImages(f *framework.Framework) []string {
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	stdout := execCommandInPod(f, "rbd ls --pool=replicapool --format=json", rookNS, &opt)
+
+	var imgInfos []string
+
+	err := json.Unmarshal([]byte(stdout), &imgInfos)
+	if err != nil {
+		Fail(err.Error())
+	}
+	return imgInfos
 }
