@@ -31,7 +31,8 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
-            - "--leader-election-type=leases"
+            - "--enable-leader-election=true"
+            - "--leader-election-type=endpoints"
           env:
             - name: ADDRESS
               value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"

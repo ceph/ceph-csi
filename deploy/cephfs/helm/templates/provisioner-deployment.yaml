@@ -30,7 +30,8 @@ spec:
           image: "{{ .Values.provisioner.image.repository }}:{{ .Values.provisioner.image.tag }}"
           args:
             - "--csi-address=$(ADDRESS)"
-            - "--leader-election-type=leases"
+            - "--enable-leader-election=true"
+            - "--leader-election-type=endpoints"
             - "--v=5"
           env:
             - name: ADDRESS
