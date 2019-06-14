@@ -23,7 +23,6 @@ func init() {
 
 	flag.BoolVar(&rookRequired, "deploy-rook", true, "deploy rook on kubernetes")
 	flag.IntVar(&deployTimeout, "deploy-timeout", 10, "timeout to wait for created kubernetes resources")
-
 	// Register framework flags, then handle flags
 	framework.HandleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
