@@ -45,8 +45,8 @@ var _ = Describe("cephfs", func() {
 			res, err := framework.RunKubectl("delete", "-f", cephfsDirPath+file.Name())
 			framework.Logf("failed to delete resource in %s with err %v", res, err)
 		}
-		deleteSecret(cephfsExamplePath + "secret.yaml")
-		deleteStorageClass(cephfsExamplePath + "storageclass.yaml")
+		deleteResource(cephfsExamplePath + "secret.yaml")
+		deleteResource(cephfsExamplePath + "storageclass.yaml")
 		deleteFileSystem()
 	})
 
@@ -78,6 +78,7 @@ var _ = Describe("cephfs", func() {
 					validateNormalUserPVCAccess(pvcPath, f)
 				})
 			})
+
 		})
 	})
 

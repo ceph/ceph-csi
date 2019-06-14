@@ -39,6 +39,7 @@ var _ = Describe("RBD", func() {
 		deployRBDPlugin()
 		createRBDStorageClass(f.ClientSet, f)
 		createRBDSecret(f.ClientSet, f)
+
 	})
 
 	AfterEach(func() {
@@ -48,8 +49,9 @@ var _ = Describe("RBD", func() {
 			framework.Logf("failed to delete resource in %s with err %v", res, err)
 		}
 		deleteRBDPool()
-		deleteSecret(rbdExamplePath + "secret.yaml")
-		deleteStorageClass(rbdExamplePath + "storageclass.yaml")
+		deleteResource(rbdExamplePath + "secret.yaml")
+		deleteResource(rbdExamplePath + "storageclass.yaml")
+		deleteResource(rbdExamplePath + "snapshotclass.yaml")
 	})
 
 	Context("Test RBD CSI", func() {
@@ -76,6 +78,50 @@ var _ = Describe("RBD", func() {
 			By("create a PVC and Bind it to an app with normal user", func() {
 				pvcPath := rbdExamplePath + "pvc.yaml"
 				validateNormalUserPVCAccess(pvcPath, f)
+			})
+
+			By("create a PVC clone and Bind it to an app", func() {
+				createRBDSnapshotClass(f)
+				pvcPath := rbdExamplePath + "pvc.yaml"
+				pvcClonePath := rbdExamplePath + "pvc-restore.yaml"
+				appClonePath := rbdExamplePath + "pod-restore.yaml"
+				snapshotPath := rbdExamplePath + "snapshot.yaml"
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				pvc.Namespace = f.UniqueName
+				framework.Logf("The PVC  template %+v", pvc)
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.Name = pvc.Name
+				snap.Spec.Source.Kind = "PersistentVolumeClaim"
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
+
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
+
+			By("create a block type PVC and Bind it to an app", func() {
+				pvcPath := rbdExamplePath + "raw-block-pvc.yaml"
+				appPath := rbdExamplePath + "raw-block-pod.yaml"
+				validatePVCAndAppBinding(pvcPath, appPath, f)
 			})
 		})
 	})

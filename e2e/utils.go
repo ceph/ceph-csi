@@ -9,13 +9,14 @@ import (
 	"strings"
 	"time"
 
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
-
+	"github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1"
+	snapClient "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1"
 	. "github.com/onsi/ginkgo" // nolint
 	. "github.com/onsi/gomega" // nolint
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
@@ -141,19 +142,32 @@ func getMons(ns string, c kubernetes.Interface) []string {
 	return services
 }
 
-func getStorageClass(c kubernetes.Interface, path string) scv1.StorageClass {
+func getStorageClass(path string) scv1.StorageClass {
 	sc := scv1.StorageClass{}
 	err := unmarshal(path, &sc)
 	Expect(err).Should(BeNil())
+	return sc
+}
 
-	mons := getMons(rookNS, c)
-	sc.Parameters["monitors"] = strings.Join(mons, ",")
+func getSnapshotClass(path string) v1alpha1.VolumeSnapshotClass {
+	sc := v1alpha1.VolumeSnapshotClass{}
+	sc.Kind = "VolumeSnapshotClass"
+	sc.APIVersion = "snapshot.storage.k8s.io/v1alpha1"
+	err := unmarshal(path, &sc)
+	Expect(err).Should(BeNil())
+	return sc
+}
+
+func getSnapshot(path string) v1alpha1.VolumeSnapshot {
+	sc := v1alpha1.VolumeSnapshot{}
+	err := unmarshal(path, &sc)
+	Expect(err).Should(BeNil())
 	return sc
 }
 
 func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
-	sc := getStorageClass(c, scPath)
+	sc := getStorageClass(scPath)
 	sc.Parameters["pool"] = "myfs-data0"
 	sc.Parameters["fsName"] = "myfs"
 	opt := metav1.ListOptions{
@@ -170,7 +184,7 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
 
 func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
-	sc := getStorageClass(c, scPath)
+	sc := getStorageClass(scPath)
 	delete(sc.Parameters, "userid")
 	sc.Parameters["pool"] = "replicapool"
 	opt := metav1.ListOptions{
@@ -182,6 +196,34 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 
 	sc.Parameters["clusterID"] = fsID
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
+	Expect(err).Should(BeNil())
+}
+
+func newSnapshotClient() (*snapClient.VolumesnapshotV1alpha1Client, error) {
+	config, err := framework.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error creating client: %v", err.Error())
+	}
+	c, err := snapClient.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error creating snapshot client: %v", err.Error())
+	}
+	return c, err
+}
+func createRBDSnapshotClass(f *framework.Framework) {
+	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "snapshotclass.yaml")
+	sc := getSnapshotClass(scPath)
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	fsID := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	// remove new line present in fsID
+	fsID = strings.Trim(fsID, "\n")
+	sc.Parameters["clusterID"] = fsID
+	sclient, err := newSnapshotClient()
+	Expect(err).Should(BeNil())
+	_, err = sclient.VolumeSnapshotClasses().Create(&sc)
 	Expect(err).Should(BeNil())
 }
 
@@ -254,23 +296,18 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 	Expect(err).Should(BeNil())
 }
 
-func deleteSecret(scPath string) {
+func deleteResource(scPath string) {
 	_, err := framework.RunKubectl("delete", "-f", scPath)
 	Expect(err).Should(BeNil())
 }
 
-func deleteStorageClass(scPath string) {
-	_, err := framework.RunKubectl("delete", "-f", scPath)
-	Expect(err).Should(BeNil())
-}
-
-func loadPVC(path string) *v1.PersistentVolumeClaim {
+func loadPVC(path string) (*v1.PersistentVolumeClaim, error) {
 	pvc := &v1.PersistentVolumeClaim{}
 	err := unmarshal(path, &pvc)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return pvc
+	return pvc, err
 }
 
 func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, t int) error {
@@ -360,13 +397,13 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	})
 }
 
-func loadApp(path string) *v1.Pod {
+func loadApp(path string) (*v1.Pod, error) {
 	app := v1.Pod{}
 	err := unmarshal(path, &app)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return &app
+	return &app, nil
 }
 
 func createApp(c kubernetes.Interface, app *v1.Pod, timeout int) error {
@@ -471,15 +508,21 @@ func checkCephPods(ns string, c kubernetes.Interface, count, t int, opt *metav1.
 }
 
 func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
-	pvc := loadPVC(pvcPath)
+	pvc, err := loadPVC(pvcPath)
+	if pvc == nil {
+		Fail(err.Error())
+	}
 	pvc.Namespace = f.UniqueName
 	framework.Logf("The PVC  template %+v", pvc)
-	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
 		Fail(err.Error())
 	}
 
-	app := loadApp(appPath)
+	app, err := loadApp(appPath)
+	if err != nil {
+		Fail(err.Error())
+	}
 	app.Namespace = f.UniqueName
 	err = createApp(f.ClientSet, app, deployTimeout)
 	if err != nil {
@@ -498,11 +541,14 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 }
 
 func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
-	pvc := loadPVC(pvcPath)
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		Fail(err.Error())
+	}
 	pvc.Namespace = f.UniqueName
 	pvc.Name = f.UniqueName
 	framework.Logf("The PVC  template %+v", pvc)
-	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
 		Fail(err.Error())
 	}
@@ -568,4 +614,71 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 	if err != nil {
 		Fail(err.Error())
 	}
+}
+
+func createSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
+
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return err
+	}
+	_, err = sclient.VolumeSnapshots(snap.Namespace).Create(snap)
+	if err != nil {
+		return err
+	}
+
+	timeout := time.Duration(t) * time.Minute
+	name := snap.Name
+	start := time.Now()
+	framework.Logf("Waiting up to %v to be in Ready state", snap)
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		framework.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
+		snaps, err := sclient.VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
+		if err != nil {
+			framework.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
+			if testutils.IsRetryableAPIError(err) {
+				return false, nil
+			}
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		if snaps.Status.ReadyToUse {
+			return true, nil
+		}
+		return false, nil
+	})
+}
+
+func deleteSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return err
+	}
+	err = sclient.VolumeSnapshots(snap.Namespace).Delete(snap.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	timeout := time.Duration(t) * time.Minute
+	name := snap.Name
+	start := time.Now()
+	framework.Logf("Waiting up to %v to be in Ready state", snap)
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		framework.Logf("waiting for snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+		_, err := sclient.VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
+
+		if err == nil {
+			return false, nil
+		}
+
+		if !apierrs.IsNotFound(err) {
+			return false, fmt.Errorf("get on deleted snapshot %v failed with error other than \"not found\": %v", name, err)
+		}
+
+		return false, nil
+	})
 }
