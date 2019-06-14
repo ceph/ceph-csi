@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo" // nolint
 
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -52,8 +54,9 @@ var _ = Describe("RBD", func() {
 
 	Context("Test RBD CSI", func() {
 		It("Test RBD CSI", func() {
-			By("checking provisioner deployment is completed")
-			err := waitForDeploymentComplete(rbdDeploymentName, namespace, f.ClientSet, deployTimeout)
+			By("checking provisioner statefulset is running")
+			timeout := time.Duration(deployTimeout) * time.Minute
+			err := framework.WaitForStatefulSetReplicasReady(rbdDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
 			if err != nil {
 				Fail(err.Error())
 			}

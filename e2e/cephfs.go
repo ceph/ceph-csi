@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo" // nolint
 
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -50,8 +52,9 @@ var _ = Describe("cephfs", func() {
 
 	Context("Test cephfs CSI", func() {
 		It("Test cephfs CSI", func() {
-			By("checking provisioner deployment is completed")
-			err := waitForDeploymentComplete(cephfsDeploymentName, namespace, f.ClientSet, deployTimeout)
+			By("checking provisioner statefulset is running")
+			timeout := time.Duration(deployTimeout) * time.Minute
+			err := framework.WaitForStatefulSetReplicasReady(cephfsDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
 			if err != nil {
 				Fail(err.Error())
 			}

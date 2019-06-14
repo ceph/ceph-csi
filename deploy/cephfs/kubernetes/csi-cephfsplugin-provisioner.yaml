@@ -1,13 +1,25 @@
 ---
-kind: Deployment
-apiVersion: apps/v1
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-cephfsplugin-provisioner
+  labels:
+    app: csi-cephfsplugin-provisioner
+spec:
+  selector:
+    app: csi-cephfsplugin-provisioner
+  ports:
+    - name: dummy
+      port: 12345
+
+---
+kind: StatefulSet
+apiVersion: apps/v1beta1
 metadata:
   name: csi-cephfsplugin-provisioner
 spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: csi-cephfsplugin-provisioner
+  serviceName: "csi-cephfsplugin-provisioner"
+  replicas: 1
   template:
     metadata:
       labels:
@@ -20,7 +32,6 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
-            - "--leader-election-type=leases"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
