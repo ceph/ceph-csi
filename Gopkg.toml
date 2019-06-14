@@ -15,7 +15,7 @@
   name = "google.golang.org/grpc"
   version = "1.10.0"
 
-[[constraint]]
+[[override]]
   version = "kubernetes-1.14.2"
   name = "k8s.io/apimachinery"
 
@@ -39,9 +39,13 @@
   name = "github.com/golang/protobuf"
   version = "1.1.0"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/client-go"
   version = "kubernetes-1.14.2"
+
+[[override]]
+  name = "github.com/kubernetes-csi/external-snapshotter"
+  version = "v1.1.0"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
@@ -55,3 +59,8 @@
   go-tests = true
   non-go = true
   unused-packages = true
+
+# Prevent dep from pruning
+[[prune.project]]
+  name = "github.com/kubernetes-csi/external-snapshotter"
+  non-go = false
