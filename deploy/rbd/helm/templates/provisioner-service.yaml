@@ -1,6 +1,5 @@
-{{- if .Values.rbac.create -}} 
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1
+kind: Service
+apiVersion: v1
 metadata:
   name: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
   labels:
@@ -9,8 +8,11 @@ metadata:
     component: {{ .Values.provisioner.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
-rules:
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get", "list", "watch", "create", "delete"]
-{{- end -}}
+spec:
+  selector:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    component: {{ .Values.provisioner.name }}
+    release: {{ .Release.Name }}
+  ports:
+    - name: dummy
+      port: 12345
