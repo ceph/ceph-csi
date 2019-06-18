@@ -37,6 +37,13 @@ func getFilesinDirectory(path string) []os.FileInfo {
 
 var poll = 2 * time.Second
 
+type snapInfo struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+	Timestamp string `json:"timestamp"`
+}
+
 func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
@@ -507,6 +514,41 @@ func checkCephPods(ns string, c kubernetes.Interface, count, t int, opt *metav1.
 
 }
 
+// createPVCAndApp creates pvc and pod
+// if name is not empty same will be set as pvc and app name
+func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+
+	if name != "" {
+		pvc.Name = name
+		app.Name = name
+		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+	}
+	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return err
+	}
+	err = createApp(f.ClientSet, app, deployTimeout)
+	return err
+}
+
+// deletePVCAndApp delete pvc and pod
+// if name is not empty same will be set as pvc and app name
+func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+
+	if name != "" {
+		pvc.Name = name
+		app.Name = name
+		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+	}
+
+	err := deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return err
+	}
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	return err
+}
+
 func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 	pvc, err := loadPVC(pvcPath)
 	if pvc == nil {
@@ -514,27 +556,19 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 	}
 	pvc.Namespace = f.UniqueName
 	framework.Logf("The PVC  template %+v", pvc)
-	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-	if err != nil {
-		Fail(err.Error())
-	}
 
 	app, err := loadApp(appPath)
 	if err != nil {
 		Fail(err.Error())
 	}
 	app.Namespace = f.UniqueName
-	err = createApp(f.ClientSet, app, deployTimeout)
+
+	err = createPVCAndApp("", f, pvc, app)
 	if err != nil {
 		Fail(err.Error())
 	}
 
-	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
-	if err != nil {
-		Fail(err.Error())
-	}
-
-	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	err = deletePVCAndApp("", f, pvc, app)
 	if err != nil {
 		Fail(err.Error())
 	}
@@ -626,6 +660,7 @@ func createSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
 	if err != nil {
 		return err
 	}
+	framework.Logf("snapshot with name %v created in %v namespace", snap.Name, snap.Namespace)
 
 	timeout := time.Duration(t) * time.Minute
 	name := snap.Name
@@ -665,12 +700,11 @@ func deleteSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	name := snap.Name
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Ready state", snap)
+	framework.Logf("Waiting up to %v to be deleted", snap)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		framework.Logf("waiting for snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+		framework.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 		_, err := sclient.VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
-
 		if err == nil {
 			return false, nil
 		}
@@ -679,6 +713,35 @@ func deleteSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
 			return false, fmt.Errorf("get on deleted snapshot %v failed with error other than \"not found\": %v", name, err)
 		}
 
-		return false, nil
+		return true, nil
 	})
+}
+
+func listRBDImages(f *framework.Framework) []string {
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	stdout := execCommandInPod(f, "rbd ls --pool=replicapool --format=json", rookNS, &opt)
+
+	var imgInfos []string
+
+	err := json.Unmarshal([]byte(stdout), &imgInfos)
+	if err != nil {
+		Fail(err.Error())
+	}
+	return imgInfos
+}
+
+func listSnapshots(f *framework.Framework, pool, imageName string) ([]snapInfo, error) {
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	command := fmt.Sprintf("rbd snap ls %s/%s --format=json", pool, imageName)
+	stdout := execCommandInPod(f, command, rookNS, &opt)
+
+	var snapInfos []snapInfo
+
+	err := json.Unmarshal([]byte(stdout), &snapInfos)
+	return snapInfos, err
 }

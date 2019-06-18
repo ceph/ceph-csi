@@ -49,19 +49,26 @@ func createRBDPool() {
 }
 func deleteFileSystem() {
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "filesystem-test.yaml")
-	framework.RunKubectlOrDie("delete", "-f", commonPath)
+	_, err := framework.RunKubectl("delete", "-f", commonPath)
+	if err != nil {
+		framework.Logf("failed to delete file-system %v", err)
+	}
 }
 
 func deleteRBDPool() {
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "pool-test.yaml")
-	framework.RunKubectlOrDie("delete", "-f", commonPath)
+	_, err := framework.RunKubectl("delete", "-f", commonPath)
+	if err != nil {
+		framework.Logf("failed to delete pool %v", err)
+	}
 }
 
 func deployOperator(c kubernetes.Interface) {
 	opPath := fmt.Sprintf("%s/%s", rookURL, "operator.yaml")
 
-	framework.RunKubectlOrDie("create", "-f", opPath)
-	err := waitForDaemonSets("rook-ceph-agent", rookNS, c, deployTimeout)
+	_, err := framework.RunKubectl("create", "-f", opPath)
+	Expect(err).Should(BeNil())
+	err = waitForDaemonSets("rook-ceph-agent", rookNS, c, deployTimeout)
 	Expect(err).Should(BeNil())
 	err = waitForDaemonSets("rook-discover", rookNS, c, deployTimeout)
 	Expect(err).Should(BeNil())
@@ -109,5 +116,8 @@ func tearDownRook() {
 	// TODO need to add selector for cleanup validation
 	framework.Cleanup(opPath, rookNS)
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "common.yaml")
-	framework.RunKubectlOrDie("delete", "-f", commonPath)
+	_, err := framework.RunKubectl("delete", "-f", commonPath)
+	if err != nil {
+		framework.Logf("failed to delete rook common %v", err)
+	}
 }
