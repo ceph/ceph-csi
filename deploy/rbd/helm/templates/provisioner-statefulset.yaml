@@ -1,5 +1,5 @@
 kind: StatefulSet
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 metadata:
   name: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
   labels:
