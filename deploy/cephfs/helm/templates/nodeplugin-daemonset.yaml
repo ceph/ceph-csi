@@ -1,5 +1,5 @@
 kind: DaemonSet
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 metadata:
   name: {{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}
   labels:
