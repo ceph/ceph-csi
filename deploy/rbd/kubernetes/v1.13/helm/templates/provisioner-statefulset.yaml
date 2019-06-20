@@ -25,6 +25,7 @@ spec:
         component: {{ .Values.provisioner.name }}
         release: {{ .Release.Name }}
         heritage: {{ .Release.Service }}
+        contains: liveness
     spec:
       serviceAccountName: {{ include "ceph-csi-rbd.serviceAccountName.provisioner" . }}
       containers:
@@ -111,6 +112,28 @@ spec:
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
+        - name: liveness-prometheus
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--livenessport=8080"
+            - "--livenesspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
+          env:
+            - name: CSI_ENDPOINT
+              value: "unix:/{{ .Values.socketDir }}/{{ .Values.socketFile }}"
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: {{ .Values.socketDir }}
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
       volumes:
