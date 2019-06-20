@@ -42,7 +42,7 @@ var (
 	nodeVolumeIDLocker = util.NewIDLocker()
 )
 
-func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi.NodeStageVolumeRequest) (*util.Credentials, error) {
+func getCredentialsForVolume(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) (*util.Credentials, error) {
 	var (
 		cr      *util.Credentials
 		secrets = req.GetSecrets()
@@ -58,14 +58,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
 		}
 
-		// Then get the ceph user
-
-		entity, err := getCephUser(volOptions, adminCr, volID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get ceph user: %v", err)
-		}
-
-		cr = entity.toCredentials()
+		cr = adminCr
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
@@ -84,7 +77,6 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	var (
 		volOptions *volumeOptions
-		vid        *volumeIdentifier
 	)
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
@@ -95,21 +87,21 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	stagingTargetPath := req.GetStagingTargetPath()
 	volID := volumeID(req.GetVolumeId())
 
-	volOptions, vid, err := newVolumeOptionsFromVolID(string(volID), req.GetVolumeContext(), req.GetSecrets())
+	volOptions, _, err := newVolumeOptionsFromVolID(string(volID), req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrInvalidVolID); !ok {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		// check for pre-provisioned volumes (plugin versions > 1.0.0)
-		volOptions, vid, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
+		volOptions, _, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
 		if err != nil {
 			if _, ok := err.(ErrNonStaticVolume); !ok {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 
 			// check for volumes from plugin versions <= 1.0.0
-			volOptions, vid, err = newVolumeOptionsFromVersion1Context(string(volID), req.GetVolumeContext(),
+			volOptions, _, err = newVolumeOptionsFromVersion1Context(string(volID), req.GetVolumeContext(),
 				req.GetSecrets())
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
@@ -140,7 +132,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	// It's not, mount now
-	if err = ns.mount(volOptions, req, vid); err != nil {
+	if err = ns.mount(volOptions, req); err != nil {
 		return nil, err
 	}
 
@@ -149,11 +141,11 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest, vid *volumeIdentifier) error {
+func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) error {
 	stagingTargetPath := req.GetStagingTargetPath()
 	volID := volumeID(req.GetVolumeId())
 
-	cr, err := getCredentialsForVolume(volOptions, volumeID(vid.FsSubvolName), req)
+	cr, err := getCredentialsForVolume(volOptions, req)
 	if err != nil {
 		klog.Errorf("failed to get ceph credentials for volume %s: %v", volID, err)
 		return status.Error(codes.Internal, err.Error())

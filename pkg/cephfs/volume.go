@@ -29,7 +29,6 @@ import (
 )
 
 const (
-	namespacePrefix   = "fsvolumens_"
 	csiSubvolumeGroup = "csi"
 )
 
@@ -72,10 +71,6 @@ func getVolumeRootPathCeph(volOptions *volumeOptions, cr *util.Credentials, volI
 		return "", err
 	}
 	return strings.TrimSuffix(string(stdout), "\n"), nil
-}
-
-func getVolumeNamespace(volID volumeID) string {
-	return namespacePrefix + string(volID)
 }
 
 func createVolume(volOptions *volumeOptions, cr *util.Credentials, volID volumeID, bytesQuota int64) error {
