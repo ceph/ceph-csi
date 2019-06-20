@@ -22,24 +22,28 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ceph/ceph-csi/pkg/cephfs"
+	"github.com/ceph/ceph-csi/pkg/liveness"
 	"github.com/ceph/ceph-csi/pkg/rbd"
 	"github.com/ceph/ceph-csi/pkg/util"
 	"k8s.io/klog"
 )
 
 const (
-	rbdType    = "rbd"
-	cephfsType = "cephfs"
+	rbdType      = "rbd"
+	cephfsType   = "cephfs"
+	livenessType = "liveness"
 
-	rbdDefaultName    = "rbd.csi.ceph.com"
-	cephfsDefaultName = "cephfs.csi.ceph.com"
+	rbdDefaultName      = "rbd.csi.ceph.com"
+	cephfsDefaultName   = "cephfs.csi.ceph.com"
+	livenessDefaultName = "liveness.csi.ceph.com"
 )
 
 var (
 	// common flags
-	vtype      = flag.String("type", "", "driver type [rbd|cephfs]")
+	vtype      = flag.String("type", "", "driver type [rbd|cephfs|liveness]")
 	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
 	driverName = flag.String("drivername", "", "name of the driver")
 	nodeID     = flag.String("nodeid", "", "node id")
@@ -55,6 +59,12 @@ var (
 	// cephfs related flags
 	volumeMounter = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
 	mountCacheDir = flag.String("mountcachedir", "", "mount info cache save dir")
+
+	// livenes related flags
+	livenessport = flag.Int("livenessport", 8080, "TCP port for liveness requests")
+	livenesspath = flag.String("livenesspath", "/metrics", "path of prometheus endpoint where metrics will be available")
+	pollTime     = flag.Duration("polltime", time.Second*60, "time interval in seconds between each poll")
+	timeout      = flag.Duration("timeout", time.Second*3, "probe timeout in seconds")
 )
 
 func init() {
@@ -90,6 +100,8 @@ func getDriverName() string {
 		return rbdDefaultName
 	case cephfsType:
 		return cephfsDefaultName
+	case livenessType:
+		return livenessDefaultName
 	default:
 		return ""
 	}
@@ -147,6 +159,9 @@ func main() {
 	case cephfsType:
 		driver := cephfs.NewDriver()
 		driver.Run(dname, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, *instanceID, csipluginPath, cp, driverType)
+
+	case livenessType:
+		liveness.Run(*endpoint, *livenesspath, *livenessport, *pollTime, *timeout)
 
 	default:
 		klog.Fatalln("invalid volume type", vtype) // calls exit

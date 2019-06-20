@@ -1,3 +1,4 @@
+
 # CSI RBD Plugin
 
 The RBD CSI plugin is able to provision new RBD images and
@@ -36,6 +37,10 @@ make image-cephcsi
 | `--instanceid`      | "default"             | Unique ID distinguishing this instance of Ceph CSI among other instances, when sharing Ceph clusters across CSI instances for provisioning                                   |
 | `--metadatastorage` | _empty_               | Points to where legacy (1.0.0 or older plugin versions) metadata about provisioned volumes are kept, as file or in as k8s configmap (`node` or `k8s_configmap` respectively) |
 | `--pidlimit`        | _0_                   | Configure the PID limit in cgroups. The container runtime can restrict the number of processes/tasks which can cause problems while provisioning (or deleting) a large number of volumes. A value of `-1` configures the limit to the maximum, `0` does not configure limits at all.   |
+| `--livenessport`    | `8080`                | TCP port for liveness requests                                                                                                                                               |
+| `--livenesspath`    | `"/metrics"`          | Path of prometheus endpoint where metrics will be available                                                                                                                  |
+| `--polltime`        | `"60s"`               | Time interval in between each poll                                                                                                                                           |
+| `--timeout`         | `"3s"`                | Probe timeout in seconds                                                                                                                                                     |
 
 **Available volume parameters:**
 
@@ -126,11 +131,11 @@ After successfully completing the steps above, you should see output similar to 
 ```bash
 $ kubectl get all
 NAME                              READY     STATUS    RESTARTS   AGE
-pod/csi-rbdplugin-fptqr           2/2       Running   0          21s
-pod/csi-rbdplugin-provisioner-0   4/4       Running   0          22s
+pod/csi-rbdplugin-fptqr           3/3       Running   0          21s
+pod/csi-rbdplugin-provisioner-0   5/5       Running   0          22s
 
 NAME                                TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)     AGE
-service/csi-rbdplugin-provisioner   ClusterIP   10.104.2.130   <none>        12345/TCP   23s
+service/csi-rbdplugin-provisioner   ClusterIP   10.104.2.130   <none>        8080/TCP   23s
 ...
 ```
 

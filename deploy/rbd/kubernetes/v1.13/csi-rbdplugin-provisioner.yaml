@@ -4,13 +4,15 @@ apiVersion: v1
 metadata:
   name: csi-rbdplugin-provisioner
   labels:
-    app: csi-rbdplugin-provisioner
+    app: csi-liveness
 spec:
   selector:
     app: csi-rbdplugin-provisioner
   ports:
-    - name: dummy
-      port: 12345
+    - name: http-metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
 
 ---
 kind: StatefulSet
@@ -110,6 +112,26 @@ spec:
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+        - name: liveness-prometheus
+          image: quay.io/cephcsi/cephcsi:canary
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--livenessport=8080"
+            - "--livenesspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          imagePullPolicy: "IfNotPresent"
       volumes:
         - name: host-dev
           hostPath:

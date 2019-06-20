@@ -4,13 +4,15 @@ apiVersion: v1
 metadata:
   name: csi-cephfsplugin-provisioner
   labels:
-    app: csi-cephfsplugin-provisioner
+    app: csi-liveness
 spec:
   selector:
     app: csi-cephfsplugin-provisioner
   ports:
-    - name: dummy
-      port: 12345
+    - name: http-metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8081
 
 ---
 kind: StatefulSet
@@ -97,6 +99,26 @@ spec:
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+        - name: liveness-prometheus
+          image: quay.io/cephcsi/cephcsi:canary
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--livenessport=8081"
+            - "--livenesspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          imagePullPolicy: "IfNotPresent"
       volumes:
         - name: socket-dir
           hostPath:

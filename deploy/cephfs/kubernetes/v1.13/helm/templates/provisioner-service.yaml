@@ -4,7 +4,7 @@ metadata:
   name: {{ include "ceph-csi-cephfs.provisioner.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ include "ceph-csi-cephfs.name" . }}
+    app: csi-liveness
     chart: {{ include "ceph-csi-cephfs.chart" . }}
     component: {{ .Values.provisioner.name }}
     release: {{ .Release.Name }}
@@ -15,5 +15,7 @@ spec:
     component: {{ .Values.provisioner.name }}
     release: {{ .Release.Name }}
   ports:
-    - name: dummy
-      port: 12345
+    - name: http-metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8081
