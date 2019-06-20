@@ -104,13 +104,6 @@ func mountOneCacheEntry(volOptions *volumeOptions, vid *volumeIdentifier, me *vo
 		if err != nil {
 			return err
 		}
-
-		var entity *cephEntity
-		entity, err = getCephUser(volOptions, cr, volumeID(vid.FsSubvolName))
-		if err != nil {
-			return err
-		}
-		cr = entity.toCredentials()
 	} else {
 		cr, err = util.GetUserCredentials(decodeCredentials(me.Secrets))
 		if err != nil {
