@@ -32,6 +32,8 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
+            - "--timeout=60s"
+            - "--retry-interval-start=500ms"
           env:
             - name: ADDRESS
               value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
@@ -46,8 +48,8 @@ spec:
           imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
-            - "--connection-timeout=15s"
             - "--v=5"
+            - "--timeout=60s"
           env:
             - name: ADDRESS
               value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
