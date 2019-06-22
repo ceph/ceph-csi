@@ -30,7 +30,6 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
-	"k8s.io/utils/keymutex"
 )
 
 const (
@@ -83,17 +82,13 @@ type rbdSnapshot struct {
 
 var (
 	// serializes operations based on "<rbd pool>/<rbd image>" as key
-	attachdetachMutex = keymutex.NewHashed(0)
+	attachdetachLocker = util.NewIDLocker()
 	// serializes operations based on "volume name" as key
-	volumeNameMutex = keymutex.NewHashed(0)
-	// serializes operations based on "volume id" as key
-	volumeIDMutex = keymutex.NewHashed(0)
+	volumeNameLocker = util.NewIDLocker()
 	// serializes operations based on "snapshot name" as key
-	snapshotNameMutex = keymutex.NewHashed(0)
-	// serializes operations based on "snapshot id" as key
-	snapshotIDMutex = keymutex.NewHashed(0)
+	snapshotNameLocker = util.NewIDLocker()
 	// serializes operations based on "mount target path" as key
-	targetPathMutex = keymutex.NewHashed(0)
+	targetPathLocker = util.NewIDLocker()
 
 	supportedFeatures = sets.NewString("layering")
 )

@@ -28,7 +28,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-	"k8s.io/utils/keymutex"
 )
 
 // NodeServer struct of ceph CSI driver with supported methods of CSI
@@ -38,7 +37,7 @@ type NodeServer struct {
 }
 
 var (
-	mtxNodeVolumeID = keymutex.NewHashed(0)
+	nodeVolumeIDLocker = util.NewIDLocker()
 )
 
 func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi.NodeStageVolumeRequest) (*util.Credentials, error) {
@@ -121,8 +120,8 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	mtxNodeVolumeID.LockKey(string(volID))
-	defer mustUnlock(mtxNodeVolumeID, string(volID))
+	idLk := nodeVolumeIDLocker.Lock(string(volID))
+	defer nodeVolumeIDLocker.Unlock(idLk, string(volID))
 
 	// Check if the volume is already mounted
 

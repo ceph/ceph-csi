@@ -116,17 +116,13 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	volumeNameMutex.LockKey(req.GetName())
-	defer func() {
-		if err = volumeNameMutex.UnlockKey(req.GetName()); err != nil {
-			klog.Warningf("failed to unlock mutex volume:%s %v", req.GetName(), err)
-		}
-	}()
-
 	rbdVol, err := cs.parseVolCreateRequest(req)
 	if err != nil {
 		return nil, err
 	}
+
+	idLk := volumeNameLocker.Lock(req.GetName())
+	defer volumeNameLocker.Unlock(idLk, req.GetName())
 
 	found, err := checkVolExists(rbdVol, cr)
 	if err != nil {
@@ -248,12 +244,6 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
-	volumeIDMutex.LockKey(volumeID)
-	defer func() {
-		if err := volumeIDMutex.UnlockKey(volumeID); err != nil {
-			klog.Warningf("failed to unlock mutex volume:%s %v", volumeID, err)
-		}
-	}()
 
 	rbdVol := &rbdVolume{}
 	if err := genVolFromVolID(rbdVol, volumeID, cr); err != nil {
@@ -272,12 +262,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		// If error is ErrImageNotFound then we failed to find the image, but found the imageOMap
 		// to lead us to the image, hence the imageOMap needs to be garbage collected, by calling
 		// unreserve for the same
-		volumeNameMutex.LockKey(rbdVol.RequestName)
-		defer func() {
-			if err := volumeNameMutex.UnlockKey(rbdVol.RequestName); err != nil {
-				klog.Warningf("failed to unlock mutex volume:%s %v", rbdVol.RequestName, err)
-			}
-		}()
+		idLk := volumeNameLocker.Lock(rbdVol.RequestName)
+		defer volumeNameLocker.Unlock(idLk, rbdVol.RequestName)
 
 		if err := undoVolReservation(rbdVol, cr); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
@@ -287,12 +273,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	// lock out parallel create requests against the same volume name as we
 	// cleanup the image and associated omaps for the same
-	volumeNameMutex.LockKey(rbdVol.RequestName)
-	defer func() {
-		if err := volumeNameMutex.UnlockKey(rbdVol.RequestName); err != nil {
-			klog.Warningf("failed to unlock mutex volume:%s %v", rbdVol.RequestName, err)
-		}
-	}()
+	idLk := volumeNameLocker.Lock(rbdVol.RequestName)
+	defer volumeNameLocker.Unlock(idLk, rbdVol.RequestName)
 
 	// Deleting rbd image
 	klog.V(4).Infof("deleting image %s", rbdVol.RbdImageName)
@@ -341,13 +323,6 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	snapshotNameMutex.LockKey(req.GetName())
-	defer func() {
-		if err = snapshotNameMutex.UnlockKey(req.GetName()); err != nil {
-			klog.Warningf("failed to unlock mutex snapshot:%s %v", req.GetName(), err)
-		}
-	}()
-
 	// Fetch source volume information
 	rbdVol := new(rbdVolume)
 	err = genVolFromVolID(rbdVol, req.GetSourceVolumeId(), cr)
@@ -369,6 +344,9 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	rbdSnap.SizeBytes = rbdVol.VolSize
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
 	rbdSnap.RequestName = req.GetName()
+
+	idLk := snapshotNameLocker.Lock(req.GetName())
+	defer snapshotNameLocker.Unlock(idLk, req.GetName())
 
 	// Need to check for already existing snapshot name, and if found
 	// check for the requested source volume id and already allocated source volume id
@@ -502,13 +480,6 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return nil, status.Error(codes.InvalidArgument, "snapshot ID cannot be empty")
 	}
 
-	snapshotIDMutex.LockKey(snapshotID)
-	defer func() {
-		if err = snapshotIDMutex.UnlockKey(snapshotID); err != nil {
-			klog.Warningf("failed to unlock mutex snapshot:%s %v", snapshotID, err)
-		}
-	}()
-
 	rbdSnap := &rbdSnapshot{}
 	if err = genSnapFromSnapID(rbdSnap, snapshotID, cr); err != nil {
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
@@ -518,24 +489,25 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
 
-		// Consider missing snap as already deleted, and proceed to remove the omap values
+		// All errors other than ErrSnapNotFound should return an error back to the caller
 		if _, ok := err.(ErrSnapNotFound); !ok {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+
+		// Consider missing snap as already deleted, and proceed to remove the omap values,
+		// safeguarding against parallel create or delete requests against the same name.
+		idLk := snapshotNameLocker.Lock(rbdSnap.RequestName)
+		defer snapshotNameLocker.Unlock(idLk, rbdSnap.RequestName)
+
 		if err = undoSnapReservation(rbdSnap, cr); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		return &csi.DeleteSnapshotResponse{}, nil
 	}
 
-	// lock out parallel create requests against the same snap name as we
-	// cleanup the image and associated omaps for the same
-	snapshotNameMutex.LockKey(rbdSnap.RequestName)
-	defer func() {
-		if err = snapshotNameMutex.UnlockKey(rbdSnap.RequestName); err != nil {
-			klog.Warningf("failed to unlock mutex snapshot:%s %v", rbdSnap.RequestName, err)
-		}
-	}()
+	// safeguard against parallel create or delete requests against the same name
+	idLk := snapshotNameLocker.Lock(rbdSnap.RequestName)
+	defer snapshotNameLocker.Unlock(idLk, rbdSnap.RequestName)
 
 	// Unprotect snapshot
 	err = unprotectSnapshot(rbdSnap, cr)

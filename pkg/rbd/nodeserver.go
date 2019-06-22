@@ -62,18 +62,10 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	targetPathMutex.LockKey(targetPath)
-	defer func() {
-		if err = targetPathMutex.UnlockKey(targetPath); err != nil {
-			klog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
-		}
-	}()
-	disableInUseChecks := false
+	idLk := targetPathLocker.Lock(targetPath)
+	defer targetPathLocker.Unlock(idLk, targetPath)
 
-	volName, err := ns.getVolumeName(req)
-	if err != nil {
-		return nil, err
-	}
+	disableInUseChecks := false
 
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	// Check if that target path exists properly
@@ -100,7 +92,13 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	if err != nil {
 		return nil, err
 	}
+
+	volName, err := ns.getVolumeName(req)
+	if err != nil {
+		return nil, err
+	}
 	volOptions.RbdImageName = volName
+
 	// Mapping RBD image
 	devicePath, err := attachRBDImage(volOptions, cr)
 	if err != nil {
@@ -206,13 +204,8 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
-	targetPathMutex.LockKey(targetPath)
-
-	defer func() {
-		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
-			klog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
-		}
-	}()
+	idLk := targetPathLocker.Lock(targetPath)
+	defer targetPathLocker.Unlock(idLk, targetPath)
 
 	notMnt, err := mount.IsNotMountPoint(ns.mounter, targetPath)
 	if err != nil {

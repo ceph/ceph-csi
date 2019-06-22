@@ -31,16 +31,9 @@ import (
 	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/kubernetes/pkg/util/mount"
-	"k8s.io/utils/keymutex"
 )
 
 type volumeID string
-
-func mustUnlock(m keymutex.KeyMutex, key string) {
-	if err := m.UnlockKey(key); err != nil {
-		klog.Fatalf("failed to unlock mutex for %s: %v", key, err)
-	}
-}
 
 func execCommand(program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
