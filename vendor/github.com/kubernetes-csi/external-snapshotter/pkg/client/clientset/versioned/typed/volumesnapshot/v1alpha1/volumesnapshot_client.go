@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2019 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,32 +25,32 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-type VolumesnapshotV1alpha1Interface interface {
+type SnapshotV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	VolumeSnapshotsGetter
 	VolumeSnapshotClassesGetter
 	VolumeSnapshotContentsGetter
 }
 
-// VolumesnapshotV1alpha1Client is used to interact with features provided by the volumesnapshot group.
-type VolumesnapshotV1alpha1Client struct {
+// SnapshotV1alpha1Client is used to interact with features provided by the snapshot.storage.k8s.io group.
+type SnapshotV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *VolumesnapshotV1alpha1Client) VolumeSnapshots(namespace string) VolumeSnapshotInterface {
+func (c *SnapshotV1alpha1Client) VolumeSnapshots(namespace string) VolumeSnapshotInterface {
 	return newVolumeSnapshots(c, namespace)
 }
 
-func (c *VolumesnapshotV1alpha1Client) VolumeSnapshotClasses() VolumeSnapshotClassInterface {
+func (c *SnapshotV1alpha1Client) VolumeSnapshotClasses() VolumeSnapshotClassInterface {
 	return newVolumeSnapshotClasses(c)
 }
 
-func (c *VolumesnapshotV1alpha1Client) VolumeSnapshotContents() VolumeSnapshotContentInterface {
+func (c *SnapshotV1alpha1Client) VolumeSnapshotContents() VolumeSnapshotContentInterface {
 	return newVolumeSnapshotContents(c)
 }
 
-// NewForConfig creates a new VolumesnapshotV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*VolumesnapshotV1alpha1Client, error) {
+// NewForConfig creates a new SnapshotV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*SnapshotV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -59,12 +59,12 @@ func NewForConfig(c *rest.Config) (*VolumesnapshotV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &VolumesnapshotV1alpha1Client{client}, nil
+	return &SnapshotV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new VolumesnapshotV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new SnapshotV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *VolumesnapshotV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *SnapshotV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -72,9 +72,9 @@ func NewForConfigOrDie(c *rest.Config) *VolumesnapshotV1alpha1Client {
 	return client
 }
 
-// New creates a new VolumesnapshotV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *VolumesnapshotV1alpha1Client {
-	return &VolumesnapshotV1alpha1Client{c}
+// New creates a new SnapshotV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *SnapshotV1alpha1Client {
+	return &SnapshotV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -92,7 +92,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *VolumesnapshotV1alpha1Client) RESTClient() rest.Interface {
+func (c *SnapshotV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

@@ -165,7 +165,7 @@ func (ns *NodeServer) mountVolume(req *csi.NodePublishVolumeRequest, devicePath 
 
 func (ns *NodeServer) createTargetPath(targetPath string, isBlock bool) (bool, error) {
 	// Check if that target path exists properly
-	notMnt, err := ns.mounter.IsNotMountPoint(targetPath)
+	notMnt, err := mount.IsNotMountPoint(ns.mounter, targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if isBlock {
@@ -214,7 +214,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		}
 	}()
 
-	notMnt, err := ns.mounter.IsNotMountPoint(targetPath)
+	notMnt, err := mount.IsNotMountPoint(ns.mounter, targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted

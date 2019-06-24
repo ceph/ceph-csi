@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var (
@@ -21,7 +22,7 @@ func formRookURL(version string) {
 }
 
 func getK8sClient() kubernetes.Interface {
-	framework.Logf("Creating a kubernetes client")
+	e2elog.Logf("Creating a kubernetes client")
 	client, err := framework.LoadClientset()
 	Expect(err).Should(BeNil())
 	return client
@@ -51,7 +52,7 @@ func deleteFileSystem() {
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "filesystem-test.yaml")
 	_, err := framework.RunKubectl("delete", "-f", commonPath)
 	if err != nil {
-		framework.Logf("failed to delete file-system %v", err)
+		e2elog.Logf("failed to delete file-system %v", err)
 	}
 }
 
@@ -59,7 +60,7 @@ func deleteRBDPool() {
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "pool-test.yaml")
 	_, err := framework.RunKubectl("delete", "-f", commonPath)
 	if err != nil {
-		framework.Logf("failed to delete pool %v", err)
+		e2elog.Logf("failed to delete pool %v", err)
 	}
 }
 
@@ -118,6 +119,6 @@ func tearDownRook() {
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "common.yaml")
 	_, err := framework.RunKubectl("delete", "-f", commonPath)
 	if err != nil {
-		framework.Logf("failed to delete rook common %v", err)
+		e2elog.Logf("failed to delete rook common %v", err)
 	}
 }
