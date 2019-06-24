@@ -24,6 +24,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
@@ -47,13 +48,13 @@ type snapInfo struct {
 func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	framework.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start",
+	e2elog.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start",
 		timeout, ns)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		ds, err := c.AppsV1().DaemonSets(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
-			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
+			e2elog.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
 			if strings.Contains(err.Error(), "not found") {
 				return false, nil
 			}
@@ -64,7 +65,7 @@ func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
 		}
 		dNum := ds.Status.DesiredNumberScheduled
 		ready := ds.Status.NumberReady
-		framework.Logf("%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)", ready, dNum, ns, ds.ObjectMeta.Name, int(time.Since(start).Seconds()))
+		e2elog.Logf("%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)", ready, dNum, ns, ds.ObjectMeta.Name, int(time.Since(start).Seconds()))
 		if ready != dNum {
 			return false, nil
 		}
@@ -97,7 +98,7 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 		}
 
 		reason = fmt.Sprintf("deployment status: %#v", deployment.Status)
-		framework.Logf(reason)
+		e2elog.Logf(reason)
 
 		return false, nil
 	})
@@ -325,13 +326,13 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	Expect(err).Should(BeNil())
 	name := pvc.Name
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Bound state", pvc)
+	e2elog.Logf("Waiting up to %v to be in Bound state", pvc)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		framework.Logf("waiting for PVC %s (%d seconds elapsed)", pvc.Name, int(time.Since(start).Seconds()))
+		e2elog.Logf("waiting for PVC %s (%d seconds elapsed)", pvc.Name, int(time.Since(start).Seconds()))
 		pvc, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
-			framework.Logf("Error getting pvc in namespace: '%s': %v", pvc.Namespace, err)
+			e2elog.Logf("Error getting pvc in namespace: '%s': %v", pvc.Namespace, err)
 			if testutils.IsRetryableAPIError(err) {
 				return false, nil
 			}
@@ -363,7 +364,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	nameSpace := pvc.Namespace
 	name := pvc.Name
 	var err error
-	framework.Logf("Deleting PersistentVolumeClaim %v on namespace %v", name, nameSpace)
+	e2elog.Logf("Deleting PersistentVolumeClaim %v on namespace %v", name, nameSpace)
 
 	pvc, err = c.CoreV1().PersistentVolumeClaims(nameSpace).Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -381,7 +382,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	start := time.Now()
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		// Check that the PVC is really deleted.
-		framework.Logf("waiting for PVC %s in state %s  to be deleted (%d seconds elapsed)", name, pvc.Status.String(), int(time.Since(start).Seconds()))
+		e2elog.Logf("waiting for PVC %s in state %s  to be deleted (%d seconds elapsed)", name, pvc.Status.String(), int(time.Since(start).Seconds()))
 		pvc, err = c.CoreV1().PersistentVolumeClaims(nameSpace).Get(name, metav1.GetOptions{})
 		if err == nil {
 			return false, nil
@@ -440,7 +441,7 @@ func getPodName(ns string, c kubernetes.Interface, opt *metav1.ListOptions) stri
 func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Running state", name)
+	e2elog.Logf("Waiting up to %v to be in Running state", name)
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
@@ -452,7 +453,7 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int) er
 		case v1.PodFailed, v1.PodSucceeded:
 			return false, conditions.ErrPodCompleted
 		}
-		framework.Logf("%s app  is  in %s phase expected to be in Running  state (%d seconds elapsed)", name, pod.Status.Phase, int(time.Since(start).Seconds()))
+		e2elog.Logf("%s app  is  in %s phase expected to be in Running  state (%d seconds elapsed)", name, pod.Status.Phase, int(time.Since(start).Seconds()))
 		return false, nil
 	})
 }
@@ -464,14 +465,14 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 		return err
 	}
 	start := time.Now()
-	framework.Logf("Waiting for pod %v to be deleted", name)
+	e2elog.Logf("Waiting for pod %v to be deleted", name)
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err := c.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
 
 		if apierrs.IsNotFound(err) {
 			return true, nil
 		}
-		framework.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+		e2elog.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 		if err != nil {
 			return false, err
 		}
@@ -503,7 +504,7 @@ func checkCephPods(ns string, c kubernetes.Interface, count, t int, opt *metav1.
 			return false, err
 		}
 
-		framework.Logf("pod count is %d  expected count %d (%d seconds elapsed)", len(podList.Items), count, int(time.Since(start).Seconds()))
+		e2elog.Logf("pod count is %d  expected count %d (%d seconds elapsed)", len(podList.Items), count, int(time.Since(start).Seconds()))
 
 		if len(podList.Items) >= count {
 			return true, nil
@@ -555,7 +556,7 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 		Fail(err.Error())
 	}
 	pvc.Namespace = f.UniqueName
-	framework.Logf("The PVC  template %+v", pvc)
+	e2elog.Logf("The PVC  template %+v", pvc)
 
 	app, err := loadApp(appPath)
 	if err != nil {
@@ -581,7 +582,7 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 	}
 	pvc.Namespace = f.UniqueName
 	pvc.Name = f.UniqueName
-	framework.Logf("The PVC  template %+v", pvc)
+	e2elog.Logf("The PVC  template %+v", pvc)
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
 		Fail(err.Error())
@@ -660,18 +661,18 @@ func createSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
 	if err != nil {
 		return err
 	}
-	framework.Logf("snapshot with name %v created in %v namespace", snap.Name, snap.Namespace)
+	e2elog.Logf("snapshot with name %v created in %v namespace", snap.Name, snap.Namespace)
 
 	timeout := time.Duration(t) * time.Minute
 	name := snap.Name
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Ready state", snap)
+	e2elog.Logf("Waiting up to %v to be in Ready state", snap)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		framework.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
+		e2elog.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
 		snaps, err := sclient.VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
-			framework.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
+			e2elog.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
 			if testutils.IsRetryableAPIError(err) {
 				return false, nil
 			}
@@ -700,10 +701,10 @@ func deleteSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	name := snap.Name
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be deleted", snap)
+	e2elog.Logf("Waiting up to %v to be deleted", snap)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		framework.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+		e2elog.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 		_, err := sclient.VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
 		if err == nil {
 			return false, nil

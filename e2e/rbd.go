@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo" // nolint
 
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var (
@@ -48,7 +49,7 @@ var _ = Describe("RBD", func() {
 		for _, file := range rbdFiles {
 			res, err := framework.RunKubectl("delete", "-f", rbdDirPath+file.Name())
 			if err != nil {
-				framework.Logf("failed to delete resource in %s with err %v", res, err)
+				e2elog.Logf("failed to delete resource in %s with err %v", res, err)
 			}
 		}
 		deleteRBDPool()
@@ -96,7 +97,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				pvc.Namespace = f.UniqueName
-				framework.Logf("The PVC  template %+v", pvc)
+				e2elog.Logf("The PVC  template %+v", pvc)
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
 					Fail(err.Error())
@@ -104,7 +105,7 @@ var _ = Describe("RBD", func() {
 				// validate created backend rbd images
 				images := listRBDImages(f)
 				if len(images) != 1 {
-					framework.Logf("backend image count %d expected image count %d", len(images), 1)
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
 					Fail("validate backend image failed")
 				}
 				snap := getSnapshot(snapshotPath)
@@ -121,7 +122,7 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 				if len(snapList) != 1 {
-					framework.Logf("backend snapshot not matching kube snap count,snap count = % kube snap count %d", len(snapList), 1)
+					e2elog.Logf("backend snapshot not matching kube snap count,snap count = % kube snap count %d", len(snapList), 1)
 					Fail("validate backend snapshot failed")
 				}
 
@@ -167,7 +168,7 @@ var _ = Describe("RBD", func() {
 				// validate created backend rbd images
 				images := listRBDImages(f)
 				if len(images) != totalCount {
-					framework.Logf("backend image creation not matching pvc count, image count = % pvc count %d", len(images), totalCount)
+					e2elog.Logf("backend image creation not matching pvc count, image count = % pvc count %d", len(images), totalCount)
 					Fail("validate multiple pvc failed")
 				}
 
@@ -184,7 +185,7 @@ var _ = Describe("RBD", func() {
 				// validate created backend rbd images
 				images = listRBDImages(f)
 				if len(images) > 0 {
-					framework.Logf("left out rbd backend images count %d", len(images))
+					e2elog.Logf("left out rbd backend images count %d", len(images))
 					Fail("validate multiple pvc failed")
 				}
 			})
