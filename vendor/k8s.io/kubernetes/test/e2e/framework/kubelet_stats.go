@@ -38,12 +38,13 @@ import (
 	dockermetrics "k8s.io/kubernetes/pkg/kubelet/dockershim/metrics"
 	kubeletmetrics "k8s.io/kubernetes/pkg/kubelet/metrics"
 	"k8s.io/kubernetes/pkg/master/ports"
+	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/framework/metrics"
 
 	"github.com/prometheus/common/model"
 )
 
-// KubeletMetric stores metrics scraped from the kubelet server's /metric endpoint.
+// KubeletLatencyMetric stores metrics scraped from the kubelet server's /metric endpoint.
 // TODO: Get some more structure around the metrics and this type
 type KubeletLatencyMetric struct {
 	// eg: list, info, create
@@ -55,7 +56,7 @@ type KubeletLatencyMetric struct {
 	Latency  time.Duration
 }
 
-// KubeletMetricByLatency implements sort.Interface for []KubeletMetric based on
+// KubeletLatencyMetrics implements sort.Interface for []KubeletMetric based on
 // the latency field.
 type KubeletLatencyMetrics []KubeletLatencyMetric
 
@@ -159,6 +160,7 @@ type RuntimeOperationErrorRate struct {
 	TimeoutRate float64
 }
 
+// NewRuntimeOperationMonitor returns a new RuntimeOperationMonitor.
 func NewRuntimeOperationMonitor(c clientset.Interface) *RuntimeOperationMonitor {
 	m := &RuntimeOperationMonitor{
 		client:          c,
@@ -182,7 +184,7 @@ func (m *RuntimeOperationMonitor) GetRuntimeOperationErrorRate() map[string]Node
 	for node := range m.nodesRuntimeOps {
 		nodeResult, err := getNodeRuntimeOperationErrorRate(m.client, node)
 		if err != nil {
-			Logf("GetRuntimeOperationErrorRate: unable to get kubelet metrics from node %q: %v", node, err)
+			e2elog.Logf("GetRuntimeOperationErrorRate: unable to get kubelet metrics from node %q: %v", node, err)
 			continue
 		}
 		m.nodesRuntimeOps[node] = nodeResult
@@ -198,7 +200,7 @@ func (m *RuntimeOperationMonitor) GetLatestRuntimeOperationErrorRate() map[strin
 		oldNodeResult := m.nodesRuntimeOps[node]
 		curNodeResult, err := getNodeRuntimeOperationErrorRate(m.client, node)
 		if err != nil {
-			Logf("GetLatestRuntimeOperationErrorRate: unable to get kubelet metrics from node %q: %v", node, err)
+			e2elog.Logf("GetLatestRuntimeOperationErrorRate: unable to get kubelet metrics from node %q: %v", node, err)
 			continue
 		}
 		for op, cur := range curNodeResult {
@@ -275,7 +277,7 @@ func HighLatencyKubeletOperations(c clientset.Interface, threshold time.Duration
 	for _, m := range latencyMetrics {
 		if m.Latency > threshold {
 			badMetrics = append(badMetrics, m)
-			Logf("%+v", m)
+			e2elog.Logf("%+v", m)
 		}
 	}
 	return badMetrics, nil
@@ -433,7 +435,7 @@ const (
 	rootContainerName = "/"
 )
 
-// A list of containers for which we want to collect resource usage.
+// TargetContainers returns a list of containers for which we want to collect resource usage.
 func TargetContainers() []string {
 	return []string{
 		rootContainerName,
@@ -442,6 +444,7 @@ func TargetContainers() []string {
 	}
 }
 
+// ContainerResourceUsage is a structure for gathering container resource usage.
 type ContainerResourceUsage struct {
 	Name                    string
 	Timestamp               time.Time
@@ -457,7 +460,10 @@ func (r *ContainerResourceUsage) isStrictlyGreaterThan(rhs *ContainerResourceUsa
 	return r.CPUUsageInCores > rhs.CPUUsageInCores && r.MemoryWorkingSetInBytes > rhs.MemoryWorkingSetInBytes
 }
 
+// ResourceUsagePerContainer is map of ContainerResourceUsage
 type ResourceUsagePerContainer map[string]*ContainerResourceUsage
+
+// ResourceUsagePerNode is map of ResourceUsagePerContainer.
 type ResourceUsagePerNode map[string]ResourceUsagePerContainer
 
 func formatResourceUsageStats(nodeName string, containerStats ResourceUsagePerContainer) string {
@@ -491,6 +497,7 @@ type usageDataPerContainer struct {
 	memWorkSetData []uint64
 }
 
+// GetKubeletHeapStats returns stats of kubelet heap.
 func GetKubeletHeapStats(c clientset.Interface, nodeName string) (string, error) {
 	client, err := NodeProxyRequest(c, nodeName, "debug/pprof/heap", ports.KubeletPort)
 	if err != nil {
@@ -507,16 +514,17 @@ func GetKubeletHeapStats(c clientset.Interface, nodeName string) (string, error)
 	return strings.Join(lines[len(lines)-numLines:], "\n"), nil
 }
 
+// PrintAllKubeletPods outputs status of all kubelet pods into log.
 func PrintAllKubeletPods(c clientset.Interface, nodeName string) {
 	podList, err := GetKubeletPods(c, nodeName)
 	if err != nil {
-		Logf("Unable to retrieve kubelet pods for node %v: %v", nodeName, err)
+		e2elog.Logf("Unable to retrieve kubelet pods for node %v: %v", nodeName, err)
 		return
 	}
 	for _, p := range podList.Items {
-		Logf("%v from %v started at %v (%d container statuses recorded)", p.Name, p.Namespace, p.Status.StartTime, len(p.Status.ContainerStatuses))
+		e2elog.Logf("%v from %v started at %v (%d container statuses recorded)", p.Name, p.Namespace, p.Status.StartTime, len(p.Status.ContainerStatuses))
 		for _, c := range p.Status.ContainerStatuses {
-			Logf("\tContainer %v ready: %v, restart count %v",
+			e2elog.Logf("\tContainer %v ready: %v, restart count %v",
 				c.Name, c.Ready, c.RestartCount)
 		}
 	}
@@ -576,7 +584,7 @@ func (r *resourceCollector) Stop() {
 func (r *resourceCollector) collectStats(oldStatsMap map[string]*stats.ContainerStats) {
 	summary, err := getNodeStatsSummary(r.client, r.node)
 	if err != nil {
-		Logf("Error getting node stats summary on %q, err: %v", r.node, err)
+		e2elog.Logf("Error getting node stats summary on %q, err: %v", r.node, err)
 		return
 	}
 	cStatsMap := getSystemContainerStats(summary)
@@ -585,7 +593,7 @@ func (r *resourceCollector) collectStats(oldStatsMap map[string]*stats.Container
 	for _, name := range r.containers {
 		cStats, ok := cStatsMap[name]
 		if !ok {
-			Logf("Missing info/stats for container %q on node %q", name, r.node)
+			e2elog.Logf("Missing info/stats for container %q on node %q", name, r.node)
 			return
 		}
 
@@ -661,6 +669,7 @@ type ResourceMonitor struct {
 	collectors      map[string]*resourceCollector
 }
 
+// NewResourceMonitor returns a new ResourceMonitor.
 func NewResourceMonitor(c clientset.Interface, containerNames []string, pollingInterval time.Duration) *ResourceMonitor {
 	return &ResourceMonitor{
 		containers:      containerNames,
@@ -669,6 +678,7 @@ func NewResourceMonitor(c clientset.Interface, containerNames []string, pollingI
 	}
 }
 
+// Start starts collectors.
 func (r *ResourceMonitor) Start() {
 	// It should be OK to monitor unschedulable Nodes
 	nodes, err := r.client.CoreV1().Nodes().List(metav1.ListOptions{})
@@ -683,26 +693,31 @@ func (r *ResourceMonitor) Start() {
 	}
 }
 
+// Stop stops collectors.
 func (r *ResourceMonitor) Stop() {
 	for _, collector := range r.collectors {
 		collector.Stop()
 	}
 }
 
+// Reset resets collectors.
 func (r *ResourceMonitor) Reset() {
 	for _, collector := range r.collectors {
 		collector.Reset()
 	}
 }
 
+// LogLatest outputs the latest resource usage into log.
 func (r *ResourceMonitor) LogLatest() {
 	summary, err := r.GetLatest()
 	if err != nil {
-		Logf("%v", err)
+		e2elog.Logf("%v", err)
 	}
-	Logf("%s", r.FormatResourceUsage(summary))
+	e2elog.Logf("%s", r.FormatResourceUsage(summary))
 }
 
+// FormatResourceUsage returns the formatted string for LogLatest().
+// TODO(oomichi): This can be made to local function after making test/e2e/node/kubelet_perf.go use LogLatest directly instead.
 func (r *ResourceMonitor) FormatResourceUsage(s ResourceUsagePerNode) string {
 	summary := []string{}
 	for node, usage := range s {
@@ -711,6 +726,7 @@ func (r *ResourceMonitor) FormatResourceUsage(s ResourceUsagePerNode) string {
 	return strings.Join(summary, "\n")
 }
 
+// GetLatest returns the latest resource usage.
 func (r *ResourceMonitor) GetLatest() (ResourceUsagePerNode, error) {
 	result := make(ResourceUsagePerNode)
 	errs := []error{}
@@ -725,6 +741,7 @@ func (r *ResourceMonitor) GetLatest() (ResourceUsagePerNode, error) {
 	return result, utilerrors.NewAggregate(errs)
 }
 
+// GetMasterNodeLatest returns the latest resource usage of master and node.
 func (r *ResourceMonitor) GetMasterNodeLatest(usagePerNode ResourceUsagePerNode) ResourceUsagePerNode {
 	result := make(ResourceUsagePerNode)
 	var masterUsage ResourceUsagePerContainer
@@ -767,6 +784,7 @@ type ContainersCPUSummary map[string]map[float64]float64
 // ContainersCPUSummary map.
 type NodesCPUSummary map[string]ContainersCPUSummary
 
+// FormatCPUSummary returns the string of human-readable CPU summary from the specified summary data.
 func (r *ResourceMonitor) FormatCPUSummary(summary NodesCPUSummary) string {
 	// Example output for a node (the percentiles may differ):
 	// CPU usage of containers on node "e2e-test-foo-node-0vj7":
@@ -804,11 +822,13 @@ func (r *ResourceMonitor) FormatCPUSummary(summary NodesCPUSummary) string {
 	return strings.Join(summaryStrings, "\n")
 }
 
+// LogCPUSummary outputs summary of CPU into log.
 func (r *ResourceMonitor) LogCPUSummary() {
 	summary := r.GetCPUSummary()
-	Logf("%s", r.FormatCPUSummary(summary))
+	e2elog.Logf("%s", r.FormatCPUSummary(summary))
 }
 
+// GetCPUSummary returns summary of CPU.
 func (r *ResourceMonitor) GetCPUSummary() NodesCPUSummary {
 	result := make(NodesCPUSummary)
 	for nodeName, collector := range r.collectors {
@@ -821,6 +841,7 @@ func (r *ResourceMonitor) GetCPUSummary() NodesCPUSummary {
 	return result
 }
 
+// GetMasterNodeCPUSummary returns summary of master node CPUs.
 func (r *ResourceMonitor) GetMasterNodeCPUSummary(summaryPerNode NodesCPUSummary) NodesCPUSummary {
 	result := make(NodesCPUSummary)
 	var masterSummary ContainersCPUSummary

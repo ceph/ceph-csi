@@ -16,23 +16,23 @@
   version = "1.10.0"
 
 [[override]]
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
   name = "k8s.io/apimachinery"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "=v1.14.2"
+  version = "=v1.15.0"
 
 [[override]]
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
   name = "k8s.io/api"
 
 [[override]]
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
   name = "k8s.io/apiserver"
 
 [[override]]
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
   name = "k8s.io/cli-runtime"
 
 [[override]]
@@ -41,7 +41,7 @@
 
 [[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
 
 [[override]]
   name = "github.com/kubernetes-csi/external-snapshotter"
@@ -49,11 +49,11 @@
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
 
 [[override]]
   name = "k8s.io/kube-aggregator"
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
 
 [prune]
   go-tests = true
