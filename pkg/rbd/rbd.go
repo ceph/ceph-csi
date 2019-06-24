@@ -23,6 +23,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
+	nsutil "k8s.io/kubernetes/pkg/volume/util/nsenter"
 	"k8s.io/utils/exec"
 	"k8s.io/utils/nsenter"
 )
@@ -89,7 +90,7 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 		if err != nil {
 			return nil, err
 		}
-		mounter = mount.NewNsenterMounter("", ne)
+		mounter = nsutil.NewMounter("", ne)
 	}
 	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),

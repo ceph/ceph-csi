@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo" // nolint
 
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var (
@@ -45,7 +46,7 @@ var _ = Describe("cephfs", func() {
 		for _, file := range cephfsFiles {
 			res, err := framework.RunKubectl("delete", "-f", cephfsDirPath+file.Name())
 			if err != nil {
-				framework.Logf("failed to delete resource in %s with err %v", res, err)
+				e2elog.Logf("failed to delete resource in %s with err %v", res, err)
 			}
 		}
 		deleteResource(cephfsExamplePath + "secret.yaml")
