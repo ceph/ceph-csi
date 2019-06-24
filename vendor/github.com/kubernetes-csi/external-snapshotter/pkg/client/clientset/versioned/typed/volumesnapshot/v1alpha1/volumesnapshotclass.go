@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2019 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ type volumeSnapshotClasses struct {
 }
 
 // newVolumeSnapshotClasses returns a VolumeSnapshotClasses
-func newVolumeSnapshotClasses(c *VolumesnapshotV1alpha1Client) *volumeSnapshotClasses {
+func newVolumeSnapshotClasses(c *SnapshotV1alpha1Client) *volumeSnapshotClasses {
 	return &volumeSnapshotClasses{
 		client: c.RESTClient(),
 	}

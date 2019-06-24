@@ -207,7 +207,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	Expect(err).Should(BeNil())
 }
 
-func newSnapshotClient() (*snapClient.VolumesnapshotV1alpha1Client, error) {
+func newSnapshotClient() (*snapClient.SnapshotV1alpha1Client, error) {
 	config, err := framework.LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("error creating client: %v", err.Error())
