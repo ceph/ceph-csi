@@ -63,7 +63,7 @@ func getPools(monitors string, cr *Credentials) ([]cephStoragePoolSummary, error
 		"ceph",
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key="+cr.Key,
+		"--keyfile="+cr.KeyFile,
 		"-c", CephConfigPath,
 		"-f", "json",
 		"osd", "lspools")
@@ -122,7 +122,7 @@ func SetOMapKeyValue(monitors string, cr *Credentials, poolName, namespace, oMap
 	args := []string{
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key=" + cr.Key,
+		"--keyfile=" + cr.KeyFile,
 		"-c", CephConfigPath,
 		"-p", poolName,
 		"setomapval", oMapName, oMapKey, keyValue,
@@ -157,7 +157,7 @@ func GetOMapValue(monitors string, cr *Credentials, poolName, namespace, oMapNam
 	args := []string{
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key=" + cr.Key,
+		"--keyfile=" + cr.KeyFile,
 		"-c", CephConfigPath,
 		"-p", poolName,
 		"getomapval", oMapName, oMapKey, tmpFile.Name(),
@@ -199,7 +199,7 @@ func RemoveOMapKey(monitors string, cr *Credentials, poolName, namespace, oMapNa
 	args := []string{
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key=" + cr.Key,
+		"--keyfile=" + cr.KeyFile,
 		"-c", CephConfigPath,
 		"-p", poolName,
 		"rmomapkey", oMapName, oMapKey,
@@ -227,7 +227,7 @@ func CreateObject(monitors string, cr *Credentials, poolName, namespace, objectN
 	args := []string{
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key=" + cr.Key,
+		"--keyfile=" + cr.KeyFile,
 		"-c", CephConfigPath,
 		"-p", poolName,
 		"create", objectName,
@@ -257,7 +257,7 @@ func RemoveObject(monitors string, cr *Credentials, poolName, namespace, oMapNam
 	args := []string{
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key=" + cr.Key,
+		"--keyfile=" + cr.KeyFile,
 		"-c", CephConfigPath,
 		"-p", poolName,
 		"rm", oMapName,

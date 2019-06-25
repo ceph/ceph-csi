@@ -49,10 +49,11 @@ func checkVolExists(volOptions *volumeOptions, secret map[string]string) (*volum
 		vid volumeIdentifier
 	)
 
-	cr, err := util.GetAdminCredentials(secret)
+	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
 		return nil, err
 	}
+	defer cr.DeleteCredentials()
 
 	imageUUID, err := volJournal.CheckReservation(volOptions.Monitors, cr,
 		volOptions.MetadataPool, volOptions.RequestName, "")
@@ -86,10 +87,11 @@ func checkVolExists(volOptions *volumeOptions, secret map[string]string) (*volum
 
 // undoVolReservation is a helper routine to undo a name reservation for a CSI VolumeName
 func undoVolReservation(volOptions *volumeOptions, vid volumeIdentifier, secret map[string]string) error {
-	cr, err := util.GetAdminCredentials(secret)
+	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
 		return err
 	}
+	defer cr.DeleteCredentials()
 
 	err = volJournal.UndoReservation(volOptions.Monitors, cr, volOptions.MetadataPool,
 		vid.FsSubvolName, volOptions.RequestName)
@@ -105,10 +107,11 @@ func reserveVol(volOptions *volumeOptions, secret map[string]string) (*volumeIde
 		vid volumeIdentifier
 	)
 
-	cr, err := util.GetAdminCredentials(secret)
+	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
 		return nil, err
 	}
+	defer cr.DeleteCredentials()
 
 	imageUUID, err := volJournal.ReserveName(volOptions.Monitors, cr,
 		volOptions.MetadataPool, volOptions.RequestName, "")

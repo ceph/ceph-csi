@@ -119,7 +119,7 @@ func mountFuse(mountPoint string, cr *util.Credentials, volOptions *volumeOption
 		mountPoint,
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.ID, "--key=" + cr.Key,
+		"-n", cephEntityClientPrefix + cr.ID, "--keyfile=" + cr.KeyFile,
 		"-r", volOptions.RootPath,
 		"-o", "nonempty",
 	}
@@ -176,7 +176,7 @@ func mountKernel(mountPoint string, cr *util.Credentials, volOptions *volumeOpti
 		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
 		mountPoint,
 	}
-	optionsStr := fmt.Sprintf("name=%s,secret=%s", cr.ID, cr.Key)
+	optionsStr := fmt.Sprintf("name=%s,secretfile=%s", cr.ID, cr.KeyFile)
 	if volOptions.FsName != "" {
 		optionsStr += fmt.Sprintf(",mds_namespace=%s", volOptions.FsName)
 	}

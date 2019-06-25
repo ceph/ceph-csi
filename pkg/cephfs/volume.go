@@ -64,7 +64,7 @@ func getVolumeRootPathCeph(volOptions *volumeOptions, cr *util.Credentials, volI
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix+cr.ID,
-		"--key="+cr.Key)
+		"--keyfile="+cr.KeyFile)
 
 	if err != nil {
 		klog.Errorf("failed to get the rootpath for the vol %s(%s)", string(volID), err)
@@ -90,7 +90,7 @@ func createVolume(volOptions *volumeOptions, cr *util.Credentials, volID volumeI
 			"-m", volOptions.Monitors,
 			"-c", util.CephConfigPath,
 			"-n", cephEntityClientPrefix+cr.ID,
-			"--key="+cr.Key)
+			"--keyfile="+cr.KeyFile)
 		if err != nil {
 			klog.Errorf("failed to create subvolume group csi, for the vol %s(%s)", string(volID), err)
 			return err
@@ -111,7 +111,7 @@ func createVolume(volOptions *volumeOptions, cr *util.Credentials, volID volumeI
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix+cr.ID,
-		"--key="+cr.Key)
+		"--keyfile="+cr.KeyFile)
 	if err != nil {
 		klog.Errorf("failed to create subvolume %s(%s) in fs %s", string(volID), err, volOptions.FsName)
 		return err
@@ -198,7 +198,7 @@ func purgeVolume(volID volumeID, cr *util.Credentials, volOptions *volumeOptions
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix+cr.ID,
-		"--key="+cr.Key)
+		"--keyfile="+cr.KeyFile)
 	if err != nil {
 		klog.Errorf("failed to purge subvolume %s(%s) in fs %s", string(volID), err, volOptions.FsName)
 		return err

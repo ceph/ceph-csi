@@ -22,15 +22,17 @@ import (
 
 const (
 	keyArg              = "--key="
+	keyFileArg          = "--keyfile="
 	secretArg           = "secret="
 	optionsArgSeparator = ','
 	strippedKey         = "--key=***stripped***"
+	strippedKeyFile     = "--keyfile=***stripped***"
 	strippedSecret      = "secret=***stripped***"
 )
 
-// StripSecretInArgs strips values of either "--key" or "secret=".
+// StripSecretInArgs strips values of either "--key"/"--keyfile" or "secret=".
 // `args` is left unchanged.
-// Expects only one occurrence of either "--key" or "secret=".
+// Expects only one occurrence of either "--key"/"--keyfile" or "secret=".
 func StripSecretInArgs(args []string) []string {
 	out := make([]string, len(args))
 	copy(out, args)
@@ -46,6 +48,11 @@ func stripKey(out []string) bool {
 	for i := range out {
 		if strings.HasPrefix(out[i], keyArg) {
 			out[i] = strippedKey
+			return true
+		}
+
+		if strings.HasPrefix(out[i], keyFileArg) {
+			out[i] = strippedKeyFile
 			return true
 		}
 	}
