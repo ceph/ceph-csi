@@ -40,7 +40,7 @@ func deleteCephUserDeprecated(volOptions *volumeOptions, adminCr *util.Credentia
 	return execCommandErr("ceph",
 		"-m", volOptions.Monitors,
 		"-n", adminID,
-		"--key="+adminCr.Key,
+		"--keyfile="+adminCr.KeyFile,
 		"-c", util.CephConfigPath,
 		"auth", "rm", userID,
 	)

@@ -62,10 +62,11 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	volID := req.GetVolumeId()
 
-	cr, err := util.GetUserCredentials(req.GetSecrets())
+	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	isLegacyVolume := false
 	volName, err := getVolumeName(req.GetVolumeId())

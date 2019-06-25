@@ -112,10 +112,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	cr, err := util.GetUserCredentials(req.GetSecrets())
+	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	rbdVol, err := cs.parseVolCreateRequest(req)
 	if err != nil {
@@ -179,10 +180,11 @@ func (cs *ControllerServer) createBackingImage(rbdVol *rbdVolume, req *csi.Creat
 			return err
 		}
 	} else {
-		cr, err := util.GetUserCredentials(req.GetSecrets())
+		cr, err := util.NewUserCredentials(req.GetSecrets())
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
+		defer cr.DeleteCredentials()
 
 		err = createImage(rbdVol, volSizeMiB, cr)
 		if err != nil {
@@ -206,10 +208,11 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 		return status.Error(codes.InvalidArgument, "volume Snapshot ID cannot be empty")
 	}
 
-	cr, err := util.GetUserCredentials(req.GetSecrets())
+	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	rbdSnap := &rbdSnapshot{}
 	if err = genSnapFromSnapID(rbdSnap, snapshotID, cr); err != nil {
@@ -279,10 +282,11 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, err
 	}
 
-	cr, err := util.GetUserCredentials(req.GetSecrets())
+	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	// For now the image get unconditionally deleted, but here retention policy can be checked
 	volumeID := req.GetVolumeId()
@@ -381,10 +385,11 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, err
 	}
 
-	cr, err := util.GetUserCredentials(req.GetSecrets())
+	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	// Fetch source volume information
 	rbdVol := new(rbdVolume)
@@ -533,10 +538,11 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return nil, err
 	}
 
-	cr, err := util.GetUserCredentials(req.GetSecrets())
+	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	snapshotID := req.GetSnapshotId()
 	if snapshotID == "" {

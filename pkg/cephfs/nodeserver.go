@@ -44,30 +44,25 @@ var (
 
 func getCredentialsForVolume(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) (*util.Credentials, error) {
 	var (
+		err     error
 		cr      *util.Credentials
 		secrets = req.GetSecrets()
 	)
 
 	if volOptions.ProvisionVolume {
-		// The volume is provisioned dynamically, get the credentials directly from Ceph
+		// The volume is provisioned dynamically, use passed in admin credentials
 
-		// First, get admin credentials - those are needed for retrieving the user credentials
-
-		adminCr, err := util.GetAdminCredentials(secrets)
+		cr, err = util.NewAdminCredentials(secrets)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
 		}
-
-		cr = adminCr
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
-		userCr, err := util.GetUserCredentials(req.GetSecrets())
+		cr, err = util.NewUserCredentials(req.GetSecrets())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
 		}
-
-		cr = userCr
 	}
 
 	return cr, nil
@@ -150,6 +145,7 @@ func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequ
 		klog.Errorf("failed to get ceph credentials for volume %s: %v", volID, err)
 		return status.Error(codes.Internal, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	m, err := newMounter(volOptions)
 	if err != nil {
