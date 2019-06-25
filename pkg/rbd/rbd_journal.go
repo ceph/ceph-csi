@@ -44,10 +44,6 @@ func validateRbdSnap(rbdSnap *rbdSnapshot) error {
 		return err
 	}
 
-	if err = validateNonEmptyField(rbdSnap.AdminID, "AdminID", "rbdSnapshot"); err != nil {
-		return err
-	}
-
 	if err = validateNonEmptyField(rbdSnap.Pool, "Pool", "rbdSnapshot"); err != nil {
 		return err
 	}
@@ -71,10 +67,6 @@ func validateRbdVol(rbdVol *rbdVolume) error {
 	}
 
 	if err = validateNonEmptyField(rbdVol.Monitors, "Monitors", "rbdVolume"); err != nil {
-		return err
-	}
-
-	if err = validateNonEmptyField(rbdVol.AdminID, "AdminID", "rbdVolume"); err != nil {
 		return err
 	}
 
@@ -115,18 +107,13 @@ because, the order of omap creation and deletion are inverse of each other, and 
 request name lock, and hence any stale omaps are leftovers from incomplete transactions and are
 hence safe to garbage collect.
 */
-func checkSnapExists(rbdSnap *rbdSnapshot, credentials map[string]string) (bool, error) {
+func checkSnapExists(rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
 	err := validateRbdSnap(rbdSnap)
 	if err != nil {
 		return false, err
 	}
 
-	key, err := getKey(rbdSnap.AdminID, credentials)
-	if err != nil {
-		return false, err
-	}
-
-	snapUUID, err := snapJournal.CheckReservation(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool,
+	snapUUID, err := snapJournal.CheckReservation(rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.RequestName, rbdSnap.RbdImageName)
 	if err != nil {
 		return false, err
@@ -137,10 +124,10 @@ func checkSnapExists(rbdSnap *rbdSnapshot, credentials map[string]string) (bool,
 	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + snapUUID
 
 	// Fetch on-disk image attributes
-	err = updateSnapWithImageInfo(rbdSnap, credentials)
+	err = updateSnapWithImageInfo(rbdSnap, cr)
 	if err != nil {
 		if _, ok := err.(ErrSnapNotFound); ok {
-			err = snapJournal.UndoReservation(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool,
+			err = snapJournal.UndoReservation(rbdSnap.Monitors, cr, rbdSnap.Pool,
 				rbdSnap.RbdSnapName, rbdSnap.RequestName)
 			return false, err
 		}
@@ -148,7 +135,7 @@ func checkSnapExists(rbdSnap *rbdSnapshot, credentials map[string]string) (bool,
 	}
 
 	// found a snapshot already available, process and return its information
-	rbdSnap.SnapID, err = util.GenerateVolID(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool,
+	rbdSnap.SnapID, err = util.GenerateVolID(rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.ClusterID, snapUUID, volIDVersion)
 	if err != nil {
 		return false, err
@@ -168,18 +155,13 @@ volume names as requested by the CSI drivers. Hence, these need to be invoked on
 respective CSI snapshot or volume name based locks are held, as otherwise racy access to these
 omaps may end up leaving the omaps in an inconsistent state.
 */
-func checkVolExists(rbdVol *rbdVolume, credentials map[string]string) (bool, error) {
+func checkVolExists(rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 	err := validateRbdVol(rbdVol)
 	if err != nil {
 		return false, err
 	}
 
-	key, err := getKey(rbdVol.AdminID, credentials)
-	if err != nil {
-		return false, err
-	}
-
-	imageUUID, err := volJournal.CheckReservation(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool,
+	imageUUID, err := volJournal.CheckReservation(rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.RequestName, "")
 	if err != nil {
 		return false, err
@@ -193,10 +175,10 @@ func checkVolExists(rbdVol *rbdVolume, credentials map[string]string) (bool, err
 	// save it for size checks before fetching image data
 	requestSize := rbdVol.VolSize
 	// Fetch on-disk image attributes and compare against request
-	err = updateVolWithImageInfo(rbdVol, credentials)
+	err = updateVolWithImageInfo(rbdVol, cr)
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
-			err = volJournal.UndoReservation(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool,
+			err = volJournal.UndoReservation(rbdVol.Monitors, cr, rbdVol.Pool,
 				rbdVol.RbdImageName, rbdVol.RequestName)
 			return false, err
 		}
@@ -212,7 +194,7 @@ func checkVolExists(rbdVol *rbdVolume, credentials map[string]string) (bool, err
 	// TODO: We should also ensure image features and format is the same
 
 	// found a volume already available, process and return it!
-	rbdVol.VolID, err = util.GenerateVolID(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool,
+	rbdVol.VolID, err = util.GenerateVolID(rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
 		return false, err
@@ -226,19 +208,14 @@ func checkVolExists(rbdVol *rbdVolume, credentials map[string]string) (bool, err
 
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
 // volume ID for the generated name
-func reserveSnap(rbdSnap *rbdSnapshot, credentials map[string]string) error {
-	key, err := getKey(rbdSnap.AdminID, credentials)
-	if err != nil {
-		return err
-	}
-
-	snapUUID, err := snapJournal.ReserveName(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool,
+func reserveSnap(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+	snapUUID, err := snapJournal.ReserveName(rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.RequestName, rbdSnap.RbdImageName)
 	if err != nil {
 		return err
 	}
 
-	rbdSnap.SnapID, err = util.GenerateVolID(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool,
+	rbdSnap.SnapID, err = util.GenerateVolID(rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.ClusterID, snapUUID, volIDVersion)
 	if err != nil {
 		return err
@@ -254,19 +231,14 @@ func reserveSnap(rbdSnap *rbdSnapshot, credentials map[string]string) error {
 
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the
 // volume ID for the generated name
-func reserveVol(rbdVol *rbdVolume, credentials map[string]string) error {
-	key, err := getKey(rbdVol.AdminID, credentials)
-	if err != nil {
-		return err
-	}
-
-	imageUUID, err := volJournal.ReserveName(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool,
+func reserveVol(rbdVol *rbdVolume, cr *util.Credentials) error {
+	imageUUID, err := volJournal.ReserveName(rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.RequestName, "")
 	if err != nil {
 		return err
 	}
 
-	rbdVol.VolID, err = util.GenerateVolID(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool,
+	rbdVol.VolID, err = util.GenerateVolID(rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
 		return err
@@ -281,26 +253,16 @@ func reserveVol(rbdVol *rbdVolume, credentials map[string]string) error {
 }
 
 // undoSnapReservation is a helper routine to undo a name reservation for rbdSnapshot
-func undoSnapReservation(rbdSnap *rbdSnapshot, credentials map[string]string) error {
-	key, err := getKey(rbdSnap.AdminID, credentials)
-	if err != nil {
-		return err
-	}
-
-	err = snapJournal.UndoReservation(rbdSnap.Monitors, rbdSnap.AdminID, key, rbdSnap.Pool,
+func undoSnapReservation(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+	err := snapJournal.UndoReservation(rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return err
 }
 
 // undoVolReservation is a helper routine to undo a name reservation for rbdVolume
-func undoVolReservation(rbdVol *rbdVolume, credentials map[string]string) error {
-	key, err := getKey(rbdVol.AdminID, credentials)
-	if err != nil {
-		return err
-	}
-
-	err = volJournal.UndoReservation(rbdVol.Monitors, rbdVol.AdminID, key, rbdVol.Pool,
+func undoVolReservation(rbdVol *rbdVolume, cr *util.Credentials) error {
+	err := volJournal.UndoReservation(rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return err

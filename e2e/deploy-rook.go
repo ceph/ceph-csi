@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 var (
@@ -21,7 +22,7 @@ func formRookURL(version string) {
 }
 
 func getK8sClient() kubernetes.Interface {
-	framework.Logf("Creating a kubernetes client")
+	e2elog.Logf("Creating a kubernetes client")
 	client, err := framework.LoadClientset()
 	Expect(err).Should(BeNil())
 	return client
@@ -49,19 +50,26 @@ func createRBDPool() {
 }
 func deleteFileSystem() {
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "filesystem-test.yaml")
-	framework.RunKubectlOrDie("delete", "-f", commonPath)
+	_, err := framework.RunKubectl("delete", "-f", commonPath)
+	if err != nil {
+		e2elog.Logf("failed to delete file-system %v", err)
+	}
 }
 
 func deleteRBDPool() {
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "pool-test.yaml")
-	framework.RunKubectlOrDie("delete", "-f", commonPath)
+	_, err := framework.RunKubectl("delete", "-f", commonPath)
+	if err != nil {
+		e2elog.Logf("failed to delete pool %v", err)
+	}
 }
 
 func deployOperator(c kubernetes.Interface) {
 	opPath := fmt.Sprintf("%s/%s", rookURL, "operator.yaml")
 
-	framework.RunKubectlOrDie("create", "-f", opPath)
-	err := waitForDaemonSets("rook-ceph-agent", rookNS, c, deployTimeout)
+	_, err := framework.RunKubectl("create", "-f", opPath)
+	Expect(err).Should(BeNil())
+	err = waitForDaemonSets("rook-ceph-agent", rookNS, c, deployTimeout)
 	Expect(err).Should(BeNil())
 	err = waitForDaemonSets("rook-discover", rookNS, c, deployTimeout)
 	Expect(err).Should(BeNil())
@@ -109,5 +117,8 @@ func tearDownRook() {
 	// TODO need to add selector for cleanup validation
 	framework.Cleanup(opPath, rookNS)
 	commonPath := fmt.Sprintf("%s/%s", rookURL, "common.yaml")
-	framework.RunKubectlOrDie("delete", "-f", commonPath)
+	_, err := framework.RunKubectl("delete", "-f", commonPath)
+	if err != nil {
+		e2elog.Logf("failed to delete rook common %v", err)
+	}
 }

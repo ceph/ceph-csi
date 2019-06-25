@@ -57,9 +57,14 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
+	cr, err := util.GetUserCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	targetPathMutex.LockKey(targetPath)
 	defer func() {
-		if err := targetPathMutex.UnlockKey(targetPath); err != nil {
+		if err = targetPathMutex.UnlockKey(targetPath); err != nil {
 			klog.Warningf("failed to unlock mutex targetpath:%s %v", targetPath, err)
 		}
 	}()
@@ -97,7 +102,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 	volOptions.RbdImageName = volName
 	// Mapping RBD image
-	devicePath, err := attachRBDImage(volOptions, volOptions.UserID, req.GetSecrets())
+	devicePath, err := attachRBDImage(volOptions, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +165,7 @@ func (ns *NodeServer) mountVolume(req *csi.NodePublishVolumeRequest, devicePath 
 
 func (ns *NodeServer) createTargetPath(targetPath string, isBlock bool) (bool, error) {
 	// Check if that target path exists properly
-	notMnt, err := ns.mounter.IsNotMountPoint(targetPath)
+	notMnt, err := mount.IsNotMountPoint(ns.mounter, targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if isBlock {
@@ -209,7 +214,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		}
 	}()
 
-	notMnt, err := ns.mounter.IsNotMountPoint(targetPath)
+	notMnt, err := mount.IsNotMountPoint(ns.mounter, targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted

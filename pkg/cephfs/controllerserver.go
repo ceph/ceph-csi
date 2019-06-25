@@ -48,7 +48,7 @@ var (
 // createBackingVolume creates the backing subvolume and user/key for the given volOptions and vID,
 // and on any error cleans up any created entities
 func (cs *ControllerServer) createBackingVolume(volOptions *volumeOptions, vID *volumeIdentifier, secret map[string]string) error {
-	cr, err := getAdminCredentials(secret)
+	cr, err := util.GetAdminCredentials(secret)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -168,14 +168,14 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 
 	// mons may have changed since create volume,
 	// retrieve the latest mons and override old mons
-	if mon, secretsErr := getMonValFromSecret(secrets); secretsErr == nil && len(mon) > 0 {
+	if mon, secretsErr := util.GetMonValFromSecret(secrets); secretsErr == nil && len(mon) > 0 {
 		klog.Infof("overriding monitors [%q] with [%q] for volume %s", ce.VolOptions.Monitors, mon, volID)
 		ce.VolOptions.Monitors = mon
 	}
 
 	// Deleting a volume requires admin credentials
 
-	cr, err := getAdminCredentials(secrets)
+	cr, err := util.GetAdminCredentials(secrets)
 	if err != nil {
 		klog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -232,7 +232,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	// Deleting a volume requires admin credentials
-	cr, err := getAdminCredentials(secrets)
+	cr, err := util.GetAdminCredentials(secrets)
 	if err != nil {
 		klog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())

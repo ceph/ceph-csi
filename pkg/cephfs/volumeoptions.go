@@ -149,17 +149,17 @@ func newVolumeOptions(requestName string, size int64, volOptions, secret map[str
 	opts.RequestName = requestName
 	opts.Size = size
 
-	cr, err := getAdminCredentials(secret)
+	cr, err := util.GetAdminCredentials(secret)
 	if err != nil {
 		return nil, err
 	}
 
-	opts.FscID, err = getFscID(opts.Monitors, cr.id, cr.key, opts.FsName)
+	opts.FscID, err = getFscID(opts.Monitors, cr, opts.FsName)
 	if err != nil {
 		return nil, err
 	}
 
-	opts.MetadataPool, err = getMetadataPool(opts.Monitors, cr.id, cr.key, opts.FsName)
+	opts.MetadataPool, err = getMetadataPool(opts.Monitors, cr, opts.FsName)
 	if err != nil {
 		return nil, err
 	}
@@ -194,23 +194,22 @@ func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) 
 		return nil, nil, errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", vi.ClusterID)
 	}
 
-	cr, err := getAdminCredentials(secrets)
+	cr, err := util.GetAdminCredentials(secrets)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	volOptions.FsName, err = getFsName(volOptions.Monitors, cr.id, cr.key, volOptions.FscID)
+	volOptions.FsName, err = getFsName(volOptions.Monitors, cr, volOptions.FscID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	volOptions.MetadataPool, err = getMetadataPool(volOptions.Monitors, cr.id, cr.key,
-		volOptions.FsName)
+	volOptions.MetadataPool, err = getMetadataPool(volOptions.Monitors, cr, volOptions.FsName)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	volOptions.RequestName, _, err = volJournal.GetObjectUUIDData(volOptions.Monitors, cr.id, cr.key,
+	volOptions.RequestName, _, err = volJournal.GetObjectUUIDData(volOptions.Monitors, cr,
 		volOptions.MetadataPool, vi.ObjectUUID, false)
 	if err != nil {
 		return nil, nil, err
@@ -250,7 +249,7 @@ func newVolumeOptionsFromVersion1Context(volID string, options, secrets map[stri
 
 	// check if there are mon values in secret and if so override option retrieved monitors from
 	// monitors in the secret
-	mon, err := getMonValFromSecret(secrets)
+	mon, err := util.GetMonValFromSecret(secrets)
 	if err == nil && len(mon) > 0 {
 		opts.Monitors = mon
 	}

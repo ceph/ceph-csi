@@ -15,43 +15,52 @@
   name = "google.golang.org/grpc"
   version = "1.10.0"
 
-[[constraint]]
-  version = "kubernetes-1.14.2"
+[[override]]
+  version = "kubernetes-1.15.0"
   name = "k8s.io/apimachinery"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "=v1.14.2"
+  version = "=v1.15.0"
 
 [[override]]
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
   name = "k8s.io/api"
 
 [[override]]
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
   name = "k8s.io/apiserver"
 
 [[override]]
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
   name = "k8s.io/cli-runtime"
 
 [[override]]
   name = "github.com/golang/protobuf"
   version = "1.1.0"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
+
+[[override]]
+  name = "github.com/kubernetes-csi/external-snapshotter"
+  version = "v1.1.0"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
 
 [[override]]
   name = "k8s.io/kube-aggregator"
-  version = "kubernetes-1.14.2"
+  version = "kubernetes-1.15.0"
 
 [prune]
   go-tests = true
   non-go = true
   unused-packages = true
+
+# Prevent dep from pruning
+[[prune.project]]
+  name = "github.com/kubernetes-csi/external-snapshotter"
+  non-go = false

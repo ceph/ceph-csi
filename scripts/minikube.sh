@@ -33,7 +33,7 @@ function install_minikube() {
     if type minikube >/dev/null 2>&1; then
         local version
         version=$(minikube version)
-        read -ar version <<<"${version}"
+        read -ra version <<<"${version}"
         version=${version[2]}
         if [[ "${version}" != "${MINIKUBE_VERSION}" ]]; then
             echo "installed minikube version ${version} is not matching requested version ${MINIKUBE_VERSION}"

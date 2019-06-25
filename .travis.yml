@@ -17,7 +17,7 @@ branches:
     - csi-v0.3
     - master
 
-go: 1.11.x
+go: 1.12.x
 
 env:
   global:

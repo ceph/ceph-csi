@@ -24,15 +24,12 @@ parameters:
    # CSI RBD currently supports only `layering` feature.
    imageFeatures: layering
 
-   # The secrets have to contain Ceph admin credentials.
+   # The secrets have to contain Ceph credentials with required access
+   # to the 'pool'.
    csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
    csi.storage.k8s.io/provisioner-secret-namespace: default
    csi.storage.k8s.io/node-publish-secret-name: csi-rbd-secret
    csi.storage.k8s.io/node-publish-secret-namespace: default
-
-   # Ceph users for operating RBD
-   adminid: admin
-   userid: kubernetes
 
    # uncomment the following to use rbd-nbd as mounter on supported nodes
    # mounter: rbd-nbd

@@ -175,7 +175,7 @@ Return values:
 	there was no reservation found
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) CheckReservation(monitors, id, key, pool, reqName, parentName string) (string, error) {
+func (cj *CSIJournal) CheckReservation(monitors string, cr *Credentials, pool, reqName, parentName string) (string, error) {
 	var snapSource bool
 
 	if parentName != "" {
@@ -187,7 +187,7 @@ func (cj *CSIJournal) CheckReservation(monitors, id, key, pool, reqName, parentN
 	}
 
 	// check if request name is already part of the directory omap
-	objUUID, err := GetOMapValue(monitors, id, key, pool, cj.namespace, cj.csiDirectory,
+	objUUID, err := GetOMapValue(monitors, cr, pool, cj.namespace, cj.csiDirectory,
 		cj.csiNameKeyPrefix+reqName)
 	if err != nil {
 		// error should specifically be not found, for volume to be absent, any other error
@@ -198,13 +198,13 @@ func (cj *CSIJournal) CheckReservation(monitors, id, key, pool, reqName, parentN
 		return "", err
 	}
 
-	savedReqName, savedReqParentName, err := cj.GetObjectUUIDData(monitors, id, key, pool,
+	savedReqName, savedReqParentName, err := cj.GetObjectUUIDData(monitors, cr, pool,
 		objUUID, snapSource)
 	if err != nil {
 		// error should specifically be not found, for image to be absent, any other error
 		// is not conclusive, and we should not proceed
 		if _, ok := err.(ErrKeyNotFound); ok {
-			err = cj.UndoReservation(monitors, id, key, pool, cj.namingPrefix+objUUID, reqName)
+			err = cj.UndoReservation(monitors, cr, pool, cj.namingPrefix+objUUID, reqName)
 		}
 		return "", err
 	}
@@ -243,11 +243,11 @@ prior to cleaning up the reservation
 NOTE: As the function manipulates omaps, it should be called with a lock against the request name
 held, to prevent parallel operations from modifying the state of the omaps for this request name.
 */
-func (cj *CSIJournal) UndoReservation(monitors, id, key, pool, volName, reqName string) error {
+func (cj *CSIJournal) UndoReservation(monitors string, cr *Credentials, pool, volName, reqName string) error {
 	// delete volume UUID omap (first, inverse of create order)
 	// TODO: Check cases where volName can be empty, and we need to just cleanup the reqName
 	imageUUID := strings.TrimPrefix(volName, cj.namingPrefix)
-	err := RemoveObject(monitors, id, key, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+imageUUID)
+	err := RemoveObject(monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+imageUUID)
 	if err != nil {
 		if _, ok := err.(ErrObjectNotFound); !ok {
 			klog.Errorf("failed removing oMap %s (%s)", cj.cephUUIDDirectoryPrefix+imageUUID, err)
@@ -256,7 +256,7 @@ func (cj *CSIJournal) UndoReservation(monitors, id, key, pool, volName, reqName 
 	}
 
 	// delete the request name key (last, inverse of create order)
-	err = RemoveOMapKey(monitors, id, key, pool, cj.namespace, cj.csiDirectory,
+	err = RemoveOMapKey(monitors, cr, pool, cj.namespace, cj.csiDirectory,
 		cj.csiNameKeyPrefix+reqName)
 	if err != nil {
 		klog.Errorf("failed removing oMap key %s (%s)", cj.csiNameKeyPrefix+reqName, err)
@@ -269,7 +269,7 @@ func (cj *CSIJournal) UndoReservation(monitors, id, key, pool, volName, reqName 
 // reserveOMapName creates an omap with passed in oMapNamePrefix and a generated <uuid>.
 // It ensures generated omap name does not already exist and if conflicts are detected, a set
 // number of retires with newer uuids are attempted before returning an error
-func reserveOMapName(monitors, id, key, pool, namespace, oMapNamePrefix string) (string, error) {
+func reserveOMapName(monitors string, cr *Credentials, pool, namespace, oMapNamePrefix string) (string, error) {
 	var iterUUID string
 
 	maxAttempts := 5
@@ -278,7 +278,7 @@ func reserveOMapName(monitors, id, key, pool, namespace, oMapNamePrefix string) 
 		// generate a uuid for the image name
 		iterUUID = uuid.NewUUID().String()
 
-		err := CreateObject(monitors, id, key, pool, namespace, oMapNamePrefix+iterUUID)
+		err := CreateObject(monitors, cr, pool, namespace, oMapNamePrefix+iterUUID)
 		if err != nil {
 			if _, ok := err.(ErrObjectExists); ok {
 				attempt++
@@ -310,7 +310,7 @@ Return values:
 	- string: Contains the UUID that was reserved for the passed in reqName
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) ReserveName(monitors, id, key, pool, reqName, parentName string) (string, error) {
+func (cj *CSIJournal) ReserveName(monitors string, cr *Credentials, pool, reqName, parentName string) (string, error) {
 	var snapSource bool
 
 	if parentName != "" {
@@ -325,14 +325,14 @@ func (cj *CSIJournal) ReserveName(monitors, id, key, pool, reqName, parentName s
 	// NOTE: If any service loss occurs post creation of the UUID directory, and before
 	// setting the request name key (csiNameKey) to point back to the UUID directory, the
 	// UUID directory key will be leaked
-	volUUID, err := reserveOMapName(monitors, id, key, pool, cj.namespace, cj.cephUUIDDirectoryPrefix)
+	volUUID, err := reserveOMapName(monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix)
 	if err != nil {
 		return "", err
 	}
 
 	// Create request name (csiNameKey) key in csiDirectory and store the UUId based
 	// volume name into it
-	err = SetOMapKeyValue(monitors, id, key, pool, cj.namespace, cj.csiDirectory,
+	err = SetOMapKeyValue(monitors, cr, pool, cj.namespace, cj.csiDirectory,
 		cj.csiNameKeyPrefix+reqName, volUUID)
 	if err != nil {
 		return "", err
@@ -340,7 +340,7 @@ func (cj *CSIJournal) ReserveName(monitors, id, key, pool, reqName, parentName s
 	defer func() {
 		if err != nil {
 			klog.Warningf("reservation failed for volume: %s", reqName)
-			errDefer := cj.UndoReservation(monitors, id, key, pool, cj.namingPrefix+volUUID,
+			errDefer := cj.UndoReservation(monitors, cr, pool, cj.namingPrefix+volUUID,
 				reqName)
 			if errDefer != nil {
 				klog.Warningf("failed undoing reservation of volume: %s (%v)", reqName, errDefer)
@@ -349,7 +349,7 @@ func (cj *CSIJournal) ReserveName(monitors, id, key, pool, reqName, parentName s
 	}()
 
 	// Update UUID directory to store CSI request name
-	err = SetOMapKeyValue(monitors, id, key, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
+	err = SetOMapKeyValue(monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 		cj.csiNameKey, reqName)
 	if err != nil {
 		return "", err
@@ -357,7 +357,7 @@ func (cj *CSIJournal) ReserveName(monitors, id, key, pool, reqName, parentName s
 
 	if snapSource {
 		// Update UUID directory to store source volume UUID in case of snapshots
-		err = SetOMapKeyValue(monitors, id, key, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
+		err = SetOMapKeyValue(monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 			cj.cephSnapSourceKey, parentName)
 		if err != nil {
 			return "", err
@@ -374,7 +374,7 @@ Return values:
 	- string: Contains the parent image name for the passed in UUID, if it is a snapshot
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) GetObjectUUIDData(monitors, id, key, pool, objectUUID string, snapSource bool) (string, string, error) {
+func (cj *CSIJournal) GetObjectUUIDData(monitors string, cr *Credentials, pool, objectUUID string, snapSource bool) (string, string, error) {
 	var sourceName string
 
 	if snapSource && cj.cephSnapSourceKey == "" {
@@ -383,14 +383,14 @@ func (cj *CSIJournal) GetObjectUUIDData(monitors, id, key, pool, objectUUID stri
 	}
 
 	// TODO: fetch all omap vals in one call, than make multiple listomapvals
-	requestName, err := GetOMapValue(monitors, id, key, pool, cj.namespace,
+	requestName, err := GetOMapValue(monitors, cr, pool, cj.namespace,
 		cj.cephUUIDDirectoryPrefix+objectUUID, cj.csiNameKey)
 	if err != nil {
 		return "", "", err
 	}
 
 	if snapSource {
-		sourceName, err = GetOMapValue(monitors, id, key, pool, cj.namespace,
+		sourceName, err = GetOMapValue(monitors, cr, pool, cj.namespace,
 			cj.cephUUIDDirectoryPrefix+objectUUID, cj.cephSnapSourceKey)
 		if err != nil {
 			return "", "", err

@@ -23,15 +23,14 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
+	nsutil "k8s.io/kubernetes/pkg/volume/util/nsenter"
 	"k8s.io/utils/exec"
 	"k8s.io/utils/nsenter"
 )
 
 const (
 	// volIDVersion is the version number of volume ID encoding scheme
-	volIDVersion      uint16 = 1
-	rbdDefaultAdminID        = "admin"
-	rbdDefaultUserID         = rbdDefaultAdminID
+	volIDVersion uint16 = 1
 
 	// csiConfigFile is the location of the CSI config file
 	csiConfigFile = "/etc/ceph-csi-config/config.json"
@@ -89,7 +88,7 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 		if err != nil {
 			return nil, err
 		}
-		mounter = mount.NewNsenterMounter("", ne)
+		mounter = nsutil.NewMounter("", ne)
 	}
 	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),

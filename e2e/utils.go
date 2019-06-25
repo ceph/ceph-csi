@@ -9,13 +9,14 @@ import (
 	"strings"
 	"time"
 
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
-
+	"github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1"
+	snapClient "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1"
 	. "github.com/onsi/ginkgo" // nolint
 	. "github.com/onsi/gomega" // nolint
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
@@ -23,6 +24,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
@@ -36,16 +38,23 @@ func getFilesinDirectory(path string) []os.FileInfo {
 
 var poll = 2 * time.Second
 
+type snapInfo struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+	Timestamp string `json:"timestamp"`
+}
+
 func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	framework.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start",
+	e2elog.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start",
 		timeout, ns)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		ds, err := c.AppsV1().DaemonSets(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
-			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
+			e2elog.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
 			if strings.Contains(err.Error(), "not found") {
 				return false, nil
 			}
@@ -56,7 +65,7 @@ func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
 		}
 		dNum := ds.Status.DesiredNumberScheduled
 		ready := ds.Status.NumberReady
-		framework.Logf("%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)", ready, dNum, ns, ds.ObjectMeta.Name, int(time.Since(start).Seconds()))
+		e2elog.Logf("%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)", ready, dNum, ns, ds.ObjectMeta.Name, int(time.Since(start).Seconds()))
 		if ready != dNum {
 			return false, nil
 		}
@@ -89,7 +98,7 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 		}
 
 		reason = fmt.Sprintf("deployment status: %#v", deployment.Status)
-		framework.Logf(reason)
+		e2elog.Logf(reason)
 
 		return false, nil
 	})
@@ -141,19 +150,32 @@ func getMons(ns string, c kubernetes.Interface) []string {
 	return services
 }
 
-func getStorageClass(c kubernetes.Interface, path string) scv1.StorageClass {
+func getStorageClass(path string) scv1.StorageClass {
 	sc := scv1.StorageClass{}
 	err := unmarshal(path, &sc)
 	Expect(err).Should(BeNil())
+	return sc
+}
 
-	mons := getMons(rookNS, c)
-	sc.Parameters["monitors"] = strings.Join(mons, ",")
+func getSnapshotClass(path string) v1alpha1.VolumeSnapshotClass {
+	sc := v1alpha1.VolumeSnapshotClass{}
+	sc.Kind = "VolumeSnapshotClass"
+	sc.APIVersion = "snapshot.storage.k8s.io/v1alpha1"
+	err := unmarshal(path, &sc)
+	Expect(err).Should(BeNil())
+	return sc
+}
+
+func getSnapshot(path string) v1alpha1.VolumeSnapshot {
+	sc := v1alpha1.VolumeSnapshot{}
+	err := unmarshal(path, &sc)
+	Expect(err).Should(BeNil())
 	return sc
 }
 
 func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
-	sc := getStorageClass(c, scPath)
+	sc := getStorageClass(scPath)
 	sc.Parameters["pool"] = "myfs-data0"
 	sc.Parameters["fsName"] = "myfs"
 	opt := metav1.ListOptions{
@@ -170,8 +192,7 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
 
 func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
-	sc := getStorageClass(c, scPath)
-	delete(sc.Parameters, "userid")
+	sc := getStorageClass(scPath)
 	sc.Parameters["pool"] = "replicapool"
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
@@ -182,6 +203,34 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 
 	sc.Parameters["clusterID"] = fsID
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
+	Expect(err).Should(BeNil())
+}
+
+func newSnapshotClient() (*snapClient.SnapshotV1alpha1Client, error) {
+	config, err := framework.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error creating client: %v", err.Error())
+	}
+	c, err := snapClient.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error creating snapshot client: %v", err.Error())
+	}
+	return c, err
+}
+func createRBDSnapshotClass(f *framework.Framework) {
+	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "snapshotclass.yaml")
+	sc := getSnapshotClass(scPath)
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	fsID := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	// remove new line present in fsID
+	fsID = strings.Trim(fsID, "\n")
+	sc.Parameters["clusterID"] = fsID
+	sclient, err := newSnapshotClient()
+	Expect(err).Should(BeNil())
+	_, err = sclient.VolumeSnapshotClasses().Create(&sc)
 	Expect(err).Should(BeNil())
 }
 
@@ -233,10 +282,10 @@ func createCephfsSecret(c kubernetes.Interface, f *framework.Framework) {
 		LabelSelector: "app=rook-ceph-tools",
 	}
 	adminKey := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
-	sc.Data["adminID"] = []byte("admin")
-	sc.Data["adminKey"] = []byte(adminKey)
-	delete(sc.Data, "userID")
-	delete(sc.Data, "userKey")
+	sc.StringData["adminID"] = "admin"
+	sc.StringData["adminKey"] = adminKey
+	delete(sc.StringData, "userID")
+	delete(sc.StringData, "userKey")
 	_, err := c.CoreV1().Secrets("default").Create(&sc)
 	Expect(err).Should(BeNil())
 }
@@ -248,29 +297,24 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 		LabelSelector: "app=rook-ceph-tools",
 	}
 	adminKey := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
-	sc.Data["admin"] = []byte(adminKey)
-	delete(sc.Data, "kubernetes")
+	sc.StringData["userID"] = "admin"
+	sc.StringData["userKey"] = adminKey
 	_, err := c.CoreV1().Secrets("default").Create(&sc)
 	Expect(err).Should(BeNil())
 }
 
-func deleteSecret(scPath string) {
+func deleteResource(scPath string) {
 	_, err := framework.RunKubectl("delete", "-f", scPath)
 	Expect(err).Should(BeNil())
 }
 
-func deleteStorageClass(scPath string) {
-	_, err := framework.RunKubectl("delete", "-f", scPath)
-	Expect(err).Should(BeNil())
-}
-
-func loadPVC(path string) *v1.PersistentVolumeClaim {
+func loadPVC(path string) (*v1.PersistentVolumeClaim, error) {
 	pvc := &v1.PersistentVolumeClaim{}
 	err := unmarshal(path, &pvc)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return pvc
+	return pvc, err
 }
 
 func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, t int) error {
@@ -281,13 +325,13 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	Expect(err).Should(BeNil())
 	name := pvc.Name
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Bound state", pvc)
+	e2elog.Logf("Waiting up to %v to be in Bound state", pvc)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		framework.Logf("waiting for PVC %s (%d seconds elapsed)", pvc.Name, int(time.Since(start).Seconds()))
+		e2elog.Logf("waiting for PVC %s (%d seconds elapsed)", pvc.Name, int(time.Since(start).Seconds()))
 		pvc, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
-			framework.Logf("Error getting pvc in namespace: '%s': %v", pvc.Namespace, err)
+			e2elog.Logf("Error getting pvc in namespace: '%s': %v", pvc.Namespace, err)
 			if testutils.IsRetryableAPIError(err) {
 				return false, nil
 			}
@@ -319,7 +363,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	nameSpace := pvc.Namespace
 	name := pvc.Name
 	var err error
-	framework.Logf("Deleting PersistentVolumeClaim %v on namespace %v", name, nameSpace)
+	e2elog.Logf("Deleting PersistentVolumeClaim %v on namespace %v", name, nameSpace)
 
 	pvc, err = c.CoreV1().PersistentVolumeClaims(nameSpace).Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -337,7 +381,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	start := time.Now()
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		// Check that the PVC is really deleted.
-		framework.Logf("waiting for PVC %s in state %s  to be deleted (%d seconds elapsed)", name, pvc.Status.String(), int(time.Since(start).Seconds()))
+		e2elog.Logf("waiting for PVC %s in state %s  to be deleted (%d seconds elapsed)", name, pvc.Status.String(), int(time.Since(start).Seconds()))
 		pvc, err = c.CoreV1().PersistentVolumeClaims(nameSpace).Get(name, metav1.GetOptions{})
 		if err == nil {
 			return false, nil
@@ -360,13 +404,13 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	})
 }
 
-func loadApp(path string) *v1.Pod {
+func loadApp(path string) (*v1.Pod, error) {
 	app := v1.Pod{}
 	err := unmarshal(path, &app)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return &app
+	return &app, nil
 }
 
 func createApp(c kubernetes.Interface, app *v1.Pod, timeout int) error {
@@ -396,7 +440,7 @@ func getPodName(ns string, c kubernetes.Interface, opt *metav1.ListOptions) stri
 func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	framework.Logf("Waiting up to %v to be in Running state", name)
+	e2elog.Logf("Waiting up to %v to be in Running state", name)
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
@@ -408,7 +452,7 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int) er
 		case v1.PodFailed, v1.PodSucceeded:
 			return false, conditions.ErrPodCompleted
 		}
-		framework.Logf("%s app  is  in %s phase expected to be in Running  state (%d seconds elapsed)", name, pod.Status.Phase, int(time.Since(start).Seconds()))
+		e2elog.Logf("%s app  is  in %s phase expected to be in Running  state (%d seconds elapsed)", name, pod.Status.Phase, int(time.Since(start).Seconds()))
 		return false, nil
 	})
 }
@@ -420,14 +464,14 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 		return err
 	}
 	start := time.Now()
-	framework.Logf("Waiting for pod %v to be deleted", name)
+	e2elog.Logf("Waiting for pod %v to be deleted", name)
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err := c.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
 
 		if apierrs.IsNotFound(err) {
 			return true, nil
 		}
-		framework.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+		e2elog.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 		if err != nil {
 			return false, err
 		}
@@ -459,7 +503,7 @@ func checkCephPods(ns string, c kubernetes.Interface, count, t int, opt *metav1.
 			return false, err
 		}
 
-		framework.Logf("pod count is %d  expected count %d (%d seconds elapsed)", len(podList.Items), count, int(time.Since(start).Seconds()))
+		e2elog.Logf("pod count is %d  expected count %d (%d seconds elapsed)", len(podList.Items), count, int(time.Since(start).Seconds()))
 
 		if len(podList.Items) >= count {
 			return true, nil
@@ -470,39 +514,75 @@ func checkCephPods(ns string, c kubernetes.Interface, count, t int, opt *metav1.
 
 }
 
-func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
-	pvc := loadPVC(pvcPath)
-	pvc.Namespace = f.UniqueName
-	framework.Logf("The PVC  template %+v", pvc)
+// createPVCAndApp creates pvc and pod
+// if name is not empty same will be set as pvc and app name
+func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+
+	if name != "" {
+		pvc.Name = name
+		app.Name = name
+		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+	}
 	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		Fail(err.Error())
+		return err
 	}
-
-	app := loadApp(appPath)
-	app.Namespace = f.UniqueName
 	err = createApp(f.ClientSet, app, deployTimeout)
-	if err != nil {
-		Fail(err.Error())
+	return err
+}
+
+// deletePVCAndApp delete pvc and pod
+// if name is not empty same will be set as pvc and app name
+func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+
+	if name != "" {
+		pvc.Name = name
+		app.Name = name
+		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
 	}
 
-	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	err := deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 	if err != nil {
-		Fail(err.Error())
+		return err
 	}
-
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	return err
+}
+
+func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
+	pvc, err := loadPVC(pvcPath)
+	if pvc == nil {
+		Fail(err.Error())
+	}
+	pvc.Namespace = f.UniqueName
+	e2elog.Logf("The PVC  template %+v", pvc)
+
+	app, err := loadApp(appPath)
+	if err != nil {
+		Fail(err.Error())
+	}
+	app.Namespace = f.UniqueName
+
+	err = createPVCAndApp("", f, pvc, app)
+	if err != nil {
+		Fail(err.Error())
+	}
+
+	err = deletePVCAndApp("", f, pvc, app)
 	if err != nil {
 		Fail(err.Error())
 	}
 }
 
 func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
-	pvc := loadPVC(pvcPath)
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		Fail(err.Error())
+	}
 	pvc.Namespace = f.UniqueName
 	pvc.Name = f.UniqueName
-	framework.Logf("The PVC  template %+v", pvc)
-	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	e2elog.Logf("The PVC  template %+v", pvc)
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
 		Fail(err.Error())
 	}
@@ -568,4 +648,100 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 	if err != nil {
 		Fail(err.Error())
 	}
+}
+
+func createSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
+
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return err
+	}
+	_, err = sclient.VolumeSnapshots(snap.Namespace).Create(snap)
+	if err != nil {
+		return err
+	}
+	e2elog.Logf("snapshot with name %v created in %v namespace", snap.Name, snap.Namespace)
+
+	timeout := time.Duration(t) * time.Minute
+	name := snap.Name
+	start := time.Now()
+	e2elog.Logf("Waiting up to %v to be in Ready state", snap)
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		e2elog.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
+		snaps, err := sclient.VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
+		if err != nil {
+			e2elog.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
+			if testutils.IsRetryableAPIError(err) {
+				return false, nil
+			}
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		if snaps.Status.ReadyToUse {
+			return true, nil
+		}
+		return false, nil
+	})
+}
+
+func deleteSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return err
+	}
+	err = sclient.VolumeSnapshots(snap.Namespace).Delete(snap.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	timeout := time.Duration(t) * time.Minute
+	name := snap.Name
+	start := time.Now()
+	e2elog.Logf("Waiting up to %v to be deleted", snap)
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		e2elog.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+		_, err := sclient.VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
+		if err == nil {
+			return false, nil
+		}
+
+		if !apierrs.IsNotFound(err) {
+			return false, fmt.Errorf("get on deleted snapshot %v failed with error other than \"not found\": %v", name, err)
+		}
+
+		return true, nil
+	})
+}
+
+func listRBDImages(f *framework.Framework) []string {
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	stdout := execCommandInPod(f, "rbd ls --pool=replicapool --format=json", rookNS, &opt)
+
+	var imgInfos []string
+
+	err := json.Unmarshal([]byte(stdout), &imgInfos)
+	if err != nil {
+		Fail(err.Error())
+	}
+	return imgInfos
+}
+
+func listSnapshots(f *framework.Framework, pool, imageName string) ([]snapInfo, error) {
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	command := fmt.Sprintf("rbd snap ls %s/%s --format=json", pool, imageName)
+	stdout := execCommandInPod(f, command, rookNS, &opt)
+
+	var snapInfos []snapInfo
+
+	err := json.Unmarshal([]byte(stdout), &snapInfos)
+	return snapInfos, err
 }
