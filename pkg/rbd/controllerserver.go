@@ -511,6 +511,13 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	rbdSnap := &rbdSnapshot{}
 	if err = genSnapFromSnapID(rbdSnap, snapshotID, cr); err != nil {
+		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
+		// or partially complete (snap and snapOMap are garbage collected already), hence return
+		// success as deletion is complete
+		if _, ok := err.(util.ErrKeyNotFound); ok {
+			return &csi.DeleteSnapshotResponse{}, nil
+		}
+
 		// Consider missing snap as already deleted, and proceed to remove the omap values
 		if _, ok := err.(ErrSnapNotFound); !ok {
 			return nil, status.Error(codes.Internal, err.Error())
