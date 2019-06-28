@@ -70,7 +70,7 @@ func loadAvailableMounters() error {
 }
 
 type volumeMounter interface {
-	mount(mountPoint string, cr *credentials, volOptions *volumeOptions) error
+	mount(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error
 	name() string
 }
 
@@ -114,12 +114,12 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 
 type fuseMounter struct{}
 
-func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
+func mountFuse(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
 	args := []string{
 		mountPoint,
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.id, "--key=" + cr.key,
+		"-n", cephEntityClientPrefix + cr.ID, "--key=" + cr.Key,
 		"-r", volOptions.RootPath,
 		"-o", "nonempty",
 	}
@@ -154,7 +154,7 @@ func mountFuse(mountPoint string, cr *credentials, volOptions *volumeOptions) er
 	return nil
 }
 
-func (m *fuseMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
+func (m *fuseMounter) mount(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
 	if err := createMountPoint(mountPoint); err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (m *fuseMounter) name() string { return "Ceph FUSE driver" }
 
 type kernelMounter struct{}
 
-func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
+func mountKernel(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
 	if err := execCommandErr("modprobe", "ceph"); err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions) 
 		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
 		mountPoint,
 	}
-	optionsStr := fmt.Sprintf("name=%s,secret=%s", cr.id, cr.key)
+	optionsStr := fmt.Sprintf("name=%s,secret=%s", cr.ID, cr.Key)
 	if volOptions.FsName != "" {
 		optionsStr += fmt.Sprintf(",mds_namespace=%s", volOptions.FsName)
 	}
@@ -185,7 +185,7 @@ func mountKernel(mountPoint string, cr *credentials, volOptions *volumeOptions) 
 	return execCommandErr("mount", args[:]...)
 }
 
-func (m *kernelMounter) mount(mountPoint string, cr *credentials, volOptions *volumeOptions) error {
+func (m *kernelMounter) mount(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
 	if err := createMountPoint(mountPoint); err != nil {
 		return err
 	}

@@ -14,10 +14,13 @@ spec:
 
 ---
 kind: StatefulSet
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 metadata:
   name: csi-cephfsplugin-provisioner
 spec:
+  selector:
+    matchLabels:
+      app: csi-cephfsplugin-provisioner
   serviceName: "csi-cephfsplugin-provisioner"
   replicas: 1
   template:

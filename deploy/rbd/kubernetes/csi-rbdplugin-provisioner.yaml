@@ -14,12 +14,15 @@ spec:
 
 ---
 kind: StatefulSet
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 metadata:
   name: csi-rbdplugin-provisioner
 spec:
   serviceName: "csi-rbdplugin-provisioner"
   replicas: 1
+  selector:
+    matchLabels:
+      app: csi-rbdplugin-provisioner
   template:
     metadata:
       labels:

@@ -55,15 +55,15 @@ type cephStoragePoolSummary struct {
 
 // GetPoolID searches a list of pools in a cluster and returns the ID of the pool that matches
 // the passed in poolName parameter
-func GetPoolID(monitors, adminID, key, poolName string) (int64, error) {
+func GetPoolID(monitors string, cr *Credentials, poolName string) (int64, error) {
 	// ceph <options> -f json osd lspools
 	// JSON out: [{"poolnum":<int64>,"poolname":<string>}]
 
 	stdout, _, err := ExecCommand(
 		"ceph",
 		"-m", monitors,
-		"--id", adminID,
-		"--key="+key,
+		"--id", cr.ID,
+		"--key="+cr.Key,
 		"-c", CephConfigPath,
 		"-f", "json",
 		"osd", "lspools")
@@ -90,15 +90,15 @@ func GetPoolID(monitors, adminID, key, poolName string) (int64, error) {
 
 // GetPoolName lists all pools in a ceph cluster, and matches the pool whose pool ID is equal to
 // the requested poolID parameter
-func GetPoolName(monitors, adminID, key string, poolID int64) (string, error) {
+func GetPoolName(monitors string, cr *Credentials, poolID int64) (string, error) {
 	// ceph <options> -f json osd lspools
 	// [{"poolnum":1,"poolname":"replicapool"}]
 
 	stdout, _, err := ExecCommand(
 		"ceph",
 		"-m", monitors,
-		"--id", adminID,
-		"--key="+key,
+		"--id", cr.ID,
+		"--key="+cr.Key,
 		"-c", CephConfigPath,
 		"-f", "json",
 		"osd", "lspools")
@@ -124,12 +124,12 @@ func GetPoolName(monitors, adminID, key string, poolID int64) (string, error) {
 }
 
 // SetOMapKeyValue sets the given key and value into the provided Ceph omap name
-func SetOMapKeyValue(monitors, adminID, key, poolName, namespace, oMapName, oMapKey, keyValue string) error {
+func SetOMapKeyValue(monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey, keyValue string) error {
 	// Command: "rados <options> setomapval oMapName oMapKey keyValue"
 	args := []string{
 		"-m", monitors,
-		"--id", adminID,
-		"--key=" + key,
+		"--id", cr.ID,
+		"--key=" + cr.Key,
 		"-c", CephConfigPath,
 		"-p", poolName,
 		"setomapval", oMapName, oMapKey, keyValue,
@@ -150,7 +150,7 @@ func SetOMapKeyValue(monitors, adminID, key, poolName, namespace, oMapName, oMap
 }
 
 // GetOMapValue gets the value for the given key from the named omap
-func GetOMapValue(monitors, adminID, key, poolName, namespace, oMapName, oMapKey string) (string, error) {
+func GetOMapValue(monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey string) (string, error) {
 	// Command: "rados <options> getomapval oMapName oMapKey <outfile>"
 	// No such key: replicapool/csi.volumes.directory.default/csi.volname
 	tmpFile, err := ioutil.TempFile("", "omap-get-")
@@ -163,8 +163,8 @@ func GetOMapValue(monitors, adminID, key, poolName, namespace, oMapName, oMapKey
 
 	args := []string{
 		"-m", monitors,
-		"--id", adminID,
-		"--key=" + key,
+		"--id", cr.ID,
+		"--key=" + cr.Key,
 		"-c", CephConfigPath,
 		"-p", poolName,
 		"getomapval", oMapName, oMapKey, tmpFile.Name(),
@@ -201,12 +201,12 @@ func GetOMapValue(monitors, adminID, key, poolName, namespace, oMapName, oMapKey
 }
 
 // RemoveOMapKey removes the omap key from the given omap name
-func RemoveOMapKey(monitors, adminID, key, poolName, namespace, oMapName, oMapKey string) error {
+func RemoveOMapKey(monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey string) error {
 	// Command: "rados <options> rmomapkey oMapName oMapKey"
 	args := []string{
 		"-m", monitors,
-		"--id", adminID,
-		"--key=" + key,
+		"--id", cr.ID,
+		"--key=" + cr.Key,
 		"-c", CephConfigPath,
 		"-p", poolName,
 		"rmomapkey", oMapName, oMapKey,
@@ -229,12 +229,12 @@ func RemoveOMapKey(monitors, adminID, key, poolName, namespace, oMapName, oMapKe
 
 // CreateObject creates the object name passed in and returns ErrObjectExists if the provided object
 // is already present in rados
-func CreateObject(monitors, adminID, key, poolName, namespace, objectName string) error {
+func CreateObject(monitors string, cr *Credentials, poolName, namespace, objectName string) error {
 	// Command: "rados <options> create objectName"
 	args := []string{
 		"-m", monitors,
-		"--id", adminID,
-		"--key=" + key,
+		"--id", cr.ID,
+		"--key=" + cr.Key,
 		"-c", CephConfigPath,
 		"-p", poolName,
 		"create", objectName,
@@ -259,12 +259,12 @@ func CreateObject(monitors, adminID, key, poolName, namespace, objectName string
 
 // RemoveObject removes the entire omap name passed in and returns ErrObjectNotFound is provided omap
 // is not found in rados
-func RemoveObject(monitors, adminID, key, poolName, namespace, oMapName string) error {
+func RemoveObject(monitors string, cr *Credentials, poolName, namespace, oMapName string) error {
 	// Command: "rados <options> rm oMapName"
 	args := []string{
 		"-m", monitors,
-		"--id", adminID,
-		"--key=" + key,
+		"--id", cr.ID,
+		"--key=" + cr.Key,
 		"-c", CephConfigPath,
 		"-p", poolName,
 		"rm", oMapName,
