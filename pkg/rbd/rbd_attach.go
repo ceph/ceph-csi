@@ -176,13 +176,14 @@ func getnbdDevicePath(nbdPath, imgPath string, count int) (string, error) {
 	// rbd-nbd map pool/image ...
 	if len(cmdlineArgs) < 3 || cmdlineArgs[0] != rbdTonbd || cmdlineArgs[1] != "map" {
 		klog.V(4).Infof("nbd device %s is not used by rbd", nbdPath)
-		return "", err
+		return "", fmt.Errorf("nbd device %s is not used by rbd", nbdPath)
 
 	}
 	if cmdlineArgs[2] != imgPath {
 		klog.V(4).Infof("rbd-nbd device %s did not match expected image path: %s with path found: %s",
 			nbdPath, imgPath, cmdlineArgs[2])
-		return "", err
+		return "", fmt.Errorf("rbd-nbd device %s did not match expected image path: %s with path found: %s",
+			nbdPath, imgPath, cmdlineArgs[2])
 	}
 	devicePath := path.Join("/dev", "nbd"+strconv.Itoa(count))
 	if _, err := os.Lstat(devicePath); err != nil {
