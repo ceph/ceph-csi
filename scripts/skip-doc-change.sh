@@ -5,7 +5,7 @@ CHANGED_FILES=$(git diff --name-only "$TRAVIS_COMMIT_RANGE")
 
 skip=0
 #files to be skipped
-declare -a FILES=(^docs/ .md$ ^scripts/ LICENSE .travis.yml .mergify.yml .github .gitignore)
+declare -a FILES=(^docs/ .md$ ^scripts/ LICENSE .mergify.yml .github .gitignore)
 
 function check_file_present() {
     local file=$1

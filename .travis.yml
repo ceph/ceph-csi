@@ -59,6 +59,12 @@ jobs:
         - make image-cephcsi || travis_terminate 1;
         - scripts/travis-functest.sh v1.14.3 || travis_terminate 1;
 
+    - name: cephcsi with kube 1.15.0
+      script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
+        - make image-cephcsi || travis_terminate 1;
+        - scripts/travis-functest.sh v1.15.0 || travis_terminate 1;
+
 deploy:
   - provider: script
     on:  # yamllint disable-line rule:truthy
