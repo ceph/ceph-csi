@@ -35,6 +35,8 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
+            - "--timeout=60s"
+            - "--retry-interval-start=500ms"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
@@ -46,8 +48,8 @@ spec:
           image: quay.io/k8scsi/csi-snapshotter:v1.1.0
           args:
             - "--csi-address=$(ADDRESS)"
-            - "--connection-timeout=15s"
             - "--v=5"
+            - "--timeout=60s"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock

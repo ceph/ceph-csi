@@ -25,7 +25,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-	"k8s.io/utils/keymutex"
 )
 
 // ControllerServer struct of CEPH CSI driver with supported methods of CSI
@@ -41,8 +40,8 @@ type controllerCacheEntry struct {
 }
 
 var (
-	mtxControllerVolumeID   = keymutex.NewHashed(0)
-	mtxControllerVolumeName = keymutex.NewHashed(0)
+	volumeIDLocker   = util.NewIDLocker()
+	volumeNameLocker = util.NewIDLocker()
 )
 
 // createBackingVolume creates the backing subvolume and user/key for the given volOptions and vID,
@@ -91,8 +90,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	// Existence and conflict checks
-	mtxControllerVolumeName.LockKey(requestName)
-	defer mustUnlock(mtxControllerVolumeName, requestName)
+	idLk := volumeNameLocker.Lock(requestName)
+	defer volumeNameLocker.Unlock(idLk, requestName)
 
 	vID, err := checkVolExists(volOptions, secret)
 	if err != nil {
@@ -181,8 +180,8 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	mtxControllerVolumeID.LockKey(string(volID))
-	defer mustUnlock(mtxControllerVolumeID, string(volID))
+	idLk := volumeIDLocker.Lock(string(volID))
+	defer volumeIDLocker.Unlock(idLk, string(volID))
 
 	if err = purgeVolume(volID, cr, &ce.VolOptions); err != nil {
 		klog.Errorf("failed to delete volume %s: %v", volID, err)
@@ -240,8 +239,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	// lock out parallel delete and create requests against the same volume name as we
 	// cleanup the subvolume and associated omaps for the same
-	mtxControllerVolumeName.LockKey(volOptions.RequestName)
-	defer mustUnlock(mtxControllerVolumeName, volOptions.RequestName)
+	idLk := volumeNameLocker.Lock(volOptions.RequestName)
+	defer volumeNameLocker.Unlock(idLk, volOptions.RequestName)
 
 	if err = purgeVolume(volumeID(vID.FsSubvolName), cr, volOptions); err != nil {
 		klog.Errorf("failed to delete volume %s: %v", volID, err)
