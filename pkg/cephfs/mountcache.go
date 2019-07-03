@@ -43,7 +43,7 @@ func initVolumeMountCache(driverName, mountCacheDir string) {
 }
 
 func remountCachedVolumes() error {
-	if err := os.MkdirAll(volumeMountCache.nodeCacheStore.BasePath, 0755); err != nil {
+	if err := util.CreateMountPoint(volumeMountCache.nodeCacheStore.BasePath); err != nil {
 		klog.Errorf("mount-cache: failed to create %s: %v", volumeMountCache.nodeCacheStore.BasePath, err)
 		return err
 	}
@@ -124,7 +124,7 @@ func mountOneCacheEntry(volOptions *volumeOptions, vid *volumeIdentifier, me *vo
 		return err
 	}
 
-	isMnt, err := isMountPoint(me.StagingPath)
+	isMnt, err := util.IsMountPoint(me.StagingPath)
 	if err != nil {
 		isMnt = false
 		klog.Infof("mount-cache: failed to check volume mounted %s: %s %v", volID, me.StagingPath, err)

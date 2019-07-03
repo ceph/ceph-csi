@@ -14,6 +14,8 @@ spec:
       app: {{ include "ceph-csi-rbd.name" . }}
       component: {{ .Values.nodeplugin.name }}
       release: {{ .Release.Name }}
+  updateStrategy:
+    type: OnDelete
   template:
     metadata:
       labels:
@@ -51,7 +53,7 @@ spec:
                   fieldPath: spec.nodeName
           imagePullPolicy: {{ .Values.nodeplugin.registrar.image.pullPolicy }}
           volumeMounts:
-            - name: plugin-dir
+            - name: socket-dir
               mountPath: /csi
             - name: registration-dir
               mountPath: /registration
@@ -84,13 +86,13 @@ spec:
               value: "unix:/{{ .Values.socketDir }}/{{ .Values.socketFile }}"
           imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
           volumeMounts:
-            - name: plugin-dir
+            - name: socket-dir
               mountPath: {{ .Values.socketDir }}
-            - name: pods-mount-dir
-              mountPath: /var/lib/kubelet/pods
+            - name: plugin-dir
+              mountPath: {{ .Values.pluginDir }}
               mountPropagation: "Bidirectional"
-            - name: plugin-mount-dir
-              mountPath: {{ .Values.volumeDevicesDir }}
+            - name: mointpoint-dir
+              mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
             - mountPath: /dev
               name: host-dev
@@ -106,22 +108,22 @@ spec:
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
       volumes:
-        - name: plugin-dir
+        - name: socket-dir
           hostPath:
             path: {{ .Values.socketDir }}
-            type: DirectoryOrCreate
-        - name: plugin-mount-dir
-          hostPath:
-            path: {{ .Values.volumeDevicesDir }}
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
             path: {{ .Values.registrationDir }}
             type: Directory
-        - name: pods-mount-dir
+        - name: plugin-dir
+          hostPath:
+            path: {{ .Values.pluginDir }}
+            type: Directory
+        - name: mountpoint-dir
           hostPath:
             path: /var/lib/kubelet/pods
-            type: Directory
+            type: DirectoryOrCreate
         - name: host-dev
           hostPath:
             path: /dev
