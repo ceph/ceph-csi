@@ -90,16 +90,16 @@ type rbdSnapshot struct {
 }
 
 var (
-	// serializes operations based on "<rbd pool>/<rbd image>" as key
-	attachdetachLocker = util.NewIDLocker()
 	// serializes operations based on "volume name" as key
 	volumeNameLocker = util.NewIDLocker()
 	// serializes operations based on "snapshot name" as key
 	snapshotNameLocker = util.NewIDLocker()
-	// serializes operations based on "mount target path" as key
-	targetPathLocker = util.NewIDLocker()
 	// serializes delete operations on legacy volumes
 	legacyVolumeIDLocker = util.NewIDLocker()
+	// serializes operations based on "mount staging path" as key
+	nodeVolumeIDLocker = util.NewIDLocker()
+	// serializes operations based on "mount target path" as key
+	targetPathLocker = util.NewIDLocker()
 
 	supportedFeatures = sets.NewString("layering")
 )

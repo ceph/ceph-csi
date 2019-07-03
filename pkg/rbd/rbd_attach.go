@@ -231,8 +231,6 @@ func attachRBDImage(volOptions *rbdVolume, cr *util.Credentials) (string, error)
 	var err error
 
 	image := volOptions.RbdImageName
-	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
-
 	useNBD := false
 	moduleName := rbd
 	if volOptions.Mounter == rbdTonbd && hasNBD {
@@ -242,9 +240,6 @@ func attachRBDImage(volOptions *rbdVolume, cr *util.Credentials) (string, error)
 
 	devicePath, found := waitForPath(volOptions.Pool, image, 1, useNBD)
 	if !found {
-		idLk := attachdetachLocker.Lock(imagePath)
-		defer attachdetachLocker.Unlock(idLk, imagePath)
-
 		_, err = execCommand("modprobe", []string{moduleName})
 		if err != nil {
 			klog.Warningf("rbd: failed to load rbd kernel module:%v", err)
