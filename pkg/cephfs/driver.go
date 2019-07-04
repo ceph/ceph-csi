@@ -38,7 +38,7 @@ const (
 )
 
 // PluginFolder defines the location of ceph plugin
-var PluginFolder = "/var/lib/kubelet/plugins/"
+var PluginFolder = ""
 
 // Driver contains the default identity,node and controller struct
 type Driver struct {
@@ -91,9 +91,10 @@ func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests
-func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir, instanceID string, cachePersister util.CachePersister) {
+func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir, instanceID, pluginPath string, cachePersister util.CachePersister) {
 
 	// Configuration
+	PluginFolder = pluginPath
 
 	if err := loadAvailableMounters(); err != nil {
 		klog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
