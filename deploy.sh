@@ -5,10 +5,10 @@ push_helm_charts() {
 	CHANGED=0
 	VERSION=$(grep 'version:' deploy/"$PACKAGE"/helm/Chart.yaml | awk '{print $2}')
 
-	if [ ! -f "tmp/csi-charts/docs/$PACKAGE/ceph-csi-$PACKAGE-$VERSION.tgz" ]; then
+	if [ ! -f "tmp/csi-charts/docs/$PACKAGE/v$VERSION/ceph-csi-$PACKAGE-$VERSION.tgz" ]; then
 		CHANGED=1
 		ln -s helm deploy/"$PACKAGE"/ceph-csi-"$PACKAGE"
-		mkdir -p tmp/csi-charts/docs/"$PACKAGE"
+		mkdir -p tmp/csi-charts/docs/"$PACKAGE/v$VERSION"
 		pushd tmp/csi-charts/docs/"$PACKAGE" >/dev/null
 		helm init --client-only
 		helm package ../../../../deploy/"$PACKAGE"/ceph-csi-"$PACKAGE"
@@ -24,11 +24,8 @@ push_helm_charts() {
 	fi
 }
 
-if [ "${TRAVIS_BRANCH}" == 'csi-v0.3' ]; then
-	export ENV_RBD_IMAGE_VERSION='v0.3-canary'
-	export ENV_CEPHFS_IMAGE_VERSION='v0.3-canary'
-elif [ "${TRAVIS_BRANCH}" == 'master' ]; then
-	export ENV_CSI_IMAGE_VERSION='canary'
+if [ "${TRAVIS_BRANCH}" == 'release-v1.1.0' ]; then
+	export ENV_CSI_IMAGE_VERSION='v1.1.0'
 else
 	echo "!!! Branch ${TRAVIS_BRANCH} is not a deployable branch; exiting"
 	exit 0 # Exiting 0 so that this isn't marked as failing
