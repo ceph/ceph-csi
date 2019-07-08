@@ -35,4 +35,4 @@ parameters:
   # mounter: kernel
 reclaimPolicy: Delete
 mountOptions:
-  - noexec
+  - debug

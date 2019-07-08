@@ -34,3 +34,5 @@ parameters:
    # uncomment the following to use rbd-nbd as mounter on supported nodes
    # mounter: rbd-nbd
 reclaimPolicy: Delete
+mountOptions:
+   - discard

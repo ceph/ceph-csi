@@ -144,17 +144,15 @@ func (ns *NodeServer) mountVolume(req *csi.NodePublishVolumeRequest, devicePath 
 
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
 	if isBlock {
-		options := []string{"bind"}
-		if err := diskMounter.Mount(devicePath, targetPath, fsType, options); err != nil {
+		mountFlags = append(mountFlags, "bind")
+		if err := diskMounter.Mount(devicePath, targetPath, fsType, mountFlags); err != nil {
 			return err
 		}
 	} else {
-		options := []string{}
 		if readOnly {
-			options = append(options, "ro")
+			mountFlags = append(mountFlags, "ro")
 		}
-
-		if err := diskMounter.FormatAndMount(devicePath, targetPath, fsType, options); err != nil {
+		if err := diskMounter.FormatAndMount(devicePath, targetPath, fsType, mountFlags); err != nil {
 			return err
 		}
 	}
