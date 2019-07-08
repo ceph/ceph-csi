@@ -18,6 +18,7 @@ package rbd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ceph/ceph-csi/pkg/util"
 
@@ -141,6 +142,8 @@ func checkSnapExists(rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
 		return false, err
 	}
 
+	// TODO validate snap  belongs to same parent
+
 	klog.V(4).Infof("found existing snap (%s) with snap name (%s) for request (%s)",
 		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
@@ -227,6 +230,17 @@ func reserveSnap(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 		rbdSnap.SnapID, rbdSnap.RbdImageName, rbdSnap.RequestName)
 
 	return nil
+}
+
+// updateReservedSnap is a helper routine to update the snap parent name
+func updateReservedSnap(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+	snapUUID := strings.Replace(rbdSnap.RbdSnapName, snapJournal.NamingPrefix(), "", 1)
+	err := snapJournal.UpdateReservedKey(rbdSnap.Monitors, cr, rbdSnap.Pool, snapUUID, rbdSnap.RbdImageName)
+	if err == nil {
+		klog.V(4).Infof("updated snapshot %s with parent name %s", rbdSnap.RbdSnapName, rbdSnap.RbdImageName)
+
+	}
+	return err
 }
 
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the

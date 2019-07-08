@@ -59,6 +59,9 @@ var (
 	// VolumeName to backing RBD images
 	volJournal  *util.CSIJournal
 	snapJournal *util.CSIJournal
+
+	// rbdMaxCloneDepth is the maximum number of nested volume clones that are taken before a flatten occurs
+	rbdMaxCloneDepth uint
 )
 
 // NewDriver returns new rbd driver
@@ -99,7 +102,7 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // rbd CSI driver which can serve multiple parallel requests
-func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containerized bool, cachePersister util.CachePersister) {
+func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containerized bool, cloneDepth uint, cachePersister util.CachePersister) {
 	var err error
 
 	klog.Infof("Driver: %v version: %v", driverName, version)
@@ -108,6 +111,8 @@ func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containeri
 	if err = util.WriteCephConfig(); err != nil {
 		klog.Fatalf("failed to write ceph configuration file (%v)", err)
 	}
+
+	rbdMaxCloneDepth = cloneDepth
 
 	// Use passed in instance ID, if provided for omap suffix naming
 	if instanceID != "" {

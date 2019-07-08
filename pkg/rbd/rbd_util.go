@@ -177,8 +177,8 @@ func deleteImage(pOpts *rbdVolume, cr *util.Credentials) error {
 		return fmt.Errorf("rbd %s is still being used", image)
 	}
 
-	klog.V(4).Infof("rbd: rm %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
-	args := []string{"rm", image, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors,
+	klog.V(4).Infof("rbd: trash mv %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
+	args := []string{"trash", "mv", image, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors,
 		"--key=" + cr.Key}
 	output, err = execCommand("rbd", args)
 	if err != nil {
@@ -478,32 +478,13 @@ func hasSnapshotFeature(imageFeatures string) bool {
 	return false
 }
 
-func protectSnapshot(pOpts *rbdSnapshot, cr *util.Credentials) error {
-	var output []byte
-
-	image := pOpts.RbdImageName
-	snapName := pOpts.RbdSnapName
-
-	klog.V(4).Infof("rbd: snap protect %s using mon %s, pool %s ", image, pOpts.Monitors, pOpts.Pool)
-	args := []string{"snap", "protect", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
-		cr.ID, "-m", pOpts.Monitors, "--key=" + cr.Key}
-
-	output, err := execCommand("rbd", args)
-
-	if err != nil {
-		return errors.Wrapf(err, "failed to protect snapshot, command output: %s", string(output))
-	}
-
-	return nil
-}
-
 func createSnapshot(pOpts *rbdSnapshot, cr *util.Credentials) error {
 	var output []byte
 
 	image := pOpts.RbdImageName
 	snapName := pOpts.RbdSnapName
 
-	klog.V(4).Infof("rbd: snap create %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
+	klog.V(4).Infof("rbd: snap create %s/%s using mon %s, pool %s", image, snapName, pOpts.Monitors, pOpts.Pool)
 	args := []string{"snap", "create", "--pool", pOpts.Pool, "--snap", snapName, image,
 		"--id", cr.ID, "-m", pOpts.Monitors, "--key=" + cr.Key}
 
@@ -516,32 +497,13 @@ func createSnapshot(pOpts *rbdSnapshot, cr *util.Credentials) error {
 	return nil
 }
 
-func unprotectSnapshot(pOpts *rbdSnapshot, cr *util.Credentials) error {
-	var output []byte
-
-	image := pOpts.RbdImageName
-	snapName := pOpts.RbdSnapName
-
-	klog.V(4).Infof("rbd: snap unprotect %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
-	args := []string{"snap", "unprotect", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
-		cr.ID, "-m", pOpts.Monitors, "--key=" + cr.Key}
-
-	output, err := execCommand("rbd", args)
-
-	if err != nil {
-		return errors.Wrapf(err, "failed to unprotect snapshot, command output: %s", string(output))
-	}
-
-	return nil
-}
-
 func deleteSnapshot(pOpts *rbdSnapshot, cr *util.Credentials) error {
 	var output []byte
 
 	image := pOpts.RbdImageName
 	snapName := pOpts.RbdSnapName
 
-	klog.V(4).Infof("rbd: snap rm %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
+	klog.V(4).Infof("rbd: snap rm %s/%s using mon %s, pool %s", image, snapName, pOpts.Monitors, pOpts.Pool)
 	args := []string{"snap", "rm", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
 		cr.ID, "-m", pOpts.Monitors, "--key=" + cr.Key}
 
@@ -567,8 +529,7 @@ func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, cr *util.Crede
 
 	klog.V(4).Infof("rbd: clone %s using mon %s, pool %s", image, pVolOpts.Monitors, pVolOpts.Pool)
 	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.RbdImageName + "@" + snapName,
-		pVolOpts.Pool + "/" + image, "--id", cr.ID, "-m", pVolOpts.Monitors, "--key=" + cr.Key}
-
+		pVolOpts.Pool + "/" + image, "--rbd-default-clone-format=2", "--id", cr.ID, "-m", pVolOpts.Monitors, "--key=" + cr.Key, "--image-feature", pVolOpts.ImageFeatures}
 	output, err := execCommand("rbd", args)
 
 	if err != nil {
@@ -604,13 +565,21 @@ func getSnapshotMetadata(pSnapOpts *rbdSnapshot, cr *util.Credentials) error {
 	return nil
 }
 
+// parentInfo  spec for parent volume  info
+type parentInfo struct {
+	Image    string `json:"image"`
+	Pool     string `json:"pool"`
+	Snapshot string `json:"snapshost"`
+}
+
 // imageInfo strongly typed JSON spec for image info
 type imageInfo struct {
-	ObjectUUID string   `json:"name"`
-	Size       int64    `json:"size"`
-	Format     int64    `json:"format"`
-	Features   []string `json:"features"`
-	CreatedAt  string   `json:"create_timestamp"`
+	ObjectUUID string     `json:"name"`
+	Size       int64      `json:"size"`
+	Format     int64      `json:"format"`
+	Features   []string   `json:"features"`
+	CreatedAt  string     `json:"create_timestamp"`
+	Parent     parentInfo `json:"parent"`
 }
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
@@ -703,4 +672,43 @@ func getSnapInfo(monitors string, cr *util.Credentials, poolName, imageName, sna
 
 	return snpInfo, ErrSnapNotFound{snapName, fmt.Errorf("snap (%s) for image (%s) not found",
 		snapName, poolName+"/"+imageName)}
+}
+
+func flattenRbdImage(rbdVol *rbdVolume, maxDepth uint, cr *util.Credentials) error {
+	if maxDepth > 0 {
+		d, err := getCloneDepth(rbdVol.Monitors, rbdVol.Pool, rbdVol.RbdImageName, 0, cr)
+		if err != nil {
+			return err
+		}
+		klog.Infof("image depth is %v and maximum configured clone depth is  %v ", d, maxDepth)
+		if d >= int(maxDepth) {
+			klog.Infof("maximum clone depth (%d) has been reached, flattening %v volume ", maxDepth, rbdVol.RbdImageName)
+			args := []string{"-m", rbdVol.Monitors,
+				"--id", cr.ID,
+				"--pool", rbdVol.Pool,
+				"--no-progress",
+				"--image", rbdVol.RbdImageName,
+				"--key=" + cr.Key,
+				"-c", util.CephConfigPath,
+				"flatten"}
+
+			_, err := execCommand("rbd", args)
+
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getCloneDepth(monitors, poolName, imageName string, depth int, cr *util.Credentials) (int, error) {
+	image, err := getImageInfo(monitors, cr, poolName, imageName)
+	if err != nil {
+		return 0, err
+	}
+	if image.Parent.Image != "" {
+		depth++
+		return getCloneDepth(monitors, image.Parent.Pool, image.Parent.Image, depth, cr)
+	}
+	return depth, err
 }

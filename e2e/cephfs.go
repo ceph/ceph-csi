@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo" // nolint
@@ -74,7 +73,6 @@ var _ = Describe("cephfs", func() {
 			By("create and delete a PVC", func() {
 				By("create a PVC and Bind it to an app", func() {
 					validatePVCAndAppBinding(pvcPath, appPath, f)
-
 				})
 
 				By("create a PVC and Bind it to an app with normal user", func() {
@@ -82,38 +80,8 @@ var _ = Describe("cephfs", func() {
 				})
 
 				By("create/delete multiple PVCs and Apps", func() {
-					totalCount := 2
-					pvc, err := loadPVC(pvcPath)
-					if err != nil {
-						Fail(err.Error())
-					}
-					pvc.Namespace = f.UniqueName
-
-					app, err := loadApp(appPath)
-					if err != nil {
-						Fail(err.Error())
-					}
-					app.Namespace = f.UniqueName
-					// create pvc and app
-					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						err := createPVCAndApp(name, f, pvc, app)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-					}
-					// TODO add cephfs backend validation
-
-					// delete pvc and app
-					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						err := deletePVCAndApp(name, f, pvc, app)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-					}
+					totalCount := 10
+					validatePVCAndApp(false, pvcPath, appPath, totalCount, f)
 				})
 
 			})

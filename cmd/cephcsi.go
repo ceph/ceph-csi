@@ -47,7 +47,8 @@ var (
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
 
 	// rbd related flags
-	containerized = flag.Bool("containerized", true, "whether run as containerized")
+	containerized    = flag.Bool("containerized", true, "whether run as containerized")
+	rbdMaxCloneDepth = flag.Uint("rbdmaximumclonedepth", 16, "Maximum number of nested volume clones that are taken before a flatten occurs")
 
 	// cephfs related flags
 	volumeMounter = flag.String("volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
@@ -117,7 +118,7 @@ func main() {
 			}
 		}
 		driver := rbd.NewDriver()
-		driver.Run(dname, *nodeID, *endpoint, *instanceID, *containerized, cp)
+		driver.Run(dname, *nodeID, *endpoint, *instanceID, *containerized, *rbdMaxCloneDepth, cp)
 
 	case cephfsType:
 		cephfs.PluginFolder += dname

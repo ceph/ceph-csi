@@ -117,7 +117,15 @@ type CSIJournal struct {
 
 	// namespace in which the RADOS objects are stored, default is no namespace
 	namespace string
+
+	// tmpNamePrefix prefix for cloned images, which will help to filter and delete stale clone volumes
+	tmpNamePrefix string
 }
+
+var (
+	tmpSnapName = "csi-tmp-snap-"
+	tmpVolName  = "csi-tmp-clone-"
+)
 
 // CSIVolumeJournal returns an instance of volume keys
 func NewCSIVolumeJournal() *CSIJournal {
@@ -129,6 +137,7 @@ func NewCSIVolumeJournal() *CSIJournal {
 		namingPrefix:            "csi-vol-",
 		cephSnapSourceKey:       "",
 		namespace:               "",
+		tmpNamePrefix:           tmpVolName,
 	}
 }
 
@@ -142,6 +151,7 @@ func NewCSISnapshotJournal() *CSIJournal {
 		namingPrefix:            "csi-snap-",
 		cephSnapSourceKey:       "csi.source",
 		namespace:               "",
+		tmpNamePrefix:           tmpSnapName,
 	}
 }
 
@@ -158,6 +168,36 @@ func (cj *CSIJournal) SetCSIDirectorySuffix(suffix string) {
 // SetNamespace sets the namespace in which all RADOS objects would be created
 func (cj *CSIJournal) SetNamespace(ns string) {
 	cj.namespace = ns
+}
+
+// SetTmpNamePrefix updates the temp name in which all temoprary cloned volume
+// starts with. This will help driver to cleanup the stale clone volume
+// created by it.
+// this  will set the temp name as tmpNamePrefix+driverName
+func (cj *CSIJournal) SetTmpNamePrefix(name string) {
+	cj.tmpNamePrefix += name + "-"
+}
+
+// GetTmpNamePrefix returns the temporary name prefix
+/* if first is set
+if the tmpName is csi-tmp-snap-rbd.ceph.csi.com then it will return
+csi-tmp-snap1-rbd.ceph.csi.com
+if  first is not set returns csi-tmp-snap2-rbd.ceph.csi.com
+this will help us storing the snap info on rados and also helps in cleaning the
+stale snaps
+*/
+func (cj *CSIJournal) GetTmpNamePrefix(sufix string, first, isSnap bool) string {
+	if !isSnap {
+		return cj.tmpNamePrefix + sufix
+	}
+	t := strings.Split(cj.tmpNamePrefix, tmpSnapName)
+	if len(t) != 2 {
+		return ""
+	}
+	if first {
+		return tmpSnapName + "1" + t[1] + sufix
+	}
+	return tmpSnapName + "2" + t[1] + sufix
 }
 
 /*
@@ -365,6 +405,17 @@ func (cj *CSIJournal) ReserveName(monitors string, cr *Credentials, pool, reqNam
 	}
 
 	return volUUID, nil
+}
+
+/*
+UpdateReservedKey updates the omap key with new value
+*/
+func (cj *CSIJournal) UpdateReservedKey(monitors string, cr *Credentials, pool, volUUID, parentName string) error {
+
+	// Update UUID directory to store source volume UUID in case of snapshots
+	err := UpdateOMapValue(monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
+		cj.cephSnapSourceKey, parentName)
+	return err
 }
 
 /*

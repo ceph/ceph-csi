@@ -88,6 +88,7 @@ spec:
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
             - "--containerized=true"
+            - "--rbdmaximumclonedepth=14"
           env:
             - name: HOST_ROOTFS
               value: "/rootfs"

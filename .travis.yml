@@ -1,7 +1,7 @@
 ---
 # need for docker build
 sudo: true
-dist: xenial
+dist: bionic
 
 addons:
   apt:

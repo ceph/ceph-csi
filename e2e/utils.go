@@ -516,12 +516,15 @@ func checkCephPods(ns string, c kubernetes.Interface, count, t int, opt *metav1.
 
 // createPVCAndApp creates pvc and pod
 // if name is not empty same will be set as pvc and app name
-func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+func createPVCAndApp(pvcName, snapName string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
 
-	if name != "" {
-		pvc.Name = name
-		app.Name = name
-		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+	if pvcName != "" {
+		pvc.Name = pvcName
+		app.Name = pvcName
+		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
+	}
+	if snapName != "" {
+		pvc.Spec.DataSource.Name = snapName
 	}
 	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
@@ -533,12 +536,16 @@ func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolu
 
 // deletePVCAndApp delete pvc and pod
 // if name is not empty same will be set as pvc and app name
-func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+func deletePVCAndApp(pvcName, snapName string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
 
-	if name != "" {
-		pvc.Name = name
-		app.Name = name
-		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+	if pvcName != "" {
+		pvc.Name = pvcName
+		app.Name = pvcName
+		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
+	}
+
+	if snapName != "" {
+		pvc.Spec.DataSource.Name = snapName
 	}
 
 	err := deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
@@ -563,12 +570,12 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 	}
 	app.Namespace = f.UniqueName
 
-	err = createPVCAndApp("", f, pvc, app)
+	err = createPVCAndApp("", "", f, pvc, app)
 	if err != nil {
 		Fail(err.Error())
 	}
 
-	err = deletePVCAndApp("", f, pvc, app)
+	err = deletePVCAndApp("", "", f, pvc, app)
 	if err != nil {
 		Fail(err.Error())
 	}
@@ -744,4 +751,186 @@ func listSnapshots(f *framework.Framework, pool, imageName string) ([]snapInfo, 
 
 	err := json.Unmarshal([]byte(stdout), &snapInfos)
 	return snapInfos, err
+}
+
+func validateCloneFromSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string, total int, f *framework.Framework) {
+
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		Fail(err.Error())
+	}
+
+	app, err := loadApp(appPath)
+	if err != nil {
+		Fail(err.Error())
+	}
+	pvcClone, err := loadPVC(pvcClonePath)
+	if err != nil {
+		Fail(err.Error())
+	}
+	appClone, err := loadApp(appClonePath)
+	if err != nil {
+		Fail(err.Error())
+	}
+
+	pvc.Namespace = f.UniqueName
+	app.Namespace = f.UniqueName
+	pvcClone.Namespace = f.UniqueName
+	appClone.Namespace = f.UniqueName
+	err = createPVCAndApp("", "", f, pvc, app)
+	if err != nil {
+		Fail(err.Error())
+	}
+	// validate created backend rbd images
+	images := listRBDImages(f)
+	if len(images) != 1 {
+		e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+		Fail("validate backend image failed")
+	}
+	snap := getSnapshot(snapshotPath)
+	snap.Namespace = f.UniqueName
+	snap.Spec.Source.Name = pvc.Name
+	snap.Spec.Source.Kind = "PersistentVolumeClaim"
+	for i := 0; i < total; i++ {
+		snap.Name = fmt.Sprintf("%s%d", f.UniqueName, i)
+		err = createSnapshot(&snap, deployTimeout)
+		if err != nil {
+			Fail(err.Error())
+		}
+	}
+	pool := "replicapool"
+	snapList, err := listSnapshots(f, pool, images[0])
+	if err != nil {
+		Fail(err.Error())
+	}
+	// check any stale snapshots present on parent volume
+	if len(snapList) != 0 {
+		e2elog.Logf("stale backend snapshot count = %v %d", len(snapList))
+		Fail("validate backend snapshot failed")
+	}
+
+	// total images to be present at backend
+	// parentPVC+total snapshots
+	// validate created backend rbd images
+	images = listRBDImages(f)
+	count := 1 + total
+	if len(images) != count {
+		e2elog.Logf("backend image creation not matching pvc count, image count = %d pvc count %d", len(images), count)
+		Fail("validate multiple snapshot failed")
+	}
+
+	for i := 0; i < total; i++ {
+		name := fmt.Sprintf("%s%d", f.UniqueName, i)
+		err = createPVCAndApp(name, name, f, pvcClone, appClone)
+		if err != nil {
+			Fail(err.Error())
+		}
+	}
+
+	// total images to be present at backend
+	// parentPVC+total*snapshot+total*pvc
+	// validate created backend rbd images
+	images = listRBDImages(f)
+	count = 1 + total + total
+	if len(images) != count {
+		e2elog.Logf("backend image creation not matching pvc count, image count = %v pvc count %d", len(images), count)
+		Fail("validate multiple snapshot failed")
+	}
+
+	deleteAndValidateSnapshot(images[0], pool, f, total, &snap)
+
+	for i := 0; i < total; i++ {
+		name := fmt.Sprintf("%s%d", f.UniqueName, i)
+		err = deletePVCAndApp(name, name, f, pvcClone, appClone)
+		if err != nil {
+			Fail(err.Error())
+		}
+	}
+
+	err = deletePVCAndApp("", "", f, pvc, app)
+	if err != nil {
+		Fail(err.Error())
+	}
+
+	// validate created backend rbd images
+	images = listRBDImages(f)
+	if len(images) != 0 {
+		e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+		Fail("validate backend image failed")
+	}
+}
+
+func deleteAndValidateSnapshot(image, pool string, f *framework.Framework, total int, snap *v1alpha1.VolumeSnapshot) {
+	// delete  all  snapshots
+	for i := 0; i < total; i++ {
+		snap.Name = fmt.Sprintf("%s%d", f.UniqueName, i)
+		err := deleteSnapshot(snap, deployTimeout)
+		if err != nil {
+			Fail(err.Error())
+		}
+	}
+
+	snapList, err := listSnapshots(f, pool, image)
+	if err != nil {
+		Fail(err.Error())
+	}
+	if len(snapList) != 0 {
+		e2elog.Logf("stale snapshot in backend, count = %v ", len(snapList))
+		Fail("validate backend snapshot failed")
+	}
+
+	// validate created backend rbd images
+	images := listRBDImages(f)
+	if len(images) != 1 {
+		e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+		Fail("validate backend image failed")
+	}
+
+}
+func validatePVCAndApp(rbd bool, pvcPath, appPath string, totalCount int, f *framework.Framework) {
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		Fail(err.Error())
+	}
+	pvc.Namespace = f.UniqueName
+
+	app, err := loadApp(appPath)
+	if err != nil {
+		Fail(err.Error())
+	}
+	app.Namespace = f.UniqueName
+	// create pvc and app
+	for i := 0; i < totalCount; i++ {
+		name := fmt.Sprintf("%s%d", f.UniqueName, i)
+		err := createPVCAndApp(name, "", f, pvc, app)
+		if err != nil {
+			Fail(err.Error())
+		}
+
+	}
+	if rbd {
+		// validate created backend rbd images
+		images := listRBDImages(f)
+		if len(images) != totalCount {
+			e2elog.Logf("backend image creation not matching pvc count, image count = % pvc count %d", len(images), totalCount)
+			Fail("validate multiple pvc failed")
+		}
+	}
+	// delete pvc and app
+	for i := 0; i < totalCount; i++ {
+		name := fmt.Sprintf("%s%d", f.UniqueName, i)
+		err := deletePVCAndApp(name, "", f, pvc, app)
+		if err != nil {
+			Fail(err.Error())
+		}
+
+	}
+	if rbd {
+		// validate created backend rbd images
+		images := listRBDImages(f)
+		if len(images) > 0 {
+			e2elog.Logf("left out rbd backend images count %d", len(images))
+			Fail("validate multiple pvc failed")
+		}
+	}
 }

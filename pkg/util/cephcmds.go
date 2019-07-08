@@ -142,6 +142,41 @@ func SetOMapKeyValue(monitors string, cr *Credentials, poolName, namespace, oMap
 	return nil
 }
 
+// UpdateOMapValue updates the given key with new value into the provided Ceph omap name
+func UpdateOMapValue(monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey, keyValue string) error {
+	err := deleteOMapkey(monitors, cr, poolName, namespace, oMapName, oMapKey)
+	if err != nil {
+		return err
+	}
+	err = SetOMapKeyValue(monitors, cr, poolName, namespace, oMapName, oMapKey, keyValue)
+	return err
+}
+
+func deleteOMapkey(monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey string) error {
+	// Command: "rados <options> rmomapkey oMapName oMapKey"
+	args := []string{
+		"-m", monitors,
+		"--id", cr.ID,
+		"--key=" + cr.Key,
+		"-c", CephConfigPath,
+		"-p", poolName,
+		"rmomapkey", oMapName, oMapKey,
+	}
+
+	if namespace != "" {
+		args = append(args, "--namespace="+namespace)
+	}
+
+	_, _, err := ExecCommand("rados", args[:]...)
+	if err != nil {
+		klog.Errorf("failed removing key (%s), from omap (%s) in "+
+			"pool (%s): (%v)", oMapKey, oMapName, poolName, err)
+		return err
+	}
+
+	return nil
+}
+
 // GetOMapValue gets the value for the given key from the named omap
 func GetOMapValue(monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey string) (string, error) {
 	// Command: "rados <options> getomapval oMapName oMapKey <outfile>"
