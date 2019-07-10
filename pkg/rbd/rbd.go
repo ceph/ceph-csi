@@ -46,7 +46,7 @@ type Driver struct {
 }
 
 var (
-	version = "1.0.0"
+	version = "canary"
 
 	// PluginFolder defines the location of ceph plugin
 	PluginFolder = "/var/lib/kubelet/plugins/"

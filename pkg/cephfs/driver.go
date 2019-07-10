@@ -27,7 +27,7 @@ import (
 
 const (
 	// version of ceph driver
-	version = "1.0.0"
+	version = "canary"
 
 	// volIDVersion is the version number of volume ID encoding scheme
 	volIDVersion uint16 = 1
