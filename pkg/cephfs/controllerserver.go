@@ -183,7 +183,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 	idLk := volumeIDLocker.Lock(string(volID))
 	defer volumeIDLocker.Unlock(idLk, string(volID))
 
-	if err = purgeVolume(volID, cr, &ce.VolOptions); err != nil {
+	if err = purgeVolumeDeprecated(volID, cr, &ce.VolOptions); err != nil {
 		klog.Errorf("failed to delete volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}

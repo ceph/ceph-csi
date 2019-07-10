@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 
 	"google.golang.org/grpc/codes"
@@ -84,6 +85,11 @@ func isMountPoint(p string) (bool, error) {
 	}
 
 	return !notMnt, nil
+}
+
+func pathExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }
 
 // Controller service request validation

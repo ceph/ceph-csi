@@ -18,7 +18,6 @@ package cephfs
 
 import (
 	"fmt"
-	"path"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -272,7 +271,7 @@ func newVolumeOptionsFromVersion1Context(volID string, options, secrets map[stri
 			return nil, nil, err
 		}
 
-		opts.RootPath = path.Join("/csi-volumes", string(volumeID(volID)))
+		opts.RootPath = getVolumeRootPathCephDeprecated(volumeID(volID))
 	} else {
 		if err = extractOption(&opts.RootPath, "rootPath", options); err != nil {
 			return nil, nil, err
