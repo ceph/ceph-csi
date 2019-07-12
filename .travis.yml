@@ -14,8 +14,8 @@ services:
 language: go
 branches:
   only:
-    - csi-v0.3
     - master
+    - release-v1.1.0
 
 go: 1.12.x
 
