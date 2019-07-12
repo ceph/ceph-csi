@@ -5,6 +5,17 @@ Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreport
 [![Build
 Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-ci.org/ceph/ceph-csi)
 
+- [Ceph CSI](#Ceph-CSI)
+  - [Overview](#Overview)
+  - [Project status](#Project-status)
+  - [Supported CO platforms](#Supported-CO-platforms)
+  - [Support Matrix](#Support-Matrix)
+    - [Ceph-CSI features and available versions](#Ceph-CSI-features-and-available-versions)
+    - [CSI spec and Kubernetes version compatibility](#CSI-spec-and-Kubernetes-version-compatibility)
+  - [Contributing to this repo](#Contributing-to-this-repo)
+  - [Troubleshooting](#Troubleshooting)
+  - [Contact](#Contact)
+
 This repo contains [Container Storage Interface(CSI)]
 (<https://github.com/container-storage-interface/>) Ceph CSI driver for RBD,
 CephFS and kubernetes sidecar deployment yamls of provisioner, attacher,
@@ -26,12 +37,7 @@ Independent CSI plugins are provided to support RBD and CephFS backed volumes,
 
 ## Project status
 
-Status: **Alpha**
-
-The **alpha** status reflects possible non-backward compatible changes in the
-future, and is thus not recommended for production use. There is work in progress
-that would change on-disk metadata for certain operations, possibly breaking
-backward compatibility.
+Status: **GA**
 
 ## Supported CO platforms
 
@@ -39,39 +45,36 @@ Ceph CSI drivers are currently developed and tested **exclusively** on Kubernete
 environments. There is work in progress to make this CO independent and thus
 support other orchestration environments in the future.
 
-For Kubernetes versions 1.11 and 1.12, please use [0.3 images and
-deployments](https://github.com/ceph/ceph-csi/tree/csi-v0.3/deploy/).
+NOTE:
 
-For Kubernetes versions 1.13 and above, please use [1.0 images and
-deployments](https://github.com/ceph/ceph-csi/tree/csi-v1.0/deploy/).
+- **`csiv0.3`** is deprecated with release of **`csi v1.1.0`**
 
 ## Support Matrix
 
 ### Ceph-CSI features and available versions
 
-| Plugin | Features                                                  | CSI driver Version |
-|--------|-----------------------------------------------------------|--------------------|
-| CephFS | Dynamically provision, de-provision File mode RWO volume  | >=v0.3.0           |
-|        | Dynamically provision, de-provision File mode RWX volume  | >=v0.3.0           |
-|        | Creating and deleting snapshot                            | -                  |
-|        | Provision volume from snapshot                            | -                  |
-|        | Provision volume from another volume                      | -                  |
-|        | Resize volume                                             | -                  |
-|        |                                                           |                    |
-| RBD    | Dynamically provision, de-provision Block mode RWO volume | >=v0.3.0           |
-|        | Dynamically provision, de-provision Block mode RWX volume | >=v0.3.0           |
-|        | Dynamically provision, de-provision File mode RWO volume  | v1.0.0             |
-|        | Creating and deleting snapshot                            | >=v0.3.0           |
-|        | Provision volume from snapshot                            | v1.0.0             |
-|        | Provision volume from another volume                      | -                  |
-|        | Resize volume                                             | -                  |
+| Plugin | Features                                                  | Feature Status | CSI Driver Version | CSI Spec Version | Ceph Cluster Version | Kubernetes Version |
+|--------|-----------------------------------------------------------|----------------|--------------------|------------------|----------------------|--------------------|
+| RBD    | Dynamically provision, de-provision Block mode RWO volume | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v13.0.0         |
+|        | Dynamically provision, de-provision Block mode RWX volume | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v13.0.0         |
+|        | Dynamically provision, de-provision File mode RWO volume  | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v13.0.0         |
+|        | Creating and deleting snapshot                            | Alpha          | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v13.0.0         |
+|        | Provision volume from snapshot                            | Alpha          | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v13.0.0         |
+|        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
+|        | Resize volume                                             | -              | -                  | -                | -                    | -                  |
+|        | Metrics Support                                           | -              | -                  | -                | -                    | -                  |
+| CephFS | Dynamically provision, de-provision File mode RWO volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus             | >=v13.0.0          |
+|        | Dynamically provision, de-provision File mode RWX volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus             | >=v13.0.0          |
+|        | Creating and deleting snapshot                            | -              | -                  | -                | -                    | -                  |
+|        | Provision volume from snapshot                            | -              | -                  | -                | -                    | -                  |
+|        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
+|        | Resize volume                                             | -              | -                  | -                | -                    | -                  |
+|        | Metrics                                                   | -              | -                  | -                | -                    | -                  |
+|        |                                                           |                |                    |                  |                      |                    |
 
-### Ceph-CSI versions and CSI spec compatibility
-
-| Ceph CSI driver Version | CSI spec version |
-|-------------------------|------------------|
-| v0.3.0                  | v0.3             |
-| v1.0.0                  | v1.0.0           |
+`NOTE`: The `Alpha` status reflects possible non-backward
+compatible changes in the future, and is thus not recommended
+for production use.
 
 ### CSI spec and Kubernetes version compatibility
 
