@@ -74,9 +74,10 @@ func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
 }
 
 // NewControllerServer initialize a controller server for rbd CSI driver
-func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
+func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
 	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
+		MetadataStore:           cachePersister,
 	}
 }
 
@@ -98,7 +99,7 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // rbd CSI driver which can serve multiple parallel requests
-func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containerized bool) {
+func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containerized bool, cachePersister util.CachePersister) {
 	var err error
 
 	klog.Infof("Driver: %v version: %v", driverName, version)
@@ -147,7 +148,7 @@ func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containeri
 		klog.Fatalf("failed to start node server, err %v\n", err)
 	}
 
-	r.cs = NewControllerServer(r.cd)
+	r.cs = NewControllerServer(r.cd, cachePersister)
 
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(endpoint, r.ids, r.cs, r.ns)

@@ -38,6 +38,7 @@ const (
 // controller server spec.
 type ControllerServer struct {
 	*csicommon.DefaultControllerServer
+	MetadataStore util.CachePersister
 }
 
 func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) error {
@@ -83,7 +84,7 @@ func (cs *ControllerServer) parseVolCreateRequest(req *csi.CreateVolumeRequest) 
 	}
 
 	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
-	rbdVol, err := genVolFromVolumeOptions(req.GetParameters(), (isMultiNode && isBlock))
+	rbdVol, err := genVolFromVolumeOptions(req.GetParameters(), nil, (isMultiNode && isBlock), false)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -226,6 +227,50 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	return nil
 }
 
+// DeleteLegacyVolume deletes a volume provisioned using version 1.0.0 of the plugin
+func (cs *ControllerServer) DeleteLegacyVolume(req *csi.DeleteVolumeRequest, cr *util.Credentials) (*csi.DeleteVolumeResponse, error) {
+	volumeID := req.GetVolumeId()
+
+	if cs.MetadataStore == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "missing metadata store configuration to"+
+			" proceed with deleting legacy volume ID (%s)", volumeID)
+	}
+
+	idLk := legacyVolumeIDLocker.Lock(volumeID)
+	defer legacyVolumeIDLocker.Unlock(idLk, volumeID)
+
+	rbdVol := &rbdVolume{}
+	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
+		if err, ok := err.(*util.CacheEntryNotFound); ok {
+			klog.V(3).Infof("metadata for legacy volume %s not found, assuming the volume to be already deleted (%v)", volumeID, err)
+			return &csi.DeleteVolumeResponse{}, nil
+		}
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Fill up Monitors
+	if err := updateMons(rbdVol, nil, req.GetSecrets()); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Update rbdImageName as the VolName when dealing with version 1 volumes
+	rbdVol.RbdImageName = rbdVol.VolName
+
+	klog.V(4).Infof("deleting legacy volume %s", rbdVol.VolName)
+	if err := deleteImage(rbdVol, cr); err != nil {
+		// TODO: can we detect "already deleted" situations here and proceed?
+		klog.V(3).Infof("failed to delete legacy rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if err := cs.MetadataStore.Delete(volumeID); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.DeleteVolumeResponse{}, nil
+}
+
 // DeleteVolume deletes the volume in backend and removes the volume metadata
 // from store
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
@@ -247,6 +292,18 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	rbdVol := &rbdVolume{}
 	if err := genVolFromVolID(rbdVol, volumeID, cr); err != nil {
+		// If error is ErrInvalidVolID it could be a version 1.0.0 or lower volume, attempt
+		// to process it as such
+		if _, ok := err.(ErrInvalidVolID); ok {
+			if isLegacyVolumeID(volumeID) {
+				klog.V(2).Infof("attempting deletion of potential legacy volume (%s)", volumeID)
+				return cs.DeleteLegacyVolume(req, cr)
+			}
+
+			// Consider unknown volumeID as a successfully deleted volume
+			return &csi.DeleteVolumeResponse{}, nil
+		}
+
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (image and imageOMap are garbage collected already), hence return
 		// success as deletion is complete
@@ -281,6 +338,12 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err := deleteImage(rbdVol, cr); err != nil {
 		klog.Errorf("failed to delete rbd image: %s/%s with error: %v",
 			rbdVol.Pool, rbdVol.RbdImageName, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if err := undoVolReservation(rbdVol, cr); err != nil {
+		klog.Errorf("failed to remove reservation for volume (%s) with backing image (%s) (%s)",
+			rbdVol.RequestName, rbdVol.RbdImageName, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

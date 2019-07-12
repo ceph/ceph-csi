@@ -49,6 +49,10 @@ func execCommand(program string, args ...string) (stdout, stderr []byte, err err
 	klog.V(4).Infof("cephfs: EXEC %s %s", program, sanitizedArgs)
 
 	if err := cmd.Run(); err != nil {
+		if cmd.Process == nil {
+			return nil, nil, fmt.Errorf("cannot get process pid while running %s %v: %v: %s",
+				program, sanitizedArgs, err, stderrBuf.Bytes())
+		}
 		return nil, nil, fmt.Errorf("an error occurred while running (%d) %s %v: %v: %s",
 			cmd.Process.Pid, program, sanitizedArgs, err, stderrBuf.Bytes())
 	}
