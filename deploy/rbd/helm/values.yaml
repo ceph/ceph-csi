@@ -52,8 +52,8 @@ nodeplugin:
   plugin:
     image:
       repository: quay.io/cephcsi/cephcsi
-      # for stable functionality replace canary with latest release version
-      tag: canary
+      # for stable functionality replace v1.1.0 with latest release version
+      tag: v1.1.0
       pullPolicy: IfNotPresent
 
     resources: {}
