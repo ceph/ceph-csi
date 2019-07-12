@@ -39,7 +39,7 @@ func initVolumeMountCache(driverName, mountCacheDir string) {
 
 	volumeMountCache.nodeCacheStore.BasePath = mountCacheDir
 	volumeMountCache.nodeCacheStore.CacheDir = driverName
-	klog.Infof("mount-cache: name: %s, version: %s, mountCacheDir: %s", driverName, version, mountCacheDir)
+	klog.Infof("mount-cache: name: %s, version: %s, mountCacheDir: %s", driverName, util.DriverVersion, mountCacheDir)
 }
 
 func remountCachedVolumes() error {
@@ -228,7 +228,7 @@ func (mc *volumeMountCacheMap) nodeStageVolume(volID, stagingTargetPath, mounter
 		klog.Warningf("mount-cache: node stage volume ignore last cache entry for volume %s", volID)
 	}
 
-	me = volumeMountCacheEntry{DriverVersion: version}
+	me = volumeMountCacheEntry{DriverVersion: util.DriverVersion}
 
 	me.VolumeID = volID
 	me.Secrets = encodeCredentials(secrets)

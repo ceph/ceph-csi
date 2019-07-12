@@ -39,6 +39,14 @@ func RoundUpToMiB(size int64) int64 {
 	return roundUpSize(requestBytes, MiB)
 }
 
+// variables which will be set during the build time
+var (
+	// GitCommit tell the latest git commit image is built from
+	GitCommit string
+	// DriverVersion which will be driver version
+	DriverVersion string
+)
+
 func roundUpSize(volumeSizeBytes, allocationUnitBytes int64) int64 {
 	roundedUp := volumeSizeBytes / allocationUnitBytes
 	if volumeSizeBytes%allocationUnitBytes > 0 {
