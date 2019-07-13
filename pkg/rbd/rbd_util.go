@@ -620,7 +620,7 @@ func getImageInfo(monitors string, cr *util.Credentials, poolName, imageName str
 
 	var imgInfo imageInfo
 
-	stdout, _, err := util.ExecCommand(
+	stdout, stderr, err := util.ExecCommand(
 		"rbd",
 		"-m", monitors,
 		"--id", cr.ID,
@@ -630,7 +630,7 @@ func getImageInfo(monitors string, cr *util.Credentials, poolName, imageName str
 		"info", poolName+"/"+imageName)
 	if err != nil {
 		klog.Errorf("failed getting information for image (%s): (%s)", poolName+"/"+imageName, err)
-		if strings.Contains(string(stdout), "rbd: error opening image "+imageName+
+		if strings.Contains(string(stderr), "rbd: error opening image "+imageName+
 			": (2) No such file or directory") {
 			return imgInfo, ErrImageNotFound{imageName, err}
 		}
@@ -669,7 +669,7 @@ func getSnapInfo(monitors string, cr *util.Credentials, poolName, imageName, sna
 		snaps   []snapInfo
 	)
 
-	stdout, _, err := util.ExecCommand(
+	stdout, stderr, err := util.ExecCommand(
 		"rbd",
 		"-m", monitors,
 		"--id", cr.ID,
@@ -680,7 +680,7 @@ func getSnapInfo(monitors string, cr *util.Credentials, poolName, imageName, sna
 	if err != nil {
 		klog.Errorf("failed getting snap (%s) information from image (%s): (%s)",
 			snapName, poolName+"/"+imageName, err)
-		if strings.Contains(string(stdout), "rbd: error opening image "+imageName+
+		if strings.Contains(string(stderr), "rbd: error opening image "+imageName+
 			": (2) No such file or directory") {
 			return snpInfo, ErrImageNotFound{imageName, err}
 		}
