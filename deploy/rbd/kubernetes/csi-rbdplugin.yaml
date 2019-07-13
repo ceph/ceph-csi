@@ -18,6 +18,10 @@ spec:
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
       # resolved through k8s service, set dns policy to cluster first
       dnsPolicy: ClusterFirstWithHostNet
+      # if you want to allow run the plugin on the master node, uncomment the toleration part
+      # tolerations:
+      # - key: node-role.kubernetes.io/master
+      #   effect: NoSchedule
       containers:
         - name: driver-registrar
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
