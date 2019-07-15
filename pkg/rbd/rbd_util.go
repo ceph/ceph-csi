@@ -59,7 +59,7 @@ type rbdSnapshot struct {
 	SourceVolumeID     string `json:"sourceVolumeID"`
 	VolName            string `json:"volName"`
 	SnapName           string `json:"snapName"`
-	SnapID             string `json:"sanpID"`
+	SnapID             string `json:"snapID"`
 	Monitors           string `json:"monitors"`
 	MonValueFromSecret string `json:"monValueFromSecret"`
 	Pool               string `json:"pool"`
