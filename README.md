@@ -96,6 +96,8 @@ Please submit an issue at: [Issues](https://github.com/ceph/ceph-csi/issues)
 
 Please use the following to reach members of the community:
 
-- Slack: Join our [slack channel](https://cephcsi.slack.com)
+- Slack: Join our [slack channel](https://cephcsi.slack.com) to discuss
+  about anything related to this project. You can join the slack by
+  this [invite link](https://bit.ly/32vcEfO )
 - Forums: [ceph-csi](https://groups.google.com/forum/#!forum/ceph-csi)
 - Twitter: [@CephCsi](https://twitter.com/CephCsi)
