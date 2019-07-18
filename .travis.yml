@@ -29,6 +29,11 @@ env:
     - MINIKUBE_VERSION=v1.2.0
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
+    - DEP_VERSION=v0.5.4
+
+before_install:
+  - curl
+    https://raw.githubusercontent.com/golang/dep/${DEP_VERSION}/install.sh|sh
 
 jobs:
   include:
