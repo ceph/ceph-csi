@@ -83,8 +83,7 @@ in the Kubernetes documentation.
 
 ## Contributing to this repo
 
-Please follow [development-guide]
-(<https://github.com/ceph/ceph-csi/tree/master/docs/development-guide.md>) and
+Please follow [development-guide](<https://github.com/ceph/ceph-csi/tree/master/docs/development-guide.md>) and
 [coding style guidelines](<https://github.com/ceph/ceph-csi/tree/master/docs/coding.md>)
 if you are interested to contribute to this repo.
 
