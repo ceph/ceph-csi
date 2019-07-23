@@ -32,7 +32,10 @@ fuse_set_user_groups = false
 
 const (
 	cephConfigRoot = "/etc/ceph"
+	// CephConfigPath ceph configuration file
 	CephConfigPath = "/etc/ceph/ceph.conf"
+
+	keyRing = "/etc/ceph/keyring"
 )
 
 func createCephConfigRoot() error {
@@ -46,5 +49,23 @@ func WriteCephConfig() error {
 		return err
 	}
 
-	return ioutil.WriteFile(CephConfigPath, cephConfig, 0640)
+	err := ioutil.WriteFile(CephConfigPath, cephConfig, 0640)
+	if err != nil {
+		return err
+	}
+
+	return createKeyRingFile()
+}
+
+/*
+if any ceph commands fails it will log below error message
+
+7f39ff02a700 -1 auth: unable to find a keyring on
+/etc/ceph/ceph.client.admin.keyring,/etc/ceph/ceph.keyring,/etc/ceph/keyring,
+/etc/ceph/keyring.bin,: (2) No such file or directory
+*/
+// createKeyRingFile creates the keyring files to fix above error message logging
+func createKeyRingFile() error {
+	_, err := os.Create(keyRing)
+	return err
 }
