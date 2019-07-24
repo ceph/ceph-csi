@@ -39,6 +39,7 @@ var _ = Describe("cephfs", func() {
 		deployCephfsPlugin()
 		createCephfsStorageClass(f.ClientSet, f)
 		createCephfsSecret(f.ClientSet, f)
+		GivePermToCephfsRoot(f)
 	})
 
 	AfterEach(func() {

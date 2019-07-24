@@ -745,3 +745,17 @@ func listSnapshots(f *framework.Framework, pool, imageName string) ([]snapInfo, 
 	err := json.Unmarshal([]byte(stdout), &snapInfos)
 	return snapInfos, err
 }
+
+func GivePermToCephfsRoot(f *framework.Framework) {
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	out := execCommandInPod(f, "mkdir /mnt/cephfs", rookNS, &opt)
+	e2elog.Logf("Creating temperory mount point in tools pod %s", out)
+
+	out = execCommandInPod(f, "ceph-fuse /mnt/cephfs >/dev/null 2>&1", rookNS, &opt)
+	e2elog.Logf("Mounting ceph file system at /mnt/cephfs %s", out)
+
+	out = execCommandInPod(f, "chmod 777 /mnt/cephfs/", rookNS, &opt)
+	e2elog.Logf("Setting chmod 777 on the cepfs root %s", out)
+}
