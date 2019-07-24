@@ -66,6 +66,7 @@ type rbdVolume struct {
 	DisableInUseChecks bool   `json:"disableInUseChecks"`
 	ClusterID          string `json:"clusterId"`
 	RequestName        string
+	VolNamePrefix      string
 	VolName            string `json:"volName"`
 	MonValueFromSecret string `json:"monValueFromSecret"`
 }
@@ -86,6 +87,7 @@ type rbdSnapshot struct {
 	CreatedAt      *timestamp.Timestamp
 	SizeBytes      int64
 	ClusterID      string
+	SnapNamePrefix string
 	RequestName    string
 }
 
@@ -248,8 +250,12 @@ func genSnapFromSnapID(rbdSnap *rbdSnapshot, snapshotID string, cr *util.Credent
 
 	rbdSnap.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdSnap.ClusterID
-	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + vi.ObjectUUID
 
+	if vi.EncodingVersion == util.EncodingV1 {
+		vi.VolNamePrefix = snapJournal.NamingPrefix()
+	}
+	rbdSnap.SnapNamePrefix = vi.VolNamePrefix
+	rbdSnap.RbdSnapName = rbdSnap.SnapNamePrefix + vi.ObjectUUID
 	rbdSnap.Monitors, _, err = getMonsAndClusterID(options)
 	if err != nil {
 		return err
@@ -281,7 +287,7 @@ func genVolFromVolID(rbdVol *rbdVolume, volumeID string, cr *util.Credentials) e
 	options = make(map[string]string)
 
 	// rbdVolume fields that are not filled up in this function are:
-	//		Mounter, MultiNodeWritable
+	// Mounter, MultiNodeWritable
 	rbdVol.VolID = volumeID
 
 	err := vi.DecomposeCSIID(rbdVol.VolID)
@@ -292,8 +298,9 @@ func genVolFromVolID(rbdVol *rbdVolume, volumeID string, cr *util.Credentials) e
 
 	rbdVol.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdVol.ClusterID
-	rbdVol.RbdImageName = volJournal.NamingPrefix() + vi.ObjectUUID
 
+	rbdVol.VolNamePrefix = vi.VolNamePrefix
+	rbdVol.RbdImageName = vi.VolNamePrefix + vi.ObjectUUID
 	rbdVol.Monitors, _, err = getMonsAndClusterID(options)
 	if err != nil {
 		return err
@@ -449,11 +456,19 @@ func genVolFromVolumeOptions(volOptions, credentials map[string]string, disableI
 	if !ok {
 		rbdVol.Mounter = rbdDefaultMounter
 	}
-
+	rbdVol.VolNamePrefix, err = util.GetVolNamePrefix(volOptions)
+	if err != nil {
+		return nil, err
+	}
+	if rbdVol.VolNamePrefix == "" {
+		rbdVol.VolNamePrefix = volJournal.NamingPrefix()
+	} else {
+		rbdVol.VolNamePrefix += "-"
+	}
 	return rbdVol, nil
 }
 
-func genSnapFromOptions(rbdVol *rbdVolume, snapOptions map[string]string) *rbdSnapshot {
+func genSnapFromOptions(rbdVol *rbdVolume, snapOptions map[string]string) (*rbdSnapshot, error) {
 	var err error
 
 	rbdSnap := &rbdSnapshot{}
@@ -465,7 +480,17 @@ func genSnapFromOptions(rbdVol *rbdVolume, snapOptions map[string]string) *rbdSn
 		rbdSnap.ClusterID = rbdVol.ClusterID
 	}
 
-	return rbdSnap
+	rbdSnap.SnapNamePrefix, err = util.GetSnapNamePrefix(snapOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	if rbdSnap.SnapNamePrefix == "" {
+		rbdSnap.SnapNamePrefix = snapJournal.NamingPrefix()
+	} else {
+		rbdSnap.SnapNamePrefix += "-"
+	}
+	return rbdSnap, nil
 }
 
 func hasSnapshotFeature(imageFeatures string) bool {

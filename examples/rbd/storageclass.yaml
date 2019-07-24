@@ -24,6 +24,10 @@ parameters:
    # CSI RBD currently supports only `layering` feature.
    imageFeatures: layering
 
+   # With volumenameprefix option an admin can now prefix the desired volume
+   # name from storageclass.
+   # volumenameprefix: custom-vol-name
+
    # The secrets have to contain Ceph credentials with required access
    # to the 'pool'.
    csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret

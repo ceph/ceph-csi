@@ -114,29 +114,29 @@ func checkSnapExists(rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
 	}
 
 	snapUUID, err := snapJournal.CheckReservation(rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RequestName, rbdSnap.RbdImageName)
+		rbdSnap.RequestName, rbdSnap.SnapNamePrefix, rbdSnap.RbdImageName)
 	if err != nil {
 		return false, err
 	}
 	if snapUUID == "" {
 		return false, nil
 	}
-	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + snapUUID
+	rbdSnap.RbdSnapName = rbdSnap.SnapNamePrefix + snapUUID
 
 	// Fetch on-disk image attributes
 	err = updateSnapWithImageInfo(rbdSnap, cr)
 	if err != nil {
 		if _, ok := err.(ErrSnapNotFound); ok {
 			err = snapJournal.UndoReservation(rbdSnap.Monitors, cr, rbdSnap.Pool,
-				rbdSnap.RbdSnapName, rbdSnap.RequestName)
+				rbdSnap.RbdSnapName, rbdSnap.SnapNamePrefix, rbdSnap.RequestName)
 			return false, err
 		}
 		return false, err
 	}
 
 	// found a snapshot already available, process and return its information
-	rbdSnap.SnapID, err = util.GenerateVolID(rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.ClusterID, snapUUID, volIDVersion)
+	rbdSnap.SnapID, err = util.GenerateID(rbdSnap.Monitors, cr, rbdSnap.Pool,
+		rbdSnap.ClusterID, snapUUID, rbdSnap.SnapNamePrefix)
 	if err != nil {
 		return false, err
 	}
@@ -162,14 +162,15 @@ func checkVolExists(rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 	}
 
 	imageUUID, err := volJournal.CheckReservation(rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RequestName, "")
+		rbdVol.RequestName, rbdVol.VolNamePrefix, "")
 	if err != nil {
 		return false, err
 	}
 	if imageUUID == "" {
 		return false, nil
 	}
-	rbdVol.RbdImageName = volJournal.NamingPrefix() + imageUUID
+
+	rbdVol.RbdImageName = rbdVol.VolNamePrefix + imageUUID
 
 	// NOTE: Return volsize should be on-disk volsize, not request vol size, so
 	// save it for size checks before fetching image data
@@ -179,7 +180,7 @@ func checkVolExists(rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
 			err = volJournal.UndoReservation(rbdVol.Monitors, cr, rbdVol.Pool,
-				rbdVol.RbdImageName, rbdVol.RequestName)
+				rbdVol.RbdImageName, rbdVol.VolNamePrefix, rbdVol.RequestName)
 			return false, err
 		}
 		return false, err
@@ -194,8 +195,8 @@ func checkVolExists(rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 	// TODO: We should also ensure image features and format is the same
 
 	// found a volume already available, process and return it!
-	rbdVol.VolID, err = util.GenerateVolID(rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.ClusterID, imageUUID, volIDVersion)
+	rbdVol.VolID, err = util.GenerateID(rbdVol.Monitors, cr, rbdVol.Pool,
+		rbdVol.ClusterID, imageUUID, rbdVol.VolNamePrefix)
 	if err != nil {
 		return false, err
 	}
@@ -210,20 +211,20 @@ func checkVolExists(rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 // volume ID for the generated name
 func reserveSnap(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 	snapUUID, err := snapJournal.ReserveName(rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RequestName, rbdSnap.RbdImageName)
+		rbdSnap.RequestName, rbdSnap.SnapNamePrefix, rbdSnap.RbdImageName)
 	if err != nil {
 		return err
 	}
 
-	rbdSnap.SnapID, err = util.GenerateVolID(rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.ClusterID, snapUUID, volIDVersion)
+	rbdSnap.SnapID, err = util.GenerateID(rbdSnap.Monitors, cr, rbdSnap.Pool,
+		rbdSnap.ClusterID, snapUUID, rbdSnap.SnapNamePrefix)
 	if err != nil {
 		return err
 	}
 
-	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + snapUUID
+	rbdSnap.RbdSnapName = rbdSnap.SnapNamePrefix + snapUUID
 
-	klog.V(4).Infof("generated Volume ID (%s) and image name (%s) for request name (%s)",
+	klog.V(4).Infof("generated snap ID (%s) and image name (%s) for request name (%s)",
 		rbdSnap.SnapID, rbdSnap.RbdImageName, rbdSnap.RequestName)
 
 	return nil
@@ -233,18 +234,18 @@ func reserveSnap(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 // volume ID for the generated name
 func reserveVol(rbdVol *rbdVolume, cr *util.Credentials) error {
 	imageUUID, err := volJournal.ReserveName(rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RequestName, "")
+		rbdVol.RequestName, rbdVol.VolNamePrefix, "")
 	if err != nil {
 		return err
 	}
 
-	rbdVol.VolID, err = util.GenerateVolID(rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.ClusterID, imageUUID, volIDVersion)
+	rbdVol.VolID, err = util.GenerateID(rbdVol.Monitors, cr, rbdVol.Pool,
+		rbdVol.ClusterID, imageUUID, rbdVol.VolNamePrefix)
 	if err != nil {
 		return err
 	}
 
-	rbdVol.RbdImageName = volJournal.NamingPrefix() + imageUUID
+	rbdVol.RbdImageName = rbdVol.VolNamePrefix + imageUUID
 
 	klog.V(4).Infof("generated Volume ID (%s) and image name (%s) for request name (%s)",
 		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
@@ -255,7 +256,7 @@ func reserveVol(rbdVol *rbdVolume, cr *util.Credentials) error {
 // undoSnapReservation is a helper routine to undo a name reservation for rbdSnapshot
 func undoSnapReservation(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 	err := snapJournal.UndoReservation(rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RbdSnapName, rbdSnap.RequestName)
+		rbdSnap.RbdSnapName, rbdSnap.SnapNamePrefix, rbdSnap.RequestName)
 
 	return err
 }
@@ -263,7 +264,7 @@ func undoSnapReservation(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 // undoVolReservation is a helper routine to undo a name reservation for rbdVolume
 func undoVolReservation(rbdVol *rbdVolume, cr *util.Credentials) error {
 	err := volJournal.UndoReservation(rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RbdImageName, rbdVol.RequestName)
+		rbdVol.RbdImageName, rbdVol.VolNamePrefix, rbdVol.RequestName)
 
 	return err
 }

@@ -37,7 +37,7 @@ var _ = Describe("cephfs", func() {
 		createFileSystem(f.ClientSet)
 		createConfigMap(f.ClientSet, f)
 		deployCephfsPlugin()
-		createCephfsStorageClass(f.ClientSet, f)
+		createCephfsStorageClass(f.ClientSet, f, volNamePrefix)
 		createCephfsSecret(f.ClientSet, f)
 	})
 
@@ -82,6 +82,8 @@ var _ = Describe("cephfs", func() {
 				})
 
 				By("create/delete multiple PVCs and Apps", func() {
+					deleteResource(cephfsExamplePath + "storageclass.yaml")
+					createCephfsStorageClass(f.ClientSet, f, "")
 					totalCount := 2
 					pvc, err := loadPVC(pvcPath)
 					if err != nil {

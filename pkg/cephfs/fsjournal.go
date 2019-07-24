@@ -56,23 +56,23 @@ func checkVolExists(volOptions *volumeOptions, secret map[string]string) (*volum
 	defer cr.DeleteCredentials()
 
 	imageUUID, err := volJournal.CheckReservation(volOptions.Monitors, cr,
-		volOptions.MetadataPool, volOptions.RequestName, "")
+		volOptions.MetadataPool, volOptions.RequestName, volOptions.VolNamePrefix, "")
 	if err != nil {
 		return nil, err
 	}
 	if imageUUID == "" {
 		return nil, nil
 	}
-	vid.FsSubvolName = volJournal.NamingPrefix() + imageUUID
 
+	vid.FsSubvolName = volOptions.VolNamePrefix + imageUUID
 	// TODO: size checks
 
 	// found a volume already available, process and return it!
 	vi = util.CSIIdentifier{
-		LocationID:      volOptions.FscID,
-		EncodingVersion: volIDVersion,
-		ClusterID:       volOptions.ClusterID,
-		ObjectUUID:      imageUUID,
+		LocationID:    volOptions.FscID,
+		ClusterID:     volOptions.ClusterID,
+		VolNamePrefix: volOptions.VolNamePrefix,
+		ObjectUUID:    imageUUID,
 	}
 	vid.VolumeID, err = vi.ComposeCSIID()
 	if err != nil {
@@ -94,7 +94,7 @@ func undoVolReservation(volOptions *volumeOptions, vid volumeIdentifier, secret 
 	defer cr.DeleteCredentials()
 
 	err = volJournal.UndoReservation(volOptions.Monitors, cr, volOptions.MetadataPool,
-		vid.FsSubvolName, volOptions.RequestName)
+		vid.FsSubvolName, volOptions.VolNamePrefix, volOptions.RequestName)
 
 	return err
 }
@@ -114,18 +114,19 @@ func reserveVol(volOptions *volumeOptions, secret map[string]string) (*volumeIde
 	defer cr.DeleteCredentials()
 
 	imageUUID, err := volJournal.ReserveName(volOptions.Monitors, cr,
-		volOptions.MetadataPool, volOptions.RequestName, "")
+		volOptions.MetadataPool, volOptions.RequestName, volOptions.VolNamePrefix, "")
 	if err != nil {
 		return nil, err
 	}
-	vid.FsSubvolName = volJournal.NamingPrefix() + imageUUID
+
+	vid.FsSubvolName = volOptions.VolNamePrefix + imageUUID
 
 	// generate the volume ID to return to the CO system
 	vi = util.CSIIdentifier{
-		LocationID:      volOptions.FscID,
-		EncodingVersion: volIDVersion,
-		ClusterID:       volOptions.ClusterID,
-		ObjectUUID:      imageUUID,
+		LocationID:    volOptions.FscID,
+		ClusterID:     volOptions.ClusterID,
+		VolNamePrefix: volOptions.VolNamePrefix,
+		ObjectUUID:    imageUUID,
 	}
 	vid.VolumeID, err = vi.ComposeCSIID()
 	if err != nil {

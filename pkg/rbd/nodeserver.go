@@ -208,7 +208,7 @@ func getVolumeName(volID string) (string, error) {
 		return "", ErrInvalidVolID{err}
 	}
 
-	return volJournal.NamingPrefix() + vi.ObjectUUID, nil
+	return vi.VolNamePrefix + vi.ObjectUUID, nil
 }
 
 func getLegacyVolumeName(mountPath string) (string, error) {

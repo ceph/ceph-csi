@@ -37,6 +37,7 @@ type volumeOptions struct {
 	RootPath        string `json:"rootPath"`
 	Mounter         string `json:"mounter"`
 	ProvisionVolume bool   `json:"provisionVolume"`
+	VolNamePrefix   string
 }
 
 func validateNonEmptyField(field, fieldName string) error {
@@ -123,7 +124,7 @@ func getMonsAndClusterID(options map[string]string) (string, string, error) {
 
 // newVolumeOptions generates a new instance of volumeOptions from the provided
 // CSI request parameters
-func newVolumeOptions(requestName string, size int64, volOptions, secret map[string]string) (*volumeOptions, error) {
+func newVolumeOptions(requestName string, size int64, volOptions, param map[string]string) (*volumeOptions, error) {
 	var (
 		opts volumeOptions
 		err  error
@@ -149,7 +150,7 @@ func newVolumeOptions(requestName string, size int64, volOptions, secret map[str
 	opts.RequestName = requestName
 	opts.Size = size
 
-	cr, err := util.NewAdminCredentials(secret)
+	cr, err := util.NewAdminCredentials(param)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +166,15 @@ func newVolumeOptions(requestName string, size int64, volOptions, secret map[str
 		return nil, err
 	}
 
+	opts.VolNamePrefix, err = util.GetVolNamePrefix(param)
+	if err != nil {
+		return nil, err
+	}
+	if opts.VolNamePrefix == "" {
+		opts.VolNamePrefix = volJournal.NamingPrefix()
+	} else {
+		opts.VolNamePrefix += "-"
+	}
 	opts.ProvisionVolume = true
 
 	return &opts, nil
@@ -187,7 +197,9 @@ func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) 
 		return nil, nil, ErrInvalidVolID{err}
 	}
 	volOptions.ClusterID = vi.ClusterID
-	vid.FsSubvolName = volJournal.NamingPrefix() + vi.ObjectUUID
+	vid.FsSubvolName = vi.VolNamePrefix + vi.ObjectUUID
+	volOptions.VolNamePrefix = vi.VolNamePrefix
+
 	vid.VolumeID = volID
 	volOptions.FscID = vi.LocationID
 

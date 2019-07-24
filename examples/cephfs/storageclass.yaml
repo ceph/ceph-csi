@@ -20,6 +20,10 @@ parameters:
   # Ceph pool into which the volume shall be created
   pool: cephfs_data
 
+  # With volumenameprefix option an admin can now prefix the desired volume
+  # name from storageclass.
+  # volumenameprefix: custom-vol-name
+
   # The secrets have to contain user and/or Ceph admin credentials.
   csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/provisioner-secret-namespace: default

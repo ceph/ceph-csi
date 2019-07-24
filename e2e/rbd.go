@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo" // nolint
@@ -21,6 +22,7 @@ var (
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
 	namespace          = "default"
+	rbdPool            = "replicapool"
 )
 
 func deployRBDPlugin() {
@@ -39,7 +41,7 @@ var _ = Describe("RBD", func() {
 		createRBDPool()
 		createConfigMap(f.ClientSet, f)
 		deployRBDPlugin()
-		createRBDStorageClass(f.ClientSet, f)
+		createRBDStorageClass(f.ClientSet, f, "")
 		createRBDSecret(f.ClientSet, f)
 
 	})
@@ -90,7 +92,7 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create a PVC clone and Bind it to an app", func() {
-				createRBDSnapshotClass(f)
+				createRBDSnapshotClass(f, "")
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
 					Fail(err.Error())
@@ -108,6 +110,11 @@ var _ = Describe("RBD", func() {
 					e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
 					Fail("validate backend image failed")
 				}
+				// validate volume name prefix with no prefix provided in sc
+				if strings.HasPrefix(images[0], volNamePrefix) {
+					e2elog.Logf("expected volume name prefix %s got %s", volNamePrefix, images[0])
+					Fail("volume name prefix validation failed")
+				}
 				snap := getSnapshot(snapshotPath)
 				snap.Namespace = f.UniqueName
 				snap.Spec.Source.Name = pvc.Name
@@ -116,16 +123,20 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
-				pool := "replicapool"
-				snapList, err := listSnapshots(f, pool, images[0])
+				snapList, err := listSnapshots(f, rbdPool, images[0])
 				if err != nil {
 					Fail(err.Error())
 				}
 				if len(snapList) != 1 {
-					e2elog.Logf("backend snapshot not matching kube snap count,snap count = % kube snap count %d", len(snapList), 1)
+					e2elog.Logf("backend snapshot not matching kube snap count,snap count = %v kube snap count %d", len(snapList), 1)
 					Fail("validate backend snapshot failed")
 				}
 
+				// validate snapshot name prefix with no prefix provided in sc
+				if strings.HasPrefix(snapList[0].Name, snapNamePrefix) {
+					e2elog.Logf("expected snapshot name prefix %s got %s", snapNamePrefix, snapList[0].Name)
+					Fail("snapshot name prefix validation failed")
+				}
 				validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
 
 				err = deleteSnapshot(&snap, deployTimeout)
@@ -195,6 +206,14 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
+			})
+
+			By("validate snapshot and volume  name prefix", func() {
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				deleteResource(rbdExamplePath + "snapshotclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, volNamePrefix)
+				createRBDSnapshotClass(f, snapNamePrefix)
+				validateVolNameAndSnapPrefix(f, pvcPath, snapshotPath)
 			})
 		})
 	})

@@ -119,7 +119,7 @@ type CSIJournal struct {
 	namespace string
 }
 
-// CSIVolumeJournal returns an instance of volume keys
+// NewCSIVolumeJournal returns an instance of volume keys
 func NewCSIVolumeJournal() *CSIJournal {
 	return &CSIJournal{
 		csiDirectory:            "csi.volumes",
@@ -132,7 +132,7 @@ func NewCSIVolumeJournal() *CSIJournal {
 	}
 }
 
-// CSISnapshotSnapshot returns an instance of snapshot keys
+// NewCSISnapshotJournal returns an instance of snapshot keys
 func NewCSISnapshotJournal() *CSIJournal {
 	return &CSIJournal{
 		csiDirectory:            "csi.snaps",
@@ -175,7 +175,7 @@ Return values:
 	there was no reservation found
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) CheckReservation(monitors string, cr *Credentials, pool, reqName, parentName string) (string, error) {
+func (cj *CSIJournal) CheckReservation(monitors string, cr *Credentials, pool, reqName, namingPrefix, parentName string) (string, error) {
 	var snapSource bool
 
 	if parentName != "" {
@@ -204,7 +204,7 @@ func (cj *CSIJournal) CheckReservation(monitors string, cr *Credentials, pool, r
 		// error should specifically be not found, for image to be absent, any other error
 		// is not conclusive, and we should not proceed
 		if _, ok := err.(ErrKeyNotFound); ok {
-			err = cj.UndoReservation(monitors, cr, pool, cj.namingPrefix+objUUID, reqName)
+			err = cj.UndoReservation(monitors, cr, pool, namingPrefix+objUUID, namingPrefix, reqName)
 		}
 		return "", err
 	}
@@ -243,10 +243,10 @@ prior to cleaning up the reservation
 NOTE: As the function manipulates omaps, it should be called with a lock against the request name
 held, to prevent parallel operations from modifying the state of the omaps for this request name.
 */
-func (cj *CSIJournal) UndoReservation(monitors string, cr *Credentials, pool, volName, reqName string) error {
+func (cj *CSIJournal) UndoReservation(monitors string, cr *Credentials, pool, volName, namingPrefix, reqName string) error {
 	// delete volume UUID omap (first, inverse of create order)
 	// TODO: Check cases where volName can be empty, and we need to just cleanup the reqName
-	imageUUID := strings.TrimPrefix(volName, cj.namingPrefix)
+	imageUUID := strings.TrimPrefix(volName, namingPrefix)
 	err := RemoveObject(monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+imageUUID)
 	if err != nil {
 		if _, ok := err.(ErrObjectNotFound); !ok {
@@ -310,7 +310,7 @@ Return values:
 	- string: Contains the UUID that was reserved for the passed in reqName
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) ReserveName(monitors string, cr *Credentials, pool, reqName, parentName string) (string, error) {
+func (cj *CSIJournal) ReserveName(monitors string, cr *Credentials, pool, reqName, namingPrefix, parentName string) (string, error) {
 	var snapSource bool
 
 	if parentName != "" {
@@ -340,8 +340,7 @@ func (cj *CSIJournal) ReserveName(monitors string, cr *Credentials, pool, reqNam
 	defer func() {
 		if err != nil {
 			klog.Warningf("reservation failed for volume: %s", reqName)
-			errDefer := cj.UndoReservation(monitors, cr, pool, cj.namingPrefix+volUUID,
-				reqName)
+			errDefer := cj.UndoReservation(monitors, cr, pool, namingPrefix+volUUID, namingPrefix, reqName)
 			if errDefer != nil {
 				klog.Warningf("failed undoing reservation of volume: %s (%v)", reqName, errDefer)
 			}

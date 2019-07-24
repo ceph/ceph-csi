@@ -36,7 +36,11 @@ func getFilesinDirectory(path string) []os.FileInfo {
 	return files
 }
 
-var poll = 2 * time.Second
+var (
+	poll           = 2 * time.Second
+	volNamePrefix  = "test-vol"
+	snapNamePrefix = "test-snap"
+)
 
 type snapInfo struct {
 	ID        int64  `json:"id"`
@@ -173,7 +177,7 @@ func getSnapshot(path string) v1alpha1.VolumeSnapshot {
 	return sc
 }
 
-func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
+func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, prefix string) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["pool"] = "myfs-data0"
@@ -186,14 +190,19 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	fsID = strings.Trim(fsID, "\n")
 
 	sc.Parameters["clusterID"] = fsID
+
+	// add volume name prefix
+	if prefix != "" {
+		sc.Parameters["volumenameprefix"] = prefix
+	}
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
 	Expect(err).Should(BeNil())
 }
 
-func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
+func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, prefix string) {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
-	sc.Parameters["pool"] = "replicapool"
+	sc.Parameters["pool"] = rbdPool
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
@@ -202,6 +211,11 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	fsID = strings.Trim(fsID, "\n")
 
 	sc.Parameters["clusterID"] = fsID
+	// add volume name prefix
+	if prefix != "" {
+		sc.Parameters["volumenameprefix"] = prefix
+	}
+
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
 	Expect(err).Should(BeNil())
 }
@@ -217,7 +231,7 @@ func newSnapshotClient() (*snapClient.SnapshotV1alpha1Client, error) {
 	}
 	return c, err
 }
-func createRBDSnapshotClass(f *framework.Framework) {
+func createRBDSnapshotClass(f *framework.Framework, prefix string) {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "snapshotclass.yaml")
 	sc := getSnapshotClass(scPath)
 
@@ -228,6 +242,11 @@ func createRBDSnapshotClass(f *framework.Framework) {
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
 	sc.Parameters["clusterID"] = fsID
+	// add snapshot name prefix
+	if prefix != "" {
+		sc.Parameters["snapshotnameprefix"] = prefix
+	}
+
 	sclient, err := newSnapshotClient()
 	Expect(err).Should(BeNil())
 	_, err = sclient.VolumeSnapshotClasses().Create(&sc)
@@ -722,7 +741,8 @@ func listRBDImages(f *framework.Framework) []string {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	stdout := execCommandInPod(f, "rbd ls --pool=replicapool --format=json", rookNS, &opt)
+	cmd := fmt.Sprintf("rbd ls --pool=%s --format=json", rbdPool)
+	stdout := execCommandInPod(f, cmd, rookNS, &opt)
 
 	var imgInfos []string
 
@@ -793,4 +813,60 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 
 	err = deletePVCAndApp("", f, pvc, app)
 	return err
+}
+
+func validateVolNameAndSnapPrefix(f *framework.Framework, pvcPath, snapshotPath string) {
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		Fail(err.Error())
+	}
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		Fail(err.Error())
+	}
+	// validate created backend rbd images
+	images := listRBDImages(f)
+	if len(images) != 1 {
+		e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+		Fail("validate backend image failed")
+	}
+	// validate volume name prefix
+	if !strings.HasPrefix(images[0], volNamePrefix) {
+		e2elog.Logf("expected volume name prefix %s got %s", volNamePrefix, images[0])
+		Fail("volume name prefix validation failed")
+	}
+
+	snap := getSnapshot(snapshotPath)
+	snap.Namespace = f.UniqueName
+	snap.Spec.Source.Name = pvc.Name
+	snap.Spec.Source.Kind = "PersistentVolumeClaim"
+	err = createSnapshot(&snap, deployTimeout)
+	if err != nil {
+		Fail(err.Error())
+	}
+	snapList, err := listSnapshots(f, rbdPool, images[0])
+	if err != nil {
+		Fail(err.Error())
+	}
+	if len(snapList) != 1 {
+		e2elog.Logf("backend snapshot not matching kube snap count,snap count = %v kube snap count %d", len(snapList), 1)
+		Fail("validate backend snapshot failed")
+	}
+
+	// validate snapshot name prefix
+	if !strings.HasPrefix(snapList[0].Name, snapNamePrefix) {
+		e2elog.Logf("expected snapshot name prefix %s got %s", snapNamePrefix, snapList[0].Name)
+		Fail("snapshot name prefix validation failed")
+	}
+
+	err = deleteSnapshot(&snap, deployTimeout)
+	if err != nil {
+		Fail(err.Error())
+	}
+
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		Fail(err.Error())
+	}
 }

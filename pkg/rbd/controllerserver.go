@@ -407,7 +407,10 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 
 	// Create snap volume
-	rbdSnap := genSnapFromOptions(rbdVol, req.GetParameters())
+	rbdSnap, err := genSnapFromOptions(rbdVol, req.GetParameters())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
 	rbdSnap.RbdImageName = rbdVol.RbdImageName
 	rbdSnap.SizeBytes = rbdVol.VolSize
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()

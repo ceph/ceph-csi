@@ -13,6 +13,8 @@ parameters:
   # csi-config-map-sample.yaml, to accompany the string chosen to
   # represent the Ceph cluster in clusterID below
   clusterID: <cluster-id>
-
+  # With snapshotnameprefix option an admin can now prefix the desired snapshot
+  # name from storageclass.
+  # snapshotnameprefix: custom-snap-name
   csi.storage.k8s.io/snapshotter-secret-name: csi-rbd-secret
   csi.storage.k8s.io/snapshotter-secret-namespace: default

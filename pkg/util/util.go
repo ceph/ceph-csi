@@ -19,6 +19,7 @@ package util
 import (
 	"os"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -27,6 +28,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
+)
+
+var (
+	volumeNameRE = regexp.MustCompile("^[a-zA-Z0-9_-]+$")
 )
 
 // remove this once kubernetes v1.14.0 release is done
@@ -99,27 +104,6 @@ func ValidateDriverName(driverName string) error {
 	return err
 }
 
-// GenerateVolID generates a volume ID based on passed in parameters and version, to be returned
-// to the CO system
-func GenerateVolID(monitors string, cr *Credentials, pool, clusterID, objUUID string, volIDVersion uint16) (string, error) {
-	poolID, err := GetPoolID(monitors, cr, pool)
-	if err != nil {
-		return "", err
-	}
-
-	// generate the volume ID to return to the CO system
-	vi := CSIIdentifier{
-		LocationID:      poolID,
-		EncodingVersion: volIDVersion,
-		ClusterID:       clusterID,
-		ObjectUUID:      objUUID,
-	}
-
-	volID, err := vi.ComposeCSIID()
-
-	return volID, err
-}
-
 // CreateMountPoint creates the directory with given path
 func CreateMountPoint(mountPath string) error {
 	return os.MkdirAll(mountPath, 0750)
@@ -140,4 +124,9 @@ func IsMountPoint(p string) (bool, error) {
 func Mount(source, target, fstype string, options []string) error {
 	dummyMount := mount.New("")
 	return dummyMount.Mount(source, target, fstype, options)
+}
+
+// isValidName validates Volume name
+func isValidName(name string) bool {
+	return volumeNameRE.MatchString(name)
 }

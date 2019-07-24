@@ -34,12 +34,55 @@ var testData = []testTuple{
 	{
 		vID: CSIIdentifier{
 			LocationID:      0xffff,
-			EncodingVersion: 0xffff,
+			EncodingVersion: EncodingV2,
 			ClusterID:       "01616094-9d93-4178-bf45-c7eac19e8b15",
+			VolNamePrefix:   "csi-vol-",
 			ObjectUUID:      "00000000-1111-2222-bbbb-cacacacacaca",
 		},
-		composedVolID: "ffff-0024-01616094-9d93-4178-bf45-c7eac19e8b15-000000000000ffff-00000000-1111-2222-bbbb-cacacacacaca",
+		composedVolID: "0002-0024-01616094-9d93-4178-bf45-c7eac19e8b15-000000000000ffff-0007-csi-vol-00000000-1111-2222-bbbb-cacacacacaca",
 		wantEnc:       true,
+		wantEncError:  false,
+		wantDec:       true,
+		wantDecError:  false,
+	},
+	{
+		vID: CSIIdentifier{
+			LocationID:      0xffff,
+			EncodingVersion: EncodingV2,
+			ClusterID:       "01616094-9d93-4178-bf45-c7eac19e8b15",
+			VolNamePrefix:   "testing-vol-name-",
+			ObjectUUID:      "00000000-1111-2222-bbbb-cacacacacaca",
+		},
+		composedVolID: "0002-0024-01616094-9d93-4178-bf45-c7eac19e8b15-000000000000ffff-0010-testing-vol-name-00000000-1111-2222-bbbb-cacacacacaca",
+		wantEnc:       true,
+		wantEncError:  false,
+		wantDec:       true,
+		wantDecError:  false,
+	},
+	{
+		vID: CSIIdentifier{
+			LocationID:      0xffff,
+			EncodingVersion: EncodingV2,
+			ClusterID:       "01616094-9d93-4178-bf45-c7eac19e8b15",
+			VolNamePrefix:   "testing-vol-name--",
+			ObjectUUID:      "00000000-1111-2222-bbbb-cacacacacaca",
+		},
+		composedVolID: "0002-0024-01616094-9d93-4178-bf45-c7eac19e8b15-000000000000ffff-0011-testing-vol-name--00000000-1111-2222-bbbb-cacacacacaca",
+		wantEnc:       true,
+		wantEncError:  false,
+		wantDec:       true,
+		wantDecError:  false,
+	},
+	{
+		vID: CSIIdentifier{
+			LocationID:      0xffff,
+			EncodingVersion: EncodingV1,
+			ClusterID:       "01616094-9d93-4178-bf45-c7eac19e8b15",
+			VolNamePrefix:   "csi-vol-",
+			ObjectUUID:      "00000000-3333-4444-bbbb-cacacacacaca",
+		},
+		composedVolID: "0001-0024-01616094-9d93-4178-bf45-c7eac19e8b15-000000000000ffff-00000000-3333-4444-bbbb-cacacacacaca",
+		wantEnc:       false,
 		wantEncError:  false,
 		wantDec:       true,
 		wantDecError:  false,
@@ -47,13 +90,12 @@ var testData = []testTuple{
 }
 
 func TestComposeDecomposeID(t *testing.T) {
-	var (
-		err           error
-		viDecompose   CSIIdentifier
-		composedVolID string
-	)
-
 	for _, test := range testData {
+		var (
+			err           error
+			viDecompose   CSIIdentifier
+			composedVolID string
+		)
 		if test.wantEnc {
 			composedVolID, err = test.vID.ComposeCSIID()
 
@@ -87,8 +129,7 @@ func TestComposeDecomposeID(t *testing.T) {
 			}
 
 			if !test.wantDecError && err == nil && viDecompose != test.vID {
-				t.Errorf("Decomposing failed: want (%#v), got (%#v %#v)",
-					test, viDecompose, err)
+				t.Errorf("Decomposing failed: want (%#v), got (%#v)", test.vID, viDecompose)
 			}
 		}
 	}
