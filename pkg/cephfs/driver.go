@@ -26,8 +26,6 @@ import (
 )
 
 const (
-	// version of ceph driver
-	version = "1.0.0"
 
 	// volIDVersion is the version number of volume ID encoding scheme
 	volIDVersion uint16 = 1
@@ -94,7 +92,6 @@ func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests
 func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir, instanceID string, cachePersister util.CachePersister) {
-	klog.Infof("Driver: %v version: %v", driverName, version)
 
 	// Configuration
 
@@ -144,7 +141,7 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir
 	}
 	// Initialize default library driver
 
-	fs.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
+	fs.cd = csicommon.NewCSIDriver(driverName, util.DriverVersion, nodeID)
 	if fs.cd == nil {
 		klog.Fatalln("failed to initialize CSI driver")
 	}
