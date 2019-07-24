@@ -21,6 +21,16 @@ CSI_IMAGE_VERSION=$(if $(ENV_CSI_IMAGE_VERSION),$(ENV_CSI_IMAGE_VERSION),canary)
 
 $(info cephcsi image settings: $(CSI_IMAGE_NAME) version $(CSI_IMAGE_VERSION))
 
+GIT_COMMIT=$(shell git rev-list -1 HEAD)
+
+GO_PROJECT=github.com/ceph/ceph-csi
+
+# go build flags
+LDFLAGS ?=
+LDFLAGS += -X $(GO_PROJECT)/pkg/util.GitCommit=$(GIT_COMMIT)
+# CSI_IMAGE_VERSION will be considered as the driver version
+LDFLAGS += -X $(GO_PROJECT)/pkg/util.DriverVersion=$(CSI_IMAGE_VERSION)
+
 all: cephcsi
 
 test: go-test static-check
@@ -38,7 +48,7 @@ func-test:
 .PHONY: cephcsi
 cephcsi:
 	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/cephcsi ./cmd/
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '$(LDFLAGS) -extldflags "-static"' -o  _output/cephcsi ./cmd/
 
 image-cephcsi: cephcsi
 	cp _output/cephcsi deploy/cephcsi/image/cephcsi

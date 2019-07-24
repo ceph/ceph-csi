@@ -93,6 +93,7 @@ func getDriverName() string {
 }
 
 func main() {
+	klog.Infof("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
 	var cp util.CachePersister
 
 	driverType := getType()
