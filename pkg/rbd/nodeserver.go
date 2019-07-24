@@ -115,12 +115,20 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 	klog.V(4).Infof("rbd image: %s/%s was successfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
 
+	isMounted := false
+	// if mounting to stagingpath fails unmap the rbd device. this wont leave any
+	// stale rbd device if unstage is not called
+	defer func() {
+		if err != nil {
+			ns.cleanupStagingPath(stagingTargetPath, devicePath, volID, isBlock, isMounted)
+		}
+	}()
 	// nodeStage Path
 	err = ns.mountVolumeToStagePath(req, stagingTargetPath, devicePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
+	isMounted = true
 	err = os.Chmod(stagingTargetPath, 0777)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -129,6 +137,27 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	klog.Infof("rbd: successfully mounted volume %s to stagingTargetPath %s", req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
+}
+
+func (ns *NodeServer) cleanupStagingPath(stagingTargetPath, devicePath, volID string, isBlock, isMounted bool) {
+	var err error
+	if isMounted {
+		err = ns.mounter.Unmount(stagingTargetPath)
+		if err != nil {
+			klog.Errorf("failed to unmount stagingtargetPath: %s with error: %v", stagingTargetPath, err)
+		}
+	}
+	// remove the block file created on staging path
+	if isBlock {
+		err = os.Remove(stagingTargetPath)
+		if err != nil {
+			klog.Errorf("failed to remove stagingtargetPath: %s with error: %v", stagingTargetPath, err)
+		}
+	}
+	// Unmapping rbd device
+	if err = detachRBDDevice(devicePath); err != nil {
+		klog.Errorf("failed to unmap rbd device: %s for volume %s with error: %v", devicePath, volID, err)
+	}
 }
 
 // NodePublishVolume mounts the volume mounted to the device path to the target
