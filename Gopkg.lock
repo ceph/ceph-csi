@@ -2,12 +2,15 @@
 
 
 [[projects]]
-  digest = "1:2be791e7b333ff7c06f8fb3dc18a7d70580e9399dbdffd352621d067ff260b6e"
+  digest = "1:4816836c291b7f2a0da7deefa679ef234be8ad845a199ed2e48779234536cefa"
   name = "github.com/Microsoft/go-winio"
-  packages = ["."]
+  packages = [
+    ".",
+    "pkg/guid",
+  ]
   pruneopts = "NUT"
-  revision = "1a8911d1ed007260465c3bfbbc785ac6915a0bb8"
-  version = "v0.4.12"
+  revision = "a969fb018bd3439cc50861ce06796c40430e3a65"
+  version = "v0.4.13"
 
 [[projects]]
   digest = "1:0a111edd8693fd977f42a0c4f199a0efb13c20aec9da99ad8830c7bb6a87e8d6"
@@ -286,12 +289,12 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:4e903242fe176238aaa469f59d7035f5abf2aa9acfefb8964ddd203651b574e9"
+  digest = "1:92f6419f388bd31a433b1388910f15a882c9980e383e89ebf8fb2524583707ac"
   name = "github.com/json-iterator/go"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "0ff49de124c6f76f8494e194af75bde0f1a49a29"
-  version = "v1.1.6"
+  revision = "27518f6661eba504be5a7a9a9f6d9460d892ade3"
+  version = "v1.1.7"
 
 [[projects]]
   digest = "1:5f039a8e43dc5b00adee7b38e39baf6c36f607372940c11975f00ec9c5f298ae"
@@ -545,7 +548,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:89e338c3d6898cd0946bd21af22d68b658b8575e76ad6b50b717b023762c26d2"
+  digest = "1:b026c2dc7d306ce6bab89cdaa8c72404e9b264d98c8abdd3c967f607d82a3d3e"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -562,7 +565,7 @@
     "websocket",
   ]
   pruneopts = "NUT"
-  revision = "da137c7871d730100384dbcf36e6f8fa493aef5b"
+  revision = "ca1201d0de80cfde86cb01aea620983605dfe99b"
 
 [[projects]]
   branch = "master"
@@ -1126,14 +1129,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5375663100ff5c82414b8c630fcb57f5de9e18dc3ea7ab5fc51029c02f6088dc"
+  digest = "1:5808bb1694e8727155e7c023499195cd0f9931b56545fe37795985f87f024696"
   name = "k8s.io/kube-openapi"
   packages = [
     "pkg/common",
     "pkg/util/proto",
   ]
   pruneopts = "NUT"
-  revision = "3cf2ea39288623b60ec6ed8423a75b8e996fe289"
+  revision = "5e22f3d471e6f24ca20becfdffdc6206c7cecac8"
 
 [[projects]]
   digest = "1:d036b4cd708fbfeeb3a8c2b0f458dca68178b19d00145ea66fd49fd47cdec496"
@@ -1355,6 +1358,7 @@
     "k8s.io/klog",
     "k8s.io/kubernetes/pkg/client/conditions",
     "k8s.io/kubernetes/pkg/util/mount",
+    "k8s.io/kubernetes/pkg/volume",
     "k8s.io/kubernetes/pkg/volume/util/nsenter",
     "k8s.io/kubernetes/test/e2e/framework",
     "k8s.io/kubernetes/test/e2e/framework/log",
