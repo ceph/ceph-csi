@@ -24,6 +24,11 @@ func ValidateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 		return status.Error(codes.InvalidArgument, "stage secrets cannot be nil or empty")
 	}
 
+	// validate stagingpath exists
+	ok := checkDirExists(req.GetStagingTargetPath())
+	if !ok {
+		return status.Error(codes.InvalidArgument, "staging path doesnot exists on node")
+	}
 	return nil
 }
 

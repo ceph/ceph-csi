@@ -104,11 +104,6 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		}
 	}
 
-	if err = util.CreateMountPoint(stagingTargetPath); err != nil {
-		klog.Errorf("failed to create staging mount point at %s for volume %s: %v", stagingTargetPath, volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
 	idLk := nodeVolumeIDLocker.Lock(string(volID))
 	defer nodeVolumeIDLocker.Unlock(idLk, string(volID))
 
@@ -286,10 +281,6 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	// Unmount the volume
 	if err = unmountVolume(stagingTargetPath); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	if err = os.Remove(stagingTargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
