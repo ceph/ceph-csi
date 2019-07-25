@@ -23,11 +23,13 @@ import (
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
+	csipbv1 "github.com/container-storage-interface/spec/lib/go/csi"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/volume"
 )
 
 // NodeServer struct of ceph CSI driver with supported methods of CSI
@@ -40,39 +42,27 @@ var (
 	nodeVolumeIDLocker = util.NewIDLocker()
 )
 
-func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi.NodeStageVolumeRequest) (*util.Credentials, error) {
+func getCredentialsForVolume(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) (*util.Credentials, error) {
 	var (
+		err     error
 		cr      *util.Credentials
 		secrets = req.GetSecrets()
 	)
 
 	if volOptions.ProvisionVolume {
-		// The volume is provisioned dynamically, get the credentials directly from Ceph
+		// The volume is provisioned dynamically, use passed in admin credentials
 
-		// First, get admin credentials - those are needed for retrieving the user credentials
-
-		adminCr, err := util.GetAdminCredentials(secrets)
+		cr, err = util.NewAdminCredentials(secrets)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
 		}
-
-		// Then get the ceph user
-
-		entity, err := getCephUser(volOptions, adminCr, volID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get ceph user: %v", err)
-		}
-
-		cr = entity.toCredentials()
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
-		userCr, err := util.GetUserCredentials(req.GetSecrets())
+		cr, err = util.NewUserCredentials(req.GetSecrets())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
 		}
-
-		cr = userCr
 	}
 
 	return cr, nil
@@ -82,7 +72,6 @@ func getCredentialsForVolume(volOptions *volumeOptions, volID volumeID, req *csi
 func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	var (
 		volOptions *volumeOptions
-		vid        *volumeIdentifier
 	)
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
@@ -93,21 +82,21 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	stagingTargetPath := req.GetStagingTargetPath()
 	volID := volumeID(req.GetVolumeId())
 
-	volOptions, vid, err := newVolumeOptionsFromVolID(string(volID), req.GetVolumeContext(), req.GetSecrets())
+	volOptions, _, err := newVolumeOptionsFromVolID(string(volID), req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrInvalidVolID); !ok {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		// check for pre-provisioned volumes (plugin versions > 1.0.0)
-		volOptions, vid, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
+		volOptions, _, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
 		if err != nil {
 			if _, ok := err.(ErrNonStaticVolume); !ok {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 
 			// check for volumes from plugin versions <= 1.0.0
-			volOptions, vid, err = newVolumeOptionsFromVersion1Context(string(volID), req.GetVolumeContext(),
+			volOptions, _, err = newVolumeOptionsFromVersion1Context(string(volID), req.GetVolumeContext(),
 				req.GetSecrets())
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
@@ -138,7 +127,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	// It's not, mount now
-	if err = ns.mount(volOptions, req, vid); err != nil {
+	if err = ns.mount(volOptions, req); err != nil {
 		return nil, err
 	}
 
@@ -147,15 +136,16 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest, vid *volumeIdentifier) error {
+func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) error {
 	stagingTargetPath := req.GetStagingTargetPath()
 	volID := volumeID(req.GetVolumeId())
 
-	cr, err := getCredentialsForVolume(volOptions, volumeID(vid.FsSubvolName), req)
+	cr, err := getCredentialsForVolume(volOptions, req)
 	if err != nil {
 		klog.Errorf("failed to get ceph credentials for volume %s: %v", volID, err)
 		return status.Error(codes.Internal, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	m, err := newMounter(volOptions)
 	if err != nil {
@@ -308,6 +298,92 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
+func (ns *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+
+	var err error
+	targetPath := req.GetVolumePath()
+	if targetPath == "" {
+		err = fmt.Errorf("targetpath %v is empty", targetPath)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	/*
+		 volID := req.GetVolumeId()
+
+		 TODO: Map the volumeID to the targetpath.
+
+		we need secret to connect to the ceph cluster to get the volumeID from volume
+		Name, however `secret` field/option is not available  in NodeGetVolumeStats spec,
+		Below issue covers this request and once its available, we can do the validation
+		as per the spec.
+		https://github.com/container-storage-interface/spec/issues/371
+
+	*/
+
+	isMnt, err := util.IsMountPoint(targetPath)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s doesnot exist", targetPath)
+		}
+		return nil, err
+	}
+	if !isMnt {
+		return nil, status.Errorf(codes.InvalidArgument, "targetpath %s is not mounted", targetPath)
+	}
+
+	cephfsProvider := volume.NewMetricsStatFS(targetPath)
+	volMetrics, volMetErr := cephfsProvider.GetMetrics()
+	if volMetErr != nil {
+		return nil, status.Error(codes.Internal, volMetErr.Error())
+	}
+
+	available, ok := (*(volMetrics.Available)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch available bytes")
+	}
+	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch capacity bytes")
+		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
+	}
+	used, ok := (*(volMetrics.Used)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch used bytes")
+	}
+	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch available inodes")
+		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
+
+	}
+	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch free inodes")
+	}
+
+	inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch used inodes")
+	}
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			{
+				Available: available,
+				Total:     capacity,
+				Used:      used,
+				Unit:      csipbv1.VolumeUsage_BYTES,
+			},
+			{
+				Available: inodesFree,
+				Total:     inodes,
+				Used:      inodesUsed,
+				Unit:      csipbv1.VolumeUsage_INODES,
+			},
+		},
+	}, nil
+
+}
+
 // NodeGetCapabilities returns the supported capabilities of the node server
 func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
@@ -316,6 +392,13 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
+					},
+				},
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 					},
 				},
 			},

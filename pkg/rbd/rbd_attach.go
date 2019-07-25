@@ -277,7 +277,7 @@ func createPath(volOpt *rbdVolume, cr *util.Credentials) (string, error) {
 	}
 
 	output, err := execCommand(cmdName, []string{
-		"map", imagePath, "--id", cr.ID, "-m", volOpt.Monitors, "--key=" + cr.Key})
+		"map", imagePath, "--id", cr.ID, "-m", volOpt.Monitors, "--keyfile=" + cr.KeyFile})
 	if err != nil {
 		klog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
 		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))

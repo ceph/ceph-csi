@@ -41,7 +41,7 @@ func getFscID(monitors string, cr *util.Credentials, fsName string) (int64, erro
 		"ceph",
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key="+cr.Key,
+		"--keyfile="+cr.KeyFile,
 		"-c", util.CephConfigPath,
 		"fs", "get", fsName, "--format=json",
 	)
@@ -69,7 +69,7 @@ func getMetadataPool(monitors string, cr *util.Credentials, fsName string) (stri
 		"ceph",
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key="+cr.Key,
+		"--keyfile="+cr.KeyFile,
 		"-c", util.CephConfigPath,
 		"fs", "ls", "--format=json",
 	)
@@ -99,7 +99,7 @@ func getFsName(monitors string, cr *util.Credentials, fscID int64) (string, erro
 		"ceph",
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key="+cr.Key,
+		"--keyfile="+cr.KeyFile,
 		"-c", util.CephConfigPath,
 		"fs", "dump", "--format=json",
 	)

@@ -116,7 +116,7 @@ func createImage(pOpts *rbdVolume, volSz int64, cr *util.Credentials) error {
 	} else {
 		klog.V(4).Infof("rbd: create %s size %s format %s using mon %s, pool %s", image, volSzMiB, pOpts.ImageFormat, pOpts.Monitors, pOpts.Pool)
 	}
-	args := []string{"create", image, "--size", volSzMiB, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors, "--key=" + cr.Key, "--image-format", pOpts.ImageFormat}
+	args := []string{"create", image, "--size", volSzMiB, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile, "--image-format", pOpts.ImageFormat}
 	if pOpts.ImageFormat == rbdImageFormat2 {
 		args = append(args, "--image-feature", pOpts.ImageFeatures)
 	}
@@ -138,7 +138,7 @@ func rbdStatus(pOpts *rbdVolume, cr *util.Credentials) (bool, string, error) {
 	image := pOpts.RbdImageName
 
 	klog.V(4).Infof("rbd: status %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
-	args := []string{"status", image, "--pool", pOpts.Pool, "-m", pOpts.Monitors, "--id", cr.ID, "--key=" + cr.Key}
+	args := []string{"status", image, "--pool", pOpts.Pool, "-m", pOpts.Monitors, "--id", cr.ID, "--keyfile=" + cr.KeyFile}
 	cmd, err := execCommand("rbd", args)
 	output = string(cmd)
 
@@ -179,7 +179,7 @@ func deleteImage(pOpts *rbdVolume, cr *util.Credentials) error {
 
 	klog.V(4).Infof("rbd: rm %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
 	args := []string{"rm", image, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors,
-		"--key=" + cr.Key}
+		"--keyfile=" + cr.KeyFile}
 	output, err = execCommand("rbd", args)
 	if err != nil {
 		klog.Errorf("failed to delete rbd image: %v, command output: %s", err, string(output))
@@ -486,7 +486,7 @@ func protectSnapshot(pOpts *rbdSnapshot, cr *util.Credentials) error {
 
 	klog.V(4).Infof("rbd: snap protect %s using mon %s, pool %s ", image, pOpts.Monitors, pOpts.Pool)
 	args := []string{"snap", "protect", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
-		cr.ID, "-m", pOpts.Monitors, "--key=" + cr.Key}
+		cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
 	output, err := execCommand("rbd", args)
 
@@ -505,7 +505,7 @@ func createSnapshot(pOpts *rbdSnapshot, cr *util.Credentials) error {
 
 	klog.V(4).Infof("rbd: snap create %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
 	args := []string{"snap", "create", "--pool", pOpts.Pool, "--snap", snapName, image,
-		"--id", cr.ID, "-m", pOpts.Monitors, "--key=" + cr.Key}
+		"--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
 	output, err := execCommand("rbd", args)
 
@@ -524,7 +524,7 @@ func unprotectSnapshot(pOpts *rbdSnapshot, cr *util.Credentials) error {
 
 	klog.V(4).Infof("rbd: snap unprotect %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
 	args := []string{"snap", "unprotect", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
-		cr.ID, "-m", pOpts.Monitors, "--key=" + cr.Key}
+		cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
 	output, err := execCommand("rbd", args)
 
@@ -543,7 +543,7 @@ func deleteSnapshot(pOpts *rbdSnapshot, cr *util.Credentials) error {
 
 	klog.V(4).Infof("rbd: snap rm %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
 	args := []string{"snap", "rm", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
-		cr.ID, "-m", pOpts.Monitors, "--key=" + cr.Key}
+		cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
 	output, err := execCommand("rbd", args)
 
@@ -567,7 +567,7 @@ func restoreSnapshot(pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, cr *util.Crede
 
 	klog.V(4).Infof("rbd: clone %s using mon %s, pool %s", image, pVolOpts.Monitors, pVolOpts.Pool)
 	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.RbdImageName + "@" + snapName,
-		pVolOpts.Pool + "/" + image, "--id", cr.ID, "-m", pVolOpts.Monitors, "--key=" + cr.Key}
+		pVolOpts.Pool + "/" + image, "--id", cr.ID, "-m", pVolOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
 	output, err := execCommand("rbd", args)
 
@@ -624,7 +624,7 @@ func getImageInfo(monitors string, cr *util.Credentials, poolName, imageName str
 		"rbd",
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key="+cr.Key,
+		"--keyfile="+cr.KeyFile,
 		"-c", util.CephConfigPath,
 		"--format="+"json",
 		"info", poolName+"/"+imageName)
@@ -673,7 +673,7 @@ func getSnapInfo(monitors string, cr *util.Credentials, poolName, imageName, sna
 		"rbd",
 		"-m", monitors,
 		"--id", cr.ID,
-		"--key="+cr.Key,
+		"--keyfile="+cr.KeyFile,
 		"-c", util.CephConfigPath,
 		"--format="+"json",
 		"snap", "ls", poolName+"/"+imageName)
