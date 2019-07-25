@@ -42,18 +42,17 @@ that should be resolved in v14.2.3.
 
 **Available command line arguments:**
 
-| Option            | Default value               | Description                                                                                                                                                                                                                                                                            |
-| ----------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--endpoint`      | `unix://tmp/csi.sock`       | CSI endpoint, must be a UNIX socket                                                                                                                                                                                                                                                    |
-| `--drivername`    | `cephfs.csi.ceph.com`       | Name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)                                                                                                                                                                                     |
-| `--nodeid`        | _empty_                     | This node's ID                                                                                                                                                                                                                                                                         |
-| `--type`          | _empty_                     | Driver type `[rbd | cephfs]` If the driver type is set to  `rbd` it will act as a `rbd plugin` or if it's set to `cephfs` will act as a `cephfs plugin`                                                                                                                                |
-| `--volumemounter` | _empty_                     | Default volume mounter. Available options are `kernel` and `fuse`. This is the mount method used if volume parameters don't specify otherwise. If left unspecified, the driver will first probe for `ceph-fuse` in system's path and will choose Ceph kernel client if probing failed. |
-| `--mountcachedir` | _empty_                     | Volume mount cache info save dir. If left unspecified, the dirver will not record mount info, or it will save mount info and when driver restart it will remount volume it cached.                                                                                                     |
-| `--instanceid`    | "default"                   | Unique ID distinguishing this instance of Ceph CSI among other instances, when sharing Ceph clusters across CSI instances for provisioning                                                                                                                                             |
-| `--pluginpath`    | "/var/lib/kubelet/plugins/" | The location of cephcsi plugin on host                                                                                                                                                                                                                                                 |
-
-| `--metadatastorage` | _empty_               | Points to where older (1.0.0 or older plugin versions) metadata about provisioned volumes are kept, as file or in as k8s configmap (`node` or `k8s_configmap` respectively)                                                                                                            |
+| Option              | Default value               | Description                                                                                                                                                                                                                                                                            |
+| ------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--endpoint`        | `unix://tmp/csi.sock`       | CSI endpoint, must be a UNIX socket                                                                                                                                                                                                                                                    |
+| `--drivername`      | `cephfs.csi.ceph.com`       | Name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)                                                                                                                                                                                     |
+| `--nodeid`          | _empty_                     | This node's ID                                                                                                                                                                                                                                                                         |
+| `--type`            | _empty_                     | Driver type `[rbd | cephfs]` If the driver type is set to  `rbd` it will act as a `rbd plugin` or if it's set to `cephfs` will act as a `cephfs plugin`                                                                                                                                |
+| `--volumemounter`   | _empty_                     | Default volume mounter. Available options are `kernel` and `fuse`. This is the mount method used if volume parameters don't specify otherwise. If left unspecified, the driver will first probe for `ceph-fuse` in system's path and will choose Ceph kernel client if probing failed. |
+| `--mountcachedir`   | _empty_                     | Volume mount cache info save dir. If left unspecified, the dirver will not record mount info, or it will save mount info and when driver restart it will remount volume it cached.                                                                                                     |
+| `--instanceid`      | "default"                   | Unique ID distinguishing this instance of Ceph CSI among other instances, when sharing Ceph clusters across CSI instances for provisioning                                                                                                                                             |
+| `--pluginpath`      | "/var/lib/kubelet/plugins/" | The location of cephcsi plugin on host                                                                                                                                                                                                                                                 |
+| `--metadatastorage` | _empty_                     | Points to where older (1.0.0 or older plugin versions) metadata about provisioned volumes are kept, as file or in as k8s configmap (`node` or `k8s_configmap` respectively)                                                                                                            |
 
 **Available environmental variables:**
 
@@ -102,7 +101,11 @@ for a zero-sized volume means no quota attribute will be set.
 
 ## Deployment with Kubernetes
 
-Requires Kubernetes 1.13
+Requires Kubernetes 1.13+
+
+if your cluster version is 1.13.x please use [cephfs v1.13
+templates](../deploy/cephfs/kubernetes/v1.13) or else use [cephfs v1.14+
+templates](../deploy/cephfs/kubernetes/v1.14+)
 
 Your Kubernetes cluster must allow privileged pods (i.e. `--allow-privileged`
 flag must be set to true for both the API server and the kubelet). Moreover, as

@@ -1,0 +1,17 @@
+{{- if .Values.rbac.create -}}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "ceph-csi-rbd.nodeplugin.fullname" . }}
+  labels:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    chart: {{ include "ceph-csi-rbd.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+aggregationRule:
+  clusterRoleSelectors:
+    - matchLabels:
+        rbac.rbd.csi.ceph.com/aggregate-to-{{ include "ceph-csi-rbd.nodeplugin.fullname" . }}: "true"
+rules: []
+{{- end -}}

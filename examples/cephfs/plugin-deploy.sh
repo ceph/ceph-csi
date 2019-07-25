@@ -3,7 +3,7 @@
 deployment_base="${1}"
 
 if [[ -z $deployment_base ]]; then
-	deployment_base="../../deploy/cephfs/kubernetes"
+	deployment_base="../../deploy/cephfs/kubernetes/v1.14+"
 fi
 
 cd "$deployment_base" || exit 1
