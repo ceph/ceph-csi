@@ -87,13 +87,13 @@ spec:
           volumeMounts:
             - name: mount-cache-dir
               mountPath: /mount-cache-dir
-            - name: plugin-dir
+            - name: socket-dir
               mountPath: {{ .Values.socketDir }}
-            - name: pods-mount-dir
-              mountPath: /var/lib/kubelet/pods
+            - name: plugin-dir
+              mountPath: {{ .Values.pluginDir }}
               mountPropagation: "Bidirectional"
-            - name: plugin-mount-dir
-              mountPath: {{ .Values.volumeDevicesDir }}
+            - name: mointpoint-dir
+              mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
             - mountPath: /dev
               name: host-dev
@@ -111,22 +111,22 @@ spec:
       volumes:
         - name: mount-cache-dir
           emptyDir: {}
-        - name: plugin-dir
+        - name: socket-dir
           hostPath:
             path: {{ .Values.socketDir }}
-            type: DirectoryOrCreate
-        - name: plugin-mount-dir
-          hostPath:
-            path: {{ .Values.volumeDevicesDir }}
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
             path: {{ .Values.registrationDir }}
             type: Directory
-        - name: pods-mount-dir
+        - name: plugin-dir
+          hostPath:
+            path: {{ .Values.pluginDir }}
+            type: Directory
+        - name: mountpoint-dir
           hostPath:
             path: /var/lib/kubelet/pods
-            type: Directory
+            type: DirectoryOrCreate
         - name: host-dev
           hostPath:
             path: /dev

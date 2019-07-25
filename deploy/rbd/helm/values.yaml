@@ -16,7 +16,7 @@ serviceAccounts:
 socketDir: /var/lib/kubelet/plugins/rbd.csi.ceph.com
 socketFile: csi.sock
 registrationDir: /var/lib/kubelet/plugins_registry
-volumeDevicesDir: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices
+pluginDir: /var/lib/kubelet/plugins
 driverName: rbd.csi.ceph.com
 configMapName: ceph-csi-config
 

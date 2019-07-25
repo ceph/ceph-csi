@@ -127,7 +127,7 @@ func mountCephRoot(volID volumeID, volOptions *volumeOptions, adminCr *util.Cred
 	// Access to cephfs's / is required
 	volOptions.RootPath = "/"
 
-	if err := createMountPoint(cephRoot); err != nil {
+	if err := util.CreateMountPoint(cephRoot); err != nil {
 		return err
 	}
 

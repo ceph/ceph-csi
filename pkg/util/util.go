@@ -22,8 +22,11 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 // remove this once kubernetes v1.14.0 release is done
@@ -39,6 +42,14 @@ func RoundUpToMiB(size int64) int64 {
 	return roundUpSize(requestBytes, MiB)
 }
 
+// variables which will be set during the build time
+var (
+	// GitCommit tell the latest git commit image is built from
+	GitCommit string
+	// DriverVersion which will be driver version
+	DriverVersion string
+)
+
 func roundUpSize(volumeSizeBytes, allocationUnitBytes int64) int64 {
 	roundedUp := volumeSizeBytes / allocationUnitBytes
 	if volumeSizeBytes%allocationUnitBytes > 0 {
@@ -50,12 +61,12 @@ func roundUpSize(volumeSizeBytes, allocationUnitBytes int64) int64 {
 // CreatePersistanceStorage creates storage path and initializes new cache
 func CreatePersistanceStorage(sPath, metaDataStore, driverName string) (CachePersister, error) {
 	var err error
-	if err = createPersistentStorage(path.Join(sPath, "controller")); err != nil {
+	if err = CreateMountPoint(path.Join(sPath, "controller")); err != nil {
 		klog.Errorf("failed to create persistent storage for controller: %v", err)
 		return nil, err
 	}
 
-	if err = createPersistentStorage(path.Join(sPath, "node")); err != nil {
+	if err = CreateMountPoint(path.Join(sPath, "node")); err != nil {
 		klog.Errorf("failed to create persistent storage for node: %v", err)
 		return nil, err
 	}
@@ -66,10 +77,6 @@ func CreatePersistanceStorage(sPath, metaDataStore, driverName string) (CachePer
 		return nil, err
 	}
 	return cp, err
-}
-
-func createPersistentStorage(persistentStoragePath string) error {
-	return os.MkdirAll(persistentStoragePath, os.FileMode(0755))
 }
 
 // ValidateDriverName validates the driver name
@@ -111,4 +118,26 @@ func GenerateVolID(monitors string, cr *Credentials, pool, clusterID, objUUID st
 	volID, err := vi.ComposeCSIID()
 
 	return volID, err
+}
+
+// CreateMountPoint creates the directory with given path
+func CreateMountPoint(mountPath string) error {
+	return os.MkdirAll(mountPath, 0750)
+}
+
+// IsMountPoint checks if the given path is mountpoint or not
+func IsMountPoint(p string) (bool, error) {
+	dummyMount := mount.New("")
+	notMnt, err := dummyMount.IsLikelyNotMountPoint(p)
+	if err != nil {
+		return false, status.Error(codes.Internal, err.Error())
+	}
+
+	return !notMnt, nil
+}
+
+// Mount mounts the source to target path
+func Mount(source, target, fstype string, options []string) error {
+	dummyMount := mount.New("")
+	return dummyMount.Mount(source, target, fstype, options)
 }

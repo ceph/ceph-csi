@@ -23,11 +23,13 @@ import (
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
+	csipbv1 "github.com/container-storage-interface/spec/lib/go/csi"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/volume"
 )
 
 // NodeServer struct of ceph CSI driver with supported methods of CSI
@@ -76,8 +78,8 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	var (
 		volOptions *volumeOptions
 	)
-	if err := validateNodeStageVolumeRequest(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
+		return nil, err
 	}
 
 	// Configuration
@@ -107,7 +109,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		}
 	}
 
-	if err = createMountPoint(stagingTargetPath); err != nil {
+	if err = util.CreateMountPoint(stagingTargetPath); err != nil {
 		klog.Errorf("failed to create staging mount point at %s for volume %s: %v", stagingTargetPath, volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -117,7 +119,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	// Check if the volume is already mounted
 
-	isMnt, err := isMountPoint(stagingTargetPath)
+	isMnt, err := util.IsMountPoint(stagingTargetPath)
 
 	if err != nil {
 		klog.Errorf("stat failed: %v", err)
@@ -172,8 +174,8 @@ func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequ
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 
 	mountOptions := []string{"bind"}
-	if err := validateNodePublishVolumeRequest(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if err := util.ValidateNodePublishVolumeRequest(req); err != nil {
+		return nil, err
 	}
 
 	// Configuration
@@ -181,7 +183,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	targetPath := req.GetTargetPath()
 	volID := req.GetVolumeId()
 
-	if err := createMountPoint(targetPath); err != nil {
+	if err := util.CreateMountPoint(targetPath); err != nil {
 		klog.Errorf("failed to create mount point at %s: %v", targetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -210,7 +212,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	// Check if the volume is already mounted
 
-	isMnt, err := isMountPoint(targetPath)
+	isMnt, err := util.IsMountPoint(targetPath)
 
 	if err != nil {
 		klog.Errorf("stat failed: %v", err)
@@ -247,8 +249,8 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 // NodeUnpublishVolume unmounts the volume from the target path
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	var err error
-	if err = validateNodeUnpublishVolumeRequest(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if err = util.ValidateNodeUnpublishVolumeRequest(req); err != nil {
+		return nil, err
 	}
 
 	targetPath := req.GetTargetPath()
@@ -275,8 +277,8 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 // NodeUnstageVolume unstages the volume from the staging path
 func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	var err error
-	if err = validateNodeUnstageVolumeRequest(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if err = util.ValidateNodeUnstageVolumeRequest(req); err != nil {
+		return nil, err
 	}
 
 	stagingTargetPath := req.GetStagingTargetPath()
@@ -300,6 +302,92 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
+func (ns *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+
+	var err error
+	targetPath := req.GetVolumePath()
+	if targetPath == "" {
+		err = fmt.Errorf("targetpath %v is empty", targetPath)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	/*
+		 volID := req.GetVolumeId()
+
+		 TODO: Map the volumeID to the targetpath.
+
+		we need secret to connect to the ceph cluster to get the volumeID from volume
+		Name, however `secret` field/option is not available  in NodeGetVolumeStats spec,
+		Below issue covers this request and once its available, we can do the validation
+		as per the spec.
+		https://github.com/container-storage-interface/spec/issues/371
+
+	*/
+
+	isMnt, err := util.IsMountPoint(targetPath)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s doesnot exist", targetPath)
+		}
+		return nil, err
+	}
+	if !isMnt {
+		return nil, status.Errorf(codes.InvalidArgument, "targetpath %s is not mounted", targetPath)
+	}
+
+	cephfsProvider := volume.NewMetricsStatFS(targetPath)
+	volMetrics, volMetErr := cephfsProvider.GetMetrics()
+	if volMetErr != nil {
+		return nil, status.Error(codes.Internal, volMetErr.Error())
+	}
+
+	available, ok := (*(volMetrics.Available)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch available bytes")
+	}
+	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch capacity bytes")
+		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
+	}
+	used, ok := (*(volMetrics.Used)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch used bytes")
+	}
+	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch available inodes")
+		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
+
+	}
+	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch free inodes")
+	}
+
+	inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
+	if !ok {
+		klog.Errorf("failed to fetch used inodes")
+	}
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			{
+				Available: available,
+				Total:     capacity,
+				Used:      used,
+				Unit:      csipbv1.VolumeUsage_BYTES,
+			},
+			{
+				Available: inodesFree,
+				Total:     inodes,
+				Used:      inodesUsed,
+				Unit:      csipbv1.VolumeUsage_INODES,
+			},
+		},
+	}, nil
+
+}
+
 // NodeGetCapabilities returns the supported capabilities of the node server
 func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
@@ -308,6 +396,13 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
+					},
+				},
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 					},
 				},
 			},

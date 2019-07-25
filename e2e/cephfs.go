@@ -116,6 +116,13 @@ var _ = Describe("cephfs", func() {
 					}
 				})
 
+				By("check data persist after recreating pod with same pvc", func() {
+					err := checkDataPersist(pvcPath, appPath, f)
+					if err != nil {
+						Fail(err.Error())
+					}
+				})
+
 			})
 
 		})
