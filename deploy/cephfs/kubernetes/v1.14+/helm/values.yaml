@@ -1,0 +1,80 @@
+---
+rbac:
+  create: true
+
+serviceAccounts:
+  attacher:
+    create: true
+    name:
+  nodeplugin:
+    create: true
+    name:
+  provisioner:
+    create: true
+    name:
+
+socketDir: /var/lib/kubelet/plugins/cephfs.csi.ceph.com
+socketFile: csi.sock
+registrationDir: /var/lib/kubelet/plugins_registry
+pluginDir: /var/lib/kubelet/plugins
+driverName: cephfs.csi.ceph.com
+configMapName: ceph-csi-config
+attacher:
+  name: attacher
+  enabled: true
+  image:
+    repository: quay.io/k8scsi/csi-attacher
+    tag: v1.2.0
+    pullPolicy: IfNotPresent
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+nodeplugin:
+  name: nodeplugin
+
+  registrar:
+    image:
+      repository: quay.io/k8scsi/csi-node-driver-registrar
+      tag: v1.1.0
+      pullPolicy: IfNotPresent
+
+    resources: {}
+
+  plugin:
+    image:
+      repository: quay.io/cephcsi/cephcsi
+      # for stable functionality replace canary with latest release version
+      tag: canary
+      pullPolicy: IfNotPresent
+
+    resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+provisioner:
+  name: provisioner
+
+  replicaCount: 3
+
+  image:
+    repository: quay.io/k8scsi/csi-provisioner
+    tag: v1.3.0
+    pullPolicy: IfNotPresent
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}

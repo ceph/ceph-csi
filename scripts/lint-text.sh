@@ -44,6 +44,6 @@ run_check '.*\.(ba)?sh' bash -n
 
 # Install via: pip install yamllint
 # disable yamlint chekck for helm chats
-run_check '.*\.ya?ml' yamllint -s -d "{extends: default, rules: {line-length: {allow-non-breakable-inline-mappings: true}},ignore: deploy/*/helm/templates/*.yaml}"
+run_check '.*\.ya?ml' yamllint -s -d "{extends: default, rules: {line-length: {allow-non-breakable-inline-mappings: true}},ignore: deploy/*/kubernetes/*/helm/templates/*.yaml}"
 
 echo "ALL OK."

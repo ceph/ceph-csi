@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo" // nolint
 
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
@@ -15,13 +16,18 @@ var (
 	rbdProvisionerRBAC = "csi-provisioner-rbac.yaml"
 	rbdNodePlugin      = "csi-rbdplugin.yaml"
 	rbdNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
-	rbdConfigMap       = "csi-config-map.yaml"
-	rbdDirPath         = "../deploy/rbd/kubernetes/"
+	configMap          = "csi-config-map.yaml"
+	rbdDirPath         = "../deploy/rbd/kubernetes"
 	rbdExamplePath     = "../examples/rbd/"
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
 	namespace          = "default"
 )
+
+func updaterbdDirPath(c clientset.Interface) {
+	version := getKubeVersionToDeploy(c)
+	rbdDirPath = fmt.Sprintf("%s/%s/", rbdDirPath, version)
+}
 
 func deployRBDPlugin() {
 	// deploy provisioner
@@ -36,8 +42,9 @@ var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework("rbd")
 	// deploy RBD CSI
 	BeforeEach(func() {
+		updaterbdDirPath(f.ClientSet)
 		createRBDPool()
-		createConfigMap(f.ClientSet, f)
+		createConfigMap(rbdDirPath, f.ClientSet, f)
 		deployRBDPlugin()
 		createRBDStorageClass(f.ClientSet, f)
 		createRBDSecret(f.ClientSet, f)
@@ -68,9 +75,15 @@ var _ = Describe("RBD", func() {
 			appClonePath := rbdExamplePath + "pod-restore.yaml"
 			snapshotPath := rbdExamplePath + "snapshot.yaml"
 
-			By("checking provisioner statefulset is running")
+			By("checking provisioner statefulset/deployment is running")
 			timeout := time.Duration(deployTimeout) * time.Minute
-			err := framework.WaitForStatefulSetReplicasReady(rbdDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
+			var err error
+			sts := deployProvAsSTS(f.ClientSet)
+			if sts {
+				err = framework.WaitForStatefulSetReplicasReady(rbdDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
+			} else {
+				err = waitForDeploymentComplete(rbdDeploymentName, namespace, f.ClientSet, deployTimeout)
+			}
 			if err != nil {
 				Fail(err.Error())
 			}

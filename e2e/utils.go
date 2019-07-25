@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/klog"
+
 	"github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1"
 	snapClient "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1"
 	. "github.com/onsi/ginkgo" // nolint
@@ -43,6 +45,31 @@ type snapInfo struct {
 	Name      string `json:"name"`
 	Size      int64  `json:"size"`
 	Timestamp string `json:"timestamp"`
+}
+
+func deployProvAsSTS(c clientset.Interface) bool {
+	// kubeMinor to use deployment instead of statefulset for provisioner
+	const kubeMinor = "14"
+	v, err := c.Discovery().ServerVersion()
+	if err != nil {
+		klog.Errorf("failed to get server version with error %v", err)
+		return false
+	}
+	if v.Minor < kubeMinor {
+		return true
+	}
+	return false
+}
+
+func getKubeVersionToDeploy(c clientset.Interface) string {
+	sts := deployProvAsSTS(c)
+	version := ""
+	if sts {
+		version = "v1.13"
+	} else {
+		version = "v1.14+"
+	}
+	return version
 }
 
 func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
@@ -97,7 +124,7 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 			return true, nil
 		}
 
-		reason = fmt.Sprintf("deployment status: %#v", deployment.Status)
+		reason = fmt.Sprintf("deployment status: %#v", deployment.Status.String())
 		e2elog.Logf(reason)
 
 		return false, nil
@@ -234,8 +261,8 @@ func createRBDSnapshotClass(f *framework.Framework) {
 	Expect(err).Should(BeNil())
 }
 
-func createConfigMap(c kubernetes.Interface, f *framework.Framework) {
-	path := rbdDirPath + rbdConfigMap
+func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Framework) {
+	path := pluginPath + configMap
 	cm := v1.ConfigMap{}
 	err := unmarshal(path, &cm)
 	Expect(err).Should(BeNil())

@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo" // nolint
 
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
@@ -17,9 +18,14 @@ var (
 	cephfsNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
 	cephfsDeploymentName  = "csi-cephfsplugin-provisioner"
 	cephfsDeamonSetName   = "csi-cephfsplugin"
-	cephfsDirPath         = "../deploy/cephfs/kubernetes/"
+	cephfsDirPath         = "../deploy/cephfs/kubernetes"
 	cephfsExamplePath     = "../examples/cephfs/"
 )
+
+func updateCephfsDirPath(c clientset.Interface) {
+	version := getKubeVersionToDeploy(c)
+	cephfsDirPath = fmt.Sprintf("%s/%s/", cephfsDirPath, version)
+}
 
 func deployCephfsPlugin() {
 	// deploy provisioner
@@ -34,8 +40,9 @@ var _ = Describe("cephfs", func() {
 	f := framework.NewDefaultFramework("cephfs")
 	// deploy cephfs CSI
 	BeforeEach(func() {
+		updateCephfsDirPath(f.ClientSet)
 		createFileSystem(f.ClientSet)
-		createConfigMap(f.ClientSet, f)
+		createConfigMap(cephfsDirPath, f.ClientSet, f)
 		deployCephfsPlugin()
 		createCephfsStorageClass(f.ClientSet, f)
 		createCephfsSecret(f.ClientSet, f)
@@ -58,9 +65,16 @@ var _ = Describe("cephfs", func() {
 		It("Test cephfs CSI", func() {
 			pvcPath := cephfsExamplePath + "pvc.yaml"
 			appPath := cephfsExamplePath + "pod.yaml"
-			By("checking provisioner statefulset is running")
+
+			By("checking provisioner statefulset/deployment is running")
 			timeout := time.Duration(deployTimeout) * time.Minute
-			err := framework.WaitForStatefulSetReplicasReady(cephfsDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
+			var err error
+			sts := deployProvAsSTS(f.ClientSet)
+			if sts {
+				err = framework.WaitForStatefulSetReplicasReady(cephfsDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
+			} else {
+				err = waitForDeploymentComplete(cephfsDeploymentName, namespace, f.ClientSet, deployTimeout)
+			}
 			if err != nil {
 				Fail(err.Error())
 			}
