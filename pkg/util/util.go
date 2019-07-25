@@ -125,6 +125,14 @@ func CreateMountPoint(mountPath string) error {
 	return os.MkdirAll(mountPath, 0750)
 }
 
+// checkDirExists checks directory  exists or not
+func checkDirExists(p string) bool {
+	if _, err := os.Stat(p); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
 // IsMountPoint checks if the given path is mountpoint or not
 func IsMountPoint(p string) (bool, error) {
 	dummyMount := mount.New("")
