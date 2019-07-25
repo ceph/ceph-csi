@@ -16,10 +16,10 @@ Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-c
   - [Troubleshooting](#Troubleshooting)
   - [Contact](#Contact)
 
-This repo contains [Container Storage Interface(CSI)]
-(<https://github.com/container-storage-interface/>) Ceph CSI driver for RBD,
-CephFS and kubernetes sidecar deployment yamls of provisioner, attacher,
-node-driver-registrar and snapshotter for supporting CSI functionalities.
+This repo contains Ceph
+[Container Storage Interface (CSI)](https://github.com/container-storage-interface/)
+driver for RBD, CephFS and kubernetes sidecar deployment yamls of provisioner,
+attacher, node-driver-registrar and snapshotter for supporting CSI functionalities.
 
 ## Overview
 
@@ -83,9 +83,8 @@ in the Kubernetes documentation.
 
 ## Contributing to this repo
 
-Please follow [development-guide]
-(<https://github.com/ceph/ceph-csi/tree/master/docs/development-guide.md>) and
-[coding style guidelines](<https://github.com/ceph/ceph-csi/tree/master/docs/coding.md>)
+Please follow [development-guide](<https://github.com/ceph/ceph-csi/tree/master/docs/development-guide.md>)
+and [coding style guidelines](<https://github.com/ceph/ceph-csi/tree/master/docs/coding.md>)
 if you are interested to contribute to this repo.
 
 ## Troubleshooting
