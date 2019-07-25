@@ -745,3 +745,66 @@ func listSnapshots(f *framework.Framework, pool, imageName string) ([]snapInfo, 
 	err := json.Unmarshal([]byte(stdout), &snapInfos)
 	return snapInfos, err
 }
+
+func GivePermToCephfsRoot(f *framework.Framework) {
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	out := execCommandInPod(f, "mkdir /mnt/cephfs", rookNS, &opt)
+	e2elog.Logf("Creating temperory mount point in tools pod %s", out)
+
+	out = execCommandInPod(f, "ceph-fuse /mnt/cephfs >/dev/null 2>&1", rookNS, &opt)
+	e2elog.Logf("Mounting ceph file system at /mnt/cephfs %s", out)
+
+	out = execCommandInPod(f, "chmod 777 /mnt/cephfs/", rookNS, &opt)
+	e2elog.Logf("Setting chmod 777 on the cepfs root %s", out)
+}
+
+func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
+	data := "checking data persist"
+	pvc, err := loadPVC(pvcPath)
+	if pvc == nil {
+		return err
+	}
+	pvc.Namespace = f.UniqueName
+	e2elog.Logf("The PVC  template %+v", pvc)
+
+	app, err := loadApp(appPath)
+	if err != nil {
+		return err
+	}
+	app.Labels = map[string]string{"app": "validate-data"}
+	app.Namespace = f.UniqueName
+
+	err = createPVCAndApp("", f, pvc, app)
+	if err != nil {
+		return err
+	}
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=validate-data",
+	}
+	// write data to PVC
+	filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+
+	execCommandInPod(f, fmt.Sprintf("echo %s > %s", data, filePath), app.Namespace, &opt)
+
+	// delete app
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return err
+	}
+	// recreate app and check data persist
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return err
+	}
+	persistData := execCommandInPod(f, fmt.Sprintf("cat %s", filePath), app.Namespace, &opt)
+
+	if !strings.Contains(persistData, data) {
+		return fmt.Errorf("data not persistent expected data %s received data %s  ", data, persistData)
+	}
+
+	err = deletePVCAndApp("", f, pvc, app)
+	return err
+}

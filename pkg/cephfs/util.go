@@ -19,7 +19,6 @@ package cephfs
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -30,7 +29,6 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 type volumeID string
@@ -79,18 +77,6 @@ func execCommandJSON(v interface{}, program string, args ...string) error {
 	return nil
 }
 
-// Used in isMountPoint()
-var dummyMount = mount.New("")
-
-func isMountPoint(p string) (bool, error) {
-	notMnt, err := dummyMount.IsLikelyNotMountPoint(p)
-	if err != nil {
-		return false, status.Error(codes.Internal, err.Error())
-	}
-
-	return !notMnt, nil
-}
-
 func pathExists(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
@@ -123,71 +109,6 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 func (cs *ControllerServer) validateDeleteVolumeRequest() error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid DeleteVolumeRequest: %v", err)
-	}
-
-	return nil
-}
-
-// Node service request validation
-func validateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
-	if req.GetVolumeCapability() == nil {
-		return errors.New("volume capability missing in request")
-	}
-
-	if req.GetVolumeId() == "" {
-		return errors.New("volume ID missing in request")
-	}
-
-	if req.GetStagingTargetPath() == "" {
-		return errors.New("staging target path missing in request")
-	}
-
-	if req.GetSecrets() == nil || len(req.GetSecrets()) == 0 {
-		return errors.New("stage secrets cannot be nil or empty")
-	}
-
-	return nil
-}
-
-func validateNodeUnstageVolumeRequest(req *csi.NodeUnstageVolumeRequest) error {
-	if req.GetVolumeId() == "" {
-		return errors.New("volume ID missing in request")
-	}
-
-	if req.GetStagingTargetPath() == "" {
-		return errors.New("staging target path missing in request")
-	}
-
-	return nil
-}
-
-func validateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
-	if req.GetVolumeCapability() == nil {
-		return errors.New("volume capability missing in request")
-	}
-
-	if req.GetVolumeId() == "" {
-		return errors.New("volume ID missing in request")
-	}
-
-	if req.GetTargetPath() == "" {
-		return errors.New("target path missing in request")
-	}
-
-	if req.GetStagingTargetPath() == "" {
-		return errors.New("staging target path missing in request")
-	}
-
-	return nil
-}
-
-func validateNodeUnpublishVolumeRequest(req *csi.NodeUnpublishVolumeRequest) error {
-	if req.GetVolumeId() == "" {
-		return errors.New("volume ID missing in request")
-	}
-
-	if req.GetTargetPath() == "" {
-		return errors.New("target path missing in request")
 	}
 
 	return nil

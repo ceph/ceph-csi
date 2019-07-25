@@ -41,59 +41,15 @@ type NodeServer struct {
 	mounter mount.Interface
 }
 
-// NodePublishVolume mounts the volume mounted to the device path to the target
-// path
-func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	targetPath := req.GetTargetPath()
-	if targetPath == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty target path in request")
-	}
-
-	if req.GetVolumeCapability() == nil {
-		return nil, status.Error(codes.InvalidArgument, "empty volume capability in request")
-	}
-
-	if req.GetVolumeId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
-	}
-
-	cr, err := util.GetUserCredentials(req.GetSecrets())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	idLk := targetPathLocker.Lock(targetPath)
-	defer targetPathLocker.Unlock(idLk, targetPath)
-
-	disableInUseChecks := false
-
-	isLegacyVolume := false
-	volName, err := getVolumeName(req)
-	if err != nil {
-		// error ErrInvalidVolID may mean this is an 1.0.0 version volume, check for name
-		// pattern match in addition to error to ensure this is a likely v1.0.0 volume
-		if _, ok := err.(ErrInvalidVolID); !ok || !isLegacyVolumeID(req.GetVolumeId()) {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-
-		volName, err = getLegacyVolumeName(req)
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-		isLegacyVolume = true
-	}
-
-	isBlock := req.GetVolumeCapability().GetBlock() != nil
-	// Check if that target path exists properly
-	notMnt, err := ns.createTargetPath(targetPath, isBlock)
-	if err != nil {
+// NodeStageVolume mounts the volume to a staging path on the node.
+func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
 	}
 
-	if !notMnt {
-		return &csi.NodePublishVolumeResponse{}, nil
-	}
-
+	stagingTargetPath := req.GetStagingTargetPath()
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+	disableInUseChecks := false
 	// MULTI_NODE_MULTI_WRITER is supported by default for Block access type volumes
 	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
 		if isBlock {
@@ -104,114 +60,215 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		}
 	}
 
+	volID := req.GetVolumeId()
+
+	cr, err := util.GetUserCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	isLegacyVolume := false
+	volName, err := getVolumeName(req.GetVolumeId())
+	if err != nil {
+		// error ErrInvalidVolID may mean this is an 1.0.0 version volume, check for name
+		// pattern match in addition to error to ensure this is a likely v1.0.0 volume
+		if _, ok := err.(ErrInvalidVolID); !ok || !isLegacyVolumeID(req.GetVolumeId()) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		volName, err = getLegacyVolumeName(req.GetStagingTargetPath())
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		isLegacyVolume = true
+	}
+
+	if isBlock {
+		stagingTargetPath += "/" + volID
+	}
+
+	idLk := nodeVolumeIDLocker.Lock(volID)
+	defer nodeVolumeIDLocker.Unlock(idLk, volID)
+
+	// Check if that target path exists properly
+	isNotMnt, err := ns.createMountPath(stagingTargetPath, isBlock)
+	if err != nil {
+		klog.Errorf("stat failed: %v", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if !isNotMnt {
+		klog.Infof("rbd: volume %s is already mounted to %s, skipping", req.GetVolumeId(), stagingTargetPath)
+		return &csi.NodeStageVolumeResponse{}, nil
+	}
+
 	volOptions, err := genVolFromVolumeOptions(req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks, isLegacyVolume)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	volOptions.RbdImageName = volName
 
 	// Mapping RBD image
 	devicePath, err := attachRBDImage(volOptions, cr)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	klog.V(4).Infof("rbd image: %s/%s was successfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
 
-	// Publish Path
-	err = ns.mountVolume(req, devicePath)
-	if err != nil {
-		return nil, err
-	}
-	err = os.Chmod(targetPath, 0777)
+	// nodeStage Path
+	err = ns.mountVolumeToStagePath(req, stagingTargetPath, devicePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	err = os.Chmod(stagingTargetPath, 0777)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	klog.Infof("rbd: successfully mounted volume %s to stagingTargetPath %s", req.GetVolumeId(), stagingTargetPath)
+
+	return &csi.NodeStageVolumeResponse{}, nil
+}
+
+// NodePublishVolume mounts the volume mounted to the device path to the target
+// path
+func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+
+	err := util.ValidateNodePublishVolumeRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	targetPath := req.GetTargetPath()
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+	stagingPath := req.GetStagingTargetPath()
+	if isBlock {
+		stagingPath += "/" + req.GetVolumeId()
+	}
+
+	idLk := targetPathLocker.Lock(targetPath)
+	defer targetPathLocker.Unlock(idLk, targetPath)
+
+	// Check if that target path exists properly
+	notMnt, err := ns.createMountPath(targetPath, isBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	if !notMnt {
+		return &csi.NodePublishVolumeResponse{}, nil
+	}
+
+	// Publish Path
+	err = ns.mountVolume(stagingPath, req)
+	if err != nil {
+		return nil, err
+	}
+
+	klog.Infof("rbd: successfully mounted stagingPath %s to targetPath %s", stagingPath, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
-func getVolumeName(req *csi.NodePublishVolumeRequest) (string, error) {
+func getVolumeName(volID string) (string, error) {
 	var vi util.CSIIdentifier
 
-	err := vi.DecomposeCSIID(req.GetVolumeId())
+	err := vi.DecomposeCSIID(volID)
 	if err != nil {
-		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, req.GetVolumeId())
+		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, volID)
 		return "", ErrInvalidVolID{err}
 	}
 
 	return volJournal.NamingPrefix() + vi.ObjectUUID, nil
 }
 
-func getLegacyVolumeName(req *csi.NodePublishVolumeRequest) (string, error) {
+func getLegacyVolumeName(mountPath string) (string, error) {
 	var volName string
 
-	isBlock := req.GetVolumeCapability().GetBlock() != nil
-	targetPath := req.GetTargetPath()
-
-	if isBlock {
-		// Get volName from targetPath
-		s := strings.Split(targetPath, "/")
+	if strings.HasSuffix(mountPath, "/globalmount") {
+		s := strings.Split(strings.TrimSuffix(mountPath, "/globalmount"), "/")
 		volName = s[len(s)-1]
-	} else {
-		// Get volName from targetPath
-		if !strings.HasSuffix(targetPath, "/mount") {
-			return "", fmt.Errorf("rbd: malformed value of target path: %s", targetPath)
-		}
-		s := strings.Split(strings.TrimSuffix(targetPath, "/mount"), "/")
-		volName = s[len(s)-1]
+		return volName, nil
 	}
 
+	if strings.HasSuffix(mountPath, "/mount") {
+		s := strings.Split(strings.TrimSuffix(mountPath, "/mount"), "/")
+		volName = s[len(s)-1]
+		return volName, nil
+	}
+
+	// get volume name for block volume
+	s := strings.Split(mountPath, "/")
+	if len(s) == 0 {
+		return "", fmt.Errorf("rbd: malformed value of stage target path: %s", mountPath)
+	}
+	volName = s[len(s)-1]
 	return volName, nil
 }
 
-func (ns *NodeServer) mountVolume(req *csi.NodePublishVolumeRequest, devicePath string) error {
+func (ns *NodeServer) mountVolumeToStagePath(req *csi.NodeStageVolumeRequest, stagingPath, devicePath string) error {
+	// Publish Path
+	fsType := req.GetVolumeCapability().GetMount().GetFsType()
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+	opt := []string{}
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+	var err error
+
+	if isBlock {
+		opt = append(opt, "bind")
+		err = diskMounter.Mount(devicePath, stagingPath, fsType, opt)
+	} else {
+		err = diskMounter.FormatAndMount(devicePath, stagingPath, fsType, opt)
+	}
+	if err != nil {
+		klog.Errorf("failed to mount device path (%s) to staging path (%s) for volume (%s) error %s", devicePath, stagingPath, req.GetVolumeId(), err)
+	}
+	return err
+}
+
+func (ns *NodeServer) mountVolume(stagingPath string, req *csi.NodePublishVolumeRequest) error {
 	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	readOnly := req.GetReadonly()
-	attrib := req.GetVolumeContext()
 	mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	targetPath := req.GetTargetPath()
-
-	klog.V(4).Infof("target %v\nisBlock %v\nfstype %v\ndevice %v\nreadonly %v\nattributes %v\n mountflags %v\n",
-		targetPath, isBlock, fsType, devicePath, readOnly, attrib, mountFlags)
-
-	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+	klog.V(4).Infof("target %v\nisBlock %v\nfstype %v\nstagingPath %v\nreadonly %v\nmountflags %v\n",
+		targetPath, isBlock, fsType, stagingPath, readOnly, mountFlags)
+	mountFlags = append(mountFlags, "bind")
+	if readOnly {
+		mountFlags = append(mountFlags, "ro")
+	}
 	if isBlock {
-		mountFlags = append(mountFlags, "bind")
-		if err := diskMounter.Mount(devicePath, targetPath, fsType, mountFlags); err != nil {
-			return err
+		if err := util.Mount(stagingPath, targetPath, fsType, mountFlags); err != nil {
+			return status.Error(codes.Internal, err.Error())
 		}
 	} else {
-		if readOnly {
-			mountFlags = append(mountFlags, "ro")
-		}
-		if err := diskMounter.FormatAndMount(devicePath, targetPath, fsType, mountFlags); err != nil {
-			return err
+		if err := util.Mount(stagingPath, targetPath, "", mountFlags); err != nil {
+			return status.Error(codes.Internal, err.Error())
 		}
 	}
 	return nil
 }
 
-func (ns *NodeServer) createTargetPath(targetPath string, isBlock bool) (bool, error) {
-	// Check if that target path exists properly
-	notMnt, err := mount.IsNotMountPoint(ns.mounter, targetPath)
+func (ns *NodeServer) createMountPath(mountPath string, isBlock bool) (bool, error) {
+	// Check if that mount path exists properly
+	notMnt, err := mount.IsNotMountPoint(ns.mounter, mountPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if isBlock {
-				// create an empty file
 				// #nosec
-				targetPathFile, e := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, 0750)
+				pathFile, e := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0750)
 				if e != nil {
-					klog.V(4).Infof("Failed to create targetPath:%s with error: %v", targetPath, err)
+					klog.V(4).Infof("Failed to create mountPath:%s with error: %v", mountPath, err)
 					return notMnt, status.Error(codes.Internal, e.Error())
 				}
-				if err = targetPathFile.Close(); err != nil {
-					klog.V(4).Infof("Failed to close targetPath:%s with error: %v", targetPath, err)
+				if err = pathFile.Close(); err != nil {
+					klog.V(4).Infof("Failed to close mountPath:%s with error: %v", mountPath, err)
 					return notMnt, status.Error(codes.Internal, err.Error())
 				}
 			} else {
 				// Create a directory
-				if err = os.MkdirAll(targetPath, 0750); err != nil {
+				if err = util.CreateMountPoint(mountPath); err != nil {
 					return notMnt, status.Error(codes.Internal, err.Error())
 				}
 			}
@@ -226,18 +283,12 @@ func (ns *NodeServer) createTargetPath(targetPath string, isBlock bool) (bool, e
 
 // NodeUnpublishVolume unmounts the volume from the target path
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+	err := util.ValidateNodeUnpublishVolumeRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
 	targetPath := req.GetTargetPath()
-	if targetPath == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty target path in request")
-	}
-
-	if req.GetVolumeId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
-	}
-
-	idLk := targetPathLocker.Lock(targetPath)
-	defer targetPathLocker.Unlock(idLk, targetPath)
-
 	notMnt, err := mount.IsNotMountPoint(ns.mounter, targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -248,21 +299,75 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.NotFound, err.Error())
 	}
 	if notMnt {
-		// TODO should consider deleting path instead of returning error,
-		// once all codes become ready for csi 1.0.
-		return nil, status.Error(codes.NotFound, "volume not mounted")
+		if err = os.RemoveAll(targetPath); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return &csi.NodeUnpublishVolumeResponse{}, nil
 	}
 
-	devicePath, cnt, err := mount.GetDeviceNameFromMount(ns.mounter, targetPath)
+	if err = ns.mounter.Unmount(targetPath); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if err = os.RemoveAll(targetPath); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	klog.Infof("rbd: successfully unbinded volume %s from %s", req.GetVolumeId(), targetPath)
+
+	return &csi.NodeUnpublishVolumeResponse{}, nil
+}
+
+// NodeUnstageVolume unstages the volume from the staging path
+func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+	var err error
+	if err = util.ValidateNodeUnstageVolumeRequest(req); err != nil {
+		return nil, err
+	}
+
+	stagingTargetPath := req.GetStagingTargetPath()
+
+	// kind of hack to unmount block volumes
+	blockStagingPath := stagingTargetPath + "/" + req.GetVolumeId()
+unmount:
+	notMnt, err := mount.IsNotMountPoint(ns.mounter, stagingTargetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// staging targetPath has already been deleted
+			klog.V(4).Infof("stagingTargetPath: %s has already been deleted", stagingTargetPath)
+			return &csi.NodeUnstageVolumeResponse{}, nil
+		}
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	if notMnt {
+		_, err = os.Stat(blockStagingPath)
+		if err == nil && (stagingTargetPath != blockStagingPath) {
+			stagingTargetPath = blockStagingPath
+			goto unmount
+		}
+		if err = os.RemoveAll(stagingTargetPath); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return &csi.NodeUnstageVolumeResponse{}, nil
+	}
+	// Unmount the volume
+	devicePath, cnt, err := mount.GetDeviceNameFromMount(ns.mounter, stagingTargetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = ns.unmount(targetPath, devicePath, cnt); err != nil {
+	if err = ns.unmount(stagingTargetPath, devicePath, cnt); err != nil {
 		return nil, err
 	}
 
-	return &csi.NodeUnpublishVolumeResponse{}, nil
+	if err = os.RemoveAll(stagingTargetPath); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	klog.Infof("rbd: successfully unmounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
+
+	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
 func (ns *NodeServer) unmount(targetPath, devicePath string, cnt int) error {
@@ -299,14 +404,15 @@ func (ns *NodeServer) unmount(targetPath, devicePath string, cnt int) error {
 	// Unmapping rbd device
 	if err = detachRBDDevice(devicePath); err != nil {
 		klog.V(3).Infof("failed to unmap rbd device: %s with error: %v", devicePath, err)
-		return err
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	// Remove targetPath
 	if err = os.RemoveAll(targetPath); err != nil {
 		klog.V(3).Infof("failed to remove targetPath: %s with error: %v", targetPath, err)
+		return status.Error(codes.Internal, err.Error())
 	}
-	return err
+	return nil
 }
 func resolveBindMountedBlockDevice(mountPath string) (string, error) {
 	// #nosec
@@ -335,4 +441,19 @@ func parseFindMntResolveSource(out string) (string, error) {
 		return fmt.Sprintf("/dev%s", match[1]), nil
 	}
 	return "", fmt.Errorf("parseFindMntResolveSource: %s doesn't match to any expected findMnt output", out)
+}
+
+// NodeGetCapabilities returns the supported capabilities of the node server
+func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+	return &csi.NodeGetCapabilitiesResponse{
+		Capabilities: []*csi.NodeServiceCapability{
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
+					},
+				},
+			},
+		},
+	}, nil
 }

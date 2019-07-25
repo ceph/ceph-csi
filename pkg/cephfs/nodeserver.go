@@ -84,8 +84,8 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		volOptions *volumeOptions
 		vid        *volumeIdentifier
 	)
-	if err := validateNodeStageVolumeRequest(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
+		return nil, err
 	}
 
 	// Configuration
@@ -115,7 +115,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		}
 	}
 
-	if err = createMountPoint(stagingTargetPath); err != nil {
+	if err = util.CreateMountPoint(stagingTargetPath); err != nil {
 		klog.Errorf("failed to create staging mount point at %s for volume %s: %v", stagingTargetPath, volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -125,7 +125,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	// Check if the volume is already mounted
 
-	isMnt, err := isMountPoint(stagingTargetPath)
+	isMnt, err := util.IsMountPoint(stagingTargetPath)
 
 	if err != nil {
 		klog.Errorf("stat failed: %v", err)
@@ -180,8 +180,8 @@ func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequ
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 
 	mountOptions := []string{"bind"}
-	if err := validateNodePublishVolumeRequest(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if err := util.ValidateNodePublishVolumeRequest(req); err != nil {
+		return nil, err
 	}
 
 	// Configuration
@@ -189,7 +189,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	targetPath := req.GetTargetPath()
 	volID := req.GetVolumeId()
 
-	if err := createMountPoint(targetPath); err != nil {
+	if err := util.CreateMountPoint(targetPath); err != nil {
 		klog.Errorf("failed to create mount point at %s: %v", targetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -218,7 +218,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	// Check if the volume is already mounted
 
-	isMnt, err := isMountPoint(targetPath)
+	isMnt, err := util.IsMountPoint(targetPath)
 
 	if err != nil {
 		klog.Errorf("stat failed: %v", err)
@@ -255,8 +255,8 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 // NodeUnpublishVolume unmounts the volume from the target path
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	var err error
-	if err = validateNodeUnpublishVolumeRequest(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if err = util.ValidateNodeUnpublishVolumeRequest(req); err != nil {
+		return nil, err
 	}
 
 	targetPath := req.GetTargetPath()
@@ -283,8 +283,8 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 // NodeUnstageVolume unstages the volume from the staging path
 func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	var err error
-	if err = validateNodeUnstageVolumeRequest(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if err = util.ValidateNodeUnstageVolumeRequest(req); err != nil {
+		return nil, err
 	}
 
 	stagingTargetPath := req.GetStagingTargetPath()

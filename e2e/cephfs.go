@@ -39,6 +39,7 @@ var _ = Describe("cephfs", func() {
 		deployCephfsPlugin()
 		createCephfsStorageClass(f.ClientSet, f)
 		createCephfsSecret(f.ClientSet, f)
+		GivePermToCephfsRoot(f)
 	})
 
 	AfterEach(func() {
@@ -113,6 +114,13 @@ var _ = Describe("cephfs", func() {
 							Fail(err.Error())
 						}
 
+					}
+				})
+
+				By("check data persist after recreating pod with same pvc", func() {
+					err := checkDataPersist(pvcPath, appPath, f)
+					if err != nil {
+						Fail(err.Error())
 					}
 				})
 

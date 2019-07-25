@@ -7,6 +7,8 @@ spec:
   selector:
     matchLabels:
       app: csi-rbdplugin
+  updateStrategy:
+    type: OnDelete
   template:
     metadata:
       labels:
@@ -39,7 +41,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
-            - name: plugin-dir
+            - name: socket-dir
               mountPath: /csi
             - name: registration-dir
               mountPath: /registration
@@ -69,14 +71,8 @@ spec:
               value: unix:///csi/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
-            - name: plugin-dir
+            - name: socket-dir
               mountPath: /csi
-            - name: pods-mount-dir
-              mountPath: /var/lib/kubelet/pods
-              mountPropagation: "Bidirectional"
-            - name: plugin-mount-dir
-              mountPath: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/
-              mountPropagation: "Bidirectional"
             - mountPath: /dev
               name: host-dev
             - mountPath: /rootfs
@@ -88,22 +84,28 @@ spec:
               readOnly: true
             - name: ceph-csi-config
               mountPath: /etc/ceph-csi-config/
+            - name: plugin-dir
+              mountPath: /var/lib/kubelet/plugins
+              mountPropagation: "Bidirectional"
+            - name: mountpoint-dir
+              mountPath: /var/lib/kubelet/pods
+              mountPropagation: "Bidirectional"
       volumes:
-        - name: plugin-dir
+        - name: socket-dir
           hostPath:
             path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             type: DirectoryOrCreate
-        - name: plugin-mount-dir
+        - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/kubernetes.io/csi/volumeDevices/
+            path: /var/lib/kubelet/plugins
+            type: Directory
+        - name: mountpoint-dir
+          hostPath:
+            path: /var/lib/kubelet/pods
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
             path: /var/lib/kubelet/plugins_registry/
-            type: Directory
-        - name: pods-mount-dir
-          hostPath:
-            path: /var/lib/kubelet/pods
             type: Directory
         - name: host-dev
           hostPath:

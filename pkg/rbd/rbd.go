@@ -46,7 +46,6 @@ type Driver struct {
 }
 
 var (
-	version = "1.0.0"
 
 	// PluginFolder defines the location of ceph plugin
 	PluginFolder = "/var/lib/kubelet/plugins/"
@@ -102,8 +101,6 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containerized bool, cachePersister util.CachePersister) {
 	var err error
 
-	klog.Infof("Driver: %v version: %v", driverName, version)
-
 	// Create ceph.conf for use with CLI commands
 	if err = util.WriteCephConfig(); err != nil {
 		klog.Fatalf("failed to write ceph configuration file (%v)", err)
@@ -123,7 +120,7 @@ func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containeri
 	snapJournal.SetCSIDirectorySuffix(CSIInstanceID)
 
 	// Initialize default library driver
-	r.cd = csicommon.NewCSIDriver(driverName, version, nodeID)
+	r.cd = csicommon.NewCSIDriver(driverName, util.DriverVersion, nodeID)
 	if r.cd == nil {
 		klog.Fatalln("Failed to initialize CSI Driver.")
 	}

@@ -155,7 +155,7 @@ func mountFuse(mountPoint string, cr *util.Credentials, volOptions *volumeOption
 }
 
 func (m *fuseMounter) mount(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
-	if err := createMountPoint(mountPoint); err != nil {
+	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}
 
@@ -186,7 +186,7 @@ func mountKernel(mountPoint string, cr *util.Credentials, volOptions *volumeOpti
 }
 
 func (m *kernelMounter) mount(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
-	if err := createMountPoint(mountPoint); err != nil {
+	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}
 
@@ -235,8 +235,4 @@ func unmountVolume(mountPoint string) error {
 	}
 
 	return nil
-}
-
-func createMountPoint(root string) error {
-	return os.MkdirAll(root, 0750)
 }
