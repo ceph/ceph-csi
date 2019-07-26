@@ -33,14 +33,17 @@ LDFLAGS += -X $(GO_PROJECT)/pkg/util.DriverVersion=$(CSI_IMAGE_VERSION)
 
 all: cephcsi
 
-test: go-test static-check
+test: go-test static-check dep-check
 
 go-test:
 	./scripts/test-go.sh
 
+dep-check:
+	dep check
+
 static-check:
 	./scripts/lint-go.sh
-	./scripts/lint-text.sh
+	./scripts/lint-text.sh --require-all
 
 func-test:
 	go test github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)

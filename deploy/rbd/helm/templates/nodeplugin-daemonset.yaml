@@ -105,6 +105,8 @@ spec:
               readOnly: true
             - name: ceph-csi-config
               mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
       volumes:
@@ -139,6 +141,10 @@ spec:
         - name: ceph-csi-config
           configMap:
             name: {{ .Values.configMapName | quote }}
+        - name: keys-tmp-dir
+          emptyDir: {
+            medium: "Memory"
+          }
     {{- if .Values.nodeplugin.affinity -}}
       affinity:
 {{ toYaml .Values.nodeplugin.affinity . | indent 8 }}
