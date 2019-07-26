@@ -75,6 +75,7 @@ spec:
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
+            - "--pidlimit=-1"
           env:
             - name: NODE_ID
               valueFrom:

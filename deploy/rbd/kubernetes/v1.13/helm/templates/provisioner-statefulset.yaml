@@ -88,6 +88,7 @@ spec:
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
             - "--containerized=true"
+            - "--pidlimit=-1"
           env:
             - name: DRIVER_NAME
               value: {{ .Values.driverName }}

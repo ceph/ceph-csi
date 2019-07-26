@@ -74,6 +74,7 @@ spec:
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
             - "--metadatastorage=k8s_configmap"
+            - "--pidlimit=-1"
           env:
             - name: DRIVER_NAME
               value: {{ .Values.driverName }}
