@@ -92,6 +92,7 @@ spec:
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
             - "--containerized=true"
+            - "--pidlimit=-1"
           env:
             - name: HOST_ROOTFS
               value: "/rootfs"

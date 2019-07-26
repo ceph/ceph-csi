@@ -74,6 +74,7 @@ spec:
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
             - "--metadatastorage=k8s_configmap"
+            - "--pidlimit=-1"
           env:
             - name: HOST_ROOTFS
               value: "/rootfs"
