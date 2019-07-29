@@ -32,9 +32,9 @@ rules:
   - apiGroups: ["csi.storage.k8s.io"]
     resources: ["csinodeinfos"]
     verbs: ["get", "list", "watch"]
-  {{ if .Values.attacher.enabled }}
+{{ if .Values.provisioner.attacher.enabled }}
   - apiGroups: ["storage.k8s.io"]
     resources: ["volumeattachments"]
     verbs: ["get", "list", "watch", "update"]
-  {{ end }}
+{{ end }}
 {{- end -}}

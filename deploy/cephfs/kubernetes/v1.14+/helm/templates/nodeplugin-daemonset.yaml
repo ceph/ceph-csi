@@ -2,6 +2,7 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: {{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app: {{ include "ceph-csi-cephfs.name" . }}
     chart: {{ include "ceph-csi-cephfs.chart" . }}
@@ -32,6 +33,7 @@ spec:
       containers:
         - name: driver-registrar
           image: "{{ .Values.nodeplugin.registrar.image.repository }}:{{ .Values.nodeplugin.registrar.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.registrar.image.pullPolicy }}
           args:
             - "--v=5"
             - "--csi-address=/csi/{{ .Values.socketFile }}"
@@ -41,15 +43,14 @@ spec:
               exec:
                   command: [
                     "/bin/sh", "-c",
-                    'rm -rf /registration/{{ .Values.driverName }} 
-                  /registration/{{ .Values.driverName }}-reg.sock'
+                    'rm -rf /registration/{{ .Values.driverName }}
+                    /registration/{{ .Values.driverName }}-reg.sock'
                   ]
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          imagePullPolicy: {{ .Values.nodeplugin.registrar.image.pullPolicy }}
           volumeMounts:
             - name: plugin-dir
               mountPath: /csi
@@ -90,7 +91,7 @@ spec:
             - name: plugin-dir
               mountPath: {{ .Values.pluginDir }}
               mountPropagation: "Bidirectional"
-            - name: mointpoint-dir
+            - name: mountpoint-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
             - mountPath: /dev
@@ -146,15 +147,15 @@ spec:
           emptyDir: {
             medium: "Memory"
           }
-    {{- if .Values.nodeplugin.affinity -}}
+{{- if .Values.nodeplugin.affinity }}
       affinity:
-{{ toYaml .Values.nodeplugin.affinity . | indent 8 }}
-    {{- end -}}
-    {{- if .Values.nodeplugin.nodeSelector -}}
+{{ toYaml .Values.nodeplugin.affinity . | indent 8 -}}
+{{- end -}}
+{{- if .Values.nodeplugin.nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.nodeplugin.nodeSelector | indent 8 }}
-    {{- end -}}
-    {{- if .Values.nodeplugin.tolerations -}}
+{{ toYaml .Values.nodeplugin.nodeSelector | indent 8 -}}
+{{- end -}}
+{{- if .Values.nodeplugin.tolerations }}
       tolerations:
-{{ toYaml .Values.nodeplugin.tolerations | indent 8 }}
-    {{- end -}}
+{{ toYaml .Values.nodeplugin.tolerations | indent 8 -}}
+{{- end -}}
