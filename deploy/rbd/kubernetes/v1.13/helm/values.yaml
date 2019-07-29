@@ -20,24 +20,6 @@ pluginDir: /var/lib/kubelet/plugins
 driverName: rbd.csi.ceph.com
 configMapName: ceph-csi-config
 
-attacher:
-  name: attacher
-  enabled: true
-  replicaCount: 1
-
-  image:
-    repository: quay.io/k8scsi/csi-attacher
-    tag: v1.2.0
-    pullPolicy: IfNotPresent
-
-  resources: {}
-
-  nodeSelector: {}
-
-  tolerations: []
-
-  affinity: {}
-
 nodeplugin:
   name: nodeplugin
 
@@ -46,7 +28,6 @@ nodeplugin:
       repository: quay.io/k8scsi/csi-node-driver-registrar
       tag: v1.1.0
       pullPolicy: IfNotPresent
-
     resources: {}
 
   plugin:
@@ -55,7 +36,6 @@ nodeplugin:
       # for stable functionality replace canary with latest release version
       tag: canary
       pullPolicy: IfNotPresent
-
     resources: {}
 
   nodeSelector: {}
@@ -66,26 +46,32 @@ nodeplugin:
 
 provisioner:
   name: provisioner
-
   replicaCount: 1
 
-  image:
-    repository: quay.io/k8scsi/csi-provisioner
-    tag: v1.3.0
-    pullPolicy: IfNotPresent
+  provisioner:
+    image:
+      repository: quay.io/k8scsi/csi-provisioner
+      tag: v1.3.0
+      pullPolicy: IfNotPresent
+    resources: {}
 
-  resources: {}
+  snapshotter:
+    image:
+      repository: quay.io/k8scsi/csi-snapshotter
+      tag: v1.1.0
+      pullPolicy: IfNotPresent
+    resources: {}
+
+  attacher:
+    enabled: true
+    image:
+      repository: quay.io/k8scsi/csi-attacher
+      tag: v1.2.0
+      pullPolicy: IfNotPresent
+    resources: {}
 
   nodeSelector: {}
 
   tolerations: []
 
   affinity: {}
-
-snapshotter:
-  image:
-    repository: quay.io/k8scsi/csi-snapshotter
-    tag: v1.1.0
-    pullPolicy: IfNotPresent
-
-  resources: {}

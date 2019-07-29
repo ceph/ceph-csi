@@ -2,6 +2,7 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: {{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app: {{ include "ceph-csi-cephfs.name" . }}
     chart: {{ include "ceph-csi-cephfs.chart" . }}
@@ -41,7 +42,7 @@ spec:
               exec:
                   command: [
                     "/bin/sh", "-c",
-                    'rm -rf /registration/{{ .Values.driverName }} 
+                    'rm -rf /registration/{{ .Values.driverName }}
                   /registration/{{ .Values.driverName }}-reg.sock'
                   ]
           env:
@@ -92,7 +93,7 @@ spec:
             - name: plugin-dir
               mountPath: {{ .Values.pluginDir }}
               mountPropagation: "Bidirectional"
-            - name: mointpoint-dir
+            - name: mountpoint-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
             - mountPath: /dev
@@ -148,15 +149,15 @@ spec:
           emptyDir: {
             medium: "Memory"
           }
-    {{- if .Values.nodeplugin.affinity -}}
+{{- if .Values.nodeplugin.affinity }}
       affinity:
-{{ toYaml .Values.nodeplugin.affinity . | indent 8 }}
-    {{- end -}}
-    {{- if .Values.nodeplugin.nodeSelector -}}
+{{ toYaml .Values.nodeplugin.affinity . | indent 8 -}}
+{{- end -}}
+{{- if .Values.nodeplugin.nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.nodeplugin.nodeSelector | indent 8 }}
-    {{- end -}}
-    {{- if .Values.nodeplugin.tolerations -}}
+{{ toYaml .Values.nodeplugin.nodeSelector | indent 8 -}}
+{{- end -}}
+{{- if .Values.nodeplugin.tolerations }}
       tolerations:
-{{ toYaml .Values.nodeplugin.tolerations | indent 8 }}
-    {{- end -}}
+{{ toYaml .Values.nodeplugin.tolerations | indent 8 -}}
+{{- end -}}
