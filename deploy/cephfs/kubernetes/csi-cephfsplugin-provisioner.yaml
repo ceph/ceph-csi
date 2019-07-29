@@ -94,6 +94,8 @@ spec:
               mountPath: /dev
             - name: ceph-csi-config
               mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
       volumes:
         - name: socket-dir
           hostPath:
@@ -111,3 +113,7 @@ spec:
         - name: ceph-csi-config
           configMap:
             name: ceph-csi-config
+        - name: keys-tmp-dir
+          emptyDir: {
+            medium: "Memory"
+          }

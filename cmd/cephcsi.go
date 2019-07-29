@@ -20,6 +20,7 @@ import (
 	"flag"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/ceph/ceph-csi/pkg/cephfs"
@@ -45,6 +46,7 @@ var (
 	instanceID = flag.String("instanceid", "", "Unique ID distinguishing this instance of Ceph CSI among other"+
 		" instances, when sharing Ceph clusters across CSI instances for provisioning")
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
+	pluginPath      = flag.String("pluginpath", "/var/lib/kubelet/plugins/", "the location of cephcsi plugin")
 
 	// rbd related flags
 	containerized = flag.Bool("containerized", true, "whether run as containerized")
@@ -106,31 +108,24 @@ func main() {
 	if err != nil {
 		klog.Fatalln(err) // calls exit
 	}
+	csipluginPath := filepath.Join(*pluginPath, dname)
+	if *metadataStorage != "" {
+		cp, err = util.CreatePersistanceStorage(
+			csipluginPath, *metadataStorage, *pluginPath)
+		if err != nil {
+			os.Exit(1)
+		}
+	}
+
 	klog.Infof("Starting driver type: %v with name: %v", driverType, dname)
 	switch driverType {
 	case rbdType:
-		rbd.PluginFolder += dname
-		if *metadataStorage != "" {
-			cp, err = util.CreatePersistanceStorage(
-				rbd.PluginFolder, *metadataStorage, dname)
-			if err != nil {
-				os.Exit(1)
-			}
-		}
 		driver := rbd.NewDriver()
 		driver.Run(dname, *nodeID, *endpoint, *instanceID, *containerized, cp)
 
 	case cephfsType:
-		cephfs.PluginFolder += dname
-		if *metadataStorage != "" {
-			cp, err = util.CreatePersistanceStorage(
-				cephfs.PluginFolder, *metadataStorage, dname)
-			if err != nil {
-				os.Exit(1)
-			}
-		}
 		driver := cephfs.NewDriver()
-		driver.Run(dname, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, *instanceID, cp)
+		driver.Run(dname, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, *instanceID, csipluginPath, cp)
 
 	default:
 		klog.Fatalln("invalid volume type", vtype) // calls exit

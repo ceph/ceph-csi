@@ -46,10 +46,11 @@ var (
 
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities
 func (cs *ControllerServer) createBackingVolume(volOptions *volumeOptions, vID *volumeIdentifier, secret map[string]string) error {
-	cr, err := util.GetAdminCredentials(secret)
+	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	if err = createVolume(volOptions, cr, volumeID(vID.FsSubvolName), volOptions.Size); err != nil {
 		klog.Errorf("failed to create volume %s: %v", volOptions.RequestName, err)
@@ -168,11 +169,12 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 
 	// Deleting a volume requires admin credentials
 
-	cr, err := util.GetAdminCredentials(secrets)
+	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
 		klog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	idLk := volumeIDLocker.Lock(string(volID))
 	defer volumeIDLocker.Unlock(idLk, string(volID))
@@ -225,11 +227,12 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	// Deleting a volume requires admin credentials
-	cr, err := util.GetAdminCredentials(secrets)
+	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
 		klog.Errorf("failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	defer cr.DeleteCredentials()
 
 	// lock out parallel delete and create requests against the same volume name as we
 	// cleanup the subvolume and associated omaps for the same

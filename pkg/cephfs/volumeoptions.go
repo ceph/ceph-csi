@@ -149,10 +149,11 @@ func newVolumeOptions(requestName string, size int64, volOptions, secret map[str
 	opts.RequestName = requestName
 	opts.Size = size
 
-	cr, err := util.GetAdminCredentials(secret)
+	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
 		return nil, err
 	}
+	defer cr.DeleteCredentials()
 
 	opts.FscID, err = getFscID(opts.Monitors, cr, opts.FsName)
 	if err != nil {
@@ -194,10 +195,11 @@ func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) 
 		return nil, nil, errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", vi.ClusterID)
 	}
 
-	cr, err := util.GetAdminCredentials(secrets)
+	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
 		return nil, nil, err
 	}
+	defer cr.DeleteCredentials()
 
 	volOptions.FsName, err = getFsName(volOptions.Monitors, cr, volOptions.FscID)
 	if err != nil {

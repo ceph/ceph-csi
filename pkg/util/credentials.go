@@ -18,22 +18,54 @@ package util
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 )
 
 const (
-	credUserID   = "userID"
-	credUserKey  = "userKey"
-	credAdminID  = "adminID"
-	credAdminKey = "adminKey"
-	credMonitors = "monitors"
+	credUserID           = "userID"
+	credUserKey          = "userKey"
+	credAdminID          = "adminID"
+	credAdminKey         = "adminKey"
+	credMonitors         = "monitors"
+	tmpKeyFileLocation   = "/tmp/csi/keys"
+	tmpKeyFileNamePrefix = "keyfile-"
 )
 
 type Credentials struct {
-	ID  string
-	Key string
+	ID      string
+	KeyFile string
 }
 
-func getCredentials(idField, keyField string, secrets map[string]string) (*Credentials, error) {
+func storeKey(key string) (string, error) {
+	tmpfile, err := ioutil.TempFile(tmpKeyFileLocation, tmpKeyFileNamePrefix)
+	if err != nil {
+		return "", fmt.Errorf("error creating a temporary keyfile (%s)", err)
+	}
+	defer func() {
+		if err != nil {
+			os.Remove(tmpfile.Name())
+		}
+	}()
+
+	if _, err = tmpfile.Write([]byte(key)); err != nil {
+		return "", fmt.Errorf("error writing key to temporary keyfile (%s)", err)
+	}
+
+	keyFile := tmpfile.Name()
+	if keyFile == "" {
+		err = fmt.Errorf("error reading temporary filename for key (%s)", err)
+		return "", err
+	}
+
+	if err = tmpfile.Close(); err != nil {
+		return "", fmt.Errorf("error closing temporary filename (%s)", err)
+	}
+
+	return keyFile, nil
+}
+
+func newCredentialsFromSecret(idField, keyField string, secrets map[string]string) (*Credentials, error) {
 	var (
 		c  = &Credentials{}
 		ok bool
@@ -43,19 +75,41 @@ func getCredentials(idField, keyField string, secrets map[string]string) (*Crede
 		return nil, fmt.Errorf("missing ID field '%s' in secrets", idField)
 	}
 
-	if c.Key, ok = secrets[keyField]; !ok {
+	key := secrets[keyField]
+	if key == "" {
 		return nil, fmt.Errorf("missing key field '%s' in secrets", keyField)
 	}
 
-	return c, nil
+	keyFile, err := storeKey(key)
+	if err == nil {
+		c.KeyFile = keyFile
+	}
+
+	return c, err
 }
 
-func GetUserCredentials(secrets map[string]string) (*Credentials, error) {
-	return getCredentials(credUserID, credUserKey, secrets)
+func (cr *Credentials) DeleteCredentials() {
+	os.Remove(cr.KeyFile)
 }
 
-func GetAdminCredentials(secrets map[string]string) (*Credentials, error) {
-	return getCredentials(credAdminID, credAdminKey, secrets)
+func NewUserCredentials(secrets map[string]string) (*Credentials, error) {
+	return newCredentialsFromSecret(credUserID, credUserKey, secrets)
+}
+
+func NewAdminCredentials(secrets map[string]string) (*Credentials, error) {
+	return newCredentialsFromSecret(credAdminID, credAdminKey, secrets)
+}
+
+func NewCredentials(id, key string) (*Credentials, error) {
+	var c = &Credentials{}
+
+	c.ID = id
+	keyFile, err := storeKey(key)
+	if err == nil {
+		c.KeyFile = keyFile
+	}
+
+	return c, err
 }
 
 func GetMonValFromSecret(secrets map[string]string) (string, error) {

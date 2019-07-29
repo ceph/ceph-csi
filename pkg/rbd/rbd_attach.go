@@ -277,13 +277,18 @@ func createPath(volOpt *rbdVolume, cr *util.Credentials) (string, error) {
 	}
 
 	output, err := execCommand(cmdName, []string{
-		"map", imagePath, "--id", cr.ID, "-m", volOpt.Monitors, "--key=" + cr.Key})
+		"map", imagePath, "--id", cr.ID, "-m", volOpt.Monitors, "--keyfile=" + cr.KeyFile})
 	if err != nil {
 		klog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
 		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
 	}
 	devicePath, found := waitForPath(volOpt.Pool, image, 10, useNBD)
 	if !found {
+		output, err := execCommand(cmdName, []string{
+			"unmap", imagePath, "--id", cr.ID, "-m", volOpt.Monitors, "--keyfile=" + cr.KeyFile})
+		if err != nil {
+			klog.Warningf("rbd: unmap error %v, rbd output: %s", err, string(output))
+		}
 		return "", fmt.Errorf("could not map image %s, Timeout after 10s", imagePath)
 	}
 	return devicePath, nil

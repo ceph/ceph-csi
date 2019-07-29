@@ -59,7 +59,7 @@ func roundUpSize(volumeSizeBytes, allocationUnitBytes int64) int64 {
 }
 
 // CreatePersistanceStorage creates storage path and initializes new cache
-func CreatePersistanceStorage(sPath, metaDataStore, driverName string) (CachePersister, error) {
+func CreatePersistanceStorage(sPath, metaDataStore, pluginPath string) (CachePersister, error) {
 	var err error
 	if err = CreateMountPoint(path.Join(sPath, "controller")); err != nil {
 		klog.Errorf("failed to create persistent storage for controller: %v", err)
@@ -71,7 +71,7 @@ func CreatePersistanceStorage(sPath, metaDataStore, driverName string) (CachePer
 		return nil, err
 	}
 
-	cp, err := NewCachePersister(metaDataStore, driverName)
+	cp, err := NewCachePersister(metaDataStore, pluginPath)
 	if err != nil {
 		klog.Errorf("failed to define cache persistence method: %v", err)
 		return nil, err
