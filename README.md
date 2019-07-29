@@ -91,6 +91,11 @@ if you are interested to contribute to this repo.
 
 Please submit an issue at: [Issues](https://github.com/ceph/ceph-csi/issues)
 
+## Weekly Bug Triage call
+
+We conduct weekly bug triage calls at our slack channel on Tuesdays.
+More details are available [here](https://github.com/ceph/ceph-csi/issues/463)
+
 ## Contact
 
 Please use the following to reach members of the community:
