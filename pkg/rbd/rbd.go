@@ -47,9 +47,6 @@ type Driver struct {
 
 var (
 
-	// PluginFolder defines the location of ceph plugin
-	PluginFolder = "/var/lib/kubelet/plugins/"
-
 	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
 	// ceph clusters across CSI instances, to differentiate omap names per CSI instance
 	CSIInstanceID = "default"
