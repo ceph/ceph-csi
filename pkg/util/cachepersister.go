@@ -22,11 +22,6 @@ import (
 	"k8s.io/klog"
 )
 
-const (
-	// PluginFolder defines location of plugins
-	PluginFolder = "/var/lib/kubelet/plugins"
-)
-
 // ForAllFunc is a unary predicate for visiting all cache entries
 // matching the `pattern' in CachePersister's ForAll function.
 type ForAllFunc func(identifier string) error
@@ -45,7 +40,7 @@ type CachePersister interface {
 }
 
 // NewCachePersister returns CachePersister based on store
-func NewCachePersister(metadataStore, driverName string) (CachePersister, error) {
+func NewCachePersister(metadataStore, pluginPath string) (CachePersister, error) {
 	if metadataStore == "k8s_configmap" {
 		klog.Infof("cache-perister: using kubernetes configmap as metadata cache persister")
 		k8scm := &K8sCMCache{}
@@ -55,7 +50,7 @@ func NewCachePersister(metadataStore, driverName string) (CachePersister, error)
 	} else if metadataStore == "node" {
 		klog.Infof("cache-persister: using node as metadata cache persister")
 		nc := &NodeCache{}
-		nc.BasePath = PluginFolder + "/" + driverName
+		nc.BasePath = pluginPath
 		nc.CacheDir = "controller"
 		return nc, nil
 	}
