@@ -15,6 +15,10 @@
   name = "google.golang.org/grpc"
   version = "1.10.0"
 
+[[constraint]]
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  version = "1.0.0"
+
 [[override]]
   version = "kubernetes-1.15.0"
   name = "k8s.io/apimachinery"

@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
 	"k8s.io/klog"
 )
@@ -91,7 +92,10 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, c
 	}
 
 	opts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(logGRPC),
+		grpc_middleware.WithUnaryServerChain(
+			logGRPC,
+			panicHandler,
+		),
 	}
 	server := grpc.NewServer(opts...)
 	s.server = server
