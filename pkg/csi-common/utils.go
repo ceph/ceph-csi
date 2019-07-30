@@ -46,9 +46,10 @@ func NewVolumeCapabilityAccessMode(mode csi.VolumeCapability_AccessMode_Mode) *c
 }
 
 // NewDefaultNodeServer initializes default node server
-func NewDefaultNodeServer(d *CSIDriver) *DefaultNodeServer {
+func NewDefaultNodeServer(d *CSIDriver, t string) *DefaultNodeServer {
 	return &DefaultNodeServer{
 		Driver: d,
+		Type:   t,
 	}
 }
 

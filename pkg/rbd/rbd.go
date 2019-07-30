@@ -78,7 +78,7 @@ func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersis
 }
 
 // NewNodeServer initialize a node server for rbd CSI driver.
-func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, error) {
+func NewNodeServer(d *csicommon.CSIDriver, containerized bool, t string) (*NodeServer, error) {
 	mounter := mount.New("")
 	if containerized {
 		ne, err := nsenter.NewNsenter(nsenter.DefaultHostRootFsPath, exec.New())
@@ -88,14 +88,14 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool) (*NodeServer, err
 		mounter = nsutil.NewMounter("", ne)
 	}
 	return &NodeServer{
-		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
+		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t),
 		mounter:           mounter,
 	}, nil
 }
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // rbd CSI driver which can serve multiple parallel requests
-func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containerized bool, cachePersister util.CachePersister) {
+func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containerized bool, cachePersister util.CachePersister, t string) {
 	var err error
 
 	// Create ceph.conf for use with CLI commands
@@ -137,7 +137,7 @@ func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containeri
 
 	// Create GRPC servers
 	r.ids = NewIdentityServer(r.cd)
-	r.ns, err = NewNodeServer(r.cd, containerized)
+	r.ns, err = NewNodeServer(r.cd, containerized, t)
 	if err != nil {
 		klog.Fatalf("failed to start node server, err %v\n", err)
 	}

@@ -121,11 +121,11 @@ func main() {
 	switch driverType {
 	case rbdType:
 		driver := rbd.NewDriver()
-		driver.Run(dname, *nodeID, *endpoint, *instanceID, *containerized, cp)
+		driver.Run(dname, *nodeID, *endpoint, *instanceID, *containerized, cp, driverType)
 
 	case cephfsType:
 		driver := cephfs.NewDriver()
-		driver.Run(dname, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, *instanceID, csipluginPath, cp)
+		driver.Run(dname, *nodeID, *endpoint, *volumeMounter, *mountCacheDir, *instanceID, csipluginPath, cp, driverType)
 
 	default:
 		klog.Fatalln("invalid volume type", vtype) // calls exit
