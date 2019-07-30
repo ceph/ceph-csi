@@ -83,15 +83,15 @@ func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersis
 }
 
 // NewNodeServer initialize a node server for ceph CSI driver.
-func NewNodeServer(d *csicommon.CSIDriver) *NodeServer {
+func NewNodeServer(d *csicommon.CSIDriver, t string) *NodeServer {
 	return &NodeServer{
-		DefaultNodeServer: csicommon.NewDefaultNodeServer(d),
+		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t),
 	}
 }
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests
-func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir, instanceID, pluginPath string, cachePersister util.CachePersister) {
+func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir, instanceID, pluginPath string, cachePersister util.CachePersister, t string) {
 
 	// Configuration
 	PluginFolder = pluginPath
@@ -158,7 +158,7 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir
 	// Create gRPC servers
 
 	fs.is = NewIdentityServer(fs.cd)
-	fs.ns = NewNodeServer(fs.cd)
+	fs.ns = NewNodeServer(fs.cd, t)
 
 	fs.cs = NewControllerServer(fs.cd, cachePersister)
 
