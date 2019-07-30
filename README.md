@@ -5,16 +5,17 @@ Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreport
 [![Build
 Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-ci.org/ceph/ceph-csi)
 
-- [Ceph CSI](#Ceph-CSI)
-  - [Overview](#Overview)
-  - [Project status](#Project-status)
-  - [Supported CO platforms](#Supported-CO-platforms)
-  - [Support Matrix](#Support-Matrix)
-    - [Ceph-CSI features and available versions](#Ceph-CSI-features-and-available-versions)
-    - [CSI spec and Kubernetes version compatibility](#CSI-spec-and-Kubernetes-version-compatibility)
-  - [Contributing to this repo](#Contributing-to-this-repo)
-  - [Troubleshooting](#Troubleshooting)
-  - [Contact](#Contact)
+- [Ceph CSI](#ceph-csi)
+  - [Overview](#overview)
+  - [Project status](#project-status)
+  - [Supported CO platforms](#supported-co-platforms)
+  - [Support Matrix](#support-matrix)
+    - [Ceph-CSI features and available versions](#ceph-csi-features-and-available-versions)
+    - [CSI spec and Kubernetes version compatibility](#csi-spec-and-kubernetes-version-compatibility)
+  - [Contributing to this repo](#contributing-to-this-repo)
+  - [Troubleshooting](#troubleshooting)
+  - [Weekly Bug Triage call](#weekly-bug-triage-call)
+  - [Contact](#contact)
 
 This repo contains Ceph
 [Container Storage Interface (CSI)](https://github.com/container-storage-interface/)
@@ -54,23 +55,22 @@ NOTE:
 ### Ceph-CSI features and available versions
 
 | Plugin | Features                                                  | Feature Status | CSI Driver Version | CSI Spec Version | Ceph Cluster Version | Kubernetes Version |
-|--------|-----------------------------------------------------------|----------------|--------------------|------------------|----------------------|--------------------|
-| RBD    | Dynamically provision, de-provision Block mode RWO volume | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v13.0.0         |
-|        | Dynamically provision, de-provision Block mode RWX volume | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v13.0.0         |
-|        | Dynamically provision, de-provision File mode RWO volume  | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v13.0.0         |
-|        | Creating and deleting snapshot                            | Alpha          | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v13.0.0         |
-|        | Provision volume from snapshot                            | Alpha          | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v13.0.0         |
+| ------ | --------------------------------------------------------- | -------------- | ------------------ | ---------------- | -------------------- | ------------------ |
+| RBD    | Dynamically provision, de-provision Block mode RWO volume | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
+|        | Dynamically provision, de-provision Block mode RWX volume | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
+|        | Dynamically provision, de-provision File mode RWO volume  | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
+|        | Creating and deleting snapshot                            | Alpha          | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
+|        | Provision volume from snapshot                            | Alpha          | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
 |        | Resize volume                                             | -              | -                  | -                | -                    | -                  |
 |        | Metrics Support                                           | -              | -                  | -                | -                    | -                  |
-| CephFS | Dynamically provision, de-provision File mode RWO volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus             | >=v13.0.0          |
-|        | Dynamically provision, de-provision File mode RWX volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus             | >=v13.0.0          |
+| CephFS | Dynamically provision, de-provision File mode RWO volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus             | >=v1.13.0          |
+|        | Dynamically provision, de-provision File mode RWX volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus             | >=v1.13.0          |
 |        | Creating and deleting snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
 |        | Resize volume                                             | -              | -                  | -                | -                    | -                  |
 |        | Metrics                                                   | -              | -                  | -                | -                    | -                  |
-|        |                                                           |                |                    |                  |                      |                    |
 
 `NOTE`: The `Alpha` status reflects possible non-backward
 compatible changes in the future, and is thus not recommended
