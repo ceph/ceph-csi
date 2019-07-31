@@ -42,12 +42,17 @@ type NodeServer struct {
 }
 
 // NodeStageVolume mounts the volume to a staging path on the node.
+// Implementation notes:
+// - stagingTargetPath is the directory passed in the request where the volume needs to be staged
+//   - We stage the volume into a directory, named after the VolumeID inside stagingTargetPath if
+// it is a file system
+//   - We stage the volume into a file, named after the VolumeID inside stagingTargetPath if it is
+// a block volume
 func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
 	}
 
-	stagingTargetPath := req.GetStagingTargetPath()
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	disableInUseChecks := false
 	// MULTI_NODE_MULTI_WRITER is supported by default for Block access type volumes
@@ -84,9 +89,8 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		isLegacyVolume = true
 	}
 
-	if isBlock {
-		stagingTargetPath += "/" + volID
-	}
+	stagingTargetPath := req.GetStagingTargetPath()
+	stagingTargetPath += "/" + volID
 
 	idLk := nodeVolumeIDLocker.Lock(volID)
 	defer nodeVolumeIDLocker.Unlock(idLk, volID)
@@ -122,7 +126,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	// stale rbd device if unstage is not called
 	defer func() {
 		if err != nil {
-			ns.cleanupStagingPath(stagingTargetPath, devicePath, volID, isStagePathCreated, isBlock, isMounted)
+			ns.cleanupStagingPath(stagingTargetPath, devicePath, volID, isStagePathCreated, isMounted)
 		}
 	}()
 	err = ns.createStageMountPoint(stagingTargetPath, isBlock)
@@ -148,7 +152,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (ns *NodeServer) cleanupStagingPath(stagingTargetPath, devicePath, volID string, isStagePathCreated, isBlock, isMounted bool) {
+func (ns *NodeServer) cleanupStagingPath(stagingTargetPath, devicePath, volID string, isStagePathCreated, isMounted bool) {
 	var err error
 	if isMounted {
 		err = ns.mounter.Unmount(stagingTargetPath)
@@ -157,7 +161,7 @@ func (ns *NodeServer) cleanupStagingPath(stagingTargetPath, devicePath, volID st
 		}
 	}
 	// remove the block file created on staging path
-	if isBlock && isStagePathCreated {
+	if isStagePathCreated {
 		err = os.Remove(stagingTargetPath)
 		if err != nil {
 			klog.Errorf("failed to remove stagingtargetPath: %s with error: %v", stagingTargetPath, err)
@@ -180,7 +184,16 @@ func (ns *NodeServer) createStageMountPoint(mountPath string, isBlock bool) erro
 			klog.Errorf("failed to close mountPath:%s with error: %v", mountPath, err)
 			return status.Error(codes.Internal, err.Error())
 		}
+
+		return nil
 	}
+
+	err := os.Mkdir(mountPath, 0750)
+	if err != nil {
+		klog.Errorf("failed to create mountPath:%s with error: %v", mountPath, err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
 	return nil
 }
 
@@ -195,9 +208,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	targetPath := req.GetTargetPath()
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	stagingPath := req.GetStagingTargetPath()
-	if isBlock {
-		stagingPath += "/" + req.GetVolumeId()
-	}
+	stagingPath += "/" + req.GetVolumeId()
 
 	idLk := targetPathLocker.Lock(targetPath)
 	defer targetPathLocker.Unlock(idLk, targetPath)
@@ -291,15 +302,10 @@ func (ns *NodeServer) mountVolume(stagingPath string, req *csi.NodePublishVolume
 	if readOnly {
 		mountFlags = append(mountFlags, "ro")
 	}
-	if isBlock {
-		if err := util.Mount(stagingPath, targetPath, fsType, mountFlags); err != nil {
-			return status.Error(codes.Internal, err.Error())
-		}
-	} else {
-		if err := util.Mount(stagingPath, targetPath, "", mountFlags); err != nil {
-			return status.Error(codes.Internal, err.Error())
-		}
+	if err := util.Mount(stagingPath, targetPath, fsType, mountFlags); err != nil {
+		return status.Error(codes.Internal, err.Error())
 	}
+
 	return nil
 }
 
@@ -379,10 +385,8 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	}
 
 	stagingTargetPath := req.GetStagingTargetPath()
+	stagingTargetPath += "/" + req.GetVolumeId()
 
-	// kind of hack to unmount block volumes
-	blockStagingPath := stagingTargetPath + "/" + req.GetVolumeId()
-unmount:
 	notMnt, err := mount.IsNotMountPoint(ns.mounter, stagingTargetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -392,20 +396,14 @@ unmount:
 		}
 		return nil, status.Error(codes.NotFound, err.Error())
 	}
-
 	if notMnt {
-		_, err = os.Stat(blockStagingPath)
-		if err == nil && (stagingTargetPath != blockStagingPath) {
-			stagingTargetPath = blockStagingPath
-			goto unmount
-		}
-		if stagingTargetPath == blockStagingPath {
-			if err = os.Remove(stagingTargetPath); err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			}
+		// TODO: IsNotExist error should have been caught above
+		if err = os.Remove(stagingTargetPath); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 		return &csi.NodeUnstageVolumeResponse{}, nil
 	}
+
 	// Unmount the volume
 	devicePath, cnt, err := mount.GetDeviceNameFromMount(ns.mounter, stagingTargetPath)
 	if err != nil {
@@ -416,10 +414,8 @@ unmount:
 		return nil, err
 	}
 
-	if stagingTargetPath == blockStagingPath {
-		if err = os.Remove(stagingTargetPath); err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+	if err = os.Remove(stagingTargetPath); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	klog.Infof("rbd: successfully unmounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
@@ -464,11 +460,6 @@ func (ns *NodeServer) unmount(targetPath, devicePath string, cnt int) error {
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	// Remove targetPath
-	if err = os.RemoveAll(targetPath); err != nil {
-		klog.V(3).Infof("failed to remove targetPath: %s with error: %v", targetPath, err)
-		return status.Error(codes.Internal, err.Error())
-	}
 	return nil
 }
 func resolveBindMountedBlockDevice(mountPath string) (string, error) {
