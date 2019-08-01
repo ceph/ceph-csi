@@ -36,10 +36,6 @@ make image-cephcsi
 | `--instanceid`      | "default"             | Unique ID distinguishing this instance of Ceph CSI among other instances, when sharing Ceph clusters across CSI instances for provisioning                                   |
 | `--metadatastorage` | _empty_               | Points to where legacy (1.0.0 or older plugin versions) metadata about provisioned volumes are kept, as file or in as k8s configmap (`node` or `k8s_configmap` respectively) |
 
-**Available environmental variables:**
-
-`HOST_ROOTFS`: rbdplugin searches `/proc` directory under the directory set by `HOST_ROOTFS`.
-
 **Available volume parameters:**
 
 | Parameter                                                                                             | Required             | Description                                                                                                                                                                                                             |
