@@ -37,6 +37,13 @@ const (
 	accessTypeNbd  = "nbd"
 
 	rbd = "rbd"
+
+	// Output strings returned during invocation of "rbd unmap --device-type... <imageSpec>" when
+	// image is not found to be mapped. Used to ignore errors when attempting to unmap such images.
+	// The %s format specifier should contain the <imageSpec> string
+	// NOTE: When using devicePath instead of imageSpec, the error strings are different
+	rbdUnmapCmdkRbdMissingMap = "rbd: %s: not a mapped image or snapshot"
+	rbdUnmapCmdNbdMissingMap  = "rbd-nbd: %s is not mapped"
 )
 
 var hasNBD = false
@@ -195,23 +202,18 @@ func createPath(volOpt *rbdVolume, cr *util.Credentials) (string, error) {
 	mapOptions := []string{
 		"--id", cr.ID,
 		"-m", volOpt.Monitors,
-		"--keyfile=" + cr.KeyFile}
-
-	// Construct map and unmap variants for the command
-	mapOptions = append(mapOptions, "map", imagePath)
-	unmapOptions := []string{"unmap", imagePath}
+		"--keyfile=" + cr.KeyFile,
+		"map", imagePath,
+	}
 
 	// Choose access protocol
-	useNBD := false
 	accessType := accessTypeKRbd
 	if volOpt.Mounter == rbdTonbd && hasNBD {
 		accessType = accessTypeNbd
-		useNBD = true
 	}
 
 	// Update options with device type selection
 	mapOptions = append(mapOptions, "--device-type", accessType)
-	unmapOptions = append(unmapOptions, "--device-type", accessType)
 
 	// Execute map
 	output, err := execCommand(rbd, mapOptions)
@@ -248,20 +250,38 @@ func waitForrbdImage(backoff wait.Backoff, volOptions *rbdVolume, cr *util.Crede
 }
 
 func detachRBDDevice(devicePath string) error {
+	nbdType := false
+	if strings.HasPrefix(devicePath, "/dev/nbd") {
+		nbdType = true
+	}
+
+	return detachRBDImageOrDeviceSpec(devicePath, false, nbdType)
+}
+
+// detachRBDImageOrDeviceSpec detaches an rbd imageSpec or devicePath, with additional checking
+// when imageSpec is used to decide if image is already unmapped
+func detachRBDImageOrDeviceSpec(imageOrDeviceSpec string, isImageSpec, ndbType bool) error {
 	var err error
 	var output []byte
 
-	klog.V(3).Infof("rbd: unmap device %s", devicePath)
-
 	accessType := accessTypeKRbd
-	if strings.HasPrefix(devicePath, "/dev/nbd") {
+	if ndbType {
 		accessType = accessTypeNbd
 	}
-	options := []string{"unmap", "--device-type", accessType, devicePath}
+	options := []string{"unmap", "--device-type", accessType, imageOrDeviceSpec}
 
 	output, err = execCommand(rbd, options)
 	if err != nil {
-		return fmt.Errorf("rbd: unmap failed %v, rbd output: %s", err, string(output))
+		// Messages for krbd and nbd differ, hence checking either of them for missing mapping
+		// This is not applicable when a device path is passed in
+		if isImageSpec &&
+			(strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, imageOrDeviceSpec)) ||
+				strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
+			// Devices found not to be mapped are treated as a successful detach
+			klog.Infof("image or device spec (%s) not mapped", imageOrDeviceSpec)
+			return nil
+		}
+		return fmt.Errorf("rbd: unmap for spec (%s) failed (%v): (%s)", imageOrDeviceSpec, err, string(output))
 	}
 
 	return nil
