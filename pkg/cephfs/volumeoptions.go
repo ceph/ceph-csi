@@ -134,7 +134,7 @@ func newVolumeOptions(requestName string, size int64, volOptions, secret map[str
 		return nil, err
 	}
 
-	if err = extractOption(&opts.Pool, "pool", volOptions); err != nil {
+	if err = extractOptionalOption(&opts.Pool, "pool", volOptions); err != nil {
 		return nil, err
 	}
 
@@ -218,7 +218,7 @@ func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) 
 	}
 
 	if volOpt != nil {
-		if err = extractOption(&volOptions.Pool, "pool", volOpt); err != nil {
+		if err = extractOptionalOption(&volOptions.Pool, "pool", volOpt); err != nil {
 			return nil, nil, err
 		}
 
