@@ -200,11 +200,13 @@ func getSnapshot(path string) v1alpha1.VolumeSnapshot {
 	return sc
 }
 
-func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework) {
+func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
-	sc.Parameters["pool"] = "myfs-data0"
 	sc.Parameters["fsName"] = "myfs"
+	if enablePool {
+		sc.Parameters["pool"] = "myfs-data0"
+	}
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
