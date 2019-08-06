@@ -269,10 +269,8 @@ func createPath(volOpt *rbdVolume, cr *util.Credentials) (string, error) {
 
 	klog.V(5).Infof("rbd: map mon %s", volOpt.Monitors)
 
-	useNBD := false
 	cmdName := rbd
 	if volOpt.Mounter == rbdTonbd && hasNBD {
-		useNBD = true
 		cmdName = rbdTonbd
 	}
 
@@ -282,15 +280,7 @@ func createPath(volOpt *rbdVolume, cr *util.Credentials) (string, error) {
 		klog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
 		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
 	}
-	devicePath, found := waitForPath(volOpt.Pool, image, 10, useNBD)
-	if !found {
-		output, err := execCommand(cmdName, []string{
-			"unmap", imagePath, "--id", cr.ID, "-m", volOpt.Monitors, "--keyfile=" + cr.KeyFile})
-		if err != nil {
-			klog.Warningf("rbd: unmap error %v, rbd output: %s", err, string(output))
-		}
-		return "", fmt.Errorf("could not map image %s, Timeout after 10s", imagePath)
-	}
+	devicePath := strings.TrimSuffix(string(output), "\n")
 	return devicePath, nil
 }
 
