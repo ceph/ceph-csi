@@ -114,7 +114,7 @@ func getMonsAndClusterID(options map[string]string) (string, string, error) {
 
 	monitors, err := util.Mons(csiConfigFile, clusterID)
 	if err != nil {
-		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s)", clusterID)
+		err = errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", clusterID)
 		return "", "", err
 	}
 
