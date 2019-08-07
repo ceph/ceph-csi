@@ -44,7 +44,6 @@ var _ = Describe("cephfs", func() {
 		createFileSystem(f.ClientSet)
 		createConfigMap(cephfsDirPath, f.ClientSet, f)
 		deployCephfsPlugin()
-		createCephfsStorageClass(f.ClientSet, f)
 		createCephfsSecret(f.ClientSet, f)
 	})
 
@@ -84,6 +83,14 @@ var _ = Describe("cephfs", func() {
 			if err != nil {
 				Fail(err.Error())
 			}
+
+			By("create a storage class with pool and a PVC then Bind it to an app", func() {
+				createCephfsStorageClass(f.ClientSet, f, true)
+				validatePVCAndAppBinding(pvcPath, appPath, f)
+				deleteResource(cephfsExamplePath + "storageclass.yaml")
+			})
+
+			createCephfsStorageClass(f.ClientSet, f, false)
 
 			By("create and delete a PVC", func() {
 				By("create a PVC and Bind it to an app", func() {
