@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"strings"
 	"time"
 
@@ -29,14 +28,6 @@ import (
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	testutils "k8s.io/kubernetes/test/utils"
 )
-
-func getFilesinDirectory(path string) []os.FileInfo {
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		framework.ExpectNoError(err)
-	}
-	return files
-}
 
 var poll = 2 * time.Second
 
@@ -261,6 +252,14 @@ func createRBDSnapshotClass(f *framework.Framework) {
 	Expect(err).Should(BeNil())
 	_, err = sclient.VolumeSnapshotClasses().Create(&sc)
 	Expect(err).Should(BeNil())
+}
+
+func deleteConfiMap(pluginPath string) {
+	path := pluginPath + configMap
+	_, err := framework.RunKubectl("delete", "-f", path)
+	if err != nil {
+		e2elog.Logf("failed to delete configmap %v", err)
+	}
 }
 
 func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Framework) {
