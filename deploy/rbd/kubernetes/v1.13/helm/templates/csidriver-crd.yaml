@@ -1,5 +1,5 @@
 ---
-{{ if not .Values.attacher.enabled }}
+{{ if not .Values.provisioner.attacher.enabled }}
 apiVersion: storage.k8s.io/v1beta1
 kind: CSIDriver
 metadata:
