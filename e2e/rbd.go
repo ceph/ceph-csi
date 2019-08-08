@@ -42,13 +42,15 @@ var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework("rbd")
 	// deploy RBD CSI
 	BeforeEach(func() {
+		if !csiRequired && !rbdRequired {
+			Skip("Skipping Test RBD CSI")
+		}
 		updaterbdDirPath(f.ClientSet)
 		createRBDPool()
 		createConfigMap(rbdDirPath, f.ClientSet, f)
 		deployRBDPlugin()
 		createRBDStorageClass(f.ClientSet, f)
 		createRBDSecret(f.ClientSet, f)
-
 	})
 
 	AfterEach(func() {

@@ -12,9 +12,12 @@ import (
 )
 
 var (
-	RookVersion   string
-	rookRequired  bool
-	deployTimeout int
+	RookVersion    string
+	rookRequired   bool
+	cephFsRequired bool
+	rbdRequired    bool
+	csiRequired    bool
+	deployTimeout  int
 )
 
 func init() {
@@ -22,6 +25,9 @@ func init() {
 	flag.StringVar(&RookVersion, "rook-version", "master", "rook version to pull yaml files")
 
 	flag.BoolVar(&rookRequired, "deploy-rook", true, "deploy rook on kubernetes")
+	flag.BoolVar(&csiRequired, "ceph-csi", true, "deploy ceph-csi on rook")
+	flag.BoolVar(&cephFsRequired, "cephfs-csi", false, "deploy cephfs-csi on rook")
+	flag.BoolVar(&rbdRequired, "rbd-csi", false, "deploy rbd-csi rook")
 	flag.IntVar(&deployTimeout, "deploy-timeout", 10, "timeout to wait for created kubernetes resources")
 	// Register framework flags, then handle flags
 	framework.HandleFlags()

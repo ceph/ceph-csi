@@ -40,6 +40,9 @@ var _ = Describe("cephfs", func() {
 	f := framework.NewDefaultFramework("cephfs")
 	// deploy cephfs CSI
 	BeforeEach(func() {
+		if !csiRequired && !cephFsRequired {
+			Skip("Skipping Test cephfs CSI")
+		}
 		updateCephfsDirPath(f.ClientSet)
 		createFileSystem(f.ClientSet)
 		createConfigMap(cephfsDirPath, f.ClientSet, f)
