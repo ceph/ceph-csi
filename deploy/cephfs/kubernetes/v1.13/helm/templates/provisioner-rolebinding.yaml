@@ -18,5 +18,4 @@ roleRef:
   kind: Role
   name: {{ include "ceph-csi-cephfs.provisioner.fullname" . }}
   apiGroup: rbac.authorization.k8s.io
-  namespace: {{ .Release.Namespace }}
 {{- end -}}
