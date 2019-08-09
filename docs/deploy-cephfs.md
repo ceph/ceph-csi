@@ -126,6 +126,17 @@ Those manifests deploy service accounts, cluster roles and cluster role
 bindings. These are shared for both RBD and CephFS CSI plugins, as they require
 the same permissions.
 
+**Deploy ConfigMap for CSI plugins:**
+
+```bash
+kubectl create -f csi-config-map.yaml
+```
+
+The configmap deploys an empty CSI configuration that is mounted as a volume
+within the Ceph CSI plugin pods. To add a specific Ceph clusters configuration
+details, refer to [Creating CSI configuration](../examples/README.md#creating-csi-configuration)
+for more information.
+
 **Deploy CSI sidecar containers:**
 
 ```bash
