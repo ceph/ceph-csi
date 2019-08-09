@@ -203,7 +203,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	defer targetPathLocker.Unlock(idLk, targetPath)
 
 	// Check if that target path exists properly
-	notMnt, err := ns.createTargetMountPath(targetPath, isBlock)
+	notMnt, err := ns.createTargetMountPath(ctx, targetPath, isBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -213,12 +213,12 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	// Publish Path
-	err = ns.mountVolume(stagingPath, req)
+	err = ns.mountVolume(ctx, stagingPath, req)
 	if err != nil {
 		return nil, err
 	}
 
-	klog.Infof("rbd: successfully mounted stagingPath %s to targetPath %s", stagingPath, targetPath)
+	klog.Infof("ID: %d rbd: successfully mounted stagingPath %s to targetPath %s", ctx.Value("ID"), stagingPath, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
@@ -278,15 +278,15 @@ func (ns *NodeServer) mountVolumeToStagePath(req *csi.NodeStageVolumeRequest, st
 	return err
 }
 
-func (ns *NodeServer) mountVolume(stagingPath string, req *csi.NodePublishVolumeRequest) error {
+func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *csi.NodePublishVolumeRequest) error {
 	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	readOnly := req.GetReadonly()
 	mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	targetPath := req.GetTargetPath()
-	klog.V(4).Infof("target %v\nisBlock %v\nfstype %v\nstagingPath %v\nreadonly %v\nmountflags %v\n",
-		targetPath, isBlock, fsType, stagingPath, readOnly, mountFlags)
+	klog.V(4).Infof("ID: %d target %v\nisBlock %v\nfstype %v\nstagingPath %v\nreadonly %v\nmountflags %v\n",
+	 	ctx.Value("ID"), targetPath, isBlock, fsType, stagingPath, readOnly, mountFlags)
 	mountFlags = append(mountFlags, "bind")
 	if readOnly {
 		mountFlags = append(mountFlags, "ro")
@@ -303,7 +303,7 @@ func (ns *NodeServer) mountVolume(stagingPath string, req *csi.NodePublishVolume
 	return nil
 }
 
-func (ns *NodeServer) createTargetMountPath(mountPath string, isBlock bool) (bool, error) {
+func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath string, isBlock bool) (bool, error) {
 	// Check if that mount path exists properly
 	notMnt, err := mount.IsNotMountPoint(ns.mounter, mountPath)
 	if err != nil {
@@ -312,11 +312,11 @@ func (ns *NodeServer) createTargetMountPath(mountPath string, isBlock bool) (boo
 				// #nosec
 				pathFile, e := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0750)
 				if e != nil {
-					klog.V(4).Infof("Failed to create mountPath:%s with error: %v", mountPath, err)
+					klog.V(4).Infof("ID: %d Failed to create mountPath:%s with error: %v", ctx.Value("ID"), mountPath, err)
 					return notMnt, status.Error(codes.Internal, e.Error())
 				}
 				if err = pathFile.Close(); err != nil {
-					klog.V(4).Infof("Failed to close mountPath:%s with error: %v", mountPath, err)
+					klog.V(4).Infof("ID: %d Failed to close mountPath:%s with error: %v", ctx.Value("ID"), mountPath, err)
 					return notMnt, status.Error(codes.Internal, err.Error())
 				}
 			} else {
