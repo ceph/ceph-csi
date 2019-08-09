@@ -93,6 +93,7 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, c
 
 	opts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
+			contextIDInjector,
 			logGRPC,
 			panicHandler,
 		),
