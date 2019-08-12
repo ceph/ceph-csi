@@ -38,6 +38,25 @@ func deployRBDPlugin() {
 	framework.RunKubectlOrDie("apply", "-f", rbdDirPath+rbdNodePluginRBAC)
 }
 
+func deleteRBDPlugin() {
+	_, err := framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisioner)
+	if err != nil {
+		e2elog.Logf("failed to delete rbd provisioner %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisionerRBAC)
+	if err != nil {
+		e2elog.Logf("failed to delete provisioner rbac %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePlugin)
+	if err != nil {
+		e2elog.Logf("failed to delete nodeplugin %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePluginRBAC)
+	if err != nil {
+		e2elog.Logf("failed to delete nodeplugin rbac %v", err)
+	}
+}
+
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework("rbd")
 	// deploy RBD CSI
@@ -52,13 +71,8 @@ var _ = Describe("RBD", func() {
 	})
 
 	AfterEach(func() {
-		rbdFiles := getFilesinDirectory(rbdDirPath)
-		for _, file := range rbdFiles {
-			res, err := framework.RunKubectl("delete", "-f", rbdDirPath+file.Name())
-			if err != nil {
-				e2elog.Logf("failed to delete resource in %s with err %v", res, err)
-			}
-		}
+		deleteRBDPlugin()
+		deleteConfiMap(rbdDirPath)
 		deleteRBDPool()
 		deleteResource(rbdExamplePath + "secret.yaml")
 		deleteResource(rbdExamplePath + "storageclass.yaml")
