@@ -38,6 +38,25 @@ func deployRBDPlugin() {
 	framework.RunKubectlOrDie("apply", "-f", rbdDirPath+rbdNodePluginRBAC)
 }
 
+func deleteRBDPlugin() {
+	_, err := framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisioner)
+	if err != nil {
+		e2elog.Logf("failed to delete rbd provisioner %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisionerRBAC)
+	if err != nil {
+		e2elog.Logf("failed to delete provisioner rbac %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePlugin)
+	if err != nil {
+		e2elog.Logf("failed to delete nodeplugin %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePluginRBAC)
+	if err != nil {
+		e2elog.Logf("failed to delete nodeplugin rbac %v", err)
+	}
+}
+
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework("rbd")
 	// deploy RBD CSI
@@ -52,17 +71,12 @@ var _ = Describe("RBD", func() {
 	})
 
 	AfterEach(func() {
-		rbdFiles := getFilesinDirectory(rbdDirPath)
-		for _, file := range rbdFiles {
-			res, err := framework.RunKubectl("delete", "-f", rbdDirPath+file.Name())
-			if err != nil {
-				e2elog.Logf("failed to delete resource in %s with err %v", res, err)
-			}
-		}
+		deleteRBDPlugin()
+		deleteConfiMap(rbdDirPath)
 		deleteRBDPool()
 		deleteResource(rbdExamplePath + "secret.yaml")
 		deleteResource(rbdExamplePath + "storageclass.yaml")
-		deleteResource(rbdExamplePath + "snapshotclass.yaml")
+		// deleteResource(rbdExamplePath + "snapshotclass.yaml")
 	})
 
 	Context("Test RBD CSI", func() {
@@ -71,9 +85,9 @@ var _ = Describe("RBD", func() {
 			appPath := rbdExamplePath + "pod.yaml"
 			// rawPvcPath := rbdExamplePath + "raw-block-pvc.yaml"
 			// rawAppPath := rbdExamplePath + "raw-block-pod.yaml"
-			pvcClonePath := rbdExamplePath + "pvc-restore.yaml"
-			appClonePath := rbdExamplePath + "pod-restore.yaml"
-			snapshotPath := rbdExamplePath + "snapshot.yaml"
+			// pvcClonePath := rbdExamplePath + "pvc-restore.yaml"
+			// appClonePath := rbdExamplePath + "pod-restore.yaml"
+			// snapshotPath := rbdExamplePath + "snapshot.yaml"
 
 			By("checking provisioner statefulset/deployment is running")
 			timeout := time.Duration(deployTimeout) * time.Minute
@@ -101,55 +115,56 @@ var _ = Describe("RBD", func() {
 			By("create a PVC and Bind it to an app with normal user", func() {
 				validateNormalUserPVCAccess(pvcPath, f)
 			})
+			// skipping snapshot testing
 
-			By("create a PVC clone and Bind it to an app", func() {
-				createRBDSnapshotClass(f)
-				pvc, err := loadPVC(pvcPath)
-				if err != nil {
-					Fail(err.Error())
-				}
+			// By("create a PVC clone and Bind it to an app", func() {
+			// 	createRBDSnapshotClass(f)
+			// 	pvc, err := loadPVC(pvcPath)
+			// 	if err != nil {
+			// 		Fail(err.Error())
+			// 	}
 
-				pvc.Namespace = f.UniqueName
-				e2elog.Logf("The PVC  template %+v", pvc)
-				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-				// validate created backend rbd images
-				images := listRBDImages(f)
-				if len(images) != 1 {
-					e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
-					Fail("validate backend image failed")
-				}
-				snap := getSnapshot(snapshotPath)
-				snap.Namespace = f.UniqueName
-				snap.Spec.Source.Name = pvc.Name
-				snap.Spec.Source.Kind = "PersistentVolumeClaim"
-				err = createSnapshot(&snap, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-				pool := "replicapool"
-				snapList, err := listSnapshots(f, pool, images[0])
-				if err != nil {
-					Fail(err.Error())
-				}
-				if len(snapList) != 1 {
-					e2elog.Logf("backend snapshot not matching kube snap count,snap count = % kube snap count %d", len(snapList), 1)
-					Fail("validate backend snapshot failed")
-				}
+			// 	pvc.Namespace = f.UniqueName
+			// 	e2elog.Logf("The PVC  template %+v", pvc)
+			// 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+			// 	if err != nil {
+			// 		Fail(err.Error())
+			// 	}
+			// 	// validate created backend rbd images
+			// 	images := listRBDImages(f)
+			// 	if len(images) != 1 {
+			// 		e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+			// 		Fail("validate backend image failed")
+			// 	}
+			// 	snap := getSnapshot(snapshotPath)
+			// 	snap.Namespace = f.UniqueName
+			// 	snap.Spec.Source.Name = pvc.Name
+			// 	snap.Spec.Source.Kind = "PersistentVolumeClaim"
+			// 	err = createSnapshot(&snap, deployTimeout)
+			// 	if err != nil {
+			// 		Fail(err.Error())
+			// 	}
+			// 	pool := "replicapool"
+			// 	snapList, err := listSnapshots(f, pool, images[0])
+			// 	if err != nil {
+			// 		Fail(err.Error())
+			// 	}
+			// 	if len(snapList) != 1 {
+			// 		e2elog.Logf("backend snapshot not matching kube snap count,snap count = % kube snap count %d", len(snapList), 1)
+			// 		Fail("validate backend snapshot failed")
+			// 	}
 
-				validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
+			// 	validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
 
-				err = deleteSnapshot(&snap, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-			})
+			// 	err = deleteSnapshot(&snap, deployTimeout)
+			// 	if err != nil {
+			// 		Fail(err.Error())
+			// 	}
+			// 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+			// 	if err != nil {
+			// 		Fail(err.Error())
+			// 	}
+			// })
 
 			// skipped raw pvc test in travis
 			// By("create a block type PVC and Bind it to an app", func() {

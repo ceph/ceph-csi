@@ -64,8 +64,8 @@ NOTE:
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
 |        | Resize volume                                             | -              | -                  | -                | -                    | -                  |
 |        | Metrics Support                                           | -              | -                  | -                | -                    | -                  |
-| CephFS | Dynamically provision, de-provision File mode RWO volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus             | >=v1.13.0          |
-|        | Dynamically provision, de-provision File mode RWX volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus             | >=v1.13.0          |
+| CephFS | Dynamically provision, de-provision File mode RWO volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus (>=14.2.2)             | >=v1.13.0          |
+|        | Dynamically provision, de-provision File mode RWX volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus (>=v14.2.2)             | >=v1.13.0          |
 |        | Creating and deleting snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |

@@ -70,7 +70,7 @@ is used to define in which namespace you want the configmaps to be stored
 | `clusterID`                                                                                         | yes            | String representing a Ceph cluster, must be unique across all Ceph clusters in use for provisioning, cannot be greater than 36 bytes in length, and should remain immutable for the lifetime of the Ceph cluster in use |
 | `fsName`                                                                                            | yes            | CephFS filesystem name into which the volume shall be created                                                                                                                                                           |
 | `mounter`                                                                                           | no             | Mount method to be used for this volume. Available options are `kernel` for Ceph kernel client and `fuse` for Ceph FUSE driver. Defaults to "default mounter", see command line arguments.                              |
-| `pool`                                                                                              | yes            | Ceph pool into which the volume shall be created                                                                                                                                                                        |
+| `pool`                                                                                              | no            | Ceph pool into which volume data shall be stored                                                                                                                                                                        |
 | `csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-stage-secret-name`           | for Kubernetes | Name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value                                                                                                     |
 | `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-stage-secret-namespace` | for Kubernetes | Namespaces of the above Secret objects                                                                                                                                                                                  |
 
@@ -125,6 +125,17 @@ kubectl create -f csi-nodeplugin-rbac.yaml
 Those manifests deploy service accounts, cluster roles and cluster role
 bindings. These are shared for both RBD and CephFS CSI plugins, as they require
 the same permissions.
+
+**Deploy ConfigMap for CSI plugins:**
+
+```bash
+kubectl create -f csi-config-map.yaml
+```
+
+The configmap deploys an empty CSI configuration that is mounted as a volume
+within the Ceph CSI plugin pods. To add a specific Ceph clusters configuration
+details, refer to [Creating CSI configuration](../examples/README.md#creating-csi-configuration)
+for more information.
 
 **Deploy CSI sidecar containers:**
 

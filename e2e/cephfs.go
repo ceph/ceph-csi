@@ -36,6 +36,25 @@ func deployCephfsPlugin() {
 	framework.RunKubectlOrDie("apply", "-f", cephfsDirPath+cephfsNodePluginRBAC)
 }
 
+func deleteCephfsPlugin() {
+	_, err := framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsProvisioner)
+	if err != nil {
+		e2elog.Logf("failed to delete cephfs provisioner %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsProvisionerRBAC)
+	if err != nil {
+		e2elog.Logf("failed to delete cephfs provisioner rbac %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePlugin)
+	if err != nil {
+		e2elog.Logf("failed to delete cephfs nodeplugin %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePluginRBAC)
+	if err != nil {
+		e2elog.Logf("failed to delete cephfs nodeplugin rbac %v", err)
+	}
+}
+
 var _ = Describe("cephfs", func() {
 	f := framework.NewDefaultFramework("cephfs")
 	// deploy cephfs CSI
@@ -44,18 +63,12 @@ var _ = Describe("cephfs", func() {
 		createFileSystem(f.ClientSet)
 		createConfigMap(cephfsDirPath, f.ClientSet, f)
 		deployCephfsPlugin()
-		createCephfsStorageClass(f.ClientSet, f)
 		createCephfsSecret(f.ClientSet, f)
 	})
 
 	AfterEach(func() {
-		cephfsFiles := getFilesinDirectory(cephfsDirPath)
-		for _, file := range cephfsFiles {
-			res, err := framework.RunKubectl("delete", "-f", cephfsDirPath+file.Name())
-			if err != nil {
-				e2elog.Logf("failed to delete resource in %s with err %v", res, err)
-			}
-		}
+		deleteCephfsPlugin()
+		deleteConfiMap(cephfsDirPath)
 		deleteResource(cephfsExamplePath + "secret.yaml")
 		deleteResource(cephfsExamplePath + "storageclass.yaml")
 		deleteFileSystem()
@@ -84,6 +97,14 @@ var _ = Describe("cephfs", func() {
 			if err != nil {
 				Fail(err.Error())
 			}
+
+			By("create a storage class with pool and a PVC then Bind it to an app", func() {
+				createCephfsStorageClass(f.ClientSet, f, true)
+				validatePVCAndAppBinding(pvcPath, appPath, f)
+				deleteResource(cephfsExamplePath + "storageclass.yaml")
+			})
+
+			createCephfsStorageClass(f.ClientSet, f, false)
 
 			By("create and delete a PVC", func() {
 				By("create a PVC and Bind it to an app", func() {

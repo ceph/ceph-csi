@@ -94,8 +94,8 @@ func createVolume(volOptions *volumeOptions, cr *util.Credentials, volID volumeI
 		klog.V(4).Infof("cephfs: created subvolume group csi")
 		cephfsInit = true
 	}
-	err := execCommandErr(
-		"ceph",
+
+	args := []string{
 		"fs",
 		"subvolume",
 		"create",
@@ -104,12 +104,20 @@ func createVolume(volOptions *volumeOptions, cr *util.Credentials, volID volumeI
 		strconv.FormatInt(bytesQuota, 10),
 		"--group_name",
 		csiSubvolumeGroup,
-		"--pool_layout", volOptions.Pool,
 		"--mode", "777",
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix+cr.ID,
-		"--keyfile="+cr.KeyFile)
+		"-n", cephEntityClientPrefix + cr.ID,
+		"--keyfile=" + cr.KeyFile,
+	}
+
+	if volOptions.Pool != "" {
+		args = append(args, "--pool_layout", volOptions.Pool)
+	}
+
+	err := execCommandErr(
+		"ceph",
+		args[:]...)
 	if err != nil {
 		klog.Errorf("failed to create subvolume %s(%s) in fs %s", string(volID), err, volOptions.FsName)
 		return err
