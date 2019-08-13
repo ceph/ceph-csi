@@ -57,3 +57,12 @@ type ErrInvalidVolID struct {
 func (e ErrInvalidVolID) Error() string {
 	return e.err.Error()
 }
+
+// ErrMissingStash is returned when the image metadata stash file is not found
+type ErrMissingStash struct {
+	err error
+}
+
+func (e ErrMissingStash) Error() string {
+	return e.err.Error()
+}
