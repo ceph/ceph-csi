@@ -2,6 +2,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: {{ include "ceph-csi-cephfs.provisioner.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app: {{ include "ceph-csi-cephfs.name" . }}
     chart: {{ include "ceph-csi-cephfs.chart" . }}

@@ -2,6 +2,7 @@ kind: StatefulSet
 apiVersion: apps/v1
 metadata:
   name: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app: {{ include "ceph-csi-rbd.name" . }}
     chart: {{ include "ceph-csi-rbd.chart" . }}
@@ -10,7 +11,7 @@ metadata:
     heritage: {{ .Release.Service }}
 spec:
   serviceName: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
-  replicas: {{ .Values.provisioner.replicas }}
+  replicas: {{ .Values.provisioner.replicaCount }}
   selector:
     matchLabels:
       app: {{ include "ceph-csi-rbd.name" . }}
@@ -28,7 +29,8 @@ spec:
       serviceAccountName: {{ include "ceph-csi-rbd.serviceAccountName.provisioner" . }}
       containers:
         - name: csi-provisioner
-          image: "{{ .Values.provisioner.image.repository }}:{{ .Values.provisioner.image.tag }}"
+          image: "{{ .Values.provisioner.provisioner.image.repository }}:{{ .Values.provisioner.provisioner.image.tag }}"
+          imagePullPolicy: {{ .Values.provisioner.provisioner.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
@@ -37,15 +39,14 @@ spec:
           env:
             - name: ADDRESS
               value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
-          imagePullPolicy: {{ .Values.provisioner.image.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: {{ .Values.socketDir }}
           resources:
-{{ toYaml .Values.provisioner.resources | indent 12 }}
+{{ toYaml .Values.provisioner.provisioner.resources | indent 12 }}
         - name: csi-snapshotter
-          image: {{ .Values.snapshotter.image.repository }}:{{ .Values.snapshotter.image.tag }}
-          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
+          image: {{ .Values.provisioner.snapshotter.image.repository }}:{{ .Values.provisioner.snapshotter.image.tag }}
+          imagePullPolicy: {{ .Values.provisioner.snapshotter.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
@@ -59,21 +60,23 @@ spec:
             - name: socket-dir
               mountPath: {{ .Values.socketDir }}
           resources:
-{{ toYaml .Values.snapshotter.resources | indent 12 }}
-        {{ if .Values.attacher.enabled }}
+{{ toYaml .Values.provisioner.snapshotter.resources | indent 12 }}
+{{- if .Values.provisioner.attacher.enabled }}
         - name: csi-attacher
-          image: "{{ .Values.attacher.image.repository }}:{{ .Values.attacher.image.tag }}"
+          image: "{{ .Values.provisioner.attacher.image.repository }}:{{ .Values.provisioner.attacher.image.tag }}"
+          imagePullPolicy: {{ .Values.provisioner.attacher.image.pullPolicy }}
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
           env:
             - name: ADDRESS
               value: "{{ .Values.socketDir }}/{{ .Values.socketFile }}"
-          imagePullPolicy: {{ .Values.attacher.image.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: {{ .Values.socketDir }}
-        {{ end }}
+          resources:
+{{ toYaml .Values.provisioner.attacher.resources | indent 12 }}
+{{- end }}
         - name: csi-rbdplugin
           securityContext:
             privileged: true
@@ -81,6 +84,7 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
           image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
           args :
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
@@ -88,9 +92,8 @@ spec:
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
             - "--containerized=true"
+            - "--pidlimit=-1"
           env:
-            - name: HOST_ROOTFS
-              value: "/rootfs"
             - name: DRIVER_NAME
               value: {{ .Values.driverName }}
             - name: NODE_ID
@@ -99,7 +102,6 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: "unix:/{{ .Values.socketDir }}/{{ .Values.socketFile }}"
-          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
           volumeMounts:
             - name: socket-dir
               mountPath: {{ .Values.socketDir }}
@@ -125,15 +127,15 @@ spec:
           emptyDir: {
             medium: "Memory"
           }
-    {{- if .Values.provisioner.affinity -}}
+{{- if .Values.provisioner.affinity }}
       affinity:
-{{ toYaml .Values.provisioner.affinity . | indent 8 }}
-    {{- end -}}
-    {{- if .Values.provisioner.nodeSelector -}}
+{{ toYaml .Values.provisioner.affinity | indent 8 -}}
+{{- end -}}
+{{- if .Values.provisioner.nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.provisioner.nodeSelector | indent 8 }}
-    {{- end -}}
-    {{- if .Values.provisioner.tolerations -}}
+{{ toYaml .Values.provisioner.nodeSelector | indent 8 -}}
+{{- end -}}
+{{- if .Values.provisioner.tolerations }}
       tolerations:
-{{ toYaml .Values.provisioner.tolerations | indent 8 }}
-    {{- end -}}
+{{ toYaml .Values.provisioner.tolerations | indent 8 -}}
+{{- end -}}

@@ -2,6 +2,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app: {{ include "ceph-csi-rbd.name" . }}
     chart: {{ include "ceph-csi-rbd.chart" . }}

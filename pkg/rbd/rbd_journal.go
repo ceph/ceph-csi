@@ -200,7 +200,7 @@ func checkVolExists(rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 		return false, err
 	}
 
-	klog.V(4).Infof("found existng volume (%s) with image name (%s) for request (%s)",
+	klog.V(4).Infof("found existing volume (%s) with image name (%s) for request (%s)",
 		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return true, nil
