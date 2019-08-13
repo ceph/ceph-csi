@@ -55,6 +55,11 @@ func removeCephCSIResource() {
 		e2elog.Logf("failed to delete cephfs statefulset %v", err)
 	}
 
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-nrook-ceph", "configmap", "ceph-csi-config")
+	if err != nil {
+		e2elog.Logf("failed to delete configmap %v", err)
+	}
+
 	// cleanup rbd cluster roles deployed by rook
 	rbdPath := fmt.Sprintf("%s/%s/", rbdDirPath, "v1.13")
 	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-f", rbdPath+rbdProvisionerRBAC)

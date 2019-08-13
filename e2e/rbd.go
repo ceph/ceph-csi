@@ -71,6 +71,7 @@ var _ = Describe("RBD", func() {
 	})
 
 	AfterEach(func() {
+		e2elog.Logf("is this test failed? %v", CurrentGinkgoTestDescription().Failed)
 		if CurrentGinkgoTestDescription().Failed {
 			// log provisoner
 			logsCSIPods("app=csi-rbdplugin-provisioner", f.ClientSet)
