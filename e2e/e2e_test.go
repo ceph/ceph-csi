@@ -26,6 +26,7 @@ func init() {
 	flag.IntVar(&deployTimeout, "deploy-timeout", 10, "timeout to wait for created kubernetes resources")
 	// Register framework flags, then handle flags
 	framework.HandleFlags()
+	framework.TestContext.DeleteNamespace = false
 	framework.AfterReadingAllFlags(&framework.TestContext)
 
 	formRookURL(RookVersion)
