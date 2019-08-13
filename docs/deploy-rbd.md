@@ -37,10 +37,6 @@ make image-cephcsi
 | `--metadatastorage` | _empty_               | Points to where legacy (1.0.0 or older plugin versions) metadata about provisioned volumes are kept, as file or in as k8s configmap (`node` or `k8s_configmap` respectively) |
 | `--pidlimit`        | _0_                   | Configure the PID limit in cgroups. The container runtime can restrict the number of processes/tasks which can cause problems while provisioning (or deleting) a large number of volumes. A value of `-1` configures the limit to the maximum, `0` does not configure limits at all.   |
 
-**Available environmental variables:**
-
-`HOST_ROOTFS`: rbdplugin searches `/proc` directory under the directory set by `HOST_ROOTFS`.
-
 **Available volume parameters:**
 
 | Parameter                                                                                             | Required             | Description                                                                                                                                                                                                             |

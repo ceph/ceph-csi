@@ -76,8 +76,6 @@ spec:
             - "--metadatastorage=k8s_configmap"
             - "--pidlimit=-1"
           env:
-            - name: HOST_ROOTFS
-              value: "/rootfs"
             - name: DRIVER_NAME
               value: {{ .Values.driverName }}
             - name: NODE_ID

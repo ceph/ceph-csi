@@ -61,8 +61,6 @@ spec:
             - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
           env:
-            - name: HOST_ROOTFS
-              value: "/rootfs"
             - name: NODE_ID
               valueFrom:
                 fieldRef:

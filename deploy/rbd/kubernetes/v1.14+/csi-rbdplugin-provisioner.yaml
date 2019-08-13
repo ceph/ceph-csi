@@ -77,8 +77,6 @@ spec:
             - "--containerized=true"
             - "--pidlimit=-1"
           env:
-            - name: HOST_ROOTFS
-              value: "/rootfs"
             - name: NODE_ID
               valueFrom:
                 fieldRef:
