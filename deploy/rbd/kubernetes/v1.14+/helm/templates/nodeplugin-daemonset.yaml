@@ -75,8 +75,6 @@ spec:
             - "--drivername=$(DRIVER_NAME)"
             - "--containerized=true"
           env:
-            - name: HOST_ROOTFS
-              value: "/rootfs"
             - name: DRIVER_NAME
               value: {{ .Values.driverName }}
             - name: NODE_ID
