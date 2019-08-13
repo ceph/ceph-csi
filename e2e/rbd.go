@@ -71,6 +71,12 @@ var _ = Describe("RBD", func() {
 	})
 
 	AfterEach(func() {
+		if CurrentGinkgoTestDescription().Failed {
+			// log provisoner
+			logsCSIPods("app=csi-rbdplugin-provisioner", f.ClientSet)
+			// log node plugin
+			logsCSIPods("app=csi-rbdplugin", f.ClientSet)
+		}
 		deleteRBDPlugin()
 		deleteConfiMap(rbdDirPath)
 		deleteRBDPool()

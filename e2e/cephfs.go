@@ -67,6 +67,12 @@ var _ = Describe("cephfs", func() {
 	})
 
 	AfterEach(func() {
+		if CurrentGinkgoTestDescription().Failed {
+			// log provisoner
+			logsCSIPods("app=csi-cephfsplugin-provisioner", f.ClientSet)
+			// log node plugin
+			logsCSIPods("app=csi-cephfsplugin", f.ClientSet)
+		}
 		deleteCephfsPlugin()
 		deleteConfiMap(cephfsDirPath)
 		deleteResource(cephfsExamplePath + "secret.yaml")
