@@ -36,43 +36,43 @@ func init() {
 // removeCephCSIResource is a temporary fix for CI to remove the ceph-csi resources deployed by rook
 func removeCephCSIResource() {
 	// cleanup rbd and cephfs deamonset deployed by rook
-	_, err := framework.RunKubectl("delete", "-nrook-ceph", "daemonset", "csi-cephfsplugin")
+	_, err := framework.RunKubectl("delete", "--ignore-not-found", "-nrook-ceph", "daemonset", "csi-cephfsplugin")
 	if err != nil {
 		e2elog.Logf("failed to delete rbd daemonset %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-nrook-ceph", "daemonset", "csi-rbdplugin")
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-nrook-ceph", "daemonset", "csi-rbdplugin")
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs daemonset %v", err)
 	}
 
 	// cleanup rbd and cephfs statefulset deployed by rook
-	_, err = framework.RunKubectl("delete", "-nrook-ceph", "statefulset", "csi-rbdplugin-provisioner")
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-nrook-ceph", "statefulset", "csi-rbdplugin-provisioner")
 	if err != nil {
 		e2elog.Logf("failed to delete rbd statefulset %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-nrook-ceph", "statefulset", "csi-cephfsplugin-provisioner")
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-nrook-ceph", "statefulset", "csi-cephfsplugin-provisioner")
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs statefulset %v", err)
 	}
 
 	// cleanup rbd cluster roles deployed by rook
 	rbdPath := fmt.Sprintf("%s/%s/", rbdDirPath, "v1.13")
-	_, err = framework.RunKubectl("delete", "-f", rbdPath+rbdProvisionerRBAC)
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-f", rbdPath+rbdProvisionerRBAC)
 	if err != nil {
 		e2elog.Logf("failed to delete provisioner rbac %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdPath+rbdNodePluginRBAC)
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-f", rbdPath+rbdNodePluginRBAC)
 	if err != nil {
 		e2elog.Logf("failed to delete nodeplugin rbac %v", err)
 	}
 
 	// cleanup cephfs cluster roles deployed by rook
 	cephfsPath := fmt.Sprintf("%s/%s/", cephfsDirPath, "v1.13")
-	_, err = framework.RunKubectl("delete", "-f", cephfsPath+cephfsProvisionerRBAC)
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-f", cephfsPath+cephfsProvisionerRBAC)
 	if err != nil {
 		e2elog.Logf("failed to delete provisioner rbac %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", cephfsPath+cephfsNodePluginRBAC)
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-f", cephfsPath+cephfsNodePluginRBAC)
 	if err != nil {
 		e2elog.Logf("failed to delete nodeplugin rbac %v", err)
 	}
