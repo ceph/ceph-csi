@@ -19,7 +19,10 @@ package rbd
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -703,4 +706,77 @@ func getSnapInfo(monitors string, cr *util.Credentials, poolName, imageName, sna
 
 	return snpInfo, ErrSnapNotFound{snapName, fmt.Errorf("snap (%s) for image (%s) not found",
 		snapName, poolName+"/"+imageName)}
+}
+
+// rbdImageMetadataStash strongly typed JSON spec for stashed RBD image metadata
+type rbdImageMetadataStash struct {
+	Version   int    `json:"Version"`
+	Pool      string `json:"pool"`
+	ImageName string `json:"image"`
+	NbdAccess bool   `json:"accessType"`
+}
+
+// file name in which image metadata is stashed
+const stashFileName = "image-meta.json"
+
+// stashRBDImageMetadata stashes required fields into the stashFileName at the passed in path, in
+// JSON format
+func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
+	var imgMeta = rbdImageMetadataStash{
+		Version:   1, // Stash a v1 for now, in case of changes later, there are no checks for this at present
+		Pool:      volOptions.Pool,
+		ImageName: volOptions.RbdImageName,
+	}
+
+	imgMeta.NbdAccess = false
+	if volOptions.Mounter == rbdTonbd && hasNBD {
+		imgMeta.NbdAccess = true
+	}
+
+	encodedBytes, err := json.Marshal(imgMeta)
+	if err != nil {
+		return fmt.Errorf("failed to marshall JSON image metadata for image (%s) in pool (%s): (%v)",
+			volOptions.RbdImageName, volOptions.Pool, err)
+	}
+
+	fPath := filepath.Join(path, stashFileName)
+	err = ioutil.WriteFile(fPath, encodedBytes, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to stash JSON image metadata for image (%s) in pool (%s) at path (%s): (%v)",
+			volOptions.RbdImageName, volOptions.Pool, fPath, err)
+	}
+
+	return nil
+}
+
+// lookupRBDImageMetadataStash reads and returns stashed image metadata at passed in path
+func lookupRBDImageMetadataStash(path string) (rbdImageMetadataStash, error) {
+	var imgMeta rbdImageMetadataStash
+
+	fPath := filepath.Join(path, stashFileName)
+	encodedBytes, err := ioutil.ReadFile(fPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return imgMeta, fmt.Errorf("failed to read stashed JSON image metadata from path (%s): (%v)", fPath, err)
+		}
+
+		return imgMeta, ErrMissingStash{err}
+	}
+
+	err = json.Unmarshal(encodedBytes, &imgMeta)
+	if err != nil {
+		return imgMeta, fmt.Errorf("failed to unmarshall stashed JSON image metadata from path (%s): (%v)", fPath, err)
+	}
+
+	return imgMeta, nil
+}
+
+// cleanupRBDImageMetadataStash cleans up any stashed metadata at passed in path
+func cleanupRBDImageMetadataStash(path string) error {
+	fPath := filepath.Join(path, stashFileName)
+	if err := os.Remove(fPath); err != nil {
+		return fmt.Errorf("failed to cleanup stashed JSON data (%s): (%v)", fPath, err)
+	}
+
+	return nil
 }

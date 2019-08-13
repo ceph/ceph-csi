@@ -47,6 +47,7 @@ var (
 		" instances, when sharing Ceph clusters across CSI instances for provisioning")
 	metadataStorage = flag.String("metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
 	pluginPath      = flag.String("pluginpath", "/var/lib/kubelet/plugins/", "the location of cephcsi plugin")
+	pidLimit        = flag.Int("pidlimit", 0, "the PID limit to configure through cgroups")
 
 	// rbd related flags
 	containerized = flag.Bool("containerized", true, "whether run as containerized")
@@ -114,6 +115,26 @@ func main() {
 			csipluginPath, *metadataStorage, *pluginPath)
 		if err != nil {
 			os.Exit(1)
+		}
+	}
+
+	// the driver may need a higher PID limit for handling all concurrent requests
+	if pidLimit != nil && *pidLimit != 0 {
+		currentLimit, err := util.GetPIDLimit()
+		if err != nil {
+			klog.Errorf("Failed to get the PID limit, can not reconfigure: %v", err)
+		} else {
+			klog.Infof("Initial PID limit is set to %d", currentLimit)
+			err = util.SetPIDLimit(*pidLimit)
+			if err != nil {
+				klog.Errorf("Failed to set new PID limit to %d: %v", *pidLimit, err)
+			} else {
+				s := ""
+				if *pidLimit == -1 {
+					s = " (max)"
+				}
+				klog.Infof("Reconfigured PID limit to %d%s", *pidLimit, s)
+			}
 		}
 	}
 
