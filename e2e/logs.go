@@ -13,11 +13,13 @@ import (
 )
 
 func logsCSIPods(label string, c clientset.Interface) {
+
 	ns := "default"
 	opt := metav1.ListOptions{
 		LabelSelector: label,
 	}
 	podList, err := c.CoreV1().Pods(ns).List(opt)
+	e2elog.Logf("got list of pods for label %v %v", opt, podList)
 	if err != nil {
 		e2elog.Logf("failed to list pods with selector %s %v", label, err)
 		return
@@ -45,7 +47,6 @@ func kubectlLogPod(c clientset.Interface, pod *v1.Pod) {
 
 }
 
-// utility function for gomega Eventually
 func getPreviousPodLogs(c clientset.Interface, namespace, podName, containerName string) (string, error) {
 	logs, err := c.CoreV1().RESTClient().Get().
 		Resource("pods").

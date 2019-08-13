@@ -73,10 +73,12 @@ var _ = Describe("RBD", func() {
 	AfterEach(func() {
 		e2elog.Logf("is this test failed? %v", CurrentGinkgoTestDescription().Failed)
 		if CurrentGinkgoTestDescription().Failed {
+			e2elog.Logf("going to log pods")
 			// log provisoner
 			logsCSIPods("app=csi-rbdplugin-provisioner", f.ClientSet)
 			// log node plugin
 			logsCSIPods("app=csi-rbdplugin", f.ClientSet)
+			e2elog.Logf("logging done for pods")
 		}
 		deleteRBDPlugin()
 		deleteConfiMap(rbdDirPath)
@@ -124,6 +126,12 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create a PVC clone and Bind it to an app", func() {
+				defer func() {
+					fmt.Println("going to collect logs")
+					logsCSIPods("app=csi-rbdplugin-provisioner", f.ClientSet)
+					// log node plugin
+					logsCSIPods("app=csi-rbdplugin", f.ClientSet)
+				}()
 				createRBDSnapshotClass(f)
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
