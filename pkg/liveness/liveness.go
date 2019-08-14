@@ -24,6 +24,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ceph/ceph-csi/pkg/util"
+
 	connlib "github.com/kubernetes-csi/csi-lib-utils/connection"
 	"github.com/kubernetes-csi/csi-lib-utils/rpc"
 	"github.com/prometheus/client_golang/prometheus"
@@ -83,7 +85,7 @@ func recordLiveness(endpoint string, pollTime, timeout time.Duration) {
 	}
 }
 
-func Run(endpoint, livenessendpoint string, port int, pollTime, timeout time.Duration) {
+func Run(conf *util.Config) {
 	klog.Infof("Liveness Running")
 
 	ip := os.Getenv("POD_IP")
@@ -94,11 +96,11 @@ func Run(endpoint, livenessendpoint string, port int, pollTime, timeout time.Dur
 	}
 
 	// start liveness collection
-	go recordLiveness(endpoint, pollTime, timeout)
+	go recordLiveness(conf.Endpoint, conf.PollTime, conf.PoolTimeout)
 
 	// start up prometheus endpoint
-	addr := net.JoinHostPort(ip, strconv.Itoa(port))
-	http.Handle(livenessendpoint, promhttp.Handler())
+	addr := net.JoinHostPort(ip, strconv.Itoa(conf.LivenessPort))
+	http.Handle(conf.LivenessPath, promhttp.Handler())
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		klog.Fatalln(err)

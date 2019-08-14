@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -49,6 +50,33 @@ var (
 	// DriverVersion which will be driver version
 	DriverVersion string
 )
+
+// Config holds the parameters list which can be configured
+type Config struct {
+	// common flags
+	Vtype           string // driver type [rbd|cephfs|liveness]
+	Endpoint        string // CSI endpoint
+	DriverName      string // name of the driver
+	NodeID          string // node id
+	InstanceID      string // unique ID distinguishing this instance of Ceph CSI
+	MetadataStorage string // metadata persistence method [node|k8s_configmap]
+	PluginPath      string // location of cephcsi plugin
+	PidLimit        int    // PID limit to configure through cgroups")
+
+	// rbd related flags
+	Containerized bool // whether run as containerized
+
+	// cephfs related flags
+	VolumeMounter string // default volume mounter (possible options are 'kernel', 'fuse')
+	MountCacheDir string // mount info cache save dir
+
+	// livenes related flags
+	LivenessPort int           // TCP port for liveness requests"
+	LivenessPath string        // path of prometheus endpoint where metrics will be available
+	PollTime     time.Duration // time interval in seconds between each poll
+	PoolTimeout  time.Duration // probe timeout in seconds
+
+}
 
 func roundUpSize(volumeSizeBytes, allocationUnitBytes int64) int64 {
 	roundedUp := volumeSizeBytes / allocationUnitBytes

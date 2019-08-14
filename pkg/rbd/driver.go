@@ -95,7 +95,7 @@ func NewNodeServer(d *csicommon.CSIDriver, containerized bool, t string) (*NodeS
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // rbd CSI driver which can serve multiple parallel requests
-func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containerized bool, cachePersister util.CachePersister, t string) {
+func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	var err error
 
 	// Create ceph.conf for use with CLI commands
@@ -104,8 +104,8 @@ func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containeri
 	}
 
 	// Use passed in instance ID, if provided for omap suffix naming
-	if instanceID != "" {
-		CSIInstanceID = instanceID
+	if conf.InstanceID != "" {
+		CSIInstanceID = conf.InstanceID
 	}
 
 	// Get an instance of the volume and snapshot journal keys
@@ -117,7 +117,7 @@ func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containeri
 	snapJournal.SetCSIDirectorySuffix(CSIInstanceID)
 
 	// Initialize default library driver
-	r.cd = csicommon.NewCSIDriver(driverName, util.DriverVersion, nodeID)
+	r.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
 	if r.cd == nil {
 		klog.Fatalln("Failed to initialize CSI Driver.")
 	}
@@ -137,7 +137,7 @@ func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containeri
 
 	// Create GRPC servers
 	r.ids = NewIdentityServer(r.cd)
-	r.ns, err = NewNodeServer(r.cd, containerized, t)
+	r.ns, err = NewNodeServer(r.cd, conf.Containerized, conf.Vtype)
 	if err != nil {
 		klog.Fatalf("failed to start node server, err %v\n", err)
 	}
@@ -145,6 +145,6 @@ func (r *Driver) Run(driverName, nodeID, endpoint, instanceID string, containeri
 	r.cs = NewControllerServer(r.cd, cachePersister)
 
 	s := csicommon.NewNonBlockingGRPCServer()
-	s.Start(endpoint, r.ids, r.cs, r.ns)
+	s.Start(conf.Endpoint, r.ids, r.cs, r.ns)
 	s.Wait()
 }
