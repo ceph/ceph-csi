@@ -121,28 +121,41 @@ func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	if r.cd == nil {
 		klog.Fatalln("Failed to initialize CSI Driver.")
 	}
-	r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
-		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
-		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
-	})
-
-	// We only support the multi-writer option when using block, but it's a supported capability for the plugin in general
-	// In addition, we want to add the remaining modes like MULTI_NODE_READER_ONLY,
-	// MULTI_NODE_SINGLE_WRITER etc, but need to do some verification of RO modes first
-	// will work those as follow up features
-	r.cd.AddVolumeCapabilityAccessModes(
-		[]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
+	if conf.IsControllerServer || !conf.IsNodeServer {
+		r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+			csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
+			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
+		})
+		// We only support the multi-writer option when using block, but it's a supported capability for the plugin in general
+		// In addition, we want to add the remaining modes like MULTI_NODE_READER_ONLY,
+		// MULTI_NODE_SINGLE_WRITER etc, but need to do some verification of RO modes first
+		// will work those as follow up features
+		r.cd.AddVolumeCapabilityAccessModes(
+			[]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+				csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
+	}
 
 	// Create GRPC servers
 	r.ids = NewIdentityServer(r.cd)
-	r.ns, err = NewNodeServer(r.cd, conf.Containerized, conf.Vtype)
-	if err != nil {
-		klog.Fatalf("failed to start node server, err %v\n", err)
+
+	if conf.IsNodeServer {
+		r.ns, err = NewNodeServer(r.cd, conf.Containerized, conf.Vtype)
+		if err != nil {
+			klog.Fatalf("failed to start node server, err %v\n", err)
+		}
 	}
 
-	r.cs = NewControllerServer(r.cd, cachePersister)
+	if conf.IsControllerServer {
+		r.cs = NewControllerServer(r.cd, cachePersister)
+	}
+	if !conf.IsControllerServer && !conf.IsNodeServer {
+		r.ns, err = NewNodeServer(r.cd, conf.Containerized, conf.Vtype)
+		if err != nil {
+			klog.Fatalf("failed to start node server, err %v\n", err)
+		}
+		r.cs = NewControllerServer(r.cd, cachePersister)
+	}
 
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(conf.Endpoint, r.ids, r.cs, r.ns)
