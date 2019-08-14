@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"golang.org/x/net/context"
@@ -109,19 +110,19 @@ func RunControllerandNodePublishServer(endpoint string, d *CSIDriver, cs csi.Con
 var id uint64
 
 func contextIDInjector(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	id = atomic.AddUint64(&id, 1)
-	ctx = context.WithValue(ctx, "ID", id)
+	atomic.AddUint64(&id, 1)
+	ctx = context.WithValue(ctx, util.Key, id)
 	return handler(ctx, req)
 }
 
 func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	klog.V(3).Infof("ID: %d GRPC call: %s", ctx.Value("ID"), info.FullMethod)
-	klog.V(5).Infof("ID: %d GRPC request: %s", ctx.Value("ID"), protosanitizer.StripSecrets(req))
+	util.V(3).Infof(ctx, "GRPC call: %s", info.FullMethod)
+	util.V(5).Infof(ctx, "GRPC request: %s", protosanitizer.StripSecrets(req))
 	resp, err := handler(ctx, req)
 	if err != nil {
-		klog.Errorf("ID: %d GRPC error: %v", ctx.Value("ID"), err)
+		util.Errorf(ctx, "GRPC error: %v", err)
 	} else {
-		klog.V(5).Infof("ID: %d GRPC response: %s", ctx.Value("ID"), protosanitizer.StripSecrets(resp))
+		util.V(5).Infof(ctx, "GRPC response: %s", protosanitizer.StripSecrets(resp))
 	}
 	return resp, err
 }
