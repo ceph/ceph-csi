@@ -55,6 +55,8 @@ func init() {
 	flag.StringVar(&conf.MetadataStorage, "metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
 	flag.StringVar(&conf.PluginPath, "pluginpath", "/var/lib/kubelet/plugins/", "the location of cephcsi plugin")
 	flag.IntVar(&conf.PidLimit, "pidlimit", 0, "the PID limit to configure through cgroups")
+	flag.BoolVar(&conf.IsControllerServer, "controllerserver", false, "start cephcsi controller server")
+	flag.BoolVar(&conf.IsNodeServer, "nodeserver", false, "start cephcsi node server")
 
 	// rbd related flags
 	flag.BoolVar(&conf.Containerized, "containerized", true, "whether run as containerized")

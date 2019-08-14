@@ -54,14 +54,16 @@ var (
 // Config holds the parameters list which can be configured
 type Config struct {
 	// common flags
-	Vtype           string // driver type [rbd|cephfs|liveness]
-	Endpoint        string // CSI endpoint
-	DriverName      string // name of the driver
-	NodeID          string // node id
-	InstanceID      string // unique ID distinguishing this instance of Ceph CSI
-	MetadataStorage string // metadata persistence method [node|k8s_configmap]
-	PluginPath      string // location of cephcsi plugin
-	PidLimit        int    // PID limit to configure through cgroups")
+	Vtype              string // driver type [rbd|cephfs|liveness]
+	Endpoint           string // CSI endpoint
+	DriverName         string // name of the driver
+	NodeID             string // node id
+	InstanceID         string // unique ID distinguishing this instance of Ceph CSI
+	MetadataStorage    string // metadata persistence method [node|k8s_configmap]
+	PluginPath         string // location of cephcsi plugin
+	PidLimit           int    // PID limit to configure through cgroups")
+	IsControllerServer bool   // if set to true start provisoner server
+	IsNodeServer       bool   // if set to true start node server
 
 	// rbd related flags
 	Containerized bool // whether run as containerized

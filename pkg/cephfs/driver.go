@@ -147,20 +147,30 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 		klog.Fatalln("failed to initialize CSI driver")
 	}
 
-	fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
-		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-	})
+	if conf.IsControllerServer || !conf.IsNodeServer {
+		fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+		})
 
-	fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
-		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-	})
-
+		fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
+			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+		})
+	}
 	// Create gRPC servers
 
 	fs.is = NewIdentityServer(fs.cd)
-	fs.ns = NewNodeServer(fs.cd, conf.Vtype)
 
-	fs.cs = NewControllerServer(fs.cd, cachePersister)
+	if conf.IsNodeServer {
+		fs.ns = NewNodeServer(fs.cd, conf.Vtype)
+	}
+
+	if conf.IsControllerServer {
+		fs.cs = NewControllerServer(fs.cd, cachePersister)
+	}
+	if !conf.IsControllerServer && !conf.IsNodeServer {
+		fs.ns = NewNodeServer(fs.cd, conf.Vtype)
+		fs.cs = NewControllerServer(fs.cd, cachePersister)
+	}
 
 	server := csicommon.NewNonBlockingGRPCServer()
 	server.Start(conf.Endpoint, fs.is, fs.cs, fs.ns)
