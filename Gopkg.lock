@@ -805,16 +805,16 @@
     "storage/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "7cf5895f2711098d7d9527db0a4a49fb0dff7de2"
-  version = "kubernetes-1.15.0"
+  revision = "fdd30b57c827abbc506646ecfd579f6ccb3b80ab"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   digest = "1:6adb48001ef8ecc300912d06645f6351fdd9ccb55f9274a3f5149cf7e9e6024b"
   name = "k8s.io/apiextensions-apiserver"
   packages = ["pkg/features"]
   pruneopts = "NUT"
-  revision = "14e95df34f1f469647f494f5185a036e26fddcab"
-  version = "kubernetes-1.15.0"
+  revision = "cdb999c96590a9647b48f2c523d3842e44e4d436"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   digest = "1:116b6d902353cb6660dd84bac1dedd95e811f071eea552d0f32ca0eff773c68a"
@@ -878,7 +878,7 @@
   ]
   pruneopts = "NUT"
   revision = "1799e75a07195de9460b8ef7300883499f12127b"
-  version = "kubernetes-1.15.0"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   digest = "1:f24bc8279d2198bad11c56a888aa5da0d52eb278515a9386a2edabf6f49fc6dc"
@@ -899,8 +899,8 @@
     "pkg/util/feature",
   ]
   pruneopts = "NUT"
-  revision = "47dc9a115b1874c96c20cea91d02b36e4faa1bb1"
-  version = "kubernetes-1.15.0"
+  revision = "368b2058237c1228e3f4714a517d4681fd33b236"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   digest = "1:f107a860bd0f6b51b21bc0d21ca093cc655560361fd812c7035951648651c128"
@@ -920,8 +920,8 @@
     "pkg/resource",
   ]
   pruneopts = "NUT"
-  revision = "2090e6d8f84c1db3e23968b0ee97fb677b363fcf"
-  version = "kubernetes-1.15.0"
+  revision = "a07e59fb081d5f7f0be3c0f866b8b01398ca9fc3"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   digest = "1:81b6de688d22ecb927d5e7007f3142fa5cd6d3b74b0b1d5e6bf1362e3150f0c2"
@@ -1097,8 +1097,8 @@
     "util/workqueue",
   ]
   pruneopts = "NUT"
-  revision = "78d2af792babf2dd937ba2e2a8d99c753a5eda89"
-  version = "kubernetes-1.15.0"
+  revision = "2fe0317bcee0e1ff48861f77cc1e2791cceba458"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   branch = "master"
@@ -1152,7 +1152,7 @@
   revision = "5e22f3d471e6f24ca20becfdffdc6206c7cecac8"
 
 [[projects]]
-  digest = "1:d036b4cd708fbfeeb3a8c2b0f458dca68178b19d00145ea66fd49fd47cdec496"
+  digest = "1:0d867e47afa8b49c0b89e9d79b9c34729f951b7d3e78d595a15a42ed4069cb40"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/api/legacyscheme",
@@ -1276,8 +1276,8 @@
     "third_party/forked/golang/expansion",
   ]
   pruneopts = "NUT"
-  revision = "e8462b5b5dc2584fdcd18e6bcfe9f1e4d970a529"
-  version = "v1.15.0"
+  revision = "f6278300bebbb750328ac16ee6dd3aa7d3549568"
+  version = "v1.15.2"
 
 [[projects]]
   branch = "master"
