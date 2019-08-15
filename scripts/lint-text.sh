@@ -11,6 +11,7 @@ scriptdir="$(dirname "$(realpath "$0")")"
 cd "$scriptdir/.."
 
 # run_check <file_regex> <checker_exe> [optional args to checker...]
+# Pass empty regex when no regex is needed
 function run_check() {
     regex="$1"
     shift
@@ -18,8 +19,12 @@ function run_check() {
     shift
 
     if [ -x "$(command -v "$exe")" ]; then
-        find . -path ./vendor -prune -o -regextype egrep -iregex "$regex" -print0 |
-            xargs -0rt -n1 "$exe" "$@"
+      if [ -z "$regex" ]; then
+          "$exe" "$@"
+      else
+          find . -path ./vendor -prune -o -regextype egrep -iregex "$regex" -print0 |
+              xargs -0rt -n1 "$exe" "$@"
+      fi
     elif [ "$all_required" -eq 0 ]; then
         echo "Warning: $exe not found... skipping some tests."
     else
@@ -43,7 +48,10 @@ run_check '.*\.(ba)?sh' shellcheck
 run_check '.*\.(ba)?sh' bash -n
 
 # Install via: pip install yamllint
-# disable yamlint chekck for helm chats
-run_check '.*\.ya?ml' yamllint -s -d "{extends: default, rules: {line-length: {allow-non-breakable-inline-mappings: true}},ignore: deploy/*/kubernetes/*/helm/templates/*.yaml}"
+# disable yamlint check for helm charts
+run_check '.*\.ya?ml' yamllint -s -d "{extends: default, rules: {line-length: {allow-non-breakable-inline-mappings: true}},ignore: deploy/*/kubernetes/*/helm/*/templates/*.yaml}"
+
+# Install via: https://github.com/helm/helm/blob/master/docs/install.md
+run_check '' helm lint --namespace=test deploy/*/kubernetes/*/helm/*
 
 echo "ALL OK."

@@ -46,6 +46,8 @@ jobs:
         - curl -sf
           "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh"
           | bash -s -- -b $GOPATH/bin "${GOLANGCI_VERSION}"
+        # install helm for helm lint
+        - curl -L https://git.io/get_helm.sh | bash
       script:
         - make static-check
         - make go-test
