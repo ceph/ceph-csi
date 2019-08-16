@@ -12,3 +12,4 @@ keywords:
 home: https://github.com/ceph/ceph-csi
 sources:
   - https://github.com/ceph/ceph-csi/tree/csi-v1.0/deploy/cephfs/helm
+icon: https://raw.githubusercontent.com/ceph/ceph-csi/master/assets/ceph-logo.png
