@@ -89,6 +89,7 @@ spec:
           args :
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
+            - "--controllerserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
