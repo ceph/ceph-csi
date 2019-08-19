@@ -44,6 +44,7 @@ const (
 	// NOTE: When using devicePath instead of imageSpec, the error strings are different
 	rbdUnmapCmdkRbdMissingMap = "rbd: %s: not a mapped image or snapshot"
 	rbdUnmapCmdNbdMissingMap  = "rbd-nbd: %s is not mapped"
+	rbdMapConnectionTimeout   = "Connection timed out"
 )
 
 var hasNBD = false
@@ -193,6 +194,7 @@ func attachRBDImage(volOptions *rbdVolume, cr *util.Credentials) (string, error)
 }
 
 func createPath(volOpt *rbdVolume, cr *util.Credentials) (string, error) {
+	isNbd := false
 	image := volOpt.RbdImageName
 	imagePath := fmt.Sprintf("%s/%s", volOpt.Pool, image)
 
@@ -209,6 +211,7 @@ func createPath(volOpt *rbdVolume, cr *util.Credentials) (string, error) {
 	// Choose access protocol
 	accessType := accessTypeKRbd
 	if volOpt.Mounter == rbdTonbd && hasNBD {
+		isNbd = true
 		accessType = accessTypeNbd
 	}
 
@@ -219,6 +222,13 @@ func createPath(volOpt *rbdVolume, cr *util.Credentials) (string, error) {
 	output, err := execCommand(rbd, mapOptions)
 	if err != nil {
 		klog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
+		// unmap rbd image if connection timeout
+		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
+			detErr := detachRBDImageOrDeviceSpec(imagePath, true, isNbd)
+			if detErr != nil {
+				klog.Warningf("rbd: %s unmap error %v", imagePath, detErr)
+			}
+		}
 		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
 	}
 	devicePath := strings.TrimSuffix(string(output), "\n")
