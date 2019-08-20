@@ -22,7 +22,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: driver-registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -56,6 +56,7 @@ spec:
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
+            - "--nodeserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"

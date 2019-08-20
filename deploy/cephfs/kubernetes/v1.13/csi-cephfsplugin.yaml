@@ -53,6 +53,7 @@ spec:
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=cephfs"
+            - "--nodeserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=cephfs.csi.ceph.com"
