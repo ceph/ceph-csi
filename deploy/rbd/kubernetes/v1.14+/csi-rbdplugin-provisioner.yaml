@@ -1,4 +1,20 @@
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-rbdplugin-provisioner
+  labels:
+    app: csi-liveness
+spec:
+  selector:
+    app: csi-rbdplugin-provisioner
+  ports:
+    - name: http-metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+
+---
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -32,7 +48,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-snapshotter
-          image: quay.io/k8scsi/csi-snapshotter:v1.2.0
+          image: quay.io/k8scsi/csi-snapshotter:v1.2.1
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
@@ -71,13 +87,13 @@ spec:
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
+            - "--controllerserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
+            - "--pidlimit=-1"
           env:
-            - name: HOST_ROOTFS
-              value: "/rootfs"
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -101,6 +117,26 @@ spec:
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+        - name: liveness-prometheus
+          image: quay.io/cephcsi/cephcsi:canary
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--livenessport=8080"
+            - "--livenesspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          imagePullPolicy: "IfNotPresent"
       volumes:
         - name: host-dev
           hostPath:

@@ -12,6 +12,7 @@ Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-c
   - [Support Matrix](#support-matrix)
     - [Ceph-CSI features and available versions](#ceph-csi-features-and-available-versions)
     - [CSI spec and Kubernetes version compatibility](#csi-spec-and-kubernetes-version-compatibility)
+  - [Ceph CSI Container images and release compatibility](#ceph-csi-container-images-and-release-compatibility)
   - [Contributing to this repo](#contributing-to-this-repo)
   - [Troubleshooting](#troubleshooting)
   - [Weekly Bug Triage call](#weekly-bug-triage-call)
@@ -55,7 +56,7 @@ NOTE:
 ### Ceph-CSI features and available versions
 
 | Plugin | Features                                                  | Feature Status | CSI Driver Version | CSI Spec Version | Ceph Cluster Version | Kubernetes Version |
-| ------ | --------------------------------------------------------- | -------------- | ------------------ | ---------------- | -------------------- | ------------------ |
+|--------|-----------------------------------------------------------|----------------|--------------------|------------------|----------------------|--------------------|
 | RBD    | Dynamically provision, de-provision Block mode RWO volume | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
 |        | Dynamically provision, de-provision Block mode RWX volume | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
 |        | Dynamically provision, de-provision File mode RWO volume  | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
@@ -64,8 +65,8 @@ NOTE:
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
 |        | Resize volume                                             | -              | -                  | -                | -                    | -                  |
 |        | Metrics Support                                           | -              | -                  | -                | -                    | -                  |
-| CephFS | Dynamically provision, de-provision File mode RWO volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus             | >=v1.13.0          |
-|        | Dynamically provision, de-provision File mode RWX volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus             | >=v1.13.0          |
+| CephFS | Dynamically provision, de-provision File mode RWO volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus (>=14.2.2)  | >=v1.13.0          |
+|        | Dynamically provision, de-provision File mode RWX volume  | Alpha          | >=v1.1.0           | >=v1.0.0         | Nautilus (>=v14.2.2) | >=v1.13.0          |
 |        | Creating and deleting snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
@@ -80,6 +81,15 @@ for production use.
 
 Please refer to the [matrix](https://kubernetes-csi.github.io/docs/#kubernetes-releases)
 in the Kubernetes documentation.
+
+## Ceph CSI Container images and release compatibility
+
+| Ceph CSI Release/Branch | Container image name         | Image Tag |
+|-------------------------|------------------------------|-----------|
+| Master (Branch)         | quay.io/cephcsi/cephcsi      | canary    |
+| v1.1.0 (Release)        | quay.io/cephcsi/cephcsi      | v1.1.0    |
+| v1.0.0 (Branch)         | quay.io/cephcsi/cephfsplugin | v1.0.0    |
+| v1.0.0 (Branch)         | quay.io/cephcsi/rbdplugin    | v1.0.0    |
 
 ## Contributing to this repo
 

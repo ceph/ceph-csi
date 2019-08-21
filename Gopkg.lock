@@ -33,8 +33,8 @@
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
   pruneopts = "NUT"
-  revision = "4b2b341e8d7715fae06375aa633dbb6e91b3fb46"
-  version = "v1.0.0"
+  revision = "37c8de3658fcb183f997c4e13e8337516ab753e6"
+  version = "v1.0.1"
 
 [[projects]]
   digest = "1:7f21fa1f8ab9a529dba26a7e9cf20de217c307fa1d96cb599d3afd9e5c83e9d6"
@@ -305,9 +305,13 @@
   version = "v1.1.7"
 
 [[projects]]
-  digest = "1:5f039a8e43dc5b00adee7b38e39baf6c36f607372940c11975f00ec9c5f298ae"
+  digest = "1:a0892607b4f5385bb9fb12759facc8fad4e61b8b557384e4a078150c6ba43623"
   name = "github.com/kubernetes-csi/csi-lib-utils"
-  packages = ["protosanitizer"]
+  packages = [
+    "connection",
+    "protosanitizer",
+    "rpc",
+  ]
   pruneopts = "NUT"
   revision = "b8b7a89535d80e12f2c0f4c53cfb981add8aaca2"
   version = "v0.6.1"
@@ -457,15 +461,16 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:623090ece42820e4121c5c85a4373b10b922e79f3b8c44caad67a45a50e10054"
+  digest = "1:097cc61836050f45cbb712ae3bb45d66fba464c16b8fac09907fa3c1f753eff6"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
     "prometheus/internal",
+    "prometheus/promhttp",
   ]
   pruneopts = "NUT"
-  revision = "4ab88e80c249ed361d3299e2930427d9ac43ef8d"
-  version = "v1.0.0"
+  revision = "170205fb58decfd011f1550d4cfb737230d7ae4f"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -588,7 +593,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7a9d37d6b986937aadaf23b125ee6a6d4e3e6eec8560b51ac18fd2adf62e6406"
+  digest = "1:816780136a1ee09b3070cdfed092c244010fa3f2bde27beb1b1f80dfef4338e1"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -596,7 +601,7 @@
     "windows",
   ]
   pruneopts = "NUT"
-  revision = "fc99dfbffb4e5ed5758a37e31dd861afe285406b"
+  revision = "cbf593c0f2f39034e9104bbf77e2ec7c48c98fc5"
 
 [[projects]]
   digest = "1:0b5dc8c3581fc3ea2b80cc2e360dfb9c2d61dd0cba0d2fe247e8edd3e83f7551"
@@ -800,16 +805,16 @@
     "storage/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "7cf5895f2711098d7d9527db0a4a49fb0dff7de2"
-  version = "kubernetes-1.15.0"
+  revision = "fdd30b57c827abbc506646ecfd579f6ccb3b80ab"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   digest = "1:6adb48001ef8ecc300912d06645f6351fdd9ccb55f9274a3f5149cf7e9e6024b"
   name = "k8s.io/apiextensions-apiserver"
   packages = ["pkg/features"]
   pruneopts = "NUT"
-  revision = "14e95df34f1f469647f494f5185a036e26fddcab"
-  version = "kubernetes-1.15.0"
+  revision = "cdb999c96590a9647b48f2c523d3842e44e4d436"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   digest = "1:116b6d902353cb6660dd84bac1dedd95e811f071eea552d0f32ca0eff773c68a"
@@ -873,7 +878,7 @@
   ]
   pruneopts = "NUT"
   revision = "1799e75a07195de9460b8ef7300883499f12127b"
-  version = "kubernetes-1.15.0"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   digest = "1:f24bc8279d2198bad11c56a888aa5da0d52eb278515a9386a2edabf6f49fc6dc"
@@ -894,8 +899,8 @@
     "pkg/util/feature",
   ]
   pruneopts = "NUT"
-  revision = "47dc9a115b1874c96c20cea91d02b36e4faa1bb1"
-  version = "kubernetes-1.15.0"
+  revision = "368b2058237c1228e3f4714a517d4681fd33b236"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   digest = "1:f107a860bd0f6b51b21bc0d21ca093cc655560361fd812c7035951648651c128"
@@ -915,8 +920,8 @@
     "pkg/resource",
   ]
   pruneopts = "NUT"
-  revision = "2090e6d8f84c1db3e23968b0ee97fb677b363fcf"
-  version = "kubernetes-1.15.0"
+  revision = "a07e59fb081d5f7f0be3c0f866b8b01398ca9fc3"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   digest = "1:81b6de688d22ecb927d5e7007f3142fa5cd6d3b74b0b1d5e6bf1362e3150f0c2"
@@ -1092,8 +1097,8 @@
     "util/workqueue",
   ]
   pruneopts = "NUT"
-  revision = "78d2af792babf2dd937ba2e2a8d99c753a5eda89"
-  version = "kubernetes-1.15.0"
+  revision = "2fe0317bcee0e1ff48861f77cc1e2791cceba458"
+  version = "kubernetes-1.15.2"
 
 [[projects]]
   branch = "master"
@@ -1106,7 +1111,7 @@
     "volume/helpers",
   ]
   pruneopts = "NUT"
-  revision = "21f9d6b59624871aea170656c0433ad603e67ecd"
+  revision = "4405817736360488dfda1950e6266d2ff4bcba9e"
 
 [[projects]]
   branch = "master"
@@ -1117,7 +1122,7 @@
     "featuregate",
   ]
   pruneopts = "NUT"
-  revision = "042c00bc1f9e2571ae04255e09819fa8f3e870d1"
+  revision = "8d609ba1a28a47e7880ecf03fd75faba56797aad"
 
 [[projects]]
   branch = "master"
@@ -1125,7 +1130,7 @@
   name = "k8s.io/cri-api"
   packages = ["pkg/apis/runtime/v1alpha2"]
   pruneopts = "NUT"
-  revision = "247eeb1afecb07101bb58883f79b8b463864b035"
+  revision = "3baa588ab5670ff6ff8a6fcb4a8ec9234a2346c4"
 
 [[projects]]
   digest = "1:43099cc4ed575c40f80277c7ba7168df37d0c663bdc4f541325430bd175cce8a"
@@ -1147,7 +1152,7 @@
   revision = "5e22f3d471e6f24ca20becfdffdc6206c7cecac8"
 
 [[projects]]
-  digest = "1:d036b4cd708fbfeeb3a8c2b0f458dca68178b19d00145ea66fd49fd47cdec496"
+  digest = "1:0d867e47afa8b49c0b89e9d79b9c34729f951b7d3e78d595a15a42ed4069cb40"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/api/legacyscheme",
@@ -1271,12 +1276,12 @@
     "third_party/forked/golang/expansion",
   ]
   pruneopts = "NUT"
-  revision = "e8462b5b5dc2584fdcd18e6bcfe9f1e4d970a529"
-  version = "v1.15.0"
+  revision = "f6278300bebbb750328ac16ee6dd3aa7d3549568"
+  version = "v1.15.2"
 
 [[projects]]
   branch = "master"
-  digest = "1:1541afde648991d68b2579076b29afb2d51a54aec822b434644f60f435eeee6e"
+  digest = "1:9300c13de75a1813f7c386de9aebc7dc49f490bb77369cb9d50af571dd9acf52"
   name = "k8s.io/utils"
   packages = [
     "buffer",
@@ -1292,7 +1297,7 @@
     "trace",
   ]
   pruneopts = "NUT"
-  revision = "3dccf664f023863740c508fb4284e49742bedfa4"
+  revision = "581e00157fb1a0435d4fac54a52d1ca1e481d60e"
 
 [[projects]]
   digest = "1:cb422c75bab66a8339a38b64e837f3b28f3d5a8c06abd7b9048f420363baa18a"
@@ -1341,13 +1346,17 @@
     "github.com/golang/protobuf/ptypes",
     "github.com/golang/protobuf/ptypes/timestamp",
     "github.com/grpc-ecosystem/go-grpc-middleware",
+    "github.com/kubernetes-csi/csi-lib-utils/connection",
     "github.com/kubernetes-csi/csi-lib-utils/protosanitizer",
+    "github.com/kubernetes-csi/csi-lib-utils/rpc",
     "github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1",
     "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/pborman/uuid",
     "github.com/pkg/errors",
+    "github.com/prometheus/client_golang/prometheus",
+    "github.com/prometheus/client_golang/prometheus/promhttp",
     "golang.org/x/net/context",
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",

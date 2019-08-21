@@ -114,7 +114,7 @@ func getMonsAndClusterID(options map[string]string) (string, string, error) {
 
 	monitors, err := util.Mons(csiConfigFile, clusterID)
 	if err != nil {
-		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s)", clusterID)
+		err = errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", clusterID)
 		return "", "", err
 	}
 
@@ -134,7 +134,7 @@ func newVolumeOptions(requestName string, size int64, volOptions, secret map[str
 		return nil, err
 	}
 
-	if err = extractOption(&opts.Pool, "pool", volOptions); err != nil {
+	if err = extractOptionalOption(&opts.Pool, "pool", volOptions); err != nil {
 		return nil, err
 	}
 
@@ -218,7 +218,7 @@ func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) 
 	}
 
 	if volOpt != nil {
-		if err = extractOption(&volOptions.Pool, "pool", volOpt); err != nil {
+		if err = extractOptionalOption(&volOptions.Pool, "pool", volOpt); err != nil {
 			return nil, nil, err
 		}
 

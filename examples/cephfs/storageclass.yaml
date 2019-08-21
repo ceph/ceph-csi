@@ -17,8 +17,8 @@ parameters:
   # CephFS filesystem name into which the volume shall be created
   fsName: myfs
 
-  # Ceph pool into which the volume shall be created
-  pool: cephfs_data
+  # (optional) Ceph pool into which volume data shall be stored
+  # pool: cephfs_data
 
   # The secrets have to contain user and/or Ceph admin credentials.
   csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
