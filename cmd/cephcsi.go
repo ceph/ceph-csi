@@ -65,11 +65,16 @@ func init() {
 	flag.StringVar(&conf.VolumeMounter, "volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
 	flag.StringVar(&conf.MountCacheDir, "mountcachedir", "", "mount info cache save dir")
 
-	// livenes related flags
-	flag.IntVar(&conf.LivenessPort, "livenessport", 8080, "TCP port for liveness requests")
-	flag.StringVar(&conf.LivenessPath, "livenesspath", "/metrics", "path of prometheus endpoint where metrics will be available")
+	// liveness/grpc metrics related flags
+	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/grpc metrics requests")
+	flag.StringVar(&conf.MetricsPath, "metricspath", "/metrics", "path of prometheus endpoint where metrics will be available")
 	flag.DurationVar(&conf.PollTime, "polltime", time.Second*60, "time interval in seconds between each poll")
 	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*3, "probe timeout in seconds")
+
+	flag.BoolVar(&conf.EnableGRPCMetrics, "enablegrpcmetrics", false, "enable grpc metrics")
+	flag.StringVar(&conf.HistogramOption, "histogramoption", "0.5,2,6",
+		"Histogram option for grpc metrics, should be comma separated value, ex:= 0.5,2,6 where start=0.5 factor=2, count=6")
+
 	klog.InitFlags(nil)
 	if err := flag.Set("logtostderr", "true"); err != nil {
 		klog.Exitf("failed to set logtostderr flag: %v", err)
@@ -119,9 +124,9 @@ func main() {
 
 	// the driver may need a higher PID limit for handling all concurrent requests
 	if conf.PidLimit != 0 {
-		currentLimit, err := util.GetPIDLimit()
-		if err != nil {
-			klog.Errorf("Failed to get the PID limit, can not reconfigure: %v", err)
+		currentLimit, pidErr := util.GetPIDLimit()
+		if pidErr != nil {
+			klog.Errorf("Failed to get the PID limit, can not reconfigure: %v", pidErr)
 		} else {
 			klog.Infof("Initial PID limit is set to %d", currentLimit)
 			err = util.SetPIDLimit(conf.PidLimit)
@@ -134,6 +139,20 @@ func main() {
 				}
 				klog.Infof("Reconfigured PID limit to %d%s", conf.PidLimit, s)
 			}
+		}
+	}
+
+	if conf.EnableGRPCMetrics || conf.Vtype == livenessType {
+		// validate metrics endpoint
+		conf.MetricsIP = os.Getenv("POD_IP")
+
+		if conf.MetricsIP == "" {
+			klog.Warning("missing POD_IP env var defaulting to 0.0.0.0")
+			conf.MetricsIP = "0.0.0.0"
+		}
+		err = util.ValidateURL(&conf)
+		if err != nil {
+			klog.Fatalln(err)
 		}
 	}
 

@@ -54,30 +54,32 @@ var (
 
 // Config holds the parameters list which can be configured
 type Config struct {
-	// common flags
-	Vtype              string // driver type [rbd|cephfs|liveness]
-	Endpoint           string // CSI endpoint
-	DriverName         string // name of the driver
-	NodeID             string // node id
-	InstanceID         string // unique ID distinguishing this instance of Ceph CSI
-	MetadataStorage    string // metadata persistence method [node|k8s_configmap]
-	PluginPath         string // location of cephcsi plugin
-	PidLimit           int    // PID limit to configure through cgroups")
-	IsControllerServer bool   // if set to true start provisoner server
-	IsNodeServer       bool   // if set to true start node server
-
-	// rbd related flags
-	Containerized bool // whether run as containerized
+	Vtype           string // driver type [rbd|cephfs|liveness]
+	Endpoint        string // CSI endpoint
+	DriverName      string // name of the driver
+	NodeID          string // node id
+	InstanceID      string // unique ID distinguishing this instance of Ceph CSI
+	MetadataStorage string // metadata persistence method [node|k8s_configmap]
+	PluginPath      string // location of cephcsi plugin
 
 	// cephfs related flags
 	VolumeMounter string // default volume mounter (possible options are 'kernel', 'fuse')
 	MountCacheDir string // mount info cache save dir
 
-	// livenes related flags
-	LivenessPort int           // TCP port for liveness requests"
-	LivenessPath string        // path of prometheus endpoint where metrics will be available
-	PollTime     time.Duration // time interval in seconds between each poll
-	PoolTimeout  time.Duration // probe timeout in seconds
+	// metrics related flags
+	MetricsPath       string        // path of prometheus endpoint where metrics will be available
+	HistogramOption   string        // Histogram option for grpc metrics, should be comma separated value, ex:= "0.5,2,6" where start=0.5 factor=2, count=6
+	MetricsIP         string        // TCP port for liveness/ metrics requests
+	PidLimit          int           // PID limit to configure through cgroups")
+	MetricsPort       int           // TCP port for liveness/grpc metrics requests
+	PollTime          time.Duration // time interval in seconds between each poll
+	PoolTimeout       time.Duration // probe timeout in seconds
+	EnableGRPCMetrics bool          // option to enable grpc metrics
+
+	IsControllerServer bool // if set to true start provisoner server
+	IsNodeServer       bool // if set to true start node server
+	// rbd related flag
+	Containerized bool // whether run as containerized
 
 }
 

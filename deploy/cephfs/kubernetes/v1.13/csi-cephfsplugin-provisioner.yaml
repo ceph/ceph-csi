@@ -4,7 +4,7 @@ apiVersion: v1
 metadata:
   name: csi-cephfsplugin-provisioner
   labels:
-    app: csi-liveness
+    app: csi-metrics
 spec:
   selector:
     app: csi-cephfsplugin-provisioner
@@ -13,6 +13,10 @@ spec:
       port: 8080
       protocol: TCP
       targetPort: 8081
+    - name: grpc-metrics
+      port: 8090
+      protocol: TCP
+      targetPort: 8091
 
 ---
 kind: StatefulSet
@@ -74,7 +78,14 @@ spec:
             - "--drivername=cephfs.csi.ceph.com"
             - "--metadatastorage=k8s_configmap"
             - "--pidlimit=-1"
+            - "--metricsport=8091"
+            - "--metricspath=/metrics"
+            - "--enablegrpcmetrics=false"
           env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -105,8 +116,8 @@ spec:
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--livenessport=8081"
-            - "--livenesspath=/metrics"
+            - "--metricsport=8081"
+            - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
           env:

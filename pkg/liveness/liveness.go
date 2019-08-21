@@ -18,10 +18,6 @@ package liveness
 
 import (
 	"context"
-	"net"
-	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/ceph/ceph-csi/pkg/util"
@@ -29,7 +25,6 @@ import (
 	connlib "github.com/kubernetes-csi/csi-lib-utils/connection"
 	"github.com/kubernetes-csi/csi-lib-utils/rpc"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/klog"
 )
 
@@ -88,21 +83,9 @@ func recordLiveness(endpoint string, pollTime, timeout time.Duration) {
 func Run(conf *util.Config) {
 	klog.Infof("Liveness Running")
 
-	ip := os.Getenv("POD_IP")
-
-	if ip == "" {
-		klog.Warning("missing POD_IP env var defaulting to 0.0.0.0")
-		ip = "0.0.0.0"
-	}
-
 	// start liveness collection
 	go recordLiveness(conf.Endpoint, conf.PollTime, conf.PoolTimeout)
 
 	// start up prometheus endpoint
-	addr := net.JoinHostPort(ip, strconv.Itoa(conf.LivenessPort))
-	http.Handle(conf.LivenessPath, promhttp.Handler())
-	err := http.ListenAndServe(addr, nil)
-	if err != nil {
-		klog.Fatalln(err)
-	}
+	util.StartMetricsServer(conf)
 }

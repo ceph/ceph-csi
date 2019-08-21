@@ -4,7 +4,7 @@ apiVersion: v1
 metadata:
   name: csi-rbdplugin-provisioner
   labels:
-    app: csi-liveness
+    app: csi-metrics
 spec:
   selector:
     app: csi-rbdplugin-provisioner
@@ -13,6 +13,10 @@ spec:
       port: 8080
       protocol: TCP
       targetPort: 8080
+    - name: grpc-metrics
+      port: 8090
+      protocol: TCP
+      targetPort: 8090
 
 ---
 kind: StatefulSet
@@ -89,7 +93,14 @@ spec:
             - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
             - "--pidlimit=-1"
+            - "--metricsport=8090"
+            - "--metricspath=/metrics"
+            - "--enablegrpcmetrics=false"
           env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -118,8 +129,8 @@ spec:
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--livenessport=8080"
-            - "--livenesspath=/metrics"
+            - "--metricsport=8080"
+            - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
           env:

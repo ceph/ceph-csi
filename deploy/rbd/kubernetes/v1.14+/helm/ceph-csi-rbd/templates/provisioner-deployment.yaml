@@ -98,7 +98,14 @@ spec:
             - "--drivername=$(DRIVER_NAME)"
             - "--containerized=true"
             - "--pidlimit=-1"
+            - "--metricsport=8090"
+            - "--metricspath=/metrics"
+            - "--enablegrpcmetrics=false"
           env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: DRIVER_NAME
               value: {{ .Values.driverName }}
             - name: NODE_ID
