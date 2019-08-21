@@ -59,7 +59,14 @@ spec:
             - "--drivername=cephfs.csi.ceph.com"
             - "--metadatastorage=k8s_configmap"
             - "--mountcachedir=/mount-cache-dir"
+            - "--metricsport=8090"
+            - "--metricspath=/metrics"
+            - "--enablegrpcmetrics=false"
           env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -98,8 +105,8 @@ spec:
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--livenessport=8081"
-            - "--livenesspath=/metrics"
+            - "--metricsport=8081"
+            - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
           env:
@@ -149,18 +156,22 @@ spec:
             medium: "Memory"
           }
 ---
-# This is a service to expose the liveness side car
+# This is a service to expose the liveness and grpc metrics
 apiVersion: v1
 kind: Service
 metadata:
-  name: csi-liveness-cephfsplugin
+  name: csi-metrics-cephfsplugin
   labels:
-    app: csi-liveness
+    app: csi-metrics
 spec:
   ports:
     - name: http-metrics
       port: 8080
       protocol: TCP
       targetPort: 8081
+    - name: grpc-metrics
+      port: 8090
+      protocol: TCP
+      targetPort: 8091
   selector:
     app: csi-cephfsplugin

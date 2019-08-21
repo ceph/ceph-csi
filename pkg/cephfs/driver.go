@@ -173,6 +173,9 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	}
 
 	server := csicommon.NewNonBlockingGRPCServer()
-	server.Start(conf.Endpoint, fs.is, fs.cs, fs.ns)
+	server.Start(conf.Endpoint, conf.HistogramOption, fs.is, fs.cs, fs.ns, conf.EnableGRPCMetrics)
+	if conf.EnableGRPCMetrics {
+		go util.StartMetricsServer(conf)
+	}
 	server.Wait()
 }

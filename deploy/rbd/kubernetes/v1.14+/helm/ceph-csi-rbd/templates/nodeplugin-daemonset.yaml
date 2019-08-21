@@ -75,7 +75,14 @@ spec:
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
             - "--containerized=true"
+            - "--metricsport=8090"
+            - "--metricspath=/metrics"
+            - "--enablegrpcmetrics=false"
           env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: DRIVER_NAME
               value: {{ .Values.driverName }}
             - name: NODE_ID
@@ -114,8 +121,8 @@ spec:
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--livenessport=8081"
-            - "--livenesspath=/metrics"
+            - "--metricsport=8081"
+            - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
           imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}

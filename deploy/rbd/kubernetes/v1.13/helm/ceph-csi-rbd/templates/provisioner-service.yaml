@@ -4,7 +4,7 @@ metadata:
   name: {{ include "ceph-csi-rbd.provisioner.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: csi-liveness
+    app: csi-metrics
     chart: {{ include "ceph-csi-rbd.chart" . }}
     component: {{ .Values.provisioner.name }}
     release: {{ .Release.Name }}
@@ -19,3 +19,7 @@ spec:
       port: 8080
       protocol: TCP
       targetPort: 8080
+    - name: grpc-metrics
+      port: 8090
+      protocol: TCP
+      targetPort: 8090

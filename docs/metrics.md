@@ -1,8 +1,12 @@
 # Metrics
 
-CSI deploys a sidecar container that is responsible for collecting metrics.
+- [Metrics](#metrics)
+  - [Liveness](#liveness)
+  - [GRPC metrics](#grpc-metrics)
 
 ## Liveness
+
+CSI deploys a sidecar container that is responsible for collecting metrics.
 
 Liveness metrics are intended to be collected by prometheus but can be accesesed
 through a GET request to a specific pod ip.
@@ -13,7 +17,7 @@ for example
 the expected output should be
 
 ```bash
-[root@worker2 /]# curl -X GET http://10.109.65.142:8080/metrics 2>/dev/null | grep csi
+curl -X GET http://10.109.65.142:8080/metrics 2>/dev/null | grep csi
 # HELP csi_liveness Liveness Probe
 # TYPE csi_liveness gauge
 csi_liveness 1
@@ -23,10 +27,23 @@ Promethues can be deployed through the promethues operator described [here](http
 The [service-monitor](../examples/service-monitor.yaml) will tell promethues how
 to pull metrics out of CSI.
 
-Each CSI pod has a service to expose the end point to prometheus. By default rbd
+Each CSI pod has a service to expose the endpoint to prometheus. By default rbd
 pods run on port 8080 and cephfs 8081.
 These can be changed if desired or if multiple ceph clusters are deployed more
 ports will be used for additional CSI pods.
 
-You may need to open the ports used in your firewall depending on how you
+Note: You may need to open the ports used in your firewall depending on how you
+cluster is setup.
+
+## GRPC metrics
+
+grpc metrics are intended to be collected by prometheus but can be accesesed
+through a GET request to a specific pod ip.
+
+Each CSI pod has a service to expose the endpoint to prometheus. By default rbd
+pods run on port 8090 and cephfs 8091.
+These can be changed if desired or if multiple ceph clusters are deployed more
+ports will be used for additional CSI pods.
+
+Note: You may need to open the ports used in your firewall depending on how you
 cluster is setup.

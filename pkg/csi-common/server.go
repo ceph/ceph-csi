@@ -19,10 +19,14 @@ package csicommon
 import (
 	"net"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"k8s.io/klog"
 )
@@ -30,7 +34,7 @@ import (
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces
 type NonBlockingGRPCServer interface {
 	// Start services at the endpoint
-	Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer)
+	Start(endpoint, hstOptions string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, metrics bool)
 	// Waits for the service to stop
 	Wait()
 	// Stops the service gracefully
@@ -51,10 +55,10 @@ type nonBlockingGRPCServer struct {
 }
 
 // Start start service on endpoint
-func (s *nonBlockingGRPCServer) Start(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer) {
+func (s *nonBlockingGRPCServer) Start(endpoint, hstOptions string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, metrics bool) {
 
 	s.wg.Add(1)
-	go s.serve(endpoint, ids, cs, ns)
+	go s.serve(endpoint, hstOptions, ids, cs, ns, metrics)
 }
 
 // Wait blocks until the WaitGroup counter
@@ -72,7 +76,7 @@ func (s *nonBlockingGRPCServer) ForceStop() {
 	s.server.Stop()
 }
 
-func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer) {
+func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, metrics bool) {
 
 	proto, addr, err := parseEndpoint(endpoint)
 	if err != nil {
@@ -91,13 +95,14 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, c
 		klog.Fatalf("Failed to listen: %v", err)
 	}
 
-	opts := []grpc.ServerOption{
-		grpc_middleware.WithUnaryServerChain(
-			contextIDInjector,
-			logGRPC,
-			panicHandler,
-		),
+	middleWare := []grpc.UnaryServerInterceptor{contextIDInjector, logGRPC, panicHandler}
+	if metrics {
+		middleWare = append(middleWare, grpc_prometheus.UnaryServerInterceptor)
 	}
+	opts := []grpc.ServerOption{
+		grpc_middleware.WithUnaryServerChain(middleWare...),
+	}
+
 	server := grpc.NewServer(opts...)
 	s.server = server
 
@@ -110,9 +115,29 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, ids csi.IdentityServer, c
 	if ns != nil {
 		csi.RegisterNodeServer(server, ns)
 	}
-
 	klog.Infof("Listening for connections on address: %#v", listener.Addr())
-
+	if metrics {
+		ho := strings.Split(hstOptions, ",")
+		if len(ho) != 3 {
+			klog.Fatalf("invalid histogram options provided: %v", hstOptions)
+		}
+		start, e := strconv.ParseFloat(ho[0], 32)
+		if e != nil {
+			klog.Fatalf("failed to parse histogram start value: %v", e)
+		}
+		factor, e := strconv.ParseFloat(ho[1], 32)
+		if err != nil {
+			klog.Fatalf("failed to parse histogram factor value: %v", e)
+		}
+		count, e := strconv.Atoi(ho[2])
+		if err != nil {
+			klog.Fatalf("failed to parse histogram count value: %v", e)
+		}
+		buckets := prometheus.ExponentialBuckets(start, factor, count)
+		bktOptios := grpc_prometheus.WithHistogramBuckets(buckets)
+		grpc_prometheus.EnableHandlingTimeHistogram(bktOptios)
+		grpc_prometheus.Register(server)
+	}
 	err = server.Serve(listener)
 	if err != nil {
 		klog.Fatalf("Failed to server: %v", err)
