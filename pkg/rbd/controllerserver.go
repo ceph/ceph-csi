@@ -41,9 +41,9 @@ type ControllerServer struct {
 	MetadataStore util.CachePersister
 }
 
-func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) error {
+func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		klog.V(3).Infof("invalid create volume req: %v", protosanitizer.StripSecrets(req))
+		klog.V(3).Infof(util.Log(ctx, "invalid create volume req: %v"), protosanitizer.StripSecrets(req))
 		return err
 	}
 	// Check sanity of request Name, Volume Capabilities
@@ -63,7 +63,7 @@ func (cs *ControllerServer) validateVolumeReq(req *csi.CreateVolumeRequest) erro
 	return nil
 }
 
-func (cs *ControllerServer) parseVolCreateRequest(req *csi.CreateVolumeRequest) (*rbdVolume, error) {
+func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
 	isMultiNode := false
@@ -84,7 +84,7 @@ func (cs *ControllerServer) parseVolCreateRequest(req *csi.CreateVolumeRequest) 
 	}
 
 	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
-	rbdVol, err := genVolFromVolumeOptions(req.GetParameters(), nil, (isMultiNode && isBlock), false)
+	rbdVol, err := genVolFromVolumeOptions(ctx, req.GetParameters(), nil, (isMultiNode && isBlock), false)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -108,7 +108,7 @@ func (cs *ControllerServer) parseVolCreateRequest(req *csi.CreateVolumeRequest) 
 // CreateVolume creates the volume in backend
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 
-	if err := cs.validateVolumeReq(req); err != nil {
+	if err := cs.validateVolumeReq(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -118,7 +118,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVol, err := cs.parseVolCreateRequest(req)
+	rbdVol, err := cs.parseVolCreateRequest(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	idLk := volumeNameLocker.Lock(req.GetName())
 	defer volumeNameLocker.Unlock(idLk, req.GetName())
 
-	found, err := checkVolExists(rbdVol, cr)
+	found, err := checkVolExists(ctx, rbdVol, cr)
 	if err != nil {
 		if _, ok := err.(ErrVolNameConflict); ok {
 			return nil, status.Error(codes.AlreadyExists, err.Error())
@@ -144,7 +144,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}, nil
 	}
 
-	err = reserveVol(rbdVol, cr)
+	err = reserveVol(ctx, rbdVol, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -152,12 +152,12 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		if err != nil {
 			errDefer := undoVolReservation(rbdVol, cr)
 			if errDefer != nil {
-				klog.Warningf("failed undoing reservation of volume: %s (%s)", req.GetName(), errDefer)
+				klog.Warningf(util.Log(ctx, "failed undoing reservation of volume: %s (%s)"), req.GetName(), errDefer)
 			}
 		}
 	}()
 
-	err = cs.createBackingImage(rbdVol, req, util.RoundUpToMiB(rbdVol.VolSize))
+	err = cs.createBackingImage(ctx, rbdVol, req, util.RoundUpToMiB(rbdVol.VolSize))
 	if err != nil {
 		return nil, err
 	}
@@ -171,12 +171,12 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-func (cs *ControllerServer) createBackingImage(rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeMiB int64) error {
+func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeMiB int64) error {
 	var err error
 
 	// if VolumeContentSource is not nil, this request is for snapshot
 	if req.VolumeContentSource != nil {
-		if err = cs.checkSnapshot(req, rbdVol); err != nil {
+		if err = cs.checkSnapshot(ctx, req, rbdVol); err != nil {
 			return err
 		}
 	} else {
@@ -186,18 +186,18 @@ func (cs *ControllerServer) createBackingImage(rbdVol *rbdVolume, req *csi.Creat
 		}
 		defer cr.DeleteCredentials()
 
-		err = createImage(rbdVol, volSizeMiB, cr)
+		err = createImage(ctx, rbdVol, volSizeMiB, cr)
 		if err != nil {
-			klog.Warningf("failed to create volume: %v", err)
+			klog.Warningf(util.Log(ctx, "failed to create volume: %v"), err)
 			return status.Error(codes.Internal, err.Error())
 		}
 
-		klog.V(4).Infof("created image %s", rbdVol.RbdImageName)
+		klog.V(4).Infof(util.Log(ctx, "created image %s"), rbdVol.RbdImageName)
 	}
 
 	return nil
 }
-func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
+func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
 	snapshot := req.VolumeContentSource.GetSnapshot()
 	if snapshot == nil {
 		return status.Error(codes.InvalidArgument, "volume Snapshot cannot be empty")
@@ -215,23 +215,23 @@ func (cs *ControllerServer) checkSnapshot(req *csi.CreateVolumeRequest, rbdVol *
 	defer cr.DeleteCredentials()
 
 	rbdSnap := &rbdSnapshot{}
-	if err = genSnapFromSnapID(rbdSnap, snapshotID, cr); err != nil {
+	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
 		if _, ok := err.(ErrSnapNotFound); !ok {
 			return status.Error(codes.Internal, err.Error())
 		}
 		return status.Error(codes.InvalidArgument, "missing requested Snapshot ID")
 	}
 
-	err = restoreSnapshot(rbdVol, rbdSnap, cr)
+	err = restoreSnapshot(ctx, rbdVol, rbdSnap, cr)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
-	klog.V(4).Infof("create volume %s from snapshot %s", req.GetName(), rbdSnap.RbdSnapName)
+	klog.V(4).Infof(util.Log(ctx, "create volume %s from snapshot %s"), req.GetName(), rbdSnap.RbdSnapName)
 	return nil
 }
 
 // DeleteLegacyVolume deletes a volume provisioned using version 1.0.0 of the plugin
-func (cs *ControllerServer) DeleteLegacyVolume(req *csi.DeleteVolumeRequest, cr *util.Credentials) (*csi.DeleteVolumeResponse, error) {
+func (cs *ControllerServer) DeleteLegacyVolume(ctx context.Context, req *csi.DeleteVolumeRequest, cr *util.Credentials) (*csi.DeleteVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 
 	if cs.MetadataStore == nil {
@@ -245,7 +245,7 @@ func (cs *ControllerServer) DeleteLegacyVolume(req *csi.DeleteVolumeRequest, cr 
 	rbdVol := &rbdVolume{}
 	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
 		if err, ok := err.(*util.CacheEntryNotFound); ok {
-			klog.V(3).Infof("metadata for legacy volume %s not found, assuming the volume to be already deleted (%v)", volumeID, err)
+			klog.V(3).Infof(util.Log(ctx, "metadata for legacy volume %s not found, assuming the volume to be already deleted (%v)"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 
@@ -260,10 +260,10 @@ func (cs *ControllerServer) DeleteLegacyVolume(req *csi.DeleteVolumeRequest, cr 
 	// Update rbdImageName as the VolName when dealing with version 1 volumes
 	rbdVol.RbdImageName = rbdVol.VolName
 
-	klog.V(4).Infof("deleting legacy volume %s", rbdVol.VolName)
-	if err := deleteImage(rbdVol, cr); err != nil {
+	klog.V(4).Infof(util.Log(ctx, "deleting legacy volume %s"), rbdVol.VolName)
+	if err := deleteImage(ctx, rbdVol, cr); err != nil {
 		// TODO: can we detect "already deleted" situations here and proceed?
-		klog.V(3).Infof("failed to delete legacy rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
+		klog.V(3).Infof(util.Log(ctx, "failed to delete legacy rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -278,7 +278,7 @@ func (cs *ControllerServer) DeleteLegacyVolume(req *csi.DeleteVolumeRequest, cr 
 // from store
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		klog.Warningf("invalid delete volume req: %v", protosanitizer.StripSecrets(req))
+		klog.Warningf(util.Log(ctx, "invalid delete volume req: %v"), protosanitizer.StripSecrets(req))
 		return nil, err
 	}
 
@@ -295,13 +295,13 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	rbdVol := &rbdVolume{}
-	if err := genVolFromVolID(rbdVol, volumeID, cr); err != nil {
+	if err := genVolFromVolID(ctx, rbdVol, volumeID, cr); err != nil {
 		// If error is ErrInvalidVolID it could be a version 1.0.0 or lower volume, attempt
 		// to process it as such
 		if _, ok := err.(ErrInvalidVolID); ok {
 			if isLegacyVolumeID(volumeID) {
-				klog.V(2).Infof("attempting deletion of potential legacy volume (%s)", volumeID)
-				return cs.DeleteLegacyVolume(req, cr)
+				klog.V(2).Infof(util.Log(ctx, "attempting deletion of potential legacy volume (%s)"), volumeID)
+				return cs.DeleteLegacyVolume(ctx, req, cr)
 			}
 
 			// Consider unknown volumeID as a successfully deleted volume
@@ -338,15 +338,15 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	defer volumeNameLocker.Unlock(idLk, rbdVol.RequestName)
 
 	// Deleting rbd image
-	klog.V(4).Infof("deleting image %s", rbdVol.RbdImageName)
-	if err := deleteImage(rbdVol, cr); err != nil {
-		klog.Errorf("failed to delete rbd image: %s/%s with error: %v",
+	klog.V(4).Infof(util.Log(ctx, "deleting image %s"), rbdVol.RbdImageName)
+	if err := deleteImage(ctx, rbdVol, cr); err != nil {
+		klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"),
 			rbdVol.Pool, rbdVol.RbdImageName, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if err := undoVolReservation(rbdVol, cr); err != nil {
-		klog.Errorf("failed to remove reservation for volume (%s) with backing image (%s) (%s)",
+		klog.Errorf(util.Log(ctx, "failed to remove reservation for volume (%s) with backing image (%s) (%s)"),
 			rbdVol.RequestName, rbdVol.RbdImageName, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -381,7 +381,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 // in store
 // nolint: gocyclo
 func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	if err := cs.validateSnapshotReq(req); err != nil {
+	if err := cs.validateSnapshotReq(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -393,7 +393,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// Fetch source volume information
 	rbdVol := new(rbdVolume)
-	err = genVolFromVolID(rbdVol, req.GetSourceVolumeId(), cr)
+	err = genVolFromVolID(ctx, rbdVol, req.GetSourceVolumeId(), cr)
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
 			return nil, status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
@@ -407,7 +407,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 
 	// Create snap volume
-	rbdSnap := genSnapFromOptions(rbdVol, req.GetParameters())
+	rbdSnap := genSnapFromOptions(ctx, rbdVol, req.GetParameters())
 	rbdSnap.RbdImageName = rbdVol.RbdImageName
 	rbdSnap.SizeBytes = rbdVol.VolSize
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
@@ -418,7 +418,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// Need to check for already existing snapshot name, and if found
 	// check for the requested source volume id and already allocated source volume id
-	found, err := checkSnapExists(rbdSnap, cr)
+	found, err := checkSnapExists(ctx, rbdSnap, cr)
 	if err != nil {
 		if _, ok := err.(util.ErrSnapNameConflict); ok {
 			return nil, status.Error(codes.AlreadyExists, err.Error())
@@ -438,7 +438,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}, nil
 	}
 
-	err = reserveSnap(rbdSnap, cr)
+	err = reserveSnap(ctx, rbdSnap, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -446,12 +446,12 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		if err != nil {
 			errDefer := undoSnapReservation(rbdSnap, cr)
 			if errDefer != nil {
-				klog.Warningf("failed undoing reservation of snapshot: %s %v", req.GetName(), errDefer)
+				klog.Warningf(util.Log(ctx, "failed undoing reservation of snapshot: %s %v"), req.GetName(), errDefer)
 			}
 		}
 	}()
 
-	err = cs.doSnapshot(rbdSnap, cr)
+	err = cs.doSnapshot(ctx, rbdSnap, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -467,9 +467,9 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}, nil
 }
 
-func (cs *ControllerServer) validateSnapshotReq(req *csi.CreateSnapshotRequest) error {
+func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.CreateSnapshotRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
-		klog.Warningf("invalid create snapshot req: %v", protosanitizer.StripSecrets(req))
+		klog.Warningf(util.Log(ctx, "invalid create snapshot req: %v"), protosanitizer.StripSecrets(req))
 		return err
 	}
 
@@ -484,19 +484,19 @@ func (cs *ControllerServer) validateSnapshotReq(req *csi.CreateSnapshotRequest) 
 	return nil
 }
 
-func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, cr *util.Credentials) (err error) {
-	err = createSnapshot(rbdSnap, cr)
+func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) (err error) {
+	err = createSnapshot(ctx, rbdSnap, cr)
 	// If snap creation fails, even due to snapname already used, fail, next attempt will get a new
 	// uuid for use as the snap name
 	if err != nil {
-		klog.Errorf("failed to create snapshot: %v", err)
+		klog.Errorf(util.Log(ctx, "failed to create snapshot: %v"), err)
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer func() {
 		if err != nil {
-			errDefer := deleteSnapshot(rbdSnap, cr)
+			errDefer := deleteSnapshot(ctx, rbdSnap, cr)
 			if errDefer != nil {
-				klog.Errorf("failed to delete snapshot: %v", errDefer)
+				klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), errDefer)
 				err = fmt.Errorf("snapshot created but failed to delete snapshot due to"+
 					" other failures: %v", err)
 			}
@@ -504,16 +504,16 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, cr *util.Credential
 		}
 	}()
 
-	err = protectSnapshot(rbdSnap, cr)
+	err = protectSnapshot(ctx, rbdSnap, cr)
 	if err != nil {
-		klog.Errorf("failed to protect snapshot: %v", err)
+		klog.Errorf(util.Log(ctx, "failed to protect snapshot: %v"), err)
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer func() {
 		if err != nil {
-			errDefer := unprotectSnapshot(rbdSnap, cr)
+			errDefer := unprotectSnapshot(ctx, rbdSnap, cr)
 			if errDefer != nil {
-				klog.Errorf("failed to unprotect snapshot: %v", errDefer)
+				klog.Errorf(util.Log(ctx, "failed to unprotect snapshot: %v"), errDefer)
 				err = fmt.Errorf("snapshot created but failed to unprotect snapshot due to"+
 					" other failures: %v", err)
 			}
@@ -521,9 +521,9 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, cr *util.Credential
 		}
 	}()
 
-	err = getSnapshotMetadata(rbdSnap, cr)
+	err = getSnapshotMetadata(ctx, rbdSnap, cr)
 	if err != nil {
-		klog.Errorf("failed to fetch snapshot metadata: %v", err)
+		klog.Errorf(util.Log(ctx, "failed to fetch snapshot metadata: %v"), err)
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -534,7 +534,7 @@ func (cs *ControllerServer) doSnapshot(rbdSnap *rbdSnapshot, cr *util.Credential
 // snapshot metadata from store
 func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
-		klog.Warningf("invalid delete snapshot req: %v", protosanitizer.StripSecrets(req))
+		klog.Warningf(util.Log(ctx, "invalid delete snapshot req: %v"), protosanitizer.StripSecrets(req))
 		return nil, err
 	}
 
@@ -550,7 +550,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	rbdSnap := &rbdSnapshot{}
-	if err = genSnapFromSnapID(rbdSnap, snapshotID, cr); err != nil {
+	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (snap and snapOMap are garbage collected already), hence return
 		// success as deletion is complete
@@ -579,7 +579,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	defer snapshotNameLocker.Unlock(idLk, rbdSnap.RequestName)
 
 	// Unprotect snapshot
-	err = unprotectSnapshot(rbdSnap, cr)
+	err = unprotectSnapshot(ctx, rbdSnap, cr)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition,
 			"failed to unprotect snapshot: %s/%s with error: %v",
@@ -587,8 +587,8 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	// Deleting snapshot
-	klog.V(4).Infof("deleting Snaphot %s", rbdSnap.RbdSnapName)
-	if err := deleteSnapshot(rbdSnap, cr); err != nil {
+	klog.V(4).Infof(util.Log(ctx, "deleting Snaphot %s"), rbdSnap.RbdSnapName)
+	if err := deleteSnapshot(ctx, rbdSnap, cr); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition,
 			"failed to delete snapshot: %s/%s with error: %v",
 			rbdSnap.Pool, rbdSnap.RbdSnapName, err)
