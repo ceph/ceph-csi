@@ -19,6 +19,8 @@ package csicommon
 import (
 	"context"
 
+	"github.com/ceph/ceph-csi/pkg/util"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -58,7 +60,7 @@ func (cs *DefaultControllerServer) GetCapacity(ctx context.Context, req *csi.Get
 // ControllerGetCapabilities implements the default GRPC callout.
 // Default supports all capabilities
 func (cs *DefaultControllerServer) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	klog.V(5).Infof("Using default ControllerGetCapabilities")
+	klog.V(5).Infof(util.Log(ctx, "Using default ControllerGetCapabilities"))
 
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: cs.Driver.cap,

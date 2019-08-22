@@ -17,6 +17,7 @@ limitations under the License.
 package cephfs
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ceph/ceph-csi/pkg/util"
@@ -33,11 +34,11 @@ type CephFilesystemDetails struct {
 	MDSMap MDSMap `json:"mdsmap"`
 }
 
-func getFscID(monitors string, cr *util.Credentials, fsName string) (int64, error) {
+func getFscID(ctx context.Context, monitors string, cr *util.Credentials, fsName string) (int64, error) {
 	// ceph fs get myfs --format=json
 	// {"mdsmap":{...},"id":2}
 	var fsDetails CephFilesystemDetails
-	err := execCommandJSON(&fsDetails,
+	err := execCommandJSON(ctx, &fsDetails,
 		"ceph",
 		"-m", monitors,
 		"--id", cr.ID,
@@ -61,11 +62,11 @@ type CephFilesystem struct {
 	DataPoolIDs    []int    `json:"data_pool_ids"`
 }
 
-func getMetadataPool(monitors string, cr *util.Credentials, fsName string) (string, error) {
+func getMetadataPool(ctx context.Context, monitors string, cr *util.Credentials, fsName string) (string, error) {
 	// ./tbox ceph fs ls --format=json
 	// [{"name":"myfs","metadata_pool":"myfs-metadata","metadata_pool_id":4,...},...]
 	var filesystems []CephFilesystem
-	err := execCommandJSON(&filesystems,
+	err := execCommandJSON(ctx, &filesystems,
 		"ceph",
 		"-m", monitors,
 		"--id", cr.ID,
@@ -91,11 +92,11 @@ type CephFilesystemDump struct {
 	Filesystems []CephFilesystemDetails `json:"filesystems"`
 }
 
-func getFsName(monitors string, cr *util.Credentials, fscID int64) (string, error) {
+func getFsName(ctx context.Context, monitors string, cr *util.Credentials, fscID int64) (string, error) {
 	// ./tbox ceph fs dump --format=json
 	// JSON: {...,"filesystems":[{"mdsmap":{},"id":<n>},...],...}
 	var fsDump CephFilesystemDump
-	err := execCommandJSON(&fsDump,
+	err := execCommandJSON(ctx, &fsDump,
 		"ceph",
 		"-m", monitors,
 		"--id", cr.ID,

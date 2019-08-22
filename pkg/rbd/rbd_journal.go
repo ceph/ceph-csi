@@ -114,7 +114,7 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 		return false, err
 	}
 
-	snapUUID, err := snapJournal.CheckReservation(rbdSnap.Monitors, cr, rbdSnap.Pool,
+	snapUUID, err := snapJournal.CheckReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.RequestName, rbdSnap.RbdImageName)
 	if err != nil {
 		return false, err
@@ -128,7 +128,7 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
 	if err != nil {
 		if _, ok := err.(ErrSnapNotFound); ok {
-			err = snapJournal.UndoReservation(rbdSnap.Monitors, cr, rbdSnap.Pool,
+			err = snapJournal.UndoReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
 				rbdSnap.RbdSnapName, rbdSnap.RequestName)
 			return false, err
 		}
@@ -136,7 +136,7 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 	}
 
 	// found a snapshot already available, process and return its information
-	rbdSnap.SnapID, err = util.GenerateVolID(rbdSnap.Monitors, cr, rbdSnap.Pool,
+	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.ClusterID, snapUUID, volIDVersion)
 	if err != nil {
 		return false, err
@@ -162,7 +162,7 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 		return false, err
 	}
 
-	imageUUID, err := volJournal.CheckReservation(rbdVol.Monitors, cr, rbdVol.Pool,
+	imageUUID, err := volJournal.CheckReservation(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.RequestName, "")
 	if err != nil {
 		return false, err
@@ -179,7 +179,7 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 	err = updateVolWithImageInfo(ctx, rbdVol, cr)
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
-			err = volJournal.UndoReservation(rbdVol.Monitors, cr, rbdVol.Pool,
+			err = volJournal.UndoReservation(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
 				rbdVol.RbdImageName, rbdVol.RequestName)
 			return false, err
 		}
@@ -195,7 +195,7 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 	// TODO: We should also ensure image features and format is the same
 
 	// found a volume already available, process and return it!
-	rbdVol.VolID, err = util.GenerateVolID(rbdVol.Monitors, cr, rbdVol.Pool,
+	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
 		return false, err
@@ -210,13 +210,13 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
 // volume ID for the generated name
 func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	snapUUID, err := snapJournal.ReserveName(rbdSnap.Monitors, cr, rbdSnap.Pool,
+	snapUUID, err := snapJournal.ReserveName(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.RequestName, rbdSnap.RbdImageName)
 	if err != nil {
 		return err
 	}
 
-	rbdSnap.SnapID, err = util.GenerateVolID(rbdSnap.Monitors, cr, rbdSnap.Pool,
+	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.ClusterID, snapUUID, volIDVersion)
 	if err != nil {
 		return err
@@ -233,13 +233,13 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the
 // volume ID for the generated name
 func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	imageUUID, err := volJournal.ReserveName(rbdVol.Monitors, cr, rbdVol.Pool,
+	imageUUID, err := volJournal.ReserveName(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.RequestName, "")
 	if err != nil {
 		return err
 	}
 
-	rbdVol.VolID, err = util.GenerateVolID(rbdVol.Monitors, cr, rbdVol.Pool,
+	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
 		return err
@@ -254,16 +254,16 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) er
 }
 
 // undoSnapReservation is a helper routine to undo a name reservation for rbdSnapshot
-func undoSnapReservation(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	err := snapJournal.UndoReservation(rbdSnap.Monitors, cr, rbdSnap.Pool,
+func undoSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+	err := snapJournal.UndoReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return err
 }
 
 // undoVolReservation is a helper routine to undo a name reservation for rbdVolume
-func undoVolReservation(rbdVol *rbdVolume, cr *util.Credentials) error {
-	err := volJournal.UndoReservation(rbdVol.Monitors, cr, rbdVol.Pool,
+func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
+	err := volJournal.UndoReservation(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return err
