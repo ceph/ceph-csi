@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/ceph/ceph-csi/pkg/util"
+	"golang.org/x/net/context"
 
 	"github.com/pkg/errors"
 	"k8s.io/klog"
@@ -107,7 +108,7 @@ because, the order of omap creation and deletion are inverse of each other, and 
 request name lock, and hence any stale omaps are leftovers from incomplete transactions and are
 hence safe to garbage collect.
 */
-func checkSnapExists(rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
+func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
 	err := validateRbdSnap(rbdSnap)
 	if err != nil {
 		return false, err
@@ -124,7 +125,7 @@ func checkSnapExists(rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
 	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + snapUUID
 
 	// Fetch on-disk image attributes
-	err = updateSnapWithImageInfo(rbdSnap, cr)
+	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
 	if err != nil {
 		if _, ok := err.(ErrSnapNotFound); ok {
 			err = snapJournal.UndoReservation(rbdSnap.Monitors, cr, rbdSnap.Pool,
@@ -141,7 +142,7 @@ func checkSnapExists(rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
 		return false, err
 	}
 
-	klog.V(4).Infof("found existing snap (%s) with snap name (%s) for request (%s)",
+	klog.V(4).Infof(util.Log(ctx, "found existing snap (%s) with snap name (%s) for request (%s)"),
 		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return true, nil
@@ -155,7 +156,7 @@ volume names as requested by the CSI drivers. Hence, these need to be invoked on
 respective CSI snapshot or volume name based locks are held, as otherwise racy access to these
 omaps may end up leaving the omaps in an inconsistent state.
 */
-func checkVolExists(rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
+func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 	err := validateRbdVol(rbdVol)
 	if err != nil {
 		return false, err
@@ -175,7 +176,7 @@ func checkVolExists(rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 	// save it for size checks before fetching image data
 	requestSize := rbdVol.VolSize
 	// Fetch on-disk image attributes and compare against request
-	err = updateVolWithImageInfo(rbdVol, cr)
+	err = updateVolWithImageInfo(ctx, rbdVol, cr)
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
 			err = volJournal.UndoReservation(rbdVol.Monitors, cr, rbdVol.Pool,
@@ -200,7 +201,7 @@ func checkVolExists(rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 		return false, err
 	}
 
-	klog.V(4).Infof("found existing volume (%s) with image name (%s) for request (%s)",
+	klog.V(4).Infof(util.Log(ctx, "found existing volume (%s) with image name (%s) for request (%s)"),
 		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return true, nil
@@ -208,7 +209,7 @@ func checkVolExists(rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
 // volume ID for the generated name
-func reserveSnap(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 	snapUUID, err := snapJournal.ReserveName(rbdSnap.Monitors, cr, rbdSnap.Pool,
 		rbdSnap.RequestName, rbdSnap.RbdImageName)
 	if err != nil {
@@ -223,7 +224,7 @@ func reserveSnap(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 
 	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + snapUUID
 
-	klog.V(4).Infof("generated Volume ID (%s) and image name (%s) for request name (%s)",
+	klog.V(4).Infof(util.Log(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)"),
 		rbdSnap.SnapID, rbdSnap.RbdImageName, rbdSnap.RequestName)
 
 	return nil
@@ -231,7 +232,7 @@ func reserveSnap(rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the
 // volume ID for the generated name
-func reserveVol(rbdVol *rbdVolume, cr *util.Credentials) error {
+func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
 	imageUUID, err := volJournal.ReserveName(rbdVol.Monitors, cr, rbdVol.Pool,
 		rbdVol.RequestName, "")
 	if err != nil {
@@ -246,7 +247,7 @@ func reserveVol(rbdVol *rbdVolume, cr *util.Credentials) error {
 
 	rbdVol.RbdImageName = volJournal.NamingPrefix() + imageUUID
 
-	klog.V(4).Infof("generated Volume ID (%s) and image name (%s) for request name (%s)",
+	klog.V(4).Infof(util.Log(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)"),
 		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return nil

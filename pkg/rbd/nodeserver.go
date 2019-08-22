@@ -64,7 +64,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		if isBlock {
 			disableInUseChecks = true
 		} else {
-			klog.Warningf("MULTI_NODE_MULTI_WRITER currently only supported with volumes of access type `block`, invalid AccessMode for volume: %v", req.GetVolumeId())
+			klog.Warningf(util.Log(ctx, "MULTI_NODE_MULTI_WRITER currently only supported with volumes of access type `block`, invalid AccessMode for volume: %v"), req.GetVolumeId())
 			return nil, status.Error(codes.InvalidArgument, "rbd: RWX access mode request is only valid for volumes with access type `block`")
 		}
 	}
@@ -107,11 +107,11 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	if !isNotMnt {
-		klog.Infof("rbd: volume %s is already mounted to %s, skipping", req.GetVolumeId(), stagingTargetPath)
+		klog.Infof(util.Log(ctx, "rbd: volume %s is already mounted to %s, skipping"), req.GetVolumeId(), stagingTargetPath)
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	volOptions, err := genVolFromVolumeOptions(req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks, isLegacyVolume)
+	volOptions, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks, isLegacyVolume)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -129,25 +129,25 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 	defer func() {
 		if err != nil {
-			ns.undoStagingTransaction(stagingParentPath, devicePath, volID, isStagePathCreated, isMounted)
+			ns.undoStagingTransaction(ctx, stagingParentPath, devicePath, volID, isStagePathCreated, isMounted)
 		}
 	}()
 
 	// Mapping RBD image
-	devicePath, err = attachRBDImage(volOptions, cr)
+	devicePath, err = attachRBDImage(ctx, volOptions, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	klog.V(4).Infof("rbd image: %s/%s was successfully mapped at %s\n", req.GetVolumeId(), volOptions.Pool, devicePath)
+	klog.V(4).Infof(util.Log(ctx, "rbd image: %s/%s was successfully mapped at %s\n"), req.GetVolumeId(), volOptions.Pool, devicePath)
 
-	err = ns.createStageMountPoint(stagingTargetPath, isBlock)
+	err = ns.createStageMountPoint(ctx, stagingTargetPath, isBlock)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	isStagePathCreated = true
 
 	// nodeStage Path
-	err = ns.mountVolumeToStagePath(req, stagingTargetPath, devicePath)
+	err = ns.mountVolumeToStagePath(ctx, req, stagingTargetPath, devicePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -158,19 +158,19 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof("rbd: successfully mounted volume %s to stagingTargetPath %s", req.GetVolumeId(), stagingTargetPath)
+	klog.Infof(util.Log(ctx, "rbd: successfully mounted volume %s to stagingTargetPath %s"), req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (ns *NodeServer) undoStagingTransaction(stagingParentPath, devicePath, volID string, isStagePathCreated, isMounted bool) {
+func (ns *NodeServer) undoStagingTransaction(ctx context.Context, stagingParentPath, devicePath, volID string, isStagePathCreated, isMounted bool) {
 	var err error
 
 	stagingTargetPath := stagingParentPath + "/" + volID
 	if isMounted {
 		err = ns.mounter.Unmount(stagingTargetPath)
 		if err != nil {
-			klog.Errorf("failed to unmount stagingtargetPath: %s with error: %v", stagingTargetPath, err)
+			klog.Errorf(util.Log(ctx, "failed to unmount stagingtargetPath: %s with error: %v"), stagingTargetPath, err)
 			return
 		}
 	}
@@ -179,36 +179,36 @@ func (ns *NodeServer) undoStagingTransaction(stagingParentPath, devicePath, volI
 	if isStagePathCreated {
 		err = os.Remove(stagingTargetPath)
 		if err != nil {
-			klog.Errorf("failed to remove stagingtargetPath: %s with error: %v", stagingTargetPath, err)
+			klog.Errorf(util.Log(ctx, "failed to remove stagingtargetPath: %s with error: %v"), stagingTargetPath, err)
 			// continue on failure to unmap the image, as leaving stale images causes more issues than a stale file/directory
 		}
 	}
 
 	// Unmapping rbd device
 	if devicePath != "" {
-		err = detachRBDDevice(devicePath)
+		err = detachRBDDevice(ctx, devicePath)
 		if err != nil {
-			klog.Errorf("failed to unmap rbd device: %s for volume %s with error: %v", devicePath, volID, err)
+			klog.Errorf(util.Log(ctx, "failed to unmap rbd device: %s for volume %s with error: %v"), devicePath, volID, err)
 			// continue on failure to delete the stash file, as kubernetes will fail to delete the staging path otherwise
 		}
 	}
 
 	// Cleanup the stashed image metadata
 	if err = cleanupRBDImageMetadataStash(stagingParentPath); err != nil {
-		klog.Errorf("failed to cleanup image metadata stash (%v)", err)
+		klog.Errorf(util.Log(ctx, "failed to cleanup image metadata stash (%v)"), err)
 		return
 	}
 }
 
-func (ns *NodeServer) createStageMountPoint(mountPath string, isBlock bool) error {
+func (ns *NodeServer) createStageMountPoint(ctx context.Context, mountPath string, isBlock bool) error {
 	if isBlock {
 		pathFile, err := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0750)
 		if err != nil {
-			klog.Errorf("failed to create mountPath:%s with error: %v", mountPath, err)
+			klog.Errorf(util.Log(ctx, "failed to create mountPath:%s with error: %v"), mountPath, err)
 			return status.Error(codes.Internal, err.Error())
 		}
 		if err = pathFile.Close(); err != nil {
-			klog.Errorf("failed to close mountPath:%s with error: %v", mountPath, err)
+			klog.Errorf(util.Log(ctx, "failed to close mountPath:%s with error: %v"), mountPath, err)
 			return status.Error(codes.Internal, err.Error())
 		}
 
@@ -218,7 +218,7 @@ func (ns *NodeServer) createStageMountPoint(mountPath string, isBlock bool) erro
 	err := os.Mkdir(mountPath, 0750)
 	if err != nil {
 		if !os.IsExist(err) {
-			klog.Errorf("failed to create mountPath:%s with error: %v", mountPath, err)
+			klog.Errorf(util.Log(ctx, "failed to create mountPath:%s with error: %v"), mountPath, err)
 			return status.Error(codes.Internal, err.Error())
 		}
 	}
@@ -258,7 +258,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, err
 	}
 
-	util.Infof(ctx, "rbd: successfully mounted stagingPath %s to targetPath %s", stagingPath, targetPath)
+	klog.Infof(util.Log(ctx, "rbd: successfully mounted stagingPath %s to targetPath %s"), stagingPath, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
@@ -298,7 +298,7 @@ func getLegacyVolumeName(mountPath string) (string, error) {
 	return volName, nil
 }
 
-func (ns *NodeServer) mountVolumeToStagePath(req *csi.NodeStageVolumeRequest, stagingPath, devicePath string) error {
+func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, stagingPath, devicePath string) error {
 	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
@@ -313,7 +313,7 @@ func (ns *NodeServer) mountVolumeToStagePath(req *csi.NodeStageVolumeRequest, st
 		err = diskMounter.FormatAndMount(devicePath, stagingPath, fsType, opt)
 	}
 	if err != nil {
-		klog.Errorf("failed to mount device path (%s) to staging path (%s) for volume (%s) error %s", devicePath, stagingPath, req.GetVolumeId(), err)
+		klog.Errorf(util.Log(ctx, "failed to mount device path (%s) to staging path (%s) for volume (%s) error %s"), devicePath, stagingPath, req.GetVolumeId(), err)
 	}
 	return err
 }
@@ -325,7 +325,7 @@ func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *
 	mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	targetPath := req.GetTargetPath()
-	util.V(4).Infof(ctx, "target %v\nisBlock %v\nfstype %v\nstagingPath %v\nreadonly %v\nmountflags %v\n",
+	klog.V(4).Infof(util.Log(ctx, "target %v\nisBlock %v\nfstype %v\nstagingPath %v\nreadonly %v\nmountflags %v\n"),
 		targetPath, isBlock, fsType, stagingPath, readOnly, mountFlags)
 	mountFlags = append(mountFlags, "bind")
 	if readOnly {
@@ -347,11 +347,11 @@ func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath strin
 				// #nosec
 				pathFile, e := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0750)
 				if e != nil {
-					util.V(4).Infof(ctx, "Failed to create mountPath:%s with error: %v", mountPath, err)
+					klog.V(4).Infof(util.Log(ctx, "Failed to create mountPath:%s with error: %v"), mountPath, err)
 					return notMnt, status.Error(codes.Internal, e.Error())
 				}
 				if err = pathFile.Close(); err != nil {
-					util.V(4).Infof(ctx, "Failed to close mountPath:%s with error: %v", mountPath, err)
+					klog.V(4).Infof(util.Log(ctx, "Failed to close mountPath:%s with error: %v"), mountPath, err)
 					return notMnt, status.Error(codes.Internal, err.Error())
 				}
 			} else {
@@ -381,7 +381,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if err != nil {
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
-			klog.V(4).Infof("targetPath: %s has already been deleted", targetPath)
+			klog.V(4).Infof(util.Log(ctx, "targetPath: %s has already been deleted"), targetPath)
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
 		return nil, status.Error(codes.NotFound, err.Error())
@@ -401,7 +401,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof("rbd: successfully unbound volume %s from %s", req.GetVolumeId(), targetPath)
+	klog.Infof(util.Log(ctx, "rbd: successfully unbound volume %s from %s"), req.GetVolumeId(), targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
@@ -428,7 +428,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		// Unmounting the image
 		err = ns.mounter.Unmount(stagingTargetPath)
 		if err != nil {
-			klog.V(3).Infof("failed to unmount targetPath: %s with error: %v", stagingTargetPath, err)
+			klog.V(3).Infof(util.Log(ctx, "failed to unmount targetPath: %s with error: %v"), stagingTargetPath, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
@@ -438,14 +438,14 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		// keeps invoking Unstage. Hence any errors removing files within this path is a critical
 		// error
 		if !os.IsNotExist(err) {
-			klog.Errorf("failed to remove staging target path (%s): (%v)", stagingTargetPath, err)
+			klog.Errorf(util.Log(ctx, "failed to remove staging target path (%s): (%v)"), stagingTargetPath, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
 
 	imgInfo, err := lookupRBDImageMetadataStash(stagingParentPath)
 	if err != nil {
-		klog.V(2).Infof("failed to find image metadata: %v", err)
+		klog.V(2).Infof(util.Log(ctx, "failed to find image metadata: %v"), err)
 		// It is an error if it was mounted, as we should have found the image metadata file with
 		// no errors
 		if !notMnt {
@@ -464,17 +464,16 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	// Unmapping rbd device
 	imageSpec := imgInfo.Pool + "/" + imgInfo.ImageName
-	if err = detachRBDImageOrDeviceSpec(imageSpec, true, imgInfo.NbdAccess); err != nil {
-		klog.Errorf("error unmapping volume (%s) from staging path (%s): (%v)",
-			req.GetVolumeId(), stagingTargetPath, err)
+	if err = detachRBDImageOrDeviceSpec(ctx, imageSpec, true, imgInfo.NbdAccess); err != nil {
+		klog.Errorf(util.Log(ctx, "error unmapping volume (%s) from staging path (%s): (%v)"), req.GetVolumeId(), stagingTargetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof("successfully unmounted volume (%s) from staging path (%s)",
+	klog.Infof(util.Log(ctx, "successfully unmounted volume (%s) from staging path (%s)"),
 		req.GetVolumeId(), stagingTargetPath)
 
 	if err = cleanupRBDImageMetadataStash(stagingParentPath); err != nil {
-		klog.Errorf("failed to cleanup image metadata stash (%v)", err)
+		klog.Errorf(util.Log(ctx, "failed to cleanup image metadata stash (%v)"), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
