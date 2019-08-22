@@ -298,12 +298,12 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 		return err
 	}
 
-	rbdSnap.Pool, err = util.GetPoolName(rbdSnap.Monitors, cr, vi.LocationID)
+	rbdSnap.Pool, err = util.GetPoolName(ctx, rbdSnap.Monitors, cr, vi.LocationID)
 	if err != nil {
 		return err
 	}
 
-	rbdSnap.RequestName, rbdSnap.RbdImageName, err = snapJournal.GetObjectUUIDData(rbdSnap.Monitors,
+	rbdSnap.RequestName, rbdSnap.RbdImageName, err = snapJournal.GetObjectUUIDData(ctx, rbdSnap.Monitors,
 		cr, rbdSnap.Pool, vi.ObjectUUID, true)
 	if err != nil {
 		return err
@@ -342,12 +342,12 @@ func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr
 		return err
 	}
 
-	rbdVol.Pool, err = util.GetPoolName(rbdVol.Monitors, cr, vi.LocationID)
+	rbdVol.Pool, err = util.GetPoolName(ctx, rbdVol.Monitors, cr, vi.LocationID)
 	if err != nil {
 		return err
 	}
 
-	rbdVol.RequestName, _, err = volJournal.GetObjectUUIDData(rbdVol.Monitors, cr,
+	rbdVol.RequestName, _, err = volJournal.GetObjectUUIDData(ctx, rbdVol.Monitors, cr,
 		rbdVol.Pool, vi.ObjectUUID, false)
 	if err != nil {
 		return err
@@ -594,7 +594,7 @@ func deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credential
 		return errors.Wrapf(err, "failed to delete snapshot, command output: %s", string(output))
 	}
 
-	if err := undoSnapReservation(pOpts, cr); err != nil {
+	if err := undoSnapReservation(ctx, pOpts, cr); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) on image (%s) (%s)"),
 			pOpts.RequestName, pOpts.RbdSnapName, pOpts.RbdImageName, err)
 	}

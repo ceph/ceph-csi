@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -33,7 +34,7 @@ import (
 
 type volumeID string
 
-func execCommand(program string, args ...string) (stdout, stderr []byte, err error) {
+func execCommand(ctx context.Context, program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
 		cmd           = exec.Command(program, args...) // nolint: gosec
 		sanitizedArgs = util.StripSecretInArgs(args)
@@ -44,7 +45,7 @@ func execCommand(program string, args ...string) (stdout, stderr []byte, err err
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
 
-	klog.V(4).Infof("cephfs: EXEC %s %s", program, sanitizedArgs)
+	klog.V(4).Infof(util.Log(ctx, "cephfs: EXEC %s %s"), program, sanitizedArgs)
 
 	if err := cmd.Run(); err != nil {
 		if cmd.Process == nil {
@@ -58,14 +59,14 @@ func execCommand(program string, args ...string) (stdout, stderr []byte, err err
 	return stdoutBuf.Bytes(), stderrBuf.Bytes(), nil
 }
 
-func execCommandErr(program string, args ...string) error {
-	_, _, err := execCommand(program, args...)
+func execCommandErr(ctx context.Context, program string, args ...string) error {
+	_, _, err := execCommand(ctx, program, args...)
 	return err
 }
 
 //nolint: unparam
-func execCommandJSON(v interface{}, program string, args ...string) error {
-	stdout, _, err := execCommand(program, args...)
+func execCommandJSON(ctx context.Context, v interface{}, program string, args ...string) error {
+	stdout, _, err := execCommand(ctx, program, args...)
 	if err != nil {
 		return err
 	}

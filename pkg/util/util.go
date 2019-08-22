@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"os"
 	"path"
 	"strings"
@@ -131,8 +132,8 @@ func ValidateDriverName(driverName string) error {
 
 // GenerateVolID generates a volume ID based on passed in parameters and version, to be returned
 // to the CO system
-func GenerateVolID(monitors string, cr *Credentials, pool, clusterID, objUUID string, volIDVersion uint16) (string, error) {
-	poolID, err := GetPoolID(monitors, cr, pool)
+func GenerateVolID(ctx context.Context, monitors string, cr *Credentials, pool, clusterID, objUUID string, volIDVersion uint16) (string, error) {
+	poolID, err := GetPoolID(ctx, monitors, cr, pool)
 	if err != nil {
 		return "", err
 	}

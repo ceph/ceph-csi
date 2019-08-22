@@ -1,6 +1,23 @@
+/*
+Copyright 2019 The Ceph-CSI Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package cephfs
 
 import (
+	"context"
 	"encoding/base64"
 	"os"
 	"sync"
@@ -51,7 +68,7 @@ func remountCachedVolumes() error {
 	me := &volumeMountCacheEntry{}
 	err := volumeMountCache.nodeCacheStore.ForAll(volumeMountCachePrefix, me, func(identifier string) error {
 		volID := me.VolumeID
-		if volOpts, vid, err := newVolumeOptionsFromVolID(me.VolumeID, nil, decodeCredentials(me.Secrets)); err != nil {
+		if volOpts, vid, err := newVolumeOptionsFromVolID(context.TODO(), me.VolumeID, nil, decodeCredentials(me.Secrets)); err != nil {
 			if err, ok := err.(util.ErrKeyNotFound); ok {
 				klog.Infof("mount-cache: image key not found, assuming the volume %s to be already deleted (%v)", volID, err)
 				if err := volumeMountCache.nodeCacheStore.Delete(genVolumeMountCacheFileName(volID)); err == nil {
@@ -101,7 +118,7 @@ func mountOneCacheEntry(volOptions *volumeOptions, vid *volumeIdentifier, me *vo
 		}
 		defer cr.DeleteCredentials()
 
-		volOptions.RootPath, err = getVolumeRootPathCeph(volOptions, cr, volumeID(vid.FsSubvolName))
+		volOptions.RootPath, err = getVolumeRootPathCeph(context.TODO(), volOptions, cr, volumeID(vid.FsSubvolName))
 		if err != nil {
 			return err
 		}
@@ -131,7 +148,7 @@ func mountOneCacheEntry(volOptions *volumeOptions, vid *volumeIdentifier, me *vo
 			klog.Errorf("mount-cache: failed to create mounter for volume %s: %v", volID, err)
 			return err
 		}
-		if err := m.mount(me.StagingPath, cr, volOptions); err != nil {
+		if err := m.mount(context.TODO(), me.StagingPath, cr, volOptions); err != nil {
 			klog.Errorf("mount-cache: failed to mount volume %s: %v", volID, err)
 			return err
 		}
@@ -140,7 +157,7 @@ func mountOneCacheEntry(volOptions *volumeOptions, vid *volumeIdentifier, me *vo
 	mountOptions := []string{"bind"}
 	for targetPath, readOnly := range me.TargetPaths {
 		if err := cleanupMountPoint(targetPath); err == nil {
-			if err := bindMount(me.StagingPath, targetPath, readOnly, mountOptions); err != nil {
+			if err := bindMount(context.TODO(), me.StagingPath, targetPath, readOnly, mountOptions); err != nil {
 				klog.Errorf("mount-cache: failed to bind-mount volume %s: %s %s %v %v",
 					volID, me.StagingPath, targetPath, readOnly, err)
 			} else {
@@ -156,7 +173,7 @@ func cleanupMountPoint(mountPoint string) error {
 	if _, err := os.Stat(mountPoint); err != nil {
 		if isCorruptedMnt(err) {
 			klog.Infof("mount-cache: corrupted mount point %s, need unmount", mountPoint)
-			err := execCommandErr("umount", mountPoint)
+			err := execCommandErr(context.TODO(), "umount", mountPoint)
 			if err != nil {
 				klog.Infof("mount-cache: failed to umount %s %v", mountPoint, err)
 				// ignore error return err
@@ -205,7 +222,7 @@ func (mc *volumeMountCacheMap) isEnable() bool {
 	return mc.nodeCacheStore.BasePath != ""
 }
 
-func (mc *volumeMountCacheMap) nodeStageVolume(volID, stagingTargetPath, mounter string, secrets map[string]string) error {
+func (mc *volumeMountCacheMap) nodeStageVolume(ctx context.Context, volID, stagingTargetPath, mounter string, secrets map[string]string) error {
 	if !mc.isEnable() {
 		return nil
 	}
@@ -216,11 +233,11 @@ func (mc *volumeMountCacheMap) nodeStageVolume(volID, stagingTargetPath, mounter
 	me, ok := volumeMountCache.volumes[volID]
 	if ok {
 		if me.StagingPath == stagingTargetPath {
-			klog.Warningf("mount-cache: node unexpected restage volume for volume %s", volID)
+			klog.Warningf(util.Log(ctx, "mount-cache: node unexpected restage volume for volume %s"), volID)
 			return nil
 		}
 		lastTargetPaths = me.TargetPaths
-		klog.Warningf("mount-cache: node stage volume ignore last cache entry for volume %s", volID)
+		klog.Warningf(util.Log(ctx, "mount-cache: node stage volume ignore last cache entry for volume %s"), volID)
 	}
 
 	me = volumeMountCacheEntry{DriverVersion: util.DriverVersion}
@@ -246,7 +263,7 @@ func (mc *volumeMountCacheMap) nodeUnStageVolume(volID string) error {
 	return mc.nodeCacheStore.Delete(genVolumeMountCacheFileName(volID))
 }
 
-func (mc *volumeMountCacheMap) nodePublishVolume(volID, targetPath string, readOnly bool) error {
+func (mc *volumeMountCacheMap) nodePublishVolume(ctx context.Context, volID, targetPath string, readOnly bool) error {
 	if !mc.isEnable() {
 		return nil
 	}
@@ -258,10 +275,10 @@ func (mc *volumeMountCacheMap) nodePublishVolume(volID, targetPath string, readO
 		return errors.New("mount-cache: node publish volume failed to find cache entry for volume")
 	}
 	volumeMountCache.volumes[volID].TargetPaths[targetPath] = readOnly
-	return mc.updateNodeCache(volID)
+	return mc.updateNodeCache(ctx, volID)
 }
 
-func (mc *volumeMountCacheMap) nodeUnPublishVolume(volID, targetPath string) error {
+func (mc *volumeMountCacheMap) nodeUnPublishVolume(ctx context.Context, volID, targetPath string) error {
 	if !mc.isEnable() {
 		return nil
 	}
@@ -273,13 +290,13 @@ func (mc *volumeMountCacheMap) nodeUnPublishVolume(volID, targetPath string) err
 		return errors.New("mount-cache: node unpublish volume failed to find cache entry for volume")
 	}
 	delete(volumeMountCache.volumes[volID].TargetPaths, targetPath)
-	return mc.updateNodeCache(volID)
+	return mc.updateNodeCache(ctx, volID)
 }
 
-func (mc *volumeMountCacheMap) updateNodeCache(volID string) error {
+func (mc *volumeMountCacheMap) updateNodeCache(ctx context.Context, volID string) error {
 	me := volumeMountCache.volumes[volID]
 	if err := volumeMountCache.nodeCacheStore.Delete(genVolumeMountCacheFileName(volID)); err == nil {
-		klog.Infof("mount-cache: metadata not found, delete mount cache failed for volume %s", volID)
+		klog.Infof(util.Log(ctx, "mount-cache: metadata not found, delete mount cache failed for volume %s"), volID)
 	}
 	return mc.nodeCacheStore.Create(genVolumeMountCacheFileName(volID), me)
 }

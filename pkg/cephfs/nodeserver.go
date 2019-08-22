@@ -80,7 +80,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	stagingTargetPath := req.GetStagingTargetPath()
 	volID := volumeID(req.GetVolumeId())
 
-	volOptions, _, err := newVolumeOptionsFromVolID(string(volID), req.GetVolumeContext(), req.GetSecrets())
+	volOptions, _, err := newVolumeOptionsFromVolID(ctx, string(volID), req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrInvalidVolID); !ok {
 			return nil, status.Error(codes.Internal, err.Error())
@@ -110,50 +110,50 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	isMnt, err := util.IsMountPoint(stagingTargetPath)
 
 	if err != nil {
-		klog.Errorf("stat failed: %v", err)
+		klog.Errorf(util.Log(ctx, "stat failed: %v"), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if isMnt {
-		klog.Infof("cephfs: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
+		klog.Infof(util.Log(ctx, "cephfs: volume %s is already mounted to %s, skipping"), volID, stagingTargetPath)
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
 	// It's not, mount now
-	if err = ns.mount(volOptions, req); err != nil {
+	if err = ns.mount(ctx, volOptions, req); err != nil {
 		return nil, err
 	}
 
-	klog.Infof("cephfs: successfully mounted volume %s to %s", volID, stagingTargetPath)
+	klog.Infof(util.Log(ctx, "cephfs: successfully mounted volume %s to %s"), volID, stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (*NodeServer) mount(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) error {
+func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) error {
 	stagingTargetPath := req.GetStagingTargetPath()
 	volID := volumeID(req.GetVolumeId())
 
 	cr, err := getCredentialsForVolume(volOptions, req)
 	if err != nil {
-		klog.Errorf("failed to get ceph credentials for volume %s: %v", volID, err)
+		klog.Errorf(util.Log(ctx, "failed to get ceph credentials for volume %s: %v"), volID, err)
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer cr.DeleteCredentials()
 
 	m, err := newMounter(volOptions)
 	if err != nil {
-		klog.Errorf("failed to create mounter for volume %s: %v", volID, err)
+		klog.Errorf(util.Log(ctx, "failed to create mounter for volume %s: %v"), volID, err)
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	klog.V(4).Infof("cephfs: mounting volume %s with %s", volID, m.name())
+	klog.V(4).Infof(util.Log(ctx, "cephfs: mounting volume %s with %s"), volID, m.name())
 
-	if err = m.mount(stagingTargetPath, cr, volOptions); err != nil {
-		klog.Errorf("failed to mount volume %s: %v", volID, err)
+	if err = m.mount(ctx, stagingTargetPath, cr, volOptions); err != nil {
+		klog.Errorf(util.Log(ctx, "failed to mount volume %s: %v"), volID, err)
 		return status.Error(codes.Internal, err.Error())
 	}
-	if err := volumeMountCache.nodeStageVolume(req.GetVolumeId(), stagingTargetPath, volOptions.Mounter, req.GetSecrets()); err != nil {
-		klog.Warningf("mount-cache: failed to stage volume %s %s: %v", volID, stagingTargetPath, err)
+	if err := volumeMountCache.nodeStageVolume(ctx, req.GetVolumeId(), stagingTargetPath, volOptions.Mounter, req.GetSecrets()); err != nil {
+		klog.Warningf(util.Log(ctx, "mount-cache: failed to stage volume %s %s: %v"), volID, stagingTargetPath, err)
 	}
 	return nil
 }
@@ -173,7 +173,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	volID := req.GetVolumeId()
 
 	if err := util.CreateMountPoint(targetPath); err != nil {
-		klog.Errorf("failed to create mount point at %s: %v", targetPath, err)
+		klog.Errorf(util.Log(ctx, "failed to create mount point at %s: %v"), targetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -204,31 +204,31 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	isMnt, err := util.IsMountPoint(targetPath)
 
 	if err != nil {
-		klog.Errorf("stat failed: %v", err)
+		klog.Errorf(util.Log(ctx, "stat failed: %v"), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if isMnt {
-		klog.Infof("cephfs: volume %s is already bind-mounted to %s", volID, targetPath)
+		klog.Infof(util.Log(ctx, "cephfs: volume %s is already bind-mounted to %s"), volID, targetPath)
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
 	// It's not, mount now
 
-	if err = bindMount(req.GetStagingTargetPath(), req.GetTargetPath(), req.GetReadonly(), mountOptions); err != nil {
-		klog.Errorf("failed to bind-mount volume %s: %v", volID, err)
+	if err = bindMount(ctx, req.GetStagingTargetPath(), req.GetTargetPath(), req.GetReadonly(), mountOptions); err != nil {
+		klog.Errorf(util.Log(ctx, "failed to bind-mount volume %s: %v"), volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = volumeMountCache.nodePublishVolume(volID, targetPath, req.GetReadonly()); err != nil {
-		klog.Warningf("mount-cache: failed to publish volume %s %s: %v", volID, targetPath, err)
+	if err = volumeMountCache.nodePublishVolume(ctx, volID, targetPath, req.GetReadonly()); err != nil {
+		klog.Warningf(util.Log(ctx, "mount-cache: failed to publish volume %s %s: %v"), volID, targetPath, err)
 	}
 
-	klog.Infof("cephfs: successfully bind-mounted volume %s to %s", volID, targetPath)
+	klog.Infof(util.Log(ctx, "cephfs: successfully bind-mounted volume %s to %s"), volID, targetPath)
 
 	err = os.Chmod(targetPath, 0777)
 	if err != nil {
-		klog.Errorf("failed to change targetpath permission for volume %s: %v", volID, err)
+		klog.Errorf(util.Log(ctx, "failed to change targetpath permission for volume %s: %v"), volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -245,12 +245,12 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	targetPath := req.GetTargetPath()
 
 	volID := req.GetVolumeId()
-	if err = volumeMountCache.nodeUnPublishVolume(volID, targetPath); err != nil {
-		klog.Warningf("mount-cache: failed to unpublish volume %s %s: %v", volID, targetPath, err)
+	if err = volumeMountCache.nodeUnPublishVolume(ctx, volID, targetPath); err != nil {
+		klog.Warningf(util.Log(ctx, "mount-cache: failed to unpublish volume %s %s: %v"), volID, targetPath, err)
 	}
 
 	// Unmount the bind-mount
-	if err = unmountVolume(targetPath); err != nil {
+	if err = unmountVolume(ctx, targetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -258,7 +258,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof("cephfs: successfully unbinded volume %s from %s", req.GetVolumeId(), targetPath)
+	klog.Infof(util.Log(ctx, "cephfs: successfully unbinded volume %s from %s"), req.GetVolumeId(), targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
@@ -274,15 +274,15 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	volID := req.GetVolumeId()
 	if err = volumeMountCache.nodeUnStageVolume(volID); err != nil {
-		klog.Warningf("mount-cache: failed to unstage volume %s %s: %v", volID, stagingTargetPath, err)
+		klog.Warningf(util.Log(ctx, "mount-cache: failed to unstage volume %s %s: %v"), volID, stagingTargetPath, err)
 	}
 
 	// Unmount the volume
-	if err = unmountVolume(stagingTargetPath); err != nil {
+	if err = unmountVolume(ctx, stagingTargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof("cephfs: successfully unmounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
+	klog.Infof(util.Log(ctx, "cephfs: successfully unmounted volume %s from %s"), req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }

@@ -150,7 +150,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	defer func() {
 		if err != nil {
-			errDefer := undoVolReservation(rbdVol, cr)
+			errDefer := undoVolReservation(ctx, rbdVol, cr)
 			if errDefer != nil {
 				klog.Warningf(util.Log(ctx, "failed undoing reservation of volume: %s (%s)"), req.GetName(), errDefer)
 			}
@@ -326,7 +326,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		idLk := volumeNameLocker.Lock(rbdVol.RequestName)
 		defer volumeNameLocker.Unlock(idLk, rbdVol.RequestName)
 
-		if err := undoVolReservation(rbdVol, cr); err != nil {
+		if err := undoVolReservation(ctx, rbdVol, cr); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		return &csi.DeleteVolumeResponse{}, nil
@@ -345,7 +345,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := undoVolReservation(rbdVol, cr); err != nil {
+	if err := undoVolReservation(ctx, rbdVol, cr); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to remove reservation for volume (%s) with backing image (%s) (%s)"),
 			rbdVol.RequestName, rbdVol.RbdImageName, err)
 		return nil, status.Error(codes.Internal, err.Error())
@@ -444,7 +444,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 	defer func() {
 		if err != nil {
-			errDefer := undoSnapReservation(rbdSnap, cr)
+			errDefer := undoSnapReservation(ctx, rbdSnap, cr)
 			if errDefer != nil {
 				klog.Warningf(util.Log(ctx, "failed undoing reservation of snapshot: %s %v"), req.GetName(), errDefer)
 			}
@@ -568,7 +568,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		idLk := snapshotNameLocker.Lock(rbdSnap.RequestName)
 		defer snapshotNameLocker.Unlock(idLk, rbdSnap.RequestName)
 
-		if err = undoSnapReservation(rbdSnap, cr); err != nil {
+		if err = undoSnapReservation(ctx, rbdSnap, cr); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		return &csi.DeleteSnapshotResponse{}, nil
