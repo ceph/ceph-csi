@@ -17,10 +17,10 @@ limitations under the License.
 package rbd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ceph/ceph-csi/pkg/util"
-	"golang.org/x/net/context"
 
 	"github.com/pkg/errors"
 	"k8s.io/klog"
