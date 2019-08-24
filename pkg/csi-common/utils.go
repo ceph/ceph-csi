@@ -17,6 +17,7 @@ limitations under the License.
 package csicommon
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"strings"
@@ -25,7 +26,6 @@ import (
 	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
