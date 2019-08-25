@@ -50,9 +50,6 @@ type Driver struct {
 }
 
 var (
-	// DefaultVolumeMounter for mounting volumes
-	DefaultVolumeMounter string
-
 	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
 	// ceph clusters across CSI instances, to differentiate omap names per CSI instance
 	CSIInstanceID = "default"
@@ -103,17 +100,8 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	if conf.VolumeMounter != "" {
 		if err := validateMounter(conf.VolumeMounter); err != nil {
 			klog.Fatalln(err)
-		} else {
-			DefaultVolumeMounter = conf.VolumeMounter
 		}
-	} else {
-		// Pick the first available mounter as the default one.
-		// The choice is biased towards "fuse" in case both
-		// ceph fuse and kernel mounters are available.
-		DefaultVolumeMounter = availableMounters[0]
 	}
-
-	klog.Infof("cephfs: setting default volume mounter to %s", DefaultVolumeMounter)
 
 	if err := util.WriteCephConfig(); err != nil {
 		klog.Fatalf("failed to write ceph configuration file: %v", err)
