@@ -27,17 +27,19 @@ import (
 )
 
 type volumeOptions struct {
-	RequestName     string
-	Size            int64
-	ClusterID       string
-	FsName          string
-	FscID           int64
-	MetadataPool    string
-	Monitors        string `json:"monitors"`
-	Pool            string `json:"pool"`
-	RootPath        string `json:"rootPath"`
-	Mounter         string `json:"mounter"`
-	ProvisionVolume bool   `json:"provisionVolume"`
+	RequestName        string
+	Size               int64
+	ClusterID          string
+	FsName             string
+	FscID              int64
+	MetadataPool       string
+	Monitors           string `json:"monitors"`
+	Pool               string `json:"pool"`
+	RootPath           string `json:"rootPath"`
+	Mounter            string `json:"mounter"`
+	ProvisionVolume    bool   `json:"provisionVolume"`
+	KernelMountOptions string `json:"kernelMountOptions"`
+	FuseMountOptions   string `json:"fuseMountOptions"`
 }
 
 func validateNonEmptyField(field, fieldName string) error {
@@ -147,6 +149,14 @@ func newVolumeOptions(ctx context.Context, requestName string, size int64, volOp
 		return nil, err
 	}
 
+	if err = extractOptionalOption(&opts.KernelMountOptions, "kernelMountOptions", volOptions); err != nil {
+		return nil, err
+	}
+
+	if err = extractOptionalOption(&opts.FuseMountOptions, "fuseMountOptions", volOptions); err != nil {
+		return nil, err
+	}
+
 	opts.RequestName = requestName
 	opts.Size = size
 
@@ -220,6 +230,14 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 
 	if volOpt != nil {
 		if err = extractOptionalOption(&volOptions.Pool, "pool", volOpt); err != nil {
+			return nil, nil, err
+		}
+
+		if err = extractOptionalOption(&volOptions.KernelMountOptions, "kernelMountOptions", volOpt); err != nil {
+			return nil, nil, err
+		}
+
+		if err = extractOptionalOption(&volOptions.FuseMountOptions, "fuseMountOptions", volOpt); err != nil {
 			return nil, nil, err
 		}
 
