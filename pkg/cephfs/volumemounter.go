@@ -141,6 +141,9 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 		"-o", "nonempty",
 	}
 
+	if volOptions.FuseMountOptions != "" {
+		args = append(args, ","+volOptions.FuseMountOptions)
+	}
 	if volOptions.FsName != "" {
 		args = append(args, "--client_mds_namespace="+volOptions.FsName)
 	}
@@ -196,6 +199,9 @@ func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, v
 	optionsStr := fmt.Sprintf("name=%s,secretfile=%s", cr.ID, cr.KeyFile)
 	if volOptions.FsName != "" {
 		optionsStr += fmt.Sprintf(",mds_namespace=%s", volOptions.FsName)
+	}
+	if volOptions.KernelMountOptions != "" {
+		optionsStr += fmt.Sprintf(",%s", volOptions.KernelMountOptions)
 	}
 	args = append(args, "-o", optionsStr)
 
