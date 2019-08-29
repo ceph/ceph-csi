@@ -19,6 +19,7 @@ package rbd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
@@ -87,6 +88,13 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 	rbdVol, err := genVolFromVolumeOptions(ctx, req.GetParameters(), nil, (isMultiNode && isBlock), false)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if !isMultiNode {
+		if !strings.Contains(rbdVol.ImageFeatures, "exclusive-lock") {
+			rbdVol.ImageFeatures += ",exclusive-lock"
+		}
+
 	}
 
 	rbdVol.RequestName = req.GetName()
@@ -595,4 +603,160 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	return &csi.DeleteSnapshotResponse{}, nil
+}
+
+func (cs *ControllerServer) validatePublishReq(ctx context.Context, req *csi.ControllerPublishVolumeRequest) error {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME); err != nil {
+		klog.V(3).Infof(util.Log(ctx, "invalid controller publish req: %v"), protosanitizer.StripSecrets(req))
+		return err
+	}
+	// Check sanity of request Name, Volume Capabilities
+	if req.GetVolumeId() == "" {
+		return status.Error(codes.InvalidArgument, "volume ID cannot be empty")
+	}
+	if req.GetVolumeCapability() == nil {
+		return status.Error(codes.InvalidArgument, "volume Capabilities cannot be empty")
+	}
+
+	if req.GetNodeId() == "" {
+		return status.Error(codes.InvalidArgument, "node ID cannot be empty")
+	}
+	return nil
+}
+
+// ControllerPublishVolume publish volume on node
+func (cs *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
+	err := cs.validatePublishReq(ctx, req)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed controller publish validation %v"), err)
+		return nil, err
+	}
+
+	cr, err := util.NewUserCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	volumeID := req.GetVolumeId()
+	idLk := volumeNameLocker.Lock(volumeID)
+	defer volumeNameLocker.Unlock(idLk, volumeID)
+
+	// return success for RWX volumes
+	if req.GetVolumeCapability().GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+		return &csi.ControllerPublishVolumeResponse{}, nil
+	}
+
+	rbdVol, err := cs.getRbdVolInfo(ctx, volumeID, req.GetSecrets(), cr)
+	if err != nil {
+		return nil, err
+	}
+
+	lock := req.GetNodeId()
+	_, err = checkLockPresentOnImage(ctx, rbdVol, lock, cr)
+	if err != nil {
+		if _, ok := err.(ErrLockNotFound); ok {
+			// Lock it
+			err = rbdLockImage(ctx, rbdVol, req.GetNodeId(), cr)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "")
+			}
+			return &csi.ControllerPublishVolumeResponse{}, nil
+		}
+		return nil, status.Errorf(codes.FailedPrecondition, err.Error())
+	}
+
+	return &csi.ControllerPublishVolumeResponse{}, nil
+}
+
+func (cs *ControllerServer) validateUnPublishReq(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) error {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME); err != nil {
+		klog.V(3).Infof(util.Log(ctx, "invalid controller unpublish req: %v"), protosanitizer.StripSecrets(req))
+		return err
+	}
+	// Check sanity of request Name, Volume Capabilities
+	if req.GetVolumeId() == "" {
+		return status.Error(codes.InvalidArgument, "volume ID cannot be empty")
+	}
+
+	if req.GetNodeId() == "" {
+		return status.Error(codes.InvalidArgument, "Node ID cannot be empty")
+	}
+	return nil
+}
+
+func (cs *ControllerServer) getRbdVolInfo(ctx context.Context, volumeID string, secret map[string]string, cr *util.Credentials) (*rbdVolume, error) {
+	rbdVol := &rbdVolume{}
+	var err error
+	if err = genVolFromVolID(ctx, rbdVol, volumeID, cr); err != nil {
+		// If error is ErrInvalidVolID it could be a version 1.0.0 or lower volume, attempt
+		// to process it as such
+		if _, ok := err.(ErrInvalidVolID); ok {
+			if isLegacyVolumeID(volumeID) {
+				klog.V(2).Infof(util.Log(ctx, "attempting to get legacy volume (%s) information"), volumeID)
+
+				if cs.MetadataStore == nil {
+					return nil, status.Errorf(codes.InvalidArgument, "missing metadata store configuration for ID (%s)", volumeID)
+				}
+
+				if err = cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
+					return nil, status.Error(codes.Internal, err.Error())
+				}
+
+				// Fill up Monitors
+				if err = updateMons(rbdVol, nil, secret); err != nil {
+					return nil, status.Error(codes.Internal, err.Error())
+				}
+
+				// Update rbdImageName as the VolName when dealing with version 1 volumes
+				rbdVol.RbdImageName = rbdVol.VolName
+			}
+
+			if _, ok := err.(ErrImageNotFound); ok {
+				return nil, status.Errorf(codes.NotFound, "volume ID (%s) not found with err %v", volumeID, err)
+			}
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+	return rbdVol, nil
+}
+
+// ControllerUnpublishVolume unpublish on node
+func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
+
+	err := cs.validateUnPublishReq(ctx, req)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed controller unpublish validation %v"), err)
+		return nil, err
+	}
+
+	cr, err := util.NewUserCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	volumeID := req.GetVolumeId()
+	idLk := volumeNameLocker.Lock(volumeID)
+	defer volumeNameLocker.Unlock(idLk, volumeID)
+	rbdVol, err := cs.getRbdVolInfo(ctx, volumeID, req.GetSecrets(), cr)
+	if err != nil {
+		return nil, err
+	}
+
+	lock := req.GetNodeId()
+	locker, err := checkLockPresentOnImage(ctx, rbdVol, lock, cr)
+
+	if err != nil {
+		if _, ok := err.(ErrLockNotFound); ok {
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	err = rbdUnLockImage(ctx, rbdVol, locker, lock, cr)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "")
+	}
+	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }

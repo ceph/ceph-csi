@@ -28,6 +28,8 @@ parameters:
    # to the 'pool'.
    csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
    csi.storage.k8s.io/provisioner-secret-namespace: default
+   csi.storage.k8s.io/controller-publish-secret-name: csi-rbd-secret
+   csi.storage.k8s.io/controller-publish-secret-namespace: default
    csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
    csi.storage.k8s.io/node-stage-secret-namespace: default
    # Specify the filesystem type of the volume. If not specified,

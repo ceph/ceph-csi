@@ -26,6 +26,16 @@ func (e ErrImageNotFound) Error() string {
 	return e.err.Error()
 }
 
+// ErrLockNotFound is returned when lock is not found in the cluster on the given image
+type ErrLockNotFound struct {
+	lock string
+	err  error
+}
+
+func (e ErrLockNotFound) Error() string {
+	return e.err.Error()
+}
+
 // ErrSnapNotFound is returned when snap name passed is not found in the list of snapshots for the
 // given image
 type ErrSnapNotFound struct {

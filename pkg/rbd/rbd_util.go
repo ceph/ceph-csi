@@ -140,6 +140,83 @@ func createImage(ctx context.Context, pOpts *rbdVolume, volSz int64, cr *util.Cr
 	return nil
 }
 
+type imageLocks struct {
+	ID      string `json:"id"`
+	Locker  string `json:"locker"`
+	Address string `json:"address"`
+}
+
+func checkLockPresentOnImage(ctx context.Context, pOpts *rbdVolume, lock string, cr *util.Credentials) (string, error) {
+	locks, err := rbdListLocksOnImage(ctx, pOpts, cr)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "rbd: lock list on image %s using mon %s, pool %s (v)"), pOpts.RbdImageName, pOpts.Monitors, pOpts.Pool, err)
+		return "", err
+	}
+	for _, l := range locks {
+		if l.ID == lock {
+			return l.Locker, nil
+		}
+	}
+	if len(locks) == 0 {
+		return "", ErrLockNotFound{lock, errors.New("lock not found on image")}
+	}
+	return "", fmt.Errorf("lock %s as already present on %s", locks[0].ID, pOpts.RbdImageName)
+}
+
+func rbdListLocksOnImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) ([]imageLocks, error) {
+	imgLocks := []imageLocks{}
+
+	args := []string{"lock", "ls", "--image", pOpts.RbdImageName, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile, "--format=json"}
+
+	stdout, _, err := util.ExecCommand("rbd", args...)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "rbd: failed to list locks on rbd image %s using mon %s, pool %s (%v)"), pOpts.RbdImageName, pOpts.Monitors, pOpts.Pool, err)
+		return imgLocks, err
+	}
+
+	err = json.Unmarshal(stdout, &imgLocks)
+	if err != nil {
+		return imgLocks, fmt.Errorf("unmarshal failed: %+v. raw buffer response: %s",
+			err, string(stdout))
+	}
+
+	return imgLocks, nil
+}
+
+func rbdLockImage(ctx context.Context, pOpts *rbdVolume, lockID string, cr *util.Credentials) error {
+
+	klog.V(4).Infof(util.Log(ctx, "rbd: lock add on image %s lockid=%s using mon %s, pool %s"), pOpts.RbdImageName, lockID, pOpts.Monitors, pOpts.Pool)
+
+	args := []string{"lock", "add", pOpts.RbdImageName, lockID, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
+
+	output, err := execCommand("rbd", args)
+
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "rbd: failed take a lock on rbd image %s with lockid=%s using mon %s, pool %s (%v)"), pOpts.RbdImageName, lockID, pOpts.Monitors, pOpts.Pool, err)
+		return errors.Wrapf(err, "failed to take a lock on rbd image, command output: %s", string(output))
+	}
+	klog.V(4).Infof(util.Log(ctx, "rbd: successfully added lock (locker_id: %s) on image: %s/%s with mon %s"), lockID, pOpts.Pool, pOpts.RbdImageName, pOpts.Monitors)
+	return nil
+}
+
+func rbdUnLockImage(ctx context.Context, pOpts *rbdVolume, locker, lockID string, cr *util.Credentials) error {
+
+	klog.V(4).Infof(util.Log(ctx, "rbd: lock remove on image %s lockid=%s and locker=%s using mon %s, pool %s"), pOpts.RbdImageName, lockID, locker, pOpts.Monitors, pOpts.Pool)
+
+	args := []string{"lock", "remove", pOpts.RbdImageName, lockID, locker, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
+
+	output, err := execCommand("rbd", args)
+
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "rbd: failed to release lock on %s with id=%s locker=%s using mon %s,pool %s (%v)"), pOpts.RbdImageName, lockID, locker, pOpts.Monitors,
+			pOpts.Pool, err)
+		return errors.Wrapf(err, "failed to release a lock on an rbd image, command output: %s", string(output))
+	}
+
+	klog.V(4).Infof(util.Log(ctx, "rbd: successfully remove lock (id: %s) on image: %s/%s with mon %s"), lockID, pOpts.Pool, pOpts.RbdImageName, pOpts.Monitors)
+	return nil
+}
+
 // rbdStatus checks if there is watcher on the image.
 // It returns true if there is a watcher on the image, otherwise returns false.
 func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (bool, string, error) {
