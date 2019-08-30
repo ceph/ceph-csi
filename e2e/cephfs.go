@@ -61,6 +61,7 @@ var _ = Describe("cephfs", func() {
 	BeforeEach(func() {
 		updateCephfsDirPath(f.ClientSet)
 		createFileSystem(f.ClientSet)
+		waitTillMonsAreUp(f)
 		createConfigMap(cephfsDirPath, f.ClientSet, f)
 		deployCephfsPlugin()
 		createCephfsSecret(f.ClientSet, f)

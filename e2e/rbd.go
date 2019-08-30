@@ -63,6 +63,7 @@ var _ = Describe("RBD", func() {
 	BeforeEach(func() {
 		updaterbdDirPath(f.ClientSet)
 		createRBDPool()
+		waitTillMonsAreUp(f)
 		createConfigMap(rbdDirPath, f.ClientSet, f)
 		deployRBDPlugin()
 		createRBDStorageClass(f.ClientSet, f)

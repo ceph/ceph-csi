@@ -130,7 +130,7 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 	return nil
 }
 
-func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) string {
+func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string) {
 
 	cmd := []string{"/bin/sh", "-c", c}
 	podList, err := f.PodClientNS(ns).List(*opt)
@@ -149,9 +149,11 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 		PreserveWhitespace: true,
 	}
 	stdOut, stdErr, err := f.ExecWithOptions(podPot)
+	if stdErr != "" {
+		e2elog.Logf("stdErr occurred ", stdErr)
+	}
 	Expect(err).Should(BeNil())
-	Expect(stdErr).Should(BeEmpty())
-	return stdOut
+	return stdOut, stdErr
 }
 
 func getMons(ns string, c kubernetes.Interface) []string {
@@ -191,6 +193,21 @@ func getStorageClass(path string) scv1.StorageClass {
 // 	return sc
 // }
 
+// this is a  workaround, as we are hitting "unable to get monitor info from DNS SRV with service name: ceph-mon"
+func waitTillMonsAreUp(f *framework.Framework) {
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	for i := 0; i < 10; i++ {
+		_, err := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+		if err != "" {
+			time.Sleep(10 * time.Second)
+			continue
+		}
+		break
+	}
+}
+
 func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
@@ -201,7 +218,8 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	fsID := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
 
@@ -217,7 +235,8 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	fsID := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
 
@@ -270,7 +289,8 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	fsID := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
 	// get mon list
@@ -309,7 +329,8 @@ func createCephfsSecret(c kubernetes.Interface, f *framework.Framework) {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	adminKey := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
+	adminKey, stdErr := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
+	Expect(stdErr).Should(BeEmpty())
 	sc.StringData["adminID"] = "admin"
 	sc.StringData["adminKey"] = adminKey
 	delete(sc.StringData, "userID")
@@ -324,7 +345,8 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	adminKey := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
+	adminKey, stdErr := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
+	Expect(stdErr).Should(BeEmpty())
 	sc.StringData["userID"] = "admin"
 	sc.StringData["userKey"] = adminKey
 	_, err := c.CoreV1().Secrets("default").Create(&sc)
@@ -750,8 +772,8 @@ func listRBDImages(f *framework.Framework) []string {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	stdout := execCommandInPod(f, "rbd ls --pool=replicapool --format=json", rookNS, &opt)
-
+	stdout, stdErr := execCommandInPod(f, "rbd ls --pool=replicapool --format=json", rookNS, &opt)
+	Expect(stdErr).Should(BeEmpty())
 	var imgInfos []string
 
 	err := json.Unmarshal([]byte(stdout), &imgInfos)
@@ -813,8 +835,8 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	if err != nil {
 		return err
 	}
-	persistData := execCommandInPod(f, fmt.Sprintf("cat %s", filePath), app.Namespace, &opt)
-
+	persistData, stdErr := execCommandInPod(f, fmt.Sprintf("cat %s", filePath), app.Namespace, &opt)
+	Expect(stdErr).Should(BeEmpty())
 	if !strings.Contains(persistData, data) {
 		return fmt.Errorf("data not persistent expected data %s received data %s  ", data, persistData)
 	}
