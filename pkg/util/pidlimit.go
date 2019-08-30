@@ -71,7 +71,7 @@ func GetPIDLimit() (int, error) {
 		return 0, err
 	}
 
-	f, err := os.Open(pidsMax)
+	f, err := os.Open(pidsMax) // #nosec - intended reading from /sys/...
 	if err != nil {
 		return 0, err
 	}
