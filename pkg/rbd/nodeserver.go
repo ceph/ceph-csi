@@ -153,6 +153,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 	isMounted = true
 
+	// #nosec - allow anyone to write inside the target path
 	err = os.Chmod(stagingTargetPath, 0777)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -202,7 +203,7 @@ func (ns *NodeServer) undoStagingTransaction(ctx context.Context, stagingParentP
 
 func (ns *NodeServer) createStageMountPoint(ctx context.Context, mountPath string, isBlock bool) error {
 	if isBlock {
-		pathFile, err := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0750)
+		pathFile, err := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0600)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to create mountPath:%s with error: %v"), mountPath, err)
 			return status.Error(codes.Internal, err.Error())
