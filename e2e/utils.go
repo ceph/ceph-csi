@@ -150,7 +150,7 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 	}
 	stdOut, stdErr, err := f.ExecWithOptions(podPot)
 	if stdErr != "" {
-		e2elog.Logf("stdErr occurred ", stdErr)
+		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
 	Expect(err).Should(BeNil())
 	return stdOut, stdErr
