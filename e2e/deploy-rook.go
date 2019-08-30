@@ -3,7 +3,6 @@ package e2e
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	. "github.com/onsi/gomega" // nolint
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -98,8 +97,6 @@ func deployToolBox(c kubernetes.Interface) {
 	name := getPodName(rookNS, c, opt)
 	err := waitForPodInRunningState(name, rookNS, c, deployTimeout)
 	Expect(err).Should(BeNil())
-	// this is a  workaround, as we are hitting "unable to get monitor info from DNS SRV with service name: ceph-mon"
-	time.Sleep(30 * time.Second)
 }
 
 func deployRook() {
