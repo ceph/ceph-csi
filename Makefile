@@ -56,9 +56,11 @@ cephcsi:
 image-cephcsi: cephcsi
 	cp _output/cephcsi deploy/cephcsi/image/cephcsi
 	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION) deploy/cephcsi/image
+	if [ "canary" != "$(CSI_IMAGE_VERSION)" ]; then $(CONTAINER_CMD) tag $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION) $(CSI_IMAGE_NAME):canary; fi
 
 push-image-cephcsi: image-cephcsi
 	$(CONTAINER_CMD) push $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION)
+	if [ "canary" != "$(CSI_IMAGE_VERSION)" ]; then $(CONTAINER_CMD) push $(CSI_IMAGE_NAME):canary; fi
 
 
 clean:
