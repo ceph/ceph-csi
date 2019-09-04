@@ -193,21 +193,6 @@ func getStorageClass(path string) scv1.StorageClass {
 // 	return sc
 // }
 
-// this is a  workaround, as we are hitting "unable to get monitor info from DNS SRV with service name: ceph-mon"
-func waitTillMonsAreUp(f *framework.Framework) {
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	for i := 0; i < 10; i++ {
-		_, err := execCommandInPod(f, "ceph fsid", rookNS, &opt)
-		if err != "" {
-			time.Sleep(10 * time.Second)
-			continue
-		}
-		break
-	}
-}
-
 func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
