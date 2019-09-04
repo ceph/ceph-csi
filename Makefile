@@ -44,6 +44,7 @@ dep-check:
 static-check:
 	./scripts/lint-go.sh
 	./scripts/lint-text.sh --require-all
+	./scripts/gosec.sh
 
 func-test:
 	go test github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)

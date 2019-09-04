@@ -226,6 +226,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	klog.Infof(util.Log(ctx, "cephfs: successfully bind-mounted volume %s to %s"), volID, targetPath)
 
+	// #nosec - allow anyone to write inside the target path
 	err = os.Chmod(targetPath, 0777)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to change targetpath permission for volume %s: %v"), volID, err)
