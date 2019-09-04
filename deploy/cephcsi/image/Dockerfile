@@ -3,7 +3,7 @@ LABEL maintainers="Ceph-CSI Authors"
 LABEL description="Ceph-CSI Plugin"
 
 # Removing ceph-iscsi repo to workaround the repo issue while upgrading
-RUN rm -f /etc/yum.repos.d/ceph-iscsi.repo && yum -y update && yum clean all
+#RUN rm -f /etc/yum.repos.d/ceph-iscsi.repo && yum -y update && yum clean all
 ENV CSIBIN=/usr/local/bin/cephcsi
 
 COPY cephcsi $CSIBIN
