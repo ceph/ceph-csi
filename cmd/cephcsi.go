@@ -62,7 +62,6 @@ func init() {
 	flag.BoolVar(&conf.Containerized, "containerized", true, "whether run as containerized")
 
 	// cephfs related flags
-	flag.StringVar(&conf.VolumeMounter, "volumemounter", "", "default volume mounter (possible options are 'kernel', 'fuse')")
 	flag.StringVar(&conf.MountCacheDir, "mountcachedir", "", "mount info cache save dir")
 
 	// liveness/grpc metrics related flags

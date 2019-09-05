@@ -63,7 +63,6 @@ type Config struct {
 	PluginPath      string // location of cephcsi plugin
 
 	// cephfs related flags
-	VolumeMounter string // default volume mounter (possible options are 'kernel', 'fuse')
 	MountCacheDir string // mount info cache save dir
 
 	// metrics related flags
