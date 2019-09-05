@@ -97,12 +97,6 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 		klog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
 	}
 
-	if conf.VolumeMounter != "" {
-		if err := validateMounter(conf.VolumeMounter); err != nil {
-			klog.Fatalln(err)
-		}
-	}
-
 	if err := util.WriteCephConfig(); err != nil {
 		klog.Fatalf("failed to write ceph configuration file: %v", err)
 	}
