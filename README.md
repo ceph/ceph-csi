@@ -87,7 +87,7 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | Master (Branch)         | quay.io/cephcsi/cephcsi      | canary    |
-| v1.2.0 (Branch)         | quay.io/cephcsi/cephcsi      | v1.2.0    |
+| v1.2.0 (Release)        | quay.io/cephcsi/cephcsi      | v1.2.0    |
 | v1.1.0 (Release)        | quay.io/cephcsi/cephcsi      | v1.1.0    |
 | v1.0.0 (Branch)         | quay.io/cephcsi/cephfsplugin | v1.0.0    |
 | v1.0.0 (Branch)         | quay.io/cephcsi/rbdplugin    | v1.0.0    |
