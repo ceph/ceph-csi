@@ -37,9 +37,7 @@ parameters:
   # (optional) The driver can use either ceph-fuse (fuse) or
   # ceph kernelclient (kernel).
   # If omitted, default volume mounter will be used - this is
-  # determined by probing for ceph-fuse
-  # or by setting the default mounter explicitly via
-  # --volumemounter command-line argument.
+  # determined by probing for ceph-fuse and mount.ceph
   # mounter: kernel
 reclaimPolicy: Delete
 mountOptions:
