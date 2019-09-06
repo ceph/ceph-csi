@@ -25,6 +25,7 @@ import (
 	connlib "github.com/kubernetes-csi/csi-lib-utils/connection"
 	"github.com/kubernetes-csi/csi-lib-utils/rpc"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc"
 	"k8s.io/klog"
 )
 
@@ -36,14 +37,7 @@ var (
 	})
 )
 
-func getLiveness(endpoint string, timeout time.Duration) {
-
-	csiConn, err := connlib.Connect(endpoint)
-	if err != nil {
-		// connlib should retry forever so a returned error should mean
-		// the grpc client is misconfigured rather than an error on the network
-		klog.Fatalf("failed to establish connection to CSI driver: %v", err)
-	}
+func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -72,11 +66,18 @@ func recordLiveness(endpoint string, pollTime, timeout time.Duration) {
 		klog.Fatalln(err)
 	}
 
+	csiConn, err := connlib.Connect(endpoint)
+	if err != nil {
+		// connlib should retry forever so a returned error should mean
+		// the grpc client is misconfigured rather than an error on the network
+		klog.Fatalf("failed to establish connection to CSI driver: %v", err)
+	}
+
 	// get liveness periodically
 	ticker := time.NewTicker(pollTime)
 	defer ticker.Stop()
 	for range ticker.C {
-		getLiveness(endpoint, timeout)
+		getLiveness(timeout, csiConn)
 	}
 }
 
