@@ -70,7 +70,7 @@ func loadAvailableMounters() error {
 		if err != nil {
 			return err
 		}
-		if majorVers >= 4 && minorVers >= 17 {
+		if majorVers > 4 || (majorVers >= 4 && minorVers >= 17) {
 			klog.Infof("loaded mounter: %s", volumeMounterKernel)
 			availableMounters = append(availableMounters, volumeMounterKernel)
 		} else {
