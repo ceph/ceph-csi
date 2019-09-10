@@ -67,6 +67,7 @@ type rbdVolume struct {
 	VolID              string `json:"volID"`
 	Monitors           string `json:"monitors"`
 	Pool               string `json:"pool"`
+	DataPool           string
 	ImageFormat        string `json:"imageFormat"`
 	ImageFeatures      string `json:"imageFeatures"`
 	VolSize            int64  `json:"volSize"`
@@ -122,14 +123,26 @@ func createImage(ctx context.Context, pOpts *rbdVolume, volSz int64, cr *util.Cr
 	volSzMiB := fmt.Sprintf("%dM", volSz)
 
 	if pOpts.ImageFormat == rbdImageFormat2 {
-		klog.V(4).Infof(util.Log(ctx, "rbd: create %s size %s format %s (features: %s) using mon %s, pool %s"),
+		logMsg := "rbd: create %s size %s format %s (features: %s) using mon %s, pool %s "
+		if pOpts.DataPool != "" {
+			logMsg += fmt.Sprintf("data pool %s", pOpts.DataPool)
+		}
+		klog.V(4).Infof(util.Log(ctx, logMsg),
 			image, volSzMiB, pOpts.ImageFormat, pOpts.ImageFeatures, pOpts.Monitors, pOpts.Pool)
 	} else {
-		klog.V(4).Infof(util.Log(ctx, "rbd: create %s size %s format %s using mon %s, pool %s"), image, volSzMiB, pOpts.ImageFormat, pOpts.Monitors, pOpts.Pool)
+		logMsg := "rbd: create %s size %s format %s using mon %s, pool %s "
+		if pOpts.DataPool != "" {
+			logMsg += fmt.Sprintf("data pool %s", pOpts.DataPool)
+		}
+		klog.V(4).Infof(util.Log(ctx, logMsg), image, volSzMiB, pOpts.ImageFormat, pOpts.Monitors, pOpts.Pool)
 	}
+
 	args := []string{"create", image, "--size", volSzMiB, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile, "--image-format", pOpts.ImageFormat}
 	if pOpts.ImageFormat == rbdImageFormat2 {
 		args = append(args, "--image-feature", pOpts.ImageFeatures)
+	}
+	if pOpts.DataPool != "" {
+		args = append(args, "--data-pool", pOpts.DataPool)
 	}
 	output, err := execCommand("rbd", args)
 
@@ -451,6 +464,8 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 	if !ok {
 		return nil, errors.New("missing required parameter pool")
 	}
+
+	rbdVol.DataPool = volOptions["dataPool"]
 
 	if isLegacyVolume {
 		err = updateMons(rbdVol, volOptions, credentials)
