@@ -60,6 +60,10 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	if value, ok := options["pool"]; !ok || value == "" {
 		return status.Error(codes.InvalidArgument, "missing or empty pool name to provision volume from")
 	}
+
+	if value, ok := options["dataPool"]; ok && value == "" {
+		return status.Error(codes.InvalidArgument, "empty datapool name to provision volume from")
+	}
 	return nil
 }
 
