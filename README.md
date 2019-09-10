@@ -56,7 +56,7 @@ NOTE:
 ### Ceph-CSI features and available versions
 
 | Plugin | Features                                                  | Feature Status | CSI Driver Version | CSI Spec Version | Ceph Cluster Version | Kubernetes Version |
-|--------|-----------------------------------------------------------|----------------|--------------------|------------------|----------------------|--------------------|
+| ------ | --------------------------------------------------------- | -------------- | ------------------ | ---------------- | -------------------- | ------------------ |
 | RBD    | Dynamically provision, de-provision Block mode RWO volume | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
 |        | Dynamically provision, de-provision Block mode RWX volume | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
 |        | Dynamically provision, de-provision File mode RWO volume  | GA             | >=v1.0.0           | >=v1.0.0         | >= Mimic             | >= v1.13.0         |
@@ -85,8 +85,9 @@ in the Kubernetes documentation.
 ## Ceph CSI Container images and release compatibility
 
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
-|-------------------------|------------------------------|-----------|
+| ----------------------- | ---------------------------- | --------- |
 | Master (Branch)         | quay.io/cephcsi/cephcsi      | canary    |
+| v1.2.0 (Release)        | quay.io/cephcsi/cephcsi      | v1.2.0    |
 | v1.1.0 (Release)        | quay.io/cephcsi/cephcsi      | v1.1.0    |
 | v1.0.0 (Branch)         | quay.io/cephcsi/cephfsplugin | v1.0.0    |
 | v1.0.0 (Branch)         | quay.io/cephcsi/rbdplugin    | v1.0.0    |
