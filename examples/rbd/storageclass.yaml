@@ -21,10 +21,7 @@ parameters:
    # dataPool: ec-data-pool
    pool: rbd
 
-   # RBD image format. Defaults to "2".
-   imageFormat: "2"
-
-   # RBD image features. Available for imageFormat: "2"
+   # RBD image features, CSI creates image with image-format 2
    # CSI RBD currently supports only `layering` feature.
    imageFeatures: layering
 

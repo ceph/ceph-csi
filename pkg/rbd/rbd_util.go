@@ -122,25 +122,15 @@ func createImage(ctx context.Context, pOpts *rbdVolume, volSz int64, cr *util.Cr
 	image := pOpts.RbdImageName
 	volSzMiB := fmt.Sprintf("%dM", volSz)
 
-	if pOpts.ImageFormat == rbdImageFormat2 {
-		logMsg := "rbd: create %s size %s format %s (features: %s) using mon %s, pool %s "
-		if pOpts.DataPool != "" {
-			logMsg += fmt.Sprintf("data pool %s", pOpts.DataPool)
-		}
-		klog.V(4).Infof(util.Log(ctx, logMsg),
-			image, volSzMiB, pOpts.ImageFormat, pOpts.ImageFeatures, pOpts.Monitors, pOpts.Pool)
-	} else {
-		logMsg := "rbd: create %s size %s format %s using mon %s, pool %s "
-		if pOpts.DataPool != "" {
-			logMsg += fmt.Sprintf("data pool %s", pOpts.DataPool)
-		}
-		klog.V(4).Infof(util.Log(ctx, logMsg), image, volSzMiB, pOpts.ImageFormat, pOpts.Monitors, pOpts.Pool)
+	logMsg := "rbd: create %s size %s format 2 (features: %s) using mon %s, pool %s "
+	if pOpts.DataPool != "" {
+		logMsg += fmt.Sprintf("data pool %s", pOpts.DataPool)
 	}
+	klog.V(4).Infof(util.Log(ctx, logMsg),
+		image, volSzMiB, pOpts.ImageFeatures, pOpts.Monitors, pOpts.Pool)
 
-	args := []string{"create", image, "--size", volSzMiB, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile, "--image-format", pOpts.ImageFormat}
-	if pOpts.ImageFormat == rbdImageFormat2 {
-		args = append(args, "--image-feature", pOpts.ImageFeatures)
-	}
+	args := []string{"create", image, "--size", volSzMiB, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile, "--image-feature", pOpts.ImageFeatures}
+
 	if pOpts.DataPool != "" {
 		args = append(args, "--data-pool", pOpts.DataPool)
 	}
@@ -479,25 +469,19 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		}
 	}
 
-	rbdVol.ImageFormat, ok = volOptions["imageFormat"]
-	if !ok {
-		rbdVol.ImageFormat = rbdImageFormat2
-	}
+	// if no image features is provided, it results in empty string
+	// which disable all RBD image format 2 features as we expected
 
-	if rbdVol.ImageFormat == rbdImageFormat2 {
-		// if no image features is provided, it results in empty string
-		// which disable all RBD image format 2 features as we expected
-		imageFeatures, found := volOptions["imageFeatures"]
-		if found {
-			arr := strings.Split(imageFeatures, ",")
-			for _, f := range arr {
-				if !supportedFeatures.Has(f) {
-					return nil, fmt.Errorf("invalid feature %q for volume csi-rbdplugin, supported"+
-						" features are: %v", f, supportedFeatures)
-				}
+	imageFeatures, found := volOptions["imageFeatures"]
+	if found {
+		arr := strings.Split(imageFeatures, ",")
+		for _, f := range arr {
+			if !supportedFeatures.Has(f) {
+				return nil, fmt.Errorf("invalid feature %q for volume csi-rbdplugin, supported"+
+					" features are: %v", f, supportedFeatures)
 			}
-			rbdVol.ImageFeatures = imageFeatures
 		}
+		rbdVol.ImageFeatures = imageFeatures
 	}
 
 	klog.V(3).Infof(util.Log(ctx, "setting disableInUseChecks on rbd volume to: %v"), disableInUseChecks)
