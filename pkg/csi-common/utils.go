@@ -111,7 +111,7 @@ var id uint64
 
 func contextIDInjector(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	atomic.AddUint64(&id, 1)
-	ctx = context.WithValue(ctx, util.Key, id)
+	ctx = context.WithValue(ctx, util.CtxKey, id)
 	return handler(ctx, req)
 }
 
