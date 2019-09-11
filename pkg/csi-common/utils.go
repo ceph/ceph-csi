@@ -107,11 +107,49 @@ func RunControllerandNodePublishServer(endpoint, hstOption string, d *CSIDriver,
 	s.Wait()
 }
 
+func getReqID(req interface{}) string {
+	// if req is nil empty string will be returned
+	reqID := ""
+	switch r := req.(type) {
+	case *csi.CreateVolumeRequest:
+		reqID = r.Name
+
+	case *csi.DeleteVolumeRequest:
+		reqID = r.VolumeId
+
+	case *csi.CreateSnapshotRequest:
+		reqID = r.Name
+	case *csi.DeleteSnapshotRequest:
+		reqID = r.SnapshotId
+
+	case *csi.ControllerExpandVolumeRequest:
+		reqID = r.VolumeId
+
+	case *csi.NodeStageVolumeRequest:
+		reqID = r.VolumeId
+	case *csi.NodeUnstageVolumeRequest:
+		reqID = r.VolumeId
+
+	case *csi.NodePublishVolumeRequest:
+		reqID = r.VolumeId
+	case *csi.NodeUnpublishVolumeRequest:
+		reqID = r.VolumeId
+
+	case *csi.NodeExpandVolumeRequest:
+		reqID = r.VolumeId
+	}
+	return reqID
+}
+
 var id uint64
 
 func contextIDInjector(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	atomic.AddUint64(&id, 1)
 	ctx = context.WithValue(ctx, util.CtxKey, id)
+	reqID := getReqID(req)
+	if reqID != "" {
+		ctx = context.WithValue(ctx, util.ReqID, reqID)
+	}
 	return handler(ctx, req)
 }
 
