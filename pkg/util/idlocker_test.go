@@ -22,17 +22,31 @@ import (
 
 // very basic tests for the moment
 func TestIDLocker(t *testing.T) {
-	myIDLocker := NewIDLocker()
+	fakeID := "fake-id"
+	locks := NewVolumeLocks()
+	// acquire lock for fake-id
+	ok := locks.TryAcquire(fakeID)
 
-	lk1 := myIDLocker.Lock("lk1")
-	lk2 := myIDLocker.Lock("lk2")
-	lk3 := myIDLocker.Lock("lk3")
-
-	if lk1 == lk2 || lk2 == lk3 || lk3 == lk1 {
-		t.Errorf("Failed: lock variables clash when they should not!")
+	if !ok {
+		t.Errorf("TryAcquire failed: want (%v), got (%v)",
+			true, ok)
 	}
 
-	myIDLocker.Unlock(lk1, "lk1")
-	myIDLocker.Unlock(lk2, "lk2")
-	myIDLocker.Unlock(lk3, "lk3")
+	// try to acquire lock  again for fake-id, as lock is already present
+	// it should fail
+	ok = locks.TryAcquire(fakeID)
+
+	if ok {
+		t.Errorf("TryAcquire failed: want (%v), got (%v)",
+			false, ok)
+	}
+
+	// release the lock for fake-id and try to get lock again, it should pass
+	locks.Release(fakeID)
+	ok = locks.TryAcquire(fakeID)
+
+	if !ok {
+		t.Errorf("TryAcquire failed: want (%v), got (%v)",
+			true, ok)
+	}
 }

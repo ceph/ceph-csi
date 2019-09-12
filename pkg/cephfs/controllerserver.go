@@ -33,17 +33,15 @@ import (
 type ControllerServer struct {
 	*csicommon.DefaultControllerServer
 	MetadataStore util.CachePersister
+	// A map storing all volumes with ongoing operations so that additional operations
+	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
+	VolumeLocks *util.VolumeLocks
 }
 
 type controllerCacheEntry struct {
 	VolOptions volumeOptions
 	VolumeID   volumeID
 }
-
-var (
-	volumeIDLocker   = util.NewIDLocker()
-	volumeNameLocker = util.NewIDLocker()
-)
 
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities
 func (cs *ControllerServer) createBackingVolume(ctx context.Context, volOptions *volumeOptions, vID *volumeIdentifier, secret map[string]string) error {
@@ -78,16 +76,20 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	// Configuration
 	secret := req.GetSecrets()
 	requestName := req.GetName()
+
+	// Existence and conflict checks
+	if acquired := cs.VolumeLocks.TryAcquire(requestName); !acquired {
+		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), requestName)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, requestName)
+	}
+	defer cs.VolumeLocks.Release(requestName)
+
 	volOptions, err := newVolumeOptions(ctx, requestName, req.GetCapacityRange().GetRequiredBytes(),
 		req.GetParameters(), secret)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "validation and extraction of volume options failed: %v"), err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-
-	// Existence and conflict checks
-	idLk := volumeNameLocker.Lock(requestName)
-	defer volumeNameLocker.Unlock(idLk, requestName)
 
 	vID, err := checkVolExists(ctx, volOptions, secret)
 	if err != nil {
@@ -177,8 +179,11 @@ func (cs *ControllerServer) deleteVolumeDeprecated(ctx context.Context, req *csi
 	}
 	defer cr.DeleteCredentials()
 
-	idLk := volumeIDLocker.Lock(string(volID))
-	defer volumeIDLocker.Unlock(idLk, string(volID))
+	if acquired := cs.VolumeLocks.TryAcquire(string(volID)); !acquired {
+		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, string(volID))
+	}
+	defer cs.VolumeLocks.Release(string(volID))
 
 	if err = purgeVolumeDeprecated(ctx, volID, cr, &ce.VolOptions); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), volID, err)
@@ -209,6 +214,13 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	volID := volumeID(req.GetVolumeId())
 	secrets := req.GetSecrets()
 
+	// lock out parallel delete operations
+	if acquired := cs.VolumeLocks.TryAcquire(string(volID)); !acquired {
+		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, string(volID))
+	}
+	defer cs.VolumeLocks.Release(string(volID))
+
 	// Find the volume using the provided VolumeID
 	volOptions, vID, err := newVolumeOptionsFromVolID(ctx, string(volID), nil, secrets)
 	if err != nil {
@@ -227,6 +239,13 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// lock out parallel delete and create requests against the same volume name as we
+	// cleanup the subvolume and associated omaps for the same
+	if acquired := cs.VolumeLocks.TryAcquire(volOptions.RequestName); !acquired {
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volOptions.RequestName)
+	}
+	defer cs.VolumeLocks.Release(string(volID))
+
 	// Deleting a volume requires admin credentials
 	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
@@ -234,11 +253,6 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
-
-	// lock out parallel delete and create requests against the same volume name as we
-	// cleanup the subvolume and associated omaps for the same
-	idLk := volumeNameLocker.Lock(volOptions.RequestName)
-	defer volumeNameLocker.Unlock(idLk, volOptions.RequestName)
 
 	if err = purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), volID, err)
