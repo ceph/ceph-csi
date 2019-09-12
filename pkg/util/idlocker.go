@@ -1,12 +1,9 @@
 /*
-Copyright 2019 ceph-csi authors.
-
+Copyright 2019 The Kubernetes Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,60 +15,46 @@ package util
 
 import (
 	"sync"
+
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-/*
-IDLock is a per identifier lock with a use counter that retains a number of users of the lock.
-IDLocker is a map of IDLocks holding the IDLocks based on a passed in identifier.
-Typical usage (post creating an IDLocker) is to Lock/Unlock based on identifiers as per the API.
-*/
-type (
-	IDLock struct {
-		mtx      sync.Mutex
-		useCount int
-	}
+const (
+	// VolumeOperationAlreadyExistsFmt string format to return for concerrent operation
+	VolumeOperationAlreadyExistsFmt = "an operation with the given Volume ID %s already exists"
 
-	IDLocker struct {
-		lMutex sync.Mutex
-		lMap   map[string]*IDLock
-	}
+	// SnapshotOperationAlreadyExistsFmt string format to return for concerrent operation
+	SnapshotOperationAlreadyExistsFmt = "an operation with the given Snapshot ID %s already exists"
 )
 
-func NewIDLocker() *IDLocker {
-	return &IDLocker{
-		lMap: make(map[string]*IDLock),
+// VolumeLocks implements a map with atomic operations. It stores a set of all volume IDs
+// with an ongoing operation.
+type VolumeLocks struct {
+	locks sets.String
+	mux   sync.Mutex
+}
+
+// NewVolumeLocks returns new  VolumeLocks
+func NewVolumeLocks() *VolumeLocks {
+	return &VolumeLocks{
+		locks: sets.NewString(),
 	}
 }
 
-func (lkr *IDLocker) Lock(identifier string) *IDLock {
-	var (
-		lk *IDLock
-		ok bool
-	)
-
-	newlk := new(IDLock)
-
-	lkr.lMutex.Lock()
-
-	if lk, ok = lkr.lMap[identifier]; !ok {
-		lk = newlk
-		lkr.lMap[identifier] = lk
+// TryAcquire tries to acquire the lock for operating on volumeID and returns true if successful.
+// If another operation is already using volumeID, returns false.
+func (vl *VolumeLocks) TryAcquire(volumeID string) bool {
+	vl.mux.Lock()
+	defer vl.mux.Unlock()
+	if vl.locks.Has(volumeID) {
+		return false
 	}
-	lk.useCount++
-	lkr.lMutex.Unlock()
-
-	lk.mtx.Lock()
-
-	return lk
+	vl.locks.Insert(volumeID)
+	return true
 }
 
-func (lkr *IDLocker) Unlock(lk *IDLock, identifier string) {
-	lk.mtx.Unlock()
-
-	lkr.lMutex.Lock()
-	lk.useCount--
-	if lk.useCount == 0 {
-		delete(lkr.lMap, identifier)
-	}
-	lkr.lMutex.Unlock()
+func (vl *VolumeLocks) Release(volumeID string) {
+	vl.mux.Lock()
+	defer vl.mux.Unlock()
+	vl.locks.Delete(volumeID)
 }
