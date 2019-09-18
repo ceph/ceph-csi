@@ -55,6 +55,11 @@ func loadAvailableMounters() error {
 	// #nosec
 	kernelMounterProbe := exec.Command("mount.ceph")
 
+	if fuseMounterProbe.Run() == nil {
+		klog.Infof("loaded mounter: %s", volumeMounterFuse)
+		availableMounters = append(availableMounters, volumeMounterFuse)
+	}
+
 	err := kernelMounterProbe.Run()
 	if err == nil {
 		kernelVersion, _, err := execCommand(context.TODO(), "uname", "-r")
@@ -72,15 +77,11 @@ func loadAvailableMounters() error {
 		}
 		if majorVers > 4 || (majorVers >= 4 && minorVers >= 17) {
 			klog.Infof("loaded mounter: %s", volumeMounterKernel)
-			availableMounters = append(availableMounters, volumeMounterKernel)
+			availableMounters = append([]string{volumeMounterKernel}, availableMounters...)
 		} else {
-			klog.Infof("kernel version < 4.17 might not support quota feature, hence not loading kernel client")
+			klog.Infof("loaded mounter: %s, note that kernel version < 4.17, which might not support quota feature", volumeMounterKernel)
+			availableMounters = append(availableMounters, volumeMounterKernel)
 		}
-	}
-
-	if fuseMounterProbe.Run() == nil {
-		klog.Infof("loaded mounter: %s", volumeMounterFuse)
-		availableMounters = append(availableMounters, volumeMounterFuse)
 	}
 
 	if len(availableMounters) == 0 {
@@ -114,8 +115,9 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 	if chosenMounter == "" {
 		// Otherwise pick whatever is left
 		chosenMounter = availableMounters[0]
-		klog.Infof("requested mounter: %s, chosen mounter: %s", wantMounter, chosenMounter)
 	}
+
+	klog.Infof("requested mounter: %s, chosen mounter: %s", wantMounter, chosenMounter)
 
 	// Create the mounter
 

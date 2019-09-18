@@ -35,7 +35,9 @@ parameters:
   csi.storage.k8s.io/node-stage-secret-namespace: default
 
   # (optional) The driver can use either ceph-fuse (fuse) or
-  # ceph kernelclient (kernel).
+  # ceph kernelclient (kernel). Choose kernel only when the
+  # kernel version is >= 4.17, otherwise the size limit on the
+  # PV will be ineffective.
   # If omitted, default volume mounter will be used - this is
   # determined by probing for ceph-fuse and mount.ceph
   # mounter: kernel

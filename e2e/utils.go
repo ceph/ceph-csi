@@ -193,7 +193,7 @@ func getStorageClass(path string) scv1.StorageClass {
 // 	return sc
 // }
 
-func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool) {
+func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool, parameters map[string]string) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["fsName"] = "myfs"
@@ -209,6 +209,9 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	fsID = strings.Trim(fsID, "\n")
 
 	sc.Parameters["clusterID"] = fsID
+	for k, v := range parameters {
+		sc.Parameters[k] = v
+	}
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
 	Expect(err).Should(BeNil())
 }
@@ -591,6 +594,31 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 	}
 	pvc.Namespace = f.UniqueName
 	e2elog.Logf("The PVC  template %+v", pvc)
+
+	app, err := loadApp(appPath)
+	if err != nil {
+		Fail(err.Error())
+	}
+	app.Namespace = f.UniqueName
+
+	err = createPVCAndApp("", f, pvc, app)
+	if err != nil {
+		Fail(err.Error())
+	}
+
+	err = deletePVCAndApp("", f, pvc, app)
+	if err != nil {
+		Fail(err.Error())
+	}
+}
+
+func validatePVCAndAppBindingKernelMounter(pvcPath, appPath string, f *framework.Framework) {
+	pvc, err := loadPVC(pvcPath)
+	if pvc == nil {
+		Fail(err.Error())
+	}
+	pvc.Namespace = f.UniqueName
+	e2elog.Logf("The PVC template %+v", pvc)
 
 	app, err := loadApp(appPath)
 	if err != nil {

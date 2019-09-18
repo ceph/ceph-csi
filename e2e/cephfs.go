@@ -99,12 +99,12 @@ var _ = Describe("cephfs", func() {
 			}
 
 			By("create a storage class with pool and a PVC then Bind it to an app", func() {
-				createCephfsStorageClass(f.ClientSet, f, true)
+				createCephfsStorageClass(f.ClientSet, f, true, make(map[string]string))
 				validatePVCAndAppBinding(pvcPath, appPath, f)
 				deleteResource(cephfsExamplePath + "storageclass.yaml")
 			})
 
-			createCephfsStorageClass(f.ClientSet, f, false)
+			createCephfsStorageClass(f.ClientSet, f, false, make(map[string]string))
 
 			By("create and delete a PVC", func() {
 				By("create a PVC and Bind it to an app", func() {
@@ -114,6 +114,14 @@ var _ = Describe("cephfs", func() {
 
 				By("create a PVC and Bind it to an app with normal user", func() {
 					validateNormalUserPVCAccess(pvcPath, f)
+				})
+
+				By("create a PVC and Bind it to an app with kernel mounter", func() {
+					deleteResource(cephfsExamplePath + "storageclass.yaml")
+					createCephfsStorageClass(f.ClientSet, f, false, map[string]string{"mounter": "kernel"})
+					validatePVCAndAppBindingKernelMounter(pvcPath, appPath, f)
+					deleteResource(cephfsExamplePath + "storageclass.yaml")
+					createCephfsStorageClass(f.ClientSet, f, false, make(map[string]string))
 				})
 
 				By("create/delete multiple PVCs and Apps", func() {
