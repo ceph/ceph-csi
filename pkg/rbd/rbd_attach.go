@@ -17,10 +17,9 @@ limitations under the License.
 package rbd
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -32,189 +31,129 @@ import (
 )
 
 const (
-	envHostRootFS = "HOST_ROOTFS"
-	rbdTonbd      = "rbd-nbd"
-	rbd           = "rbd"
-	nbd           = "nbd"
+	rbdTonbd  = "rbd-nbd"
+	moduleNbd = "nbd"
+
+	accessTypeKRbd = "krbd"
+	accessTypeNbd  = "nbd"
+
+	rbd = "rbd"
+
+	// Output strings returned during invocation of "rbd unmap --device-type... <imageSpec>" when
+	// image is not found to be mapped. Used to ignore errors when attempting to unmap such images.
+	// The %s format specifier should contain the <imageSpec> string
+	// NOTE: When using devicePath instead of imageSpec, the error strings are different
+	rbdUnmapCmdkRbdMissingMap = "rbd: %s: not a mapped image or snapshot"
+	rbdUnmapCmdNbdMissingMap  = "rbd-nbd: %s is not mapped"
+	rbdMapConnectionTimeout   = "Connection timed out"
 )
 
-var (
-	hostRootFS = "/"
-	hasNBD     = false
-)
+var hasNBD = false
 
 func init() {
-	host := os.Getenv(envHostRootFS)
-	if len(host) > 0 {
-		hostRootFS = host
-	}
 	hasNBD = checkRbdNbdTools()
 }
 
-// Search /sys/bus for rbd device that matches given pool and image.
-func getRbdDevFromImageAndPool(pool, image string) (string, bool) {
-	// /sys/bus/rbd/devices/X/name and /sys/bus/rbd/devices/X/pool
-	sysPath := "/sys/bus/rbd/devices"
-	if dirs, err := ioutil.ReadDir(sysPath); err == nil {
-		for _, f := range dirs {
-			// Pool and name format:
-			// see rbd_pool_show() and rbd_name_show() at
-			// https://github.com/torvalds/linux/blob/master/drivers/block/rbd.c
-			name := f.Name()
-			// First match pool, then match name.
-			poolFile := path.Join(sysPath, name, "pool")
-			// #nosec
-			poolBytes, err := ioutil.ReadFile(poolFile)
-			if err != nil {
-				klog.V(4).Infof("error reading %s: %v", poolFile, err)
-				continue
-			}
-			if strings.TrimSpace(string(poolBytes)) != pool {
-				klog.V(4).Infof("device %s is not %q: %q", name, pool, string(poolBytes))
-				continue
-			}
-			imgFile := path.Join(sysPath, name, "name")
-			// #nosec
-			imgBytes, err := ioutil.ReadFile(imgFile)
-			if err != nil {
-				klog.V(4).Infof("error reading %s: %v", imgFile, err)
-				continue
-			}
-			if strings.TrimSpace(string(imgBytes)) != image {
-				klog.V(4).Infof("device %s is not %q: %q", name, image, string(imgBytes))
-				continue
-			}
-			// Found a match, check if device exists.
-			devicePath := "/dev/rbd" + name
-			if _, err := os.Lstat(devicePath); err == nil {
-				return devicePath, true
-			}
+// rbdDeviceInfo strongly typed JSON spec for rbd device list output (of type krbd)
+type rbdDeviceInfo struct {
+	ID     string `json:"id"`
+	Pool   string `json:"pool"`
+	Name   string `json:"name"`
+	Device string `json:"device"`
+}
+
+// nbdDeviceInfo strongly typed JSON spec for rbd-nbd device list output (of type nbd)
+// NOTE: There is a bug in rbd output that returns id as number for nbd, and string for krbd, thus
+// requiring 2 different JSON structures to unmarshal the output.
+// NOTE: image key is "name" in krbd output and "image" in nbd output, which is another difference
+type nbdDeviceInfo struct {
+	ID     int64  `json:"id"`
+	Pool   string `json:"pool"`
+	Name   string `json:"image"`
+	Device string `json:"device"`
+}
+
+// rbdGetDeviceList queries rbd about mapped devices and returns a list of rbdDeviceInfo
+// It will selectively list devices mapped using krbd or nbd as specified by accessType
+func rbdGetDeviceList(accessType string) ([]rbdDeviceInfo, error) {
+	// rbd device list --format json --device-type [krbd|nbd]
+	var (
+		rbdDeviceList []rbdDeviceInfo
+		nbdDeviceList []nbdDeviceInfo
+	)
+
+	stdout, _, err := util.ExecCommand(rbd, "device", "list", "--format="+"json", "--device-type", accessType)
+	if err != nil {
+		return nil, fmt.Errorf("error getting device list from rbd for devices of type (%s): (%v)", accessType, err)
+	}
+
+	if accessType == accessTypeKRbd {
+		err = json.Unmarshal(stdout, &rbdDeviceList)
+	} else {
+		err = json.Unmarshal(stdout, &nbdDeviceList)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error to parse JSON output of device list for devices of type (%s): (%v)", accessType, err)
+	}
+
+	// convert output to a rbdDeviceInfo list for consumers
+	if accessType == accessTypeNbd {
+		for _, device := range nbdDeviceList {
+			rbdDeviceList = append(
+				rbdDeviceList,
+				rbdDeviceInfo{
+					ID:     strconv.FormatInt(device.ID, 10),
+					Pool:   device.Pool,
+					Name:   device.Name,
+					Device: device.Device,
+				})
 		}
 	}
-	return "", false
+
+	return rbdDeviceList, nil
 }
 
-func getMaxNbds() (int, error) {
-
-	// the max number of nbd devices may be found in maxNbdsPath
-	// we will check sysfs for possible nbd devices even if this is not available
-	maxNbdsPath := "/sys/module/nbd/parameters/nbds_max"
-	_, err := os.Lstat(maxNbdsPath)
-	if err != nil {
-		return 0, fmt.Errorf("rbd-nbd: failed to retrieve max_nbds from %s err: %q", maxNbdsPath, err)
+// findDeviceMappingImage finds a devicePath, if available, based on image spec (pool/image) on the node.
+func findDeviceMappingImage(ctx context.Context, pool, image string, useNbdDriver bool) (string, bool) {
+	accessType := accessTypeKRbd
+	if useNbdDriver {
+		accessType = accessTypeNbd
 	}
 
-	klog.V(4).Infof("found nbds max parameters file at %s", maxNbdsPath)
-
-	maxNbdBytes, err := ioutil.ReadFile(maxNbdsPath)
+	rbdDeviceList, err := rbdGetDeviceList(accessType)
 	if err != nil {
-		return 0, fmt.Errorf("rbd-nbd: failed to read max_nbds from %s err: %q", maxNbdsPath, err)
-	}
-
-	maxNbds, err := strconv.Atoi(strings.TrimSpace(string(maxNbdBytes)))
-	if err != nil {
-		return 0, fmt.Errorf("rbd-nbd: failed to read max_nbds err: %q", err)
-	}
-
-	klog.V(4).Infof("rbd-nbd: max_nbds: %d", maxNbds)
-	return maxNbds, nil
-}
-
-// Locate any existing rbd-nbd process mapping given a <pool, image>.
-// Recent versions of rbd-nbd tool can correctly provide this info using list-mapped
-// but older versions of list-mapped don't.
-// The implementation below peeks at the command line of nbd bound processes
-// to figure out any mapped images.
-func getNbdDevFromImageAndPool(pool, image string) (string, bool) {
-	// nbd module exports the pid of serving process in sysfs
-	basePath := "/sys/block/nbd"
-	// Do not change imgPath format - some tools like rbd-nbd are strict about it.
-	imgPath := fmt.Sprintf("%s/%s", pool, image)
-
-	maxNbds, maxNbdsErr := getMaxNbds()
-	if maxNbdsErr != nil {
-		klog.V(4).Infof("error reading nbds_max %v", maxNbdsErr)
+		klog.Warningf(util.Log(ctx, "failed to determine if image (%s/%s) is mapped to a device (%v)"), pool, image, err)
 		return "", false
 	}
 
-	for i := 0; i < maxNbds; i++ {
-		nbdPath := basePath + strconv.Itoa(i)
-		devicePath, err := getnbdDevicePath(nbdPath, imgPath, i)
-		if err != nil {
-			continue
+	for _, device := range rbdDeviceList {
+		if device.Name == image && device.Pool == pool {
+			return device.Device, true
 		}
-		return devicePath, true
 	}
+
 	return "", false
 }
 
-func getnbdDevicePath(nbdPath, imgPath string, count int) (string, error) {
-
-	_, err := os.Lstat(nbdPath)
-	if err != nil {
-		klog.V(4).Infof("error reading nbd info directory %s: %v", nbdPath, err)
-		return "", err
-	}
-	// #nosec
-	pidBytes, err := ioutil.ReadFile(path.Join(nbdPath, "pid"))
-	if err != nil {
-		klog.V(5).Infof("did not find valid pid file in dir %s: %v", nbdPath, err)
-		return "", err
-	}
-	cmdlineFileName := path.Join(hostRootFS, "/proc", strings.TrimSpace(string(pidBytes)), "cmdline")
-	// #nosec
-	rawCmdline, err := ioutil.ReadFile(cmdlineFileName)
-	if err != nil {
-		klog.V(4).Infof("failed to read cmdline file %s: %v", cmdlineFileName, err)
-		return "", err
-	}
-	cmdlineArgs := strings.FieldsFunc(string(rawCmdline), func(r rune) bool {
-		return r == '\u0000'
-	})
-	// Check if this process is mapping a rbd device.
-	// Only accepted pattern of cmdline is from execRbdMap:
-	// rbd-nbd map pool/image ...
-	if len(cmdlineArgs) < 3 || cmdlineArgs[0] != rbdTonbd || cmdlineArgs[1] != "map" {
-		klog.V(4).Infof("nbd device %s is not used by rbd", nbdPath)
-		return "", fmt.Errorf("nbd device %s is not used by rbd", nbdPath)
-
-	}
-	if cmdlineArgs[2] != imgPath {
-		klog.V(4).Infof("rbd-nbd device %s did not match expected image path: %s with path found: %s",
-			nbdPath, imgPath, cmdlineArgs[2])
-		return "", fmt.Errorf("rbd-nbd device %s did not match expected image path: %s with path found: %s",
-			nbdPath, imgPath, cmdlineArgs[2])
-	}
-	devicePath := path.Join("/dev", "nbd"+strconv.Itoa(count))
-	if _, err := os.Lstat(devicePath); err != nil {
-		klog.Warningf("Stat device %s for imgpath %s failed %v", devicePath, imgPath, err)
-		return "", err
-	}
-	return devicePath, nil
-}
-
 // Stat a path, if it doesn't exist, retry maxRetries times.
-func waitForPath(pool, image string, maxRetries int, useNbdDriver bool) (string, bool) {
+func waitForPath(ctx context.Context, pool, image string, maxRetries int, useNbdDriver bool) (string, bool) {
 	for i := 0; i < maxRetries; i++ {
 		if i != 0 {
 			time.Sleep(time.Second)
 		}
-		if useNbdDriver {
-			if devicePath, found := getNbdDevFromImageAndPool(pool, image); found {
-				return devicePath, true
-			}
-		} else {
-			if devicePath, found := getRbdDevFromImageAndPool(pool, image); found {
-				return devicePath, true
-			}
+
+		device, found := findDeviceMappingImage(ctx, pool, image, useNbdDriver)
+		if found {
+			return device, found
 		}
 	}
+
 	return "", false
 }
 
 // Check if rbd-nbd tools are installed.
 func checkRbdNbdTools() bool {
-	_, err := execCommand("modprobe", []string{"nbd"})
+	_, err := execCommand("modprobe", []string{moduleNbd})
 	if err != nil {
 		klog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err)
 		return false
@@ -227,74 +166,88 @@ func checkRbdNbdTools() bool {
 	return true
 }
 
-func attachRBDImage(volOptions *rbdVolume, cr *util.Credentials) (string, error) {
+func attachRBDImage(ctx context.Context, volOptions *rbdVolume, cr *util.Credentials) (string, error) {
 	var err error
 
 	image := volOptions.RbdImageName
 	useNBD := false
-	moduleName := rbd
 	if volOptions.Mounter == rbdTonbd && hasNBD {
 		useNBD = true
-		moduleName = nbd
 	}
 
-	devicePath, found := waitForPath(volOptions.Pool, image, 1, useNBD)
+	devicePath, found := waitForPath(ctx, volOptions.Pool, image, 1, useNBD)
 	if !found {
-		_, err = execCommand("modprobe", []string{moduleName})
-		if err != nil {
-			klog.Warningf("rbd: failed to load rbd kernel module:%v", err)
-			return "", err
-		}
-
 		backoff := wait.Backoff{
 			Duration: rbdImageWatcherInitDelay,
 			Factor:   rbdImageWatcherFactor,
 			Steps:    rbdImageWatcherSteps,
 		}
 
-		err = waitForrbdImage(backoff, volOptions, cr)
+		err = waitForrbdImage(ctx, backoff, volOptions, cr)
 
 		if err != nil {
 			return "", err
 		}
-		devicePath, err = createPath(volOptions, cr)
+		devicePath, err = createPath(ctx, volOptions, cr)
 	}
 
 	return devicePath, err
 }
 
-func createPath(volOpt *rbdVolume, cr *util.Credentials) (string, error) {
+func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (string, error) {
+	isNbd := false
 	image := volOpt.RbdImageName
 	imagePath := fmt.Sprintf("%s/%s", volOpt.Pool, image)
 
-	klog.V(5).Infof("rbd: map mon %s", volOpt.Monitors)
+	klog.V(5).Infof(util.Log(ctx, "rbd: map mon %s"), volOpt.Monitors)
 
-	cmdName := rbd
-	if volOpt.Mounter == rbdTonbd && hasNBD {
-		cmdName = rbdTonbd
+	// Map options
+	mapOptions := []string{
+		"--id", cr.ID,
+		"-m", volOpt.Monitors,
+		"--keyfile=" + cr.KeyFile,
+		"map", imagePath,
 	}
 
-	output, err := execCommand(cmdName, []string{
-		"map", imagePath, "--id", cr.ID, "-m", volOpt.Monitors, "--keyfile=" + cr.KeyFile})
+	// Choose access protocol
+	accessType := accessTypeKRbd
+	if volOpt.Mounter == rbdTonbd && hasNBD {
+		isNbd = true
+		accessType = accessTypeNbd
+	}
+
+	// Update options with device type selection
+	mapOptions = append(mapOptions, "--device-type", accessType)
+
+	// Execute map
+	output, err := execCommand(rbd, mapOptions)
 	if err != nil {
-		klog.Warningf("rbd: map error %v, rbd output: %s", err, string(output))
+		klog.Warningf(util.Log(ctx, "rbd: map error %v, rbd output: %s"), err, string(output))
+		// unmap rbd image if connection timeout
+		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
+			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd)
+			if detErr != nil {
+				klog.Warningf(util.Log(ctx, "rbd: %s unmap error %v"), imagePath, detErr)
+			}
+		}
 		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
 	}
 	devicePath := strings.TrimSuffix(string(output), "\n")
+
 	return devicePath, nil
 }
 
-func waitForrbdImage(backoff wait.Backoff, volOptions *rbdVolume, cr *util.Credentials) error {
+func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdVolume, cr *util.Credentials) error {
 	image := volOptions.RbdImageName
 	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
 
 	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-		used, rbdOutput, err := rbdStatus(volOptions, cr)
+		used, rbdOutput, err := rbdStatus(ctx, volOptions, cr)
 		if err != nil {
 			return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
 		}
 		if (volOptions.DisableInUseChecks) && (used) {
-			klog.V(2).Info("valid multi-node attach requested, ignoring watcher in-use result")
+			klog.V(2).Info(util.Log(ctx, "valid multi-node attach requested, ignoring watcher in-use result"))
 			return used, nil
 		}
 		return !used, nil
@@ -307,20 +260,39 @@ func waitForrbdImage(backoff wait.Backoff, volOptions *rbdVolume, cr *util.Crede
 	return err
 }
 
-func detachRBDDevice(devicePath string) error {
+func detachRBDDevice(ctx context.Context, devicePath string) error {
+	nbdType := false
+	if strings.HasPrefix(devicePath, "/dev/nbd") {
+		nbdType = true
+	}
+
+	return detachRBDImageOrDeviceSpec(ctx, devicePath, false, nbdType)
+}
+
+// detachRBDImageOrDeviceSpec detaches an rbd imageSpec or devicePath, with additional checking
+// when imageSpec is used to decide if image is already unmapped
+func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, isImageSpec, ndbType bool) error {
 	var err error
 	var output []byte
 
-	klog.V(3).Infof("rbd: unmap device %s", devicePath)
-
-	cmdName := rbd
-	if strings.HasPrefix(devicePath, "/dev/nbd") {
-		cmdName = rbdTonbd
+	accessType := accessTypeKRbd
+	if ndbType {
+		accessType = accessTypeNbd
 	}
+	options := []string{"unmap", "--device-type", accessType, imageOrDeviceSpec}
 
-	output, err = execCommand(cmdName, []string{"unmap", devicePath})
+	output, err = execCommand(rbd, options)
 	if err != nil {
-		return fmt.Errorf("rbd: unmap failed %v, rbd output: %s", err, string(output))
+		// Messages for krbd and nbd differ, hence checking either of them for missing mapping
+		// This is not applicable when a device path is passed in
+		if isImageSpec &&
+			(strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, imageOrDeviceSpec)) ||
+				strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
+			// Devices found not to be mapped are treated as a successful detach
+			klog.Infof(util.Log(ctx, "image or device spec (%s) not mapped"), imageOrDeviceSpec)
+			return nil
+		}
+		return fmt.Errorf("rbd: unmap for spec (%s) failed (%v): (%s)", imageOrDeviceSpec, err, string(output))
 	}
 
 	return nil

@@ -22,7 +22,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: driver-registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -56,13 +56,19 @@ spec:
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
+            - "--nodeserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
+            - "--metricsport=8090"
+            - "--metricspath=/metrics"
+            - "--enablegrpcmetrics=false"
           env:
-            - name: HOST_ROOTFS
-              value: "/rootfs"
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -92,6 +98,26 @@ spec:
               mountPropagation: "Bidirectional"
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+        - name: liveness-prometheus
+          image: quay.io/cephcsi/cephcsi:canary
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--metricsport=8080"
+            - "--metricspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          imagePullPolicy: "IfNotPresent"
       volumes:
         - name: socket-dir
           hostPath:
@@ -128,3 +154,23 @@ spec:
           emptyDir: {
             medium: "Memory"
           }
+---
+# This is a service to expose the liveness and grpc metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: csi-metrics-rbdplugin
+  labels:
+    app: csi-metrics
+spec:
+  ports:
+    - name: http-metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: grpc-metrics
+      port: 8090
+      protocol: TCP
+      targetPort: 8090
+  selector:
+    app: csi-rbdplugin

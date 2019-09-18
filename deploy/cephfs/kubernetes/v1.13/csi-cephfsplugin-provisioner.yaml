@@ -4,13 +4,19 @@ apiVersion: v1
 metadata:
   name: csi-cephfsplugin-provisioner
   labels:
-    app: csi-cephfsplugin-provisioner
+    app: csi-metrics
 spec:
   selector:
     app: csi-cephfsplugin-provisioner
   ports:
-    - name: dummy
-      port: 12345
+    - name: http-metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8081
+    - name: grpc-metrics
+      port: 8090
+      protocol: TCP
+      targetPort: 8091
 
 ---
 kind: StatefulSet
@@ -66,11 +72,20 @@ spec:
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=cephfs"
+            - "--controllerserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=cephfs.csi.ceph.com"
             - "--metadatastorage=k8s_configmap"
+            - "--pidlimit=-1"
+            - "--metricsport=8091"
+            - "--metricspath=/metrics"
+            - "--enablegrpcmetrics=false"
           env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -96,6 +111,26 @@ spec:
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+        - name: liveness-prometheus
+          image: quay.io/cephcsi/cephcsi:canary
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--metricsport=8081"
+            - "--metricspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          imagePullPolicy: "IfNotPresent"
       volumes:
         - name: socket-dir
           hostPath:

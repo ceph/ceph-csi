@@ -17,11 +17,12 @@ limitations under the License.
 package cephfs
 
 import (
+	"context"
+
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
@@ -45,21 +46,21 @@ var (
 )
 
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities
-func (cs *ControllerServer) createBackingVolume(volOptions *volumeOptions, vID *volumeIdentifier, secret map[string]string) error {
+func (cs *ControllerServer) createBackingVolume(ctx context.Context, volOptions *volumeOptions, vID *volumeIdentifier, secret map[string]string) error {
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
 
-	if err = createVolume(volOptions, cr, volumeID(vID.FsSubvolName), volOptions.Size); err != nil {
-		klog.Errorf("failed to create volume %s: %v", volOptions.RequestName, err)
+	if err = createVolume(ctx, volOptions, cr, volumeID(vID.FsSubvolName), volOptions.Size); err != nil {
+		klog.Errorf(util.Log(ctx, "failed to create volume %s: %v"), volOptions.RequestName, err)
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer func() {
 		if err != nil {
-			if errDefer := purgeVolume(volumeID(vID.FsSubvolName), cr, volOptions); errDefer != nil {
-				klog.Warningf("failed purging volume: %s (%s)", volOptions.RequestName, errDefer)
+			if errDefer := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions); errDefer != nil {
+				klog.Warningf(util.Log(ctx, "failed purging volume: %s (%s)"), volOptions.RequestName, errDefer)
 			}
 		}
 	}()
@@ -70,17 +71,17 @@ func (cs *ControllerServer) createBackingVolume(volOptions *volumeOptions, vID *
 // CreateVolume creates a reservation and the volume in backend, if it is not already present
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
-		klog.Errorf("CreateVolumeRequest validation failed: %v", err)
+		klog.Errorf(util.Log(ctx, "CreateVolumeRequest validation failed: %v"), err)
 		return nil, err
 	}
 
 	// Configuration
 	secret := req.GetSecrets()
 	requestName := req.GetName()
-	volOptions, err := newVolumeOptions(requestName, req.GetCapacityRange().GetRequiredBytes(),
+	volOptions, err := newVolumeOptions(ctx, requestName, req.GetCapacityRange().GetRequiredBytes(),
 		req.GetParameters(), secret)
 	if err != nil {
-		klog.Errorf("validation and extraction of volume options failed: %v", err)
+		klog.Errorf(util.Log(ctx, "validation and extraction of volume options failed: %v"), err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -88,7 +89,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	idLk := volumeNameLocker.Lock(requestName)
 	defer volumeNameLocker.Unlock(idLk, requestName)
 
-	vID, err := checkVolExists(volOptions, secret)
+	vID, err := checkVolExists(ctx, volOptions, secret)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -103,27 +104,27 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	// Reservation
-	vID, err = reserveVol(volOptions, secret)
+	vID, err = reserveVol(ctx, volOptions, secret)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer func() {
 		if err != nil {
-			errDefer := undoVolReservation(volOptions, *vID, secret)
+			errDefer := undoVolReservation(ctx, volOptions, *vID, secret)
 			if errDefer != nil {
-				klog.Warningf("failed undoing reservation of volume: %s (%s)",
+				klog.Warningf(util.Log(ctx, "failed undoing reservation of volume: %s (%s)"),
 					requestName, errDefer)
 			}
 		}
 	}()
 
 	// Create a volume
-	err = cs.createBackingVolume(volOptions, vID, secret)
+	err = cs.createBackingVolume(ctx, volOptions, vID, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	klog.Infof("cephfs: successfully created backing volume named %s for request name %s",
+	klog.Infof(util.Log(ctx, "cephfs: successfully created backing volume named %s for request name %s"),
 		vID.FsSubvolName, requestName)
 
 	return &csi.CreateVolumeResponse{
@@ -137,7 +138,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 // deleteVolumeDeprecated is used to delete volumes created using version 1.0.0 of the plugin,
 // that have state information stored in files or kubernetes config maps
-func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+func (cs *ControllerServer) deleteVolumeDeprecated(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	var (
 		volID   = volumeID(req.GetVolumeId())
 		secrets = req.GetSecrets()
@@ -146,7 +147,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 	ce := &controllerCacheEntry{}
 	if err := cs.MetadataStore.Get(string(volID), ce); err != nil {
 		if err, ok := err.(*util.CacheEntryNotFound); ok {
-			klog.Infof("cephfs: metadata for volume %s not found, assuming the volume to be already deleted (%v)", volID, err)
+			klog.Infof(util.Log(ctx, "cephfs: metadata for volume %s not found, assuming the volume to be already deleted (%v)"), volID, err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 
@@ -156,14 +157,14 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 	if !ce.VolOptions.ProvisionVolume {
 		// DeleteVolume() is forbidden for statically provisioned volumes!
 
-		klog.Warningf("volume %s is provisioned statically, aborting delete", volID)
+		klog.Warningf(util.Log(ctx, "volume %s is provisioned statically, aborting delete"), volID)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
 	// mons may have changed since create volume,
 	// retrieve the latest mons and override old mons
 	if mon, secretsErr := util.GetMonValFromSecret(secrets); secretsErr == nil && len(mon) > 0 {
-		klog.Infof("overriding monitors [%q] with [%q] for volume %s", ce.VolOptions.Monitors, mon, volID)
+		klog.Infof(util.Log(ctx, "overriding monitors [%q] with [%q] for volume %s"), ce.VolOptions.Monitors, mon, volID)
 		ce.VolOptions.Monitors = mon
 	}
 
@@ -171,7 +172,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 
 	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
-		klog.Errorf("failed to retrieve admin credentials: %v", err)
+		klog.Errorf(util.Log(ctx, "failed to retrieve admin credentials: %v"), err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
@@ -179,13 +180,13 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 	idLk := volumeIDLocker.Lock(string(volID))
 	defer volumeIDLocker.Unlock(idLk, string(volID))
 
-	if err = purgeVolumeDeprecated(volID, cr, &ce.VolOptions); err != nil {
-		klog.Errorf("failed to delete volume %s: %v", volID, err)
+	if err = purgeVolumeDeprecated(ctx, volID, cr, &ce.VolOptions); err != nil {
+		klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = deleteCephUserDeprecated(&ce.VolOptions, cr, volID); err != nil {
-		klog.Errorf("failed to delete ceph user for volume %s: %v", volID, err)
+	if err = deleteCephUserDeprecated(ctx, &ce.VolOptions, cr, volID); err != nil {
+		klog.Errorf(util.Log(ctx, "failed to delete ceph user for volume %s: %v"), volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -193,7 +194,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof("cephfs: successfully deleted volume %s", volID)
+	klog.Infof(util.Log(ctx, "cephfs: successfully deleted volume %s"), volID)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
@@ -201,7 +202,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(req *csi.DeleteVolumeRequest)
 // DeleteVolume deletes the volume in backend and its reservation
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(); err != nil {
-		klog.Errorf("DeleteVolumeRequest validation failed: %v", err)
+		klog.Errorf(util.Log(ctx, "DeleteVolumeRequest validation failed: %v"), err)
 		return nil, err
 	}
 
@@ -209,7 +210,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	secrets := req.GetSecrets()
 
 	// Find the volume using the provided VolumeID
-	volOptions, vID, err := newVolumeOptionsFromVolID(string(volID), nil, secrets)
+	volOptions, vID, err := newVolumeOptionsFromVolID(ctx, string(volID), nil, secrets)
 	if err != nil {
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (subvolume and imageOMap are garbage collected already), hence
@@ -220,7 +221,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 		// ErrInvalidVolID may mean this is an 1.0.0 version volume
 		if _, ok := err.(ErrInvalidVolID); ok && cs.MetadataStore != nil {
-			return cs.deleteVolumeDeprecated(req)
+			return cs.deleteVolumeDeprecated(ctx, req)
 		}
 
 		return nil, status.Error(codes.Internal, err.Error())
@@ -229,7 +230,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// Deleting a volume requires admin credentials
 	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
-		klog.Errorf("failed to retrieve admin credentials: %v", err)
+		klog.Errorf(util.Log(ctx, "failed to retrieve admin credentials: %v"), err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
@@ -239,16 +240,16 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	idLk := volumeNameLocker.Lock(volOptions.RequestName)
 	defer volumeNameLocker.Unlock(idLk, volOptions.RequestName)
 
-	if err = purgeVolume(volumeID(vID.FsSubvolName), cr, volOptions); err != nil {
-		klog.Errorf("failed to delete volume %s: %v", volID, err)
+	if err = purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions); err != nil {
+		klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := undoVolReservation(volOptions, *vID, secrets); err != nil {
+	if err := undoVolReservation(ctx, volOptions, *vID, secrets); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof("cephfs: successfully deleted volume %s", volID)
+	klog.Infof(util.Log(ctx, "cephfs: successfully deleted volume %s"), volID)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }

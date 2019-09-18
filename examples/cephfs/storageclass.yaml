@@ -20,6 +20,14 @@ parameters:
   # (optional) Ceph pool into which volume data shall be stored
   # pool: cephfs_data
 
+  # (optional) Comma separated string of Ceph-fuse mount options.
+  # For eg:
+  # fuseMountOptions: debug
+
+  # (optional) Comma separated string of Cephfs kernel mount options.
+  # Check man mount.ceph for mount options. For eg:
+  # kernelMountOptions: readdir_max_bytes=1048576,norbytes
+
   # The secrets have to contain user and/or Ceph admin credentials.
   csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/provisioner-secret-namespace: default
@@ -29,9 +37,7 @@ parameters:
   # (optional) The driver can use either ceph-fuse (fuse) or
   # ceph kernelclient (kernel).
   # If omitted, default volume mounter will be used - this is
-  # determined by probing for ceph-fuse
-  # or by setting the default mounter explicitly via
-  # --volumemounter command-line argument.
+  # determined by probing for ceph-fuse and mount.ceph
   # mounter: kernel
 reclaimPolicy: Delete
 mountOptions:

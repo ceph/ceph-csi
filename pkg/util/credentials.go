@@ -44,7 +44,8 @@ func storeKey(key string) (string, error) {
 	}
 	defer func() {
 		if err != nil {
-			os.Remove(tmpfile.Name())
+			// don't complain about unhandled error
+			_ = os.Remove(tmpfile.Name())
 		}
 	}()
 
@@ -89,7 +90,8 @@ func newCredentialsFromSecret(idField, keyField string, secrets map[string]strin
 }
 
 func (cr *Credentials) DeleteCredentials() {
-	os.Remove(cr.KeyFile)
+	// don't complain about unhandled error
+	_ = os.Remove(cr.KeyFile)
 }
 
 func NewUserCredentials(secrets map[string]string) (*Credentials, error) {

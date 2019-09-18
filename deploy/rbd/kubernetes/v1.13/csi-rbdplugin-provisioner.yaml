@@ -4,13 +4,19 @@ apiVersion: v1
 metadata:
   name: csi-rbdplugin-provisioner
   labels:
-    app: csi-rbdplugin-provisioner
+    app: csi-metrics
 spec:
   selector:
     app: csi-rbdplugin-provisioner
   ports:
-    - name: dummy
-      port: 12345
+    - name: http-metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: grpc-metrics
+      port: 8090
+      protocol: TCP
+      targetPort: 8090
 
 ---
 kind: StatefulSet
@@ -81,13 +87,20 @@ spec:
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
+            - "--controllerserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
             - "--containerized=true"
+            - "--pidlimit=-1"
+            - "--metricsport=8090"
+            - "--metricspath=/metrics"
+            - "--enablegrpcmetrics=false"
           env:
-            - name: HOST_ROOTFS
-              value: "/rootfs"
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             - name: NODE_ID
               valueFrom:
                 fieldRef:
@@ -111,6 +124,26 @@ spec:
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+        - name: liveness-prometheus
+          image: quay.io/cephcsi/cephcsi:canary
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--metricsport=8080"
+            - "--metricspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          imagePullPolicy: "IfNotPresent"
       volumes:
         - name: host-dev
           hostPath:

@@ -50,9 +50,6 @@ type Driver struct {
 }
 
 var (
-	// DefaultVolumeMounter for mounting volumes
-	DefaultVolumeMounter string
-
 	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
 	// ceph clusters across CSI instances, to differentiate omap names per CSI instance
 	CSIInstanceID = "default"
@@ -91,37 +88,22 @@ func NewNodeServer(d *csicommon.CSIDriver, t string) *NodeServer {
 
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests
-func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir, instanceID, pluginPath string, cachePersister util.CachePersister, t string) {
+func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 
 	// Configuration
-	PluginFolder = pluginPath
+	PluginFolder = conf.PluginPath
 
 	if err := loadAvailableMounters(); err != nil {
 		klog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
 	}
-
-	if volumeMounter != "" {
-		if err := validateMounter(volumeMounter); err != nil {
-			klog.Fatalln(err)
-		} else {
-			DefaultVolumeMounter = volumeMounter
-		}
-	} else {
-		// Pick the first available mounter as the default one.
-		// The choice is biased towards "fuse" in case both
-		// ceph fuse and kernel mounters are available.
-		DefaultVolumeMounter = availableMounters[0]
-	}
-
-	klog.Infof("cephfs: setting default volume mounter to %s", DefaultVolumeMounter)
 
 	if err := util.WriteCephConfig(); err != nil {
 		klog.Fatalf("failed to write ceph configuration file: %v", err)
 	}
 
 	// Use passed in instance ID, if provided for omap suffix naming
-	if instanceID != "" {
-		CSIInstanceID = instanceID
+	if conf.InstanceID != "" {
+		CSIInstanceID = conf.InstanceID
 	}
 	// Get an instance of the volume journal
 	volJournal = util.NewCSIVolumeJournal()
@@ -133,8 +115,8 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir
 	// metadata pool
 	volJournal.SetNamespace(radosNamespace)
 
-	initVolumeMountCache(driverName, mountCacheDir)
-	if mountCacheDir != "" {
+	initVolumeMountCache(conf.DriverName, conf.MountCacheDir)
+	if conf.MountCacheDir != "" {
 		if err := remountCachedVolumes(); err != nil {
 			klog.Warningf("failed to remount cached volumes: %v", err)
 			// ignore remount fail
@@ -142,27 +124,40 @@ func (fs *Driver) Run(driverName, nodeID, endpoint, volumeMounter, mountCacheDir
 	}
 	// Initialize default library driver
 
-	fs.cd = csicommon.NewCSIDriver(driverName, util.DriverVersion, nodeID)
+	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
 	if fs.cd == nil {
 		klog.Fatalln("failed to initialize CSI driver")
 	}
 
-	fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
-		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-	})
+	if conf.IsControllerServer || !conf.IsNodeServer {
+		fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+		})
 
-	fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
-		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-	})
-
+		fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
+			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+		})
+	}
 	// Create gRPC servers
 
 	fs.is = NewIdentityServer(fs.cd)
-	fs.ns = NewNodeServer(fs.cd, t)
 
-	fs.cs = NewControllerServer(fs.cd, cachePersister)
+	if conf.IsNodeServer {
+		fs.ns = NewNodeServer(fs.cd, conf.Vtype)
+	}
+
+	if conf.IsControllerServer {
+		fs.cs = NewControllerServer(fs.cd, cachePersister)
+	}
+	if !conf.IsControllerServer && !conf.IsNodeServer {
+		fs.ns = NewNodeServer(fs.cd, conf.Vtype)
+		fs.cs = NewControllerServer(fs.cd, cachePersister)
+	}
 
 	server := csicommon.NewNonBlockingGRPCServer()
-	server.Start(endpoint, fs.is, fs.cs, fs.ns)
+	server.Start(conf.Endpoint, conf.HistogramOption, fs.is, fs.cs, fs.ns, conf.EnableGRPCMetrics)
+	if conf.EnableGRPCMetrics {
+		go util.StartMetricsServer(conf)
+	}
 	server.Wait()
 }

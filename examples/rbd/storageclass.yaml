@@ -13,14 +13,15 @@ parameters:
    # csi-config-map-sample.yaml, to accompany the string chosen to
    # represent the Ceph cluster in clusterID below
    clusterID: <cluster-id>
-
-   # Ceph pool into which the RBD image shall be created
+   # If you want to use erasure coded pool with RBD, you need to create
+   # two pools. one erasure coded and one replicated.
+   # You need to specify the replicated pool here in the `pool` parameter, it is
+   # used for the metadata of the images.
+   # The erasure coded pool must be set as the `dataPool` parameter below.
+   # dataPool: ec-data-pool
    pool: rbd
 
-   # RBD image format. Defaults to "2".
-   imageFormat: "2"
-
-   # RBD image features. Available for imageFormat: "2"
+   # RBD image features, CSI creates image with image-format 2
    # CSI RBD currently supports only `layering` feature.
    imageFeatures: layering
 
@@ -30,7 +31,9 @@ parameters:
    csi.storage.k8s.io/provisioner-secret-namespace: default
    csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
    csi.storage.k8s.io/node-stage-secret-namespace: default
-
+   # Specify the filesystem type of the volume. If not specified,
+   # csi-provisioner will set default as `ext4`.
+   csi.storage.k8s.io/fstype: xfs
    # uncomment the following to use rbd-nbd as mounter on supported nodes
    # mounter: rbd-nbd
 reclaimPolicy: Delete

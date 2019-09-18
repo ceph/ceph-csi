@@ -22,9 +22,10 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util"
 
+	"context"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	csipbv1 "github.com/container-storage-interface/spec/lib/go/csi"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
@@ -54,7 +55,7 @@ func (ns *DefaultNodeServer) NodeExpandVolume(ctx context.Context, req *csi.Node
 
 // NodeGetInfo returns node ID
 func (ns *DefaultNodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	klog.V(5).Infof("Using default NodeGetInfo")
+	klog.V(5).Infof(util.Log(ctx, "Using default NodeGetInfo"))
 
 	return &csi.NodeGetInfoResponse{
 		NodeId: ns.Driver.nodeID,
@@ -63,7 +64,7 @@ func (ns *DefaultNodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetIn
 
 // NodeGetCapabilities returns RPC unknow capability
 func (ns *DefaultNodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
-	klog.V(5).Infof("Using default NodeGetCapabilities")
+	klog.V(5).Infof(util.Log(ctx, "Using default NodeGetCapabilities"))
 
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
@@ -128,31 +129,31 @@ func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.No
 
 	available, ok := (*(volMetrics.Available)).AsInt64()
 	if !ok {
-		klog.Errorf("failed to fetch available bytes")
+		klog.Errorf(util.Log(ctx, "failed to fetch available bytes"))
 	}
 	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
 	if !ok {
-		klog.Errorf("failed to fetch capacity bytes")
+		klog.Errorf(util.Log(ctx, "failed to fetch capacity bytes"))
 		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
 	}
 	used, ok := (*(volMetrics.Used)).AsInt64()
 	if !ok {
-		klog.Errorf("failed to fetch used bytes")
+		klog.Errorf(util.Log(ctx, "failed to fetch used bytes"))
 	}
 	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
 	if !ok {
-		klog.Errorf("failed to fetch available inodes")
+		klog.Errorf(util.Log(ctx, "failed to fetch available inodes"))
 		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
 
 	}
 	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
 	if !ok {
-		klog.Errorf("failed to fetch free inodes")
+		klog.Errorf(util.Log(ctx, "failed to fetch free inodes"))
 	}
 
 	inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
 	if !ok {
-		klog.Errorf("failed to fetch used inodes")
+		klog.Errorf(util.Log(ctx, "failed to fetch used inodes"))
 	}
 	return &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{

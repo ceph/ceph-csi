@@ -17,13 +17,15 @@ limitations under the License.
 package csicommon
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"strings"
+	"sync/atomic"
 
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -79,40 +81,86 @@ func NewControllerServiceCapability(ctrlCap csi.ControllerServiceCapability_RPC_
 }
 
 // RunNodePublishServer starts node server
-func RunNodePublishServer(endpoint string, d *CSIDriver, ns csi.NodeServer) {
+func RunNodePublishServer(endpoint, hstOption string, d *CSIDriver, ns csi.NodeServer, m bool) {
 	ids := NewDefaultIdentityServer(d)
 
 	s := NewNonBlockingGRPCServer()
-	s.Start(endpoint, ids, nil, ns)
+	s.Start(endpoint, hstOption, ids, nil, ns, m)
 	s.Wait()
 }
 
 // RunControllerPublishServer starts controller server
-func RunControllerPublishServer(endpoint string, d *CSIDriver, cs csi.ControllerServer) {
+func RunControllerPublishServer(endpoint, hstOption string, d *CSIDriver, cs csi.ControllerServer, m bool) {
 	ids := NewDefaultIdentityServer(d)
 
 	s := NewNonBlockingGRPCServer()
-	s.Start(endpoint, ids, cs, nil)
+	s.Start(endpoint, hstOption, ids, cs, nil, m)
 	s.Wait()
 }
 
 // RunControllerandNodePublishServer starts both controller and node server
-func RunControllerandNodePublishServer(endpoint string, d *CSIDriver, cs csi.ControllerServer, ns csi.NodeServer) {
+func RunControllerandNodePublishServer(endpoint, hstOption string, d *CSIDriver, cs csi.ControllerServer, ns csi.NodeServer, m bool) {
 	ids := NewDefaultIdentityServer(d)
 
 	s := NewNonBlockingGRPCServer()
-	s.Start(endpoint, ids, cs, ns)
+	s.Start(endpoint, hstOption, ids, cs, ns, m)
 	s.Wait()
 }
 
+func getReqID(req interface{}) string {
+	// if req is nil empty string will be returned
+	reqID := ""
+	switch r := req.(type) {
+	case *csi.CreateVolumeRequest:
+		reqID = r.Name
+
+	case *csi.DeleteVolumeRequest:
+		reqID = r.VolumeId
+
+	case *csi.CreateSnapshotRequest:
+		reqID = r.Name
+	case *csi.DeleteSnapshotRequest:
+		reqID = r.SnapshotId
+
+	case *csi.ControllerExpandVolumeRequest:
+		reqID = r.VolumeId
+
+	case *csi.NodeStageVolumeRequest:
+		reqID = r.VolumeId
+	case *csi.NodeUnstageVolumeRequest:
+		reqID = r.VolumeId
+
+	case *csi.NodePublishVolumeRequest:
+		reqID = r.VolumeId
+	case *csi.NodeUnpublishVolumeRequest:
+		reqID = r.VolumeId
+
+	case *csi.NodeExpandVolumeRequest:
+		reqID = r.VolumeId
+	}
+	return reqID
+}
+
+var id uint64
+
+func contextIDInjector(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	atomic.AddUint64(&id, 1)
+	ctx = context.WithValue(ctx, util.CtxKey, id)
+	reqID := getReqID(req)
+	if reqID != "" {
+		ctx = context.WithValue(ctx, util.ReqID, reqID)
+	}
+	return handler(ctx, req)
+}
+
 func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	klog.V(3).Infof("GRPC call: %s", info.FullMethod)
-	klog.V(5).Infof("GRPC request: %s", protosanitizer.StripSecrets(req))
+	klog.V(3).Infof(util.Log(ctx, "GRPC call: %s"), info.FullMethod)
+	klog.V(5).Infof(util.Log(ctx, "GRPC request: %s"), protosanitizer.StripSecrets(req))
 	resp, err := handler(ctx, req)
 	if err != nil {
-		klog.Errorf("GRPC error: %v", err)
+		klog.Errorf(util.Log(ctx, "GRPC error: %v"), err)
 	} else {
-		klog.V(5).Infof("GRPC response: %s", protosanitizer.StripSecrets(resp))
+		klog.V(5).Infof(util.Log(ctx, "GRPC response: %s"), protosanitizer.StripSecrets(resp))
 	}
 	return resp, err
 }

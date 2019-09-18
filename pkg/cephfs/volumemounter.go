@@ -17,6 +17,7 @@ limitations under the License.
 package cephfs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -54,12 +55,32 @@ func loadAvailableMounters() error {
 	// #nosec
 	kernelMounterProbe := exec.Command("mount.ceph")
 
-	if fuseMounterProbe.Run() == nil {
-		availableMounters = append(availableMounters, volumeMounterFuse)
+	err := kernelMounterProbe.Run()
+	if err == nil {
+		kernelVersion, _, err := execCommand(context.TODO(), "uname", "-r")
+		if err != nil {
+			return err
+		}
+		vers := strings.Split(string(kernelVersion), ".")
+		majorVers, err := strconv.Atoi(vers[0])
+		if err != nil {
+			return err
+		}
+		minorVers, err := strconv.Atoi(vers[1])
+		if err != nil {
+			return err
+		}
+		if majorVers > 4 || (majorVers >= 4 && minorVers >= 17) {
+			klog.Infof("loaded mounter: %s", volumeMounterKernel)
+			availableMounters = append(availableMounters, volumeMounterKernel)
+		} else {
+			klog.Infof("kernel version < 4.17 might not support quota feature, hence not loading kernel client")
+		}
 	}
 
-	if kernelMounterProbe.Run() == nil {
-		availableMounters = append(availableMounters, volumeMounterKernel)
+	if fuseMounterProbe.Run() == nil {
+		klog.Infof("loaded mounter: %s", volumeMounterFuse)
+		availableMounters = append(availableMounters, volumeMounterFuse)
 	}
 
 	if len(availableMounters) == 0 {
@@ -70,7 +91,7 @@ func loadAvailableMounters() error {
 }
 
 type volumeMounter interface {
-	mount(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error
+	mount(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error
 	name() string
 }
 
@@ -79,25 +100,21 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 
 	wantMounter := volOptions.Mounter
 
-	if wantMounter == "" {
-		wantMounter = DefaultVolumeMounter
-	}
-
 	// Verify that it's available
 
 	var chosenMounter string
 
 	for _, availMounter := range availableMounters {
-		if chosenMounter == "" {
-			if availMounter == wantMounter {
-				chosenMounter = wantMounter
-			}
+		if availMounter == wantMounter {
+			chosenMounter = wantMounter
+			break
 		}
 	}
 
 	if chosenMounter == "" {
 		// Otherwise pick whatever is left
 		chosenMounter = availableMounters[0]
+		klog.Infof("requested mounter: %s, chosen mounter: %s", wantMounter, chosenMounter)
 	}
 
 	// Create the mounter
@@ -114,7 +131,7 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 
 type fuseMounter struct{}
 
-func mountFuse(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
+func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
 	args := []string{
 		mountPoint,
 		"-m", volOptions.Monitors,
@@ -124,11 +141,14 @@ func mountFuse(mountPoint string, cr *util.Credentials, volOptions *volumeOption
 		"-o", "nonempty",
 	}
 
+	if volOptions.FuseMountOptions != "" {
+		args = append(args, ","+volOptions.FuseMountOptions)
+	}
 	if volOptions.FsName != "" {
 		args = append(args, "--client_mds_namespace="+volOptions.FsName)
 	}
 
-	_, stderr, err := execCommand("ceph-fuse", args[:]...)
+	_, stderr, err := execCommand(ctx, "ceph-fuse", args[:]...)
 	if err != nil {
 		return err
 	}
@@ -154,20 +174,20 @@ func mountFuse(mountPoint string, cr *util.Credentials, volOptions *volumeOption
 	return nil
 }
 
-func (m *fuseMounter) mount(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
+func (m *fuseMounter) mount(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}
 
-	return mountFuse(mountPoint, cr, volOptions)
+	return mountFuse(ctx, mountPoint, cr, volOptions)
 }
 
 func (m *fuseMounter) name() string { return "Ceph FUSE driver" }
 
 type kernelMounter struct{}
 
-func mountKernel(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
-	if err := execCommandErr("modprobe", "ceph"); err != nil {
+func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
+	if err := execCommandErr(ctx, "modprobe", "ceph"); err != nil {
 		return err
 	}
 
@@ -180,30 +200,33 @@ func mountKernel(mountPoint string, cr *util.Credentials, volOptions *volumeOpti
 	if volOptions.FsName != "" {
 		optionsStr += fmt.Sprintf(",mds_namespace=%s", volOptions.FsName)
 	}
+	if volOptions.KernelMountOptions != "" {
+		optionsStr += fmt.Sprintf(",%s", volOptions.KernelMountOptions)
+	}
 	args = append(args, "-o", optionsStr)
 
-	return execCommandErr("mount", args[:]...)
+	return execCommandErr(ctx, "mount", args[:]...)
 }
 
-func (m *kernelMounter) mount(mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
+func (m *kernelMounter) mount(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}
 
-	return mountKernel(mountPoint, cr, volOptions)
+	return mountKernel(ctx, mountPoint, cr, volOptions)
 }
 
 func (m *kernelMounter) name() string { return "Ceph kernel client" }
 
-func bindMount(from, to string, readOnly bool, mntOptions []string) error {
+func bindMount(ctx context.Context, from, to string, readOnly bool, mntOptions []string) error {
 	mntOptionSli := strings.Join(mntOptions, ",")
-	if err := execCommandErr("mount", "-o", mntOptionSli, from, to); err != nil {
+	if err := execCommandErr(ctx, "mount", "-o", mntOptionSli, from, to); err != nil {
 		return fmt.Errorf("failed to bind-mount %s to %s: %v", from, to, err)
 	}
 
 	if readOnly {
 		mntOptionSli += ",remount"
-		if err := execCommandErr("mount", "-o", mntOptionSli, to); err != nil {
+		if err := execCommandErr(ctx, "mount", "-o", mntOptionSli, to); err != nil {
 			return fmt.Errorf("failed read-only remount of %s: %v", to, err)
 		}
 	}
@@ -211,8 +234,8 @@ func bindMount(from, to string, readOnly bool, mntOptions []string) error {
 	return nil
 }
 
-func unmountVolume(mountPoint string) error {
-	if err := execCommandErr("umount", mountPoint); err != nil {
+func unmountVolume(ctx context.Context, mountPoint string) error {
+	if err := execCommandErr(ctx, "umount", mountPoint); err != nil {
 		return err
 	}
 
@@ -226,10 +249,10 @@ func unmountVolume(mountPoint string) error {
 	if ok {
 		p, err := os.FindProcess(pid)
 		if err != nil {
-			klog.Warningf("failed to find process %d: %v", pid, err)
+			klog.Warningf(util.Log(ctx, "failed to find process %d: %v"), pid, err)
 		} else {
 			if _, err = p.Wait(); err != nil {
-				klog.Warningf("%d is not a child process: %v", pid, err)
+				klog.Warningf(util.Log(ctx, "%d is not a child process: %v"), pid, err)
 			}
 		}
 	}

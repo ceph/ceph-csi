@@ -17,9 +17,11 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -49,6 +51,36 @@ var (
 	// DriverVersion which will be driver version
 	DriverVersion string
 )
+
+// Config holds the parameters list which can be configured
+type Config struct {
+	Vtype           string // driver type [rbd|cephfs|liveness]
+	Endpoint        string // CSI endpoint
+	DriverName      string // name of the driver
+	NodeID          string // node id
+	InstanceID      string // unique ID distinguishing this instance of Ceph CSI
+	MetadataStorage string // metadata persistence method [node|k8s_configmap]
+	PluginPath      string // location of cephcsi plugin
+
+	// cephfs related flags
+	MountCacheDir string // mount info cache save dir
+
+	// metrics related flags
+	MetricsPath       string        // path of prometheus endpoint where metrics will be available
+	HistogramOption   string        // Histogram option for grpc metrics, should be comma separated value, ex:= "0.5,2,6" where start=0.5 factor=2, count=6
+	MetricsIP         string        // TCP port for liveness/ metrics requests
+	PidLimit          int           // PID limit to configure through cgroups")
+	MetricsPort       int           // TCP port for liveness/grpc metrics requests
+	PollTime          time.Duration // time interval in seconds between each poll
+	PoolTimeout       time.Duration // probe timeout in seconds
+	EnableGRPCMetrics bool          // option to enable grpc metrics
+
+	IsControllerServer bool // if set to true start provisoner server
+	IsNodeServer       bool // if set to true start node server
+	// rbd related flag
+	Containerized bool // whether run as containerized
+
+}
 
 func roundUpSize(volumeSizeBytes, allocationUnitBytes int64) int64 {
 	roundedUp := volumeSizeBytes / allocationUnitBytes
@@ -101,8 +133,8 @@ func ValidateDriverName(driverName string) error {
 
 // GenerateVolID generates a volume ID based on passed in parameters and version, to be returned
 // to the CO system
-func GenerateVolID(monitors string, cr *Credentials, pool, clusterID, objUUID string, volIDVersion uint16) (string, error) {
-	poolID, err := GetPoolID(monitors, cr, pool)
+func GenerateVolID(ctx context.Context, monitors string, cr *Credentials, pool, clusterID, objUUID string, volIDVersion uint16) (string, error) {
+	poolID, err := GetPoolID(ctx, monitors, cr, pool)
 	if err != nil {
 		return "", err
 	}

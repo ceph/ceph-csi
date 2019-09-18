@@ -17,6 +17,7 @@ limitations under the License.
 package cephfs
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -26,17 +27,19 @@ import (
 )
 
 type volumeOptions struct {
-	RequestName     string
-	Size            int64
-	ClusterID       string
-	FsName          string
-	FscID           int64
-	MetadataPool    string
-	Monitors        string `json:"monitors"`
-	Pool            string `json:"pool"`
-	RootPath        string `json:"rootPath"`
-	Mounter         string `json:"mounter"`
-	ProvisionVolume bool   `json:"provisionVolume"`
+	RequestName        string
+	Size               int64
+	ClusterID          string
+	FsName             string
+	FscID              int64
+	MetadataPool       string
+	Monitors           string `json:"monitors"`
+	Pool               string `json:"pool"`
+	RootPath           string `json:"rootPath"`
+	Mounter            string `json:"mounter"`
+	ProvisionVolume    bool   `json:"provisionVolume"`
+	KernelMountOptions string `json:"kernelMountOptions"`
+	FuseMountOptions   string `json:"fuseMountOptions"`
 }
 
 func validateNonEmptyField(field, fieldName string) error {
@@ -114,7 +117,7 @@ func getMonsAndClusterID(options map[string]string) (string, string, error) {
 
 	monitors, err := util.Mons(csiConfigFile, clusterID)
 	if err != nil {
-		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s)", clusterID)
+		err = errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", clusterID)
 		return "", "", err
 	}
 
@@ -123,7 +126,7 @@ func getMonsAndClusterID(options map[string]string) (string, string, error) {
 
 // newVolumeOptions generates a new instance of volumeOptions from the provided
 // CSI request parameters
-func newVolumeOptions(requestName string, size int64, volOptions, secret map[string]string) (*volumeOptions, error) {
+func newVolumeOptions(ctx context.Context, requestName string, size int64, volOptions, secret map[string]string) (*volumeOptions, error) {
 	var (
 		opts volumeOptions
 		err  error
@@ -146,6 +149,14 @@ func newVolumeOptions(requestName string, size int64, volOptions, secret map[str
 		return nil, err
 	}
 
+	if err = extractOptionalOption(&opts.KernelMountOptions, "kernelMountOptions", volOptions); err != nil {
+		return nil, err
+	}
+
+	if err = extractOptionalOption(&opts.FuseMountOptions, "fuseMountOptions", volOptions); err != nil {
+		return nil, err
+	}
+
 	opts.RequestName = requestName
 	opts.Size = size
 
@@ -155,12 +166,12 @@ func newVolumeOptions(requestName string, size int64, volOptions, secret map[str
 	}
 	defer cr.DeleteCredentials()
 
-	opts.FscID, err = getFscID(opts.Monitors, cr, opts.FsName)
+	opts.FscID, err = getFscID(ctx, opts.Monitors, cr, opts.FsName)
 	if err != nil {
 		return nil, err
 	}
 
-	opts.MetadataPool, err = getMetadataPool(opts.Monitors, cr, opts.FsName)
+	opts.MetadataPool, err = getMetadataPool(ctx, opts.Monitors, cr, opts.FsName)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +183,7 @@ func newVolumeOptions(requestName string, size int64, volOptions, secret map[str
 
 // newVolumeOptionsFromVolID generates a new instance of volumeOptions and volumeIdentifier
 // from the provided CSI VolumeID
-func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
+func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
 	var (
 		vi         util.CSIIdentifier
 		volOptions volumeOptions
@@ -201,17 +212,17 @@ func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) 
 	}
 	defer cr.DeleteCredentials()
 
-	volOptions.FsName, err = getFsName(volOptions.Monitors, cr, volOptions.FscID)
+	volOptions.FsName, err = getFsName(ctx, volOptions.Monitors, cr, volOptions.FscID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	volOptions.MetadataPool, err = getMetadataPool(volOptions.Monitors, cr, volOptions.FsName)
+	volOptions.MetadataPool, err = getMetadataPool(ctx, volOptions.Monitors, cr, volOptions.FsName)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	volOptions.RequestName, _, err = volJournal.GetObjectUUIDData(volOptions.Monitors, cr,
+	volOptions.RequestName, _, err = volJournal.GetObjectUUIDData(ctx, volOptions.Monitors, cr,
 		volOptions.MetadataPool, vi.ObjectUUID, false)
 	if err != nil {
 		return nil, nil, err
@@ -222,12 +233,20 @@ func newVolumeOptionsFromVolID(volID string, volOpt, secrets map[string]string) 
 			return nil, nil, err
 		}
 
+		if err = extractOptionalOption(&volOptions.KernelMountOptions, "kernelMountOptions", volOpt); err != nil {
+			return nil, nil, err
+		}
+
+		if err = extractOptionalOption(&volOptions.FuseMountOptions, "fuseMountOptions", volOpt); err != nil {
+			return nil, nil, err
+		}
+
 		if err = extractMounter(&volOptions.Mounter, volOpt); err != nil {
 			return nil, nil, err
 		}
 	}
 
-	volOptions.RootPath, err = getVolumeRootPathCeph(&volOptions, cr, volumeID(vid.FsSubvolName))
+	volOptions.RootPath, err = getVolumeRootPathCeph(ctx, &volOptions, cr, volumeID(vid.FsSubvolName))
 	if err != nil {
 		return nil, nil, err
 	}

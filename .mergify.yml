@@ -1,5 +1,12 @@
 ---
 pull_request_rules:
+  - name: remove outdated approvals
+    conditions:
+      - base=master
+    actions:
+      dismiss_reviews:
+        approved: true
+        changes_requested: false
   - name: automatic merge
     conditions:
       - label!=DNM

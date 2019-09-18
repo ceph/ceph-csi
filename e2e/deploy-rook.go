@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/onsi/gomega" // nolint
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,6 +98,31 @@ func deployToolBox(c kubernetes.Interface) {
 	name := getPodName(rookNS, c, opt)
 	err := waitForPodInRunningState(name, rookNS, c, deployTimeout)
 	Expect(err).Should(BeNil())
+	waitforToolBoX(name)
+}
+
+// this is a  workaround, as we are hitting "unable to get monitor info from DNS SRV with service name: ceph-mon"
+func waitforToolBoX(name string) {
+	cmd := []string{"logs", "-nrook-ceph", name}
+	for i := 0; i < 20; i++ {
+		resp, err := framework.RunKubectl(cmd...)
+		if err != nil {
+			e2elog.Logf("failed to get logs %v", err)
+			continue
+		}
+
+		if !strings.Contains(resp, "=") {
+			e2elog.Logf("malformed monitor configuration %+v", resp)
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		if strings.TrimRight(resp[strings.LastIndex(resp, "=")+1:], "\n") != "" {
+			break
+		}
+		e2elog.Logf("monitor list is empty in ceph.conf %v", resp)
+		time.Sleep(10 * time.Second)
+	}
 }
 
 func deployRook() {
