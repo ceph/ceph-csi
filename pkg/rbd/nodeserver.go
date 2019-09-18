@@ -302,7 +302,7 @@ func getLegacyVolumeName(mountPath string) (string, error) {
 func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, stagingPath, devicePath string) error {
 	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
-	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+	diskMounter := &RFormatAndMount{mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}}
 	opt := []string{}
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	var err error
