@@ -608,6 +608,13 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 		Fail(err.Error())
 	}
 }
+func deletePodWithLabel(label string) error {
+	_, err := framework.RunKubectl("delete", "po", "-l", label)
+	if err != nil {
+		e2elog.Logf("failed to delete pod %v", err)
+	}
+	return err
+}
 
 func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 	pvc, err := loadPVC(pvcPath)

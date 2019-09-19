@@ -224,6 +224,40 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 			})
+
+			By("Test unmount after nodeplugin restart", func() {
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+				pvc.Namespace = f.UniqueName
+
+				app, err := loadApp(appPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+				app.Namespace = f.UniqueName
+				err = createPVCAndApp("", f, pvc, app)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				// delete rbd nodeplugin pods
+				err = deletePodWithLabel("app=csi-rbdplugin")
+				if err != nil {
+					Fail(err.Error())
+				}
+				// wait for nodeplugin pods to come up
+				err = waitForDaemonSets(rbdDaemonsetName, namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
 		})
 	})
 
