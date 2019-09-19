@@ -303,9 +303,27 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+	existingFormat, err := diskMounter.GetDiskFormat(devicePath)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to get disk format for path %s, error: %v"), devicePath, err)
+		return err
+	}
+	if existingFormat == "" && (fsType == "ext4" || fsType == "xfs") {
+		args := []string{}
+		if fsType == "ext4" {
+			args = []string{"-m0", "-Enodiscard", devicePath}
+		} else if fsType == "xfs" {
+			args = []string{"-K", devicePath}
+		}
+		_, err = diskMounter.Exec.Run("mkfs."+fsType, args...)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to run mkfs, error: %v"), err)
+			return err
+		}
+	}
+
 	opt := []string{}
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
-	var err error
 
 	if isBlock {
 		opt = append(opt, "bind")
