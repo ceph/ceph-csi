@@ -302,6 +302,29 @@ func getLegacyVolumeName(mountPath string) (string, error) {
 func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, stagingPath, devicePath string) error {
 	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
+
+	// Use 'ext4' as the default
+	if fsType == "" {
+		fsType = "ext4"
+	}
+	// Disk is unformatted so format it.
+	fmtArgs := []string{devicePath}
+
+	if fsType == "ext4" {
+		fmtArgs = []string{
+			"-E nodiscard", // Do not attempt to discard blocks at mkfs time - Mainly used for RBD performance.
+			"-m0",          // Zero blocks reserved for super-user
+			"-F",           // Force flag
+			devicePath,
+		}
+
+	} else if fsType == "xfs" {
+		fmtArgs = []string{
+			"-K", // Do not attempt to discard blocks at mkfs time - Mainly used for RBD performance.
+			"-f",
+			devicePath,
+		}
+	}
 	diskMounter := &RFormatAndMount{mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}}
 	opt := []string{}
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
@@ -311,7 +334,7 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 		opt = append(opt, "bind")
 		err = diskMounter.Mount(devicePath, stagingPath, fsType, opt)
 	} else {
-		err = diskMounter.FormatAndMount(devicePath, stagingPath, fsType, opt)
+		err = diskMounter.FormatAndMount(ctx, req, devicePath, stagingPath, fsType, opt, fmtArgs)
 	}
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to mount device path (%s) to staging path (%s) for volume (%s) error %s"), devicePath, stagingPath, req.GetVolumeId(), err)

@@ -65,7 +65,7 @@ var _ = Describe("RBD", func() {
 		createRBDPool()
 		createConfigMap(rbdDirPath, f.ClientSet, f)
 		deployRBDPlugin()
-		createRBDStorageClass(f.ClientSet, f)
+		createRBDStorageClass(f.ClientSet, f, make(map[string]string))
 		createRBDSecret(f.ClientSet, f)
 
 	})
@@ -115,6 +115,17 @@ var _ = Describe("RBD", func() {
 			By("create a PVC and Bind it to an app with normal user", func() {
 				validateNormalUserPVCAccess(pvcPath, f)
 			})
+			// Skipping ext4 FS testing
+			/*
+				By("create a PVC and Bind it to an app with ext4 as the FS ", func() {
+					deleteResource(rbdExamplePath + "storageclass.yaml")
+					createRBDStorageClass(f.ClientSet, f, map[string]string{"csi.storage.k8s.io/fstype": "ext4"})
+					validatePVCAndAppBinding(pvcPath, appPath, f)
+					deleteResource(rbdExamplePath + "storageclass.yaml")
+					createRBDStorageClass(f.ClientSet, f, make(map[string]string))
+				})
+			*/
+
 			// skipping snapshot testing
 
 			// By("create a PVC clone and Bind it to an app", func() {

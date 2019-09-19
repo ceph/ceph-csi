@@ -17,10 +17,13 @@ limitations under the License.
 package rbd
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
+	"github.com/ceph/ceph-csi/pkg/util"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/pkg/errors"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
 	utilexec "k8s.io/utils/exec"
@@ -33,7 +36,7 @@ const (
 	fsckErrorsUncorrected = 4
 )
 
-// rFormatAndMount probes a device to see if it is formatted.
+// RFormatAndMount probes a device to see if it is formatted.
 // Namely it checks to see if a file system is present. If so it
 // mounts it otherwise the device is formatted first then mounted.
 type RFormatAndMount struct {
@@ -42,7 +45,7 @@ type RFormatAndMount struct {
 
 // formatAndMount uses unix utils to format and mount the given disk
 // nolint: gocyclo
-func (mounter *RFormatAndMount) FormatAndMount(source, target, fstype string, options []string) error {
+func (mounter *RFormatAndMount) FormatAndMount(ctx context.Context, req *csi.NodeStageVolumeRequest, source, target, fstype string, options, fmtArgs []string) error {
 	readOnly := false
 	for _, option := range options {
 		if option == "ro" {
@@ -55,26 +58,27 @@ func (mounter *RFormatAndMount) FormatAndMount(source, target, fstype string, op
 
 	if !readOnly {
 		// Run fsck on the disk to fix repairable issues, only do this for volumes requested as rw.
-		klog.V(4).Infof("Checking for issues with fsck on disk: %s", source)
+		klog.V(4).Infof(util.Log(ctx, "Checking for issues with fsck on disk: %s"), req.GetVolumeId(), source)
+
 		args := []string{"-a", source}
 		out, err := mounter.Exec.Run("fsck", args...)
 		if err != nil {
 			ee, isExitError := err.(utilexec.ExitError)
 			switch {
 			case err == utilexec.ErrExecutableNotFound:
-				klog.Warningf("'fsck' not found on system; continuing mount without running 'fsck'")
+				klog.Warningf(util.Log(ctx, "'fsck' not found on system; continuing mount without running 'fsck'"), req.GetVolumeId())
 			case isExitError && ee.ExitStatus() == fsckErrorsCorrected:
-				klog.Infof("Device %s has errors which were corrected by fsck", source)
+				klog.Infof(util.Log(ctx, "Device %s has errors which were corrected by fsck"), req.GetVolumeId(), source)
 			case isExitError && ee.ExitStatus() == fsckErrorsUncorrected:
 				return fmt.Errorf("'fsck' found errors on device %s but could not correct them: %s", source, string(out))
 			case isExitError && ee.ExitStatus() > fsckErrorsUncorrected:
-				klog.Infof("`fsck` error %s", string(out))
+				klog.Infof(util.Log(ctx, "`fsck` error %s"), req.GetVolumeId(), string(out))
 			}
 		}
 	}
 
 	// Try to mount the disk
-	klog.V(4).Infof("Attempting to mount disk: %s %s %s", fstype, source, target)
+	klog.V(4).Infof(util.Log(ctx, "Attempting to mount disk: %s %s %s"), req.GetVolumeId(), fstype, source, target)
 	mountErr := mounter.Interface.Mount(source, target, fstype, options)
 	if mountErr != nil {
 		// Mount failed. This indicates either that the disk is unformatted or
@@ -88,36 +92,14 @@ func (mounter *RFormatAndMount) FormatAndMount(source, target, fstype string, op
 				// Don't attempt to format if mounting as readonly, return an error to reflect this.
 				return errors.New("failed to mount unformatted volume as read only")
 			}
-
-			// Disk is unformatted so format it.
-			args := []string{source}
-			// Use 'ext4' as the default
-			if fstype == "" {
-				fstype = "ext4"
-			}
-
-			if fstype == "ext4" || fstype == "ext3" {
-				args = []string{
-					"-F",           // Force flag
-					"-m0",          // Zero blocks reserved for super-user
-					"-E nodiscard", // Do not attempt to discard blocks at mkfs time - Mainly used for RBD performance.
-					source,
-				}
-
-			} else if fstype == "xfs" {
-				args = []string{
-					"-K", // Do not attempt to discard blocks at mkfs time - Mainly used for RBD performance.
-					source,
-				}
-			}
-			klog.Infof("Disk %q appears to be unformatted, attempting to format as type: %q with options: %v", source, fstype, args)
-			_, err := mounter.Exec.Run("mkfs."+fstype, args...)
+			klog.Infof(util.Log(ctx, "Disk %q appears to be unformatted, attempting to format as type: %q with options: %v"), req.GetVolumeId(), source, fstype, fmtArgs)
+			_, err := mounter.Exec.Run("mkfs."+fstype, fmtArgs...)
 			if err == nil {
 				// the disk has been formatted successfully try to mount it again.
-				klog.Infof("Disk successfully formatted (mkfs): %s - %s %s", fstype, source, target)
+				klog.Infof(util.Log(ctx, "Disk successfully formatted (mkfs): %s - %s %s"), req.GetVolumeId(), fstype, source, target)
 				return mounter.Interface.Mount(source, target, fstype, options)
 			}
-			klog.Errorf("format of disk %q failed: type:(%q) target:(%q) options:(%q)error:(%v)", source, fstype, target, options, err)
+			klog.Errorf(util.Log(ctx, "format of disk %q failed: type:(%q) target:(%q) options:(%q)error:(%v)"), req.GetVolumeId(), source, fstype, target, options, err)
 			return err
 		}
 		// Disk is already formatted and failed to mount
