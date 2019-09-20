@@ -23,9 +23,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
-	nsutil "k8s.io/kubernetes/pkg/volume/util/nsenter"
-	"k8s.io/utils/exec"
-	"k8s.io/utils/nsenter"
 )
 
 const (
@@ -80,15 +77,8 @@ func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersis
 }
 
 // NewNodeServer initialize a node server for rbd CSI driver.
-func NewNodeServer(d *csicommon.CSIDriver, containerized bool, t string) (*NodeServer, error) {
+func NewNodeServer(d *csicommon.CSIDriver, t string) (*NodeServer, error) {
 	mounter := mount.New("")
-	if containerized {
-		ne, err := nsenter.NewNsenter(nsenter.DefaultHostRootFsPath, exec.New())
-		if err != nil {
-			return nil, err
-		}
-		mounter = nsutil.NewMounter("", ne)
-	}
 	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t),
 		mounter:           mounter,
@@ -143,7 +133,7 @@ func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	r.ids = NewIdentityServer(r.cd)
 
 	if conf.IsNodeServer {
-		r.ns, err = NewNodeServer(r.cd, conf.Containerized, conf.Vtype)
+		r.ns, err = NewNodeServer(r.cd, conf.Vtype)
 		if err != nil {
 			klog.Fatalf("failed to start node server, err %v\n", err)
 		}
@@ -153,7 +143,7 @@ func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 		r.cs = NewControllerServer(r.cd, cachePersister)
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {
-		r.ns, err = NewNodeServer(r.cd, conf.Containerized, conf.Vtype)
+		r.ns, err = NewNodeServer(r.cd, conf.Vtype)
 		if err != nil {
 			klog.Fatalf("failed to start node server, err %v\n", err)
 		}
