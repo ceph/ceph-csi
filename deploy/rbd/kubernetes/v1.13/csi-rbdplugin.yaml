@@ -60,7 +60,6 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
-            - "--containerized=true"
             - "--metricsport=8090"
             - "--metricspath=/metrics"
             - "--enablegrpcmetrics=false"
@@ -81,8 +80,6 @@ spec:
               mountPath: /csi
             - mountPath: /dev
               name: host-dev
-            - mountPath: /rootfs
-              name: host-rootfs
             - mountPath: /sys
               name: host-sys
             - mountPath: /lib/modules
@@ -138,9 +135,6 @@ spec:
         - name: host-dev
           hostPath:
             path: /dev
-        - name: host-rootfs
-          hostPath:
-            path: /
         - name: host-sys
           hostPath:
             path: /sys
