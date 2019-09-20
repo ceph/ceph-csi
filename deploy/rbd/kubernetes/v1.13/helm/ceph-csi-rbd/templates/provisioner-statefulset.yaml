@@ -93,7 +93,6 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
-            - "--containerized=true"
             - "--pidlimit=-1"
             - "--metricsport=8090"
             - "--metricspath=/metrics"
