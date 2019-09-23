@@ -71,6 +71,8 @@ func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersis
 	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		MetadataStore:           cachePersister,
+		VolumeLocks:             util.NewVolumeLocks(),
+		SnapshotLocks:           util.NewVolumeLocks(),
 	}
 }
 
@@ -80,6 +82,7 @@ func NewNodeServer(d *csicommon.CSIDriver, t string) (*NodeServer, error) {
 	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t),
 		mounter:           mounter,
+		VolumeLocks:       util.NewVolumeLocks(),
 	}, nil
 }
 

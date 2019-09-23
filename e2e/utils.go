@@ -213,7 +213,7 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	Expect(err).Should(BeNil())
 }
 
-func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
+func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, parameters map[string]string) {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["pool"] = "replicapool"
@@ -226,6 +226,9 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework) {
 	fsID = strings.Trim(fsID, "\n")
 
 	sc.Parameters["clusterID"] = fsID
+	for k, v := range parameters {
+		sc.Parameters[k] = v
+	}
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
 	Expect(err).Should(BeNil())
 }

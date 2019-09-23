@@ -37,6 +37,9 @@ import (
 type NodeServer struct {
 	*csicommon.DefaultNodeServer
 	mounter mount.Interface
+	// A map storing all volumes with ongoing operations so that additional operations
+	// for that same volume (as defined by VolumeID) return an Aborted error
+	VolumeLocks *util.VolumeLocks
 }
 
 // NodeStageVolume mounts the volume to a staging path on the node.
@@ -77,12 +80,18 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 	defer cr.DeleteCredentials()
 
+	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
+		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+	}
+	defer ns.VolumeLocks.Release(volID)
+
 	isLegacyVolume := false
-	volName, err := getVolumeName(req.GetVolumeId())
+	volName, err := getVolumeName(volID)
 	if err != nil {
 		// error ErrInvalidVolID may mean this is an 1.0.0 version volume, check for name
 		// pattern match in addition to error to ensure this is a likely v1.0.0 volume
-		if _, ok := err.(ErrInvalidVolID); !ok || !isLegacyVolumeID(req.GetVolumeId()) {
+		if _, ok := err.(ErrInvalidVolID); !ok || !isLegacyVolumeID(volID) {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
@@ -94,10 +103,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	stagingParentPath := req.GetStagingTargetPath()
-	stagingTargetPath := stagingParentPath + "/" + req.GetVolumeId()
-
-	idLk := nodeVolumeIDLocker.Lock(volID)
-	defer nodeVolumeIDLocker.Unlock(idLk, volID)
+	stagingTargetPath := stagingParentPath + "/" + volID
 
 	var isNotMnt bool
 	// check if stagingPath is already mounted
@@ -238,10 +244,14 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	targetPath := req.GetTargetPath()
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	stagingPath := req.GetStagingTargetPath()
-	stagingPath += "/" + req.GetVolumeId()
+	volID := req.GetVolumeId()
+	stagingPath += "/" + volID
 
-	idLk := targetPathLocker.Lock(targetPath)
-	defer targetPathLocker.Unlock(idLk, targetPath)
+	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
+		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+	}
+	defer ns.VolumeLocks.Release(volID)
 
 	// Check if that target path exists properly
 	notMnt, err := ns.createTargetMountPath(ctx, targetPath, isBlock)
@@ -303,9 +313,27 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+	existingFormat, err := diskMounter.GetDiskFormat(devicePath)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to get disk format for path %s, error: %v"), devicePath, err)
+		return err
+	}
+	if existingFormat == "" && (fsType == "ext4" || fsType == "xfs") {
+		args := []string{}
+		if fsType == "ext4" {
+			args = []string{"-m0", "-Enodiscard", devicePath}
+		} else if fsType == "xfs" {
+			args = []string{"-K", devicePath}
+		}
+		_, err = diskMounter.Exec.Run("mkfs."+fsType, args...)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to run mkfs, error: %v"), err)
+			return err
+		}
+	}
+
 	opt := []string{}
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
-	var err error
 
 	if isBlock {
 		opt = append(opt, "bind")
@@ -378,6 +406,14 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 
 	targetPath := req.GetTargetPath()
+	volID := req.GetVolumeId()
+
+	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
+		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+	}
+	defer ns.VolumeLocks.Release(volID)
+
 	notMnt, err := mount.IsNotMountPoint(ns.mounter, targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -413,6 +449,14 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	if err = util.ValidateNodeUnstageVolumeRequest(req); err != nil {
 		return nil, err
 	}
+
+	volID := req.GetVolumeId()
+
+	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
+		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+	}
+	defer ns.VolumeLocks.Release(volID)
 
 	stagingParentPath := req.GetStagingTargetPath()
 	stagingTargetPath := stagingParentPath + "/" + req.GetVolumeId()
