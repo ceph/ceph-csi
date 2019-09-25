@@ -25,7 +25,7 @@ push_helm_charts() {
 }
 
 if [ "${TRAVIS_BRANCH}" == 'release-v1.2.0' ]; then
-	export ENV_CSI_IMAGE_VERSION='v1.2.1'
+	export ENV_CSI_IMAGE_VERSION='v1.2-canary'
 else
 	echo "!!! Branch ${TRAVIS_BRANCH} is not a deployable branch; exiting"
 	exit 0 # Exiting 0 so that this isn't marked as failing
