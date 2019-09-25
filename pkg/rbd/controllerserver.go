@@ -104,8 +104,8 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 		volSizeBytes = req.GetCapacityRange().GetRequiredBytes()
 	}
 
-	// always round up the request size in bytes to the nearest MiB
-	rbdVol.VolSize = util.MiB * util.RoundUpToMiB(volSizeBytes)
+	// always round up the request size in bytes to the nearest MiB/GiB
+	rbdVol.VolSize = util.RoundOffBytes(volSizeBytes)
 
 	// NOTE: rbdVol does not contain VolID and RbdImageName populated, everything
 	// else is populated post create request parsing
@@ -168,7 +168,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
-	err = cs.createBackingImage(ctx, rbdVol, req, util.RoundUpToMiB(rbdVol.VolSize))
+	err = cs.createBackingImage(ctx, rbdVol, req, util.RoundOffVolSize(rbdVol.VolSize))
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSizeMiB int64) error {
+func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSize int64) error {
 	var err error
 
 	// if VolumeContentSource is not nil, this request is for snapshot
@@ -197,7 +197,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdV
 		}
 		defer cr.DeleteCredentials()
 
-		err = createImage(ctx, rbdVol, volSizeMiB, cr)
+		err = createImage(ctx, rbdVol, volSize, cr)
 		if err != nil {
 			klog.Warningf(util.Log(ctx, "failed to create volume: %v"), err)
 			return status.Error(codes.Internal, err.Error())
