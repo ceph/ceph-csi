@@ -29,8 +29,8 @@ spec:
               exec:
                 command: [
                   "/bin/sh", "-c",
-                  "rm -rf /registration/csi-cephfsplugin \
-                  /registration/csi-cephfsplugin-reg.sock"
+                  "rm -rf /registration/cephfs.csi.ceph.com \
+                  /registration/cephfs.csi.ceph.com-reg.sock"
                 ]
           env:
             - name: KUBE_NODE_NAME
