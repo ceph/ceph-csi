@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -72,6 +73,9 @@ func newCredentialsFromSecret(idField, keyField string, secrets map[string]strin
 		ok bool
 	)
 
+	if len(secrets) == 0 {
+		return nil, errors.New("provided secret is empty")
+	}
 	if c.ID, ok = secrets[idField]; !ok {
 		return nil, fmt.Errorf("missing ID field '%s' in secrets", idField)
 	}
