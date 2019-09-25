@@ -76,6 +76,10 @@ spec:
           env:
             - name: ADDRESS
               value: /csi/csi-provisioner.sock
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
