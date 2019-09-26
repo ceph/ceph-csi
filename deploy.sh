@@ -3,15 +3,26 @@
 push_helm_charts() {
 	PACKAGE=$1
 	CHANGED=0
-	VERSION=$(grep 'version:' deploy/"$PACKAGE"/helm/Chart.yaml | awk '{print $2}')
+	VERSION=${ENV_CSI_IMAGE_VERSION//v}  # Set version (without v prefix)
 
-	if [ ! -f "tmp/csi-charts/docs/$PACKAGE/ceph-csi-$PACKAGE-$VERSION.tgz" ]; then
+  # Always run when version is canary, when versioned only when the package doesn't exist yet
+	if [ ! -f "tmp/csi-charts/docs/$PACKAGE/ceph-csi-$PACKAGE-$VERSION.tgz" ] && [ -z "$VERSION" ]; then
 		CHANGED=1
-		ln -s helm deploy/"$PACKAGE"/ceph-csi-"$PACKAGE"
+
+    # When version defined it is a release, not a canary build
+    if [ -z "$VERSION" ]; then
+      # Replace appVersion: canary and version: *-canary with the actual version
+      sed -i "s/\(\s.*canary\)/$VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
+
+      # Replace master with the version branch
+      sed -i "s/tree\/master/tree\/release-v$VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
+    fi
+
+		ln -s helm charts/ceph-csi-"$PACKAGE"
 		mkdir -p tmp/csi-charts/docs/"$PACKAGE"
 		pushd tmp/csi-charts/docs/"$PACKAGE" >/dev/null
 		helm init --client-only
-		helm package ../../../../deploy/"$PACKAGE"/ceph-csi-"$PACKAGE"
+		helm package ../../../../charts/ceph-csi-"$PACKAGE"
 		popd >/dev/null
 	fi
 

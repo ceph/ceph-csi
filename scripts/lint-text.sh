@@ -49,9 +49,9 @@ run_check '.*\.(ba)?sh' bash -n
 
 # Install via: pip install yamllint
 # disable yamlint check for helm charts
-run_check '.*\.ya?ml' yamllint -s -d "{extends: default, rules: {line-length: {allow-non-breakable-inline-mappings: true}},ignore: deploy/*/kubernetes/*/helm/*/templates/*.yaml}"
+run_check '.*\.ya?ml' yamllint -s -d "{extends: default, rules: {line-length: {allow-non-breakable-inline-mappings: true}},ignore: charts/*/templates/*.yaml}"
 
 # Install via: https://github.com/helm/helm/blob/master/docs/install.md
-run_check '' helm lint --namespace=test deploy/*/kubernetes/*/helm/*
+run_check '' helm lint --namespace=test charts/*
 
 echo "ALL OK."
