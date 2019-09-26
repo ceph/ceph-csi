@@ -89,3 +89,10 @@ need to be met before it will be merged:
 
 When the criteria are met, a project maintainer can merge your changes into
 the project's master branch.
+
+### Backporting a PR to release branch
+
+If the PR needs to be backported to a release branch, a project maintainer adds
+`backport-to-release-vX.Y.Z` label to the PR. Mergify bot will take care of
+sending the backport PR to release branch once the PR is merged in the master
+branch.
