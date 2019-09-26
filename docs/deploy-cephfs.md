@@ -190,3 +190,14 @@ Dynamically povisioned volumes are deleted by the driver, when requested to
 do so. Statically provisioned volumes, from plugin versions less than or
 equal to 1.0.0, are a no-op when a delete operation is performed against the
 same, and are expected to be deleted on the Ceph cluster by the user.
+
+## Deployment with Helm
+
+The same requirements from the Kubernetes section apply here, i.e. Kubernetes
+version, privileged flag and shared mounts.
+
+The Helm chart is located in `charts/ceph-csi-cephfs`.
+
+**Deploy Helm Chart:**
+
+[See the Helm chart readme for installation instructions.](../charts/ceph-csi-cephfs/README.md)
