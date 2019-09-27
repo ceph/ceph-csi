@@ -151,14 +151,8 @@ test the deployment further.
 The same requirements from the Kubernetes section apply here, i.e. Kubernetes
 version, privileged flag and shared mounts.
 
-The Helm chart is located in `deploy/rbd/kubernetes/v1.14+/helm/ceph-csi-rbd`.
+The Helm chart is located in `charts/ceph-csi-rbd`.
 
 **Deploy Helm Chart:**
 
-```bash
-helm install deploy/rbd/kubernetes/v1.14+/helm/ceph-csi-rbd
-```
-
-The Helm chart deploys all of the required resources to use the CSI RBD driver.
-After deploying the chart you can verify the deployment using the instructions
-above for verifying the deployment with Kubernetes
+[See the Helm chart readme for installation instructions.](../charts/ceph-csi-rbd/README.md)
