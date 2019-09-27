@@ -19,3 +19,11 @@ pull_request_rules:
         strict: smart
       dismiss_reviews: {}
       delete_head_branch: {}
+  - name: backport patches to release branch
+    conditions:
+      - base=master
+      - label=backport-to-release-v1.2.0
+    actions:
+      backport:
+        branches:
+          - release-v1.2.0
