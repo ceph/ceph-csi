@@ -14,7 +14,10 @@ services:
 language: go
 branches:
   only:
+<<<<<<< HEAD
     - release-v1.2.0
+=======
+>>>>>>> 52c4d29f6... Remove csi-v0.3 from deploy.sh
     - master
 
 go: 1.12.x
