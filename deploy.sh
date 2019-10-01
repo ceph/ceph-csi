@@ -2,46 +2,39 @@
 
 push_helm_charts() {
 	PACKAGE=$1
-	CHANGED=0
-	VERSION=${ENV_CSI_IMAGE_VERSION//v}  # Set version (without v prefix)
+	VERSION=${ENV_CSI_IMAGE_VERSION//v/} # Set version (without v prefix)
 
-  # Always run when version is canary, when versioned only when the package doesn't exist yet
-	if [ ! -f "tmp/csi-charts/docs/$PACKAGE/ceph-csi-$PACKAGE-$VERSION.tgz" ] && [ -z "$VERSION" ]; then
-		CHANGED=1
+	# update information in Chart.yaml if the branch is not master
+	if [ "$TRAVIS_BRANCH" != "master" ]; then
+		# Replace appVersion: canary and version: *-canary with the actual version
+		sed -i "s/\(\s.*canary\)/ $VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
 
-    # When version defined it is a release, not a canary build
-    if [ -z "$VERSION" ]; then
-      # Replace appVersion: canary and version: *-canary with the actual version
-      sed -i "s/\(\s.*canary\)/$VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
+		if [[ "$VERSION" == *"canary"* ]]; then
+			# Replace master with the version branch
+			sed -i "s/master/$TRAVIS_BRANCH/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
+		else
+			# This is not a canary release, replace master with the tagged branch
+			sed -i "s/master/v$VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
 
-      # Replace master with the version branch
-      sed -i "s/tree\/master/tree\/release-v$VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
-    fi
-
-		ln -s helm charts/ceph-csi-"$PACKAGE"
-		mkdir -p tmp/csi-charts/docs/"$PACKAGE"
-		pushd tmp/csi-charts/docs/"$PACKAGE" >/dev/null
-		helm init --client-only
-		helm package ../../../../charts/ceph-csi-"$PACKAGE"
-		popd >/dev/null
+		fi
 	fi
 
-	if [ $CHANGED -eq 1 ]; then
-		pushd tmp/csi-charts/docs >/dev/null
-		helm repo index .
-		git add --all :/ && git commit -m "Update repo"
-		git push https://"$GITHUB_TOKEN"@github.com/ceph/csi-charts
-		popd >/dev/null
-	fi
+	mkdir -p tmp/csi-charts/docs/"$PACKAGE"
+	pushd tmp/csi-charts/docs/"$PACKAGE" >/dev/null
+	helm init --client-only
+	helm package ../../../../charts/ceph-csi-"$PACKAGE"
+	popd >/dev/null
+
+	pushd tmp/csi-charts/docs >/dev/null
+	helm repo index .
+	git add --all :/ && git commit -m "Update for helm charts $PACKAGE-$VERSION"
+	git push https://"$GITHUB_TOKEN"@github.com/ceph/csi-charts
+	popd >/dev/null
+
 }
 
-<<<<<<< HEAD
 if [ "${TRAVIS_BRANCH}" == 'release-v1.2.0' ]; then
 	export ENV_CSI_IMAGE_VERSION='v1.2-canary'
-=======
-if [ "${TRAVIS_BRANCH}" == 'master' ]; then
-	export ENV_CSI_IMAGE_VERSION='canary'
->>>>>>> 52c4d29f6... Remove csi-v0.3 from deploy.sh
 else
 	echo "!!! Branch ${TRAVIS_BRANCH} is not a deployable branch; exiting"
 	exit 0 # Exiting 0 so that this isn't marked as failing
