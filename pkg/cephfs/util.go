@@ -114,3 +114,21 @@ func (cs *ControllerServer) validateDeleteVolumeRequest() error {
 
 	return nil
 }
+
+// Controller expand volume request validation
+func (cs *ControllerServer) validateExpandVolumeRequest(req *csi.ControllerExpandVolumeRequest) error {
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
+		return fmt.Errorf("invalid ExpandVolumeRequest: %v", err)
+	}
+
+	if req.GetVolumeId() == "" {
+		return status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
+	}
+
+	capRange := req.GetCapacityRange()
+	if capRange == nil {
+		return status.Error(codes.InvalidArgument, "CapacityRange cannot be empty")
+	}
+
+	return nil
+}
