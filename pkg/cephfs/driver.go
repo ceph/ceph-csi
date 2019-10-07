@@ -134,6 +134,7 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	if conf.IsControllerServer || !conf.IsNodeServer {
 		fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 		})
 
 		fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{

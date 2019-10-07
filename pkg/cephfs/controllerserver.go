@@ -292,3 +292,39 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 		},
 	}, nil
 }
+
+// ExpandVolume expand CephFS Volumes on demand based on resizer request
+func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+
+	if err := cs.validateExpandVolumeRequest(req); err != nil {
+		klog.Errorf("ControllerExpandVolumeRequest validation failed: %v", err)
+		return nil, err
+	}
+
+	volID := req.GetVolumeId()
+	secret := req.GetSecrets()
+
+	cr, err := util.NewAdminCredentials(secret)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	volOptions, volIdentifier, err := newVolumeOptionsFromVolID(ctx, volID, nil, secret)
+
+	if err != nil {
+		klog.Errorf("validation and extraction of volume options failed: %v", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err = createVolume(ctx, volOptions, cr, volumeID(volIdentifier.FsSubvolName), req.GetCapacityRange().GetRequiredBytes()); err != nil {
+		klog.Errorf("failed to expand volume %s: %v", volumeID(volIdentifier.FsSubvolName), err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes:         req.GetCapacityRange().GetRequiredBytes(),
+		NodeExpansionRequired: false,
+	}, nil
+
+}
