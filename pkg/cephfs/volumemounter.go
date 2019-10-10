@@ -49,7 +49,7 @@ var (
 
 // Load available ceph mounters installed on system into availableMounters
 // Called from driver.go's Run()
-func loadAvailableMounters() error {
+func loadAvailableMounters(conf *util.Config) error {
 	// #nosec
 	fuseMounterProbe := exec.Command("ceph-fuse", "--version")
 	// #nosec
@@ -70,7 +70,8 @@ func loadAvailableMounters() error {
 		if err != nil {
 			return err
 		}
-		if majorVers > 4 || (majorVers >= 4 && minorVers >= 17) {
+
+		if conf.ForceKernelCephFS || majorVers > 4 || (majorVers >= 4 && minorVers >= 17) {
 			klog.Infof("loaded mounter: %s", volumeMounterKernel)
 			availableMounters = append(availableMounters, volumeMounterKernel)
 		} else {
