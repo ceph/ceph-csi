@@ -12,7 +12,7 @@ spec:
     - name: http-metrics
       port: 8080
       protocol: TCP
-      targetPort: 8080
+      targetPort: 8680
     - name: grpc-metrics
       port: 8090
       protocol: TCP
@@ -41,7 +41,7 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
-            - "--timeout=60s"
+            - "--timeout=150s"
             - "--retry-interval-start=500ms"
           env:
             - name: ADDRESS
@@ -55,7 +55,7 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
-            - "--timeout=60s"
+            - "--timeout=150s"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
@@ -73,6 +73,10 @@ spec:
           env:
             - name: ADDRESS
               value: /csi/csi-provisioner.sock
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
@@ -112,8 +116,6 @@ spec:
               mountPath: /csi
             - mountPath: /dev
               name: host-dev
-            - mountPath: /rootfs
-              name: host-rootfs
             - mountPath: /sys
               name: host-sys
             - mountPath: /lib/modules
@@ -128,7 +130,7 @@ spec:
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8080"
+            - "--metricsport=8680"
             - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
@@ -147,9 +149,6 @@ spec:
         - name: host-dev
           hostPath:
             path: /dev
-        - name: host-rootfs
-          hostPath:
-            path: /
         - name: host-sys
           hostPath:
             path: /sys

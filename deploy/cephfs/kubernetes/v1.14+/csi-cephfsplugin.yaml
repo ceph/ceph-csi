@@ -105,7 +105,7 @@ spec:
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8081"
+            - "--metricsport=8681"
             - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
@@ -168,7 +168,7 @@ spec:
     - name: http-metrics
       port: 8080
       protocol: TCP
-      targetPort: 8081
+      targetPort: 8681
     - name: grpc-metrics
       port: 8090
       protocol: TCP

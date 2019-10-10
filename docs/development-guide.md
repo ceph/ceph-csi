@@ -89,3 +89,15 @@ need to be met before it will be merged:
 
 When the criteria are met, a project maintainer can merge your changes into
 the project's master branch.
+
+### Backport a Fix to a Release Branch
+
+The flow for getting a fix into a release branch is:
+
+1. Open a PR to merge the changes to master following the process outlined above.
+1. Add the backport label to that PR such as `backport-to-release-vX.Y.Z`
+1. After your PR is merged to master, the mergify bot will automatically open a
+   PR with your commits backported to the release branch
+1. If there are any conflicts you will need to resolve them by pulling the
+   branch, resolving the conflicts and force push back the branch
+1. After the CI is green, the bot will automatically merge the backport PR.

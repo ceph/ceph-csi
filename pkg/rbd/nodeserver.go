@@ -310,25 +310,38 @@ func getLegacyVolumeName(mountPath string) (string, error) {
 }
 
 func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, stagingPath, devicePath string) error {
-	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+
+	// rbd images are thin-provisioned and return zeros for unwritten areas.  A freshly created
+	// image will not benefit from discard and we also want to avoid as much unnecessary zeroing
+	// as possible.  Open-code mkfs here because FormatAndMount() doesn't accept custom mkfs
+	// options.
+	//
+	// Note that "freshly" is very important here.  While discard is more of a nice to have,
+	// lazy_journal_init=1 is plain unsafe if the image has been written to before and hasn't
+	// been zeroed afterwards (unlike the name suggests, it leaves the journal completely
+	// uninitialized and carries a risk until the journal is overwritten and wraps around for
+	// the first time).
 	existingFormat, err := diskMounter.GetDiskFormat(devicePath)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to get disk format for path %s, error: %v"), devicePath, err)
 		return err
 	}
-	if existingFormat == "" && (fsType == "ext4" || fsType == "xfs") {
+	// TODO: update this when adding support for static (pre-provisioned) PVs
+	if existingFormat == "" /* && !staticVol */ {
 		args := []string{}
 		if fsType == "ext4" {
-			args = []string{"-m0", "-Enodiscard", devicePath}
+			args = []string{"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1", devicePath}
 		} else if fsType == "xfs" {
 			args = []string{"-K", devicePath}
 		}
-		_, err = diskMounter.Exec.Run("mkfs."+fsType, args...)
-		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to run mkfs, error: %v"), err)
-			return err
+		if len(args) > 0 {
+			_, err = diskMounter.Exec.Run("mkfs."+fsType, args...)
+			if err != nil {
+				klog.Errorf(util.Log(ctx, "failed to run mkfs, error: %v"), err)
+				return err
+			}
 		}
 	}
 

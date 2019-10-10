@@ -1,0 +1,10 @@
+{{- if not .Values.provisioner.attacher.enabled -}}
+apiVersion: storage.k8s.io/v1beta1
+kind: CSIDriver
+metadata:
+  name: {{ .Values.driverName }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  attachRequired: false
+  podInfoOnMount: false
+{{- end -}}
