@@ -63,6 +63,7 @@ func init() {
 
 	// cephfs related flags
 	flag.StringVar(&conf.MountCacheDir, "mountcachedir", "", "mount info cache save dir")
+	flag.BoolVar(&conf.ForceKernelCephFS, "forcecephkernelclient", false, "enable Ceph Kernel clients on kernel < 4.17 which support quotas")
 
 	// liveness/grpc metrics related flags
 	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/grpc metrics requests")
