@@ -77,8 +77,12 @@ type Config struct {
 
 	IsControllerServer bool // if set to true start provisoner server
 	IsNodeServer       bool // if set to true start node server
+
 	// rbd related flag
 	Containerized bool // whether run as containerized
+
+	// cephfs related flags
+	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
 
 }
 

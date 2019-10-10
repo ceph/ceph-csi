@@ -95,7 +95,7 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	// Configuration
 	PluginFolder = conf.PluginPath
 
-	if err := loadAvailableMounters(); err != nil {
+	if err := loadAvailableMounters(conf); err != nil {
 		klog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
 	}
 
