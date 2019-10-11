@@ -126,7 +126,7 @@ func getMonsAndClusterID(options map[string]string) (string, string, error) {
 
 // newVolumeOptions generates a new instance of volumeOptions from the provided
 // CSI request parameters
-func newVolumeOptions(ctx context.Context, requestName string, size int64, volOptions, secret map[string]string) (*volumeOptions, error) {
+func newVolumeOptions(ctx context.Context, requestName string, volOptions, secret map[string]string) (*volumeOptions, error) {
 	var (
 		opts volumeOptions
 		err  error
@@ -158,7 +158,6 @@ func newVolumeOptions(ctx context.Context, requestName string, size int64, volOp
 	}
 
 	opts.RequestName = requestName
-	opts.Size = size
 
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {

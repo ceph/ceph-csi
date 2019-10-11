@@ -84,17 +84,24 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	defer cs.VolumeLocks.Release(requestName)
 
-	volOptions, err := newVolumeOptions(ctx, requestName, req.GetCapacityRange().GetRequiredBytes(),
-		req.GetParameters(), secret)
+	volOptions, err := newVolumeOptions(ctx, requestName, req.GetParameters(), secret)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "validation and extraction of volume options failed: %v"), err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	if req.GetCapacityRange() != nil {
+		volOptions.Size = util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
+	}
+	// TODO need to add check for 0 volume size
+
 	vID, err := checkVolExists(ctx, volOptions, secret)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	// TODO return error message if requested vol size greater than found volume return error
+
 	if vID != nil {
 		return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
@@ -132,7 +139,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			VolumeId:      vID.VolumeID,
-			CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
+			CapacityBytes: volOptions.Size,
 			VolumeContext: req.GetParameters(),
 		},
 	}, nil

@@ -18,6 +18,7 @@ package util
 
 import (
 	"context"
+	"math"
 	"os"
 	"path"
 	"strings"
@@ -36,12 +37,31 @@ import (
 const (
 	// MiB - MebiByte size
 	MiB = 1024 * 1024
+	GiB = MiB * 1024
 )
 
-// RoundUpToMiB rounds up given quantity upto chunks of MiB
-func RoundUpToMiB(size int64) int64 {
-	requestBytes := size
-	return roundUpSize(requestBytes, MiB)
+// RoundOffVolSize rounds up given quantity upto chunks of MiB/GiB
+func RoundOffVolSize(size int64) int64 {
+	size = RoundOffBytes(size)
+	// convert size back to MiB for rbd CLI
+	return size / MiB
+}
+
+// RoundOffBytes converts roundoff the size
+// 1.1Mib will be round off to 2Mib same for GiB
+// size less than 1MiB will be round off to 1MiB
+func RoundOffBytes(bytes int64) int64 {
+	var num int64
+	floatBytes := float64(bytes)
+	// round off the value if its in decimal
+	if floatBytes < GiB {
+		num = int64(math.Ceil(floatBytes / MiB))
+		num *= MiB
+	} else {
+		num = int64(math.Ceil(floatBytes / GiB))
+		num *= GiB
+	}
+	return num
 }
 
 // variables which will be set during the build time
@@ -80,14 +100,6 @@ type Config struct {
 	// rbd related flag
 	Containerized bool // whether run as containerized
 
-}
-
-func roundUpSize(volumeSizeBytes, allocationUnitBytes int64) int64 {
-	roundedUp := volumeSizeBytes / allocationUnitBytes
-	if volumeSizeBytes%allocationUnitBytes > 0 {
-		roundedUp++
-	}
-	return roundedUp
 }
 
 // CreatePersistanceStorage creates storage path and initializes new cache
