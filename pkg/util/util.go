@@ -42,26 +42,14 @@ const (
 
 // RoundOffVolSize rounds up given quantity upto chunks of MiB/GiB
 func RoundOffVolSize(size int64) int64 {
-	requestBytes := size
-	if requestBytes < GiB {
-		return roundUpSize(requestBytes, MiB)
-	}
-	size = roundUpSize(requestBytes, GiB)
+	size = RoundOffBytes(size)
 	// convert size back to MiB for rbd CLI
-	return size * GiB / MiB
-}
-
-func roundUpSize(volumeSizeBytes, allocationUnitBytes int64) int64 {
-	roundedUp := volumeSizeBytes / allocationUnitBytes
-	if volumeSizeBytes%allocationUnitBytes > 0 {
-		roundedUp++
-	}
-	return roundedUp
+	return size / MiB
 }
 
 // RoundOffBytes converts roundoff the size
 // 1.1Mib will be round off to 2Mib same for GiB
-// size less than will be round off to 1MiB
+// size less than 1MiB will be round off to 1MiB
 func RoundOffBytes(bytes int64) int64 {
 	var num int64
 	floatBytes := float64(bytes)
