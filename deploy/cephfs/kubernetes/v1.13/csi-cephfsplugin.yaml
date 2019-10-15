@@ -29,8 +29,8 @@ spec:
               exec:
                 command: [
                   "/bin/sh", "-c",
-                  "rm -rf /registration/csi-cephfsplugin \
-                  /registration/csi-cephfsplugin-reg.sock"
+                  "rm -rf /registration/cephfs.csi.ceph.com \
+                  /registration/cephfs.csi.ceph.com-reg.sock"
                 ]
           env:
             - name: KUBE_NODE_NAME
@@ -106,7 +106,7 @@ spec:
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8081"
+            - "--metricsport=8681"
             - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
@@ -169,7 +169,7 @@ spec:
     - name: http-metrics
       port: 8080
       protocol: TCP
-      targetPort: 8081
+      targetPort: 8681
     - name: grpc-metrics
       port: 8090
       protocol: TCP

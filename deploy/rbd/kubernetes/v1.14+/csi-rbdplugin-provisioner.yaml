@@ -12,11 +12,12 @@ spec:
     - name: http-metrics
       port: 8080
       protocol: TCP
-      targetPort: 8080
+      targetPort: 8680
     - name: grpc-metrics
       port: 8090
       protocol: TCP
       targetPort: 8090
+
 ---
 kind: Deployment
 apiVersion: apps/v1
@@ -39,7 +40,7 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
-            - "--timeout=60s"
+            - "--timeout=150s"
             - "--retry-interval-start=500ms"
             - "--enable-leader-election=true"
             - "--leader-election-type=leases"
@@ -55,7 +56,7 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
-            - "--timeout=60s"
+            - "--timeout=150s"
             - "leader-election=true"
           env:
             - name: ADDRESS
@@ -133,7 +134,7 @@ spec:
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8080"
+            - "--metricsport=8680"
             - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
