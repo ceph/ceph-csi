@@ -50,6 +50,7 @@ const (
 	rbdImageWatcherFactor    = 1.4
 	rbdImageWatcherSteps     = 10
 	rbdDefaultMounter        = "rbd"
+	rbdNbdMounter            = "rbd-nbd"
 
 	// Output strings returned during invocation of "ceph rbd task add remove <imagespec>" when
 	// command is not supported by ceph manager. Used to check errors and recover when the command
@@ -129,8 +130,27 @@ type rbdSnapshot struct {
 	RequestName    string
 }
 
+// imageFeature represents required image features and value
+type imageFeature struct {
+	// needRbdNbd indicates whether this image feature requires an rbd-nbd mounter
+	needRbdNbd bool
+	// dependsOn is the image features required for this imageFeature
+	dependsOn []string
+}
+
 var (
-	supportedFeatures = sets.NewString("layering")
+	supportedFeatures = map[string]imageFeature{
+		librbd.FeatureNameLayering: {
+			needRbdNbd: false,
+		},
+		librbd.FeatureNameExclusiveLock: {
+			needRbdNbd: true,
+		},
+		librbd.FeatureNameJournaling: {
+			needRbdNbd: true,
+			dependsOn:  []string{librbd.FeatureNameExclusiveLock},
+		},
+	}
 )
 
 // Connect an rbdVolume to the Ceph cluster
@@ -173,7 +193,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		pOpts.RbdImageName, volSzMiB, pOpts.ImageFeatures, pOpts.Monitors, pOpts.Pool)
 
 	if pOpts.ImageFeatures != "" {
-		features := imageFeaturesToUint64(ctx, pOpts.ImageFeatures)
+		features := imageFeaturesToUint64(pOpts.ImageFeatures)
 		err := options.SetUint64(librbd.RbdImageOptionFeatures, features)
 		if err != nil {
 			return errors.Wrapf(err, "failed to set image features")
@@ -575,28 +595,18 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		}
 	}
 
-	// if no image features is provided, it results in empty string
-	// which disable all RBD image features as we expected
-
-	imageFeatures, found := volOptions["imageFeatures"]
-	if found {
-		arr := strings.Split(imageFeatures, ",")
-		for _, f := range arr {
-			if !supportedFeatures.Has(f) {
-				return nil, fmt.Errorf("invalid feature %q for volume csi-rbdplugin, supported"+
-					" features are: %v", f, supportedFeatures)
-			}
-		}
-		rbdVol.ImageFeatures = imageFeatures
+	rbdVol.ImageFeatures = volOptions["imageFeatures"]
+	if rbdVol.Mounter, ok = volOptions["mounter"]; ok {
+		rbdVol.Mounter = rbdDefaultMounter
 	}
+	if err = validateImageFeatures(rbdVol.ImageFeatures, rbdVol.Mounter); err != nil {
+		// for backward compatibility, just log and pass
+		klog.Errorf(err.Error())
+	}
+	klog.V(3).Infof(util.Log(ctx, "setting rbd image features: %v, mounter: %v"), rbdVol.ImageFeatures, rbdVol.Mounter)
 
 	klog.V(3).Infof(util.Log(ctx, "setting disableInUseChecks on rbd volume to: %v"), disableInUseChecks)
 	rbdVol.DisableInUseChecks = disableInUseChecks
-
-	rbdVol.Mounter, ok = volOptions["mounter"]
-	if !ok {
-		rbdVol.Mounter = rbdDefaultMounter
-	}
 
 	rbdVol.Encrypted = false
 	encrypted, ok = volOptions["encrypted"]
@@ -619,6 +629,28 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 	}
 
 	return rbdVol, nil
+}
+
+func validateImageFeatures(imageFeatures, mounter string) error {
+	arr := strings.Split(imageFeatures, ",")
+	featureSet := sets.NewString(arr...)
+	for _, f := range arr {
+		sf, found := supportedFeatures[f]
+		if !found {
+			return errors.Errorf("invalid feature %s for volume csi-rbdplugin", f)
+		}
+
+		for _, r := range sf.dependsOn {
+			if !featureSet.Has(r) {
+				return errors.Errorf("feature %s requires %s", f, r)
+			}
+		}
+
+		if sf.needRbdNbd && mounter != rbdNbdMounter {
+			return errors.Errorf("feature %s requires rbd-nbd for mounter", f)
+		}
+	}
+	return nil
 }
 
 func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[string]string) *rbdSnapshot {
@@ -653,17 +685,9 @@ func hasSnapshotFeature(imageFeatures string) bool {
 
 // imageFeaturesToUint64 takes the comma separated image features and converts
 // them to a RbdImageOptionFeatures value.
-func imageFeaturesToUint64(ctx context.Context, imageFeatures string) uint64 {
-	features := uint64(0)
-
-	for _, f := range strings.Split(imageFeatures, ",") {
-		if f == "layering" {
-			features |= librbd.RbdFeatureLayering
-		} else {
-			klog.Warningf(util.Log(ctx, "rbd: image feature %s not recognized, skipping"), f)
-		}
-	}
-	return features
+func imageFeaturesToUint64(imageFeatures string) uint64 {
+	arr := strings.Split(imageFeatures, ",")
+	return uint64(librbd.FeatureSetFromNames(arr))
 }
 
 func protectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {

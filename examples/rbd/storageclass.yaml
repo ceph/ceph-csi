@@ -26,7 +26,8 @@ parameters:
    pool: rbd
 
    # RBD image features, CSI creates image with image-format 2
-   # CSI RBD currently supports only `layering` feature.
+   # CSI RBD currently supports `layering`, `journaling`, `exclusive-lock`
+   # features. If `journaling` is enabled, must enable `exclusive-lock` too.
    imageFeatures: layering
 
    # The secrets have to contain Ceph credentials with required access

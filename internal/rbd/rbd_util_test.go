@@ -18,6 +18,8 @@ package rbd
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsLegacyVolumeID(t *testing.T) {
@@ -51,6 +53,73 @@ func TestHasSnapshotFeature(t *testing.T) {
 	for _, test := range tests {
 		if got := hasSnapshotFeature(test.features); got != test.hasFeature {
 			t.Errorf("hasSnapshotFeature(%s) = %t, want %t", test.features, got, test.hasFeature)
+		}
+	}
+}
+
+func TestValidateImageFeatures(t *testing.T) {
+	tests := []struct {
+		imageFeatures string
+		mounter       string
+		isErr         bool
+		errMsg        string
+	}{
+		{
+			"layering",
+			rbdDefaultMounter,
+			false,
+			"",
+		},
+		{
+			"layering",
+			rbdNbdMounter,
+			false,
+			"",
+		},
+		{
+			"layering,exclusive-lock,journaling",
+			rbdNbdMounter,
+			false,
+			"",
+		},
+		{
+			"layering,journaling",
+			rbdNbdMounter,
+			true,
+			"feature journaling requires exclusive-lock",
+		},
+		{
+			"layering,exclusive-lock,journaling",
+			"",
+			true,
+			"feature exclusive-lock requires rbd-nbd for mounter",
+		},
+		{
+			"layering,exclusive-lock,journaling",
+			rbdDefaultMounter,
+			true,
+			"feature exclusive-lock requires rbd-nbd for mounter",
+		},
+		{
+			"layering,exclusive-loc,journaling",
+			rbdNbdMounter,
+			true,
+			"invalid feature exclusive-loc for volume csi-rbdplugin",
+		},
+		{
+			"ayering",
+			rbdDefaultMounter,
+			true,
+			"invalid feature ayering for volume csi-rbdplugin",
+		},
+	}
+
+	for _, test := range tests {
+		err := validateImageFeatures(test.imageFeatures, test.mounter)
+		if test.isErr {
+			assert.EqualError(t, err, test.errMsg)
+		} else {
+			assert.Nil(t, err)
 		}
 	}
 }

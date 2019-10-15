@@ -234,6 +234,14 @@ var _ = Describe("RBD", func() {
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
 
+			By("create a PVC and Bind it to an app with journaling/exclusive-lock image-features and rbd-nbd mounter", func() {
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"imageFeatures": "layering,journaling,exclusive-lock", "mounter": "rbd-nbd"})
+				validatePVCAndAppBinding(pvcPath, appPath, f)
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, nil, make(map[string]string))
+			})
+
 			// skipping snapshot testing
 
 			// By("create a PVC clone and Bind it to an app", func() {
