@@ -33,13 +33,8 @@ push_helm_charts() {
 
 }
 
-<<<<<<< HEAD
 if [ "${TRAVIS_BRANCH}" == 'release-v1.2.0' ]; then
 	export ENV_CSI_IMAGE_VERSION='v1.2-canary'
-=======
-if [ "${TRAVIS_BRANCH}" == 'master' ]; then
-	export ENV_CSI_IMAGE_VERSION='canary'
->>>>>>> 52c4d29f6... Remove csi-v0.3 from deploy.sh
 else
 	echo "!!! Branch ${TRAVIS_BRANCH} is not a deployable branch; exiting"
 	exit 0 # Exiting 0 so that this isn't marked as failing
