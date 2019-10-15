@@ -1,3 +1,18 @@
+/*
+Copyright 2018 The Ceph-CSI Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package e2e
 
 import (
@@ -100,64 +115,27 @@ var _ = Describe("cephfs", func() {
 
 			By("create a storage class with pool and a PVC then Bind it to an app", func() {
 				createCephfsStorageClass(f.ClientSet, f, true)
-				validatePVCAndAppBinding(pvcPath, appPath, f)
+				validatePVCAndAppBinding(pvcPath, appPath, 1, false, false, f)
 				deleteResource(cephfsExamplePath + "storageclass.yaml")
 			})
 
 			createCephfsStorageClass(f.ClientSet, f, false)
 
-			By("create and delete a PVC", func() {
-				By("create a PVC and Bind it to an app", func() {
-					validatePVCAndAppBinding(pvcPath, appPath, f)
+			By("create/delete multiple PVCs and Apps", func() {
+				validatePVCAndAppBinding(pvcPath, appPath, 10, false, false, f)
 
-				})
+			})
 
-				By("create a PVC and Bind it to an app with normal user", func() {
-					validateNormalUserPVCAccess(pvcPath, f)
-				})
+			By("create a PVC and Bind it to an app with normal user", func() {
 
-				By("create/delete multiple PVCs and Apps", func() {
-					totalCount := 2
-					pvc, err := loadPVC(pvcPath)
-					if err != nil {
-						Fail(err.Error())
-					}
-					pvc.Namespace = f.UniqueName
+				validateNormalUserPVCAccess(pvcPath, f)
+			})
 
-					app, err := loadApp(appPath)
-					if err != nil {
-						Fail(err.Error())
-					}
-					app.Namespace = f.UniqueName
-					// create pvc and app
-					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						err := createPVCAndApp(name, f, pvc, app)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-					}
-					// TODO add cephfs backend validation
-
-					// delete pvc and app
-					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						err := deletePVCAndApp(name, f, pvc, app)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-					}
-				})
-
-				By("check data persist after recreating pod with same pvc", func() {
-					err := checkDataPersist(pvcPath, appPath, f)
-					if err != nil {
-						Fail(err.Error())
-					}
-				})
-
+			By("check data persist after recreating pod with same pvc", func() {
+				err := checkDataPersist(pvcPath, appPath, f)
+				if err != nil {
+					Fail(err.Error())
+				}
 			})
 
 		})

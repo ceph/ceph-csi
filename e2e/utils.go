@@ -1,3 +1,18 @@
+/*
+Copyright 2018 The Ceph-CSI Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package e2e
 
 import (
@@ -591,30 +606,62 @@ func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolu
 	return err
 }
 
-func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
+// nolint: unparam
+func validatePVCAndAppBinding(pvcPath, appPath string, totalCount int, validateRbd, validateCephfs bool, f *framework.Framework) {
 	pvc, err := loadPVC(pvcPath)
-	if pvc == nil {
+	if err != nil {
 		Fail(err.Error())
 	}
 	pvc.Namespace = f.UniqueName
-	e2elog.Logf("The PVC  template %+v", pvc)
 
 	app, err := loadApp(appPath)
 	if err != nil {
 		Fail(err.Error())
 	}
 	app.Namespace = f.UniqueName
+	// create pvc and app
+	for i := 0; i < totalCount; i++ {
+		name := fmt.Sprintf("%s%d", f.UniqueName, i)
+		err := createPVCAndApp(name, f, pvc, app)
+		if err != nil {
+			Fail(err.Error())
+		}
 
-	err = createPVCAndApp("", f, pvc, app)
-	if err != nil {
-		Fail(err.Error())
+	}
+	if validateRbd {
+		// validate created backend rbd images
+		images := listRBDImages(f)
+		if len(images) != totalCount {
+			e2elog.Logf("backend image creation not matching pvc count, image count = % pvc count %d", len(images), totalCount)
+			Fail("validate multiple pvc failed")
+		}
+	}
+	// if validateCephfs {
+	// TODO validate cephfs backend image
+	// }
+	// delete pvc and app
+	for i := 0; i < totalCount; i++ {
+		name := fmt.Sprintf("%s%d", f.UniqueName, i)
+		err := deletePVCAndApp(name, f, pvc, app)
+		if err != nil {
+			Fail(err.Error())
+		}
+
+	}
+	if validateRbd {
+		// validate created backend rbd images
+		images := listRBDImages(f)
+		if len(images) > 0 {
+			e2elog.Logf("left out rbd backend images count %d", len(images))
+			Fail("validate multiple pvc failed")
+		}
 	}
 
-	err = deletePVCAndApp("", f, pvc, app)
-	if err != nil {
-		Fail(err.Error())
-	}
+	// if validateCephfs {
+	// TODO validate cephfs backend image
+	// }
 }
+
 func deletePodWithLabel(label string) error {
 	_, err := framework.RunKubectl("delete", "po", "-l", label)
 	if err != nil {

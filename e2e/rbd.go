@@ -1,3 +1,18 @@
+/*
+Copyright 2018 The Ceph-CSI Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package e2e
 
 import (
@@ -109,7 +124,7 @@ var _ = Describe("RBD", func() {
 			}
 
 			By("create a PVC and Bind it to an app", func() {
-				validatePVCAndAppBinding(pvcPath, appPath, f)
+				validatePVCAndAppBinding(pvcPath, appPath, 10, true, false, f)
 			})
 
 			By("create a PVC and Bind it to an app with normal user", func() {
@@ -119,158 +134,20 @@ var _ = Describe("RBD", func() {
 			By("create a PVC and Bind it to an app with ext4 as the FS ", func() {
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, map[string]string{"csi.storage.k8s.io/fstype": "ext4"})
-				validatePVCAndAppBinding(pvcPath, appPath, f)
+				validatePVCAndAppBinding(pvcPath, appPath, 1, true, false, f)
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
 			})
 
 			By("create a PVC clone and Bind it to an app", func() {
 				createRBDSnapshotClass(f)
-				pvc, err := loadPVC(pvcPath)
-				if err != nil {
-					Fail(err.Error())
-				}
-
-				pvc.Namespace = f.UniqueName
-				e2elog.Logf("The PVC  template %+v", pvc)
-				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-				// validate created backend rbd images
-				images := listRBDImages(f)
-				if len(images) != 1 {
-					e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
-					Fail("validate backend image failed")
-				}
-				snap := getSnapshot(snapshotPath)
-				snap.Namespace = f.UniqueName
-				snap.Spec.Source.Name = pvc.Name
-				snap.Spec.Source.Kind = "PersistentVolumeClaim"
-				err = createSnapshot(&snap, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-				snapList, err := listSnapshots(f, defaultPool, images[0])
-				if err != nil {
-					Fail(err.Error())
-				}
-				if len(snapList) != 1 {
-					e2elog.Logf("backend snapshot not matching kube snap count,snap count = % kube snap count %d", len(snapList), 1)
-					Fail("validate backend snapshot failed")
-				}
-
-				validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
-
-				err = deleteSnapshot(&snap, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-			})
-
-			By("create a PVC clone and Bind it to an app", func() {
-				createRBDSnapshotClass(f)
-				pvc, err := loadPVC(pvcPath)
-				if err != nil {
-					Fail(err.Error())
-				}
-
-				pvc.Namespace = f.UniqueName
-				e2elog.Logf("The PVC  template %+v", pvc)
-				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-				// validate created backend rbd images
-				images := listRBDImages(f)
-				if len(images) != 1 {
-					e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
-					Fail("validate backend image failed")
-				}
-				snap := getSnapshot(snapshotPath)
-				snap.Namespace = f.UniqueName
-				snap.Spec.Source.Name = pvc.Name
-				snap.Spec.Source.Kind = "PersistentVolumeClaim"
-				err = createSnapshot(&snap, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-				snapList, err := listSnapshots(f, defaultPool, images[0])
-				if err != nil {
-					Fail(err.Error())
-				}
-				if len(snapList) != 1 {
-					e2elog.Logf("backend snapshot not matching kube snap count,snap count = % kube snap count %d", len(snapList), 1)
-					Fail("validate backend snapshot failed")
-				}
-
-				validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
-
-				err = deleteSnapshot(&snap, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
-				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					Fail(err.Error())
-				}
+				validateCloneFromSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, 1, true, false, f)
 			})
 
 			// skipped raw pvc test in travis
 			// By("create a block type PVC and Bind it to an app", func() {
 			// 	validatePVCAndAppBinding(rawPvcPath, rawAppPath, f)
 			// })
-
-			By("create/delete multiple PVCs and Apps", func() {
-				totalCount := 2
-				pvc, err := loadPVC(pvcPath)
-				if err != nil {
-					Fail(err.Error())
-				}
-				pvc.Namespace = f.UniqueName
-
-				app, err := loadApp(appPath)
-				if err != nil {
-					Fail(err.Error())
-				}
-				app.Namespace = f.UniqueName
-				// create pvc and app
-				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
-					err := createPVCAndApp(name, f, pvc, app)
-					if err != nil {
-						Fail(err.Error())
-					}
-
-				}
-				// validate created backend rbd images
-				images := listRBDImages(f)
-				if len(images) != totalCount {
-					e2elog.Logf("backend image creation not matching pvc count, image count = % pvc count %d", len(images), totalCount)
-					Fail("validate multiple pvc failed")
-				}
-
-				// delete pvc and app
-				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
-					err := deletePVCAndApp(name, f, pvc, app)
-					if err != nil {
-						Fail(err.Error())
-					}
-
-				}
-
-				// validate created backend rbd images
-				images = listRBDImages(f)
-				if len(images) > 0 {
-					e2elog.Logf("left out rbd backend images count %d", len(images))
-					Fail("validate multiple pvc failed")
-				}
-			})
 
 			By("check data persist after recreating pod with same pvc", func() {
 				err := checkDataPersist(pvcPath, appPath, f)
