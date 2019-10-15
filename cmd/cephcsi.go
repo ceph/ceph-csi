@@ -60,6 +60,8 @@ func init() {
 
 	// rbd related flags
 	flag.BoolVar(&conf.Containerized, "containerized", false, "whether run as containerized")
+	flag.UintVar(&conf.RbdHardMaxCloneDepth, "rbdhardmaxclonedepth", 10, "Hard limit for maximum number of nested volume clones that are taken before a flatten occurs")
+	flag.UintVar(&conf.RbdSoftMaxCloneDepth, "rbdsoftmaxclonedepth", 5, "Soft limit for maximum number of nested volume clones that are taken before a flatten occurs")
 
 	// cephfs related flags
 	flag.StringVar(&conf.MountCacheDir, "mountcachedir", "", "mount info cache save dir")

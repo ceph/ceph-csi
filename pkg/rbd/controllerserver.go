@@ -242,6 +242,11 @@ func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVo
 		return status.Error(codes.Internal, err.Error())
 	}
 	klog.V(4).Infof(util.Log(ctx, "create volume %s from snapshot %s"), req.GetName(), rbdSnap.RbdSnapName)
+
+	err = flattenRbdImage(ctx, rbdVol, rbdHardMaxCloneDepth, rbdHardMaxCloneDepth, cr)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to flatten image %v"), err)
+	}
 	return nil
 }
 

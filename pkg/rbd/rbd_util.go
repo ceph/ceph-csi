@@ -640,13 +640,21 @@ func getSnapshotMetadata(ctx context.Context, pSnapOpts *rbdSnapshot, cr *util.C
 	return nil
 }
 
+// parentInfo  spec for parent volume  info
+type parentInfo struct {
+	Image    string `json:"image"`
+	Pool     string `json:"pool"`
+	Snapshot string `json:"snapshost"`
+}
+
 // imageInfo strongly typed JSON spec for image info
 type imageInfo struct {
-	ObjectUUID string   `json:"name"`
-	Size       int64    `json:"size"`
-	Format     int64    `json:"format"`
-	Features   []string `json:"features"`
-	CreatedAt  string   `json:"create_timestamp"`
+	ObjectUUID string     `json:"name"`
+	Size       int64      `json:"size"`
+	Format     int64      `json:"format"`
+	Features   []string   `json:"features"`
+	CreatedAt  string     `json:"create_timestamp"`
+	Parent     parentInfo `json:"parent"`
 }
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
@@ -812,4 +820,43 @@ func cleanupRBDImageMetadataStash(path string) error {
 	}
 
 	return nil
+}
+
+func flattenRbdImage(ctx context.Context, rbdVol *rbdVolume, hardmaxDepth, softmaxDepth uint, cr *util.Credentials) error {
+	// TODO once soft limit is reached make flatten as background task
+	if hardmaxDepth > 0 {
+		d, err := getCloneDepth(ctx, rbdVol.Monitors, rbdVol.Pool, rbdVol.RbdImageName, 0, cr)
+		if err != nil {
+			return err
+		}
+		klog.Infof(util.Log(ctx, "image depth is %v and maximum configured clone depth hard limit is %v and soft limit is %v"), d, hardmaxDepth, softmaxDepth)
+		if d >= int(hardmaxDepth) {
+			klog.Infof(util.Log(ctx, "maximum clone depth (%d) has been reached, flattening %v volume "), hardmaxDepth, rbdVol.RbdImageName)
+			args := []string{"-m", rbdVol.Monitors,
+				"--id", cr.ID,
+				"--pool", rbdVol.Pool,
+				"--no-progress",
+				"--image", rbdVol.RbdImageName,
+				"--keyfile=" + cr.KeyFile,
+				"-c", util.CephConfigPath,
+				"flatten"}
+
+			_, err := execCommand("rbd", args)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getCloneDepth(ctx context.Context, monitors, poolName, imageName string, depth int, cr *util.Credentials) (int, error) {
+	image, err := getImageInfo(ctx, monitors, cr, poolName, imageName)
+	if err != nil {
+		return 0, err
+	}
+	if image.Parent.Image != "" {
+		depth++
+		return getCloneDepth(ctx, monitors, image.Parent.Pool, image.Parent.Image, depth, cr)
+	}
+	return depth, err
 }

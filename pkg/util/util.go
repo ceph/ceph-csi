@@ -99,11 +99,12 @@ type Config struct {
 	IsNodeServer       bool // if set to true start node server
 
 	// rbd related flag
-	Containerized bool // whether run as containerized
+	Containerized        bool // whether run as containerized
+	RbdHardMaxCloneDepth uint
+	RbdSoftMaxCloneDepth uint
 
 	// cephfs related flags
 	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
-
 }
 
 // CreatePersistanceStorage creates storage path and initializes new cache
