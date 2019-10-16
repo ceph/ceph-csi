@@ -4,18 +4,6 @@
 # docker build
 /deploy/cephcsi/image/cephcsi
 
-# Emacs save files
-*~
-\#*\#
-.\#*
-
-# Vim-related files
-[._]*.s[a-w][a-z]
-[._]s[a-w][a-z]
-*.un~
-Session.vim
-.netrwhist
-
 # git merge files
 *.orig
 *.patch
