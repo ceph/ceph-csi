@@ -70,7 +70,7 @@ are available while running tests:
 
 | flag           | description                                                                   |
 | -------------- | ----------------------------------------------------------------------------- |
-| rook-version   | Rook version to pull yaml files to deploy rook operator (default: master)     |
+| rook-version   | Rook version to pull yaml files to deploy rook operator (default: v1.1.2)     |
 | deploy-rook    | Deploy rook operator to create  ceph cluster (default: true)                  |
 | deploy-timeout | Timeout to wait for created kubernetes resources (default: 10)                |
 | kubeconfig     | Path to kubeconfig containing embedded authinfo (default: $HOME/.kube/config) |

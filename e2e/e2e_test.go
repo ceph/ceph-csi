@@ -20,7 +20,7 @@ var (
 
 func init() {
 	log.SetOutput(GinkgoWriter)
-	flag.StringVar(&RookVersion, "rook-version", "master", "rook version to pull yaml files")
+	flag.StringVar(&RookVersion, "rook-version", "v1.1.2", "rook version to pull yaml files")
 
 	flag.BoolVar(&rookRequired, "deploy-rook", true, "deploy rook on kubernetes")
 	flag.IntVar(&deployTimeout, "deploy-timeout", 10, "timeout to wait for created kubernetes resources")
