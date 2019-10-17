@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -79,13 +81,50 @@ func deployOperator(c kubernetes.Interface) {
 func deployCluster(c kubernetes.Interface) {
 	opPath := fmt.Sprintf("%s/%s", rookURL, "cluster-test.yaml")
 	framework.RunKubectlOrDie("create", "-f", opPath)
-	err := waitForDaemonSets("rook-ceph-agent", rookNS, c, deployTimeout)
-	Expect(err).Should(BeNil())
+
+	// After rook-ceph v1.1.0, flex driver is disabled. We don't need to wait for rook-ceph-agent.
+	if !strings.EqualFold(RookVersion, "master") && isOlderRookVersionThan(RookVersion, "v1.1.1") {
+		err := waitForDaemonSets("rook-ceph-agent", rookNS, c, deployTimeout)
+		Expect(err).Should(BeNil())
+	}
+
 	opt := &metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-mon",
 	}
-	err = checkCephPods(rookNS, c, 1, deployTimeout, opt)
+	err := checkCephPods(rookNS, c, 1, deployTimeout, opt)
 	Expect(err).Should(BeNil())
+}
+
+func isOlderRookVersionThan(targetVersion, compareToVersion string) bool {
+	rv := extractRookVersion(targetVersion)
+	cv := extractRookVersion(compareToVersion)
+
+	for i := 0; i < 3; i++ {
+		if rv[i] < cv[i] {
+			return true
+		} else if rv[i] > cv[i] {
+			return false
+		}
+	}
+
+	return false
+}
+
+// extract rook version that form is v1.3.2-beta
+func extractRookVersion(versionString string) []int {
+	reg := regexp.MustCompile(`^v(\d+).(\d+).(\d+)`)
+	parsedVersionString := reg.FindStringSubmatch(versionString)
+	Expect(len(parsedVersionString)).Should(BeNumerically(">=", 4))
+
+	var version []int
+	for i := 1; i < 4; i++ {
+		j, err := strconv.Atoi(parsedVersionString[i])
+		Expect(err).Should(BeNil())
+
+		version = append(version, j)
+	}
+
+	return version
 }
 
 func deployToolBox(c kubernetes.Interface) {
