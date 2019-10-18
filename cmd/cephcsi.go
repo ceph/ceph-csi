@@ -161,6 +161,8 @@ func main() {
 	klog.Infof("Starting driver type: %v with name: %v", conf.Vtype, dname)
 	switch conf.Vtype {
 	case rbdType:
+
+		validateCloneDepthFlag(&conf)
 		driver := rbd.NewDriver()
 		if conf.Containerized {
 			klog.Warning("containerized flag is deprecated and will be removed")
@@ -179,4 +181,14 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+func validateCloneDepthFlag(conf *util.Config) {
+	if conf.RbdHardMaxCloneDepth == 0 || conf.RbdHardMaxCloneDepth > 16 {
+		klog.Fatalln("rbdhardmaxclonedepth flag value should be between 1 and 16")
+	}
+
+	if conf.RbdSoftMaxCloneDepth >= conf.RbdHardMaxCloneDepth {
+		klog.Fatalln("rbdsoftmaxclonedepth flag value should not be greater than or equal to rbdhardmaxclonedepth")
+	}
 }

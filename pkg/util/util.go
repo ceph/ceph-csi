@@ -86,22 +86,22 @@ type Config struct {
 	MountCacheDir string // mount info cache save dir
 
 	// metrics related flags
-	MetricsPath       string        // path of prometheus endpoint where metrics will be available
-	HistogramOption   string        // Histogram option for grpc metrics, should be comma separated value, ex:= "0.5,2,6" where start=0.5 factor=2, count=6
-	MetricsIP         string        // TCP port for liveness/ metrics requests
-	PidLimit          int           // PID limit to configure through cgroups")
-	MetricsPort       int           // TCP port for liveness/grpc metrics requests
-	PollTime          time.Duration // time interval in seconds between each poll
-	PoolTimeout       time.Duration // probe timeout in seconds
-	EnableGRPCMetrics bool          // option to enable grpc metrics
+	MetricsPath          string        // path of prometheus endpoint where metrics will be available
+	HistogramOption      string        // Histogram option for grpc metrics, should be comma separated value, ex:= "0.5,2,6" where start=0.5 factor=2, count=6
+	MetricsIP            string        // TCP port for liveness/ metrics requests
+	PidLimit             int           // PID limit to configure through cgroups")
+	MetricsPort          int           // TCP port for liveness/grpc metrics requests
+	RbdHardMaxCloneDepth uint          // rbd clone depth hard limit
+	RbdSoftMaxCloneDepth uint          // rbd clone depth soft limit
+	PollTime             time.Duration // time interval in seconds between each poll
+	PoolTimeout          time.Duration // probe timeout in seconds
+	EnableGRPCMetrics    bool          // option to enable grpc metrics
 
 	IsControllerServer bool // if set to true start provisoner server
 	IsNodeServer       bool // if set to true start node server
 
 	// rbd related flag
-	Containerized        bool // whether run as containerized
-	RbdHardMaxCloneDepth uint
-	RbdSoftMaxCloneDepth uint
+	Containerized bool // whether run as containerized
 
 	// cephfs related flags
 	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
