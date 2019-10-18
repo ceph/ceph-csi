@@ -236,7 +236,7 @@ func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVo
 		return status.Error(codes.InvalidArgument, "missing requested Snapshot ID")
 	}
 
-	err = restoreSnapshot(ctx, rbdVol, rbdSnap, cr)
+	err = cloneRbdImageFromSnapshot(ctx, rbdVol, rbdSnap, cr)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -421,7 +421,6 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	if err := cs.validateSnapshotReq(ctx, req); err != nil {
 		return nil, err
 	}
-
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -478,7 +477,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}, nil
 	}
 
-	err = reserveSnap(ctx, rbdSnap, cr)
+	err = reserveSnap(ctx, rbdSnap, rbdVol, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -538,8 +537,6 @@ func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	// update cloned image name as parent image
-	rbdSnap.RbdImageName = cloneRbd.RbdImageName
 	err = createSnapshot(ctx, rbdSnap, cr)
 	// If snap creation fails, even due to snapname already used, fail, next attempt will get a new
 	// uuid for use as the snap name

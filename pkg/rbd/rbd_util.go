@@ -69,6 +69,7 @@ type rbdVolume struct {
 	Monitors           string `json:"monitors"`
 	Pool               string `json:"pool"`
 	DataPool           string
+	ImageID            string
 	ImageFormat        string `json:"imageFormat"`
 	ImageFeatures      string `json:"imageFeatures"`
 	VolSize            int64  `json:"volSize"`
@@ -167,53 +168,17 @@ func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (boo
 	return false, output, nil
 }
 
-func getImageIDfromTrash(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (string, error) {
-	imageName := pOpts.RbdImageName
-	poolName := pOpts.Pool
-	var tshInfo = []trashInfo{}
-
-	klog.V(4).Infof(util.Log(ctx, "rbd: trash ls using mon %s, pool %s"), pOpts.Monitors, pOpts.Pool)
-	args := []string{"trash", "ls", "--pool", pOpts.Pool, "--format=json", "-m", pOpts.Monitors, "--id", cr.ID, "--keyfile=" + cr.KeyFile}
-
-	output, err := execCommand("rbd", args)
-
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to list images in trash, command output: %s", string(output))
-	}
-
-	err = json.Unmarshal(output, &tshInfo)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to parse JSON output of image info (%s): (%s)"),
-			poolName+"/"+imageName, err)
-		return "", fmt.Errorf("unmarshal failed: %+v. raw buffer response: %s",
-			err, string(output))
-	}
-
-	for _, t := range tshInfo {
-		if t.Name == imageName {
-			return t.ID, nil
-		}
-	}
-	return "", fmt.Errorf("failed to list %s in trash", imageName)
-}
-
 // rbdManagerTaskTrashRemove adds a ceph manager task to remove image from trash, thus removing it asynchronously. If command is not found returns a bool set to false
-func rbdManagerTaskTrashRemove(ctx context.Context, id string, pOpts *rbdVolume, cr *util.Credentials) (bool, error) {
+func rbdManagerTaskTrashRemove(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (bool, error) {
 	var output []byte
 
-	klog.V(4).Infof(util.Log(ctx, "rbd: task add trash remove for image (%s) with id (%s) using mon %s, pool %s"), pOpts.RbdImageName, id, pOpts.Monitors, pOpts.Pool)
-	args := []string{"rbd", "task", "add", "trash", "remove", pOpts.Pool + "/" + id, "--id", cr.ID, "--keyfile=" + cr.KeyFile, "-m", pOpts.Monitors}
+	klog.V(4).Infof(util.Log(ctx, "rbd: task add trash remove for image (%s) with id (%s) using mon %s, pool %s"), pOpts.RbdImageName, pOpts.ImageID, pOpts.Monitors, pOpts.Pool)
+	args := []string{"rbd", "task", "add", "trash", "remove", pOpts.Pool + "/" + pOpts.ImageID, "--id", cr.ID, "--keyfile=" + cr.KeyFile, "-m", pOpts.Monitors}
 
 	output, err := execCommand("ceph", args)
 	if err != nil {
-		if strings.Contains(string(output), rbdTaskRemoveCmdInvalidString1) &&
-			strings.Contains(string(output), rbdTaskRemoveCmdInvalidString2) {
-			klog.Infof(util.Log(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd trash remove (minimum ceph version required is v14.2.3)"), pOpts.ClusterID)
-			return false, err
-		} else if strings.HasPrefix(string(output), rbdTaskRemoveCmdAccessDeniedMessage) {
-			klog.Infof(util.Log(ctx, "access denied to Ceph MGR-based RBD trash remove on cluster ID (%s)"), pOpts.ClusterID)
-			return false, err
-		}
+		valid := isValidCommand(ctx, string(output), pOpts)
+		return valid, err
 	}
 
 	return true, err
@@ -241,14 +206,8 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		return err
 	}
 
-	id, err = getImageIDfromTrash(ctx, pOpts, cr)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get image id for %s from trash: %v"), image, err)
-		return err
-	}
-
 	// attempt to use Ceph manager based trash remove support if available
-	rbdCephMgrSupported, err := rbdManagerTaskTrashRemove(ctx, id, pOpts, cr)
+	rbdCephMgrSupported, err := rbdManagerTaskTrashRemove(ctx, pOpts, cr)
 	if !rbdCephMgrSupported {
 		// attempt older style deletion
 		klog.Infof(util.Log(ctx, "rbd: attempting to delete (%s) image with id (%s) from trash"), image, id)
@@ -322,7 +281,7 @@ func updateVolWithImageInfo(ctx context.Context, rbdVol *rbdVolume, cr *util.Cre
 
 	rbdVol.VolSize = imageInfo.Size
 	rbdVol.ImageFeatures = strings.Join(imageInfo.Features, ",")
-
+	rbdVol.ImageID = imageInfo.ID
 	return nil
 }
 
@@ -598,7 +557,7 @@ func createSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credential
 	image := pOpts.RbdImageName
 	snapName := pOpts.RbdSnapName
 
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap create %s/%s using mon %s, pool %s"), image, snapName, pOpts.Monitors, pOpts.Pool)
+	klog.V(4).Infof(util.Log(ctx, "rbd: snap create %s/%s@%s using mon %s"), pOpts.Pool, image, snapName, pOpts.Monitors)
 	args := []string{"snap", "create", "--pool", pOpts.Pool, "--snap", snapName, image,
 		"--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
@@ -636,7 +595,7 @@ func deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credential
 	image := pOpts.RbdImageName
 	snapName := pOpts.RbdSnapName
 
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap rm %s@%s using mon %s, pool %s"), image, snapName, pOpts.Monitors, pOpts.Pool)
+	klog.V(4).Infof(util.Log(ctx, "rbd: snap rm %s/%s@%s using mon %s"), pOpts.Pool, image, snapName, pOpts.Monitors)
 	args := []string{"snap", "rm", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
 		cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
@@ -648,13 +607,13 @@ func deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credential
 	return nil
 }
 
-func restoreSnapshot(ctx context.Context, pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, cr *util.Credentials) error {
+func cloneRbdImageFromSnapshot(ctx context.Context, pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, cr *util.Credentials) error {
 	var output []byte
 
 	image := pVolOpts.RbdImageName
 	snapName := pSnapOpts.RbdSnapName
 
-	klog.V(4).Infof(util.Log(ctx, "rbd: clone %s@%s %s using mon %s, pool %s"), pSnapOpts.RbdImageName, snapName, image, pVolOpts.Monitors, pVolOpts.Pool)
+	klog.V(4).Infof(util.Log(ctx, "rbd: clone %s/%s@%s %s using mon %s"), pVolOpts.Pool, pSnapOpts.RbdImageName, snapName, image, pVolOpts.Monitors)
 	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.RbdImageName + "@" + snapName,
 		pVolOpts.Pool + "/" + image, "--rbd-default-clone-format=2", "--id", cr.ID, "-m", pVolOpts.Monitors, "--keyfile=" + cr.KeyFile, "--image-feature", pVolOpts.ImageFeatures}
 
@@ -702,16 +661,12 @@ type parentInfo struct {
 // imageInfo strongly typed JSON spec for image info
 type imageInfo struct {
 	ObjectUUID string     `json:"name"`
+	ID         string     `json:"id"`
 	Size       int64      `json:"size"`
 	Format     int64      `json:"format"`
 	Features   []string   `json:"features"`
 	CreatedAt  string     `json:"create_timestamp"`
 	Parent     parentInfo `json:"parent"`
-}
-
-type trashInfo struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
 }
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
@@ -925,17 +880,23 @@ func rbdManagerTaskAddFlatten(ctx context.Context, pOpts *rbdVolume, cr *util.Cr
 
 	output, err := execCommand("ceph", args)
 	if err != nil {
-		if strings.Contains(string(output), rbdTaskRemoveCmdInvalidString1) &&
-			strings.Contains(string(output), rbdTaskRemoveCmdInvalidString2) {
-			klog.Infof(util.Log(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd flatten (minimum ceph version required is v14.2.3)"), pOpts.ClusterID)
-			return false, err
-		} else if strings.HasPrefix(string(output), rbdTaskRemoveCmdAccessDeniedMessage) {
-			klog.Infof(util.Log(ctx, "access denied to Ceph MGR-based RBD flatten on cluster ID (%s)"), pOpts.ClusterID)
-			return false, err
-		}
+		valid := isValidCommand(ctx, string(output), pOpts)
+		return valid, err
 	}
 
-	return true, err
+	return true, nil
+}
+
+func isValidCommand(ctx context.Context, output string, pOpts *rbdVolume) bool {
+	if strings.Contains(output, rbdTaskRemoveCmdInvalidString1) &&
+		strings.Contains(output, rbdTaskRemoveCmdInvalidString2) {
+		klog.Infof(util.Log(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd command (minimum ceph version required is v14.2.3)"), pOpts.ClusterID)
+		return false
+	} else if strings.HasPrefix(output, rbdTaskRemoveCmdAccessDeniedMessage) {
+		klog.Infof(util.Log(ctx, "access denied to Ceph MGR-based RBD command on cluster ID (%s)"), pOpts.ClusterID)
+		return false
+	}
+	return true
 }
 
 func getCloneDepth(ctx context.Context, monitors, poolName, imageName string, depth int, cr *util.Credentials) (int, error) {

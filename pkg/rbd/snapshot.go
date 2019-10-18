@@ -38,37 +38,38 @@ func createRBDClone(ctx context.Context, rbdVol, cloneRbdVol *rbdVolume, cr *uti
 			return status.Error(codes.Internal, err.Error())
 		}
 	} else {
-		goto RESTORE
-	}
-
-	// create snapshot
-	err = createSnapshot(ctx, snap, cr)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to create snapshot: %v"), err)
-		return status.Error(codes.Internal, err.Error())
-	}
-	defer func() {
+		// create snapshot
+		err = createSnapshot(ctx, snap, cr)
 		if err != nil {
-			if err = deleteSnapshot(ctx, snap, cr); err != nil {
-				klog.Errorf(util.Log(ctx, "failed to cleanup snapshot: %v"), err)
-			}
+			klog.Errorf(util.Log(ctx, "failed to create snapshot: %v"), err)
+			return status.Error(codes.Internal, err.Error())
 		}
-	}()
-RESTORE:
-	// create clone image and delete snapshot
-	err = restoreSnapshot(ctx, cloneRbdVol, snap, cr)
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
 	}
-	delErr := deleteSnapshot(ctx, snap, cr)
-	if delErr != nil {
-		klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), delErr)
-		delErr = fmt.Errorf("clone created but failed to delete snapshot due to"+" other failures: %v", delErr)
-		delErr = status.Error(codes.Internal, delErr.Error())
-		return delErr
+	cloneFailed := false
+	// create clone image and delete snapshot
+	err = cloneRbdImageFromSnapshot(ctx, cloneRbdVol, snap, cr)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to clone rbd image %s from snapshot %s: %v"), cloneRbdVol.RbdImageName, snap.RbdSnapName, err)
+		cloneFailed = true
+	}
+	err = deleteSnapshot(ctx, snap, cr)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), err)
+
+		if !cloneFailed {
+			err = fmt.Errorf("clone created but failed to delete snapshot due to other failures: %v", err)
+		}
+		errCleanUp := cleanUpSnapshot(ctx, snap, cloneRbdVol, cr)
+		if errCleanUp != nil {
+			klog.Errorf(util.Log(ctx, "failed to delete snapshot or image: %s/%s with error: %v"), snap.Pool, snap.RbdSnapName, errCleanUp)
+		}
+		err = status.Error(codes.Internal, err.Error())
 	}
 
-	return nil
+	if cloneFailed {
+		err = fmt.Errorf("failed to clone rbd image %s from snapshot %s: %v", cloneRbdVol.RbdImageName, snap.RbdSnapName, err)
+	}
+	return err
 }
 
 func cleanUpSnapshot(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) error {

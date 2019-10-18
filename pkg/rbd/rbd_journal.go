@@ -211,9 +211,9 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
 // volume ID for the generated name
-func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) error {
 	snapUUID, err := snapJournal.ReserveName(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RequestName, rbdSnap.RbdImageName)
+		rbdSnap.RequestName, rbdVol.RbdImageName)
 	if err != nil {
 		return err
 	}
@@ -225,9 +225,10 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 	}
 
 	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + snapUUID
+	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
 
 	klog.V(4).Infof(util.Log(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)"),
-		rbdSnap.SnapID, rbdSnap.RbdImageName, rbdSnap.RequestName)
+		rbdSnap.SnapID, rbdVol.RbdImageName, rbdSnap.RequestName)
 
 	return nil
 }
