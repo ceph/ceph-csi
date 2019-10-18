@@ -6,7 +6,6 @@ dist: bionic
 addons:
   apt:
     packages:
-      - realpath
       - ruby
 services:
   - docker
