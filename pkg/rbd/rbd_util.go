@@ -287,10 +287,11 @@ func updateVolWithImageInfo(ctx context.Context, rbdVol *rbdVolume, cr *util.Cre
 
 // genSnapFromSnapID generates a rbdSnapshot structure from the provided identifier, updating
 // the structure with elements from on-disk snapshot metadata as well
-func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID string, cr *util.Credentials) error {
+func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID string, legacySnap bool, cr *util.Credentials) error {
 	var (
-		options map[string]string
-		vi      util.CSIIdentifier
+		options   map[string]string
+		vi        util.CSIIdentifier
+		imageName string
 	)
 	options = make(map[string]string)
 
@@ -321,10 +322,20 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	if err != nil {
 		return err
 	}
+
+	if !legacySnap {
+		imageName = rbdSnap.RbdImageName
+	}
 	// update rbd image name to point to cloned image name
 	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
 
 	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
+	if _, ok := err.(ErrImageNotFound); ok {
+		//  this is to check parent volume info (legacy snapshot)
+		rbdSnap.RbdImageName = imageName
+		err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
+
+	}
 
 	return err
 }
@@ -532,25 +543,6 @@ func hasSnapshotFeature(imageFeatures string) bool {
 	return false
 }
 
-func protectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
-	var output []byte
-
-	image := pOpts.RbdImageName
-	snapName := pOpts.RbdSnapName
-
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap protect %s using mon %s, pool %s "), image, pOpts.Monitors, pOpts.Pool)
-	args := []string{"snap", "protect", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
-		cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
-
-	output, err := execCommand("rbd", args)
-
-	if err != nil {
-		return errors.Wrapf(err, "failed to protect snapshot, command output: %s", string(output))
-	}
-
-	return nil
-}
-
 func createSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
 	var output []byte
 
@@ -583,6 +575,9 @@ func unprotectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credent
 	output, err := execCommand("rbd", args)
 
 	if err != nil {
+		if strings.Contains(string(output), "snap is already unprotected") {
+			return ErrSnapUnprotect{err: err}
+		}
 		return errors.Wrapf(err, "failed to unprotect snapshot, command output: %s", string(output))
 	}
 

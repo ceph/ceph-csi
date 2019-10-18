@@ -48,6 +48,15 @@ func (e ErrVolNameConflict) Error() string {
 	return e.err.Error()
 }
 
+// ErrSnapUnprotect is generated when snapshot is not protected
+type ErrSnapUnprotect struct {
+	err error
+}
+
+func (e ErrSnapUnprotect) Error() string {
+	return e.err.Error()
+}
+
 // ErrInvalidVolID is returned when a CSI passed VolumeID does not conform to any known volume ID
 // formats
 type ErrInvalidVolID struct {

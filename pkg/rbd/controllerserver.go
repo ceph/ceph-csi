@@ -229,7 +229,7 @@ func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVo
 	defer cr.DeleteCredentials()
 
 	rbdSnap := &rbdSnapshot{}
-	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
+	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, false, cr); err != nil {
 		if _, ok := err.(ErrSnapNotFound); !ok {
 			return status.Error(codes.Internal, err.Error())
 		}
@@ -551,23 +551,6 @@ func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	err = protectSnapshot(ctx, rbdSnap, cr)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to protect snapshot: %v"), err)
-		return status.Error(codes.Internal, err.Error())
-	}
-	defer func() {
-		if err != nil {
-			errDefer := unprotectSnapshot(ctx, rbdSnap, cr)
-			if errDefer != nil {
-				klog.Errorf(util.Log(ctx, "failed to unprotect snapshot: %v"), errDefer)
-				err = fmt.Errorf("snapshot created but failed to unprotect snapshot due to"+
-					" other failures: %v", err)
-			}
-			err = status.Error(codes.Internal, err.Error())
-		}
-	}()
-
 	err = getSnapshotMetadata(ctx, rbdSnap, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to fetch snapshot metadata: %v"), err)
@@ -609,7 +592,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	defer cs.SnapshotLocks.Release(snapshotID)
 
 	rbdSnap := &rbdSnapshot{}
-	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
+	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, true, cr); err != nil {
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (snap and snapOMap are garbage collected already), hence return
 		// success as deletion is complete
@@ -645,17 +628,20 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 	defer cs.SnapshotLocks.Release(rbdSnap.RequestName)
 
-	// Unprotect snapshot
-	err = unprotectSnapshot(ctx, rbdSnap, cr)
-	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition,
-			"failed to unprotect snapshot: %s/%s with error: %v",
-			rbdSnap.Pool, rbdSnap.RbdSnapName, err)
+	// support legacy snapshot deletion
+	ok, err := isLegacySnapshot(ctx, rbdSnap, cr)
+	if ok {
+		if err != nil {
+			return nil, status.Errorf(codes.FailedPrecondition,
+				"failed to unprotect snapshot: %s/%s with error: %v",
+				rbdSnap.Pool, rbdSnap.RbdSnapName, err)
+
+		}
+		klog.Info(util.Log(ctx, "Found Legacy snapshot proceed to delete"))
+		return deleteLegacySnapshot(ctx, rbdSnap, cr)
 	}
 
-	// Deleting snapshot
-	klog.V(4).Infof(util.Log(ctx, "deleting Snaphot %s"), rbdSnap.RbdSnapName)
-	if err := deleteSnapshot(ctx, rbdSnap, cr); err != nil {
+	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
 	// generate cloned volume details from snapshot
 	cloneRbd := generateVolFromSnap(rbdSnap)
 	// Deleting snapshot and cloned volume
@@ -667,6 +653,33 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 			rbdSnap.Pool, rbdSnap.RbdSnapName, err)
 	}
 	err = undoSnapReservation(ctx, rbdSnap, cr)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) on image (%s) (%s)"),
+			rbdSnap.RequestName, rbdSnap.RbdSnapName, rbdSnap.RbdImageName, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &csi.DeleteSnapshotResponse{}, nil
+}
+
+func isLegacySnapshot(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
+	err := unprotectSnapshot(ctx, rbdSnap, cr)
+	if err != nil {
+		if _, ok := err.(ErrSnapUnprotect); ok {
+			return false, nil
+		}
+		return true, err
+	}
+
+	return true, err
+}
+
+func deleteLegacySnapshot(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) (*csi.DeleteSnapshotResponse, error) {
+	// Deleting snapshot
+	klog.V(4).Infof(util.Log(ctx, "deleting Snaphot %s"), rbdSnap.RbdSnapName)
+	if err := deleteSnapshot(ctx, rbdSnap, cr); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	err := undoSnapReservation(ctx, rbdSnap, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) on image (%s) (%s)"),
 			rbdSnap.RequestName, rbdSnap.RbdSnapName, rbdSnap.RbdImageName, err)

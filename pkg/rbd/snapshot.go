@@ -37,12 +37,12 @@ func createRBDClone(ctx context.Context, rbdVol, cloneRbdVol *rbdVolume, cr *uti
 		if _, ok := err.(ErrSnapNotFound); !ok {
 			return status.Error(codes.Internal, err.Error())
 		}
-	} else {
 		// create snapshot
 		err = createSnapshot(ctx, snap, cr)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to create snapshot: %v"), err)
 			return status.Error(codes.Internal, err.Error())
+
 		}
 	}
 	cloneFailed := false
@@ -55,7 +55,6 @@ func createRBDClone(ctx context.Context, rbdVol, cloneRbdVol *rbdVolume, cr *uti
 	err = deleteSnapshot(ctx, snap, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), err)
-
 		if !cloneFailed {
 			err = fmt.Errorf("clone created but failed to delete snapshot due to other failures: %v", err)
 		}
@@ -78,7 +77,14 @@ func cleanUpSnapshot(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolum
 		klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), err)
 		return err
 	}
-
+	vol, err := getImageInfo(ctx, rbdVol.Monitors, cr, rbdVol.Pool, rbdVol.RbdImageName)
+	if err != nil {
+		if _, ok := err.(ErrImageNotFound); !ok {
+			return err
+		}
+		return nil
+	}
+	rbdVol.ImageID = vol.ID
 	err = deleteImage(ctx, rbdVol, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, err)
