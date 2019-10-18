@@ -74,8 +74,10 @@ func deleteRBDPlugin() {
 
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework("rbd")
+	var c clientset.Interface
 	// deploy RBD CSI
 	BeforeEach(func() {
+		c = f.ClientSet
 		updaterbdDirPath(f.ClientSet)
 		createRBDPool()
 		createConfigMap(rbdDirPath, f.ClientSet, f)
@@ -86,6 +88,12 @@ var _ = Describe("RBD", func() {
 	})
 
 	AfterEach(func() {
+		if CurrentGinkgoTestDescription().Failed {
+			// log provisoner
+			logsCSIPods("app=csi-rbdplugin-provisioner", c)
+			// log node plugin
+			logsCSIPods("app=csi-rbdplugin", c)
+		}
 		deleteRBDPlugin()
 		deleteConfiMap(rbdDirPath)
 		deleteRBDPool()
@@ -141,7 +149,7 @@ var _ = Describe("RBD", func() {
 
 			By("create a PVC clone and Bind it to an app", func() {
 				createRBDSnapshotClass(f)
-				validateCloneFromSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, 10, true, false, f)
+				validateCloneFromSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, 1, true, false, f)
 			})
 
 			// skipped raw pvc test in travis

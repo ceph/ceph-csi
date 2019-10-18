@@ -632,7 +632,7 @@ func validatePVCAndAppBinding(pvcPath, appPath string, totalCount int, validateR
 		// validate created backend rbd images
 		images := listRBDImages(f)
 		if len(images) != totalCount {
-			e2elog.Logf("backend image creation not matching pvc count, image count = % pvc count %d", len(images), totalCount)
+			e2elog.Logf("backend image creation not matching pvc count, image count = % pvc count %d : images", len(images), totalCount, images)
 			Fail("validate multiple pvc failed")
 		}
 	}
@@ -776,9 +776,11 @@ func createSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
 			}
 			return false, err
 		}
+		e2elog.Logf("snapshot %s Expected Status Ready (true) Current status  Ready(%v)", snap.Name, snaps.Status.ReadyToUse)
 		if snaps.Status.ReadyToUse {
 			return true, nil
 		}
+		e2elog.Logf("snapshot %s Status %+v", snap.Name, snaps.Status)
 		return false, nil
 	})
 }

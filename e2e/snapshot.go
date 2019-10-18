@@ -83,7 +83,7 @@ func validateCloneFromSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, app
 		}
 		// check any stale snapshots present on parent volume
 		if len(snapList) != 0 {
-			e2elog.Logf("stale backend snapshot count = %v %d", len(snapList))
+			e2elog.Logf("stale snapshot count = %v %d on parent image %s", snapList, len(snapList), images[0])
 			Fail("validate backend snapshot failed")
 		}
 
@@ -93,7 +93,7 @@ func validateCloneFromSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, app
 		images = listRBDImages(f)
 		count := 1 + total
 		if len(images) != count {
-			e2elog.Logf("backend image creation not matching pvc count, image count = %d pvc count %d", len(images), count)
+			e2elog.Logf("backend image creation not matching pvc count, image count = %d pvc count %d : image %v", len(images), count, images)
 			Fail("validate multiple snapshot failed")
 		}
 	}
