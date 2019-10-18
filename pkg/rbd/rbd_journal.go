@@ -123,7 +123,9 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 		return false, nil
 	}
 	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + snapUUID
-
+	// update rbdImageName as snapshot will be created for cloned image with
+	// name RbdSnapName
+	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
 	// Fetch on-disk image attributes
 	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
 	if err != nil {

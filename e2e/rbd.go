@@ -130,7 +130,7 @@ var _ = Describe("RBD", func() {
 			By("create a PVC and Bind it to an app with normal user", func() {
 				validateNormalUserPVCAccess(pvcPath, f)
 			})
-			// Skipping ext4 FS testing
+
 			By("create a PVC and Bind it to an app with ext4 as the FS ", func() {
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, map[string]string{"csi.storage.k8s.io/fstype": "ext4"})
@@ -141,7 +141,7 @@ var _ = Describe("RBD", func() {
 
 			By("create a PVC clone and Bind it to an app", func() {
 				createRBDSnapshotClass(f)
-				validateCloneFromSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, 1, true, false, f)
+				validateCloneFromSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, 10, true, false, f)
 			})
 
 			// skipped raw pvc test in travis

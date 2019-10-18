@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	. "github.com/onsi/ginkgo" // nolint
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
@@ -100,10 +101,16 @@ func validateCloneFromSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, app
 	// TODO add validation for cephfs
 	// }
 
+	group := "snapshot.storage.k8s.io"
+	dataSourceRef := &v1.TypedLocalObjectReference{
+		APIGroup: &group,
+		Kind:     "VolumeSnapshot",
+		Name:     fmt.Sprintf("%s%d", f.UniqueName, 0),
+	}
+	pvcClone.Spec.DataSource = dataSourceRef
 	// create PVC clone
 	for i := 0; i < total; i++ {
-		name := fmt.Sprintf("%s%d", f.UniqueName, i)
-		pvc.Spec.DataSource.Name = name
+		name := fmt.Sprintf("%s%d", f.UniqueName, 0)
 		err = createPVCAndApp(name, f, pvcClone, appClone)
 		if err != nil {
 			Fail(err.Error())
@@ -156,7 +163,6 @@ func validateCloneFromSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, app
 
 	for i := 0; i < total; i++ {
 		name := fmt.Sprintf("%s%d", f.UniqueName, i)
-		pvc.Spec.DataSource.Name = name
 		err = deletePVCAndApp(name, f, pvcClone, appClone)
 		if err != nil {
 			Fail(err.Error())

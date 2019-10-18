@@ -18,7 +18,6 @@ package rbd
 
 import (
 	"context"
-	"fmt"
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
@@ -243,11 +242,14 @@ func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVo
 	}
 	klog.V(4).Infof(util.Log(ctx, "create volume %s from snapshot %s"), req.GetName(), rbdSnap.RbdSnapName)
 
-	err = flattenRbdImage(ctx, rbdVol, rbdHardMaxCloneDepth, rbdHardMaxCloneDepth, cr)
+	err = flattenRbdImage(ctx, rbdVol, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to flatten image %v"), err)
+		if errDel := deleteImage(ctx, rbdVol, cr); errDel != nil {
+			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, errDel)
+		}
 	}
-	return nil
+	return err
 }
 
 // DeleteLegacyVolume deletes a volume provisioned using version 1.0.0 of the plugin
@@ -489,7 +491,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 	}()
 
-	err = cs.doSnapshot(ctx, rbdSnap, cr)
+	err = cs.doSnapshot(ctx, rbdSnap, rbdVol, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -522,25 +524,35 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 	return nil
 }
 
-func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) (err error) {
-	err = createSnapshot(ctx, rbdSnap, cr)
-	// If snap creation fails, even due to snapname already used, fail, next attempt will get a new
-	// uuid for use as the snap name
+func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) (err error) {
+
+	// generate cloned volume details from snapshot
+	cloneRbd := generateVolFromSnap(rbdSnap)
+	// add image feature for cloneRbd
+	cloneRbd.ImageFormat = rbdImageFormat2
+	cloneRbd.ImageFeatures = "layering,deep-flatten"
+
+	err = createRBDClone(ctx, rbdVol, cloneRbd, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to create snapshot: %v"), err)
 		return status.Error(codes.Internal, err.Error())
 	}
-	defer func() {
-		if err != nil {
-			errDefer := deleteSnapshot(ctx, rbdSnap, cr)
-			if errDefer != nil {
-				klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), errDefer)
-				err = fmt.Errorf("snapshot created but failed to delete snapshot due to"+
-					" other failures: %v", err)
-			}
-			err = status.Error(codes.Internal, err.Error())
+
+	// update cloned image name as parent image
+	rbdSnap.RbdImageName = cloneRbd.RbdImageName
+	err = createSnapshot(ctx, rbdSnap, cr)
+	// If snap creation fails, even due to snapname already used, fail, next attempt will get a new
+	// uuid for use as the snap name
+	if err != nil {
+		// deleted cloned image if snapshot creation fails
+		ErrDel := deleteImage(ctx, cloneRbd, cr)
+		if ErrDel != nil {
+			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, ErrDel)
+
 		}
-	}()
+		klog.Errorf(util.Log(ctx, "failed to create snapshot: %v"), err)
+		return status.Error(codes.Internal, err.Error())
+	}
 
 	err = protectSnapshot(ctx, rbdSnap, cr)
 	if err != nil {
@@ -562,6 +574,12 @@ func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot
 	err = getSnapshotMetadata(ctx, rbdSnap, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to fetch snapshot metadata: %v"), err)
+		// TODO if image/snapshot deletion failed,need to handle stale
+		// image/snapshot deletion
+		errDefer := cleanUpSnapshot(ctx, rbdSnap, cloneRbd, cr)
+		if errDefer != nil {
+			klog.Errorf(util.Log(ctx, "failed to cleanup snapshot or image: %v"), errDefer)
+		}
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -641,10 +659,21 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	// Deleting snapshot
 	klog.V(4).Infof(util.Log(ctx, "deleting Snaphot %s"), rbdSnap.RbdSnapName)
 	if err := deleteSnapshot(ctx, rbdSnap, cr); err != nil {
+	// generate cloned volume details from snapshot
+	cloneRbd := generateVolFromSnap(rbdSnap)
+	// Deleting snapshot and cloned volume
+	klog.V(4).Infof(util.Log(ctx, "deleting Snaphot and cloned rbd volume %s"), rbdSnap.RbdSnapName)
+	err = cleanUpSnapshot(ctx, rbdSnap, cloneRbd, cr)
+	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition,
-			"failed to delete snapshot: %s/%s with error: %v",
+			"failed to delete snapshot or image: %s/%s with error: %v",
 			rbdSnap.Pool, rbdSnap.RbdSnapName, err)
 	}
-
+	err = undoSnapReservation(ctx, rbdSnap, cr)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) on image (%s) (%s)"),
+			rbdSnap.RequestName, rbdSnap.RbdSnapName, rbdSnap.RbdImageName, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	return &csi.DeleteSnapshotResponse{}, nil
 }

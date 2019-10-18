@@ -261,6 +261,7 @@ func (cj *CSIJournal) UndoReservation(ctx context.Context, monitors string, cr *
 		cj.csiNameKeyPrefix+reqName)
 	if err != nil {
 		klog.Errorf(Log(ctx, "failed removing oMap key %s (%s)"), cj.csiNameKeyPrefix+reqName, err)
+		// TODO return nil if OMap key not found
 		return err
 	}
 
