@@ -149,13 +149,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if found {
-		return &csi.CreateVolumeResponse{
-			Volume: &csi.Volume{
-				VolumeId:      rbdVol.VolID,
-				CapacityBytes: rbdVol.VolSize,
-				VolumeContext: req.GetParameters(),
-			},
-		}, nil
+		return generateVolumeResponse(req, rbdVol), nil
 	}
 
 	err = reserveVol(ctx, rbdVol, cr)
@@ -176,30 +170,41 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	return &csi.CreateVolumeResponse{
+	return generateVolumeResponse(req, rbdVol), nil
+}
+
+func generateVolumeResponse(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) *csi.CreateVolumeResponse {
+	createVolumeResponse := &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			VolumeId:      rbdVol.VolID,
 			CapacityBytes: rbdVol.VolSize,
 			VolumeContext: req.GetParameters(),
 		},
-	}, nil
+	}
+
+	if req.GetVolumeContentSource() != nil {
+		createVolumeResponse.Volume.ContentSource = req.GetVolumeContentSource()
+	}
+
+	return createVolumeResponse
 }
 
 func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSize int64) error {
 	var err error
 
-	// if VolumeContentSource is not nil, this request is for snapshot
+	cr, err := util.NewUserCredentials(req.GetSecrets())
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	// if VolumeContentSource is not nil, this request is for snapshot or rbd image
 	if req.VolumeContentSource != nil {
-		if err = cs.checkSnapshot(ctx, req, rbdVol); err != nil {
+		err = cs.createVolumeFromExistingSource(ctx, req, rbdVol, cr)
+		if err != nil {
 			return err
 		}
 	} else {
-		cr, err := util.NewUserCredentials(req.GetSecrets())
-		if err != nil {
-			return status.Error(codes.Internal, err.Error())
-		}
-		defer cr.DeleteCredentials()
-
 		err = createImage(ctx, rbdVol, volSize, cr)
 		if err != nil {
 			klog.Warningf(util.Log(ctx, "failed to create volume: %v"), err)
@@ -211,7 +216,39 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdV
 
 	return nil
 }
-func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
+
+func (cs *ControllerServer) createVolumeFromExistingSource(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume, cr *util.Credentials) error {
+	var (
+		err error
+	)
+	volumeSource := req.VolumeContentSource
+
+	switch volumeSource.Type.(type) {
+	case *csi.VolumeContentSource_Snapshot:
+		snapName := volumeSource.GetSnapshot().GetSnapshotId()
+		klog.V(2).Infof("creating volume from snapshot %s", snapName)
+		err = cs.checkSnapshot(ctx, req, rbdVol, cr)
+	case *csi.VolumeContentSource_Volume:
+		err = cs.createCloneFromImage(ctx, req, rbdVol, cr)
+	default:
+		err = status.Errorf(codes.InvalidArgument, "not a proper volume source")
+		klog.Error(err)
+	}
+
+	if err == nil {
+		err = flattenRbdImage(ctx, rbdVol, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth, cr)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to flatten image %v"), err)
+			if errDel := deleteImage(ctx, rbdVol, cr); errDel != nil {
+				klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, errDel)
+			}
+		}
+	}
+	return err
+}
+
+func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume, cr *util.Credentials) error {
+	var err error
 	snapshot := req.VolumeContentSource.GetSnapshot()
 	if snapshot == nil {
 		return status.Error(codes.InvalidArgument, "volume Snapshot cannot be empty")
@@ -222,14 +259,11 @@ func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVo
 		return status.Error(codes.InvalidArgument, "volume Snapshot ID cannot be empty")
 	}
 
-	cr, err := util.NewUserCredentials(req.GetSecrets())
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-	defer cr.DeleteCredentials()
+	klog.V(4).Infof("creating volume from snapshot %s", snapshotID)
 
 	rbdSnap := &rbdSnapshot{}
-	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, false, cr); err != nil {
+	err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, false, cr)
+	if err != nil {
 		if _, ok := err.(ErrSnapNotFound); !ok {
 			return status.Error(codes.Internal, err.Error())
 		}
@@ -241,14 +275,6 @@ func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVo
 		return status.Error(codes.Internal, err.Error())
 	}
 	klog.V(4).Infof(util.Log(ctx, "create volume %s from snapshot %s"), req.GetName(), rbdSnap.RbdSnapName)
-
-	err = flattenRbdImage(ctx, rbdVol, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth, cr)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to flatten image %v"), err)
-		if errDel := deleteImage(ctx, rbdVol, cr); errDel != nil {
-			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, errDel)
-		}
-	}
 	return err
 }
 
@@ -531,7 +557,10 @@ func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot
 	cloneRbd.ImageFormat = rbdImageFormat2
 	cloneRbd.ImageFeatures = "layering,deep-flatten"
 
-	err = createRBDClone(ctx, rbdVol, cloneRbd, cr)
+	// generate snapshot from parent volume
+	snap := generateSnapFromVol(rbdVol)
+
+	err = createRBDClone(ctx, cloneRbd, snap, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to create snapshot: %v"), err)
 		return status.Error(codes.Internal, err.Error())

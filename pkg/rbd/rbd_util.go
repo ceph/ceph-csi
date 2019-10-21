@@ -188,7 +188,6 @@ func rbdManagerTaskTrashRemove(ctx context.Context, pOpts *rbdVolume, cr *util.C
 func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	var (
 		output []byte
-		id     string
 	)
 	image := pOpts.RbdImageName
 	found, _, err := rbdStatus(ctx, pOpts, cr)
@@ -199,6 +198,15 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		klog.Info(util.Log(ctx, "rbd is still being used "), image)
 		return fmt.Errorf("rbd %s is still being used", image)
 	}
+
+	vol, err := getImageInfo(ctx, pOpts.Monitors, cr, pOpts.Pool, pOpts.RbdImageName)
+	if err != nil {
+		if _, ok := err.(ErrImageNotFound); !ok {
+			return err
+		}
+		return nil
+	}
+	pOpts.ImageID = vol.ID
 
 	err = moveImageToTrash(ctx, pOpts, cr)
 	if err != nil {
@@ -211,7 +219,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	if !rbdCephMgrSupported {
 		// attempt older style deletion
 		klog.Infof(util.Log(ctx, "rbd: attempting to delete (%s) image with id (%s) from trash"), image, id)
-		args := []string{"trash", "rm", id, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors,
+		args := []string{"trash", "rm", pOpts.ImageID, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors,
 			"--keyfile=" + cr.KeyFile}
 		output, err = execCommand("rbd", args)
 		if err != nil {
@@ -221,7 +229,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	}
 
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to add task trash remove for image (%s) with id (%s): %v"), image, id, err)
+		klog.Errorf(util.Log(ctx, "failed to add task trash remove for image (%s) with id (%s): %v"), image, pOpts.ImageID, err)
 	}
 
 	return err

@@ -10,10 +10,7 @@ import (
 	"k8s.io/klog"
 )
 
-func createRBDClone(ctx context.Context, rbdVol, cloneRbdVol *rbdVolume, cr *util.Credentials) error {
-
-	// generate snapshot from parent volume
-	snap := generateSnapFromVol(rbdVol)
+func createRBDClone(ctx context.Context, cloneRbdVol *rbdVolume, snap *rbdSnapshot, cr *util.Credentials) error {
 
 	// update snapshot name as cloned volume name as it will be always unique
 	snap.RbdSnapName = cloneRbdVol.RbdImageName
@@ -77,14 +74,6 @@ func cleanUpSnapshot(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolum
 		klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), err)
 		return err
 	}
-	vol, err := getImageInfo(ctx, rbdVol.Monitors, cr, rbdVol.Pool, rbdVol.RbdImageName)
-	if err != nil {
-		if _, ok := err.(ErrImageNotFound); !ok {
-			return err
-		}
-		return nil
-	}
-	rbdVol.ImageID = vol.ID
 	err = deleteImage(ctx, rbdVol, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, err)
