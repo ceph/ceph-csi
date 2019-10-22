@@ -111,6 +111,7 @@ var _ = Describe("RBD", func() {
 			pvcClonePath := rbdExamplePath + "pvc-restore.yaml"
 			appClonePath := rbdExamplePath + "pod-restore.yaml"
 			snapshotPath := rbdExamplePath + "snapshot.yaml"
+			smartClonePath := rbdExamplePath + "pvc-clone.yaml"
 
 			By("checking provisioner statefulset/deployment is running")
 			timeout := time.Duration(deployTimeout) * time.Minute
@@ -196,6 +197,10 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
+			})
+
+			By("create a PVC clone from PVC and Bind it to an app", func() {
+				validateCloneFromPVC(pvcPath, appPath, smartClonePath, 1, true, false, f)
 			})
 		})
 	})
