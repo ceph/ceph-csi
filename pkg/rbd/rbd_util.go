@@ -218,7 +218,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	rbdCephMgrSupported, err := rbdManagerTaskTrashRemove(ctx, pOpts, cr)
 	if !rbdCephMgrSupported {
 		// attempt older style deletion
-		klog.Infof(util.Log(ctx, "rbd: attempting to delete (%s) image with id (%s) from trash"), image, id)
+		klog.Infof(util.Log(ctx, "rbd: attempting to delete (%s) image with id (%s) from trash"), image, pOpts.ImageID)
 		args := []string{"trash", "rm", pOpts.ImageID, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors,
 			"--keyfile=" + cr.KeyFile}
 		output, err = execCommand("rbd", args)
