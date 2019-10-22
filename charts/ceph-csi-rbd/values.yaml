@@ -204,12 +204,24 @@ provisioner:
       tag: v1.2.1
       pullPolicy: IfNotPresent
     resources: {}
+  
+  resizer:
+    name: resizer
+    enabled: true
+    image:
+      repository: quay.io/k8scsi/csi-resizer
+      tag: canary
+      pullPolicy: IfNotPresent
+    resources: {}
+
 
   nodeSelector: {}
 
   tolerations: []
 
   affinity: {}
+
+
 
 #########################################################
 # Variables for 'internal' use please use with caution! #
