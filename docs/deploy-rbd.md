@@ -43,6 +43,12 @@ make image-cephcsi
 | `--polltime`          | `"60s"`               | Time interval in between each poll                                                                                                                                                                                                                                                   |
 | `--timeout`           | `"3s"`                | Probe timeout in seconds                                                                                                                                                                                                                                                             |
 | `--histogramoption`   | `0.5,2,6`             | Histogram option for grpc metrics, should be comma separated value (ex:= "0.5,2,6" where start=0.5 factor=2, count=6)                                                                                                                                                                |
+| `--registercsidriver` | `false`               | Create CSIDriver object for the driver                                                                                                                                                                                                                                               |
+
+**NOTE:**
+
+* `--registercsidriver` only supports creation and deletion of CSIDriver object
+in CO built around kubernetes
 
 **Available volume parameters:**
 

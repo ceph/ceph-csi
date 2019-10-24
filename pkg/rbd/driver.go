@@ -17,6 +17,8 @@ limitations under the License.
 package rbd
 
 import (
+	"os"
+
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
@@ -149,7 +151,10 @@ func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 		}
 		r.cs = NewControllerServer(r.cd, cachePersister)
 	}
-
+	if r.cs != nil && conf.RegisterCSIDriver {
+		c := make(chan os.Signal, 1)
+		go util.RegisterCSIDriver(c, conf.DriverName)
+	}
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(conf.Endpoint, conf.HistogramOption, r.ids, r.cs, r.ns, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {

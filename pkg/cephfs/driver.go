@@ -17,6 +17,8 @@ limitations under the License.
 package cephfs
 
 import (
+	"os"
+
 	"k8s.io/klog"
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
@@ -155,7 +157,10 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 		fs.ns = NewNodeServer(fs.cd, conf.Vtype)
 		fs.cs = NewControllerServer(fs.cd, cachePersister)
 	}
-
+	if fs.cs != nil && conf.RegisterCSIDriver {
+		c := make(chan os.Signal, 1)
+		go util.RegisterCSIDriver(c, conf.DriverName)
+	}
 	server := csicommon.NewNonBlockingGRPCServer()
 	server.Start(conf.Endpoint, conf.HistogramOption, fs.is, fs.cs, fs.ns, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {

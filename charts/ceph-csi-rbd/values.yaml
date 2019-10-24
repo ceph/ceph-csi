@@ -229,3 +229,5 @@ pluginDir: /var/lib/kubelet/plugins
 driverName: rbd.csi.ceph.com
 # Name of the configmap used for state
 configMapName: ceph-csi-config-rbd
+# Uncomment this to create CSIDriver object with kubernetes
+# registerDriver: true

@@ -61,4 +61,11 @@ rules:
     resources: ["volumesnapshots/status"]
     verbs: ["update"]
 {{- end -}}
+{{- if semverCompare ">=1.14" .Capabilities.KubeVersion.GitVersion }}
+{{- if .Values.registerDriver }}
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csidrivers"]
+    verbs: ["create", "delete"]
+{{- end -}}
+{{- end -}}
 {{- end -}}

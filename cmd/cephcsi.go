@@ -57,6 +57,7 @@ func init() {
 	flag.IntVar(&conf.PidLimit, "pidlimit", 0, "the PID limit to configure through cgroups")
 	flag.BoolVar(&conf.IsControllerServer, "controllerserver", false, "start cephcsi controller server")
 	flag.BoolVar(&conf.IsNodeServer, "nodeserver", false, "start cephcsi node server")
+	flag.BoolVar(&conf.RegisterCSIDriver, "registercsidriver", false, "create CSIDriver object for the driver in CO built around kubernetes")
 
 	// rbd related flags
 	flag.BoolVar(&conf.Containerized, "containerized", false, "whether run as containerized")

@@ -222,3 +222,5 @@ pluginDir: /var/lib/kubelet/plugins
 driverName: cephfs.csi.ceph.com
 # Name of the configmap used for state
 configMapName: ceph-csi-config-cephfs
+# Uncomment this to create CSIDriver object with kubernetes
+# registerDriver: true
