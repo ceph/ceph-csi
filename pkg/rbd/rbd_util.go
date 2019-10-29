@@ -50,9 +50,10 @@ const (
 	// Output strings returned during invocation of "ceph rbd task add remove <imagespec>" when
 	// command is not supported by ceph manager. Used to check errors and recover when the command
 	// is unsupported.
-	rbdTaskRemoveCmdInvalidString1      = "no valid command found"
-	rbdTaskRemoveCmdInvalidString2      = "Error EINVAL: invalid command"
-	rbdTaskRemoveCmdAccessDeniedMessage = "Error EACCES:"
+	rbdTaskRemoveCmdInvalidString1          = "no valid command found"
+	rbdTaskRemoveCmdInvalidString2          = "Error EINVAL: invalid command"
+	rbdTaskRemoveCmdAccessDeniedMessage     = "Error EACCES:"
+	rbdTaskRemoveCmdPermissionDeniedMessage = "Error EPERM:"
 )
 
 // rbdVolume represents a CSI volume and its RBD image specifics
@@ -187,6 +188,9 @@ func rbdManagerTaskDeleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.C
 				" deletion (minimum ceph version required is v14.2.3)"), pOpts.ClusterID)
 		} else if strings.HasPrefix(string(output), rbdTaskRemoveCmdAccessDeniedMessage) {
 			klog.Infof(util.Log(ctx, "access denied to Ceph MGR-based RBD image deletion "+
+				"on cluster ID (%s)"), pOpts.ClusterID)
+		} else if strings.HasPrefix(string(output), rbdTaskRemoveCmdPermissionDeniedMessage) {
+			klog.Infof(util.Log(ctx, "permission denied to Ceph MGR-based RBD image deletion "+
 				"on cluster ID (%s)"), pOpts.ClusterID)
 		} else {
 			klog.Errorf(util.Log(ctx, "unexpected error related to Ceph MGR-based RBD image deletion "+
