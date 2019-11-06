@@ -18,8 +18,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/ceph/ceph-csi/pkg/cephfs"
@@ -75,6 +77,8 @@ func init() {
 	flag.StringVar(&conf.HistogramOption, "histogramoption", "0.5,2,6",
 		"Histogram option for grpc metrics, should be comma separated value, ex:= 0.5,2,6 where start=0.5 factor=2, count=6")
 
+	flag.BoolVar(&conf.Version, "version", false, "Print cephcsi version information")
+
 	klog.InitFlags(nil)
 	if err := flag.Set("logtostderr", "true"); err != nil {
 		klog.Exitf("failed to set logtostderr flag: %v", err)
@@ -101,6 +105,15 @@ func getDriverName() string {
 }
 
 func main() {
+	if conf.Version {
+		fmt.Println("Cephcsi Version:", util.DriverVersion)
+		fmt.Println("Git Commit:", util.GitCommit)
+		fmt.Println("Go Version:", runtime.Version())
+		fmt.Println("Compiler:", runtime.Compiler)
+		fmt.Printf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		os.Exit(0)
+	}
+
 	klog.Infof("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
 	var cp util.CachePersister
 

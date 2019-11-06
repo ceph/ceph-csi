@@ -97,6 +97,7 @@ type Config struct {
 
 	IsControllerServer bool // if set to true start provisoner server
 	IsNodeServer       bool // if set to true start node server
+	Version            bool // cephcsi version
 
 	// rbd related flag
 	Containerized bool // whether run as containerized
