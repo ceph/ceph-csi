@@ -33,6 +33,42 @@ push_helm_charts() {
 
 }
 
+# Build and push images. Steps as below:
+# 1. get base image from original Dockerfile (FROM ceph/ceph:v14.2)
+# 2. parse manifest to get image digest per arch (sha256:XXX, sha256:YYY)
+# 3. patch Dockerfile with amd64 base image (FROM ceph/ceph:v14.2@sha256:XXX)
+# 4. build and push amd64 image
+# 5. patch Dockerfile with arm64 base image (FROM ceph/ceph:v14.2@sha256:YYY)
+# 6. build and push arm64 image
+build_push_images() {
+	# "docker manifest" requires experimental feature enabled
+	export DOCKER_CLI_EXPERIMENTAL=enabled
+
+	# get baseimg (ceph/ceph:tag)
+	dockerfile="deploy/cephcsi/image/Dockerfile"
+	baseimg=$(awk '/^FROM/ {print $NF}' "${dockerfile}")
+
+	# get image digest per architecture
+	# {
+	#   "arch": "amd64",
+	#   "digest": "sha256:XXX"
+	# }
+	# {
+	#   "arch": "arm64",
+	#   "digest": "sha256:YYY"
+	# }
+	manifests=$("${CONTAINER_CMD:-docker}" manifest inspect "${baseimg}" | jq '.manifests[] | {arch: .platform.architecture, digest: .digest}')
+
+	# build and push per arch images
+	for ARCH in amd64 arm64; do
+		ifs=$IFS; IFS=
+		digest=$(awk -v ARCH=${ARCH} '{if (archfound) {print $NF; exit 0}}; {archfound=($0 ~ "arch.*"ARCH)}' <<< "${manifests}")
+		IFS=$ifs
+		sed -i "s|\(^FROM.*\)${baseimg}.*$|\1${baseimg}@${digest}|" "${dockerfile}"
+		GOARCH=${ARCH} make push-image-cephcsi
+	done
+}
+
 if [ "${TRAVIS_BRANCH}" == 'master' ]; then
 	export ENV_CSI_IMAGE_VERSION='canary'
 else
@@ -42,9 +78,10 @@ fi
 
 if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
 	"${CONTAINER_CMD:-docker}" login -u "${QUAY_IO_USERNAME}" -p "${QUAY_IO_PASSWORD}" quay.io
-	make push-image-cephcsi
 
 	set -xe
+
+	build_push_images
 
 	mkdir -p tmp
 	pushd tmp >/dev/null
