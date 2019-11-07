@@ -29,6 +29,7 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util"
 
+	"golang.org/x/sys/unix"
 	"k8s.io/klog"
 )
 
@@ -47,6 +48,101 @@ var (
 	fusePidRx = regexp.MustCompile(`(?m)^ceph-fuse\[(.+)\]: starting fuse$`)
 )
 
+// Version checking the running kernel and comparing it to known versions that
+// have support for quota. Distributors of enterprise Linux have backported
+// quota support to previous versions. This function checks if the running
+// kernel is one of the versions that have the feature/fixes backported.
+//
+// `uname -r` (or Uname().Utsname.Release has a format like 1.2.3-rc.vendor
+// This can be slit up in the following components:
+// - version (1)
+// - patchlevel (2)
+// - sublevel (3) - optional, defaults to 0
+// - extraversion (rc) - optional, matching integers only
+// - distribution (.vendor) - optional, match against whole `uname -r` string
+//
+// For matching multiple versions, the kernelSupport type contains a backport
+// bool, which will cause matching
+// version+patchlevel+sublevel+(>=extraversion)+(~distribution)
+//
+// In case the backport bool is fase, a simple check for higher versions than
+// version+patchlevel+sublevel is done.
+func kernelSupportsQuota(release string) error {
+	type kernelSupport struct {
+		version      int
+		patchlevel   int
+		sublevel     int
+		extraversion int    // prefix of the part after the first "-"
+		distribution string // component of full extraversion
+		backport     bool   // backports have a fixed version/patchlevel/sublevel
+	}
+
+	quotaSupport := []kernelSupport{
+		kernelSupport{4, 17, 0, 0, "", false},       // standard 4.17+ versions
+		kernelSupport{3, 10, 0, 1062, ".el7", true}, // RHEL-7.7
+	}
+
+	vers := strings.Split(strings.SplitN(release, "-", 2)[0], ".")
+	version, err := strconv.Atoi(vers[0])
+	if err != nil {
+		return fmt.Errorf("failed to parse version from %s: %v", release, err)
+	}
+	patchlevel, err := strconv.Atoi(vers[1])
+	if err != nil {
+		return fmt.Errorf("failed to parse patchlevel from %s: %v", release, err)
+	}
+	sublevel := 0
+	if len(vers) >= 3 {
+		sublevel, err = strconv.Atoi(vers[2])
+		if err != nil {
+			return fmt.Errorf("failed to parse sublevel from %s: %v", release, err)
+		}
+	}
+	extra := strings.SplitN(release, "-", 2)
+	extraversion := 0
+	if len(extra) == 2 {
+		// ignore errors, 1st component of extraversion does not need to be an int
+		extraversion, err = strconv.Atoi(strings.Split(extra[1], ".")[0])
+		if err != nil {
+			// "go lint" wants err to be checked...
+			extraversion = 0
+		}
+	}
+
+	// compare running kernel against known versions
+	for _, kernel := range quotaSupport {
+		if version > kernel.version && !kernel.backport {
+			return nil
+		} else if version == kernel.version {
+			if patchlevel > kernel.patchlevel && !kernel.backport {
+				return nil
+			} else if patchlevel == kernel.patchlevel {
+				if sublevel >= kernel.sublevel && !kernel.backport {
+					return nil
+				} else if sublevel < kernel.sublevel {
+					continue
+				}
+
+				// no sense it matching further if not a backport
+				if !kernel.backport {
+					continue
+				}
+
+				// match distribution
+				if !strings.Contains(release, kernel.distribution) {
+					continue
+				}
+
+				if extraversion >= kernel.extraversion {
+					return nil
+				}
+			}
+		}
+	}
+
+	return fmt.Errorf("kernel %s does not support quota", release)
+}
+
 // Load available ceph mounters installed on system into availableMounters
 // Called from driver.go's Run()
 func loadAvailableMounters(conf *util.Config) error {
@@ -57,21 +153,15 @@ func loadAvailableMounters(conf *util.Config) error {
 
 	err := kernelMounterProbe.Run()
 	if err == nil {
-		kernelVersion, _, err := execCommand(context.TODO(), "uname", "-r")
+		// fetch the current running kernel info
+		utsname := unix.Utsname{}
+		err := unix.Uname(&utsname)
 		if err != nil {
 			return err
 		}
-		vers := strings.Split(string(kernelVersion), ".")
-		majorVers, err := strconv.Atoi(vers[0])
-		if err != nil {
-			return err
-		}
-		minorVers, err := strconv.Atoi(vers[1])
-		if err != nil {
-			return err
-		}
+		release := string(utsname.Release[:64])
 
-		if conf.ForceKernelCephFS || majorVers > 4 || (majorVers >= 4 && minorVers >= 17) {
+		if conf.ForceKernelCephFS || kernelSupportsQuota(release) == nil {
 			klog.Infof("loaded mounter: %s", volumeMounterKernel)
 			availableMounters = append(availableMounters, volumeMounterKernel)
 		} else {
