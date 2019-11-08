@@ -78,8 +78,8 @@ func kernelSupportsQuota(release string) error {
 	}
 
 	quotaSupport := []kernelSupport{
-		kernelSupport{4, 17, 0, 0, "", false},       // standard 4.17+ versions
-		kernelSupport{3, 10, 0, 1062, ".el7", true}, // RHEL-7.7
+		{4, 17, 0, 0, "", false},       // standard 4.17+ versions
+		{3, 10, 0, 1062, ".el7", true}, // RHEL-7.7
 	}
 
 	vers := strings.Split(strings.SplitN(release, "-", 2)[0], ".")
