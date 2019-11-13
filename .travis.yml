@@ -15,6 +15,7 @@ language: go
 branches:
   only:
     - master
+    - release-4.2
 
 go: 1.12.x
 
