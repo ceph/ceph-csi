@@ -44,14 +44,24 @@ func removeCephCSIResource() {
 		e2elog.Logf("failed to delete cephfs daemonset %v", err)
 	}
 
-	// cleanup rbd and cephfs statefulset deployed by rook
-	_, err = framework.RunKubectl("delete", "-nrook-ceph", "statefulset", "csi-rbdplugin-provisioner")
+	// if kube version is <1.14.0 rook deploys cephfs and rbd provisioner as statefulset
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-nrook-ceph", "statefulset", "csi-rbdplugin-provisioner")
 	if err != nil {
 		e2elog.Logf("failed to delete rbd statefulset %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-nrook-ceph", "statefulset", "csi-cephfsplugin-provisioner")
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-nrook-ceph", "statefulset", "csi-cephfsplugin-provisioner")
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs statefulset %v", err)
+	}
+
+	// if kube version is >=1.14.0 rook deploys cephfs and rbd provisioner as deployment
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-nrook-ceph", "deployment", "csi-rbdplugin-provisioner")
+	if err != nil {
+		e2elog.Logf("failed to delete rbd deployment %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "--ignore-not-found", "-nrook-ceph", "deployment", "csi-cephfsplugin-provisioner")
+	if err != nil {
+		e2elog.Logf("failed to delete cephfs deployment %v", err)
 	}
 
 	// cleanup rbd cluster roles deployed by rook
