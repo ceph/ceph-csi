@@ -157,6 +157,23 @@ var _ = Describe("cephfs", func() {
 						Fail(err.Error())
 					}
 				})
+				By("Resize PVC and check application directory size", func() {
+					v, err := f.ClientSet.Discovery().ServerVersion()
+					if err != nil {
+						e2elog.Logf("failed to get server version with error %v", err)
+						Fail(err.Error())
+					}
+
+					// Resize 0.3.0 is only supported from v1.15+
+					if v.Major > "1" || (v.Major == "1" && v.Minor >= "15") {
+						err := resizePVCAndValidateSize(pvcPath, appPath, f)
+						if err != nil {
+							e2elog.Logf("failed to resize PVC %v", err)
+							Fail(err.Error())
+						}
+					}
+
+				})
 
 			})
 

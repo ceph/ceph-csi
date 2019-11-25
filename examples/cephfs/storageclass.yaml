@@ -31,6 +31,8 @@ parameters:
   # The secrets have to contain user and/or Ceph admin credentials.
   csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/provisioner-secret-namespace: default
+  csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: default
   csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
   csi.storage.k8s.io/node-stage-secret-namespace: default
 
@@ -40,5 +42,6 @@ parameters:
   # determined by probing for ceph-fuse and mount.ceph
   # mounter: kernel
 reclaimPolicy: Delete
+allowVolumeExpansion: true
 mountOptions:
   - debug

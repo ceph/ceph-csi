@@ -64,6 +64,25 @@ spec:
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- end }}
+{{- if semverCompare ">=1.15" .Capabilities.KubeVersion.GitVersion -}}
+{{- if .Values.provisioner.resizer.enabled }}
+        - name: csi-resizer
+          image: "{{ .Values.provisioner.resizer.image.repository }}:{{ .Values.provisioner.resizer.image.tag }}"
+          imagePullPolicy: {{ .Values.provisioner.resizer.image.pullPolicy }}
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election"
+          env:
+            - name: ADDRESS
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+{{ toYaml .Values.provisioner.resizer.resources | indent 12 }}
+{{- end }}
+{{- end }}
         - name: csi-cephfsplugin
           image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
           imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
