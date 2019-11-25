@@ -304,6 +304,13 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	volID := req.GetVolumeId()
 	secret := req.GetSecrets()
 
+	// lock out parallel delete operations
+	if acquired := cs.VolumeLocks.TryAcquire(volID); !acquired {
+		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+	}
+	defer cs.VolumeLocks.Release(volID)
+
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())

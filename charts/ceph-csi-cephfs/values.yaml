@@ -203,7 +203,7 @@ provisioner:
     enabled: true
     image:
       repository: quay.io/k8scsi/csi-resizer
-      tag: canary
+      tag: v0.3.0
       pullPolicy: IfNotPresent
     resources: {}
 
