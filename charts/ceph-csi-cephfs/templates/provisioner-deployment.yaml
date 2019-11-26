@@ -72,6 +72,7 @@ spec:
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
+            - "--csiTimeout={{ .Values.provisioner.timeout }}"
             - "--leader-election"
           env:
             - name: ADDRESS
