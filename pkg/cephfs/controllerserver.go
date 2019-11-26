@@ -324,13 +324,15 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err = createVolume(ctx, volOptions, cr, volumeID(volIdentifier.FsSubvolName), req.GetCapacityRange().GetRequiredBytes()); err != nil {
+	RoundOffSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
+
+	if err = createVolume(ctx, volOptions, cr, volumeID(volIdentifier.FsSubvolName), RoundOffSize); err != nil {
 		klog.Errorf("failed to expand volume %s: %v", volumeID(volIdentifier.FsSubvolName), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &csi.ControllerExpandVolumeResponse{
-		CapacityBytes:         req.GetCapacityRange().GetRequiredBytes(),
+		CapacityBytes:         RoundOffSize,
 		NodeExpansionRequired: false,
 	}, nil
 
