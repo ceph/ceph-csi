@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
+	"k8s.io/kubernetes/pkg/util/resizefs"
 )
 
 // NodeServer struct of ceph rbd driver with supported methods of CSI
@@ -536,6 +537,48 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
+func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+
+	volumeID := req.GetVolumeId()
+	if volumeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "NodeExpandVolume volume ID must be provided")
+	}
+	volumePath := req.GetVolumePath()
+	if volumePath == "" {
+		return nil, status.Error(codes.InvalidArgument, "NodeExpandVolume volume path must be provided")
+	}
+
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+	volumePath = volumePath + "/" + req.GetVolumeId()
+	devicePath, err := getDevicePath(ctx, diskMounter, volumePath)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// TODO check size and return success or error
+	resizer := resizefs.NewResizeFs(diskMounter)
+	ok, err := resizer.Resize(devicePath, volumePath)
+	if !ok {
+		return nil, fmt.Errorf("rbd: resize failed on path %s, error: %v", req.GetVolumePath(), err)
+	}
+	return &csi.NodeExpandVolumeResponse{
+		CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
+	}, nil
+}
+
+func getDevicePath(ctx context.Context, mnt *mount.SafeFormatAndMount, stagingTargetPath string) (string, error) {
+	mointPoints, err := mnt.List()
+	if err != nil {
+		return "", err
+	}
+	for _, m := range mointPoints {
+		if strings.EqualFold(stagingTargetPath, m.Path) {
+			klog.V(3).Infof(util.Log(ctx, "found device %v for %v"), m.Device, stagingTargetPath)
+			return m.Device, nil
+		}
+	}
+	return "", fmt.Errorf("failed to get device for stagingtarget path %v", stagingTargetPath)
+}
+
 // NodeGetCapabilities returns the supported capabilities of the node server
 func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
@@ -551,6 +594,13 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+					},
+				},
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
 					},
 				},
 			},

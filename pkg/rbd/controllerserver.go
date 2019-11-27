@@ -642,3 +642,56 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	return &csi.DeleteSnapshotResponse{}, nil
 }
+
+// ControllerExpandVolume expand RBD Volumes on demand based on resizer request
+func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
+		klog.Warningf("invalid expand volume req: %v", protosanitizer.StripSecrets(req))
+		return nil, err
+	}
+
+	volID := req.GetVolumeId()
+	if volID == "" {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
+	}
+
+	capRange := req.GetCapacityRange()
+	if capRange == nil {
+		return nil, status.Error(codes.InvalidArgument, "CapacityRange cannot be empty")
+	}
+
+	cr, err := util.NewUserCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	rbdVol := &rbdVolume{}
+	err = genVolFromVolID(ctx, rbdVol, volID, cr)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", volID)
+	}
+
+	// always round up the request size in bytes to the nearest MiB/GiB
+	volSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
+
+	klog.V(4).Infof(util.Log(ctx, "rbd volume %s/%s size is %vMiB,resizing to %vMiB"), rbdVol.Pool, rbdVol.RbdImageName, rbdVol.VolSize, util.RoundOffVolSize(volSize))
+	// resize volume if required
+	if rbdVol.VolSize < volSize {
+		rbdVol.VolSize = util.RoundOffVolSize(volSize)
+		err = resizeRBDImage(ctx, rbdVol, cr)
+		if err != nil {
+			klog.Errorf("failed to resize rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.RbdImageName, err)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		klog.V(4).Infof(util.Log(ctx, "successfully resized %s to %v"), volID, volSize)
+	}
+
+	nodeExpansion := true
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes:         volSize,
+		NodeExpansionRequired: nodeExpansion,
+	}, nil
+
+}
