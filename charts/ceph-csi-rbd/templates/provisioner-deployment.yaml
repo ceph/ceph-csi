@@ -46,6 +46,24 @@ spec:
               mountPath: /csi
           resources:
 {{ toYaml .Values.provisioner.provisioner.resources | indent 12 }}
+{{- if .Values.provisioner.resizer.enabled }}
+        - name: csi-resizer
+          image: "{{ .Values.provisioner.resizer.image.repository }}:{{ .Values.provisioner.resizer.image.tag }}"
+          imagePullPolicy: {{ .Values.provisioner.resizer.image.pullPolicy }}
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+            - "--csiTimeout={{ .Values.provisioner.timeout }}"
+            - "--leader-election"
+          env:
+            - name: ADDRESS
+              value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+{{ toYaml .Values.provisioner.resizer.resources | indent 12 }}
+{{- end }}
         - name: csi-snapshotter
           image: {{ .Values.provisioner.snapshotter.image.repository }}:{{ .Values.provisioner.snapshotter.image.tag }}
           imagePullPolicy: {{ .Values.provisioner.snapshotter.image.pullPolicy }}
