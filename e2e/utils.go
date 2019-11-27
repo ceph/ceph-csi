@@ -24,6 +24,7 @@ import (
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/cloud-provider/volume/helpers"
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -843,6 +844,8 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 }
 
 func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) error {
+	size := "1Gi"
+	expandSize := "10Gi"
 	pvc, err := loadPVC(pvcPath)
 	if pvc == nil {
 		return err
@@ -859,6 +862,7 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 	if err != nil {
 		return err
 	}
+	pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(size)
 	app.Labels = map[string]string{"app": "resize-pvc"}
 	app.Namespace = f.UniqueName
 
@@ -870,13 +874,12 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 	opt := metav1.ListOptions{
 		LabelSelector: "app=resize-pvc",
 	}
-
-	err = checkDirSize(app, f, &opt, "5.0G", deployTimeout)
+	err = checkDirSize(app, f, &opt, size, deployTimeout)
 	if err != nil {
 		return err
 	}
 	// resize PVC
-	err = expandPVCSize(f.ClientSet, resizePvc, "10Gi", deployTimeout)
+	err = expandPVCSize(f.ClientSet, resizePvc, expandSize, deployTimeout)
 	if err != nil {
 		return err
 	}
@@ -885,7 +888,7 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 	if err != nil {
 		return err
 	}
-	err = checkDirSize(app, f, &opt, "10G", deployTimeout)
+	err = checkDirSize(app, f, &opt, expandSize, deployTimeout)
 	return err
 }
 
@@ -902,8 +905,13 @@ func checkDirSize(app *v1.Pod, f *framework.Framework, opt *metav1.ListOptions, 
 			e2elog.Logf("failed to execute command in app pod %v", stdErr)
 			return false, nil
 		}
+		s := resource.MustParse(strings.TrimSpace(output))
+		actualSize := helpers.RoundUpToGiB(s)
 
-		if !strings.Contains(output, size) {
+		s = resource.MustParse(size)
+		expectedSize := helpers.RoundUpToGiB(s)
+
+		if actualSize != expectedSize {
 			e2elog.Logf("expected directory size %s found %s information", size, output)
 			return false, nil
 		}
