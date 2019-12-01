@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -24,12 +26,23 @@ func init() {
 
 	flag.BoolVar(&rookRequired, "deploy-rook", true, "deploy rook on kubernetes")
 	flag.IntVar(&deployTimeout, "deploy-timeout", 10, "timeout to wait for created kubernetes resources")
+
+	setDefaultKubeconfig()
+
 	// Register framework flags, then handle flags
 	framework.HandleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
 
 	formRookURL(RookVersion)
 	fmt.Println("timeout for deploytimeout ", deployTimeout)
+}
+
+func setDefaultKubeconfig() {
+	_, exists := os.LookupEnv("KUBECONFIG")
+	if !exists {
+		defaultKubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+		os.Setenv("KUBECONFIG", defaultKubeconfig)
+	}
 }
 
 // removeCephCSIResource is a temporary fix for CI to remove the ceph-csi resources deployed by rook
