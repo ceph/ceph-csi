@@ -30,6 +30,10 @@ import (
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
+const (
+	rookNS = "rook-ceph"
+)
+
 var poll = 2 * time.Second
 
 // type snapInfo struct {
@@ -460,22 +464,6 @@ func createApp(c kubernetes.Interface, app *v1.Pod, timeout int) error {
 	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout)
 }
 
-func getPodName(ns string, c kubernetes.Interface, opt *metav1.ListOptions) string {
-	ticker := time.NewTicker(1 * time.Second)
-	// TODO add stop logic
-	for range ticker.C {
-		podList, err := c.CoreV1().Pods(ns).List(*opt)
-		framework.ExpectNoError(err)
-		Expect(podList.Items).NotTo(BeNil())
-		Expect(err).Should(BeNil())
-
-		if len(podList.Items) != 0 {
-			return podList.Items[0].Name
-		}
-	}
-	return ""
-}
-
 func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
@@ -530,27 +518,6 @@ func unmarshal(fileName string, obj interface{}) error {
 
 	err = json.Unmarshal(data, obj)
 	return err
-}
-
-func checkCephPods(ns string, c kubernetes.Interface, count, t int, opt *metav1.ListOptions) error {
-	timeout := time.Duration(t) * time.Minute
-	start := time.Now()
-
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		podList, err := c.CoreV1().Pods(ns).List(*opt)
-		if err != nil {
-			return false, err
-		}
-
-		e2elog.Logf("pod count is %d  expected count %d (%d seconds elapsed)", len(podList.Items), count, int(time.Since(start).Seconds()))
-
-		if len(podList.Items) >= count {
-			return true, nil
-		}
-
-		return false, nil
-	})
-
 }
 
 // createPVCAndApp creates pvc and pod

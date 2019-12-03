@@ -36,6 +36,8 @@ the following parameters are available to configure  kubernetes cluster
 | down        | Stops a running local kubernetes cluster                      |
 | clean       | Deletes a local kubernetes cluster                            |
 | ssh         | Log into or run a command on a minikube machine with SSH      |
+| deploy-rook | Deploy rook to minikube                                       |
+| clean-rook  | Deletes a rook from minikube                                  |
 | cephcsi     | Copy built docker images to kubernetes cluster                |
 | k8s-sidecar | Copy kubernetes sidecar docker images to kubernetes cluster   |
 
@@ -70,8 +72,6 @@ are available while running tests:
 
 | flag           | description                                                                   |
 | -------------- | ----------------------------------------------------------------------------- |
-| rook-version   | Rook version to pull yaml files to deploy rook operator (default: v1.1.2)     |
-| deploy-rook    | Deploy rook operator to create  ceph cluster (default: true)                  |
 | deploy-timeout | Timeout to wait for created kubernetes resources (default: 10)                |
 | kubeconfig     | Path to kubeconfig containing embedded authinfo (default: $HOME/.kube/config) |
 | timeout        | Panic test binary after duration d (default 0, timeout disabled)              |
@@ -88,11 +88,11 @@ cluster or you can pass `kubeconfig`flag while running tests.
 Functional tests are run by the `go test` command.
 
  ```console
- $go test ./e2e/ --rook-version="v1.0.1" --deploy-rook=true -timeout=20m -v
+ $go test ./e2e/ -timeout=20m -v
  ```
 
 Functional  tests can be invoked by `make` command
 
 ```console
-$make func-test TESTOPTIONS="--rook-version=v1.0.1 --deploy-rook=true --deploy-timeout=10  -timeout=30m -v"
+$make func-test TESTOPTIONS="--deploy-timeout=10  -timeout=30m -v"
 ```

@@ -61,6 +61,11 @@ VM_DRIVER=${VM_DRIVER:-"virtualbox"}
 #configure image repo
 CEPHCSI_IMAGE_REPO=${CEPHCSI_IMAGE_REPO:-"quay.io/cephcsi"}
 K8S_IMAGE_REPO=${K8S_IMAGE_REPO:-"quay.io/k8scsi"}
+DISK="sda1"
+if [[ "${VM_DRIVER}" == "kvm2" ]]; then
+    # use vda1 instead of sda1 when running with the libvirt driver
+    DISK="vda1"
+fi
 
 #feature-gates for kube
 K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-"BlockVolume=true,CSIBlockVolume=true,VolumeSnapshotDataSource=true,ExpandCSIVolumes=true"}
@@ -77,11 +82,6 @@ up)
     echo "starting minikube with kubeadm bootstrapper"
     minikube start --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}"
 
-    DISK="sda1"
-    if [[ "${VM_DRIVER}" == "kvm2" ]]; then
-        # use vda1 instead of sda1 when running with the libvirt driver
-        DISK="vda1"
-    fi
     # create a link so the default dataDirHostPath will work for this
     # environment
     if [[ "${VM_DRIVER}" != "none" ]]; then
@@ -98,6 +98,18 @@ down)
 ssh)
     echo "connecting to minikube"
     minikube ssh
+    ;;
+deploy-rook)
+    echo "deploy rook"
+    ./scripts/rook.sh deploy
+    ;;
+teardown-rook)
+    echo "teardown rook"
+    ./scripts/rook.sh teardown
+
+    # delete rook data for minikube
+    minikube ssh "sudo rm -rf /mnt/${DISK}/var/lib/rook; sudo rm -rf /var/lib/rook"
+    minikube ssh "sudo mkdir -p /mnt/${DISK}/var/lib/rook; sudo ln -s /mnt/${DISK}/var/lib/rook /var/lib/rook"
     ;;
 cephcsi)
     echo "copying the cephcsi image"
@@ -120,6 +132,8 @@ Available Commands:
   down           Stops a running local kubernetes cluster
   clean          Deletes a local kubernetes cluster
   ssh            Log into or run a command on a minikube machine with SSH
+  deploy-rook    Deploy rook to minikube
+  teardown-rook  Teardown a rook from minikube
   cephcsi        copy built docker images to kubernetes cluster
   k8s-sidecar    copy kubernetes sidecar docker images to kubernetes cluster
 " >&2
