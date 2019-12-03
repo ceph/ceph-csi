@@ -62,7 +62,6 @@ var _ = Describe("RBD", func() {
 	// deploy RBD CSI
 	BeforeEach(func() {
 		updaterbdDirPath(f.ClientSet)
-		createRBDPool()
 		createConfigMap(rbdDirPath, f.ClientSet, f)
 		deployRBDPlugin()
 		createRBDStorageClass(f.ClientSet, f, make(map[string]string))
@@ -73,7 +72,6 @@ var _ = Describe("RBD", func() {
 	AfterEach(func() {
 		deleteRBDPlugin()
 		deleteConfigMap(rbdDirPath)
-		deleteRBDPool()
 		deleteResource(rbdExamplePath + "secret.yaml")
 		deleteResource(rbdExamplePath + "storageclass.yaml")
 		// deleteResource(rbdExamplePath + "snapshotclass.yaml")

@@ -60,7 +60,6 @@ var _ = Describe("cephfs", func() {
 	// deploy cephfs CSI
 	BeforeEach(func() {
 		updateCephfsDirPath(f.ClientSet)
-		createFileSystem(f.ClientSet)
 		createConfigMap(cephfsDirPath, f.ClientSet, f)
 		deployCephfsPlugin()
 		createCephfsSecret(f.ClientSet, f)
@@ -71,7 +70,6 @@ var _ = Describe("cephfs", func() {
 		deleteConfigMap(cephfsDirPath)
 		deleteResource(cephfsExamplePath + "secret.yaml")
 		deleteResource(cephfsExamplePath + "storageclass.yaml")
-		deleteFileSystem()
 	})
 
 	Context("Test cephfs CSI", func() {
