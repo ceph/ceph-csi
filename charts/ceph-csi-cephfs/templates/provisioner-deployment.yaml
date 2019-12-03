@@ -186,7 +186,7 @@ spec:
           }
 {{- if .Values.provisioner.affinity }}
       affinity:
-{{ toYaml .Values.provisioner.affinity . | indent 8 -}}
+{{ toYaml .Values.provisioner.affinity | indent 8 -}}
 {{- end -}}
 {{- if .Values.provisioner.nodeSelector }}
       nodeSelector:

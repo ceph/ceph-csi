@@ -186,7 +186,7 @@ spec:
           }
 {{- if .Values.nodeplugin.affinity }}
       affinity:
-{{ toYaml .Values.nodeplugin.affinity . | indent 8 -}}
+{{ toYaml .Values.nodeplugin.affinity | indent 8 -}}
 {{- end -}}
 {{- if .Values.nodeplugin.nodeSelector }}
       nodeSelector:
