@@ -262,7 +262,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, param
 // 	Expect(err).Should(BeNil())
 // }
 
-func deleteConfiMap(pluginPath string) {
+func deleteConfigMap(pluginPath string) {
 	path := pluginPath + configMap
 	_, err := framework.RunKubectl("delete", "-f", path)
 	if err != nil {

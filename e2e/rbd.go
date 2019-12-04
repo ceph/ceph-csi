@@ -72,7 +72,7 @@ var _ = Describe("RBD", func() {
 
 	AfterEach(func() {
 		deleteRBDPlugin()
-		deleteConfiMap(rbdDirPath)
+		deleteConfigMap(rbdDirPath)
 		deleteRBDPool()
 		deleteResource(rbdExamplePath + "secret.yaml")
 		deleteResource(rbdExamplePath + "storageclass.yaml")
