@@ -68,7 +68,7 @@ var _ = Describe("cephfs", func() {
 
 	AfterEach(func() {
 		deleteCephfsPlugin()
-		deleteConfiMap(cephfsDirPath)
+		deleteConfigMap(cephfsDirPath)
 		deleteResource(cephfsExamplePath + "secret.yaml")
 		deleteResource(cephfsExamplePath + "storageclass.yaml")
 		deleteFileSystem()
