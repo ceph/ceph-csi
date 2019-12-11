@@ -60,9 +60,6 @@ func init() {
 	flag.BoolVar(&conf.IsControllerServer, "controllerserver", false, "start cephcsi controller server")
 	flag.BoolVar(&conf.IsNodeServer, "nodeserver", false, "start cephcsi node server")
 
-	// rbd related flags
-	flag.BoolVar(&conf.Containerized, "containerized", false, "whether run as containerized")
-
 	// cephfs related flags
 	flag.StringVar(&conf.MountCacheDir, "mountcachedir", "", "mount info cache save dir")
 	flag.BoolVar(&conf.ForceKernelCephFS, "forcecephkernelclient", false, "enable Ceph Kernel clients on kernel < 4.17 which support quotas")
@@ -173,9 +170,6 @@ func main() {
 	switch conf.Vtype {
 	case rbdType:
 		driver := rbd.NewDriver()
-		if conf.Containerized {
-			klog.Warning("containerized flag is deprecated and will be removed")
-		}
 		driver.Run(&conf, cp)
 
 	case cephfsType:
