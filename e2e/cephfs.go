@@ -28,12 +28,15 @@ func updateCephfsDirPath(c clientset.Interface) {
 }
 
 func deployCephfsPlugin() {
+	// delete objects deployed by rook
+	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", cephfsDirPath+cephfsProvisionerRBAC)
+	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", cephfsDirPath+cephfsNodePluginRBAC)
 	// deploy provisioner
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisioner)
-	framework.RunKubectlOrDie("apply", "-f", cephfsDirPath+cephfsProvisionerRBAC)
+	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisionerRBAC)
 	// deploy nodeplugin
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePlugin)
-	framework.RunKubectlOrDie("apply", "-f", cephfsDirPath+cephfsNodePluginRBAC)
+	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePluginRBAC)
 }
 
 func deleteCephfsPlugin() {
