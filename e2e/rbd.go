@@ -30,12 +30,15 @@ func updaterbdDirPath(c clientset.Interface) {
 }
 
 func deployRBDPlugin() {
+	// delete objects deployed by rook
+	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", rbdDirPath+rbdProvisionerRBAC)
+	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", rbdDirPath+rbdNodePluginRBAC)
 	// deploy provisioner
 	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisioner)
-	framework.RunKubectlOrDie("apply", "-f", rbdDirPath+rbdProvisionerRBAC)
+	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisionerRBAC)
 	// deploy nodeplugin
 	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePlugin)
-	framework.RunKubectlOrDie("apply", "-f", rbdDirPath+rbdNodePluginRBAC)
+	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePluginRBAC)
 }
 
 func deleteRBDPlugin() {
