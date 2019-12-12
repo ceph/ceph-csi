@@ -296,7 +296,6 @@ func reserveOMapName(ctx context.Context, monitors string, cr *Credentials, pool
 	}
 
 	return "", errors.New("uuid conflicts exceeds retry threshold")
-
 }
 
 /*

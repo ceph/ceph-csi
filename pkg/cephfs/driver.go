@@ -91,7 +91,6 @@ func NewNodeServer(d *csicommon.CSIDriver, t string) *NodeServer {
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests
 func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
-
 	// Configuration
 	PluginFolder = conf.PluginPath
 

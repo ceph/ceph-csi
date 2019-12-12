@@ -70,7 +70,6 @@ func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) e
 			}
 		}
 		return err
-
 	}
 	return nil
 }
@@ -93,12 +92,10 @@ func decodeObj(fpath, pattern string, file os.FileInfo, destObj interface{}) err
 	if err = decoder.Decode(destObj); err != nil {
 		if err = fp.Close(); err != nil {
 			return errors.Wrapf(err, "failed to close file %s", file.Name())
-
 		}
 		return errors.Wrapf(err, "node-cache: couldn't decode file %s", file.Name())
 	}
 	return nil
-
 }
 
 // Create creates the metadata file in cache directory with identifier name
@@ -161,7 +158,6 @@ func (nc *NodeCache) Delete(identifier string) error {
 		}
 
 		return errors.Wrapf(err, "node-cache: error removing file %s", file)
-
 	}
 	klog.V(4).Infof("node-cache: successfully deleted metadata storage file at: %+v\n", file)
 	return nil
