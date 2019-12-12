@@ -171,7 +171,6 @@ func panicHandler(ctx context.Context, req interface{}, info *grpc.UnaryServerIn
 			klog.Errorf("panic occurred: %v", r)
 			debug.PrintStack()
 			err = status.Errorf(codes.Internal, "panic %v", r)
-
 		}
 	}()
 	return handler(ctx, req)

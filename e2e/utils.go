@@ -136,7 +136,6 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 }
 
 func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string) {
-
 	cmd := []string{"/bin/sh", "-c", c}
 	podList, err := f.PodClientNS(ns).List(*opt)
 	framework.ExpectNoError(err)
@@ -523,7 +522,6 @@ func unmarshal(fileName string, obj interface{}) error {
 // createPVCAndApp creates pvc and pod
 // if name is not empty same will be set as pvc and app name
 func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
-
 	if name != "" {
 		pvc.Name = name
 		app.Name = name
@@ -540,7 +538,6 @@ func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolu
 // deletePVCAndApp delete pvc and pod
 // if name is not empty same will be set as pvc and app name
 func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
-
 	if name != "" {
 		pvc.Name = name
 		app.Name = name
@@ -731,7 +728,6 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 // }
 
 func listRBDImages(f *framework.Framework) []string {
-
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}

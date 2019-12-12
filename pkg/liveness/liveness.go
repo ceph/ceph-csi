@@ -38,7 +38,6 @@ var (
 )
 
 func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
-
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 

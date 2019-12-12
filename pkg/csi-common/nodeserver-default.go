@@ -81,7 +81,6 @@ func (ns *DefaultNodeServer) NodeGetCapabilities(ctx context.Context, req *csi.N
 
 // NodeGetVolumeStats returns volume stats
 func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-
 	var err error
 	targetPath := req.GetVolumePath()
 	if targetPath == "" {
@@ -144,7 +143,6 @@ func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.No
 	if !ok {
 		klog.Errorf(util.Log(ctx, "failed to fetch available inodes"))
 		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
-
 	}
 	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
 	if !ok {
@@ -171,5 +169,4 @@ func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.No
 			},
 		},
 	}, nil
-
 }

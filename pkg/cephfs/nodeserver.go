@@ -163,7 +163,6 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 // NodePublishVolume mounts the volume mounted to the staging path to the target
 // path
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-
 	mountOptions := []string{"bind"}
 	if err := util.ValidateNodePublishVolumeRequest(req); err != nil {
 		return nil, err

@@ -236,7 +236,6 @@ func (ns *NodeServer) createStageMountPoint(ctx context.Context, mountPath strin
 // NodePublishVolume mounts the volume mounted to the device path to the target
 // path
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-
 	err := util.ValidateNodePublishVolumeRequest(req)
 	if err != nil {
 		return nil, err
@@ -408,7 +407,6 @@ func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath strin
 		}
 	}
 	return notMnt, err
-
 }
 
 // NodeUnpublishVolume unmounts the volume from the target path
