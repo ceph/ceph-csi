@@ -26,7 +26,7 @@ env:
     - GO_METALINTER_THREADS=1
     - GO_COVER_DIR=_output
     - VM_DRIVER=none
-    - MINIKUBE_VERSION=v1.2.0
+    - MINIKUBE_VERSION=v1.6.0
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
     - DEP_VERSION=v0.5.4
@@ -64,17 +64,17 @@ jobs:
         - make image-cephcsi || travis_terminate 1;
         - scripts/travis-functest.sh v1.13.7 || travis_terminate 1;
 
-    - name: cephcsi with kube 1.14.3
+    - name: cephcsi with kube 1.15.6
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.14.3 || travis_terminate 1;
+        - scripts/travis-functest.sh v1.15.6 || travis_terminate 1;
 
-    - name: cephcsi with kube 1.15.0
+    - name: cephcsi with kube 1.17.0
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.15.0 || travis_terminate 1;
+        - scripts/travis-functest.sh v1.17.0 || travis_terminate 1;
 
 deploy:
   - provider: script
