@@ -225,7 +225,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 		klog.Warningf(util.Log(ctx, "rbd: map error %v, rbd output: %s"), err, string(output))
 		// unmap rbd image if connection timeout
 		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
-			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd)
+			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd, volOpt.VolID)
 			if detErr != nil {
 				klog.Warningf(util.Log(ctx, "rbd: %s unmap error %v"), imagePath, detErr)
 			}
@@ -260,20 +260,37 @@ func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdV
 	return err
 }
 
-func detachRBDDevice(ctx context.Context, devicePath string) error {
+func detachRBDDevice(ctx context.Context, devicePath, volumeID string) error {
 	nbdType := false
 	if strings.HasPrefix(devicePath, "/dev/nbd") {
 		nbdType = true
 	}
 
-	return detachRBDImageOrDeviceSpec(ctx, devicePath, false, nbdType)
+	return detachRBDImageOrDeviceSpec(ctx, devicePath, false, nbdType, volumeID)
 }
 
 // detachRBDImageOrDeviceSpec detaches an rbd imageSpec or devicePath, with additional checking
 // when imageSpec is used to decide if image is already unmapped
-func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, isImageSpec, ndbType bool) error {
-	var err error
+func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, isImageSpec, ndbType bool, volumeID string) error {
 	var output []byte
+
+	mapperFile, mapperPath := util.VolumeMapper(volumeID)
+	mappedDevice, mapper, err := util.DeviceEncryptionStatus(ctx, mapperPath)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "error determining LUKS device on %s, %s: %s"),
+			mapperPath, imageOrDeviceSpec, err)
+		return err
+	}
+	if len(mapper) > 0 {
+		// mapper found, so it is open Luks device
+		err = util.CloseEncryptedVolume(ctx, mapperFile)
+		if err != nil {
+			klog.Warningf(util.Log(ctx, "error closing LUKS device on %s, %s: %s"),
+				mapperPath, imageOrDeviceSpec, err)
+			return err
+		}
+		imageOrDeviceSpec = mappedDevice
+	}
 
 	accessType := accessTypeKRbd
 	if ndbType {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
@@ -553,7 +555,7 @@ func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolu
 	return err
 }
 
-func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
+func createPVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) (*v1.PersistentVolumeClaim, *v1.Pod) {
 	pvc, err := loadPVC(pvcPath)
 	if pvc == nil {
 		Fail(err.Error())
@@ -572,11 +574,84 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 		Fail(err.Error())
 	}
 
+	return pvc, app
+}
+
+func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
+	pvc, app := createPVCAndAppBinding(pvcPath, appPath, f)
+	err := deletePVCAndApp("", f, pvc, app)
+	if err != nil {
+		Fail(err.Error())
+	}
+}
+
+func getRBDImageSpec(pvcNamespace, pvcName string, f *framework.Framework) (string, error) {
+	c := f.ClientSet.CoreV1()
+	pvc, err := c.PersistentVolumeClaims(pvcNamespace).Get(pvcName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	pv, err := c.PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	imageIDRegex := regexp.MustCompile(`(\w+\-?){5}$`)
+	imageID := imageIDRegex.FindString(pv.Spec.CSI.VolumeHandle)
+	return fmt.Sprintf("replicapool/csi-vol-%s", imageID), nil
+}
+
+func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string, error) {
+	cmd := fmt.Sprintf("rbd image-meta get %s %s", rbdImageSpec, metaKey)
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	stdOut, stdErr := execCommandInPod(f, cmd, rookNS, &opt)
+	if stdErr != "" {
+		return strings.TrimSpace(stdOut), fmt.Errorf(stdErr)
+	}
+	return strings.TrimSpace(stdOut), nil
+}
+
+func getMountType(appName, appNamespace, mountPath string, f *framework.Framework) (string, error) {
+	opt := metav1.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector("metadata.name", appName).String(),
+	}
+	cmd := fmt.Sprintf("lsblk -o TYPE,MOUNTPOINT | grep '%s' | awk '{print $1}'", mountPath)
+	stdOut, stdErr := execCommandInPod(f, cmd, appNamespace, &opt)
+	if stdErr != "" {
+		return strings.TrimSpace(stdOut), fmt.Errorf(stdErr)
+	}
+	return strings.TrimSpace(stdOut), nil
+}
+
+func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
+	pvc, app := createPVCAndAppBinding(pvcPath, appPath, f)
+
+	rbdImageSpec, err := getRBDImageSpec(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		Fail(err.Error())
+	}
+	encryptedState, err := getImageMeta(rbdImageSpec, ".rbd.csi.ceph.com/encrypted", f)
+	if err != nil {
+		Fail(err.Error())
+	}
+	Expect(encryptedState).To(Equal("encrypted"))
+
+	volumeMountPath := app.Spec.Containers[0].VolumeMounts[0].MountPath
+	mountType, err := getMountType(app.Name, app.Namespace, volumeMountPath, f)
+	if err != nil {
+		Fail(err.Error())
+	}
+	Expect(mountType).To(Equal("crypt"))
+
 	err = deletePVCAndApp("", f, pvc, app)
 	if err != nil {
 		Fail(err.Error())
 	}
 }
+
 func deletePodWithLabel(label string) error {
 	_, err := framework.RunKubectl("delete", "po", "-l", label)
 	if err != nil {
