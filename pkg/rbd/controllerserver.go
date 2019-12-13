@@ -149,6 +149,14 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if found {
+		if rbdVol.Encrypted {
+			err = ensureEncryptionMetadataSet(ctx, cr, rbdVol)
+			if err != nil {
+				klog.Errorf(util.Log(ctx, err.Error()))
+				return nil, err
+			}
+		}
+
 		return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
 				VolumeId:      rbdVol.VolID,
@@ -174,6 +182,20 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	err = cs.createBackingImage(ctx, rbdVol, req, util.RoundOffVolSize(rbdVol.VolSize))
 	if err != nil {
 		return nil, err
+	}
+
+	if rbdVol.Encrypted {
+		err = ensureEncryptionMetadataSet(ctx, cr, rbdVol)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to save encryption status, deleting image %s"),
+				rbdVol.RbdImageName)
+			if deleteErr := deleteImage(ctx, rbdVol, cr); err != nil {
+				klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"),
+					rbdVol.Pool, rbdVol.RbdImageName, deleteErr)
+				return nil, deleteErr
+			}
+			return nil, err
+		}
 	}
 
 	return &csi.CreateVolumeResponse{
@@ -211,6 +233,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdV
 
 	return nil
 }
+
 func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
 	snapshot := req.VolumeContentSource.GetSnapshot()
 	if snapshot == nil {

@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -53,6 +54,10 @@ const (
 	rbdTaskRemoveCmdInvalidString1      = "no valid command found"
 	rbdTaskRemoveCmdInvalidString2      = "Error EINVAL: invalid command"
 	rbdTaskRemoveCmdAccessDeniedMessage = "Error EACCES:"
+
+	// Encryption statuses for RbdImage
+	rbdImageEncrypted          = "encrypted"
+	rbdImageRequiresEncryption = "requiresEncryption"
 )
 
 // rbdVolume represents a CSI volume and its RBD image specifics
@@ -71,15 +76,16 @@ type rbdVolume struct {
 	DataPool           string
 	ImageFormat        string `json:"imageFormat"`
 	ImageFeatures      string `json:"imageFeatures"`
-	VolSize            int64  `json:"volSize"`
 	AdminID            string `json:"adminId"`
 	UserID             string `json:"userId"`
 	Mounter            string `json:"mounter"`
-	DisableInUseChecks bool   `json:"disableInUseChecks"`
 	ClusterID          string `json:"clusterId"`
 	RequestName        string
 	VolName            string `json:"volName"`
 	MonValueFromSecret string `json:"monValueFromSecret"`
+	VolSize            int64  `json:"volSize"`
+	DisableInUseChecks bool   `json:"disableInUseChecks"`
+	Encrypted          bool
 }
 
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics
@@ -486,6 +492,16 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		rbdVol.Mounter = rbdDefaultMounter
 	}
 
+	rbdVol.Encrypted = false
+	encrypted, ok := volOptions["encrypted"]
+	if ok {
+		rbdVol.Encrypted, err = strconv.ParseBool(encrypted)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"invalid value set in 'encrypted': %s (should be \"true\" or \"false\")", encrypted)
+		}
+	}
+
 	return rbdVol, nil
 }
 
@@ -827,6 +843,33 @@ func resizeRBDImage(rbdVol *rbdVolume, newSize int64, cr *util.Credentials) erro
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to resize rbd image, command output: %s", string(output))
+	}
+
+	return nil
+}
+
+func getVolumeName(volID string) (string, error) {
+	var vi util.CSIIdentifier
+
+	err := vi.DecomposeCSIID(volID)
+	if err != nil {
+		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, volID)
+		return "", ErrInvalidVolID{err}
+	}
+
+	return volJournal.NamingPrefix() + vi.ObjectUUID, nil
+}
+
+func ensureEncryptionMetadataSet(ctx context.Context, cr *util.Credentials, rbdVol *rbdVolume) error {
+	rbdImageName, err := getVolumeName(rbdVol.VolID)
+	if err != nil {
+		return err
+	}
+	imageSpec := rbdVol.Pool + "/" + rbdImageName
+
+	err = util.SaveRbdImageEncryptionStatus(ctx, cr, rbdVol.Monitors, imageSpec, rbdImageRequiresEncryption)
+	if err != nil {
+		return fmt.Errorf("failed to save encryption status for %s: %v", imageSpec, err)
 	}
 
 	return nil
