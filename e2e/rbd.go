@@ -116,7 +116,6 @@ var _ = Describe("RBD", func() {
 			By("create a PVC and Bind it to an app with normal user", func() {
 				validateNormalUserPVCAccess(pvcPath, f)
 			})
-			// Skipping ext4 FS testing
 
 			By("create a PVC and Bind it to an app with ext4 as the FS ", func() {
 				deleteResource(rbdExamplePath + "storageclass.yaml")
@@ -250,8 +249,16 @@ var _ = Describe("RBD", func() {
 						e2elog.Logf("failed to resize PVC %v", err)
 						Fail(err.Error())
 					}
-				}
 
+					deleteResource(rbdExamplePath + "storageclass.yaml")
+					createRBDStorageClass(f.ClientSet, f, map[string]string{"csi.storage.k8s.io/fstype": "xfs"})
+					err = resizePVCAndValidateSize(pvcPath, appPath, f)
+					if err != nil {
+						e2elog.Logf("failed to resize PVC %v", err)
+						Fail(err.Error())
+
+					}
+				}
 			})
 
 			By("Test unmount after nodeplugin restart", func() {

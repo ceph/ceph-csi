@@ -535,7 +535,6 @@ func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot
 			err = status.Error(codes.Internal, err.Error())
 		}
 	}()
-
 	err = protectSnapshot(ctx, rbdSnap, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to protect snapshot: %v"), err)
@@ -645,7 +644,6 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 // ControllerExpandVolume expand RBD Volumes on demand based on resizer request
 func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
 		klog.Warningf("invalid expand volume req: %v", protosanitizer.StripSecrets(req))
 		return nil, err
@@ -653,13 +651,20 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	volID := req.GetVolumeId()
 	if volID == "" {
-		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
+		return nil, status.Error(codes.InvalidArgument, "volume ID cannot be empty")
 	}
 
 	capRange := req.GetCapacityRange()
 	if capRange == nil {
-		return nil, status.Error(codes.InvalidArgument, "CapacityRange cannot be empty")
+		return nil, status.Error(codes.InvalidArgument, "capacityRange cannot be empty")
 	}
+
+	// lock out parallel requests against the same volume ID
+	if acquired := cs.VolumeLocks.TryAcquire(volID); !acquired {
+		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+	}
+	defer cs.VolumeLocks.Release(volID)
 
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
@@ -670,28 +675,31 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	rbdVol := &rbdVolume{}
 	err = genVolFromVolID(ctx, rbdVol, volID, cr)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "Source Volume ID %s cannot found", volID)
+		if _, ok := err.(ErrImageNotFound); ok {
+			return nil, status.Errorf(codes.NotFound, "volume ID %s not found", volID)
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	// always round up the request size in bytes to the nearest MiB/GiB
 	volSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
 
-	klog.V(4).Infof(util.Log(ctx, "rbd volume %s/%s size is %vMiB,resizing to %vMiB"), rbdVol.Pool, rbdVol.RbdImageName, rbdVol.VolSize, util.RoundOffVolSize(volSize))
 	// resize volume if required
+	nodeExpansion := false
 	if rbdVol.VolSize < volSize {
-		rbdVol.VolSize = util.RoundOffVolSize(volSize)
-		err = resizeRBDImage(ctx, rbdVol, cr)
+		volSizeVal := util.RoundOffVolSize(volSize)
+		klog.V(4).Infof(util.Log(ctx, "rbd volume %s/%s size is %v,resizing to %v"), rbdVol.Pool, rbdVol.RbdImageName, rbdVol.VolSize, volSize)
+		rbdVol.VolSize = volSize
+		nodeExpansion = true
+		err = resizeRBDImage(rbdVol, volSizeVal, cr)
 		if err != nil {
-			klog.Errorf("failed to resize rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.RbdImageName, err)
+			klog.Errorf(util.Log(ctx, "failed to resize rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.RbdImageName, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		klog.V(4).Infof(util.Log(ctx, "successfully resized %s to %v"), volID, volSize)
 	}
 
-	nodeExpansion := true
 	return &csi.ControllerExpandVolumeResponse{
-		CapacityBytes:         volSize,
+		CapacityBytes:         rbdVol.VolSize,
 		NodeExpansionRequired: nodeExpansion,
 	}, nil
-
 }

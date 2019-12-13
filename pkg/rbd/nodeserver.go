@@ -538,45 +538,51 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 }
 
 func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "NodeExpandVolume volume ID must be provided")
+		return nil, status.Error(codes.InvalidArgument, "volume ID must be provided")
 	}
 	volumePath := req.GetVolumePath()
 	if volumePath == "" {
-		return nil, status.Error(codes.InvalidArgument, "NodeExpandVolume volume path must be provided")
+		return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
+	}
+
+	if acquired := ns.VolumeLocks.TryAcquire(volumeID); !acquired {
+		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volumeID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer ns.VolumeLocks.Release(volumeID)
+
+	_, err := getVolumeName(volumeID)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
-	volumePath = volumePath + "/" + req.GetVolumeId()
-	devicePath, err := getDevicePath(ctx, diskMounter, volumePath)
+	devicePath, err := getDevicePath(ctx, volumePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	// TODO check size and return success or error
+	volumePath += "/" + volumeID
 	resizer := resizefs.NewResizeFs(diskMounter)
 	ok, err := resizer.Resize(devicePath, volumePath)
 	if !ok {
 		return nil, fmt.Errorf("rbd: resize failed on path %s, error: %v", req.GetVolumePath(), err)
 	}
-	return &csi.NodeExpandVolumeResponse{
-		CapacityBytes: req.GetCapacityRange().GetRequiredBytes(),
-	}, nil
+	return &csi.NodeExpandVolumeResponse{}, nil
 }
 
-func getDevicePath(ctx context.Context, mnt *mount.SafeFormatAndMount, stagingTargetPath string) (string, error) {
-	mointPoints, err := mnt.List()
+func getDevicePath(ctx context.Context, volumePath string) (string, error) {
+	imgInfo, err := lookupRBDImageMetadataStash(volumePath)
 	if err != nil {
-		return "", err
+		klog.Errorf(util.Log(ctx, "failed to find image metadata: %v"), err)
 	}
-	for _, m := range mointPoints {
-		if strings.EqualFold(stagingTargetPath, m.Path) {
-			klog.V(3).Infof(util.Log(ctx, "found device %v for %v"), m.Device, stagingTargetPath)
-			return m.Device, nil
-		}
+	device, found := findDeviceMappingImage(ctx, imgInfo.Pool, imgInfo.ImageName, imgInfo.NbdAccess)
+	if found {
+		return device, nil
 	}
-	return "", fmt.Errorf("failed to get device for stagingtarget path %v", stagingTargetPath)
+	return "", fmt.Errorf("failed to get device for stagingtarget path %v", volumePath)
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server

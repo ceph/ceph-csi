@@ -834,12 +834,17 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 		}
 		pvcConditions := updatedPVC.Status.Conditions
 		if len(pvcConditions) > 0 {
-			if pvcConditions[0].Type == v1.PersistentVolumeClaimResizing {
-				return true, nil
-			}
 			e2elog.Logf("pvc state %v", pvcConditions[0].Type)
+			if pvcConditions[0].Type == v1.PersistentVolumeClaimResizing || pvcConditions[0].Type == v1.PersistentVolumeClaimFileSystemResizePending {
+				return false, nil
+			}
 		}
-		return false, nil
+
+		if updatedPVC.Status.Capacity[v1.ResourceStorage] != resource.MustParse(size) {
+			e2elog.Logf("current size in status %v,expected size %v", updatedPVC.Status.Capacity[v1.ResourceStorage], resource.MustParse(size))
+			return false, nil
+		}
+		return true, nil
 	})
 }
 
@@ -889,6 +894,10 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 		return err
 	}
 	err = checkDirSize(app, f, &opt, expandSize, deployTimeout)
+	if err != nil {
+		return err
+	}
+	err = deletePVCAndApp("", f, resizePvc, app)
 	return err
 }
 
