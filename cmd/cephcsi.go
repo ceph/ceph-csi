@@ -46,7 +46,6 @@ var (
 )
 
 func init() {
-
 	// common flags
 	flag.StringVar(&conf.Vtype, "type", "", "driver type [rbd|cephfs|liveness]")
 	flag.StringVar(&conf.Endpoint, "endpoint", "unix://tmp/csi.sock", "CSI endpoint")

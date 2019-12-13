@@ -88,7 +88,6 @@ func (d *CSIDriver) AddControllerServiceCapabilities(cl []csi.ControllerServiceC
 	}
 
 	d.cap = csc
-
 }
 
 // AddVolumeCapabilityAccessModes stores volume access modes

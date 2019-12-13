@@ -141,6 +141,10 @@ linters-settings:
     # make an issue if func has more lines of code than this setting and
     # it has naked returns; default is 30
     max-func-lines: 30
+  gocognit:
+    # minimal code complexity to report, 30 by default (but we recommend 10-20)
+    # TODO: decrease complexity with refacoring the code
+    min-complexity: 40
 
 linters:
   enable-all: true
@@ -149,3 +153,6 @@ linters:
     - dupl
     - gochecknoinits
     - gochecknoglobals
+    - godox
+    - wsl
+    - funlen

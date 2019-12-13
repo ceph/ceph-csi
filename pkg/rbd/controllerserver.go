@@ -118,7 +118,6 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 
 // CreateVolume creates the volume in backend
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-
 	if err := cs.validateVolumeReq(ctx, req); err != nil {
 		return nil, err
 	}
