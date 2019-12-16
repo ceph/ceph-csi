@@ -553,16 +553,19 @@ func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	}
 	defer ns.VolumeLocks.Release(volumeID)
 
-	_, err := getVolumeName(volumeID)
+	volName, err := getVolumeName(volumeID)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-
-	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
-	devicePath, err := getDevicePath(ctx, volumePath)
+	imgInfo, devicePath, err := getDevicePathAndImageInfo(ctx, volumePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	if volName != imgInfo.ImageName {
+		return nil, status.Errorf(codes.InvalidArgument, "volume name missmatch between request (%s) and stored metadata (%s)", volName, imgInfo.ImageName)
+	}
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
 	// TODO check size and return success or error
 	volumePath += "/" + volumeID
 	resizer := resizefs.NewResizeFs(diskMounter)
@@ -573,16 +576,16 @@ func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	return &csi.NodeExpandVolumeResponse{}, nil
 }
 
-func getDevicePath(ctx context.Context, volumePath string) (string, error) {
+func getDevicePathAndImageInfo(ctx context.Context, volumePath string) (rbdImageMetadataStash, string, error) {
 	imgInfo, err := lookupRBDImageMetadataStash(volumePath)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to find image metadata: %v"), err)
 	}
 	device, found := findDeviceMappingImage(ctx, imgInfo.Pool, imgInfo.ImageName, imgInfo.NbdAccess)
 	if found {
-		return device, nil
+		return imgInfo, device, nil
 	}
-	return "", fmt.Errorf("failed to get device for stagingtarget path %v", volumePath)
+	return rbdImageMetadataStash{}, "", fmt.Errorf("failed to get device for stagingtarget path %v", volumePath)
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server
