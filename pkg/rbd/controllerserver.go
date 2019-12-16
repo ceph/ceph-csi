@@ -50,7 +50,7 @@ type ControllerServer struct {
 
 func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		klog.V(3).Infof(util.Log(ctx, "invalid create volume req: %v"), protosanitizer.StripSecrets(req))
+		klog.Errorf(util.Log(ctx, "invalid create volume req: %v"), protosanitizer.StripSecrets(req))
 		return err
 	}
 	// Check sanity of request Name, Volume Capabilities
@@ -224,7 +224,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdV
 
 		err = createImage(ctx, rbdVol, volSize, cr)
 		if err != nil {
-			klog.Warningf(util.Log(ctx, "failed to create volume: %v"), err)
+			klog.Errorf(util.Log(ctx, "failed to create volume: %v"), err)
 			return status.Error(codes.Internal, err.Error())
 		}
 
@@ -318,7 +318,7 @@ func (cs *ControllerServer) DeleteLegacyVolume(ctx context.Context, req *csi.Del
 // from store
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		klog.Warningf(util.Log(ctx, "invalid delete volume req: %v"), protosanitizer.StripSecrets(req))
+		klog.Errorf(util.Log(ctx, "invalid delete volume req: %v"), protosanitizer.StripSecrets(req))
 		return nil, err
 	}
 
@@ -524,7 +524,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.CreateSnapshotRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
-		klog.Warningf(util.Log(ctx, "invalid create snapshot req: %v"), protosanitizer.StripSecrets(req))
+		klog.Errorf(util.Log(ctx, "invalid create snapshot req: %v"), protosanitizer.StripSecrets(req))
 		return err
 	}
 
@@ -588,7 +588,7 @@ func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot
 // snapshot metadata from store
 func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
-		klog.Warningf(util.Log(ctx, "invalid delete snapshot req: %v"), protosanitizer.StripSecrets(req))
+		klog.Errorf(util.Log(ctx, "invalid delete snapshot req: %v"), protosanitizer.StripSecrets(req))
 		return nil, err
 	}
 
@@ -668,7 +668,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 // ControllerExpandVolume expand RBD Volumes on demand based on resizer request
 func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
-		klog.Warningf(util.Log(ctx, "invalid expand volume req: %v"), protosanitizer.StripSecrets(req))
+		klog.Errorf(util.Log(ctx, "invalid expand volume req: %v"), protosanitizer.StripSecrets(req))
 		return nil, err
 	}
 
