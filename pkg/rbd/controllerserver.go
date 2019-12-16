@@ -645,7 +645,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 // ControllerExpandVolume expand RBD Volumes on demand based on resizer request
 func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
-		klog.Warningf("invalid expand volume req: %v", protosanitizer.StripSecrets(req))
+		klog.Warningf(util.Log(ctx, "invalid expand volume req: %v"), protosanitizer.StripSecrets(req))
 		return nil, err
 	}
 
