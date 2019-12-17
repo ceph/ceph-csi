@@ -152,7 +152,7 @@ func (nc *NodeCache) Delete(identifier string) error {
 	file := path.Join(nc.BasePath, nc.CacheDir, identifier+".json")
 	err := os.Remove(file)
 	if err != nil {
-		if err == os.ErrNotExist {
+		if os.IsNotExist(err) {
 			klog.V(4).Infof("node-cache: cannot delete missing metadata storage file %s, assuming it's already deleted", file)
 			return nil
 		}
