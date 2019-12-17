@@ -321,6 +321,10 @@ func bindMount(ctx context.Context, from, to string, readOnly bool, mntOptions [
 
 func unmountVolume(ctx context.Context, mountPoint string) error {
 	if err := execCommandErr(ctx, "umount", mountPoint); err != nil {
+		if strings.Contains(err.Error(), fmt.Sprintf("exit status 32: umount: %s: not mounted", mountPoint)) ||
+			strings.Contains(err.Error(), "No such file or directory") {
+			return nil
+		}
 		return err
 	}
 

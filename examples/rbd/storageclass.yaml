@@ -38,6 +38,11 @@ parameters:
    csi.storage.k8s.io/fstype: ext4
    # uncomment the following to use rbd-nbd as mounter on supported nodes
    # mounter: rbd-nbd
+
+   # Instruct the plugin it has to encrypt the volume
+   # By default it is disabled. Valid values are “true” or “false”.
+   # A string is expected here, i.e. “true”, not true.
+   # encrypted: "true"
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 mountOptions:
