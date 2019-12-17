@@ -87,24 +87,13 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 	defer ns.VolumeLocks.Release(volID)
 
-	isLegacyVolume := false
-	volName, err := getVolumeName(volID)
-	if err != nil {
-		// error ErrInvalidVolID may mean this is an 1.0.0 version volume, check for name
-		// pattern match in addition to error to ensure this is a likely v1.0.0 volume
-		if _, ok := err.(ErrInvalidVolID); !ok || !isLegacyVolumeID(volID) {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-
-		volName, err = getLegacyVolumeName(req.GetStagingTargetPath())
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-		isLegacyVolume = true
-	}
-
 	stagingParentPath := req.GetStagingTargetPath()
 	stagingTargetPath := stagingParentPath + "/" + volID
+
+	isLegacyVolume, volName, err := getVolumeNameByID(volID, stagingParentPath)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	var isNotMnt bool
 	// check if stagingPath is already mounted
@@ -123,6 +112,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	volOptions.RbdImageName = volName
+	volOptions.VolID = req.GetVolumeId()
 
 	isMounted := false
 	isStagePathCreated := false
@@ -145,7 +135,15 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	klog.V(4).Infof(util.Log(ctx, "rbd image: %s/%s was successfully mapped at %s\n"), req.GetVolumeId(), volOptions.Pool, devicePath)
+	klog.V(4).Infof(util.Log(ctx, "rbd image: %s/%s was successfully mapped at %s\n"),
+		req.GetVolumeId(), volOptions.Pool, devicePath)
+
+	if volOptions.Encrypted {
+		devicePath, err = ns.processEncryptedDevice(ctx, volOptions, devicePath, cr, req.GetSecrets())
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
 
 	err = ns.createStageMountPoint(ctx, stagingTargetPath, isBlock)
 	if err != nil {
@@ -194,7 +192,7 @@ func (ns *NodeServer) undoStagingTransaction(ctx context.Context, stagingParentP
 
 	// Unmapping rbd device
 	if devicePath != "" {
-		err = detachRBDDevice(ctx, devicePath)
+		err = detachRBDDevice(ctx, devicePath, volID)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to unmap rbd device: %s for volume %s with error: %v"), devicePath, volID, err)
 			// continue on failure to delete the stash file, as kubernetes will fail to delete the staging path otherwise
@@ -271,18 +269,6 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	klog.Infof(util.Log(ctx, "rbd: successfully mounted stagingPath %s to targetPath %s"), stagingPath, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
-}
-
-func getVolumeName(volID string) (string, error) {
-	var vi util.CSIIdentifier
-
-	err := vi.DecomposeCSIID(volID)
-	if err != nil {
-		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, volID)
-		return "", ErrInvalidVolID{err}
-	}
-
-	return volJournal.NamingPrefix() + vi.ObjectUUID, nil
 }
 
 func getLegacyVolumeName(mountPath string) (string, error) {
@@ -521,7 +507,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	// Unmapping rbd device
 	imageSpec := imgInfo.Pool + "/" + imgInfo.ImageName
-	if err = detachRBDImageOrDeviceSpec(ctx, imageSpec, true, imgInfo.NbdAccess); err != nil {
+	if err = detachRBDImageOrDeviceSpec(ctx, imageSpec, true, imgInfo.NbdAccess, req.GetVolumeId()); err != nil {
 		klog.Errorf(util.Log(ctx, "error unmapping volume (%s) from staging path (%s): (%v)"), req.GetVolumeId(), stagingTargetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -615,4 +601,111 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 			},
 		},
 	}, nil
+}
+
+func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath string, cr *util.Credentials, secrets map[string]string) (string, error) {
+	imageSpec := volOptions.Pool + "/" + volOptions.RbdImageName
+	encrypted, err := util.CheckRbdImageEncrypted(ctx, cr, volOptions.Monitors, imageSpec)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to get encryption status for rbd image %s: %v"),
+			imageSpec, err)
+		return "", err
+	}
+
+	if encrypted == rbdImageRequiresEncryption {
+		diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+		// TODO: update this when adding support for static (pre-provisioned) PVs
+		var existingFormat string
+		existingFormat, err = diskMounter.GetDiskFormat(devicePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to get disk format for path %s, error: %v", devicePath, err)
+		}
+		if existingFormat != "" {
+			return "", fmt.Errorf("can not encrypt rbdImage %s that already has file system: %s",
+				imageSpec, existingFormat)
+		}
+		err = encryptDevice(ctx, volOptions, secrets, cr, devicePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to encrypt rbd image %s: %v", imageSpec, err)
+		}
+	} else if encrypted != rbdImageEncrypted {
+		return "", fmt.Errorf("rbd image %s found mounted with unexpected encryption status %s",
+			imageSpec, encrypted)
+	}
+
+	devicePath, err = openEncryptedDevice(ctx, volOptions, devicePath, secrets)
+	if err != nil {
+		return "", err
+	}
+
+	return devicePath, nil
+}
+
+func encryptDevice(ctx context.Context, rbdVol *rbdVolume, secret map[string]string, cr *util.Credentials, devicePath string) error {
+	passphrase, err := util.GetCryptoPassphrase(secret)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to get crypto passphrase for %s/%s: %v"),
+			rbdVol.Pool, rbdVol.RbdImageName, err)
+		return err
+	}
+
+	if err = util.EncryptVolume(ctx, devicePath, passphrase); err != nil {
+		err = fmt.Errorf("failed to encrypt volume %s/%s: %v", rbdVol.Pool, rbdVol.RbdImageName, err)
+		klog.Errorf(util.Log(ctx, err.Error()))
+		return err
+	}
+
+	imageSpec := rbdVol.Pool + "/" + rbdVol.RbdImageName
+	err = util.SaveRbdImageEncryptionStatus(ctx, cr, rbdVol.Monitors, imageSpec, rbdImageEncrypted)
+
+	return err
+}
+
+func openEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath string, secrets map[string]string) (string, error) {
+	passphrase, err := util.GetCryptoPassphrase(secrets)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to get passphrase for encrypted device %s/%s: %v"),
+			volOptions.Pool, volOptions.RbdImageName, err)
+		return "", status.Error(codes.Internal, err.Error())
+	}
+
+	mapperFile, mapperFilePath := util.VolumeMapper(volOptions.VolID)
+
+	isOpen, err := util.IsDeviceOpen(ctx, mapperFilePath)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to check device %s encryption status: %s"), devicePath, err)
+		return devicePath, err
+	}
+	if isOpen {
+		klog.V(4).Infof(util.Log(ctx, "encrypted device is already open at %s"), mapperFilePath)
+	} else {
+		err = util.OpenEncryptedVolume(ctx, devicePath, mapperFile, passphrase)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to open device %s/%s: %v"),
+				volOptions.Pool, volOptions.RbdImageName, err)
+			return devicePath, err
+		}
+	}
+
+	return mapperFilePath, nil
+}
+
+func getVolumeNameByID(volID, stagingTargetPath string) (bool, string, error) {
+	volName, err := getVolumeName(volID)
+	if err != nil {
+		// error ErrInvalidVolID may mean this is an 1.0.0 version volume, check for name
+		// pattern match in addition to error to ensure this is a likely v1.0.0 volume
+		if _, ok := err.(ErrInvalidVolID); !ok || !isLegacyVolumeID(volID) {
+			return false, "", status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		volName, err = getLegacyVolumeName(stagingTargetPath)
+		if err != nil {
+			return false, "", status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		return true, volName, nil
+	}
+
+	return false, volName, nil
 }

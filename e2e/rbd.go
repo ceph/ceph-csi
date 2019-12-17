@@ -125,6 +125,14 @@ var _ = Describe("RBD", func() {
 				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
 			})
 
+			By("create a PVC and Bind it to an app with encrypted RBD volume", func() {
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, map[string]string{"encrypted": "true"})
+				validateEncryptedPVCAndAppBinding(pvcPath, appPath, f)
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
+			})
+
 			// skipping snapshot testing
 
 			// By("create a PVC clone and Bind it to an app", func() {

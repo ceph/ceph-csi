@@ -54,6 +54,7 @@ make image-cephcsi
 | `csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-stage-secret-name`           | yes (for Kubernetes) | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value                                                                                                     |
 | `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-stage-secret-namespace` | yes (for Kubernetes) | namespaces of the above Secret objects                                                                                                                                                                                  |
 | `mounter`                                                                                           | no                   | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images                                                                                                              |
+| `encrypted`                                                                                         | no                   | disabled by default, use `"true"` to enable LUKS encryption on pvc and `"false"` to disable it. **Do not change for existing storageclasses**                                                                           |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
 running pods. Refer to [Creating CSI configuration](../examples/README.md#creating-csi-configuration)
@@ -155,3 +156,59 @@ The Helm chart is located in `charts/ceph-csi-rbd`.
 **Deploy Helm Chart:**
 
 [See the Helm chart readme for installation instructions.](../charts/ceph-csi-rbd/README.md)
+
+## Encryption for RBD volumes
+
+> Enabling encryption on volumes created without encryption is **not supported**
+>
+> Enabling encryption for storage class that has PVs created without encryption
+> is **not supported**
+
+Volumes provisioned with Ceph RBD do not have encryption by default. It is
+possible to encrypt them with ceph-csi by using LUKS encryption.
+
+To enable encryption set `encrypted` option in storage class to `"true"` and
+set encryption passphrase in kubernetes secrets under `encryptionPassphrase` key.
+
+To use different passphrase you need to have different storage classes and point
+to a different K8s secrets (different `csi.storage.k8s.io/node-stage-secret-name`
+and `csi.storage.k8s.io/node-stage-secret-namespace`).
+
+### Life-cycle for encrypted volumes
+
+**Create volume**:
+
+* create volume request received
+* volume requested to be created in Ceph
+* encrypted state "requiresEncryption" is saved in image-meta in Ceph
+
+**Attach volume**:
+
+* attach volume request received
+* volume is attached to provisioner container
+* on first time attachment
+  (no file system on the attached device, checked with blkid)
+  * device is encrypted with LUKS using a passphrase from K8s secrets
+  * image-meta updated to "encrypted" in Ceph
+* device is open and device path is changed to use a mapper device
+* mapper device is used instead of original one with usual workflow
+
+**Detach volume**:
+
+* mapper device closed and device path changed to original volume path
+* volume is detached as usual
+
+### Encryption configuration
+
+To encrypt rbd volumes with LUKS you need to set encryption passphrase in
+secrets under `encryptionPassphrase` key and switch `encrypted` option in
+StorageClass to `"true"`. This is not supported for storage classes that already
+have PVs provisioned.
+
+### Encryption prerequisites
+
+In order for encryption to work you need to make sure that `dm-crypt` kernel
+module is enabled on the nodes running ceph-csi attachers.
+
+If custom image is built for the rbd-plugin instance, make sure that it contains
+`cryptsetup` tool installed to be able to use encryption.
