@@ -543,6 +543,20 @@ func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	// volumePath is targetPath for block PVC and stagingPath for filesystem.
+	// check the path is mountpoint or not, if it is
+	// mountpoint treat this as block PVC or else it is filesystem PVC
+	// TODO remove this once ceph-csi supports CSI v1.2.0 spec
+	notMnt, err := mount.IsNotMountPoint(ns.mounter, volumePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if !notMnt {
+		return &csi.NodeExpandVolumeResponse{}, nil
+	}
 	imgInfo, devicePath, err := getDevicePathAndImageInfo(ctx, volumePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
