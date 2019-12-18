@@ -120,10 +120,8 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 		if deployment.Status.Replicas == deployment.Status.ReadyReplicas {
 			return true, nil
 		}
-
+		e2elog.Logf("deployment status: expected replica count %d running replica count %d", deployment.Status.Replicas, deployment.Status.ReadyReplicas)
 		reason = fmt.Sprintf("deployment status: %#v", deployment.Status.String())
-		e2elog.Logf(reason)
-
 		return false, nil
 	})
 
@@ -383,9 +381,11 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 			}
 			return false, err
 		}
+
 		if pvc.Spec.VolumeName == "" {
 			return false, nil
 		}
+
 		pv, err = c.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -479,7 +479,7 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int) er
 		case v1.PodFailed, v1.PodSucceeded:
 			return false, conditions.ErrPodCompleted
 		}
-		e2elog.Logf("%s app  is  in %s phase expected to be in Running  state (%d seconds elapsed)", name, pod.Status.Phase, int(time.Since(start).Seconds()))
+		e2elog.Logf("%s app  is in %s phase expected to be in Running  state (%d seconds elapsed)", name, pod.Status.Phase, int(time.Since(start).Seconds()))
 		return false, nil
 	})
 }
