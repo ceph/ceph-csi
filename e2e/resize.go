@@ -92,6 +92,10 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 		LabelSelector: "app=resize-pvc",
 	}
 
+	pvc, err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
 	if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem {
 		err = checkDirSize(app, f, &opt, size)
 		if err != nil {
@@ -140,8 +144,8 @@ func checkDirSize(app *v1.Pod, f *framework.Framework, opt *metav1.ListOptions, 
 func checkDeviceSize(app *v1.Pod, f *framework.Framework, opt *metav1.ListOptions, size string) error {
 	cmd := getDeviceSizeCheckCmd(app.Spec.Containers[0].VolumeDevices[0].DevicePath)
 	return checkAppMntSize(f, opt, size, cmd, app.Namespace, deployTimeout)
-
 }
+
 func getDirSizeCheckCmd(dirPath string) string {
 	return fmt.Sprintf("df -h|grep %s |awk '{print $2}'", dirPath)
 }
