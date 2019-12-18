@@ -250,7 +250,7 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
-			By("Resize PVC and check application directory size", func() {
+			By("Resize Filesystem PVC and check application directory size", func() {
 				v, err := f.ClientSet.Discovery().ServerVersion()
 				if err != nil {
 					e2elog.Logf("failed to get server version with error %v", err)
@@ -261,7 +261,7 @@ var _ = Describe("RBD", func() {
 				if v.Major > "1" || (v.Major == "1" && v.Minor >= "15") {
 					err := resizePVCAndValidateSize(pvcPath, appPath, f)
 					if err != nil {
-						e2elog.Logf("failed to resize PVC %v", err)
+						e2elog.Logf("failed to resize filesystem PVC %v", err)
 						Fail(err.Error())
 					}
 
@@ -269,9 +269,26 @@ var _ = Describe("RBD", func() {
 					createRBDStorageClass(f.ClientSet, f, map[string]string{"csi.storage.k8s.io/fstype": "xfs"})
 					err = resizePVCAndValidateSize(pvcPath, appPath, f)
 					if err != nil {
-						e2elog.Logf("failed to resize PVC %v", err)
+						e2elog.Logf("failed to resize filesystem PVC %v", err)
 						Fail(err.Error())
 
+					}
+				}
+			})
+
+			By("Resize Block PVC and check Device size", func() {
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Logf("failed to get server version with error %v", err)
+					Fail(err.Error())
+				}
+
+				// Block PVC resize is supported in kubernetes 1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+					err := resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
+					if err != nil {
+						e2elog.Logf("failed to resize block PVC %v", err)
+						Fail(err.Error())
 					}
 				}
 			})
