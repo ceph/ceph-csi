@@ -62,8 +62,10 @@ func deleteRBDPlugin() {
 
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework("rbd")
+	var c clientset.Interface
 	// deploy RBD CSI
 	BeforeEach(func() {
+		c = f.ClientSet
 		updaterbdDirPath(f.ClientSet)
 		createConfigMap(rbdDirPath, f.ClientSet, f)
 		deployRBDPlugin()
@@ -73,6 +75,12 @@ var _ = Describe("RBD", func() {
 	})
 
 	AfterEach(func() {
+		if CurrentGinkgoTestDescription().Failed {
+			// log provisoner
+			logsCSIPods("app=csi-rbdplugin-provisioner", c)
+			// log node plugin
+			logsCSIPods("app=csi-rbdplugin", c)
+		}
 		deleteRBDPlugin()
 		deleteConfigMap(rbdDirPath)
 		deleteResource(rbdExamplePath + "secret.yaml")
