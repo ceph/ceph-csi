@@ -83,8 +83,8 @@ var _ = Describe("RBD", func() {
 		It("Test RBD CSI", func() {
 			pvcPath := rbdExamplePath + "pvc.yaml"
 			appPath := rbdExamplePath + "pod.yaml"
-			// rawPvcPath := rbdExamplePath + "raw-block-pvc.yaml"
-			// rawAppPath := rbdExamplePath + "raw-block-pod.yaml"
+			rawPvcPath := rbdExamplePath + "raw-block-pvc.yaml"
+			rawAppPath := rbdExamplePath + "raw-block-pod.yaml"
 			// pvcClonePath := rbdExamplePath + "pvc-restore.yaml"
 			// appClonePath := rbdExamplePath + "pod-restore.yaml"
 			// snapshotPath := rbdExamplePath + "snapshot.yaml"
@@ -176,10 +176,9 @@ var _ = Describe("RBD", func() {
 			// 	}
 			// })
 
-			// skipped raw pvc test in travis
-			// By("create a block type PVC and Bind it to an app", func() {
-			// 	validatePVCAndAppBinding(rawPvcPath, rawAppPath, f)
-			// })
+			By("create a block type PVC and Bind it to an app", func() {
+				validatePVCAndAppBinding(rawPvcPath, rawAppPath, f)
+			})
 
 			By("create/delete multiple PVCs and Apps", func() {
 				totalCount := 2
