@@ -1,4 +1,4 @@
-# How to test RBD and CephFS plugins with Kubernetes 1.13
+# How to test RBD and CephFS plugins with Kubernetes 1.14+
 
 ## Deploying Ceph-CSI services
 

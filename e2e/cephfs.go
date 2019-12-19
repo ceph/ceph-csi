@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo" // nolint
 
@@ -18,14 +17,9 @@ var (
 	cephfsNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
 	cephfsDeploymentName  = "csi-cephfsplugin-provisioner"
 	cephfsDeamonSetName   = "csi-cephfsplugin"
-	cephfsDirPath         = "../deploy/cephfs/kubernetes"
+	cephfsDirPath         = "../deploy/cephfs/kubernetes/"
 	cephfsExamplePath     = "../examples/cephfs/"
 )
-
-func updateCephfsDirPath(c clientset.Interface) {
-	version := getKubeVersionToDeploy(c)
-	cephfsDirPath = fmt.Sprintf("%s/%s/", cephfsDirPath, version)
-}
 
 func deployCephfsPlugin() {
 	// delete objects deployed by rook
@@ -64,7 +58,6 @@ var _ = Describe("cephfs", func() {
 	// deploy cephfs CSI
 	BeforeEach(func() {
 		c = f.ClientSet
-		updateCephfsDirPath(f.ClientSet)
 		createConfigMap(cephfsDirPath, f.ClientSet, f)
 		deployCephfsPlugin()
 		createCephfsSecret(f.ClientSet, f)
@@ -88,15 +81,9 @@ var _ = Describe("cephfs", func() {
 			pvcPath := cephfsExamplePath + "pvc.yaml"
 			appPath := cephfsExamplePath + "pod.yaml"
 
-			By("checking provisioner statefulset/deployment is running")
-			timeout := time.Duration(deployTimeout) * time.Minute
+			By("checking provisioner deployment is running")
 			var err error
-			sts := deployProvAsSTS(f.ClientSet)
-			if sts {
-				err = waitForStatefulSetReplicasReady(cephfsDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
-			} else {
-				err = waitForDeploymentComplete(cephfsDeploymentName, namespace, f.ClientSet, deployTimeout)
-			}
+			err = waitForDeploymentComplete(cephfsDeploymentName, namespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
