@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/klog"
-
 	// _ "github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1"                             // nolint
 	// _ "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1" // nolint
 	. "github.com/onsi/ginkgo" // nolint
@@ -44,31 +42,6 @@ var poll = 2 * time.Second
 // 	Size      int64  `json:"size"`
 // 	Timestamp string `json:"timestamp"`
 // }
-
-func deployProvAsSTS(c clientset.Interface) bool {
-	// kubeMinor to use deployment instead of statefulset for provisioner
-	const kubeMinor = "14"
-	v, err := c.Discovery().ServerVersion()
-	if err != nil {
-		klog.Errorf("failed to get server version with error %v", err)
-		return false
-	}
-	if v.Minor < kubeMinor {
-		return true
-	}
-	return false
-}
-
-func getKubeVersionToDeploy(c clientset.Interface) string {
-	sts := deployProvAsSTS(c)
-	version := ""
-	if sts {
-		version = "v1.13"
-	} else {
-		version = "v1.14+"
-	}
-	return version
-}
 
 func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
@@ -133,23 +106,6 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 		return fmt.Errorf("error waiting for deployment %q status to match expectation: %v", name, err)
 	}
 	return nil
-}
-
-func waitForStatefulSetReplicasReady(statefulSetName, ns string, c clientset.Interface, poll, timeout time.Duration) error {
-	framework.Logf("Waiting up to %v for StatefulSet %s to have all replicas ready", timeout, statefulSetName)
-	for start := time.Now(); time.Since(start) < timeout; time.Sleep(poll) {
-		sts, err := c.AppsV1().StatefulSets(ns).Get(statefulSetName, metav1.GetOptions{})
-		if err != nil {
-			framework.Logf("Get StatefulSet %s failed, ignoring for %v: %v", statefulSetName, poll, err)
-			continue
-		}
-		if sts.Status.ReadyReplicas == *sts.Spec.Replicas {
-			framework.Logf("All %d replicas of StatefulSet %s are ready. (%v)", sts.Status.ReadyReplicas, statefulSetName, time.Since(start))
-			return nil
-		}
-		framework.Logf("StatefulSet %s found but there are %d ready replicas and %d total replicas.", statefulSetName, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
-	}
-	return fmt.Errorf("statefulSet %s still has unready pods within %v", statefulSetName, timeout)
 }
 
 func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string) {

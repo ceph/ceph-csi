@@ -116,8 +116,6 @@ nodeplugin:
 
 provisioner:
   name: provisioner
-  # When using Kubernetes <1.14 this value is ignored
-  # The statefulset is deployed with replicas: 1
   replicaCount: 3
   # Timeout for waiting for creation or deletion of a volume
   timeout: 60s

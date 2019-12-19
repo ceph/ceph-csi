@@ -58,12 +58,11 @@ jobs:
         - make go-test
         - make dep-check || travis_terminate 1;
 
-    - name: cephcsi with kube 1.13.7
-      env: K8S_FEATURE_GATES="BlockVolume=true,CSIBlockVolume=true,VolumeSnapshotDataSource=true"
+    - name: cephcsi with kube 1.14.10
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.13.7 || travis_terminate 1;
+        - scripts/travis-functest.sh v1.14.10 || travis_terminate 1;
 
     - name: cephcsi with kube 1.15.6
       script:

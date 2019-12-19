@@ -51,19 +51,13 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
-{{- if semverCompare ">=1.14" .Capabilities.KubeVersion.GitVersion }}
     verbs: ["create", "list", "watch", "delete", "get", "update"]
-{{- else }}
-    verbs: ["create"]
-{{- end -}}
-{{- if semverCompare ">=1.14" .Capabilities.KubeVersion.GitVersion }}
   - apiGroups: ["snapshot.storage.k8s.io"]
     resources: ["volumesnapshots/status"]
     verbs: ["update"]
-  {{- if .Values.provisioner.resizer.enabled }}
+{{- if .Values.provisioner.resizer.enabled }}
   - apiGroups: [""]
     resources: ["persistentvolumeclaims/status"]
     verbs: ["update", "patch"]
-{{- end -}}
 {{- end -}}
 {{- end -}}
