@@ -65,6 +65,9 @@ image-cephcsi: cephcsi
 	chmod +x deploy/cephcsi/image/cephcsi
 	$(CONTAINER_CMD) build -t $(CSI_IMAGE) deploy/cephcsi/image
 
+build-local:
+	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION) -f ./scripts/Dockerfile.build .
+
 push-image-cephcsi: image-cephcsi
 	$(CONTAINER_CMD) tag $(CSI_IMAGE) $(CSI_IMAGE)-$(GOARCH)
 	$(CONTAINER_CMD) push $(CSI_IMAGE)-$(GOARCH)

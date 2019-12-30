@@ -1,0 +1,33 @@
+FROM fedora:latest AS builder
+
+ENV GOPATH=/go
+
+RUN dnf -y install \
+	golang \
+	dep \
+	make \
+	librados-devel \
+	librbd-devel \
+    && dnf -y update \
+    && dnf clean all \
+    && true
+
+ADD . /go/src/github.com/ceph/ceph-csi/
+RUN cd /go/src/github.com/ceph/ceph-csi && make
+
+## copied from deploy/cephcsi/image/Dockerfile, modified to pick cephsci binary from build container
+## /!\ DANGER AHEAD: the build container and the ceph/ceph container may be different distributions!
+
+FROM ceph/ceph:v14.2
+LABEL maintainers="Ceph-CSI Authors"
+LABEL description="Ceph-CSI Plugin"
+
+# Removing ceph-iscsi repo to workaround the repo issue while upgrading
+#RUN rm -f /etc/yum.repos.d/ceph-iscsi.repo && yum -y update && yum clean all
+ENV CSIBIN=/usr/local/bin/cephcsi
+
+COPY --from=builder /go/src/github.com/ceph/ceph-csi/_output/cephcsi $CSIBIN
+
+RUN chmod +x $CSIBIN
+
+ENTRYPOINT ["/usr/local/bin/cephcsi"]
