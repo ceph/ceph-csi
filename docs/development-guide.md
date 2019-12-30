@@ -36,8 +36,11 @@ it is **highly** encouraged to:
 
 ### Building Ceph-CSI
 
-To build ceph-csi run:
+To build ceph-csi locally run:
 `$ make`
+
+To build ceph-csi in a container:
+`$ make containerized-build`
 
 The built binary will be present under `_output/` directory.
 
