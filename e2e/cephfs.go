@@ -60,8 +60,10 @@ func deleteCephfsPlugin() {
 
 var _ = Describe("cephfs", func() {
 	f := framework.NewDefaultFramework("cephfs")
+	var c clientset.Interface
 	// deploy cephfs CSI
 	BeforeEach(func() {
+		c = f.ClientSet
 		updateCephfsDirPath(f.ClientSet)
 		createConfigMap(cephfsDirPath, f.ClientSet, f)
 		deployCephfsPlugin()
@@ -69,6 +71,12 @@ var _ = Describe("cephfs", func() {
 	})
 
 	AfterEach(func() {
+		if CurrentGinkgoTestDescription().Failed {
+			// log provisoner
+			logsCSIPods("app=csi-cephfsplugin-provisioner", c)
+			// log node plugin
+			logsCSIPods("app=csi-cephfsplugin", c)
+		}
 		deleteCephfsPlugin()
 		deleteConfigMap(cephfsDirPath)
 		deleteResource(cephfsExamplePath + "secret.yaml")
