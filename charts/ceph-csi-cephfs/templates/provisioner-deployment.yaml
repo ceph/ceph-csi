@@ -54,7 +54,6 @@ spec:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election=true"
-            - "--leader-election-type=leases"
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
