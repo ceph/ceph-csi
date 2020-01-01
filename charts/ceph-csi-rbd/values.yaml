@@ -212,7 +212,7 @@ provisioner:
   snapshotter:
     image:
       repository: quay.io/k8scsi/csi-snapshotter
-      tag: v1.2.1
+      tag: v1.2.2
       pullPolicy: IfNotPresent
     resources: {}
 
