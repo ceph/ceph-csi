@@ -66,12 +66,11 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-cephfsplugin-attacher
-          image: quay.io/k8scsi/csi-attacher:v1.2.0
+          image: quay.io/k8scsi/csi-attacher:v2.1.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election=true"
-            - "--leader-election-type=leases"
           env:
             - name: ADDRESS
               value: /csi/csi-provisioner.sock

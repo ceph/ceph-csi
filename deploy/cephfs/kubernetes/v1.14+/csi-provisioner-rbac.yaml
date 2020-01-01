@@ -45,7 +45,7 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["volumeattachments"]
-    verbs: ["get", "list", "watch", "update"]
+    verbs: ["get", "list", "watch", "update", "patch"]
   - apiGroups: [""]
     resources: ["persistentvolumeclaims/status"]
     verbs: ["update", "patch"]
