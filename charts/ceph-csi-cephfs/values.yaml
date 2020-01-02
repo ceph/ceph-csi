@@ -29,6 +29,8 @@ csiConfig: []
 
 nodeplugin:
   name: nodeplugin
+  # if you are using ceph-fuse client set this value to OnDelete
+  updateStrategy: RollingUpdate
 
   httpMetrics:
     # Metrics only available for cephcis/cephsi => 1.2.0
