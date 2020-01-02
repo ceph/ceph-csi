@@ -7,8 +7,6 @@ spec:
   selector:
     matchLabels:
       app: csi-rbdplugin
-  updateStrategy:
-    type: OnDelete
   template:
     metadata:
       labels:
