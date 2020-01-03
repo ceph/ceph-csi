@@ -86,7 +86,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-resizer
-          image: quay.io/k8scsi/csi-resizer:v0.3.0
+          image: quay.io/k8scsi/csi-resizer:v0.4.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
