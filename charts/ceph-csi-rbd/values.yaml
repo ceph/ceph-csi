@@ -205,7 +205,7 @@ provisioner:
     enabled: true
     image:
       repository: quay.io/k8scsi/csi-resizer
-      tag: v0.3.0
+      tag: v0.4.0
       pullPolicy: IfNotPresent
     resources: {}
 
