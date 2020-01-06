@@ -16,7 +16,7 @@ spec:
       component: {{ .Values.nodeplugin.name }}
       release: {{ .Release.Name }}
   updateStrategy:
-    type: OnDelete
+    type: {{ .Values.nodeplugin.updateStrategy }}
   template:
     metadata:
       labels:
