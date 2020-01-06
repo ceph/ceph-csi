@@ -23,7 +23,7 @@ import (
 
 	"github.com/onsi/ginkgo"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -31,16 +31,18 @@ import (
 	scaleclient "k8s.io/client-go/scale"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
 // RcByNamePort returns a ReplicationController with specified name and port
-func RcByNamePort(name string, replicas int32, image string, port int, protocol v1.Protocol,
+func RcByNamePort(name string, replicas int32, image string, containerArgs []string, port int, protocol v1.Protocol,
 	labels map[string]string, gracePeriod *int64) *v1.ReplicationController {
 
 	return RcByNameContainer(name, replicas, image, labels, v1.Container{
 		Name:  name,
 		Image: image,
+		Args:  containerArgs,
 		Ports: []v1.ContainerPort{{ContainerPort: int32(port), Protocol: protocol}},
 	}, gracePeriod)
 }
@@ -118,7 +120,7 @@ func DeleteRCAndWaitForGC(c clientset.Interface, ns, name string) error {
 
 // ScaleRC scales Replication Controller to be desired size.
 func ScaleRC(clientset clientset.Interface, scalesGetter scaleclient.ScalesGetter, ns, name string, size uint, wait bool) error {
-	return ScaleResource(clientset, scalesGetter, ns, name, size, wait, api.Kind("ReplicationController"), api.Resource("replicationcontrollers"))
+	return ScaleResource(clientset, scalesGetter, ns, name, size, wait, api.Kind("ReplicationController"), api.SchemeGroupVersion.WithResource("replicationcontrollers"))
 }
 
 // RunRC Launches (and verifies correctness) of a Replication Controller
@@ -137,7 +139,7 @@ func WaitForRCPodToDisappear(c clientset.Interface, ns, rcName, podName string) 
 	// NodeController evicts pod after 5 minutes, so we need timeout greater than that to observe effects.
 	// The grace period must be set to 0 on the pod for it to be deleted during the partition.
 	// Otherwise, it goes to the 'Terminating' state till the kubelet confirms deletion.
-	return WaitForPodToDisappear(c, ns, podName, label, 20*time.Second, 10*time.Minute)
+	return e2epod.WaitForPodToDisappear(c, ns, podName, label, 20*time.Second, 10*time.Minute)
 }
 
 // WaitForReplicationController waits until the RC appears (exist == true), or disappears (exist == false)
@@ -255,5 +257,5 @@ waitLoop:
 		}
 	}
 	// Reaching here means that one of more checks failed multiple times.  Assuming its not a race condition, something is broken.
-	Failf("Timed out after %v seconds waiting for %s pods to reach valid state", PodStartTimeout.Seconds(), testname)
+	e2elog.Failf("Timed out after %v seconds waiting for %s pods to reach valid state", PodStartTimeout.Seconds(), testname)
 }

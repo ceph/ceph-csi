@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -29,13 +30,14 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
+	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	utypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/mount"
@@ -195,7 +197,7 @@ func LoadPodFromFile(filePath string) (*v1.Pod, error) {
 	pod := &v1.Pod{}
 
 	codec := legacyscheme.Codecs.UniversalDecoder()
-	if err := runtime.DecodeInto(codec, podDef, pod); err != nil {
+	if err := apiruntime.DecodeInto(codec, podDef, pod); err != nil {
 		return nil, fmt.Errorf("failed decoding file: %v", err)
 	}
 	return pod, nil
@@ -547,4 +549,60 @@ func IsLocalEphemeralVolume(volume v1.Volume) bool {
 	return volume.GitRepo != nil ||
 		(volume.EmptyDir != nil && volume.EmptyDir.Medium != v1.StorageMediumMemory) ||
 		volume.ConfigMap != nil || volume.DownwardAPI != nil
+}
+
+// GetPodVolumeNames returns names of volumes that are used in a pod,
+// either as filesystem mount or raw block device.
+func GetPodVolumeNames(pod *v1.Pod) (mounts sets.String, devices sets.String) {
+	mounts = sets.NewString()
+	devices = sets.NewString()
+
+	podutil.VisitContainers(&pod.Spec, func(container *v1.Container) bool {
+		if container.VolumeMounts != nil {
+			for _, mount := range container.VolumeMounts {
+				mounts.Insert(mount.Name)
+			}
+		}
+		// TODO: remove feature gate check after no longer needed
+		if utilfeature.DefaultFeatureGate.Enabled(features.BlockVolume) &&
+			container.VolumeDevices != nil {
+			for _, device := range container.VolumeDevices {
+				devices.Insert(device.Name)
+			}
+		}
+		return true
+	})
+	return
+}
+
+// HasMountRefs checks if the given mountPath has mountRefs.
+// TODO: this is a workaround for the unmount device issue caused by gci mounter.
+// In GCI cluster, if gci mounter is used for mounting, the container started by mounter
+// script will cause additional mounts created in the container. Since these mounts are
+// irrelevant to the original mounts, they should be not considered when checking the
+// mount references. Current solution is to filter out those mount paths that contain
+// the string of original mount path.
+// Plan to work on better approach to solve this issue.
+func HasMountRefs(mountPath string, mountRefs []string) bool {
+	for _, ref := range mountRefs {
+		if !strings.Contains(ref, mountPath) {
+			return true
+		}
+	}
+	return false
+}
+
+//WriteVolumeCache flush disk data given the spcified mount path
+func WriteVolumeCache(deviceMountPath string, exec mount.Exec) error {
+	// If runtime os is windows, execute Write-VolumeCache powershell command on the disk
+	if runtime.GOOS == "windows" {
+		cmd := fmt.Sprintf("Get-Volume -FilePath %s | Write-Volumecache", deviceMountPath)
+		output, err := exec.Run("powershell", "/c", cmd)
+		klog.Infof("command (%q) execeuted: %v, output: %q", cmd, err, string(output))
+		if err != nil {
+			return fmt.Errorf("command (%q) failed: %v, output: %q", cmd, err, string(output))
+		}
+	}
+	// For linux runtime, it skips because unmount will automatically flush disk data
+	return nil
 }
