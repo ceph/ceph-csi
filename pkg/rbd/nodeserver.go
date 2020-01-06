@@ -297,7 +297,7 @@ func getLegacyVolumeName(mountPath string) (string, error) {
 
 func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, stagingPath, devicePath string) error {
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
-	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOSExec()}
 
 	// rbd images are thin-provisioned and return zeros for unwritten areas.  A freshly created
 	// image will not benefit from discard and we also want to avoid as much unnecessary zeroing
@@ -565,7 +565,7 @@ func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	if volName != imgInfo.ImageName {
 		return nil, status.Errorf(codes.InvalidArgument, "volume name missmatch between request (%s) and stored metadata (%s)", volName, imgInfo.ImageName)
 	}
-	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOSExec()}
 	// TODO check size and return success or error
 	volumePath += "/" + volumeID
 	resizer := resizefs.NewResizeFs(diskMounter)
@@ -627,7 +627,7 @@ func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rb
 	}
 
 	if encrypted == rbdImageRequiresEncryption {
-		diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+		diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOSExec()}
 		// TODO: update this when adding support for static (pre-provisioned) PVs
 		var existingFormat string
 		existingFormat, err = diskMounter.GetDiskFormat(devicePath)
