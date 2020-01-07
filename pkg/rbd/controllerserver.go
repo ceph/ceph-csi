@@ -125,6 +125,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
+	// TODO: create/get a connection from the the ConnPool, and do not pass
+	// the credentials to any of the utility functions.
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -135,6 +137,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err != nil {
 		return nil, err
 	}
+	defer rbdVol.Destroy()
 
 	// Existence and conflict checks
 	if acquired := cs.VolumeLocks.TryAcquire(req.GetName()); !acquired {
@@ -294,6 +297,7 @@ func (cs *ControllerServer) DeleteLegacyVolume(ctx context.Context, req *csi.Del
 	defer cs.VolumeLocks.Release(volumeID)
 
 	rbdVol := &rbdVolume{}
+	defer rbdVol.Destroy()
 	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
 		if err, ok := err.(*util.CacheEntryNotFound); ok {
 			klog.V(3).Infof(util.Log(ctx, "metadata for legacy volume %s not found, assuming the volume to be already deleted (%v)"), volumeID, err)
@@ -352,6 +356,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	defer cs.VolumeLocks.Release(volumeID)
 
 	rbdVol := &rbdVolume{}
+	defer rbdVol.Destroy()
 	if err = genVolFromVolID(ctx, rbdVol, volumeID, cr, req.GetSecrets()); err != nil {
 		if _, ok := err.(util.ErrPoolNotFound); ok {
 			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), volumeID, err)
@@ -742,6 +747,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	defer cr.DeleteCredentials()
 
 	rbdVol := &rbdVolume{}
+	defer rbdVol.Destroy()
 	err = genVolFromVolID(ctx, rbdVol, volID, cr, req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {

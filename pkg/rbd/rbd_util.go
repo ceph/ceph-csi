@@ -30,6 +30,8 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util"
 
+	"github.com/ceph/go-ceph/rados"
+	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/pborman/uuid"
@@ -40,7 +42,7 @@ import (
 
 const (
 	imageWatcherStr = "watcher="
-	rbdImageFormat2 = "2"
+	rbdImageFormat2 = 2
 	// The following three values are used for 30 seconds timeout
 	// while waiting for RBD Watcher to expire.
 	rbdImageWatcherInitDelay = 1 * time.Second
@@ -88,6 +90,9 @@ type rbdVolume struct {
 	DisableInUseChecks bool   `json:"disableInUseChecks"`
 	Encrypted          bool
 	KMS                util.EncryptionKMS
+
+	// connection
+	conn *rados.Conn
 }
 
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics
@@ -112,34 +117,91 @@ type rbdSnapshot struct {
 
 var (
 	supportedFeatures = sets.NewString("layering")
+
+	// large interval and timeout, it should be longer than the maximum
+	// time an operation can take (until refcounting of the connections is
+	// available)
+	cpInterval = 15 * time.Minute
+	cpExpiry   = 10 * time.Minute
+	connPool   = util.NewConnPool(cpInterval, cpExpiry)
 )
 
 // createImage creates a new ceph image with provision and volume options.
 func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
-	var output []byte
-
-	image := pOpts.RbdImageName
 	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(pOpts.VolSize))
+	options := librbd.NewRbdImageOptions()
 
-	logMsg := "rbd: create %s size %s format 2 (features: %s) using mon %s, pool %s "
+	var err error
+	imageFormat := rbdImageFormat2
+	if pOpts.ImageFormat != "" {
+		imageFormat, err = strconv.Atoi(pOpts.ImageFormat)
+		if err != nil {
+			return errors.Wrapf(err, "failed to convert ImageFormat (%v) to integer", pOpts.ImageFormat)
+		}
+	}
+
+	err = options.SetUint64(librbd.RbdImageOptionFormat, uint64(imageFormat))
+	if err != nil {
+		return errors.Wrapf(err, "failed to set ImageFormat to %v", imageFormat)
+	}
+
+	logMsg := "rbd: create %s size %s format %d (features: %s) using mon %s, pool %s "
 	if pOpts.DataPool != "" {
 		logMsg += fmt.Sprintf("data pool %s", pOpts.DataPool)
+		err = options.SetString(librbd.RbdImageOptionDataPool, pOpts.DataPool)
+		if err != nil {
+			return errors.Wrapf(err, "failed to set data pool")
+		}
 	}
 	klog.V(4).Infof(util.Log(ctx, logMsg),
-		image, volSzMiB, pOpts.ImageFeatures, pOpts.Monitors, pOpts.Pool)
+		pOpts.RbdImageName, volSzMiB, imageFormat, pOpts.ImageFeatures, pOpts.Monitors, pOpts.Pool)
 
-	args := []string{"create", image, "--size", volSzMiB, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile, "--image-feature", pOpts.ImageFeatures}
-
-	if pOpts.DataPool != "" {
-		args = append(args, "--data-pool", pOpts.DataPool)
+	if pOpts.ImageFeatures != "" {
+		features := imageFeaturesToUint64(ctx, pOpts.ImageFeatures)
+		err := options.SetUint64(librbd.RbdImageOptionFeatures, features)
+		if err != nil {
+			return errors.Wrapf(err, "failed to set image features")
+		}
 	}
-	output, err := execCommand("rbd", args)
 
+	ioctx, err := pOpts.getIoctx(cr)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create rbd image, command output: %s", string(output))
+		return errors.Wrapf(err, "failed to get IOContext")
+	}
+	defer ioctx.Destroy()
+
+	err = librbd.CreateImage(ioctx, pOpts.RbdImageName,
+		uint64(util.RoundOffVolSize(pOpts.VolSize)*util.MiB), options)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create rbd image")
 	}
 
 	return nil
+}
+
+func (rv *rbdVolume) getIoctx(cr *util.Credentials) (*rados.IOContext, error) {
+	if rv.conn == nil {
+		conn, err := connPool.Get(rv.Pool, rv.Monitors, cr.KeyFile)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get connection")
+		}
+
+		rv.conn = conn
+	}
+
+	ioctx, err := rv.conn.OpenIOContext(rv.Pool)
+	if err != nil {
+		connPool.Put(rv.conn)
+		return nil, errors.Wrapf(err, "failed to open IOContext for pool %s", rv.Pool)
+	}
+
+	return ioctx, nil
+}
+
+func (rv *rbdVolume) Destroy() {
+	if rv.conn != nil {
+		connPool.Put(rv.conn)
+	}
 }
 
 // rbdStatus checks if there is watcher on the image.
@@ -270,7 +332,7 @@ func updateVolWithImageInfo(ctx context.Context, rbdVol *rbdVolume, cr *util.Cre
 		return fmt.Errorf("unknown or unsupported image format (%d) returned for image (%s)",
 			imageInfo.Format, rbdVol.RbdImageName)
 	}
-	rbdVol.ImageFormat = rbdImageFormat2
+	rbdVol.ImageFormat = strconv.Itoa(rbdImageFormat2)
 
 	rbdVol.VolSize = imageInfo.Size
 	rbdVol.ImageFeatures = strings.Join(imageInfo.Features, ",")
@@ -556,6 +618,21 @@ func hasSnapshotFeature(imageFeatures string) bool {
 		}
 	}
 	return false
+}
+
+// imageFeaturesToUint64 takes the comma separated image features and converts
+// them to a RbdImageOptionFeatures value.
+func imageFeaturesToUint64(ctx context.Context, imageFeatures string) uint64 {
+	features := uint64(0)
+
+	for _, f := range strings.Split(imageFeatures, ",") {
+		if f == "layering" {
+			features |= librbd.RbdFeatureLayering
+		} else {
+			klog.Warningf(util.Log(ctx, "rbd: image feature %s not recognized, skipping"), f)
+		}
+	}
+	return features
 }
 
 func protectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
