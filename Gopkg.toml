@@ -75,6 +75,10 @@
   branch = "master"
   name = "k8s.io/utils"
 
+[[constraint]]
+  name = "github.com/ceph/go-ceph"
+  version = "0.2"
+
 [prune]
   go-tests = true
   non-go = true
@@ -84,4 +88,3 @@
 [[prune.project]]
   name = "github.com/kubernetes-csi/external-snapshotter"
   non-go = false
-
