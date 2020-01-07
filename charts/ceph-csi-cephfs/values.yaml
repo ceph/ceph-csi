@@ -40,7 +40,7 @@ nodeplugin:
     containerPort: 8081
 
     service:
-      # Specifies whether a service should be created fot the metrics
+      # Specifies whether a service should be created for the metrics
       enabled: true
       # The port to use for the service
       servicePort: 8080
@@ -71,7 +71,7 @@ nodeplugin:
     containerPort: 8091
 
     service:
-      # Specifies whether a service should be created fot the metrics
+      # Specifies whether a service should be created for the metrics
       enabled: true
       # The port to use for the service
       servicePort: 8090
@@ -130,7 +130,7 @@ provisioner:
     containerPort: 8081
 
     service:
-      # Specifies whether a service should be created fot the metrics
+      # Specifies whether a service should be created for the metrics
       enabled: true
       # The port to use for the service
       servicePort: 8080
@@ -161,7 +161,7 @@ provisioner:
     containerPort: 8091
 
     service:
-      # Specifies whether a service should be created fot the metrics
+      # Specifies whether a service should be created for the metrics
       enabled: true
       # The port to use for the service
       servicePort: 8090
