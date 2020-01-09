@@ -979,6 +979,38 @@ func resizeRBDImage(rbdVol *rbdVolume, cr *util.Credentials) error {
 	return nil
 }
 
+func (rv *rbdVolume) GetMetadata(key string) (string, error) {
+	ioctx, err := rv.getIoctx()
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to get ioctx for \"%s\"", rv.RbdImageName)
+	}
+
+	image := librbd.GetImage(ioctx, rv.RbdImageName)
+	err = image.Open()
+	if err != nil {
+		return "", errors.Wrapf(err, "could not open image \"%s\"", rv.RbdImageName)
+	}
+	defer image.Close()
+
+	return image.GetMetadata(key)
+}
+
+func (rv *rbdVolume) SetMetadata(key, value string) error {
+	ioctx, err := rv.getIoctx()
+	if err != nil {
+		return errors.Wrapf(err, "failed to get ioctx for \"%s\"", rv.RbdImageName)
+	}
+
+	image := librbd.GetImage(ioctx, rv.RbdImageName)
+	err = image.Open()
+	if err != nil {
+		return errors.Wrapf(err, "could not open image \"%s\"", rv.RbdImageName)
+	}
+	defer image.Close()
+
+	return image.SetMetadata(key, value)
+}
+
 func ensureEncryptionMetadataSet(ctx context.Context, cr *util.Credentials, rbdVol *rbdVolume) error {
 	var vi util.CSIIdentifier
 
