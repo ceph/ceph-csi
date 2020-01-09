@@ -148,7 +148,12 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		}
 	}
 
-	ioctx, err := pOpts.getIoctx(cr)
+	err := pOpts.Connect(cr)
+	if err != nil {
+		return err
+	}
+
+	ioctx, err := pOpts.getIoctx()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get IOContext")
 	}
@@ -163,23 +168,56 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	return nil
 }
 
-func (rv *rbdVolume) getIoctx(cr *util.Credentials) (*rados.IOContext, error) {
+// rbdVol.Connect() connects to the Ceph cluster and sets rbdVol.conn for further usage.
+func (rv *rbdVolume) Connect(cr *util.Credentials) error {
 	if rv.conn == nil {
 		conn, err := connPool.Get(rv.Pool, rv.Monitors, cr.KeyFile)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get connection")
+			return errors.Wrapf(err, "failed to get connection")
 		}
 
 		rv.conn = conn
 	}
 
+	return nil
+}
+
+func (rv *rbdVolume) getIoctx() (*rados.IOContext, error) {
+	if rv.conn == nil {
+		return nil, fmt.Errorf("rbdVolume \"%s\" is not connected", rv.RbdImageName)
+	}
+
 	ioctx, err := rv.conn.OpenIOContext(rv.Pool)
 	if err != nil {
-		connPool.Put(rv.conn)
 		return nil, errors.Wrapf(err, "failed to open IOContext for pool %s", rv.Pool)
 	}
 
 	return ioctx, nil
+}
+
+// Open the rbdVolume after it has been connected.
+func (rv *rbdVolume) open() (*librbd.Image, error) {
+	if rv.RbdImageName == "" {
+		var vi util.CSIIdentifier
+		err := vi.DecomposeCSIID(rv.VolID)
+		if err != nil {
+			err = fmt.Errorf("error decoding volume ID (%s) (%s)", rv.VolID, err)
+			return nil, ErrInvalidVolID{err}
+		}
+		rv.RbdImageName = volJournal.GetNameForUUID(rv.NamePrefix, vi.ObjectUUID, false)
+	}
+
+	ioctx, err := rv.getIoctx()
+	if err != nil {
+		return nil, err
+	}
+
+	image := librbd.GetImage(ioctx, rv.RbdImageName)
+	err = image.Open()
+	if err != nil {
+		return nil, err
+	}
+	return image, nil
 }
 
 func (rv *rbdVolume) Destroy() {
@@ -270,10 +308,19 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	// attempt to use Ceph manager based deletion support if available
 	rbdCephMgrSupported, err := rbdManagerTaskDeleteImage(ctx, pOpts, cr)
 	if !rbdCephMgrSupported {
-		// attempt older style deletion
-		args := []string{"rm", image, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors,
-			"--keyfile=" + cr.KeyFile}
-		output, err = execCommand("rbd", args)
+		err = pOpts.Connect(cr)
+		if err != nil {
+			return err
+		}
+
+		ioctx, err := pOpts.getIoctx()
+		if err != nil {
+			return err
+		}
+		defer ioctx.Destroy()
+
+		image := librbd.GetImage(ioctx, pOpts.RbdImageName)
+		err = image.Remove()
 	}
 
 	if err != nil {
