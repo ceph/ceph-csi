@@ -156,7 +156,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	if found {
 		if rbdVol.Encrypted {
-			err = ensureEncryptionMetadataSet(ctx, cr, rbdVol)
+			err = rbdVol.ensureEncryptionMetadataSet(cr, rbdImageRequiresEncryption)
 			if err != nil {
 				klog.Errorf(util.Log(ctx, err.Error()))
 				return nil, err
@@ -192,7 +192,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	if rbdVol.Encrypted {
-		err = ensureEncryptionMetadataSet(ctx, cr, rbdVol)
+		err = rbdVol.ensureEncryptionMetadataSet(cr, rbdImageRequiresEncryption)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to save encryption status, deleting image %s"),
 				rbdVol.RbdImageName)
