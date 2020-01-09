@@ -60,6 +60,8 @@ const (
 	// Encryption statuses for RbdImage
 	rbdImageEncrypted          = "encrypted"
 	rbdImageRequiresEncryption = "requiresEncryption"
+	// image metadata key for encryption
+	encryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
 )
 
 // rbdVolume represents a CSI volume and its RBD image specifics
@@ -979,21 +981,53 @@ func resizeRBDImage(rbdVol *rbdVolume, cr *util.Credentials) error {
 	return nil
 }
 
-func ensureEncryptionMetadataSet(ctx context.Context, cr *util.Credentials, rbdVol *rbdVolume) error {
-	var vi util.CSIIdentifier
-
-	err := vi.DecomposeCSIID(rbdVol.VolID)
+func (rv *rbdVolume) GetMetadata(key string) (string, error) {
+	ioctx, err := rv.conn.GetIoctx(rv.Pool)
 	if err != nil {
-		err = fmt.Errorf("error decoding volume ID (%s) (%s)", rbdVol.VolID, err)
-		return ErrInvalidVolID{err}
+		return "", errors.Wrapf(err, "failed to get ioctx for %q", rv.RbdImageName)
 	}
 
-	rbdImageName := volJournal.GetNameForUUID(rbdVol.NamePrefix, vi.ObjectUUID, false)
-	imageSpec := rbdVol.Pool + "/" + rbdImageName
-
-	err = util.SaveRbdImageEncryptionStatus(ctx, cr, rbdVol.Monitors, imageSpec, rbdImageRequiresEncryption)
+	image, err := librbd.OpenImage(ioctx, rv.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
-		return fmt.Errorf("failed to save encryption status for %s: %v", imageSpec, err)
+		return "", errors.Wrapf(err, "could not open image %q", rv.RbdImageName)
+	}
+	defer image.Close()
+
+	return image.GetMetadata(key)
+}
+
+func (rv *rbdVolume) SetMetadata(key, value string) error {
+	ioctx, err := rv.conn.GetIoctx(rv.Pool)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get ioctx for %q", rv.RbdImageName)
+	}
+
+	image, err := librbd.OpenImage(ioctx, rv.RbdImageName, librbd.NoSnapshot)
+	if err != nil {
+		return errors.Wrapf(err, "could not open image %q", rv.RbdImageName)
+	}
+	defer image.Close()
+
+	return image.SetMetadata(key, value)
+}
+
+// checkRbdImageEncrypted verifies if rbd image was encrypted when created
+func (rv *rbdVolume) checkRbdImageEncrypted(ctx context.Context) (string, error) {
+	value, err := rv.GetMetadata(encryptionMetaKey)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "checking image %s encrypted state metadata failed: %s"), rv.RbdImageName, err)
+		return "", err
+	}
+
+	encrypted := strings.TrimSpace(value)
+	klog.V(4).Infof(util.Log(ctx, "image %s encrypted state metadata reports %q"), rv.RbdImageName, encrypted)
+	return encrypted, nil
+}
+
+func (rv *rbdVolume) ensureEncryptionMetadataSet(status string) error {
+	err := rv.SetMetadata(encryptionMetaKey, status)
+	if err != nil {
+		return fmt.Errorf("failed to save encryption status for %s: %v", rv.RbdImageName, err)
 	}
 
 	return nil
