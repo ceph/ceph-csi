@@ -151,6 +151,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				VolumeId:      rbdVol.VolID,
 				CapacityBytes: rbdVol.VolSize,
 				VolumeContext: req.GetParameters(),
+				ContentSource: req.GetVolumeContentSource(),
 			},
 		}, nil
 	}
@@ -178,6 +179,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			VolumeId:      rbdVol.VolID,
 			CapacityBytes: rbdVol.VolSize,
 			VolumeContext: req.GetParameters(),
+			ContentSource: req.GetVolumeContentSource(),
 		},
 	}, nil
 }
