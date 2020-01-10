@@ -103,7 +103,7 @@ var _ = Describe("RBD", func() {
 			var err error
 			sts := deployProvAsSTS(f.ClientSet)
 			if sts {
-				err = framework.WaitForStatefulSetReplicasReady(rbdDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
+				err = waitForStatefulSetReplicasReady(rbdDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
 			} else {
 				err = waitForDeploymentComplete(rbdDeploymentName, namespace, f.ClientSet, deployTimeout)
 			}

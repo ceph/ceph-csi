@@ -3,7 +3,9 @@ package e2e
 import (
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
+	config "k8s.io/kubernetes/test/e2e/framework/config"
 	"io/ioutil"
 	"regexp"
 	"strings"
@@ -11,10 +13,11 @@ import (
 
 	"k8s.io/klog"
 
-	_ "github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1"                             // nolint
-	_ "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1" // nolint
+	_ "github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1beta1"                             // nolint
+	_ "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1beta1" // nolint
 	. "github.com/onsi/ginkgo"                                                                                      // nolint
 	. "github.com/onsi/gomega"                                                                                      // nolint
+	e2epv "k8s.io/kubernetes/test/e2e/framework/pv"
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
@@ -132,6 +135,23 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 		return fmt.Errorf("error waiting for deployment %q status to match expectation: %v", name, err)
 	}
 	return nil
+}
+
+func waitForStatefulSetReplicasReady(statefulSetName, ns string, c clientset.Interface, Poll, timeout time.Duration) error {
+	framework.Logf("Waiting up to %v for StatefulSet %s to have all replicas ready", timeout, statefulSetName)
+	for start := time.Now(); time.Since(start) < timeout; time.Sleep(Poll) {
+		sts, err := c.AppsV1().StatefulSets(ns).Get(statefulSetName, metav1.GetOptions{})
+		if err != nil {
+			framework.Logf("Get StatefulSet %s failed, ignoring for %v: %v", statefulSetName, Poll, err)
+			continue
+		}
+		if sts.Status.ReadyReplicas == *sts.Spec.Replicas {
+			framework.Logf("All %d replicas of StatefulSet %s are ready. (%v)", sts.Status.ReadyReplicas, statefulSetName, time.Since(start))
+			return nil
+		}
+		framework.Logf("StatefulSet %s found but there are %d ready replicas and %d total replicas.", statefulSetName, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
+	}
+	return fmt.Errorf("StatefulSet %s still has unready pods within %v", statefulSetName, timeout)
 }
 
 func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string) {
@@ -393,7 +413,7 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		if apierrs.IsNotFound(err) {
 			return false, nil
 		}
-		err = framework.WaitOnPVandPVC(c, pvc.Namespace, pv, pvc)
+		err = e2epv.WaitOnPVandPVC(c, pvc.Namespace, pv, pvc)
 		if err != nil {
 			return false, nil
 		}
@@ -876,4 +896,11 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 
 	err = deletePVCAndApp("", f, pvc, app)
 	return err
+}
+
+func handleFlags() {
+	config.CopyFlags(config.Flags, flag.CommandLine)
+	framework.RegisterCommonFlags(flag.CommandLine)
+	framework.RegisterClusterFlags(flag.CommandLine)
+	flag.Parse()
 }

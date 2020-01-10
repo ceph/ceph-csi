@@ -18,6 +18,7 @@ package liveness
 
 import (
 	"context"
+	"github.com/kubernetes-csi/csi-lib-utils/metrics"
 	"time"
 
 	"github.com/ceph/ceph-csi/pkg/util"
@@ -65,7 +66,7 @@ func recordLiveness(endpoint string, pollTime, timeout time.Duration) {
 		klog.Fatalln(err)
 	}
 
-	csiConn, err := connlib.Connect(endpoint)
+	csiConn, err := connlib.Connect(endpoint, metrics.NewCSIMetricsManager("cephcsi"))
 	if err != nil {
 		// connlib should retry forever so a returned error should mean
 		// the grpc client is misconfigured rather than an error on the network

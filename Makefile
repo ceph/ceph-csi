@@ -45,7 +45,7 @@ go-test:
 	./scripts/test-go.sh
 
 dep-check:
-	dep check
+	go mod vendor
 
 static-check:
 	./scripts/lint-go.sh
@@ -57,7 +57,7 @@ func-test:
 
 .PHONY: cephcsi
 cephcsi:
-	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
+	if [ ! -d ./vendor ]; then go mod vendor; fi
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) go build -a -ldflags '$(LDFLAGS) -extldflags "-static"' -o  _output/cephcsi ./cmd/
 
 image-cephcsi: cephcsi

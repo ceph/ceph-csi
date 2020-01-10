@@ -16,7 +16,7 @@ branches:
   only:
     - master
 
-go: 1.12.x
+go: 1.13.5
 
 env:
   global:
@@ -57,13 +57,6 @@ jobs:
         - make static-check
         - make go-test
         - make dep-check || travis_terminate 1;
-
-    - name: cephcsi with kube 1.13.7
-      env: K8S_FEATURE_GATES="BlockVolume=true,CSIBlockVolume=true,VolumeSnapshotDataSource=true"
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.13.7 || travis_terminate 1;
 
     - name: cephcsi with kube 1.15.6
       script:

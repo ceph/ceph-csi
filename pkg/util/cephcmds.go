@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -41,12 +42,13 @@ func ExecCommand(program string, args ...string) (stdout, stderr []byte, err err
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
 
+	out := stdoutBuf.Bytes()
 	if err := cmd.Run(); err != nil {
-		return stdoutBuf.Bytes(), stderrBuf.Bytes(), fmt.Errorf("an error (%v)"+
+		return out, stderrBuf.Bytes(), fmt.Errorf("an error (%v)"+
 			" occurred while running %s args: %v", err, program, sanitizedArgs)
 	}
-
-	return stdoutBuf.Bytes(), nil, nil
+	log.Print(out)
+	return out, nil, nil
 }
 
 // cephStoragePoolSummary strongly typed JSON spec for osd ls pools output

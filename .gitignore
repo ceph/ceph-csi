@@ -1,4 +1,5 @@
 # build directory
+vendor
 /_output*/
 
 # docker build

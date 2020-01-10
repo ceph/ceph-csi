@@ -56,7 +56,7 @@ function install_kubectl() {
 # configure minikube
 MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
-KUBE_VERSION=${KUBE_VERSION:-"v1.14.2"}
+KUBE_VERSION=${KUBE_VERSION:-"v1.17.0"}
 MEMORY=${MEMORY:-"3000"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
 #configure image repo

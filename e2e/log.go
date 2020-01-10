@@ -14,13 +14,13 @@ package e2e
 
 import (
 	"fmt"
+	frameworkPod "k8s.io/kubernetes/test/e2e/framework/pod"
 	"strconv"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
@@ -44,7 +44,7 @@ func logsCSIPods(label string, c clientset.Interface) {
 func kubectlLogPod(c clientset.Interface, pod *v1.Pod) {
 	container := pod.Spec.Containers
 	for i := range container {
-		logs, err := framework.GetPodLogs(c, pod.Namespace, pod.Name, container[i].Name)
+		logs, err := frameworkPod.GetPodLogs(c, pod.Namespace, pod.Name, container[i].Name)
 		if err != nil {
 			logs, err = getPreviousPodLogs(c, pod.Namespace, pod.Name, container[i].Name)
 			if err != nil {
