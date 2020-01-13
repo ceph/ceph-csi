@@ -19,7 +19,16 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: driver-registrar
+<<<<<<< HEAD
           image: quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
+=======
+          # This is necessary only for systems with SELinux, where
+          # non-privileged sidecar containers cannot access unix domain socket
+          # created by privileged CSI driver container.
+          securityContext:
+            privileged: true
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.2.0
+>>>>>>> e0cc7740f... CSI: run all containers as privileged in daemonset pods
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -101,7 +110,13 @@ spec:
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
         - name: liveness-prometheus
+<<<<<<< HEAD
           image: quay.io/cephcsi/cephcsi:v1.2.2
+=======
+          securityContext:
+            privileged: true
+          image: quay.io/cephcsi/cephcsi:canary
+>>>>>>> e0cc7740f... CSI: run all containers as privileged in daemonset pods
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
