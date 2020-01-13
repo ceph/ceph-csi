@@ -7,8 +7,6 @@ spec:
   selector:
     matchLabels:
       app: csi-rbdplugin
-  updateStrategy:
-    type: OnDelete
   template:
     metadata:
       labels:
@@ -22,7 +20,12 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: driver-registrar
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
+          # This is necessary only for systems with SELinux, where
+          # non-privileged sidecar containers cannot access unix domain socket
+          # created by privileged CSI driver container.
+          securityContext:
+            privileged: true
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.2.0
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -96,6 +99,8 @@ spec:
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
         - name: liveness-prometheus
+          securityContext:
+            privileged: true
           image: quay.io/cephcsi/cephcsi:canary
           args:
             - "--type=liveness"

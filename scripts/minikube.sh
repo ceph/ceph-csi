@@ -44,16 +44,17 @@ function install_minikube() {
     fi
 
     echo "Installing minikube. Version: ${MINIKUBE_VERSION}"
-    curl -Lo minikube https://storage.googleapis.com/minikube/releases/"${MINIKUBE_VERSION}"/minikube-linux-amd64 && chmod +x minikube && mv minikube /usr/local/bin/
+    curl -Lo minikube https://storage.googleapis.com/minikube/releases/"${MINIKUBE_VERSION}"/minikube-linux-"${MINIKUBE_ARCH}" && chmod +x minikube && mv minikube /usr/local/bin/
 }
 
 function install_kubectl() {
     # Download kubectl, which is a requirement for using minikube.
     echo "Installing kubectl. Version: ${KUBE_VERSION}"
-    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/"${KUBE_VERSION}"/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl /usr/local/bin/
+    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/"${KUBE_VERSION}"/bin/linux/"${MINIKUBE_ARCH}"/kubectl && chmod +x kubectl && mv kubectl /usr/local/bin/
 }
 
 # configure minikube
+MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
 KUBE_VERSION=${KUBE_VERSION:-"v1.14.2"}
 MEMORY=${MEMORY:-"3000"}
@@ -117,11 +118,12 @@ cephcsi)
     ;;
 k8s-sidecar)
     echo "copying the kubernetes sidecar images"
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-attacher:v1.2.0 "${K8S_IMAGE_REPO}"/csi-attacher:v1.2.0
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-snapshotter:v1.1.0 $"${K8S_IMAGE_REPO}"/csi-snapshotter:v1.2.1
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-provisioner:v1.3.0 "${K8S_IMAGE_REPO}"/csi-provisioner:v1.3.0
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.1.0 "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.1.0
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-resizer:v0.3.0 "${K8S_IMAGE_REPO}"/csi-resizer:v0.3.0
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-attacher:v1.2.1 "${K8S_IMAGE_REPO}"/csi-attacher:v1.2.1
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-attacher:v2.1.0 "${K8S_IMAGE_REPO}"/csi-attacher:v2.1.0
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-snapshotter:v1.2.2 $"${K8S_IMAGE_REPO}"/csi-snapshotter:v1.2.2
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-provisioner:v1.4.0 "${K8S_IMAGE_REPO}"/csi-provisioner:v1.4.0
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.2.0 "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.2.0
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-resizer:v0.4.0 "${K8S_IMAGE_REPO}"/csi-resizer:v0.4.0
     ;;
 clean)
     minikube delete

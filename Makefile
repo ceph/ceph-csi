@@ -18,6 +18,7 @@ CONTAINER_CMD?=docker
 
 CSI_IMAGE_NAME=$(if $(ENV_CSI_IMAGE_NAME),$(ENV_CSI_IMAGE_NAME),quay.io/cephcsi/cephcsi)
 CSI_IMAGE_VERSION=$(if $(ENV_CSI_IMAGE_VERSION),$(ENV_CSI_IMAGE_VERSION),canary)
+CSI_IMAGE=$(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION)
 
 $(info cephcsi image settings: $(CSI_IMAGE_NAME) version $(CSI_IMAGE_VERSION))
 
@@ -30,6 +31,11 @@ LDFLAGS ?=
 LDFLAGS += -X $(GO_PROJECT)/pkg/util.GitCommit=$(GIT_COMMIT)
 # CSI_IMAGE_VERSION will be considered as the driver version
 LDFLAGS += -X $(GO_PROJECT)/pkg/util.DriverVersion=$(CSI_IMAGE_VERSION)
+
+# set GOARCH explicitly for cross building, default to native architecture
+ifeq ($(origin GOARCH), undefined)
+GOARCH := $(shell go env GOARCH)
+endif
 
 all: cephcsi
 
@@ -52,15 +58,18 @@ func-test:
 .PHONY: cephcsi
 cephcsi:
 	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '$(LDFLAGS) -extldflags "-static"' -o  _output/cephcsi ./cmd/
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) go build -a -ldflags '$(LDFLAGS) -extldflags "-static"' -o  _output/cephcsi ./cmd/
 
 image-cephcsi: cephcsi
 	cp _output/cephcsi deploy/cephcsi/image/cephcsi
-	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION) deploy/cephcsi/image
+	chmod +x deploy/cephcsi/image/cephcsi
+	$(CONTAINER_CMD) build -t $(CSI_IMAGE) deploy/cephcsi/image
 
 push-image-cephcsi: image-cephcsi
-	$(CONTAINER_CMD) push $(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION)
-
+	$(CONTAINER_CMD) tag $(CSI_IMAGE) $(CSI_IMAGE)-$(GOARCH)
+	$(CONTAINER_CMD) push $(CSI_IMAGE)-$(GOARCH)
+	# push amd64 image as default one
+	if [ $(GOARCH) = amd64 ]; then $(CONTAINER_CMD) push $(CSI_IMAGE); fi
 
 clean:
 	go clean -r -x

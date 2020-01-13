@@ -29,6 +29,8 @@ csiConfig: []
 
 nodeplugin:
   name: nodeplugin
+  # if you are using rbd-nbd client set this value to OnDelete
+  updateStrategy: RollingUpdate
 
   httpMetrics:
     # Metrics only available for cephcsi/cephcsi => 1.2.0
@@ -38,7 +40,7 @@ nodeplugin:
     containerPort: 8080
 
     service:
-      # Specifies whether a service should be created fot the metrics
+      # Specifies whether a service should be created for the metrics
       enabled: true
       # The port to use for the service
       servicePort: 8080
@@ -69,7 +71,7 @@ nodeplugin:
     containerPort: 8090
 
     service:
-      # Specifies whether a service should be created fot the metrics
+      # Specifies whether a service should be created for the metrics
       enabled: true
       # The port to use for the service
       servicePort: 8090
@@ -95,7 +97,7 @@ nodeplugin:
   registrar:
     image:
       repository: quay.io/k8scsi/csi-node-driver-registrar
-      tag: v1.1.0
+      tag: v1.2.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -128,7 +130,7 @@ provisioner:
     containerPort: 8080
 
     service:
-      # Specifies whether a service should be created fot the metrics
+      # Specifies whether a service should be created for the metrics
       enabled: true
       # The port to use for the service
       servicePort: 8080
@@ -159,7 +161,7 @@ provisioner:
     containerPort: 8090
 
     service:
-      # Specifies whether a service should be created fot the metrics
+      # Specifies whether a service should be created for the metrics
       enabled: true
       # The port to use for the service
       servicePort: 8090
@@ -185,7 +187,7 @@ provisioner:
   provisioner:
     image:
       repository: quay.io/k8scsi/csi-provisioner
-      tag: v1.3.0
+      tag: v1.4.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -194,7 +196,7 @@ provisioner:
     enabled: true
     image:
       repository: quay.io/k8scsi/csi-attacher
-      tag: v1.2.1
+      tag: v2.1.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -203,14 +205,14 @@ provisioner:
     enabled: true
     image:
       repository: quay.io/k8scsi/csi-resizer
-      tag: v0.3.0
+      tag: v0.4.0
       pullPolicy: IfNotPresent
     resources: {}
 
   snapshotter:
     image:
       repository: quay.io/k8scsi/csi-snapshotter
-      tag: v1.2.1
+      tag: v1.2.2
       pullPolicy: IfNotPresent
     resources: {}
 

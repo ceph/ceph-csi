@@ -37,6 +37,10 @@ Independent CSI plugins are provided to support RBD and CephFS backed volumes,
   refer [cephfs doc](https://github.com/ceph/ceph-csi/blob/master/docs/deploy-cephfs.md).
 - For example usage of RBD and CephFS CSI plugins, see examples in `examples/`.
 
+NOTE:
+
+- Ceph CSI **`Arm64`** support is experimental.
+
 ## Project status
 
 Status: **GA**
