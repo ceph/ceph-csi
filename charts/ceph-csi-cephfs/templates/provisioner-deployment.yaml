@@ -145,9 +145,9 @@ spec:
 {{- end }}
       volumes:
         - name: socket-dir
-          hostPath:
-            path: {{ .Values.socketDir }}
-            type: DirectoryOrCreate
+          emptyDir: {
+            medium: "Memory"
+          }
         - name: host-sys
           hostPath:
             path: /sys

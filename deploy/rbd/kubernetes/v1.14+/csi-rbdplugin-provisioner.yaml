@@ -160,9 +160,9 @@ spec:
           hostPath:
             path: /lib/modules
         - name: socket-dir
-          hostPath:
-            path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
-            type: DirectoryOrCreate
+          emptyDir: {
+            medium: "Memory"
+          }
         - name: ceph-csi-config
           configMap:
             name: ceph-csi-config
