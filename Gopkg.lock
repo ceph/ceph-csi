@@ -1379,6 +1379,7 @@
     "k8s.io/kubernetes/test/e2e/framework",
     "k8s.io/kubernetes/test/e2e/framework/log",
     "k8s.io/kubernetes/test/utils",
+    "k8s.io/utils/exec",
     "k8s.io/utils/mount",
   ]
   solver-name = "gps-cdcl"
