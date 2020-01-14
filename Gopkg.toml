@@ -80,3 +80,7 @@
 [[prune.project]]
   name = "github.com/kubernetes-csi/external-snapshotter"
   non-go = false
+
+[[constraint]]
+  branch = "master"
+  name = "k8s.io/utils"
