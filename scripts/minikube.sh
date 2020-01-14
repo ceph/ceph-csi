@@ -102,11 +102,13 @@ ssh)
     ;;
 deploy-rook)
     echo "deploy rook"
-    ./scripts/rook.sh deploy
+	DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+	"$DIR"/rook.sh deploy
     ;;
 teardown-rook)
     echo "teardown rook"
-    ./scripts/rook.sh teardown
+	DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+	"$DIR"/rook.sh teardown
 
     # delete rook data for minikube
     minikube ssh "sudo rm -rf /mnt/${DISK}/var/lib/rook; sudo rm -rf /var/lib/rook"
