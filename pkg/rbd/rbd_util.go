@@ -367,15 +367,7 @@ func updateSnapWithImageInfo(ctx context.Context, rbdSnap *rbdSnapshot, cr *util
 // updateVolWithImageInfo updates provided rbdVolume with information from on-disk data
 // regarding the same
 func updateVolWithImageInfo(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	imageInfo, err := getImageInfo(ctx, rbdVol.Monitors, cr, rbdVol.Pool, rbdVol.RbdImageName)
-	if err != nil {
-		return err
-	}
-
-	rbdVol.VolSize = imageInfo.Size
-	rbdVol.ImageFeatures = strings.Join(imageInfo.Features, ",")
-
-	return nil
+	return rbdVol.getImageInfo()
 }
 
 // genSnapFromSnapID generates a rbdSnapshot structure from the provided identifier, updating
@@ -799,47 +791,31 @@ func getSnapshotMetadata(ctx context.Context, pSnapOpts *rbdSnapshot, cr *util.C
 	return nil
 }
 
-// imageInfo strongly typed JSON spec for image info
-type imageInfo struct {
-	ObjectUUID string   `json:"name"`
-	Size       int64    `json:"size"`
-	Features   []string `json:"features"`
-	CreatedAt  string   `json:"create_timestamp"`
-}
-
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
 // ErrImageNotFound if provided image is not found
-func getImageInfo(ctx context.Context, monitors string, cr *util.Credentials, poolName, imageName string) (imageInfo, error) {
+func (rv *rbdVolume) getImageInfo() error {
 	// rbd --format=json info [image-spec | snap-spec]
-
-	var imgInfo imageInfo
-
-	stdout, stderr, err := util.ExecCommand(
-		"rbd",
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile="+cr.KeyFile,
-		"-c", util.CephConfigPath,
-		"--format="+"json",
-		"info", poolName+"/"+imageName)
+	image, err := rv.open()
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), poolName+"/"+imageName, err)
-		if strings.Contains(string(stderr), "rbd: error opening image "+imageName+
-			": (2) No such file or directory") {
-			return imgInfo, ErrImageNotFound{imageName, err}
-		}
-		return imgInfo, err
+		return errors.Wrapf(err, "failed to open image")
 	}
+	defer image.Close()
 
-	err = json.Unmarshal(stdout, &imgInfo)
+	imageInfo, err := image.Stat()
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to parse JSON output of image info (%s): (%s)"),
-			poolName+"/"+imageName, err)
-		return imgInfo, fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s",
-			err, string(stdout))
+		return errors.Wrapf(err, "failed to get stat of image")
 	}
+	// TODO: can rv.VolSize not be a uint64? Or initialize it to -1?
+	rv.VolSize = int64(imageInfo.Size)
 
-	return imgInfo, nil
+	features, err := image.GetFeatures()
+	if err != nil {
+		return errors.Wrapf(err, "failed to get features of image")
+	}
+	fs := librbd.FeatureSet(features)
+	rv.ImageFeatures = strings.Join(fs.Names(), ",")
+
+	return nil
 }
 
 // snapInfo strongly typed JSON spec for snap ls rbd output
