@@ -93,6 +93,8 @@ type rbdVolume struct {
 
 	// connection
 	conn *rados.Conn
+	// ioctx for this rbdVolume, use .getIoctx() to allocate one
+	ioctx *rados.IOContext
 }
 
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics
@@ -159,7 +161,6 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	if err != nil {
 		return errors.Wrapf(err, "failed to get IOContext")
 	}
-	defer ioctx.Destroy()
 
 	err = librbd.CreateImage(ioctx, pOpts.RbdImageName,
 		uint64(util.RoundOffVolSize(pOpts.VolSize)*util.MiB), options)
@@ -185,6 +186,10 @@ func (rv *rbdVolume) Connect(cr *util.Credentials) error {
 }
 
 func (rv *rbdVolume) getIoctx() (*rados.IOContext, error) {
+	if rv.ioctx != nil {
+		return rv.ioctx, nil
+	}
+
 	if rv.conn == nil {
 		return nil, fmt.Errorf("rbdVolume \"%s\" is not connected", rv.RbdImageName)
 	}
@@ -193,6 +198,8 @@ func (rv *rbdVolume) getIoctx() (*rados.IOContext, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to open IOContext for pool %s", rv.Pool)
 	}
+
+	rv.ioctx = ioctx
 
 	return ioctx, nil
 }
@@ -223,6 +230,10 @@ func (rv *rbdVolume) open() (*librbd.Image, error) {
 }
 
 func (rv *rbdVolume) Destroy() {
+	if rv.ioctx != nil {
+		rv.ioctx.Destroy()
+	}
+
 	if rv.conn != nil {
 		connPool.Put(rv.conn)
 	}
