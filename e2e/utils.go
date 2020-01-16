@@ -11,8 +11,8 @@ import (
 
 	"k8s.io/klog"
 
-	//_ "github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1"                             // nolint
-	//_ "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1" // nolint
+	// _ "github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1"                             // nolint
+	// _ "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1" // nolint
 	. "github.com/onsi/ginkgo" // nolint
 	. "github.com/onsi/gomega" // nolint
 	apps "k8s.io/api/apps/v1"
@@ -135,12 +135,12 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 	return nil
 }
 
-func waitForStatefulSetReplicasReady(statefulSetName, ns string, c clientset.Interface, Poll, timeout time.Duration) error {
+func waitForStatefulSetReplicasReady(statefulSetName, ns string, c clientset.Interface, poll, timeout time.Duration) error {
 	framework.Logf("Waiting up to %v for StatefulSet %s to have all replicas ready", timeout, statefulSetName)
-	for start := time.Now(); time.Since(start) < timeout; time.Sleep(Poll) {
+	for start := time.Now(); time.Since(start) < timeout; time.Sleep(poll) {
 		sts, err := c.AppsV1().StatefulSets(ns).Get(statefulSetName, metav1.GetOptions{})
 		if err != nil {
-			framework.Logf("Get StatefulSet %s failed, ignoring for %v: %v", statefulSetName, Poll, err)
+			framework.Logf("Get StatefulSet %s failed, ignoring for %v: %v", statefulSetName, poll, err)
 			continue
 		}
 		if sts.Status.ReadyReplicas == *sts.Spec.Replicas {
@@ -149,7 +149,7 @@ func waitForStatefulSetReplicasReady(statefulSetName, ns string, c clientset.Int
 		}
 		framework.Logf("StatefulSet %s found but there are %d ready replicas and %d total replicas.", statefulSetName, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
 	}
-	return fmt.Errorf("StatefulSet %s still has unready pods within %v", statefulSetName, timeout)
+	return fmt.Errorf("statefulSet %s still has unready pods within %v", statefulSetName, timeout)
 }
 
 func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string) {
@@ -894,11 +894,4 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 
 	err = deletePVCAndApp("", f, pvc, app)
 	return err
-}
-
-func handleFlags() {
-	config.CopyFlags(config.Flags, flag.CommandLine)
-	framework.RegisterCommonFlags(flag.CommandLine)
-	framework.RegisterClusterFlags(flag.CommandLine)
-	flag.Parse()
 }

@@ -236,18 +236,6 @@
   version = "v0.6.1"
 
 [[projects]]
-  digest = "1:9029d8351d44136a8ca42d8351d5e3750522ec089883577ec6dcf0dfb7df6fac"
-  name = "github.com/kubernetes-csi/external-snapshotter"
-  packages = [
-    "pkg/apis/volumesnapshot/v1alpha1",
-    "pkg/client/clientset/versioned/scheme",
-    "pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1",
-  ]
-  pruneopts = "UT"
-  revision = "d5da3c1e527cd356696300222ebd8bf728971ae4"
-  version = "v1.2.2"
-
-[[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
@@ -832,16 +820,16 @@
     "storage/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "4c9a86741a7ab3890dd9e0777e85d8eee48bf59c"
-  version = "kubernetes-1.17.0"
+  revision = "7643814f1c97f24ccfb38c2b85a7bb3c7f494346"
+  version = "kubernetes-1.17.1"
 
 [[projects]]
   digest = "1:b42c3e7b0424c7099cb8b3376f399b505d3ed6b5be2b42407cbfebb7fc1883a8"
   name = "k8s.io/apiextensions-apiserver"
   packages = ["pkg/features"]
   pruneopts = "NUT"
-  revision = "ea07e0496fdfc3befebe481bd6f850febc41cdae"
-  version = "kubernetes-1.17.0"
+  revision = "b5a272542936afc18274ed29820e60974a494ae4"
+  version = "kubernetes-1.17.1"
 
 [[projects]]
   digest = "1:08ea258279e20e2d8ab64fa74065f60eced9c08dacd64417c85623f3a37bef35"
@@ -904,10 +892,10 @@
   ]
   pruneopts = "NUT"
   revision = "79c2a76c473a20cdc4ce59cae4b72529b5d9d16b"
-  version = "kubernetes-1.17.0"
+  version = "kubernetes-1.17.1"
 
 [[projects]]
-  digest = "1:315970195936d5c9b1acf1aa9ab10e8c7233bf8011538afeba1c12c9bf6a0c33"
+  digest = "1:71d84b463cfc67d84eb6c82d041f9868836a882fbd19cfa8b7eb3e902bc0f69c"
   name = "k8s.io/apiserver"
   packages = [
     "pkg/admission",
@@ -927,7 +915,9 @@
     "pkg/admission/plugin/webhook/request",
     "pkg/admission/plugin/webhook/rules",
     "pkg/apis/apiserver",
+    "pkg/apis/apiserver/install",
     "pkg/apis/apiserver/v1",
+    "pkg/apis/apiserver/v1alpha1",
     "pkg/apis/audit",
     "pkg/apis/audit/v1",
     "pkg/apis/audit/v1alpha1",
@@ -938,6 +928,7 @@
     "pkg/authentication/user",
     "pkg/authorization/authorizer",
     "pkg/features",
+    "pkg/server/egressselector",
     "pkg/storage",
     "pkg/storage/etcd3",
     "pkg/storage/etcd3/metrics",
@@ -946,11 +937,11 @@
     "pkg/util/webhook",
   ]
   pruneopts = "NUT"
-  revision = "b79eb8a53681ea45917adf091f05f4c862cadd67"
-  version = "kubernetes-1.17.0"
+  revision = "5381f05fcb881d39af12eeecab5645364229300c"
+  version = "kubernetes-1.17.1"
 
 [[projects]]
-  digest = "1:832a5df50a363a00875b857fb9c030fc68c058cf392f0d20e9672ff6e4042bc4"
+  digest = "1:ac8daf1ffb5f00bfb2445405b529f3a4cd833263498106421f13a9823462e3d2"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1135,8 +1126,8 @@
     "util/workqueue",
   ]
   pruneopts = "NUT"
-  revision = "c68b62b1efa14564a47d67c07f013dc3553937b9"
-  version = "kubernetes-1.17.0"
+  revision = "69012f50f4b0243bccdb82c24402a10224a91f51"
+  version = "kubernetes-1.17.1"
 
 [[projects]]
   digest = "1:8922fc911b023e346120785dbd3a2efb3de673d7140c5b323783a9610ca49c02"
@@ -1147,8 +1138,8 @@
     "volume/helpers",
   ]
   pruneopts = "NUT"
-  revision = "23c4c4effb51a3aa6dc504c28a900e4ce4bd74ec"
-  version = "v0.17.1"
+  revision = "758e97ea20c6d9b847b8c9abf73fac3c1df1844c"
+  version = "v0.16.4"
 
 [[projects]]
   digest = "1:e6a82ae3de82cac318c221ea731f1a45ca0de9840afd9c6fecf39f78d6c05e93"
@@ -1163,8 +1154,8 @@
     "version",
   ]
   pruneopts = "NUT"
-  revision = "e22fc98bf46cf388fdc8cb047daf7a6b4f208954"
-  version = "v0.17.1"
+  revision = "d28e171e54a29670f44b1cc6eed68fd609028f62"
+  version = "kubernetes-1.17.0"
 
 [[projects]]
   digest = "1:5e496d711fa03e4aaf3cab0d7de079634a9465ebf940613b69b34f5cc6513db8"
@@ -1210,7 +1201,7 @@
   version = "v0.17.1"
 
 [[projects]]
-  digest = "1:fb50eeed2b6304f7bb018ed240c2a968f1d1e94950e7ca89ee9f0b66c2c2bf10"
+  digest = "1:52c5be3a1f72d9537a26eec9e472bb43d19aab70cc5b9813c990cacfd59725d8"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/api/legacyscheme",
@@ -1232,6 +1223,7 @@
     "pkg/apis/policy",
     "pkg/apis/policy/validation",
     "pkg/apis/scheduling",
+    "pkg/apis/storage/v1/util",
     "pkg/capabilities",
     "pkg/client/conditions",
     "pkg/controller",
@@ -1287,11 +1279,13 @@
     "pkg/volume/util/volumepathhandler",
     "test/e2e/framework",
     "test/e2e/framework/auth",
+    "test/e2e/framework/config",
     "test/e2e/framework/ginkgowrapper",
     "test/e2e/framework/log",
     "test/e2e/framework/metrics",
     "test/e2e/framework/node",
     "test/e2e/framework/pod",
+    "test/e2e/framework/pv",
     "test/e2e/framework/resource",
     "test/e2e/framework/ssh",
     "test/e2e/perftype",
@@ -1301,8 +1295,8 @@
     "third_party/forked/golang/expansion",
   ]
   pruneopts = "NUT"
-  revision = "70132b0f130acc0bed193d9ba59dd186f0e634cf"
-  version = "v1.17.0"
+  revision = "d224476cd0730baca2b6e357d144171ed74192d6"
+  version = "v1.17.1"
 
 [[projects]]
   branch = "master"
@@ -1345,8 +1339,6 @@
     "github.com/kubernetes-csi/csi-lib-utils/connection",
     "github.com/kubernetes-csi/csi-lib-utils/protosanitizer",
     "github.com/kubernetes-csi/csi-lib-utils/rpc",
-    "github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1",
-    "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/pborman/uuid",
@@ -1377,7 +1369,10 @@
     "k8s.io/kubernetes/pkg/util/resizefs",
     "k8s.io/kubernetes/pkg/volume",
     "k8s.io/kubernetes/test/e2e/framework",
+    "k8s.io/kubernetes/test/e2e/framework/config",
     "k8s.io/kubernetes/test/e2e/framework/log",
+    "k8s.io/kubernetes/test/e2e/framework/pod",
+    "k8s.io/kubernetes/test/e2e/framework/pv",
     "k8s.io/kubernetes/test/utils",
     "k8s.io/utils/exec",
     "k8s.io/utils/mount",
