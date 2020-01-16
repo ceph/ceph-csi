@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -153,10 +154,15 @@ func waitForPath(ctx context.Context, pool, image string, maxRetries int, useNbd
 
 // Check if rbd-nbd tools are installed.
 func checkRbdNbdTools() bool {
-	_, err := execCommand("modprobe", []string{moduleNbd})
-	if err != nil {
-		klog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err)
-		return false
+	// check if the module is loaded or compiled in
+	_, err := os.Stat(fmt.Sprintf("/sys/module/%s", moduleNbd))
+	if os.IsNotExist(err) {
+		// try to load the module
+		_, err = execCommand("modprobe", []string{moduleNbd})
+		if err != nil {
+			klog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err)
+			return false
+		}
 	}
 	if _, err := execCommand(rbdTonbd, []string{"--version"}); err != nil {
 		klog.V(3).Infof("rbd-nbd: running rbd-nbd --version failed with error %v", err)
