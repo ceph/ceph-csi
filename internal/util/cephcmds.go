@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/ceph/go-ceph/rados"
 	"k8s.io/klog"
 )
 
@@ -86,21 +87,23 @@ func getPools(ctx context.Context, monitors string, cr *Credentials) ([]cephStor
 	return pools, nil
 }
 
-// GetPoolID searches a list of pools in a cluster and returns the ID of the pool that matches
-// the passed in poolName parameter
+// GetPoolID fetches the ID of the pool that matches the passed in poolName
+// parameter
 func GetPoolID(ctx context.Context, monitors string, cr *Credentials, poolName string) (int64, error) {
-	pools, err := getPools(ctx, monitors, cr)
+	conn, err := connPool.Get(monitors, cr.ID, cr.KeyFile)
 	if err != nil {
 		return 0, err
 	}
+	defer connPool.Put(conn)
 
-	for _, p := range pools {
-		if poolName == p.Name {
-			return p.Number, nil
-		}
+	id, err := conn.GetPoolByName(poolName)
+	if err == rados.ErrNotFound {
+		return 0, ErrPoolNotFound{poolName, fmt.Errorf("pool (%s) not found in Ceph cluster", poolName)}
+	} else if err != nil {
+		return 0, err
 	}
 
-	return 0, fmt.Errorf("pool (%s) not found in Ceph cluster", poolName)
+	return id, nil
 }
 
 // GetPoolName lists all pools in a ceph cluster, and matches the pool whose pool ID is equal to
