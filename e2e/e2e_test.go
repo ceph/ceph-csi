@@ -25,7 +25,7 @@ func init() {
 	setDefaultKubeconfig()
 
 	// Register framework flags, then handle flags
-	framework.HandleFlags()
+	handleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
 
 	fmt.Println("timeout for deploytimeout ", deployTimeout)
