@@ -145,10 +145,10 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		pOpts.RbdImageName, volSzMiB, pOpts.ImageFeatures, pOpts.Monitors, pOpts.Pool)
 
 	if pOpts.ImageFeatures != "" {
-		features := imageFeaturesToUint64(ctx, pOpts.ImageFeatures)
-		err := options.SetUint64(librbd.RbdImageOptionFeatures, features)
+		fs := librbd.FeatureSetFromNames(strings.Split(",", pOpts.ImageFeatures))
+		err := options.SetUint64(librbd.RbdImageOptionFeatures, uint64(fs))
 		if err != nil {
-			return errors.Wrapf(err, "failed to set image features")
+			return errors.Wrapf(err, "failed to set features: %s", pOpts.ImageFeatures)
 		}
 	}
 
@@ -648,21 +648,6 @@ func hasSnapshotFeature(imageFeatures string) bool {
 		}
 	}
 	return false
-}
-
-// imageFeaturesToUint64 takes the comma separated image features and converts
-// them to a RbdImageOptionFeatures value.
-func imageFeaturesToUint64(ctx context.Context, imageFeatures string) uint64 {
-	features := uint64(0)
-
-	for _, f := range strings.Split(imageFeatures, ",") {
-		if f == "layering" {
-			features |= librbd.RbdFeatureLayering
-		} else {
-			klog.Warningf(util.Log(ctx, "rbd: image feature %s not recognized, skipping"), f)
-		}
-	}
-	return features
 }
 
 func protectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
