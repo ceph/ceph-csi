@@ -25,8 +25,17 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"k8s.io/klog"
+)
+
+var (
+	// TODO: consolidate with rbd.connPool
+	// large interval and timeout, it should be longer than the maximum
+	// time an operation can take (until refcounting of the connections is
+	// available)
+	connPool = NewConnPool(15*time.Minute, 10*time.Minute)
 )
 
 // ExecCommand executes passed in program with args and returns separate stdout and stderr streams
@@ -86,15 +95,15 @@ func getPools(ctx context.Context, monitors string, cr *Credentials) ([]cephStor
 // GetPoolID searches a list of pools in a cluster and returns the ID of the pool that matches
 // the passed in poolName parameter
 func GetPoolID(ctx context.Context, monitors string, cr *Credentials, poolName string) (int64, error) {
-	pools, err := getPools(ctx, monitors, cr)
+	conn, err := connPool.Get(poolName, monitors, cr.KeyFile)
 	if err != nil {
 		return 0, err
 	}
+	defer connPool.Put(conn)
 
-	for _, p := range pools {
-		if poolName == p.Name {
-			return p.Number, nil
-		}
+	id, err := conn.GetPoolByName(poolName)
+	if err == nil {
+		return id, nil
 	}
 
 	return 0, fmt.Errorf("pool (%s) not found in Ceph cluster", poolName)
