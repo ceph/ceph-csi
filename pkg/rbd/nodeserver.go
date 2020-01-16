@@ -323,10 +323,10 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 			args = []string{"-K", devicePath}
 		}
 		if len(args) > 0 {
-			_, err = diskMounter.Exec.Command("mkfs."+fsType, args...).CombinedOutput()
-			if err != nil {
-				klog.Errorf(util.Log(ctx, "failed to run mkfs, error: %v"), err)
-				return err
+			cmdOut, cmdErr := diskMounter.Exec.Command("mkfs."+fsType, args...).CombinedOutput()
+			if cmdErr != nil {
+				klog.Errorf(util.Log(ctx, "failed to run mkfs error: %v, output: %v"), cmdErr, cmdOut)
+				return cmdErr
 			}
 		}
 	}
