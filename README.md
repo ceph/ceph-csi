@@ -61,15 +61,15 @@ NOTE:
 
 | Plugin | Features                                                  | Feature Status | CSI Driver Version | CSI Spec Version | Ceph Cluster Version | Kubernetes Version |
 | ------ | --------------------------------------------------------- | -------------- | ------------------ | ---------------- | -------------------- | ------------------ |
-| RBD    | Dynamically provision, de-provision Block mode RWO volume | GA             | >= v1.0.0          | >= v1.0.0        | >= Mimic             | >= v1.13.0         |
-|        | Dynamically provision, de-provision Block mode RWX volume | GA             | >= v1.0.0          | >= v1.0.0        | >= Mimic             | >= v1.13.0         |
-|        | Dynamically provision, de-provision File mode RWO volume  | GA             | >= v1.0.0          | >= v1.0.0        | >= Mimic             | >= v1.13.0         |
-|        | Creating and deleting snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | >= Mimic             | >= v1.13.0         |
-|        | Provision volume from snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | >= Mimic             | >= v1.13.0         |
+| RBD    | Dynamically provision, de-provision Block mode RWO volume | GA             | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.13.0         |
+|        | Dynamically provision, de-provision Block mode RWX volume | GA             | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.13.0         |
+|        | Dynamically provision, de-provision File mode RWO volume  | GA             | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.13.0         |
+|        | Creating and deleting snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.13.0         |
+|        | Provision volume from snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.13.0         |
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
-|        | Resize volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | >= Mimic             | >= v1.15.0         |
-|        | Metrics Support                                           | Beta           | >= v1.2.0          | >= v1.1.0        | >= Mimic (>=v13.0.0) | >= v1.15.0         |
-| CephFS | Dynamically provision, de-provision File mode RWO volume  | Alpha          | >= v1.1.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.13.0         |
+|        | Resize volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
+|        | Metrics Support                                           | Beta           | >= v1.2.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
+| CephFS | Dynamically provision, de-provision File mode RWO volume  | Alpha          | >= v1.1.0          | >= v1.0.0        | Nautilus (>=14.2.2)  | >= v1.13.0         |
 |        | Dynamically provision, de-provision File mode RWX volume  | Alpha          | >= v1.1.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.13.0         |
 |        | Creating and deleting snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from snapshot                            | -              | -                  | -                | -                    | -                  |
