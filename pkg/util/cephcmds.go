@@ -128,21 +128,25 @@ func GetPoolName(ctx context.Context, monitors string, cr *Credentials, poolID i
 
 // SetOMapKeyValue sets the given key and value into the provided Ceph omap name
 func SetOMapKeyValue(ctx context.Context, monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey, keyValue string) error {
-	// Command: "rados <options> setomapval oMapName oMapKey keyValue"
-	args := []string{
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-c", CephConfigPath,
-		"-p", poolName,
-		"setomapval", oMapName, oMapKey, keyValue,
+	conn, err := connPool.Get(poolName, monitors, cr.KeyFile)
+	if err != nil {
+		return err
 	}
+	defer connPool.Put(conn)
+
+	ioctx, err := conn.OpenIOContext(poolName)
+	if err != nil {
+		return err
+	}
+	defer ioctx.Destroy()
 
 	if namespace != "" {
-		args = append(args, "--namespace="+namespace)
+		ioctx.SetNamespace(namespace)
 	}
 
-	_, _, err := ExecCommand("rados", args[:]...)
+	pair := make(map[string][]byte, 1)
+	pair[oMapKey] = []byte(keyValue)
+	err = ioctx.SetOmap(oMapName, pair)
 	if err != nil {
 		klog.Errorf(Log(ctx, "failed adding key (%s with value %s), to omap (%s) in "+
 			"pool (%s): (%v)"), oMapKey, keyValue, oMapName, poolName, err)
