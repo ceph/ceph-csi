@@ -93,7 +93,7 @@ var _ = Describe("cephfs", func() {
 			var err error
 			sts := deployProvAsSTS(f.ClientSet)
 			if sts {
-				err = framework.WaitForStatefulSetReplicasReady(cephfsDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
+				err = waitForStatefulSetReplicasReady(cephfsDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
 			} else {
 				err = waitForDeploymentComplete(cephfsDeploymentName, namespace, f.ClientSet, deployTimeout)
 			}

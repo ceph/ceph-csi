@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/kubernetes/test/e2e/framework"
+	config "k8s.io/kubernetes/test/e2e/framework/config"
 )
 
 var (
@@ -25,7 +26,7 @@ func init() {
 	setDefaultKubeconfig()
 
 	// Register framework flags, then handle flags
-	framework.HandleFlags()
+	handleFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
 
 	fmt.Println("timeout for deploytimeout ", deployTimeout)
@@ -50,4 +51,11 @@ var _ = AfterSuite(func() {
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "E2e Suite")
+}
+
+func handleFlags() {
+	config.CopyFlags(config.Flags, flag.CommandLine)
+	framework.RegisterCommonFlags(flag.CommandLine)
+	framework.RegisterClusterFlags(flag.CommandLine)
+	flag.Parse()
 }
