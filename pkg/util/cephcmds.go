@@ -21,12 +21,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/ceph/go-ceph/rados"
 	"k8s.io/klog"
 )
 
@@ -158,53 +157,45 @@ func SetOMapKeyValue(ctx context.Context, monitors string, cr *Credentials, pool
 
 // GetOMapValue gets the value for the given key from the named omap
 func GetOMapValue(ctx context.Context, monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey string) (string, error) {
-	// Command: "rados <options> getomapval oMapName oMapKey <outfile>"
-	// No such key: replicapool/csi.volumes.directory.default/csi.volname
-	tmpFile, err := ioutil.TempFile("", "omap-get-")
+	conn, err := connPool.Get(poolName, monitors, cr.KeyFile)
 	if err != nil {
-		klog.Errorf(Log(ctx, "failed creating a temporary file for key contents"))
 		return "", err
 	}
-	defer tmpFile.Close()
-	defer os.Remove(tmpFile.Name())
+	defer connPool.Put(conn)
 
-	args := []string{
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-c", CephConfigPath,
-		"-p", poolName,
-		"getomapval", oMapName, oMapKey, tmpFile.Name(),
+	ioctx, err := conn.OpenIOContext(poolName)
+	if err != nil {
+		return "", err
 	}
+	defer ioctx.Destroy()
 
 	if namespace != "" {
-		args = append(args, "--namespace="+namespace)
+		ioctx.SetNamespace(namespace)
 	}
 
-	stdout, stderr, err := ExecCommand("rados", args[:]...)
-	if err != nil {
-		// no logs, as attempting to check for non-existent key/value is done even on
-		// regular call sequences
-		stdoutanderr := strings.Join([]string{string(stdout), string(stderr)}, " ")
-		if strings.Contains(stdoutanderr, "No such key: "+poolName+"/"+oMapName+"/"+oMapKey) {
-			return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, err}
-		}
+	pairs, err := ioctx.GetOmapValues(oMapName, "", oMapKey, 1)
+	if err == rados.RadosErrorNotFound {
+		// log other errors for troubleshooting assistance
+		klog.Errorf(Log(ctx, "omap (%s) not found in pool (%s), while checking key (%s)"),
+			oMapName, poolName, oMapKey)
 
-		if strings.Contains(stdoutanderr, "error getting omap value "+
-			poolName+"/"+oMapName+"/"+oMapKey+": (2) No such file or directory") {
-			return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, err}
-		}
-
+		return "", ErrKeyNotFound{keyName: oMapKey, err: err}
+	} else if err != nil {
 		// log other errors for troubleshooting assistance
 		klog.Errorf(Log(ctx, "failed getting omap value for key (%s) from omap (%s) in pool (%s): (%v)"),
 			oMapKey, oMapName, poolName, err)
 
-		return "", fmt.Errorf("error (%v) occurred, command output streams is (%s)",
-			err.Error(), stdoutanderr)
+		return "", fmt.Errorf("error (%v) occurred", err.Error())
 	}
 
-	keyValue, err := ioutil.ReadAll(tmpFile)
-	return string(keyValue), err
+	keyValue, ok := pairs[oMapKey]
+	if !ok {
+		klog.Errorf(Log(ctx, "could not find key (%s) from omap (%s) in pool (%s)"),
+			oMapKey, oMapName, poolName)
+
+		return "", ErrKeyNotFound{keyName: oMapKey, err: nil}
+	}
+	return string(keyValue), nil
 }
 
 // RemoveOMapKey removes the omap key from the given omap name
