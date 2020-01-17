@@ -1,21 +1,30 @@
-# Resize RBD PVCs
+# Dynamically Expand Volume
 
-For filesystem resize to be supported for your kubernetes
-cluster, the kubernetes version running in your cluster
-should be >= v1.15 and for block volume resize support
-the kubernetes version should be >=1.16. Also, `ExpandCSIVolumes`
-feature gate has to be enabled for the volume resize
-functionality to work.
+- [Dynamically Expand Volume](#dynamically-expand-volume)
+  - [Prerequisite](#prerequisite)
+    - [Expand RBD PVCs](#expand-rbd-pvcs)
+      - [Expand RBD Filesystem PVC](#expand-rbd-filesystem-pvc)
+      - [Expand RBD Block PVC](#expand-rbd-block-pvc)
+    - [Expand CephFS PVC](#expand-cephfs-pvc)
+      - [Expand CephFS Filesystem PVC](#expand-cephfs-filesystem-pvc)
 
-- [Resize RBD PVCs](#resize-rbd-pvcs)
-  - [Filesystem resize on RBD filesystem volume mode PVCs](#filesystem-resize-on-rbd-filesystem-volume-mode-pvcs)
-  - [Resize Block PVC](#resize-block-pvc)
+## Prerequisite
 
-## Filesystem resize on RBD filesystem volume mode PVCs
+- For filesystem resize to be supported for your kubernetes cluster, the
+  kubernetes version running in your cluster should be >= v1.15 and for block
+  volume resize support the kubernetes version should be >=1.16. Also,
+  `ExpandCSIVolumes` feature gate has to be enabled for the volume resize
+  functionality to work.
+
+- The controlling StorageClass must have allowVolumeExpansion set to true.
+
+### Expand RBD PVCs
+
+#### Expand RBD Filesystem PVC
 
 pvc.yaml
 
-```
+```yaml
 apiVersion: v1
 items:
 - apiVersion: v1
@@ -56,16 +65,14 @@ metadata:
 
 - mounted Filesystem size in pod using this PVC
 
-```
+```bash
 [$]kubectl exec -it csi-rbd-demo-pod sh
 # df -h /var/lib/www/html
 Filesystem      Size  Used Avail Use% Mounted on
 /dev/rbd0       976M  2.6M  958M   1% /var/lib/www/html
-#
-
 ```
 
-- Now resize the PVC by editing the PVC (pvc.spec.resource.requests.storage)
+- Now expand the PVC by editing the PVC (pvc.spec.resource.requests.storage)
 
 ```bash
 [$]kubectl edit pvc rbd-pvc
@@ -73,7 +80,7 @@ Filesystem      Size  Used Avail Use% Mounted on
 
 Check PVC status after editing the pvc storage
 
-```console
+```yaml
 apiVersion: v1
 items:
 - apiVersion: v1
@@ -117,7 +124,6 @@ kind: List
 metadata:
   resourceVersion: ""
   selfLink: ""
-
 ```
 
 Now you can see the pvc status as `FileSystemResizePending`, once the kubelet
@@ -128,7 +134,6 @@ and `status` will be updated
 [$]kubectl get pvc
 NAME      STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS      AGE
 rbd-pvc   Bound    pvc-efe688d6-a420-4041-900e-c5e19fd73ebf   10Gi       RWO            csi-rbd-sc   7m6s
-
 ```
 
 - Now let us check the directory size inside the pod where PVC is mounted
@@ -142,7 +147,7 @@ Filesystem      Size  Used Avail Use% Mounted on
 
 now you can see the size of `/var/lib/www/html` is updated from 976M to 9.9G
 
-## Resize Block PVC
+#### Expand RBD Block PVC
 
 ```bash
 [$]kubectl get pvc raw-block-pvc -o yaml
@@ -189,19 +194,18 @@ sh-4.4# blockdev --getsize64 /dev/xvda
 rbd Block PVC is mounted at `/dev/xvda` of the pod, and the size is `1073741824`
 bytes which is equal to `1Gib`
 
-- Now resize the PVC
+- Now expand the PVC
 
- To resize PVC, change `(pvc.spec.resource.requests.storage)` to the new size
+ To expand PVC, change `(pvc.spec.resource.requests.storage)` to the new size
  which should be greater than the current size.
 
 ```bash
 [$]kubectl edit pvc raw-block-pvc
-
 ```
 
 Check PVC status after editing the pvc storage
 
-```console
+```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -239,7 +243,6 @@ status:
     status: "True"
     type: FileSystemResizePending
   phase: Bound
-
 ```
 
 Now you can see the pvc stats as FileSystemResizePending, once the kubelet calls
@@ -247,22 +250,138 @@ the NodeExpandVolume to resize the PVC on node, the status conditions will be up
 and status.capacity.storage will be updated.
 
 ```bash
-
 [$]kubectl get pvc
 NAME      STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS      AGE
 raw-block-pvc   Bound    pvc-efe688d6-a420-4041-900e-c5e19fd73ebf   10Gi       RWO            csi-rbd-sc   7m6s
-
 ```
 
 Device size in pod using this PVC
 
 ```bash
-
 [$]kubectl exec -it pod-with-raw-block-volume sh
 sh-4.4# blockdev --getsize64 /dev/xvda
 10737418240
-
 ```
 
 rbd Block PVC is mounted at `/dev/xvda` of the pod, and the size is
 `10737418240` bytes which is equal to `10Gib`
+
+### Expand CephFS PVC
+
+#### Expand CephFS Filesystem PVC
+
+pvc.yaml
+
+```yaml
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    annotations:
+      pv.kubernetes.io/bind-completed: "yes"
+      pv.kubernetes.io/bound-by-controller: "yes"
+      volume.beta.kubernetes.io/storage-provisioner: cephfs.csi.ceph.com
+    creationTimestamp: "2020-01-17T07:55:11Z"
+    finalizers:
+    - kubernetes.io/pvc-protection
+    name: csi-cephfs-pvc
+    namespace: default
+    resourceVersion: "5955"
+    selfLink: /api/v1/namespaces/default/persistentvolumeclaims/csi-cephfs-pvc
+    uid: b84d07c9-ea67-40b4-96b9-4a79669b1ccc
+  spec:
+    accessModes:
+    - ReadWriteMany
+    resources:
+      requests:
+        storage: 5Gi
+    storageClassName: csi-cephfs-sc
+    volumeMode: Filesystem
+    volumeName: pvc-b84d07c9-ea67-40b4-96b9-4a79669b1ccc
+  status:
+    accessModes:
+    - ReadWriteMany
+    capacity:
+      storage: 5Gi
+    phase: Bound
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""
+```
+
+- mounted Filesystem size in pod using this PVC
+
+```bash
+[$]kubectl exec -it csi-cephfs-demo-pod sh
+# df -h /var/lib/www
+Filesystem                                                                     Size  Used Avail Use% Mounted on
+10.108.149.216:6789:/volumes/csi/csi-vol-b0a1bc79-38fe-11ea-adb6-1a2797ee96de  5.0G     0  5.0G   0% /var/lib/www
+```
+
+- Now expand the PVC by editing the PVC (pvc.spec.resource.requests.storage)
+
+```bash
+[$]kubectl edit pvc csi-cephfs-pvc
+```
+
+Check PVC status after editing the pvc storage
+
+```yaml
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    annotations:
+      pv.kubernetes.io/bind-completed: "yes"
+      pv.kubernetes.io/bound-by-controller: "yes"
+      volume.beta.kubernetes.io/storage-provisioner: cephfs.csi.ceph.com
+    creationTimestamp: "2020-01-17T07:55:11Z"
+    finalizers:
+    - kubernetes.io/pvc-protection
+    name: csi-cephfs-pvc
+    namespace: default
+    resourceVersion: "6902"
+    selfLink: /api/v1/namespaces/default/persistentvolumeclaims/csi-cephfs-pvc
+    uid: b84d07c9-ea67-40b4-96b9-4a79669b1ccc
+  spec:
+    accessModes:
+    - ReadWriteMany
+    resources:
+      requests:
+        storage: 10Gi
+    storageClassName: csi-cephfs-sc
+    volumeMode: Filesystem
+    volumeName: pvc-b84d07c9-ea67-40b4-96b9-4a79669b1ccc
+  status:
+    accessModes:
+    - ReadWriteMany
+    capacity:
+      storage: 10Gi
+    phase: Bound
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""
+```
+
+Now you can see the pvc status capacity storage is updated with request size
+
+```bash
+[$]kubectl get pvc
+NAME             STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS    AGE
+csi-cephfs-pvc   Bound    pvc-b84d07c9-ea67-40b4-96b9-4a79669b1ccc   10Gi       RWX            csi-cephfs-sc   6m26s
+```
+
+- Now let us check the directory size inside the pod where PVC is mounted
+
+```bash
+[$]kubectl exec -it csi-cephfs-demo-pod sh
+#  df -h /var/lib/www
+Filesystem                                                                     Size  Used Avail Use% Mounted on
+10.108.149.216:6789:/volumes/csi/csi-vol-b0a1bc79-38fe-11ea-adb6-1a2797ee96de   10G     0   10G   0% /var/lib/www
+```
+
+now you can see the size of `/var/lib/www` is updated from 5G to 10G
