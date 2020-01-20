@@ -61,16 +61,17 @@ build_push_images() {
 
 	# build and push per arch images
 	for ARCH in amd64 arm64; do
-		ifs=$IFS; IFS=
-		digest=$(awk -v ARCH=${ARCH} '{if (archfound) {print $NF; exit 0}}; {archfound=($0 ~ "arch.*"ARCH)}' <<< "${manifests}")
+		ifs=$IFS
+		IFS=
+		digest=$(awk -v ARCH=${ARCH} '{if (archfound) {print $NF; exit 0}}; {archfound=($0 ~ "arch.*"ARCH)}' <<<"${manifests}")
 		IFS=$ifs
 		sed -i "s|\(^FROM.*\)${baseimg}.*$|\1${baseimg}@${digest}|" "${dockerfile}"
 		GOARCH=${ARCH} make push-image-cephcsi
 	done
 }
 
-if [ "${TRAVIS_BRANCH}" == 'master' ]; then
-	export ENV_CSI_IMAGE_VERSION='canary'
+if [ "${TRAVIS_BRANCH}" == 'release-v2.0' ]; then
+	export ENV_CSI_IMAGE_VERSION='v2.0.0'
 else
 	echo "!!! Branch ${TRAVIS_BRANCH} is not a deployable branch; exiting"
 	exit 0 # Exiting 0 so that this isn't marked as failing
