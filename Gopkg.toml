@@ -20,23 +20,23 @@
   version = "1.0.0"
 
 [[override]]
-  version = "kubernetes-1.15.2"
+  version = "kubernetes-1.17.1"
   name = "k8s.io/apimachinery"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "=v1.15.2"
+  version = "=v1.17.1"
 
 [[override]]
-  version = "kubernetes-1.15.2"
+  version = "kubernetes-1.17.1"
   name = "k8s.io/api"
 
 [[override]]
-  version = "kubernetes-1.15.2"
+  version = "kubernetes-1.17.1"
   name = "k8s.io/apiserver"
 
 [[override]]
-  version = "kubernetes-1.15.2"
+  version = "kubernetes-1.17.1"
   name = "k8s.io/cli-runtime"
 
 [[override]]
@@ -45,7 +45,7 @@
 
 [[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.15.2"
+  version = "kubernetes-1.17.1"
 
 [[override]]
   name = "github.com/kubernetes-csi/external-snapshotter"
@@ -53,11 +53,11 @@
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.15.2"
+  version = "kubernetes-1.17.1"
 
 [[override]]
   name = "k8s.io/kube-aggregator"
-  version = "kubernetes-1.15.2"
+  version = "kubernetes-1.17.1"
 
 [[constraint]]
   name = "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -66,6 +66,14 @@
 [[constraint]]
   name = "github.com/prometheus/client_golang"
   version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/kubernetes-csi/csi-lib-utils"
+  version = "v0.6.1"
+
+[[constraint]]
+  branch = "master"
+  name = "k8s.io/utils"
 
 [prune]
   go-tests = true
@@ -76,3 +84,4 @@
 [[prune.project]]
   name = "github.com/kubernetes-csi/external-snapshotter"
   non-go = false
+

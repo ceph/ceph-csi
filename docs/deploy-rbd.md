@@ -71,11 +71,9 @@ is required for provisioning new RBD images.
 
 ## Deployment with Kubernetes
 
-Requires Kubernetes 1.13+
+Requires Kubernetes 1.14+
 
-if your cluster version is 1.13.x please use [rbd v1.13
-templates](../deploy/rbd/kubernetes/v1.13) or else use [rbd v1.14+
-templates](../deploy/rbd/kubernetes/v1.14+)
+Use the [rbd templates](../deploy/rbd/kubernetes)
 
 Your Kubernetes cluster must allow privileged pods (i.e. `--allow-privileged`
 flag must be set to true for both the API server and the kubelet). Moreover, as

@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo" // nolint
 
@@ -17,17 +16,12 @@ var (
 	rbdNodePlugin      = "csi-rbdplugin.yaml"
 	rbdNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
 	configMap          = "csi-config-map.yaml"
-	rbdDirPath         = "../deploy/rbd/kubernetes"
+	rbdDirPath         = "../deploy/rbd/kubernetes/"
 	rbdExamplePath     = "../examples/rbd/"
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
 	namespace          = "default"
 )
-
-func updaterbdDirPath(c clientset.Interface) {
-	version := getKubeVersionToDeploy(c)
-	rbdDirPath = fmt.Sprintf("%s/%s/", rbdDirPath, version)
-}
 
 func deployRBDPlugin() {
 	// delete objects deployed by rook
@@ -66,7 +60,6 @@ var _ = Describe("RBD", func() {
 	// deploy RBD CSI
 	BeforeEach(func() {
 		c = f.ClientSet
-		updaterbdDirPath(f.ClientSet)
 		createConfigMap(rbdDirPath, f.ClientSet, f)
 		deployRBDPlugin()
 		createRBDStorageClass(f.ClientSet, f, make(map[string]string))
@@ -98,15 +91,9 @@ var _ = Describe("RBD", func() {
 			// appClonePath := rbdExamplePath + "pod-restore.yaml"
 			// snapshotPath := rbdExamplePath + "snapshot.yaml"
 
-			By("checking provisioner statefulset/deployment is running")
-			timeout := time.Duration(deployTimeout) * time.Minute
+			By("checking provisioner deployment is running")
 			var err error
-			sts := deployProvAsSTS(f.ClientSet)
-			if sts {
-				err = framework.WaitForStatefulSetReplicasReady(rbdDeploymentName, namespace, f.ClientSet, 1*time.Second, timeout)
-			} else {
-				err = waitForDeploymentComplete(rbdDeploymentName, namespace, f.ClientSet, deployTimeout)
-			}
+			err = waitForDeploymentComplete(rbdDeploymentName, namespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}

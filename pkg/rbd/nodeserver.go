@@ -29,8 +29,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/resizefs"
+	utilexec "k8s.io/utils/exec"
+	"k8s.io/utils/mount"
 )
 
 // NodeServer struct of ceph rbd driver with supported methods of CSI
@@ -297,8 +298,7 @@ func getLegacyVolumeName(mountPath string) (string, error) {
 
 func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, stagingPath, devicePath string) error {
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
-	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
-
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
 	// rbd images are thin-provisioned and return zeros for unwritten areas.  A freshly created
 	// image will not benefit from discard and we also want to avoid as much unnecessary zeroing
 	// as possible.  Open-code mkfs here because FormatAndMount() doesn't accept custom mkfs
@@ -323,10 +323,10 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 			args = []string{"-K", devicePath}
 		}
 		if len(args) > 0 {
-			_, err = diskMounter.Exec.Run("mkfs."+fsType, args...)
-			if err != nil {
-				klog.Errorf(util.Log(ctx, "failed to run mkfs, error: %v"), err)
-				return err
+			cmdOut, cmdErr := diskMounter.Exec.Command("mkfs."+fsType, args...).CombinedOutput()
+			if cmdErr != nil {
+				klog.Errorf(util.Log(ctx, "failed to run mkfs error: %v, output: %v"), cmdErr, cmdOut)
+				return cmdErr
 			}
 		}
 	}
@@ -565,7 +565,7 @@ func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	if volName != imgInfo.ImageName {
 		return nil, status.Errorf(codes.InvalidArgument, "volume name missmatch between request (%s) and stored metadata (%s)", volName, imgInfo.ImageName)
 	}
-	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
 	// TODO check size and return success or error
 	volumePath += "/" + volumeID
 	resizer := resizefs.NewResizeFs(diskMounter)
@@ -627,7 +627,7 @@ func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rb
 	}
 
 	if encrypted == rbdImageRequiresEncryption {
-		diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: mount.NewOsExec()}
+		diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
 		// TODO: update this when adding support for static (pre-provisioned) PVs
 		var existingFormat string
 		existingFormat, err = diskMounter.GetDiskFormat(devicePath)
