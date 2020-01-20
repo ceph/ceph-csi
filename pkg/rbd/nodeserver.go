@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
@@ -57,6 +58,7 @@ type NodeServer struct {
 //   - Map the image (creates a device)
 //   - Create the staging file/directory under staging path
 //   - Stage the device (mount the device mapped for image)
+// nolint: gocyclo
 func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
@@ -91,7 +93,16 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	stagingParentPath := req.GetStagingTargetPath()
 	stagingTargetPath := stagingParentPath + "/" + volID
 
-	isLegacyVolume, volName, err := getVolumeNameByID(volID, stagingParentPath)
+	// check is it a static volume
+	staticVol := false
+	val, ok := req.GetVolumeContext()["staticVolume"]
+	if ok {
+		if staticVol, err = strconv.ParseBool(val); err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+	}
+
+	isLegacyVolume, volName, err := getVolumeNameByID(volID, stagingParentPath, staticVol)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +166,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	isStagePathCreated = true
 
 	// nodeStage Path
-	err = ns.mountVolumeToStagePath(ctx, req, stagingTargetPath, devicePath)
+	err = ns.mountVolumeToStagePath(ctx, req, staticVol, stagingTargetPath, devicePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -298,7 +309,7 @@ func getLegacyVolumeName(mountPath string) (string, error) {
 	return volName, nil
 }
 
-func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, stagingPath, devicePath string) error {
+func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, staticVol bool, stagingPath, devicePath string) error {
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
 	// rbd images are thin-provisioned and return zeros for unwritten areas.  A freshly created
@@ -316,8 +327,8 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 		klog.Errorf(util.Log(ctx, "failed to get disk format for path %s, error: %v"), devicePath, err)
 		return err
 	}
-	// TODO: update this when adding support for static (pre-provisioned) PVs
-	if existingFormat == "" /* && !staticVol */ {
+
+	if existingFormat == "" && !staticVol {
 		args := []string{}
 		if fsType == "ext4" {
 			args = []string{"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1", devicePath}
@@ -721,11 +732,16 @@ func openEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath 
 	return mapperFilePath, nil
 }
 
-func getVolumeNameByID(volID, stagingTargetPath string) (bool, string, error) {
+func getVolumeNameByID(volID, stagingTargetPath string, staticVol bool) (bool, string, error) {
 	volName, err := getVolumeName(volID)
 	if err != nil {
+		if staticVol {
+			return false, volID, nil
+		}
+
 		// error ErrInvalidVolID may mean this is an 1.0.0 version volume, check for name
 		// pattern match in addition to error to ensure this is a likely v1.0.0 volume
+
 		if _, ok := err.(ErrInvalidVolID); !ok || !isLegacyVolumeID(volID) {
 			return false, "", status.Error(codes.InvalidArgument, err.Error())
 		}
