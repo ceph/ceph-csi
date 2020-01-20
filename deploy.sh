@@ -61,8 +61,9 @@ build_push_images() {
 
 	# build and push per arch images
 	for ARCH in amd64 arm64; do
-		ifs=$IFS; IFS=
-		digest=$(awk -v ARCH=${ARCH} '{if (archfound) {print $NF; exit 0}}; {archfound=($0 ~ "arch.*"ARCH)}' <<< "${manifests}")
+		ifs=$IFS
+		IFS=
+		digest=$(awk -v ARCH=${ARCH} '{if (archfound) {print $NF; exit 0}}; {archfound=($0 ~ "arch.*"ARCH)}' <<<"${manifests}")
 		IFS=$ifs
 		sed -i "s|\(^FROM.*\)${baseimg}.*$|\1${baseimg}@${digest}|" "${dockerfile}"
 		GOARCH=${ARCH} make push-image-cephcsi
