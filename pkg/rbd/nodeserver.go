@@ -93,7 +93,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	isLegacyVolume, volName, err := getVolumeNameByID(volID, stagingParentPath)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
 	var isNotMnt bool
