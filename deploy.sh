@@ -71,7 +71,7 @@ build_push_images() {
 }
 
 if [ "${TRAVIS_BRANCH}" == 'release-v2.0' ]; then
-	export ENV_CSI_IMAGE_VERSION='v2.0.0'
+	export ENV_CSI_IMAGE_VERSION='v2.0-canary'
 else
 	echo "!!! Branch ${TRAVIS_BRANCH} is not a deployable branch; exiting"
 	exit 0 # Exiting 0 so that this isn't marked as failing
