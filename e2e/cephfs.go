@@ -13,8 +13,10 @@ import (
 var (
 	cephfsProvisioner     = "csi-cephfsplugin-provisioner.yaml"
 	cephfsProvisionerRBAC = "csi-provisioner-rbac.yaml"
+	cephfsProvisionerPSP  = "csi-provisioner-psp.yaml"
 	cephfsNodePlugin      = "csi-cephfsplugin.yaml"
 	cephfsNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
+	cephfsNodePluginPSP   = "csi-nodeplugin-psp.yaml"
 	cephfsDeploymentName  = "csi-cephfsplugin-provisioner"
 	cephfsDeamonSetName   = "csi-cephfsplugin"
 	cephfsDirPath         = "../deploy/cephfs/kubernetes/"
@@ -28,9 +30,11 @@ func deployCephfsPlugin() {
 	// deploy provisioner
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisioner)
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisionerRBAC)
+	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisionerPSP)
 	// deploy nodeplugin
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePlugin)
 	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePluginRBAC)
+	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePluginPSP)
 }
 
 func deleteCephfsPlugin() {
@@ -42,6 +46,10 @@ func deleteCephfsPlugin() {
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs provisioner rbac %v", err)
 	}
+	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsProvisionerPSP)
+	if err != nil {
+		e2elog.Logf("failed to delete cephfs provisioner psp %v", err)
+	}
 	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePlugin)
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs nodeplugin %v", err)
@@ -49,6 +57,10 @@ func deleteCephfsPlugin() {
 	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePluginRBAC)
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs nodeplugin rbac %v", err)
+	}
+	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePluginPSP)
+	if err != nil {
+		e2elog.Logf("failed to delete cephfs nodeplugin psp %v", err)
 	}
 }
 

@@ -1,0 +1,39 @@
+{{- if .Values.provisioner.podSecurityPolicy.enabled -}}
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: {{ include "ceph-csi-cephfs.provisioner.fullname" . }}
+  labels:
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
+    component: {{ .Values.provisioner.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  allowPrivilegeEscalation: true
+  allowedCapabilities:
+    - 'SYS_ADMIN'
+  fsGroup:
+    rule: RunAsAny
+  privileged: true
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'hostPath'
+  allowedHostPaths:
+    - pathPrefix: '/dev'
+      readOnly: false
+    - pathPrefix: '/sys'
+      readOnly: false
+    - pathPrefix: '/lib/modules'
+      readOnly: true
+{{- end }}
