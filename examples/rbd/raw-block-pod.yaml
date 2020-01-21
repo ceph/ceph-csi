@@ -5,10 +5,9 @@ metadata:
   name: pod-with-raw-block-volume
 spec:
   containers:
-    - name: fc-container
-      image: fedora:26
-      command: ["/bin/sh", "-c"]
-      args: ["tail -f /dev/null"]
+    - name: centos
+      image: centos:latest
+      command: ["/bin/sleep", "infinity"]
       volumeDevices:
         - name: data
           devicePath: /dev/xvda
