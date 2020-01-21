@@ -1,0 +1,49 @@
+{{- if .Values.nodeplugin.podSecurityPolicy.enabled -}}
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: {{ include "ceph-csi-rbd.nodeplugin.fullname" . }}
+  labels:
+    app: {{ include "ceph-csi-rbd.name" . }}
+    chart: {{ include "ceph-csi-rbd.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  allowPrivilegeEscalation: true
+  allowedCapabilities:
+    - 'SYS_ADMIN'
+  fsGroup:
+    rule: RunAsAny
+  privileged: true
+  hostNetwork: true
+  hostPID: true
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'hostPath'
+  allowedHostPaths:
+    - pathPrefix: '/dev'
+      readOnly: false
+    - pathPrefix: '/sys'
+      readOnly: false
+    - pathPrefix: '/lib/modules'
+      readOnly: true
+    - pathPrefix: '/var/lib/kubelet/pods'
+      readOnly: false
+    - pathPrefix: '{{ .Values.socketDir }}'
+      readOnly: false
+    - pathPrefix: '{{ .Values.registrationDir }}'
+      readOnly: false
+    - pathPrefix: '{{ .Values.pluginDir }}'
+      readOnly: false
+{{- end }}

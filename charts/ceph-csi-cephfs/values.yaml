@@ -114,6 +114,11 @@ nodeplugin:
 
   affinity: {}
 
+  # If true, create & use Pod Security Policy resources
+  # https://kubernetes.io/docs/concepts/policy/pod-security-policy/
+  podSecurityPolicy:
+    enabled: false
+
 provisioner:
   name: provisioner
   replicaCount: 3
@@ -212,6 +217,11 @@ provisioner:
   tolerations: []
 
   affinity: {}
+
+  # If true, create & use Pod Security Policy resources
+  # https://kubernetes.io/docs/concepts/policy/pod-security-policy/
+  podSecurityPolicy:
+    enabled: false
 
 #########################################################
 # Variables for 'internal' use please use with caution! #

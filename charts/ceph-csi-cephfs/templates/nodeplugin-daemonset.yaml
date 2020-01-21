@@ -167,7 +167,7 @@ spec:
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
-            path: /var/lib/kubelet/plugins_registry/
+            path: {{ .Values.registrationDir }}
             type: Directory
         - name: mountpoint-dir
           hostPath:
