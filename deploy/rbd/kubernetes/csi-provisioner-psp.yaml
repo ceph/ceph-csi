@@ -1,0 +1,62 @@
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: rbd-csi-provisioner-psp
+spec:
+  allowPrivilegeEscalation: true
+  allowedCapabilities:
+    - 'SYS_ADMIN'
+  fsGroup:
+    rule: RunAsAny
+  privileged: true
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'hostPath'
+  allowedHostPaths:
+    - pathPrefix: '/dev'
+      readOnly: false
+    - pathPrefix: '/sys'
+      readOnly: false
+    - pathPrefix: '/lib/modules'
+      readOnly: true
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  # replace with non-default namespace name
+  namespace: default
+  name: rbd-csi-provisioner-psp
+rules:
+  - apiGroups: ['policy']
+    resources: ['podsecuritypolicies']
+    verbs: ['use']
+    resourceNames: ['rbd-csi-provisioner-psp']
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rbd-csi-provisioner-psp
+  # replace with non-default namespace name
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: rbd-csi-provisioner
+    # replace with non-default namespace name
+    namespace: default
+roleRef:
+  kind: Role
+  name: rbd-csi-provisioner-psp
+  apiGroup: rbac.authorization.k8s.io
