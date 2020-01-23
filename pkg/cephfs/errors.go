@@ -35,3 +35,12 @@ type ErrNonStaticVolume struct {
 func (e ErrNonStaticVolume) Error() string {
 	return e.err.Error()
 }
+
+// ErrVolumeNotFound is returned when a subvolume is not found in CephFS
+type ErrVolumeNotFound struct {
+	err error
+}
+
+func (e ErrVolumeNotFound) Error() string {
+	return e.err.Error()
+}
