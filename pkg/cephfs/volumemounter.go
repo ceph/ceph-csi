@@ -36,6 +36,7 @@ import (
 const (
 	volumeMounterFuse   = "fuse"
 	volumeMounterKernel = "kernel"
+	netDev              = "_netdev"
 )
 
 var (
@@ -229,6 +230,7 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 	if volOptions.FuseMountOptions != "" {
 		args = append(args, ","+volOptions.FuseMountOptions)
 	}
+
 	if volOptions.FsName != "" {
 		args = append(args, "--client_mds_namespace="+volOptions.FsName)
 	}
@@ -288,6 +290,11 @@ func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, v
 	if volOptions.KernelMountOptions != "" {
 		optionsStr += fmt.Sprintf(",%s", volOptions.KernelMountOptions)
 	}
+
+	if !strings.Contains(volOptions.KernelMountOptions, netDev) {
+		optionsStr += fmt.Sprintf(",%s", netDev)
+	}
+
 	args = append(args, "-o", optionsStr)
 
 	return execCommandErr(ctx, "mount", args[:]...)
