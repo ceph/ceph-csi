@@ -163,7 +163,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 // NodePublishVolume mounts the volume mounted to the staging path to the target
 // path
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	mountOptions := []string{"bind"}
+	mountOptions := []string{"bind", "_netdev"}
 	if err := util.ValidateNodePublishVolumeRequest(req); err != nil {
 		return nil, err
 	}
@@ -182,27 +182,11 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	volCap := req.GetVolumeCapability()
-
 	if req.GetReadonly() {
 		mountOptions = append(mountOptions, "ro")
 	}
 
-	if m := volCap.GetMount(); m != nil {
-		hasOption := func(options []string, opt string) bool {
-			for _, o := range options {
-				if o == opt {
-					return true
-				}
-			}
-			return false
-		}
-		for _, f := range m.MountFlags {
-			if !hasOption(mountOptions, f) {
-				mountOptions = append(mountOptions, f)
-			}
-		}
-	}
+	mountOptions = csicommon.ConstructMountOptions(mountOptions, req.GetVolumeCapability())
 
 	// Check if the volume is already mounted
 
