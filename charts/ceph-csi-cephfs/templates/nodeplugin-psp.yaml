@@ -34,6 +34,8 @@ spec:
   allowedHostPaths:
     - pathPrefix: '/dev'
       readOnly: false
+    - pathPrefix: '/run/mount'
+      readOnly: false
     - pathPrefix: '/sys'
       readOnly: false
     - pathPrefix: '/lib/modules'
