@@ -52,8 +52,12 @@ func getCephRootPathLocalDeprecated(volID volumeID) string {
 	return fmt.Sprintf("%s/controller/volumes/root-%s", PluginFolder, string(volID))
 }
 
+func getVolumeNotFoundErrorString(volID volumeID) string {
+	return fmt.Sprintf("Error ENOENT: Subvolume '%s' not found", string(volID))
+}
+
 func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (string, error) {
-	stdout, _, err := util.ExecCommand(
+	stdout, stderr, err := util.ExecCommand(
 		"ceph",
 		"fs",
 		"subvolume",
@@ -69,6 +73,11 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to get the rootpath for the vol %s(%s)"), string(volID), err)
+
+		if strings.Contains(string(stderr), getVolumeNotFoundErrorString(volID)) {
+			return "", ErrVolumeNotFound{err}
+		}
+
 		return "", err
 	}
 	return strings.TrimSuffix(string(stdout), "\n"), nil
@@ -204,13 +213,17 @@ func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volO
 		string(volID),
 		"--group_name",
 		csiSubvolumeGroup,
-		"--force",
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix+cr.ID,
 		"--keyfile="+cr.KeyFile)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to purge subvolume %s(%s) in fs %s"), string(volID), err, volOptions.FsName)
+
+		if strings.Contains(err.Error(), getVolumeNotFoundErrorString(volID)) {
+			return ErrVolumeNotFound{err}
+		}
+
 		return err
 	}
 
