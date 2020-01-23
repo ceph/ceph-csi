@@ -245,12 +245,12 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		}
 	}
 
+	volOptions.ProvisionVolume = true
+
 	volOptions.RootPath, err = getVolumeRootPathCeph(ctx, &volOptions, cr, volumeID(vid.FsSubvolName))
 	if err != nil {
-		return nil, nil, err
+		return &volOptions, &vid, err
 	}
-
-	volOptions.ProvisionVolume = true
 
 	return &volOptions, &vid, nil
 }
