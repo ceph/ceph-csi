@@ -165,6 +165,30 @@ var _ = Describe("cephfs", func() {
 						Fail(err.Error())
 					}
 				})
+
+				By("creating a PVC, deleting backing subvolume, and checking successful PV deletion", func() {
+					pvc, err := loadPVC(pvcPath)
+					if pvc == nil {
+						Fail(err.Error())
+					}
+					pvc.Namespace = f.UniqueName
+
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					err = deleteBackingCephFSVolume(f, pvc)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+				})
+
 				By("Resize PVC and check application directory size", func() {
 					v, err := f.ClientSet.Discovery().ServerVersion()
 					if err != nil {

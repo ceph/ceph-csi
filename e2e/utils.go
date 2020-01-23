@@ -557,7 +557,7 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 	}
 }
 
-func getRBDImageSpec(pvcNamespace, pvcName string, f *framework.Framework) (string, error) {
+func getImageIDFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (string, error) {
 	c := f.ClientSet.CoreV1()
 	pvc, err := c.PersistentVolumeClaims(pvcNamespace).Get(pvcName, metav1.GetOptions{})
 	if err != nil {
@@ -571,7 +571,25 @@ func getRBDImageSpec(pvcNamespace, pvcName string, f *framework.Framework) (stri
 
 	imageIDRegex := regexp.MustCompile(`(\w+\-?){5}$`)
 	imageID := imageIDRegex.FindString(pv.Spec.CSI.VolumeHandle)
+
+	return imageID, nil
+}
+func getRBDImageSpec(pvcNamespace, pvcName string, f *framework.Framework) (string, error) {
+	imageID, err := getImageIDFromPVC(pvcNamespace, pvcName, f)
+	if err != nil {
+		return "", err
+	}
+
 	return fmt.Sprintf("replicapool/csi-vol-%s", imageID), nil
+}
+
+func getCephFSVolumeName(pvcNamespace, pvcName string, f *framework.Framework) (string, error) {
+	imageID, err := getImageIDFromPVC(pvcNamespace, pvcName, f)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("csi-vol-%s", imageID), nil
 }
 
 func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string, error) {
@@ -774,6 +792,24 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 // 		return true, nil
 // 	})
 // }
+
+func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
+	volname, err := getCephFSVolumeName(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	_, stdErr := execCommandInPod(f, "ceph fs subvolume rm myfs "+volname+" csi", rookNS, &opt)
+	Expect(stdErr).Should(BeEmpty())
+
+	if stdErr != "" {
+		return fmt.Errorf("error deleting backing volume %s", volname)
+	}
+	return nil
+}
 
 func listRBDImages(f *framework.Framework) []string {
 	opt := metav1.ListOptions{
