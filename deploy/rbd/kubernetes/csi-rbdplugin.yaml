@@ -89,6 +89,8 @@ spec:
               name: host-dev
             - mountPath: /sys
               name: host-sys
+            - mountPath: /run/mount
+              name: host-mount
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
@@ -147,6 +149,9 @@ spec:
         - name: host-sys
           hostPath:
             path: /sys
+        - name: host-mount
+          hostPath:
+            path: /run/mount
         - name: lib-modules
           hostPath:
             path: /lib/modules
