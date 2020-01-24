@@ -145,13 +145,20 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		}
 	default:
 		var vi util.CSIIdentifier
+		var imageAttributes *util.ImageAttributes
 		err = vi.DecomposeCSIID(volID)
 		if err != nil {
 			err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, volID)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		_, volOptions.RbdImageName, _, _, err = volJournal.GetObjectUUIDData(ctx, volOptions.Monitors, cr, volOptions.Pool, vi.ObjectUUID, false)
+		imageAttributes, err = volJournal.GetImageAttributes(ctx, volOptions.Monitors, cr,
+			volOptions.Pool, vi.ObjectUUID, false)
+		if err != nil {
+			err = fmt.Errorf("error fetching image attributes for volume ID (%s) (%s)", err, volID)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		volOptions.RbdImageName = imageAttributes.ImageName
 	}
 
 	volOptions.VolID = volID

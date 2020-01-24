@@ -83,7 +83,7 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 	isMultiNode := false
 	isBlock := false
 	for _, cap := range req.VolumeCapabilities {
-		// RO modes need to be handled indepedently (ie right now even if access mode is RO, they'll be RW upon attach)
+		// RO modes need to be handled independently (ie right now even if access mode is RO, they'll be RW upon attach)
 		if cap.GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
 			isMultiNode = true
 		}
@@ -113,6 +113,16 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 
 	// always round up the request size in bytes to the nearest MiB/GiB
 	rbdVol.VolSize = util.RoundOffBytes(volSizeBytes)
+
+	// start with pool the same as journal pool, in case there is a topology
+	// based split, pool for the image will be updated subsequently
+	rbdVol.JournalPool = rbdVol.Pool
+
+	// store topology information from the request
+	rbdVol.TopologyPools, rbdVol.TopologyRequirement, err = util.GetTopologyFromRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	// NOTE: rbdVol does not contain VolID and RbdImageName populated, everything
 	// else is populated post create request parsing
@@ -163,17 +173,32 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			}
 		}
 
-		return &csi.CreateVolumeResponse{
-			Volume: &csi.Volume{
-				VolumeId:      rbdVol.VolID,
-				CapacityBytes: rbdVol.VolSize,
-				VolumeContext: req.GetParameters(),
-				ContentSource: req.GetVolumeContentSource(),
-			},
-		}, nil
+		volumeContext := req.GetParameters()
+		volumeContext["pool"] = rbdVol.Pool
+		volumeContext["journalPool"] = rbdVol.JournalPool
+		volume := &csi.Volume{
+			VolumeId:      rbdVol.VolID,
+			CapacityBytes: rbdVol.VolSize,
+			VolumeContext: volumeContext,
+			ContentSource: req.GetVolumeContentSource(),
+		}
+		if rbdVol.Topology != nil {
+			volume.AccessibleTopology =
+				[]*csi.Topology{
+					{
+						Segments: rbdVol.Topology,
+					},
+				}
+		}
+		return &csi.CreateVolumeResponse{Volume: volume}, nil
 	}
 
-	err = reserveVol(ctx, rbdVol, cr)
+	rbdSnap, err := cs.checkSnapshotSource(ctx, req, cr)
+	if err != nil {
+		return nil, err
+	}
+
+	err = reserveVol(ctx, rbdVol, rbdSnap, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -186,7 +211,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
-	err = cs.createBackingImage(ctx, rbdVol, req)
+	err = createBackingImage(ctx, cr, rbdVol, rbdSnap)
 	if err != nil {
 		return nil, err
 	}
@@ -205,80 +230,81 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}
 
-	return &csi.CreateVolumeResponse{
-		Volume: &csi.Volume{
-			VolumeId:      rbdVol.VolID,
-			CapacityBytes: rbdVol.VolSize,
-			VolumeContext: req.GetParameters(),
-			ContentSource: req.GetVolumeContentSource(),
-		},
-	}, nil
+	volumeContext := req.GetParameters()
+	volumeContext["pool"] = rbdVol.Pool
+	volumeContext["journalPool"] = rbdVol.JournalPool
+	volume := &csi.Volume{
+		VolumeId:      rbdVol.VolID,
+		CapacityBytes: rbdVol.VolSize,
+		VolumeContext: volumeContext,
+		ContentSource: req.GetVolumeContentSource(),
+	}
+	if rbdVol.Topology != nil {
+		volume.AccessibleTopology =
+			[]*csi.Topology{
+				{
+					Segments: rbdVol.Topology,
+				},
+			}
+	}
+	return &csi.CreateVolumeResponse{Volume: volume}, nil
 }
 
-func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdVolume, req *csi.CreateVolumeRequest) error {
+func createBackingImage(ctx context.Context, cr *util.Credentials, rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 	var err error
 
-	// if VolumeContentSource is not nil, this request is for snapshot
-	if req.VolumeContentSource != nil {
-		if err = cs.checkSnapshot(ctx, req, rbdVol); err != nil {
+	if rbdSnap != nil {
+		err = restoreSnapshot(ctx, rbdVol, rbdSnap, cr)
+		if err != nil {
 			return err
 		}
-	} else {
-		cr, err := util.NewUserCredentials(req.GetSecrets())
-		if err != nil {
-			return status.Error(codes.Internal, err.Error())
-		}
-		defer cr.DeleteCredentials()
 
-		err = createImage(ctx, rbdVol, cr)
-		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to create volume: %v"), err)
-			return status.Error(codes.Internal, err.Error())
-		}
-
-		klog.V(4).Infof(util.Log(ctx, "created image %s"), rbdVol.RbdImageName)
+		klog.V(4).Infof(util.Log(ctx, "created volume %s from snapshot %s"), rbdVol.RequestName, rbdSnap.RbdSnapName)
+		return nil
 	}
+
+	err = createImage(ctx, rbdVol, cr)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to create volume: %v"), err)
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	klog.V(4).Infof(util.Log(ctx, "created volume %s backed by image %s"), rbdVol.RequestName, rbdVol.RbdImageName)
 
 	return nil
 }
 
-func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume) error {
+func (cs *ControllerServer) checkSnapshotSource(ctx context.Context, req *csi.CreateVolumeRequest,
+	cr *util.Credentials) (*rbdSnapshot, error) {
+	if req.VolumeContentSource == nil {
+		return nil, nil
+	}
+
 	snapshot := req.VolumeContentSource.GetSnapshot()
 	if snapshot == nil {
-		return status.Error(codes.InvalidArgument, "volume Snapshot cannot be empty")
+		return nil, status.Error(codes.InvalidArgument, "volume Snapshot cannot be empty")
 	}
 
 	snapshotID := snapshot.GetSnapshotId()
 	if snapshotID == "" {
-		return status.Error(codes.InvalidArgument, "volume Snapshot ID cannot be empty")
+		return nil, status.Error(codes.InvalidArgument, "volume Snapshot ID cannot be empty")
 	}
-
-	cr, err := util.NewUserCredentials(req.GetSecrets())
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-	defer cr.DeleteCredentials()
 
 	rbdSnap := &rbdSnapshot{}
-	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
+	if err := genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
 		if _, ok := err.(ErrSnapNotFound); !ok {
-			return status.Error(codes.Internal, err.Error())
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		if _, ok := err.(util.ErrPoolNotFound); ok {
 			klog.Errorf(util.Log(ctx, "failed to get backend snapshot for %s: %v"), snapshotID, err)
-			return status.Error(codes.InvalidArgument, err.Error())
+			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		return status.Error(codes.InvalidArgument, "missing requested Snapshot ID")
+		return nil, status.Error(codes.InvalidArgument, "missing requested Snapshot ID")
 	}
 
-	err = restoreSnapshot(ctx, rbdVol, rbdSnap, cr)
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-	klog.V(4).Infof(util.Log(ctx, "create volume %s from snapshot %s"), req.GetName(), rbdSnap.RbdSnapName)
-	return nil
+	return rbdSnap, nil
 }
 
 // DeleteLegacyVolume deletes a volume provisioned using version 1.0.0 of the plugin

@@ -57,8 +57,13 @@ func (ns *DefaultNodeServer) NodeExpandVolume(ctx context.Context, req *csi.Node
 func (ns *DefaultNodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	klog.V(5).Infof(util.Log(ctx, "Using default NodeGetInfo"))
 
+	csiTopology := &csi.Topology{
+		Segments: ns.Driver.topology,
+	}
+
 	return &csi.NodeGetInfoResponse{
-		NodeId: ns.Driver.nodeID,
+		NodeId:             ns.Driver.nodeID,
+		AccessibleTopology: csiTopology,
 	}, nil
 }
 

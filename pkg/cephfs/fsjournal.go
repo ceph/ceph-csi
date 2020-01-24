@@ -46,10 +46,7 @@ request name lock, and hence any stale omaps are leftovers from incomplete trans
 hence safe to garbage collect.
 */
 func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[string]string) (*volumeIdentifier, error) {
-	var (
-		vi  util.CSIIdentifier
-		vid volumeIdentifier
-	)
+	var vid volumeIdentifier
 
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
@@ -57,41 +54,36 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 	}
 	defer cr.DeleteCredentials()
 
-	imageUUID, err := volJournal.CheckReservation(ctx, volOptions.Monitors, cr,
+	imageData, err := volJournal.CheckReservation(ctx, volOptions.Monitors, cr,
 		volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "")
 	if err != nil {
 		return nil, err
 	}
-	if imageUUID == "" {
+	if imageData == nil {
 		return nil, nil
 	}
-
-	// now that we now that the reservation exists, let's get the volume name from
-	// the omap
-	_, vid.FsSubvolName, _, _, err = volJournal.GetObjectUUIDData(ctx, volOptions.Monitors, cr,
-		volOptions.MetadataPool, imageUUID, false)
-	if err != nil {
-		return nil, err
-	}
+	imageUUID := imageData.ImageUUID
+	vid.FsSubvolName = imageData.ImageAttributes.ImageName
 
 	_, err = getVolumeRootPathCeph(ctx, volOptions, cr, volumeID(vid.FsSubvolName))
 	if err != nil {
 		if _, ok := err.(ErrVolumeNotFound); ok {
-			err = volJournal.UndoReservation(ctx, volOptions.Monitors, cr, volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
+			err = volJournal.UndoReservation(ctx, volOptions.Monitors, cr, volOptions.MetadataPool,
+				volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
 			return nil, err
 		}
 		return nil, err
 	}
+
+	// check if topology constraints match what is found
+	// TODO: we need an API to fetch subvolume attributes (size/datapool and others), based
+	// on which we can evaluate which topology this belongs to.
+	// TODO: CephFS topology support is postponed till we get the same
 	// TODO: size checks
 
 	// found a volume already available, process and return it!
-	vi = util.CSIIdentifier{
-		LocationID:      volOptions.FscID,
-		EncodingVersion: volIDVersion,
-		ClusterID:       volOptions.ClusterID,
-		ObjectUUID:      imageUUID,
-	}
-	vid.VolumeID, err = vi.ComposeCSIID()
+	vid.VolumeID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
+		"", volOptions.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -111,16 +103,29 @@ func undoVolReservation(ctx context.Context, volOptions *volumeOptions, vid volu
 	defer cr.DeleteCredentials()
 
 	err = volJournal.UndoReservation(ctx, volOptions.Monitors, cr, volOptions.MetadataPool,
-		vid.FsSubvolName, volOptions.RequestName)
+		volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
 
 	return err
+}
+
+func updateTopologyConstraints(volOpts *volumeOptions) error {
+	// update request based on topology constrained parameters (if present)
+	poolName, topology, err := util.FindPoolAndTopology(volOpts.TopologyPools, volOpts.TopologyRequirement)
+	if err != nil {
+		return err
+	}
+	if poolName != "" {
+		volOpts.Pool = poolName
+		volOpts.Topology = topology
+	}
+
+	return nil
 }
 
 // reserveVol is a helper routine to request a UUID reservation for the CSI VolumeName and,
 // to generate the volume identifier for the reserved UUID
 func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[string]string) (*volumeIdentifier, error) {
 	var (
-		vi        util.CSIIdentifier
 		vid       volumeIdentifier
 		imageUUID string
 		err       error
@@ -132,20 +137,20 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 	}
 	defer cr.DeleteCredentials()
 
-	imageUUID, vid.FsSubvolName, err = volJournal.ReserveName(ctx, volOptions.Monitors, cr,
-		volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "")
+	err = updateTopologyConstraints(volOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	imageUUID, vid.FsSubvolName, err = volJournal.ReserveName(ctx, volOptions.Monitors, cr, volOptions.MetadataPool, util.InvalidPoolID,
+		volOptions.MetadataPool, util.InvalidPoolID, volOptions.RequestName, volOptions.NamePrefix, "", "")
 	if err != nil {
 		return nil, err
 	}
 
 	// generate the volume ID to return to the CO system
-	vi = util.CSIIdentifier{
-		LocationID:      volOptions.FscID,
-		EncodingVersion: volIDVersion,
-		ClusterID:       volOptions.ClusterID,
-		ObjectUUID:      imageUUID,
-	}
-	vid.VolumeID, err = vi.ComposeCSIID()
+	vid.VolumeID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
+		"", volOptions.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
 		return nil, err
 	}

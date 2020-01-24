@@ -114,36 +114,36 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 		return false, err
 	}
 
-	snapUUID, err := snapJournal.CheckReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
+	snapData, err := snapJournal.CheckReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.JournalPool,
 		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
 	if err != nil {
 		return false, err
 	}
-	if snapUUID == "" {
+	if snapData == nil {
 		return false, nil
 	}
+	snapUUID := snapData.ImageUUID
+	rbdSnap.RbdSnapName = snapData.ImageAttributes.ImageName
 
-	// now that we now that the reservation exists, let's get the image name from
-	// the omap
-	_, rbdSnap.RbdSnapName, _, _, err = volJournal.GetObjectUUIDData(ctx, rbdSnap.Monitors, cr,
-		rbdSnap.Pool, snapUUID, false)
-	if err != nil {
-		return false, err
+	// it should never happen that this disagrees, but check
+	if rbdSnap.Pool != snapData.ImagePool {
+		return false, fmt.Errorf("stored snapshot pool (%s) and expected snapshot pool (%s) mismatch",
+			snapData.ImagePool, rbdSnap.Pool)
 	}
 
 	// Fetch on-disk image attributes
 	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
 	if err != nil {
 		if _, ok := err.(ErrSnapNotFound); ok {
-			err = snapJournal.UndoReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-				rbdSnap.RbdSnapName, rbdSnap.RequestName)
+			err = snapJournal.UndoReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.JournalPool,
+				rbdSnap.Pool, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 			return false, err
 		}
 		return false, err
 	}
 
 	// found a snapshot already available, process and return its information
-	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
+	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, snapData.ImagePoolID, rbdSnap.Pool,
 		rbdSnap.ClusterID, snapUUID, volIDVersion)
 	if err != nil {
 		return false, err
@@ -173,21 +173,29 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 	if rbdVol.Encrypted {
 		kmsID = rbdVol.KMS.GetID()
 	}
-	imageUUID, err := volJournal.CheckReservation(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
+
+	imageData, err := volJournal.CheckReservation(ctx, rbdVol.Monitors, cr, rbdVol.JournalPool,
 		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
 	if err != nil {
 		return false, err
 	}
-	if imageUUID == "" {
+	if imageData == nil {
 		return false, nil
 	}
 
-	// now that we now that the reservation exists, let's get the image name from
-	// the omap
-	_, rbdVol.RbdImageName, _, _, err = volJournal.GetObjectUUIDData(ctx, rbdVol.Monitors, cr,
-		rbdVol.Pool, imageUUID, false)
+	imageUUID := imageData.ImageUUID
+	rbdVol.RbdImageName = imageData.ImageAttributes.ImageName
+
+	// check if topology constraints match what is found
+	rbdVol.Topology, err = util.MatchTopologyForPool(rbdVol.TopologyPools,
+		rbdVol.TopologyRequirement, imageData.ImagePool)
 	if err != nil {
+		// TODO check if need any undo operation here, or ErrVolNameConflict
 		return false, err
+	}
+	// update Pool, if it was topology constrained
+	if rbdVol.Topology != nil {
+		rbdVol.Pool = imageData.ImagePool
 	}
 
 	// NOTE: Return volsize should be on-disk volsize, not request vol size, so
@@ -197,7 +205,7 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 	err = updateVolWithImageInfo(ctx, rbdVol, cr)
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
-			err = volJournal.UndoReservation(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
+			err = volJournal.UndoReservation(ctx, rbdVol.Monitors, cr, rbdVol.JournalPool, rbdVol.Pool,
 				rbdVol.RbdImageName, rbdVol.RequestName)
 			return false, err
 		}
@@ -213,7 +221,7 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 	// TODO: We should also ensure image features and format is the same
 
 	// found a volume already available, process and return it!
-	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
+	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imageData.ImagePoolID, rbdVol.Pool,
 		rbdVol.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
 		return false, err
@@ -233,13 +241,18 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 		err      error
 	)
 
-	snapUUID, rbdSnap.RbdSnapName, err = snapJournal.ReserveName(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
+	journalPoolID, imagePoolID, err := util.GetPoolIDs(ctx, rbdSnap.Monitors, rbdSnap.JournalPool, rbdSnap.Pool, cr)
 	if err != nil {
 		return err
 	}
 
-	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
+	snapUUID, rbdSnap.RbdSnapName, err = snapJournal.ReserveName(ctx, rbdSnap.Monitors, cr, rbdSnap.JournalPool, journalPoolID,
+		rbdSnap.Pool, imagePoolID, rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
+	if err != nil {
+		return err
+	}
+
+	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, imagePoolID, rbdSnap.Pool,
 		rbdSnap.ClusterID, snapUUID, volIDVersion)
 	if err != nil {
 		return err
@@ -251,26 +264,66 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 	return nil
 }
 
+func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
+	var err error
+	if rbdSnap != nil {
+		// check if topology constraints matches snapshot pool
+		rbdVol.Topology, err = util.MatchTopologyForPool(rbdVol.TopologyPools,
+			rbdVol.TopologyRequirement, rbdSnap.Pool)
+		if err != nil {
+			return err
+		}
+
+		// update Pool, if it was topology constrained
+		if rbdVol.Topology != nil {
+			rbdVol.Pool = rbdSnap.Pool
+		}
+
+		return nil
+	}
+	// update request based on topology constrained parameters (if present)
+	poolName, topology, err := util.FindPoolAndTopology(rbdVol.TopologyPools, rbdVol.TopologyRequirement)
+	if err != nil {
+		return err
+	}
+	if poolName != "" {
+		rbdVol.Pool = poolName
+		rbdVol.Topology = topology
+	}
+
+	return nil
+}
+
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the
 // volume ID for the generated name
-func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
+func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 	var (
 		imageUUID string
 		err       error
 	)
+
+	err = updateTopologyConstraints(rbdVol, rbdSnap)
+	if err != nil {
+		return err
+	}
+
+	journalPoolID, imagePoolID, err := util.GetPoolIDs(ctx, rbdVol.Monitors, rbdVol.JournalPool, rbdVol.Pool, cr)
+	if err != nil {
+		return err
+	}
 
 	kmsID := ""
 	if rbdVol.Encrypted {
 		kmsID = rbdVol.KMS.GetID()
 	}
 
-	imageUUID, rbdVol.RbdImageName, err = volJournal.ReserveName(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
+	imageUUID, rbdVol.RbdImageName, err = volJournal.ReserveName(ctx, rbdVol.Monitors, cr, rbdVol.JournalPool, journalPoolID,
+		rbdVol.Pool, imagePoolID, rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
 	if err != nil {
 		return err
 	}
 
-	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
+	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imagePoolID, rbdVol.Pool,
 		rbdVol.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
 		return err
@@ -284,7 +337,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) er
 
 // undoSnapReservation is a helper routine to undo a name reservation for rbdSnapshot
 func undoSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	err := snapJournal.UndoReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
+	err := snapJournal.UndoReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.JournalPool, rbdSnap.Pool,
 		rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return err
@@ -292,7 +345,7 @@ func undoSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Cre
 
 // undoVolReservation is a helper routine to undo a name reservation for rbdVolume
 func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	err := volJournal.UndoReservation(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
+	err := volJournal.UndoReservation(ctx, rbdVol.Monitors, cr, rbdVol.JournalPool, rbdVol.Pool,
 		rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return err
