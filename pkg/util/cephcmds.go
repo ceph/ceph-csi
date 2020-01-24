@@ -179,7 +179,7 @@ func GetOMapValue(ctx context.Context, monitors string, cr *Credentials, poolNam
 		klog.Errorf(Log(ctx, "omap (%s) not found in pool (%s), while checking key (%s)"),
 			oMapName, poolName, oMapKey)
 
-		return "", ErrKeyNotFound{keyName: oMapKey, err: err}
+		return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, err}
 	} else if err != nil {
 		// log other errors for troubleshooting assistance
 		klog.Errorf(Log(ctx, "failed getting omap value for key (%s) from omap (%s) in pool (%s): (%v)"),
@@ -193,30 +193,32 @@ func GetOMapValue(ctx context.Context, monitors string, cr *Credentials, poolNam
 		klog.Errorf(Log(ctx, "could not find key (%s) from omap (%s) in pool (%s)"),
 			oMapKey, oMapName, poolName)
 
-		return "", ErrKeyNotFound{keyName: oMapKey, err: nil}
+		return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, nil}
 	}
 	return string(keyValue), nil
 }
 
 // RemoveOMapKey removes the omap key from the given omap name
 func RemoveOMapKey(ctx context.Context, monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey string) error {
-	// Command: "rados <options> rmomapkey oMapName oMapKey"
-	args := []string{
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-c", CephConfigPath,
-		"-p", poolName,
-		"rmomapkey", oMapName, oMapKey,
+	conn, err := connPool.Get(poolName, monitors, cr.KeyFile)
+	if err != nil {
+		return err
 	}
+	defer connPool.Put(conn)
+
+	ioctx, err := conn.OpenIOContext(poolName)
+	if err != nil {
+		return err
+	}
+	defer ioctx.Destroy()
 
 	if namespace != "" {
-		args = append(args, "--namespace="+namespace)
+		ioctx.SetNamespace(namespace)
 	}
 
-	_, _, err := ExecCommand("rados", args[:]...)
+	pair := []string{oMapKey}
+	err = ioctx.RmOmapKeys(oMapName, pair)
 	if err != nil {
-		// NOTE: Missing omap key removal does not return an error
 		klog.Errorf(Log(ctx, "failed removing key (%s), from omap (%s) in "+
 			"pool (%s): (%v)"), oMapKey, oMapName, poolName, err)
 		return err
