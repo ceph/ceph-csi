@@ -21,26 +21,30 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/pkg/errors"
 
 	"github.com/ceph/ceph-csi/pkg/util"
 )
 
 type volumeOptions struct {
-	RequestName        string
-	NamePrefix         string
-	Size               int64
-	ClusterID          string
-	FsName             string
-	FscID              int64
-	MetadataPool       string
-	Monitors           string `json:"monitors"`
-	Pool               string `json:"pool"`
-	RootPath           string `json:"rootPath"`
-	Mounter            string `json:"mounter"`
-	ProvisionVolume    bool   `json:"provisionVolume"`
-	KernelMountOptions string `json:"kernelMountOptions"`
-	FuseMountOptions   string `json:"fuseMountOptions"`
+	TopologyPools       *[]util.TopologyConstrainedPool
+	TopologyRequirement *csi.TopologyRequirement
+	Topology            map[string]string
+	RequestName         string
+	NamePrefix          string
+	Size                int64
+	ClusterID           string
+	FsName              string
+	FscID               int64
+	MetadataPool        string
+	Monitors            string `json:"monitors"`
+	Pool                string `json:"pool"`
+	RootPath            string `json:"rootPath"`
+	Mounter             string `json:"mounter"`
+	ProvisionVolume     bool   `json:"provisionVolume"`
+	KernelMountOptions  string `json:"kernelMountOptions"`
+	FuseMountOptions    string `json:"fuseMountOptions"`
 }
 
 func validateNonEmptyField(field, fieldName string) error {
@@ -127,11 +131,14 @@ func getMonsAndClusterID(options map[string]string) (string, string, error) {
 
 // newVolumeOptions generates a new instance of volumeOptions from the provided
 // CSI request parameters
-func newVolumeOptions(ctx context.Context, requestName string, volOptions, secret map[string]string) (*volumeOptions, error) {
+func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVolumeRequest,
+	secret map[string]string) (*volumeOptions, error) {
 	var (
 		opts volumeOptions
 		err  error
 	)
+
+	volOptions := req.GetParameters()
 
 	opts.Monitors, opts.ClusterID, err = getMonsAndClusterID(volOptions)
 	if err != nil {
@@ -174,6 +181,19 @@ func newVolumeOptions(ctx context.Context, requestName string, volOptions, secre
 	opts.MetadataPool, err = getMetadataPool(ctx, opts.Monitors, cr, opts.FsName)
 	if err != nil {
 		return nil, err
+	}
+
+	// store topology information from the request
+	opts.TopologyPools, opts.TopologyRequirement, err = util.GetTopologyFromRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: we need an API to fetch subvolume attributes (size/datapool and others), based
+	// on which we can evaluate which topology this belongs to.
+	// CephFS tracker: https://tracker.ceph.com/issues/44277
+	if opts.TopologyPools != nil {
+		return nil, errors.New("topology based provisioning is not supported for CephFS backed volumes")
 	}
 
 	opts.ProvisionVolume = true
@@ -221,11 +241,13 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		return nil, nil, err
 	}
 
-	volOptions.RequestName, vid.FsSubvolName, _, _, err = volJournal.GetObjectUUIDData(ctx, volOptions.Monitors, cr,
+	imageAttributes, err := volJournal.GetImageAttributes(ctx, volOptions.Monitors, cr,
 		volOptions.MetadataPool, vi.ObjectUUID, false)
 	if err != nil {
 		return nil, nil, err
 	}
+	volOptions.RequestName = imageAttributes.RequestName
+	vid.FsSubvolName = imageAttributes.ImageName
 
 	if volOpt != nil {
 		if err = extractOptionalOption(&volOptions.Pool, "pool", volOpt); err != nil {

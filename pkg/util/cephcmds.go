@@ -29,6 +29,9 @@ import (
 	"k8s.io/klog"
 )
 
+// InvalidPoolID used to denote an invalid pool
+const InvalidPoolID int64 = -1
+
 // ExecCommand executes passed in program with args and returns separate stdout and stderr streams
 func ExecCommand(program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
@@ -115,6 +118,26 @@ func GetPoolName(ctx context.Context, monitors string, cr *Credentials, poolID i
 	}
 
 	return "", ErrPoolNotFound{string(poolID), fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)}
+}
+
+// GetPoolIDs searches a list of pools in a cluster and returns the IDs of the pools that matches
+// the passed in pools
+// TODO this should take in a list and return a map[string(poolname)]int64(poolID)
+func GetPoolIDs(ctx context.Context, monitors, journalPool, imagePool string, cr *Credentials) (int64, int64, error) {
+	journalPoolID, err := GetPoolID(ctx, monitors, cr, journalPool)
+	if err != nil {
+		return InvalidPoolID, InvalidPoolID, err
+	}
+
+	imagePoolID := journalPoolID
+	if imagePool != journalPool {
+		imagePoolID, err = GetPoolID(ctx, monitors, cr, imagePool)
+		if err != nil {
+			return InvalidPoolID, InvalidPoolID, err
+		}
+	}
+
+	return journalPoolID, imagePoolID, nil
 }
 
 // SetOMapKeyValue sets the given key and value into the provided Ceph omap name

@@ -293,7 +293,7 @@ var _ = Describe("RBD", func() {
 				// validate created backend rbd images
 				images := listRBDImages(f)
 				if len(images) != totalCount {
-					e2elog.Logf("backend image creation not matching pvc count, image count = % pvc count %d", len(images), totalCount)
+					e2elog.Logf("backend image creation not matching pvc count, image count = %d pvc count %d images found = %+v", len(images), totalCount, images)
 					Fail("validate multiple pvc failed")
 				}
 

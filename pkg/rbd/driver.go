@@ -77,10 +77,10 @@ func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersis
 }
 
 // NewNodeServer initialize a node server for rbd CSI driver.
-func NewNodeServer(d *csicommon.CSIDriver, t string) (*NodeServer, error) {
+func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string) (*NodeServer, error) {
 	mounter := mount.New("")
 	return &NodeServer{
-		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t),
+		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, topology),
 		mounter:           mounter,
 		VolumeLocks:       util.NewVolumeLocks(),
 	}, nil
@@ -90,6 +90,7 @@ func NewNodeServer(d *csicommon.CSIDriver, t string) (*NodeServer, error) {
 // rbd CSI driver which can serve multiple parallel requests
 func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	var err error
+	var topology map[string]string
 
 	// Create ceph.conf for use with CLI commands
 	if err = util.WriteCephConfig(); err != nil {
@@ -134,7 +135,11 @@ func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	r.ids = NewIdentityServer(r.cd)
 
 	if conf.IsNodeServer {
-		r.ns, err = NewNodeServer(r.cd, conf.Vtype)
+		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
+		if err != nil {
+			klog.Fatalln(err)
+		}
+		r.ns, err = NewNodeServer(r.cd, conf.Vtype, topology)
 		if err != nil {
 			klog.Fatalf("failed to start node server, err %v\n", err)
 		}
@@ -144,7 +149,11 @@ func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 		r.cs = NewControllerServer(r.cd, cachePersister)
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {
-		r.ns, err = NewNodeServer(r.cd, conf.Vtype)
+		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
+		if err != nil {
+			klog.Fatalln(err)
+		}
+		r.ns, err = NewNodeServer(r.cd, conf.Vtype, topology)
 		if err != nil {
 			klog.Fatalf("failed to start node server, err %v\n", err)
 		}

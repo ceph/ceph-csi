@@ -81,6 +81,7 @@ type Config struct {
 	InstanceID      string // unique ID distinguishing this instance of Ceph CSI
 	MetadataStorage string // metadata persistence method [node|k8s_configmap]
 	PluginPath      string // location of cephcsi plugin
+	DomainLabels    string // list of domain labels to read from the node
 
 	// cephfs related flags
 	MountCacheDir string // mount info cache save dir
@@ -147,15 +148,19 @@ func ValidateDriverName(driverName string) error {
 
 // GenerateVolID generates a volume ID based on passed in parameters and version, to be returned
 // to the CO system
-func GenerateVolID(ctx context.Context, monitors string, cr *Credentials, pool, clusterID, objUUID string, volIDVersion uint16) (string, error) {
-	poolID, err := GetPoolID(ctx, monitors, cr, pool)
-	if err != nil {
-		return "", err
+func GenerateVolID(ctx context.Context, monitors string, cr *Credentials, locationID int64, pool, clusterID, objUUID string, volIDVersion uint16) (string, error) {
+	var err error
+
+	if locationID == InvalidPoolID {
+		locationID, err = GetPoolID(ctx, monitors, cr, pool)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	// generate the volume ID to return to the CO system
 	vi := CSIIdentifier{
-		LocationID:      poolID,
+		LocationID:      locationID,
 		EncodingVersion: volIDVersion,
 		ClusterID:       clusterID,
 		ObjectUUID:      objUUID,

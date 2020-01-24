@@ -23,6 +23,9 @@ metadata:
     rbac.rbd.csi.ceph.com/aggregate-to-rbd-external-provisioner-runner: "true"
 rules:
   - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list"]
   - apiGroups: [""]
@@ -52,6 +55,9 @@ rules:
   - apiGroups: ["storage.k8s.io"]
     resources: ["volumeattachments"]
     verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["snapshot.storage.k8s.io"]
     resources: ["volumesnapshots/status"]
     verbs: ["update"]
