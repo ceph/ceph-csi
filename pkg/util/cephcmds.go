@@ -260,27 +260,27 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 // RemoveObject removes the entire omap name passed in and returns ErrObjectNotFound is provided omap
 // is not found in rados
 func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolName, namespace, oMapName string) error {
-	// Command: "rados <options> rm oMapName"
-	args := []string{
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-c", CephConfigPath,
-		"-p", poolName,
-		"rm", oMapName,
+	conn, err := connPool.Get(poolName, monitors, cr.KeyFile)
+	if err != nil {
+		return err
 	}
+	defer connPool.Put(conn)
+
+	ioctx, err := conn.OpenIOContext(poolName)
+	if err != nil {
+		return err
+	}
+	defer ioctx.Destroy()
 
 	if namespace != "" {
-		args = append(args, "--namespace="+namespace)
+		ioctx.SetNamespace(namespace)
 	}
 
-	_, stderr, err := ExecCommand("rados", args[:]...)
-	if err != nil {
+	err = ioctx.Delete(oMapName)
+	if err == rados.ErrNotFound {
+		return ErrObjectNotFound{oMapName, err}
+	} else if err != nil {
 		klog.Errorf(Log(ctx, "failed removing omap (%s) in pool (%s): (%v)"), oMapName, poolName, err)
-		if strings.Contains(string(stderr), "error removing "+poolName+">"+oMapName+
-			": (2) No such file or directory") {
-			return ErrObjectNotFound{oMapName, err}
-		}
 		return err
 	}
 
