@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/ceph/go-ceph/rados"
@@ -230,27 +229,27 @@ func RemoveOMapKey(ctx context.Context, monitors string, cr *Credentials, poolNa
 // CreateObject creates the object name passed in and returns ErrObjectExists if the provided object
 // is already present in rados
 func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolName, namespace, objectName string) error {
-	// Command: "rados <options> create objectName"
-	args := []string{
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-c", CephConfigPath,
-		"-p", poolName,
-		"create", objectName,
+	conn, err := connPool.Get(poolName, monitors, cr.KeyFile)
+	if err != nil {
+		return err
 	}
+	defer connPool.Put(conn)
+
+	ioctx, err := conn.OpenIOContext(poolName)
+	if err != nil {
+		return err
+	}
+	defer ioctx.Destroy()
 
 	if namespace != "" {
-		args = append(args, "--namespace="+namespace)
+		ioctx.SetNamespace(namespace)
 	}
 
-	_, stderr, err := ExecCommand("rados", args[:]...)
-	if err != nil {
+	err = ioctx.Create(objectName, rados.CreateExclusive)
+	if err == rados.ErrObjectExists {
+		return ErrObjectExists{objectName, err}
+	} else if err != nil {
 		klog.Errorf(Log(ctx, "failed creating omap (%s) in pool (%s): (%v)"), objectName, poolName, err)
-		if strings.Contains(string(stderr), "error creating "+poolName+"/"+objectName+
-			": (17) File exists") {
-			return ErrObjectExists{objectName, err}
-		}
 		return err
 	}
 
