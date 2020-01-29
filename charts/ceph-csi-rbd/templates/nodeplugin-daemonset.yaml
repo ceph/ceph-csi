@@ -112,6 +112,8 @@ spec:
               mountPath: /csi
             - mountPath: /dev
               name: host-dev
+            - mountPath: /run/mount
+              name: host-mount
             - mountPath: /sys
               name: host-sys
             - mountPath: /lib/modules
