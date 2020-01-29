@@ -121,6 +121,8 @@ spec:
               mountPropagation: "Bidirectional"
             - mountPath: /dev
               name: host-dev
+            - mountPath: /run/mount
+              name: host-mount
             - mountPath: /sys
               name: host-sys
             - mountPath: /lib/modules
@@ -180,6 +182,9 @@ spec:
         - name: host-sys
           hostPath:
             path: /sys
+        - name: host-mount
+          hostPath:
+            path: /run/mount
         - name: lib-modules
           hostPath:
             path: /lib/modules

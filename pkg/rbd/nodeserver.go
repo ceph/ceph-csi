@@ -331,7 +331,7 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 		}
 	}
 
-	opt := []string{}
+	opt := []string{"_netdev"}
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 
 	if isBlock {
@@ -350,16 +350,19 @@ func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *
 	// Publish Path
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	readOnly := req.GetReadonly()
-	mountFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
+	mountOptions := []string{"bind", "_netdev"}
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	targetPath := req.GetTargetPath()
+
+	mountOptions = csicommon.ConstructMountOptions(mountOptions, req.GetVolumeCapability())
+
 	klog.V(4).Infof(util.Log(ctx, "target %v\nisBlock %v\nfstype %v\nstagingPath %v\nreadonly %v\nmountflags %v\n"),
-		targetPath, isBlock, fsType, stagingPath, readOnly, mountFlags)
-	mountFlags = append(mountFlags, "bind")
+		targetPath, isBlock, fsType, stagingPath, readOnly, mountOptions)
+
 	if readOnly {
-		mountFlags = append(mountFlags, "ro")
+		mountOptions = append(mountOptions, "ro")
 	}
-	if err := util.Mount(stagingPath, targetPath, fsType, mountFlags); err != nil {
+	if err := util.Mount(stagingPath, targetPath, fsType, mountOptions); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 
