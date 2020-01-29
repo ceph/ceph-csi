@@ -121,6 +121,8 @@ spec:
               readOnly: true
             - name: ceph-csi-config
               mountPath: /etc/ceph-csi-config/
+            - name: ceph-csi-encryption-kms-config
+              mountPath: /etc/ceph-csi-encryption-kms-config/
             - name: plugin-dir
               mountPath: /var/lib/kubelet/plugins
               mountPropagation: "Bidirectional"
@@ -189,6 +191,9 @@ spec:
         - name: ceph-csi-config
           configMap:
             name: {{ .Values.configMapName | quote }}
+        - name: ceph-csi-encryption-kms-config
+          configMap:
+            name: {{ .Values.kmsConfigMapName | quote }}
         - name: keys-tmp-dir
           emptyDir: {
             medium: "Memory"

@@ -1,4 +1,3 @@
-
 # CSI RBD Plugin
 
 The RBD CSI plugin is able to provision new RBD images and
@@ -55,6 +54,8 @@ make image-cephcsi
 | `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-stage-secret-namespace` | yes (for Kubernetes) | namespaces of the above Secret objects                                                                                                                                                                                  |
 | `mounter`                                                                                           | no                   | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images                                                                                                              |
 | `encrypted`                                                                                         | no                   | disabled by default, use `"true"` to enable LUKS encryption on pvc and `"false"` to disable it. **Do not change for existing storageclasses**                                                                           |
+| `encryptionKMS`                                                                                     | no                   | specifies key management system for encrypytion. Currently supports `vault`                                                                                                                                             |
+| `encryptionKMSID`                                                                                   | no                   | required if `encryptionKMS` is set to `vault` to specify a unique identifier for vault configuration                                                                                                                    |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
 running pods. Refer to [Creating CSI configuration](../examples/README.md#creating-csi-configuration)
@@ -196,8 +197,10 @@ and `csi.storage.k8s.io/node-stage-secret-namespace`).
 * volume is attached to provisioner container
 * on first time attachment
   (no file system on the attached device, checked with blkid)
+  * new passphrase is generated and stored in selected KMS if KMS is in use
   * device is encrypted with LUKS using a passphrase from K8s secrets
   * image-meta updated to "encrypted" in Ceph
+* passphrase is retrieved from selected KMS if KMS is in use
 * device is open and device path is changed to use a mapper device
 * mapper device is used instead of original one with usual workflow
 
@@ -205,6 +208,7 @@ and `csi.storage.k8s.io/node-stage-secret-namespace`).
 
 * mapper device closed and device path changed to original volume path
 * volume is detached as usual
+* passphrase removed from KMS if needed (with failures ignored)
 
 ### Encryption configuration
 
@@ -212,6 +216,38 @@ To encrypt rbd volumes with LUKS you need to set encryption passphrase in
 secrets under `encryptionPassphrase` key and switch `encrypted` option in
 StorageClass to `"true"`. This is not supported for storage classes that already
 have PVs provisioned.
+
+### Encryption KMS configuration
+
+To further improve security robustness it is possible to use unique passphrases
+generated for each volume and stored in a Key Management System (KMS). Currently
+HashiCorp Vault is the only KMS supported.
+
+To use Vault as KMS set `encryptionKMS` to `vault` and `encryptionKMSID` to a
+unique identifier for Vault configuration. You will also need to create vault
+configuration similar to the [example](../examples/rbd/kms-config.yaml)
+and use same `encryptionKMSID`. In order for ceph-csi to be able to access the
+configuration you will need to have it mounted to csi-rbdplugin containers in
+both daemonset (so kms client can be instantiated to encrypt/decrypt volumes)
+and deployment pods (so kms client can be instantiated to delete passphrase on
+volume delete) `ceph-csi-encryption-kms-config` config map.
+
+#### Configuring HashiCorp Vault
+
+Using Vault as KMS you need to configure Kubernetes authentication method as
+described in [official
+documentation](https://www.vaultproject.io/docs/auth/kubernetes.html).
+
+If token reviewer is used, you will need to configure service account for
+that also like in [example](../examples/rbd/csi-vaulttokenreview-rbac.yaml) to
+be able to review jwt tokens.
+
+Configure a role(s) for service accounts used for ceph-csi:
+
+* provisioner service account (`rbd-csi-provisioner`) requires only **delete**
+  permissions to delete passphrases on pvc delete
+* nodeplugin service account (`rbd-csi-nodeplugin`) requires **create** and
+  **read** permissions to save new keys and retrieve existing
 
 ### Encryption prerequisites
 

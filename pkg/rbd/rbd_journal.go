@@ -115,7 +115,7 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 	}
 
 	snapUUID, err := snapJournal.CheckReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RequestName, rbdSnap.RbdImageName)
+		rbdSnap.RequestName, rbdSnap.RbdImageName, "")
 	if err != nil {
 		return false, err
 	}
@@ -162,8 +162,12 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 		return false, err
 	}
 
+	encryptionKmsConfig := ""
+	if rbdVol.Encrypted {
+		encryptionKmsConfig = rbdVol.KMS.KmsConfig()
+	}
 	imageUUID, err := volJournal.CheckReservation(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RequestName, "")
+		rbdVol.RequestName, "", encryptionKmsConfig)
 	if err != nil {
 		return false, err
 	}
@@ -211,7 +215,7 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 // volume ID for the generated name
 func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 	snapUUID, err := snapJournal.ReserveName(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RequestName, rbdSnap.RbdImageName)
+		rbdSnap.RequestName, rbdSnap.RbdImageName, "")
 	if err != nil {
 		return err
 	}
@@ -233,8 +237,12 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the
 // volume ID for the generated name
 func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
+	encryptionKmsConfig := ""
+	if rbdVol.Encrypted {
+		encryptionKmsConfig = rbdVol.KMS.KmsConfig()
+	}
 	imageUUID, err := volJournal.ReserveName(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RequestName, "")
+		rbdVol.RequestName, "", encryptionKmsConfig)
 	if err != nil {
 		return err
 	}

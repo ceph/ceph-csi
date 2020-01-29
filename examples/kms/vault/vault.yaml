@@ -1,0 +1,150 @@
+# HashiCorp Vault configuration for minikube
+# This is not part of ceph-csi project, used only
+# for e2e testing of integration with such KMS
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault
+  labels:
+    app: vault-api
+spec:
+  ports:
+    - name: vault-api
+      port: 8200
+  clusterIP: None
+  selector:
+    app: vault
+    role: server
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault
+  labels:
+    app: vault
+    role: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault
+      role: server
+  template:
+    metadata:
+      labels:
+        app: vault
+        role: server
+    spec:
+      containers:
+        - name: vault
+          image: vault
+          securityContext:
+            runAsUser: 100
+          env:
+            - name: VAULT_DEV_ROOT_TOKEN_ID
+              value: sample_root_token_id
+            - name: SKIP_SETCAP
+              value: any
+          livenessProbe:
+            exec:
+              command:
+                - pidof
+                - vault
+            initialDelaySeconds: 5
+            timeoutSeconds: 2
+          ports:
+            - containerPort: 8200
+              name: vault-api
+---
+apiVersion: v1
+items:
+  - apiVersion: v1
+    data:
+      init-vault.sh: |
+        set -x -e
+
+        timeout 300 sh -c 'until vault status; do sleep 5; done'
+
+        # login into vault to retrieve token
+        vault login ${VAULT_DEV_ROOT_TOKEN_ID}
+
+        # enable kubernetes auth method under specific path:
+        vault auth enable -path="/${CLUSTER_IDENTIFIER}" kubernetes
+
+        # write configuration to use your cluster
+        vault write auth/${CLUSTER_IDENTIFIER}/config \
+          token_reviewer_jwt=@${SERVICE_ACCOUNT_TOKEN_PATH}/token \
+          kubernetes_host="${K8S_HOST}" \
+          kubernetes_ca_cert=@${SERVICE_ACCOUNT_TOKEN_PATH}/ca.crt
+
+        # create policy to use keys related to the cluster
+        vault policy write "${CLUSTER_IDENTIFIER}" - << EOS
+        path "secret/data/ceph-csi/*" {
+          capabilities = ["create", "update", "delete", "read"]
+        }
+
+        path "secret/metadata/ceph-csi/*" {
+          capabilities = ["read", "delete"]
+        }
+        EOS
+
+        # create a role
+        vault write "auth/${CLUSTER_IDENTIFIER}/role/${PLUGIN_ROLE}" \
+            bound_service_account_names="${SERVICE_ACCOUNTS}" \
+            bound_service_account_namespaces="${SERVICE_ACCOUNTS_NAMESPACE}" \
+            policies="${CLUSTER_IDENTIFIER}"
+    kind: ConfigMap
+    metadata:
+      creationTimestamp: null
+      name: init-scripts
+kind: List
+metadata: {}
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-init-job
+spec:
+  parallelism: 1
+  completions: 1
+  template:
+    metadata:
+      name: vault-init-job
+    spec:
+      serviceAccount: rbd-csi-vault-token-review
+      volumes:
+        - name: init-scripts-volume
+          configMap:
+            name: init-scripts
+      containers:
+        - name: vault-init-job
+          image: vault
+          volumeMounts:
+            - mountPath: /init-scripts
+              name: init-scripts-volume
+          env:
+            - name: HOME
+              value: /tmp
+            - name: CLUSTER_IDENTIFIER
+              value: kubernetes
+            - name: SERVICE_ACCOUNT_TOKEN_PATH
+              value: /var/run/secrets/kubernetes.io/serviceaccount
+            - name: K8S_HOST
+              value: https://kubernetes.default.svc.cluster.local
+            - name: PLUGIN_ROLE
+              value: csi-kubernetes
+            - name: SERVICE_ACCOUNTS
+              value: rbd-csi-nodeplugin,rbd-csi-provisioner
+            - name: SERVICE_ACCOUNTS_NAMESPACE
+              value: default
+            - name: VAULT_ADDR
+              value: http://vault.default.svc.cluster.local:8200/
+            - name: VAULT_DEV_ROOT_TOKEN_ID
+              value: sample_root_token_id
+          command:
+            - /bin/sh
+            - /init-scripts/init-vault.sh
+      restartPolicy: Never

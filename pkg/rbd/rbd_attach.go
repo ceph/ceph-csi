@@ -231,7 +231,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 		klog.Warningf(util.Log(ctx, "rbd: map error %v, rbd output: %s"), err, string(output))
 		// unmap rbd image if connection timeout
 		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
-			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd, volOpt.VolID)
+			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd, volOpt.Encrypted, volOpt.VolID)
 			if detErr != nil {
 				klog.Warningf(util.Log(ctx, "rbd: %s unmap error %v"), imagePath, detErr)
 			}
@@ -266,36 +266,38 @@ func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdV
 	return err
 }
 
-func detachRBDDevice(ctx context.Context, devicePath, volumeID string) error {
+func detachRBDDevice(ctx context.Context, devicePath, volumeID string, encrypted bool) error {
 	nbdType := false
 	if strings.HasPrefix(devicePath, "/dev/nbd") {
 		nbdType = true
 	}
 
-	return detachRBDImageOrDeviceSpec(ctx, devicePath, false, nbdType, volumeID)
+	return detachRBDImageOrDeviceSpec(ctx, devicePath, false, nbdType, encrypted, volumeID)
 }
 
 // detachRBDImageOrDeviceSpec detaches an rbd imageSpec or devicePath, with additional checking
 // when imageSpec is used to decide if image is already unmapped
-func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, isImageSpec, ndbType bool, volumeID string) error {
+func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, isImageSpec, ndbType, encrypted bool, volumeID string) error {
 	var output []byte
 
-	mapperFile, mapperPath := util.VolumeMapper(volumeID)
-	mappedDevice, mapper, err := util.DeviceEncryptionStatus(ctx, mapperPath)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "error determining LUKS device on %s, %s: %s"),
-			mapperPath, imageOrDeviceSpec, err)
-		return err
-	}
-	if len(mapper) > 0 {
-		// mapper found, so it is open Luks device
-		err = util.CloseEncryptedVolume(ctx, mapperFile)
+	if encrypted {
+		mapperFile, mapperPath := util.VolumeMapper(volumeID)
+		mappedDevice, mapper, err := util.DeviceEncryptionStatus(ctx, mapperPath)
 		if err != nil {
-			klog.Warningf(util.Log(ctx, "error closing LUKS device on %s, %s: %s"),
+			klog.Errorf(util.Log(ctx, "error determining LUKS device on %s, %s: %s"),
 				mapperPath, imageOrDeviceSpec, err)
 			return err
 		}
-		imageOrDeviceSpec = mappedDevice
+		if len(mapper) > 0 {
+			// mapper found, so it is open Luks device
+			err = util.CloseEncryptedVolume(ctx, mapperFile)
+			if err != nil {
+				klog.Errorf(util.Log(ctx, "error closing LUKS device on %s, %s: %s"),
+					mapperPath, imageOrDeviceSpec, err)
+				return err
+			}
+			imageOrDeviceSpec = mappedDevice
+		}
 	}
 
 	accessType := accessTypeKRbd
@@ -304,7 +306,7 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 	}
 	options := []string{"unmap", "--device-type", accessType, imageOrDeviceSpec}
 
-	output, err = execCommand(rbd, options)
+	output, err := execCommand(rbd, options)
 	if err != nil {
 		// Messages for krbd and nbd differ, hence checking either of them for missing mapping
 		// This is not applicable when a device path is passed in

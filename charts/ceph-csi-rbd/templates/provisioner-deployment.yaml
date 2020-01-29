@@ -148,6 +148,8 @@ spec:
               readOnly: true
             - name: ceph-csi-config
               mountPath: /etc/ceph-csi-config/
+            - name: ceph-csi-encryption-kms-config
+              mountPath: /etc/ceph-csi-encryption-kms-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
           resources:
@@ -193,6 +195,9 @@ spec:
         - name: ceph-csi-config
           configMap:
             name: {{ .Values.configMapName | quote }}
+        - name: ceph-csi-encryption-kms-config
+          configMap:
+            name: {{ .Values.kmsConfigMapName | quote }}
         - name: keys-tmp-dir
           emptyDir: {
             medium: "Memory"

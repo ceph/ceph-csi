@@ -86,6 +86,7 @@ type rbdVolume struct {
 	VolSize            int64  `json:"volSize"`
 	DisableInUseChecks bool   `json:"disableInUseChecks"`
 	Encrypted          bool
+	KMS                util.EncryptionKMS
 }
 
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics
@@ -306,7 +307,7 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 		return err
 	}
 
-	rbdSnap.RequestName, rbdSnap.RbdImageName, err = snapJournal.GetObjectUUIDData(ctx, rbdSnap.Monitors,
+	rbdSnap.RequestName, rbdSnap.RbdImageName, _, err = snapJournal.GetObjectUUIDData(ctx, rbdSnap.Monitors,
 		cr, rbdSnap.Pool, vi.ObjectUUID, true)
 	if err != nil {
 		return err
@@ -319,7 +320,7 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 
 // genVolFromVolID generates a rbdVolume structure from the provided identifier, updating
 // the structure with elements from on-disk image metadata as well
-func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr *util.Credentials) error {
+func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr *util.Credentials, secrets map[string]string) error {
 	var (
 		options map[string]string
 		vi      util.CSIIdentifier
@@ -350,10 +351,22 @@ func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr
 		return err
 	}
 
-	rbdVol.RequestName, _, err = volJournal.GetObjectUUIDData(ctx, rbdVol.Monitors, cr,
-		rbdVol.Pool, vi.ObjectUUID, false)
+	kmsConfig := ""
+	rbdVol.RequestName, _, kmsConfig, err = volJournal.GetObjectUUIDData(
+		ctx, rbdVol.Monitors, cr, rbdVol.Pool, vi.ObjectUUID, false)
 	if err != nil {
 		return err
+	}
+	if kmsConfig != "" {
+		rbdVol.Encrypted = true
+		kmsOpts, kmsConfigParseErr := util.GetKMSConfig(kmsConfig)
+		if kmsConfigParseErr != nil {
+			return kmsConfigParseErr
+		}
+		rbdVol.KMS, err = util.GetKMS(kmsOpts, secrets)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = updateVolWithImageInfo(ctx, rbdVol, cr)
@@ -445,8 +458,9 @@ func updateMons(rbdVol *rbdVolume, options, credentials map[string]string) error
 
 func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[string]string, disableInUseChecks, isLegacyVolume bool) (*rbdVolume, error) {
 	var (
-		ok  bool
-		err error
+		ok        bool
+		err       error
+		encrypted string
 	)
 
 	rbdVol := &rbdVolume{}
@@ -493,12 +507,19 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 	}
 
 	rbdVol.Encrypted = false
-	encrypted, ok := volOptions["encrypted"]
+	encrypted, ok = volOptions["encrypted"]
 	if ok {
 		rbdVol.Encrypted, err = strconv.ParseBool(encrypted)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"invalid value set in 'encrypted': %s (should be \"true\" or \"false\")", encrypted)
+		}
+
+		if rbdVol.Encrypted {
+			rbdVol.KMS, err = util.GetKMS(volOptions, credentials)
+			if err != nil {
+				return nil, fmt.Errorf("invalid encryption kms configuration: %s", err)
+			}
 		}
 	}
 
@@ -763,6 +784,7 @@ type rbdImageMetadataStash struct {
 	Pool      string `json:"pool"`
 	ImageName string `json:"image"`
 	NbdAccess bool   `json:"accessType"`
+	Encrypted bool   `json:"encrypted"`
 }
 
 // file name in which image metadata is stashed
@@ -772,9 +794,10 @@ const stashFileName = "image-meta.json"
 // JSON format
 func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
 	var imgMeta = rbdImageMetadataStash{
-		Version:   1, // Stash a v1 for now, in case of changes later, there are no checks for this at present
+		Version:   2, // there are no checks for this at present
 		Pool:      volOptions.Pool,
 		ImageName: volOptions.RbdImageName,
+		Encrypted: volOptions.Encrypted,
 	}
 
 	imgMeta.NbdAccess = false
