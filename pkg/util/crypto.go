@@ -18,11 +18,14 @@ package util
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"path"
 	"strings"
 
 	"github.com/pkg/errors"
+
+	"crypto/rand"
 
 	"k8s.io/klog"
 )
@@ -36,22 +39,128 @@ const (
 
 	// Encryption passphrase location in K8s secrets
 	encryptionPassphraseKey = "encryptionPassphrase"
+
+	// kmsConfigPath is the location of the vault config file
+	kmsConfigPath = "/etc/ceph-csi-encryption-kms-config/config.json"
+
+	// Passphrase size - 20 bytes is 160 bits to satisfy:
+	// https://tools.ietf.org/html/rfc6749#section-10.10
+	encryptionPassphraseSize = 20
 )
+
+// EncryptionKMS provides external Key Management System for encryption
+// passphrases storage
+type EncryptionKMS interface {
+	GetPassphrase(key string) (string, error)
+	SavePassphrase(key, value string) error
+	DeletePassphrase(key string) error
+	KmsConfig() string
+}
+
+// MissingPassphrase is an error instructing to generate new passphrase
+type MissingPassphrase struct {
+	error
+}
+
+// SecretsKMS is default KMS implementation that means no KMS is in use
+type SecretsKMS struct {
+	passphrase string
+}
+
+func initSecretsKMS(secrets map[string]string) (EncryptionKMS, error) {
+	passphraseValue, ok := secrets[encryptionPassphraseKey]
+	if !ok {
+		return nil, errors.New("missing encryption passphrase in secrets")
+	}
+	return SecretsKMS{passphrase: passphraseValue}, nil
+}
+
+// KmsConfig returns KMS configuration: "<kms-type>|<kms-id>"
+func (kms SecretsKMS) KmsConfig() string {
+	return "secrets|kubernetes"
+}
+
+// GetPassphrase returns passphrase from Kubernetes secrets
+func (kms SecretsKMS) GetPassphrase(key string) (string, error) {
+	return kms.passphrase, nil
+}
+
+// SavePassphrase is not implemented
+func (kms SecretsKMS) SavePassphrase(key, value string) error {
+	return fmt.Errorf("save new passphrase is not implemented for Kubernetes secrets")
+}
+
+// DeletePassphrase is doing nothing as no new passphrases are saved with
+// SecretsKMS
+func (kms SecretsKMS) DeletePassphrase(key string) error {
+	return nil
+}
+
+// GetKMS returns an instance of Key Management System
+func GetKMS(opts, secrets map[string]string) (EncryptionKMS, error) {
+	kmsType, ok := opts["encryptionKMS"]
+	if !ok || kmsType == "" || kmsType == "secrets" {
+		return initSecretsKMS(secrets)
+	}
+	if kmsType == "vault" {
+		return InitVaultKMS(opts, secrets)
+	}
+	return nil, fmt.Errorf("unknown encryption KMS type %s", kmsType)
+}
+
+// GetKMSConfig returns required keys for KMS to instantiate from it's config
+// - map with kms type and ID keys
+// - error if format is invalid
+func GetKMSConfig(config string) (map[string]string, error) {
+	kmsConfigParts := strings.Split(config, "|")
+	if len(kmsConfigParts) != 2 {
+		return make(map[string]string), fmt.Errorf("failed to parse encryption KMS "+
+			"configuration from config string, expected <type>|<id>, got: %s", config)
+	}
+	return map[string]string{
+		"encryptionKMS":   kmsConfigParts[0],
+		"encryptionKMSID": kmsConfigParts[1],
+	}, nil
+}
+
+// GetCryptoPassphrase Retrieves passphrase to encrypt volume
+func GetCryptoPassphrase(ctx context.Context, volumeID string, kms EncryptionKMS) (string, error) {
+	passphrase, err := kms.GetPassphrase(volumeID)
+	if err == nil {
+		return passphrase, nil
+	}
+	if _, ok := err.(MissingPassphrase); ok {
+		klog.V(4).Infof(Log(ctx, "Encryption passphrase is missing for %s. Generating a new one"),
+			volumeID)
+		passphrase, err = generateNewEncryptionPassphrase()
+		if err != nil {
+			return "", fmt.Errorf("failed to generate passphrase for %s: %s", volumeID, err)
+		}
+		err = kms.SavePassphrase(volumeID, passphrase)
+		if err != nil {
+			return "", fmt.Errorf("failed to save the passphrase for %s: %s", volumeID, err)
+		}
+		return passphrase, nil
+	}
+	klog.Errorf(Log(ctx, "failed to get encryption passphrase for %s: %s"), volumeID, err)
+	return "", err
+}
+
+// generateNewEncryptionPassphrase generates a random passphrase for encryption
+func generateNewEncryptionPassphrase() (string, error) {
+	bytesPassphrase := make([]byte, encryptionPassphraseSize)
+	_, err := rand.Read(bytesPassphrase)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(bytesPassphrase), nil
+}
 
 // VolumeMapper returns file name and it's path to where encrypted device should be open
 func VolumeMapper(volumeID string) (mapperFile, mapperFilePath string) {
 	mapperFile = mapperFilePrefix + volumeID
 	mapperFilePath = path.Join(mapperFilePathPrefix, mapperFile)
 	return mapperFile, mapperFilePath
-}
-
-// GetCryptoPassphrase Retrieves passphrase to encrypt volume
-func GetCryptoPassphrase(secrets map[string]string) (string, error) {
-	val, ok := secrets[encryptionPassphraseKey]
-	if !ok {
-		return "", errors.New("missing encryption passphrase in secrets")
-	}
-	return val, nil
 }
 
 // EncryptVolume encrypts provided device with LUKS

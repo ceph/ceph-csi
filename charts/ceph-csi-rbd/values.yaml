@@ -27,6 +27,14 @@ serviceAccounts:
 #       - "<MONValue2>"
 csiConfig: []
 
+# Configuration for the encryption KMS
+# Ref: https://github.com/ceph/ceph-csi/blob/master/docs/deploy-rbd.md
+# Example:
+# encryptionKMSConfig:
+#   - encryptionKMSID: "<kms-id>"
+#     <kms-specific-configs>
+encryptionKMSConfig: []
+
 nodeplugin:
   name: nodeplugin
   # if you are using rbd-nbd client set this value to OnDelete
@@ -248,3 +256,5 @@ pluginDir: /var/lib/kubelet/plugins
 driverName: rbd.csi.ceph.com
 # Name of the configmap used for state
 configMapName: ceph-csi-config-rbd
+# Name of the configmap used for encryption kms configuration
+kmsConfigMapName: ceph-csi-encryption-kms-config

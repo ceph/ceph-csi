@@ -58,7 +58,7 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 	defer cr.DeleteCredentials()
 
 	imageUUID, err := volJournal.CheckReservation(ctx, volOptions.Monitors, cr,
-		volOptions.MetadataPool, volOptions.RequestName, "")
+		volOptions.MetadataPool, volOptions.RequestName, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 	defer cr.DeleteCredentials()
 
 	imageUUID, err := volJournal.ReserveName(ctx, volOptions.Monitors, cr,
-		volOptions.MetadataPool, volOptions.RequestName, "")
+		volOptions.MetadataPool, volOptions.RequestName, "", "")
 	if err != nil {
 		return nil, err
 	}

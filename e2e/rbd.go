@@ -76,7 +76,7 @@ var _ = Describe("RBD", func() {
 		deployRBDPlugin()
 		createRBDStorageClass(f.ClientSet, f, make(map[string]string))
 		createRBDSecret(f.ClientSet, f)
-
+		deployVault(f.ClientSet, deployTimeout)
 	})
 
 	AfterEach(func() {
@@ -91,6 +91,7 @@ var _ = Describe("RBD", func() {
 		deleteResource(rbdExamplePath + "secret.yaml")
 		deleteResource(rbdExamplePath + "storageclass.yaml")
 		// deleteResource(rbdExamplePath + "snapshotclass.yaml")
+		deleteVault()
 	})
 
 	Context("Test RBD CSI", func() {
@@ -135,7 +136,20 @@ var _ = Describe("RBD", func() {
 			By("create a PVC and Bind it to an app with encrypted RBD volume", func() {
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, map[string]string{"encrypted": "true"})
-				validateEncryptedPVCAndAppBinding(pvcPath, appPath, f)
+				validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
+			})
+
+			By("create a PVC and Bind it to an app with encrypted RBD volume with Vault KMS", func() {
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				scOpts := map[string]string{
+					"encrypted":       "true",
+					"encryptionKMS":   "vault",
+					"encryptionKMSID": "vault-test",
+				}
+				createRBDStorageClass(f.ClientSet, f, scOpts)
+				validateEncryptedPVCAndAppBinding(pvcPath, appPath, "vault", f)
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
 			})

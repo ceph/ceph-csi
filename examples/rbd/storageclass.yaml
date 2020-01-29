@@ -43,6 +43,13 @@ parameters:
    # By default it is disabled. Valid values are “true” or “false”.
    # A string is expected here, i.e. “true”, not true.
    # encrypted: "true"
+
+   # Use external key management system for encryption passphrases
+   # encryptionKMS: vault
+
+   # String representing KMS configuration. Should be unique and match ID in
+   # KMS ConfigMap. The ID is only used for correlation to config map entry.
+   # encryptionKMSID: <kms-config-id>
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 mountOptions:
