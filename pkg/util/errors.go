@@ -56,3 +56,13 @@ type ErrSnapNameConflict struct {
 func (e ErrSnapNameConflict) Error() string {
 	return e.err.Error()
 }
+
+// ErrPoolNotFound is returned when pool is not found
+type ErrPoolNotFound struct {
+	Pool string
+	Err  error
+}
+
+func (e ErrPoolNotFound) Error() string {
+	return e.Err.Error()
+}
