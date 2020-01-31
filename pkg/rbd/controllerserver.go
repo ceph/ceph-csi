@@ -258,6 +258,12 @@ func (cs *ControllerServer) checkSnapshot(ctx context.Context, req *csi.CreateVo
 		if _, ok := err.(ErrSnapNotFound); !ok {
 			return status.Error(codes.Internal, err.Error())
 		}
+
+		if _, ok := err.(util.ErrPoolNotFound); ok {
+			klog.Errorf(util.Log(ctx, "failed to get backend snapshot for %s: %v"), snapshotID, err)
+			return status.Error(codes.InvalidArgument, err.Error())
+		}
+
 		return status.Error(codes.InvalidArgument, "missing requested Snapshot ID")
 	}
 
@@ -343,7 +349,12 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	defer cs.VolumeLocks.Release(volumeID)
 
 	rbdVol := &rbdVolume{}
-	if err := genVolFromVolID(ctx, rbdVol, volumeID, cr); err != nil {
+	if err = genVolFromVolID(ctx, rbdVol, volumeID, cr); err != nil {
+		if _, ok := err.(util.ErrPoolNotFound); ok {
+			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), volumeID, err)
+			return &csi.DeleteVolumeResponse{}, nil
+		}
+
 		// If error is ErrInvalidVolID it could be a version 1.0.0 or lower volume, attempt
 		// to process it as such
 		if _, ok := err.(ErrInvalidVolID); ok {
@@ -360,6 +371,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		// or partially complete (image and imageOMap are garbage collected already), hence return
 		// success as deletion is complete
 		if _, ok := err.(util.ErrKeyNotFound); ok {
+			klog.Warningf(util.Log(ctx, "Failed to volume options for %s: %v"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 
@@ -451,6 +463,11 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
 			return nil, status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
+		}
+
+		if _, ok := err.(util.ErrPoolNotFound); ok {
+			klog.Errorf(util.Log(ctx, "failed to get backend volume for %s: %v"), req.GetSourceVolumeId(), err)
+			return nil, status.Errorf(codes.Internal, err.Error())
 		}
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
@@ -613,6 +630,13 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	rbdSnap := &rbdSnapshot{}
 	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
+		// if error is ErrPoolNotFound, the pool is already deleted we dont
+		// need to worry about deleting snapshot or omap data, return success
+		if _, ok := err.(util.ErrPoolNotFound); ok {
+			klog.Warningf(util.Log(ctx, "failed to get backend snapshot for %s: %v"), snapshotID, err)
+			return &csi.DeleteSnapshotResponse{}, nil
+		}
+
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (snap and snapOMap are garbage collected already), hence return
 		// success as deletion is complete
@@ -703,6 +727,12 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		if _, ok := err.(ErrImageNotFound); ok {
 			return nil, status.Errorf(codes.NotFound, "volume ID %s not found", volID)
 		}
+
+		if _, ok := err.(util.ErrPoolNotFound); ok {
+			klog.Errorf(util.Log(ctx, "failed to get backend volume for %s: %v"), volID, err)
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		}
+
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
