@@ -111,7 +111,11 @@ spec:
             - name: socket-dir
               mountPath: /csi
             - mountPath: /dev
+              name: host-mount
+            - mountPath: /run/mount
               name: host-dev
+            - mountPath: /run/mount
+              name: host-mount
             - mountPath: /sys
               name: host-sys
             - mountPath: /lib/modules
@@ -175,6 +179,9 @@ spec:
         - name: host-dev
           hostPath:
             path: /dev
+        - name: host-mount
+          hostPath:
+            path: /run/mount
         - name: host-sys
           hostPath:
             path: /sys
