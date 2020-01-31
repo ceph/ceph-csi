@@ -557,7 +557,11 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 	}
 }
 
+<<<<<<< HEAD
 func getImageIDFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (string, error) {
+=======
+func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (string, string, error) {
+>>>>>>> 8dcb6a610... Handle Delete operation if pool not found
 	c := f.ClientSet.CoreV1()
 	pvc, err := c.PersistentVolumeClaims(pvcNamespace).Get(pvcName, metav1.GetOptions{})
 	if err != nil {
@@ -619,7 +623,11 @@ func getMountType(appName, appNamespace, mountPath string, f *framework.Framewor
 func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
 	pvc, app := createPVCAndAppBinding(pvcPath, appPath, f)
 
+<<<<<<< HEAD
 	rbdImageSpec, err := getRBDImageSpec(pvc.Namespace, pvc.Name, f)
+=======
+	rbdImageID, rbdImageHandle, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+>>>>>>> 8dcb6a610... Handle Delete operation if pool not found
 	if err != nil {
 		Fail(err.Error())
 	}
@@ -794,7 +802,11 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 // }
 
 func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
+<<<<<<< HEAD
 	volname, err := getCephFSVolumeName(pvc.Namespace, pvc.Name, f)
+=======
+	volname, _, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+>>>>>>> 8dcb6a610... Handle Delete operation if pool not found
 	if err != nil {
 		return err
 	}
@@ -885,5 +897,78 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	}
 
 	err = deletePVCAndApp("", f, pvc, app)
+	return err
+}
+
+func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
+	rbdImage, _, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+
+	cmd := fmt.Sprintf("rbd rm %s --pool=replicapool", rbdImage)
+	execCommandInPod(f, cmd, rookNS, &opt)
+	return nil
+}
+
+func deletePool(name string, cephfs bool, f *framework.Framework) {
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+	var cmds = []string{}
+	if cephfs {
+		// ceph fs fail
+		// ceph fs rm myfs --yes-i-really-mean-it
+		// ceph osd pool delete myfs-metadata myfs-metadata
+		// --yes-i-really-mean-it
+		// ceph osd pool delete myfs-data0 myfs-data0
+		// --yes-i-really-mean-it
+		cmds = append(cmds, fmt.Sprintf("ceph fs fail %s", name),
+			fmt.Sprintf("ceph fs rm %s --yes-i-really-mean-it", name),
+			fmt.Sprintf("ceph osd pool delete %s-metadata %s-metadata --yes-i-really-really-mean-it", name, name),
+			fmt.Sprintf("ceph osd pool delete %s-data0 %s-data0 --yes-i-really-really-mean-it", name, name))
+	} else {
+		// ceph osd pool delete replicapool replicapool
+		// --yes-i-really-mean-it
+		cmds = append(cmds, fmt.Sprintf("ceph osd pool delete %s %s --yes-i-really-really-mean-it", name, name))
+	}
+
+	for _, cmd := range cmds {
+		// discard stdErr as some commands prints warning in strErr
+		execCommandInPod(f, cmd, rookNS, &opt)
+	}
+}
+
+func pvcDeleteWhenPoolNotFound(pvcPath string, cephfs bool, f *framework.Framework) error {
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return err
+	}
+	pvc.Namespace = f.UniqueName
+
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return err
+	}
+	if cephfs {
+		err = deleteBackingCephFSVolume(f, pvc)
+		if err != nil {
+			return err
+		}
+		// delete cephfs filesystem
+		deletePool("myfs", cephfs, f)
+	} else {
+		err = deleteBackingRBDImage(f, pvc)
+		if err != nil {
+			return err
+		}
+		// delete rbd pool
+		deletePool("replicapool", cephfs, f)
+	}
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	return err
 }
