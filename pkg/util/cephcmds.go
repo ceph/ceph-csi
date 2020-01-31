@@ -114,7 +114,7 @@ func GetPoolName(ctx context.Context, monitors string, cr *Credentials, poolID i
 		}
 	}
 
-	return "", fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)
+	return "", ErrPoolNotFound{string(poolID), fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)}
 }
 
 // SetOMapKeyValue sets the given key and value into the provided Ceph omap name

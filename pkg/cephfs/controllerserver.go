@@ -231,6 +231,12 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// Find the volume using the provided VolumeID
 	volOptions, vID, err := newVolumeOptionsFromVolID(ctx, string(volID), nil, secrets)
 	if err != nil {
+		// if error is ErrPoolNotFound, the pool is already deleted we dont
+		// need to worry about deleting subvolume or omap data, return success
+		if _, ok := err.(util.ErrPoolNotFound); ok {
+			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), string(volID), err)
+			return &csi.DeleteVolumeResponse{}, nil
+		}
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (subvolume and imageOMap are garbage collected already), hence
 		// return success as deletion is complete

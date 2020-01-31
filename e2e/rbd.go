@@ -339,6 +339,15 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 			})
+
+			// Make sure this should be last testcase in this file, because
+			// it deletes pool
+			By("Create a PVC and Delete PVC when backend pool deleted", func() {
+				err := pvcDeleteWhenPoolNotFound(pvcPath, false, f)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
 		})
 	})
 
