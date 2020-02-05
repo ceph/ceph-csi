@@ -11,6 +11,7 @@ function deploy_rook() {
 	kubectl create -f "${ROOK_URL}/toolbox.yaml"
 	kubectl create -f "${ROOK_URL}/filesystem-test.yaml"
 	kubectl create -f "${ROOK_URL}/pool-test.yaml"
+	kubectl create -f "${ROOK_URL}/object-test.yaml"
 
 	# Check if CephCluster is empty
 	if ! kubectl -n rook-ceph get cephclusters -oyaml | grep 'items: \[\]' &>/dev/null; then
@@ -26,9 +27,15 @@ function deploy_rook() {
 	if ! kubectl -n rook-ceph get cephblockpools -oyaml | grep 'items: \[\]' &>/dev/null; then
 		check_rbd_stat
 	fi
+
+	# Check if CephObjectStore is empty
+	if ! kubectl -n rook-ceph get cephobjectstore -oyaml | grep 'items: \[\]' &>/dev/null; then
+		check_rgw_stat
+	fi
 }
 
 function teardown_rook() {
+	kubectl delete -f "${ROOK_URL}/object-test.yaml"
 	kubectl delete -f "${ROOK_URL}/pool-test.yaml"
 	kubectl delete -f "${ROOK_URL}/filesystem-test.yaml"
 	kubectl delete -f "${ROOK_URL}/toolbox.yaml"
@@ -51,6 +58,10 @@ function check_ceph_cluster_health() {
 			fi
 		fi
 	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[ERROR] Check CEPH Cluster state failed! (timeout)"
+	fi
 	echo ""
 }
 
@@ -72,6 +83,10 @@ function check_mds_stat() {
 			fi
 		fi
 	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[ERROR] Check CEPH Filesystem state failed! (timeout)"
+	fi
 	echo ""
 }
 
@@ -82,14 +97,55 @@ function check_rbd_stat() {
 
 		TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
 		TOOLBOX_POD_STATUS=$(kubectl -n rook-ceph get pod "$TOOLBOX_POD" -ojsonpath='{.status.phase}')
-		echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"
-		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] && continue
+		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] && \
+			{ echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"; continue; }
 
 		if kubectl exec -n rook-ceph "$TOOLBOX_POD" -it -- rbd pool stats "$RBD_POOL_NAME" &>/dev/null; then
 			echo "RBD ($RBD_POOL_NAME) is successfully created..."
 			break
 		fi
 	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[ERROR] Check CEPH BlockPool state failed! (timeout)"
+	fi
+	echo ""
+}
+
+function check_rgw_stat() {
+	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
+		OBS_NAME=$(kubectl -n rook-ceph get cephobjectstore -ojsonpath='{.items[0].metadata.name}')
+		echo "Checking RGW ($OBS_NAME) stats... ${retry}s" && sleep 5
+		if kubectl -n rook-ceph get pod -l app=rook-ceph-rgw | grep Running &>/dev/null; then
+			echo "POD (rook-ceph-rgw-$OBS_NAME) is running."
+		else
+			echo "POD (rook-ceph-rgw-$OBS_NAME) is NOT running."
+			continue
+		fi
+
+		TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
+		TOOLBOX_POD_STATUS=$(kubectl -n rook-ceph get pod "$TOOLBOX_POD" -ojsonpath='{.status.phase}')
+		if ! kubectl -n rook-ceph get pod -l app=rook-ceph-tools | grep Running &>/dev/null; then
+			echo "POD ($TOOLBOX_POD) is not running. [$TOOLBOX_POD_STATUS]"
+			continue
+	   fi
+
+		IP=$(kubectl -n rook-ceph get svc -l app=rook-ceph-rgw -oyaml | grep clusterIP | awk '{print $2}')
+		PORT=$(kubectl -n rook-ceph get svc -l app=rook-ceph-rgw -oyaml | grep port: | awk '{print $2}')
+		if ! [[ $IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ $PORT =~ ^[0-9]+$ ]]; then
+			echo "Failed to get rook-ceph-rgw service endpoint"
+			continue
+		fi
+
+		if kubectl -n rook-ceph exec "$TOOLBOX_POD" -it -- curl --connect-timeout 10 "$IP":"$PORT" &>/dev/null; then
+			echo "RGW CephObjectStore is successfully created..."
+			break
+		fi
+	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[ERROR] Check CEPH ObjectStore state failed! (timeout)"
+	fi
 	echo ""
 }
 
