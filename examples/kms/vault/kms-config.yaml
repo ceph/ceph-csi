@@ -3,16 +3,16 @@ apiVersion: v1
 kind: ConfigMap
 data:
   config.json: |-
-    [
-      {
-        "encryptionKMSID": "vault-test",
+    {
+      "vault-test": {
+        "encryptionKMSType": "vault",
         "vaultAddress": "http://vault.default.svc.cluster.local:8200",
         "vaultAuthPath": "/v1/auth/kubernetes/login",
         "vaultRole": "csi-kubernetes",
         "vaultPassphraseRoot": "/v1/secret",
         "vaultPassphrasePath": "ceph-csi/",
-        "vaultCAVerify": false
+        "vaultCAVerify": "false"
       }
-    ]
+    }
 metadata:
   name: ceph-csi-encryption-kms-config

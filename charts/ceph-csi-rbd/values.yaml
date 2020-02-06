@@ -31,9 +31,15 @@ csiConfig: []
 # Ref: https://github.com/ceph/ceph-csi/blob/master/docs/deploy-rbd.md
 # Example:
 # encryptionKMSConfig:
-#   - encryptionKMSID: "<kms-id>"
-#     <kms-specific-configs>
-encryptionKMSConfig: []
+#   vault-unique-id-1:
+#     encryptionKMSType: vault
+#     vaultAddress: https://vault.example.com
+#     vaultAuthPath: /v1/auth/kubernetes/login
+#     vaultRole: csi-kubernetes
+#     vaultPassphraseRoot: /v1/secret
+#     vaultPassphrasePath: ceph-csi/
+#     vaultCAVerify: "false"
+encryptionKMSConfig: {}
 
 nodeplugin:
   name: nodeplugin

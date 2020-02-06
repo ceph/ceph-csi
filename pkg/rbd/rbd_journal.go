@@ -162,12 +162,12 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 		return false, err
 	}
 
-	encryptionKmsConfig := ""
+	kmsID := ""
 	if rbdVol.Encrypted {
-		encryptionKmsConfig = rbdVol.KMS.KmsConfig()
+		kmsID = rbdVol.KMS.GetID()
 	}
 	imageUUID, err := volJournal.CheckReservation(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RequestName, "", encryptionKmsConfig)
+		rbdVol.RequestName, "", kmsID)
 	if err != nil {
 		return false, err
 	}
@@ -237,12 +237,12 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the
 // volume ID for the generated name
 func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	encryptionKmsConfig := ""
+	kmsID := ""
 	if rbdVol.Encrypted {
-		encryptionKmsConfig = rbdVol.KMS.KmsConfig()
+		kmsID = rbdVol.KMS.GetID()
 	}
 	imageUUID, err := volJournal.ReserveName(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RequestName, "", encryptionKmsConfig)
+		rbdVol.RequestName, "", kmsID)
 	if err != nil {
 		return err
 	}
