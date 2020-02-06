@@ -54,8 +54,7 @@ make image-cephcsi
 | `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-stage-secret-namespace` | yes (for Kubernetes) | namespaces of the above Secret objects                                                                                                                                                                                  |
 | `mounter`                                                                                           | no                   | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images                                                                                                              |
 | `encrypted`                                                                                         | no                   | disabled by default, use `"true"` to enable LUKS encryption on pvc and `"false"` to disable it. **Do not change for existing storageclasses**                                                                           |
-| `encryptionKMS`                                                                                     | no                   | specifies key management system for encrypytion. Currently supports `vault`                                                                                                                                             |
-| `encryptionKMSID`                                                                                   | no                   | required if `encryptionKMS` is set to `vault` to specify a unique identifier for vault configuration                                                                                                                    |
+| `encryptionKMSID`                                                                                   | no                   | required if encryption is enabled and a kms is used to store passphrases                                                                                                                                                |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
 running pods. Refer to [Creating CSI configuration](../examples/README.md#creating-csi-configuration)
@@ -223,14 +222,19 @@ To further improve security robustness it is possible to use unique passphrases
 generated for each volume and stored in a Key Management System (KMS). Currently
 HashiCorp Vault is the only KMS supported.
 
-To use Vault as KMS set `encryptionKMS` to `vault` and `encryptionKMSID` to a
-unique identifier for Vault configuration. You will also need to create vault
-configuration similar to the [example](../examples/rbd/kms-config.yaml)
-and use same `encryptionKMSID`. In order for ceph-csi to be able to access the
-configuration you will need to have it mounted to csi-rbdplugin containers in
-both daemonset (so kms client can be instantiated to encrypt/decrypt volumes)
-and deployment pods (so kms client can be instantiated to delete passphrase on
-volume delete) `ceph-csi-encryption-kms-config` config map.
+To use Vault as KMS set `encryptionKMSID` to a unique identifier for Vault
+configuration. You will also need to create vault configuration similar to the
+[example](../examples/rbd/kms-config.yaml) and use same `encryptionKMSID`.
+Configuration must include `encryptionKMSType: "vault"`. In order for ceph-csi
+to be able to access the configuration you will need to have it mounted to
+csi-rbdplugin containers in both daemonset (so kms client can be instantiated to
+encrypt/decrypt volumes) and deployment pods (so kms client can be instantiated
+to delete passphrase on volume delete) `ceph-csi-encryption-kms-config` config
+map.
+
+> Note: kms configuration must be a map of string values only
+> (`map[string]string`) so for numerical and boolean values make sure to put
+> quotes around.
 
 #### Configuring HashiCorp Vault
 
