@@ -51,6 +51,11 @@ function check_ceph_cluster_health() {
 			fi
 		fi
 	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[Timeout] CEPH cluster not in a healthy state (timeout)"
+		exit 1
+	fi
 	echo ""
 }
 
@@ -72,6 +77,11 @@ function check_mds_stat() {
 			fi
 		fi
 	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[Timeout] Failed to get ceph filesystem pods"
+		exit 1
+	fi
 	echo ""
 }
 
@@ -82,14 +92,19 @@ function check_rbd_stat() {
 
 		TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
 		TOOLBOX_POD_STATUS=$(kubectl -n rook-ceph get pod "$TOOLBOX_POD" -ojsonpath='{.status.phase}')
-		echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"
-		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] && continue
+		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] && \
+			{ echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"; continue; }
 
 		if kubectl exec -n rook-ceph "$TOOLBOX_POD" -it -- rbd pool stats "$RBD_POOL_NAME" &>/dev/null; then
 			echo "RBD ($RBD_POOL_NAME) is successfully created..."
 			break
 		fi
 	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[Timeout] Failed to get RBD pool stats"
+		exit 1
+	fi
 	echo ""
 }
 
