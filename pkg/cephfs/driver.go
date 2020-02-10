@@ -115,14 +115,6 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	// Update namespace for storing keys into a specific namespace on RADOS, in the CephFS
 	// metadata pool
 	volJournal.SetNamespace(radosNamespace)
-
-	initVolumeMountCache(conf.DriverName, conf.MountCacheDir)
-	if conf.MountCacheDir != "" {
-		if err := remountCachedVolumes(); err != nil {
-			klog.Warningf("failed to remount cached volumes: %v", err)
-			// ignore remount fail
-		}
-	}
 	// Initialize default library driver
 
 	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
