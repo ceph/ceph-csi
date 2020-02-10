@@ -85,7 +85,6 @@ spec:
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
             - "--metadatastorage=k8s_configmap"
-            - "--mountcachedir=/mount-cache-dir"
           env:
             - name: POD_IP
               valueFrom:
@@ -109,8 +108,6 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
           volumeMounts:
-            - name: mount-cache-dir
-              mountPath: /mount-cache-dir
             - name: socket-dir
               mountPath: /csi
             - name: mountpoint-dir
@@ -161,8 +158,6 @@ spec:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- end }}
       volumes:
-        - name: mount-cache-dir
-          emptyDir: {}
         - name: socket-dir
           hostPath:
             path: {{ .Values.socketDir }}
