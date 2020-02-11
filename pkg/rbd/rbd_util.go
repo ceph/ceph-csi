@@ -351,19 +351,15 @@ func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr
 		return err
 	}
 
-	kmsConfig := ""
-	rbdVol.RequestName, _, kmsConfig, err = volJournal.GetObjectUUIDData(
+	kmsID := ""
+	rbdVol.RequestName, _, kmsID, err = volJournal.GetObjectUUIDData(
 		ctx, rbdVol.Monitors, cr, rbdVol.Pool, vi.ObjectUUID, false)
 	if err != nil {
 		return err
 	}
-	if kmsConfig != "" {
+	if kmsID != "" {
 		rbdVol.Encrypted = true
-		kmsOpts, kmsConfigParseErr := util.GetKMSConfig(kmsConfig)
-		if kmsConfigParseErr != nil {
-			return kmsConfigParseErr
-		}
-		rbdVol.KMS, err = util.GetKMS(kmsOpts, secrets)
+		rbdVol.KMS, err = util.GetKMS(kmsID, secrets)
 		if err != nil {
 			return err
 		}
@@ -516,7 +512,10 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		}
 
 		if rbdVol.Encrypted {
-			rbdVol.KMS, err = util.GetKMS(volOptions, credentials)
+			// deliberately ignore if parsing failed as GetKMS will return default
+			// implementation of kmsID is empty
+			kmsID := volOptions["encryptionKMSID"]
+			rbdVol.KMS, err = util.GetKMS(kmsID, credentials)
 			if err != nil {
 				return nil, fmt.Errorf("invalid encryption kms configuration: %s", err)
 			}

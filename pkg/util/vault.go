@@ -24,6 +24,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -48,9 +49,9 @@ const (
 kmsKMS represents a Hashicorp Vault KMS configuration
 
 Example JSON structure in the KMS config is,
-[
-	{
-		"encryptionKMSID": "local_vault_unique_identifier",
+{
+	"local_vault_unique_identifier": {
+		"encryptionKMSType": "vault",
 		"vaultAddress": "https://127.0.0.1:8500",
 		"vaultAuthPath": "/v1/auth/kubernetes/login",
 		"vaultRole": "csi-kubernetes",
@@ -61,88 +62,83 @@ Example JSON structure in the KMS config is,
 		"vaultCAFromSecret": "vault-ca"
 	},
 	...
-]
+}
 */
 type VaultKMS struct {
-	EncryptionKMSID     string `json:"encryptionKMSID"`
-	VaultAddress        string `json:"vaultAddress"`
-	VaultAuthPath       string `json:"vaultAuthPath"`
-	VaultRole           string `json:"vaultRole"`
-	VaultNamespace      string `json:"vaultNamespace"`
-	VaultPassphraseRoot string `json:"vaultPassphraseRoot"`
-	VaultPassphrasePath string `json:"vaultPassphrasePath"`
-	VaultCAVerify       bool   `json:"vaultCAVerify"`
-	VaultCAFromSecret   string `json:"vaultCAFromSecret"`
+	EncryptionKMSID     string
+	VaultAddress        string
+	VaultAuthPath       string
+	VaultRole           string
+	VaultNamespace      string
+	VaultPassphraseRoot string
+	VaultPassphrasePath string
+	VaultCAVerify       bool
 	vaultCA             *x509.CertPool
 }
 
 // InitVaultKMS returns an interface to HashiCorp Vault KMS
-func InitVaultKMS(opts, secrets map[string]string) (EncryptionKMS, error) {
-	var config []VaultKMS
+func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKMS, error) {
+	var (
+		ok  bool
+		err error
+	)
+	kms := &VaultKMS{}
+	kms.EncryptionKMSID = kmsID
 
-	vaultID, ok := opts["encryptionKMSID"]
-	if !ok {
-		return nil, fmt.Errorf("missing encryptionKMSID for vault as encryption KMS")
+	kms.VaultAddress, ok = config["vaultAddress"]
+	if !ok || kms.VaultAddress == "" {
+		return nil, fmt.Errorf("missing 'vaultAddress' for vault KMS %s", kmsID)
+	}
+	kms.VaultAuthPath, ok = config["vaultAuthPath"]
+	if !ok || kms.VaultAuthPath == "" {
+		kms.VaultAuthPath = vaultDefaultAuthPath
+	}
+	kms.VaultRole, ok = config["vaultRole"]
+	if !ok || kms.VaultRole == "" {
+		kms.VaultRole = vaultDefaultRole
+	}
+	kms.VaultNamespace, ok = config["vaultNamespace"]
+	if !ok || kms.VaultNamespace == "" {
+		kms.VaultNamespace = vaultDefaultNamespace
+	}
+	kms.VaultPassphraseRoot, ok = config["vaultPassphraseRoot"]
+	if !ok || kms.VaultPassphraseRoot == "" {
+		kms.VaultPassphraseRoot = vaultDefaultPassphraseRoot
+	}
+	kms.VaultPassphrasePath, ok = config["vaultPassphrasePath"]
+	if !ok || kms.VaultPassphrasePath == "" {
+		kms.VaultPassphrasePath = vaultDefaultPassphrasePath
+	}
+	kms.VaultCAVerify = true
+	verifyCA, ok := config["vaultCAVerify"]
+	if ok {
+		kms.VaultCAVerify, err = strconv.ParseBool(verifyCA)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse 'vaultCAVerify' for vault <%s> kms config: %s",
+				kmsID, err)
+		}
+	}
+	vaultCAFromSecret, ok := config["vaultCAFromSecret"]
+	if ok && vaultCAFromSecret != "" {
+		caPEM, ok := secrets[vaultCAFromSecret]
+		if !ok {
+			return nil, fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
+		}
+		roots := x509.NewCertPool()
+		ok = roots.AppendCertsFromPEM([]byte(caPEM))
+		if !ok {
+			return nil, fmt.Errorf("failed loading CA bundle for vault from secret %s",
+				vaultCAFromSecret)
+		}
+		kms.vaultCA = roots
 	}
 
-	// #nosec
-	content, err := ioutil.ReadFile(kmsConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching vault configuration for vault ID (%s): (%s)",
-			vaultID, err)
-	}
-
-	err = json.Unmarshal(content, &config)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal failed: %v. raw buffer response: %s",
-			err, string(content))
-	}
-
-	for i := range config {
-		vault := &config[i]
-		if vault.EncryptionKMSID != vaultID {
-			continue
-		}
-		if vault.VaultAddress == "" {
-			return nil, fmt.Errorf("missing vaultAddress for vault as encryption KMS")
-		}
-		if vault.VaultAuthPath == "" {
-			vault.VaultAuthPath = vaultDefaultAuthPath
-		}
-		if vault.VaultRole == "" {
-			vault.VaultRole = vaultDefaultRole
-		}
-		if vault.VaultNamespace == "" {
-			vault.VaultNamespace = vaultDefaultNamespace
-		}
-		if vault.VaultPassphraseRoot == "" {
-			vault.VaultPassphraseRoot = vaultDefaultPassphraseRoot
-		}
-		if vault.VaultPassphrasePath == "" {
-			vault.VaultPassphrasePath = vaultDefaultPassphrasePath
-		}
-		if vault.VaultCAFromSecret != "" {
-			caPEM, ok := secrets[vault.VaultCAFromSecret]
-			if !ok {
-				return nil, fmt.Errorf("missing vault CA in secret %s", vault.VaultCAFromSecret)
-			}
-			roots := x509.NewCertPool()
-			ok = roots.AppendCertsFromPEM([]byte(caPEM))
-			if !ok {
-				return nil, fmt.Errorf("failed loading CA bundle for vault from secret %s",
-					vault.VaultCAFromSecret)
-			}
-			vault.vaultCA = roots
-		}
-		return vault, nil
-	}
-
-	return nil, fmt.Errorf("missing configuration for vault ID (%s)", vaultID)
+	return kms, nil
 }
 
-// KmsConfig returns KMS configuration: "<kms-type>|<kms-id>"
-func (kms *VaultKMS) KmsConfig() string {
-	return fmt.Sprintf("vault|%s", kms.EncryptionKMSID)
+// GetID is returning correlation ID to KMS configuration
+func (kms *VaultKMS) GetID() string {
+	return kms.EncryptionKMSID
 }
 
 // GetPassphrase returns passphrase from Vault
