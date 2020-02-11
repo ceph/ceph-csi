@@ -14,6 +14,7 @@ push_helm_charts() {
 			sed -i "s/master/$TRAVIS_BRANCH/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
 		else
 			# This is not a canary release, replace master with the tagged branch
+			sed -i "s/master/v$VERSION/" "charts/ceph-csi-$PACKAGE/templates/NOTES.txt"
 			sed -i "s/master/v$VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
 
 		fi
