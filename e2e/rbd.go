@@ -145,7 +145,6 @@ var _ = Describe("RBD", func() {
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				scOpts := map[string]string{
 					"encrypted":       "true",
-					"encryptionKMS":   "vault",
 					"encryptionKMSID": "vault-test",
 				}
 				createRBDStorageClass(f.ClientSet, f, scOpts)

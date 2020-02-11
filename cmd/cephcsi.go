@@ -60,6 +60,7 @@ func init() {
 	flag.BoolVar(&conf.IsNodeServer, "nodeserver", false, "start cephcsi node server")
 
 	// cephfs related flags
+	// marking this as deprecated, remove it in next major release
 	flag.StringVar(&conf.MountCacheDir, "mountcachedir", "", "mount info cache save dir")
 	flag.BoolVar(&conf.ForceKernelCephFS, "forcecephkernelclient", false, "enable Ceph Kernel clients on kernel < 4.17 which support quotas")
 
@@ -172,6 +173,9 @@ func main() {
 		driver.Run(&conf, cp)
 
 	case cephfsType:
+		if conf.MountCacheDir != "" {
+			klog.Warning("mountcachedir option is deprecated")
+		}
 		driver := cephfs.NewDriver()
 		driver.Run(&conf, cp)
 

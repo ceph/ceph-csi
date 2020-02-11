@@ -63,10 +63,9 @@ requirement by using dm-crypt module through cryptsetup cli interface.
 
 * StorageClass extended with following parameters:
   1. `encrypted` ("true" or "false")
-  1. `encryptionKMS` (string representing kms of choice)
+  1. `encryptionKMSID` (string representing kms configuration of choice)
   ceph-csi plugin may support different kms vendors with different type of
   authentication
-  1. `encryptionKMSID` (string representing kms configuration)
 
 * New KMS Configuration created.
 
@@ -103,10 +102,9 @@ parameters:
    # Encrypt volumes
    encrypted: "true"
 
-   # The type of kms we want to connect to: Barbican, aws kms or others can be
-   # supported
-   encryptionKMS: vault
-   # String representing a KMS configuration
+   # Use external key management system for encryption passphrases by specifying
+   # a unique ID matching KMS ConfigMap. The ID is only used for correlation to
+   # config map entry.
    encryptionKMSID: <kms-id>
 
 reclaimPolicy: Delete
@@ -120,12 +118,12 @@ apiVersion: v1
 kind: ConfigMap
 data:
   config.json: |-
-    [
-      {
-        "kmsID": "<kms-id>",
+    {
+      "<kms-id>": {
+        "encryptionKMSType": "kmsType",
         kms specific config...
       }
-    ]
+    }
 metadata:
   name: ceph-csi-encryption-kms-config
 ```

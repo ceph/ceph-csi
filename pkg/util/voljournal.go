@@ -416,8 +416,8 @@ func (cj *CSIJournal) GetObjectUUIDData(ctx context.Context, monitors string, cr
 		cj.cephUUIDDirectoryPrefix+objectUUID, cj.encryptKMSKey)
 	if err != nil {
 		if _, ok := err.(ErrKeyNotFound); !ok {
-			klog.Errorf(Log(ctx, "=> GetObjectUUIDData encryptedKMS failed: %s (%s)"), cj.cephUUIDDirectoryPrefix+objectUUID, err)
-			return "", "", "", err
+			return "", "", "", fmt.Errorf("OMapVal for %s/%s failed to get encryption KMS value: %s",
+				pool, cj.cephUUIDDirectoryPrefix+objectUUID, err)
 		}
 		// ErrKeyNotFound means no encryption KMS was used
 	}

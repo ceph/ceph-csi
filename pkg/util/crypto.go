@@ -19,7 +19,9 @@ package util
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"path"
 	"strings"
 
@@ -39,6 +41,10 @@ const (
 
 	// Encryption passphrase location in K8s secrets
 	encryptionPassphraseKey = "encryptionPassphrase"
+	kmsTypeKey              = "encryptionKMSType"
+
+	// Default KMS type
+	defaultKMSType = "default"
 
 	// kmsConfigPath is the location of the vault config file
 	kmsConfigPath = "/etc/ceph-csi-encryption-kms-config/config.json"
@@ -54,7 +60,7 @@ type EncryptionKMS interface {
 	GetPassphrase(key string) (string, error)
 	SavePassphrase(key, value string) error
 	DeletePassphrase(key string) error
-	KmsConfig() string
+	GetID() string
 }
 
 // MissingPassphrase is an error instructing to generate new passphrase
@@ -75,11 +81,6 @@ func initSecretsKMS(secrets map[string]string) (EncryptionKMS, error) {
 	return SecretsKMS{passphrase: passphraseValue}, nil
 }
 
-// KmsConfig returns KMS configuration: "<kms-type>|<kms-id>"
-func (kms SecretsKMS) KmsConfig() string {
-	return "secrets|kubernetes"
-}
-
 // GetPassphrase returns passphrase from Kubernetes secrets
 func (kms SecretsKMS) GetPassphrase(key string) (string, error) {
 	return kms.passphrase, nil
@@ -96,31 +97,52 @@ func (kms SecretsKMS) DeletePassphrase(key string) error {
 	return nil
 }
 
-// GetKMS returns an instance of Key Management System
-func GetKMS(opts, secrets map[string]string) (EncryptionKMS, error) {
-	kmsType, ok := opts["encryptionKMS"]
-	if !ok || kmsType == "" || kmsType == "secrets" {
-		return initSecretsKMS(secrets)
-	}
-	if kmsType == "vault" {
-		return InitVaultKMS(opts, secrets)
-	}
-	return nil, fmt.Errorf("unknown encryption KMS type %s", kmsType)
+// GetID is returning ID representing default KMS `default`
+func (kms SecretsKMS) GetID() string {
+	return defaultKMSType
 }
 
-// GetKMSConfig returns required keys for KMS to instantiate from it's config
-// - map with kms type and ID keys
-// - error if format is invalid
-func GetKMSConfig(config string) (map[string]string, error) {
-	kmsConfigParts := strings.Split(config, "|")
-	if len(kmsConfigParts) != 2 {
-		return make(map[string]string), fmt.Errorf("failed to parse encryption KMS "+
-			"configuration from config string, expected <type>|<id>, got: %s", config)
+// GetKMS returns an instance of Key Management System
+func GetKMS(kmsID string, secrets map[string]string) (EncryptionKMS, error) {
+	if kmsID == "" || kmsID == defaultKMSType {
+		return initSecretsKMS(secrets)
 	}
-	return map[string]string{
-		"encryptionKMS":   kmsConfigParts[0],
-		"encryptionKMSID": kmsConfigParts[1],
-	}, nil
+
+	// #nosec
+	content, err := ioutil.ReadFile(kmsConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read kms configuration from %s: %s",
+			kmsConfigPath, err)
+	}
+
+	var config map[string]interface{}
+	err = json.Unmarshal(content, &config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse kms configuration: %s", err)
+	}
+
+	kmsConfigData, ok := config[kmsID].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("missing encryption KMS configuration with %s", kmsID)
+	}
+	kmsConfig := make(map[string]string)
+	for key, value := range kmsConfigData {
+		kmsConfig[key], ok = value.(string)
+		if !ok {
+			return nil, fmt.Errorf("broken KMS config: '%s' for '%s' is not a string",
+				value, key)
+		}
+	}
+
+	kmsType, ok := kmsConfig[kmsTypeKey]
+	if !ok {
+		return nil, fmt.Errorf("encryption KMS configuration for %s is missing KMS type", kmsID)
+	}
+
+	if kmsType == "vault" {
+		return InitVaultKMS(kmsID, kmsConfig, secrets)
+	}
+	return nil, fmt.Errorf("unknown encryption KMS type %s", kmsType)
 }
 
 // GetCryptoPassphrase Retrieves passphrase to encrypt volume
