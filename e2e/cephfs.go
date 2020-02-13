@@ -207,6 +207,15 @@ var _ = Describe("cephfs", func() {
 
 				})
 
+				// Make sure this should be last testcase in this file, because
+				// it deletes pool
+				By("Create a PVC and Delete PVC when backend pool deleted", func() {
+					err := pvcDeleteWhenPoolNotFound(pvcPath, true, f)
+					if err != nil {
+						Fail(err.Error())
+					}
+				})
+
 			})
 
 		})
