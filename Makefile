@@ -39,13 +39,13 @@ endif
 
 all: cephcsi
 
-test: go-test static-check dep-check
+test: go-test static-check mod-check
 
 go-test:
 	./scripts/test-go.sh
 
-dep-check:
-	dep check
+mod-check:
+	go mod verify
 
 static-check:
 	./scripts/lint-go.sh
@@ -57,8 +57,8 @@ func-test:
 
 .PHONY: cephcsi
 cephcsi:
-	if [ ! -d ./vendor ]; then dep ensure -vendor-only; fi
-	GOOS=linux GOARCH=$(GOARCH) go build -a -ldflags '$(LDFLAGS)' -o  _output/cephcsi ./cmd/
+	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
+	GOOS=linux GOARCH=$(GOARCH) go build -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
 
 image-cephcsi: cephcsi
 	cp _output/cephcsi deploy/cephcsi/image/cephcsi
