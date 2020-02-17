@@ -16,11 +16,12 @@ branches:
   only:
     - master
 
-go: 1.12.x
+go: 1.13.x
 
 env:
   global:
     - GOLANGCI_VERSION=v1.21.0
+    - GO111MODULE=on
     - GOSEC_VERSION=2.0.0
     - TEST_COVERAGE=stdout
     - GO_METALINTER_THREADS=1
@@ -29,12 +30,9 @@ env:
     - MINIKUBE_VERSION=v1.6.0
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
-    - DEP_VERSION=v0.5.4
 
 before_install:
   - mkdir -p $GOPATH/bin
-  - curl
-    https://raw.githubusercontent.com/golang/dep/${DEP_VERSION}/install.sh|sh
 
 before_script:
   - curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
@@ -69,7 +67,7 @@ jobs:
       script:
         - make static-check
         - make go-test
-        - make dep-check || travis_terminate 1;
+        - make mod-check || travis_terminate 1;
 
     - name: cephcsi with kube 1.14.10
       script:

@@ -14,6 +14,9 @@ run:
   # exit code when at least one issue was found, default is 1
   issues-exit-code: 1
 
+  # https://github.com/golangci/golangci-lint/blob/v1.23.6/.golangci.example.yml#L45-L49
+  modules-download-mode: vendor
+
   # include test files or not, default is true
   tests: true
 

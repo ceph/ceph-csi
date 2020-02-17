@@ -1,8 +1,8 @@
 # build directory
-/_output*/
+_output
 
 # docker build
-/deploy/cephcsi/image/cephcsi
+deploy/cephcsi/image/cephcsi
 
 # git merge files
 *.orig
