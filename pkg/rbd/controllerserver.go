@@ -19,6 +19,7 @@ package rbd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
@@ -449,6 +450,8 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	}, nil
 }
 
+var delayIterations = 0
+
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
 // nolint: gocyclo
@@ -501,6 +504,13 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetName())
 	}
 	defer cs.SnapshotLocks.Release(req.GetName())
+
+	// delay by 1m the first 2 responses
+	if delayIterations != 2 {
+		delayIterations++
+		klog.Infof(util.Log(ctx, "Sleeping to delay response by 1 minute : iteration %d/2"), delayIterations)
+		time.Sleep(1 * time.Minute)
+	}
 
 	// Need to check for already existing snapshot name, and if found
 	// check for the requested source volume id and already allocated source volume id
