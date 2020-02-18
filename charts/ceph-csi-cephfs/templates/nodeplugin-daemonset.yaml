@@ -81,6 +81,9 @@ spec:
             - "--metricspath=/metrics"
             - "--enablegrpcmetrics=true"
 {{- end }}
+{{- if .Values.nodeplugin.forcecephkernelclient }}
+            - "--forcecephkernelclient={{ .Values.nodeplugin.forcecephkernelclient }}"
+{{- end }}
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
