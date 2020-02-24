@@ -19,7 +19,6 @@ package util
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -47,13 +46,17 @@ generated volume (or snapshot) name. There are 4 types of omaps in use,
   - Key value contains the snapshot uuid that is created, for the CO provided name
 
 - A per volume omap named "csi.volume."+[volume uuid], (referred to as CephUUIDDirectory)
-  - stores a single key named "csi.volname", that has the value of the CO generated VolName that
+  - stores the key named "csi.volname", that has the value of the CO generated VolName that
   this volume refers to (referred to using csiNameKey value)
+	- stores the key named "csi.imagename", that has the value of the Ceph RBD image name
+  this volume refers to (referred to using csiImageKey value)
 
 - A per snapshot omap named "rbd.csi.snap."+[RBD snapshot uuid], (referred to as CephUUIDDirectory)
   - stores a key named "csi.snapname", that has the value of the CO generated SnapName that this
   snapshot refers to (referred to using csiNameKey value)
-  - also stores another key named "csi.source", that has the value of the volume name that is the
+	- stores the key named "csi.imagename", that has the value of the Ceph RBD image name
+  this snapshot refers to (referred to using csiImageKey value)
+  - stores a key named "csi.source", that has the value of the volume name that is the
   source of the snapshot (referred to using cephSnapSourceKey value)
 
 Creation of omaps:
@@ -72,7 +75,8 @@ that we do not use a uuid that is already in use
 - Next, a key with the VolName is created in the csiDirectory, and its value is updated to store the
 generated uuid
 
-- This is followed by updating the CephUUIDDirectory with the VolName in the csiNameKey
+- This is followed by updating the CephUUIDDirectory with the VolName in the csiNameKey and the RBD image
+name in the csiImageKey
 
 - Finally, the volume is created (or promoted from a snapshot, if content source was provided),
 using the uuid and a corresponding name prefix (namingPrefix) as the volume name
@@ -94,6 +98,11 @@ proceeding with deleting the volume and the related omap entries, to ensure ther
 single entity modifying the related omaps for a given VolName.
 */
 
+const (
+	defaultVolumeNamingPrefix   string = "csi-vol-"
+	defaultSnapshotNamingPrefix string = "csi-snap-"
+)
+
 type CSIJournal struct {
 	// csiDirectory is the name of the CSI volumes object map that contains CSI volume-name (or
 	// snapshot name) based keys
@@ -109,12 +118,13 @@ type CSIJournal struct {
 	// Ceph volume was created
 	csiNameKey string
 
+	// CSI image-name key in per Ceph volume object map, containing RBD image-name
+	// of this Ceph volume
+	csiImageKey string
+
 	// source volume name key in per Ceph snapshot object map, containing Ceph source volume uuid
 	// for which the snapshot was created
 	cephSnapSourceKey string
-
-	// volume name prefix for naming on Ceph rbd or FS, suffix is a uuid generated per volume
-	namingPrefix string
 
 	// namespace in which the RADOS objects are stored, default is no namespace
 	namespace string
@@ -123,37 +133,44 @@ type CSIJournal struct {
 	encryptKMSKey string
 }
 
-// CSIVolumeJournal returns an instance of volume keys
+// NewCSIVolumeJournal returns an instance of CSIJournal for volumes
 func NewCSIVolumeJournal() *CSIJournal {
 	return &CSIJournal{
 		csiDirectory:            "csi.volumes",
 		csiNameKeyPrefix:        "csi.volume.",
 		cephUUIDDirectoryPrefix: "csi.volume.",
 		csiNameKey:              "csi.volname",
-		namingPrefix:            "csi-vol-",
+		csiImageKey:             "csi.imagename",
 		cephSnapSourceKey:       "",
 		namespace:               "",
 		encryptKMSKey:           "csi.volume.encryptKMS",
 	}
 }
 
-// CSISnapshotSnapshot returns an instance of snapshot keys
+// NewCSISnapshotJournal returns an instance of CSIJournal for snapshots
 func NewCSISnapshotJournal() *CSIJournal {
 	return &CSIJournal{
 		csiDirectory:            "csi.snaps",
 		csiNameKeyPrefix:        "csi.snap.",
 		cephUUIDDirectoryPrefix: "csi.snap.",
 		csiNameKey:              "csi.snapname",
-		namingPrefix:            "csi-snap-",
+		csiImageKey:             "csi.imagename",
 		cephSnapSourceKey:       "csi.source",
 		namespace:               "",
 		encryptKMSKey:           "csi.volume.encryptKMS",
 	}
 }
 
-// NamingPrefix returns the value of naming prefix from the journal keys
-func (cj *CSIJournal) NamingPrefix() string {
-	return cj.namingPrefix
+// GetNameForUUID returns volume name
+func (cj *CSIJournal) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
+	if prefix == "" {
+		if isSnapshot {
+			prefix = defaultSnapshotNamingPrefix
+		} else {
+			prefix = defaultVolumeNamingPrefix
+		}
+	}
+	return prefix + uid
 }
 
 // SetCSIDirectorySuffix sets the given suffix for the csiDirectory omap
@@ -181,7 +198,7 @@ Return values:
 	there was no reservation found
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) CheckReservation(ctx context.Context, monitors string, cr *Credentials, pool, reqName, parentName, encryptionKmsConfig string) (string, error) {
+func (cj *CSIJournal) CheckReservation(ctx context.Context, monitors string, cr *Credentials, pool, reqName, namePrefix, parentName, kmsConf string) (string, error) {
 	var snapSource bool
 
 	if parentName != "" {
@@ -204,13 +221,13 @@ func (cj *CSIJournal) CheckReservation(ctx context.Context, monitors string, cr 
 		return "", err
 	}
 
-	savedReqName, savedReqParentName, savedKms, err := cj.GetObjectUUIDData(ctx, monitors, cr, pool,
+	savedReqName, _, savedReqParentName, savedKms, err := cj.GetObjectUUIDData(ctx, monitors, cr, pool,
 		objUUID, snapSource)
 	if err != nil {
 		// error should specifically be not found, for image to be absent, any other error
 		// is not conclusive, and we should not proceed
 		if _, ok := err.(ErrKeyNotFound); ok {
-			err = cj.UndoReservation(ctx, monitors, cr, pool, cj.namingPrefix+objUUID, reqName)
+			err = cj.UndoReservation(ctx, monitors, cr, pool, cj.GetNameForUUID(namePrefix, objUUID, snapSource), reqName)
 		}
 		return "", err
 	}
@@ -224,11 +241,11 @@ func (cj *CSIJournal) CheckReservation(ctx context.Context, monitors string, cr 
 			reqName, objUUID, savedReqName)
 	}
 
-	if encryptionKmsConfig != "" {
-		if savedKms != encryptionKmsConfig {
+	if kmsConf != "" {
+		if savedKms != kmsConf {
 			return "", fmt.Errorf("internal state inconsistent, omap encryption KMS"+
 				" mismatch, request KMS (%s) volume UUID (%s) volume omap KMS (%s)",
-				encryptionKmsConfig, objUUID, savedKms)
+				kmsConf, objUUID, savedKms)
 		}
 	}
 
@@ -260,7 +277,16 @@ held, to prevent parallel operations from modifying the state of the omaps for t
 func (cj *CSIJournal) UndoReservation(ctx context.Context, monitors string, cr *Credentials, pool, volName, reqName string) error {
 	// delete volume UUID omap (first, inverse of create order)
 	// TODO: Check cases where volName can be empty, and we need to just cleanup the reqName
-	imageUUID := strings.TrimPrefix(volName, cj.namingPrefix)
+
+	if len(volName) < 36 {
+		return fmt.Errorf("unable to parse UUID from %s, too short", volName)
+	}
+
+	imageUUID := volName[len(volName)-36:]
+	if valid := uuid.Parse(imageUUID); valid == nil {
+		return fmt.Errorf("failed parsing UUID in %s", volName)
+	}
+
 	err := RemoveObject(ctx, monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+imageUUID)
 	if err != nil {
 		if _, ok := err.(ErrObjectNotFound); !ok {
@@ -321,15 +347,16 @@ held, to prevent parallel operations from modifying the state of the omaps for t
 
 Return values:
 	- string: Contains the UUID that was reserved for the passed in reqName
+	- string: Contains the image name that was reserved for the passed in reqName
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *Credentials, pool, reqName, parentName, encryptionKmsConfig string) (string, error) {
+func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *Credentials, pool, reqName, namePrefix, parentName, kmsConf string) (string, string, error) {
 	var snapSource bool
 
 	if parentName != "" {
 		if cj.cephSnapSourceKey == "" {
 			err := errors.New("invalid request, cephSnapSourceKey is nil")
-			return "", err
+			return "", "", err
 		}
 		snapSource = true
 	}
@@ -340,39 +367,46 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *Cred
 	// UUID directory key will be leaked
 	volUUID, err := reserveOMapName(ctx, monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
+
+	imageName := cj.GetNameForUUID(namePrefix, volUUID, snapSource)
 
 	// Create request name (csiNameKey) key in csiDirectory and store the UUId based
 	// volume name into it
 	err = SetOMapKeyValue(ctx, monitors, cr, pool, cj.namespace, cj.csiDirectory,
 		cj.csiNameKeyPrefix+reqName, volUUID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer func() {
 		if err != nil {
 			klog.Warningf(Log(ctx, "reservation failed for volume: %s"), reqName)
-			errDefer := cj.UndoReservation(ctx, monitors, cr, pool, cj.namingPrefix+volUUID,
-				reqName)
+			errDefer := cj.UndoReservation(ctx, monitors, cr, pool, imageName, reqName)
 			if errDefer != nil {
 				klog.Warningf(Log(ctx, "failed undoing reservation of volume: %s (%v)"), reqName, errDefer)
 			}
 		}
 	}()
 
-	// Update UUID directory to store CSI request name
+	// Update UUID directory to store CSI request name and image name
 	err = SetOMapKeyValue(ctx, monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 		cj.csiNameKey, reqName)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	if encryptionKmsConfig != "" {
+	err = SetOMapKeyValue(ctx, monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
+		cj.csiImageKey, imageName)
+	if err != nil {
+		return "", "", err
+	}
+
+	if kmsConf != "" {
 		err = SetOMapKeyValue(ctx, monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
-			cj.encryptKMSKey, encryptionKmsConfig)
+			cj.encryptKMSKey, kmsConf)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
@@ -381,34 +415,53 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *Cred
 		err = SetOMapKeyValue(ctx, monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 			cj.cephSnapSourceKey, parentName)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
-	return volUUID, nil
+	return volUUID, imageName, nil
 }
 
 /*
 GetObjectUUIDData fetches all keys from a UUID directory
 Return values:
 	- string: Contains the request name for the passed in UUID
+	- string: Contains the rbd image name for the passed in UUID
 	- string: Contains the parent image name for the passed in UUID, if it is a snapshot
 	- string: Contains encryption KMS, if it is an encrypted image
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) GetObjectUUIDData(ctx context.Context, monitors string, cr *Credentials, pool, objectUUID string, snapSource bool) (string, string, string, error) {
+func (cj *CSIJournal) GetObjectUUIDData(ctx context.Context, monitors string, cr *Credentials, pool, objectUUID string, snapSource bool) (string, string, string, string, error) {
 	var sourceName string
 
 	if snapSource && cj.cephSnapSourceKey == "" {
 		err := errors.New("invalid request, cephSnapSourceKey is nil")
-		return "", "", "", err
+		return "", "", "", "", err
 	}
 
 	// TODO: fetch all omap vals in one call, than make multiple listomapvals
 	requestName, err := GetOMapValue(ctx, monitors, cr, pool, cj.namespace,
 		cj.cephUUIDDirectoryPrefix+objectUUID, cj.csiNameKey)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", err
+	}
+
+	// image key was added at some point, so not all volumes will have this key set
+	// when ceph-csi was upgraded
+	imageName, err := GetOMapValue(ctx, monitors, cr, pool, cj.namespace,
+		cj.cephUUIDDirectoryPrefix+objectUUID, cj.csiImageKey)
+	if err != nil {
+		// if the key was not found, assume the default key + UUID
+		// otherwise return error
+		if _, ok := err.(ErrKeyNotFound); !ok {
+			return "", "", "", "", err
+		}
+
+		if snapSource {
+			imageName = defaultSnapshotNamingPrefix + objectUUID
+		} else {
+			imageName = defaultVolumeNamingPrefix + objectUUID
+		}
 	}
 
 	encryptionKmsConfig := ""
@@ -416,7 +469,7 @@ func (cj *CSIJournal) GetObjectUUIDData(ctx context.Context, monitors string, cr
 		cj.cephUUIDDirectoryPrefix+objectUUID, cj.encryptKMSKey)
 	if err != nil {
 		if _, ok := err.(ErrKeyNotFound); !ok {
-			return "", "", "", fmt.Errorf("OMapVal for %s/%s failed to get encryption KMS value: %s",
+			return "", "", "", "", fmt.Errorf("OMapVal for %s/%s failed to get encryption KMS value: %s",
 				pool, cj.cephUUIDDirectoryPrefix+objectUUID, err)
 		}
 		// ErrKeyNotFound means no encryption KMS was used
@@ -426,9 +479,9 @@ func (cj *CSIJournal) GetObjectUUIDData(ctx context.Context, monitors string, cr
 		sourceName, err = GetOMapValue(ctx, monitors, cr, pool, cj.namespace,
 			cj.cephUUIDDirectoryPrefix+objectUUID, cj.cephSnapSourceKey)
 		if err != nil {
-			return "", "", "", err
+			return "", "", "", "", err
 		}
 	}
 
-	return requestName, sourceName, encryptionKmsConfig, nil
+	return requestName, imageName, sourceName, encryptionKmsConfig, nil
 }
