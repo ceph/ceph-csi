@@ -115,14 +115,21 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 	}
 
 	snapUUID, err := snapJournal.CheckReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RequestName, rbdSnap.RbdImageName, "")
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
 	if err != nil {
 		return false, err
 	}
 	if snapUUID == "" {
 		return false, nil
 	}
-	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + snapUUID
+
+	// now that we now that the reservation exists, let's get the image name from
+	// the omap
+	_, rbdSnap.RbdSnapName, _, _, err = volJournal.GetObjectUUIDData(ctx, rbdSnap.Monitors, cr,
+		rbdSnap.Pool, snapUUID, false)
+	if err != nil {
+		return false, err
+	}
 
 	// Fetch on-disk image attributes
 	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
@@ -167,14 +174,21 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 		kmsID = rbdVol.KMS.GetID()
 	}
 	imageUUID, err := volJournal.CheckReservation(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RequestName, "", kmsID)
+		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
 	if err != nil {
 		return false, err
 	}
 	if imageUUID == "" {
 		return false, nil
 	}
-	rbdVol.RbdImageName = volJournal.NamingPrefix() + imageUUID
+
+	// now that we now that the reservation exists, let's get the image name from
+	// the omap
+	_, rbdVol.RbdImageName, _, _, err = volJournal.GetObjectUUIDData(ctx, rbdVol.Monitors, cr,
+		rbdVol.Pool, imageUUID, false)
+	if err != nil {
+		return false, err
+	}
 
 	// NOTE: Return volsize should be on-disk volsize, not request vol size, so
 	// save it for size checks before fetching image data
@@ -214,8 +228,13 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
 // volume ID for the generated name
 func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	snapUUID, err := snapJournal.ReserveName(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RequestName, rbdSnap.RbdImageName, "")
+	var (
+		snapUUID string
+		err      error
+	)
+
+	snapUUID, rbdSnap.RbdSnapName, err = snapJournal.ReserveName(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
 	if err != nil {
 		return err
 	}
@@ -226,10 +245,8 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 		return err
 	}
 
-	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + snapUUID
-
 	klog.V(4).Infof(util.Log(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)"),
-		rbdSnap.SnapID, rbdSnap.RbdImageName, rbdSnap.RequestName)
+		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return nil
 }
@@ -237,12 +254,18 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the
 // volume ID for the generated name
 func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
+	var (
+		imageUUID string
+		err       error
+	)
+
 	kmsID := ""
 	if rbdVol.Encrypted {
 		kmsID = rbdVol.KMS.GetID()
 	}
-	imageUUID, err := volJournal.ReserveName(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RequestName, "", kmsID)
+
+	imageUUID, rbdVol.RbdImageName, err = volJournal.ReserveName(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
+		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
 	if err != nil {
 		return err
 	}
@@ -252,8 +275,6 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) er
 	if err != nil {
 		return err
 	}
-
-	rbdVol.RbdImageName = volJournal.NamingPrefix() + imageUUID
 
 	klog.V(4).Infof(util.Log(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)"),
 		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)

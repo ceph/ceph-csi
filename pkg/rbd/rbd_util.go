@@ -70,6 +70,7 @@ type rbdVolume struct {
 	// VolName and MonValueFromSecret are retained from older plugin versions (<= 1.0.0)
 	//   for backward compatibility reasons
 	RbdImageName       string
+	NamePrefix         string
 	VolID              string `json:"volID"`
 	Monitors           string `json:"monitors"`
 	Pool               string `json:"pool"`
@@ -98,6 +99,7 @@ type rbdSnapshot struct {
 	// RequestName is the CSI generated snapshot name for the rbdSnapshot
 	SourceVolumeID string
 	RbdImageName   string
+	NamePrefix     string
 	RbdSnapName    string
 	SnapID         string
 	Monitors       string
@@ -295,7 +297,6 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 
 	rbdSnap.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdSnap.ClusterID
-	rbdSnap.RbdSnapName = snapJournal.NamingPrefix() + vi.ObjectUUID
 
 	rbdSnap.Monitors, _, err = getMonsAndClusterID(ctx, options)
 	if err != nil {
@@ -307,7 +308,7 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 		return err
 	}
 
-	rbdSnap.RequestName, rbdSnap.RbdImageName, _, err = snapJournal.GetObjectUUIDData(ctx, rbdSnap.Monitors,
+	rbdSnap.RequestName, rbdSnap.RbdSnapName, rbdSnap.RbdImageName, _, err = snapJournal.GetObjectUUIDData(ctx, rbdSnap.Monitors,
 		cr, rbdSnap.Pool, vi.ObjectUUID, true)
 	if err != nil {
 		return err
@@ -339,7 +340,6 @@ func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr
 
 	rbdVol.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdVol.ClusterID
-	rbdVol.RbdImageName = volJournal.NamingPrefix() + vi.ObjectUUID
 
 	rbdVol.Monitors, _, err = getMonsAndClusterID(ctx, options)
 	if err != nil {
@@ -352,8 +352,8 @@ func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr
 	}
 
 	kmsID := ""
-	rbdVol.RequestName, _, kmsID, err = volJournal.GetObjectUUIDData(
-		ctx, rbdVol.Monitors, cr, rbdVol.Pool, vi.ObjectUUID, false)
+	rbdVol.RequestName, rbdVol.RbdImageName, _, kmsID, err = volJournal.GetObjectUUIDData(ctx, rbdVol.Monitors, cr,
+		rbdVol.Pool, vi.ObjectUUID, false)
 	if err != nil {
 		return err
 	}
@@ -454,9 +454,10 @@ func updateMons(rbdVol *rbdVolume, options, credentials map[string]string) error
 
 func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[string]string, disableInUseChecks, isLegacyVolume bool) (*rbdVolume, error) {
 	var (
-		ok        bool
-		err       error
-		encrypted string
+		ok         bool
+		err        error
+		namePrefix string
+		encrypted  string
 	)
 
 	rbdVol := &rbdVolume{}
@@ -466,6 +467,9 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 	}
 
 	rbdVol.DataPool = volOptions["dataPool"]
+	if namePrefix, ok = volOptions["volumeNamePrefix"]; ok {
+		rbdVol.NamePrefix = namePrefix
+	}
 
 	if isLegacyVolume {
 		err = updateMons(rbdVol, volOptions, credentials)
@@ -535,6 +539,10 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 	if err != nil {
 		rbdSnap.Monitors = rbdVol.Monitors
 		rbdSnap.ClusterID = rbdVol.ClusterID
+	}
+
+	if namePrefix, ok := snapOptions["snapshotNamePrefix"]; ok {
+		rbdSnap.NamePrefix = namePrefix
 	}
 
 	return rbdSnap
@@ -870,23 +878,16 @@ func resizeRBDImage(rbdVol *rbdVolume, newSize int64, cr *util.Credentials) erro
 	return nil
 }
 
-func getVolumeName(volID string) (string, error) {
+func ensureEncryptionMetadataSet(ctx context.Context, cr *util.Credentials, rbdVol *rbdVolume) error {
 	var vi util.CSIIdentifier
 
-	err := vi.DecomposeCSIID(volID)
+	err := vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
-		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, volID)
-		return "", ErrInvalidVolID{err}
+		err = fmt.Errorf("error decoding volume ID (%s) (%s)", rbdVol.VolID, err)
+		return ErrInvalidVolID{err}
 	}
 
-	return volJournal.NamingPrefix() + vi.ObjectUUID, nil
-}
-
-func ensureEncryptionMetadataSet(ctx context.Context, cr *util.Credentials, rbdVol *rbdVolume) error {
-	rbdImageName, err := getVolumeName(rbdVol.VolID)
-	if err != nil {
-		return err
-	}
+	rbdImageName := volJournal.GetNameForUUID(rbdVol.NamePrefix, vi.ObjectUUID, false)
 	imageSpec := rbdVol.Pool + "/" + rbdImageName
 
 	err = util.SaveRbdImageEncryptionStatus(ctx, cr, rbdVol.Monitors, imageSpec, rbdImageRequiresEncryption)
