@@ -36,6 +36,13 @@ const (
 )
 
 var (
+	// cli flags
+	deployTimeout    int
+	deployCephFS     bool
+	deployRBD        bool
+	cephCSINamespace string
+	rookNamespace    string
+
 	vaultAddr = fmt.Sprintf("http://vault.%s.svc.cluster.local:8200", cephCSINamespace)
 	poll      = 2 * time.Second
 )
