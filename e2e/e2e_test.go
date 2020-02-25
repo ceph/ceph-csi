@@ -14,14 +14,6 @@ import (
 	config "k8s.io/kubernetes/test/e2e/framework/config"
 )
 
-var (
-	deployTimeout    int
-	deployCephFS     bool
-	deployRBD        bool
-	cephCSINamespace string
-	rookNamespace    string
-)
-
 func init() {
 	log.SetOutput(GinkgoWriter)
 
