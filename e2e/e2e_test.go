@@ -15,9 +15,11 @@ import (
 )
 
 var (
-	deployTimeout int
-	deployCephFS  bool
-	deployRBD     bool
+	deployTimeout    int
+	deployCephFS     bool
+	deployRBD        bool
+	cephCSINamespace string
+	rookNamespace    string
 )
 
 func init() {
@@ -26,7 +28,8 @@ func init() {
 	flag.IntVar(&deployTimeout, "deploy-timeout", 10, "timeout to wait for created kubernetes resources")
 	flag.BoolVar(&deployCephFS, "deploy-cephfs", true, "deploy cephfs csi driver")
 	flag.BoolVar(&deployRBD, "deploy-rbd", true, "deploy rbd csi driver")
-
+	flag.StringVar(&cephCSINamespace, "cephcsi-namespace", defaultNs, "namespace in which cephcsi deployed")
+	flag.StringVar(&rookNamespace, "rook-namespace", "rook-ceph", "namespace in which rook is deployed")
 	setDefaultKubeconfig()
 
 	// Register framework flags, then handle flags

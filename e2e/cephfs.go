@@ -2,9 +2,13 @@ package e2e
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo" // nolint
 
+	v1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -25,40 +29,40 @@ var (
 
 func deployCephfsPlugin() {
 	// delete objects deployed by rook
-	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", cephfsDirPath+cephfsProvisionerRBAC)
-	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", cephfsDirPath+cephfsNodePluginRBAC)
+	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", cephfsDirPath+cephfsProvisionerRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", cephfsDirPath+cephfsNodePluginRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	// deploy provisioner
-	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisioner)
-	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisionerRBAC)
-	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisionerPSP)
+	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisioner, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisionerRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsProvisionerPSP, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	// deploy nodeplugin
-	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePlugin)
-	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePluginRBAC)
-	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePluginPSP)
+	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePlugin, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePluginRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	framework.RunKubectlOrDie("create", "-f", cephfsDirPath+cephfsNodePluginPSP, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 }
 
 func deleteCephfsPlugin() {
-	_, err := framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsProvisioner)
+	_, err := framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsProvisioner, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs provisioner %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsProvisionerRBAC)
+	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsProvisionerRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs provisioner rbac %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsProvisionerPSP)
+	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsProvisionerPSP, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs provisioner psp %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePlugin)
+	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePlugin, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs nodeplugin %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePluginRBAC)
+	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePluginRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs nodeplugin rbac %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePluginPSP)
+	_, err = framework.RunKubectl("delete", "-f", cephfsDirPath+cephfsNodePluginPSP, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete cephfs nodeplugin psp %v", err)
 	}
@@ -72,6 +76,19 @@ var _ = Describe("cephfs", func() {
 		c = f.ClientSet
 		createConfigMap(cephfsDirPath, f.ClientSet, f)
 		if deployCephFS {
+			if cephCSINamespace != defaultNs {
+				// create namespace
+				ns := &v1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: cephCSINamespace,
+					},
+				}
+				_, err := c.CoreV1().Namespaces().Create(ns)
+				if err != nil && !apierrs.IsAlreadyExists(err) {
+					Fail(err.Error())
+				}
+			}
+
 			deployCephfsPlugin()
 		}
 		createCephfsSecret(f.ClientSet, f)
@@ -84,12 +101,22 @@ var _ = Describe("cephfs", func() {
 			// log node plugin
 			logsCSIPods("app=csi-cephfsplugin", c)
 		}
-		if deployCephFS {
-			deleteCephfsPlugin()
-		}
 		deleteConfigMap(cephfsDirPath)
 		deleteResource(cephfsExamplePath + "secret.yaml")
 		deleteResource(cephfsExamplePath + "storageclass.yaml")
+		if deployCephFS {
+			deleteCephfsPlugin()
+			if cephCSINamespace != defaultNs {
+				err := c.CoreV1().Namespaces().Delete(cephCSINamespace, nil)
+				if err != nil && !apierrs.IsNotFound(err) {
+					Fail(err.Error())
+				}
+				err = framework.WaitForNamespacesDeleted(c, []string{cephCSINamespace}, time.Duration(deployTimeout)*time.Minute)
+				if err != nil {
+					Fail(err.Error())
+				}
+			}
+		}
 	})
 
 	Context("Test cephfs CSI", func() {
@@ -99,13 +126,13 @@ var _ = Describe("cephfs", func() {
 
 			By("checking provisioner deployment is running")
 			var err error
-			err = waitForDeploymentComplete(cephfsDeploymentName, namespace, f.ClientSet, deployTimeout)
+			err = waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
 
 			By("checking nodeplugin deamonsets is running")
-			err = waitForDaemonSets(cephfsDeamonSetName, namespace, f.ClientSet, deployTimeout)
+			err = waitForDaemonSets(cephfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
