@@ -32,7 +32,7 @@ import (
 
 const (
 	defaultNs     = "default"
-	vaultSecretNs = "/secret/ceph-csi/" // nolint: gosec, #nosec
+	vaultSecretNs = "/secret/ceph-csi/" // nolint: gosec
 )
 
 var (
