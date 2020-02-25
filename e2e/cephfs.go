@@ -71,7 +71,9 @@ var _ = Describe("cephfs", func() {
 	BeforeEach(func() {
 		c = f.ClientSet
 		createConfigMap(cephfsDirPath, f.ClientSet, f)
-		deployCephfsPlugin()
+		if deployCephFS {
+			deployCephfsPlugin()
+		}
 		createCephfsSecret(f.ClientSet, f)
 	})
 
@@ -82,7 +84,9 @@ var _ = Describe("cephfs", func() {
 			// log node plugin
 			logsCSIPods("app=csi-cephfsplugin", c)
 		}
-		deleteCephfsPlugin()
+		if deployCephFS {
+			deleteCephfsPlugin()
+		}
 		deleteConfigMap(cephfsDirPath)
 		deleteResource(cephfsExamplePath + "secret.yaml")
 		deleteResource(cephfsExamplePath + "storageclass.yaml")

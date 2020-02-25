@@ -16,12 +16,16 @@ import (
 
 var (
 	deployTimeout int
+	deployCephFS  bool
+	deployRBD     bool
 )
 
 func init() {
 	log.SetOutput(GinkgoWriter)
 
 	flag.IntVar(&deployTimeout, "deploy-timeout", 10, "timeout to wait for created kubernetes resources")
+	flag.BoolVar(&deployCephFS, "deploy-cephfs", true, "deploy cephfs csi driver")
+	flag.BoolVar(&deployRBD, "deploy-rbd", true, "deploy rbd csi driver")
 
 	setDefaultKubeconfig()
 

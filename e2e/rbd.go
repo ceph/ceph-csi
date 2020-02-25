@@ -74,7 +74,9 @@ var _ = Describe("RBD", func() {
 	BeforeEach(func() {
 		c = f.ClientSet
 		createConfigMap(rbdDirPath, f.ClientSet, f)
-		deployRBDPlugin()
+		if deployRBD {
+			deployRBDPlugin()
+		}
 		createRBDStorageClass(f.ClientSet, f, make(map[string]string))
 		createRBDSecret(f.ClientSet, f)
 		deployVault(f.ClientSet, deployTimeout)
@@ -87,7 +89,9 @@ var _ = Describe("RBD", func() {
 			// log node plugin
 			logsCSIPods("app=csi-rbdplugin", c)
 		}
-		deleteRBDPlugin()
+		if deployRBD {
+			deleteRBDPlugin()
+		}
 		deleteConfigMap(rbdDirPath)
 		deleteResource(rbdExamplePath + "secret.yaml")
 		deleteResource(rbdExamplePath + "storageclass.yaml")
