@@ -71,6 +71,9 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	if value, ok := options["dataPool"]; ok && value == "" {
 		return status.Error(codes.InvalidArgument, "empty datapool name to provision volume from")
 	}
+	if value, ok := options["volumeNamePrefix"]; ok && value == "" {
+		return status.Error(codes.InvalidArgument, "empty volume name prefix to provision volume from")
+	}
 	return nil
 }
 
@@ -565,6 +568,11 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 	}
 	if req.SourceVolumeId == "" {
 		return status.Error(codes.InvalidArgument, "source Volume ID cannot be empty")
+	}
+
+	options := req.GetParameters()
+	if value, ok := options["snapshotNamePrefix"]; ok && value == "" {
+		return status.Error(codes.InvalidArgument, "empty snapshot name prefix to provision snapshot from")
 	}
 
 	return nil

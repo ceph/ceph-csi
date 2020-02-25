@@ -58,14 +58,21 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 	defer cr.DeleteCredentials()
 
 	imageUUID, err := volJournal.CheckReservation(ctx, volOptions.Monitors, cr,
-		volOptions.MetadataPool, volOptions.RequestName, "", "")
+		volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "")
 	if err != nil {
 		return nil, err
 	}
 	if imageUUID == "" {
 		return nil, nil
 	}
-	vid.FsSubvolName = volJournal.NamingPrefix() + imageUUID
+
+	// now that we now that the reservation exists, let's get the volume name from
+	// the omap
+	_, vid.FsSubvolName, _, _, err = volJournal.GetObjectUUIDData(ctx, volOptions.Monitors, cr,
+		volOptions.MetadataPool, imageUUID, false)
+	if err != nil {
+		return nil, err
+	}
 
 	_, err = getVolumeRootPathCeph(ctx, volOptions, cr, volumeID(vid.FsSubvolName))
 	if err != nil {
@@ -113,8 +120,10 @@ func undoVolReservation(ctx context.Context, volOptions *volumeOptions, vid volu
 // to generate the volume identifier for the reserved UUID
 func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[string]string) (*volumeIdentifier, error) {
 	var (
-		vi  util.CSIIdentifier
-		vid volumeIdentifier
+		vi        util.CSIIdentifier
+		vid       volumeIdentifier
+		imageUUID string
+		err       error
 	)
 
 	cr, err := util.NewAdminCredentials(secret)
@@ -123,12 +132,11 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 	}
 	defer cr.DeleteCredentials()
 
-	imageUUID, err := volJournal.ReserveName(ctx, volOptions.Monitors, cr,
-		volOptions.MetadataPool, volOptions.RequestName, "", "")
+	imageUUID, vid.FsSubvolName, err = volJournal.ReserveName(ctx, volOptions.Monitors, cr,
+		volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "")
 	if err != nil {
 		return nil, err
 	}
-	vid.FsSubvolName = volJournal.NamingPrefix() + imageUUID
 
 	// generate the volume ID to return to the CO system
 	vi = util.CSIIdentifier{

@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo" // nolint
 
@@ -336,6 +337,45 @@ var _ = Describe("RBD", func() {
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
 					Fail(err.Error())
+				}
+			})
+
+			By("create PVC in storageClass with volumeNamePrefix", func() {
+				volumeNamePrefix := "foo-bar-"
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, map[string]string{"volumeNamePrefix": volumeNamePrefix})
+
+				// set up PVC
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				// list RBD images and check if one of them has the same prefix
+				foundIt := false
+				for _, imgName := range listRBDImages(f) {
+					fmt.Printf("Checking prefix on %s\n", imgName)
+					if strings.HasPrefix(imgName, volumeNamePrefix) {
+						foundIt = true
+						break
+					}
+				}
+
+				// clean up after ourselves
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
+
+				if !foundIt {
+					Fail(fmt.Sprintf("could not find image with prefix %s", volumeNamePrefix))
 				}
 			})
 

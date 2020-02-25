@@ -28,6 +28,7 @@ import (
 
 type volumeOptions struct {
 	RequestName        string
+	NamePrefix         string
 	Size               int64
 	ClusterID          string
 	FsName             string
@@ -197,7 +198,6 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		return nil, nil, ErrInvalidVolID{err}
 	}
 	volOptions.ClusterID = vi.ClusterID
-	vid.FsSubvolName = volJournal.NamingPrefix() + vi.ObjectUUID
 	vid.VolumeID = volID
 	volOptions.FscID = vi.LocationID
 
@@ -221,7 +221,7 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		return nil, nil, err
 	}
 
-	volOptions.RequestName, _, _, err = volJournal.GetObjectUUIDData(ctx, volOptions.Monitors, cr,
+	volOptions.RequestName, vid.FsSubvolName, _, _, err = volJournal.GetObjectUUIDData(ctx, volOptions.Monitors, cr,
 		volOptions.MetadataPool, vi.ObjectUUID, false)
 	if err != nil {
 		return nil, nil, err
