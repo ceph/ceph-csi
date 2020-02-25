@@ -3,9 +3,13 @@ package e2e
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo" // nolint
 
+	v1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -23,29 +27,28 @@ var (
 	rbdExamplePath     = "../examples/rbd/"
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
-	namespace          = "default"
 )
 
 func deployRBDPlugin() {
 	// delete objects deployed by rook
-	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", rbdDirPath+rbdProvisionerRBAC)
-	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", rbdDirPath+rbdNodePluginRBAC)
+	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", rbdDirPath+rbdProvisionerRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", rbdDirPath+rbdNodePluginRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	// deploy provisioner
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisioner)
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisionerRBAC)
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisionerPSP)
+	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisioner, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisionerRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisionerPSP, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	// deploy nodeplugin
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePlugin)
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePluginRBAC)
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePluginPSP)
+	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePlugin, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePluginRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePluginPSP, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 }
 
 func deleteRBDPlugin() {
-	_, err := framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisioner)
+	_, err := framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisioner, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete rbd provisioner %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisionerRBAC)
+	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisionerRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace), fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete provisioner rbac %v", err)
 	}
@@ -53,15 +56,15 @@ func deleteRBDPlugin() {
 	if err != nil {
 		e2elog.Logf("failed to delete provisioner psp %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePlugin)
+	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePlugin, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete nodeplugin %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePluginRBAC)
+	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePluginRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete nodeplugin rbac %v", err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePluginPSP)
+	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePluginPSP, fmt.Sprintf("--namespace=%s", cephCSINamespace))
 	if err != nil {
 		e2elog.Logf("failed to delete nodeplugin psp %v", err)
 	}
@@ -75,6 +78,17 @@ var _ = Describe("RBD", func() {
 		c = f.ClientSet
 		createConfigMap(rbdDirPath, f.ClientSet, f)
 		if deployRBD {
+			if cephCSINamespace != defaultNs {
+				ns := &v1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: cephCSINamespace,
+					},
+				}
+				_, err := c.CoreV1().Namespaces().Create(ns)
+				if err != nil && !apierrs.IsAlreadyExists(err) {
+					Fail(err.Error())
+				}
+			}
 			deployRBDPlugin()
 		}
 		createRBDStorageClass(f.ClientSet, f, make(map[string]string))
@@ -89,14 +103,25 @@ var _ = Describe("RBD", func() {
 			// log node plugin
 			logsCSIPods("app=csi-rbdplugin", c)
 		}
-		if deployRBD {
-			deleteRBDPlugin()
-		}
+
 		deleteConfigMap(rbdDirPath)
 		deleteResource(rbdExamplePath + "secret.yaml")
 		deleteResource(rbdExamplePath + "storageclass.yaml")
 		// deleteResource(rbdExamplePath + "snapshotclass.yaml")
 		deleteVault()
+		if deployRBD {
+			deleteRBDPlugin()
+			if cephCSINamespace != defaultNs {
+				err := c.CoreV1().Namespaces().Delete(cephCSINamespace, nil)
+				if err != nil && !apierrs.IsNotFound(err) {
+					Fail(err.Error())
+				}
+				err = framework.WaitForNamespacesDeleted(c, []string{cephCSINamespace}, time.Duration(deployTimeout)*time.Minute)
+				if err != nil {
+					Fail(err.Error())
+				}
+			}
+		}
 	})
 
 	Context("Test RBD CSI", func() {
@@ -111,13 +136,13 @@ var _ = Describe("RBD", func() {
 
 			By("checking provisioner deployment is running")
 			var err error
-			err = waitForDeploymentComplete(rbdDeploymentName, namespace, f.ClientSet, deployTimeout)
+			err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
 
 			By("checking nodeplugin deamonsets is running")
-			err = waitForDaemonSets(rbdDaemonsetName, namespace, f.ClientSet, deployTimeout)
+			err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
@@ -333,7 +358,7 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 				// wait for nodeplugin pods to come up
-				err = waitForDaemonSets(rbdDaemonsetName, namespace, f.ClientSet, deployTimeout)
+				err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
 					Fail(err.Error())
 				}
