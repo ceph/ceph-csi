@@ -3,13 +3,9 @@ package e2e
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo" // nolint
 
-	v1 "k8s.io/api/core/v1"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -31,42 +27,84 @@ var (
 
 func deployRBDPlugin() {
 	// delete objects deployed by rook
-	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", rbdDirPath+rbdProvisionerRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", rbdDirPath+rbdNodePluginRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-	// deploy provisioner
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisioner, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisionerRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisionerPSP, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-	// deploy nodeplugin
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePlugin, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePluginRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePluginPSP, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisionerRBAC)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisionerRBAC, err)
+	}
+	_, err = framework.RunKubectlInput(data, "--ignore-not-found=true", ns, "delete", "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to delete provisioner rbac %s %v", rbdDirPath+rbdProvisionerRBAC, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePluginRBAC)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePluginRBAC, err)
+	}
+	_, err = framework.RunKubectlInput(data, "delete", "--ignore-not-found=true", ns, "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to delete nodeplugin rbac %s %v", rbdDirPath+rbdNodePluginRBAC, err)
+	}
+
+	createORDeleteRbdResouces("create")
 }
 
 func deleteRBDPlugin() {
-	_, err := framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisioner, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	createORDeleteRbdResouces("delete")
+}
+
+func createORDeleteRbdResouces(action string) {
+	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisioner)
 	if err != nil {
-		e2elog.Logf("failed to delete rbd provisioner %v", err)
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisioner, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisionerRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace), fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to delete provisioner rbac %v", err)
+		e2elog.Logf("failed to %s rbd provisioner %v", action, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisionerPSP)
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdProvisionerRBAC)
 	if err != nil {
-		e2elog.Logf("failed to delete provisioner psp %v", err)
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisionerRBAC, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePlugin, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to delete nodeplugin %v", err)
+		e2elog.Logf("failed to %s provisioner rbac %v", action, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePluginRBAC, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdProvisionerPSP)
 	if err != nil {
-		e2elog.Logf("failed to delete nodeplugin rbac %v", err)
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisionerPSP, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePluginPSP, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	_, err = framework.RunKubectlInput(data, action, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to delete nodeplugin psp %v", err)
+		e2elog.Logf("failed to %s provisioner psp %v", action, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePlugin)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePlugin, err)
+	}
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to %s nodeplugin %v", action, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePluginRBAC)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePluginRBAC, err)
+	}
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to %s nodeplugin rbac %v", action, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePluginPSP)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePluginPSP, err)
+	}
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to %s nodeplugin psp %v", action, err)
 	}
 }
 
@@ -76,21 +114,16 @@ var _ = Describe("RBD", func() {
 	// deploy RBD CSI
 	BeforeEach(func() {
 		c = f.ClientSet
-		createConfigMap(rbdDirPath, f.ClientSet, f)
 		if deployRBD {
 			if cephCSINamespace != defaultNs {
-				ns := &v1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: cephCSINamespace,
-					},
-				}
-				_, err := c.CoreV1().Namespaces().Create(ns)
-				if err != nil && !apierrs.IsAlreadyExists(err) {
+				err := createNamespace(c, cephCSINamespace)
+				if err != nil {
 					Fail(err.Error())
 				}
 			}
 			deployRBDPlugin()
 		}
+		createConfigMap(rbdDirPath, f.ClientSet, f)
 		createRBDStorageClass(f.ClientSet, f, make(map[string]string))
 		createRBDSecret(f.ClientSet, f)
 		deployVault(f.ClientSet, deployTimeout)
@@ -112,11 +145,7 @@ var _ = Describe("RBD", func() {
 		if deployRBD {
 			deleteRBDPlugin()
 			if cephCSINamespace != defaultNs {
-				err := c.CoreV1().Namespaces().Delete(cephCSINamespace, nil)
-				if err != nil && !apierrs.IsNotFound(err) {
-					Fail(err.Error())
-				}
-				err = framework.WaitForNamespacesDeleted(c, []string{cephCSINamespace}, time.Duration(deployTimeout)*time.Minute)
+				err := deleteNamespace(c, cephCSINamespace)
 				if err != nil {
 					Fail(err.Error())
 				}
