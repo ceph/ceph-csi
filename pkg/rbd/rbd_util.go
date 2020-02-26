@@ -115,11 +115,11 @@ var (
 )
 
 // createImage creates a new ceph image with provision and volume options.
-func createImage(ctx context.Context, pOpts *rbdVolume, volSz int64, cr *util.Credentials) error {
+func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	var output []byte
 
 	image := pOpts.RbdImageName
-	volSzMiB := fmt.Sprintf("%dM", volSz)
+	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(pOpts.VolSize))
 
 	logMsg := "rbd: create %s size %s format 2 (features: %s) using mon %s, pool %s "
 	if pOpts.DataPool != "" {
@@ -861,12 +861,12 @@ func cleanupRBDImageMetadataStash(path string) error {
 }
 
 // resizeRBDImage resizes the given volume to new size
-func resizeRBDImage(rbdVol *rbdVolume, newSize int64, cr *util.Credentials) error {
+func resizeRBDImage(rbdVol *rbdVolume, cr *util.Credentials) error {
 	var output []byte
 
 	mon := rbdVol.Monitors
 	image := rbdVol.RbdImageName
-	volSzMiB := fmt.Sprintf("%dM", newSize)
+	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(rbdVol.VolSize))
 
 	args := []string{"resize", image, "--size", volSzMiB, "--pool", rbdVol.Pool, "--id", cr.ID, "-m", mon, "--keyfile=" + cr.KeyFile}
 	output, err := execCommand("rbd", args)
