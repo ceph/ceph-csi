@@ -1,7 +1,7 @@
 package e2e
 
 import (
-	"fmt"
+	"strings"
 
 	. "github.com/onsi/gomega" // nolint
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,11 +19,7 @@ var (
 )
 
 func deployVault(c kubernetes.Interface, deployTimeout int) {
-	framework.RunKubectlOrDie("create", "-f", vaultExamplePath+vaultServicePath, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-	framework.RunKubectlOrDie("create", "-f", vaultExamplePath+vaultPSPPath, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-	framework.RunKubectlOrDie("create", "-f", vaultExamplePath+vaultRBACPath, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-	framework.RunKubectlOrDie("create", "-f", vaultExamplePath+vaultConfigPath, fmt.Sprintf("--namespace=%s", cephCSINamespace))
-
+	createORDeleteVault("create")
 	opt := metav1.ListOptions{
 		LabelSelector: "app=vault",
 	}
@@ -37,20 +33,48 @@ func deployVault(c kubernetes.Interface, deployTimeout int) {
 }
 
 func deleteVault() {
-	_, err := framework.RunKubectl("delete", "-f", vaultExamplePath+vaultServicePath, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	createORDeleteVault("delete")
+}
+
+func createORDeleteVault(action string) {
+	data, err := replaceNamespaceInTemplate(vaultExamplePath + vaultServicePath)
 	if err != nil {
-		e2elog.Logf("failed to delete vault statefull set %v", err)
+		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultServicePath, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", vaultExamplePath+vaultRBACPath, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+
+	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
+
+	data = strings.ReplaceAll(data, "value: default", "value: "+cephCSINamespace)
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to delete vault statefull set %v", err)
+		e2elog.Logf("failed to %s vault statefulset %v", action, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", vaultExamplePath+vaultConfigPath, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+
+	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultRBACPath)
 	if err != nil {
-		e2elog.Logf("failed to delete vault config map %v", err)
+		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultRBACPath, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", vaultExamplePath+vaultPSPPath, fmt.Sprintf("--namespace=%s", cephCSINamespace))
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to delete vault psp %v", err)
+		e2elog.Logf("failed to %s vault statefulset %v", action, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultConfigPath)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultConfigPath, err)
+	}
+	data = strings.ReplaceAll(data, "default", cephCSINamespace)
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to %s vault config map %v", action, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultPSPPath)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultPSPPath, err)
+	}
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to %s vault psp %v", action, err)
 	}
 }

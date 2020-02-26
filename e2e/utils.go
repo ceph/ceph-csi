@@ -42,10 +42,15 @@ var (
 	deployRBD        bool
 	cephCSINamespace string
 	rookNamespace    string
-
-	vaultAddr = fmt.Sprintf("http://vault.%s.svc.cluster.local:8200", cephCSINamespace)
-	poll      = 2 * time.Second
+	ns               string
+	vaultAddr        string
+	poll             = 2 * time.Second
 )
+
+func initResouces() {
+	ns = fmt.Sprintf("--namespace=%v", cephCSINamespace)
+	vaultAddr = fmt.Sprintf("http://vault.%s.svc.cluster.local:8200", cephCSINamespace)
+}
 
 // type snapInfo struct {
 // 	ID        int64  `json:"id"`
@@ -54,11 +59,68 @@ var (
 // 	Timestamp string `json:"timestamp"`
 // }
 
+func createNamespace(c clientset.Interface, name string) error {
+	timeout := time.Duration(deployTimeout) * time.Minute
+	ns := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	_, err := c.CoreV1().Namespaces().Create(ns)
+	if err != nil && !apierrs.IsAlreadyExists(err) {
+		return err
+	}
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err := c.CoreV1().Namespaces().Get(name, metav1.GetOptions{})
+		if err != nil {
+			e2elog.Logf("Error getting namespace: '%s': %v", name, err)
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
+			if testutils.IsRetryableAPIError(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+}
+
+func deleteNamespace(c clientset.Interface, name string) error {
+	timeout := time.Duration(deployTimeout) * time.Minute
+	err := c.CoreV1().Namespaces().Delete(name, nil)
+	if err != nil && !apierrs.IsNotFound(err) {
+		Fail(err.Error())
+	}
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err = c.CoreV1().Namespaces().Get(name, metav1.GetOptions{})
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				return true, nil
+			}
+			e2elog.Logf("Error getting namespace: '%s': %v", name, err)
+			if testutils.IsRetryableAPIError(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+}
+
+func replaceNamespaceInTemplate(filePath string) (string, error) {
+	read, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	return strings.ReplaceAll(string(read), "namespace: default", fmt.Sprintf("namespace: %s", cephCSINamespace)), nil
+}
+
 func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	e2elog.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start",
-		timeout, ns)
+	e2elog.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start", timeout, ns)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		ds, err := c.AppsV1().DaemonSets(ns).Get(name, metav1.GetOptions{})
@@ -198,6 +260,10 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["fsName"] = "myfs"
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
+
 	if enablePool {
 		sc.Parameters["pool"] = "myfs-data0"
 	}
@@ -208,7 +274,7 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
-
+	sc.Namespace = cephCSINamespace
 	sc.Parameters["clusterID"] = fsID
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
 	Expect(err).Should(BeNil())
@@ -218,6 +284,10 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, param
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["pool"] = "replicapool"
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
+
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
@@ -230,6 +300,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, param
 	for k, v := range parameters {
 		sc.Parameters[k] = v
 	}
+	sc.Namespace = cephCSINamespace
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
 	Expect(err).Should(BeNil())
 }
@@ -264,7 +335,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, param
 
 func deleteConfigMap(pluginPath string) {
 	path := pluginPath + configMap
-	_, err := framework.RunKubectl("delete", "-f", path)
+	_, err := framework.RunKubectl("delete", "-f", path, ns)
 	if err != nil {
 		e2elog.Logf("failed to delete configmap %v", err)
 	}
@@ -296,6 +367,7 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	data, err := json.Marshal(conmap)
 	Expect(err).Should(BeNil())
 	cm.Data["config.json"] = string(data)
+	cm.Namespace = cephCSINamespace
 	_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Create(&cm)
 	Expect(err).Should(BeNil())
 }
@@ -324,6 +396,7 @@ func createCephfsSecret(c kubernetes.Interface, f *framework.Framework) {
 	sc.StringData["adminKey"] = adminKey
 	delete(sc.StringData, "userID")
 	delete(sc.StringData, "userKey")
+	sc.Namespace = cephCSINamespace
 	_, err := c.CoreV1().Secrets(cephCSINamespace).Create(&sc)
 	Expect(err).Should(BeNil())
 }
@@ -338,12 +411,20 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 	Expect(stdErr).Should(BeEmpty())
 	sc.StringData["userID"] = "admin"
 	sc.StringData["userKey"] = adminKey
+	sc.Namespace = cephCSINamespace
 	_, err := c.CoreV1().Secrets(cephCSINamespace).Create(&sc)
 	Expect(err).Should(BeNil())
 }
 
 func deleteResource(scPath string) {
-	_, err := framework.RunKubectl("delete", "-f", scPath)
+	data, err := replaceNamespaceInTemplate(scPath)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", scPath, err)
+	}
+	_, err = framework.RunKubectlInput(data, ns, "delete", "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to delete %s %v", scPath, err)
+	}
 	Expect(err).Should(BeNil())
 }
 
