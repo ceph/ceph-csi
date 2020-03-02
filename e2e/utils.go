@@ -992,3 +992,40 @@ func pvcDeleteWhenPoolNotFound(pvcPath string, cephfs bool, f *framework.Framewo
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	return err
 }
+
+func checkMountOptions(pvcPath, appPath string, f *framework.Framework, mountFlags []string) error {
+	pvc, err := loadPVC(pvcPath)
+	if pvc == nil {
+		return err
+	}
+
+	pvc.Namespace = f.UniqueName
+
+	app, err := loadApp(appPath)
+	if err != nil {
+		return err
+	}
+	app.Labels = map[string]string{"app": "validate-mount-opt"}
+	app.Namespace = f.UniqueName
+
+	err = createPVCAndApp("", f, pvc, app)
+	if err != nil {
+		return err
+	}
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=validate-mount-opt",
+	}
+
+	cmd := fmt.Sprintf("mount |grep %s", app.Spec.Containers[0].VolumeMounts[0].MountPath)
+	data, stdErr := execCommandInPod(f, cmd, app.Namespace, &opt)
+	Expect(stdErr).Should(BeEmpty())
+	for _, f := range mountFlags {
+		if !strings.Contains(data, f) {
+			return fmt.Errorf("mount option %s not found in %s", f, data)
+		}
+	}
+
+	err = deletePVCAndApp("", f, pvc, app)
+	return err
+}
