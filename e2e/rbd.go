@@ -326,6 +326,14 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("validate mount options in app pod", func() {
+				mountFlags := []string{"discard"}
+				err := checkMountOptions(pvcPath, appPath, f, mountFlags)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
+
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and Delete PVC when backend pool deleted", func() {
