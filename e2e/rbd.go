@@ -91,19 +91,31 @@ var _ = Describe("RBD", func() {
 		deleteConfigMap(rbdDirPath)
 		deleteResource(rbdExamplePath + "secret.yaml")
 		deleteResource(rbdExamplePath + "storageclass.yaml")
+<<<<<<< HEAD
 		// deleteResource(rbdExamplePath + "snapshotclass.yaml")
 		deleteVault()
+=======
+		deleteResource(rbdExamplePath + "snapshotclass.yaml")
+>>>>>>> parent of 90fef919d... Skip snapshot testing  in CI
 	})
 
 	Context("Test RBD CSI", func() {
 		It("Test RBD CSI", func() {
 			pvcPath := rbdExamplePath + "pvc.yaml"
 			appPath := rbdExamplePath + "pod.yaml"
+<<<<<<< HEAD
 			rawPvcPath := rbdExamplePath + "raw-block-pvc.yaml"
 			rawAppPath := rbdExamplePath + "raw-block-pod.yaml"
 			// pvcClonePath := rbdExamplePath + "pvc-restore.yaml"
 			// appClonePath := rbdExamplePath + "pod-restore.yaml"
 			// snapshotPath := rbdExamplePath + "snapshot.yaml"
+=======
+			// rawPvcPath := rbdExamplePath + "raw-block-pvc.yaml"
+			// rawAppPath := rbdExamplePath + "raw-block-pod.yaml"
+			pvcClonePath := rbdExamplePath + "pvc-restore.yaml"
+			appClonePath := rbdExamplePath + "pod-restore.yaml"
+			snapshotPath := rbdExamplePath + "snapshot.yaml"
+>>>>>>> parent of 90fef919d... Skip snapshot testing  in CI
 
 			By("checking provisioner deployment is running")
 			var err error
@@ -154,56 +166,54 @@ var _ = Describe("RBD", func() {
 				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
 			})
 
-			// skipping snapshot testing
+			By("create a PVC clone and Bind it to an app", func() {
+				createRBDSnapshotClass(f)
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					Fail(err.Error())
+				}
 
-			// By("create a PVC clone and Bind it to an app", func() {
-			// 	createRBDSnapshotClass(f)
-			// 	pvc, err := loadPVC(pvcPath)
-			// 	if err != nil {
-			// 		Fail(err.Error())
-			// 	}
+				pvc.Namespace = f.UniqueName
+				e2elog.Logf("The PVC  template %+v", pvc)
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 1 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+					Fail("validate backend image failed")
+				}
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.Name = pvc.Name
+				snap.Spec.Source.Kind = "PersistentVolumeClaim"
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+				pool := "replicapool"
+				snapList, err := listSnapshots(f, pool, images[0])
+				if err != nil {
+					Fail(err.Error())
+				}
+				if len(snapList) != 1 {
+					e2elog.Logf("backend snapshot not matching kube snap count,snap count = % kube snap count %d", len(snapList), 1)
+					Fail("validate backend snapshot failed")
+				}
 
-			// 	pvc.Namespace = f.UniqueName
-			// 	e2elog.Logf("The PVC  template %+v", pvc)
-			// 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-			// 	if err != nil {
-			// 		Fail(err.Error())
-			// 	}
-			// 	// validate created backend rbd images
-			// 	images := listRBDImages(f)
-			// 	if len(images) != 1 {
-			// 		e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
-			// 		Fail("validate backend image failed")
-			// 	}
-			// 	snap := getSnapshot(snapshotPath)
-			// 	snap.Namespace = f.UniqueName
-			// 	snap.Spec.Source.Name = pvc.Name
-			// 	snap.Spec.Source.Kind = "PersistentVolumeClaim"
-			// 	err = createSnapshot(&snap, deployTimeout)
-			// 	if err != nil {
-			// 		Fail(err.Error())
-			// 	}
-			// 	pool := "replicapool"
-			// 	snapList, err := listSnapshots(f, pool, images[0])
-			// 	if err != nil {
-			// 		Fail(err.Error())
-			// 	}
-			// 	if len(snapList) != 1 {
-			// 		e2elog.Logf("backend snapshot not matching kube snap count,snap count = % kube snap count %d", len(snapList), 1)
-			// 		Fail("validate backend snapshot failed")
-			// 	}
+				validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
 
-			// 	validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
-
-			// 	err = deleteSnapshot(&snap, deployTimeout)
-			// 	if err != nil {
-			// 		Fail(err.Error())
-			// 	}
-			// 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-			// 	if err != nil {
-			// 		Fail(err.Error())
-			// 	}
-			// })
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
 
 			By("create a block type PVC and Bind it to an app", func() {
 				validatePVCAndAppBinding(rawPvcPath, rawAppPath, f)
