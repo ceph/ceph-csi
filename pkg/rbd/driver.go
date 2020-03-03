@@ -52,6 +52,9 @@ var (
 	// VolumeName to backing RBD images
 	volJournal  *util.CSIJournal
 	snapJournal *util.CSIJournal
+
+	// rbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten occurs
+	rbdHardMaxCloneDepth uint
 )
 
 // NewDriver returns new rbd driver
@@ -100,6 +103,9 @@ func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	if conf.InstanceID != "" {
 		CSIInstanceID = conf.InstanceID
 	}
+
+	// update clone limit
+	rbdHardMaxCloneDepth = conf.RbdHardMaxCloneDepth
 
 	// Get an instance of the volume and snapshot journal keys
 	volJournal = util.NewCSIVolumeJournal()

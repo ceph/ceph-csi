@@ -19,6 +19,7 @@ package rbd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ceph/ceph-csi/pkg/util"
 
@@ -87,8 +88,8 @@ func validateRbdVol(rbdVol *rbdVolume) error {
 }
 
 /*
-checkSnapExists, and its counterpart checkVolExists, function checks if the passed in rbdSnapshot
-or rbdVolume exists on the backend.
+checkSnapCloneExists, and its counterpart checkVolExists, function checks if
+the passed in rbdSnapshot or rbdVolume exists on the backend.
 
 **NOTE:** These functions manipulate the rados omaps that hold information regarding
 volume names as requested by the CSI drivers. Hence, these need to be invoked only when the
@@ -108,7 +109,7 @@ because, the order of omap creation and deletion are inverse of each other, and 
 request name lock, and hence any stale omaps are leftovers from incomplete transactions and are
 hence safe to garbage collect.
 */
-func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
+func checkSnapCloneExists(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
 	err := validateRbdSnap(rbdSnap)
 	if err != nil {
 		return false, err
@@ -131,13 +132,20 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 		return false, err
 	}
 
+	// update rbdImageName as snapshot will be created for cloned image with
+	// name RbdSnapName
+	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
 	// Fetch on-disk image attributes
-	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
+
+	vol := generateVolFromSnap(rbdSnap)
+
+	// Fetch on-disk image attributes
+	err = updateVolWithImageInfo(ctx, vol, cr)
 	if err != nil {
-		if _, ok := err.(ErrSnapNotFound); ok {
-			err = snapJournal.UndoReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-				rbdSnap.RbdSnapName, rbdSnap.RequestName)
-			return false, err
+		if _, ok := err.(ErrImageNotFound); ok {
+			snap := rbdSnap
+			snap.RbdImageName = rbdVol.RbdImageName
+			err = undoSnapshotCloning(ctx, snap, vol, cr, false)
 		}
 		return false, err
 	}
@@ -149,21 +157,56 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 		return false, err
 	}
 
+	rbdSnap.CreatedAt = vol.CreatedAt
+
+	err = flattenRbdImage(ctx, vol, rbdHardMaxCloneDepth, cr)
+	if err != nil {
+		if _, ok := err.(ErrFlattenInProgress); !ok {
+			klog.Errorf(util.Log(ctx, "failed to add flatten task"), err)
+			flatErr := undoSnapshotCloning(ctx, rbdSnap, vol, cr, true)
+			if flatErr != nil {
+				klog.Errorf(util.Log(ctx, "failed to undo snapshot cloning %v"), flatErr)
+			}
+		}
+		return false, err
+	}
+
 	klog.V(4).Infof(util.Log(ctx, "found existing snap (%s) with snap name (%s) for request (%s)"),
 		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return true, nil
 }
 
+func undoSnapshotCloning(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials, deleteVol bool) error {
+	err := deleteSnapshot(ctx, rbdSnap, cr)
+	if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+
+		klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), err)
+		return err
+	}
+	if deleteVol {
+		err = deleteImage(ctx, rbdVol, cr)
+		if err != nil {
+			if _, ok := err.(ErrImageNotFound); !ok {
+				klog.Errorf(util.Log(ctx, "failed to delete rbd image %s/%s: %v"), rbdVol.Pool, rbdVol.RbdImageName, err)
+				return err
+			}
+		}
+	}
+	err = snapJournal.UndoReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
+		rbdSnap.RbdSnapName, rbdSnap.RequestName)
+	return err
+}
+
 /*
-Check comment on checkSnapExists, to understand how this function behaves
+Check comment on checkSnapCloneExists, to understand how this function behaves
 
 **NOTE:** These functions manipulate the rados omaps that hold information regarding
 volume names as requested by the CSI drivers. Hence, these need to be invoked only when the
 respective CSI snapshot or volume name based locks are held, as otherwise racy access to these
 omaps may end up leaving the omaps in an inconsistent state.
 */
-func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
+func checkVolExists(ctx context.Context, rbdVol *rbdVolume, clone bool, cr *util.Credentials) (bool, error) {
 	err := validateRbdVol(rbdVol)
 	if err != nil {
 		return false, err
@@ -219,6 +262,15 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 		return false, err
 	}
 
+	if clone {
+		flatErr := flattenRbdImage(ctx, rbdVol, rbdHardMaxCloneDepth, cr)
+		if flatErr != nil {
+			klog.Errorf(util.Log(ctx, "failed to list flatten task"), flatErr)
+			return false, flatErr
+		}
+
+	}
+
 	klog.V(4).Infof(util.Log(ctx, "found existing volume (%s) with image name (%s) for request (%s)"),
 		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
 
@@ -227,14 +279,14 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
 // volume ID for the generated name
-func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) error {
 	var (
 		snapUUID string
 		err      error
 	)
 
 	snapUUID, rbdSnap.RbdSnapName, err = snapJournal.ReserveName(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, "")
 	if err != nil {
 		return err
 	}
@@ -244,6 +296,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 	if err != nil {
 		return err
 	}
+	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
 
 	klog.V(4).Infof(util.Log(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)"),
 		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)

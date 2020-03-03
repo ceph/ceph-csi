@@ -102,6 +102,9 @@ type Config struct {
 	// cephfs related flags
 	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
 
+	// rbd related flags
+	RbdHardMaxCloneDepth uint // rbd clone depth hard limit
+
 }
 
 // CreatePersistanceStorage creates storage path and initializes new cache

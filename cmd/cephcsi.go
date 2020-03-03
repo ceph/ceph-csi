@@ -76,6 +76,7 @@ func init() {
 
 	flag.BoolVar(&conf.Version, "version", false, "Print cephcsi version information")
 
+	flag.UintVar(&conf.RbdHardMaxCloneDepth, "rbdhardmaxclonedepth", 5, "Hard limit for maximum number of nested volume clones that are taken before a flatten occurs")
 	klog.InitFlags(nil)
 	if err := flag.Set("logtostderr", "true"); err != nil {
 		klog.Exitf("failed to set logtostderr flag: %v", err)
@@ -169,6 +170,7 @@ func main() {
 	klog.Infof("Starting driver type: %v with name: %v", conf.Vtype, dname)
 	switch conf.Vtype {
 	case rbdType:
+		validateCloneDepthFlag(&conf)
 		driver := rbd.NewDriver()
 		driver.Run(&conf, cp)
 
@@ -187,4 +189,10 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+func validateCloneDepthFlag(conf *util.Config) {
+	if conf.RbdHardMaxCloneDepth > 16 {
+		klog.Fatalln("rbdhardmaxclonedepth flag value should be less than 16")
+	}
 }
