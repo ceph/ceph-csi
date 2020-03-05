@@ -160,6 +160,15 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			}
 		}
 
+		// TODO: cannot distinguish if this was a found image, need to handle any errors that state mirroring is already enabled and such
+		if rbdVol.Mirrored {
+			err = enableImageMirror(ctx, rbdVol, cr)
+			if err != nil {
+				klog.Errorf(util.Log(ctx, err.Error()))
+				return nil, err
+			}
+		}
+
 		return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
 				VolumeId:      rbdVol.VolID,
@@ -183,22 +192,38 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
-	err = cs.createBackingImage(ctx, rbdVol, req, util.RoundOffVolSize(rbdVol.VolSize))
-	if err != nil {
-		return nil, err
-	}
-
-	if rbdVol.Encrypted {
-		err = ensureEncryptionMetadataSet(ctx, cr, rbdVol)
+	if !rbdVol.RbdImageExists {
+		err = cs.createBackingImage(ctx, rbdVol, req, util.RoundOffVolSize(rbdVol.VolSize))
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to save encryption status, deleting image %s"),
-				rbdVol.RbdImageName)
-			if deleteErr := deleteImage(ctx, rbdVol, cr); err != nil {
-				klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"),
-					rbdVol.Pool, rbdVol.RbdImageName, deleteErr)
-				return nil, deleteErr
-			}
 			return nil, err
+		}
+
+		if rbdVol.Encrypted {
+			err = ensureEncryptionMetadataSet(ctx, cr, rbdVol)
+			if err != nil {
+				klog.Errorf(util.Log(ctx, "failed to save encryption status, deleting image %s"),
+					rbdVol.RbdImageName)
+				if deleteErr := deleteImage(ctx, rbdVol, cr); deleteErr != nil {
+					klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"),
+						rbdVol.Pool, rbdVol.RbdImageName, deleteErr)
+					return nil, deleteErr
+				}
+				return nil, err
+			}
+		}
+
+		if rbdVol.Mirrored {
+			err = enableImageMirror(ctx, rbdVol, cr)
+			if err != nil {
+				klog.Errorf(util.Log(ctx, "failed to enable mirroring for image, deleting image (%s) : %s"),
+					rbdVol.RbdImageName, err)
+				if deleteErr := deleteImage(ctx, rbdVol, cr); deleteErr != nil {
+					klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"),
+						rbdVol.Pool, rbdVol.RbdImageName, deleteErr)
+					return nil, deleteErr
+				}
+				return nil, err
+			}
 		}
 	}
 

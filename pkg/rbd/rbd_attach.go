@@ -183,7 +183,9 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, cr *util.Credent
 
 	devicePath, found := waitForPath(ctx, volOptions.Pool, image, 1, useNBD)
 	if !found {
-		backoff := wait.Backoff{
+		// TODO: With mirroring there is already a watcher on the image (possibly the mirror deamon), hence checking
+		// for watchers as a defense against existing clients will not work
+		/*backoff := wait.Backoff{
 			Duration: rbdImageWatcherInitDelay,
 			Factor:   rbdImageWatcherFactor,
 			Steps:    rbdImageWatcherSteps,
@@ -193,7 +195,7 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, cr *util.Credent
 
 		if err != nil {
 			return "", err
-		}
+		}*/
 		devicePath, err = createPath(ctx, volOptions, cr)
 	}
 

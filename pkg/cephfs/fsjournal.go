@@ -133,7 +133,7 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 	defer cr.DeleteCredentials()
 
 	imageUUID, vid.FsSubvolName, err = volJournal.ReserveName(ctx, volOptions.Monitors, cr,
-		volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "")
+		volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "", "")
 	if err != nil {
 		return nil, err
 	}

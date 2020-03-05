@@ -1,4 +1,4 @@
-FROM ceph/ceph:v14.2
+FROM ceph/daemon-base:latest-master-devel
 LABEL maintainers="Ceph-CSI Authors"
 LABEL description="Ceph-CSI Plugin"
 

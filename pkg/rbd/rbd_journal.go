@@ -234,7 +234,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 	)
 
 	snapUUID, rbdSnap.RbdSnapName, err = snapJournal.ReserveName(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "", "")
 	if err != nil {
 		return err
 	}
@@ -256,6 +256,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
 	var (
 		imageUUID string
+		imageName string
 		err       error
 	)
 
@@ -264,8 +265,20 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) er
 		kmsID = rbdVol.KMS.GetID()
 	}
 
+	if rbdVol.Mirrored {
+		// list and find mirrored image UUID, based on ImageName header
+		imageName, err = findImageMatchingHeader(ctx, rbdVol.Monitors, cr, rbdVol.Pool, rbdVol.NamePrefix)
+		if err != nil {
+			if _, ok := err.(ErrImageNotFound); !ok {
+				return err
+			}
+		} else {
+			rbdVol.RbdImageExists = true
+		}
+	}
+
 	imageUUID, rbdVol.RbdImageName, err = volJournal.ReserveName(ctx, rbdVol.Monitors, cr, rbdVol.Pool,
-		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
+		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, imageName)
 	if err != nil {
 		return err
 	}

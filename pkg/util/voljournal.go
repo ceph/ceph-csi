@@ -19,6 +19,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -173,6 +174,14 @@ func (cj *CSIJournal) GetNameForUUID(prefix, uid string, isSnapshot bool) string
 	return prefix + uid
 }
 
+// GetUUIDFromName returns volume UUID given a name
+func (cj *CSIJournal) GetUUIDFromName(name, prefix string) string {
+	if prefix == "" {
+		return strings.TrimPrefix(name, defaultVolumeNamingPrefix)
+	}
+	return strings.TrimPrefix(name, prefix)
+}
+
 // SetCSIDirectorySuffix sets the given suffix for the csiDirectory omap
 func (cj *CSIJournal) SetCSIDirectorySuffix(suffix string) {
 	cj.csiDirectory = cj.csiDirectory + "." + suffix
@@ -309,8 +318,22 @@ func (cj *CSIJournal) UndoReservation(ctx context.Context, monitors string, cr *
 // reserveOMapName creates an omap with passed in oMapNamePrefix and a generated <uuid>.
 // It ensures generated omap name does not already exist and if conflicts are detected, a set
 // number of retires with newer uuids are attempted before returning an error
-func reserveOMapName(ctx context.Context, monitors string, cr *Credentials, pool, namespace, oMapNamePrefix string) (string, error) {
+func (cj *CSIJournal) reserveOMapName(ctx context.Context, monitors string, cr *Credentials, pool, imageName, namePrefix, namespace, oMapNamePrefix string) (string, error) {
 	var iterUUID string
+
+	if imageName != "" {
+		iterUUID = cj.GetUUIDFromName(imageName, namePrefix)
+		err := CreateObject(ctx, monitors, cr, pool, namespace, oMapNamePrefix+iterUUID)
+		if err != nil {
+			if _, ok := err.(ErrObjectExists); !ok {
+				return "", err
+			}
+			// conflict can be real, not just a retry, ideally chase down the conflict to a csivolname directory for crash recovery
+			klog.Warningf(Log(ctx, "uuid (%s) conflict detected, assuming crash recovery"), iterUUID)
+		}
+
+		return iterUUID, nil
+	}
 
 	maxAttempts := 5
 	attempt := 1
@@ -350,7 +373,7 @@ Return values:
 	- string: Contains the image name that was reserved for the passed in reqName
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *Credentials, pool, reqName, namePrefix, parentName, kmsConf string) (string, string, error) {
+func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *Credentials, pool, reqName, namePrefix, parentName, kmsConf, existingImageName string) (string, string, error) {
 	var snapSource bool
 
 	if parentName != "" {
@@ -365,7 +388,7 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *Cred
 	// NOTE: If any service loss occurs post creation of the UUID directory, and before
 	// setting the request name key (csiNameKey) to point back to the UUID directory, the
 	// UUID directory key will be leaked
-	volUUID, err := reserveOMapName(ctx, monitors, cr, pool, cj.namespace, cj.cephUUIDDirectoryPrefix)
+	volUUID, err := cj.reserveOMapName(ctx, monitors, cr, pool, existingImageName, namePrefix, cj.namespace, cj.cephUUIDDirectoryPrefix)
 	if err != nil {
 		return "", "", err
 	}

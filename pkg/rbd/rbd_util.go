@@ -87,6 +87,8 @@ type rbdVolume struct {
 	VolSize            int64  `json:"volSize"`
 	DisableInUseChecks bool   `json:"disableInUseChecks"`
 	Encrypted          bool
+	Mirrored           bool
+	RbdImageExists     bool
 	KMS                util.EncryptionKMS
 }
 
@@ -210,14 +212,14 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	var output []byte
 
 	image := pOpts.RbdImageName
-	found, _, err := rbdStatus(ctx, pOpts, cr)
-	if err != nil {
-		return err
-	}
-	if found {
-		klog.Info(util.Log(ctx, "rbd is still being used "), image)
-		return fmt.Errorf("rbd %s is still being used", image)
-	}
+	/*	found, _, err := rbdStatus(ctx, pOpts, cr)
+		if err != nil {
+			return err
+		}
+		if found {
+			klog.Info(util.Log(ctx, "rbd is still being used "), image)
+			return fmt.Errorf("rbd %s is still being used", image)
+		}*/
 
 	klog.V(4).Infof(util.Log(ctx, "rbd: rm %s using mon %s, pool %s"), image, pOpts.Monitors, pOpts.Pool)
 
@@ -454,10 +456,13 @@ func updateMons(rbdVol *rbdVolume, options, credentials map[string]string) error
 
 func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[string]string, disableInUseChecks, isLegacyVolume bool) (*rbdVolume, error) {
 	var (
-		ok         bool
-		err        error
-		namePrefix string
-		encrypted  string
+		ok           bool
+		err          error
+		namePrefix   string
+		encrypted    string
+		pvcName      string
+		pvcNameSpace string
+		mirrored     string
 	)
 
 	rbdVol := &rbdVolume{}
@@ -524,6 +529,29 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 				return nil, fmt.Errorf("invalid encryption kms configuration: %s", err)
 			}
 		}
+	}
+
+	// check if mirroring is enabled and fetch PVC name@namespace details
+	rbdVol.Mirrored = false
+	mirrored, ok = volOptions["mirrored"]
+	if ok {
+		rbdVol.Mirrored, err = strconv.ParseBool(mirrored)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"invalid value set in 'mirrored': %s (should be \"true\" or \"false\")", mirrored)
+		}
+	}
+
+	if rbdVol.Mirrored {
+		if pvcName, ok = volOptions["csi.storage.k8s.io/pvc/name"]; !ok {
+			return nil, fmt.Errorf("mirrored parameter requires PVC name and namespace, missing PVC name parameter")
+		}
+
+		if pvcNameSpace, ok = volOptions["csi.storage.k8s.io/pvc/namespace"]; !ok {
+			return nil, fmt.Errorf("mirrored parameter requires PVC name and namespace, missing PVC namespace parameter")
+		}
+
+		rbdVol.NamePrefix = pvcName + "-" + pvcNameSpace
 	}
 
 	return rbdVol, nil
@@ -682,6 +710,71 @@ func getSnapshotMetadata(ctx context.Context, pSnapOpts *rbdSnapshot, cr *util.C
 	}
 
 	return nil
+}
+
+func enableImageMirror(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
+	klog.V(4).Infof(util.Log(ctx, "rbd: mirror enable %s using mon %s, pool %s"), rbdVol.RbdImageName, rbdVol.Monitors, rbdVol.Pool)
+	_, stderr, err := util.ExecCommand(
+		"rbd",
+		"-m", rbdVol.Monitors,
+		"--id", cr.ID,
+		"--keyfile="+cr.KeyFile,
+		"-c", util.CephConfigPath,
+		"mirror",
+		"image",
+		"enable",
+		rbdVol.Pool+"/"+rbdVol.RbdImageName,
+		"snapshot")
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to enable mirroring on image (%s) : (%s) (%s)"),
+			rbdVol.Pool+"/"+rbdVol.RbdImageName, err, stderr)
+		return fmt.Errorf("failed to enable mirroring on image (%s) : (%s)",
+			rbdVol.Pool+"/"+rbdVol.RbdImageName, err)
+	}
+
+	return nil
+}
+
+// findImageMatchingHeader queries rbd about all images and matched exactly one based on the header name passed
+// returns ErrImageNotFound if provided header does not match any image
+// Alternative till we get https://tracker.ceph.com/issues/43951
+func findImageMatchingHeader(ctx context.Context, monitors string, cr *util.Credentials, poolName, imageHeader string) (string, error) {
+	// rbd --format=json ls <poolname>
+
+	var images []string
+
+	stdout, _, err := util.ExecCommand(
+		"rbd",
+		"-m", monitors,
+		"--id", cr.ID,
+		"--keyfile="+cr.KeyFile,
+		"-c", util.CephConfigPath,
+		"--format="+"json",
+		"ls", poolName)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting image list from pool (%s): (%s)"), poolName, err)
+		return "", err
+	}
+
+	err = json.Unmarshal([]byte(stdout), &images)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to parse JSON output of image list for pool (%s): (%s)"),
+			poolName, err)
+		return "", fmt.Errorf("unmarshaling image list from pool (%s) failed: %+v.  raw buffer response: %s",
+			poolName, err, string(stdout))
+	}
+
+	klog.Errorf("Unmarshaled: %v", images)
+	for _, image := range images {
+		if strings.HasPrefix(image, imageHeader) {
+			// check for duplicates
+			return image, nil
+		}
+	}
+
+	klog.Errorf("image with header (%s) not found in pool (%s)", imageHeader, poolName)
+	err = fmt.Errorf("image with header (%s) not found in pool (%s)", imageHeader, poolName)
+	return "", ErrImageNotFound{imageHeader, err}
 }
 
 // imageInfo strongly typed JSON spec for image info
