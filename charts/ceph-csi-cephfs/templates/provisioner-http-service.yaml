@@ -9,7 +9,7 @@ metadata:
   name: {{ include "ceph-csi-cephfs.provisioner.fullname" . }}-http-metrics
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ include "ceph-csi-cephfs.fullname" . }}
+    app.kubernetes.io/name: {{ include "ceph-csi-cephfs.fullname" . }}
     helm.sh/chart: {{ include "ceph-csi-cephfs.chart" . }}
     app.kubernetes.io/component: {{ .Values.provisioner.name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}

@@ -9,7 +9,7 @@ metadata:
   name: {{ include "ceph-csi-rbd.nodeplugin.fullname" . }}-grpc-metrics
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ include "ceph-csi-rbd.fullname" . }}
+    app.kubernetes.io/name: {{ include "ceph-csi-rbd.fullname" . }}
     helm.sh/chart: {{ include "ceph-csi-rbd.chart" . }}
     app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}

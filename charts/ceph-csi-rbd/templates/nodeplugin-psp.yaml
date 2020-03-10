@@ -4,11 +4,12 @@ kind: PodSecurityPolicy
 metadata:
   name: {{ include "ceph-csi-rbd.nodeplugin.fullname" . }}
   labels:
-    app: {{ include "ceph-csi-rbd.name" . }}
-    chart: {{ include "ceph-csi-rbd.chart" . }}
-    component: {{ .Values.nodeplugin.name }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "ceph-csi-rbd.name" . }}
+    helm.sh/chart: {{ include "ceph-csi-rbd.chart" . }}
+    app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
 spec:
   allowPrivilegeEscalation: true
   allowedCapabilities:
