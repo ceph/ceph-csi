@@ -10,10 +10,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: {{ include "ceph-csi-cephfs.fullname" . }}
-    chart: {{ include "ceph-csi-cephfs.chart" . }}
-    component: {{ .Values.provisioner.name }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    helm.sh/chart: {{ include "ceph-csi-cephfs.chart" . }}
+    app.kubernetes.io/component: {{ .Values.provisioner.name }}
 spec:
 {{- if .Values.provisioner.grpcMetrics.service.clusterIP }}
   clusterIP: "{{ .Values.provisioner.grpcMetrics.service.clusterIP }}"
@@ -34,8 +32,7 @@ spec:
       port: {{ .Values.provisioner.grpcMetrics.service.servicePort }}
       targetPort: {{ .Values.provisioner.grpcMetrics.containerPort }}
   selector:
-    app: {{ include "ceph-csi-cephfs.name" . }}
-    component: {{ .Values.provisioner.name }}
-    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
+    app.kubernetes.io/component: {{ .Values.provisioner.name }}
   type: "{{ .Values.provisioner.grpcMetrics.service.type }}"
 {{- end -}}

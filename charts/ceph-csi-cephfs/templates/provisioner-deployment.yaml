@@ -4,26 +4,21 @@ metadata:
   name: {{ include "ceph-csi-cephfs.provisioner.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ include "ceph-csi-cephfs.name" . }}
-    chart: {{ include "ceph-csi-cephfs.chart" . }}
-    component: {{ .Values.provisioner.name }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
+    helm.sh/chart: {{ include "ceph-csi-cephfs.chart" . }}
+    app.kubernetes.io/component: {{ .Values.provisioner.name }}
 spec:
   replicas: {{ .Values.provisioner.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "ceph-csi-cephfs.name" . }}
-      component: {{ .Values.provisioner.name }}
-      release: {{ .Release.Name }}
+      app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
+      app.kubernetes.io/component: {{ .Values.provisioner.name }}
   template:
     metadata:
       labels:
-        app: {{ include "ceph-csi-cephfs.name" . }}
-        chart: {{ include "ceph-csi-cephfs.chart" . }}
-        component: {{ .Values.provisioner.name }}
-        release: {{ .Release.Name }}
-        heritage: {{ .Release.Service }}
+        app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
+        helm.sh/chart: {{ include "ceph-csi-cephfs.chart" . }}
+        app.kubernetes.io/component: {{ .Values.provisioner.name }}
     spec:
       serviceAccountName: {{ include "ceph-csi-cephfs.serviceAccountName.provisioner" . }}
       containers:

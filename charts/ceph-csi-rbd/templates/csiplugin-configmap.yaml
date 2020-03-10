@@ -4,11 +4,9 @@ metadata:
   name: {{ .Values.configMapName | quote }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ include "ceph-csi-rbd.name" . }}
-    chart: {{ include "ceph-csi-rbd.chart" . }}
-    component: {{ .Values.nodeplugin.name }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "ceph-csi-rbd.name" . }}
+    helm.sh/chart: {{ include "ceph-csi-rbd.chart" . }}
+    app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
 data:
   config.json: |-
 {{ toJson .Values.csiConfig | indent 4 -}}

@@ -4,11 +4,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ include "ceph-csi-cephfs.provisioner.fullname" . }}
   labels:
-    app: {{ include "ceph-csi-cephfs.name" . }}
-    chart: {{ include "ceph-csi-cephfs.chart" . }}
-    component: {{ .Values.provisioner.name }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
+    helm.sh/chart: {{ include "ceph-csi-cephfs.chart" . }}
+    app.kubernetes.io/component: {{ .Values.provisioner.name }}
 aggregationRule:
   clusterRoleSelectors:
     - matchLabels:

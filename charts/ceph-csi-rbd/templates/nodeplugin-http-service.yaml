@@ -10,10 +10,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: {{ include "ceph-csi-rbd.fullname" . }}
-    chart: {{ include "ceph-csi-rbd.chart" . }}
-    component: {{ .Values.nodeplugin.name }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    helm.sh/chart: {{ include "ceph-csi-rbd.chart" . }}
+    app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
 spec:
 {{- if .Values.nodeplugin.httpMetrics.service.clusterIP }}
   clusterIP: "{{ .Values.nodeplugin.httpMetrics.service.clusterIP }}"
@@ -34,8 +32,7 @@ spec:
       port: {{ .Values.nodeplugin.httpMetrics.service.servicePort }}
       targetPort: {{ .Values.nodeplugin.httpMetrics.containerPort }}
   selector:
-    app: {{ include "ceph-csi-rbd.name" . }}
-    component: {{ .Values.nodeplugin.name }}
-    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ include "ceph-csi-rbd.name" . }}
+    app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
   type: "{{ .Values.nodeplugin.httpMetrics.service.type }}"
 {{- end -}}

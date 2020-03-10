@@ -5,11 +5,9 @@ metadata:
   name: {{ include "ceph-csi-rbd.nodeplugin.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ include "ceph-csi-rbd.name" . }}
-    chart: {{ include "ceph-csi-rbd.chart" . }}
-    component: {{ .Values.nodeplugin.name }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "ceph-csi-rbd.name" . }}
+    helm.sh/chart: {{ include "ceph-csi-rbd.chart" . }}
+    app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
 subjects:
   - kind: ServiceAccount
     name: {{ include "ceph-csi-rbd.serviceAccountName.nodeplugin" . }}
