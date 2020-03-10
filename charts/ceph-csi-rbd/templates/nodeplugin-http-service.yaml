@@ -12,6 +12,9 @@ metadata:
     app: {{ include "ceph-csi-rbd.fullname" . }}
     helm.sh/chart: {{ include "ceph-csi-rbd.chart" . }}
     app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
 spec:
 {{- if .Values.nodeplugin.httpMetrics.service.clusterIP }}
   clusterIP: "{{ .Values.nodeplugin.httpMetrics.service.clusterIP }}"
@@ -34,5 +37,8 @@ spec:
   selector:
     app.kubernetes.io/name: {{ include "ceph-csi-rbd.name" . }}
     app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
   type: "{{ .Values.nodeplugin.httpMetrics.service.type }}"
 {{- end -}}

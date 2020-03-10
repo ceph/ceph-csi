@@ -7,11 +7,17 @@ metadata:
     app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
     helm.sh/chart: {{ include "ceph-csi-cephfs.chart" . }}
     app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
       app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/version: {{ .Chart.AppVersion }}
   updateStrategy:
     type: {{ .Values.nodeplugin.updateStrategy }}
   template:
@@ -20,6 +26,9 @@ spec:
         app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
         helm.sh/chart: {{ include "ceph-csi-cephfs.chart" . }}
         app.kubernetes.io/component: {{ .Values.nodeplugin.name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/version: {{ .Chart.AppVersion }}
     spec:
       serviceAccountName: {{ include "ceph-csi-cephfs.serviceAccountName.nodeplugin" . }}
       hostNetwork: true

@@ -7,18 +7,27 @@ metadata:
     app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
     helm.sh/chart: {{ include "ceph-csi-cephfs.chart" . }}
     app.kubernetes.io/component: {{ .Values.provisioner.name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
 spec:
   replicas: {{ .Values.provisioner.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
       app.kubernetes.io/component: {{ .Values.provisioner.name }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/version: {{ .Chart.AppVersion }}
   template:
     metadata:
       labels:
         app.kubernetes.io/name: {{ include "ceph-csi-cephfs.name" . }}
         helm.sh/chart: {{ include "ceph-csi-cephfs.chart" . }}
         app.kubernetes.io/component: {{ .Values.provisioner.name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/version: {{ .Chart.AppVersion }}
     spec:
       serviceAccountName: {{ include "ceph-csi-cephfs.serviceAccountName.provisioner" . }}
       containers:

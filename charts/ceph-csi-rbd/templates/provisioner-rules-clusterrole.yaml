@@ -7,6 +7,9 @@ metadata:
     app.kubernetes.io/name: {{ include "ceph-csi-rbd.name" . }}
     helm.sh/chart: {{ include "ceph-csi-rbd.chart" . }}
     app.kubernetes.io/component: {{ .Values.provisioner.name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     rbac.rbd.csi.ceph.com/aggregate-to-{{ include "ceph-csi-rbd.provisioner.fullname" . }}: "true"
 rules:
   - apiGroups: [""]
