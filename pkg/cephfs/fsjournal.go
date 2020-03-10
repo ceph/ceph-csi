@@ -74,6 +74,14 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 		return nil, err
 	}
 
+	_, err = getVolumeRootPathCeph(ctx, volOptions, cr, volumeID(vid.FsSubvolName))
+	if err != nil {
+		if _, ok := err.(ErrVolumeNotFound); ok {
+			err = volJournal.UndoReservation(ctx, volOptions.Monitors, cr, volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
+			return nil, err
+		}
+		return nil, err
+	}
 	// TODO: size checks
 
 	// found a volume already available, process and return it!
