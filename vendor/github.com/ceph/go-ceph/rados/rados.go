@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/ceph/go-ceph/errutil"
+	"github.com/ceph/go-ceph/internal/errutil"
 )
 
 // RadosError represents an error condition returned from the Ceph RADOS APIs.

@@ -76,8 +76,8 @@
   name = "k8s.io/utils"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/ceph/go-ceph"
-  version = "0.2"
 
 [prune]
   go-tests = true

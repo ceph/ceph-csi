@@ -90,9 +90,10 @@ type IOContext struct {
 	ioctx C.rados_ioctx_t
 }
 
-// Pointer returns a uintptr representation of the IOContext.
-func (ioctx *IOContext) Pointer() uintptr {
-	return uintptr(ioctx.ioctx)
+// Pointer returns a pointer reference to an internal structure.
+// This function should NOT be used outside of go-ceph itself.
+func (ioctx *IOContext) Pointer() unsafe.Pointer {
+	return unsafe.Pointer(ioctx.ioctx)
 }
 
 // SetNamespace sets the namespace for objects within this IO context (pool).
