@@ -106,21 +106,20 @@ func GetPoolID(monitors string, cr *Credentials, poolName string) (int64, error)
 	return id, nil
 }
 
-// GetPoolName lists all pools in a ceph cluster, and matches the pool whose pool ID is equal to
-// the requested poolID parameter
+// GetPoolName fetches the pool whose pool ID is equal to the requested poolID
+// parameter
 func GetPoolName(ctx context.Context, monitors string, cr *Credentials, poolID int64) (string, error) {
-	pools, err := getPools(ctx, monitors, cr)
+	conn, err := connPool.Get(monitors, cr.ID, cr.KeyFile)
 	if err != nil {
 		return "", err
 	}
+	defer connPool.Put(conn)
 
-	for _, p := range pools {
-		if poolID == p.Number {
-			return p.Name, nil
-		}
+	name, err := conn.GetPoolByID(poolID)
+	if err != nil {
+		return "", ErrPoolNotFound{string(poolID), fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)}
 	}
-
-	return "", ErrPoolNotFound{string(poolID), fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)}
+	return name, nil
 }
 
 // GetPoolIDs searches a list of pools in a cluster and returns the IDs of the pools that matches
