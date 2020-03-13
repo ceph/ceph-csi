@@ -110,18 +110,18 @@ func GetPoolID(ctx context.Context, monitors string, cr *Credentials, poolName s
 // GetPoolName lists all pools in a ceph cluster, and matches the pool whose pool ID is equal to
 // the requested poolID parameter
 func GetPoolName(ctx context.Context, monitors string, cr *Credentials, poolID int64) (string, error) {
-	pools, err := getPools(ctx, monitors, cr)
+	// no name for the pool known, using "." as placeholder
+	conn, err := connPool.Get(".", monitors, cr.KeyFile)
 	if err != nil {
 		return "", err
 	}
+	defer connPool.Put(conn)
 
-	for _, p := range pools {
-		if poolID == p.Number {
-			return p.Name, nil
-		}
+	name, err := conn.GetPoolByID(poolID)
+	if err != nil {
+		return "", ErrPoolNotFound{string(poolID), fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)}
 	}
-
-	return "", ErrPoolNotFound{string(poolID), fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)}
+	return name, nil
 }
 
 // SetOMapKeyValue sets the given key and value into the provided Ceph omap name
