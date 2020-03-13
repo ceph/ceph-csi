@@ -55,13 +55,6 @@ func (cs *ControllerServer) createBackingVolume(ctx context.Context, volOptions 
 		klog.Errorf(util.Log(ctx, "failed to create volume %s: %v"), volOptions.RequestName, err)
 		return status.Error(codes.Internal, err.Error())
 	}
-	defer func() {
-		if err != nil {
-			if errDefer := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions); errDefer != nil {
-				klog.Warningf(util.Log(ctx, "failed purging volume: %s (%s)"), volOptions.RequestName, errDefer)
-			}
-		}
-	}()
 
 	return nil
 }

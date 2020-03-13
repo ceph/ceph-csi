@@ -125,6 +125,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
+	// TODO: create/get a connection from the the ConnPool, and do not pass
+	// the credentials to any of the utility functions.
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -135,6 +137,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err != nil {
 		return nil, err
 	}
+	defer rbdVol.Destroy()
 
 	// Existence and conflict checks
 	if acquired := cs.VolumeLocks.TryAcquire(req.GetName()); !acquired {
@@ -183,7 +186,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
-	err = cs.createBackingImage(ctx, rbdVol, req, util.RoundOffVolSize(rbdVol.VolSize))
+	err = cs.createBackingImage(ctx, rbdVol, req)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +215,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}, nil
 }
 
-func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdVolume, req *csi.CreateVolumeRequest, volSize int64) error {
+func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdVolume, req *csi.CreateVolumeRequest) error {
 	var err error
 
 	// if VolumeContentSource is not nil, this request is for snapshot
@@ -227,7 +230,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, rbdVol *rbdV
 		}
 		defer cr.DeleteCredentials()
 
-		err = createImage(ctx, rbdVol, volSize, cr)
+		err = createImage(ctx, rbdVol, cr)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to create volume: %v"), err)
 			return status.Error(codes.Internal, err.Error())
@@ -294,6 +297,7 @@ func (cs *ControllerServer) DeleteLegacyVolume(ctx context.Context, req *csi.Del
 	defer cs.VolumeLocks.Release(volumeID)
 
 	rbdVol := &rbdVolume{}
+	defer rbdVol.Destroy()
 	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
 		if err, ok := err.(*util.CacheEntryNotFound); ok {
 			klog.V(3).Infof(util.Log(ctx, "metadata for legacy volume %s not found, assuming the volume to be already deleted (%v)"), volumeID, err)
@@ -352,6 +356,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	defer cs.VolumeLocks.Release(volumeID)
 
 	rbdVol := &rbdVolume{}
+	defer rbdVol.Destroy()
 	if err = genVolFromVolID(ctx, rbdVol, volumeID, cr, req.GetSecrets()); err != nil {
 		if _, ok := err.(util.ErrPoolNotFound); ok {
 			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), volumeID, err)
@@ -742,6 +747,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	defer cr.DeleteCredentials()
 
 	rbdVol := &rbdVolume{}
+	defer rbdVol.Destroy()
 	err = genVolFromVolID(ctx, rbdVol, volID, cr, req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
@@ -767,11 +773,10 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	// resize volume if required
 	nodeExpansion := false
 	if rbdVol.VolSize < volSize {
-		volSizeVal := util.RoundOffVolSize(volSize)
 		klog.V(4).Infof(util.Log(ctx, "rbd volume %s/%s size is %v,resizing to %v"), rbdVol.Pool, rbdVol.RbdImageName, rbdVol.VolSize, volSize)
 		rbdVol.VolSize = volSize
 		nodeExpansion = true
-		err = resizeRBDImage(rbdVol, volSizeVal, cr)
+		err = resizeRBDImage(rbdVol, cr)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to resize rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.RbdImageName, err)
 			return nil, status.Error(codes.Internal, err.Error())

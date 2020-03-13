@@ -114,6 +114,10 @@ nodeplugin:
 
   affinity: {}
 
+  # Set to true to enable Ceph Kernel clients
+  # on kernel < 4.17 which support quotas
+  # forcecephkernelclient: true
+
   # If true, create & use Pod Security Policy resources
   # https://kubernetes.io/docs/concepts/policy/pod-security-policy/
   podSecurityPolicy:
