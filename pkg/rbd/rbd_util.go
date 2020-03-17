@@ -269,15 +269,19 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 
 	// attempt to use Ceph manager based deletion support if available
 	rbdCephMgrSupported, err := rbdManagerTaskDeleteImage(ctx, pOpts, cr)
+	if rbdCephMgrSupported && err != nil {
+		klog.Errorf(util.Log(ctx, "failed to add task to delete rbd image: %s/%s, %v"), pOpts.Pool, image, err)
+		return err
+	}
+
 	if !rbdCephMgrSupported {
 		// attempt older style deletion
 		args := []string{"rm", image, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors,
 			"--keyfile=" + cr.KeyFile}
 		output, err = execCommand("rbd", args)
-	}
-
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to delete rbd image: %v, command output: %s"), err, string(output))
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s, error: %v, command output: %s"), pOpts.Pool, image, err, string(output))
+		}
 	}
 
 	return err
