@@ -389,9 +389,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	defer cs.VolumeLocks.Release(volumeID)
 
-	rbdVol := &rbdVolume{}
-	defer rbdVol.Destroy()
-	if err = genVolFromVolID(ctx, rbdVol, volumeID, cr, req.GetSecrets()); err != nil {
+	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	if err != nil {
 		if _, ok := err.(util.ErrPoolNotFound); ok {
 			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
@@ -436,6 +435,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 		return &csi.DeleteVolumeResponse{}, nil
 	}
+	defer rbdVol.Destroy()
 
 	// lock out parallel create requests against the same volume name as we
 	// cleanup the image and associated omaps for the same
@@ -506,8 +506,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	defer cr.DeleteCredentials()
 
 	// Fetch source volume information
-	rbdVol := new(rbdVolume)
-	err = genVolFromVolID(ctx, rbdVol, req.GetSourceVolumeId(), cr, req.GetSecrets())
+	rbdVol, err := genVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
 			return nil, status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
@@ -519,6 +518,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
+	defer rbdVol.Destroy()
 
 	// TODO: re-encrypt snapshot with a new passphrase
 	if rbdVol.Encrypted {
@@ -780,9 +780,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVol := &rbdVolume{}
-	defer rbdVol.Destroy()
-	err = genVolFromVolID(ctx, rbdVol, volID, cr, req.GetSecrets())
+	rbdVol, err := genVolFromVolID(ctx, volID, cr, req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
 			return nil, status.Errorf(codes.NotFound, "volume ID %s not found", volID)
@@ -795,6 +793,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
+	defer rbdVol.Destroy()
 
 	if rbdVol.Encrypted {
 		return nil, status.Errorf(codes.InvalidArgument, "encrypted volumes do not support resize (%s/%s)",
