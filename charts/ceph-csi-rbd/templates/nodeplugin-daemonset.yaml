@@ -80,6 +80,9 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
+{{- if .Values.topology.enabled }}
+            - "--domainlabels={{ .Values.topology.domainLabels | join "," }}"
+{{- end }}
           env:
             - name: POD_IP
               valueFrom:

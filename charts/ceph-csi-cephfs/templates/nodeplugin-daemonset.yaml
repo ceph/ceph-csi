@@ -83,6 +83,9 @@ spec:
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
             - "--metadatastorage=k8s_configmap"
+{{- if .Values.topology.enabled }}
+            - "--domainlabels={{ .Values.topology.domainLabels | join "," }}"
+{{- end }}
           env:
             - name: POD_IP
               valueFrom:

@@ -1,0 +1,19 @@
+{{- if .Values.rbac.create -}}
+{{- if .Values.topology.enabled }}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}-rules
+  labels:
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
+    component: {{ .Values.nodeplugin.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    rbac.cephfs.csi.ceph.com/aggregate-to-{{ include "ceph-csi-cephfs.nodeplugin.fullname" . }}: "true"
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get"]
+{{- end }}
+{{- end -}}
