@@ -30,7 +30,6 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
@@ -100,8 +99,8 @@ type rbdVolume struct {
 	Encrypted           bool
 	KMS                 util.EncryptionKMS
 
-	// connection
-	conn *rados.Conn
+	// conn is a connection to the Ceph cluster obtained from a ConnPool
+	conn *util.ClusterConnection
 }
 
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics
@@ -129,14 +128,30 @@ type rbdSnapshot struct {
 
 var (
 	supportedFeatures = sets.NewString("layering")
-
-	// large interval and timeout, it should be longer than the maximum
-	// time an operation can take (until refcounting of the connections is
-	// available)
-	cpInterval = 15 * time.Minute
-	cpExpiry   = 10 * time.Minute
-	connPool   = util.NewConnPool(cpInterval, cpExpiry)
 )
+
+// Connect an rbdVolume to the Ceph cluster
+func (rv *rbdVolume) Connect(cr *util.Credentials) error {
+	if rv.conn != nil {
+		return nil
+	}
+
+	conn := &util.ClusterConnection{}
+	if err := conn.Connect(rv.Monitors, cr); err != nil {
+		return err
+	}
+
+	rv.conn = conn
+	return nil
+}
+
+// Destroy cleans up the rbdVolume and closes the connection to the Ceph
+// cluster in case one was setup.
+func (rv *rbdVolume) Destroy() {
+	if rv.conn != nil {
+		rv.conn.Destroy()
+	}
+}
 
 // createImage creates a new ceph image with provision and volume options.
 func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
@@ -162,7 +177,12 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		}
 	}
 
-	ioctx, err := pOpts.getIoctx(cr)
+	err := pOpts.Connect(cr)
+	if err != nil {
+		return err
+	}
+
+	ioctx, err := pOpts.conn.GetIoctx(pOpts.Pool)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get IOContext")
 	}
@@ -177,29 +197,28 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	return nil
 }
 
-func (rv *rbdVolume) getIoctx(cr *util.Credentials) (*rados.IOContext, error) {
-	if rv.conn == nil {
-		conn, err := connPool.Get(rv.Pool, rv.Monitors, cr.ID, cr.KeyFile)
+// Open the rbdVolume after it has been connected.
+func (rv *rbdVolume) open() (*librbd.Image, error) {
+	if rv.RbdImageName == "" {
+		var vi util.CSIIdentifier
+		err := vi.DecomposeCSIID(rv.VolID)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get connection")
+			err = fmt.Errorf("error decoding volume ID (%s) (%s)", rv.VolID, err)
+			return nil, ErrInvalidVolID{err}
 		}
-
-		rv.conn = conn
+		rv.RbdImageName = volJournal.GetNameForUUID(rv.NamePrefix, vi.ObjectUUID, false)
 	}
 
-	ioctx, err := rv.conn.OpenIOContext(rv.Pool)
+	ioctx, err := rv.conn.GetIoctx(rv.Pool)
 	if err != nil {
-		connPool.Put(rv.conn)
-		return nil, errors.Wrapf(err, "failed to open IOContext for pool %s", rv.Pool)
+		return nil, err
 	}
 
-	return ioctx, nil
-}
-
-func (rv *rbdVolume) Destroy() {
-	if rv.conn != nil {
-		connPool.Put(rv.conn)
+	image, err := librbd.OpenImage(ioctx, rv.RbdImageName, librbd.NoSnapshot)
+	if err != nil {
+		return nil, err
 	}
+	return image, nil
 }
 
 // rbdStatus checks if there is watcher on the image.
