@@ -2,7 +2,7 @@
 
 - [Ceph-csi Upgrade](#ceph-csi-upgrade)
   - [Pre-upgrade considerations](#pre-upgrade-considerations)
-  - [Upgrading from v1.2.x to v2.0.0](#upgrading-from-v12x-to-v200)
+  - [Upgrading from v1.2.x to v2.0.1](#upgrading-from-v12x-to-v201)
     - [Upgrading CephFS](#upgrading-cephfs)
       - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
         - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -44,9 +44,9 @@ To avoid this issue in future upgrades, we recommend that you do not use the
 fuse client or rbd-nbd as of now.
 
 This guide will walk you through the steps to upgrade the software in a cluster
-from v1.2.x to v2.0.0
+from v1.2.x to v2.0.1
 
-## Upgrading from v1.2.x to v2.0.0
+## Upgrading from v1.2.x to v2.0.1
 
 **Ceph-csi releases from master are expressly unsupported.** It is strongly
 recommended that you use [official
@@ -56,11 +56,11 @@ that will not be supported in the official releases. Builds from the master
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-git checkout release v2.0.0 branch
+git checkout release v2.0.1 branch
 
 ```bash
 [$] git clone https://github.com/ceph/ceph-csi.git
-[$] git check v2.0.0
+[$] git check v2.0.1
 [$] cd ./ceph-csi
 ```
 
@@ -186,7 +186,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded cephfs csi from v1.2.2 to v2.0.0
+we have successfully upgraded cephfs csi from v1.2.x to v2.0.1
 
 ### Upgrading RBD
 
@@ -304,7 +304,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded RBD csi from v1.2.2 to v2.0.0
+we have successfully upgraded RBD csi from v1.2.x to v2.0.1
 
 ### Handling node reboot hangs due to existing network mounts
 
