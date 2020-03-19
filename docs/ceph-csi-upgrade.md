@@ -19,6 +19,7 @@
         - [4.1 Update the RBD Nodeplugin RBAC](#41-update-the-rbd-nodeplugin-rbac)
         - [4.2 Update the RBD Nodeplugin daemonset](#42-update-the-rbd-nodeplugin-daemonset)
         - [4.3 Manual deletion of RBD Nodeplugin daemonset pods](#43-manual-deletion-of-rbd-nodeplugin-daemonset-pods)
+    - [Handling node reboot hangs due to existing network mounts](#handling-node-reboot-hangs-due-to-existing-network-mounts)
 
 ## Pre-upgrade considerations
 
@@ -185,7 +186,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgrade cephfs csi from v1.2.2 to v2.0.0
+we have successfully upgraded cephfs csi from v1.2.2 to v2.0.0
 
 ### Upgrading RBD
 
@@ -303,4 +304,16 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgrade RBD csi from v1.2.2 to v2.0.0
+we have successfully upgraded RBD csi from v1.2.2 to v2.0.0
+
+### Handling node reboot hangs due to existing network mounts
+
+With prior versions of ceph-csi a node reboot may hang the reboot process. This
+is due to existing cephfs or rbd network mounts not carrying the `_netdev`
+mount option. The missing mount option is fixed, and future mounts using
+ceph-csi would automatically carry the required flags needed for a clean
+reboot.
+
+It is suggested to upgrade to the latest ceph-csi release and drain application
+pods on all the nodes so that new mount option `_netdev` can be added to all
+the mountpoints.
