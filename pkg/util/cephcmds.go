@@ -182,6 +182,11 @@ func GetOMapValue(ctx context.Context, monitors string, cr *Credentials, poolNam
 			return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, err}
 		}
 
+		if strings.Contains(stdoutanderr, "error opening pool "+
+			poolName+": (2) No such file or directory") {
+			return "", ErrPoolNotFound{poolName, err}
+		}
+
 		// log other errors for troubleshooting assistance
 		klog.Errorf(Log(ctx, "failed getting omap value for key (%s) from omap (%s) in pool (%s): (%v)"),
 			oMapKey, oMapName, poolName, err)

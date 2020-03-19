@@ -215,7 +215,8 @@ func (cj *CSIJournal) CheckReservation(ctx context.Context, monitors string, cr 
 	if err != nil {
 		// error should specifically be not found, for volume to be absent, any other error
 		// is not conclusive, and we should not proceed
-		if _, ok := err.(ErrKeyNotFound); ok {
+		switch err.(type) {
+		case ErrKeyNotFound, ErrPoolNotFound:
 			return "", nil
 		}
 		return "", err
@@ -453,8 +454,10 @@ func (cj *CSIJournal) GetObjectUUIDData(ctx context.Context, monitors string, cr
 	if err != nil {
 		// if the key was not found, assume the default key + UUID
 		// otherwise return error
-		if _, ok := err.(ErrKeyNotFound); !ok {
+		switch err.(type) {
+		default:
 			return "", "", "", "", err
+		case ErrKeyNotFound, ErrPoolNotFound:
 		}
 
 		if snapSource {
@@ -468,11 +471,13 @@ func (cj *CSIJournal) GetObjectUUIDData(ctx context.Context, monitors string, cr
 	encryptionKmsConfig, err = GetOMapValue(ctx, monitors, cr, pool, cj.namespace,
 		cj.cephUUIDDirectoryPrefix+objectUUID, cj.encryptKMSKey)
 	if err != nil {
-		if _, ok := err.(ErrKeyNotFound); !ok {
+		// ErrKeyNotFound means no encryption KMS was used
+		switch err.(type) {
+		default:
 			return "", "", "", "", fmt.Errorf("OMapVal for %s/%s failed to get encryption KMS value: %s",
 				pool, cj.cephUUIDDirectoryPrefix+objectUUID, err)
+		case ErrKeyNotFound, ErrPoolNotFound:
 		}
-		// ErrKeyNotFound means no encryption KMS was used
 	}
 
 	if snapSource {
