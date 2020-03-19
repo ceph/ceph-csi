@@ -76,17 +76,18 @@ jobs:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
         - scripts/travis-functest.sh v1.17.0 || travis_terminate 1;
-
-    - name: cephcsi on Arm64
-      arch: arm64
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        # No CI test job is availabe for Arm64 now due to below issues
-        # - k8s-csi sidecar images for Arm64 are not available
-        # - Travis Arm64 CI job runs inside unprivileged LXD which blocks
-        #   launching minikube test environment
-        - travis_terminate 0    # deploy only on x86
+     # yamllint disable rule:comments-indentation
+     # Disabled build on arm64 as we are facing issue in travis CI
+     # - name: cephcsi on Arm64
+     #   arch: arm64
+     #   script:
+     #     - scripts/skip-doc-change.sh || travis_terminate 0;
+     #    - make image-cephcsi || travis_terminate 1;
+     #    # No CI test job is availabe for Arm64 now due to below issues
+     #    # - k8s-csi sidecar images for Arm64 are not available
+     #    # - Travis Arm64 CI job runs inside unprivileged LXD which blocks
+     #    #   launching minikube test environment
+     #    - travis_terminate 0    # deploy only on x86
 
 deploy:
   - provider: script
