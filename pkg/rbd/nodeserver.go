@@ -45,6 +45,18 @@ type NodeServer struct {
 	VolumeLocks *util.VolumeLocks
 }
 
+// stageTransaction struct represents the state a transaction was when it either completed
+// or failed
+// this transaction state can be used to rollback the transaction
+type stageTransaction struct {
+	// isStagePathCreated represents whether the mount path to stage the volume on was created or not
+	isStagePathCreated bool
+	// isMounted represents if the volume was mounted or not
+	isMounted bool
+	// isEncrypted represents if the volume was encrypted or not
+	isEncrypted bool
+}
+
 // NodeStageVolume mounts the volume to a staging path on the node.
 // Implementation notes:
 // - stagingTargetPath is the directory passed in the request where the volume needs to be staged
@@ -143,10 +155,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	volOptions.VolID = volID
-
-	isMounted := false
-	isEncrypted := false
-	isStagePathCreated := false
+	transaction := stageTransaction{}
 	devicePath := ""
 
 	// Stash image details prior to mapping the image (useful during Unstage as it has no
@@ -157,13 +166,13 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 	defer func() {
 		if err != nil {
-			ns.undoStagingTransaction(ctx, req, devicePath, isStagePathCreated, isMounted, isEncrypted)
+			ns.undoStagingTransaction(ctx, req, devicePath, transaction)
 		}
 	}()
 
 	// perform the actual staging and if this fails, have undoStagingTransaction
 	// cleans up for us
-	isStagePathCreated, isMounted, isEncrypted, err = ns.stageTransaction(ctx, req, volOptions, staticVol)
+	transaction, err = ns.stageTransaction(ctx, req, volOptions, staticVol)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -173,17 +182,15 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVolumeRequest, volOptions *rbdVolume, staticVol bool) (bool, bool, bool, error) {
-	isStagePathCreated := false
-	isMounted := false
-	isEncrypted := false
+func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVolumeRequest, volOptions *rbdVolume, staticVol bool) (stageTransaction, error) {
+	transaction := stageTransaction{}
 
 	var err error
 
 	var cr *util.Credentials
 	cr, err = util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
-		return isStagePathCreated, isMounted, isEncrypted, err
+		return transaction, err
 	}
 	defer cr.DeleteCredentials()
 
@@ -191,7 +198,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	var devicePath string
 	devicePath, err = attachRBDImage(ctx, volOptions, cr)
 	if err != nil {
-		return isStagePathCreated, isMounted, isEncrypted, err
+		return transaction, err
 	}
 
 	klog.V(4).Infof(util.Log(ctx, "rbd image: %s/%s was successfully mapped at %s\n"),
@@ -200,9 +207,9 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	if volOptions.Encrypted {
 		devicePath, err = ns.processEncryptedDevice(ctx, volOptions, devicePath, cr)
 		if err != nil {
-			return isStagePathCreated, isMounted, isEncrypted, err
+			return transaction, err
 		}
-		isEncrypted = true
+		transaction.isEncrypted = true
 	}
 
 	stagingTargetPath := getStagingTargetPath(req)
@@ -210,29 +217,29 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	err = ns.createStageMountPoint(ctx, stagingTargetPath, isBlock)
 	if err != nil {
-		return isStagePathCreated, isMounted, isEncrypted, err
+		return transaction, err
 	}
 
-	isStagePathCreated = true
+	transaction.isStagePathCreated = true
 
 	// nodeStage Path
 	err = ns.mountVolumeToStagePath(ctx, req, staticVol, stagingTargetPath, devicePath)
 	if err != nil {
-		return isStagePathCreated, isMounted, isEncrypted, err
+		return transaction, err
 	}
-	isMounted = true
+	transaction.isMounted = true
 
 	// #nosec - allow anyone to write inside the target path
 	err = os.Chmod(stagingTargetPath, 0777)
 
-	return isStagePathCreated, isMounted, isEncrypted, err
+	return transaction, err
 }
 
-func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeStageVolumeRequest, devicePath string, isStagePathCreated, isMounted, isEncrypted bool) {
+func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeStageVolumeRequest, devicePath string, transaction stageTransaction) {
 	var err error
 
 	stagingTargetPath := getStagingTargetPath(req)
-	if isMounted {
+	if transaction.isMounted {
 		err = ns.mounter.Unmount(stagingTargetPath)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to unmount stagingtargetPath: %s with error: %v"), stagingTargetPath, err)
@@ -241,7 +248,7 @@ func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeS
 	}
 
 	// remove the file/directory created on staging path
-	if isStagePathCreated {
+	if transaction.isStagePathCreated {
 		err = os.Remove(stagingTargetPath)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to remove stagingtargetPath: %s with error: %v"), stagingTargetPath, err)
@@ -253,7 +260,7 @@ func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeS
 
 	// Unmapping rbd device
 	if devicePath != "" {
-		err = detachRBDDevice(ctx, devicePath, volID, isEncrypted)
+		err = detachRBDDevice(ctx, devicePath, volID, transaction.isEncrypted)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to unmap rbd device: %s for volume %s with error: %v"), devicePath, volID, err)
 			// continue on failure to delete the stash file, as kubernetes will fail to delete the staging path otherwise
@@ -392,6 +399,7 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	}
 
 	opt := []string{"_netdev"}
+	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 
 	if isBlock {

@@ -70,12 +70,16 @@ $./minikube.sh clean
 In addition to standard go tests parameters, the following custom parameters
 are available while running tests:
 
-| flag           | description                                                                   |
-| -------------- | ----------------------------------------------------------------------------- |
-| deploy-timeout | Timeout to wait for created kubernetes resources (default: 10)                |
-| kubeconfig     | Path to kubeconfig containing embedded authinfo (default: $HOME/.kube/config) |
-| timeout        | Panic test binary after duration d (default 0, timeout disabled)              |
-| v              | Verbose: print additional output                                              |
+| flag              | description                                                                   |
+| ----------------- | ----------------------------------------------------------------------------- |
+| deploy-timeout    | Timeout to wait for created kubernetes resources (default: 10 minutes)        |
+| deploy-cephfs     | Deploy cephfs csi driver as part of E2E (default: true)                       |
+| deploy-rbd        | Deploy rbd csi driver as part of E2E (default: true)                          |
+| cephcsi-namespace | The namespace in which cephcsi driver will be created (default: "default")    |
+| rook-namespace    | The namespace in which rook operator is installed (default: "rook-ceph")      |
+| kubeconfig        | Path to kubeconfig containing embedded authinfo (default: $HOME/.kube/config) |
+| timeout           | Panic test binary after duration d (default 0, timeout disabled)              |
+| v                 | Verbose: print additional output                                              |
 
 ## Running E2E
 

@@ -94,7 +94,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 		LabelSelector: "app=rook-ceph-tools",
 	}
 
-	fsID, e := execCommandInPod(f, "ceph fsid", rookNS, &listOpt)
+	fsID, e := execCommandInPod(f, "ceph fsid", rookNamespace, &listOpt)
 	if e != "" {
 		return fmt.Errorf("failed to get fsid from ceph cluster %s", e)
 	}
@@ -104,7 +104,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 	// create rbd image
 	cmd := fmt.Sprintf("rbd create %s --size=%d --pool=replicapool --image-feature=layering", rbdImageName, 4096)
 
-	_, e = execCommandInPod(f, cmd, rookNS, &listOpt)
+	_, e = execCommandInPod(f, cmd, rookNamespace, &listOpt)
 	if e != "" {
 		return fmt.Errorf("failed to create rbd image %s", e)
 	}
@@ -113,7 +113,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 	opt["pool"] = "replicapool"
 	opt["staticVolume"] = "true"
 
-	pv := getStaticPV(pvName, rbdImageName, size, "csi-rbd-secret", "default", sc, "rbd.csi.ceph.com", isBlock, opt)
+	pv := getStaticPV(pvName, rbdImageName, size, "csi-rbd-secret", cephCSINamespace, sc, "rbd.csi.ceph.com", isBlock, opt)
 
 	_, err := c.CoreV1().PersistentVolumes().Create(pv)
 	if err != nil {
@@ -155,6 +155,6 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 	}
 
 	cmd = fmt.Sprintf("rbd rm %s --pool=replicapool", rbdImageName)
-	execCommandInPod(f, cmd, rookNS, &listOpt)
+	execCommandInPod(f, cmd, rookNamespace, &listOpt)
 	return nil
 }

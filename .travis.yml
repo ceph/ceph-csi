@@ -16,11 +16,12 @@ branches:
   only:
     - master
 
-go: 1.12.x
+go: 1.13.x
 
 env:
   global:
     - GOLANGCI_VERSION=v1.21.0
+    - GO111MODULE=on
     - GOSEC_VERSION=2.0.0
     - TEST_COVERAGE=stdout
     - GO_METALINTER_THREADS=1
@@ -29,12 +30,22 @@ env:
     - MINIKUBE_VERSION=v1.6.0
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
-    - DEP_VERSION=v0.5.4
 
 before_install:
   - mkdir -p $GOPATH/bin
-  - curl
-    https://raw.githubusercontent.com/golang/dep/${DEP_VERSION}/install.sh|sh
+
+before_script:
+  - curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
+  - sudo apt-add-repository
+    "deb https://download.ceph.com/debian-nautilus xenial main"
+  # Ceph does not guarantee arm64 builds, fallback to ceph 14.2.5
+  # yamllint disable rule:line-length
+  - test "$(arch)" != "aarch64" || sudo apt-add-repository
+    "deb https://chacra.ceph.com/r/ceph/nautilus/af06652dc9b2da8c6aadbbecdfafdc7e235abe7d/ubuntu/xenial/flavors/default/ xenial main"
+  # yamllint enable rule:line-length
+  - sudo apt-get -qq update
+  # only the arm64 fallback repo is unsigned and needs --allow-unauthenticated
+  - sudo apt-get -y --allow-unauthenticated install librados-dev librbd-dev
 
 jobs:
   include:
@@ -56,7 +67,7 @@ jobs:
       script:
         - make static-check
         - make go-test
-        - make dep-check || travis_terminate 1;
+        - make mod-check || travis_terminate 1;
 
     - name: cephcsi with kube 1.14.10
       script:
@@ -75,17 +86,18 @@ jobs:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
         - scripts/travis-functest.sh v1.17.0 || travis_terminate 1;
-
-    - name: cephcsi on Arm64
-      arch: arm64
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        # No CI test job is availabe for Arm64 now due to below issues
-        # - k8s-csi sidecar images for Arm64 are not available
-        # - Travis Arm64 CI job runs inside unprivileged LXD which blocks
-        #   launching minikube test environment
-        - travis_terminate 0    # deploy only on x86
+     # yamllint disable rule:comments-indentation
+     # Disabled build on arm64 as we are facing issue in travis CI
+     # - name: cephcsi on Arm64
+     #   arch: arm64
+     #   script:
+     #     - scripts/skip-doc-change.sh || travis_terminate 0;
+     #    - make image-cephcsi || travis_terminate 1;
+     #    # No CI test job is availabe for Arm64 now due to below issues
+     #    # - k8s-csi sidecar images for Arm64 are not available
+     #    # - Travis Arm64 CI job runs inside unprivileged LXD which blocks
+     #    #   launching minikube test environment
+     #    - travis_terminate 0    # deploy only on x86
 
 deploy:
   - provider: script
