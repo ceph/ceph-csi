@@ -23,47 +23,88 @@ var (
 	rbdExamplePath     = "../examples/rbd/"
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
-	namespace          = "default"
 )
 
 func deployRBDPlugin() {
 	// delete objects deployed by rook
-	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", rbdDirPath+rbdProvisionerRBAC)
-	framework.RunKubectlOrDie("delete", "--ignore-not-found=true", "-f", rbdDirPath+rbdNodePluginRBAC)
-	// deploy provisioner
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisioner)
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisionerRBAC)
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdProvisionerPSP)
-	// deploy nodeplugin
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePlugin)
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePluginRBAC)
-	framework.RunKubectlOrDie("create", "-f", rbdDirPath+rbdNodePluginPSP)
+	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisionerRBAC)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisionerRBAC, err)
+	}
+	_, err = framework.RunKubectlInput(data, "--ignore-not-found=true", ns, "delete", "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to delete provisioner rbac %s %v", rbdDirPath+rbdProvisionerRBAC, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePluginRBAC)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePluginRBAC, err)
+	}
+	_, err = framework.RunKubectlInput(data, "delete", "--ignore-not-found=true", ns, "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to delete nodeplugin rbac %s %v", rbdDirPath+rbdNodePluginRBAC, err)
+	}
+
+	createORDeleteRbdResouces("create")
 }
 
 func deleteRBDPlugin() {
-	_, err := framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisioner)
+	createORDeleteRbdResouces("delete")
+}
+
+func createORDeleteRbdResouces(action string) {
+	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisioner)
 	if err != nil {
-		e2elog.Logf("failed to delete rbd provisioner %v", err)
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisioner, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisionerRBAC)
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to delete provisioner rbac %v", err)
+		e2elog.Logf("failed to %s rbd provisioner %v", action, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdProvisionerPSP)
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdProvisionerRBAC)
 	if err != nil {
-		e2elog.Logf("failed to delete provisioner psp %v", err)
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisionerRBAC, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePlugin)
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to delete nodeplugin %v", err)
+		e2elog.Logf("failed to %s provisioner rbac %v", action, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePluginRBAC)
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdProvisionerPSP)
 	if err != nil {
-		e2elog.Logf("failed to delete nodeplugin rbac %v", err)
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisionerPSP, err)
 	}
-	_, err = framework.RunKubectl("delete", "-f", rbdDirPath+rbdNodePluginPSP)
+	_, err = framework.RunKubectlInput(data, action, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to delete nodeplugin psp %v", err)
+		e2elog.Logf("failed to %s provisioner psp %v", action, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePlugin)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePlugin, err)
+	}
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to %s nodeplugin %v", action, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePluginRBAC)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePluginRBAC, err)
+	}
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to %s nodeplugin rbac %v", action, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePluginPSP)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePluginPSP, err)
+	}
+	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to %s nodeplugin psp %v", action, err)
 	}
 }
 
@@ -73,8 +114,16 @@ var _ = Describe("RBD", func() {
 	// deploy RBD CSI
 	BeforeEach(func() {
 		c = f.ClientSet
+		if deployRBD {
+			if cephCSINamespace != defaultNs {
+				err := createNamespace(c, cephCSINamespace)
+				if err != nil {
+					Fail(err.Error())
+				}
+			}
+			deployRBDPlugin()
+		}
 		createConfigMap(rbdDirPath, f.ClientSet, f)
-		deployRBDPlugin()
 		createRBDStorageClass(f.ClientSet, f, make(map[string]string))
 		createRBDSecret(f.ClientSet, f)
 		deployVault(f.ClientSet, deployTimeout)
@@ -87,12 +136,21 @@ var _ = Describe("RBD", func() {
 			// log node plugin
 			logsCSIPods("app=csi-rbdplugin", c)
 		}
-		deleteRBDPlugin()
+
 		deleteConfigMap(rbdDirPath)
 		deleteResource(rbdExamplePath + "secret.yaml")
 		deleteResource(rbdExamplePath + "storageclass.yaml")
 		// deleteResource(rbdExamplePath + "snapshotclass.yaml")
 		deleteVault()
+		if deployRBD {
+			deleteRBDPlugin()
+			if cephCSINamespace != defaultNs {
+				err := deleteNamespace(c, cephCSINamespace)
+				if err != nil {
+					Fail(err.Error())
+				}
+			}
+		}
 	})
 
 	Context("Test RBD CSI", func() {
@@ -107,13 +165,13 @@ var _ = Describe("RBD", func() {
 
 			By("checking provisioner deployment is running")
 			var err error
-			err = waitForDeploymentComplete(rbdDeploymentName, namespace, f.ClientSet, deployTimeout)
+			err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
 
 			By("checking nodeplugin deamonsets is running")
-			err = waitForDaemonSets(rbdDaemonsetName, namespace, f.ClientSet, deployTimeout)
+			err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
 			if err != nil {
 				Fail(err.Error())
 			}
@@ -329,7 +387,7 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 				// wait for nodeplugin pods to come up
-				err = waitForDaemonSets(rbdDaemonsetName, namespace, f.ClientSet, deployTimeout)
+				err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
 					Fail(err.Error())
 				}

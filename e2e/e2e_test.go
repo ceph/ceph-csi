@@ -14,15 +14,14 @@ import (
 	config "k8s.io/kubernetes/test/e2e/framework/config"
 )
 
-var (
-	deployTimeout int
-)
-
 func init() {
 	log.SetOutput(GinkgoWriter)
 
 	flag.IntVar(&deployTimeout, "deploy-timeout", 10, "timeout to wait for created kubernetes resources")
-
+	flag.BoolVar(&deployCephFS, "deploy-cephfs", true, "deploy cephfs csi driver")
+	flag.BoolVar(&deployRBD, "deploy-rbd", true, "deploy rbd csi driver")
+	flag.StringVar(&cephCSINamespace, "cephcsi-namespace", defaultNs, "namespace in which cephcsi deployed")
+	flag.StringVar(&rookNamespace, "rook-namespace", "rook-ceph", "namespace in which rook is deployed")
 	setDefaultKubeconfig()
 
 	// Register framework flags, then handle flags
@@ -59,4 +58,5 @@ func handleFlags() {
 	framework.RegisterClusterFlags(flag.CommandLine)
 	testing.Init()
 	flag.Parse()
+	initResouces()
 }

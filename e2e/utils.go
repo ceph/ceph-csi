@@ -31,12 +31,26 @@ import (
 )
 
 const (
-	rookNS        = "rook-ceph"
-	vaultAddr     = "http://vault.default.svc.cluster.local:8200"
-	vaultSecretNs = "/secret/ceph-csi/" // nolint: gosec, #nosec
+	defaultNs     = "default"
+	vaultSecretNs = "/secret/ceph-csi/" // nolint: gosec
 )
 
-var poll = 2 * time.Second
+var (
+	// cli flags
+	deployTimeout    int
+	deployCephFS     bool
+	deployRBD        bool
+	cephCSINamespace string
+	rookNamespace    string
+	ns               string
+	vaultAddr        string
+	poll             = 2 * time.Second
+)
+
+func initResouces() {
+	ns = fmt.Sprintf("--namespace=%v", cephCSINamespace)
+	vaultAddr = fmt.Sprintf("http://vault.%s.svc.cluster.local:8200", cephCSINamespace)
+}
 
 // type snapInfo struct {
 // 	ID        int64  `json:"id"`
@@ -45,11 +59,68 @@ var poll = 2 * time.Second
 // 	Timestamp string `json:"timestamp"`
 // }
 
+func createNamespace(c clientset.Interface, name string) error {
+	timeout := time.Duration(deployTimeout) * time.Minute
+	ns := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	_, err := c.CoreV1().Namespaces().Create(ns)
+	if err != nil && !apierrs.IsAlreadyExists(err) {
+		return err
+	}
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err := c.CoreV1().Namespaces().Get(name, metav1.GetOptions{})
+		if err != nil {
+			e2elog.Logf("Error getting namespace: '%s': %v", name, err)
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
+			if testutils.IsRetryableAPIError(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+}
+
+func deleteNamespace(c clientset.Interface, name string) error {
+	timeout := time.Duration(deployTimeout) * time.Minute
+	err := c.CoreV1().Namespaces().Delete(name, nil)
+	if err != nil && !apierrs.IsNotFound(err) {
+		Fail(err.Error())
+	}
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err = c.CoreV1().Namespaces().Get(name, metav1.GetOptions{})
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				return true, nil
+			}
+			e2elog.Logf("Error getting namespace: '%s': %v", name, err)
+			if testutils.IsRetryableAPIError(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+}
+
+func replaceNamespaceInTemplate(filePath string) (string, error) {
+	read, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	return strings.ReplaceAll(string(read), "namespace: default", fmt.Sprintf("namespace: %s", cephCSINamespace)), nil
+}
+
 func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	e2elog.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start",
-		timeout, ns)
+	e2elog.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start", timeout, ns)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		ds, err := c.AppsV1().DaemonSets(ns).Get(name, metav1.GetOptions{})
@@ -189,17 +260,21 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["fsName"] = "myfs"
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
+
 	if enablePool {
 		sc.Parameters["pool"] = "myfs-data0"
 	}
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
-
+	sc.Namespace = cephCSINamespace
 	sc.Parameters["clusterID"] = fsID
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
 	Expect(err).Should(BeNil())
@@ -209,10 +284,14 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, param
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["pool"] = "replicapool"
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
+
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
@@ -221,6 +300,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, param
 	for k, v := range parameters {
 		sc.Parameters[k] = v
 	}
+	sc.Namespace = cephCSINamespace
 	_, err := c.StorageV1().StorageClasses().Create(&sc)
 	Expect(err).Should(BeNil())
 }
@@ -255,7 +335,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, param
 
 func deleteConfigMap(pluginPath string) {
 	path := pluginPath + configMap
-	_, err := framework.RunKubectl("delete", "-f", path)
+	_, err := framework.RunKubectl("delete", "-f", path, ns)
 	if err != nil {
 		e2elog.Logf("failed to delete configmap %v", err)
 	}
@@ -269,12 +349,12 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNS, &opt)
+	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
 	// get mon list
-	mons := getMons(rookNS, c)
+	mons := getMons(rookNamespace, c)
 	conmap := []struct {
 		Clusterid string   `json:"clusterID"`
 		Monitors  []string `json:"monitors"`
@@ -287,7 +367,8 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	data, err := json.Marshal(conmap)
 	Expect(err).Should(BeNil())
 	cm.Data["config.json"] = string(data)
-	_, err = c.CoreV1().ConfigMaps("default").Create(&cm)
+	cm.Namespace = cephCSINamespace
+	_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Create(&cm)
 	Expect(err).Should(BeNil())
 }
 
@@ -309,13 +390,14 @@ func createCephfsSecret(c kubernetes.Interface, f *framework.Framework) {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	adminKey, stdErr := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
+	adminKey, stdErr := execCommandInPod(f, "ceph auth get-key client.admin", rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 	sc.StringData["adminID"] = "admin"
 	sc.StringData["adminKey"] = adminKey
 	delete(sc.StringData, "userID")
 	delete(sc.StringData, "userKey")
-	_, err := c.CoreV1().Secrets("default").Create(&sc)
+	sc.Namespace = cephCSINamespace
+	_, err := c.CoreV1().Secrets(cephCSINamespace).Create(&sc)
 	Expect(err).Should(BeNil())
 }
 
@@ -325,16 +407,24 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	adminKey, stdErr := execCommandInPod(f, "ceph auth get-key client.admin", rookNS, &opt)
+	adminKey, stdErr := execCommandInPod(f, "ceph auth get-key client.admin", rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 	sc.StringData["userID"] = "admin"
 	sc.StringData["userKey"] = adminKey
-	_, err := c.CoreV1().Secrets("default").Create(&sc)
+	sc.Namespace = cephCSINamespace
+	_, err := c.CoreV1().Secrets(cephCSINamespace).Create(&sc)
 	Expect(err).Should(BeNil())
 }
 
 func deleteResource(scPath string) {
-	_, err := framework.RunKubectl("delete", "-f", scPath)
+	data, err := replaceNamespaceInTemplate(scPath)
+	if err != nil {
+		e2elog.Logf("failed to read content from %s %v", scPath, err)
+	}
+	_, err = framework.RunKubectlInput(data, ns, "delete", "-f", "-")
+	if err != nil {
+		e2elog.Logf("failed to delete %s %v", scPath, err)
+	}
 	Expect(err).Should(BeNil())
 }
 
@@ -595,7 +685,7 @@ func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string,
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	stdOut, stdErr := execCommandInPod(f, cmd, rookNS, &opt)
+	stdOut, stdErr := execCommandInPod(f, cmd, rookNamespace, &opt)
 	if stdErr != "" {
 		return strings.TrimSpace(stdOut), fmt.Errorf(stdErr)
 	}
@@ -627,7 +717,7 @@ func readVaultSecret(key string, f *framework.Framework) (string, string) {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=vault",
 	}
-	stdOut, stdErr := execCommandInPodAndAllowFail(f, cmd, "default", &opt)
+	stdOut, stdErr := execCommandInPodAndAllowFail(f, cmd, cephCSINamespace, &opt)
 	return strings.TrimSpace(stdOut), strings.TrimSpace(stdErr)
 }
 
@@ -834,7 +924,7 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	_, stdErr := execCommandInPod(f, "ceph fs subvolume rm myfs "+volname+" csi", rookNS, &opt)
+	_, stdErr := execCommandInPod(f, "ceph fs subvolume rm myfs "+volname+" csi", rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 
 	if stdErr != "" {
@@ -847,7 +937,7 @@ func listRBDImages(f *framework.Framework) []string {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	stdout, stdErr := execCommandInPod(f, "rbd ls --pool=replicapool --format=json", rookNS, &opt)
+	stdout, stdErr := execCommandInPod(f, "rbd ls --pool=replicapool --format=json", rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 	var imgInfos []string
 
@@ -931,7 +1021,7 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 	}
 
 	cmd := fmt.Sprintf("rbd rm %s --pool=replicapool", rbdImage)
-	execCommandInPod(f, cmd, rookNS, &opt)
+	execCommandInPod(f, cmd, rookNamespace, &opt)
 	return nil
 }
 
@@ -959,7 +1049,7 @@ func deletePool(name string, cephfs bool, f *framework.Framework) {
 
 	for _, cmd := range cmds {
 		// discard stdErr as some commands prints warning in strErr
-		execCommandInPod(f, cmd, rookNS, &opt)
+		execCommandInPod(f, cmd, rookNamespace, &opt)
 	}
 }
 

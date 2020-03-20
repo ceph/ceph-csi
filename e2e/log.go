@@ -25,11 +25,10 @@ import (
 )
 
 func logsCSIPods(label string, c clientset.Interface) {
-	ns := "default"
 	opt := metav1.ListOptions{
 		LabelSelector: label,
 	}
-	podList, err := c.CoreV1().Pods(ns).List(opt)
+	podList, err := c.CoreV1().Pods(cephCSINamespace).List(opt)
 	if err != nil {
 		e2elog.Logf("failed to list pods with selector %s %v", label, err)
 		return
