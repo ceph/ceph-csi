@@ -17,6 +17,13 @@ it is **highly** encouraged to:
    [install](https://golang.org/doc/install) it on your system.
 * Setup the [GOPATH](http://www.g33knotes.org/2014/07/60-second-count-down-to-go.html)
    environment.
+* Ceph-CSI uses the native Ceph libaries through the [go-ceph
+   package](https://github.com/ceph/go-ceph). It is required to install the
+   Ceph C headers in order to compile Ceph-CSI. The packages are called
+   `libcephfs-devel`, `librados-devel` and `librbd-devel` on many Linux
+   distributions. See the [go-ceph installaton
+   instructions](https://github.com/ceph/go-ceph#installation) for more
+   details.
 * Run `$ go get -d github.com/ceph/ceph-csi`
    This will just download the source and not build it. The downloaded source
    will be at `$GOPATH/src/github.com/ceph/ceph-csi`
