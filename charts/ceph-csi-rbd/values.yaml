@@ -213,7 +213,7 @@ provisioner:
     enabled: true
     image:
       repository: quay.io/k8scsi/csi-attacher
-      tag: v2.1.0
+      tag: v2.1.1
       pullPolicy: IfNotPresent
     resources: {}
 
