@@ -113,7 +113,7 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, ids csi.Ident
 	if ns != nil {
 		csi.RegisterNodeServer(server, ns)
 	}
-	klog.Infof("Listening for connections on address: %#v", listener.Addr())
+	klog.V(1).Infof("Listening for connections on address: %#v", listener.Addr())
 	if metrics {
 		ho := strings.Split(hstOptions, ",")
 		if len(ho) != 3 {

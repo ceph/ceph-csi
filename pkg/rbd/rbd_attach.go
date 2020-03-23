@@ -314,7 +314,7 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 			(strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, imageOrDeviceSpec)) ||
 				strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
 			// Devices found not to be mapped are treated as a successful detach
-			klog.Infof(util.Log(ctx, "image or device spec (%s) not mapped"), imageOrDeviceSpec)
+			klog.V(5).Infof(util.Log(ctx, "image or device spec (%s) not mapped"), imageOrDeviceSpec)
 			return nil
 		}
 		return fmt.Errorf("rbd: unmap for spec (%s) failed (%v): (%s)", imageOrDeviceSpec, err, string(output))

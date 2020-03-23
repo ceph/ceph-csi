@@ -238,11 +238,11 @@ func rbdManagerTaskDeleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.C
 	if err != nil {
 		if strings.Contains(string(output), rbdTaskRemoveCmdInvalidString1) &&
 			strings.Contains(string(output), rbdTaskRemoveCmdInvalidString2) {
-			klog.Infof(util.Log(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd image"+
+			klog.Warningf(util.Log(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd image"+
 				" deletion (minimum ceph version required is v14.2.3)"), pOpts.ClusterID)
 			return false, err
 		} else if strings.HasPrefix(string(output), rbdTaskRemoveCmdAccessDeniedMessage) {
-			klog.Infof(util.Log(ctx, "access denied to Ceph MGR-based RBD image deletion "+
+			klog.Warningf(util.Log(ctx, "access denied to Ceph MGR-based RBD image deletion "+
 				"on cluster ID (%s)"), pOpts.ClusterID)
 			return false, err
 		}
@@ -261,7 +261,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		return err
 	}
 	if found {
-		klog.Info(util.Log(ctx, "rbd is still being used "), image)
+		klog.Errorf(util.Log(ctx, "rbd is still being used "), image)
 		return fmt.Errorf("rbd %s is still being used", image)
 	}
 

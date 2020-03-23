@@ -72,7 +72,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// Existence and conflict checks
 	if acquired := cs.VolumeLocks.TryAcquire(requestName); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), requestName)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), requestName)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, requestName)
 	}
 	defer cs.VolumeLocks.Release(requestName)
@@ -126,7 +126,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	klog.Infof(util.Log(ctx, "cephfs: successfully created backing volume named %s for request name %s"),
+	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully created backing volume named %s for request name %s"),
 		vID.FsSubvolName, requestName)
 
 	return &csi.CreateVolumeResponse{
@@ -149,7 +149,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(ctx context.Context, req *csi
 	ce := &controllerCacheEntry{}
 	if err := cs.MetadataStore.Get(string(volID), ce); err != nil {
 		if err, ok := err.(*util.CacheEntryNotFound); ok {
-			klog.Infof(util.Log(ctx, "cephfs: metadata for volume %s not found, assuming the volume to be already deleted (%v)"), volID, err)
+			klog.Warningf(util.Log(ctx, "cephfs: metadata for volume %s not found, assuming the volume to be already deleted (%v)"), volID, err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 
@@ -166,7 +166,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(ctx context.Context, req *csi
 	// mons may have changed since create volume,
 	// retrieve the latest mons and override old mons
 	if mon, secretsErr := util.GetMonValFromSecret(secrets); secretsErr == nil && len(mon) > 0 {
-		klog.Infof(util.Log(ctx, "overriding monitors [%q] with [%q] for volume %s"), ce.VolOptions.Monitors, mon, volID)
+		klog.V(3).Infof(util.Log(ctx, "overriding monitors [%q] with [%q] for volume %s"), ce.VolOptions.Monitors, mon, volID)
 		ce.VolOptions.Monitors = mon
 	}
 
@@ -180,7 +180,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(ctx context.Context, req *csi
 	defer cr.DeleteCredentials()
 
 	if acquired := cs.VolumeLocks.TryAcquire(string(volID)); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, string(volID))
 	}
 	defer cs.VolumeLocks.Release(string(volID))
@@ -199,7 +199,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(ctx context.Context, req *csi
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof(util.Log(ctx, "cephfs: successfully deleted volume %s"), volID)
+	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully deleted volume %s"), volID)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
@@ -216,7 +216,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	// lock out parallel delete operations
 	if acquired := cs.VolumeLocks.TryAcquire(string(volID)); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, string(volID))
 	}
 	defer cs.VolumeLocks.Release(string(volID))
@@ -288,7 +288,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof(util.Log(ctx, "cephfs: successfully deleted volume %s"), volID)
+	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully deleted volume %s"), volID)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
@@ -323,7 +323,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	// lock out parallel delete operations
 	if acquired := cs.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer cs.VolumeLocks.Release(volID)
