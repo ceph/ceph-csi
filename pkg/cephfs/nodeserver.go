@@ -80,7 +80,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	volID := volumeID(req.GetVolumeId())
 
 	if acquired := ns.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
 	}
 	defer ns.VolumeLocks.Release(req.GetVolumeId())
@@ -117,7 +117,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	if isMnt {
-		klog.Infof(util.Log(ctx, "cephfs: volume %s is already mounted to %s, skipping"), volID, stagingTargetPath)
+		klog.V(4).Infof(util.Log(ctx, "cephfs: volume %s is already mounted to %s, skipping"), volID, stagingTargetPath)
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
@@ -126,7 +126,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, err
 	}
 
-	klog.Infof(util.Log(ctx, "cephfs: successfully mounted volume %s to %s"), volID, stagingTargetPath)
+	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully mounted volume %s to %s"), volID, stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
@@ -169,7 +169,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	volID := req.GetVolumeId()
 
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
@@ -195,7 +195,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	if isMnt {
-		klog.Infof(util.Log(ctx, "cephfs: volume %s is already bind-mounted to %s"), volID, targetPath)
+		klog.V(4).Infof(util.Log(ctx, "cephfs: volume %s is already bind-mounted to %s"), volID, targetPath)
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
@@ -206,7 +206,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof(util.Log(ctx, "cephfs: successfully bind-mounted volume %s to %s"), volID, targetPath)
+	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully bind-mounted volume %s to %s"), volID, targetPath)
 
 	// #nosec - allow anyone to write inside the target path
 	err = os.Chmod(targetPath, 0777)
@@ -229,7 +229,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	targetPath := req.GetTargetPath()
 
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
@@ -244,7 +244,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof(util.Log(ctx, "cephfs: successfully unbinded volume %s from %s"), req.GetVolumeId(), targetPath)
+	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully unbinded volume %s from %s"), req.GetVolumeId(), targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
@@ -258,7 +258,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	volID := req.GetVolumeId()
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
@@ -269,7 +269,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof(util.Log(ctx, "cephfs: successfully unmounted volume %s from %s"), req.GetVolumeId(), stagingTargetPath)
+	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully unmounted volume %s from %s"), req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }

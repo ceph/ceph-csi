@@ -97,7 +97,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	defer cr.DeleteCredentials()
 
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
@@ -122,7 +122,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	if !isNotMnt {
-		klog.Infof(util.Log(ctx, "rbd: volume %s is already mounted to %s, skipping"), volID, stagingTargetPath)
+		klog.V(4).Infof(util.Log(ctx, "rbd: volume %s is already mounted to %s, skipping"), volID, stagingTargetPath)
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
@@ -177,7 +177,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof(util.Log(ctx, "rbd: successfully mounted volume %s to stagingTargetPath %s"), req.GetVolumeId(), stagingTargetPath)
+	klog.V(4).Infof(util.Log(ctx, "rbd: successfully mounted volume %s to stagingTargetPath %s"), req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
@@ -314,7 +314,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	stagingPath += "/" + volID
 
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
@@ -335,7 +335,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, err
 	}
 
-	klog.Infof(util.Log(ctx, "rbd: successfully mounted stagingPath %s to targetPath %s"), stagingPath, targetPath)
+	klog.V(4).Infof(util.Log(ctx, "rbd: successfully mounted stagingPath %s to targetPath %s"), stagingPath, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
@@ -478,7 +478,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	volID := req.GetVolumeId()
 
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
@@ -507,7 +507,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof(util.Log(ctx, "rbd: successfully unbound volume %s from %s"), req.GetVolumeId(), targetPath)
+	klog.V(4).Infof(util.Log(ctx, "rbd: successfully unbound volume %s from %s"), req.GetVolumeId(), targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
@@ -535,7 +535,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	volID := req.GetVolumeId()
 
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
@@ -596,7 +596,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.Infof(util.Log(ctx, "successfully unmounted volume (%s) from staging path (%s)"),
+	klog.V(4).Infof(util.Log(ctx, "successfully unmounted volume (%s) from staging path (%s)"),
 		req.GetVolumeId(), stagingTargetPath)
 
 	if err = cleanupRBDImageMetadataStash(stagingParentPath); err != nil {
@@ -619,7 +619,7 @@ func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	}
 
 	if acquired := ns.VolumeLocks.TryAcquire(volumeID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volumeID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volumeID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer ns.VolumeLocks.Release(volumeID)

@@ -111,7 +111,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	klog.Infof("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
+	klog.V(1).Infof("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
 	var cp util.CachePersister
 
 	if conf.Vtype == "" {
@@ -138,7 +138,7 @@ func main() {
 		if pidErr != nil {
 			klog.Errorf("Failed to get the PID limit, can not reconfigure: %v", pidErr)
 		} else {
-			klog.Infof("Initial PID limit is set to %d", currentLimit)
+			klog.V(1).Infof("Initial PID limit is set to %d", currentLimit)
 			err = util.SetPIDLimit(conf.PidLimit)
 			if err != nil {
 				klog.Errorf("Failed to set new PID limit to %d: %v", conf.PidLimit, err)
@@ -147,7 +147,7 @@ func main() {
 				if conf.PidLimit == -1 {
 					s = " (max)"
 				}
-				klog.Infof("Reconfigured PID limit to %d%s", conf.PidLimit, s)
+				klog.V(1).Infof("Reconfigured PID limit to %d%s", conf.PidLimit, s)
 			}
 		}
 	}
@@ -166,7 +166,7 @@ func main() {
 		}
 	}
 
-	klog.Infof("Starting driver type: %v with name: %v", conf.Vtype, dname)
+	klog.V(1).Infof("Starting driver type: %v with name: %v", conf.Vtype, dname)
 	switch conf.Vtype {
 	case rbdType:
 		driver := rbd.NewDriver()
