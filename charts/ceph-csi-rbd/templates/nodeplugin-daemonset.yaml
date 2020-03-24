@@ -111,8 +111,6 @@ spec:
             - name: socket-dir
               mountPath: /csi
             - mountPath: /dev
-              name: host-mount
-            - mountPath: /run/mount
               name: host-dev
             - mountPath: /run/mount
               name: host-mount
