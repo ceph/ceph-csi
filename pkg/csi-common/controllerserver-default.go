@@ -77,7 +77,7 @@ func (cs *DefaultControllerServer) DeleteSnapshot(ctx context.Context, req *csi.
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// ListSnapshots lists snapshosts
+// ListSnapshots lists snapshots
 func (cs *DefaultControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
