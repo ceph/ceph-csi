@@ -66,6 +66,10 @@ tests:
 
 `$ make test`
 
+Certain unit tests may require extended permissions or other external resources
+that are not available by default. To run these tests as well, export the
+environment variable `CEPH_CSI_RUN_ALL_TESTS=1` before running the tests.
+
 You will need to provide unit tests and functional tests for your changes
 wherever applicable.
 

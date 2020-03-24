@@ -30,6 +30,8 @@ env:
     - MINIKUBE_VERSION=v1.6.0
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
+    # set CEPH_CSI_RUN_ALL_TESTS to non-empty to run all tests
+    - CEPH_CSI_RUN_ALL_TESTS=true
 
 before_install:
   - mkdir -p $GOPATH/bin
