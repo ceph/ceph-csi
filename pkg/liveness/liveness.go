@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/pkg/util"
-
 	connlib "github.com/kubernetes-csi/csi-lib-utils/connection"
 	"github.com/kubernetes-csi/csi-lib-utils/rpc"
 	"github.com/prometheus/client_golang/prometheus"
@@ -80,6 +79,7 @@ func recordLiveness(endpoint string, pollTime, timeout time.Duration) {
 	}
 }
 
+// Run starts liveness collection and prometheus endpoint
 func Run(conf *util.Config) {
 	klog.Infof("Liveness Running")
 

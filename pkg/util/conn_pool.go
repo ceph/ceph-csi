@@ -32,6 +32,7 @@ type connEntry struct {
 	users    int
 }
 
+// ConnPool is the struct which contains details of connection entries in the pool and gc controlled params.
 type ConnPool struct {
 	// interval to run the garbage collector
 	interval time.Duration
@@ -45,7 +46,7 @@ type ConnPool struct {
 	conns map[string]*connEntry
 }
 
-// Create a new ConnPool instance and start the garbage collector running
+// NewConnPool creates a new connection pool instance and start the garbage collector running
 // every @interval.
 func NewConnPool(interval, expiry time.Duration) *ConnPool {
 	cp := ConnPool{
@@ -76,7 +77,7 @@ func (cp *ConnPool) gc() {
 	cp.timer.Reset(cp.interval)
 }
 
-// Stop the garbage collector and destroy all connections in the pool.
+// Destroy stops the garbage collector and destroys all connections in the pool.
 func (cp *ConnPool) Destroy() {
 	cp.timer.Stop()
 	// wait until gc() has finished, in case it is running
@@ -116,7 +117,7 @@ func (cp *ConnPool) getConn(unique string) *rados.Conn {
 	return nil
 }
 
-// Return a rados.Conn for the given arguments. Creates a new rados.Conn in
+// Get returns a rados.Conn for the given arguments. Creates a new rados.Conn in
 // case there is none in the pool. Use the returned unique string to reduce the
 // reference count with ConnPool.Put(unique).
 func (cp *ConnPool) Get(pool, monitors, keyfile string) (*rados.Conn, error) {
@@ -168,7 +169,7 @@ func (cp *ConnPool) Get(pool, monitors, keyfile string) (*rados.Conn, error) {
 	return conn, nil
 }
 
-// Reduce the reference count of the rados.Conn object that was returned with
+// Put reduces the reference count of the rados.Conn object that was returned with
 // ConnPool.Get().
 func (cp *ConnPool) Put(conn *rados.Conn) {
 	cp.lock.Lock()
