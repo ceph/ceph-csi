@@ -21,7 +21,6 @@ import (
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -311,7 +310,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 	}, nil
 }
 
-// ExpandVolume expand CephFS Volumes on demand based on resizer request
+// ControllerExpandVolume expands CephFS Volumes on demand based on resizer request
 func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	if err := cs.validateExpandVolumeRequest(req); err != nil {
 		klog.Errorf(util.Log(ctx, "ControllerExpandVolumeRequest validation failed: %v"), err)
