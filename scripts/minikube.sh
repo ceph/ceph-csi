@@ -81,6 +81,9 @@ K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-"BlockVolume=true,CSIBlockVolume=true,Vol
 #extra-config for kube https://minikube.sigs.k8s.io/docs/reference/configuration/kubernetes/
 EXTRA_CONFIG=${EXTRA_CONFIG:-"--extra-config=apiserver.enable-admission-plugins=PodSecurityPolicy"}
 
+#extra Rook configuration
+ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
+
 case "${1:-}" in
 up)
     install_minikube
@@ -118,6 +121,16 @@ deploy-rook)
     DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
     "$DIR"/rook.sh deploy
     ;;
+create-block-pool)
+    echo "creating a block pool named $ROOK_BLOCK_POOL_NAME"
+    DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+    "$DIR"/rook.sh create-block-pool
+    ;;
+delete-block-pool)
+    echo "deleting block pool named $ROOK_BLOCK_POOL_NAME"
+    DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+    "$DIR"/rook.sh delete-block-pool
+    ;;
 teardown-rook)
     echo "teardown rook"
     DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -145,14 +158,16 @@ clean)
 *)
     echo " $0 [command]
 Available Commands:
-  up             Starts a local kubernetes cluster and prepare disk for rook
-  down           Stops a running local kubernetes cluster
-  clean          Deletes a local kubernetes cluster
-  ssh            Log into or run a command on a minikube machine with SSH
-  deploy-rook    Deploy rook to minikube
-  teardown-rook  Teardown a rook from minikube
-  cephcsi        copy built docker images to kubernetes cluster
-  k8s-sidecar    copy kubernetes sidecar docker images to kubernetes cluster
+  up                Starts a local kubernetes cluster and prepare disk for rook
+  down              Stops a running local kubernetes cluster
+  clean             Deletes a local kubernetes cluster
+  ssh               Log into or run a command on a minikube machine with SSH
+  deploy-rook       Deploy rook to minikube
+  create-block-pool Creates a rook block pool (named $ROOK_BLOCK_POOL_NAME)
+  delete-block-pool Deletes a rook block pool (named $ROOK_BLOCK_POOL_NAME)
+  teardown-rook     Teardown a rook from minikube
+  cephcsi           Copy built docker images to kubernetes cluster
+  k8s-sidecar       Copy kubernetes sidecar docker images to kubernetes cluster
 " >&2
     ;;
 esac

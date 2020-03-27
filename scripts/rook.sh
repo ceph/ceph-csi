@@ -3,6 +3,7 @@
 ROOK_VERSION=${ROOK_VERSION:-"v1.1.7"}
 ROOK_DEPLOY_TIMEOUT=${ROOK_DEPLOY_TIMEOUT:-300}
 ROOK_URL="https://raw.githubusercontent.com/rook/rook/${ROOK_VERSION}/cluster/examples/kubernetes/ceph"
+ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
 
 function deploy_rook() {
 	kubectl create -f "${ROOK_URL}/common.yaml"
@@ -35,6 +36,40 @@ function teardown_rook() {
 	kubectl delete -f "${ROOK_URL}/cluster-test.yaml"
 	kubectl delete -f "${ROOK_URL}/operator.yaml"
 	kubectl delete -f "${ROOK_URL}/common.yaml"
+}
+
+function create_block_pool() {
+	curl -o newpool.yaml "${ROOK_URL}/pool-test.yaml"
+	sed -i "s/replicapool/$ROOK_BLOCK_POOL_NAME/g" newpool.yaml
+	kubectl create -f "./newpool.yaml"
+	rm -f "./newpool.yaml"
+
+    for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
+		echo "Checking RBD ($ROOK_BLOCK_POOL_NAME) stats... ${retry}s" && sleep 5
+
+		TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
+		TOOLBOX_POD_STATUS=$(kubectl -n rook-ceph get pod "$TOOLBOX_POD" -ojsonpath='{.status.phase}')
+		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] && \
+			{ echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"; continue; }
+
+		if kubectl exec -n rook-ceph "$TOOLBOX_POD" -it -- rbd pool stats "$ROOK_BLOCK_POOL_NAME" &>/dev/null; then
+			echo "RBD ($ROOK_BLOCK_POOL_NAME) is successfully created..."
+			break
+		fi
+	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[Timeout] Failed to get RBD pool $ROOK_BLOCK_POOL_NAME stats"
+		exit 1
+	fi
+	echo ""
+}
+
+function delete_block_pool() {
+	curl -o newpool.yaml "${ROOK_URL}/pool-test.yaml"
+	sed -i "s/replicapool/$ROOK_BLOCK_POOL_NAME/g" newpool.yaml
+	kubectl delete -f "./newpool.yaml"
+	rm -f "./newpool.yaml"
 }
 
 function check_ceph_cluster_health() {
@@ -115,11 +150,19 @@ deploy)
 teardown)
 	teardown_rook
 	;;
+create-block-pool)
+	create_block_pool
+	;;
+delete-block-pool)
+	delete_block_pool
+	;;
 *)
 	echo " $0 [command]
 Available Commands:
-  deploy         Deploy a rook
-  teardown       Teardown a rook
+  deploy             Deploy a rook
+  teardown           Teardown a rook
+  create-block-pool  Create a rook block pool
+  delete-block-pool  Delete a rook block pool
 " >&2
 	;;
 esac

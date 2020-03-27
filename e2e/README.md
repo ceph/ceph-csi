@@ -31,27 +31,30 @@ cluster.
 the following parameters are available to configure  kubernetes cluster
 
 | flag        | description                                                   |
-| ----------- | ------------------------------------------------------------- |
-| up          | Starts a local kubernetes cluster and prepare a disk for rook |
-| down        | Stops a running local kubernetes cluster                      |
-| clean       | Deletes a local kubernetes cluster                            |
-| ssh         | Log into or run a command on a minikube machine with SSH      |
-| deploy-rook | Deploy rook to minikube                                       |
-| clean-rook  | Deletes a rook from minikube                                  |
-| cephcsi     | Copy built docker images to kubernetes cluster                |
-| k8s-sidecar | Copy kubernetes sidecar docker images to kubernetes cluster   |
+| ----------------- | ------------------------------------------------------------- |
+| up                | Starts a local kubernetes cluster and prepare a disk for rook |
+| down              | Stops a running local kubernetes cluster                      |
+| clean             | Deletes a local kubernetes cluster                            |
+| ssh               | Log into or run a command on a minikube machine with SSH      |
+| deploy-rook       | Deploy rook to minikube                                       |
+| create-block-pool | Creates a rook block pool (named $ROOK_BLOCK_POOL_NAME)       |
+| delete-block-pool | Deletes a rook block pool (named $ROOK_BLOCK_POOL_NAME)       |
+| clean-rook        | Deletes a rook from minikube                                  |
+| cephcsi           | Copy built docker images to kubernetes cluster                |
+| k8s-sidecar       | Copy kubernetes sidecar docker images to kubernetes cluster   |
 
 following environment variables can be exported to customize kubernetes deployment
 
 | ENV                | Description                                      | Default                                                            |
 | ------------------ | ------------------------------------------------ | ------------------------------------------------------------------ |
-| MINIKUBE_VERSION   | minikube version to install                      | latest                                                             |
-| KUBE_VERSION       | kubernetes version to install                    | v1.14.10                                                           |
-| MEMORY             | Amount of RAM allocated to the minikube VM in MB | 3000                                                               |
-| VM_DRIVER          | VM driver to create virtual machine              | virtualbox                                                         |
-| CEPHCSI_IMAGE_REPO | Repo URL to pull cephcsi images                  | quay.io/cephcsi                                                    |
-| K8S_IMAGE_REPO     | Repo URL to pull kubernetes sidecar images       | quay.io/k8scsi                                                     |
-| K8S_FEATURE_GATES  | Feature gates to enable on kubernetes cluster    | BlockVolume=true,CSIBlockVolume=true,VolumeSnapshotDataSource=true |
+| MINIKUBE_VERSION      | minikube version to install                      | latest                                                             |
+| KUBE_VERSION          | kubernetes version to install                    | v1.14.10                                                           |
+| MEMORY                | Amount of RAM allocated to the minikube VM in MB | 3000                                                               |
+| VM_DRIVER             | VM driver to create virtual machine              | virtualbox                                                         |
+| CEPHCSI_IMAGE_REPO    | Repo URL to pull cephcsi images                  | quay.io/cephcsi                                                    |
+| K8S_IMAGE_REPO        | Repo URL to pull kubernetes sidecar images       | quay.io/k8scsi                                                     |
+| K8S_FEATURE_GATES     | Feature gates to enable on kubernetes cluster    | BlockVolume=true,CSIBlockVolume=true,VolumeSnapshotDataSource=true |
+| ROOK_BLOCK_POOL_NAME  | Block pool name to create in the rook instance   | newrbdpool                                                         |
 
 - creating kubernetes  cluster
 
