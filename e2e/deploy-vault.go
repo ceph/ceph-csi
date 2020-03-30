@@ -24,7 +24,7 @@ func deployVault(c kubernetes.Interface, deployTimeout int) {
 		LabelSelector: "app=vault",
 	}
 
-	pods, err := c.CoreV1().Pods(cephCSINamespace).List(opt)
+	pods, err := c.CoreV1().Pods(cephCSINamespace).List(ctx, opt)
 	Expect(err).Should(BeNil())
 	Expect(len(pods.Items)).Should(Equal(1))
 	name := pods.Items[0].Name

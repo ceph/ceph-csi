@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/pkg/util"
-
 	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/golang/protobuf/ptypes"

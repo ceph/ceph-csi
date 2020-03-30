@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	. "github.com/onsi/ginkgo" // nolint
-
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
