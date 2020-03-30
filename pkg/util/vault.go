@@ -46,7 +46,7 @@ const (
 )
 
 /*
-kmsKMS represents a Hashicorp Vault KMS configuration
+VaultKMS represents a Hashicorp Vault KMS configuration
 
 Example JSON structure in the KMS config is,
 {
