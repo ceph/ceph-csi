@@ -1,4 +1,4 @@
-FROM ceph/ceph:v14
+FROM ceph/ceph:v15
 
 ENV GOPATH=/go
 
