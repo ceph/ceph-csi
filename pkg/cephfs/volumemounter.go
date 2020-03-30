@@ -147,10 +147,12 @@ func loadAvailableMounters(conf *util.Config) error {
 	kernelMounterProbe := exec.Command("mount.ceph")
 
 	err := kernelMounterProbe.Run()
-	if err == nil {
+	if err != nil {
+		klog.Errorf("failed to run mount.ceph %v", err)
+	} else {
 		// fetch the current running kernel info
 		utsname := unix.Utsname{}
-		err := unix.Uname(&utsname)
+		err = unix.Uname(&utsname)
 		if err != nil {
 			return err
 		}
@@ -164,8 +166,11 @@ func loadAvailableMounters(conf *util.Config) error {
 		}
 	}
 
-	if fuseMounterProbe.Run() == nil {
-		klog.Infof("loaded mounter: %s", volumeMounterFuse)
+	err = fuseMounterProbe.Run()
+	if err != nil {
+		klog.Errorf("failed to run ceph-fuse %v", err)
+	} else {
+		klog.V(1).Infof("loaded mounter: %s", volumeMounterFuse)
 		availableMounters = append(availableMounters, volumeMounterFuse)
 	}
 
