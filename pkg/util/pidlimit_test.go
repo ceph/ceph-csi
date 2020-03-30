@@ -29,13 +29,13 @@ func TestGetPIDLimix(t *testing.T) {
 		t.Errorf("no error should be returned, got: %v", err)
 	}
 	if limit == 0 {
-		t.Errorf("a PID limit of 0 is invalid")
+		t.Error("a PID limit of 0 is invalid")
 	}
 
 	// this is expected to fail when not run as root
 	err = SetPIDLimit(4096)
 	if err != nil {
-		t.Logf("failed to set PID limit, are you running as root?")
+		t.Log("failed to set PID limit, are you running as root?")
 	} else {
 		// in case it worked, reset to the previous value
 		err = SetPIDLimit(limit)
