@@ -157,7 +157,7 @@ func TestConnPool(t *testing.T) {
 		// force expiring the ConnEntry by fetching it and adjusting .lastUsed
 		ce, exists := cp.conns[unique]
 		if !exists {
-			t.Errorf("getting the conn from cp.conns failed")
+			t.Error("getting the conn from cp.conns failed")
 		}
 		ce.lastUsed = ce.lastUsed.Add(-2 * expiry)
 
