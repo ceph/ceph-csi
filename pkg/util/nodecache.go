@@ -85,7 +85,7 @@ func decodeObj(fpath, pattern string, file os.FileInfo, destObj interface{}) err
 	// #nosec
 	fp, err := os.Open(path.Join(fpath, file.Name()))
 	if err != nil {
-		klog.Infof("node-cache: open file: %s err %v", file.Name(), err)
+		klog.V(4).Infof("node-cache: open file: %s err %v", file.Name(), err)
 		return errDec
 	}
 	decoder := json.NewDecoder(fp)

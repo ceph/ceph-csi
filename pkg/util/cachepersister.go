@@ -42,13 +42,13 @@ type CachePersister interface {
 // NewCachePersister returns CachePersister based on store
 func NewCachePersister(metadataStore, pluginPath string) (CachePersister, error) {
 	if metadataStore == "k8s_configmap" {
-		klog.Infof("cache-perister: using kubernetes configmap as metadata cache persister")
+		klog.V(4).Infof("cache-perister: using kubernetes configmap as metadata cache persister")
 		k8scm := &K8sCMCache{}
 		k8scm.Client = NewK8sClient()
 		k8scm.Namespace = GetK8sNamespace()
 		return k8scm, nil
 	} else if metadataStore == "node" {
-		klog.Infof("cache-persister: using node as metadata cache persister")
+		klog.V(4).Infof("cache-persister: using node as metadata cache persister")
 		nc := &NodeCache{}
 		nc.BasePath = pluginPath
 		nc.CacheDir = "controller"

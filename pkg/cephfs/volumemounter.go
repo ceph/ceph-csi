@@ -157,15 +157,15 @@ func loadAvailableMounters(conf *util.Config) error {
 		release := string(utsname.Release[:64])
 
 		if conf.ForceKernelCephFS || kernelSupportsQuota(release) {
-			klog.Infof("loaded mounter: %s", volumeMounterKernel)
+			klog.V(1).Infof("loaded mounter: %s", volumeMounterKernel)
 			availableMounters = append(availableMounters, volumeMounterKernel)
 		} else {
-			klog.Infof("kernel version < 4.17 might not support quota feature, hence not loading kernel client")
+			klog.V(1).Infof("kernel version < 4.17 might not support quota feature, hence not loading kernel client")
 		}
 	}
 
 	if fuseMounterProbe.Run() == nil {
-		klog.Infof("loaded mounter: %s", volumeMounterFuse)
+		klog.V(1).Infof("loaded mounter: %s", volumeMounterFuse)
 		availableMounters = append(availableMounters, volumeMounterFuse)
 	}
 
@@ -200,7 +200,7 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 	if chosenMounter == "" {
 		// Otherwise pick whatever is left
 		chosenMounter = availableMounters[0]
-		klog.Infof("requested mounter: %s, chosen mounter: %s", wantMounter, chosenMounter)
+		klog.V(4).Infof("requested mounter: %s, chosen mounter: %s", wantMounter, chosenMounter)
 	}
 
 	// Create the mounter

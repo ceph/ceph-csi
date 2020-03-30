@@ -4,6 +4,9 @@ _output
 # docker build
 deploy/cephcsi/image/cephcsi
 
+# build container
+.devel-container-id
+
 # git merge files
 *.orig
 *.patch

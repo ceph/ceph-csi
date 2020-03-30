@@ -141,7 +141,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// Existence and conflict checks
 	if acquired := cs.VolumeLocks.TryAcquire(req.GetName()); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), req.GetName())
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), req.GetName())
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetName())
 	}
 	defer cs.VolumeLocks.Release(req.GetName())
@@ -291,7 +291,7 @@ func (cs *ControllerServer) DeleteLegacyVolume(ctx context.Context, req *csi.Del
 	}
 
 	if acquired := cs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volumeID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volumeID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer cs.VolumeLocks.Release(volumeID)
@@ -300,7 +300,7 @@ func (cs *ControllerServer) DeleteLegacyVolume(ctx context.Context, req *csi.Del
 	defer rbdVol.Destroy()
 	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
 		if err, ok := err.(*util.CacheEntryNotFound); ok {
-			klog.V(3).Infof(util.Log(ctx, "metadata for legacy volume %s not found, assuming the volume to be already deleted (%v)"), volumeID, err)
+			klog.Warningf(util.Log(ctx, "metadata for legacy volume %s not found, assuming the volume to be already deleted (%v)"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 
@@ -318,7 +318,7 @@ func (cs *ControllerServer) DeleteLegacyVolume(ctx context.Context, req *csi.Del
 	klog.V(4).Infof(util.Log(ctx, "deleting legacy volume %s"), rbdVol.VolName)
 	if err := deleteImage(ctx, rbdVol, cr); err != nil {
 		// TODO: can we detect "already deleted" situations here and proceed?
-		klog.V(3).Infof(util.Log(ctx, "failed to delete legacy rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, err)
+		klog.Errorf(util.Log(ctx, "failed to delete legacy rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -350,7 +350,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	if acquired := cs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volumeID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volumeID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer cs.VolumeLocks.Release(volumeID)
@@ -392,7 +392,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		// to lead us to the image, hence the imageOMap needs to be garbage collected, by calling
 		// unreserve for the same
 		if acquired := cs.VolumeLocks.TryAcquire(rbdVol.RequestName); !acquired {
-			klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), rbdVol.RequestName)
+			klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), rbdVol.RequestName)
 			return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
 		}
 		defer cs.VolumeLocks.Release(rbdVol.RequestName)
@@ -406,7 +406,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// lock out parallel create requests against the same volume name as we
 	// cleanup the image and associated omaps for the same
 	if acquired := cs.VolumeLocks.TryAcquire(rbdVol.RequestName); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), rbdVol.RequestName)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), rbdVol.RequestName)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
 	}
 	defer cs.VolumeLocks.Release(rbdVol.RequestName)
@@ -427,7 +427,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	if rbdVol.Encrypted {
 		if err = rbdVol.KMS.DeletePassphrase(rbdVol.VolID); err != nil {
-			klog.V(3).Infof(util.Log(ctx, "failed to clean the passphrase for volume %s: %s"), rbdVol.VolID, err)
+			klog.Warningf(util.Log(ctx, "failed to clean the passphrase for volume %s: %s"), rbdVol.VolID, err)
 		}
 	}
 
@@ -505,7 +505,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	rbdSnap.RequestName = req.GetName()
 
 	if acquired := cs.SnapshotLocks.TryAcquire(req.GetName()); !acquired {
-		klog.Infof(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), req.GetName())
+		klog.Errorf(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), req.GetName())
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetName())
 	}
 	defer cs.SnapshotLocks.Release(req.GetName())
@@ -648,7 +648,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	if acquired := cs.SnapshotLocks.TryAcquire(snapshotID); !acquired {
-		klog.Infof(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), snapshotID)
+		klog.Errorf(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), snapshotID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, snapshotID)
 	}
 	defer cs.SnapshotLocks.Release(snapshotID)
@@ -678,7 +678,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		// safeguarding against parallel create or delete requests against the
 		// same name.
 		if acquired := cs.SnapshotLocks.TryAcquire(rbdSnap.RequestName); !acquired {
-			klog.Infof(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), rbdSnap.RequestName)
+			klog.Errorf(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), rbdSnap.RequestName)
 			return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdSnap.RequestName)
 		}
 		defer cs.SnapshotLocks.Release(rbdSnap.RequestName)
@@ -692,7 +692,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	// safeguard against parallel create or delete requests against the same
 	// name
 	if acquired := cs.SnapshotLocks.TryAcquire(rbdSnap.RequestName); !acquired {
-		klog.Infof(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), rbdSnap.RequestName)
+		klog.Errorf(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), rbdSnap.RequestName)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdSnap.RequestName)
 	}
 	defer cs.SnapshotLocks.Release(rbdSnap.RequestName)
@@ -735,7 +735,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	// lock out parallel requests against the same volume ID
 	if acquired := cs.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Infof(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer cs.VolumeLocks.Release(volID)

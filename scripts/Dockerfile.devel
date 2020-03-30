@@ -1,0 +1,11 @@
+FROM ceph/ceph:v14
+
+ENV GOPATH=/go
+
+RUN yum -y install \
+	golang \
+	make \
+	librados-devel \
+	librbd-devel \
+    && yum -y update \
+    && true

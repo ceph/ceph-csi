@@ -40,8 +40,8 @@ parameters:
    # mounter: rbd-nbd
 
    # Instruct the plugin it has to encrypt the volume
-   # By default it is disabled. Valid values are “true” or “false”.
-   # A string is expected here, i.e. “true”, not true.
+   # By default it is disabled. Valid values are "true" or "false".
+   # A string is expected here, i.e. "true", not true.
    # encrypted: "true"
 
    # Use external key management system for encryption passphrases by specifying

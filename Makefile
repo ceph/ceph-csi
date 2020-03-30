@@ -37,6 +37,11 @@ ifeq ($(origin GOARCH), undefined)
 GOARCH := $(shell go env GOARCH)
 endif
 
+SELINUX := $(shell getenforce 2>/dev/null)
+ifeq ($(SELINUX),Enforcing)
+	SELINUX_VOL_FLAG = :z
+endif
+
 all: cephcsi
 
 test: go-test static-check mod-check
@@ -60,6 +65,16 @@ cephcsi:
 	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
 	GOOS=linux GOARCH=$(GOARCH) go build -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
 
+.PHONY: containerized-build
+containerized-build: .devel-container-id
+	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make -C /go/src/github.com/ceph/ceph-csi cephcsi
+
+# create a (cached) container image with dependencied for building cephcsi
+.devel-container-id: scripts/Dockerfile.devel
+	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
+	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
+	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
+
 image-cephcsi: cephcsi
 	cp _output/cephcsi deploy/cephcsi/image/cephcsi
 	chmod +x deploy/cephcsi/image/cephcsi
@@ -75,3 +90,5 @@ clean:
 	go clean -r -x
 	rm -f deploy/cephcsi/image/cephcsi
 	rm -f _output/cephcsi
+	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
+	$(RM) .devel-container-id
