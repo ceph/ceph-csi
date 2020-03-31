@@ -70,9 +70,9 @@ func init() {
 	flag.DurationVar(&conf.PollTime, "polltime", time.Second*60, "time interval in seconds between each poll")
 	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*3, "probe timeout in seconds")
 
-	flag.BoolVar(&conf.EnableGRPCMetrics, "enablegrpcmetrics", false, "enable grpc metrics")
+	flag.BoolVar(&conf.EnableGRPCMetrics, "enablegrpcmetrics", false, "[DEPRECATED] enable grpc metrics")
 	flag.StringVar(&conf.HistogramOption, "histogramoption", "0.5,2,6",
-		"Histogram option for grpc metrics, should be comma separated value, ex:= 0.5,2,6 where start=0.5 factor=2, count=6")
+		"[DEPRECATED] Histogram option for grpc metrics, should be comma separated value, ex:= 0.5,2,6 where start=0.5 factor=2, count=6")
 
 	flag.BoolVar(&conf.Version, "version", false, "Print cephcsi version information")
 
