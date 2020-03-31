@@ -13,10 +13,6 @@ spec:
       port: 8080
       protocol: TCP
       targetPort: 8680
-    - name: grpc-metrics
-      port: 8090
-      protocol: TCP
-      targetPort: 8090
 
 ---
 kind: Deployment
@@ -113,9 +109,6 @@ spec:
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
             - "--pidlimit=-1"
-            - "--metricsport=8090"
-            - "--metricspath=/metrics"
-            - "--enablegrpcmetrics=false"
           env:
             - name: POD_IP
               valueFrom:
