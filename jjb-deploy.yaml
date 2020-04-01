@@ -1,0 +1,18 @@
+---
+- job:
+    name: jjb-deploy
+    project-type: pipeline
+    sandbox: true
+    dsl: |
+      def GIT_REPO = 'http://github.com/ceph/ceph-csi'
+      def GIT_BRANCH = 'ci/centos'
+      node {
+        stage('checkout ci repository') {
+          git url: "${GIT_REPO}", branch: "${GIT_BRANCH}", changelog: false
+        }
+        stage('validation') {
+          sh './deploy/jjb.sh deploy'
+        }
+      }
+    triggers:
+    - github
