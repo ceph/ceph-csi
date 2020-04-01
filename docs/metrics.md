@@ -2,7 +2,6 @@
 
 - [Metrics](#metrics)
   - [Liveness](#liveness)
-  - [GRPC metrics](#grpc-metrics)
 
 ## Liveness
 
@@ -29,19 +28,6 @@ to pull metrics out of CSI.
 
 Each CSI pod has a service to expose the endpoint to prometheus. By default rbd
 pods run on port 8080 and cephfs 8081.
-These can be changed if desired or if multiple ceph clusters are deployed more
-ports will be used for additional CSI pods.
-
-Note: You may need to open the ports used in your firewall depending on how you
-cluster is setup.
-
-## GRPC metrics
-
-grpc metrics are intended to be collected by prometheus but can be accesesed
-through a GET request to a specific pod ip.
-
-Each CSI pod has a service to expose the endpoint to prometheus. By default rbd
-pods run on port 8090 and cephfs 8091.
 These can be changed if desired or if multiple ceph clusters are deployed more
 ports will be used for additional CSI pods.
 

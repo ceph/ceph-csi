@@ -1,9 +1,11 @@
-FROM ceph/ceph:v14
+FROM ceph/ceph:v15
 
-ENV GOPATH=/go
+ENV GOPATH=/go \
+	GO111MODULE=on
 
 RUN yum -y install \
 	golang \
+	git \
 	make \
 	librados-devel \
 	librbd-devel \
