@@ -92,7 +92,7 @@ cluster or you can pass `kubeconfig`flag while running tests.
 Functional tests are run by the `go test` command.
 
  ```console
- $go test ./e2e/ -timeout=20m -v
+ $go test ./e2e/ -timeout=20m -v -mod=vendor
  ```
 
 Functional  tests can be invoked by `make` command

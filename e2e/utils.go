@@ -775,8 +775,8 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 	}
 }
 
-func deletePodWithLabel(label string) error {
-	_, err := framework.RunKubectl("delete", "po", "-l", label)
+func deletePodWithLabel(label, ns string, skipNotFound bool) error {
+	_, err := framework.RunKubectl("delete", "po", "-l", label, fmt.Sprintf("--ignore-not-found=%t", skipNotFound), fmt.Sprintf("--namespace=%s", ns))
 	if err != nil {
 		e2elog.Logf("failed to delete pod %v", err)
 	}
