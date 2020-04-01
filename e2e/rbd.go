@@ -131,6 +131,8 @@ var _ = Describe("RBD", func() {
 
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
+			// log pods created by helm chart
+			logsCSIPods("app=ceph-csi-rbd", c)
 			// log provisoner
 			logsCSIPods("app=csi-rbdplugin-provisioner", c)
 			// log node plugin
@@ -382,7 +384,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				// delete rbd nodeplugin pods
-				err = deletePodWithLabel("app=csi-rbdplugin")
+				err = deletePodWithLabel("app=csi-rbdplugin", cephCSINamespace, false)
 				if err != nil {
 					Fail(err.Error())
 				}

@@ -8,6 +8,7 @@ addons:
     packages:
       - realpath
       - ruby
+      - socat
 services:
   - docker
 
@@ -26,6 +27,7 @@ env:
     - TEST_COVERAGE=stdout
     - GO_METALINTER_THREADS=1
     - GO_COVER_DIR=_output
+    - HELM_VERSION=v2.16.5
     - VM_DRIVER=none
     - MINIKUBE_VERSION=v1.6.0
     - CHANGE_MINIKUBE_NONE_USER=true
@@ -100,6 +102,11 @@ jobs:
         # - Travis Arm64 CI job runs inside unprivileged LXD which blocks
         #   launching minikube test environment
         - travis_terminate 0    # deploy only on x86
+    - name: cephcsi helm charts with kube 1.17.0
+      script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
+        - make image-cephcsi || travis_terminate 1;
+        - scripts/travis-helmtest.sh v1.17.0 || travis_terminate 1;
 
 deploy:
   - provider: script
