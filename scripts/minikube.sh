@@ -136,7 +136,7 @@ k8s-sidecar)
     copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-attacher:v2.1.1 "${K8S_IMAGE_REPO}"/csi-attacher:v2.1.1
     copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-snapshotter:v1.2.2 $"${K8S_IMAGE_REPO}"/csi-snapshotter:v1.2.2
     copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-provisioner:v1.4.0 "${K8S_IMAGE_REPO}"/csi-provisioner:v1.4.0
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.2.0 "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.2.0
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.3.0 "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.3.0
     copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-resizer:v0.4.0 "${K8S_IMAGE_REPO}"/csi-resizer:v0.4.0
     ;;
 clean)
