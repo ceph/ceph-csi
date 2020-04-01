@@ -368,7 +368,18 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	Expect(err).Should(BeNil())
 	cm.Data["config.json"] = string(data)
 	cm.Namespace = cephCSINamespace
-	_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Create(&cm)
+	// if the configmap is present update it,during cephcsi helm charts
+	// deployment empty configmap gets created we need to override it
+	_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Get(cm.Name, metav1.GetOptions{})
+
+	if err == nil {
+		_, updateErr := c.CoreV1().ConfigMaps(cephCSINamespace).Update(&cm)
+		Expect(updateErr).Should(BeNil())
+	}
+	if apierrs.IsNotFound(err) {
+		_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Create(&cm)
+	}
+
 	Expect(err).Should(BeNil())
 }
 
