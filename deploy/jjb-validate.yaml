@@ -1,0 +1,23 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: jjb-validate
+  name: jjb-validate
+spec:
+  ttlSecondsAfterFinished: 0
+  backoffLimit: 1
+  template:
+    labels:
+      app: jjb-validate
+    spec:
+      containers:
+      - name: jjb-validate
+        image: 172.30.254.79:5000/ceph-csi/jjb:latest
+        env:
+        - name: GIT_REPO
+          value: https://github.com/ceph/ceph-csi
+        - name: GIT_REF
+          value: ci/centos
+      restartPolicy: Never

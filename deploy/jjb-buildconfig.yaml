@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: ImageStream
+metadata:
+  name: jjb
+  labels:
+    app: jjb
+spec:
+  tags:
+  - name: latest
+---
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: jjb
+  labels:
+    app: jjb
+spec:
+  runPolicy: Serial
+  source:
+    git:
+      uri: https://github.com/ceph/ceph-csi
+      ref: ci/centos
+    contextDir: deploy
+  strategy:
+    dockerStrategy: {}
+  output:
+    to:
+      kind: ImageStreamTag
+      name: jjb:latest

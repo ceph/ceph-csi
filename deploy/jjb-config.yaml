@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jenkins-jobs
+  labels:
+    app: jjb
+data:
+  jenkins_jobs.ini: |-
+    [jenkins]
+    user=ndevos-admin-edit-view
+    password=<token-from-user-config-in-webui>
+    url=https://jenkins-ceph-csi.apps.ci.centos.org/
