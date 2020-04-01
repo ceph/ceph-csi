@@ -97,7 +97,7 @@ nodeplugin:
   registrar:
     image:
       repository: quay.io/k8scsi/csi-node-driver-registrar
-      tag: v1.2.0
+      tag: v1.3.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -203,7 +203,7 @@ provisioner:
     enabled: true
     image:
       repository: quay.io/k8scsi/csi-attacher
-      tag: v2.1.0
+      tag: v2.1.1
       pullPolicy: IfNotPresent
     resources: {}
 
