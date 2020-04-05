@@ -109,7 +109,7 @@ provisioner:
   timeout: 60s
 
   httpMetrics:
-    # Metrics only available for cephcis/cephsi => 1.2.0
+    # Metrics only available for cephcsi/cephcsi => 1.2.0
     # Specifies whether http metrics should be exposed
     enabled: true
     # The port of the container to expose the metrics
