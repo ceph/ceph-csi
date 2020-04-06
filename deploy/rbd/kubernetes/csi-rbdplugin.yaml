@@ -25,7 +25,7 @@ spec:
           # created by privileged CSI driver container.
           securityContext:
             privileged: true
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.2.0
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.3.0
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -63,9 +63,6 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
-            - "--metricsport=8090"
-            - "--metricspath=/metrics"
-            - "--enablegrpcmetrics=false"
           env:
             - name: POD_IP
               valueFrom:
@@ -168,7 +165,7 @@ spec:
             medium: "Memory"
           }
 ---
-# This is a service to expose the liveness and grpc metrics
+# This is a service to expose the liveness metrics
 apiVersion: v1
 kind: Service
 metadata:
@@ -181,9 +178,5 @@ spec:
       port: 8080
       protocol: TCP
       targetPort: 8680
-    - name: grpc-metrics
-      port: 8090
-      protocol: TCP
-      targetPort: 8090
   selector:
     app: csi-rbdplugin

@@ -76,11 +76,6 @@ spec:
             - "--type=cephfs"
             - "--nodeserver=true"
             - "--pidlimit=-1"
-{{- if .Values.nodeplugin.grpcMetrics.enabled }}
-            - "--metricsport={{ .Values.nodeplugin.grpcMetrics.containerPort }}"
-            - "--metricspath=/metrics"
-            - "--enablegrpcmetrics=true"
-{{- end }}
 {{- if .Values.nodeplugin.forcecephkernelclient }}
             - "--forcecephkernelclient={{ .Values.nodeplugin.forcecephkernelclient }}"
 {{- end }}

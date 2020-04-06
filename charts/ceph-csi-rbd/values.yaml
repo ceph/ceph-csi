@@ -77,41 +77,10 @@ nodeplugin:
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
 
-  grpcMetrics:
-    # Metrics only available for cephcsi/cephcsi => 1.2.0
-    # Specifies whether grpc metrics should be exposed
-    enabled: true
-    # The port of the container to expose the metrics
-    containerPort: 8090
-
-    service:
-      # Specifies whether a service should be created for the metrics
-      enabled: true
-      # The port to use for the service
-      servicePort: 8090
-      type: ClusterIP
-
-      # Annotations for the service
-      # Example:
-      # annotations:
-      #   prometheus.io/scrape: "true"
-      #   prometheus.io/port: "8090"
-      annotations: {}
-
-      clusterIP: ""
-
-      ## List of IP addresses at which the stats-exporter service is available
-      ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
-      ##
-      externalIPs: []
-
-      loadBalancerIP: ""
-      loadBalancerSourceRanges: []
-
   registrar:
     image:
       repository: quay.io/k8scsi/csi-node-driver-registrar
-      tag: v1.2.0
+      tag: v1.3.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -158,37 +127,6 @@ provisioner:
       # annotations:
       #   prometheus.io/scrape: "true"
       #   prometheus.io/port: "8080"
-      annotations: {}
-
-      clusterIP: ""
-
-      ## List of IP addresses at which the stats-exporter service is available
-      ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
-      ##
-      externalIPs: []
-
-      loadBalancerIP: ""
-      loadBalancerSourceRanges: []
-
-  grpcMetrics:
-    # Metrics only available for cephcis/cephsi => 1.2.0
-    # Specifies whether grpc metrics should be exposed
-    enabled: true
-    # The port of the container to expose the metrics
-    containerPort: 8090
-
-    service:
-      # Specifies whether a service should be created for the metrics
-      enabled: true
-      # The port to use for the service
-      servicePort: 8090
-      type: ClusterIP
-
-      # Annotations for the service
-      # Example:
-      # annotations:
-      #   prometheus.io/scrape: "true"
-      #   prometheus.io/port: "8090"
       annotations: {}
 
       clusterIP: ""
