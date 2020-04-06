@@ -17,3 +17,7 @@
           - nixpanic
           org-list:
           - ceph
+    wrappers:
+    - timestamps
+    - ansicolor:
+        colormap: xterm
