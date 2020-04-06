@@ -12,6 +12,12 @@ RBD_CHART_NAME="ceph-csi-rbd"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 DEPLOY_TIMEOUT=600
 
+# ceph-csi specific variables
+NODE_LABEL_REGION="test.failure-domain/region"
+NODE_LABEL_ZONE="test.failure-domain/zone"
+REGION_VALUE="testregion"
+ZONE_VALUE="testzone"
+
 function check_deployment_status() {
     LABEL=$1
     NAMESPACE=$2
@@ -130,6 +136,13 @@ install_cephcsi_helm_charts() {
     if [ -z "$NAMESPACE" ]; then
         NAMESPACE="default"
     fi
+
+    # label the nodes uniformly for domain information
+    for node in $(kubectl get node -o jsonpath='{.items[*].metadata.name}'); do
+        kubectl label node/"${node}" ${NODE_LABEL_REGION}=${REGION_VALUE}
+        kubectl label node/"${node}" ${NODE_LABEL_ZONE}=${ZONE_VALUE}
+    done
+
     # install ceph-csi-cephfs and ceph-csi-rbd charts
     "${HELM}" install "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs --name ${CEPHFS_CHART_NAME} --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true
 
@@ -139,7 +152,7 @@ install_cephcsi_helm_charts() {
     # deleting configmap as a workaround to avoid configmap already present
     # issue when installing ceph-csi-rbd
     kubectl delete cm ceph-csi-config --namespace ${NAMESPACE}
-    "${HELM}" install "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --name ${RBD_CHART_NAME} --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true
+    "${HELM}" install "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --name ${RBD_CHART_NAME} --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true  --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}"
 
     check_deployment_status app=ceph-csi-rbd ${NAMESPACE}
     check_daemonset_status app=ceph-csi-rbd ${NAMESPACE}
@@ -149,6 +162,13 @@ install_cephcsi_helm_charts() {
 cleanup_cephcsi_helm_charts() {
     "${HELM}" del --purge ${CEPHFS_CHART_NAME}
     "${HELM}" del --purge ${RBD_CHART_NAME}
+
+    # remove set labels
+    for node in $(kubectl get node --no-headers | cut -f 1 -d ' '); do
+        kubectl label node/"$node" test.failure-domain/region-
+        kubectl label node/"$node" test.failure-domain/zone-
+    done
+    # TODO/LATER we could remove the CSI labels that would have been set as well
 }
 
 helm_reset() {

@@ -224,91 +224,91 @@ func TestFindPoolAndTopology(t *testing.T) {
 		return nil
 	}
 	// Test nil values
-	_, _, err = FindPoolAndTopology(nil, nil)
+	_, _, _, err = FindPoolAndTopology(nil, nil)
 	if err != nil {
 		t.Errorf("expected success due to nil in-args (%v)", err)
 	}
 
-	poolName, _, err := FindPoolAndTopology(&validMultipleTopoPools, nil)
+	poolName, _, _, err := FindPoolAndTopology(&validMultipleTopoPools, nil)
 	if err != nil || poolName != "" {
 		t.Errorf("expected success due to nil accessibility requirements (err - %v) (poolName - %s)", err, poolName)
 	}
 
-	poolName, _, err = FindPoolAndTopology(nil, &validAccReq)
+	poolName, _, _, err = FindPoolAndTopology(nil, &validAccReq)
 	if err != nil || poolName != "" {
 		t.Errorf("expected success due to nil topology pools (err - %v) (poolName - %s)", err, poolName)
 	}
 
 	// Test valid accessibility requirement, with invalid topology pools values
-	_, _, err = FindPoolAndTopology(&emptyTopoPools, &validAccReq)
+	_, _, _, err = FindPoolAndTopology(&emptyTopoPools, &validAccReq)
 	if err == nil {
 		t.Errorf("expected failure due to empty topology pools")
 	}
 
-	_, _, err = FindPoolAndTopology(&emptyPoolNameTopoPools, &validAccReq)
+	_, _, _, err = FindPoolAndTopology(&emptyPoolNameTopoPools, &validAccReq)
 	if err == nil {
 		t.Errorf("expected failure due to missing pool name in topology pools")
 	}
 
-	_, _, err = FindPoolAndTopology(&differentDomainsInTopoPools, &validAccReq)
+	_, _, _, err = FindPoolAndTopology(&differentDomainsInTopoPools, &validAccReq)
 	if err == nil {
 		t.Errorf("expected failure due to mismatching domains in topology pools")
 	}
 
 	// Test valid topology pools, with invalid accessibility requirements
-	_, _, err = FindPoolAndTopology(&validMultipleTopoPools, &emptyAccReq)
+	_, _, _, err = FindPoolAndTopology(&validMultipleTopoPools, &emptyAccReq)
 	if err == nil {
 		t.Errorf("expected failure due to empty accessibility requirements")
 	}
 
-	_, _, err = FindPoolAndTopology(&validSingletonTopoPools, &emptySegmentAccReq)
+	_, _, _, err = FindPoolAndTopology(&validSingletonTopoPools, &emptySegmentAccReq)
 	if err == nil {
 		t.Errorf("expected failure due to empty segments in accessibility requirements")
 	}
 
-	_, _, err = FindPoolAndTopology(&validMultipleTopoPools, &partialHigherSegmentAccReq)
+	_, _, _, err = FindPoolAndTopology(&validMultipleTopoPools, &partialHigherSegmentAccReq)
 	if err == nil {
 		t.Errorf("expected failure due to partial segments in accessibility requirements")
 	}
 
-	_, _, err = FindPoolAndTopology(&validSingletonTopoPools, &partialLowerSegmentAccReq)
+	_, _, _, err = FindPoolAndTopology(&validSingletonTopoPools, &partialLowerSegmentAccReq)
 	if err == nil {
 		t.Errorf("expected failure due to partial segments in accessibility requirements")
 	}
 
-	_, _, err = FindPoolAndTopology(&validMultipleTopoPools, &partialLowerSegmentAccReq)
+	_, _, _, err = FindPoolAndTopology(&validMultipleTopoPools, &partialLowerSegmentAccReq)
 	if err == nil {
 		t.Errorf("expected failure due to partial segments in accessibility requirements")
 	}
 
-	_, _, err = FindPoolAndTopology(&validMultipleTopoPools, &differentSegmentAccReq)
+	_, _, _, err = FindPoolAndTopology(&validMultipleTopoPools, &differentSegmentAccReq)
 	if err == nil {
 		t.Errorf("expected failure due to mismatching segments in accessibility requirements")
 	}
 
 	// Test success cases
 	// If a pool is a superset of domains (either empty domain labels or partial), it can be selected
-	poolName, topoSegment, err := FindPoolAndTopology(&emptyDomainsInTopoPools, &validAccReq)
+	poolName, _, topoSegment, err := FindPoolAndTopology(&emptyDomainsInTopoPools, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
 	if err != nil {
 		t.Errorf("expected success got: (%v)", err)
 	}
 
-	poolName, topoSegment, err = FindPoolAndTopology(&partialDomainsInTopoPools, &validAccReq)
+	poolName, _, topoSegment, err = FindPoolAndTopology(&partialDomainsInTopoPools, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
 	if err != nil {
 		t.Errorf("expected success got: (%v)", err)
 	}
 
 	// match in a singleton topology pools
-	poolName, topoSegment, err = FindPoolAndTopology(&validSingletonTopoPools, &validAccReq)
+	poolName, _, topoSegment, err = FindPoolAndTopology(&validSingletonTopoPools, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
 	if err != nil {
 		t.Errorf("expected success got: (%v)", err)
 	}
 
 	// match first in multiple topology pools
-	poolName, topoSegment, err = FindPoolAndTopology(&validMultipleTopoPools, &validAccReq)
+	poolName, _, topoSegment, err = FindPoolAndTopology(&validMultipleTopoPools, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
 	if err != nil {
 		t.Errorf("expected success got: (%v)", err)
@@ -317,10 +317,23 @@ func TestFindPoolAndTopology(t *testing.T) {
 	// match non-first in multiple topology pools
 	switchPoolOrder := []TopologyConstrainedPool{}
 	switchPoolOrder = append(switchPoolOrder, validMultipleTopoPools[1], validMultipleTopoPools[0])
-	poolName, topoSegment, err = FindPoolAndTopology(&switchPoolOrder, &validAccReq)
+	poolName, _, topoSegment, err = FindPoolAndTopology(&switchPoolOrder, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
 	if err != nil {
 		t.Errorf("expected success got: (%v)", err)
+	}
+
+	// test valid dataPool return
+	for i := range switchPoolOrder {
+		switchPoolOrder[i].DataPoolName = "ec-" + switchPoolOrder[i].PoolName
+	}
+	poolName, dataPoolName, topoSegment, err := FindPoolAndTopology(&switchPoolOrder, &validAccReq)
+	err = checkOutput(err, poolName, topoSegment)
+	if err != nil {
+		t.Errorf("expected success got: (%v)", err)
+	}
+	if dataPoolName != "ec-"+poolName {
+		t.Errorf("expected data pool to be named ec-%s, got %s", poolName, dataPoolName)
 	}
 
 	// TEST: MatchTopologyForPool
