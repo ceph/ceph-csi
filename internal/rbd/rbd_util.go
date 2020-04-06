@@ -197,30 +197,6 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	return nil
 }
 
-// Open the rbdVolume after it has been connected.
-func (rv *rbdVolume) open() (*librbd.Image, error) {
-	if rv.RbdImageName == "" {
-		var vi util.CSIIdentifier
-		err := vi.DecomposeCSIID(rv.VolID)
-		if err != nil {
-			err = fmt.Errorf("error decoding volume ID (%s) (%s)", rv.VolID, err)
-			return nil, ErrInvalidVolID{err}
-		}
-		rv.RbdImageName = volJournal.GetNameForUUID(rv.NamePrefix, vi.ObjectUUID, false)
-	}
-
-	ioctx, err := rv.conn.GetIoctx(rv.Pool)
-	if err != nil {
-		return nil, err
-	}
-
-	image, err := librbd.OpenImage(ioctx, rv.RbdImageName, librbd.NoSnapshot)
-	if err != nil {
-		return nil, err
-	}
-	return image, nil
-}
-
 // rbdStatus checks if there is watcher on the image.
 // It returns true if there is a watcher on the image, otherwise returns false.
 func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (bool, string, error) {
