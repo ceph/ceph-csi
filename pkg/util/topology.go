@@ -125,6 +125,7 @@ type topologySegment struct {
 // TopologyConstrainedPool stores the pool name and a list of its associated topology domain values
 type TopologyConstrainedPool struct {
 	PoolName       string            `json:"poolName"`
+	DataPoolName   string            `json:"dataPool"`
 	DomainSegments []topologySegment `json:"domainSegments"`
 }
 
@@ -178,7 +179,7 @@ func MatchTopologyForPool(topologyPools *[]TopologyConstrainedPool,
 			topologyPools, poolName)
 	}
 
-	_, topology, err := FindPoolAndTopology(&topologyPool, accessibilityRequirements)
+	_, _, topology, err := FindPoolAndTopology(&topologyPool, accessibilityRequirements)
 
 	return topology, err
 }
@@ -188,28 +189,28 @@ func MatchTopologyForPool(topologyPools *[]TopologyConstrainedPool,
 // The return variables are, image poolname, data poolname, and topology map of
 // matched requirement
 func FindPoolAndTopology(topologyPools *[]TopologyConstrainedPool,
-	accessibilityRequirements *csi.TopologyRequirement) (string, map[string]string, error) {
+	accessibilityRequirements *csi.TopologyRequirement) (string, string, map[string]string, error) {
 	if topologyPools == nil || accessibilityRequirements == nil {
-		return "", nil, nil
+		return "", "", nil, nil
 	}
 
 	// select pool that fits first topology constraint preferred requirements
 	for _, topology := range accessibilityRequirements.GetPreferred() {
-		poolName := matchPoolToTopology(topologyPools, topology)
-		if poolName != "" {
-			return poolName, topology.GetSegments(), nil
+		topologyPool := matchPoolToTopology(topologyPools, topology)
+		if topologyPool.PoolName != "" {
+			return topologyPool.PoolName, topologyPool.DataPoolName, topology.GetSegments(), nil
 		}
 	}
 
 	// If preferred mismatches, check requisite for a fit
 	for _, topology := range accessibilityRequirements.GetRequisite() {
-		poolName := matchPoolToTopology(topologyPools, topology)
-		if poolName != "" {
-			return poolName, topology.GetSegments(), nil
+		topologyPool := matchPoolToTopology(topologyPools, topology)
+		if topologyPool.PoolName != "" {
+			return topologyPool.PoolName, topologyPool.DataPoolName, topology.GetSegments(), nil
 		}
 	}
 
-	return "", nil, fmt.Errorf("none of the topology constrained pools matched requested "+
+	return "", "", nil, fmt.Errorf("none of the topology constrained pools matched requested "+
 		"topology constraints : pools (%+v) requested topology (%+v)",
 		*topologyPools, *accessibilityRequirements)
 }
@@ -217,7 +218,7 @@ func FindPoolAndTopology(topologyPools *[]TopologyConstrainedPool,
 // matchPoolToTopology loops through passed in pools, and for each pool checks if all
 // requested topology segments are present and match the request, returning the first pool
 // that hence matches (or an empty string if none match)
-func matchPoolToTopology(topologyPools *[]TopologyConstrainedPool, topology *csi.Topology) string {
+func matchPoolToTopology(topologyPools *[]TopologyConstrainedPool, topology *csi.Topology) TopologyConstrainedPool {
 	domainMap := extractDomainsFromlabels(topology)
 
 	// check if any pool matches all the domain keys and values
@@ -235,10 +236,10 @@ func matchPoolToTopology(topologyPools *[]TopologyConstrainedPool, topology *csi
 			continue
 		}
 
-		return topologyPool.PoolName
+		return topologyPool
 	}
 
-	return ""
+	return TopologyConstrainedPool{}
 }
 
 // extractDomainsFromlabels returns the domain name map, from passed in domain segments,

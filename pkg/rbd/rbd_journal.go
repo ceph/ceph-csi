@@ -282,12 +282,13 @@ func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 		return nil
 	}
 	// update request based on topology constrained parameters (if present)
-	poolName, topology, err := util.FindPoolAndTopology(rbdVol.TopologyPools, rbdVol.TopologyRequirement)
+	poolName, dataPoolName, topology, err := util.FindPoolAndTopology(rbdVol.TopologyPools, rbdVol.TopologyRequirement)
 	if err != nil {
 		return err
 	}
 	if poolName != "" {
 		rbdVol.Pool = poolName
+		rbdVol.DataPool = dataPoolName
 		rbdVol.Topology = topology
 	}
 

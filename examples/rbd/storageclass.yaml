@@ -58,18 +58,21 @@ parameters:
    # For further information read TODO<doc>
    # topologyConstrainedPools: |
    #   [{"poolName":"pool0",
-   #      "domainSegments":[
-   #        {"domainLabel":"region","value":"east"},
-   #        {"domainLabel":"zone","value":"zone1"}]},
+   #     "dataPool":"ec-pool0" # optional, erasure-coded pool for data
+   #     "domainSegments":[
+   #       {"domainLabel":"region","value":"east"},
+   #       {"domainLabel":"zone","value":"zone1"}]},
    #    {"poolName":"pool1",
-   #      "domainSegments":[
-   #        {"domainLabel":"region","value":"east"},
-   #        {"domainLabel":"zone","value":"zone2"}]},
+   #     "dataPool":"ec-pool1" # optional, erasure-coded pool for data
+   #     "domainSegments":[
+   #       {"domainLabel":"region","value":"east"},
+   #       {"domainLabel":"zone","value":"zone2"}]},
    #    {"poolName":"pool2",
-   #      "domainSegments":[
-   #        {"domainLabel":"region","value":"west"},
-   #        {"domainLabel":"zone","value":"zone1"}]}
-   #    ]
+   #     "dataPool":"ec-pool2" # optional, erasure-coded pool for data
+   #     "domainSegments":[
+   #       {"domainLabel":"region","value":"west"},
+   #       {"domainLabel":"zone","value":"zone1"}]}
+   #   ]
 
 reclaimPolicy: Delete
 allowVolumeExpansion: true

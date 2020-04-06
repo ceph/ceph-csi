@@ -30,7 +30,7 @@ cluster.
 
 the following parameters are available to configure  kubernetes cluster
 
-| flag        | description                                                   |
+| flag              | description                                                   |
 | ----------------- | ------------------------------------------------------------- |
 | up                | Starts a local kubernetes cluster and prepare a disk for rook |
 | down              | Stops a running local kubernetes cluster                      |
@@ -45,16 +45,16 @@ the following parameters are available to configure  kubernetes cluster
 
 following environment variables can be exported to customize kubernetes deployment
 
-| ENV                | Description                                      | Default                                                            |
-| ------------------ | ------------------------------------------------ | ------------------------------------------------------------------ |
-| MINIKUBE_VERSION      | minikube version to install                      | latest                                                             |
-| KUBE_VERSION          | kubernetes version to install                    | v1.14.10                                                           |
-| MEMORY                | Amount of RAM allocated to the minikube VM in MB | 3000                                                               |
-| VM_DRIVER             | VM driver to create virtual machine              | virtualbox                                                         |
-| CEPHCSI_IMAGE_REPO    | Repo URL to pull cephcsi images                  | quay.io/cephcsi                                                    |
-| K8S_IMAGE_REPO        | Repo URL to pull kubernetes sidecar images       | quay.io/k8scsi                                                     |
-| K8S_FEATURE_GATES     | Feature gates to enable on kubernetes cluster    | BlockVolume=true,CSIBlockVolume=true,VolumeSnapshotDataSource=true |
-| ROOK_BLOCK_POOL_NAME  | Block pool name to create in the rook instance   | newrbdpool                                                         |
+| ENV                  | Description                                      | Default                                                            |
+|----------------------|--------------------------------------------------|--------------------------------------------------------------------|
+| MINIKUBE_VERSION     | minikube version to install                      | latest                                                             |
+| KUBE_VERSION         | kubernetes version to install                    | v1.14.10                                                           |
+| MEMORY               | Amount of RAM allocated to the minikube VM in MB | 3000                                                               |
+| VM_DRIVER            | VM driver to create virtual machine              | virtualbox                                                         |
+| CEPHCSI_IMAGE_REPO   | Repo URL to pull cephcsi images                  | quay.io/cephcsi                                                    |
+| K8S_IMAGE_REPO       | Repo URL to pull kubernetes sidecar images       | quay.io/k8scsi                                                     |
+| K8S_FEATURE_GATES    | Feature gates to enable on kubernetes cluster    | BlockVolume=true,CSIBlockVolume=true,VolumeSnapshotDataSource=true |
+| ROOK_BLOCK_POOL_NAME | Block pool name to create in the rook instance   | newrbdpool                                                         |
 
 - creating kubernetes  cluster
 

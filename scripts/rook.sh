@@ -25,7 +25,7 @@ function deploy_rook() {
 
 	# Check if CephBlockPool is empty
 	if ! kubectl -n rook-ceph get cephblockpools -oyaml | grep 'items: \[\]' &>/dev/null; then
-		check_rbd_stat
+		check_rbd_stat ""
 	fi
 }
 
@@ -44,25 +44,7 @@ function create_block_pool() {
 	kubectl create -f "./newpool.yaml"
 	rm -f "./newpool.yaml"
 
-    for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
-		echo "Checking RBD ($ROOK_BLOCK_POOL_NAME) stats... ${retry}s" && sleep 5
-
-		TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
-		TOOLBOX_POD_STATUS=$(kubectl -n rook-ceph get pod "$TOOLBOX_POD" -ojsonpath='{.status.phase}')
-		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] && \
-			{ echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"; continue; }
-
-		if kubectl exec -n rook-ceph "$TOOLBOX_POD" -it -- rbd pool stats "$ROOK_BLOCK_POOL_NAME" &>/dev/null; then
-			echo "RBD ($ROOK_BLOCK_POOL_NAME) is successfully created..."
-			break
-		fi
-	done
-
-	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
-		echo "[Timeout] Failed to get RBD pool $ROOK_BLOCK_POOL_NAME stats"
-		exit 1
-	fi
-	echo ""
+	check_rbd_stat "$ROOK_BLOCK_POOL_NAME"
 }
 
 function delete_block_pool() {
@@ -122,7 +104,11 @@ function check_mds_stat() {
 
 function check_rbd_stat() {
 	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
-		RBD_POOL_NAME=$(kubectl -n rook-ceph get cephblockpools -ojsonpath='{.items[0].metadata.name}')
+		if [ -z "$1" ]; then
+			RBD_POOL_NAME=$(kubectl -n rook-ceph get cephblockpools -ojsonpath='{.items[0].metadata.name}')
+		else
+			RBD_POOL_NAME=$1
+		fi
 		echo "Checking RBD ($RBD_POOL_NAME) stats... ${retry}s" && sleep 5
 
 		TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')

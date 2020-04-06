@@ -110,7 +110,7 @@ func undoVolReservation(ctx context.Context, volOptions *volumeOptions, vid volu
 
 func updateTopologyConstraints(volOpts *volumeOptions) error {
 	// update request based on topology constrained parameters (if present)
-	poolName, topology, err := util.FindPoolAndTopology(volOpts.TopologyPools, volOpts.TopologyRequirement)
+	poolName, _, topology, err := util.FindPoolAndTopology(volOpts.TopologyPools, volOpts.TopologyRequirement)
 	if err != nil {
 		return err
 	}

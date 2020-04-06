@@ -23,13 +23,14 @@ var (
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
 	// Topology related variables
-	nodeRegionLabel    = "test.failure-domain/region"
-	regionValue        = "testregion"
-	nodeZoneLabel      = "test.failure-domain/zone"
-	zoneValue          = "testzone"
-	nodeCSIRegionLabel = "topology.rbd.csi.ceph.com/region"
-	nodeCSIZoneLabel   = "topology.rbd.csi.ceph.com/zone"
-	rbdTopologyPool    = "newrbdpool"
+	nodeRegionLabel     = "test.failure-domain/region"
+	regionValue         = "testregion"
+	nodeZoneLabel       = "test.failure-domain/zone"
+	zoneValue           = "testzone"
+	nodeCSIRegionLabel  = "topology.rbd.csi.ceph.com/region"
+	nodeCSIZoneLabel    = "topology.rbd.csi.ceph.com/zone"
+	rbdTopologyPool     = "newrbdpool"
+	rbdTopologyDataPool = "replicapool" // NOTE: should be different than rbdTopologyPool for test to be effective
 )
 
 func deployRBDPlugin() {
@@ -125,9 +126,9 @@ var _ = Describe("RBD", func() {
 	// deploy RBD CSI
 	BeforeEach(func() {
 		c = f.ClientSet
-		createNodeLabel(f, nodeRegionLabel, regionValue)
-		createNodeLabel(f, nodeZoneLabel, zoneValue)
 		if deployRBD {
+			createNodeLabel(f, nodeRegionLabel, regionValue)
+			createNodeLabel(f, nodeZoneLabel, zoneValue)
 			if cephCSINamespace != defaultNs {
 				err := createNamespace(c, cephCSINamespace)
 				if err != nil {
@@ -519,11 +520,44 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 
-				// cleanup and undo changes made by the test
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
 					Fail(err.Error())
 				}
+
+				By("checking if data pool parameter is honored", func() {
+					deleteResource(rbdExamplePath + "storageclass.yaml")
+					topologyConstraint := "[{\"poolName\":\"" + rbdTopologyPool + "\",\"dataPool\":\"" + rbdTopologyDataPool +
+						"\",\"domainSegments\":" +
+						"[{\"domainLabel\":\"region\",\"value\":\"" + regionValue + "\"}," +
+						"{\"domainLabel\":\"zone\",\"value\":\"" + zoneValue + "\"}]}]"
+					createRBDStorageClass(f.ClientSet, f,
+						map[string]string{"volumeBindingMode": "WaitForFirstConsumer"},
+						map[string]string{"topologyConstrainedPools": topologyConstraint})
+
+					By("creating an app using a PV from the delayed binding mode StorageClass with a data pool")
+					pvc, app = createPVCAndAppBinding(pvcPath, appPath, f, 0)
+
+					By("ensuring created PV has its image in the topology specific pool")
+					err = checkPVCImageInPool(f, pvc, rbdTopologyPool)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					By("ensuring created image has the right data pool parameter set")
+					err = checkPVCDataPoolForImageInPool(f, pvc, rbdTopologyPool, rbdTopologyDataPool)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					// cleanup and undo changes made by the test
+					err = deletePVCAndApp("", f, pvc, app)
+					if err != nil {
+						Fail(err.Error())
+					}
+				})
+
+				// cleanup and undo changes made by the test
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})

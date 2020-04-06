@@ -1234,20 +1234,39 @@ func checkNodeHasLabel(c clientset.Interface, labelKey, labelValue string) {
 	}
 }
 
-func checkPVCImageInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool string) error {
+func getPVCImageInfoInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool string) (string, error) {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
 
-	_, stdErr := execCommandInPod(f, "rbd info "+pool+"/"+imageData.imageName, rookNamespace, &opt)
+	stdOut, stdErr := execCommandInPod(f, "rbd info "+pool+"/"+imageData.imageName, rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 
 	e2elog.Logf("found image %s in pool %s", imageData.imageName, pool)
+
+	return stdOut, nil
+}
+
+func checkPVCImageInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool string) error {
+	_, err := getPVCImageInfoInPool(f, pvc, pool)
+
+	return err
+}
+
+func checkPVCDataPoolForImageInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool, dataPool string) error {
+	stdOut, err := getPVCImageInfoInPool(f, pvc, pool)
+	if err != nil {
+		return err
+	}
+
+	if !strings.Contains(stdOut, "data_pool: "+dataPool) {
+		return fmt.Errorf("missing data pool value in image info, got info (%s)", stdOut)
+	}
 
 	return nil
 }
