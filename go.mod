@@ -34,13 +34,12 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
 	golang.org/x/sys v0.0.0-20200116001909-b77594299b42
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
-	golang.org/x/tools v0.0.0-20200116062425-473961ec044c
+	golang.org/x/tools v0.0.0-20200116062425-473961ec044c // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20200115191322-ca5a22157cba // indirect
 	google.golang.org/grpc v1.26.0
 	gopkg.in/square/go-jose.v2 v2.4.1 // indirect
 	gopkg.in/yaml.v2 v2.2.7 // indirect
-	honnef.co/go/tools v0.0.1-2019.2.3
 	k8s.io/api v0.17.1
 	k8s.io/apiextensions-apiserver v0.17.1 // indirect
 	k8s.io/apimachinery v0.17.3-beta.0
