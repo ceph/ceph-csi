@@ -33,6 +33,14 @@ import (
 const (
 	defaultNs     = "default"
 	vaultSecretNs = "/secret/ceph-csi/" // nolint: gosec
+
+	// rook created cephfs user
+	cephfsNodePluginSecretName  = "rook-csi-cephfs-node"        // nolint: gosec
+	cephfsProvisionerSecretName = "rook-csi-cephfs-provisioner" // nolint: gosec
+
+	// rook created rbd user
+	rbdNodePluginSecretName  = "rook-csi-rbd-node"        // nolint: gosec
+	rbdProvisionerSecretName = "rook-csi-rbd-provisioner" // nolint: gosec
 )
 
 var (
@@ -260,9 +268,14 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["fsName"] = "myfs"
-	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
-	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
-	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-name"] = cephfsProvisionerSecretName
+
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-name"] = cephfsProvisionerSecretName
+
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = cephfsNodePluginSecretName
 
 	if enablePool {
 		sc.Parameters["pool"] = "myfs-data0"
@@ -284,9 +297,14 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, param
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["pool"] = "replicapool"
-	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
-	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
-	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-name"] = rbdProvisionerSecretName
+
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-name"] = rbdProvisionerSecretName
+
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = rbdNodePluginSecretName
 
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
