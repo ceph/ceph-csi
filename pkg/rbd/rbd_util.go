@@ -165,7 +165,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 
 func (rv *rbdVolume) getIoctx(cr *util.Credentials) (*rados.IOContext, error) {
 	if rv.conn == nil {
-		conn, err := connPool.Get(rv.Pool, rv.Monitors, cr.KeyFile)
+		conn, err := connPool.Get(rv.Pool, rv.Monitors, cr.ID, cr.KeyFile)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get connection")
 		}
