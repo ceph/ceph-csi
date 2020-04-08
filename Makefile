@@ -58,7 +58,7 @@ static-check:
 	./scripts/gosec.sh
 
 func-test:
-	go test github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
+	go test -mod=vendor github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
 
 .PHONY: cephcsi
 cephcsi:

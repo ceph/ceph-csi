@@ -129,6 +129,8 @@ var _ = Describe("cephfs", func() {
 
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
+			// log pods created by helm chart
+			logsCSIPods("app=ceph-csi-cephfs", c)
 			// log provisoner
 			logsCSIPods("app=csi-cephfsplugin-provisioner", c)
 			// log node plugin
