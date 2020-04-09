@@ -49,7 +49,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.17.1 // indirect
 	k8s.io/kubernetes v1.17.1
-	k8s.io/utils v0.0.0-20200109141947-94aeca20bf09
+	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 )
 
 replace (
