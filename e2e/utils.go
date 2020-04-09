@@ -425,6 +425,39 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 	sc.Namespace = cephCSINamespace
 	_, err := c.CoreV1().Secrets(cephCSINamespace).Create(&sc)
 	Expect(err).Should(BeNil())
+
+	err = updateSecretForEncryption(c)
+	Expect(err).Should(BeNil())
+}
+
+// updateSecretForEncryption is an hack to update the secrets created by rook to
+// include the encyption key
+// TODO in cephcsi we need to create own users in ceph cluster and use it for E2E
+func updateSecretForEncryption(c kubernetes.Interface) error {
+	secrets, err := c.CoreV1().Secrets(rookNamespace).Get(rbdProvisionerSecretName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	secrets.Data["encryptionPassphrase"] = []byte("test_passphrase")
+
+	_, err = c.CoreV1().Secrets(rookNamespace).Update(secrets)
+	if err != nil {
+		return err
+	}
+
+	secrets, err = c.CoreV1().Secrets(rookNamespace).Get(rbdNodePluginSecretName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	secrets.Data["encryptionPassphrase"] = []byte("test_passphrase")
+
+	_, err = c.CoreV1().Secrets(rookNamespace).Update(secrets)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func deleteResource(scPath string) {
