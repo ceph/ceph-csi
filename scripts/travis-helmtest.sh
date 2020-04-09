@@ -21,5 +21,5 @@ go test github.com/ceph/ceph-csi/e2e -mod=vendor --deploy-timeout=10 -timeout=30
 
 #cleanup
 scripts/install-helm.sh cleanup-cephcsi
-scripts/install-helm.sh cleanup
+scripts/install-helm.sh clean
 sudo scripts/minikube.sh clean
