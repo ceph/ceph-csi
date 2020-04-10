@@ -190,6 +190,11 @@ spec:
         - name: ceph-csi-config
           configMap:
             name: {{ .Values.configMapName | quote }}
+{{- if .Values.configMapKey }}
+            items:
+              - key: {{ .Values.configMapKey | quote }}
+                path: config.json
+{{- end }}
         - name: ceph-csi-encryption-kms-config
           configMap:
             name: {{ .Values.kmsConfigMapName | quote }}
