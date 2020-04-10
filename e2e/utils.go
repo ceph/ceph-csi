@@ -33,6 +33,14 @@ import (
 const (
 	defaultNs     = "default"
 	vaultSecretNs = "/secret/ceph-csi/" // nolint: gosec
+
+	// rook created cephfs user
+	cephfsNodePluginSecretName  = "rook-csi-cephfs-node"        // nolint: gosec
+	cephfsProvisionerSecretName = "rook-csi-cephfs-provisioner" // nolint: gosec
+
+	// rook created rbd user
+	rbdNodePluginSecretName  = "rook-csi-rbd-node"        // nolint: gosec
+	rbdProvisionerSecretName = "rook-csi-rbd-provisioner" // nolint: gosec
 )
 
 var (
@@ -260,9 +268,14 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["fsName"] = "myfs"
-	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
-	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
-	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-name"] = cephfsProvisionerSecretName
+
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-name"] = cephfsProvisionerSecretName
+
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = cephfsNodePluginSecretName
 
 	if enablePool {
 		sc.Parameters["pool"] = "myfs-data0"
@@ -284,9 +297,14 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, param
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["pool"] = "replicapool"
-	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
-	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
-	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-name"] = rbdProvisionerSecretName
+
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-name"] = rbdProvisionerSecretName
+
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = rbdNodePluginSecretName
 
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
@@ -425,6 +443,39 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 	sc.Namespace = cephCSINamespace
 	_, err := c.CoreV1().Secrets(cephCSINamespace).Create(&sc)
 	Expect(err).Should(BeNil())
+
+	err = updateSecretForEncryption(c)
+	Expect(err).Should(BeNil())
+}
+
+// updateSecretForEncryption is an hack to update the secrets created by rook to
+// include the encyption key
+// TODO in cephcsi we need to create own users in ceph cluster and use it for E2E
+func updateSecretForEncryption(c kubernetes.Interface) error {
+	secrets, err := c.CoreV1().Secrets(rookNamespace).Get(rbdProvisionerSecretName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	secrets.Data["encryptionPassphrase"] = []byte("test_passphrase")
+
+	_, err = c.CoreV1().Secrets(rookNamespace).Update(secrets)
+	if err != nil {
+		return err
+	}
+
+	secrets, err = c.CoreV1().Secrets(rookNamespace).Get(rbdNodePluginSecretName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	secrets.Data["encryptionPassphrase"] = []byte("test_passphrase")
+
+	_, err = c.CoreV1().Secrets(rookNamespace).Update(secrets)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func deleteResource(scPath string) {

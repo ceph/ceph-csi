@@ -34,8 +34,8 @@ const (
 // working Ceph cluster to connect to.
 //
 // This is mostly a copy of ConnPool.Get()
-func (cp *ConnPool) fakeGet(pool, monitors, keyfile string) (*rados.Conn, string, error) {
-	unique, err := cp.generateUniqueKey(pool, monitors, keyfile)
+func (cp *ConnPool) fakeGet(pool, monitors, user, keyfile string) (*rados.Conn, string, error) {
+	unique, err := cp.generateUniqueKey(pool, monitors, user, keyfile)
 	if err != nil {
 		return nil, "", err
 	}
@@ -91,7 +91,7 @@ func TestConnPool(t *testing.T) {
 	var unique string
 
 	t.Run("fakeGet", func(t *testing.T) {
-		conn, unique, err = cp.fakeGet("pool", "monitors", keyfile)
+		conn, unique, err = cp.fakeGet("pool", "monitors", "user", keyfile)
 		if err != nil {
 			t.Errorf("failed to get connection: %v", err)
 		}
@@ -115,7 +115,7 @@ func TestConnPool(t *testing.T) {
 
 	t.Run("doubleFakeGet", func(t *testing.T) {
 		// after a 2nd get, there should still be a single conn in cp.conns
-		_, _, err = cp.fakeGet("pool", "monitors", keyfile)
+		_, _, err = cp.fakeGet("pool", "monitors", "user", keyfile)
 		if err != nil {
 			t.Errorf("failed to get connection: %v", err)
 		}
