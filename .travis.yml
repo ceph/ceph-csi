@@ -27,7 +27,7 @@ env:
     - TEST_COVERAGE=stdout
     - GO_METALINTER_THREADS=1
     - GO_COVER_DIR=_output
-    - HELM_VERSION=v2.16.5
+    - HELM_VERSION=v3.1.2
     - VM_DRIVER=none
     - MINIKUBE_VERSION=v1.6.0
     - CHANGE_MINIKUBE_NONE_USER=true
@@ -72,7 +72,8 @@ jobs:
           "https://raw.githubusercontent.com/securego/gosec/master/install.sh"
           | sh -s -- -b $GOPATH/bin "${GOSEC_VERSION}"
         # install helm for helm lint
-        - curl -L https://git.io/get_helm.sh | bash
+        - curl -L https://git.io/get_helm.sh
+          | sh -s -- --version "${HELM_VERSION}"
       script:
         - make go-lint
         - make go-lint-text
