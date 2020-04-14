@@ -70,6 +70,7 @@ NOTE:
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
 |        | Resize volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
 |        | Metrics Support                                           | Beta           | >= v1.2.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
+|        | Topology Aware Provisioning Support                       | Alpha          | >= v2.1.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
 | CephFS | Dynamically provision, de-provision File mode RWO volume  | Beta           | >= v1.1.0          | >= v1.0.0        | Nautilus (>=14.2.2)  | >= v1.14.0         |
 |        | Dynamically provision, de-provision File mode RWX volume  | Beta           | >= v1.1.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.14.0         |
 |        | Creating and deleting snapshot                            | -              | -                  | -                | -                    | -                  |
@@ -92,6 +93,7 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | Master (Branch)         | quay.io/cephcsi/cephcsi      | canary    |
+| v2.1.0 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.0    |
 | v2.0.1 (Release)        | quay.io/cephcsi/cephcsi      | v2.0.1    |
 | v2.0.0 (Release)        | quay.io/cephcsi/cephcsi      | v2.0.0    |
 | v1.2.2 (Release)        | quay.io/cephcsi/cephcsi      | v1.2.2    |
