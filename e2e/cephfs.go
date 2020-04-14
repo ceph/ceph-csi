@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	. "github.com/onsi/ginkgo" // nolint
-
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -30,7 +29,7 @@ func deployCephfsPlugin() {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsProvisionerRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(data, "--ignore-not-found=true", ns, "delete", "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, "--ignore-not-found=true", ns, "delete", "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to delete provisioner rbac %s %v", cephfsDirPath+cephfsProvisionerRBAC, err)
 	}
@@ -39,7 +38,7 @@ func deployCephfsPlugin() {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsNodePluginRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(data, "delete", "--ignore-not-found=true", ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, "delete", "--ignore-not-found=true", ns, "-f", "-")
 
 	if err != nil {
 		e2elog.Logf("failed to delete nodeplugin rbac %s %v", cephfsDirPath+cephfsNodePluginRBAC, err)
@@ -57,7 +56,7 @@ func createORDeleteCephfsResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsProvisioner, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s cephfs provisioner %v", action, err)
 	}
@@ -66,7 +65,7 @@ func createORDeleteCephfsResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsProvisionerRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s cephfs provisioner rbac %v", action, err)
 	}
@@ -75,7 +74,7 @@ func createORDeleteCephfsResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsProvisionerPSP, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s cephfs provisioner psp %v", action, err)
 	}
@@ -84,7 +83,7 @@ func createORDeleteCephfsResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsNodePlugin, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s cephfs nodeplugin %v", action, err)
 	}
@@ -93,7 +92,7 @@ func createORDeleteCephfsResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsNodePluginRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s cephfs nodeplugin rbac %v", action, err)
 	}
@@ -102,7 +101,7 @@ func createORDeleteCephfsResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsNodePluginPSP, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s cephfs nodeplugin psp %v", action, err)
 	}

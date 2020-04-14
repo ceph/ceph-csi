@@ -13,6 +13,7 @@ limitations under the License.
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -28,7 +29,7 @@ func logsCSIPods(label string, c clientset.Interface) {
 	opt := metav1.ListOptions{
 		LabelSelector: label,
 	}
-	podList, err := c.CoreV1().Pods(cephCSINamespace).List(opt)
+	podList, err := c.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
 	if err != nil {
 		e2elog.Logf("failed to list pods with selector %s %v", label, err)
 		return
@@ -62,7 +63,7 @@ func getPreviousPodLogs(c clientset.Interface, namespace, podName, containerName
 		Name(podName).SubResource("log").
 		Param("container", containerName).
 		Param("previous", strconv.FormatBool(true)).
-		Do().
+		Do(context.TODO()).
 		Raw()
 	if err != nil {
 		return "", err
