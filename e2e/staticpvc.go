@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -115,14 +116,14 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 
 	pv := getStaticPV(pvName, rbdImageName, size, "csi-rbd-secret", cephCSINamespace, sc, "rbd.csi.ceph.com", isBlock, opt)
 
-	_, err := c.CoreV1().PersistentVolumes().Create(pv)
+	_, err := c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("PV Create API error: %v", err)
 	}
 
 	pvc := getStaticPVC(pvcName, pvName, size, ns, sc, isBlock)
 
-	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("PVC Create API error: %v", err)
 	}
@@ -144,12 +145,12 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 		return err
 	}
 
-	err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(pvc.Name, &metav1.DeleteOptions{})
+	err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
 
-	err = c.CoreV1().PersistentVolumes().Delete(pv.Name, &metav1.DeleteOptions{})
+	err = c.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}

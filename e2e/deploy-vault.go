@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"strings"
 
 	. "github.com/onsi/gomega" // nolint
@@ -21,7 +22,7 @@ var (
 func deployVault(c kubernetes.Interface, deployTimeout int) {
 	// hack to make helm E2E pass as helm charts creates this configmap as part
 	// of cephcsi deployment
-	_, err := framework.RunKubectl("delete", "cm", "ceph-csi-encryption-kms-config", "--namespace", cephCSINamespace, "--ignore-not-found=true")
+	_, err := framework.RunKubectl(cephCSINamespace, "delete", "cm", "ceph-csi-encryption-kms-config", "--namespace", cephCSINamespace, "--ignore-not-found=true")
 	Expect(err).Should(BeNil())
 
 	createORDeleteVault("create")
@@ -29,7 +30,7 @@ func deployVault(c kubernetes.Interface, deployTimeout int) {
 		LabelSelector: "app=vault",
 	}
 
-	pods, err := c.CoreV1().Pods(cephCSINamespace).List(opt)
+	pods, err := c.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
 	Expect(err).Should(BeNil())
 	Expect(len(pods.Items)).Should(Equal(1))
 	name := pods.Items[0].Name
@@ -50,7 +51,7 @@ func createORDeleteVault(action string) {
 	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
 
 	data = strings.ReplaceAll(data, "value: default", "value: "+cephCSINamespace)
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s vault statefulset %v", action, err)
 	}
@@ -59,7 +60,7 @@ func createORDeleteVault(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultRBACPath, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s vault statefulset %v", action, err)
 	}
@@ -69,7 +70,7 @@ func createORDeleteVault(action string) {
 		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultConfigPath, err)
 	}
 	data = strings.ReplaceAll(data, "default", cephCSINamespace)
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s vault config map %v", action, err)
 	}
@@ -78,7 +79,7 @@ func createORDeleteVault(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultPSPPath, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s vault psp %v", action, err)
 	}

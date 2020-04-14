@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo" // nolint
-
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -31,7 +30,7 @@ func deployRBDPlugin() {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisionerRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(data, "--ignore-not-found=true", ns, "delete", "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, "--ignore-not-found=true", ns, "delete", "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to delete provisioner rbac %s %v", rbdDirPath+rbdProvisionerRBAC, err)
 	}
@@ -40,7 +39,7 @@ func deployRBDPlugin() {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePluginRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(data, "delete", "--ignore-not-found=true", ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, "delete", "--ignore-not-found=true", ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to delete nodeplugin rbac %s %v", rbdDirPath+rbdNodePluginRBAC, err)
 	}
@@ -57,7 +56,7 @@ func createORDeleteRbdResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisioner, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s rbd provisioner %v", action, err)
 	}
@@ -66,7 +65,7 @@ func createORDeleteRbdResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisionerRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s provisioner rbac %v", action, err)
 	}
@@ -75,7 +74,7 @@ func createORDeleteRbdResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdProvisionerPSP, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s provisioner psp %v", action, err)
 	}
@@ -84,7 +83,7 @@ func createORDeleteRbdResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePlugin, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s nodeplugin %v", action, err)
 	}
@@ -93,7 +92,7 @@ func createORDeleteRbdResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePluginRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s nodeplugin rbac %v", action, err)
 	}
@@ -102,7 +101,7 @@ func createORDeleteRbdResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePluginPSP, err)
 	}
-	_, err = framework.RunKubectlInput(data, action, ns, "-f", "-")
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s nodeplugin psp %v", action, err)
 	}
