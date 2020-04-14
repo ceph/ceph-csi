@@ -686,20 +686,35 @@ func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolu
 	return err
 }
 
+// createAppWithPVC creates pod and attaches the pvc
+// if name is not empty same will be set app name
+func createAppWithPVC(name string, f *framework.Framework, app *v1.Pod, pvc *v1.PersistentVolumeClaim) error {
+	if name != "" {
+		app.Name = name
+	}
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	err := createApp(f.ClientSet, app, deployTimeout)
+	return err
+}
+
 // deletePVCAndApp delete pvc and pod
 // if name is not empty same will be set as pvc and app name
 func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
 	if name != "" {
-		pvc.Name = name
 		app.Name = name
 		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+		if pvc != nil {
+			pvc.Name = name
+		}
 	}
 
 	err := deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 	if err != nil {
 		return err
 	}
-	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	if pvc != nil {
+		err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	}
 	return err
 }
 

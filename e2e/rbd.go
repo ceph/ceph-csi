@@ -5,6 +5,9 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo" // nolint
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -338,6 +341,67 @@ var _ = Describe("RBD", func() {
 
 			By("check data persist after recreating pod with same pvc", func() {
 				err := checkDataPersist(pvcPath, appPath, f)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
+
+			By("create PVC with data (RWO) and attach to multiple Pods (ROX)", func() {
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+				pvc.Namespace = f.UniqueName
+				pvc.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce, v1.ReadOnlyMany}
+
+				app, err := loadApp(appPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+				app.Namespace = f.UniqueName
+
+				err = createPVCAndApp(f.UniqueName, f, pvc, app)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				// write data to PVC
+				opt := metav1.ListOptions{
+					FieldSelector: "metadata.name=" + f.UniqueName,
+				}
+				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+				execCommandInPod(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), app.Namespace, &opt)
+
+				// delete Pod, but keep PVC
+				err = deletePVCAndApp("", f, nil, app)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				// create Pods and attach PVC read-only
+				app.Spec.Containers[0].VolumeMounts[0].ReadOnly = true
+
+				totalCount := 2
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					err := createAppWithPVC(name, f, app, pvc)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+				}
+
+				// delete Pods
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					err = deletePod(name, app.Namespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+				}
+				// delete the PVC on last usage
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
 					Fail(err.Error())
 				}
