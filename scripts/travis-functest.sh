@@ -11,6 +11,6 @@ sudo scripts/minikube.sh cephcsi
 sudo scripts/minikube.sh k8s-sidecar
 sudo chown -R travis: "$HOME"/.minikube /usr/local/bin/kubectl
 # functional tests
-go test github.com/ceph/ceph-csi/e2e --deploy-timeout=10 -timeout=30m --cephcsi-namespace=cephcsi-e2e-$RANDOM -v
+go test github.com/ceph/ceph-csi/e2e --deploy-timeout=10 -timeout=30m --cephcsi-namespace=cephcsi-e2e-$RANDOM -v -mod=vendor
 
 sudo scripts/minikube.sh clean

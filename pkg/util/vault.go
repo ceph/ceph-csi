@@ -285,7 +285,7 @@ func (kms *VaultKMS) getAccessToken() (string, error) {
 }
 
 func (kms *VaultKMS) processError(resp *http.Response, action string) error {
-	if resp.StatusCode >= 200 || resp.StatusCode < 300 {
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
 	body, err := ioutil.ReadAll(resp.Body)
