@@ -19,16 +19,12 @@ package connection
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"strings"
 	"time"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
-	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/kubernetes-csi/csi-lib-utils/metrics"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc"
 	"k8s.io/klog"
@@ -63,8 +59,8 @@ const terminationLogPath = "/dev/termination-log"
 //
 // For other connections, the default behavior from gRPC is used and
 // loss of connection is not detected reliably.
-func Connect(address string, options ...Option) (*grpc.ClientConn, error) {
-	return connect(address, []grpc.DialOption{}, options)
+func Connect(address string, metricsManager metrics.CSIMetricsManager, options ...Option) (*grpc.ClientConn, error) {
+	return connect(address, metricsManager, []grpc.DialOption{}, options)
 }
 
 // Option is the type of all optional parameters for Connect.
@@ -98,7 +94,10 @@ type options struct {
 }
 
 // connect is the internal implementation of Connect. It has more options to enable testing.
-func connect(address string, dialOptions []grpc.DialOption, connectOptions []Option) (*grpc.ClientConn, error) {
+func connect(
+	address string,
+	metricsManager metrics.CSIMetricsManager,
+	dialOptions []grpc.DialOption, connectOptions []Option) (*grpc.ClientConn, error) {
 	var o options
 	for _, option := range connectOptions {
 		option(&o)
@@ -108,7 +107,10 @@ func connect(address string, dialOptions []grpc.DialOption, connectOptions []Opt
 		grpc.WithInsecure(),                   // Don't use TLS, it's usually local Unix domain socket in a container.
 		grpc.WithBackoffMaxDelay(time.Second), // Retry every second after failure.
 		grpc.WithBlock(),                      // Block until connection succeeds.
-		grpc.WithUnaryInterceptor(LogGRPC),    // Log all messages.
+		grpc.WithChainUnaryInterceptor(
+			LogGRPC, // Log all messages.
+			extendedCSIMetricsManager{metricsManager}.recordMetricsInterceptor, // Record metrics for each gRPC call.
+		),
 	)
 	unixPrefix := "unix://"
 	if strings.HasPrefix(address, "/") {
@@ -185,126 +187,25 @@ func LogGRPC(ctx context.Context, method string, req, reply interface{}, cc *grp
 	return err
 }
 
-// GetDriverName returns name of CSI driver.
-func GetDriverName(ctx context.Context, conn *grpc.ClientConn) (string, error) {
-	client := csi.NewIdentityClient(conn)
-
-	req := csi.GetPluginInfoRequest{}
-	rsp, err := client.GetPluginInfo(ctx, &req)
-	if err != nil {
-		return "", err
-	}
-	name := rsp.GetName()
-	if name == "" {
-		return "", fmt.Errorf("driver name is empty")
-	}
-	return name, nil
+type extendedCSIMetricsManager struct {
+	metrics.CSIMetricsManager
 }
 
-// PluginCapabilitySet is set of CSI plugin capabilities. Only supported capabilities are in the map.
-type PluginCapabilitySet map[csi.PluginCapability_Service_Type]bool
-
-// GetPluginCapabilities returns set of supported capabilities of CSI driver.
-func GetPluginCapabilities(ctx context.Context, conn *grpc.ClientConn) (PluginCapabilitySet, error) {
-	client := csi.NewIdentityClient(conn)
-	req := csi.GetPluginCapabilitiesRequest{}
-	rsp, err := client.GetPluginCapabilities(ctx, &req)
-	if err != nil {
-		return nil, err
-	}
-	caps := PluginCapabilitySet{}
-	for _, cap := range rsp.GetCapabilities() {
-		if cap == nil {
-			continue
-		}
-		srv := cap.GetService()
-		if srv == nil {
-			continue
-		}
-		t := srv.GetType()
-		caps[t] = true
-	}
-	return caps, nil
-}
-
-// ControllerCapabilitySet is set of CSI controller capabilities. Only supported capabilities are in the map.
-type ControllerCapabilitySet map[csi.ControllerServiceCapability_RPC_Type]bool
-
-// GetControllerCapabilities returns set of supported controller capabilities of CSI driver.
-func GetControllerCapabilities(ctx context.Context, conn *grpc.ClientConn) (ControllerCapabilitySet, error) {
-	client := csi.NewControllerClient(conn)
-	req := csi.ControllerGetCapabilitiesRequest{}
-	rsp, err := client.ControllerGetCapabilities(ctx, &req)
-	if err != nil {
-		return nil, err
-	}
-
-	caps := ControllerCapabilitySet{}
-	for _, cap := range rsp.GetCapabilities() {
-		if cap == nil {
-			continue
-		}
-		rpc := cap.GetRpc()
-		if rpc == nil {
-			continue
-		}
-		t := rpc.GetType()
-		caps[t] = true
-	}
-	return caps, nil
-}
-
-// ProbeForever calls Probe() of a CSI driver and waits until the driver becomes ready.
-// Any error other than timeout is returned.
-func ProbeForever(conn *grpc.ClientConn, singleProbeTimeout time.Duration) error {
-	for {
-		klog.Info("Probing CSI driver for readiness")
-		ready, err := probeOnce(conn, singleProbeTimeout)
-		if err != nil {
-			st, ok := status.FromError(err)
-			if !ok {
-				// This is not gRPC error. The probe must have failed before gRPC
-				// method was called, otherwise we would get gRPC error.
-				return fmt.Errorf("CSI driver probe failed: %s", err)
-			}
-			if st.Code() != codes.DeadlineExceeded {
-				return fmt.Errorf("CSI driver probe failed: %s", err)
-			}
-			// Timeout -> driver is not ready. Fall through to sleep() below.
-			klog.Warning("CSI driver probe timed out")
-		} else {
-			if ready {
-				return nil
-			}
-			klog.Warning("CSI driver is not ready")
-		}
-		// Timeout was returned or driver is not ready.
-		time.Sleep(probeInterval)
-	}
-}
-
-// probeOnce is a helper to simplify defer cancel()
-func probeOnce(conn *grpc.ClientConn, timeout time.Duration) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return Probe(ctx, conn)
-}
-
-// Probe calls driver Probe() just once and returns its result without any processing.
-func Probe(ctx context.Context, conn *grpc.ClientConn) (ready bool, err error) {
-	client := csi.NewIdentityClient(conn)
-
-	req := csi.ProbeRequest{}
-	rsp, err := client.Probe(ctx, &req)
-
-	if err != nil {
-		return false, err
-	}
-
-	r := rsp.GetReady()
-	if r == nil {
-		// "If not present, the caller SHALL assume that the plugin is in a ready state"
-		return true, nil
-	}
-	return r.GetValue(), nil
+// recordMetricsInterceptor is a gPRC unary interceptor for recording metrics for CSI operations.
+func (cmm extendedCSIMetricsManager) recordMetricsInterceptor(
+	ctx context.Context,
+	method string,
+	req, reply interface{},
+	cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption) error {
+	start := time.Now()
+	err := invoker(ctx, method, req, reply, cc, opts...)
+	duration := time.Since(start)
+	cmm.RecordMetrics(
+		method,   /* operationName */
+		err,      /* operationErr */
+		duration, /* operationDuration */
+	)
+	return err
 }

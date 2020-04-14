@@ -22,6 +22,7 @@ import (
 
 	"github.com/ceph/ceph-csi/pkg/util"
 	connlib "github.com/kubernetes-csi/csi-lib-utils/connection"
+	"github.com/kubernetes-csi/csi-lib-utils/metrics"
 	"github.com/kubernetes-csi/csi-lib-utils/rpc"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
@@ -57,14 +58,15 @@ func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 	klog.V(3).Infof("Health check succeeded")
 }
 
-func recordLiveness(endpoint string, pollTime, timeout time.Duration) {
+func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration) {
+	liveMetricsManager := metrics.NewCSIMetricsManager(drivername)
 	// register prometheus metrics
 	err := prometheus.Register(liveness)
 	if err != nil {
 		klog.Fatalln(err)
 	}
 
-	csiConn, err := connlib.Connect(endpoint)
+	csiConn, err := connlib.Connect(endpoint, liveMetricsManager)
 	if err != nil {
 		// connlib should retry forever so a returned error should mean
 		// the grpc client is misconfigured rather than an error on the network
@@ -84,7 +86,7 @@ func Run(conf *util.Config) {
 	klog.V(3).Infof("Liveness Running")
 
 	// start liveness collection
-	go recordLiveness(conf.Endpoint, conf.PollTime, conf.PoolTimeout)
+	go recordLiveness(conf.Endpoint, conf.DriverName, conf.PollTime, conf.PoolTimeout)
 
 	// start up prometheus endpoint
 	util.StartMetricsServer(conf)
