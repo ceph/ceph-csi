@@ -69,3 +69,27 @@ pull_request_rules:
         strict: smart
       dismiss_reviews: {}
       delete_head_branch: {}
+  - name: backport patches to release-v2.1 branch
+    conditions:
+      - base=master
+      - label=backport-to-release-v2.1
+    actions:
+      backport:
+        branches:
+          - release-v2.1
+  # automerge backports if CI successfully ran
+  - name: automerge backport release-v2.1
+    conditions:
+      - author=mergify[bot]
+      - base=release-v2.1
+      - label!=DNM
+      - "#changes-requested-reviews-by=0"
+      - "#approved-reviews-by>=1"
+      - "status-success=continuous-integration/travis-ci/pr"
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
