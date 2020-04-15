@@ -24,12 +24,12 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/ceph/ceph-csi/pkg/util"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-
-	"github.com/ceph/ceph-csi/pkg/util"
-	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 type volumeID string
