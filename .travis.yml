@@ -15,7 +15,7 @@ services:
 language: go
 branches:
   only:
-    - master
+    - release-v2.1
 
 go: 1.13.x
 
