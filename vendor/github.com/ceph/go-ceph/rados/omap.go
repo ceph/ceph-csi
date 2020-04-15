@@ -63,7 +63,7 @@ func (ioctx *IOContext) SetOmap(oid string, pairs map[string][]byte) error {
 	ret := C.rados_write_op_operate(op, ioctx.ioctx, c_oid, nil, 0)
 	C.rados_release_write_op(op)
 
-	return getRadosError(int(ret))
+	return getError(ret)
 }
 
 // OmapListFunc is the type of the function called for each omap key
@@ -104,9 +104,9 @@ func (ioctx *IOContext) ListOmapValues(oid string, startAfter string, filterPref
 	ret := C.rados_read_op_operate(op, ioctx.ioctx, c_oid, 0)
 
 	if int(ret) != 0 {
-		return getRadosError(int(ret))
+		return getError(ret)
 	} else if int(c_prval) != 0 {
-		return RadosError(int(c_prval))
+		return getError(c_prval)
 	}
 
 	for {
@@ -117,7 +117,7 @@ func (ioctx *IOContext) ListOmapValues(oid string, startAfter string, filterPref
 		ret = C.rados_omap_get_next(c_iter, &c_key, &c_val, &c_len)
 
 		if int(ret) != 0 {
-			return getRadosError(int(ret))
+			return getError(ret)
 		}
 
 		if c_key == nil {
@@ -210,7 +210,7 @@ func (ioctx *IOContext) RmOmapKeys(oid string, keys []string) error {
 	ret := C.rados_write_op_operate(op, ioctx.ioctx, c_oid, nil, 0)
 	C.rados_release_write_op(op)
 
-	return getRadosError(int(ret))
+	return getError(ret)
 }
 
 // CleanOmap clears the omap `oid`
@@ -224,5 +224,5 @@ func (ioctx *IOContext) CleanOmap(oid string) error {
 	ret := C.rados_write_op_operate(op, ioctx.ioctx, c_oid, nil, 0)
 	C.rados_release_write_op(op)
 
-	return getRadosError(int(ret))
+	return getError(ret)
 }

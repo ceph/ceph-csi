@@ -8,50 +8,27 @@ package rbd
 // #include <stdlib.h>
 // #include <rados/librados.h>
 // #include <rbd/librbd.h>
-// #include <rbd/features.h>
 import "C"
 
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"time"
 	"unsafe"
 
-	"github.com/ceph/go-ceph/errutil"
 	"github.com/ceph/go-ceph/rados"
 )
 
 const (
-	// RBD features.
-	RbdFeatureLayering      = uint64(C.RBD_FEATURE_LAYERING)
-	RbdFeatureStripingV2    = uint64(C.RBD_FEATURE_STRIPINGV2)
-	RbdFeatureExclusiveLock = uint64(C.RBD_FEATURE_EXCLUSIVE_LOCK)
-	RbdFeatureObjectMap     = uint64(C.RBD_FEATURE_OBJECT_MAP)
-	RbdFeatureFastDiff      = uint64(C.RBD_FEATURE_FAST_DIFF)
-	RbdFeatureDeepFlatten   = uint64(C.RBD_FEATURE_DEEP_FLATTEN)
-	RbdFeatureJournaling    = uint64(C.RBD_FEATURE_JOURNALING)
-	RbdFeatureDataPool      = uint64(C.RBD_FEATURE_DATA_POOL)
+	// Image.Seek() constants:
 
-	RbdFeaturesDefault = uint64(C.RBD_FEATURES_DEFAULT)
-
-	// Features that make an image inaccessible for read or write by clients that don't understand
-	// them.
-	RbdFeaturesIncompatible = uint64(C.RBD_FEATURES_INCOMPATIBLE)
-
-	// Features that make an image unwritable by clients that don't understand them.
-	RbdFeaturesRwIncompatible = uint64(C.RBD_FEATURES_RW_INCOMPATIBLE)
-
-	// Features that may be dynamically enabled or disabled.
-	RbdFeaturesMutable = uint64(C.RBD_FEATURES_MUTABLE)
-
-	// Features that only work when used with a single client using the image for writes.
-	RbdFeaturesSingleClient = uint64(C.RBD_FEATURES_SINGLE_CLIENT)
-
-	// Image.Seek() constants
+	// SeekSet is used with Seek to absolutely position the file.
 	SeekSet = int(C.SEEK_SET)
+	// SeekCur is used with Seek to position the file relatively to the current
+	// position.
 	SeekCur = int(C.SEEK_CUR)
+	// SeekEnd is used with Seek to position the file relatively to the end.
 	SeekEnd = int(C.SEEK_END)
 )
 
@@ -66,22 +43,7 @@ const (
 	NoSnapshot = ""
 )
 
-//
-type RBDError int
-
-var (
-	ErrNoIOContext    = errors.New("RBD image does not have an IOContext")
-	ErrNoName         = errors.New("RBD image does not have a name")
-	ErrSnapshotNoName = errors.New("RBD snapshot does not have a name")
-	ErrImageNotOpen   = errors.New("RBD image not open")
-	ErrNotFound       = errors.New("RBD image not found")
-
-	// retained for compatibility with old versions
-	RbdErrorImageNotOpen = ErrImageNotOpen
-	RbdErrorNotFound     = ErrNotFound
-)
-
-//
+// ImageInfo represents the status information for an image.
 type ImageInfo struct {
 	Size              uint64
 	Obj_size          uint64
@@ -92,21 +54,21 @@ type ImageInfo struct {
 	Parent_name       string
 }
 
-//
+// SnapInfo represents the status information for a snapshot.
 type SnapInfo struct {
 	Id   uint64
 	Size uint64
 	Name string
 }
 
-//
+// Locker provides info about a client that is locking an image.
 type Locker struct {
 	Client string
 	Cookie string
 	Addr   string
 }
 
-//
+// Image is a handle for an RBD image.
 type Image struct {
 	io.Reader
 	io.Writer
@@ -117,12 +79,6 @@ type Image struct {
 	offset int64
 	ioctx  *rados.IOContext
 	image  C.rbd_image_t
-}
-
-//
-type Snapshot struct {
-	image *Image
-	name  string
 }
 
 // TrashInfo contains information about trashed RBDs.
@@ -145,6 +101,11 @@ func split(buf []byte) (values []string) {
 	return values
 }
 
+// cephIoctx returns a ceph rados_ioctx_t given a go-ceph rados IOContext.
+func cephIoctx(radosIoctx *rados.IOContext) C.rados_ioctx_t {
+	return C.rados_ioctx_t(radosIoctx.Pointer())
+}
+
 // test if a bit is set in the given value
 func hasBit(value, bit uint32) bool {
 	return (value & bit) == bit
@@ -162,38 +123,6 @@ func (image *Image) validate(req uint32) error {
 	}
 
 	return nil
-}
-
-// validate the attributes listed in the req bitmask, and return an error in
-// case the attribute is not set
-// Calls snapshot.image.validate(req) to validate the image attributes.
-func (snapshot *Snapshot) validate(req uint32) error {
-	if hasBit(req, snapshotNeedsName) && snapshot.name == "" {
-		return ErrSnapshotNoName
-	} else if snapshot.image != nil {
-		return snapshot.image.validate(req)
-	}
-
-	return nil
-}
-
-func (e RBDError) Error() string {
-	errno, s := errutil.FormatErrno(int(e))
-	if s == "" {
-		return fmt.Sprintf("rbd: ret=%d", errno)
-	}
-	return fmt.Sprintf("rbd: ret=%d, %s", errno, s)
-}
-
-func getError(err C.int) error {
-	if err != 0 {
-		if err == -C.ENOENT {
-			return ErrNotFound
-		}
-		return RBDError(err)
-	} else {
-		return nil
-	}
 }
 
 // Version returns the major, minor, and patch level of the librbd library.
@@ -238,7 +167,7 @@ func Create(ioctx *rados.IOContext, name string, size uint64, order int,
 
 		defer C.free(unsafe.Pointer(c_name))
 
-		ret = C.rbd_create(C.rados_ioctx_t(ioctx.Pointer()),
+		ret = C.rbd_create(cephIoctx(ioctx),
 			c_name, C.uint64_t(size), &c_order)
 	default:
 		return nil, errors.New("Wrong number of argument")
@@ -268,7 +197,7 @@ func Create2(ioctx *rados.IOContext, name string, size uint64, features uint64,
 
 	defer C.free(unsafe.Pointer(c_name))
 
-	ret = C.rbd_create2(C.rados_ioctx_t(ioctx.Pointer()), c_name,
+	ret = C.rbd_create2(cephIoctx(ioctx), c_name,
 		C.uint64_t(size), C.uint64_t(features), &c_order)
 	if ret < 0 {
 		return nil, RBDError(ret)
@@ -296,7 +225,7 @@ func Create3(ioctx *rados.IOContext, name string, size uint64, features uint64,
 
 	defer C.free(unsafe.Pointer(c_name))
 
-	ret = C.rbd_create3(C.rados_ioctx_t(ioctx.Pointer()), c_name,
+	ret = C.rbd_create3(cephIoctx(ioctx), c_name,
 		C.uint64_t(size), C.uint64_t(features), &c_order,
 		C.uint64_t(stripe_unit), C.uint64_t(stripe_count))
 	if ret < 0 {
@@ -329,9 +258,9 @@ func (image *Image) Clone(snapname string, c_ioctx *rados.IOContext, c_name stri
 	defer C.free(unsafe.Pointer(c_p_snapname))
 	defer C.free(unsafe.Pointer(c_c_name))
 
-	ret := C.rbd_clone(C.rados_ioctx_t(image.ioctx.Pointer()),
+	ret := C.rbd_clone(cephIoctx(image.ioctx),
 		c_p_name, c_p_snapname,
-		C.rados_ioctx_t(c_ioctx.Pointer()),
+		cephIoctx(c_ioctx),
 		c_c_name, C.uint64_t(features), &c_order)
 	if ret < 0 {
 		return nil, RBDError(ret)
@@ -364,7 +293,7 @@ func (image *Image) Trash(delay time.Duration) error {
 	c_name := C.CString(image.name)
 	defer C.free(unsafe.Pointer(c_name))
 
-	return getError(C.rbd_trash_move(C.rados_ioctx_t(image.ioctx.Pointer()), c_name,
+	return getError(C.rbd_trash_move(cephIoctx(image.ioctx), c_name,
 		C.uint64_t(delay.Seconds())))
 }
 
@@ -383,7 +312,7 @@ func (image *Image) Rename(destname string) error {
 	defer C.free(unsafe.Pointer(c_srcname))
 	defer C.free(unsafe.Pointer(c_destname))
 
-	err := RBDError(C.rbd_rename(C.rados_ioctx_t(image.ioctx.Pointer()),
+	err := RBDError(C.rbd_rename(cephIoctx(image.ioctx),
 		c_srcname, c_destname))
 	if err == 0 {
 		image.name = destname
@@ -523,22 +452,6 @@ func (image *Image) GetSize() (size uint64, err error) {
 	return size, nil
 }
 
-// GetFeatures returns the features bitmask for the rbd image.
-//
-// Implements:
-//  int rbd_get_features(rbd_image_t image, uint64_t *features);
-func (image *Image) GetFeatures() (features uint64, err error) {
-	if err := image.validate(imageIsOpen); err != nil {
-		return 0, err
-	}
-
-	if ret := C.rbd_get_features(image.image, (*C.uint64_t)(&features)); ret < 0 {
-		return 0, RBDError(ret)
-	}
-
-	return features, nil
-}
-
 // GetStripeUnit returns the stripe-unit value for the rbd image.
 //
 // Implements:
@@ -605,10 +518,10 @@ func (image *Image) Copy(ioctx *rados.IOContext, destname string) error {
 	defer C.free(unsafe.Pointer(c_destname))
 
 	return getError(C.rbd_copy(image.image,
-		C.rados_ioctx_t(ioctx.Pointer()), c_destname))
+		cephIoctx(ioctx), c_destname))
 }
 
-// Copy one rbd image to another, using an image handle.
+// Copy2 copies one rbd image to another, using an image handle.
 //
 // Implements:
 //  int rbd_copy2(rbd_image_t src, rbd_image_t dest);
@@ -818,6 +731,7 @@ func (image *Image) Write(data []byte) (n int, err error) {
 	return ret, err
 }
 
+// Seek updates the internal file position for the current image.
 func (image *Image) Seek(offset int64, whence int) (int64, error) {
 	switch whence {
 	case SeekSet:
@@ -836,7 +750,12 @@ func (image *Image) Seek(offset int64, whence int) (int64, error) {
 	return image.offset, nil
 }
 
-// int rbd_discard(rbd_image_t image, uint64_t ofs, uint64_t len);
+// Discard the supplied range from the image. The supplied range will be read
+// as zeros once Discard returns. The discarded range will no longer take up
+// space.
+//
+// Implements:
+//  int rbd_discard(rbd_image_t image, uint64_t ofs, uint64_t len);
 func (image *Image) Discard(ofs uint64, length uint64) (int, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -850,6 +769,7 @@ func (image *Image) Discard(ofs uint64, length uint64) (int, error) {
 	return int(ret), nil
 }
 
+// ReadAt copies data from the image into the supplied buffer.
 func (image *Image) ReadAt(data []byte, off int64) (int, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -876,6 +796,7 @@ func (image *Image) ReadAt(data []byte, off int64) (int, error) {
 	return ret, nil
 }
 
+// WriteAt copies data from the supplied buffer to the image.
 func (image *Image) WriteAt(data []byte, off int64) (n int, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -895,7 +816,10 @@ func (image *Image) WriteAt(data []byte, off int64) (n int, err error) {
 	return ret, err
 }
 
-// int rbd_flush(rbd_image_t image);
+// Flush all cached writes to storage.
+//
+// Implements:
+//  int rbd_flush(rbd_image_t image);
 func (image *Image) Flush() error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -904,8 +828,11 @@ func (image *Image) Flush() error {
 	return getError(C.rbd_flush(image.image))
 }
 
-// int rbd_snap_list(rbd_image_t image, rbd_snap_info_t *snaps, int *max_snaps);
-// void rbd_snap_list_end(rbd_snap_info_t *snaps);
+// GetSnapshotNames returns more than just the names of snapshots
+// associated with the rbd image.
+//
+// Implements:
+//  int rbd_snap_list(rbd_image_t image, rbd_snap_info_t *snaps, int *max_snaps);
 func (image *Image) GetSnapshotNames() (snaps []SnapInfo, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return nil, err
@@ -934,35 +861,10 @@ func (image *Image) GetSnapshotNames() (snaps []SnapInfo, err error) {
 	return snaps[:len(snaps)-1], nil
 }
 
-// int rbd_snap_create(rbd_image_t image, const char *snapname);
-func (image *Image) CreateSnapshot(snapname string) (*Snapshot, error) {
-	if err := image.validate(imageIsOpen); err != nil {
-		return nil, err
-	}
-
-	c_snapname := C.CString(snapname)
-	defer C.free(unsafe.Pointer(c_snapname))
-
-	ret := C.rbd_snap_create(image.image, c_snapname)
-	if ret < 0 {
-		return nil, RBDError(ret)
-	}
-
-	return &Snapshot{
-		image: image,
-		name:  snapname,
-	}, nil
-}
-
+// GetMetadata returns the metadata string associated with the given key.
 //
-func (image *Image) GetSnapshot(snapname string) *Snapshot {
-	return &Snapshot{
-		image: image,
-		name:  snapname,
-	}
-}
-
-// int rbd_metadata_get(rbd_image_t image, const char *key, char *value, size_t *vallen)
+// Implements:
+//  int rbd_metadata_get(rbd_image_t image, const char *key, char *value, size_t *vallen)
 func (image *Image) GetMetadata(key string) (string, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return "", err
@@ -989,7 +891,10 @@ func (image *Image) GetMetadata(key string) (string, error) {
 	return string(value), nil
 }
 
-// int rbd_metadata_set(rbd_image_t image, const char *key, const char *value)
+// SetMetadata updates the metadata string associated with the given key.
+//
+// Implements:
+//  int rbd_metadata_set(rbd_image_t image, const char *key, const char *value)
 func (image *Image) SetMetadata(key string, value string) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -1008,7 +913,10 @@ func (image *Image) SetMetadata(key string, value string) error {
 	return nil
 }
 
-// int rbd_metadata_remove(rbd_image_t image, const char *key)
+// RemoveMetadata clears the metadata associated with the given key.
+//
+// Implements:
+//  int rbd_metadata_remove(rbd_image_t image, const char *key)
 func (image *Image) RemoveMetadata(key string) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -1051,103 +959,20 @@ func (image *Image) GetId() (string, error) {
 	}
 }
 
-// int rbd_snap_remove(rbd_image_t image, const char *snapname);
-func (snapshot *Snapshot) Remove() error {
-	if err := snapshot.validate(snapshotNeedsName | imageIsOpen); err != nil {
-		return err
-	}
-
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
-
-	return getError(C.rbd_snap_remove(snapshot.image.image, c_snapname))
-}
-
-// int rbd_snap_rollback(rbd_image_t image, const char *snapname);
-// int rbd_snap_rollback_with_progress(rbd_image_t image, const char *snapname,
-//                  librbd_progress_fn_t cb, void *cbdata);
-func (snapshot *Snapshot) Rollback() error {
-	if err := snapshot.validate(snapshotNeedsName | imageIsOpen); err != nil {
-		return err
-	}
-
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
-
-	return getError(C.rbd_snap_rollback(snapshot.image.image, c_snapname))
-}
-
-// int rbd_snap_protect(rbd_image_t image, const char *snap_name);
-func (snapshot *Snapshot) Protect() error {
-	if err := snapshot.validate(snapshotNeedsName | imageIsOpen); err != nil {
-		return err
-	}
-
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
-
-	return getError(C.rbd_snap_protect(snapshot.image.image, c_snapname))
-}
-
-// int rbd_snap_unprotect(rbd_image_t image, const char *snap_name);
-func (snapshot *Snapshot) Unprotect() error {
-	if err := snapshot.validate(snapshotNeedsName | imageIsOpen); err != nil {
-		return err
-	}
-
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
-
-	return getError(C.rbd_snap_unprotect(snapshot.image.image, c_snapname))
-}
-
-// int rbd_snap_is_protected(rbd_image_t image, const char *snap_name,
-//               int *is_protected);
-func (snapshot *Snapshot) IsProtected() (bool, error) {
-	if err := snapshot.validate(snapshotNeedsName | imageIsOpen); err != nil {
-		return false, err
-	}
-
-	var c_is_protected C.int
-
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
-
-	ret := C.rbd_snap_is_protected(snapshot.image.image, c_snapname,
-		&c_is_protected)
-	if ret < 0 {
-		return false, RBDError(ret)
-	}
-
-	return c_is_protected != 0, nil
-}
-
-// int rbd_snap_set(rbd_image_t image, const char *snapname);
-func (snapshot *Snapshot) Set() error {
-	if err := snapshot.validate(snapshotNeedsName | imageIsOpen); err != nil {
-		return err
-	}
-
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
-
-	return getError(C.rbd_snap_set(snapshot.image.image, c_snapname))
-}
-
 // GetTrashList returns a slice of TrashInfo structs, containing information about all RBD images
 // currently residing in the trash.
 func GetTrashList(ioctx *rados.IOContext) ([]TrashInfo, error) {
 	var num_entries C.size_t
 
 	// Call rbd_trash_list with nil pointer to get number of trash entries.
-	if C.rbd_trash_list(C.rados_ioctx_t(ioctx.Pointer()), nil, &num_entries); num_entries == 0 {
+	if C.rbd_trash_list(cephIoctx(ioctx), nil, &num_entries); num_entries == 0 {
 		return nil, nil
 	}
 
 	c_entries := make([]C.rbd_trash_image_info_t, num_entries)
 	trashList := make([]TrashInfo, num_entries)
 
-	if ret := C.rbd_trash_list(C.rados_ioctx_t(ioctx.Pointer()), &c_entries[0], &num_entries); ret < 0 {
+	if ret := C.rbd_trash_list(cephIoctx(ioctx), &c_entries[0], &num_entries); ret < 0 {
 		return nil, RBDError(ret)
 	}
 
@@ -1171,7 +996,7 @@ func TrashRemove(ioctx *rados.IOContext, id string, force bool) error {
 	c_id := C.CString(id)
 	defer C.free(unsafe.Pointer(c_id))
 
-	return getError(C.rbd_trash_remove(C.rados_ioctx_t(ioctx.Pointer()), c_id, C.bool(force)))
+	return getError(C.rbd_trash_remove(cephIoctx(ioctx), c_id, C.bool(force)))
 }
 
 // TrashRestore restores the trashed RBD with the specified id back to the pool from whence it
@@ -1182,7 +1007,7 @@ func TrashRestore(ioctx *rados.IOContext, id, name string) error {
 	defer C.free(unsafe.Pointer(c_id))
 	defer C.free(unsafe.Pointer(c_name))
 
-	return getError(C.rbd_trash_restore(C.rados_ioctx_t(ioctx.Pointer()), c_id, c_name))
+	return getError(C.rbd_trash_restore(cephIoctx(ioctx), c_id, c_name))
 }
 
 // OpenImage will open an existing rbd image by name and snapshot name,
@@ -1204,7 +1029,7 @@ func OpenImage(ioctx *rados.IOContext, name, snapName string) (*Image, error) {
 
 	var cImage C.rbd_image_t
 	ret := C.rbd_open(
-		C.rados_ioctx_t(ioctx.Pointer()),
+		cephIoctx(ioctx),
 		cName,
 		&cImage,
 		cSnapName)
@@ -1240,7 +1065,7 @@ func OpenImageReadOnly(ioctx *rados.IOContext, name, snapName string) (*Image, e
 
 	var cImage C.rbd_image_t
 	ret := C.rbd_open_read_only(
-		C.rados_ioctx_t(ioctx.Pointer()),
+		cephIoctx(ioctx),
 		cName,
 		&cImage,
 		cSnapName)
@@ -1277,7 +1102,7 @@ func OpenImageById(ioctx *rados.IOContext, id, snapName string) (*Image, error) 
 
 	var cImage C.rbd_image_t
 	ret := C.rbd_open_by_id(
-		C.rados_ioctx_t(ioctx.Pointer()),
+		cephIoctx(ioctx),
 		cid,
 		&cImage,
 		cSnapName)
@@ -1314,7 +1139,7 @@ func OpenImageByIdReadOnly(ioctx *rados.IOContext, id, snapName string) (*Image,
 
 	var cImage C.rbd_image_t
 	ret := C.rbd_open_by_id_read_only(
-		C.rados_ioctx_t(ioctx.Pointer()),
+		cephIoctx(ioctx),
 		cid,
 		&cImage,
 		cSnapName)
@@ -1334,7 +1159,7 @@ func OpenImageByIdReadOnly(ioctx *rados.IOContext, id, snapName string) (*Image,
 // Implements:
 //  int rbd_create4(rados_ioctx_t io, const char *name, uint64_t size,
 //                 rbd_image_options_t opts);
-func CreateImage(ioctx *rados.IOContext, name string, size uint64, rio *RbdImageOptions) error {
+func CreateImage(ioctx *rados.IOContext, name string, size uint64, rio *ImageOptions) error {
 
 	if rio == nil {
 		return RBDError(C.EINVAL)
@@ -1343,7 +1168,7 @@ func CreateImage(ioctx *rados.IOContext, name string, size uint64, rio *RbdImage
 	c_name := C.CString(name)
 	defer C.free(unsafe.Pointer(c_name))
 
-	ret := C.rbd_create4(C.rados_ioctx_t(ioctx.Pointer()), c_name,
+	ret := C.rbd_create4(cephIoctx(ioctx), c_name,
 		C.uint64_t(size), C.rbd_image_options_t(rio.options))
 	return getError(ret)
 }
@@ -1355,7 +1180,7 @@ func CreateImage(ioctx *rados.IOContext, name string, size uint64, rio *RbdImage
 func RemoveImage(ioctx *rados.IOContext, name string) error {
 	c_name := C.CString(name)
 	defer C.free(unsafe.Pointer(c_name))
-	return getError(C.rbd_remove(C.rados_ioctx_t(ioctx.Pointer()), c_name))
+	return getError(C.rbd_remove(cephIoctx(ioctx), c_name))
 }
 
 // CloneImage creates a clone of the image from the named snapshot in the
@@ -1366,7 +1191,7 @@ func RemoveImage(ioctx *rados.IOContext, name string) error {
 //                  const char *p_snapname, rados_ioctx_t c_ioctx,
 //                  const char *c_name, rbd_image_options_t c_opts);
 func CloneImage(ioctx *rados.IOContext, parentName, snapName string,
-	destctx *rados.IOContext, name string, rio *RbdImageOptions) error {
+	destctx *rados.IOContext, name string, rio *ImageOptions) error {
 
 	if rio == nil {
 		return RBDError(C.EINVAL)
@@ -1380,10 +1205,10 @@ func CloneImage(ioctx *rados.IOContext, parentName, snapName string,
 	defer C.free(unsafe.Pointer(cCloneName))
 
 	ret := C.rbd_clone3(
-		C.rados_ioctx_t(ioctx.Pointer()),
+		cephIoctx(ioctx),
 		cParentName,
 		cParentSnapName,
-		C.rados_ioctx_t(destctx.Pointer()),
+		cephIoctx(destctx),
 		cCloneName,
 		C.rbd_image_options_t(rio.options))
 	return getError(ret)
@@ -1394,7 +1219,7 @@ func CloneImage(ioctx *rados.IOContext, parentName, snapName string,
 // This function is a convenience wrapper around CloneImage to support cloning
 // from an existing Image.
 func CloneFromImage(parent *Image, snapName string,
-	destctx *rados.IOContext, name string, rio *RbdImageOptions) error {
+	destctx *rados.IOContext, name string, rio *ImageOptions) error {
 
 	if err := parent.validate(imageNeedsIOContext); err != nil {
 		return err

@@ -23,7 +23,7 @@ func GetImageNames(ioctx *rados.IOContext) (names []string, err error) {
 	buf := make([]byte, 4096)
 	for {
 		size := C.size_t(len(buf))
-		ret := C.rbd_list(C.rados_ioctx_t(ioctx.Pointer()),
+		ret := C.rbd_list(cephIoctx(ioctx),
 			(*C.char)(unsafe.Pointer(&buf[0])), &size)
 		if ret == -C.ERANGE {
 			buf = make([]byte, size)
