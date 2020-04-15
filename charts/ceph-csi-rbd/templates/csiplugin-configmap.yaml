@@ -1,3 +1,4 @@
+{{- if not .Values.externallyManagedConfigmap }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,3 +13,4 @@ metadata:
 data:
   config.json: |-
 {{ toJson .Values.csiConfig | indent 4 -}}
+{{- end }}

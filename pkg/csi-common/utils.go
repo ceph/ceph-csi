@@ -24,6 +24,7 @@ import (
 	"sync/atomic"
 
 	"github.com/ceph/ceph-csi/pkg/util"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc"
@@ -48,7 +49,8 @@ func NewVolumeCapabilityAccessMode(mode csi.VolumeCapability_AccessMode_Mode) *c
 }
 
 // NewDefaultNodeServer initializes default node server
-func NewDefaultNodeServer(d *CSIDriver, t string) *DefaultNodeServer {
+func NewDefaultNodeServer(d *CSIDriver, t string, topology map[string]string) *DefaultNodeServer {
+	d.topology = topology
 	return &DefaultNodeServer{
 		Driver: d,
 		Type:   t,

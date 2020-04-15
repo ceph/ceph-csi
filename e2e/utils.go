@@ -294,7 +294,7 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	Expect(err).Should(BeNil())
 }
 
-func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, parameters map[string]string) {
+func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOptions, parameters map[string]string) {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["pool"] = "replicapool"
@@ -320,6 +320,11 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, param
 		sc.Parameters[k] = v
 	}
 	sc.Namespace = cephCSINamespace
+
+	if scOptions["volumeBindingMode"] == "WaitForFirstConsumer" {
+		value := scv1.VolumeBindingWaitForFirstConsumer
+		sc.VolumeBindingMode = &value
+	}
 	_, err := c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	Expect(err).Should(BeNil())
 }
@@ -506,6 +511,9 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	var err error
 	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 	Expect(err).Should(BeNil())
+	if timeout == 0 {
+		return nil
+	}
 	name := pvc.Name
 	start := time.Now()
 	e2elog.Logf("Waiting up to %v to be in Bound state", pvc)
@@ -664,13 +672,13 @@ func unmarshal(fileName string, obj interface{}) error {
 
 // createPVCAndApp creates pvc and pod
 // if name is not empty same will be set as pvc and app name
-func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod, pvcTimeout int) error {
 	if name != "" {
 		pvc.Name = name
 		app.Name = name
 		app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
 	}
-	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	err := createPVCAndvalidatePV(f.ClientSet, pvc, pvcTimeout)
 	if err != nil {
 		return err
 	}
@@ -695,7 +703,7 @@ func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolu
 	return err
 }
 
-func createPVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) (*v1.PersistentVolumeClaim, *v1.Pod) {
+func createPVCAndAppBinding(pvcPath, appPath string, f *framework.Framework, pvcTimeout int) (*v1.PersistentVolumeClaim, *v1.Pod) {
 	pvc, err := loadPVC(pvcPath)
 	if pvc == nil {
 		Fail(err.Error())
@@ -709,7 +717,7 @@ func createPVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) (*v
 	}
 	app.Namespace = f.UniqueName
 
-	err = createPVCAndApp("", f, pvc, app)
+	err = createPVCAndApp("", f, pvc, app, pvcTimeout)
 	if err != nil {
 		Fail(err.Error())
 	}
@@ -718,29 +726,46 @@ func createPVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) (*v
 }
 
 func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) {
-	pvc, app := createPVCAndAppBinding(pvcPath, appPath, f)
+	pvc, app := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
 	err := deletePVCAndApp("", f, pvc, app)
 	if err != nil {
 		Fail(err.Error())
 	}
 }
 
-func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (string, string, error) {
+type imageInfoFromPVC struct {
+	imageID         string
+	imageName       string
+	csiVolumeHandle string
+	pvName          string
+}
+
+// getImageInfoFromPVC reads volume handle of the bound PV to the passed in PVC,
+// and returns imageInfoFromPVC or error
+func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (imageInfoFromPVC, error) {
+	var imageData imageInfoFromPVC
+
 	c := f.ClientSet.CoreV1()
 	pvc, err := c.PersistentVolumeClaims(pvcNamespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
 	if err != nil {
-		return "", "", err
+		return imageData, err
 	}
 
 	pv, err := c.PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
-		return "", "", err
+		return imageData, err
 	}
 
 	imageIDRegex := regexp.MustCompile(`(\w+\-?){5}$`)
 	imageID := imageIDRegex.FindString(pv.Spec.CSI.VolumeHandle)
 
-	return fmt.Sprintf("csi-vol-%s", imageID), pv.Spec.CSI.VolumeHandle, nil
+	imageData = imageInfoFromPVC{
+		imageID:         imageID,
+		imageName:       fmt.Sprintf("csi-vol-%s", imageID),
+		csiVolumeHandle: pv.Spec.CSI.VolumeHandle,
+		pvName:          pv.Name,
+	}
+	return imageData, nil
 }
 
 func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string, error) {
@@ -785,13 +810,13 @@ func readVaultSecret(key string, f *framework.Framework) (string, string) {
 }
 
 func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framework.Framework) {
-	pvc, app := createPVCAndAppBinding(pvcPath, appPath, f)
+	pvc, app := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
 
-	rbdImageID, rbdImageHandle, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
 		Fail(err.Error())
 	}
-	rbdImageSpec := fmt.Sprintf("replicapool/%s", rbdImageID)
+	rbdImageSpec := fmt.Sprintf("replicapool/%s", imageData.imageName)
 	encryptedState, err := getImageMeta(rbdImageSpec, ".rbd.csi.ceph.com/encrypted", f)
 	if err != nil {
 		Fail(err.Error())
@@ -807,7 +832,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 
 	if kms == "vault" {
 		// check new passphrase created
-		_, stdErr := readVaultSecret(rbdImageHandle, f)
+		_, stdErr := readVaultSecret(imageData.csiVolumeHandle, f)
 		if stdErr != "" {
 			Fail(fmt.Sprintf("failed to read passphrase from vault: %s", stdErr))
 		}
@@ -820,7 +845,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 
 	if kms == "vault" {
 		// check new passphrase created
-		stdOut, _ := readVaultSecret(rbdImageHandle, f)
+		stdOut, _ := readVaultSecret(imageData.csiVolumeHandle, f)
 		if stdOut != "" {
 			Fail(fmt.Sprintf("passphrase found in vault while should be deleted: %s", stdOut))
 		}
@@ -979,7 +1004,7 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 // }
 
 func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
-	volname, _, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
 		return err
 	}
@@ -987,11 +1012,11 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	_, stdErr := execCommandInPod(f, "ceph fs subvolume rm myfs "+volname+" csi", rookNamespace, &opt)
+	_, stdErr := execCommandInPod(f, "ceph fs subvolume rm myfs "+imageData.imageName+" csi", rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 
 	if stdErr != "" {
-		return fmt.Errorf("error deleting backing volume %s", volname)
+		return fmt.Errorf("error deleting backing volume %s", imageData.imageName)
 	}
 	return nil
 }
@@ -1040,7 +1065,7 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	app.Labels = map[string]string{"app": "validate-data"}
 	app.Namespace = f.UniqueName
 
-	err = createPVCAndApp("", f, pvc, app)
+	err = createPVCAndApp("", f, pvc, app, deployTimeout)
 	if err != nil {
 		return err
 	}
@@ -1074,7 +1099,7 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 }
 
 func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
-	rbdImage, _, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
 		return err
 	}
@@ -1083,7 +1108,7 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 		LabelSelector: "app=rook-ceph-tools",
 	}
 
-	cmd := fmt.Sprintf("rbd rm %s --pool=replicapool", rbdImage)
+	cmd := fmt.Sprintf("rbd rm %s --pool=replicapool", imageData.imageName)
 	execCommandInPod(f, cmd, rookNamespace, &opt)
 	return nil
 }
@@ -1161,7 +1186,7 @@ func checkMountOptions(pvcPath, appPath string, f *framework.Framework, mountFla
 	app.Labels = map[string]string{"app": "validate-mount-opt"}
 	app.Namespace = f.UniqueName
 
-	err = createPVCAndApp("", f, pvc, app)
+	err = createPVCAndApp("", f, pvc, app, deployTimeout)
 	if err != nil {
 		return err
 	}
@@ -1181,4 +1206,158 @@ func checkMountOptions(pvcPath, appPath string, f *framework.Framework, mountFla
 
 	err = deletePVCAndApp("", f, pvc, app)
 	return err
+}
+
+func createNodeLabel(f *framework.Framework, labelKey, labelValue string) {
+	// NOTE: This makes all nodes (in a multi-node setup) in the test take
+	//       the same label values, which is fine for the test
+	nodes, err := f.ClientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	Expect(err).Should(BeNil())
+	for i := range nodes.Items {
+		framework.AddOrUpdateLabelOnNode(f.ClientSet, nodes.Items[i].Name, labelKey, labelValue)
+	}
+}
+
+func deleteNodeLabel(c clientset.Interface, labelKey string) {
+	nodes, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	Expect(err).Should(BeNil())
+	for i := range nodes.Items {
+		framework.RemoveLabelOffNode(c, nodes.Items[i].Name, labelKey)
+	}
+}
+
+func checkNodeHasLabel(c clientset.Interface, labelKey, labelValue string) {
+	nodes, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	Expect(err).Should(BeNil())
+	for i := range nodes.Items {
+		framework.ExpectNodeHasLabel(c, nodes.Items[i].Name, labelKey, labelValue)
+	}
+}
+
+func getPVCImageInfoInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool string) (string, error) {
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return "", err
+	}
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+
+	stdOut, stdErr := execCommandInPod(f, "rbd info "+pool+"/"+imageData.imageName, rookNamespace, &opt)
+	Expect(stdErr).Should(BeEmpty())
+
+	e2elog.Logf("found image %s in pool %s", imageData.imageName, pool)
+
+	return stdOut, nil
+}
+
+func checkPVCImageInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool string) error {
+	_, err := getPVCImageInfoInPool(f, pvc, pool)
+
+	return err
+}
+
+func checkPVCDataPoolForImageInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool, dataPool string) error {
+	stdOut, err := getPVCImageInfoInPool(f, pvc, pool)
+	if err != nil {
+		return err
+	}
+
+	if !strings.Contains(stdOut, "data_pool: "+dataPool) {
+		return fmt.Errorf("missing data pool value in image info, got info (%s)", stdOut)
+	}
+
+	return nil
+}
+
+func checkPVCImageJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool string) error {
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+
+	_, stdErr := execCommandInPod(f, "rados listomapkeys -p "+pool+" csi.volume."+imageData.imageID, rookNamespace, &opt)
+	Expect(stdErr).Should(BeEmpty())
+
+	e2elog.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, pool)
+
+	return nil
+}
+
+func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool string) error {
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	opt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+
+	_, stdErr := execCommandInPod(f, "rados getomapval -p "+pool+" csi.volumes.default csi.volume."+imageData.pvName, rookNamespace, &opt)
+	Expect(stdErr).Should(BeEmpty())
+
+	e2elog.Logf("found CSI journal entry %s in pool %s", "csi.volume."+imageData.pvName, pool)
+
+	return nil
+}
+
+// getBoundPV returns a PV details.
+func getBoundPV(client clientset.Interface, pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+	// Get new copy of the claim
+	claim, err := client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the bound PV
+	pv, err := client.CoreV1().PersistentVolumes().Get(context.TODO(), claim.Spec.VolumeName, metav1.GetOptions{})
+	return pv, err
+}
+
+func checkPVSelectorValuesForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim) {
+	pv, err := getBoundPV(f.ClientSet, pvc)
+	if err != nil {
+		Fail(err.Error())
+	}
+
+	if len(pv.Spec.NodeAffinity.Required.NodeSelectorTerms) == 0 {
+		Fail("Found empty NodeSelectorTerms in PV")
+	}
+
+	for _, expression := range pv.Spec.NodeAffinity.Required.NodeSelectorTerms[0].MatchExpressions {
+		rFound := false
+		zFound := false
+
+		switch expression.Key {
+		case nodeCSIRegionLabel:
+			if rFound {
+				Fail("Found multiple occurrences of topology key for region")
+			}
+			rFound = true
+			if expression.Values[0] != regionValue {
+				Fail("Topology value for region label mismatch")
+			}
+		case nodeCSIZoneLabel:
+			if zFound {
+				Fail("Found multiple occurrences of topology key for zone")
+			}
+			zFound = true
+			if expression.Values[0] != zoneValue {
+				Fail("Topology value for zone label mismatch")
+			}
+		default:
+			Fail("Unexpected key in node selector terms found in PV")
+		}
+	}
+}
+
+func addTopologyDomainsToDSYaml(template, labels string) string {
+	return strings.ReplaceAll(template, "# - \"--domainlabels=failure-domain/region,failure-domain/zone\"",
+		"- \"--domainlabels="+labels+"\"")
 }

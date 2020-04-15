@@ -36,6 +36,7 @@ Independent CSI plugins are provided to support RBD and CephFS backed volumes,
   for CephFS plugin configuration and deployment please
   refer [cephfs doc](https://github.com/ceph/ceph-csi/blob/master/docs/deploy-cephfs.md).
 - For example usage of RBD and CephFS CSI plugins, see examples in `examples/`.
+- Stale resource cleanup, please refer [cleanup doc](docs/resource-cleanup.md).
 
 NOTE:
 

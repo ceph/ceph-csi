@@ -22,6 +22,15 @@ var (
 	rbdExamplePath     = "../examples/rbd/"
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
+	// Topology related variables
+	nodeRegionLabel     = "test.failure-domain/region"
+	regionValue         = "testregion"
+	nodeZoneLabel       = "test.failure-domain/zone"
+	zoneValue           = "testzone"
+	nodeCSIRegionLabel  = "topology.rbd.csi.ceph.com/region"
+	nodeCSIZoneLabel    = "topology.rbd.csi.ceph.com/zone"
+	rbdTopologyPool     = "newrbdpool"
+	rbdTopologyDataPool = "replicapool" // NOTE: should be different than rbdTopologyPool for test to be effective
 )
 
 func deployRBDPlugin() {
@@ -83,9 +92,13 @@ func createORDeleteRbdResouces(action string) {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", rbdDirPath+rbdNodePlugin, err)
 	}
+
+	domainLabel := nodeRegionLabel + "," + nodeZoneLabel
+	data = addTopologyDomainsToDSYaml(data, domainLabel)
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Logf("failed to %s nodeplugin %v", action, err)
+		Fail(err.Error())
 	}
 
 	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePluginRBAC)
@@ -114,6 +127,8 @@ var _ = Describe("RBD", func() {
 	BeforeEach(func() {
 		c = f.ClientSet
 		if deployRBD {
+			createNodeLabel(f, nodeRegionLabel, regionValue)
+			createNodeLabel(f, nodeZoneLabel, zoneValue)
 			if cephCSINamespace != defaultNs {
 				err := createNamespace(c, cephCSINamespace)
 				if err != nil {
@@ -123,7 +138,7 @@ var _ = Describe("RBD", func() {
 			deployRBDPlugin()
 		}
 		createConfigMap(rbdDirPath, f.ClientSet, f)
-		createRBDStorageClass(f.ClientSet, f, make(map[string]string))
+		createRBDStorageClass(f.ClientSet, f, nil, nil)
 		createRBDSecret(f.ClientSet, f)
 		deployVault(f.ClientSet, deployTimeout)
 	})
@@ -152,6 +167,11 @@ var _ = Describe("RBD", func() {
 				}
 			}
 		}
+		deleteNodeLabel(c, nodeRegionLabel)
+		deleteNodeLabel(c, nodeZoneLabel)
+		// Remove the CSI labels that get added
+		deleteNodeLabel(c, nodeCSIRegionLabel)
+		deleteNodeLabel(c, nodeCSIZoneLabel)
 	})
 
 	Context("Test RBD CSI", func() {
@@ -164,18 +184,19 @@ var _ = Describe("RBD", func() {
 			// appClonePath := rbdExamplePath + "pod-restore.yaml"
 			// snapshotPath := rbdExamplePath + "snapshot.yaml"
 
-			By("checking provisioner deployment is running")
-			var err error
-			err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
-			if err != nil {
-				Fail(err.Error())
-			}
+			By("checking provisioner deployment is running", func() {
+				err := waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
 
-			By("checking nodeplugin deamonsets is running")
-			err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
-			if err != nil {
-				Fail(err.Error())
-			}
+			By("checking nodeplugin deamonsets is running", func() {
+				err := waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
 
 			By("create a PVC and Bind it to an app", func() {
 				validatePVCAndAppBinding(pvcPath, appPath, f)
@@ -187,18 +208,18 @@ var _ = Describe("RBD", func() {
 
 			By("create a PVC and Bind it to an app with ext4 as the FS ", func() {
 				deleteResource(rbdExamplePath + "storageclass.yaml")
-				createRBDStorageClass(f.ClientSet, f, map[string]string{"csi.storage.k8s.io/fstype": "ext4"})
+				createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"csi.storage.k8s.io/fstype": "ext4"})
 				validatePVCAndAppBinding(pvcPath, appPath, f)
 				deleteResource(rbdExamplePath + "storageclass.yaml")
-				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
+				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
 
 			By("create a PVC and Bind it to an app with encrypted RBD volume", func() {
 				deleteResource(rbdExamplePath + "storageclass.yaml")
-				createRBDStorageClass(f.ClientSet, f, map[string]string{"encrypted": "true"})
+				createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"encrypted": "true"})
 				validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
 				deleteResource(rbdExamplePath + "storageclass.yaml")
-				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
+				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
 
 			By("create a PVC and Bind it to an app with encrypted RBD volume with Vault KMS", func() {
@@ -207,10 +228,10 @@ var _ = Describe("RBD", func() {
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-test",
 				}
-				createRBDStorageClass(f.ClientSet, f, scOpts)
+				createRBDStorageClass(f.ClientSet, f, nil, scOpts)
 				validateEncryptedPVCAndAppBinding(pvcPath, appPath, "vault", f)
 				deleteResource(rbdExamplePath + "storageclass.yaml")
-				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
+				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
 
 			// skipping snapshot testing
@@ -284,7 +305,7 @@ var _ = Describe("RBD", func() {
 				// create pvc and app
 				for i := 0; i < totalCount; i++ {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
-					err := createPVCAndApp(name, f, pvc, app)
+					err := createPVCAndApp(name, f, pvc, app, deployTimeout)
 					if err != nil {
 						Fail(err.Error())
 					}
@@ -338,7 +359,7 @@ var _ = Describe("RBD", func() {
 					}
 
 					deleteResource(rbdExamplePath + "storageclass.yaml")
-					createRBDStorageClass(f.ClientSet, f, map[string]string{"csi.storage.k8s.io/fstype": "xfs"})
+					createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"csi.storage.k8s.io/fstype": "xfs"})
 					err = resizePVCAndValidateSize(pvcPath, appPath, f)
 					if err != nil {
 						e2elog.Logf("failed to resize filesystem PVC %v", err)
@@ -377,7 +398,7 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 				app.Namespace = f.UniqueName
-				err = createPVCAndApp("", f, pvc, app)
+				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
 					Fail(err.Error())
 				}
@@ -402,7 +423,7 @@ var _ = Describe("RBD", func() {
 			By("create PVC in storageClass with volumeNamePrefix", func() {
 				volumeNamePrefix := "foo-bar-"
 				deleteResource(rbdExamplePath + "storageclass.yaml")
-				createRBDStorageClass(f.ClientSet, f, map[string]string{"volumeNamePrefix": volumeNamePrefix})
+				createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"volumeNamePrefix": volumeNamePrefix})
 
 				// set up PVC
 				pvc, err := loadPVC(pvcPath)
@@ -431,7 +452,7 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 				deleteResource(rbdExamplePath + "storageclass.yaml")
-				createRBDStorageClass(f.ClientSet, f, make(map[string]string))
+				createRBDStorageClass(f.ClientSet, f, nil, nil)
 
 				if !foundIt {
 					Fail(fmt.Sprintf("could not find image with prefix %s", volumeNamePrefix))
@@ -458,6 +479,87 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
+			})
+
+			By("creating an app with a PVC, using a topology constrained StorageClass", func() {
+				By("checking node has required CSI topology labels set", func() {
+					checkNodeHasLabel(f.ClientSet, nodeCSIRegionLabel, regionValue)
+					checkNodeHasLabel(f.ClientSet, nodeCSIZoneLabel, zoneValue)
+				})
+
+				By("creating a StorageClass with delayed binding mode and CSI topology parameter")
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				topologyConstraint := "[{\"poolName\":\"" + rbdTopologyPool + "\",\"domainSegments\":" +
+					"[{\"domainLabel\":\"region\",\"value\":\"" + regionValue + "\"}," +
+					"{\"domainLabel\":\"zone\",\"value\":\"" + zoneValue + "\"}]}]"
+				createRBDStorageClass(f.ClientSet, f,
+					map[string]string{"volumeBindingMode": "WaitForFirstConsumer"},
+					map[string]string{"topologyConstrainedPools": topologyConstraint})
+
+				By("creating an app using a PV from the delayed binding mode StorageClass")
+				pvc, app := createPVCAndAppBinding(pvcPath, appPath, f, 0)
+
+				By("ensuring created PV has required node selector values populated")
+				checkPVSelectorValuesForPVC(f, pvc)
+
+				By("ensuring created PV has its image in the topology specific pool")
+				err := checkPVCImageInPool(f, pvc, rbdTopologyPool)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				By("ensuring created PV has its image journal in the topology specific pool")
+				err = checkPVCImageJournalInPool(f, pvc, rbdTopologyPool)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				By("ensuring created PV has its CSI journal in the CSI journal specific pool")
+				err = checkPVCCSIJournalInPool(f, pvc, "replicapool")
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				By("checking if data pool parameter is honored", func() {
+					deleteResource(rbdExamplePath + "storageclass.yaml")
+					topologyConstraint := "[{\"poolName\":\"" + rbdTopologyPool + "\",\"dataPool\":\"" + rbdTopologyDataPool +
+						"\",\"domainSegments\":" +
+						"[{\"domainLabel\":\"region\",\"value\":\"" + regionValue + "\"}," +
+						"{\"domainLabel\":\"zone\",\"value\":\"" + zoneValue + "\"}]}]"
+					createRBDStorageClass(f.ClientSet, f,
+						map[string]string{"volumeBindingMode": "WaitForFirstConsumer"},
+						map[string]string{"topologyConstrainedPools": topologyConstraint})
+
+					By("creating an app using a PV from the delayed binding mode StorageClass with a data pool")
+					pvc, app = createPVCAndAppBinding(pvcPath, appPath, f, 0)
+
+					By("ensuring created PV has its image in the topology specific pool")
+					err = checkPVCImageInPool(f, pvc, rbdTopologyPool)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					By("ensuring created image has the right data pool parameter set")
+					err = checkPVCDataPoolForImageInPool(f, pvc, rbdTopologyPool, rbdTopologyDataPool)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					// cleanup and undo changes made by the test
+					err = deletePVCAndApp("", f, pvc, app)
+					if err != nil {
+						Fail(err.Error())
+					}
+				})
+
+				// cleanup and undo changes made by the test
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
 
 			// Make sure this should be last testcase in this file, because

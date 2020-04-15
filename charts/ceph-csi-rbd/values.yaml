@@ -182,6 +182,18 @@ provisioner:
   podSecurityPolicy:
     enabled: false
 
+topology:
+  # Specifies whether topology based provisioning support should
+  # be exposed by CSI
+  enabled: false
+  # domainLabels define which node labels to use as domains
+  # for CSI nodeplugins to advertise their domains
+  # NOTE: the value here serves as an example and needs to be
+  # updated with node labels that define domains of interest
+  domainLabels:
+    - failure-domain/region
+    - failure-domain/zone
+
 #########################################################
 # Variables for 'internal' use please use with caution! #
 #########################################################
@@ -200,5 +212,9 @@ pluginDir: /var/lib/kubelet/plugins
 driverName: rbd.csi.ceph.com
 # Name of the configmap used for state
 configMapName: ceph-csi-config-rbd
+# Key to use in the Configmap if not config.json
+# configMapKey:
+# Use an externally provided configmap
+externallyManagedConfigmap: false
 # Name of the configmap used for encryption kms configuration
 kmsConfigMapName: ceph-csi-encryption-kms-config

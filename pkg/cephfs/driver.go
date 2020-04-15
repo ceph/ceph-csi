@@ -26,7 +26,6 @@ import (
 )
 
 const (
-
 	// volIDVersion is the version number of volume ID encoding scheme
 	volIDVersion uint16 = 1
 
@@ -81,9 +80,9 @@ func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersis
 }
 
 // NewNodeServer initialize a node server for ceph CSI driver.
-func NewNodeServer(d *csicommon.CSIDriver, t string) *NodeServer {
+func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string) *NodeServer {
 	return &NodeServer{
-		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t),
+		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, topology),
 		VolumeLocks:       util.NewVolumeLocks(),
 	}
 }
@@ -91,14 +90,17 @@ func NewNodeServer(d *csicommon.CSIDriver, t string) *NodeServer {
 // Run start a non-blocking grpc controller,node and identityserver for
 // ceph CSI driver which can serve multiple parallel requests
 func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
+	var err error
+	var topology map[string]string
+
 	// Configuration
 	PluginFolder = conf.PluginPath
 
-	if err := loadAvailableMounters(conf); err != nil {
+	if err = loadAvailableMounters(conf); err != nil {
 		klog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
 	}
 
-	if err := util.WriteCephConfig(); err != nil {
+	if err = util.WriteCephConfig(); err != nil {
 		klog.Fatalf("failed to write ceph configuration file: %v", err)
 	}
 
@@ -137,14 +139,22 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	fs.is = NewIdentityServer(fs.cd)
 
 	if conf.IsNodeServer {
-		fs.ns = NewNodeServer(fs.cd, conf.Vtype)
+		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
+		if err != nil {
+			klog.Fatalln(err)
+		}
+		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology)
 	}
 
 	if conf.IsControllerServer {
 		fs.cs = NewControllerServer(fs.cd, cachePersister)
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {
-		fs.ns = NewNodeServer(fs.cd, conf.Vtype)
+		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
+		if err != nil {
+			klog.Fatalln(err)
+		}
+		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology)
 		fs.cs = NewControllerServer(fs.cd, cachePersister)
 	}
 

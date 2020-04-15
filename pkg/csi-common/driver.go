@@ -30,8 +30,10 @@ type CSIDriver struct {
 	name    string
 	nodeID  string
 	version string
-	cap     []*csi.ControllerServiceCapability
-	vc      []*csi.VolumeCapability_AccessMode
+	// topology constraints that this nodeserver will advertise
+	topology map[string]string
+	cap      []*csi.ControllerServiceCapability
+	vc       []*csi.VolumeCapability_AccessMode
 }
 
 // NewCSIDriver Creates a NewCSIDriver object. Assumes vendor

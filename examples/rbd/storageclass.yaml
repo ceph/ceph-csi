@@ -4,6 +4,10 @@ kind: StorageClass
 metadata:
    name: csi-rbd-sc
 provisioner: rbd.csi.ceph.com
+# If topology based provisioning is desired, delayed provisioning of
+# PV is required and is enabled using the following attribute
+# For further information read TODO<doc>
+# volumeBindingMode: WaitForFirstConsumer
 parameters:
    # String representing a Ceph cluster to provision storage from.
    # Should be unique across all Ceph clusters in use for provisioning,
@@ -48,6 +52,28 @@ parameters:
    # a unique ID matching KMS ConfigMap. The ID is only used for correlation to
    # config map entry.
    # encryptionKMSID: <kms-config-id>
+
+   # Add topology constrained pools configuration, if topology based pools
+   # are setup, and topology constrained provisioning is required.
+   # For further information read TODO<doc>
+   # topologyConstrainedPools: |
+   #   [{"poolName":"pool0",
+   #     "dataPool":"ec-pool0" # optional, erasure-coded pool for data
+   #     "domainSegments":[
+   #       {"domainLabel":"region","value":"east"},
+   #       {"domainLabel":"zone","value":"zone1"}]},
+   #    {"poolName":"pool1",
+   #     "dataPool":"ec-pool1" # optional, erasure-coded pool for data
+   #     "domainSegments":[
+   #       {"domainLabel":"region","value":"east"},
+   #       {"domainLabel":"zone","value":"zone2"}]},
+   #    {"poolName":"pool2",
+   #     "dataPool":"ec-pool2" # optional, erasure-coded pool for data
+   #     "domainSegments":[
+   #       {"domainLabel":"region","value":"west"},
+   #       {"domainLabel":"zone","value":"zone1"}]}
+   #   ]
+
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 mountOptions:

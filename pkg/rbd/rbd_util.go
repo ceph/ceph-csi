@@ -29,8 +29,10 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/pkg/util"
+
 	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/pborman/uuid"
@@ -69,24 +71,33 @@ type rbdVolume struct {
 	//   JSON tag as it is not stashed in JSON encoded config maps in v1.0.0
 	// VolName and MonValueFromSecret are retained from older plugin versions (<= 1.0.0)
 	//   for backward compatibility reasons
-	RbdImageName       string
-	NamePrefix         string
-	VolID              string `json:"volID"`
-	Monitors           string `json:"monitors"`
-	Pool               string `json:"pool"`
-	DataPool           string
-	ImageFeatures      string `json:"imageFeatures"`
-	AdminID            string `json:"adminId"`
-	UserID             string `json:"userId"`
-	Mounter            string `json:"mounter"`
-	ClusterID          string `json:"clusterId"`
-	RequestName        string
-	VolName            string `json:"volName"`
-	MonValueFromSecret string `json:"monValueFromSecret"`
-	VolSize            int64  `json:"volSize"`
-	DisableInUseChecks bool   `json:"disableInUseChecks"`
-	Encrypted          bool
-	KMS                util.EncryptionKMS
+	// JournalPool is the ceph pool in which the CSI Journal is stored
+	// Pool is where the image journal and image is stored, and could be the same as `JournalPool`
+	//   (retained as Pool instead of renaming to ImagePool or such, as this is referenced in the code extensively)
+	// DataPool is where the data for images in `Pool` are stored, this is used as the `--data-pool`
+	// 	 argument when the pool is created, and is not used anywhere else
+	TopologyPools       *[]util.TopologyConstrainedPool
+	TopologyRequirement *csi.TopologyRequirement
+	Topology            map[string]string
+	RbdImageName        string
+	NamePrefix          string
+	VolID               string `json:"volID"`
+	Monitors            string `json:"monitors"`
+	JournalPool         string
+	Pool                string `json:"pool"`
+	DataPool            string
+	ImageFeatures       string `json:"imageFeatures"`
+	AdminID             string `json:"adminId"`
+	UserID              string `json:"userId"`
+	Mounter             string `json:"mounter"`
+	ClusterID           string `json:"clusterId"`
+	RequestName         string
+	VolName             string `json:"volName"`
+	MonValueFromSecret  string `json:"monValueFromSecret"`
+	VolSize             int64  `json:"volSize"`
+	DisableInUseChecks  bool   `json:"disableInUseChecks"`
+	Encrypted           bool
+	KMS                 util.EncryptionKMS
 
 	// connection
 	conn *rados.Conn
@@ -99,12 +110,15 @@ type rbdSnapshot struct {
 	// RbdSnapName is the name of the RBD snapshot backing this rbdSnapshot
 	// SnapID is the snapshot ID that is exchanged with CSI drivers, identifying this rbdSnapshot
 	// RequestName is the CSI generated snapshot name for the rbdSnapshot
+	// JournalPool is the ceph pool in which the CSI snapshot Journal is stored
+	// Pool is where the image snapshot journal and snapshot is stored, and could be the same as `JournalPool`
 	SourceVolumeID string
 	RbdImageName   string
 	NamePrefix     string
 	RbdSnapName    string
 	SnapID         string
 	Monitors       string
+	JournalPool    string
 	Pool           string
 	CreatedAt      *timestamp.Timestamp
 	SizeBytes      int64
@@ -352,11 +366,24 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	if err != nil {
 		return err
 	}
+	rbdSnap.JournalPool = rbdSnap.Pool
 
-	rbdSnap.RequestName, rbdSnap.RbdSnapName, rbdSnap.RbdImageName, _, err = snapJournal.GetObjectUUIDData(ctx, rbdSnap.Monitors,
+	imageAttributes, err := snapJournal.GetImageAttributes(ctx, rbdSnap.Monitors,
 		cr, rbdSnap.Pool, vi.ObjectUUID, true)
 	if err != nil {
 		return err
+	}
+	rbdSnap.RequestName = imageAttributes.RequestName
+	rbdSnap.RbdImageName = imageAttributes.SourceName
+	rbdSnap.RbdSnapName = imageAttributes.ImageName
+
+	// convert the journal pool ID to name, for use in DeleteSnapshot cases
+	if imageAttributes.JournalPoolID != util.InvalidPoolID {
+		rbdSnap.JournalPool, err = util.GetPoolName(ctx, rbdSnap.Monitors, cr, imageAttributes.JournalPoolID)
+		if err != nil {
+			// TODO: If pool is not found we may leak the image (as DeleteSnapshot will return success)
+			return err
+		}
 	}
 
 	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
@@ -395,17 +422,29 @@ func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr
 	if err != nil {
 		return err
 	}
+	rbdVol.JournalPool = rbdVol.Pool
 
-	kmsID := ""
-	rbdVol.RequestName, rbdVol.RbdImageName, _, kmsID, err = volJournal.GetObjectUUIDData(ctx, rbdVol.Monitors, cr,
+	imageAttributes, err := volJournal.GetImageAttributes(ctx, rbdVol.Monitors, cr,
 		rbdVol.Pool, vi.ObjectUUID, false)
 	if err != nil {
 		return err
 	}
-	if kmsID != "" {
+
+	if imageAttributes.KmsID != "" {
 		rbdVol.Encrypted = true
-		rbdVol.KMS, err = util.GetKMS(kmsID, secrets)
+		rbdVol.KMS, err = util.GetKMS(imageAttributes.KmsID, secrets)
 		if err != nil {
+			return err
+		}
+	}
+	rbdVol.RequestName = imageAttributes.RequestName
+	rbdVol.RbdImageName = imageAttributes.ImageName
+
+	// convert the journal pool ID to name, for use in DeleteVolume cases
+	if imageAttributes.JournalPoolID >= 0 {
+		rbdVol.JournalPool, err = util.GetPoolName(ctx, rbdVol.Monitors, cr, imageAttributes.JournalPoolID)
+		if err != nil {
+			// TODO: If pool is not found we may leak the image (as DeleteVolume will return success)
 			return err
 		}
 	}
@@ -579,6 +618,7 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 
 	rbdSnap := &rbdSnapshot{}
 	rbdSnap.Pool = rbdVol.Pool
+	rbdSnap.JournalPool = rbdVol.JournalPool
 
 	rbdSnap.Monitors, rbdSnap.ClusterID, err = getMonsAndClusterID(ctx, snapOptions)
 	if err != nil {

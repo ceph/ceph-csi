@@ -21,6 +21,7 @@ import (
 
 	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -76,7 +77,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	defer cs.VolumeLocks.Release(requestName)
 
-	volOptions, err := newVolumeOptions(ctx, requestName, req.GetParameters(), secret)
+	volOptions, err := newVolumeOptions(ctx, requestName, req, secret)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "validation and extraction of volume options failed: %v"), err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -95,13 +96,20 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	// TODO return error message if requested vol size greater than found volume return error
 
 	if vID != nil {
-		return &csi.CreateVolumeResponse{
-			Volume: &csi.Volume{
-				VolumeId:      vID.VolumeID,
-				CapacityBytes: volOptions.Size,
-				VolumeContext: req.GetParameters(),
-			},
-		}, nil
+		volume := &csi.Volume{
+			VolumeId:      vID.VolumeID,
+			CapacityBytes: volOptions.Size,
+			VolumeContext: req.GetParameters(),
+		}
+		if volOptions.Topology != nil {
+			volume.AccessibleTopology =
+				[]*csi.Topology{
+					{
+						Segments: volOptions.Topology,
+					},
+				}
+		}
+		return &csi.CreateVolumeResponse{Volume: volume}, nil
 	}
 
 	// Reservation
@@ -128,13 +136,20 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully created backing volume named %s for request name %s"),
 		vID.FsSubvolName, requestName)
 
-	return &csi.CreateVolumeResponse{
-		Volume: &csi.Volume{
-			VolumeId:      vID.VolumeID,
-			CapacityBytes: volOptions.Size,
-			VolumeContext: req.GetParameters(),
-		},
-	}, nil
+	volume := &csi.Volume{
+		VolumeId:      vID.VolumeID,
+		CapacityBytes: volOptions.Size,
+		VolumeContext: req.GetParameters(),
+	}
+	if volOptions.Topology != nil {
+		volume.AccessibleTopology =
+			[]*csi.Topology{
+				{
+					Segments: volOptions.Topology,
+				},
+			}
+	}
+	return &csi.CreateVolumeResponse{Volume: volume}, nil
 }
 
 // deleteVolumeDeprecated is used to delete volumes created using version 1.0.0 of the plugin,

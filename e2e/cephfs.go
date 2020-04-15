@@ -201,7 +201,7 @@ var _ = Describe("cephfs", func() {
 					// create pvc and app
 					for i := 0; i < totalCount; i++ {
 						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						err := createPVCAndApp(name, f, pvc, app)
+						err := createPVCAndApp(name, f, pvc, app, deployTimeout)
 						if err != nil {
 							Fail(err.Error())
 						}

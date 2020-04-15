@@ -3,6 +3,7 @@
 ROOK_VERSION=${ROOK_VERSION:-"v1.1.7"}
 ROOK_DEPLOY_TIMEOUT=${ROOK_DEPLOY_TIMEOUT:-300}
 ROOK_URL="https://raw.githubusercontent.com/rook/rook/${ROOK_VERSION}/cluster/examples/kubernetes/ceph"
+ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
 
 function deploy_rook() {
 	kubectl create -f "${ROOK_URL}/common.yaml"
@@ -24,7 +25,7 @@ function deploy_rook() {
 
 	# Check if CephBlockPool is empty
 	if ! kubectl -n rook-ceph get cephblockpools -oyaml | grep 'items: \[\]' &>/dev/null; then
-		check_rbd_stat
+		check_rbd_stat ""
 	fi
 }
 
@@ -35,6 +36,22 @@ function teardown_rook() {
 	kubectl delete -f "${ROOK_URL}/cluster-test.yaml"
 	kubectl delete -f "${ROOK_URL}/operator.yaml"
 	kubectl delete -f "${ROOK_URL}/common.yaml"
+}
+
+function create_block_pool() {
+	curl -o newpool.yaml "${ROOK_URL}/pool-test.yaml"
+	sed -i "s/replicapool/$ROOK_BLOCK_POOL_NAME/g" newpool.yaml
+	kubectl create -f "./newpool.yaml"
+	rm -f "./newpool.yaml"
+
+	check_rbd_stat "$ROOK_BLOCK_POOL_NAME"
+}
+
+function delete_block_pool() {
+	curl -o newpool.yaml "${ROOK_URL}/pool-test.yaml"
+	sed -i "s/replicapool/$ROOK_BLOCK_POOL_NAME/g" newpool.yaml
+	kubectl delete -f "./newpool.yaml"
+	rm -f "./newpool.yaml"
 }
 
 function check_ceph_cluster_health() {
@@ -87,7 +104,11 @@ function check_mds_stat() {
 
 function check_rbd_stat() {
 	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
-		RBD_POOL_NAME=$(kubectl -n rook-ceph get cephblockpools -ojsonpath='{.items[0].metadata.name}')
+		if [ -z "$1" ]; then
+			RBD_POOL_NAME=$(kubectl -n rook-ceph get cephblockpools -ojsonpath='{.items[0].metadata.name}')
+		else
+			RBD_POOL_NAME=$1
+		fi
 		echo "Checking RBD ($RBD_POOL_NAME) stats... ${retry}s" && sleep 5
 
 		TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
@@ -115,11 +136,19 @@ deploy)
 teardown)
 	teardown_rook
 	;;
+create-block-pool)
+	create_block_pool
+	;;
+delete-block-pool)
+	delete_block_pool
+	;;
 *)
 	echo " $0 [command]
 Available Commands:
-  deploy         Deploy a rook
-  teardown       Teardown a rook
+  deploy             Deploy a rook
+  teardown           Teardown a rook
+  create-block-pool  Create a rook block pool
+  delete-block-pool  Delete a rook block pool
 " >&2
 	;;
 esac

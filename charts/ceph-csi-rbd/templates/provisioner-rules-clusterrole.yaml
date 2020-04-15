@@ -53,5 +53,13 @@ rules:
   - apiGroups: [""]
     resources: ["persistentvolumeclaims/status"]
     verbs: ["update", "patch"]
-{{- end -}}
+{{- end }}
+{{- if .Values.topology.enabled }}
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+{{- end }}
 {{- end -}}

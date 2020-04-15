@@ -6,6 +6,7 @@ set -e
 export KUBE_VERSION=$1
 sudo scripts/minikube.sh up
 sudo scripts/minikube.sh deploy-rook
+sudo scripts/minikube.sh create-block-pool
 # pull docker images to speed up e2e
 sudo scripts/minikube.sh cephcsi
 sudo scripts/minikube.sh k8s-sidecar

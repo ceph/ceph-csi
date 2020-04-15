@@ -84,7 +84,7 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 	app.Labels = map[string]string{"app": "resize-pvc"}
 	app.Namespace = f.UniqueName
 
-	err = createPVCAndApp("", f, pvc, app)
+	err = createPVCAndApp("", f, pvc, app, deployTimeout)
 	if err != nil {
 		return err
 	}
