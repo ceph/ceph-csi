@@ -16,6 +16,7 @@
       - [3. Upgrade RBD Provisioner resources](#3-upgrade-rbd-provisioner-resources)
         - [3.1 Update the RBD Provisioner RBAC](#31-update-the-rbd-provisioner-rbac)
         - [3.2 Update the RBD Provisioner deployment](#32-update-the-rbd-provisioner-deployment)
+        - [3.3 Update snapshot CRD from Alpha to Beta](#33-update-snapshot-crd-from-alpha-to-beta)
       - [4. Upgrade RBD Nodeplugin resources](#4-upgrade-rbd-nodeplugin-resources)
         - [4.1 Update the RBD Nodeplugin RBAC](#41-update-the-rbd-nodeplugin-rbac)
         - [4.2 Update the RBD Nodeplugin daemonset](#42-update-the-rbd-nodeplugin-daemonset)
@@ -235,6 +236,41 @@ csi-rbdplugin-provisioner      3/3     3            3           139m
 ```
 
 deployment UP-TO-DATE value must be same as READY
+
+##### 3.3 Update snapshot CRD from Alpha to Beta
+
+As we are updating the snapshot resources from `Alpha` to `Beta` we need to
+delete the old `alphav1` snapshot CRD created by external-snapshotter sidecar container
+
+Check if we have any `v1alpha1` CRD created in our kubernetes cluster
+
+```bash
+[$]kubectl get crd volumesnapshotclasses.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+  - name: v1alpha1
+  - v1alpha1
+[$]kubectl get crd volumesnapshotcontents.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+  - name: v1alpha1
+  - v1alpha1
+[$]kubectl get crd volumesnapshots.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+  - name: v1alpha1
+  - v1alpha1
+```
+
+As we have `v1alpha1` CRD created in our kubernetes cluster,we need to delete
+the Alpha CRD
+
+```bash
+[$]kubectl delete crd volumesnapshotclasses.snapshot.storage.k8s.io
+customresourcedefinition.apiextensions.k8s.io "volumesnapshotclasses.snapshot.storage.k8s.io" deleted
+[$]kubectl delete crd volumesnapshotcontents.snapshot.storage.k8s.io
+customresourcedefinition.apiextensions.k8s.io "volumesnapshotcontents.snapshot.storage.k8s.io" deleted
+[$]kubectl delete crd volumesnapshots.snapshot.storage.k8s.io
+customresourcedefinition.apiextensions.k8s.io "volumesnapshots.snapshot.storage.k8s.io" deleted
+```
+
+**Note**: Its kubernetes distributor responsibility to install new snapshot
+controller and snapshot beta CRD. more info can be found
+[here](https://github.com/kubernetes-csi/external-snapshotter/tree/master#usage)
 
 #### 4. Upgrade RBD Nodeplugin resources
 
