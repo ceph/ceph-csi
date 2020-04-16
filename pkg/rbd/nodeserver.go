@@ -409,6 +409,14 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 
+	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
+		req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
+		readOnly := "ro"
+		if csicommon.Contains(opt, readOnly) {
+			opt = append(opt, readOnly)
+		}
+	}
+
 	if isBlock {
 		opt = append(opt, "bind")
 		err = diskMounter.Mount(devicePath, stagingPath, fsType, opt)
