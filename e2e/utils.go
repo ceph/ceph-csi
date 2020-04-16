@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	// _ "github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1"                             // nolint
-	// _ "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1" // nolint
 	"github.com/ceph/ceph-csi/internal/util"
 
 	. "github.com/onsi/ginkgo" // nolint
@@ -62,13 +60,6 @@ func initResouces() {
 	ns = fmt.Sprintf("--namespace=%v", cephCSINamespace)
 	vaultAddr = fmt.Sprintf("http://vault.%s.svc.cluster.local:8200", cephCSINamespace)
 }
-
-// type snapInfo struct {
-// 	ID        int64  `json:"id"`
-// 	Name      string `json:"name"`
-// 	Size      int64  `json:"size"`
-// 	Timestamp string `json:"timestamp"`
-// }
 
 func createNamespace(c clientset.Interface, name string) error {
 	timeout := time.Duration(deployTimeout) * time.Minute
@@ -251,22 +242,6 @@ func getStorageClass(path string) scv1.StorageClass {
 	return sc
 }
 
-// func getSnapshotClass(path string) v1alpha1.VolumeSnapshotClass {
-// 	sc := v1alpha1.VolumeSnapshotClass{}
-// 	sc.Kind = "VolumeSnapshotClass"
-// 	sc.APIVersion = "snapshot.storage.k8s.io/v1alpha1"
-// 	err := unmarshal(path, &sc)
-// 	Expect(err).Should(BeNil())
-// 	return sc
-// }
-
-// func getSnapshot(path string) v1alpha1.VolumeSnapshot {
-// 	sc := v1alpha1.VolumeSnapshot{}
-// 	err := unmarshal(path, &sc)
-// 	Expect(err).Should(BeNil())
-// 	return sc
-// }
-
 func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
@@ -330,34 +305,6 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOpt
 	_, err := c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	Expect(err).Should(BeNil())
 }
-
-// func newSnapshotClient() (*snapClient.SnapshotV1alpha1Client, error) {
-// 	config, err := framework.LoadConfig()
-// 	if err != nil {
-// 		return nil, fmt.Errorf("error creating client: %v", err.Error())
-// 	}
-// 	c, err := snapClient.NewForConfig(config)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("error creating snapshot client: %v", err.Error())
-// 	}
-// 	return c, err
-// }
-// func createRBDSnapshotClass(f *framework.Framework) {
-// 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "snapshotclass.yaml")
-// 	sc := getSnapshotClass(scPath)
-
-// 	opt := metav1.ListOptions{
-// 		LabelSelector: "app=rook-ceph-tools",
-// 	}
-// 	fsID := execCommandInPod(f, "ceph fsid", rookNS, &opt)
-// 	// remove new line present in fsID
-// 	fsID = strings.Trim(fsID, "\n")
-// 	sc.Parameters["clusterID"] = fsID
-// 	sclient, err := newSnapshotClient()
-// 	Expect(err).Should(BeNil())
-// 	_, err = sclient.VolumeSnapshotClasses().Create(&sc)
-// 	Expect(err).Should(BeNil())
-// }
 
 func deleteConfigMap(pluginPath string) {
 	path := pluginPath + configMap
@@ -934,73 +881,6 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) {
 	}
 }
 
-// func createSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
-
-// 	sclient, err := newSnapshotClient()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	_, err = sclient.VolumeSnapshots(snap.Namespace).Create(snap)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	e2elog.Logf("snapshot with name %v created in %v namespace", snap.Name, snap.Namespace)
-
-// 	timeout := time.Duration(t) * time.Minute
-// 	name := snap.Name
-// 	start := time.Now()
-// 	e2elog.Logf("Waiting up to %v to be in Ready state", snap)
-
-// 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-// 		e2elog.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
-// 		snaps, err := sclient.VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
-// 		if err != nil {
-// 			e2elog.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
-// 			if testutils.IsRetryableAPIError(err) {
-// 				return false, nil
-// 			}
-// 			if apierrs.IsNotFound(err) {
-// 				return false, nil
-// 			}
-// 			return false, err
-// 		}
-// 		if snaps.Status.ReadyToUse {
-// 			return true, nil
-// 		}
-// 		return false, nil
-// 	})
-// }
-
-// func deleteSnapshot(snap *v1alpha1.VolumeSnapshot, t int) error {
-// 	sclient, err := newSnapshotClient()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = sclient.VolumeSnapshots(snap.Namespace).Delete(snap.Name, &metav1.DeleteOptions{})
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	timeout := time.Duration(t) * time.Minute
-// 	name := snap.Name
-// 	start := time.Now()
-// 	e2elog.Logf("Waiting up to %v to be deleted", snap)
-
-// 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-// 		e2elog.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
-// 		_, err := sclient.VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
-// 		if err == nil {
-// 			return false, nil
-// 		}
-
-// 		if !apierrs.IsNotFound(err) {
-// 			return false, fmt.Errorf("get on deleted snapshot %v failed with error other than \"not found\": %v", name, err)
-// 		}
-
-// 		return true, nil
-// 	})
-// }
-
 func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
@@ -1033,19 +913,6 @@ func listRBDImages(f *framework.Framework) []string {
 	}
 	return imgInfos
 }
-
-// func listSnapshots(f *framework.Framework, pool, imageName string) ([]snapInfo, error) {
-// 	opt := metav1.ListOptions{
-// 		LabelSelector: "app=rook-ceph-tools",
-// 	}
-// 	command := fmt.Sprintf("rbd snap ls %s/%s --format=json", pool, imageName)
-// 	stdout := execCommandInPod(f, command, rookNS, &opt)
-
-// 	var snapInfos []snapInfo
-
-// 	err := json.Unmarshal([]byte(stdout), &snapInfos)
-// 	return snapInfos, err
-// }
 
 func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	data := "checking data persist"
