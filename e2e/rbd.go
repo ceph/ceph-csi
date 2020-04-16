@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo" // nolint
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -600,6 +602,122 @@ var _ = Describe("RBD", func() {
 
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
+			})
+
+			By("create ROX PVC clone and mount it to multiple pods", func() {
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Logf("failed to get server version with error %v", err)
+					Fail(err.Error())
+				}
+				// snapshot beta is only supported from v1.17+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
+					// create pvc and bind it to an app
+					pvc, err := loadPVC(pvcPath)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					pvc.Namespace = f.UniqueName
+					app, err := loadApp(appPath)
+					if err != nil {
+						Fail(err.Error())
+					}
+					app.Namespace = f.UniqueName
+					err = createPVCAndApp("", f, pvc, app, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					// delete pod as we should not create snapshot for in-use pvc
+					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					snap := getSnapshot(snapshotPath)
+					snap.Namespace = f.UniqueName
+					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+
+					err = createSnapshot(&snap, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					pvcClone, err := loadPVC(pvcClonePath)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					// create clone PVC as ROX
+					pvcClone.Namespace = f.UniqueName
+					pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+					err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+					appClone, err := loadApp(appClonePath)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					totalCount := 4
+					appClone.Namespace = f.UniqueName
+					appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+
+					// create pvc and app
+					for i := 0; i < totalCount; i++ {
+						name := fmt.Sprintf("%s%d", f.UniqueName, i)
+						label := map[string]string{
+							"app": name,
+						}
+						appClone.Labels = label
+						appClone.Name = name
+						err = createApp(f.ClientSet, appClone, deployTimeout)
+						if err != nil {
+							Fail(err.Error())
+						}
+					}
+
+					for i := 0; i < totalCount; i++ {
+						name := fmt.Sprintf("%s%d", f.UniqueName, i)
+						opt := metav1.ListOptions{
+							LabelSelector: fmt.Sprintf("app=%s", name),
+						}
+
+						filePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+						_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), appClone.Namespace, &opt)
+						readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+						if !strings.Contains(stdErr, readOnlyErr) {
+							Fail(stdErr)
+						}
+					}
+
+					// delete app
+					for i := 0; i < totalCount; i++ {
+						name := fmt.Sprintf("%s%d", f.UniqueName, i)
+						appClone.Name = name
+						err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
+						if err != nil {
+							Fail(err.Error())
+						}
+					}
+					// delete pvc clone
+					err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+					// delete snapshot
+					err = deleteSnapshot(&snap, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+					// delete parent pvc
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+				}
 			})
 
 			// Make sure this should be last testcase in this file, because
