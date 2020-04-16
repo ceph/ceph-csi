@@ -100,6 +100,7 @@ type rbdVolume struct {
 	VolSize             int64  `json:"volSize"`
 	DisableInUseChecks  bool   `json:"disableInUseChecks"`
 	Encrypted           bool
+	readOnly            bool
 	KMS                 util.EncryptionKMS
 
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
