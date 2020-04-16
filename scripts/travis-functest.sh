@@ -10,6 +10,8 @@ sudo scripts/minikube.sh create-block-pool
 # pull docker images to speed up e2e
 sudo scripts/minikube.sh cephcsi
 sudo scripts/minikube.sh k8s-sidecar
+# delete snapshot CRD created by ceph-csi in rook
+scripts/install-snapshot.sh delete-crd
 # install snapshot controller
 scripts/install-snapshot.sh install
 sudo chown -R travis: "$HOME"/.minikube /usr/local/bin/kubectl

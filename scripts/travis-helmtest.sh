@@ -15,6 +15,8 @@ sudo chown -R travis: "$HOME"/.minikube /usr/local/bin/kubectl
 NAMESPACE=cephcsi-e2e-$RANDOM
 # create ns for e2e
 kubectl create ns ${NAMESPACE}
+# delete snapshot CRD created by ceph-csi in rook
+scripts/install-snapshot.sh delete-crd
 # install snapshot controller
 scripts/install-snapshot.sh install
 # set up helm
