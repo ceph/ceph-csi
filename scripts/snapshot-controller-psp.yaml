@@ -1,0 +1,55 @@
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: csi-snapshotter-psp
+spec:
+  allowPrivilegeEscalation: true
+  allowedCapabilities:
+    - "SYS_ADMIN"
+  fsGroup:
+    rule: RunAsAny
+  privileged: true
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+    - "configMap"
+    - "emptyDir"
+    - "projected"
+    - "secret"
+    - "downwardAPI"
+    - "hostPath"
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-snapshotter-psp
+  # replace with non-default namespace name
+  namespace: default
+rules:
+  - apiGroups: ["policy"]
+    resources: ["podsecuritypolicies"]
+    verbs: ["use"]
+    resourceNames: ["csi-snapshotter-psp"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-snapshotter-psp
+  # replace with non-default namespace name
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: snapshot-controller
+    # replace with non-default namespace name
+    namespace: default
+roleRef:
+  kind: Role
+  name: csi-snapshotter-psp
+  apiGroup: rbac.authorization.k8s.io
