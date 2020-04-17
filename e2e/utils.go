@@ -321,10 +321,16 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOpt
 	}
 	sc.Namespace = cephCSINamespace
 
-	if scOptions["volumeBindingMode"] == "WaitForFirstConsumer" {
-		value := scv1.VolumeBindingWaitForFirstConsumer
-		sc.VolumeBindingMode = &value
+	for key, val := range scOptions {
+		if key == "WaitForFirstConsumer" {
+			value := scv1.VolumeBindingWaitForFirstConsumer
+			sc.VolumeBindingMode = &value
+		}
+		if key == "mountOptions" {
+			sc.MountOptions = append(sc.MountOptions, val)
+		}
 	}
+
 	_, err := c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	Expect(err).Should(BeNil())
 }

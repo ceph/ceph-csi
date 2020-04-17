@@ -562,6 +562,21 @@ var _ = Describe("RBD", func() {
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
 
+			By("create storage class with mountoption ro", func() {
+				mountFlag := "ro"
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, map[string]string{"mountOptions": mountFlag}, nil)
+
+				mountFlags := []string{mountFlag}
+				err := checkMountOptions(pvcPath, appPath, f, mountFlags)
+				if err != nil {
+					Fail(err.Error())
+				}
+				// cleanup and undo changes made by the test
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, nil, nil)
+			})
+
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and Delete PVC when backend pool deleted", func() {
