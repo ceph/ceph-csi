@@ -193,6 +193,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	transaction := stageTransaction{}
 
 	var err error
+	var readOnly bool
 
 	var cr *util.Credentials
 	cr, err = util.NewUserCredentials(req.GetSecrets())
@@ -230,15 +231,16 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	transaction.isStagePathCreated = true
 
 	// nodeStage Path
-	err = ns.mountVolumeToStagePath(ctx, req, staticVol, stagingTargetPath, devicePath)
+	readOnly, err = ns.mountVolumeToStagePath(ctx, req, staticVol, stagingTargetPath, devicePath)
 	if err != nil {
 		return transaction, err
 	}
 	transaction.isMounted = true
 
-	// #nosec - allow anyone to write inside the target path
-	err = os.Chmod(stagingTargetPath, 0777)
-
+	if !readOnly {
+		// #nosec - allow anyone to write inside the target path
+		err = os.Chmod(stagingTargetPath, 0777)
+	}
 	return transaction, err
 }
 
@@ -370,7 +372,8 @@ func getLegacyVolumeName(mountPath string) (string, error) {
 	return volName, nil
 }
 
-func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, staticVol bool, stagingPath, devicePath string) error {
+func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, staticVol bool, stagingPath, devicePath string) (bool, error) {
+	readOnly := false
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
 	// rbd images are thin-provisioned and return zeros for unwritten areas.  A freshly created
@@ -386,7 +389,7 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	existingFormat, err := diskMounter.GetDiskFormat(devicePath)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to get disk format for path %s, error: %v"), devicePath, err)
-		return err
+		return readOnly, err
 	}
 
 	if existingFormat == "" && !staticVol {
@@ -400,7 +403,7 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 			cmdOut, cmdErr := diskMounter.Exec.Command("mkfs."+fsType, args...).CombinedOutput()
 			if cmdErr != nil {
 				klog.Errorf(util.Log(ctx, "failed to run mkfs error: %v, output: %v"), cmdErr, cmdOut)
-				return cmdErr
+				return readOnly, cmdErr
 			}
 		}
 	}
@@ -408,6 +411,11 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	opt := []string{"_netdev"}
 	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
+
+	rOnly := "ro"
+	if csicommon.Contains(opt, rOnly) {
+		readOnly = true
+	}
 
 	if isBlock {
 		opt = append(opt, "bind")
@@ -418,7 +426,7 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to mount device path (%s) to staging path (%s) for volume (%s) error %s"), devicePath, stagingPath, req.GetVolumeId(), err)
 	}
-	return err
+	return readOnly, err
 }
 
 func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *csi.NodePublishVolumeRequest) error {
