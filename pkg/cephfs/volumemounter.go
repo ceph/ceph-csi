@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 
+	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"golang.org/x/sys/unix"
@@ -315,13 +316,13 @@ func (m *kernelMounter) mount(ctx context.Context, mountPoint string, cr *util.C
 
 func (m *kernelMounter) name() string { return "Ceph kernel client" }
 
-func bindMount(ctx context.Context, from, to string, readOnly bool, mntOptions []string) error {
+func bindMount(ctx context.Context, from, to string, mntOptions []string) error {
 	mntOptionSli := strings.Join(mntOptions, ",")
 	if err := execCommandErr(ctx, "mount", "-o", mntOptionSli, from, to); err != nil {
 		return fmt.Errorf("failed to bind-mount %s to %s: %v", from, to, err)
 	}
 
-	if readOnly {
+	if csicommon.Contains(mntOptions, "ro") {
 		mntOptionSli += ",remount"
 		if err := execCommandErr(ctx, "mount", "-o", mntOptionSli, to); err != nil {
 			return fmt.Errorf("failed read-only remount of %s: %v", to, err)

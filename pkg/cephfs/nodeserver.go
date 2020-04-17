@@ -201,7 +201,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	// It's not, mount now
 
-	if err = bindMount(ctx, req.GetStagingTargetPath(), req.GetTargetPath(), req.GetReadonly(), mountOptions); err != nil {
+	if err = bindMount(ctx, req.GetStagingTargetPath(), req.GetTargetPath(), mountOptions); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to bind-mount volume %s: %v"), volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
