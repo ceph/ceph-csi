@@ -19,7 +19,7 @@ package rbd
 import (
 	"context"
 
-	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )

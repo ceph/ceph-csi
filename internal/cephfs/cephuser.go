@@ -19,7 +19,7 @@ package cephfs
 import (
 	"context"
 
-	"github.com/ceph/ceph-csi/pkg/util"
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 const (

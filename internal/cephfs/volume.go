@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ceph/ceph-csi/pkg/util"
+	"github.com/ceph/ceph-csi/internal/util"
 
 	"k8s.io/klog"
 )

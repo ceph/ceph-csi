@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/pkg/util"
+	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/pkg/errors"
 	"k8s.io/klog"

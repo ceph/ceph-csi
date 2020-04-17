@@ -40,7 +40,7 @@ import (
  "github.com/pborman/uuid"
  "github.com/pkg/errors"
 
- "github.com/ceph/ceph-csi/pkg/util"
+ "github.com/ceph/ceph-csi/internal/util"
 )
 ```
 
