@@ -168,12 +168,12 @@ var _ = Describe("cephfs", func() {
 			}
 
 			By("create a storage class with pool and a PVC then Bind it to an app", func() {
-				createCephfsStorageClass(f.ClientSet, f, true)
+				createCephfsStorageClass(f.ClientSet, f, true, nil)
 				validatePVCAndAppBinding(pvcPath, appPath, f)
 				deleteResource(cephfsExamplePath + "storageclass.yaml")
 			})
 
-			createCephfsStorageClass(f.ClientSet, f, false)
+			createCephfsStorageClass(f.ClientSet, f, false, nil)
 
 			By("create and delete a PVC", func() {
 				By("create a PVC and Bind it to an app", func() {
@@ -266,6 +266,21 @@ var _ = Describe("cephfs", func() {
 						}
 					}
 
+				})
+
+				By("create storage class with mountoption ro", func() {
+					mountFlag := "ro"
+					deleteResource(cephfsExamplePath + "storageclass.yaml")
+					createCephfsStorageClass(f.ClientSet, f, false, map[string]string{"mountOptions": mountFlag})
+
+					mountFlags := []string{mountFlag}
+					err := checkMountOptions(pvcPath, appPath, f, mountFlags)
+					if err != nil {
+						Fail(err.Error())
+					}
+					// cleanup and undo changes made by the test
+					deleteResource(cephfsExamplePath + "storageclass.yaml")
+					createCephfsStorageClass(f.ClientSet, f, false, nil)
 				})
 
 				// Make sure this should be last testcase in this file, because
