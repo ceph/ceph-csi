@@ -208,11 +208,13 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully bind-mounted volume %s to %s"), volID, targetPath)
 
-	// #nosec - allow anyone to write inside the target path
-	err = os.Chmod(targetPath, 0777)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to change targetpath permission for volume %s: %v"), volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
+	if !csicommon.Contains(mountOptions, "ro") {
+		// #nosec - allow anyone to write inside the target path
+		err = os.Chmod(targetPath, 0777)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to change targetpath permission for volume %s: %v"), volID, err)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
