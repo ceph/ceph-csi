@@ -56,19 +56,22 @@ The Release Owner must follow the following process, which is
 designed to ensure clarity, quality, stability, and auditability
 of each release:
 
-- Raise an issue and assign to themselves.
+- [Create a new milestone](https://github.com/ceph/ceph-csi/milestones/new) to
+  track the progress of the release. Set the scheduled date for the release, or
+  update it later when a date is selected.
 
-[new issue in this repository](https://github.com/ceph/ceph-csi/issues/new)
-
-  This issue is used to track the progress of the release with maximum visibility.
+- [Raise new issue in this
+  repository](https://github.com/ceph/ceph-csi/issues/new) to track the
+  progress of the release with maximum visibility. Link the issue with the
+  milestone for the release.
 
 - Paste the release checklist into the issue.
 
-  This is useful for tracking so that the stage of the release is visible
-  to all interested parties. This checklist could be a list of issues/PRs
-  tracked for a release. The issues/PRs will be labelled with release tag.
-  For example,  a label called `1.0.0` ( for release version 1.0.0) can be
-  attached to issues and PRs for better tracking release items.
+  This is useful for tracking so that the stage of the release is visible to
+  all interested parties. This checklist could be a list of issues/PRs tracked
+  for a release. The issues/PRs will be marked with the milestone for the
+  release. For example, a milestone called `release-2.1.0` (for release version
+  2.1.0) can be linked to issues and PRs for better tracking release items.
 
-- Once all steps are complete, close the issue.
+- Once all steps are complete, close the issue and the milestone.
 
