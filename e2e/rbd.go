@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo" // nolint
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -568,10 +569,62 @@ var _ = Describe("RBD", func() {
 				createRBDStorageClass(f.ClientSet, f, map[string]string{"mountOptions": mountFlag}, nil)
 
 				mountFlags := []string{mountFlag}
+				// check the mountpoint as ro flag
 				err := checkMountOptions(pvcPath, appPath, f, mountFlags)
 				if err != nil {
 					Fail(err.Error())
 				}
+
+				// create pvc and app pod. check app pod is able to write data
+				// to mount point
+				totalCount := 3
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+				pvc.Namespace = f.UniqueName
+				app, err := loadApp(appPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+				app.Namespace = f.UniqueName
+				// create pvc and app
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					label := map[string]string{
+						"app": name,
+					}
+					app.Labels = label
+					err := createPVCAndApp(name, f, pvc, app, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+				}
+
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("app=%s", name),
+					}
+
+					filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+					_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), app.Namespace, &opt)
+					readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+					if !strings.Contains(stdErr, readOnlyErr) {
+						Fail(stdErr)
+					}
+				}
+
+				// delete pvc and app
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					err := deletePVCAndApp(name, f, pvc, app)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+				}
+
 				// cleanup and undo changes made by the test
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, nil, nil)

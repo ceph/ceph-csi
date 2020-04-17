@@ -265,7 +265,7 @@ func getStorageClass(path string) scv1.StorageClass {
 // 	return sc
 // }
 
-func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool, mountOption map[string]string) {
+func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool, parameters map[string]string) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["fsName"] = "myfs"
@@ -291,10 +291,8 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	sc.Namespace = cephCSINamespace
 	sc.Parameters["clusterID"] = fsID
 
-	for key, val := range mountOption {
-		if key == "mountOption" {
-			sc.MountOptions = append(sc.MountOptions, val)
-		}
+	for key, val := range parameters {
+		sc.Parameters[key] = val
 	}
 	_, err := c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	Expect(err).Should(BeNil())
