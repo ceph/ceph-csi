@@ -44,7 +44,9 @@ endif
 
 all: cephcsi
 
+.PHONY: go-test static-check mod-check go-lint go-lint-text gosec
 test: go-test static-check mod-check
+static-check: go-lint go-lint-text gosec
 
 go-test:
 	./scripts/test-go.sh
@@ -52,9 +54,13 @@ go-test:
 mod-check:
 	go mod verify
 
-static-check:
+go-lint:
 	./scripts/lint-go.sh
+
+go-lint-text:
 	./scripts/lint-text.sh --require-all
+
+gosec:
 	./scripts/gosec.sh
 
 func-test:
