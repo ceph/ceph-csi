@@ -213,6 +213,11 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		err = os.Chmod(targetPath, 0777)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to change targetpath permission for volume %s: %v"), volID, err)
+
+			uErr := unmountVolume(ctx, targetPath)
+			if uErr != nil {
+				klog.Errorf(util.Log(ctx, "failed to unmount target path %s for volume %s: %v"), targetPath, volID, uErr)
+			}
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
