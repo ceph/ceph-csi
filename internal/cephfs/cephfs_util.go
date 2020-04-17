@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/pkg/util"
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // MDSMap is a representation of the mds map sub-structure returned by 'ceph fs get'

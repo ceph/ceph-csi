@@ -28,9 +28,9 @@ GO_PROJECT=github.com/ceph/ceph-csi
 
 # go build flags
 LDFLAGS ?=
-LDFLAGS += -X $(GO_PROJECT)/pkg/util.GitCommit=$(GIT_COMMIT)
+LDFLAGS += -X $(GO_PROJECT)/internal/util.GitCommit=$(GIT_COMMIT)
 # CSI_IMAGE_VERSION will be considered as the driver version
-LDFLAGS += -X $(GO_PROJECT)/pkg/util.DriverVersion=$(CSI_IMAGE_VERSION)
+LDFLAGS += -X $(GO_PROJECT)/internal/util.DriverVersion=$(CSI_IMAGE_VERSION)
 
 # set GOARCH explicitly for cross building, default to native architecture
 ifeq ($(origin GOARCH), undefined)
