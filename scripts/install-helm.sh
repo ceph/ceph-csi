@@ -144,7 +144,7 @@ install_cephcsi_helm_charts() {
     done
 
     # install ceph-csi-cephfs and ceph-csi-rbd charts
-    "${HELM}" install "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs --name ${CEPHFS_CHART_NAME} --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true
+    "${HELM}" install "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs --name ${CEPHFS_CHART_NAME} --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true --set nodeplugin.forcecephkernelclient=true
 
     check_deployment_status app=ceph-csi-cephfs ${NAMESPACE}
     check_daemonset_status app=ceph-csi-cephfs ${NAMESPACE}

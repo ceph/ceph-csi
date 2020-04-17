@@ -61,6 +61,7 @@ spec:
             - "--nodeserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
+            - "--forcecephkernelclient=false"
             - "--drivername=cephfs.csi.ceph.com"
             - "--metadatastorage=k8s_configmap"
             # If topology based provisioning is desired, configure required

@@ -11,6 +11,11 @@ import (
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
+const (
+	// force use the kernel client in E2E
+	useKernelClient = true
+)
+
 var (
 	cephfsProvisioner     = "csi-cephfsplugin-provisioner.yaml"
 	cephfsProvisionerRBAC = "csi-provisioner-rbac.yaml"
@@ -82,6 +87,8 @@ func createORDeleteCephfsResouces(action string) {
 	}
 
 	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePlugin)
+
+	data = strings.ReplaceAll(data, "forcecephkernelclient=false", fmt.Sprintf("forcecephkernelclient=%t", useKernelClient))
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsNodePlugin, err)
 	}
