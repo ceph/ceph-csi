@@ -96,10 +96,12 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	// TODO return error message if requested vol size greater than found volume return error
 
 	if vID != nil {
+		volumeContext := req.GetParameters()
+		volumeContext["subvolumeName"] = vID.FsSubvolName
 		volume := &csi.Volume{
 			VolumeId:      vID.VolumeID,
 			CapacityBytes: volOptions.Size,
-			VolumeContext: req.GetParameters(),
+			VolumeContext: volumeContext,
 		}
 		if volOptions.Topology != nil {
 			volume.AccessibleTopology =
@@ -136,10 +138,12 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully created backing volume named %s for request name %s"),
 		vID.FsSubvolName, requestName)
 
+	volumeContext := req.GetParameters()
+	volumeContext["subvolumeName"] = vID.FsSubvolName
 	volume := &csi.Volume{
 		VolumeId:      vID.VolumeID,
 		CapacityBytes: volOptions.Size,
-		VolumeContext: req.GetParameters(),
+		VolumeContext: volumeContext,
 	}
 	if volOptions.Topology != nil {
 		volume.AccessibleTopology =
