@@ -31,10 +31,9 @@ function copy_image_to_cluster() {
 # install minikube
 function install_minikube() {
     if type minikube >/dev/null 2>&1; then
-        local version
-        version=$(minikube version)
-        read -ra version <<<"${version}"
-        version=${version[2]}
+        local mk_version version
+        read -ra mk_version <<<"$(minikube version)"
+        version=${mk_version[2]}
         if [[ "${version}" != "${MINIKUBE_VERSION}" ]]; then
             echo "installed minikube version ${version} is not matching requested version ${MINIKUBE_VERSION}"
             exit 1
