@@ -176,6 +176,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		volumeContext := req.GetParameters()
 		volumeContext["pool"] = rbdVol.Pool
 		volumeContext["journalPool"] = rbdVol.JournalPool
+		volumeContext["imageName"] = rbdVol.RbdImageName
 		volume := &csi.Volume{
 			VolumeId:      rbdVol.VolID,
 			CapacityBytes: rbdVol.VolSize,
@@ -233,6 +234,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	volumeContext := req.GetParameters()
 	volumeContext["pool"] = rbdVol.Pool
 	volumeContext["journalPool"] = rbdVol.JournalPool
+	volumeContext["imageName"] = rbdVol.RbdImageName
 	volume := &csi.Volume{
 		VolumeId:      rbdVol.VolID,
 		CapacityBytes: rbdVol.VolSize,
