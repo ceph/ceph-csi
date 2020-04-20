@@ -61,7 +61,9 @@ build_push_images() {
 	manifests=$("${CONTAINER_CMD:-docker}" manifest inspect "${baseimg}" | jq '.manifests[] | {arch: .platform.architecture, digest: .digest}')
 
 	# build and push per arch images
-	for ARCH in amd64 arm64; do
+	# disabled arm64 build as of now as we cannot build multiarch image
+	# with CGO enabled
+	for ARCH in amd64; do
 		ifs=$IFS
 		IFS=
 		digest=$(awk -v ARCH=${ARCH} '{if (archfound) {print $NF; exit 0}}; {archfound=($0 ~ "arch.*"ARCH)}' <<<"${manifests}")
