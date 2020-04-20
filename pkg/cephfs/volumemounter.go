@@ -27,7 +27,6 @@ import (
 	"strings"
 	"sync"
 
-	csicommon "github.com/ceph/ceph-csi/pkg/csi-common"
 	"github.com/ceph/ceph-csi/pkg/util"
 
 	"golang.org/x/sys/unix"
@@ -322,7 +321,7 @@ func bindMount(ctx context.Context, from, to string, mntOptions []string) error 
 		return fmt.Errorf("failed to bind-mount %s to %s: %v", from, to, err)
 	}
 
-	if csicommon.Contains(mntOptions, "ro") {
+	if util.Contains(mntOptions, "ro") {
 		mntOptionSli += ",remount"
 		if err := execCommandErr(ctx, "mount", "-o", mntOptionSli, to); err != nil {
 			return fmt.Errorf("failed read-only remount of %s: %v", to, err)

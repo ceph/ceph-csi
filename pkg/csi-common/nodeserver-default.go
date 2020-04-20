@@ -175,33 +175,3 @@ func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.No
 		},
 	}, nil
 }
-
-// ConstructMountOptions returns only unique mount options in slice
-func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) []string {
-	if m := volCap.GetMount(); m != nil {
-		hasOption := func(options []string, opt string) bool {
-			for _, o := range options {
-				if o == opt {
-					return true
-				}
-			}
-			return false
-		}
-		for _, f := range m.MountFlags {
-			if !hasOption(mountOptions, f) {
-				mountOptions = append(mountOptions, f)
-			}
-		}
-	}
-	return mountOptions
-}
-
-// Contains checks the opt is present in mountOptions
-func Contains(mountOptions []string, opt string) bool {
-	for _, mnt := range mountOptions {
-		if mnt == opt {
-			return true
-		}
-	}
-	return false
-}

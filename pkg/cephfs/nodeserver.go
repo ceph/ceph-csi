@@ -128,6 +128,19 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully mounted volume %s to %s"), volID, stagingTargetPath)
 
+	if !(util.CheckROMountFlag(req.GetVolumeContext(), "kernelMountOptions", "ro") && util.CheckROMountFlag(req.GetVolumeContext(), "fuseMountOptions", "ro")) {
+		// #nosec - allow anyone to write inside the target path
+		err = os.Chmod(stagingTargetPath, 0777)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to change targetpath permission for volume %s: %v"), volID, err)
+			uErr := unmountVolume(ctx, stagingTargetPath)
+			if uErr != nil {
+				klog.Errorf(util.Log(ctx, "failed to unmount stagingTargetPath path %s for volume %s: %v"), stagingTargetPath, volID, uErr)
+			}
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
@@ -183,7 +196,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		mountOptions = append(mountOptions, "ro")
 	}
 
-	mountOptions = csicommon.ConstructMountOptions(mountOptions, req.GetVolumeCapability())
+	mountOptions = util.ConstructMountOptions(mountOptions, req.GetVolumeCapability())
 
 	// Check if the volume is already mounted
 
@@ -207,20 +220,6 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully bind-mounted volume %s to %s"), volID, targetPath)
-
-	if !csicommon.Contains(mountOptions, "ro") {
-		// #nosec - allow anyone to write inside the target path
-		err = os.Chmod(targetPath, 0777)
-		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to change targetpath permission for volume %s: %v"), volID, err)
-
-			uErr := unmountVolume(ctx, targetPath)
-			if uErr != nil {
-				klog.Errorf(util.Log(ctx, "failed to unmount target path %s for volume %s: %v"), targetPath, volID, uErr)
-			}
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }

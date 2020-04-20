@@ -409,11 +409,11 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	}
 
 	opt := []string{"_netdev"}
-	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
+	opt = util.ConstructMountOptions(opt, req.GetVolumeCapability())
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 
 	rOnly := "ro"
-	if csicommon.Contains(opt, rOnly) {
+	if util.Contains(opt, rOnly) {
 		readOnly = true
 	}
 
@@ -437,7 +437,7 @@ func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	targetPath := req.GetTargetPath()
 
-	mountOptions = csicommon.ConstructMountOptions(mountOptions, req.GetVolumeCapability())
+	mountOptions = util.ConstructMountOptions(mountOptions, req.GetVolumeCapability())
 
 	klog.V(4).Infof(util.Log(ctx, "target %v\nisBlock %v\nfstype %v\nstagingPath %v\nreadonly %v\nmountflags %v\n"),
 		targetPath, isBlock, fsType, stagingPath, readOnly, mountOptions)
