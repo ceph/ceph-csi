@@ -50,7 +50,8 @@ go-test:
 	./scripts/test-go.sh
 
 mod-check:
-	go mod verify
+	@echo 'running: go mod verify'
+	@go mod verify && [ "$(shell sha512sum go.mod)" = "`sha512sum go.mod`" ] || ( echo "ERROR: go.mod was modified by 'go mod verify'" && false )
 
 static-check:
 	./scripts/lint-go.sh
