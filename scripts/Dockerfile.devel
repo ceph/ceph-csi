@@ -9,11 +9,11 @@ RUN mkdir -p /usr/local/go && \
 
 ENV PATH="$GOROOT/bin:$GOPATH/bin:$PATH"
 
-RUN yum -y install \
+RUN dnf -y install \
 	git \
 	make \
 	gcc \
 	librados-devel \
 	librbd-devel \
-    && yum -y update \
+    && dnf -y update \
     && true
