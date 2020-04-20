@@ -18,3 +18,5 @@ RUN dnf -y install \
 	librbd-devel \
     && dnf -y update \
     && true
+
+WORKDIR "/go/src/github.com/ceph/ceph-csi"

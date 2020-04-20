@@ -79,7 +79,7 @@ cephcsi:
 
 .PHONY: containerized-build containerized-test
 containerized-build: .devel-container-id
-	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make -C /go/src/github.com/ceph/ceph-csi cephcsi
+	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make cephcsi
 
 containerized-test: .test-container-id
 	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make test
