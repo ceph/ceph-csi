@@ -11,13 +11,13 @@ ARG GO_ARCH
 ARG SRC_DIR
 ARG GIT_COMMIT
 ARG GOROOT=/usr/local/go
-RUN dnf install libcephfs-devel librados-devel librbd-devel /usr/bin/cc  make -y
 
 RUN mkdir -p ${GOROOT} && \
     curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GO_ARCH}.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
 
+RUN dnf install libcephfs-devel librados-devel librbd-devel /usr/bin/cc make -y
 
-ENV GOROOT=$GOROOT \
+ENV GOROOT=${GOROOT} \
     GOPATH=/go \
     CGO_ENABLED=1 \
     GIT_COMMIT="${GIT_COMMIT}" \
@@ -40,8 +40,8 @@ FROM ceph/ceph:v15
 ARG SRC_DIR
 
 LABEL maintainers="Ceph-CSI Authors" \
-    version=$CSI_IMAGE_VERSION \
-    architecture=$GO_ARCH \
+    version=${CSI_IMAGE_VERSION} \
+    architecture=${GO_ARCH} \
     description="Ceph-CSI Plugin"
 
 COPY --from=0 ${SRC_DIR}/_output/cephcsi /usr/local/bin/cephcsi

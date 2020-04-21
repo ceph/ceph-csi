@@ -45,9 +45,8 @@ build_push_images() {
 	# "docker manifest" requires experimental feature enabled
 	export DOCKER_CLI_EXPERIMENTAL=enabled
 
-	# get baseimg (ceph/ceph:tag)
 	dockerfile="deploy/cephcsi/image/Dockerfile"
-	baseimg=$(awk 'NR==1{print $2}' "${dockerfile}")
+	baseimg=$(awk -F = '/^ARG BASE_IMAGE=/ {print $NF}' "${dockerfile}")
 
 	# get image digest per architecture
 	# {
@@ -58,7 +57,9 @@ build_push_images() {
 	#   "arch": "arm64",
 	#   "digest": "sha256:YYY"
 	# }
-	manifests=$("${CONTAINER_CMD:-docker}" manifest inspect "${baseimg}" | jq '.manifests[] | {arch: .platform.architecture, digest: .digest}')
+	manifests=$(docker manifest inspect "${baseimg}" | jq '.manifests[] | {arch: .platform.architecture, digest: .digest}')
+	# qemu-user-static is to enable an execution of different multi-architecture containers by QEMU
+	# more info at https://github.com/multiarch/qemu-user-static
 	docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 	# build and push per arch images
 	for ARCH in amd64 arm64; do
