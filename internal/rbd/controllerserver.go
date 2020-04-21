@@ -129,6 +129,36 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 	return rbdVol, nil
 }
 
+func buildCreateVolumeResponse(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume) (*csi.CreateVolumeResponse, error) {
+	if rbdVol.Encrypted {
+		err := rbdVol.ensureEncryptionMetadataSet(rbdImageRequiresEncryption)
+		if err != nil {
+			klog.Error(util.Log(ctx, err.Error()))
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
+	volumeContext := req.GetParameters()
+	volumeContext["pool"] = rbdVol.Pool
+	volumeContext["journalPool"] = rbdVol.JournalPool
+	volumeContext["imageName"] = rbdVol.RbdImageName
+	volume := &csi.Volume{
+		VolumeId:      rbdVol.VolID,
+		CapacityBytes: rbdVol.VolSize,
+		VolumeContext: volumeContext,
+		ContentSource: req.GetVolumeContentSource(),
+	}
+	if rbdVol.Topology != nil {
+		volume.AccessibleTopology =
+			[]*csi.Topology{
+				{
+					Segments: rbdVol.Topology,
+				},
+			}
+	}
+	return &csi.CreateVolumeResponse{Volume: volume}, nil
+}
+
 // CreateVolume creates the volume in backend
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateVolumeReq(ctx, req); err != nil {
@@ -171,33 +201,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if found {
-		if rbdVol.Encrypted {
-			err = rbdVol.ensureEncryptionMetadataSet(rbdImageRequiresEncryption)
-			if err != nil {
-				klog.Errorf(util.Log(ctx, err.Error()))
-				return nil, err
-			}
-		}
-
-		volumeContext := req.GetParameters()
-		volumeContext["pool"] = rbdVol.Pool
-		volumeContext["journalPool"] = rbdVol.JournalPool
-		volumeContext["imageName"] = rbdVol.RbdImageName
-		volume := &csi.Volume{
-			VolumeId:      rbdVol.VolID,
-			CapacityBytes: rbdVol.VolSize,
-			VolumeContext: volumeContext,
-			ContentSource: req.GetVolumeContentSource(),
-		}
-		if rbdVol.Topology != nil {
-			volume.AccessibleTopology =
-				[]*csi.Topology{
-					{
-						Segments: rbdVol.Topology,
-					},
-				}
-		}
-		return &csi.CreateVolumeResponse{Volume: volume}, nil
+		return buildCreateVolumeResponse(ctx, req, rbdVol)
 	}
 
 	rbdSnap, err := cs.checkSnapshotSource(ctx, req, cr)
