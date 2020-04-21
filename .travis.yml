@@ -53,7 +53,12 @@ before_script:
 
 jobs:
   include:
-    - name: static-check-make
+    # two stages for testing, each stage runs its jobs in parallel, but stages
+    # are run after each other, unless the last stage fails
+    # - build testing
+    # - e2e testing
+    - stage: build testing
+      name: static-check-make
       install:
         - gem install mdl
         - pip install --user --upgrade pip
@@ -73,32 +78,13 @@ jobs:
         - make go-test
         - make mod-check || travis_terminate 1;
 
-    - name: Build multi-architecture image for amd64 and arm64
-      script:
-        - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
-
-    - name: containerized build
+    - stage: build testing
+      name: containerized build
       script:
         - make containerized-build || travis_terminate 1;
 
-    - name: cephcsi with kube 1.14.10
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.14.10 || travis_terminate 1;
-
-    - name: cephcsi with kube 1.15.6
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.15.6 || travis_terminate 1;
-
-    - name: cephcsi with kube 1.17.0
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.17.0 || travis_terminate 1;
-    - name: cephcsi on Arm64
+    - stage: build testing
+      name: cephcsi on Arm64
       arch: arm64
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
@@ -108,7 +94,30 @@ jobs:
         # - Travis Arm64 CI job runs inside unprivileged LXD which blocks
         #   launching minikube test environment
         - travis_terminate 0    # deploy only on x86
-    - name: cephcsi helm charts with kube 1.17.0
+
+    - stage: e2e testing
+      name: cephcsi with kube 1.14.10
+      script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
+        - make image-cephcsi || travis_terminate 1;
+        - scripts/travis-functest.sh v1.14.10 || travis_terminate 1;
+
+    - stage: e2e testing
+      name: cephcsi with kube 1.15.6
+      script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
+        - make image-cephcsi || travis_terminate 1;
+        - scripts/travis-functest.sh v1.15.6 || travis_terminate 1;
+
+    - stage: e2e testing
+      name: cephcsi with kube 1.17.0
+      script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
+        - make image-cephcsi || travis_terminate 1;
+        - scripts/travis-functest.sh v1.17.0 || travis_terminate 1;
+
+    - stage: e2e testing
+      name: cephcsi helm charts with kube 1.17.0
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
