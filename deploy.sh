@@ -47,7 +47,7 @@ build_push_images() {
 
 	# get baseimg (ceph/ceph:tag)
 	dockerfile="deploy/cephcsi/image/Dockerfile"
-	baseimg=$(awk '/^FROM/ {print $NF}' "${dockerfile}")
+	baseimg=$(awk 'NR==1{print $2}' "${dockerfile}")
 
 	# get image digest per architecture
 	# {
@@ -59,7 +59,7 @@ build_push_images() {
 	#   "digest": "sha256:YYY"
 	# }
 	manifests=$("${CONTAINER_CMD:-docker}" manifest inspect "${baseimg}" | jq '.manifests[] | {arch: .platform.architecture, digest: .digest}')
-
+	docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 	# build and push per arch images
 	for ARCH in amd64 arm64; do
 		ifs=$IFS
@@ -67,7 +67,7 @@ build_push_images() {
 		digest=$(awk -v ARCH=${ARCH} '{if (archfound) {print $NF; exit 0}}; {archfound=($0 ~ "arch.*"ARCH)}' <<<"${manifests}")
 		IFS=$ifs
 		sed -i "s|\(^FROM.*\)${baseimg}.*$|\1${baseimg}@${digest}|" "${dockerfile}"
-		GOARCH=${ARCH} make push-image-cephcsi
+		ARCH=${ARCH} make push-image-cephcsi
 	done
 }
 
