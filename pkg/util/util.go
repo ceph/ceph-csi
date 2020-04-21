@@ -28,23 +28,16 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/cloud-provider/volume/helpers"
 	"k8s.io/klog"
 	"k8s.io/utils/mount"
-)
-
-// remove this once kubernetes v1.14.0 release is done
-// https://github.com/kubernetes/cloud-provider/blob/master/volume/helpers/rounding.go
-const (
-	// MiB - MebiByte size
-	MiB = 1024 * 1024
-	GiB = MiB * 1024
 )
 
 // RoundOffVolSize rounds up given quantity upto chunks of MiB/GiB
 func RoundOffVolSize(size int64) int64 {
 	size = RoundOffBytes(size)
 	// convert size back to MiB for rbd CLI
-	return size / MiB
+	return size / helpers.MiB
 }
 
 // RoundOffBytes converts roundoff the size
@@ -54,12 +47,12 @@ func RoundOffBytes(bytes int64) int64 {
 	var num int64
 	floatBytes := float64(bytes)
 	// round off the value if its in decimal
-	if floatBytes < GiB {
-		num = int64(math.Ceil(floatBytes / MiB))
-		num *= MiB
+	if floatBytes < helpers.GiB {
+		num = int64(math.Ceil(floatBytes / helpers.MiB))
+		num *= helpers.MiB
 	} else {
-		num = int64(math.Ceil(floatBytes / GiB))
-		num *= GiB
+		num = int64(math.Ceil(floatBytes / helpers.GiB))
+		num *= helpers.GiB
 	}
 	return num
 }

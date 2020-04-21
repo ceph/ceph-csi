@@ -44,7 +44,9 @@ endif
 
 all: cephcsi
 
+.PHONY: go-test static-check mod-check go-lint go-lint-text gosec
 test: go-test static-check mod-check
+static-check: go-lint go-lint-text gosec
 
 go-test:
 	./scripts/test-go.sh
@@ -53,9 +55,13 @@ mod-check:
 	@echo 'running: go mod verify'
 	@go mod verify && [ "$(shell sha512sum go.mod)" = "`sha512sum go.mod`" ] || ( echo "ERROR: go.mod was modified by 'go mod verify'" && false )
 
-static-check:
+go-lint:
 	./scripts/lint-go.sh
+
+go-lint-text:
 	./scripts/lint-text.sh --require-all
+
+gosec:
 	./scripts/gosec.sh
 
 func-test:
