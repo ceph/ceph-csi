@@ -67,7 +67,7 @@ build_push_images() {
 		digest=$(awk -v ARCH=${ARCH} '{if (archfound) {print $NF; exit 0}}; {archfound=($0 ~ "arch.*"ARCH)}' <<<"${manifests}")
 		IFS=$ifs
 		sed -i "s|\(^FROM.*\)${baseimg}.*$|\1${baseimg}@${digest}|" "${dockerfile}"
-		ARCH=${ARCH} make push-image-cephcsi
+		GOARCH=${ARCH} make push-image-cephcsi
 	done
 }
 
