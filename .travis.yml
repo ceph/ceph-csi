@@ -75,8 +75,9 @@ jobs:
         - make go-test
         - make mod-check
 
-    - name: containerized build
+    - name: containerized test (Fedora) and build (CentOS)
       script:
+        - make containerized-test || travis_terminate 1;
         - make containerized-build || travis_terminate 1;
 
     - name: cephcsi with kube 1.14.10
