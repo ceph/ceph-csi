@@ -42,6 +42,12 @@ ifdef BASE_IMAGE
 BASE_IMAGE_ARG = --build-arg BASE_IMAGE=$(BASE_IMAGE)
 endif
 
+# passing TARGET=static-check on the 'make containerized-test' commandline will
+# run the selected target instead of 'make test' in the container. Obviously
+# other targets can be passed as well, making it easier for developers to run
+# single tests.
+TARGET ?= test
+
 SELINUX := $(shell getenforce 2>/dev/null)
 ifeq ($(SELINUX),Enforcing)
 	SELINUX_VOL_FLAG = :z
@@ -82,7 +88,7 @@ containerized-build: .devel-container-id
 	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make cephcsi
 
 containerized-test: .test-container-id
-	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make test
+	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET)
 
 # create a (cached) container image with dependencied for building cephcsi
 .devel-container-id: scripts/Dockerfile.devel
