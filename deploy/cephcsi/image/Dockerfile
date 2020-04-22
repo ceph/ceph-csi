@@ -1,6 +1,8 @@
 ARG SRC_DIR="/go/src/github.com/ceph/ceph-csi/"
 ARG GO_ARCH
-FROM ceph/ceph:v15
+ARG BASE_IMAGE=ceph/ceph:v15
+
+FROM ${BASE_IMAGE} as builder
 
 LABEL stage="build"
 
@@ -35,7 +37,7 @@ COPY . ${SRC_DIR}
 RUN make cephcsi
 
 #-- Final container
-FROM ceph/ceph:v15
+FROM ${BASE_IMAGE}
 
 ARG SRC_DIR
 
@@ -44,6 +46,6 @@ LABEL maintainers="Ceph-CSI Authors" \
     architecture=${GO_ARCH} \
     description="Ceph-CSI Plugin"
 
-COPY --from=0 ${SRC_DIR}/_output/cephcsi /usr/local/bin/cephcsi
+COPY --from=builder ${SRC_DIR}/_output/cephcsi /usr/local/bin/cephcsi
 
 ENTRYPOINT ["/usr/local/bin/cephcsi"]
