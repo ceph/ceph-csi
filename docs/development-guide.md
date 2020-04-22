@@ -44,6 +44,26 @@ To build ceph-csi in a container:
 
 The built binary will be present under `_output/` directory.
 
+### Running Ceph-CSI tests in a container
+
+Once the changes to the sources compile, it is good practise to run the tests
+that validate the style and other basics of the source code. Execute the unit
+tests (in the `*_test.go` files) and check the formatting of YAML files,
+MarkDown documents and shell scripts:
+
+`$ make containerized-test`
+
+It is also possible to run only selected tests, these are the targets in the
+`Makefile` in the root of the project. For example, run the different static
+checks with:
+
+`$ make containerized-test TARGET=static-check`
+
+In addition to running tests locally, each Pull Request that is created will
+trigger Continous Integration tests that include the `containerized-test`, but
+also additional functionality tests that are defined under the `e2e/`
+directory.
+
 ### Code contribution workflow
 
 ceph-csi repository currently follows GitHub's
