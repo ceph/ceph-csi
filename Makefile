@@ -38,6 +38,10 @@ ifndef GOARCH
 GOARCH := $(shell go env GOARCH)
 endif
 
+ifdef BASE_IMAGE
+BASE_IMAGE_ARG = --build-arg BASE_IMAGE=$(BASE_IMAGE)
+endif
+
 SELINUX := $(shell getenforce 2>/dev/null)
 ifeq ($(SELINUX),Enforcing)
 	SELINUX_VOL_FLAG = :z
@@ -93,7 +97,7 @@ containerized-test: .test-container-id
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
 
 image-cephcsi:
-	$(CONTAINER_CMD) build -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg GOLANG_VERSION=1.13.8 --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH)
+	$(CONTAINER_CMD) build -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg GOLANG_VERSION=1.13.8 --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) $(BASE_IMAGE_ARG)
 
 push-image-cephcsi: image-cephcsi
 	$(CONTAINER_CMD) tag $(CSI_IMAGE) $(CSI_IMAGE)-$(GOARCH)

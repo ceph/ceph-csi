@@ -26,6 +26,6 @@ for ARCH in amd64 arm64; do
 	IFS=
 	digest=$(awk -v ARCH=${ARCH} '{if (archfound) {print $NF; exit 0}}; {archfound=($0 ~ "arch.*"ARCH)}' <<<"${manifests}")
 	IFS=$ifs
-	sed -i "s|\(^FROM.*\)${baseimg}.*$|\1${baseimg}@${digest}|" "${dockerfile}"
-	GOARCH=${ARCH} make image-cephcsi
+	base_img=${baseimg}@${digest}
+	GOARCH=${ARCH} BASE_IMAGE=${base_img} make image-cephcsi
 done
