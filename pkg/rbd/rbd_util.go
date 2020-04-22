@@ -38,6 +38,7 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/cloud-provider/volume/helpers"
 	"k8s.io/klog"
 )
 
@@ -168,7 +169,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	defer ioctx.Destroy()
 
 	err = librbd.CreateImage(ioctx, pOpts.RbdImageName,
-		uint64(util.RoundOffVolSize(pOpts.VolSize)*util.MiB), options)
+		uint64(util.RoundOffVolSize(pOpts.VolSize)*helpers.MiB), options)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create rbd image")
 	}
