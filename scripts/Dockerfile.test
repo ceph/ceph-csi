@@ -1,0 +1,43 @@
+# Container image for running the Ceph-CSI tests
+#
+# This container is based on Fedora so that recent versions of tools can easily
+# be installed.
+#
+# Production containers are based one ceph/ceph:latest, which use CentOS as
+# Operating System, so generated binaries and versions of dependencies may be a
+# little different.
+#
+
+FROM fedora:latest
+
+ARG GOLANGCI_VERSION=v1.21.0
+ARG GOSEC_VERSION=2.0.0
+ARG GOPATH=/go
+
+ENV \
+ GOPATH=${GOPATH} \
+ GO111MODULE=on \
+ PATH="${GOPATH}/bin:${PATH}"
+
+
+RUN dnf -y install \
+	git \
+	make \
+	golang \
+	gcc \
+	librados-devel \
+	librbd-devel \
+	rubygems \
+	ShellCheck \
+	yamllint \
+    && dnf -y update \
+    && dnf -y clean all \
+    && gem install mdl \
+    && curl -sf "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh" \
+       | bash -s -- -b ${GOPATH}/bin "${GOLANGCI_VERSION}" \
+    && curl -sfL "https://raw.githubusercontent.com/securego/gosec/master/install.sh" \
+       | sh -s -- -b $GOPATH/bin "${GOSEC_VERSION}" \
+    && curl -L https://git.io/get_helm.sh | bash \
+    && true
+
+WORKDIR /go/src/github.com/ceph/ceph-csi
