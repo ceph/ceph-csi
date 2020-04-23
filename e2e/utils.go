@@ -1330,10 +1330,9 @@ func checkPVSelectorValuesForPVC(f *framework.Framework, pvc *v1.PersistentVolum
 		Fail("Found empty NodeSelectorTerms in PV")
 	}
 
+	rFound := false
+	zFound := false
 	for _, expression := range pv.Spec.NodeAffinity.Required.NodeSelectorTerms[0].MatchExpressions {
-		rFound := false
-		zFound := false
-
 		switch expression.Key {
 		case nodeCSIRegionLabel:
 			if rFound {
