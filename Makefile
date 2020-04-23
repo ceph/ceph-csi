@@ -21,8 +21,9 @@ CSI_IMAGE_VERSION=$(if $(ENV_CSI_IMAGE_VERSION),$(ENV_CSI_IMAGE_VERSION),v2.1-ca
 CSI_IMAGE=$(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION)
 
 $(info cephcsi image settings: $(CSI_IMAGE_NAME) version $(CSI_IMAGE_VERSION))
-
+ifndef GIT_COMMIT
 GIT_COMMIT=$(shell git rev-list -1 HEAD)
+endif
 
 GO_PROJECT=github.com/ceph/ceph-csi
 
@@ -33,8 +34,12 @@ LDFLAGS += -X $(GO_PROJECT)/pkg/util.GitCommit=$(GIT_COMMIT)
 LDFLAGS += -X $(GO_PROJECT)/pkg/util.DriverVersion=$(CSI_IMAGE_VERSION)
 
 # set GOARCH explicitly for cross building, default to native architecture
-ifeq ($(origin GOARCH), undefined)
+ifndef GOARCH
 GOARCH := $(shell go env GOARCH)
+endif
+
+ifdef BASE_IMAGE
+BASE_IMAGE_ARG = --build-arg BASE_IMAGE=$(BASE_IMAGE)
 endif
 
 SELINUX := $(shell getenforce 2>/dev/null)
@@ -75,10 +80,8 @@ containerized-build: .devel-container-id
 	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
 
-image-cephcsi: cephcsi
-	cp _output/cephcsi deploy/cephcsi/image/cephcsi
-	chmod +x deploy/cephcsi/image/cephcsi
-	$(CONTAINER_CMD) build -t $(CSI_IMAGE) deploy/cephcsi/image
+image-cephcsi:
+	$(CONTAINER_CMD) build -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg GOLANG_VERSION=1.13.8 --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) $(BASE_IMAGE_ARG)
 
 push-image-cephcsi: image-cephcsi
 	$(CONTAINER_CMD) tag $(CSI_IMAGE) $(CSI_IMAGE)-$(GOARCH)
