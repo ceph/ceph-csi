@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -145,7 +146,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		}
 	default:
 		var vi util.CSIIdentifier
-		var imageAttributes *util.ImageAttributes
+		var imageAttributes *journal.ImageAttributes
 		err = vi.DecomposeCSIID(volID)
 		if err != nil {
 			err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, volID)
