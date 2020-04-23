@@ -27,7 +27,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ceph/ceph-csi/pkg/util"
+	"github.com/ceph/ceph-csi/internal/util"
 
 	"golang.org/x/sys/unix"
 	"k8s.io/klog"

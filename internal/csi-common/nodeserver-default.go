@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ceph/ceph-csi/pkg/util"
+	"github.com/ceph/ceph-csi/internal/util"
 
 	"context"
 
