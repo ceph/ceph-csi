@@ -73,6 +73,10 @@ jobs:
         - make go-test
         - make mod-check || travis_terminate 1;
 
+    - name: Build multi-architecture image for amd64 and arm64
+      script:
+        - travis_wait ./build-multi-arch-image.sh || travis_terminate 1;
+
     - name: containerized build
       script:
         - make containerized-build || travis_terminate 1;
@@ -114,4 +118,4 @@ deploy:
   - provider: script
     on:  # yamllint disable-line rule:truthy
       all_branches: true
-    script: ./deploy.sh
+    script: travis_wait ./deploy.sh
