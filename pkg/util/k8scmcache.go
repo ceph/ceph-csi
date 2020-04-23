@@ -17,7 +17,6 @@ limitations under the License.
 package util
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -85,7 +84,7 @@ func NewK8sClient() *k8s.Clientset {
 }
 
 func (k8scm *K8sCMCache) getMetadataCM(resourceID string) (*v1.ConfigMap, error) {
-	cm, err := k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Get(context.TODO(), resourceID, metav1.GetOptions{})
+	cm, err := k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Get(resourceID, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +94,7 @@ func (k8scm *K8sCMCache) getMetadataCM(resourceID string) (*v1.ConfigMap, error)
 // ForAll list the metadata in configmaps and filters outs based on the pattern
 func (k8scm *K8sCMCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) error {
 	listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", csiMetadataLabelAttr, cmLabel)}
-	cms, err := k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).List(context.TODO(), listOpts)
+	cms, err := k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).List(listOpts)
 	if err != nil {
 		return errors.Wrap(err, "k8s-cm-cache: failed to list metadata configmaps")
 	}
@@ -142,7 +141,7 @@ func (k8scm *K8sCMCache) Create(identifier string, data interface{}) error {
 	}
 	cm.Data[cmDataKey] = string(dataJSON)
 
-	_, err = k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
+	_, err = k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Create(cm)
 	if err != nil {
 		if apierrs.IsAlreadyExists(err) {
 			klog.V(4).Infof("k8s-cm-cache: configmap %s already exists", identifier)
@@ -174,7 +173,7 @@ func (k8scm *K8sCMCache) Get(identifier string, data interface{}) error {
 
 // Delete deletes the metadata in configmaps with identifier name
 func (k8scm *K8sCMCache) Delete(identifier string) error {
-	err := k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Delete(context.TODO(), identifier, metav1.DeleteOptions{})
+	err := k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Delete(identifier, &metav1.DeleteOptions{})
 	if err != nil {
 		if apierrs.IsNotFound(err) {
 			klog.V(4).Infof("k8s-cm-cache: cannot delete missing metadata configmap %s, assuming it's already deleted", identifier)

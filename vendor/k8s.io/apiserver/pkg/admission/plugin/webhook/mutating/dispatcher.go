@@ -24,7 +24,6 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
-
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/klog"
 
@@ -236,7 +235,7 @@ func (a *mutatingDispatcher) callAttrMutatingHook(ctx context.Context, h *admiss
 		defer cancel()
 	}
 
-	r := client.Post().Body(request)
+	r := client.Post().Context(ctx).Body(request)
 
 	// if the context has a deadline, set it as a parameter to inform the backend
 	if deadline, hasDeadline := ctx.Deadline(); hasDeadline {
@@ -251,7 +250,7 @@ func (a *mutatingDispatcher) callAttrMutatingHook(ctx context.Context, h *admiss
 		}
 	}
 
-	if err := r.Do(ctx).Into(response); err != nil {
+	if err := r.Do().Into(response); err != nil {
 		return false, &webhookutil.ErrCallingWebhook{WebhookName: h.Name, Reason: err}
 	}
 	trace.Step("Request completed")

@@ -17,7 +17,6 @@ limitations under the License.
 package utils
 
 import (
-	"context"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -43,13 +42,13 @@ func NewPodStore(c clientset.Interface, namespace string, label labels.Selector,
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			options.LabelSelector = label.String()
 			options.FieldSelector = field.String()
-			obj, err := c.CoreV1().Pods(namespace).List(context.TODO(), options)
+			obj, err := c.CoreV1().Pods(namespace).List(options)
 			return runtime.Object(obj), err
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.LabelSelector = label.String()
 			options.FieldSelector = field.String()
-			return c.CoreV1().Pods(namespace).Watch(context.TODO(), options)
+			return c.CoreV1().Pods(namespace).Watch(options)
 		},
 	}
 	store := cache.NewStore(cache.MetaNamespaceKeyFunc)

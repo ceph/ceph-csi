@@ -47,12 +47,12 @@ func EtcdUpgrade(targetStorage, targetVersion string) error {
 }
 
 // MasterUpgrade upgrades master node on GCE/GKE.
-func MasterUpgrade(f *Framework, v string) error {
+func MasterUpgrade(v string) error {
 	switch TestContext.Provider {
 	case "gce":
 		return masterUpgradeGCE(v, false)
 	case "gke":
-		return masterUpgradeGKE(f.Namespace.Name, v)
+		return masterUpgradeGKE(v)
 	case "kubernetes-anywhere":
 		return masterUpgradeKubernetesAnywhere(v)
 	default:
@@ -113,7 +113,7 @@ func appendContainerCommandGroupIfNeeded(args []string) []string {
 	return args
 }
 
-func masterUpgradeGKE(namespace string, v string) error {
+func masterUpgradeGKE(v string) error {
 	Logf("Upgrading master to %q", v)
 	args := []string{
 		"container",
@@ -131,7 +131,7 @@ func masterUpgradeGKE(namespace string, v string) error {
 		return err
 	}
 
-	waitForSSHTunnels(namespace)
+	waitForSSHTunnels()
 
 	return nil
 }
@@ -181,7 +181,7 @@ func NodeUpgrade(f *Framework, v string, img string) error {
 	case "gce":
 		err = nodeUpgradeGCE(v, img, false)
 	case "gke":
-		err = nodeUpgradeGKE(f.Namespace.Name, v, img)
+		err = nodeUpgradeGKE(v, img)
 	default:
 		err = fmt.Errorf("NodeUpgrade() is not implemented for provider %s", TestContext.Provider)
 	}
@@ -230,7 +230,7 @@ func nodeUpgradeGCE(rawV, img string, enableKubeProxyDaemonSet bool) error {
 	return err
 }
 
-func nodeUpgradeGKE(namespace string, v string, img string) error {
+func nodeUpgradeGKE(v string, img string) error {
 	Logf("Upgrading nodes to version %q and image %q", v, img)
 	nps, err := nodePoolsGKE()
 	if err != nil {
@@ -258,7 +258,7 @@ func nodeUpgradeGKE(namespace string, v string, img string) error {
 			return err
 		}
 
-		waitForSSHTunnels(namespace)
+		waitForSSHTunnels()
 	}
 	return nil
 }
@@ -290,18 +290,18 @@ func gceUpgradeScript() string {
 	return TestContext.GCEUpgradeScript
 }
 
-func waitForSSHTunnels(namespace string) {
+func waitForSSHTunnels() {
 	Logf("Waiting for SSH tunnels to establish")
-	RunKubectl(namespace, "run", "ssh-tunnel-test",
+	RunKubectl("run", "ssh-tunnel-test",
 		"--image=busybox",
 		"--restart=Never",
 		"--command", "--",
 		"echo", "Hello")
-	defer RunKubectl(namespace, "delete", "pod", "ssh-tunnel-test")
+	defer RunKubectl("delete", "pod", "ssh-tunnel-test")
 
 	// allow up to a minute for new ssh tunnels to establish
 	wait.PollImmediate(5*time.Second, time.Minute, func() (bool, error) {
-		_, err := RunKubectl(namespace, "logs", "ssh-tunnel-test")
+		_, err := RunKubectl("logs", "ssh-tunnel-test")
 		return err == nil, nil
 	})
 }

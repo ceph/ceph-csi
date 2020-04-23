@@ -22,7 +22,6 @@ limitations under the License.
 package nodelifecycle
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -129,7 +128,7 @@ const (
 	retrySleepTime   = 20 * time.Millisecond
 	nodeNameKeyIndex = "spec.nodeName"
 	// podUpdateWorkerSizes assumes that in most cases pod will be handled by monitorNodeHealth pass.
-	// Pod update workers will only handle lagging cache pods. 4 workers should be enough.
+	// Pod update workes will only handle lagging cache pods. 4 workes should be enough.
 	podUpdateWorkerSize = 4
 )
 
@@ -351,6 +350,10 @@ type Controller struct {
 	// tainted nodes, if they're not tolerated.
 	runTaintManager bool
 
+	// if set to true Controller will taint Nodes with 'TaintNodeNotReady' and 'TaintNodeUnreachable'
+	// taints instead of evicting Pods itself.
+	useTaintBasedEvictions bool
+
 	nodeUpdateQueue workqueue.Interface
 	podUpdateQueue  workqueue.RateLimitingInterface
 }
@@ -371,6 +374,7 @@ func NewNodeLifecycleController(
 	largeClusterThreshold int32,
 	unhealthyZoneThreshold float32,
 	runTaintManager bool,
+	useTaintBasedEvictions bool,
 ) (*Controller, error) {
 
 	if kubeClient == nil {
@@ -411,8 +415,12 @@ func NewNodeLifecycleController(
 		largeClusterThreshold:       largeClusterThreshold,
 		unhealthyZoneThreshold:      unhealthyZoneThreshold,
 		runTaintManager:             runTaintManager,
+		useTaintBasedEvictions:      useTaintBasedEvictions && runTaintManager,
 		nodeUpdateQueue:             workqueue.NewNamed("node_lifecycle_controller"),
 		podUpdateQueue:              workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "node_lifecycle_controller_pods"),
+	}
+	if useTaintBasedEvictions {
+		klog.Infof("Controller is using taint based evictions.")
 	}
 
 	nc.enterPartialDisruptionFunc = nc.ReducedQPSFunc
@@ -571,7 +579,7 @@ func (nc *Controller) Run(stopCh <-chan struct{}) {
 		go wait.Until(nc.doPodProcessingWorker, time.Second, stopCh)
 	}
 
-	if nc.runTaintManager {
+	if nc.useTaintBasedEvictions {
 		// Handling taint based evictions. Because we don't want a dedicated logic in TaintManager for NC-originated
 		// taints and we normally don't rate limit evictions caused by taints, we need to rate limit adding taints.
 		go wait.Until(nc.doNoExecuteTaintingPass, scheduler.NodeEvictionPeriod, stopCh)
@@ -759,7 +767,9 @@ func (nc *Controller) doEvictionPass() {
 
 // monitorNodeHealth verifies node health are constantly updated by kubelet, and
 // if not, post "NodeReady==ConditionUnknown".
-// This function will taint nodes who are not ready or not reachable for a long period of time.
+// For nodes who are not ready or not reachable for a long period of time.
+// This function will taint them if TaintBasedEvictions feature was enabled.
+// Otherwise, it would evict it directly.
 func (nc *Controller) monitorNodeHealth() error {
 	// We are listing nodes from local cache as we can tolerate some small delays
 	// comparing to state from etcd and there is eventual consistency anyway.
@@ -778,7 +788,7 @@ func (nc *Controller) monitorNodeHealth() error {
 		nodeutil.RecordNodeEvent(nc.recorder, added[i].Name, string(added[i].UID), v1.EventTypeNormal, "RegisteredNode", fmt.Sprintf("Registered Node %v in Controller", added[i].Name))
 		nc.knownNodeSet[added[i].Name] = added[i]
 		nc.addPodEvictorForNewZone(added[i])
-		if nc.runTaintManager {
+		if nc.useTaintBasedEvictions {
 			nc.markNodeAsReachable(added[i])
 		} else {
 			nc.cancelPodEviction(added[i])
@@ -803,7 +813,7 @@ func (nc *Controller) monitorNodeHealth() error {
 				return true, nil
 			}
 			name := node.Name
-			node, err = nc.kubeClient.CoreV1().Nodes().Get(context.TODO(), name, metav1.GetOptions{})
+			node, err = nc.kubeClient.CoreV1().Nodes().Get(name, metav1.GetOptions{})
 			if err != nil {
 				klog.Errorf("Failed while getting a Node to retry updating node health. Probably Node %s was deleted.", name)
 				return false, err
@@ -832,7 +842,7 @@ func (nc *Controller) monitorNodeHealth() error {
 				}
 				continue
 			}
-			if nc.runTaintManager {
+			if nc.useTaintBasedEvictions {
 				nc.processTaintBaseEviction(node, &observedReadyCondition)
 			} else {
 				if err := nc.processNoTaintBaseEviction(node, &observedReadyCondition, gracePeriod, pods); err != nil {
@@ -883,7 +893,7 @@ func (nc *Controller) processTaintBaseEviction(node *v1.Node, observedReadyCondi
 		if taintutils.TaintExists(node.Spec.Taints, NotReadyTaintTemplate) {
 			taintToAdd := *UnreachableTaintTemplate
 			if !nodeutil.SwapNodeControllerTaint(nc.kubeClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{NotReadyTaintTemplate}, node) {
-				klog.Errorf("Failed to instantly swap NotReadyTaint to UnreachableTaint. Will try again in the next cycle.")
+				klog.Errorf("Failed to instantly swap UnreachableTaint to NotReadyTaint. Will try again in the next cycle.")
 			}
 		} else if nc.markNodeForTainting(node) {
 			klog.V(2).Infof("Node %v is unresponsive as of %v. Adding it to the Taint queue.",
@@ -1138,7 +1148,7 @@ func (nc *Controller) tryUpdateNodeHealth(node *v1.Node) (time.Duration, v1.Node
 		_, currentReadyCondition = nodeutil.GetNodeCondition(&node.Status, v1.NodeReady)
 
 		if !apiequality.Semantic.DeepEqual(currentReadyCondition, &observedReadyCondition) {
-			if _, err := nc.kubeClient.CoreV1().Nodes().UpdateStatus(context.TODO(), node, metav1.UpdateOptions{}); err != nil {
+			if _, err := nc.kubeClient.CoreV1().Nodes().UpdateStatus(node); err != nil {
 				klog.Errorf("Error updating node %s: %v", node.Name, err)
 				return gracePeriod, observedReadyCondition, currentReadyCondition, err
 			}
@@ -1198,7 +1208,7 @@ func (nc *Controller) handleDisruption(zoneToNodeConditions map[string][]*v1.Nod
 		if allAreFullyDisrupted {
 			klog.V(0).Info("Controller detected that all Nodes are not-Ready. Entering master disruption mode.")
 			for i := range nodes {
-				if nc.runTaintManager {
+				if nc.useTaintBasedEvictions {
 					_, err := nc.markNodeAsReachable(nodes[i])
 					if err != nil {
 						klog.Errorf("Failed to remove taints from Node %v", nodes[i].Name)
@@ -1209,7 +1219,7 @@ func (nc *Controller) handleDisruption(zoneToNodeConditions map[string][]*v1.Nod
 			}
 			// We stop all evictions.
 			for k := range nc.zoneStates {
-				if nc.runTaintManager {
+				if nc.useTaintBasedEvictions {
 					nc.zoneNoExecuteTainter[k].SwapLimiter(0)
 				} else {
 					nc.zonePodEvictor[k].SwapLimiter(0)
@@ -1321,7 +1331,7 @@ func (nc *Controller) processPod(podItem podUpdateItem) {
 	pods := []*v1.Pod{pod}
 	// In taint-based eviction mode, only node updates are processed by NodeLifecycleController.
 	// Pods are processed by TaintManager.
-	if !nc.runTaintManager {
+	if !nc.useTaintBasedEvictions {
 		if err := nc.processNoTaintBaseEviction(node, currentReadyCondition, nc.nodeMonitorGracePeriod, pods); err != nil {
 			klog.Warningf("Unable to process pod %+v eviction from node %v: %v.", podItem, nodeName, err)
 			nc.podUpdateQueue.AddRateLimited(podItem)
@@ -1340,13 +1350,13 @@ func (nc *Controller) processPod(podItem podUpdateItem) {
 func (nc *Controller) setLimiterInZone(zone string, zoneSize int, state ZoneState) {
 	switch state {
 	case stateNormal:
-		if nc.runTaintManager {
+		if nc.useTaintBasedEvictions {
 			nc.zoneNoExecuteTainter[zone].SwapLimiter(nc.evictionLimiterQPS)
 		} else {
 			nc.zonePodEvictor[zone].SwapLimiter(nc.evictionLimiterQPS)
 		}
 	case statePartialDisruption:
-		if nc.runTaintManager {
+		if nc.useTaintBasedEvictions {
 			nc.zoneNoExecuteTainter[zone].SwapLimiter(
 				nc.enterPartialDisruptionFunc(zoneSize))
 		} else {
@@ -1354,7 +1364,7 @@ func (nc *Controller) setLimiterInZone(zone string, zoneSize int, state ZoneStat
 				nc.enterPartialDisruptionFunc(zoneSize))
 		}
 	case stateFullDisruption:
-		if nc.runTaintManager {
+		if nc.useTaintBasedEvictions {
 			nc.zoneNoExecuteTainter[zone].SwapLimiter(
 				nc.enterFullDisruptionFunc(zoneSize))
 		} else {
@@ -1420,7 +1430,7 @@ func (nc *Controller) addPodEvictorForNewZone(node *v1.Node) {
 	zone := utilnode.GetZoneKey(node)
 	if _, found := nc.zoneStates[zone]; !found {
 		nc.zoneStates[zone] = stateInitial
-		if !nc.runTaintManager {
+		if !nc.useTaintBasedEvictions {
 			nc.zonePodEvictor[zone] =
 				scheduler.NewRateLimitedTimedQueue(
 					flowcontrol.NewTokenBucketRateLimiter(nc.evictionLimiterQPS, scheduler.EvictionRateLimiterBurst))

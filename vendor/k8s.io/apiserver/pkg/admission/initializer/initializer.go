@@ -51,11 +51,6 @@ func New(
 // Initialize checks the initialization interfaces implemented by a plugin
 // and provide the appropriate initialization data
 func (i pluginInitializer) Initialize(plugin admission.Interface) {
-	// First tell the plugin about enabled features, so it can decide whether to start informers or not
-	if wants, ok := plugin.(WantsFeatures); ok {
-		wants.InspectFeatureGates(i.featureGates)
-	}
-
 	if wants, ok := plugin.(WantsExternalKubeClientSet); ok {
 		wants.SetExternalKubeClientSet(i.externalClient)
 	}
@@ -66,6 +61,10 @@ func (i pluginInitializer) Initialize(plugin admission.Interface) {
 
 	if wants, ok := plugin.(WantsAuthorizer); ok {
 		wants.SetAuthorizer(i.authorizer)
+	}
+
+	if wants, ok := plugin.(WantsFeatures); ok {
+		wants.InspectFeatureGates(i.featureGates)
 	}
 }
 

@@ -26,8 +26,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	utilnet "k8s.io/apimachinery/pkg/util/net"
-	egressselector "k8s.io/apiserver/pkg/server/egressselector"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -40,7 +38,6 @@ type AuthenticationInfoResolverWrapper func(AuthenticationInfoResolver) Authenti
 // NewDefaultAuthenticationInfoResolverWrapper builds a default authn resolver wrapper
 func NewDefaultAuthenticationInfoResolverWrapper(
 	proxyTransport *http.Transport,
-	egressSelector *egressselector.EgressSelector,
 	kubeapiserverClientConfig *rest.Config) AuthenticationInfoResolverWrapper {
 
 	webhookAuthResolverWrapper := func(delegate AuthenticationInfoResolver) AuthenticationInfoResolver {
@@ -49,23 +46,7 @@ func NewDefaultAuthenticationInfoResolverWrapper(
 				if hostPort == "kubernetes.default.svc:443" {
 					return kubeapiserverClientConfig, nil
 				}
-				ret, err := delegate.ClientConfigFor(hostPort)
-				if err != nil {
-					return nil, err
-				}
-
-				if egressSelector != nil {
-					networkContext := egressselector.Master.AsNetworkContext()
-					var egressDialer utilnet.DialFunc
-					egressDialer, err = egressSelector.Lookup(networkContext)
-
-					if err != nil {
-						return nil, err
-					}
-
-					ret.Dial = egressDialer
-				}
-				return ret, nil
+				return delegate.ClientConfigFor(hostPort)
 			},
 			ClientConfigForServiceFunc: func(serviceName, serviceNamespace string, servicePort int) (*rest.Config, error) {
 				if serviceName == "kubernetes" && serviceNamespace == corev1.NamespaceDefault && servicePort == 443 {
@@ -75,20 +56,10 @@ func NewDefaultAuthenticationInfoResolverWrapper(
 				if err != nil {
 					return nil, err
 				}
-
-				if egressSelector != nil {
-					networkContext := egressselector.Cluster.AsNetworkContext()
-					var egressDialer utilnet.DialFunc
-					egressDialer, err = egressSelector.Lookup(networkContext)
-					if err != nil {
-						return nil, err
-					}
-
-					ret.Dial = egressDialer
-				} else if proxyTransport != nil && proxyTransport.DialContext != nil {
+				if proxyTransport != nil && proxyTransport.DialContext != nil {
 					ret.Dial = proxyTransport.DialContext
 				}
-				return ret, nil
+				return ret, err
 			},
 		}
 	}
