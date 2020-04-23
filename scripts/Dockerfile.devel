@@ -1,19 +1,22 @@
 FROM ceph/ceph:v15
 
+ARG GOROOT=/usr/local/go
+
 ENV GOPATH=/go \
- GOROOT=/usr/local/go \
- GO111MODULE=on
+ GOROOT=${GOROOT} \
+ GO111MODULE=on \
+ PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
 
 RUN mkdir -p /usr/local/go && \
- curl https://storage.googleapis.com/golang/go1.13.9.linux-amd64.tar.gz | tar xzf - -C /usr/local/go --strip-components=1
+ curl https://storage.googleapis.com/golang/go1.13.9.linux-amd64.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
 
-ENV PATH="$GOROOT/bin:$GOPATH/bin:$PATH"
-
-RUN yum -y install \
+RUN dnf -y install \
 	git \
 	make \
 	gcc \
 	librados-devel \
 	librbd-devel \
-    && yum -y update \
+    && dnf -y update \
     && true
+
+WORKDIR "/go/src/github.com/ceph/ceph-csi"
