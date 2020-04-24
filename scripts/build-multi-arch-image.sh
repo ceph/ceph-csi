@@ -3,6 +3,8 @@ set -xe
 # "docker manifest" requires experimental feature enabled
 export DOCKER_CLI_EXPERIMENTAL=enabled
 
+cd "$(dirname "${0}")/.."
+
 # ceph base image used for building multi architecture images
 dockerfile="deploy/cephcsi/image/Dockerfile"
 baseimg=$(awk -F = '/^ARG BASE_IMAGE=/ {print $NF}' "${dockerfile}")
