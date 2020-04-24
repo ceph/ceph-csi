@@ -96,10 +96,7 @@ if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
 	mkdir -p tmp
 	pushd tmp >/dev/null
 
-	build_step "installing helm"
-	curl https://raw.githubusercontent.com/helm/helm/master/scripts/get >get_helm.sh
-	chmod 700 get_helm.sh
-	./get_helm.sh
+	curl -L https://git.io/get_helm.sh | bash
 
 	build_step "cloning ceph/csi-charts repository"
 	git clone https://github.com/ceph/csi-charts
