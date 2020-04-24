@@ -84,7 +84,7 @@ jobs:
     - stage: build testing
       name: Build multi-architecture image for amd64 and arm64
       script:
-        - travis_wait ./scripts/build-multi-arch-image.sh || travis_terminate 1;
+        - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
 
     - stage: build testing
       name: containerized test (Fedora) and build (CentOS)
