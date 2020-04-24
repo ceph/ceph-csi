@@ -44,7 +44,7 @@ fi
 run_check '.*\.md' mdl --style scripts/mdl-style.rb
 
 # Install via: dnf install shellcheck
-run_check '.*\.(ba)?sh' shellcheck
+run_check '.*\.(ba)?sh' shellcheck --external-sources
 run_check '.*\.(ba)?sh' bash -n
 
 # Install via: pip install yamllint
