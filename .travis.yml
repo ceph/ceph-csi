@@ -118,4 +118,4 @@ deploy:
   - provider: script
     on:  # yamllint disable-line rule:truthy
       all_branches: true
-    script: travis_wait ./deploy.sh
+    script: ./deploy.sh
