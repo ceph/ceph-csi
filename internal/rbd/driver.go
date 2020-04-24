@@ -18,6 +18,7 @@ package rbd
 
 import (
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -50,8 +51,8 @@ var (
 
 	// volJournal and snapJournal are used to maintain RADOS based journals for CO generated
 	// VolumeName to backing RBD images
-	volJournal  *util.CSIJournal
-	snapJournal *util.CSIJournal
+	volJournal  *journal.CSIJournal
+	snapJournal *journal.CSIJournal
 )
 
 // NewDriver returns new rbd driver
@@ -103,8 +104,8 @@ func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	}
 
 	// Get an instance of the volume and snapshot journal keys
-	volJournal = util.NewCSIVolumeJournal()
-	snapJournal = util.NewCSISnapshotJournal()
+	volJournal = journal.NewCSIVolumeJournal()
+	snapJournal = journal.NewCSISnapshotJournal()
 
 	// Update keys with CSI instance suffix
 	volJournal.SetCSIDirectorySuffix(CSIInstanceID)

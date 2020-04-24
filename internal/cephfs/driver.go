@@ -20,6 +20,7 @@ import (
 	"k8s.io/klog"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -55,7 +56,7 @@ var (
 
 	// volJournal is used to maintain RADOS based journals for CO generated
 	// VolumeName to backing CephFS subvolumes
-	volJournal *util.CSIJournal
+	volJournal *journal.CSIJournal
 )
 
 // NewDriver returns new ceph driver
@@ -109,7 +110,7 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 		CSIInstanceID = conf.InstanceID
 	}
 	// Get an instance of the volume journal
-	volJournal = util.NewCSIVolumeJournal()
+	volJournal = journal.NewCSIVolumeJournal()
 
 	// Update keys with CSI instance suffix
 	volJournal.SetCSIDirectorySuffix(CSIInstanceID)
