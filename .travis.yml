@@ -75,7 +75,7 @@ jobs:
 
     - name: Build multi-architecture image for amd64 and arm64
       script:
-        - travis_wait ./build-multi-arch-image.sh || travis_terminate 1;
+        - travis_wait ./scripts/build-multi-arch-image.sh || travis_terminate 1;
 
     - name: containerized build
       script:
