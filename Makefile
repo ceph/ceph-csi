@@ -14,7 +14,12 @@
 
 .PHONY: all cephcsi
 
-CONTAINER_CMD?=docker
+CONTAINER_CMD?=$(shell docker version >/dev/null 2>&1 && echo docker)
+ifeq ($(CONTAINER_CMD),)
+    CONTAINER_CMD=$(shell podman version >/dev/null 2>&1 && echo podman)
+endif
+CPUS?=$(shell nproc --ignore=1)
+CPUSET?=--cpuset-cpus=0-${CPUS}
 
 CSI_IMAGE_NAME=$(if $(ENV_CSI_IMAGE_NAME),$(ENV_CSI_IMAGE_NAME),quay.io/cephcsi/cephcsi)
 CSI_IMAGE_VERSION=$(if $(ENV_CSI_IMAGE_VERSION),$(ENV_CSI_IMAGE_VERSION),canary)
@@ -93,17 +98,17 @@ containerized-test: .test-container-id
 # create a (cached) container image with dependencied for building cephcsi
 .devel-container-id: scripts/Dockerfile.devel
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
-	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
+	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
 
 # create a (cached) container image with dependencied for testing cephcsi
 .test-container-id: scripts/Dockerfile.test
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
-	$(CONTAINER_CMD) build -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
+	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
 
 image-cephcsi:
-	$(CONTAINER_CMD) build -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg GOLANG_VERSION=1.13.8 --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) $(BASE_IMAGE_ARG)
+	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg GOLANG_VERSION=1.13.8 --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) $(BASE_IMAGE_ARG)
 
 push-image-cephcsi: image-cephcsi
 	$(CONTAINER_CMD) tag $(CSI_IMAGE) $(CSI_IMAGE)-$(GOARCH)
