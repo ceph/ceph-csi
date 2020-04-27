@@ -407,6 +407,9 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	}
 
 	opt := []string{"_netdev"}
+	if fsType == "xfs" {
+		opt = append(opt, "nouuid")
+	}
 	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 
