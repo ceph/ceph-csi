@@ -23,6 +23,12 @@ import (
 	"strings"
 )
 
+// clusterInfo strongly typed JSON spec for the above JSON structure
+type clusterInfo struct {
+	ClusterID string   `json:"clusterID"`
+	Monitors  []string `json:"monitors"`
+}
+
 /*
 Mons returns a comma separated MON list from the csi config for the given clusterID
 Expected JSON structure in the passed in config file is,
@@ -39,13 +45,6 @@ Expected JSON structure in the passed in config file is,
 	...
 ]
 */
-
-// clusterInfo strongly typed JSON spec for the above JSON structure
-type clusterInfo struct {
-	ClusterID string   `json:"clusterID"`
-	Monitors  []string `json:"monitors"`
-}
-
 func Mons(pathToConfig, clusterID string) (string, error) {
 	var config []clusterInfo
 
