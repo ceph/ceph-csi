@@ -29,10 +29,6 @@ import (
 	"k8s.io/klog"
 )
 
-const (
-	csiSubvolumeGroup = "csi"
-)
-
 var (
 	// cephfsInit is used to create "csi" subvolume group for the first time the csi plugin loads.
 	// Subvolume group create gets called every time the plugin loads, though it doesn't result in error
@@ -65,7 +61,7 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 		volOptions.FsName,
 		string(volID),
 		"--group_name",
-		csiSubvolumeGroup,
+		volOptions.SubvolumeGroup,
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix+cr.ID,
@@ -93,16 +89,16 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			"subvolumegroup",
 			"create",
 			volOptions.FsName,
-			csiSubvolumeGroup,
+			volOptions.SubvolumeGroup,
 			"-m", volOptions.Monitors,
 			"-c", util.CephConfigPath,
 			"-n", cephEntityClientPrefix+cr.ID,
 			"--keyfile="+cr.KeyFile)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to create subvolume group csi, for the vol %s(%s)"), string(volID), err)
+			klog.Errorf(util.Log(ctx, "failed to create subvolume group %s, for the vol %s(%s)"), volOptions.SubvolumeGroup, string(volID), err)
 			return err
 		}
-		klog.V(4).Infof(util.Log(ctx, "cephfs: created subvolume group csi"))
+		klog.V(4).Infof(util.Log(ctx, "cephfs: created subvolume group %s"), volOptions.SubvolumeGroup)
 		cephfsInit = true
 	}
 
@@ -114,7 +110,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 		string(volID),
 		strconv.FormatInt(bytesQuota, 10),
 		"--group_name",
-		csiSubvolumeGroup,
+		volOptions.SubvolumeGroup,
 		"--mode", "777",
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
@@ -212,7 +208,7 @@ func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volO
 		volOptions.FsName,
 		string(volID),
 		"--group_name",
-		csiSubvolumeGroup,
+		volOptions.SubvolumeGroup,
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix+cr.ID,

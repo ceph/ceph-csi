@@ -45,6 +45,7 @@ type volumeOptions struct {
 	ProvisionVolume     bool   `json:"provisionVolume"`
 	KernelMountOptions  string `json:"kernelMountOptions"`
 	FuseMountOptions    string `json:"fuseMountOptions"`
+	SubvolumeGroup      string
 }
 
 func validateNonEmptyField(field, fieldName string) error {
@@ -109,24 +110,30 @@ func extractMounter(dest *string, options map[string]string) error {
 	return nil
 }
 
-func getMonsAndClusterID(options map[string]string) (string, string, error) {
+func getClusterInformation(options map[string]string) (string, string, string, error) {
 	clusterID, ok := options["clusterID"]
 	if !ok {
 		err := fmt.Errorf("clusterID must be set")
-		return "", "", err
+		return "", "", "", err
 	}
 
 	if err := validateNonEmptyField(clusterID, "clusterID"); err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	monitors, err := util.Mons(csiConfigFile, clusterID)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", clusterID)
-		return "", "", err
+		return "", "", "", err
 	}
 
-	return monitors, clusterID, err
+	subvolumeGroup, err := util.CephFSSubvolumeGroup(csiConfigFile, clusterID)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to fetch subvolumegroup using clusterID (%s)", clusterID)
+		return "", "", "", err
+	}
+
+	return clusterID, monitors, subvolumeGroup, err
 }
 
 // newVolumeOptions generates a new instance of volumeOptions from the provided
@@ -140,7 +147,7 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 
 	volOptions := req.GetParameters()
 
-	opts.Monitors, opts.ClusterID, err = getMonsAndClusterID(volOptions)
+	opts.ClusterID, opts.Monitors, opts.SubvolumeGroup, err = getClusterInformation(volOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +232,10 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		return nil, nil, errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", vi.ClusterID)
 	}
 
+	if volOptions.SubvolumeGroup, err = util.CephFSSubvolumeGroup(csiConfigFile, vi.ClusterID); err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to fetch subvolumegroup list using clusterID (%s)", vi.ClusterID)
+	}
+
 	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
 		return nil, nil, err
@@ -259,6 +270,10 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		}
 
 		if err = extractOptionalOption(&volOptions.FuseMountOptions, "fuseMountOptions", volOpt); err != nil {
+			return nil, nil, err
+		}
+
+		if err = extractOptionalOption(&volOptions.SubvolumeGroup, "subvolumeGroup", volOpt); err != nil {
 			return nil, nil, err
 		}
 
@@ -358,7 +373,7 @@ func newVolumeOptionsFromStaticVolume(volID string, options map[string]string) (
 	// store NOT of static boolean
 	opts.ProvisionVolume = !staticVol
 
-	opts.Monitors, opts.ClusterID, err = getMonsAndClusterID(options)
+	opts.ClusterID, opts.Monitors, opts.SubvolumeGroup, err = getClusterInformation(options)
 	if err != nil {
 		return nil, nil, err
 	}

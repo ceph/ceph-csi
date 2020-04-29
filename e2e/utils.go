@@ -365,6 +365,15 @@ func deleteConfigMap(pluginPath string) {
 	}
 }
 
+// matches the definition in internal/util/csiconfig.go
+type clusterInfo struct {
+	ClusterID string   `json:"clusterID"`
+	Monitors  []string `json:"monitors"`
+	CephFS    struct {
+		SubvolumeGroup string `json:"subvolumeGroup"`
+	} `json:"cephFS"`
+}
+
 func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Framework) {
 	path := pluginPath + configMap
 	cm := v1.ConfigMap{}
@@ -379,15 +388,11 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	fsID = strings.Trim(fsID, "\n")
 	// get mon list
 	mons := getMons(rookNamespace, c)
-	conmap := []struct {
-		Clusterid string   `json:"clusterID"`
-		Monitors  []string `json:"monitors"`
-	}{
-		{
-			fsID,
-			mons,
-		},
-	}
+	conmap := []clusterInfo{{
+		ClusterID: fsID,
+		Monitors:  mons,
+	}}
+	conmap[0].CephFS.SubvolumeGroup = "e2e"
 	data, err := json.Marshal(conmap)
 	Expect(err).Should(BeNil())
 	cm.Data["config.json"] = string(data)
@@ -1012,7 +1017,7 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	_, stdErr := execCommandInPod(f, "ceph fs subvolume rm myfs "+imageData.imageName+" csi", rookNamespace, &opt)
+	_, stdErr := execCommandInPod(f, "ceph fs subvolume rm myfs "+imageData.imageName+" e2e", rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 
 	if stdErr != "" {
