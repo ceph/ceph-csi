@@ -25,6 +25,8 @@ serviceAccounts:
 #     monitors:
 #       - "<MONValue1>"
 #       - "<MONValue2>"
+#     cephFS:
+#       subvolumeGroup: "csi"
 csiConfig: []
 
 nodeplugin:

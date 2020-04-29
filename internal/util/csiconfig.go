@@ -23,53 +23,88 @@ import (
 	"strings"
 )
 
-// clusterInfo strongly typed JSON spec for the below JSON structure
+const (
+	// defaultCsiSubvolumeGroup defines the default name for the CephFS CSI subvolumegroup.
+	// This was hardcoded once and defaults to the old value to keep backward compatibility.
+	defaultCsiSubvolumeGroup = "csi"
+)
+
+// clusterInfo strongly typed JSON spec for the above JSON structure
 type clusterInfo struct {
 	// ClusterID is used for unique identification
 	ClusterID string `json:"clusterID"`
 	// Monitors is monitor list for corresponding cluster ID
 	Monitors []string `json:"monitors"`
+	// CephFS contains CephFS specific options
+	CephFS struct {
+		// SubvolumeGroup contains the name of the SubvolumeGroup for CSI volumes
+		SubvolumeGroup string `json:"subvolumeGroup"`
+	} `json:"cephFS"`
 }
 
-/*
-Mons returns a comma separated MON list from the csi config for the given clusterID
-Expected JSON structure in the passed in config file is,
-[
-	{
-		"clusterID": "<cluster-id>",
-		"monitors":
-			[
-				"<monitor-value>",
-				"<monitor-value>",
-				...
-			]
-	},
-	...
-]
-*/
-func Mons(pathToConfig, clusterID string) (string, error) {
+// Expected JSON structure in the passed in config file is,
+// [
+// 	{
+// 		"clusterID": "<cluster-id>",
+// 		"monitors":
+// 			[
+// 				"<monitor-value>",
+// 				"<monitor-value>",
+// 				...
+// 			],
+//         "cephFS": {
+//           "subvolumeGroup": "<subvolumegroup for cephfs volumes>"
+//         }
+// 	},
+// 	...
+// ]
+func readClusterInfo(pathToConfig, clusterID string) (clusterInfo, error) {
 	var config []clusterInfo
 
 	// #nosec
 	content, err := ioutil.ReadFile(pathToConfig)
 	if err != nil {
 		err = fmt.Errorf("error fetching configuration for cluster ID (%s). (%s)", clusterID, err)
-		return "", err
+		return clusterInfo{}, err
 	}
 
 	err = json.Unmarshal(content, &config)
 	if err != nil {
-		return "", fmt.Errorf("unmarshal failed: %v. raw buffer response: %s",
+		return clusterInfo{}, fmt.Errorf("unmarshal failed: %v. raw buffer response: %s",
 			err, string(content))
 	}
 
 	for _, cluster := range config {
 		if cluster.ClusterID == clusterID {
-			if len(cluster.Monitors) == 0 {
-				return "", fmt.Errorf("empty monitor list for cluster ID (%s) in config", clusterID)
-			}
-			return strings.Join(cluster.Monitors, ","), nil
+			return cluster, nil
 		}
 	}
-	return "", fmt.Errorf("missing configuration for cluster ID (%s)", clusterID)
+
+	return clusterInfo{}, fmt.Errorf("missing configuration for cluster ID (%s)", clusterID)
+}
+
+// Mons returns a comma separated MON list from the csi config for the given clusterID
+func Mons(pathToConfig, clusterID string) (string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return "", err
+	}
+
+	if len(cluster.Monitors) == 0 {
+		return "", fmt.Errorf("empty monitor list for cluster ID (%s) in config", clusterID)
+	}
+	return strings.Join(cluster.Monitors, ","), nil
+}
+
+// CephFSSubvolumeGroup returns the subvolumeGroup for CephFS volumes. If not set, it returns the default value "csi"
+func CephFSSubvolumeGroup(pathToConfig, clusterID string) (string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return "", err
+	}
+
+	if cluster.CephFS.SubvolumeGroup == "" {
+		return defaultCsiSubvolumeGroup, nil
+	}
+	return cluster.CephFS.SubvolumeGroup, nil
 }
