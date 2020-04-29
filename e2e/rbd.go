@@ -359,7 +359,10 @@ var _ = Describe("RBD", func() {
 					}
 
 					deleteResource(rbdExamplePath + "storageclass.yaml")
-					createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"csi.storage.k8s.io/fstype": "xfs"})
+					parameters := map[string]string{"mkfsOptions": "-m reflink=0",
+						"csi.storage.k8s.io/fstype": "xfs",
+					}
+					createRBDStorageClass(f.ClientSet, f, nil, parameters)
 					err = resizePVCAndValidateSize(pvcPath, appPath, f)
 					if err != nil {
 						e2elog.Logf("failed to resize filesystem PVC %v", err)

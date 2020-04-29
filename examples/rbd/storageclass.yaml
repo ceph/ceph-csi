@@ -25,6 +25,10 @@ parameters:
    # dataPool: ec-data-pool
    pool: rbd
 
+   # Options passed to the formatting program that creates the
+   # filesystem on the rbd image.
+   #mkfsOptions: "-m reflink=1"
+
    # RBD image features, CSI creates image with image-format 2
    # CSI RBD currently supports only `layering` feature.
    imageFeatures: layering

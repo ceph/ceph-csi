@@ -390,14 +390,19 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 		return err
 	}
 
+	mkfsOptions := req.GetVolumeContext()["mkfsOptions"]
 	if existingFormat == "" && !staticVol {
 		args := []string{}
 		if fsType == "ext4" {
 			args = []string{"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1", devicePath}
 		} else if fsType == "xfs" {
-			args = []string{"-m", "reflink=0", "-K", devicePath}
+			args = []string{"-K", devicePath}
+		}
+		if len(mkfsOptions) > 0 {
+			args = append(args, mkfsOptions)
 		}
 		if len(args) > 0 {
+			klog.Infof(util.Log(ctx, "Running mkfs.%s %v"), fsType, args)
 			cmdOut, cmdErr := diskMounter.Exec.Command("mkfs."+fsType, args...).CombinedOutput()
 			if cmdErr != nil {
 				klog.Errorf(util.Log(ctx, "failed to run mkfs error: %v, output: %v"), cmdErr, string(cmdOut))
