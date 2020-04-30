@@ -65,28 +65,28 @@ test: go-test static-check mod-check
 static-check: go-lint go-lint-text gosec
 
 go-test:
-	./scripts/test-go.sh
+	CGO_ENABLED=1 ./scripts/test-go.sh
 
 mod-check:
 	@echo 'running: go mod verify'
 	@go mod verify && [ "$(shell sha512sum go.mod)" = "`sha512sum go.mod`" ] || ( echo "ERROR: go.mod was modified by 'go mod verify'" && false )
 
 go-lint:
-	./scripts/lint-go.sh
+	CGO_ENABLED=1 ./scripts/lint-go.sh
 
 go-lint-text:
 	./scripts/lint-text.sh --require-all
 
 gosec:
-	./scripts/gosec.sh
+	CGO_ENABLED=1 ./scripts/gosec.sh
 
 func-test:
-	go test -mod=vendor github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
+	CGO_ENABLED=1 go test -mod=vendor github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
 
 .PHONY: cephcsi
 cephcsi:
 	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
-	GOOS=linux go build -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
+	GOOS=linux CGO_ENABLED=1 go build -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
 
 .PHONY: containerized-build containerized-test
 containerized-build: .devel-container-id
