@@ -1,6 +1,6 @@
 ARG SRC_DIR="/go/src/github.com/ceph/ceph-csi/"
 ARG GO_ARCH
-ARG BASE_IMAGE=ceph/ceph:v15
+ARG BASE_IMAGE=ceph/ceph:v14.2
 
 FROM ${BASE_IMAGE} as builder
 
@@ -17,7 +17,7 @@ ARG GOROOT=/usr/local/go
 RUN mkdir -p ${GOROOT} && \
     curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GO_ARCH}.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
 
-RUN dnf install libcephfs-devel librados-devel librbd-devel /usr/bin/cc make -y
+RUN yum install libcephfs-devel librados-devel librbd-devel /usr/bin/cc make -y
 
 ENV GOROOT=${GOROOT} \
     GOPATH=/go \
