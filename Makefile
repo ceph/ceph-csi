@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: all cephcsi
+.PHONY: all cephcsi check-env
 
 CONTAINER_CMD?=$(shell docker version >/dev/null 2>&1 && echo docker)
 ifeq ($(CONTAINER_CMD),)
@@ -62,12 +62,12 @@ all: cephcsi
 
 .PHONY: go-test static-check mod-check go-lint go-lint-text gosec
 test: go-test static-check mod-check
-static-check: go-lint go-lint-text gosec
+static-check: check-env go-lint go-lint-text gosec
 
-go-test:
+go-test: check-env
 	./scripts/test-go.sh
 
-mod-check:
+mod-check: check-env
 	@echo 'running: go mod verify'
 	@go mod verify && [ "$(shell sha512sum go.mod)" = "`sha512sum go.mod`" ] || ( echo "ERROR: go.mod was modified by 'go mod verify'" && false )
 
@@ -83,8 +83,11 @@ gosec:
 func-test:
 	go test -mod=vendor github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
 
+check-env:
+	@./scripts/check-env.sh
+
 .PHONY: cephcsi
-cephcsi:
+cephcsi: check-env
 	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
 	GOOS=linux go build -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
 
