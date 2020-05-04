@@ -13,10 +13,14 @@ it is **highly** encouraged to:
 
 ### Workspace and repository setup
 
-* [Download](https://golang.org/dl/) Go (>=1.11.x) and
+* [Download](https://golang.org/dl/) Go (>=1.13.x) and
    [install](https://golang.org/doc/install) it on your system.
 * Setup the [GOPATH](http://www.g33knotes.org/2014/07/60-second-count-down-to-go.html)
    environment.
+* `CGO_ENABLED` is enabled by default, if `CGO_ENABLED` is set to `0` we need
+  to set it to `1` as we need to build with go-ceph bindings.
+* `GO111MODULE` is enabled by default, if `GO111MODULE` is set to `off` we need
+  to set it to `on` as cephcsi uses go modules for dependency.
 * Ceph-CSI uses the native Ceph libaries through the [go-ceph
    package](https://github.com/ceph/go-ceph). It is required to install the
    Ceph C headers in order to compile Ceph-CSI. The packages are called
