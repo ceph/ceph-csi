@@ -51,12 +51,17 @@ before_script:
   # only the arm64 fallback repo is unsigned and needs --allow-unauthenticated
   - sudo apt-get -y --allow-unauthenticated install librados-dev librbd-dev
 
+# Two stages for testing, each stage runs its jobs in parallel, but stages are
+# run after each other, unless the last stage fails.
+# Only run the deploy stage on push (not pull_request) events.
+stages:
+  - build testing
+  - e2e testing
+  - name: deploy
+    if: type = push
+
 jobs:
   include:
-    # two stages for testing, each stage runs its jobs in parallel, but stages
-    # are run after each other, unless the last stage fails
-    # - build testing
-    # - e2e testing
     - stage: build testing
       name: static-check-make
       install:
@@ -84,7 +89,7 @@ jobs:
     - stage: build testing
       name: Build multi-architecture image for amd64 and arm64
       script:
-        - travis_wait ./build-multi-arch-image.sh || travis_terminate 1;
+        - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
 
     - stage: build testing
       name: containerized test (Fedora) and build (CentOS)
@@ -132,8 +137,6 @@ jobs:
         - make image-cephcsi || travis_terminate 1;
         - scripts/travis-helmtest.sh v1.17.0 || travis_terminate 1;
 
-deploy:
-  - provider: script
-    on:  # yamllint disable-line rule:truthy
-      all_branches: true
-    script: travis_wait ./deploy.sh
+    - stage: deploy
+      name: push artifacts to repositories
+      script: ./deploy.sh

@@ -12,6 +12,7 @@ kind: ConfigMap
 # each such cluster in use.
 # To add more clusters or edit MON addresses in an existing config map, use
 # the `kubectl replace` command.
+# The field "cephFS.subvolumeGroup" is optional and defaults to "csi".
 # NOTE: Changes to the config map is automatically updated in the running pods,
 # thus restarting existing pods using the config map is NOT required on edits
 # to the config map.
@@ -25,7 +26,10 @@ data:
           "<MONValue2>",
           ...
           "<MONValueN>"
-        ]
+        ],
+        "cephFS": {
+          "subvolumeGroup": "<subvolumegroup for cephfs volumes>"
+        }
       }
     ]
 metadata:
