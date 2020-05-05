@@ -22,6 +22,7 @@ var (
 	rbdExamplePath     = "../examples/rbd/"
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
+	defaultRBDPool     = "replicapool"
 	// Topology related variables
 	nodeRegionLabel     = "test.failure-domain/region"
 	regionValue         = "testregion"
@@ -267,7 +268,7 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						Fail(err.Error())
 					}
-					pool := "replicapool"
+					pool := defaultRBDPool
 					snapList, err := listSnapshots(f, pool, images[0])
 					if err != nil {
 						Fail(err.Error())
