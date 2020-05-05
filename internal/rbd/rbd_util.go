@@ -30,7 +30,6 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
@@ -61,6 +60,8 @@ const (
 	// Encryption statuses for RbdImage
 	rbdImageEncrypted          = "encrypted"
 	rbdImageRequiresEncryption = "requiresEncryption"
+	// image metadata key for encryption
+	encryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
 )
 
 // rbdVolume represents a CSI volume and its RBD image specifics
@@ -100,8 +101,8 @@ type rbdVolume struct {
 	Encrypted           bool
 	KMS                 util.EncryptionKMS
 
-	// connection
-	conn *rados.Conn
+	// conn is a connection to the Ceph cluster obtained from a ConnPool
+	conn *util.ClusterConnection
 }
 
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics
@@ -129,14 +130,30 @@ type rbdSnapshot struct {
 
 var (
 	supportedFeatures = sets.NewString("layering")
-
-	// large interval and timeout, it should be longer than the maximum
-	// time an operation can take (until refcounting of the connections is
-	// available)
-	cpInterval = 15 * time.Minute
-	cpExpiry   = 10 * time.Minute
-	connPool   = util.NewConnPool(cpInterval, cpExpiry)
 )
+
+// Connect an rbdVolume to the Ceph cluster
+func (rv *rbdVolume) Connect(cr *util.Credentials) error {
+	if rv.conn != nil {
+		return nil
+	}
+
+	conn := &util.ClusterConnection{}
+	if err := conn.Connect(rv.Monitors, cr); err != nil {
+		return err
+	}
+
+	rv.conn = conn
+	return nil
+}
+
+// Destroy cleans up the rbdVolume and closes the connection to the Ceph
+// cluster in case one was setup.
+func (rv *rbdVolume) Destroy() {
+	if rv.conn != nil {
+		rv.conn.Destroy()
+	}
+}
 
 // createImage creates a new ceph image with provision and volume options.
 func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
@@ -162,7 +179,12 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		}
 	}
 
-	ioctx, err := pOpts.getIoctx(cr)
+	err := pOpts.Connect(cr)
+	if err != nil {
+		return err
+	}
+
+	ioctx, err := pOpts.conn.GetIoctx(pOpts.Pool)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get IOContext")
 	}
@@ -175,31 +197,6 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	}
 
 	return nil
-}
-
-func (rv *rbdVolume) getIoctx(cr *util.Credentials) (*rados.IOContext, error) {
-	if rv.conn == nil {
-		conn, err := connPool.Get(rv.Pool, rv.Monitors, cr.ID, cr.KeyFile)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get connection")
-		}
-
-		rv.conn = conn
-	}
-
-	ioctx, err := rv.conn.OpenIOContext(rv.Pool)
-	if err != nil {
-		connPool.Put(rv.conn)
-		return nil, errors.Wrapf(err, "failed to open IOContext for pool %s", rv.Pool)
-	}
-
-	return ioctx, nil
-}
-
-func (rv *rbdVolume) Destroy() {
-	if rv.conn != nil {
-		connPool.Put(rv.conn)
-	}
 }
 
 // rbdStatus checks if there is watcher on the image.
@@ -394,21 +391,22 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 
 // genVolFromVolID generates a rbdVolume structure from the provided identifier, updating
 // the structure with elements from on-disk image metadata as well
-func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr *util.Credentials, secrets map[string]string) error {
+func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials, secrets map[string]string) (*rbdVolume, error) {
 	var (
 		options map[string]string
 		vi      util.CSIIdentifier
+		rbdVol  *rbdVolume
 	)
 	options = make(map[string]string)
 
 	// rbdVolume fields that are not filled up in this function are:
 	//		Mounter, MultiNodeWritable
-	rbdVol.VolID = volumeID
+	rbdVol = &rbdVolume{VolID: volumeID}
 
 	err := vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
 		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, rbdVol.VolID)
-		return ErrInvalidVolID{err}
+		return nil, ErrInvalidVolID{err}
 	}
 
 	rbdVol.ClusterID = vi.ClusterID
@@ -416,26 +414,31 @@ func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr
 
 	rbdVol.Monitors, _, err = getMonsAndClusterID(ctx, options)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	rbdVol.Pool, err = util.GetPoolName(ctx, rbdVol.Monitors, cr, vi.LocationID)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	err = rbdVol.Connect(cr)
+	if err != nil {
+		return nil, err
 	}
 	rbdVol.JournalPool = rbdVol.Pool
 
 	imageAttributes, err := volJournal.GetImageAttributes(ctx, rbdVol.Monitors, cr,
 		rbdVol.Pool, vi.ObjectUUID, false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if imageAttributes.KmsID != "" {
 		rbdVol.Encrypted = true
 		rbdVol.KMS, err = util.GetKMS(imageAttributes.KmsID, secrets)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	rbdVol.RequestName = imageAttributes.RequestName
@@ -446,13 +449,13 @@ func genVolFromVolID(ctx context.Context, rbdVol *rbdVolume, volumeID string, cr
 		rbdVol.JournalPool, err = util.GetPoolName(ctx, rbdVol.Monitors, cr, imageAttributes.JournalPoolID)
 		if err != nil {
 			// TODO: If pool is not found we may leak the image (as DeleteVolume will return success)
-			return err
+			return nil, err
 		}
 	}
 
 	err = updateVolWithImageInfo(ctx, rbdVol, cr)
 
-	return err
+	return rbdVol, err
 }
 
 func execCommand(command string, args []string) ([]byte, error) {
@@ -978,21 +981,53 @@ func resizeRBDImage(rbdVol *rbdVolume, cr *util.Credentials) error {
 	return nil
 }
 
-func ensureEncryptionMetadataSet(ctx context.Context, cr *util.Credentials, rbdVol *rbdVolume) error {
-	var vi util.CSIIdentifier
-
-	err := vi.DecomposeCSIID(rbdVol.VolID)
+func (rv *rbdVolume) GetMetadata(key string) (string, error) {
+	ioctx, err := rv.conn.GetIoctx(rv.Pool)
 	if err != nil {
-		err = fmt.Errorf("error decoding volume ID (%s) (%s)", rbdVol.VolID, err)
-		return ErrInvalidVolID{err}
+		return "", errors.Wrapf(err, "failed to get ioctx for %q", rv.RbdImageName)
 	}
 
-	rbdImageName := volJournal.GetNameForUUID(rbdVol.NamePrefix, vi.ObjectUUID, false)
-	imageSpec := rbdVol.Pool + "/" + rbdImageName
-
-	err = util.SaveRbdImageEncryptionStatus(ctx, cr, rbdVol.Monitors, imageSpec, rbdImageRequiresEncryption)
+	image, err := librbd.OpenImage(ioctx, rv.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
-		return fmt.Errorf("failed to save encryption status for %s: %v", imageSpec, err)
+		return "", errors.Wrapf(err, "could not open image %q", rv.RbdImageName)
+	}
+	defer image.Close()
+
+	return image.GetMetadata(key)
+}
+
+func (rv *rbdVolume) SetMetadata(key, value string) error {
+	ioctx, err := rv.conn.GetIoctx(rv.Pool)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get ioctx for %q", rv.RbdImageName)
+	}
+
+	image, err := librbd.OpenImage(ioctx, rv.RbdImageName, librbd.NoSnapshot)
+	if err != nil {
+		return errors.Wrapf(err, "could not open image %q", rv.RbdImageName)
+	}
+	defer image.Close()
+
+	return image.SetMetadata(key, value)
+}
+
+// checkRbdImageEncrypted verifies if rbd image was encrypted when created
+func (rv *rbdVolume) checkRbdImageEncrypted(ctx context.Context) (string, error) {
+	value, err := rv.GetMetadata(encryptionMetaKey)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "checking image %s encrypted state metadata failed: %s"), rv.RbdImageName, err)
+		return "", err
+	}
+
+	encrypted := strings.TrimSpace(value)
+	klog.V(4).Infof(util.Log(ctx, "image %s encrypted state metadata reports %q"), rv.RbdImageName, encrypted)
+	return encrypted, nil
+}
+
+func (rv *rbdVolume) ensureEncryptionMetadataSet(status string) error {
+	err := rv.SetMetadata(encryptionMetaKey, status)
+	if err != nil {
+		return fmt.Errorf("failed to save encryption status for %s: %v", rv.RbdImageName, err)
 	}
 
 	return nil

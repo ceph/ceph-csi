@@ -95,14 +95,14 @@ func (cp *ConnPool) Destroy() {
 	}
 }
 
-func (cp *ConnPool) generateUniqueKey(pool, monitors, user, keyfile string) (string, error) {
+func (cp *ConnPool) generateUniqueKey(monitors, user, keyfile string) (string, error) {
 	// the keyfile can be unique for operations, contents will be the same
 	key, err := ioutil.ReadFile(keyfile) // nolint: gosec, #nosec
 	if err != nil {
 		return "", errors.Wrapf(err, "could not open keyfile %s", keyfile)
 	}
 
-	return fmt.Sprintf("%s|%s|%s|%s", pool, monitors, user, string(key)), nil
+	return fmt.Sprintf("%s|%s|%s", monitors, user, string(key)), nil
 }
 
 // getExisting returns the existing rados.Conn associated with the unique key.
@@ -118,10 +118,10 @@ func (cp *ConnPool) getConn(unique string) *rados.Conn {
 }
 
 // Get returns a rados.Conn for the given arguments. Creates a new rados.Conn in
-// case there is none in the pool. Use the returned unique string to reduce the
-// reference count with ConnPool.Put(unique).
-func (cp *ConnPool) Get(pool, monitors, user, keyfile string) (*rados.Conn, error) {
-	unique, err := cp.generateUniqueKey(pool, monitors, user, keyfile)
+// case there is none. Use the returned rados.Conn to reduce the reference
+// count with ConnPool.Put(unique).
+func (cp *ConnPool) Get(monitors, user, keyfile string) (*rados.Conn, error) {
+	unique, err := cp.generateUniqueKey(monitors, user, keyfile)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate unique for connection")
 	}

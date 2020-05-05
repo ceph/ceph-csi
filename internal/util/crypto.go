@@ -36,9 +36,6 @@ const (
 	mapperFilePrefix     = "luks-rbd-"
 	mapperFilePathPrefix = "/dev/mapper"
 
-	// image metadata key for encryption
-	encryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
-
 	// Encryption passphrase location in K8s secrets
 	encryptionPassphraseKey = "encryptionPassphrase"
 	kmsTypeKey              = "encryptionKMSType"
@@ -247,28 +244,4 @@ func DeviceEncryptionStatus(ctx context.Context, devicePath string) (mappedDevic
 	}
 	// Identified as LUKS, but failed to identify a mapped device
 	return "", "", fmt.Errorf("mapped device not found in path %s", devicePath)
-}
-
-// CheckRbdImageEncrypted verifies if rbd image was encrypted when created
-func CheckRbdImageEncrypted(ctx context.Context, cr *Credentials, monitors, imageSpec string) (string, error) {
-	value, err := GetImageMeta(ctx, cr, monitors, imageSpec, encryptionMetaKey)
-	if err != nil {
-		klog.Errorf(Log(ctx, "checking image %s encrypted state metadata failed: %s"), imageSpec, err)
-		return "", err
-	}
-
-	encrypted := strings.TrimSpace(value)
-	klog.V(4).Infof(Log(ctx, "image %s encrypted state metadata reports %q"), imageSpec, encrypted)
-	return encrypted, nil
-}
-
-// SaveRbdImageEncryptionStatus sets image metadata for encryption status
-func SaveRbdImageEncryptionStatus(ctx context.Context, cr *Credentials, monitors, imageSpec, status string) error {
-	err := SetImageMeta(ctx, cr, monitors, imageSpec, encryptionMetaKey, status)
-	if err != nil {
-		err = fmt.Errorf("failed to save image metadata encryption status for %s: %v", imageSpec, err.Error())
-		klog.Errorf(Log(ctx, err.Error()))
-		return err
-	}
-	return nil
 }
