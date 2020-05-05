@@ -202,6 +202,13 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	}
 	defer cr.DeleteCredentials()
 
+	err = volOptions.Connect(cr)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to connect to volume %v: %v"), volOptions.RbdImageName, err)
+		return transaction, err
+	}
+	defer volOptions.Destroy()
+
 	// Mapping RBD image
 	var devicePath string
 	devicePath, err = attachRBDImage(ctx, volOptions, cr)
@@ -213,7 +220,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 		req.GetVolumeId(), volOptions.Pool, devicePath)
 
 	if volOptions.Encrypted {
-		devicePath, err = ns.processEncryptedDevice(ctx, volOptions, devicePath, cr)
+		devicePath, err = ns.processEncryptedDevice(ctx, volOptions, devicePath)
 		if err != nil {
 			return transaction, err
 		}
@@ -707,9 +714,9 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 	}, nil
 }
 
-func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath string, cr *util.Credentials) (string, error) {
+func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath string) (string, error) {
 	imageSpec := volOptions.Pool + "/" + volOptions.RbdImageName
-	encrypted, err := util.CheckRbdImageEncrypted(ctx, cr, volOptions.Monitors, imageSpec)
+	encrypted, err := volOptions.checkRbdImageEncrypted(ctx)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to get encryption status for rbd image %s: %v"),
 			imageSpec, err)
@@ -727,15 +734,14 @@ func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rb
 
 		switch existingFormat {
 		case "":
-			err = encryptDevice(ctx, volOptions, cr, devicePath)
+			err = encryptDevice(ctx, volOptions, devicePath)
 			if err != nil {
 				return "", fmt.Errorf("failed to encrypt rbd image %s: %v", imageSpec, err)
 			}
 		case "crypt":
 			klog.Warningf(util.Log(ctx, "rbd image %s is encrypted, but encryption state was not updated"),
 				imageSpec)
-			err = util.SaveRbdImageEncryptionStatus(
-				ctx, cr, volOptions.Monitors, imageSpec, rbdImageEncrypted)
+			err = volOptions.ensureEncryptionMetadataSet(rbdImageEncrypted)
 			if err != nil {
 				return "", fmt.Errorf("failed to update encryption state for rbd image %s", imageSpec)
 			}
@@ -756,7 +762,7 @@ func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rb
 	return devicePath, nil
 }
 
-func encryptDevice(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials, devicePath string) error {
+func encryptDevice(ctx context.Context, rbdVol *rbdVolume, devicePath string) error {
 	passphrase, err := util.GetCryptoPassphrase(ctx, rbdVol.VolID, rbdVol.KMS)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to get crypto passphrase for %s/%s: %v"),
@@ -770,10 +776,13 @@ func encryptDevice(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials,
 		return err
 	}
 
-	imageSpec := rbdVol.Pool + "/" + rbdVol.RbdImageName
-	err = util.SaveRbdImageEncryptionStatus(ctx, cr, rbdVol.Monitors, imageSpec, rbdImageEncrypted)
+	err = rbdVol.ensureEncryptionMetadataSet(rbdImageEncrypted)
+	if err != nil {
+		klog.Error(util.Log(ctx, err.Error()))
+		return err
+	}
 
-	return err
+	return nil
 }
 
 func openEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath string) (string, error) {

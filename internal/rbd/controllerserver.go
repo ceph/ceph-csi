@@ -129,6 +129,36 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 	return rbdVol, nil
 }
 
+func buildCreateVolumeResponse(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume) (*csi.CreateVolumeResponse, error) {
+	if rbdVol.Encrypted {
+		err := rbdVol.ensureEncryptionMetadataSet(rbdImageRequiresEncryption)
+		if err != nil {
+			klog.Error(util.Log(ctx, err.Error()))
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
+	volumeContext := req.GetParameters()
+	volumeContext["pool"] = rbdVol.Pool
+	volumeContext["journalPool"] = rbdVol.JournalPool
+	volumeContext["imageName"] = rbdVol.RbdImageName
+	volume := &csi.Volume{
+		VolumeId:      rbdVol.VolID,
+		CapacityBytes: rbdVol.VolSize,
+		VolumeContext: volumeContext,
+		ContentSource: req.GetVolumeContentSource(),
+	}
+	if rbdVol.Topology != nil {
+		volume.AccessibleTopology =
+			[]*csi.Topology{
+				{
+					Segments: rbdVol.Topology,
+				},
+			}
+	}
+	return &csi.CreateVolumeResponse{Volume: volume}, nil
+}
+
 // CreateVolume creates the volume in backend
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateVolumeReq(ctx, req); err != nil {
@@ -156,7 +186,13 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	defer cs.VolumeLocks.Release(req.GetName())
 
-	found, err := checkVolExists(ctx, rbdVol, cr)
+	err = rbdVol.Connect(cr)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to connect to volume %v: %v"), rbdVol.RbdImageName, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	found, err := rbdVol.Exists(ctx)
 	if err != nil {
 		if _, ok := err.(ErrVolNameConflict); ok {
 			return nil, status.Error(codes.AlreadyExists, err.Error())
@@ -165,33 +201,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if found {
-		if rbdVol.Encrypted {
-			err = ensureEncryptionMetadataSet(ctx, cr, rbdVol)
-			if err != nil {
-				klog.Errorf(util.Log(ctx, err.Error()))
-				return nil, err
-			}
-		}
-
-		volumeContext := req.GetParameters()
-		volumeContext["pool"] = rbdVol.Pool
-		volumeContext["journalPool"] = rbdVol.JournalPool
-		volumeContext["imageName"] = rbdVol.RbdImageName
-		volume := &csi.Volume{
-			VolumeId:      rbdVol.VolID,
-			CapacityBytes: rbdVol.VolSize,
-			VolumeContext: volumeContext,
-			ContentSource: req.GetVolumeContentSource(),
-		}
-		if rbdVol.Topology != nil {
-			volume.AccessibleTopology =
-				[]*csi.Topology{
-					{
-						Segments: rbdVol.Topology,
-					},
-				}
-		}
-		return &csi.CreateVolumeResponse{Volume: volume}, nil
+		return buildCreateVolumeResponse(ctx, req, rbdVol)
 	}
 
 	rbdSnap, err := cs.checkSnapshotSource(ctx, req, cr)
@@ -218,7 +228,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	if rbdVol.Encrypted {
-		err = ensureEncryptionMetadataSet(ctx, cr, rbdVol)
+		err = rbdVol.ensureEncryptionMetadataSet(rbdImageRequiresEncryption)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to save encryption status, deleting image %s"),
 				rbdVol.RbdImageName)
@@ -383,9 +393,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	defer cs.VolumeLocks.Release(volumeID)
 
-	rbdVol := &rbdVolume{}
-	defer rbdVol.Destroy()
-	if err = genVolFromVolID(ctx, rbdVol, volumeID, cr, req.GetSecrets()); err != nil {
+	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	if err != nil {
 		if _, ok := err.(util.ErrPoolNotFound); ok {
 			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
@@ -430,6 +439,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 		return &csi.DeleteVolumeResponse{}, nil
 	}
+	defer rbdVol.Destroy()
 
 	// lock out parallel create requests against the same volume name as we
 	// cleanup the image and associated omaps for the same
@@ -500,8 +510,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	defer cr.DeleteCredentials()
 
 	// Fetch source volume information
-	rbdVol := new(rbdVolume)
-	err = genVolFromVolID(ctx, rbdVol, req.GetSourceVolumeId(), cr, req.GetSecrets())
+	rbdVol, err := genVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
 			return nil, status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
@@ -513,6 +522,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
+	defer rbdVol.Destroy()
 
 	// TODO: re-encrypt snapshot with a new passphrase
 	if rbdVol.Encrypted {
@@ -774,9 +784,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVol := &rbdVolume{}
-	defer rbdVol.Destroy()
-	err = genVolFromVolID(ctx, rbdVol, volID, cr, req.GetSecrets())
+	rbdVol, err := genVolFromVolID(ctx, volID, cr, req.GetSecrets())
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
 			return nil, status.Errorf(codes.NotFound, "volume ID %s not found", volID)
@@ -789,6 +797,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
+	defer rbdVol.Destroy()
 
 	if rbdVol.Encrypted {
 		return nil, status.Errorf(codes.InvalidArgument, "encrypted volumes do not support resize (%s/%s)",

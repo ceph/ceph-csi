@@ -163,19 +163,19 @@ volume names as requested by the CSI drivers. Hence, these need to be invoked on
 respective CSI snapshot or volume name based locks are held, as otherwise racy access to these
 omaps may end up leaving the omaps in an inconsistent state.
 */
-func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) (bool, error) {
-	err := validateRbdVol(rbdVol)
+func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
+	err := validateRbdVol(rv)
 	if err != nil {
 		return false, err
 	}
 
 	kmsID := ""
-	if rbdVol.Encrypted {
-		kmsID = rbdVol.KMS.GetID()
+	if rv.Encrypted {
+		kmsID = rv.KMS.GetID()
 	}
 
-	imageData, err := volJournal.CheckReservation(ctx, rbdVol.Monitors, cr, rbdVol.JournalPool,
-		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
+	imageData, err := volJournal.CheckReservation(ctx, rv.Monitors, rv.conn.Creds, rv.JournalPool,
+		rv.RequestName, rv.NamePrefix, "", kmsID)
 	if err != nil {
 		return false, err
 	}
@@ -184,51 +184,51 @@ func checkVolExists(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials
 	}
 
 	imageUUID := imageData.ImageUUID
-	rbdVol.RbdImageName = imageData.ImageAttributes.ImageName
+	rv.RbdImageName = imageData.ImageAttributes.ImageName
 
 	// check if topology constraints match what is found
-	rbdVol.Topology, err = util.MatchTopologyForPool(rbdVol.TopologyPools,
-		rbdVol.TopologyRequirement, imageData.ImagePool)
+	rv.Topology, err = util.MatchTopologyForPool(rv.TopologyPools, rv.TopologyRequirement,
+		imageData.ImagePool)
 	if err != nil {
 		// TODO check if need any undo operation here, or ErrVolNameConflict
 		return false, err
 	}
 	// update Pool, if it was topology constrained
-	if rbdVol.Topology != nil {
-		rbdVol.Pool = imageData.ImagePool
+	if rv.Topology != nil {
+		rv.Pool = imageData.ImagePool
 	}
 
 	// NOTE: Return volsize should be on-disk volsize, not request vol size, so
 	// save it for size checks before fetching image data
-	requestSize := rbdVol.VolSize
+	requestSize := rv.VolSize
 	// Fetch on-disk image attributes and compare against request
-	err = updateVolWithImageInfo(ctx, rbdVol, cr)
+	err = updateVolWithImageInfo(ctx, rv, rv.conn.Creds)
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
-			err = volJournal.UndoReservation(ctx, rbdVol.Monitors, cr, rbdVol.JournalPool, rbdVol.Pool,
-				rbdVol.RbdImageName, rbdVol.RequestName)
+			err = volJournal.UndoReservation(ctx, rv.Monitors, rv.conn.Creds, rv.JournalPool, rv.Pool,
+				rv.RbdImageName, rv.RequestName)
 			return false, err
 		}
 		return false, err
 	}
 
 	// size checks
-	if rbdVol.VolSize < requestSize {
+	if rv.VolSize < requestSize {
 		err = fmt.Errorf("image with the same name (%s) but with different size already exists",
-			rbdVol.RbdImageName)
-		return false, ErrVolNameConflict{rbdVol.RbdImageName, err}
+			rv.RbdImageName)
+		return false, ErrVolNameConflict{rv.RbdImageName, err}
 	}
 	// TODO: We should also ensure image features and format is the same
 
 	// found a volume already available, process and return it!
-	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imageData.ImagePoolID, rbdVol.Pool,
-		rbdVol.ClusterID, imageUUID, volIDVersion)
+	rv.VolID, err = util.GenerateVolID(ctx, rv.Monitors, rv.conn.Creds, imageData.ImagePoolID, rv.Pool,
+		rv.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
 		return false, err
 	}
 
 	klog.V(4).Infof(util.Log(ctx, "found existing volume (%s) with image name (%s) for request (%s)"),
-		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
+		rv.VolID, rv.RbdImageName, rv.RequestName)
 
 	return true, nil
 }
