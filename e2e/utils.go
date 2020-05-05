@@ -274,7 +274,7 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOptions, parameters map[string]string) {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
-	sc.Parameters["pool"] = "replicapool"
+	sc.Parameters["pool"] = defaultRBDPool
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = rookNamespace
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-name"] = rbdProvisionerSecretName
 
@@ -761,7 +761,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 	if err != nil {
 		Fail(err.Error())
 	}
-	rbdImageSpec := fmt.Sprintf("replicapool/%s", imageData.imageName)
+	rbdImageSpec := fmt.Sprintf("%s/%s", defaultRBDPool, imageData.imageName)
 	encryptedState, err := getImageMeta(rbdImageSpec, ".rbd.csi.ceph.com/encrypted", f)
 	if err != nil {
 		Fail(err.Error())
@@ -903,7 +903,7 @@ func listRBDImages(f *framework.Framework) []string {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=rook-ceph-tools",
 	}
-	stdout, stdErr := execCommandInPod(f, "rbd ls --pool=replicapool --format=json", rookNamespace, &opt)
+	stdout, stdErr := execCommandInPod(f, fmt.Sprintf("rbd ls --pool=%s --format=json", defaultRBDPool), rookNamespace, &opt)
 	Expect(stdErr).Should(BeEmpty())
 	var imgInfos []string
 
@@ -973,7 +973,7 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 		LabelSelector: "app=rook-ceph-tools",
 	}
 
-	cmd := fmt.Sprintf("rbd rm %s --pool=replicapool", imageData.imageName)
+	cmd := fmt.Sprintf("rbd rm %s --pool=%s", imageData.imageName, defaultRBDPool)
 	execCommandInPod(f, cmd, rookNamespace, &opt)
 	return nil
 }
@@ -1030,7 +1030,7 @@ func pvcDeleteWhenPoolNotFound(pvcPath string, cephfs bool, f *framework.Framewo
 			return err
 		}
 		// delete rbd pool
-		deletePool("replicapool", cephfs, f)
+		deletePool(defaultRBDPool, cephfs, f)
 	}
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	return err
