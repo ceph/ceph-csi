@@ -52,6 +52,11 @@ type CSIIdentifier struct {
 // This maximum comes from the CSI spec on max bytes allowed in the various CSI ID fields
 const maxVolIDLen = 128
 
+const (
+	knownFieldSize = 64
+	uuidSize       = 36
+)
+
 /*
 ComposeCSIID composes a CSI ID from passed in parameters.
 Version 1 of the encoding scheme is as follows,
@@ -64,11 +69,6 @@ Version 1 of the encoding scheme is as follows,
 	Total of constant field lengths, including '-' field separators would hence be,
 	4+1+4+1+1+16+1+36 = 64
 */
-const (
-	knownFieldSize = 64
-	uuidSize       = 36
-)
-
 func (ci CSIIdentifier) ComposeCSIID() (string, error) {
 	buf16 := make([]byte, 2)
 	buf64 := make([]byte, 8)
