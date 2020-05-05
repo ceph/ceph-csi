@@ -1,3 +1,7 @@
+<!-- Please take a look at our [Contributing](https://github.com/ceph/ceph-csi/blob/master/docs/development-guide.md#Code-contribution-workflow)
+documentation before submitting a Pull Request!
+Thank you for contributing to ceph-csi! -->
+
 # Describe what this PR does #
 
 Provide some context for the reviewer
