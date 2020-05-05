@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -57,7 +58,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	if err != nil {
 		return err
 	}
-	_, err = sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Create(snap)
+	_, err = sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Create(context.TODO(), snap, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -70,7 +71,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		e2elog.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
-		snaps, err := sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
+		snaps, err := sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			e2elog.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
 			if testutils.IsRetryableAPIError(err) {
@@ -97,7 +98,7 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	if err != nil {
 		return err
 	}
-	err = sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Delete(snap.Name, &metav1.DeleteOptions{})
+	err = sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Delete(context.TODO(), snap.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -109,7 +110,7 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		e2elog.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
-		_, err := sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Get(name, metav1.GetOptions{})
+		_, err := sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err == nil {
 			return false, nil
 		}
@@ -151,6 +152,6 @@ func createRBDSnapshotClass(f *framework.Framework) {
 	sc.Parameters["clusterID"] = fsID
 	sclient, err := newSnapshotClient()
 	Expect(err).Should(BeNil())
-	_, err = sclient.SnapshotV1beta1().VolumeSnapshotClasses().Create(&sc)
+	_, err = sclient.SnapshotV1beta1().VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	Expect(err).Should(BeNil())
 }
