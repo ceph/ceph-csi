@@ -27,6 +27,9 @@ spec:
         heritage: {{ .Release.Service }}
     spec:
       serviceAccountName: {{ include "ceph-csi-cephfs.serviceAccountName.nodeplugin" . }}
+{{- if .Values.nodeplugin.priorityClassName }}
+      priorityClassName: {{ .Values.nodeplugin.priorityClassName }}
+{{- end }}
       hostNetwork: true
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
       # resolved through k8s service, set dns policy to cluster first
