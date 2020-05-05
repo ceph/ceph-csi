@@ -48,6 +48,9 @@ logLevel: 5
 
 nodeplugin:
   name: nodeplugin
+  # set user created priorityclassName for csi plugin pods. default is
+  # system-node-critical which is high priority
+  priorityClassName: system-node-critical
   # if you are using rbd-nbd client set this value to OnDelete
   updateStrategy: RollingUpdate
 
@@ -130,6 +133,10 @@ provisioner:
   # skip image flattening if kernel support mapping of rbd images
   # which has the deep-flatten feature
   # skipForceFlatten: false
+
+  # set user created priorityclassName for csi provisioner pods. default is
+  # system-cluster-critical which is less priority than system-node-critical
+  priorityClassName: system-cluster-critical
 
   httpMetrics:
     # Metrics only available for cephcsi/cephcsi => 1.2.0

@@ -42,6 +42,9 @@ spec:
               topologyKey: "kubernetes.io/hostname"
 {{- end }}
       serviceAccountName: {{ include "ceph-csi-rbd.serviceAccountName.provisioner" . }}
+{{- if .Values.provisioner.priorityClassName }}
+      priorityClassName: {{ .Values.provisioner.priorityClassName }}
+{{- end }}
       containers:
         - name: csi-provisioner
           image: "{{ .Values.provisioner.provisioner.image.repository }}:{{ .Values.provisioner.provisioner.image.tag }}"
