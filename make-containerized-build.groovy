@@ -28,7 +28,7 @@ node('cico-workspace') {
 	try {
 		stage('prepare bare-metal machine') {
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh root@${CICO_NODE}:'
-			sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build --gitrepo=${GIT_REPO} --branch=${GIT_BRANCH}'
+			sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=tip/ --gitrepo=${GIT_REPO} --ref=pull/${ghprbPullId}/head'
 		}
 
 		stage('build') {
