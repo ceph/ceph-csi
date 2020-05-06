@@ -361,7 +361,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	RoundOffSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
 
-	if err = createVolume(ctx, volOptions, cr, volumeID(volIdentifier.FsSubvolName), RoundOffSize); err != nil {
+	if err = resizeVolume(ctx, volOptions, cr, volumeID(volIdentifier.FsSubvolName), RoundOffSize); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to expand volume %s: %v"), volumeID(volIdentifier.FsSubvolName), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
