@@ -34,6 +34,12 @@ var (
 	// Subvolume group create gets called every time the plugin loads, though it doesn't result in error
 	// its unnecessary
 	cephfsInit = false
+
+	// resizeSupportedList stores the mapping for clusterID and resize is
+	// supported in the particular cluster
+	resizeSupportedList = make(map[string]bool)
+
+	inValidCommmand = "no valid command found"
 )
 
 func getCephRootVolumePathLocalDeprecated(volID volumeID) string {
@@ -132,6 +138,48 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 	}
 
 	return nil
+}
+
+// resizeVolume will try to use ceph fs subvolume resize command to resize the
+// subvolume. If the command is not available as a fallback it will use
+// CreateVolume to resize the subvolume.
+func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID, bytesQuota int64) error {
+	supported := false
+	ok := false
+
+	if supported, ok = resizeSupportedList[volOptions.ClusterID]; supported || !ok {
+		args := []string{
+			"fs",
+			"subvolume",
+			"resize",
+			volOptions.FsName,
+			string(volID),
+			strconv.FormatInt(bytesQuota, 10),
+			"--group_name",
+			volOptions.SubvolumeGroup,
+			"-m", volOptions.Monitors,
+			"-c", util.CephConfigPath,
+			"-n", cephEntityClientPrefix + cr.ID,
+			"--keyfile=" + cr.KeyFile,
+		}
+
+		err := execCommandErr(
+			ctx,
+			"ceph",
+			args[:]...)
+
+		if err == nil {
+			resizeSupportedList[volOptions.ClusterID] = true
+			return nil
+		}
+		// Incase the error is other than invalid command return error to the caller.
+		if !strings.Contains(err.Error(), inValidCommmand) {
+			klog.Errorf(util.Log(ctx, "failed to resize subvolume %s(%s) in fs %s"), string(volID), err, volOptions.FsName)
+			return err
+		}
+	}
+	resizeSupportedList[volOptions.ClusterID] = false
+	return createVolume(ctx, volOptions, cr, volID, bytesQuota)
 }
 
 func mountCephRoot(ctx context.Context, volID volumeID, volOptions *volumeOptions, adminCr *util.Credentials) error {
