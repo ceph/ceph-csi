@@ -30,6 +30,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util"
 
+	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
@@ -266,8 +267,6 @@ func rbdManagerTaskDeleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.C
 
 // deleteImage deletes a ceph image with provision and volume options.
 func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
-	var output []byte
-
 	image := pOpts.RbdImageName
 	found, _, err := rbdStatus(ctx, pOpts, cr)
 	if err != nil {
@@ -288,12 +287,17 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	}
 
 	if !rbdCephMgrSupported {
-		// attempt older style deletion
-		args := []string{"rm", image, "--pool", pOpts.Pool, "--id", cr.ID, "-m", pOpts.Monitors,
-			"--keyfile=" + cr.KeyFile}
-		output, err = execCommand("rbd", args)
+		var ioctx *rados.IOContext
+		ioctx, err = pOpts.conn.GetIoctx(pOpts.Pool)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s, error: %v, command output: %s"), pOpts.Pool, image, err, string(output))
+			return err
+		}
+		defer ioctx.Destroy()
+
+		rbdImage := librbd.GetImage(ioctx, image)
+		err = rbdImage.Remove()
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s, error: %v"), pOpts.Pool, image, err)
 		}
 	}
 
