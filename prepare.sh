@@ -31,7 +31,7 @@ while true; do
         echo "--gitrepo                 specify the git repository" 
         echo " "
         echo "Sample Usage:"
-        echo "./prepare.sh --gitrepo=https://github.com/example --workdir=/opt/build --ref=pull/123/head"
+        echo "./prepare.sh --gitrepo=https://github.com/example --workdir=tip/ --ref=pull/123/head"
         exit 0
         ;;
     --gitrepo)  
@@ -49,6 +49,7 @@ while true; do
         ;;
     --)
         shift
+	    exit 0
         break
         ;;
     esac
