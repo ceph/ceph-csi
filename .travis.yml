@@ -110,6 +110,13 @@ jobs:
         - travis_terminate 0    # deploy only on x86
 
     - stage: e2e testing
+      name: cephcsi with kube 1.16.9
+      script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
+        - make image-cephcsi || travis_terminate 1;
+        - scripts/travis-functest.sh v1.16.9 || travis_terminate 1;
+
+    - stage: e2e testing
       name: cephcsi with kube 1.17.5
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
