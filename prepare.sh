@@ -18,6 +18,12 @@ opts=$(getopt \
     -- "$@"
 )
 
+if [ $? -ne 0 ]
+then
+    echo "Try '--help' for more information." 
+    exit 1   
+fi
+
 eval set -- ${opts}
 
 while true; do
