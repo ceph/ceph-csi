@@ -200,6 +200,27 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	return nil
 }
 
+// open the rbdVolume after it has been connected.
+// ErrPoolNotFound or ErrImageNotFound are returned in case the pool or image
+// can not be found, other errors will contain more details about other issues
+// (permission denied, ...) and are expected to relate to configuration issues.
+func (rv *rbdVolume) open() (*librbd.Image, error) {
+	ioctx, err := rv.conn.GetIoctx(rv.Pool)
+	if err != nil {
+		// GetIoctx() can return util.ErrPoolNotFound
+		return nil, err
+	}
+
+	image, err := librbd.OpenImage(ioctx, rv.RbdImageName, librbd.NoSnapshot)
+	if err != nil {
+		if err == librbd.ErrNotFound {
+			err = ErrImageNotFound{rv.RbdImageName, err}
+		}
+		return nil, err
+	}
+	return image, nil
+}
+
 // rbdStatus checks if there is watcher on the image.
 // It returns true if there is a watcher on the image, otherwise returns false.
 func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (bool, string, error) {
