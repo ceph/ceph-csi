@@ -7,36 +7,14 @@ package rados
 import "C"
 
 import (
-	"fmt"
 	"runtime"
 	"unsafe"
-
-	"github.com/ceph/go-ceph/errutil"
 )
-
-// RadosError represents an error condition returned from the Ceph RADOS APIs.
-type RadosError int
-
-// Error returns the error string for the RadosError type.
-func (e RadosError) Error() string {
-	errno, s := errutil.FormatErrno(int(e))
-	if s == "" {
-		return fmt.Sprintf("rados: ret=%d", errno)
-	}
-	return fmt.Sprintf("rados: ret=%d, %s", errno, s)
-}
 
 const (
 	// AllNamespaces is used to reset a selected namespace to all
 	// namespaces. See the IOContext SetNamespace function.
 	AllNamespaces = C.LIBRADOS_ALL_NSPACES
-
-	// ErrNotFound indicates a missing resource.
-	ErrNotFound = RadosError(-C.ENOENT)
-	// ErrPermissionDenied indicates a permissions issue.
-	ErrPermissionDenied = RadosError(-C.EPERM)
-	// ErrObjectExists indicates that an exclusive object creation failed.
-	ErrObjectExists = RadosError(-C.EEXIST)
 
 	// FIXME: for backwards compatibility
 
@@ -45,22 +23,7 @@ const (
 	//
 	// Deprecated: use AllNamespaces instead
 	RadosAllNamespaces = AllNamespaces
-	// RadosErrorNotFound indicates a missing resource.
-	//
-	// Deprecated: use ErrNotFound instead
-	RadosErrorNotFound = ErrNotFound
-	// RadosErrorPermissionDenied indicates a permissions issue.
-	//
-	// Deprecated: use ErrPermissionDenied instead
-	RadosErrorPermissionDenied = ErrPermissionDenied
 )
-
-func getRadosError(err int) error {
-	if err == 0 {
-		return nil
-	}
-	return RadosError(err)
-}
 
 // Version returns the major, minor, and patch components of the version of
 // the RADOS library linked against.
@@ -79,7 +42,7 @@ func newConn(user *C.char) (*Conn, error) {
 	ret := C.rados_create(&conn.cluster, user)
 
 	if ret != 0 {
-		return nil, RadosError(int(ret))
+		return nil, getError(ret)
 	}
 
 	runtime.SetFinalizer(conn, freeConn)
@@ -112,7 +75,7 @@ func NewConnWithClusterAndUser(clusterName string, userName string) (*Conn, erro
 	conn := makeConn()
 	ret := C.rados_create2(&conn.cluster, c_cluster_name, c_name, 0)
 	if ret != 0 {
-		return nil, RadosError(int(ret))
+		return nil, getError(ret)
 	}
 
 	runtime.SetFinalizer(conn, freeConn)
