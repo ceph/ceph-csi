@@ -20,7 +20,7 @@ import (
 // GetImageNames returns the list of current RBD images.
 func GetImageNames(ioctx *rados.IOContext) ([]string, error) {
 	size := C.size_t(0)
-	ret := C.rbd_list2(C.rados_ioctx_t(ioctx.Pointer()), nil, &size)
+	ret := C.rbd_list2(cephIoctx(ioctx), nil, &size)
 	if ret < 0 && ret != -C.ERANGE {
 		return nil, RBDError(ret)
 	} else if ret > 0 {
@@ -31,7 +31,7 @@ func GetImageNames(ioctx *rados.IOContext) ([]string, error) {
 
 	// expected: ret == -ERANGE, size contains number of image names
 	images := make([]C.rbd_image_spec_t, size)
-	ret = C.rbd_list2(C.rados_ioctx_t(ioctx.Pointer()), (*C.rbd_image_spec_t)(unsafe.Pointer(&images[0])), &size)
+	ret = C.rbd_list2(cephIoctx(ioctx), (*C.rbd_image_spec_t)(unsafe.Pointer(&images[0])), &size)
 	if ret < 0 {
 		return nil, RBDError(ret)
 	}
