@@ -12,7 +12,7 @@ addons:
 services:
   - docker
 
-language: go
+language:go
 branches:
   only:
     - master
