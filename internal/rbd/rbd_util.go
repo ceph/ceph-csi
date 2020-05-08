@@ -377,12 +377,6 @@ func updateSnapWithImageInfo(ctx context.Context, rbdSnap *rbdSnapshot, cr *util
 	return err
 }
 
-// updateVolWithImageInfo updates provided rbdVolume with information from on-disk data
-// regarding the same
-func updateVolWithImageInfo(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	return rbdVol.getImageInfo()
-}
-
 // genSnapFromSnapID generates a rbdSnapshot structure from the provided identifier, updating
 // the structure with elements from on-disk snapshot metadata as well
 func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID string, cr *util.Credentials) error {
@@ -513,7 +507,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 		}
 	}
 
-	err = updateVolWithImageInfo(ctx, rbdVol, cr)
+	err = rbdVol.getImageInfo()
 
 	return rbdVol, err
 }
