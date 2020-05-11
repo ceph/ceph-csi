@@ -11,6 +11,10 @@
             - ci/centos
       script-path: make-containerized-build.groovy
       lightweight-checkout: true
+    parameters:
+      - string:
+          name: ghprbPullId
+          default: ''
     triggers:
       - github-pull-request:
           admin-list:
