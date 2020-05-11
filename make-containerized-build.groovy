@@ -2,13 +2,9 @@ def cico_retries = 16
 def cico_retry_interval = 60
 def ci_git_repo = 'https://github.com/ceph/ceph-csi'
 def ci_git_branch = 'ci/centos'
+def ref = "master"
 
 node('cico-workspace') {
-	// environment (not?) set by Jenkins, or not?
-	environment {
-		GIT_REPO = 'https://github.com/ceph/ceph-csi'
-		GIT_BRANCH = 'master'
-	}
 
 	stage('checkout ci repository') {
 		git url: "${ci_git_repo}",
@@ -27,12 +23,15 @@ node('cico-workspace') {
 
 	try {
 		stage('prepare bare-metal machine') {
+			if ("${ghprbPullId}".length() != 0) {
+				ref = "pull/${ghprbPullId}/head"
+			}
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh root@${CICO_NODE}:'
-			sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build --gitrepo=${GIT_REPO} --branch=${GIT_BRANCH}'
+			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${ci_git_repo} --ref=${ref}"
 		}
-
+		
 		stage('build') {
-			sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "cd /opt/build && make containerized-build CONTAINER_CMD=podman"'
+			sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman"'
 		}
 	}
 
