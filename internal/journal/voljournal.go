@@ -147,9 +147,9 @@ type CSIJournal struct {
 }
 
 // NewCSIVolumeJournal returns an instance of CSIJournal for volumes
-func NewCSIVolumeJournal() *CSIJournal {
+func NewCSIVolumeJournal(suffix string) *CSIJournal {
 	return &CSIJournal{
-		csiDirectory:            "csi.volumes",
+		csiDirectory:            "csi.volumes." + suffix,
 		csiNameKeyPrefix:        "csi.volume.",
 		cephUUIDDirectoryPrefix: "csi.volume.",
 		csiNameKey:              "csi.volname",
@@ -162,9 +162,9 @@ func NewCSIVolumeJournal() *CSIJournal {
 }
 
 // NewCSISnapshotJournal returns an instance of CSIJournal for snapshots
-func NewCSISnapshotJournal() *CSIJournal {
+func NewCSISnapshotJournal(suffix string) *CSIJournal {
 	return &CSIJournal{
-		csiDirectory:            "csi.snaps",
+		csiDirectory:            "csi.snaps." + suffix,
 		csiNameKeyPrefix:        "csi.snap.",
 		cephUUIDDirectoryPrefix: "csi.snap.",
 		csiNameKey:              "csi.snapname",
@@ -186,11 +186,6 @@ func (cj *CSIJournal) GetNameForUUID(prefix, uid string, isSnapshot bool) string
 		}
 	}
 	return prefix + uid
-}
-
-// SetCSIDirectorySuffix sets the given suffix for the csiDirectory omap
-func (cj *CSIJournal) SetCSIDirectorySuffix(suffix string) {
-	cj.csiDirectory = cj.csiDirectory + "." + suffix
 }
 
 // SetNamespace sets the namespace in which all RADOS objects would be created
