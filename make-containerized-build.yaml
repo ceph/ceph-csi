@@ -17,6 +17,7 @@
           default: ''
     triggers:
       - github-pull-request:
+          cron: 'H/5 * * * *'
           admin-list:
           - nixpanic
           org-list:
