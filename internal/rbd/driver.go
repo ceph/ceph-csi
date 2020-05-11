@@ -103,13 +103,9 @@ func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 		CSIInstanceID = conf.InstanceID
 	}
 
-	// Get an instance of the volume and snapshot journal keys
-	volJournal = journal.NewCSIVolumeJournal()
-	snapJournal = journal.NewCSISnapshotJournal()
-
-	// Update keys with CSI instance suffix
-	volJournal.SetCSIDirectorySuffix(CSIInstanceID)
-	snapJournal.SetCSIDirectorySuffix(CSIInstanceID)
+	// Create instances of the volume and snapshot journal
+	volJournal = journal.NewCSIVolumeJournal(CSIInstanceID)
+	snapJournal = journal.NewCSISnapshotJournal(CSIInstanceID)
 
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
