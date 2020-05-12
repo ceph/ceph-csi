@@ -110,11 +110,8 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 		CSIInstanceID = conf.InstanceID
 	}
 	// Create an instance of the volume journal
-	volJournal = journal.NewCSIVolumeJournal(CSIInstanceID)
+	volJournal = journal.NewCSIVolumeJournalWithNamespace(CSIInstanceID, radosNamespace)
 
-	// Update namespace for storing keys into a specific namespace on RADOS, in the CephFS
-	// metadata pool
-	volJournal.SetNamespace(radosNamespace)
 	// Initialize default library driver
 
 	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
