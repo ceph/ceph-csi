@@ -76,6 +76,64 @@ for code contributions.
 
 Please read the [coding guidelines](coding.md) document before submitting a PR.
 
+#### Certificate of Origin
+
+By contributing to this project you agree to the Developer Certificate of
+Origin (DCO). This document was created by the Linux Kernel community and is a
+simple statement that you, as a contributor, have the legal right to make the
+contribution. See the [DCO](DCO) file for details.
+
+Contributors sign-off that they adhere to these requirements by adding a
+Signed-off-by line to commit messages. For example:
+
+```text
+subsystem: This is my commit message
+
+More details on what this commit does
+
+Signed-off-by: Random J Developer <random@developer.example.org>
+```
+
+If you have already made a commit and forgot to include the sign-off, you can
+amend your last commit to add the sign-off with the following command, which
+can then be force pushed.
+
+```console
+git commit --amend -s
+```
+
+We use a [DCO bot](https://github.com/apps/dco) to enforce the DCO on each pull
+request and branch commits.
+
+#### Commit Messages
+
+We follow a rough convention for commit messages that is designed to answer two
+questions: what changed and why? The subject line should feature the what and
+the body of the commit should describe the why.
+
+```text
+cephfs: update cephfs resize
+
+use cephfs resize to resize subvolume
+
+Signed-off-by: Random J Developer <random@developer.example.org>
+```
+
+The format can be described more formally as follows:
+
+```text
+<subsystem>: <what changed>
+<BLANK LINE>
+<why this change was made>
+<BLANK LINE>
+<footer>
+```
+
+The first line is the subject and should be no longer than 70 characters, the
+second line is always blank, and other lines should be wrapped at 80 characters.
+This allows the message to be easier to read on GitHub as well as in various
+git tools.
+
 Here is a short guide on how to work on a new patch.  In this example, we will
 work on a patch called *hellopatch*:
 

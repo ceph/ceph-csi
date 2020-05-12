@@ -110,32 +110,25 @@ jobs:
         - travis_terminate 0    # deploy only on x86
 
     - stage: e2e testing
-      name: cephcsi with kube 1.14.10
+      name: cephcsi with kube 1.16.9
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.14.10 || travis_terminate 1;
+        - scripts/travis-functest.sh v1.16.9 || travis_terminate 1;
 
     - stage: e2e testing
-      name: cephcsi with kube 1.15.6
+      name: cephcsi with kube 1.17.5
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.15.6 || travis_terminate 1;
+        - scripts/travis-functest.sh v1.17.5 || travis_terminate 1;
 
     - stage: e2e testing
-      name: cephcsi with kube 1.17.0
+      name: cephcsi helm charts with kube 1.17.5
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.17.0 || travis_terminate 1;
-
-    - stage: e2e testing
-      name: cephcsi helm charts with kube 1.17.0
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-helmtest.sh v1.17.0 || travis_terminate 1;
+        - scripts/travis-helmtest.sh v1.17.5 || travis_terminate 1;
 
     - stage: deploy
       name: push artifacts to repositories
