@@ -391,8 +391,14 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	}
 	rbdSnap.JournalPool = rbdSnap.Pool
 
-	imageAttributes, err := snapJournal.GetImageAttributes(ctx, rbdSnap.Monitors,
-		cr, rbdSnap.Pool, vi.ObjectUUID, true)
+	j, err := snapJournal.Connect(rbdSnap.Monitors, cr)
+	if err != nil {
+		return err
+	}
+	defer j.Destroy()
+
+	imageAttributes, err := j.GetImageAttributes(
+		ctx, rbdSnap.Pool, vi.ObjectUUID, true)
 	if err != nil {
 		return err
 	}
@@ -453,8 +459,14 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	}
 	rbdVol.JournalPool = rbdVol.Pool
 
-	imageAttributes, err := volJournal.GetImageAttributes(ctx, rbdVol.Monitors, cr,
-		rbdVol.Pool, vi.ObjectUUID, false)
+	j, err := volJournal.Connect(rbdVol.Monitors, cr)
+	if err != nil {
+		return nil, err
+	}
+	defer j.Destroy()
+
+	imageAttributes, err := j.GetImageAttributes(
+		ctx, rbdVol.Pool, vi.ObjectUUID, false)
 	if err != nil {
 		return nil, err
 	}

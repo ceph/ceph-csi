@@ -153,8 +153,17 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		imageAttributes, err = volJournal.GetImageAttributes(ctx, volOptions.Monitors, cr,
-			volOptions.Pool, vi.ObjectUUID, false)
+		j, err2 := volJournal.Connect(volOptions.Monitors, cr)
+		if err2 != nil {
+			klog.Errorf(
+				util.Log(ctx, "failed to establish cluster connection: %v"),
+				err2)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		defer j.Destroy()
+
+		imageAttributes, err = j.GetImageAttributes(
+			ctx, volOptions.Pool, vi.ObjectUUID, false)
 		if err != nil {
 			err = fmt.Errorf("error fetching image attributes for volume ID (%s) (%s)", err, volID)
 			return nil, status.Error(codes.Internal, err.Error())

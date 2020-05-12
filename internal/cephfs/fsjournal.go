@@ -54,8 +54,14 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 	}
 	defer cr.DeleteCredentials()
 
-	imageData, err := volJournal.CheckReservation(ctx, volOptions.Monitors, cr,
-		volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "")
+	j, err := volJournal.Connect(volOptions.Monitors, cr)
+	if err != nil {
+		return nil, err
+	}
+	defer j.Destroy()
+
+	imageData, err := j.CheckReservation(
+		ctx, volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +74,7 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 	_, err = getVolumeRootPathCeph(ctx, volOptions, cr, volumeID(vid.FsSubvolName))
 	if err != nil {
 		if _, ok := err.(ErrVolumeNotFound); ok {
-			err = volJournal.UndoReservation(ctx, volOptions.Monitors, cr, volOptions.MetadataPool,
+			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
 			return nil, err
 		}
@@ -102,7 +108,13 @@ func undoVolReservation(ctx context.Context, volOptions *volumeOptions, vid volu
 	}
 	defer cr.DeleteCredentials()
 
-	err = volJournal.UndoReservation(ctx, volOptions.Monitors, cr, volOptions.MetadataPool,
+	j, err := volJournal.Connect(volOptions.Monitors, cr)
+	if err != nil {
+		return err
+	}
+	defer j.Destroy()
+
+	err = j.UndoReservation(ctx, volOptions.MetadataPool,
 		volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
 
 	return err
@@ -142,8 +154,16 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 		return nil, err
 	}
 
-	imageUUID, vid.FsSubvolName, err = volJournal.ReserveName(ctx, volOptions.Monitors, cr, volOptions.MetadataPool, util.InvalidPoolID,
-		volOptions.MetadataPool, util.InvalidPoolID, volOptions.RequestName, volOptions.NamePrefix, "", "")
+	j, err := volJournal.Connect(volOptions.Monitors, cr)
+	if err != nil {
+		return nil, err
+	}
+	defer j.Destroy()
+
+	imageUUID, vid.FsSubvolName, err = j.ReserveName(
+		ctx, volOptions.MetadataPool, util.InvalidPoolID,
+		volOptions.MetadataPool, util.InvalidPoolID, volOptions.RequestName,
+		volOptions.NamePrefix, "", "")
 	if err != nil {
 		return nil, err
 	}
