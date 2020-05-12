@@ -109,11 +109,8 @@ func (fs *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	if conf.InstanceID != "" {
 		CSIInstanceID = conf.InstanceID
 	}
-	// Get an instance of the volume journal
-	volJournal = journal.NewCSIVolumeJournal()
-
-	// Update keys with CSI instance suffix
-	volJournal.SetCSIDirectorySuffix(CSIInstanceID)
+	// Create an instance of the volume journal
+	volJournal = journal.NewCSIVolumeJournal(CSIInstanceID)
 
 	// Update namespace for storing keys into a specific namespace on RADOS, in the CephFS
 	// metadata pool
