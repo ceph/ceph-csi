@@ -176,6 +176,14 @@ func NewCSISnapshotJournal(suffix string) *CSIJournal {
 	}
 }
 
+// NewCSIVolumeJournalWithNamespace returns an instance of CSIJournal for
+// volumes using a predetermined namespace value.
+func NewCSIVolumeJournalWithNamespace(suffix, ns string) *CSIJournal {
+	j := NewCSIVolumeJournal(suffix)
+	j.namespace = ns
+	return j
+}
+
 // GetNameForUUID returns volume name
 func (cj *CSIJournal) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
 	if prefix == "" {
@@ -186,11 +194,6 @@ func (cj *CSIJournal) GetNameForUUID(prefix, uid string, isSnapshot bool) string
 		}
 	}
 	return prefix + uid
-}
-
-// SetNamespace sets the namespace in which all RADOS objects would be created
-func (cj *CSIJournal) SetNamespace(ns string) {
-	cj.namespace = ns
 }
 
 // ImageData contains image name and stored CSI properties
