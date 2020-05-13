@@ -94,6 +94,7 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | Master (Branch)         | quay.io/cephcsi/cephcsi      | canary    |
+| v2.1.1 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.1    |
 | v2.1.0 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.0    |
 | v2.0.1 (Release)        | quay.io/cephcsi/cephcsi      | v2.0.1    |
 | v2.0.0 (Release)        | quay.io/cephcsi/cephcsi      | v2.0.0    |
