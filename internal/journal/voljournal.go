@@ -112,7 +112,7 @@ const (
 )
 
 // CSIJournal defines the interface and the required key names for the above RADOS based OMaps
-type CSIJournal struct {
+type Config struct {
 	// csiDirectory is the name of the CSI volumes object map that contains CSI volume-name (or
 	// snapshot name) based keys
 	csiDirectory string
@@ -147,8 +147,8 @@ type CSIJournal struct {
 }
 
 // NewCSIVolumeJournal returns an instance of CSIJournal for volumes
-func NewCSIVolumeJournal(suffix string) *CSIJournal {
-	return &CSIJournal{
+func NewCSIVolumeJournal(suffix string) *Config {
+	return &Config{
 		csiDirectory:            "csi.volumes." + suffix,
 		csiNameKeyPrefix:        "csi.volume.",
 		cephUUIDDirectoryPrefix: "csi.volume.",
@@ -162,8 +162,8 @@ func NewCSIVolumeJournal(suffix string) *CSIJournal {
 }
 
 // NewCSISnapshotJournal returns an instance of CSIJournal for snapshots
-func NewCSISnapshotJournal(suffix string) *CSIJournal {
-	return &CSIJournal{
+func NewCSISnapshotJournal(suffix string) *Config {
+	return &Config{
 		csiDirectory:            "csi.snaps." + suffix,
 		csiNameKeyPrefix:        "csi.snap.",
 		cephUUIDDirectoryPrefix: "csi.snap.",
@@ -178,14 +178,14 @@ func NewCSISnapshotJournal(suffix string) *CSIJournal {
 
 // NewCSIVolumeJournalWithNamespace returns an instance of CSIJournal for
 // volumes using a predetermined namespace value.
-func NewCSIVolumeJournalWithNamespace(suffix, ns string) *CSIJournal {
+func NewCSIVolumeJournalWithNamespace(suffix, ns string) *Config {
 	j := NewCSIVolumeJournal(suffix)
 	j.namespace = ns
 	return j
 }
 
 // GetNameForUUID returns volume name
-func (cj *CSIJournal) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
+func (cj *Config) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
 	if prefix == "" {
 		if isSnapshot {
 			prefix = defaultSnapshotNamingPrefix
@@ -207,14 +207,14 @@ type ImageData struct {
 // Connection represents a real or virtual connection to a ceph cluster
 // that can make changes to the journal(s).
 type Connection struct {
-	config *CSIJournal
+	config *Config
 	// connection metadata
 	monitors string
 	cr       *util.Credentials
 }
 
 // Connect establishes a new connection to a ceph cluster for journal metadata.
-func (cj *CSIJournal) Connect(monitors string, cr *util.Credentials) (*Connection, error) {
+func (cj *Config) Connect(monitors string, cr *util.Credentials) (*Connection, error) {
 	conn := &Connection{
 		config:   cj,
 		monitors: monitors,
