@@ -122,12 +122,30 @@ Signed-off-by: Random J Developer <random@developer.example.org>
 The format can be described more formally as follows:
 
 ```text
-<subsystem>: <what changed>
+<component>: <subject of the change>
 <BLANK LINE>
-<why this change was made>
+<paragraph(s) with reason/description>
 <BLANK LINE>
-<footer>
+<signed-off-by>
 ```
+
+The `component` in the subject of the commit message can be one of the following:
+
+* `cephfs`: bugs or enhancements related to CephFS
+* `rbd`: bugs or enhancements related to RBD
+* `doc`: documentation updates
+* `util`: utilities shared between components use `cephfs` or `rbd` if the
+   change is only relevant for one of the type of storage
+* `journal`: any of the journalling functionalities
+* `helm`: deployment changes for the Helm charts
+* `deploy`: updates to Kubernetes templates for deploying components
+* `build`: anything related to building Ceph-CSI, the executable or container
+   images
+* `ci`: changes related to the Continuous Integration, or testing
+* `e2e`: end-to-end testing updates
+* `cleanup`: general maintenance and cleanup changes
+* `revert`: undo a commit that was merged by mistake, use of one of the other
+   components is in most cases recommended
 
 The first line is the subject and should be no longer than 70 characters, the
 second line is always blank, and other lines should be wrapped at 80 characters.
