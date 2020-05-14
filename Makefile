@@ -60,9 +60,9 @@ endif
 
 all: cephcsi
 
-.PHONY: go-test static-check mod-check go-lint go-lint-text gosec
+.PHONY: go-test static-check mod-check go-lint lint-extras gosec
 test: go-test static-check mod-check
-static-check: check-env go-lint go-lint-text gosec
+static-check: check-env go-lint lint-extras gosec
 
 go-test: check-env
 	./scripts/test-go.sh
@@ -74,8 +74,20 @@ mod-check: check-env
 go-lint:
 	./scripts/lint-go.sh
 
-go-lint-text:
-	./scripts/lint-text.sh --require-all
+lint-extras:
+	./scripts/lint-extras.sh lint-all
+
+lint-shell:
+	./scripts/lint-extras.sh lint-shell
+
+lint-markdown:
+	./scripts/lint-extras.sh lint-markdown
+
+lint-yaml:
+	./scripts/lint-extras.sh lint-yaml
+
+lint-helm:
+	./scripts/lint-extras.sh lint-helm
 
 gosec:
 	./scripts/gosec.sh
