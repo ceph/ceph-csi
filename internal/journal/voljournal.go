@@ -285,7 +285,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 		}
 		savedImagePoolID = int64(binary.BigEndian.Uint64(buf64))
 
-		savedImagePool, err = util.GetPoolName(ctx, conn.monitors, conn.cr, savedImagePoolID)
+		savedImagePool, err = util.GetPoolName(conn.monitors, conn.cr, savedImagePoolID)
 		if err != nil {
 			if _, ok := err.(util.ErrPoolNotFound); ok {
 				err = conn.UndoReservation(ctx, journalPool, "", "", reqName)
