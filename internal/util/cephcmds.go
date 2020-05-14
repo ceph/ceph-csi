@@ -19,7 +19,6 @@ package util
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -51,40 +50,6 @@ func ExecCommand(program string, args ...string) (stdout, stderr []byte, err err
 	}
 
 	return stdoutBuf.Bytes(), nil, nil
-}
-
-// cephStoragePoolSummary strongly typed JSON spec for osd ls pools output
-type cephStoragePoolSummary struct {
-	Name   string `json:"poolname"`
-	Number int64  `json:"poolnum"`
-}
-
-// GetPools fetches a list of pools from a cluster
-func getPools(ctx context.Context, monitors string, cr *Credentials) ([]cephStoragePoolSummary, error) {
-	// ceph <options> -f json osd lspools
-	// JSON out: [{"poolnum":<int64>,"poolname":<string>}]
-
-	stdout, _, err := ExecCommand(
-		"ceph",
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile="+cr.KeyFile,
-		"-c", CephConfigPath,
-		"-f", "json",
-		"osd", "lspools")
-	if err != nil {
-		klog.Errorf(Log(ctx, "failed getting pool list from cluster (%s)"), err)
-		return nil, err
-	}
-
-	var pools []cephStoragePoolSummary
-	err = json.Unmarshal(stdout, &pools)
-	if err != nil {
-		klog.Errorf(Log(ctx, "failed to parse JSON output of pool list from cluster (%s)"), err)
-		return nil, fmt.Errorf("unmarshal of pool list failed: %+v.  raw buffer response: %s", err, string(stdout))
-	}
-
-	return pools, nil
 }
 
 // GetPoolID fetches the ID of the pool that matches the passed in poolName
