@@ -81,7 +81,7 @@ jobs:
           | bash -s -- -v "${HELM_VERSION}"
       script:
         - make go-lint
-        - make go-lint-text
+        - make lint-extras
         - make gosec
         - make go-test
         - make mod-check
