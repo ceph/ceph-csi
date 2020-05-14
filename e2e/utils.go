@@ -12,6 +12,8 @@ import (
 
 	// _ "github.com/kubernetes-csi/external-snapshotter/pkg/apis/volumesnapshot/v1alpha1"                             // nolint
 	// _ "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned/typed/volumesnapshot/v1alpha1" // nolint
+	"github.com/ceph/ceph-csi/internal/util"
+
 	. "github.com/onsi/ginkgo" // nolint
 	. "github.com/onsi/gomega" // nolint
 	apps "k8s.io/api/apps/v1"
@@ -365,15 +367,6 @@ func deleteConfigMap(pluginPath string) {
 	}
 }
 
-// matches the definition in internal/util/csiconfig.go
-type clusterInfo struct {
-	ClusterID string   `json:"clusterID"`
-	Monitors  []string `json:"monitors"`
-	CephFS    struct {
-		SubvolumeGroup string `json:"subvolumeGroup"`
-	} `json:"cephFS"`
-}
-
 func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Framework) {
 	path := pluginPath + configMap
 	cm := v1.ConfigMap{}
@@ -388,7 +381,7 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	fsID = strings.Trim(fsID, "\n")
 	// get mon list
 	mons := getMons(rookNamespace, c)
-	conmap := []clusterInfo{{
+	conmap := []util.ClusterInfo{{
 		ClusterID: fsID,
 		Monitors:  mons,
 	}}

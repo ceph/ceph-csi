@@ -29,8 +29,8 @@ const (
 	defaultCsiSubvolumeGroup = "csi"
 )
 
-// clusterInfo strongly typed JSON spec for the above JSON structure
-type clusterInfo struct {
+// ClusterInfo strongly typed JSON spec for the below JSON structure
+type ClusterInfo struct {
 	// ClusterID is used for unique identification
 	ClusterID string `json:"clusterID"`
 	// Monitors is monitor list for corresponding cluster ID
@@ -58,29 +58,29 @@ type clusterInfo struct {
 // 	},
 // 	...
 // ]
-func readClusterInfo(pathToConfig, clusterID string) (clusterInfo, error) {
-	var config []clusterInfo
+func readClusterInfo(pathToConfig, clusterID string) (*ClusterInfo, error) {
+	var config []ClusterInfo
 
 	// #nosec
 	content, err := ioutil.ReadFile(pathToConfig)
 	if err != nil {
 		err = fmt.Errorf("error fetching configuration for cluster ID (%s). (%s)", clusterID, err)
-		return clusterInfo{}, err
+		return nil, err
 	}
 
 	err = json.Unmarshal(content, &config)
 	if err != nil {
-		return clusterInfo{}, fmt.Errorf("unmarshal failed: %v. raw buffer response: %s",
+		return nil, fmt.Errorf("unmarshal failed: %v. raw buffer response: %s",
 			err, string(content))
 	}
 
 	for _, cluster := range config {
 		if cluster.ClusterID == clusterID {
-			return cluster, nil
+			return &cluster, nil
 		}
 	}
 
-	return clusterInfo{}, fmt.Errorf("missing configuration for cluster ID (%s)", clusterID)
+	return nil, fmt.Errorf("missing configuration for cluster ID (%s)", clusterID)
 }
 
 // Mons returns a comma separated MON list from the csi config for the given clusterID
