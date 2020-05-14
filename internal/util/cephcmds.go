@@ -92,15 +92,15 @@ func getPools(ctx context.Context, monitors string, cr *Credentials) ([]cephStor
 func GetPoolID(monitors string, cr *Credentials, poolName string) (int64, error) {
 	conn, err := connPool.Get(monitors, cr.ID, cr.KeyFile)
 	if err != nil {
-		return 0, err
+		return InvalidPoolID, err
 	}
 	defer connPool.Put(conn)
 
 	id, err := conn.GetPoolByName(poolName)
 	if err == rados.ErrNotFound {
-		return 0, ErrPoolNotFound{poolName, fmt.Errorf("pool (%s) not found in Ceph cluster", poolName)}
+		return InvalidPoolID, ErrPoolNotFound{poolName, fmt.Errorf("pool (%s) not found in Ceph cluster", poolName)}
 	} else if err != nil {
-		return 0, err
+		return InvalidPoolID, err
 	}
 
 	return id, nil
