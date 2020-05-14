@@ -395,14 +395,14 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	if err != nil {
-		if _, ok := err.(util.ErrPoolNotFound); ok {
+		switch err.(type) {
+		case util.ErrPoolNotFound:
 			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
-		}
 
 		// If error is ErrInvalidVolID it could be a version 1.0.0 or lower volume, attempt
 		// to process it as such
-		if _, ok := err.(ErrInvalidVolID); ok {
+		case ErrInvalidVolID:
 			if isLegacyVolumeID(volumeID) {
 				klog.V(2).Infof(util.Log(ctx, "attempting deletion of potential legacy volume (%s)"), volumeID)
 				return cs.DeleteLegacyVolume(ctx, req, cr)
@@ -410,18 +410,18 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 			// Consider unknown volumeID as a successfully deleted volume
 			return &csi.DeleteVolumeResponse{}, nil
-		}
 
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (image and imageOMap are garbage collected already), hence return
 		// success as deletion is complete
-		if _, ok := err.(util.ErrKeyNotFound); ok {
+		case util.ErrKeyNotFound:
 			klog.Warningf(util.Log(ctx, "Failed to volume options for %s: %v"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
-		}
 
 		// All errors other than ErrImageNotFound should return an error back to the caller
-		if _, ok := err.(ErrImageNotFound); !ok {
+		case ErrImageNotFound:
+			break
+		default:
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
@@ -512,15 +512,16 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	// Fetch source volume information
 	rbdVol, err := genVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
 	if err != nil {
-		if _, ok := err.(ErrImageNotFound); ok {
-			return nil, status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
-		}
-
-		if _, ok := err.(util.ErrPoolNotFound); ok {
+		switch err.(type) {
+		case ErrImageNotFound:
+			err = status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
+		case util.ErrPoolNotFound:
 			klog.Errorf(util.Log(ctx, "failed to get backend volume for %s: %v"), req.GetSourceVolumeId(), err)
-			return nil, status.Errorf(codes.Internal, err.Error())
+			err = status.Errorf(codes.NotFound, err.Error())
+		default:
+			err = status.Errorf(codes.Internal, err.Error())
 		}
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, err
 	}
 	defer rbdVol.Destroy()
 
@@ -786,16 +787,16 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	rbdVol, err := genVolFromVolID(ctx, volID, cr, req.GetSecrets())
 	if err != nil {
-		if _, ok := err.(ErrImageNotFound); ok {
-			return nil, status.Errorf(codes.NotFound, "volume ID %s not found", volID)
-		}
-
-		if _, ok := err.(util.ErrPoolNotFound); ok {
+		switch err.(type) {
+		case ErrImageNotFound:
+			err = status.Errorf(codes.NotFound, "volume ID %s not found", volID)
+		case util.ErrPoolNotFound:
 			klog.Errorf(util.Log(ctx, "failed to get backend volume for %s: %v"), volID, err)
-			return nil, status.Errorf(codes.InvalidArgument, err.Error())
+			err = status.Errorf(codes.NotFound, err.Error())
+		default:
+			err = status.Errorf(codes.Internal, err.Error())
 		}
-
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, err
 	}
 	defer rbdVol.Destroy()
 
