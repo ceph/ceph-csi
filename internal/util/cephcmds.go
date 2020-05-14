@@ -108,7 +108,7 @@ func GetPoolID(monitors string, cr *Credentials, poolName string) (int64, error)
 
 // GetPoolName fetches the pool whose pool ID is equal to the requested poolID
 // parameter
-func GetPoolName(ctx context.Context, monitors string, cr *Credentials, poolID int64) (string, error) {
+func GetPoolName(monitors string, cr *Credentials, poolID int64) (string, error) {
 	conn, err := connPool.Get(monitors, cr.ID, cr.KeyFile)
 	if err != nil {
 		return "", err
