@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/pkg/errors"
@@ -110,30 +111,34 @@ func extractMounter(dest *string, options map[string]string) error {
 	return nil
 }
 
-func getClusterInformation(options map[string]string) (string, string, string, error) {
+func getClusterInformation(options map[string]string) (*util.ClusterInfo, error) {
 	clusterID, ok := options["clusterID"]
 	if !ok {
 		err := fmt.Errorf("clusterID must be set")
-		return "", "", "", err
+		return nil, err
 	}
 
 	if err := validateNonEmptyField(clusterID, "clusterID"); err != nil {
-		return "", "", "", err
+		return nil, err
 	}
 
 	monitors, err := util.Mons(csiConfigFile, clusterID)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", clusterID)
-		return "", "", "", err
+		return nil, err
 	}
 
 	subvolumeGroup, err := util.CephFSSubvolumeGroup(csiConfigFile, clusterID)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to fetch subvolumegroup using clusterID (%s)", clusterID)
-		return "", "", "", err
+		return nil, err
 	}
-
-	return clusterID, monitors, subvolumeGroup, err
+	clusterData := &util.ClusterInfo{
+		ClusterID: clusterID,
+		Monitors:  strings.Split(monitors, ","),
+	}
+	clusterData.CephFS.SubvolumeGroup = subvolumeGroup
+	return clusterData, nil
 }
 
 // newVolumeOptions generates a new instance of volumeOptions from the provided
@@ -146,11 +151,15 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 	)
 
 	volOptions := req.GetParameters()
+	clusterData, err := getClusterInformation(volOptions)
 
-	opts.ClusterID, opts.Monitors, opts.SubvolumeGroup, err = getClusterInformation(volOptions)
 	if err != nil {
 		return nil, err
 	}
+
+	opts.ClusterID = clusterData.ClusterID
+	opts.Monitors = strings.Join(clusterData.Monitors, ",")
+	opts.SubvolumeGroup = clusterData.CephFS.SubvolumeGroup
 
 	if err = extractOptionalOption(&opts.Pool, "pool", volOptions); err != nil {
 		return nil, err
@@ -373,10 +382,15 @@ func newVolumeOptionsFromStaticVolume(volID string, options map[string]string) (
 	// store NOT of static boolean
 	opts.ProvisionVolume = !staticVol
 
-	opts.ClusterID, opts.Monitors, opts.SubvolumeGroup, err = getClusterInformation(options)
+	clusterData, err := getClusterInformation(options)
+
 	if err != nil {
 		return nil, nil, err
 	}
+
+	opts.ClusterID = clusterData.ClusterID
+	opts.Monitors = strings.Join(clusterData.Monitors, ",")
+	opts.SubvolumeGroup = clusterData.CephFS.SubvolumeGroup
 
 	if err = extractOption(&opts.RootPath, "rootPath", options); err != nil {
 		return nil, nil, err
