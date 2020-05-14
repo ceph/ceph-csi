@@ -89,7 +89,7 @@ func getPools(ctx context.Context, monitors string, cr *Credentials) ([]cephStor
 
 // GetPoolID fetches the ID of the pool that matches the passed in poolName
 // parameter
-func GetPoolID(ctx context.Context, monitors string, cr *Credentials, poolName string) (int64, error) {
+func GetPoolID(monitors string, cr *Credentials, poolName string) (int64, error) {
 	conn, err := connPool.Get(monitors, cr.ID, cr.KeyFile)
 	if err != nil {
 		return 0, err
@@ -127,14 +127,14 @@ func GetPoolName(ctx context.Context, monitors string, cr *Credentials, poolID i
 // the passed in pools
 // TODO this should take in a list and return a map[string(poolname)]int64(poolID)
 func GetPoolIDs(ctx context.Context, monitors, journalPool, imagePool string, cr *Credentials) (int64, int64, error) {
-	journalPoolID, err := GetPoolID(ctx, monitors, cr, journalPool)
+	journalPoolID, err := GetPoolID(monitors, cr, journalPool)
 	if err != nil {
 		return InvalidPoolID, InvalidPoolID, err
 	}
 
 	imagePoolID := journalPoolID
 	if imagePool != journalPool {
-		imagePoolID, err = GetPoolID(ctx, monitors, cr, imagePool)
+		imagePoolID, err = GetPoolID(monitors, cr, imagePool)
 		if err != nil {
 			return InvalidPoolID, InvalidPoolID, err
 		}

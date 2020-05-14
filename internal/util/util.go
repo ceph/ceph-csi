@@ -145,7 +145,7 @@ func GenerateVolID(ctx context.Context, monitors string, cr *Credentials, locati
 	var err error
 
 	if locationID == InvalidPoolID {
-		locationID, err = GetPoolID(ctx, monitors, cr, pool)
+		locationID, err = GetPoolID(monitors, cr, pool)
 		if err != nil {
 			return "", err
 		}
