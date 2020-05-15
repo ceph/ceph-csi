@@ -27,8 +27,6 @@ type snapInfo struct {
 
 func getSnapshotClass(path string) snapapi.VolumeSnapshotClass {
 	sc := snapapi.VolumeSnapshotClass{}
-	sc.Kind = "VolumeSnapshotClass"
-	sc.APIVersion = "snapshot.storage.k8s.io/v1beta1"
 	err := unmarshal(path, &sc)
 	Expect(err).Should(BeNil())
 	return sc
