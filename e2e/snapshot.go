@@ -122,11 +122,8 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 }
 
 func listSnapshots(f *framework.Framework, pool, imageName string) ([]snapInfo, error) {
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
 	command := fmt.Sprintf("rbd snap ls %s/%s --format=json", pool, imageName)
-	stdout, stdErr := execCommandInPod(f, command, rookNamespace, &opt)
+	stdout, stdErr := execCommandInToolBoxPod(f, command, rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 
 	var snapInfos []snapInfo
@@ -141,10 +138,7 @@ func createRBDSnapshotClass(f *framework.Framework) {
 
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
 
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNamespace, &opt)
+	fsID, stdErr := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 	fsID = strings.Trim(fsID, "\n")
 	sc.Parameters["clusterID"] = fsID
