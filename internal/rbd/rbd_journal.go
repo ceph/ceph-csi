@@ -114,7 +114,13 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 		return false, err
 	}
 
-	snapData, err := snapJournal.CheckReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.JournalPool,
+	j, err := snapJournal.Connect(rbdSnap.Monitors, cr)
+	if err != nil {
+		return false, err
+	}
+	defer j.Destroy()
+
+	snapData, err := j.CheckReservation(ctx, rbdSnap.JournalPool,
 		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
 	if err != nil {
 		return false, err
@@ -135,7 +141,7 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
 	if err != nil {
 		if _, ok := err.(ErrSnapNotFound); ok {
-			err = snapJournal.UndoReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.JournalPool,
+			err = j.UndoReservation(ctx, rbdSnap.JournalPool,
 				rbdSnap.Pool, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 			return false, err
 		}
@@ -174,8 +180,14 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 		kmsID = rv.KMS.GetID()
 	}
 
-	imageData, err := volJournal.CheckReservation(ctx, rv.Monitors, rv.conn.Creds, rv.JournalPool,
-		rv.RequestName, rv.NamePrefix, "", kmsID)
+	j, err := volJournal.Connect(rv.Monitors, rv.conn.Creds)
+	if err != nil {
+		return false, err
+	}
+	defer j.Destroy()
+
+	imageData, err := j.CheckReservation(
+		ctx, rv.JournalPool, rv.RequestName, rv.NamePrefix, "", kmsID)
 	if err != nil {
 		return false, err
 	}
@@ -205,7 +217,7 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 	err = updateVolWithImageInfo(ctx, rv, rv.conn.Creds)
 	if err != nil {
 		if _, ok := err.(ErrImageNotFound); ok {
-			err = volJournal.UndoReservation(ctx, rv.Monitors, rv.conn.Creds, rv.JournalPool, rv.Pool,
+			err = j.UndoReservation(ctx, rv.JournalPool, rv.Pool,
 				rv.RbdImageName, rv.RequestName)
 			return false, err
 		}
@@ -246,8 +258,15 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 		return err
 	}
 
-	snapUUID, rbdSnap.RbdSnapName, err = snapJournal.ReserveName(ctx, rbdSnap.Monitors, cr, rbdSnap.JournalPool, journalPoolID,
-		rbdSnap.Pool, imagePoolID, rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
+	j, err := snapJournal.Connect(rbdSnap.Monitors, cr)
+	if err != nil {
+		return err
+	}
+	defer j.Destroy()
+
+	snapUUID, rbdSnap.RbdSnapName, err = j.ReserveName(
+		ctx, rbdSnap.JournalPool, journalPoolID, rbdSnap.Pool, imagePoolID,
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
 	if err != nil {
 		return err
 	}
@@ -318,8 +337,15 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 		kmsID = rbdVol.KMS.GetID()
 	}
 
-	imageUUID, rbdVol.RbdImageName, err = volJournal.ReserveName(ctx, rbdVol.Monitors, cr, rbdVol.JournalPool, journalPoolID,
-		rbdVol.Pool, imagePoolID, rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
+	j, err := volJournal.Connect(rbdVol.Monitors, cr)
+	if err != nil {
+		return err
+	}
+	defer j.Destroy()
+
+	imageUUID, rbdVol.RbdImageName, err = j.ReserveName(
+		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
+		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
 	if err != nil {
 		return err
 	}
@@ -338,15 +364,28 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 
 // undoSnapReservation is a helper routine to undo a name reservation for rbdSnapshot
 func undoSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	err := snapJournal.UndoReservation(ctx, rbdSnap.Monitors, cr, rbdSnap.JournalPool, rbdSnap.Pool,
-		rbdSnap.RbdSnapName, rbdSnap.RequestName)
+	j, err := snapJournal.Connect(rbdSnap.Monitors, cr)
+	if err != nil {
+		return err
+	}
+	defer j.Destroy()
+
+	err = j.UndoReservation(
+		ctx, rbdSnap.JournalPool, rbdSnap.Pool, rbdSnap.RbdSnapName,
+		rbdSnap.RequestName)
 
 	return err
 }
 
 // undoVolReservation is a helper routine to undo a name reservation for rbdVolume
 func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	err := volJournal.UndoReservation(ctx, rbdVol.Monitors, cr, rbdVol.JournalPool, rbdVol.Pool,
+	j, err := volJournal.Connect(rbdVol.Monitors, cr)
+	if err != nil {
+		return err
+	}
+	defer j.Destroy()
+
+	err = j.UndoReservation(ctx, rbdVol.JournalPool, rbdVol.Pool,
 		rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return err

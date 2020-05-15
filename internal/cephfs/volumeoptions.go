@@ -261,8 +261,14 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		return nil, nil, err
 	}
 
-	imageAttributes, err := volJournal.GetImageAttributes(ctx, volOptions.Monitors, cr,
-		volOptions.MetadataPool, vi.ObjectUUID, false)
+	j, err := volJournal.Connect(volOptions.Monitors, cr)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer j.Destroy()
+
+	imageAttributes, err := j.GetImageAttributes(
+		ctx, volOptions.MetadataPool, vi.ObjectUUID, false)
 	if err != nil {
 		return nil, nil, err
 	}

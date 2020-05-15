@@ -51,8 +51,8 @@ var (
 
 	// volJournal and snapJournal are used to maintain RADOS based journals for CO generated
 	// VolumeName to backing RBD images
-	volJournal  *journal.CSIJournal
-	snapJournal *journal.CSIJournal
+	volJournal  *journal.Config
+	snapJournal *journal.Config
 )
 
 // NewDriver returns new rbd driver
