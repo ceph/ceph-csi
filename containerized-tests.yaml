@@ -1,0 +1,29 @@
+---
+- job:
+    name: containerized-tests
+    project-type: pipeline
+    sandbox: true
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/ceph/ceph-csi
+            branches:
+              - ci/centos
+      script-path: containerized-tests.groovy
+      lightweight-checkout: true
+    parameters:
+      - string:
+          name: ghprbPullId
+          default: ''
+    triggers:
+      - github-pull-request:
+          status-context: ci/centos/containerized-tests
+          trigger-phrase: '^/(re)?test( ci/centos/containerized-tests)?$'
+          permit-all: true
+          cron: 'H/5 * * * *'
+          black-list-target-branches:
+            - ci/centos
+          admin-list:
+            - nixpanic
+          org-list:
+            - ceph
