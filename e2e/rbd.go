@@ -235,7 +235,7 @@ var _ = Describe("RBD", func() {
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
 
-			By("create a PVC clone and Bind it to an app", func() {
+			By("create a PVC clone and bind it to an app", func() {
 				v, err := f.ClientSet.Discovery().ServerVersion()
 				if err != nil {
 					e2elog.Logf("failed to get server version with error %v", err)
@@ -274,7 +274,7 @@ var _ = Describe("RBD", func() {
 						Fail(err.Error())
 					}
 					if len(snapList) != 1 {
-						e2elog.Logf("backend snapshot not matching kube snap count,snap count = % kube snap count %d", len(snapList), 1)
+						e2elog.Logf("backend snapshot not matching kubernetes snap count,snap count = % kubernetes snap count %d", len(snapList), 1)
 						Fail("validate backend snapshot failed")
 					}
 

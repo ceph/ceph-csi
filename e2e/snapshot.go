@@ -65,7 +65,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	name := snap.Name
 	start := time.Now()
-	e2elog.Logf("Waiting up to %v to be in Ready state", snap)
+	e2elog.Logf("waiting for %v to be in ready state", snap)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		e2elog.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
