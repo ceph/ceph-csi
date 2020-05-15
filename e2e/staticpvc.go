@@ -91,11 +91,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 
 	c := f.ClientSet
 
-	listOpt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-
-	fsID, e := execCommandInPod(f, "ceph fsid", rookNamespace, &listOpt)
+	fsID, e := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
 	if e != "" {
 		return fmt.Errorf("failed to get fsid from ceph cluster %s", e)
 	}
@@ -105,7 +101,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 	// create rbd image
 	cmd := fmt.Sprintf("rbd create %s --size=%d --pool=%s --image-feature=layering", rbdImageName, 4096, defaultRBDPool)
 
-	_, e = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	_, e = execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if e != "" {
 		return fmt.Errorf("failed to create rbd image %s", e)
 	}
@@ -156,7 +152,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 	}
 
 	cmd = fmt.Sprintf("rbd rm %s --pool=%s", rbdImageName, defaultRBDPool)
-	execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	execCommandInToolBoxPod(f, cmd, rookNamespace)
 	return nil
 }
 
