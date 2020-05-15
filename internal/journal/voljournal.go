@@ -144,6 +144,9 @@ type Config struct {
 
 	// encryptKMS in which encryption passphrase was saved, default is no encryption
 	encryptKMSKey string
+
+	// commonPrefix is the prefix common to all omap keys for this Config
+	commonPrefix string
 }
 
 // NewCSIVolumeJournal returns an instance of CSIJournal for volumes
@@ -158,6 +161,7 @@ func NewCSIVolumeJournal(suffix string) *Config {
 		cephSnapSourceKey:       "",
 		namespace:               "",
 		encryptKMSKey:           "csi.volume.encryptKMS",
+		commonPrefix:            "csi.",
 	}
 }
 
@@ -173,6 +177,7 @@ func NewCSISnapshotJournal(suffix string) *Config {
 		cephSnapSourceKey:       "csi.source",
 		namespace:               "",
 		encryptKMSKey:           "csi.volume.encryptKMS",
+		commonPrefix:            "csi.",
 	}
 }
 
@@ -264,16 +269,26 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 	}
 
 	// check if request name is already part of the directory omap
-	objUUIDAndPool, err := getOneOMapValue(ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
-		cj.csiNameKeyPrefix+reqName)
-	if err != nil {
-		// error should specifically be not found, for volume to be absent, any other error
-		// is not conclusive, and we should not proceed
-		switch err.(type) {
-		case util.ErrKeyNotFound, util.ErrPoolNotFound:
-			return nil, nil
-		}
+	fetchKeys := []string{
+		cj.csiNameKeyPrefix + reqName,
+	}
+	values, err := getOMapValues(
+		ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
+		cj.commonPrefix, fetchKeys)
+	switch err.(type) {
+	case nil:
+	case util.ErrKeyNotFound, util.ErrPoolNotFound:
+		// pool or omap (oid) was not present
+		// stop processing but without an error for no reservation exists
+		return nil, nil
+	default:
 		return nil, err
+	}
+	objUUIDAndPool, found := values[cj.csiNameKeyPrefix+reqName]
+	if !found {
+		// oamp was read but was missing the desired key-value pair
+		// stop processing but without an error for no reservation exists
+		return nil, nil
 	}
 
 	// check UUID only encoded value
@@ -590,26 +605,33 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 		return nil, err
 	}
 
-	// TODO: fetch all omap vals in one call, than make multiple listomapvals
-	imageAttributes.RequestName, err = getOneOMapValue(ctx, conn, pool, cj.namespace,
-		cj.cephUUIDDirectoryPrefix+objectUUID, cj.csiNameKey)
-	if err != nil {
+	fetchKeys := []string{
+		cj.csiNameKey,
+		cj.csiImageKey,
+		cj.encryptKMSKey,
+		cj.csiJournalPool,
+		cj.cephSnapSourceKey,
+	}
+	values, err := getOMapValues(
+		ctx, conn, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+objectUUID,
+		cj.commonPrefix, fetchKeys)
+	switch err.(type) {
+	case nil:
+	case util.ErrPoolNotFound, util.ErrKeyNotFound:
+		klog.Warningf(util.Log(ctx, "unable to read omap keys: pool or key missing: %v"), err)
+	default:
 		return nil, err
 	}
 
-	// image key was added at some point, so not all volumes will have this key set
-	// when ceph-csi was upgraded
-	imageAttributes.ImageName, err = getOneOMapValue(ctx, conn, pool, cj.namespace,
-		cj.cephUUIDDirectoryPrefix+objectUUID, cj.csiImageKey)
-	if err != nil {
-		// if the key was not found, assume the default key + UUID
-		// otherwise return error
-		switch err.(type) {
-		default:
-			return nil, err
-		case util.ErrKeyNotFound, util.ErrPoolNotFound:
-		}
+	var found bool
+	imageAttributes.RequestName = values[cj.csiNameKey]
+	imageAttributes.KmsID = values[cj.encryptKMSKey]
 
+	// image key was added at a later point, so not all volumes will have this
+	// key set when ceph-csi was upgraded
+	imageAttributes.ImageName, found = values[cj.csiImageKey]
+	if !found {
+		// if the key was not found, assume the default key + UUID
 		if snapSource {
 			imageAttributes.ImageName = defaultSnapshotNamingPrefix + objectUUID
 		} else {
@@ -617,24 +639,8 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 		}
 	}
 
-	imageAttributes.KmsID, err = getOneOMapValue(ctx, conn, pool, cj.namespace,
-		cj.cephUUIDDirectoryPrefix+objectUUID, cj.encryptKMSKey)
-	if err != nil {
-		// ErrKeyNotFound means no encryption KMS was used
-		switch err.(type) {
-		default:
-			return nil, fmt.Errorf("OMapVal for %s/%s failed to get encryption KMS value: %s",
-				pool, cj.cephUUIDDirectoryPrefix+objectUUID, err)
-		case util.ErrKeyNotFound, util.ErrPoolNotFound:
-		}
-	}
-
-	journalPoolIDStr, err := getOneOMapValue(ctx, conn, pool, cj.namespace,
-		cj.cephUUIDDirectoryPrefix+objectUUID, cj.csiJournalPool)
-	if err != nil {
-		if _, ok := err.(util.ErrKeyNotFound); !ok {
-			return nil, err
-		}
+	journalPoolIDStr, found := values[cj.csiJournalPool]
+	if !found {
 		imageAttributes.JournalPoolID = util.InvalidPoolID
 	} else {
 		var buf64 []byte
@@ -646,10 +652,11 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 	}
 
 	if snapSource {
-		imageAttributes.SourceName, err = getOneOMapValue(ctx, conn, pool, cj.namespace,
-			cj.cephUUIDDirectoryPrefix+objectUUID, cj.cephSnapSourceKey)
-		if err != nil {
-			return nil, err
+		imageAttributes.SourceName, found = values[cj.cephSnapSourceKey]
+		if !found {
+			return nil, util.NewErrKeyNotFound(
+				cj.cephSnapSourceKey,
+				fmt.Errorf("no snap source in omap for %q", cj.cephUUIDDirectoryPrefix+objectUUID))
 		}
 	}
 
