@@ -2,7 +2,25 @@
 
 The ceph-csi-rbd chart adds rbd volume support to your cluster.
 
-## Install Chart
+## Install from release repo
+
+Add chart repository to install helm charts from it
+
+```console
+helm repo add ceph-csi https://ceph.github.io/csi-charts
+```
+
+## Install from local Chart
+
+we need to enter into the directory where all charts are present
+
+```console
+[$]cd charts
+```
+
+**Note:** charts directory is present in root of the ceph-csi project
+
+### Install chart
 
 To install the Chart into your Kubernetes cluster
 
@@ -32,7 +50,7 @@ After installation succeeds, you can get a status of Chart
 helm status "ceph-csi-rbd"
 ```
 
-## Delete Chart
+### Delete Chart
 
 If you want to delete your Chart, use this command
 
