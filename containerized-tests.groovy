@@ -13,12 +13,19 @@ node('cico-workspace') {
 	}
 
 	stage('reserve bare-metal machine') {
-		cico = sh(
-			script: "cico node get -f value -c hostname -c comment --retry-count ${cico_retries} --retry-interval ${cico_retry_interval}",
-			returnStdout: true
-		).trim().tokenize(' ')
-		env.CICO_NODE = "${cico[0]}.ci.centos.org"
-		env.CICO_SSID = "${cico[1]}"
+		def firstAttempt = true
+		retry(30) {
+			if (!firstAttempt) {
+				sleep(time: 5, unit: "MINUTES")
+			}
+			firstAttempt = false
+			cico = sh(
+				script: "cico node get -f value -c hostname -c comment --retry-count ${cico_retries} --retry-interval ${cico_retry_interval}",
+				returnStdout: true
+			).trim().tokenize(' ')
+			env.CICO_NODE = "${cico[0]}.ci.centos.org"
+			env.CICO_SSID = "${cico[1]}"
+		}
 	}
 
 	try {
