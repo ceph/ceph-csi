@@ -1,0 +1,30 @@
+---
+# rules are documented at https://commitlint.js.org/#/reference-rules
+# each rule has a n arry of three values:
+# - 0, 1, 2 (rule is disabled, warning or error)
+# - always/never
+# - value
+rules:
+  # the subject may not exceed 72 characters
+  header-max-length: [2, always, 72]
+  # the subject may not end with a "."
+  header-full-stop: [2, never, "."]
+  # we do not use scopes for commit messages
+  scope-empty: [1, always]
+  # valid types/prefixes, see docs/development-guide.md
+  type-enum:
+    - 1
+    - always
+    - - build
+      - cephfs
+      - ci
+      - cleanup
+      - deploy
+      - doc
+      - e2e
+      - helm
+      - journal
+      - rbd
+      - rebase
+      - revert
+      - util

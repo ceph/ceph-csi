@@ -56,7 +56,7 @@ var (
 
 	// volJournal is used to maintain RADOS based journals for CO generated
 	// VolumeName to backing CephFS subvolumes
-	volJournal *journal.CSIJournal
+	volJournal *journal.Config
 )
 
 // NewDriver returns new ceph driver
