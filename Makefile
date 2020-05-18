@@ -40,7 +40,7 @@ LDFLAGS += -X $(GO_PROJECT)/internal/util.DriverVersion=$(CSI_IMAGE_VERSION)
 
 # set GOARCH explicitly for cross building, default to native architecture
 ifndef GOARCH
-GOARCH := $(shell go env GOARCH)
+GOARCH := $(shell go env GOARCH 2>/dev/null)
 endif
 
 ifdef BASE_IMAGE
