@@ -56,6 +56,8 @@ type stageTransaction struct {
 	isMounted bool
 	// isEncrypted represents if the volume was encrypted or not
 	isEncrypted bool
+	// devicePath represents the path where rbd device is mapped
+	devicePath string
 }
 
 // NodeStageVolume mounts the volume to a staging path on the node.
@@ -173,7 +175,6 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	volOptions.VolID = volID
 	transaction := stageTransaction{}
-	devicePath := ""
 
 	// Stash image details prior to mapping the image (useful during Unstage as it has no
 	// voloptions passed to the RPC as per the CSI spec)
@@ -183,7 +184,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 	defer func() {
 		if err != nil {
-			ns.undoStagingTransaction(ctx, req, devicePath, transaction)
+			ns.undoStagingTransaction(ctx, req, transaction)
 		}
 	}()
 
@@ -224,7 +225,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	if err != nil {
 		return transaction, err
 	}
-
+	transaction.devicePath = devicePath
 	klog.V(4).Infof(util.Log(ctx, "rbd image: %s/%s was successfully mapped at %s\n"),
 		req.GetVolumeId(), volOptions.Pool, devicePath)
 
@@ -259,7 +260,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	return transaction, err
 }
 
-func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeStageVolumeRequest, devicePath string, transaction stageTransaction) {
+func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeStageVolumeRequest, transaction stageTransaction) {
 	var err error
 
 	stagingTargetPath := getStagingTargetPath(req)
@@ -283,10 +284,10 @@ func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeS
 	volID := req.GetVolumeId()
 
 	// Unmapping rbd device
-	if devicePath != "" {
-		err = detachRBDDevice(ctx, devicePath, volID, transaction.isEncrypted)
+	if transaction.devicePath != "" {
+		err = detachRBDDevice(ctx, transaction.devicePath, volID, transaction.isEncrypted)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to unmap rbd device: %s for volume %s with error: %v"), devicePath, volID, err)
+			klog.Errorf(util.Log(ctx, "failed to unmap rbd device: %s for volume %s with error: %v"), transaction.devicePath, volID, err)
 			// continue on failure to delete the stash file, as kubernetes will fail to delete the staging path otherwise
 		}
 	}
