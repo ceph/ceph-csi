@@ -3,9 +3,7 @@
     name: containerized-tests
     project-type: pipeline
     sandbox: true
-    # TODO: enable 'concurrent' when the pipeline has a re-try on reserving
-    # bare-metal machines
-    concurrent: false
+    concurrent: true
     properties:
       - github:
           url: https://github.com/ceph/ceph-csi
@@ -29,7 +27,8 @@
           status-context: ci/centos/containerized-tests
           trigger-phrase: '/(re)?test ((all)|(ci/centos/containerized-tests))'
           permit-all: true
-          github-hooks: true
+          # TODO: set github-hooks to true when it is configured in GitHub
+          github-hooks: false
           cron: 'H/5 * * * *'
           black-list-target-branches:
             - ci/centos
