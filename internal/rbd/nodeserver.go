@@ -436,7 +436,13 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 		err = diskMounter.FormatAndMount(devicePath, stagingPath, fsType, opt)
 	}
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to mount device path (%s) to staging path (%s) for volume (%s) error %s"), devicePath, stagingPath, req.GetVolumeId(), err)
+		klog.Errorf(util.Log(ctx,
+			"failed to mount device path (%s) to staging path (%s) for volume "+
+				"(%s) error: %s Check dmesg logs if required."),
+			devicePath,
+			stagingPath,
+			req.GetVolumeId(),
+			err)
 	}
 	return err
 }
