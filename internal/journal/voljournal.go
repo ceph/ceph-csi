@@ -112,7 +112,7 @@ const (
 )
 
 // CSIJournal defines the interface and the required key names for the above RADOS based OMaps
-type CSIJournal struct {
+type Config struct {
 	// csiDirectory is the name of the CSI volumes object map that contains CSI volume-name (or
 	// snapshot name) based keys
 	csiDirectory string
@@ -147,8 +147,8 @@ type CSIJournal struct {
 }
 
 // NewCSIVolumeJournal returns an instance of CSIJournal for volumes
-func NewCSIVolumeJournal(suffix string) *CSIJournal {
-	return &CSIJournal{
+func NewCSIVolumeJournal(suffix string) *Config {
+	return &Config{
 		csiDirectory:            "csi.volumes." + suffix,
 		csiNameKeyPrefix:        "csi.volume.",
 		cephUUIDDirectoryPrefix: "csi.volume.",
@@ -162,8 +162,8 @@ func NewCSIVolumeJournal(suffix string) *CSIJournal {
 }
 
 // NewCSISnapshotJournal returns an instance of CSIJournal for snapshots
-func NewCSISnapshotJournal(suffix string) *CSIJournal {
-	return &CSIJournal{
+func NewCSISnapshotJournal(suffix string) *Config {
+	return &Config{
 		csiDirectory:            "csi.snaps." + suffix,
 		csiNameKeyPrefix:        "csi.snap.",
 		cephUUIDDirectoryPrefix: "csi.snap.",
@@ -178,14 +178,14 @@ func NewCSISnapshotJournal(suffix string) *CSIJournal {
 
 // NewCSIVolumeJournalWithNamespace returns an instance of CSIJournal for
 // volumes using a predetermined namespace value.
-func NewCSIVolumeJournalWithNamespace(suffix, ns string) *CSIJournal {
+func NewCSIVolumeJournalWithNamespace(suffix, ns string) *Config {
 	j := NewCSIVolumeJournal(suffix)
 	j.namespace = ns
 	return j
 }
 
 // GetNameForUUID returns volume name
-func (cj *CSIJournal) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
+func (cj *Config) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
 	if prefix == "" {
 		if isSnapshot {
 			prefix = defaultSnapshotNamingPrefix
@@ -204,6 +204,25 @@ type ImageData struct {
 	ImageAttributes *ImageAttributes
 }
 
+// Connection represents a real or virtual connection to a ceph cluster
+// that can make changes to the journal(s).
+type Connection struct {
+	config *Config
+	// connection metadata
+	monitors string
+	cr       *util.Credentials
+}
+
+// Connect establishes a new connection to a ceph cluster for journal metadata.
+func (cj *Config) Connect(monitors string, cr *util.Credentials) (*Connection, error) {
+	conn := &Connection{
+		config:   cj,
+		monitors: monitors,
+		cr:       cr,
+	}
+	return conn, nil
+}
+
 /*
 CheckReservation checks if given request name contains a valid reservation
 - If there is a valid reservation, then the corresponding UUID for the volume/snapshot is returned
@@ -219,13 +238,14 @@ Return values:
 	there was no reservation found
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) CheckReservation(ctx context.Context, monitors string, cr *util.Credentials,
+func (conn *Connection) CheckReservation(ctx context.Context,
 	journalPool, reqName, namePrefix, parentName, kmsConfig string) (*ImageData, error) {
 	var (
 		snapSource       bool
 		objUUID          string
 		savedImagePool   string
 		savedImagePoolID int64 = util.InvalidPoolID
+		cj                     = conn.config
 	)
 
 	if parentName != "" {
@@ -237,7 +257,7 @@ func (cj *CSIJournal) CheckReservation(ctx context.Context, monitors string, cr 
 	}
 
 	// check if request name is already part of the directory omap
-	objUUIDAndPool, err := util.GetOMapValue(ctx, monitors, cr, journalPool, cj.namespace, cj.csiDirectory,
+	objUUIDAndPool, err := util.GetOMapValue(ctx, conn.monitors, conn.cr, journalPool, cj.namespace, cj.csiDirectory,
 		cj.csiNameKeyPrefix+reqName)
 	if err != nil {
 		// error should specifically be not found, for volume to be absent, any other error
@@ -265,22 +285,22 @@ func (cj *CSIJournal) CheckReservation(ctx context.Context, monitors string, cr 
 		}
 		savedImagePoolID = int64(binary.BigEndian.Uint64(buf64))
 
-		savedImagePool, err = util.GetPoolName(ctx, monitors, cr, savedImagePoolID)
+		savedImagePool, err = util.GetPoolName(ctx, conn.monitors, conn.cr, savedImagePoolID)
 		if err != nil {
 			if _, ok := err.(util.ErrPoolNotFound); ok {
-				err = cj.UndoReservation(ctx, monitors, cr, journalPool, "", "", reqName)
+				err = conn.UndoReservation(ctx, journalPool, "", "", reqName)
 			}
 			return nil, err
 		}
 	}
 
-	savedImageAttributes, err := cj.GetImageAttributes(ctx, monitors, cr, savedImagePool,
+	savedImageAttributes, err := conn.GetImageAttributes(ctx, savedImagePool,
 		objUUID, snapSource)
 	if err != nil {
 		// error should specifically be not found, for image to be absent, any other error
 		// is not conclusive, and we should not proceed
 		if _, ok := err.(util.ErrKeyNotFound); ok {
-			err = cj.UndoReservation(ctx, monitors, cr, journalPool, savedImagePool,
+			err = conn.UndoReservation(ctx, journalPool, savedImagePool,
 				cj.GetNameForUUID(namePrefix, objUUID, snapSource), reqName)
 		}
 		return nil, err
@@ -344,10 +364,11 @@ Input arguments:
 	- volJournalPool: Pool name that holds the image/subvolume and the per-image journal (may be
 	  different if image is created in a topology constrained pool)
 */
-func (cj *CSIJournal) UndoReservation(ctx context.Context, monitors string, cr *util.Credentials,
+func (conn *Connection) UndoReservation(ctx context.Context,
 	csiJournalPool, volJournalPool, volName, reqName string) error {
 	// delete volume UUID omap (first, inverse of create order)
 
+	cj := conn.config
 	if volName != "" {
 		if len(volName) < 36 {
 			return fmt.Errorf("unable to parse UUID from %s, too short", volName)
@@ -358,7 +379,7 @@ func (cj *CSIJournal) UndoReservation(ctx context.Context, monitors string, cr *
 			return fmt.Errorf("failed parsing UUID in %s", volName)
 		}
 
-		err := util.RemoveObject(ctx, monitors, cr, volJournalPool, cj.namespace, cj.cephUUIDDirectoryPrefix+imageUUID)
+		err := util.RemoveObject(ctx, conn.monitors, conn.cr, volJournalPool, cj.namespace, cj.cephUUIDDirectoryPrefix+imageUUID)
 		if err != nil {
 			if _, ok := err.(util.ErrObjectNotFound); !ok {
 				klog.Errorf(util.Log(ctx, "failed removing oMap %s (%s)"), cj.cephUUIDDirectoryPrefix+imageUUID, err)
@@ -368,7 +389,7 @@ func (cj *CSIJournal) UndoReservation(ctx context.Context, monitors string, cr *
 	}
 
 	// delete the request name key (last, inverse of create order)
-	err := util.RemoveOMapKey(ctx, monitors, cr, csiJournalPool, cj.namespace, cj.csiDirectory,
+	err := util.RemoveOMapKey(ctx, conn.monitors, conn.cr, csiJournalPool, cj.namespace, cj.csiDirectory,
 		cj.csiNameKeyPrefix+reqName)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed removing oMap key %s (%s)"), cj.csiNameKeyPrefix+reqName, err)
@@ -433,7 +454,7 @@ Return values:
 	- string: Contains the image name that was reserved for the passed in reqName
 	- error: non-nil in case of any errors
 */
-func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *util.Credentials,
+func (conn *Connection) ReserveName(ctx context.Context,
 	journalPool string, journalPoolID int64,
 	imagePool string, imagePoolID int64,
 	reqName, namePrefix, parentName, kmsConf string) (string, string, error) {
@@ -441,6 +462,7 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *util
 	var (
 		snapSource bool
 		nameKeyVal string
+		cj         = conn.config
 	)
 
 	if parentName != "" {
@@ -455,7 +477,7 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *util
 	// NOTE: If any service loss occurs post creation of the UUID directory, and before
 	// setting the request name key (csiNameKey) to point back to the UUID directory, the
 	// UUID directory key will be leaked
-	volUUID, err := reserveOMapName(ctx, monitors, cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix)
+	volUUID, err := reserveOMapName(ctx, conn.monitors, conn.cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix)
 	if err != nil {
 		return "", "", err
 	}
@@ -473,7 +495,7 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *util
 		nameKeyVal = volUUID
 	}
 
-	err = util.SetOMapKeyValue(ctx, monitors, cr, journalPool, cj.namespace, cj.csiDirectory,
+	err = util.SetOMapKeyValue(ctx, conn.monitors, conn.cr, journalPool, cj.namespace, cj.csiDirectory,
 		cj.csiNameKeyPrefix+reqName, nameKeyVal)
 	if err != nil {
 		return "", "", err
@@ -481,7 +503,7 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *util
 	defer func() {
 		if err != nil {
 			klog.Warningf(util.Log(ctx, "reservation failed for volume: %s"), reqName)
-			errDefer := cj.UndoReservation(ctx, monitors, cr, imagePool, journalPool, imageName, reqName)
+			errDefer := conn.UndoReservation(ctx, imagePool, journalPool, imageName, reqName)
 			if errDefer != nil {
 				klog.Warningf(util.Log(ctx, "failed undoing reservation of volume: %s (%v)"), reqName, errDefer)
 			}
@@ -492,14 +514,14 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *util
 	// 	and also CSI journal pool, when only the VolumeID is passed in (e.g DeleteVolume/DeleteSnapshot,
 	// 	VolID during CreateSnapshot).
 	// Update UUID directory to store CSI request name
-	err = util.SetOMapKeyValue(ctx, monitors, cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
+	err = util.SetOMapKeyValue(ctx, conn.monitors, conn.cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 		cj.csiNameKey, reqName)
 	if err != nil {
 		return "", "", err
 	}
 
 	// Update UUID directory to store image name
-	err = util.SetOMapKeyValue(ctx, monitors, cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
+	err = util.SetOMapKeyValue(ctx, conn.monitors, conn.cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 		cj.csiImageKey, imageName)
 	if err != nil {
 		return "", "", err
@@ -507,7 +529,7 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *util
 
 	// Update UUID directory to store encryption values
 	if kmsConf != "" {
-		err = util.SetOMapKeyValue(ctx, monitors, cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
+		err = util.SetOMapKeyValue(ctx, conn.monitors, conn.cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 			cj.encryptKMSKey, kmsConf)
 		if err != nil {
 			return "", "", err
@@ -520,7 +542,7 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *util
 		journalPoolIDStr := hex.EncodeToString(buf64)
 
 		// Update UUID directory to store CSI journal pool name (prefer ID instead of name to be pool rename proof)
-		err = util.SetOMapKeyValue(ctx, monitors, cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
+		err = util.SetOMapKeyValue(ctx, conn.monitors, conn.cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 			cj.csiJournalPool, journalPoolIDStr)
 		if err != nil {
 			return "", "", err
@@ -529,7 +551,7 @@ func (cj *CSIJournal) ReserveName(ctx context.Context, monitors string, cr *util
 
 	if snapSource {
 		// Update UUID directory to store source volume UUID in case of snapshots
-		err = util.SetOMapKeyValue(ctx, monitors, cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
+		err = util.SetOMapKeyValue(ctx, conn.monitors, conn.cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
 			cj.cephSnapSourceKey, parentName)
 		if err != nil {
 			return "", "", err
@@ -549,10 +571,11 @@ type ImageAttributes struct {
 }
 
 // GetImageAttributes fetches all keys and their values, from a UUID directory, returning ImageAttributes structure
-func (cj *CSIJournal) GetImageAttributes(ctx context.Context, monitors string, cr *util.Credentials, pool, objectUUID string, snapSource bool) (*ImageAttributes, error) {
+func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID string, snapSource bool) (*ImageAttributes, error) {
 	var (
 		err             error
 		imageAttributes *ImageAttributes = &ImageAttributes{}
+		cj                               = conn.config
 	)
 
 	if snapSource && cj.cephSnapSourceKey == "" {
@@ -561,7 +584,7 @@ func (cj *CSIJournal) GetImageAttributes(ctx context.Context, monitors string, c
 	}
 
 	// TODO: fetch all omap vals in one call, than make multiple listomapvals
-	imageAttributes.RequestName, err = util.GetOMapValue(ctx, monitors, cr, pool, cj.namespace,
+	imageAttributes.RequestName, err = util.GetOMapValue(ctx, conn.monitors, conn.cr, pool, cj.namespace,
 		cj.cephUUIDDirectoryPrefix+objectUUID, cj.csiNameKey)
 	if err != nil {
 		return nil, err
@@ -569,7 +592,7 @@ func (cj *CSIJournal) GetImageAttributes(ctx context.Context, monitors string, c
 
 	// image key was added at some point, so not all volumes will have this key set
 	// when ceph-csi was upgraded
-	imageAttributes.ImageName, err = util.GetOMapValue(ctx, monitors, cr, pool, cj.namespace,
+	imageAttributes.ImageName, err = util.GetOMapValue(ctx, conn.monitors, conn.cr, pool, cj.namespace,
 		cj.cephUUIDDirectoryPrefix+objectUUID, cj.csiImageKey)
 	if err != nil {
 		// if the key was not found, assume the default key + UUID
@@ -587,7 +610,7 @@ func (cj *CSIJournal) GetImageAttributes(ctx context.Context, monitors string, c
 		}
 	}
 
-	imageAttributes.KmsID, err = util.GetOMapValue(ctx, monitors, cr, pool, cj.namespace,
+	imageAttributes.KmsID, err = util.GetOMapValue(ctx, conn.monitors, conn.cr, pool, cj.namespace,
 		cj.cephUUIDDirectoryPrefix+objectUUID, cj.encryptKMSKey)
 	if err != nil {
 		// ErrKeyNotFound means no encryption KMS was used
@@ -599,7 +622,7 @@ func (cj *CSIJournal) GetImageAttributes(ctx context.Context, monitors string, c
 		}
 	}
 
-	journalPoolIDStr, err := util.GetOMapValue(ctx, monitors, cr, pool, cj.namespace,
+	journalPoolIDStr, err := util.GetOMapValue(ctx, conn.monitors, conn.cr, pool, cj.namespace,
 		cj.cephUUIDDirectoryPrefix+objectUUID, cj.csiJournalPool)
 	if err != nil {
 		if _, ok := err.(util.ErrKeyNotFound); !ok {
@@ -616,7 +639,7 @@ func (cj *CSIJournal) GetImageAttributes(ctx context.Context, monitors string, c
 	}
 
 	if snapSource {
-		imageAttributes.SourceName, err = util.GetOMapValue(ctx, monitors, cr, pool, cj.namespace,
+		imageAttributes.SourceName, err = util.GetOMapValue(ctx, conn.monitors, conn.cr, pool, cj.namespace,
 			cj.cephUUIDDirectoryPrefix+objectUUID, cj.cephSnapSourceKey)
 		if err != nil {
 			return nil, err
@@ -624,4 +647,11 @@ func (cj *CSIJournal) GetImageAttributes(ctx context.Context, monitors string, c
 	}
 
 	return imageAttributes, nil
+}
+
+// Destroy frees any resources and invalidates the journal connection.
+func (conn *Connection) Destroy() {
+	// invalidate cluster connection metadata
+	conn.monitors = ""
+	conn.cr = nil
 }

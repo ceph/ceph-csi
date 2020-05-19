@@ -155,3 +155,139 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 	execCommandInToolBoxPod(f, cmd, rookNamespace)
 	return nil
 }
+
+func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) error {
+	opt := make(map[string]string)
+	var (
+		cephFsVolName = "testSubVol"
+		groupName     = "testGroup"
+		fsName        = "myfs"
+		pvName        = "pv-name"
+		pvcName       = "pvc-name"
+		ns            = f.UniqueName
+		// minikube creates default storage class in cluster, we need to set dummy
+		// storageclass on PV and PVC to avoid storageclass name missmatch
+		sc         = "storage-class"
+		secretName = "cephfs-static-pv-sc" // #nosec
+	)
+
+	c := f.ClientSet
+
+	listOpt := metav1.ListOptions{
+		LabelSelector: "app=rook-ceph-tools",
+	}
+
+	fsID, e := execCommandInPod(f, "ceph fsid", rookNamespace, &listOpt)
+	if e != "" {
+		return fmt.Errorf("failed to get fsid from ceph cluster %s", e)
+	}
+	// remove new line present in fsID
+	fsID = strings.Trim(fsID, "\n")
+
+	// 4GiB in bytes
+	size := "4294967296"
+
+	// create subvolumegroup, command will work even if group is already present.
+	cmd := fmt.Sprintf("ceph fs subvolumegroup create %s %s", fsName, groupName)
+
+	_, e = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	if e != "" {
+		return fmt.Errorf("failed to create subvolumegroup %s", e)
+	}
+
+	// create subvolume
+	cmd = fmt.Sprintf("ceph fs subvolume create %s %s %s --size %s", fsName, cephFsVolName, groupName, size)
+	_, e = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	if e != "" {
+		return fmt.Errorf("failed to create subvolume %s", e)
+	}
+
+	// get rootpath
+	cmd = fmt.Sprintf("ceph fs subvolume getpath %s %s %s", fsName, cephFsVolName, groupName)
+	rootPath, e := execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	if e != "" {
+		return fmt.Errorf("failed to get rootpath %s", e)
+	}
+	// remove new line present in rootPath
+	rootPath = strings.Trim(rootPath, "\n")
+
+	// create secret
+	userID := "admin" // nolint
+	secret := getSecret(scPath)
+	adminKey, e := execCommandInPod(f, "ceph auth get-key client.admin", rookNamespace, &listOpt)
+	if e != "" {
+		return fmt.Errorf("failed to get adminKey %s", e)
+	}
+	secret.StringData["userID"] = userID
+	secret.StringData["userKey"] = adminKey
+	secret.Name = secretName
+	secret.Namespace = cephCSINamespace
+	_, err := c.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &secret, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create secret, error %v", err)
+	}
+
+	opt["clusterID"] = fsID
+	opt["fsName"] = fsName
+	opt["staticVolume"] = "true"
+	opt["rootPath"] = rootPath
+	pv := getStaticPV(pvName, pvName, "4Gi", secretName, cephCSINamespace, sc, "cephfs.csi.ceph.com", false, opt)
+	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create PV, error %v", err)
+	}
+
+	pvc := getStaticPVC(pvcName, pvName, size, ns, sc, false)
+	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create PVC, error %v", err)
+	}
+	// bind pvc to app
+	app, err := loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load app, error %v", err)
+	}
+
+	app.Namespace = ns
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create pod, error %v", err)
+	}
+
+	err = deletePod(app.Name, ns, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete pod, error %v", err)
+	}
+
+	err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	err = c.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	// delete subvolume
+	cmd = fmt.Sprintf("ceph fs subvolume rm %s %s %s", fsName, cephFsVolName, groupName)
+	_, e = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	if e != "" {
+		return fmt.Errorf("failed to remove sub-volume %s", e)
+	}
+
+	// delete subvolume group
+	cmd = fmt.Sprintf("ceph fs subvolumegroup rm %s %s", fsName, groupName)
+	_, e = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	if e != "" {
+		return fmt.Errorf("failed to remove subvolume group %s", e)
+	}
+
+	return nil
+}

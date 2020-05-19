@@ -40,7 +40,7 @@ LDFLAGS += -X $(GO_PROJECT)/internal/util.DriverVersion=$(CSI_IMAGE_VERSION)
 
 # set GOARCH explicitly for cross building, default to native architecture
 ifndef GOARCH
-GOARCH := $(shell go env GOARCH)
+GOARCH := $(shell go env GOARCH 2>/dev/null)
 endif
 
 ifdef BASE_IMAGE
@@ -53,6 +53,10 @@ endif
 # single tests.
 TARGET ?= test
 
+# Pass GIT_SINCE for the range of commits to test. Used with the commitlint
+# target.
+GIT_SINCE := origin/master
+
 SELINUX := $(shell getenforce 2>/dev/null)
 ifeq ($(SELINUX),Enforcing)
 	SELINUX_VOL_FLAG = :z
@@ -60,7 +64,7 @@ endif
 
 all: cephcsi
 
-.PHONY: go-test static-check mod-check go-lint lint-extras gosec
+.PHONY: go-test static-check mod-check go-lint lint-extras gosec commitlint
 test: go-test static-check mod-check
 static-check: check-env go-lint lint-extras gosec
 
@@ -98,6 +102,9 @@ func-test:
 check-env:
 	@./scripts/check-env.sh
 
+commitlint:
+	commitlint --from $(GIT_SINCE)
+
 .PHONY: cephcsi
 cephcsi: check-env
 	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
@@ -108,7 +115,7 @@ containerized-build: .devel-container-id
 	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make cephcsi
 
 containerized-test: .test-container-id
-	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET)
+	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE)
 
 # create a (cached) container image with dependencied for building cephcsi
 .devel-container-id: scripts/Dockerfile.devel

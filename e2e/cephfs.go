@@ -167,6 +167,14 @@ var _ = Describe("cephfs", func() {
 				Fail(err.Error())
 			}
 
+			By("check static PVC", func() {
+				scPath := cephfsExamplePath + "secret.yaml"
+				err := validateCephFsStaticPV(f, appPath, scPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
+
 			By("create a storage class with pool and a PVC then Bind it to an app", func() {
 				createCephfsStorageClass(f.ClientSet, f, true)
 				validatePVCAndAppBinding(pvcPath, appPath, f)
