@@ -720,6 +720,50 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("Mount pvc as readonly in pod", func() {
+				// create pvc and bind it to an app
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				pvc.Namespace = f.UniqueName
+
+				app, err := loadApp(appPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				app.Namespace = f.UniqueName
+				label := map[string]string{
+					"app": app.Name,
+				}
+				app.Labels = label
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+				app.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
+				err = createPVCAndApp("", f, pvc, app, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("app=%s", app.Name),
+				}
+
+				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+				_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), app.Namespace, &opt)
+				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+				if !strings.Contains(stdErr, readOnlyErr) {
+					Fail(stdErr)
+				}
+
+				// delete pvc and app
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
+
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and Delete PVC when backend pool deleted", func() {
