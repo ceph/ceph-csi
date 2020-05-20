@@ -42,6 +42,8 @@ const (
 	// rook created rbd user
 	rbdNodePluginSecretName  = "rook-csi-rbd-node"        // nolint: gosec
 	rbdProvisionerSecretName = "rook-csi-rbd-provisioner" // nolint: gosec
+
+	rookTolBoxPodLabel = "app=rook-ceph-tools"
 )
 
 var (
@@ -212,6 +214,19 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 	return stdOut, stdErr
 }
 
+func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, string) {
+	opt := &metav1.ListOptions{
+		LabelSelector: rookTolBoxPodLabel,
+	}
+	podPot := getCommandInPodOpts(f, c, ns, opt)
+	stdOut, stdErr, err := f.ExecWithOptions(podPot)
+	if stdErr != "" {
+		e2elog.Logf("stdErr occurred: %v", stdErr)
+	}
+	Expect(err).Should(BeNil())
+	return stdOut, stdErr
+}
+
 func execCommandInPodAndAllowFail(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string) {
 	podPot := getCommandInPodOpts(f, c, ns, opt)
 	stdOut, stdErr, err := f.ExecWithOptions(podPot)
@@ -258,10 +273,7 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	if enablePool {
 		sc.Parameters["pool"] = "myfs-data0"
 	}
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNamespace, &opt)
+	fsID, stdErr := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
@@ -284,10 +296,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOpt
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = rookNamespace
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = rbdNodePluginSecretName
 
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNamespace, &opt)
+	fsID, stdErr := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
@@ -319,10 +328,8 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	cm := v1.ConfigMap{}
 	err := unmarshal(path, &cm)
 	Expect(err).Should(BeNil())
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNamespace, &opt)
+
+	fsID, stdErr := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
@@ -367,10 +374,8 @@ func getSecret(path string) v1.Secret {
 func createCephfsSecret(c kubernetes.Interface, f *framework.Framework) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "secret.yaml")
 	sc := getSecret(scPath)
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	adminKey, stdErr := execCommandInPod(f, "ceph auth get-key client.admin", rookNamespace, &opt)
+
+	adminKey, stdErr := execCommandInToolBoxPod(f, "ceph auth get-key client.admin", rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 	sc.StringData["adminID"] = "admin"
 	sc.StringData["adminKey"] = adminKey
@@ -384,10 +389,8 @@ func createCephfsSecret(c kubernetes.Interface, f *framework.Framework) {
 func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "secret.yaml")
 	sc := getSecret(scPath)
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	adminKey, stdErr := execCommandInPod(f, "ceph auth get-key client.admin", rookNamespace, &opt)
+
+	adminKey, stdErr := execCommandInToolBoxPod(f, "ceph auth get-key client.admin", rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 	sc.StringData["userID"] = "admin"
 	sc.StringData["userKey"] = adminKey
@@ -715,10 +718,7 @@ func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (
 
 func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string, error) {
 	cmd := fmt.Sprintf("rbd image-meta get %s %s", rbdImageSpec, metaKey)
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	stdOut, stdErr := execCommandInPod(f, cmd, rookNamespace, &opt)
+	stdOut, stdErr := execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if stdErr != "" {
 		return strings.TrimSpace(stdOut), fmt.Errorf(stdErr)
 	}
@@ -887,10 +887,7 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 		return err
 	}
 
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	_, stdErr := execCommandInPod(f, "ceph fs subvolume rm myfs "+imageData.imageName+" e2e", rookNamespace, &opt)
+	_, stdErr := execCommandInToolBoxPod(f, "ceph fs subvolume rm myfs "+imageData.imageName+" e2e", rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 
 	if stdErr != "" {
@@ -900,10 +897,7 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 }
 
 func listRBDImages(f *framework.Framework) []string {
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	stdout, stdErr := execCommandInPod(f, fmt.Sprintf("rbd ls --pool=%s --format=json", defaultRBDPool), rookNamespace, &opt)
+	stdout, stdErr := execCommandInToolBoxPod(f, fmt.Sprintf("rbd ls --pool=%s --format=json", defaultRBDPool), rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 	var imgInfos []string
 
@@ -969,19 +963,12 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 		return err
 	}
 
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-
 	cmd := fmt.Sprintf("rbd rm %s --pool=%s", imageData.imageName, defaultRBDPool)
-	execCommandInPod(f, cmd, rookNamespace, &opt)
+	execCommandInToolBoxPod(f, cmd, rookNamespace)
 	return nil
 }
 
 func deletePool(name string, cephfs bool, f *framework.Framework) {
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
 	var cmds = []string{}
 	if cephfs {
 		// ceph fs fail
@@ -1002,7 +989,7 @@ func deletePool(name string, cephfs bool, f *framework.Framework) {
 
 	for _, cmd := range cmds {
 		// discard stdErr as some commands prints warning in strErr
-		execCommandInPod(f, cmd, rookNamespace, &opt)
+		execCommandInToolBoxPod(f, cmd, rookNamespace)
 	}
 }
 
@@ -1105,11 +1092,7 @@ func getPVCImageInfoInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 		return "", err
 	}
 
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-
-	stdOut, stdErr := execCommandInPod(f, "rbd info "+pool+"/"+imageData.imageName, rookNamespace, &opt)
+	stdOut, stdErr := execCommandInToolBoxPod(f, "rbd info "+pool+"/"+imageData.imageName, rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 
 	e2elog.Logf("found image %s in pool %s", imageData.imageName, pool)
@@ -1142,11 +1125,7 @@ func checkPVCImageJournalInPool(f *framework.Framework, pvc *v1.PersistentVolume
 		return err
 	}
 
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-
-	_, stdErr := execCommandInPod(f, "rados listomapkeys -p "+pool+" csi.volume."+imageData.imageID, rookNamespace, &opt)
+	_, stdErr := execCommandInToolBoxPod(f, "rados listomapkeys -p "+pool+" csi.volume."+imageData.imageID, rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 
 	e2elog.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, pool)
@@ -1160,11 +1139,7 @@ func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeCl
 		return err
 	}
 
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-
-	_, stdErr := execCommandInPod(f, "rados getomapval -p "+pool+" csi.volumes.default csi.volume."+imageData.pvName, rookNamespace, &opt)
+	_, stdErr := execCommandInToolBoxPod(f, "rados getomapval -p "+pool+" csi.volumes.default csi.volume."+imageData.pvName, rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 
 	e2elog.Logf("found CSI journal entry %s in pool %s", "csi.volume."+imageData.pvName, pool)

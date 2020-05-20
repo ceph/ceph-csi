@@ -385,7 +385,7 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 		return err
 	}
 
-	rbdSnap.Pool, err = util.GetPoolName(ctx, rbdSnap.Monitors, cr, vi.LocationID)
+	rbdSnap.Pool, err = util.GetPoolName(rbdSnap.Monitors, cr, vi.LocationID)
 	if err != nil {
 		return err
 	}
@@ -408,7 +408,7 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 
 	// convert the journal pool ID to name, for use in DeleteSnapshot cases
 	if imageAttributes.JournalPoolID != util.InvalidPoolID {
-		rbdSnap.JournalPool, err = util.GetPoolName(ctx, rbdSnap.Monitors, cr, imageAttributes.JournalPoolID)
+		rbdSnap.JournalPool, err = util.GetPoolName(rbdSnap.Monitors, cr, imageAttributes.JournalPoolID)
 		if err != nil {
 			// TODO: If pool is not found we may leak the image (as DeleteSnapshot will return success)
 			return err
@@ -448,7 +448,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 		return nil, err
 	}
 
-	rbdVol.Pool, err = util.GetPoolName(ctx, rbdVol.Monitors, cr, vi.LocationID)
+	rbdVol.Pool, err = util.GetPoolName(rbdVol.Monitors, cr, vi.LocationID)
 	if err != nil {
 		return nil, err
 	}
@@ -483,7 +483,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 
 	// convert the journal pool ID to name, for use in DeleteVolume cases
 	if imageAttributes.JournalPoolID >= 0 {
-		rbdVol.JournalPool, err = util.GetPoolName(ctx, rbdVol.Monitors, cr, imageAttributes.JournalPoolID)
+		rbdVol.JournalPool, err = util.GetPoolName(rbdVol.Monitors, cr, imageAttributes.JournalPoolID)
 		if err != nil {
 			// TODO: If pool is not found we may leak the image (as DeleteVolume will return success)
 			return nil, err

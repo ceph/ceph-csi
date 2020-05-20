@@ -23,6 +23,23 @@ pull_request_rules:
         strict: smart
       dismiss_reviews: {}
       delete_head_branch: {}
+  - name: automatic merge PR having ready-to-merge label
+    conditions:
+      - label!=DNM
+      - label=ready-to-merge
+      - base=master
+      - "#approved-reviews-by>=1"
+      - "#changes-requested-reviews-by=0"
+      - "status-success=continuous-integration/travis-ci/pr"
+      - "status-success=DCO"
+      - "status-success=commitlint"
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
   - name: backport patches to release v1.2.0 branch
     conditions:
       - base=master

@@ -19,13 +19,13 @@ package util
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/ceph/go-ceph/rados"
 	"k8s.io/klog"
 )
 
@@ -52,86 +52,53 @@ func ExecCommand(program string, args ...string) (stdout, stderr []byte, err err
 	return stdoutBuf.Bytes(), nil, nil
 }
 
-// cephStoragePoolSummary strongly typed JSON spec for osd ls pools output
-type cephStoragePoolSummary struct {
-	Name   string `json:"poolname"`
-	Number int64  `json:"poolnum"`
+// GetPoolID fetches the ID of the pool that matches the passed in poolName
+// parameter
+func GetPoolID(monitors string, cr *Credentials, poolName string) (int64, error) {
+	conn, err := connPool.Get(monitors, cr.ID, cr.KeyFile)
+	if err != nil {
+		return InvalidPoolID, err
+	}
+	defer connPool.Put(conn)
+
+	id, err := conn.GetPoolByName(poolName)
+	if err == rados.ErrNotFound {
+		return InvalidPoolID, ErrPoolNotFound{poolName, fmt.Errorf("pool (%s) not found in Ceph cluster", poolName)}
+	} else if err != nil {
+		return InvalidPoolID, err
+	}
+
+	return id, nil
 }
 
-// GetPools fetches a list of pools from a cluster
-func getPools(ctx context.Context, monitors string, cr *Credentials) ([]cephStoragePoolSummary, error) {
-	// ceph <options> -f json osd lspools
-	// JSON out: [{"poolnum":<int64>,"poolname":<string>}]
-
-	stdout, _, err := ExecCommand(
-		"ceph",
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile="+cr.KeyFile,
-		"-c", CephConfigPath,
-		"-f", "json",
-		"osd", "lspools")
-	if err != nil {
-		klog.Errorf(Log(ctx, "failed getting pool list from cluster (%s)"), err)
-		return nil, err
-	}
-
-	var pools []cephStoragePoolSummary
-	err = json.Unmarshal(stdout, &pools)
-	if err != nil {
-		klog.Errorf(Log(ctx, "failed to parse JSON output of pool list from cluster (%s)"), err)
-		return nil, fmt.Errorf("unmarshal of pool list failed: %+v.  raw buffer response: %s", err, string(stdout))
-	}
-
-	return pools, nil
-}
-
-// GetPoolID searches a list of pools in a cluster and returns the ID of the pool that matches
-// the passed in poolName parameter
-func GetPoolID(ctx context.Context, monitors string, cr *Credentials, poolName string) (int64, error) {
-	pools, err := getPools(ctx, monitors, cr)
-	if err != nil {
-		return 0, err
-	}
-
-	for _, p := range pools {
-		if poolName == p.Name {
-			return p.Number, nil
-		}
-	}
-
-	return 0, fmt.Errorf("pool (%s) not found in Ceph cluster", poolName)
-}
-
-// GetPoolName lists all pools in a ceph cluster, and matches the pool whose pool ID is equal to
-// the requested poolID parameter
-func GetPoolName(ctx context.Context, monitors string, cr *Credentials, poolID int64) (string, error) {
-	pools, err := getPools(ctx, monitors, cr)
+// GetPoolName fetches the pool whose pool ID is equal to the requested poolID
+// parameter
+func GetPoolName(monitors string, cr *Credentials, poolID int64) (string, error) {
+	conn, err := connPool.Get(monitors, cr.ID, cr.KeyFile)
 	if err != nil {
 		return "", err
 	}
+	defer connPool.Put(conn)
 
-	for _, p := range pools {
-		if poolID == p.Number {
-			return p.Name, nil
-		}
+	name, err := conn.GetPoolByID(poolID)
+	if err != nil {
+		return "", ErrPoolNotFound{string(poolID), fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)}
 	}
-
-	return "", ErrPoolNotFound{string(poolID), fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)}
+	return name, nil
 }
 
 // GetPoolIDs searches a list of pools in a cluster and returns the IDs of the pools that matches
 // the passed in pools
 // TODO this should take in a list and return a map[string(poolname)]int64(poolID)
 func GetPoolIDs(ctx context.Context, monitors, journalPool, imagePool string, cr *Credentials) (int64, int64, error) {
-	journalPoolID, err := GetPoolID(ctx, monitors, cr, journalPool)
+	journalPoolID, err := GetPoolID(monitors, cr, journalPool)
 	if err != nil {
 		return InvalidPoolID, InvalidPoolID, err
 	}
 
 	imagePoolID := journalPoolID
 	if imagePool != journalPool {
-		imagePoolID, err = GetPoolID(ctx, monitors, cr, imagePool)
+		imagePoolID, err = GetPoolID(monitors, cr, imagePool)
 		if err != nil {
 			return InvalidPoolID, InvalidPoolID, err
 		}
