@@ -34,7 +34,7 @@ type VolumeLocks struct {
 	mux   sync.Mutex
 }
 
-// NewVolumeLocks returns new  VolumeLocks
+// NewVolumeLocks returns new VolumeLocks.
 func NewVolumeLocks() *VolumeLocks {
 	return &VolumeLocks{
 		locks: sets.NewString(),
@@ -53,6 +53,7 @@ func (vl *VolumeLocks) TryAcquire(volumeID string) bool {
 	return true
 }
 
+// Release deletes the lock on volumeID.
 func (vl *VolumeLocks) Release(volumeID string) {
 	vl.mux.Lock()
 	defer vl.mux.Unlock()

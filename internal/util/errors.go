@@ -57,6 +57,7 @@ func (e ErrSnapNameConflict) Error() string {
 	return e.err.Error()
 }
 
+// NewErrSnapNameConflict returns a ErrSnapNameConflict error when CSI snap name already exists.
 func NewErrSnapNameConflict(name string, err error) ErrSnapNameConflict {
 	return ErrSnapNameConflict{name, err}
 }
