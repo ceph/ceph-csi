@@ -27,8 +27,6 @@ type snapInfo struct {
 
 func getSnapshotClass(path string) snapapi.VolumeSnapshotClass {
 	sc := snapapi.VolumeSnapshotClass{}
-	sc.Kind = "VolumeSnapshotClass"
-	sc.APIVersion = "snapshot.storage.k8s.io/v1beta1"
 	err := unmarshal(path, &sc)
 	Expect(err).Should(BeNil())
 	return sc
@@ -67,7 +65,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	name := snap.Name
 	start := time.Now()
-	e2elog.Logf("Waiting up to %v to be in Ready state", snap)
+	e2elog.Logf("waiting for %v to be in ready state", snap)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		e2elog.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
@@ -124,11 +122,8 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 }
 
 func listSnapshots(f *framework.Framework, pool, imageName string) ([]snapInfo, error) {
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
 	command := fmt.Sprintf("rbd snap ls %s/%s --format=json", pool, imageName)
-	stdout, stdErr := execCommandInPod(f, command, rookNamespace, &opt)
+	stdout, stdErr := execCommandInToolBoxPod(f, command, rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 
 	var snapInfos []snapInfo
@@ -143,10 +138,7 @@ func createRBDSnapshotClass(f *framework.Framework) {
 
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
 
-	opt := metav1.ListOptions{
-		LabelSelector: "app=rook-ceph-tools",
-	}
-	fsID, stdErr := execCommandInPod(f, "ceph fsid", rookNamespace, &opt)
+	fsID, stdErr := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 	fsID = strings.Trim(fsID, "\n")
 	sc.Parameters["clusterID"] = fsID

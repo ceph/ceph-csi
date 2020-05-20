@@ -200,6 +200,10 @@ need to be met before it will be merged:
   * The 24 working hours counts hours occuring Mon-Fri in the local timezone
   * of the submitter
 * Each PR must be fully updated to master and tests must have passed
+* If the PR is having trivial changes or the reviewer is confident enough that
+  PR doesn't need a second review, the reviewer can set `ready-to-merge` label
+  on the PR. The bot will merge the PR if it's having one approval and the
+  label `ready-to-merge`
 
 When the criteria are met, a project maintainer can merge your changes into
 the project's master branch.
