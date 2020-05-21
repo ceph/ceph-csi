@@ -517,8 +517,8 @@ func (conn *Connection) ReserveName(ctx context.Context,
 		nameKeyVal = volUUID
 	}
 
-	err = setOneOMapKey(ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
-		cj.csiNameKeyPrefix+reqName, nameKeyVal)
+	err = setOMapKeys(ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
+		map[string]string{cj.csiNameKeyPrefix + reqName: nameKeyVal})
 	if err != nil {
 		return "", "", err
 	}
@@ -532,30 +532,21 @@ func (conn *Connection) ReserveName(ctx context.Context,
 		}
 	}()
 
+	oid := cj.cephUUIDDirectoryPrefix + volUUID
+	omapValues := map[string]string{}
+
 	// NOTE: UUID directory is stored on the same pool as the image, helps determine image attributes
 	// 	and also CSI journal pool, when only the VolumeID is passed in (e.g DeleteVolume/DeleteSnapshot,
 	// 	VolID during CreateSnapshot).
 	// Update UUID directory to store CSI request name
-	err = setOneOMapKey(ctx, conn, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
-		cj.csiNameKey, reqName)
-	if err != nil {
-		return "", "", err
-	}
+	omapValues[cj.csiNameKey] = reqName
 
 	// Update UUID directory to store image name
-	err = setOneOMapKey(ctx, conn, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
-		cj.csiImageKey, imageName)
-	if err != nil {
-		return "", "", err
-	}
+	omapValues[cj.csiImageKey] = imageName
 
 	// Update UUID directory to store encryption values
 	if kmsConf != "" {
-		err = setOneOMapKey(ctx, conn, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
-			cj.encryptKMSKey, kmsConf)
-		if err != nil {
-			return "", "", err
-		}
+		omapValues[cj.encryptKMSKey] = kmsConf
 	}
 
 	if journalPool != imagePool && journalPoolID != util.InvalidPoolID {
@@ -564,22 +555,18 @@ func (conn *Connection) ReserveName(ctx context.Context,
 		journalPoolIDStr := hex.EncodeToString(buf64)
 
 		// Update UUID directory to store CSI journal pool name (prefer ID instead of name to be pool rename proof)
-		err = setOneOMapKey(ctx, conn, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
-			cj.csiJournalPool, journalPoolIDStr)
-		if err != nil {
-			return "", "", err
-		}
+		omapValues[cj.csiJournalPool] = journalPoolIDStr
 	}
 
 	if snapSource {
 		// Update UUID directory to store source volume UUID in case of snapshots
-		err = setOneOMapKey(ctx, conn, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix+volUUID,
-			cj.cephSnapSourceKey, parentName)
-		if err != nil {
-			return "", "", err
-		}
+		omapValues[cj.cephSnapSourceKey] = parentName
 	}
 
+	err = setOMapKeys(ctx, conn, journalPool, cj.namespace, oid, omapValues)
+	if err != nil {
+		return "", "", err
+	}
 	return volUUID, imageName, nil
 }
 
