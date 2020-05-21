@@ -40,7 +40,6 @@ spec:
             - "--retry-interval-start=500ms"
             - "--enable-leader-election=true"
             - "--leader-election-type=leases"
-            - "--feature-gates=Topology=true"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
