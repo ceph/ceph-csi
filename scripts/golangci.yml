@@ -149,8 +149,6 @@ linters-settings:
     # TODO: decrease complexity with refacoring the code
     min-complexity: 40
   dogsled:
-    # voljournal.GetObjectUUIDData currently returns 4 values of which some may
-    # not always be useful
     max-blank-identifiers: 3
 
 linters:
