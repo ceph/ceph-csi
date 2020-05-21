@@ -411,8 +411,8 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 	}
 
 	// delete the request name key (last, inverse of create order)
-	err := removeOneOMapKey(ctx, conn, csiJournalPool, cj.namespace, cj.csiDirectory,
-		cj.csiNameKeyPrefix+reqName)
+	err := removeMapKeys(ctx, conn, csiJournalPool, cj.namespace, cj.csiDirectory,
+		[]string{cj.csiNameKeyPrefix + reqName})
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed removing oMap key %s (%s)"), cj.csiNameKeyPrefix+reqName, err)
 		return err
