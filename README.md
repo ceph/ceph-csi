@@ -13,13 +13,13 @@ This is the `ci/centos` branch, where all the scripts for the Jenkins jobs are
 maintained. The tests that are executed by the jobs are part of the normal
 projects branches.
 
-As an example, the `make-containerized-build` Jenkins job consists out of the
+As an example, the `containerized-tests` Jenkins job consists out of the
 following files:
 
-- `make-containerized-build.yaml` is a [Jenkins Job Builder](jjb) configuration
+- `containerized-tests.yaml` is a [Jenkins Job Builder](jjb) configuration
   that describes the events when the job should get run and fetches the
   `.groovy` file from the git repository/branch
-- `make-containerized-build.groovy` is the [Jenkins Pipeline](pipeline) that
+- `containerized-tests.groovy` is the [Jenkins Pipeline](pipeline) that
   contains the stages for the Jenkins Job itself. In order to work with [the
   bare-metal machines from the CentOS CI](centos_ci), it executes the following
   stages:
@@ -31,7 +31,7 @@ following files:
   1. reserve a bare-metal machine with `cico` (configured on the Jenkins Slave)
   1. provision the reserved bare-metal machine with additional tools and
      dependencies to run the test (see `prepare.sh` below)
-  1. run the test
+  1. run `make containerized-tests` and `make containerized-build` in parallel
   1. as final step, return the bare-metal machine to the CentOS CI for other
      users (it will be re-installed with a minimal CentOS environment again)
 
