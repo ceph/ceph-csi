@@ -18,10 +18,6 @@
               - ci/centos
       script-path: containerized-tests.groovy
       lightweight-checkout: true
-    parameters:
-      - string:
-          name: ghprbPullId
-          default: ''
     triggers:
       - github-pull-request:
           status-context: ci/centos/containerized-tests

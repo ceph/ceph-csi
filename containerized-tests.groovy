@@ -30,7 +30,7 @@ node('cico-workspace') {
 
 	try {
 		stage('prepare bare-metal machine') {
-			if ("${ghprbPullId}".length() != 0) {
+			if (params.ghprbPullId != null) {
 				ref = "pull/${ghprbPullId}/head"
 			}
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh root@${CICO_NODE}:'
@@ -42,7 +42,7 @@ node('cico-workspace') {
 					sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test CONTAINER_CMD=podman"'
 				}
 			},
-			build: { 
+			build: {
 				node('cico-workspace') {
 					sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman"'
 				}
