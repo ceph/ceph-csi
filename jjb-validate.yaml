@@ -3,9 +3,21 @@
     name: jjb-validate
     project-type: pipeline
     sandbox: true
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/ceph/ceph-csi
+      - build-discarder:
+          days-to-keep: 7
+          artifact-days-to-keep: 7
     dsl: |
       def GIT_REPO = 'http://github.com/ceph/ceph-csi'
       def GIT_BRANCH = 'ci/centos'
+
+      if (params.ghprbPullId != null) {
+          GIT_BRANCH = "pr/${ghprbPullId}/head"
+      }
+
       node {
         stage('checkout ci repository') {
           git url: "${GIT_REPO}", branch: "${GIT_BRANCH}", changelog: false
@@ -16,6 +28,14 @@
       }
     triggers:
       - github-pull-request:
+          status-context: ci/centos/jjb-validate
+          trigger-phrase: '/(re)?test ((all)|(ci/centos/jjb-validate))'
+          permit-all: true
+          # TODO: set github-hooks to true when it is configured in GitHub
+          github-hooks: false
+          cron: 'H/5 * * * *'
+          white-list-target-branches:
+            - ci/centos
           admin-list:
             - nixpanic
           org-list:
