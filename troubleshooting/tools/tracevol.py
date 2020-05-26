@@ -1,28 +1,22 @@
 #!/usr/bin/python
 """
 Copyright 2019 The Ceph-CSI Authors.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-
 #pylint: disable=line-too-long
 python tool to trace backend image name from pvc
+Note: For the script to work properly python>=3.x is required
 sample input:
 python -c oc -k /home/.kube/config -n default -rn rook-ceph -id admin -key
 adminkey
-
 Sample output:
-
 +----------+------------------------------------------+----------------------------------------------+-----------------+--------------+------------------+
 | PVC Name |                 PV Name                  |                  Image
 Name                  | PV name in omap | Image ID in omap | Image in cluster |
@@ -171,20 +165,20 @@ def check_pv_name_in_rados(arg, image_id, pvc_name, pool_name):
     stdout, stderr = out.communicate()
     if stderr is not None:
         return False
-    name = ''
-    lines = [x.strip() for x in stdout.split("\n")]
+    name = b''
+    lines = [x.strip() for x in stdout.split(b"\n")]
     for line in lines:
-        if ' ' not in line:
+        if b' ' not in line:
             continue
-        if 'value' in line and 'bytes' in line:
+        if b'value' in line and b'bytes' in line:
             continue
-        part = re.findall(r'[A-Za-z0-9\-]+', line)
+        part = re.findall(br'[A-Za-z0-9\-]+', line)
         if part:
             name += part[-1]
-    if name != image_id:
+    if name.decode() != image_id:
         if arg.debug:
             print("expected image Id %s found Id in rados %s" %
-                  (image_id, name))
+                  (image_id, name.decode()))
         return False
     return True
 
@@ -215,11 +209,11 @@ def check_image_in_cluster(arg, image_uuid, pool_name):
     stdout, stderr = out.communicate()
     if stderr is not None:
         if arg.debug:
-            print("failed to toolbox %s", stderr)
+            print(b"failed to toolbox %s", stderr)
         return False
-    if "No such file or directory" in stdout:
+    if b"No such file or directory" in stdout:
         if arg.debug:
-            print("image not found in cluster", stdout)
+            print("image not found in cluster")
         return False
     return True
 
@@ -250,23 +244,23 @@ def check_image_uuid_in_rados(arg, image_id, pvc_name, pool_name):
     stdout, stderr = out.communicate()
     if stderr is not None:
         if arg.debug:
-            print("failed to toolbox %s", stderr)
+            print("failed to get toolbox %s", stderr)
         return False
 
-    name = ''
-    lines = [x.strip() for x in stdout.split("\n")]
+    name = b''
+    lines = [x.strip() for x in stdout.split(b"\n")]
     for line in lines:
-        if ' ' not in line:
+        if b' ' not in line:
             continue
-        if 'value' in line and 'bytes' in line:
+        if b'value' in line and b'bytes' in line:
             continue
-        part = re.findall(r'[A-Za-z0-9\-]+', line)
+        part = re.findall(br'[A-Za-z0-9\-]+', line)
         if part:
             name += part[-1]
-    if name != pvc_name:
+    if name.decode() != pvc_name:
         if arg.debug:
             print("expected image Id %s found Id in rados %s" %
-                  (pvc_name, name))
+                  (pvc_name, name.decode()))
         return False
     return True
 
@@ -373,7 +367,7 @@ def get_pool_name(arg, vol_id):
     pool_id = vol_id.split('-')
     if len(pool_id) < 4:
         if arg.debug:
-            print("pood id notin proper format", pool_id)
+            print("pood id not in proper format", pool_id)
         return ""
     if pool_id[3] in arg.rooknamespace:
         pool_id = pool_id[4]
@@ -389,5 +383,8 @@ if __name__ == "__main__":
     ARGS = PARSER.parse_args()
     if ARGS.command not in ["kubectl", "oc"]:
         print("%s command not supported" % ARGS.command)
+        sys.exit(1)
+    if sys.version_info[0] < 3:
+        print("python version less than 3 is not supported.")
         sys.exit(1)
     list_pvc_vol_name_mapping(ARGS)
