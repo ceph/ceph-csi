@@ -15,4 +15,4 @@
         }
       }
     triggers:
-    - github
+      - github
