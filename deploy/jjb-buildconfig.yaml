@@ -7,7 +7,7 @@ metadata:
     app: jjb
 spec:
   tags:
-  - name: latest
+    - name: latest
 ---
 apiVersion: v1
 kind: BuildConfig
