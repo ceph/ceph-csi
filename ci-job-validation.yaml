@@ -1,0 +1,34 @@
+---
+- job:
+    name: ci-job-validation
+    project-type: pipeline
+    sandbox: true
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/ceph/ceph-csi
+      - build-discarder:
+          days-to-keep: 7
+          artifact-days-to-keep: 7
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/ceph/ceph-csi
+            branches:
+              - ci/centos
+      script-path: ci-job-validation.groovy
+      lightweight-checkout: true
+    triggers:
+      - github-pull-request:
+          status-context: ci/centos/job-validation
+          trigger-phrase: '/(re)?test ((all)|(ci/centos/job-validation))'
+          permit-all: true
+          # TODO: set github-hooks to true when it is configured in GitHub
+          github-hooks: false
+          cron: 'H/5 * * * *'
+          white-list-target-branches:
+            - ci/centos
+          admin-list:
+            - nixpanic
+          org-list:
+            - ceph
