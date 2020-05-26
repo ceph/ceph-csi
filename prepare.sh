@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # In case no value is specified, default values will be used.
 gitrepo="https://github.com/ceph/ceph-csi"
