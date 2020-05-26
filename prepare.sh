@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e -o pipefail
+
 # In case no value is specified, default values will be used.
 gitrepo="https://github.com/ceph/ceph-csi"
 workdir="tip/"
@@ -21,38 +23,38 @@ ret=$?
 
 if [ ${ret} -ne 0 ]
 then
-    echo "Try '--help' for more information." 
-    exit 1   
+    echo "Try '--help' for more information."
+    exit 1
 fi
 
-eval set -- ${opts}
+eval set -- "${opts}"
 
 while true; do
     case "${1}" in
-    --help)  
+    --help)
         shift
         echo "Options:"
         echo "--help|-h                 specify the flags"
         echo "--ref                     specify the reference of pr"
         echo "--workdir                 specify the working directory"
-        echo "--gitrepo                 specify the git repository" 
+        echo "--gitrepo                 specify the git repository"
         echo " "
         echo "Sample Usage:"
         echo "./prepare.sh --gitrepo=https://github.com/example --workdir=/opt/build --ref=pull/123/head"
         exit 0
         ;;
-    --gitrepo)  
+    --gitrepo)
         shift
         gitrepo=${1}
         ;;
-    --workdir)  
+    --workdir)
         shift
         workdir=${1}
         ;;
-    --ref)  
+    --ref)
         shift
         ref=${1}
-        echo ${ref}      
+        echo "${ref}"
         ;;
     --)
         shift
@@ -66,7 +68,7 @@ set -x
 
 yum -y install git podman
 
-git clone --depth=1 ${gitrepo} ${workdir}
-cd ${workdir}
+git clone --depth=1 "${gitrepo}" "${workdir}"
+cd "${workdir}"
 git fetch --depth=1 origin "${ref}:tip/${ref}"
 git checkout "tip/${ref}"
