@@ -7,7 +7,7 @@
 - a Jenkins Pipeline is used to reserve bare metal system(s), and run jobs on
   those systems
 
-# Repository/Branch Structure
+## Repository/Branch Structure
 
 This is the `ci/centos` branch, where all the scripts for the Jenkins jobs are
 maintained. The tests that are executed by the jobs are part of the normal
@@ -47,7 +47,6 @@ they can be run. Importing is done with the `jenkins-jobs` command, which runs
 in a `jjb` container. To build the container, and provide the configuration for
 Jenkins Job Builder, see the [documentation in the `deploy/`
 directory](deploy/README.md).
-
 
 [ceph_csi_ci]: https://jenkins-ceph-csi.apps.ci.centos.org
 [app_ci_centos_org]: https://console.apps.ci.centos.org:8443/console/project/ceph-csi
