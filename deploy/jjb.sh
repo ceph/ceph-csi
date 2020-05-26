@@ -5,10 +5,13 @@
 # container to report the status.
 #
 
+# error out in case a command fails
+set -e
+
 CMD="${1}"
 
 get_pod_status() {
-	oc get pod/${1} --no-headers -o=jsonpath='{.status.phase}'
+	oc get "pod/${1}" --no-headers -o=jsonpath='{.status.phase}'
 }
 
 case "${CMD}" in
@@ -23,18 +26,21 @@ case "${CMD}" in
 esac
 
 # make sure there is a valid OCP session
-oc version || exit 1
+oc version
 
 # the deploy directory where this script is located, contains files we need
-cd $(dirname ${0})
+cd "$(dirname "${0}")"
 
-oc create -f jjb-${CMD}.yaml
+oc create -f "jjb-${CMD}.yaml"
 
 # loop until pod is available
 while true
 do
-	jjb_pod=$(oc get pods --no-headers -l job-name=jjb-${CMD} -o=jsonpath='{.items[0].metadata.name}')
-	[ ${?} = 0 ] && [ -n "${jjb_pod}" ] && break
+	jjb_pod=$(oc get pods --no-headers -l "job-name=jjb-${CMD}" -o=jsonpath='{.items[0].metadata.name}')
+	ret=${?}
+
+	# break the loop when the command returned success and jjb_pod is not empty
+	[ ${ret} = 0 ] && [ -n "${jjb_pod}" ] && break
 	sleep 1
 done
 
@@ -42,8 +48,10 @@ done
 while true
 do
 	status=$(get_pod_status "${jjb_pod}")
+	ret=${?}
+
 	# TODO: is Running as a status sufficient, did it terminate yet?
-	[ ${?} = 0 ] && ( [ "${status}" = "Succeeded" ] || [ "${status}" = "Failed" ] ) && break
+	[ ${ret} = 0 ] && { [ "${status}" = "Succeeded" ] || [ "${status}" = "Failed" ]; } && break
 	sleep 0.5
 done
 
@@ -51,7 +59,7 @@ done
 oc logs "${jjb_pod}"
 
 # delete the job, so a next run can create it again
-oc delete --wait -f jjb-${CMD}.yaml
+oc delete --wait -f "jjb-${CMD}.yaml"
 
 # return the exit status of the pod
 [ "${status}" = 'Succeeded' ]
