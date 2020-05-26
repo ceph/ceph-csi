@@ -17,8 +17,9 @@ opts=$(getopt \
     --options "" \
     -- "$@"
 )
+ret=$?
 
-if [ $? -ne 0 ]
+if [ ${ret} -ne 0 ]
 then
     echo "Try '--help' for more information." 
     exit 1   
