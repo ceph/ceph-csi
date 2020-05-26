@@ -17,6 +17,6 @@
     triggers:
       - github-pull-request:
           admin-list:
-          - nixpanic
+            - nixpanic
           org-list:
-          - ceph
+            - ceph
