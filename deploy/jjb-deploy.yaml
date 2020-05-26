@@ -13,21 +13,21 @@ spec:
       app: jjb
     spec:
       containers:
-      - name: jjb
-        image: 172.30.254.79:5000/ceph-csi/jjb:latest
-        env:
-        - name: GIT_REPO
-          value: https://github.com/ceph/ceph-csi
-        - name: GIT_REF
-          value: ci/centos
-        - name: MAKE_TARGET
-          value: deploy
-        volumeMounts:
-        - name: etc-jj
-          mountPath: /etc/jenkins_jobs
-          readOnly: true
+        - name: jjb
+          image: 172.30.254.79:5000/ceph-csi/jjb:latest
+          env:
+            - name: GIT_REPO
+              value: https://github.com/ceph/ceph-csi
+            - name: GIT_REF
+              value: ci/centos
+            - name: MAKE_TARGET
+              value: deploy
+          volumeMounts:
+            - name: etc-jj
+              mountPath: /etc/jenkins_jobs
+              readOnly: true
       volumes:
-      - name: etc-jj
-        configMap:
-          name: jenkins-jobs
+        - name: etc-jj
+          configMap:
+            name: jenkins-jobs
       restartPolicy: Never
