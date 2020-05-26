@@ -13,11 +13,11 @@ spec:
       app: jjb-validate
     spec:
       containers:
-      - name: jjb-validate
-        image: 172.30.254.79:5000/ceph-csi/jjb:latest
-        env:
-        - name: GIT_REPO
-          value: https://github.com/ceph/ceph-csi
-        - name: GIT_REF
-          value: ci/centos
+        - name: jjb-validate
+          image: 172.30.254.79:5000/ceph-csi/jjb:latest
+          env:
+            - name: GIT_REPO
+              value: https://github.com/ceph/ceph-csi
+            - name: GIT_REF
+              value: ci/centos
       restartPolicy: Never
