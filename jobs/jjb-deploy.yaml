@@ -3,6 +3,13 @@
     name: jjb-deploy
     project-type: pipeline
     sandbox: true
+    concurrent: false
+    properties:
+      - github:
+          url: https://github.com/ceph/ceph-csi
+      - build-discarder:
+          days-to-keep: 7
+          artifact-days-to-keep: 7
     dsl: |
       def GIT_REPO = 'http://github.com/ceph/ceph-csi'
       def GIT_BRANCH = 'ci/centos'
@@ -15,11 +22,11 @@
         }
       }
     scm:
-      git:
-        name: origin
-        url: https://github.com/ceph/ceph-csi
-        branches:
-          - ci/centos
+      - git:
+          name: origin
+          url: https://github.com/ceph/ceph-csi
+          branches:
+            - ci/centos
     triggers:
       - pollscm:
           cron: "H/5 * * * *"
