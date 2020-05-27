@@ -2,7 +2,6 @@ package rados
 
 // #cgo LDFLAGS: -lrados
 // #include <stdlib.h>
-// #include <rados/librados.h>
 import "C"
 
 import (
