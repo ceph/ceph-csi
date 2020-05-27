@@ -1,7 +1,7 @@
 # Continuous Integration Jobs for the CentOS CI
 
-- [dedicated Jenkins instance](ceph_csi_ci) for Ceph-CSI
-- Jenkins is hosted on [OpenShift in the CentOS CI](app_ci_centos_org)
+- [dedicated Jenkins instance][ceph_csi_ci] for Ceph-CSI
+- Jenkins is hosted on [OpenShift in the CentOS CI][app_ci_centos_org]
 - scripts and Jenkins jobs are hosted in the Ceph-CSI repository (ci/centos
   branch)
 - a Jenkins Pipeline is used to reserve bare metal system(s), and run jobs on
@@ -16,13 +16,13 @@ projects branches.
 As an example, the `containerized-tests` Jenkins job consists out of the
 following files:
 
-- `jobs/containerized-tests.yaml` is a [Jenkins Job Builder](jjb) configuration
+- `jobs/containerized-tests.yaml` is a [Jenkins Job Builder][jjb] configuration
   that describes the events when the job should get run and fetches the
   `.groovy` file from the git repository/branch
-- `containerized-tests.groovy` is the [Jenkins Pipeline](pipeline) that
+- `containerized-tests.groovy` is the [Jenkins Pipeline][pipeline] that
   contains the stages for the Jenkins Job itself. In order to work with [the
-  bare-metal machines from the CentOS CI](centos_ci), it executes the following
-  stages:
+  bare-metal machines from the CentOS CI][centos_ci_hw], it executes the
+  following stages:
 
   1. dynamically allocate a Jenkins Slave (`node('cico-workspace')`) with tools
      and configuration to request a bare-metal machine
