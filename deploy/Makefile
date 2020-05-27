@@ -2,7 +2,7 @@ WORKDIR ?= $(CURDIR)/../
 OUTPUT ?= $(WORKDIR)/_output/
 
 test:
-	jenkins-jobs test -o $(OUTPUT) $(WORKDIR)/jobs
+	cd $(WORKDIR) && jenkins-jobs test -o $(OUTPUT) jobs
 
 deploy:
-	jenkins-jobs update $(WORKDIR)/jobs
+	cd $(WORKDIR) && jenkins-jobs update jobs
