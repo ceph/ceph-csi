@@ -6,11 +6,13 @@ set -e -o pipefail
 gitrepo="https://github.com/ceph/ceph-csi"
 workdir="tip/"
 ref="master"
+base="master"
 
 ARGUMENT_LIST=(
     "ref"
     "workdir"
     "gitrepo"
+    "base"
 )
 
 opts=$(getopt \
@@ -38,6 +40,7 @@ while true; do
         echo "--ref                     specify the reference of pr"
         echo "--workdir                 specify the working directory"
         echo "--gitrepo                 specify the git repository"
+        echo "--base                    specify the base branch to checkout"
         echo " "
         echo "Sample Usage:"
         echo "./prepare.sh --gitrepo=https://github.com/example --workdir=/opt/build --ref=pull/123/head"
@@ -56,6 +59,10 @@ while true; do
         ref=${1}
         echo "${ref}"
         ;;
+    --base)
+        shift
+        base=${1}
+        ;;
     --)
         shift
         break
@@ -68,7 +75,7 @@ set -x
 
 yum -y install git podman
 
-git clone --depth=1 "${gitrepo}" "${workdir}"
+git clone --depth=1 --branch="${base}" "${gitrepo}" "${workdir}"
 cd "${workdir}"
-git fetch --depth=1 origin "${ref}:tip/${ref}"
+git fetch origin "${ref}:tip/${ref}"
 git checkout "tip/${ref}"
