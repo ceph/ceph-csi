@@ -123,3 +123,43 @@ pull_request_rules:
         strict: smart
       dismiss_reviews: {}
       delete_head_branch: {}
+  - name: remove outdated approvals on ci/centos
+    conditions:
+      - base=ci/centos
+    actions:
+      dismiss_reviews:
+        approved: true
+        changes_requested: false
+  - name: automatic merge on ci/centos
+    conditions:
+      - label!=DNM
+      - base=ci/centos
+      - "#approved-reviews-by>=2"
+      - "#changes-requested-reviews-by=0"
+      - "status-success=ci/centos/job-validation"
+      - "status-success=DCO"
+      - "status-success=commitlint"
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
+  - name: automatic merge PR having ready-to-merge label on ci/centos
+    conditions:
+      - label!=DNM
+      - label=ready-to-merge
+      - base=ci/centos
+      - "#approved-reviews-by>=1"
+      - "#changes-requested-reviews-by=0"
+      - "status-success=ci/centos/job-validation"
+      - "status-success=DCO"
+      - "status-success=commitlint"
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
