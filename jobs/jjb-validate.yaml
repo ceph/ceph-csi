@@ -20,7 +20,9 @@
 
       node {
         stage('checkout ci repository') {
-          git url: "${GIT_REPO}", branch: "${GIT_BRANCH}", changelog: false
+          checkout([$class: 'GitSCM', branches: [[name: 'FETCH_HEAD']],
+            userRemoteConfigs: [[url: "${GIT_REPO}",
+              refspec: "${GIT_BRANCH}"]]])
         }
         stage('validation') {
           sh './deploy/jjb.sh validate'
