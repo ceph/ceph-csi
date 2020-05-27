@@ -79,7 +79,13 @@ jobs:
         # install helm for helm lint
         - curl -L https://git.io/get_helm.sh
           | bash -s -- -v "${HELM_VERSION}"
+        # yamllint disable rule:line-length
+        - mkdir -p /opt/commitlint && pushd /opt/commitlint
+          && npm init -y && npm install --save-dev @commitlint/travis-cli && popd
+        # yamllint enable rule:line-length
+        - export PATH=/opt/commitlint/node_modules/.bin:$PATH
       script:
+        - commitlint-travis
         - make go-lint
         - make lint-extras
         - make gosec
@@ -90,12 +96,6 @@ jobs:
       name: Build multi-architecture image for amd64 and arm64
       script:
         - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
-
-    - stage: build testing
-      name: containerized test (Fedora) and build (CentOS)
-      script:
-        - make containerized-test || travis_terminate 1;
-        - make containerized-build || travis_terminate 1;
 
     - stage: build testing
       name: cephcsi on Arm64

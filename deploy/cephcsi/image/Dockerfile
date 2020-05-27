@@ -48,4 +48,7 @@ LABEL maintainers="Ceph-CSI Authors" \
 
 COPY --from=builder ${SRC_DIR}/_output/cephcsi /usr/local/bin/cephcsi
 
+# verify that all dynamically linked libraries are available
+RUN [ $(ldd /usr/local/bin/cephcsi | grep -c '=> not found') = '0' ]
+
 ENTRYPOINT ["/usr/local/bin/cephcsi"]

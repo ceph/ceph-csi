@@ -41,6 +41,11 @@ parameters:
   # If omitted, default volume mounter will be used - this is
   # determined by probing for ceph-fuse and mount.ceph
   # mounter: kernel
+
+  # (optional) Prefix to use for naming subvolumes.
+  # If omitted, defaults to "csi-vol-".
+  # volumeNamePrefix: "foo-bar-"
+
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 mountOptions:
