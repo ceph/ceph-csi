@@ -7,6 +7,15 @@ pull_request_rules:
       dismiss_reviews:
         approved: true
         changes_requested: false
+  - name: ask to resolve conflict
+    conditions:
+      - conflict
+    actions:
+      comment:
+        # yamllint disable-line rule:truthy
+        message: "This pull request now has conflicts with the target branch.
+        Could you please resolve conflicts and force push the corrected
+        changes? 🙏"
   - name: automatic merge
     conditions:
       - label!=DNM
@@ -14,6 +23,7 @@ pull_request_rules:
       - "#approved-reviews-by>=2"
       - "#changes-requested-reviews-by=0"
       - "status-success=continuous-integration/travis-ci/pr"
+      - "status-success=ci/centos/containerized-tests"
       - "status-success=DCO"
       - "status-success=commitlint"
     actions:
@@ -31,6 +41,7 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
       - "status-success=continuous-integration/travis-ci/pr"
+      - "status-success=ci/centos/containerized-tests"
       - "status-success=DCO"
       - "status-success=commitlint"
     actions:

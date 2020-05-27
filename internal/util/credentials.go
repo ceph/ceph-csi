@@ -33,6 +33,7 @@ const (
 	tmpKeyFileNamePrefix = "keyfile-"
 )
 
+// Credentials struct represents credentials to access the ceph cluster.
 type Credentials struct {
 	ID      string
 	KeyFile string
@@ -93,19 +94,23 @@ func newCredentialsFromSecret(idField, keyField string, secrets map[string]strin
 	return c, err
 }
 
+// DeleteCredentials removes the KeyFile.
 func (cr *Credentials) DeleteCredentials() {
 	// don't complain about unhandled error
 	_ = os.Remove(cr.KeyFile)
 }
 
+// NewUserCredentials creates new user credentials from secret.
 func NewUserCredentials(secrets map[string]string) (*Credentials, error) {
 	return newCredentialsFromSecret(credUserID, credUserKey, secrets)
 }
 
+// NewAdminCredentials creates new admin credentials from secret.
 func NewAdminCredentials(secrets map[string]string) (*Credentials, error) {
 	return newCredentialsFromSecret(credAdminID, credAdminKey, secrets)
 }
 
+// NewCredentials generates new credentials when id and key are provided.
 func NewCredentials(id, key string) (*Credentials, error) {
 	var c = &Credentials{}
 
@@ -118,6 +123,7 @@ func NewCredentials(id, key string) (*Credentials, error) {
 	return c, err
 }
 
+// GetMonValFromSecret returns monitors from secret.
 func GetMonValFromSecret(secrets map[string]string) (string, error) {
 	if mons, ok := secrets[credMonitors]; ok {
 		return mons, nil

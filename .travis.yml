@@ -98,12 +98,6 @@ jobs:
         - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
 
     - stage: build testing
-      name: containerized test (Fedora) and build (CentOS)
-      script:
-        - make containerized-test || travis_terminate 1;
-        - make containerized-build || travis_terminate 1;
-
-    - stage: build testing
       name: cephcsi on Arm64
       arch: arm64
       script:
