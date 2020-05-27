@@ -13,6 +13,7 @@
     pipeline-scm:
       scm:
         - git:
+            name: origin
             url: https://github.com/ceph/ceph-csi
             branches:
               - ci/centos
