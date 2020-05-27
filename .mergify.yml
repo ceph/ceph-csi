@@ -23,6 +23,7 @@ pull_request_rules:
       - "#approved-reviews-by>=2"
       - "#changes-requested-reviews-by=0"
       - "status-success=continuous-integration/travis-ci/pr"
+      - "status-success=ci/centos/containerized-tests"
       - "status-success=DCO"
       - "status-success=commitlint"
     actions:
@@ -40,6 +41,7 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
       - "status-success=continuous-integration/travis-ci/pr"
+      - "status-success=ci/centos/containerized-tests"
       - "status-success=DCO"
       - "status-success=commitlint"
     actions:
