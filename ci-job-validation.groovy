@@ -3,6 +3,7 @@ def cico_retry_interval = 60
 def ci_git_repo = 'https://github.com/ceph/ceph-csi'
 def ci_git_branch = 'ci/centos'
 def ref = 'ci/centos'
+def base = ''
 
 node('cico-workspace') {
 	stage('checkout ci repository') {
@@ -32,8 +33,11 @@ node('cico-workspace') {
 			if (params.ghprbPullId != null) {
 				ref = "pull/${ghprbPullId}/head"
 			}
+			if (params.ghprbTargetBranch != null) {
+				base = "--base=${ghprbTargetBranch}"
+			}
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh root@${CICO_NODE}:'
-			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${ci_git_repo} --ref=${ref}"
+			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${ci_git_repo} --ref=${ref} ${base}"
 		}
 		stage('test') {
 			sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "cd /opt/build/go/src/github.com/ceph/ceph-csi && make"'
