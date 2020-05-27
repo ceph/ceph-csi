@@ -16,7 +16,7 @@ projects branches.
 As an example, the `containerized-tests` Jenkins job consists out of the
 following files:
 
-- `containerized-tests.yaml` is a [Jenkins Job Builder](jjb) configuration
+- `jobs/containerized-tests.yaml` is a [Jenkins Job Builder](jjb) configuration
   that describes the events when the job should get run and fetches the
   `.groovy` file from the git repository/branch
 - `containerized-tests.groovy` is the [Jenkins Pipeline](pipeline) that
