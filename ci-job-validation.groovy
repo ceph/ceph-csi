@@ -7,9 +7,11 @@ def base = ''
 
 node('cico-workspace') {
 	stage('checkout ci repository') {
-		git url: "${ci_git_repo}",
-			branch: "${ci_git_branch}",
-			changelog: false
+		if (params.ghprbPullId != null) {
+			ref = "pull/${ghprbPullId}/head"
+		}
+		checkout([$class: 'GitSCM', branches: [[name: 'FETCH_HEAD']],
+			userRemoteConfigs: [[url: "${ci_git_repo}", refspec: "${ref}"]]])
 	}
 
 	stage('reserve bare-metal machine') {
@@ -30,9 +32,6 @@ node('cico-workspace') {
 
 	try {
 		stage('prepare bare-metal machine') {
-			if (params.ghprbPullId != null) {
-				ref = "pull/${ghprbPullId}/head"
-			}
 			if (params.ghprbTargetBranch != null) {
 				base = "--base=${ghprbTargetBranch}"
 			}
