@@ -231,10 +231,10 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		err = rbdVol.ensureEncryptionMetadataSet(rbdImageRequiresEncryption)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to save encryption status, deleting image %s: %s"),
-				rbdVol.RbdImageName, err)
+				rbdVol, err)
 			if deleteErr := deleteImage(ctx, rbdVol, cr); deleteErr != nil {
-				klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"),
-					rbdVol.Pool, rbdVol.RbdImageName, deleteErr)
+				klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s with error: %v"),
+					rbdVol, deleteErr)
 				return nil, deleteErr
 			}
 			return nil, err
@@ -452,8 +452,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// Deleting rbd image
 	klog.V(4).Infof(util.Log(ctx, "deleting image %s"), rbdVol.RbdImageName)
 	if err = deleteImage(ctx, rbdVol, cr); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"),
-			rbdVol.Pool, rbdVol.RbdImageName, err)
+		klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s with error: %v"),
+			rbdVol, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -740,16 +740,15 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	err = unprotectSnapshot(ctx, rbdSnap, cr)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition,
-			"failed to unprotect snapshot: %s/%s with error: %v",
-			rbdSnap.Pool, rbdSnap.RbdSnapName, err)
+			"failed to unprotect snapshot: %s with error: %v",
+			rbdSnap, err)
 	}
 
 	// Deleting snapshot
-	klog.V(4).Infof(util.Log(ctx, "deleting Snaphot %s"), rbdSnap.RbdSnapName)
+	klog.V(4).Infof(util.Log(ctx, "deleting Snaphot %s"), rbdSnap)
 	if err := deleteSnapshot(ctx, rbdSnap, cr); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition,
-			"failed to delete snapshot: %s/%s with error: %v",
-			rbdSnap.Pool, rbdSnap.RbdSnapName, err)
+			"failed to delete snapshot: %s with error: %v", rbdSnap, err)
 	}
 
 	return &csi.DeleteSnapshotResponse{}, nil
@@ -801,8 +800,8 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	defer rbdVol.Destroy()
 
 	if rbdVol.Encrypted {
-		return nil, status.Errorf(codes.InvalidArgument, "encrypted volumes do not support resize (%s/%s)",
-			rbdVol.Pool, rbdVol.RbdImageName)
+		return nil, status.Errorf(codes.InvalidArgument, "encrypted volumes do not support resize (%s)",
+			rbdVol)
 	}
 
 	// always round up the request size in bytes to the nearest MiB/GiB
@@ -811,12 +810,12 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	// resize volume if required
 	nodeExpansion := false
 	if rbdVol.VolSize < volSize {
-		klog.V(4).Infof(util.Log(ctx, "rbd volume %s/%s size is %v,resizing to %v"), rbdVol.Pool, rbdVol.RbdImageName, rbdVol.VolSize, volSize)
+		klog.V(4).Infof(util.Log(ctx, "rbd volume %s size is %v,resizing to %v"), rbdVol, rbdVol.VolSize, volSize)
 		rbdVol.VolSize = volSize
 		nodeExpansion = true
 		err = resizeRBDImage(rbdVol, cr)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to resize rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.RbdImageName, err)
+			klog.Errorf(util.Log(ctx, "failed to resize rbd image: %s with error: %v"), rbdVol, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
