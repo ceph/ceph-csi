@@ -623,7 +623,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	}
 
 	// Unmapping rbd device
-	imageSpec := imgInfo.Pool + "/" + imgInfo.ImageName
+	imageSpec := imgInfo.String()
 	if err = detachRBDImageOrDeviceSpec(ctx, imageSpec, true, imgInfo.NbdAccess, imgInfo.Encrypted, req.GetVolumeId()); err != nil {
 		klog.Errorf(util.Log(ctx, "error unmapping volume (%s) from staging path (%s): (%v)"), req.GetVolumeId(), stagingTargetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
@@ -730,7 +730,7 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 }
 
 func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath string) (string, error) {
-	imageSpec := volOptions.Pool + "/" + volOptions.RbdImageName
+	imageSpec := volOptions.String()
 	encrypted, err := volOptions.checkRbdImageEncrypted(ctx)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to get encryption status for rbd image %s: %v"),
@@ -780,13 +780,13 @@ func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rb
 func encryptDevice(ctx context.Context, rbdVol *rbdVolume, devicePath string) error {
 	passphrase, err := util.GetCryptoPassphrase(ctx, rbdVol.VolID, rbdVol.KMS)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get crypto passphrase for %s/%s: %v"),
-			rbdVol.Pool, rbdVol.RbdImageName, err)
+		klog.Errorf(util.Log(ctx, "failed to get crypto passphrase for %s: %v"),
+			rbdVol, err)
 		return err
 	}
 
 	if err = util.EncryptVolume(ctx, devicePath, passphrase); err != nil {
-		err = fmt.Errorf("failed to encrypt volume %s/%s: %v", rbdVol.Pool, rbdVol.RbdImageName, err)
+		err = fmt.Errorf("failed to encrypt volume %s: %v", rbdVol, err)
 		klog.Errorf(util.Log(ctx, err.Error()))
 		return err
 	}
@@ -803,8 +803,8 @@ func encryptDevice(ctx context.Context, rbdVol *rbdVolume, devicePath string) er
 func openEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath string) (string, error) {
 	passphrase, err := util.GetCryptoPassphrase(ctx, volOptions.VolID, volOptions.KMS)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get passphrase for encrypted device %s/%s: %v"),
-			volOptions.Pool, volOptions.RbdImageName, err)
+		klog.Errorf(util.Log(ctx, "failed to get passphrase for encrypted device %s: %v"),
+			volOptions, err)
 		return "", status.Error(codes.Internal, err.Error())
 	}
 
@@ -820,8 +820,8 @@ func openEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath 
 	} else {
 		err = util.OpenEncryptedVolume(ctx, devicePath, mapperFile, passphrase)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to open device %s/%s: %v"),
-				volOptions.Pool, volOptions.RbdImageName, err)
+			klog.Errorf(util.Log(ctx, "failed to open device %s: %v"),
+				volOptions, err)
 			return devicePath, err
 		}
 	}

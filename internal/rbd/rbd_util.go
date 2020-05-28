@@ -156,21 +156,36 @@ func (rv *rbdVolume) Destroy() {
 	}
 }
 
+// String returns the image-spec (pool/image) format of the image
+func (rv *rbdVolume) String() string {
+	return fmt.Sprintf("%s/%s", rv.Pool, rv.RbdImageName)
+}
+
+// String returns the snap-spec (pool/image@snap) format of the snapshot
+func (rs *rbdSnapshot) String() string {
+	return fmt.Sprintf("%s/%s@%s", rs.Pool, rs.RbdImageName, rs.RbdSnapName)
+}
+
+// imageSpec returns the image-spec (pool/image) format of the snapshot
+func (rs *rbdSnapshot) imageSpec() string {
+	return fmt.Sprintf("%s/%s", rs.Pool, rs.RbdImageName)
+}
+
 // createImage creates a new ceph image with provision and volume options.
 func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(pOpts.VolSize))
 	options := librbd.NewRbdImageOptions()
 
-	logMsg := "rbd: create %s size %s (features: %s) using mon %s, pool %s "
+	logMsg := "rbd: create %s size %s (features: %s) using mon %s"
 	if pOpts.DataPool != "" {
-		logMsg += fmt.Sprintf("data pool %s", pOpts.DataPool)
+		logMsg += fmt.Sprintf(", data pool %s", pOpts.DataPool)
 		err := options.SetString(librbd.RbdImageOptionDataPool, pOpts.DataPool)
 		if err != nil {
 			return errors.Wrapf(err, "failed to set data pool")
 		}
 	}
 	klog.V(4).Infof(util.Log(ctx, logMsg),
-		pOpts.RbdImageName, volSzMiB, pOpts.ImageFeatures, pOpts.Monitors, pOpts.Pool)
+		pOpts, volSzMiB, pOpts.ImageFeatures, pOpts.Monitors)
 
 	if pOpts.ImageFeatures != "" {
 		features := imageFeaturesToUint64(ctx, pOpts.ImageFeatures)
@@ -227,10 +242,8 @@ func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (boo
 	var output string
 	var cmd []byte
 
-	image := pOpts.RbdImageName
-
-	klog.V(4).Infof(util.Log(ctx, "rbd: status %s using mon %s, pool %s"), image, pOpts.Monitors, pOpts.Pool)
-	args := []string{"status", image, "--pool", pOpts.Pool, "-m", pOpts.Monitors, "--id", cr.ID, "--keyfile=" + cr.KeyFile}
+	klog.V(4).Infof(util.Log(ctx, "rbd: status %s using mon %s"), pOpts, pOpts.Monitors)
+	args := []string{"status", pOpts.String(), "-m", pOpts.Monitors, "--id", cr.ID, "--keyfile=" + cr.KeyFile}
 	cmd, err := execCommand("rbd", args)
 	output = string(cmd)
 
@@ -248,10 +261,10 @@ func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (boo
 	}
 
 	if strings.Contains(output, imageWatcherStr) {
-		klog.V(4).Infof(util.Log(ctx, "rbd: watchers on %s: %s"), image, output)
+		klog.V(4).Infof(util.Log(ctx, "rbd: watchers on %s: %s"), pOpts, output)
 		return true, output, nil
 	}
-	klog.Warningf(util.Log(ctx, "rbd: no watchers on %s"), image)
+	klog.Warningf(util.Log(ctx, "rbd: no watchers on %s"), pOpts)
 	return false, output, nil
 }
 
@@ -261,7 +274,7 @@ func rbdManagerTaskDeleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.C
 	var output []byte
 
 	args := []string{"rbd", "task", "add", "remove",
-		pOpts.Pool + "/" + pOpts.RbdImageName,
+		pOpts.String(),
 		"--id", cr.ID,
 		"--keyfile=" + cr.KeyFile,
 		"-m", pOpts.Monitors,
@@ -294,16 +307,16 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		return err
 	}
 	if found {
-		klog.Errorf(util.Log(ctx, "rbd is still being used "), image)
-		return fmt.Errorf("rbd %s is still being used", image)
+		klog.Errorf(util.Log(ctx, "rbd %s is still being used"), pOpts)
+		return fmt.Errorf("rbd %s is still being used", pOpts)
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "rbd: rm %s using mon %s, pool %s"), image, pOpts.Monitors, pOpts.Pool)
+	klog.V(4).Infof(util.Log(ctx, "rbd: rm %s using mon %s"), pOpts, pOpts.Monitors)
 
 	// attempt to use Ceph manager based deletion support if available
 	rbdCephMgrSupported, err := rbdManagerTaskDeleteImage(ctx, pOpts, cr)
 	if rbdCephMgrSupported && err != nil {
-		klog.Errorf(util.Log(ctx, "failed to add task to delete rbd image: %s/%s, %v"), pOpts.Pool, image, err)
+		klog.Errorf(util.Log(ctx, "failed to add task to delete rbd image: %s, %v"), pOpts, err)
 		return err
 	}
 
@@ -318,7 +331,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		rbdImage := librbd.GetImage(ioctx, image)
 		err = rbdImage.Remove()
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s, error: %v"), pOpts.Pool, image, err)
+			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s, error: %v"), pOpts, err)
 		}
 	}
 
@@ -328,8 +341,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 // updateSnapWithImageInfo updates provided rbdSnapshot with information from on-disk data
 // regarding the same
 func updateSnapWithImageInfo(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	snapInfo, err := getSnapInfo(ctx, rbdSnap.Monitors, cr, rbdSnap.Pool,
-		rbdSnap.RbdImageName, rbdSnap.RbdSnapName)
+	snapInfo, err := rbdSnap.getSnapInfo(ctx, rbdSnap.Monitors, cr)
 	if err != nil {
 		return err
 	}
@@ -349,7 +361,7 @@ func updateSnapWithImageInfo(ctx context.Context, rbdSnap *rbdSnapshot, cr *util
 // updateVolWithImageInfo updates provided rbdVolume with information from on-disk data
 // regarding the same
 func updateVolWithImageInfo(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	imageInfo, err := getImageInfo(ctx, rbdVol.Monitors, cr, rbdVol.Pool, rbdVol.RbdImageName)
+	imageInfo, err := rbdVol.getImageInfo(ctx, rbdVol.Monitors, cr)
 	if err != nil {
 		return err
 	}
@@ -702,12 +714,8 @@ func imageFeaturesToUint64(ctx context.Context, imageFeatures string) uint64 {
 func protectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
 	var output []byte
 
-	image := pOpts.RbdImageName
-	snapName := pOpts.RbdSnapName
-
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap protect %s using mon %s, pool %s "), image, pOpts.Monitors, pOpts.Pool)
-	args := []string{"snap", "protect", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
-		cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
+	klog.V(4).Infof(util.Log(ctx, "rbd: snap protect %s using mon %s"), pOpts, pOpts.Monitors)
+	args := []string{"snap", "protect", pOpts.String(), "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
 	output, err := execCommand("rbd", args)
 
@@ -721,12 +729,8 @@ func protectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentia
 func createSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
 	var output []byte
 
-	image := pOpts.RbdImageName
-	snapName := pOpts.RbdSnapName
-
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap create %s using mon %s, pool %s"), image, pOpts.Monitors, pOpts.Pool)
-	args := []string{"snap", "create", "--pool", pOpts.Pool, "--snap", snapName, image,
-		"--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
+	klog.V(4).Infof(util.Log(ctx, "rbd: snap create %s using mon %s"), pOpts, pOpts.Monitors)
+	args := []string{"snap", "create", pOpts.String(), "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
 	output, err := execCommand("rbd", args)
 
@@ -740,12 +744,8 @@ func createSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credential
 func unprotectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
 	var output []byte
 
-	image := pOpts.RbdImageName
-	snapName := pOpts.RbdSnapName
-
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap unprotect %s using mon %s, pool %s"), image, pOpts.Monitors, pOpts.Pool)
-	args := []string{"snap", "unprotect", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
-		cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
+	klog.V(4).Infof(util.Log(ctx, "rbd: snap unprotect %s using mon %s"), pOpts, pOpts.Monitors)
+	args := []string{"snap", "unprotect", pOpts.String(), "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
 	output, err := execCommand("rbd", args)
 
@@ -759,12 +759,8 @@ func unprotectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credent
 func deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
 	var output []byte
 
-	image := pOpts.RbdImageName
-	snapName := pOpts.RbdSnapName
-
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap rm %s using mon %s, pool %s"), image, pOpts.Monitors, pOpts.Pool)
-	args := []string{"snap", "rm", "--pool", pOpts.Pool, "--snap", snapName, image, "--id",
-		cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
+	klog.V(4).Infof(util.Log(ctx, "rbd: snap rm %s using mon %s"), pOpts, pOpts.Monitors)
+	args := []string{"snap", "rm", pOpts.String(), "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
 	output, err := execCommand("rbd", args)
 
@@ -773,22 +769,20 @@ func deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credential
 	}
 
 	if err := undoSnapReservation(ctx, pOpts, cr); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) on image (%s) (%s)"),
-			pOpts.RequestName, pOpts.RbdSnapName, pOpts.RbdImageName, err)
+		klog.Errorf(util.Log(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s): %s"),
+			pOpts.RequestName, pOpts, err)
 	}
 
 	return nil
 }
 
+// nolint: interfacer
 func restoreSnapshot(ctx context.Context, pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, cr *util.Credentials) error {
 	var output []byte
 
-	image := pVolOpts.RbdImageName
-	snapName := pSnapOpts.RbdSnapName
-
-	klog.V(4).Infof(util.Log(ctx, "rbd: clone %s using mon %s, pool %s"), image, pVolOpts.Monitors, pVolOpts.Pool)
-	args := []string{"clone", pSnapOpts.Pool + "/" + pSnapOpts.RbdImageName + "@" + snapName,
-		pVolOpts.Pool + "/" + image, "--id", cr.ID, "-m", pVolOpts.Monitors, "--keyfile=" + cr.KeyFile}
+	klog.V(4).Infof(util.Log(ctx, "rbd: clone %s using mon %s"), pVolOpts, pVolOpts.Monitors)
+	args := []string{"clone", pSnapOpts.String(), pVolOpts.String(),
+		"--id", cr.ID, "-m", pVolOpts.Monitors, "--keyfile=" + cr.KeyFile}
 
 	output, err := execCommand("rbd", args)
 
@@ -802,10 +796,7 @@ func restoreSnapshot(ctx context.Context, pVolOpts *rbdVolume, pSnapOpts *rbdSna
 // getSnapshotMetadata fetches on-disk metadata about the snapshot and populates the passed in
 // rbdSnapshot structure
 func getSnapshotMetadata(ctx context.Context, pSnapOpts *rbdSnapshot, cr *util.Credentials) error {
-	imageName := pSnapOpts.RbdImageName
-	snapName := pSnapOpts.RbdSnapName
-
-	snapInfo, err := getSnapInfo(ctx, pSnapOpts.Monitors, cr, pSnapOpts.Pool, imageName, snapName)
+	snapInfo, err := pSnapOpts.getSnapInfo(ctx, pSnapOpts.Monitors, cr)
 	if err != nil {
 		return err
 	}
@@ -835,7 +826,7 @@ type imageInfo struct {
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
 // ErrImageNotFound if provided image is not found
-func getImageInfo(ctx context.Context, monitors string, cr *util.Credentials, poolName, imageName string) (imageInfo, error) {
+func (rv *rbdVolume) getImageInfo(ctx context.Context, monitors string, cr *util.Credentials) (imageInfo, error) {
 	// rbd --format=json info [image-spec | snap-spec]
 
 	var imgInfo imageInfo
@@ -847,22 +838,20 @@ func getImageInfo(ctx context.Context, monitors string, cr *util.Credentials, po
 		"--keyfile="+cr.KeyFile,
 		"-c", util.CephConfigPath,
 		"--format="+"json",
-		"info", poolName+"/"+imageName)
+		"info", rv.String())
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), poolName+"/"+imageName, err)
-		if strings.Contains(string(stderr), "rbd: error opening image "+imageName+
+		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), rv, err)
+		if strings.Contains(string(stderr), "rbd: error opening image "+rv.RbdImageName+
 			": (2) No such file or directory") {
-			return imgInfo, ErrImageNotFound{imageName, err}
+			return imgInfo, ErrImageNotFound{rv.String(), err}
 		}
 		return imgInfo, err
 	}
 
 	err = json.Unmarshal(stdout, &imgInfo)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to parse JSON output of image info (%s): (%s)"),
-			poolName+"/"+imageName, err)
-		return imgInfo, fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s",
-			err, string(stdout))
+		klog.Errorf(util.Log(ctx, "failed to parse JSON output of image info (%s): (%s)"), rv, err)
+		return imgInfo, fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s", err, string(stdout))
 	}
 
 	return imgInfo, nil
@@ -881,7 +870,7 @@ getSnapInfo queries rbd about the snapshots of the given image and returns its m
 returns ErrImageNotFound if provided image is not found, and ErrSnapNotFound if provided snap
 is not found in the images snapshot list
 */
-func getSnapInfo(ctx context.Context, monitors string, cr *util.Credentials, poolName, imageName, snapName string) (snapInfo, error) {
+func (rs *rbdSnapshot) getSnapInfo(ctx context.Context, monitors string, cr *util.Credentials) (snapInfo, error) {
 	// rbd --format=json snap ls [image-spec]
 
 	var (
@@ -896,33 +885,30 @@ func getSnapInfo(ctx context.Context, monitors string, cr *util.Credentials, poo
 		"--keyfile="+cr.KeyFile,
 		"-c", util.CephConfigPath,
 		"--format="+"json",
-		"snap", "ls", poolName+"/"+imageName)
+		"snap", "ls", rs.imageSpec())
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed getting snap (%s) information from image (%s): (%s)"),
-			snapName, poolName+"/"+imageName, err)
-		if strings.Contains(string(stderr), "rbd: error opening image "+imageName+
+			rs.RbdSnapName, rs.imageSpec(), err)
+		if strings.Contains(string(stderr), "rbd: error opening image "+rs.RbdImageName+
 			": (2) No such file or directory") {
-			return snpInfo, ErrImageNotFound{imageName, err}
+			return snpInfo, ErrImageNotFound{rs.imageSpec(), err}
 		}
 		return snpInfo, err
 	}
 
 	err = json.Unmarshal(stdout, &snaps)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to parse JSON output of image snap list (%s): (%s)"),
-			poolName+"/"+imageName, err)
-		return snpInfo, fmt.Errorf("unmarshal failed: %+v. raw buffer response: %s",
-			err, string(stdout))
+		klog.Errorf(util.Log(ctx, "failed to parse JSON output of image snap list (%s): (%s)"), rs.imageSpec(), err)
+		return snpInfo, fmt.Errorf("unmarshal failed: %+v. raw buffer response: %s", err, string(stdout))
 	}
 
 	for _, snap := range snaps {
-		if snap.Name == snapName {
+		if snap.Name == rs.RbdSnapName {
 			return snap, nil
 		}
 	}
 
-	return snpInfo, ErrSnapNotFound{snapName, fmt.Errorf("snap (%s) for image (%s) not found",
-		snapName, poolName+"/"+imageName)}
+	return snpInfo, ErrSnapNotFound{rs.String(), fmt.Errorf("snap (%s) not found", rs)}
 }
 
 // rbdImageMetadataStash strongly typed JSON spec for stashed RBD image metadata
@@ -936,6 +922,11 @@ type rbdImageMetadataStash struct {
 
 // file name in which image metadata is stashed
 const stashFileName = "image-meta.json"
+
+// spec returns the image-spec (pool/image) format of the image
+func (ri *rbdImageMetadataStash) String() string {
+	return fmt.Sprintf("%s/%s", ri.Pool, ri.ImageName)
+}
 
 // stashRBDImageMetadata stashes required fields into the stashFileName at the passed in path, in
 // JSON format
@@ -954,15 +945,13 @@ func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
 
 	encodedBytes, err := json.Marshal(imgMeta)
 	if err != nil {
-		return fmt.Errorf("failed to marshall JSON image metadata for image (%s) in pool (%s): (%v)",
-			volOptions.RbdImageName, volOptions.Pool, err)
+		return fmt.Errorf("failed to marshall JSON image metadata for image (%s): (%v)", volOptions, err)
 	}
 
 	fPath := filepath.Join(path, stashFileName)
 	err = ioutil.WriteFile(fPath, encodedBytes, 0600)
 	if err != nil {
-		return fmt.Errorf("failed to stash JSON image metadata for image (%s) in pool (%s) at path (%s): (%v)",
-			volOptions.RbdImageName, volOptions.Pool, fPath, err)
+		return fmt.Errorf("failed to stash JSON image metadata for image (%s) at path (%s): (%v)", volOptions, fPath, err)
 	}
 
 	return nil
@@ -1005,10 +994,9 @@ func resizeRBDImage(rbdVol *rbdVolume, cr *util.Credentials) error {
 	var output []byte
 
 	mon := rbdVol.Monitors
-	image := rbdVol.RbdImageName
 	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(rbdVol.VolSize))
 
-	args := []string{"resize", image, "--size", volSzMiB, "--pool", rbdVol.Pool, "--id", cr.ID, "-m", mon, "--keyfile=" + cr.KeyFile}
+	args := []string{"resize", rbdVol.String(), "--size", volSzMiB, "--id", cr.ID, "-m", mon, "--keyfile=" + cr.KeyFile}
 	output, err := execCommand("rbd", args)
 
 	if err != nil {
@@ -1042,19 +1030,19 @@ func (rv *rbdVolume) SetMetadata(key, value string) error {
 func (rv *rbdVolume) checkRbdImageEncrypted(ctx context.Context) (string, error) {
 	value, err := rv.GetMetadata(encryptionMetaKey)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "checking image %s encrypted state metadata failed: %s"), rv.RbdImageName, err)
+		klog.Errorf(util.Log(ctx, "checking image %s encrypted state metadata failed: %s"), rv, err)
 		return "", err
 	}
 
 	encrypted := strings.TrimSpace(value)
-	klog.V(4).Infof(util.Log(ctx, "image %s encrypted state metadata reports %q"), rv.RbdImageName, encrypted)
+	klog.V(4).Infof(util.Log(ctx, "image %s encrypted state metadata reports %q"), rv, encrypted)
 	return encrypted, nil
 }
 
 func (rv *rbdVolume) ensureEncryptionMetadataSet(status string) error {
 	err := rv.SetMetadata(encryptionMetaKey, status)
 	if err != nil {
-		return fmt.Errorf("failed to save encryption status for %s: %v", rv.RbdImageName, err)
+		return fmt.Errorf("failed to save encryption status for %s: %v", rv, err)
 	}
 
 	return nil
