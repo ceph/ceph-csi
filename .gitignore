@@ -1,6 +1,9 @@
 # build directory
 _output
 
+# e2e test executable
+e2e.test
+
 # docker build
 deploy/cephcsi/image/cephcsi
 
