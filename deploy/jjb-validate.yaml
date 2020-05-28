@@ -1,23 +1,35 @@
 ---
-apiVersion: batch/v1
-kind: Job
+kind: Template
+apiVersion: v1
 metadata:
-  labels:
-    app: jjb-validate
   name: jjb-validate
-spec:
-  ttlSecondsAfterFinished: 0
-  backoffLimit: 1
-  template:
-    labels:
-      app: jjb-validate
+objects:
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      labels:
+        app: jjb-validate
+        jjb/session: "${SESSION}"
+      name: jjb-validate
     spec:
-      containers:
-        - name: jjb-validate
-          image: 172.30.254.79:5000/ceph-csi/jjb:latest
-          env:
-            - name: GIT_REPO
-              value: https://github.com/ceph/ceph-csi
-            - name: GIT_REF
-              value: ci/centos
-      restartPolicy: Never
+      ttlSecondsAfterFinished: 0
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: jjb-validate
+            jjb/session: "${SESSION}"
+        spec:
+          containers:
+            - name: jjb-validate
+              image: 172.30.254.79:5000/ceph-csi/jjb:latest
+              env:
+                - name: GIT_REPO
+                  value: https://github.com/ceph/ceph-csi
+                - name: GIT_REF
+                  value: ci/centos
+          restartPolicy: Never
+parameters:
+  - name: SESSION
+    description: unique ID for the session to track the pod for the job
+    required: true
