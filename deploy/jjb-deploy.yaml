@@ -1,33 +1,45 @@
 ---
-apiVersion: batch/v1
-kind: Job
+kind: Template
+apiVersion: v1
 metadata:
-  labels:
-    app: jjb
-  name: jjb-deploy
-spec:
-  ttlSecondsAfterFinished: 0
-  backoffLimit: 1
-  template:
-    labels:
-      app: jjb
+  name: my-template
+objects:
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      labels:
+        app: jjb
+        jjb/session: "${SESSION}"
+      name: jjb-deploy
     spec:
-      containers:
-        - name: jjb
-          image: 172.30.254.79:5000/ceph-csi/jjb:latest
-          env:
-            - name: GIT_REPO
-              value: https://github.com/ceph/ceph-csi
-            - name: GIT_REF
-              value: ci/centos
-            - name: MAKE_TARGET
-              value: deploy
-          volumeMounts:
+      ttlSecondsAfterFinished: 0
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: jjb-deploy
+            jjb/session: "${SESSION}"
+        spec:
+          containers:
+            - name: jjb
+              image: 172.30.254.79:5000/ceph-csi/jjb:latest
+              env:
+                - name: GIT_REPO
+                  value: https://github.com/ceph/ceph-csi
+                - name: GIT_REF
+                  value: ci/centos
+                - name: MAKE_TARGET
+                  value: deploy
+              volumeMounts:
+                - name: etc-jj
+                  mountPath: /etc/jenkins_jobs
+                  readOnly: true
+          volumes:
             - name: etc-jj
-              mountPath: /etc/jenkins_jobs
-              readOnly: true
-      volumes:
-        - name: etc-jj
-          configMap:
-            name: jenkins-jobs
-      restartPolicy: Never
+              configMap:
+                name: jenkins-jobs
+          restartPolicy: Never
+parameters:
+  - name: SESSION
+    description: unique ID for the session to track the pod for the job
+    required: true

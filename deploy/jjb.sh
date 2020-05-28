@@ -31,12 +31,15 @@ oc version
 # the deploy directory where this script is located, contains files we need
 cd "$(dirname "${0}")"
 
-oc create -f "jjb-${CMD}.yaml"
+# unique ID for the session
+SESSION=$(uuidgen)
+
+oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" | oc create -f -
 
 # loop until pod is available
 while true
 do
-	jjb_pod=$(oc get pods --no-headers -l "job-name=jjb-${CMD}" -o=jsonpath='{.items[0].metadata.name}')
+	jjb_pod=$(oc get pods --no-headers -l "jjb/session=${SESSION}" -o=jsonpath='{.items[0].metadata.name}')
 	ret=${?}
 
 	# break the loop when the command returned success and jjb_pod is not empty
@@ -59,7 +62,7 @@ done
 oc logs "${jjb_pod}"
 
 # delete the job, so a next run can create it again
-oc delete --wait -f "jjb-${CMD}.yaml"
+oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" | oc delete --wait -f -
 
 # return the exit status of the pod
 [ "${status}" = 'Succeeded' ]
