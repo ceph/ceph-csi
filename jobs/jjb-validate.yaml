@@ -32,7 +32,10 @@
       - github-pull-request:
           status-context: ci/centos/jjb-validate
           trigger-phrase: '/(re)?test ((all)|(ci/centos/jjb-validate))'
-          permit-all: true
+          # FIXME: re-enable permit-all, disable only-trigger-phrase
+          # See https://github.com/ceph/ceph-csi/issues/1111
+          # permit-all: true
+          only-trigger-phrase: true
           # TODO: set github-hooks to true when it is configured in GitHub
           github-hooks: false
           cron: 'H/5 * * * *'
