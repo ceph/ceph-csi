@@ -112,10 +112,10 @@ cephcsi: check-env
 
 .PHONY: containerized-build containerized-test
 containerized-build: .devel-container-id
-	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make cephcsi
+	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make cephcsi
 
 containerized-test: .test-container-id
-	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE)
+	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE)
 
 # create a (cached) container image with dependencied for building cephcsi
 .devel-container-id: scripts/Dockerfile.devel
