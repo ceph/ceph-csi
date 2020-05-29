@@ -11,11 +11,11 @@
           days-to-keep: 7
           artifact-days-to-keep: 7
     dsl: |
-      def GIT_REPO = 'http://github.com/ceph/ceph-csi'
+      def GIT_REPO = 'https://github.com/ceph/ceph-csi'
       def GIT_BRANCH = 'ci/centos'
 
       if (params.ghprbPullId != null) {
-          GIT_BRANCH = "pr/${ghprbPullId}/head"
+          GIT_BRANCH = "pull/${ghprbPullId}/head"
       }
 
       node {
