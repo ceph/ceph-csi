@@ -1,12 +1,12 @@
 ---
 # need for docker build
 sudo: true
-dist: xenial
+dist: bionic
 
 addons:
   apt:
     packages:
-      - realpath
+      - coreutils
       - ruby
       - socat
 services:
@@ -41,7 +41,7 @@ before_install:
 before_script:
   - curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
   - sudo apt-add-repository
-    "deb https://download.ceph.com/debian-nautilus xenial main"
+    "deb https://download.ceph.com/debian-nautilus $(lsb_release -sc) main"
   # Ceph does not guarantee arm64 builds, fallback to ceph 14.2.5
   # yamllint disable rule:line-length
   - test "$(arch)" != "aarch64" || sudo apt-add-repository
@@ -99,6 +99,7 @@ jobs:
 
     - stage: build testing
       name: cephcsi on Arm64
+      dist: xenial   # There are no arm64 builds available in bionic repo
       arch: arm64
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
