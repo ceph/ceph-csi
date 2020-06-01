@@ -37,7 +37,7 @@ const (
 type ClusterInfo struct {
 	// ClusterID is used for unique identification
 	ClusterID string `json:"clusterID"`
-	// Namespace is the namespace in the pool
+	// RadosNamespace is a rados namespace in the pool
 	RadosNamespace string `json:"radosNamespace"`
 	// Monitors is monitor list for corresponding cluster ID
 	Monitors []string `json:"monitors"`
@@ -52,7 +52,7 @@ type ClusterInfo struct {
 // [
 // 	{
 // 		"clusterID": "<cluster-id>",
-//		"namespace": "<namespace>",
+//		"radosNamespace": "<rados-namespace>",
 // 		"monitors":
 // 			[
 // 				"<monitor-value>",
