@@ -1,12 +1,12 @@
 ---
 # need for docker build
 sudo: true
-dist: xenial
+dist: bionic
 
 addons:
   apt:
     packages:
-      - realpath
+      - coreutils
       - ruby
       - socat
 services:
@@ -41,7 +41,7 @@ before_install:
 before_script:
   - curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
   - sudo apt-add-repository
-    "deb https://download.ceph.com/debian-nautilus xenial main"
+    "deb https://download.ceph.com/debian-nautilus $(lsb_release -sc) main"
   # Ceph does not guarantee arm64 builds, fallback to ceph 14.2.5
   # yamllint disable rule:line-length
   - test "$(arch)" != "aarch64" || sudo apt-add-repository
@@ -79,7 +79,13 @@ jobs:
         # install helm for helm lint
         - curl -L https://git.io/get_helm.sh
           | bash -s -- -v "${HELM_VERSION}"
+        # yamllint disable rule:line-length
+        - mkdir -p /opt/commitlint && pushd /opt/commitlint
+          && npm init -y && npm install --save-dev @commitlint/travis-cli && popd
+        # yamllint enable rule:line-length
+        - export PATH=/opt/commitlint/node_modules/.bin:$PATH
       script:
+        - commitlint-travis
         - make go-lint
         - make lint-extras
         - make gosec
@@ -92,13 +98,8 @@ jobs:
         - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
 
     - stage: build testing
-      name: containerized test (Fedora) and build (CentOS)
-      script:
-        - make containerized-test || travis_terminate 1;
-        - make containerized-build || travis_terminate 1;
-
-    - stage: build testing
       name: cephcsi on Arm64
+      dist: xenial   # There are no arm64 builds available in bionic repo
       arch: arm64
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;

@@ -43,6 +43,10 @@ parameters:
    # uncomment the following to use rbd-nbd as mounter on supported nodes
    # mounter: rbd-nbd
 
+   # Prefix to use for naming RBD images.
+   # If omitted, defaults to "csi-vol-".
+   # volumeNamePrefix: "foo-bar-"
+
    # Instruct the plugin it has to encrypt the volume
    # By default it is disabled. Valid values are "true" or "false".
    # A string is expected here, i.e. "true", not true.

@@ -57,6 +57,7 @@ spec:
             - "--csi-address=$(ADDRESS)"
             - "--csiTimeout={{ .Values.provisioner.timeout }}"
             - "--leader-election"
+            - "--retry-interval-start=500ms"
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
@@ -92,6 +93,7 @@ spec:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election=true"
+            - "--retry-interval-start=500ms"
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"

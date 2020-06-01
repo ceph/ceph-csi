@@ -10,7 +10,7 @@ exemptLabels:
   - release requirement
 
 # Set to true to ignore issues in a project (defaults to false)
-exemptProjects: true
+exemptProjects: false
 
 # Set to true to ignore issues in a milestone (defaults to false)
 exemptMilestones: true

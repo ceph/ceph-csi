@@ -70,6 +70,7 @@ spec:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election=true"
+            - "--retry-interval-start=500ms"
           env:
             - name: ADDRESS
               value: /csi/csi-provisioner.sock
@@ -88,6 +89,7 @@ spec:
             - "--v=5"
             - "--csiTimeout=150s"
             - "--leader-election"
+            - "--retry-interval-start=500ms"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
