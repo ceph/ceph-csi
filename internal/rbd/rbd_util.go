@@ -86,6 +86,7 @@ type rbdVolume struct {
 	JournalPool         string
 	Pool                string `json:"pool"`
 	DataPool            string
+	RadosNamespace      string
 	ImageID             string
 	ParentName          string
 	imageFeatureSet     librbd.FeatureSet
@@ -129,6 +130,7 @@ type rbdSnapshot struct {
 	Monitors       string
 	JournalPool    string
 	Pool           string
+	RadosNamespace string
 	CreatedAt      *timestamp.Timestamp
 	SizeBytes      int64
 	ClusterID      string
@@ -165,13 +167,19 @@ func (rv *rbdVolume) Destroy() {
 	}
 }
 
-// String returns the image-spec (pool/image) format of the image.
+// String returns the image-spec (pool/{namespace/}image) format of the image.
 func (rv *rbdVolume) String() string {
+	if rv.RadosNamespace != "" {
+		return fmt.Sprintf("%s/%s/%s", rv.Pool, rv.RadosNamespace, rv.RbdImageName)
+	}
 	return fmt.Sprintf("%s/%s", rv.Pool, rv.RbdImageName)
 }
 
-// String returns the snap-spec (pool/image@snap) format of the snapshot.
+// String returns the snap-spec (pool/{namespace/}image@snap) format of the snapshot.
 func (rs *rbdSnapshot) String() string {
+	if rs.RadosNamespace != "" {
+		return fmt.Sprintf("%s/%s/%s@%s", rs.Pool, rs.RadosNamespace, rs.RbdImageName, rs.RbdSnapName)
+	}
 	return fmt.Sprintf("%s/%s@%s", rs.Pool, rs.RbdImageName, rs.RbdSnapName)
 }
 
@@ -228,6 +236,7 @@ func (rv *rbdVolume) openIoctx() error {
 		return err
 	}
 
+	ioctx.SetNamespace(rv.RadosNamespace)
 	rv.ioctx = ioctx
 
 	return nil
@@ -484,10 +493,11 @@ func (rv *rbdVolume) hasFeature(feature uint64) bool {
 
 func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
 	vol := rbdVolume{
-		Pool:         rv.Pool,
-		Monitors:     rv.Monitors,
-		RbdImageName: rv.RbdImageName,
-		conn:         rv.conn,
+		Pool:           rv.Pool,
+		RadosNamespace: rv.RadosNamespace,
+		Monitors:       rv.Monitors,
+		RbdImageName:   rv.RbdImageName,
+		conn:           rv.conn,
 	}
 	err := vol.openIoctx()
 	if err != nil {
@@ -543,7 +553,12 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	}
 	rbdSnap.JournalPool = rbdSnap.Pool
 
-	j, err := snapJournal.Connect(rbdSnap.Monitors, cr)
+	rbdSnap.RadosNamespace, err = util.RadosNamespace(csiConfigFile, rbdSnap.ClusterID)
+	if err != nil {
+		return err
+	}
+
+	j, err := snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
 	if err != nil {
 		return err
 	}
@@ -611,7 +626,12 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	}
 	rbdVol.JournalPool = rbdVol.Pool
 
-	j, err := volJournal.Connect(rbdVol.Monitors, cr)
+	rbdVol.RadosNamespace, err = util.RadosNamespace(csiConfigFile, rbdVol.ClusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
 	if err != nil {
 		return rbdVol, err
 	}
@@ -690,6 +710,10 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		return nil, err
 	}
 
+	rbdVol.RadosNamespace, err = util.RadosNamespace(csiConfigFile, rbdVol.ClusterID)
+	if err != nil {
+		return nil, err
+	}
 	// if no image features is provided, it results in empty string
 	// which disable all RBD image features as we expected
 
@@ -742,6 +766,7 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 	rbdSnap := &rbdSnapshot{}
 	rbdSnap.Pool = rbdVol.Pool
 	rbdSnap.JournalPool = rbdVol.JournalPool
+	rbdSnap.RadosNamespace = rbdVol.RadosNamespace
 
 	rbdSnap.Monitors, rbdSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
 	if err != nil {
@@ -951,18 +976,22 @@ func (rv *rbdVolume) checkSnapExists(rbdSnap *rbdSnapshot) error {
 
 // rbdImageMetadataStash strongly typed JSON spec for stashed RBD image metadata.
 type rbdImageMetadataStash struct {
-	Version   int    `json:"Version"`
-	Pool      string `json:"pool"`
-	ImageName string `json:"image"`
-	NbdAccess bool   `json:"accessType"`
-	Encrypted bool   `json:"encrypted"`
+	Version        int    `json:"Version"`
+	Pool           string `json:"pool"`
+	RadosNamespace string `json:"radosNamespace"`
+	ImageName      string `json:"image"`
+	NbdAccess      bool   `json:"accessType"`
+	Encrypted      bool   `json:"encrypted"`
 }
 
 // file name in which image metadata is stashed.
 const stashFileName = "image-meta.json"
 
-// spec returns the image-spec (pool/image) format of the image.
+// spec returns the image-spec (pool/{namespace/}image) format of the image.
 func (ri *rbdImageMetadataStash) String() string {
+	if ri.RadosNamespace != "" {
+		return fmt.Sprintf("%s/%s/%s", ri.Pool, ri.RadosNamespace, ri.ImageName)
+	}
 	return fmt.Sprintf("%s/%s", ri.Pool, ri.ImageName)
 }
 
@@ -971,10 +1000,11 @@ func (ri *rbdImageMetadataStash) String() string {
 func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
 	var imgMeta = rbdImageMetadataStash{
 		// there are no checks for this at present
-		Version:   2, // nolint:gomnd // number specifies version.
-		Pool:      volOptions.Pool,
-		ImageName: volOptions.RbdImageName,
-		Encrypted: volOptions.Encrypted,
+		Version:        2, // nolint:gomnd // number specifies version.
+		Pool:           volOptions.Pool,
+		RadosNamespace: volOptions.RadosNamespace,
+		ImageName:      volOptions.RbdImageName,
+		Encrypted:      volOptions.Encrypted,
 	}
 
 	imgMeta.NbdAccess = false

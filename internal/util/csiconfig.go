@@ -37,6 +37,8 @@ const (
 type ClusterInfo struct {
 	// ClusterID is used for unique identification
 	ClusterID string `json:"clusterID"`
+	// Namespace is the namespace in the pool
+	RadosNamespace string `json:"radosNamespace"`
 	// Monitors is monitor list for corresponding cluster ID
 	Monitors []string `json:"monitors"`
 	// CephFS contains CephFS specific options
@@ -50,6 +52,7 @@ type ClusterInfo struct {
 // [
 // 	{
 // 		"clusterID": "<cluster-id>",
+//		"namespace": "<namespace>",
 // 		"monitors":
 // 			[
 // 				"<monitor-value>",
@@ -98,6 +101,15 @@ func Mons(pathToConfig, clusterID string) (string, error) {
 		return "", fmt.Errorf("empty monitor list for cluster ID (%s) in config", clusterID)
 	}
 	return strings.Join(cluster.Monitors, ","), nil
+}
+
+// RadosNamespace returns the namespace for the given clusterID.
+func RadosNamespace(pathToConfig, clusterID string) (string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return "", err
+	}
+	return cluster.RadosNamespace, nil
 }
 
 // CephFSSubvolumeGroup returns the subvolumeGroup for CephFS volumes. If not set, it returns the default value "csi".

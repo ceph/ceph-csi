@@ -65,7 +65,8 @@ func checkVolExists(ctx context.Context,
 	sID *snapshotIdentifier,
 	cr *util.Credentials) (*volumeIdentifier, error) {
 	var vid volumeIdentifier
-	j, err := volJournal.Connect(volOptions.Monitors, cr)
+	// Connect to cephfs' default radosNamespace (csi)
+	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +175,8 @@ func undoVolReservation(ctx context.Context, volOptions *volumeOptions, vid volu
 	}
 	defer cr.DeleteCredentials()
 
-	j, err := volJournal.Connect(volOptions.Monitors, cr)
+	// Connect to cephfs' default radosNamespace (csi)
+	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
 		return err
 	}
@@ -220,7 +222,8 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 		return nil, err
 	}
 
-	j, err := volJournal.Connect(volOptions.Monitors, cr)
+	// Connect to cephfs' default radosNamespace (csi)
+	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +259,8 @@ func reserveSnap(ctx context.Context, volOptions *volumeOptions, parentSubVolNam
 		err       error
 	)
 
-	j, err := snapJournal.Connect(volOptions.Monitors, cr)
+	// Connect to cephfs' default radosNamespace (csi)
+	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +289,8 @@ func reserveSnap(ctx context.Context, volOptions *volumeOptions, parentSubVolNam
 
 // undoSnapReservation is a helper routine to undo a name reservation for a CSI SnapshotName.
 func undoSnapReservation(ctx context.Context, volOptions *volumeOptions, vid snapshotIdentifier, snapName string, cr *util.Credentials) error {
-	j, err := snapJournal.Connect(volOptions.Monitors, cr)
+	// Connect to cephfs' default radosNamespace (csi)
+	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
 		return err
 	}
@@ -316,7 +321,8 @@ func checkSnapExists(
 	parentSubVolName string,
 	snap *cephfsSnapshot,
 	cr *util.Credentials) (*snapshotIdentifier, *snapshotInfo, error) {
-	j, err := snapJournal.Connect(volOptions.Monitors, cr)
+	// Connect to cephfs' default radosNamespace (csi)
+	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
 		return nil, nil, err
 	}
