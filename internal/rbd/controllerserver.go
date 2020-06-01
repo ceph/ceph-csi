@@ -75,6 +75,9 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	if value, ok := options["dataPool"]; ok && value == "" {
 		return status.Error(codes.InvalidArgument, "empty datapool name to provision volume from")
 	}
+	if value, ok := options["raodsNamespace"]; ok && value == "" {
+		return status.Error(codes.InvalidArgument, "empty namespace name to provision volume from")
+	}
 	if value, ok := options["volumeNamePrefix"]; ok && value == "" {
 		return status.Error(codes.InvalidArgument, "empty volume name prefix to provision volume from")
 	}
@@ -146,6 +149,9 @@ func buildCreateVolumeResponse(ctx context.Context, req *csi.CreateVolumeRequest
 	volumeContext["pool"] = rbdVol.Pool
 	volumeContext["journalPool"] = rbdVol.JournalPool
 	volumeContext["imageName"] = rbdVol.RbdImageName
+	if rbdVol.RadosNamespace != "" {
+		volumeContext["radosNamespace"] = rbdVol.RadosNamespace
+	}
 	volume := &csi.Volume{
 		VolumeId:      rbdVol.VolID,
 		CapacityBytes: rbdVol.VolSize,
@@ -291,6 +297,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	volumeContext := req.GetParameters()
 	volumeContext["pool"] = rbdVol.Pool
 	volumeContext["journalPool"] = rbdVol.JournalPool
+	volumeContext["radosNamespace"] = rbdVol.RadosNamespace
 	volumeContext["imageName"] = rbdVol.RbdImageName
 	volume := &csi.Volume{
 		VolumeId:      rbdVol.VolID,
@@ -409,7 +416,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 	var err error
 
 	var j = &journal.Connection{}
-	j, err = volJournal.Connect(rbdVol.Monitors, cr)
+	j, err = volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -906,7 +913,7 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 	}
 	var j = &journal.Connection{}
 	// save image ID
-	j, err = snapJournal.Connect(rbdSnap.Monitors, cr)
+	j, err = snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to connect to cluster: %v"), err)
 		return ready, cloneRbd, err

@@ -117,7 +117,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 		return false, err
 	}
 
-	j, err := snapJournal.Connect(rbdSnap.Monitors, cr)
+	j, err := snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
 	if err != nil {
 		return false, err
 	}
@@ -242,7 +242,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 		kmsID = rv.KMS.GetID()
 	}
 
-	j, err := volJournal.Connect(rv.Monitors, rv.conn.Creds)
+	j, err := volJournal.Connect(rv.Monitors, rv.RadosNamespace, rv.conn.Creds)
 	if err != nil {
 		return false, err
 	}
@@ -345,7 +345,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 		return err
 	}
 
-	j, err := snapJournal.Connect(rbdSnap.Monitors, cr)
+	j, err := snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
 	if err != nil {
 		return err
 	}
@@ -423,7 +423,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 		kmsID = rbdVol.KMS.GetID()
 	}
 
-	j, err := volJournal.Connect(rbdVol.Monitors, cr)
+	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
 	if err != nil {
 		return err
 	}
@@ -450,7 +450,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 
 // undoSnapReservation is a helper routine to undo a name reservation for rbdSnapshot.
 func undoSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	j, err := snapJournal.Connect(rbdSnap.Monitors, cr)
+	j, err := snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
 	if err != nil {
 		return err
 	}
@@ -465,7 +465,7 @@ func undoSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Cre
 
 // undoVolReservation is a helper routine to undo a name reservation for rbdVolume.
 func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	j, err := volJournal.Connect(rbdVol.Monitors, cr)
+	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
 	if err != nil {
 		return err
 	}
