@@ -19,8 +19,7 @@ package cephfs
 import (
 	"context"
 	"fmt"
-	"os"
-
+	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -201,7 +200,9 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	os.Remove(targetPath)
+	if err := util.CleanPath(targetPath); err != nil {
+		glog.Warning("remove targetPath: %v with error: %v", targetPath, err)
+	}
 
 	glog.Infof("cephfs: successfully unbinded volume %s from %s", req.GetVolumeId(), targetPath)
 
@@ -220,7 +221,9 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	os.Remove(stagingTargetPath)
+	if err := util.CleanPath(stagingTargetPath); err != nil {
+		glog.Warning("remove stagingTargetPath: %v with error: %v", stagingTargetPath, err)
+	}
 
 	glog.Infof("cephfs: successfully umounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
 

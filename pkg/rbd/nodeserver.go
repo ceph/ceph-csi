@@ -18,6 +18,7 @@ package rbd
 
 import (
 	"fmt"
+	"github.com/ceph/ceph-csi/pkg/util"
 	"os"
 	"strings"
 
@@ -131,6 +132,10 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if err := detachRBDDevice(devicePath); err != nil {
 		glog.V(3).Infof("failed to unmap rbd device: %s with error: %v", devicePath, err)
 		return nil, err
+	}
+
+	if err := util.CleanPath(targetPath); err != nil {
+		glog.Warning("remove targetPath: %v with error: %v", targetPath, err)
 	}
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
