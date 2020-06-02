@@ -99,7 +99,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 	fsID = strings.Trim(fsID, "\n")
 	size := "4Gi"
 	// create rbd image
-	cmd := fmt.Sprintf("rbd create %s --size=%d --pool=%s --image-feature=layering", rbdImageName, 4096, defaultRBDPool)
+	cmd := fmt.Sprintf("rbd create %s --size=%d --image-feature=layering %s", rbdImageName, 4096, rbdOptions(defaultRBDPool))
 
 	_, e = execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if e != "" {
@@ -109,6 +109,9 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 	opt["imageFeatures"] = "layering"
 	opt["pool"] = defaultRBDPool
 	opt["staticVolume"] = "true"
+	if radosNamespace != "" {
+		opt["radosNamespace"] = radosNamespace
+	}
 
 	pv := getStaticPV(pvName, rbdImageName, size, "csi-rbd-secret", cephCSINamespace, sc, "rbd.csi.ceph.com", isBlock, opt)
 
@@ -151,7 +154,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 		return err
 	}
 
-	cmd = fmt.Sprintf("rbd rm %s --pool=%s", rbdImageName, defaultRBDPool)
+	cmd = fmt.Sprintf("rbd rm %s %s", rbdImageName, rbdOptions(defaultRBDPool))
 	execCommandInToolBoxPod(f, cmd, rookNamespace)
 	return nil
 }
