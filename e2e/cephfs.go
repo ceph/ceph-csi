@@ -29,6 +29,8 @@ var (
 	fileSystemName        = "myfs"
 )
 
+// Just for testing the CI.
+
 func deployCephfsPlugin() {
 	// delete objects deployed by rook
 
