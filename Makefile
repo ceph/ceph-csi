@@ -47,11 +47,19 @@ ifdef BASE_IMAGE
 BASE_IMAGE_ARG = --build-arg BASE_IMAGE=$(BASE_IMAGE)
 endif
 
-# passing TARGET=static-check on the 'make containerized-test' commandline will
-# run the selected target instead of 'make test' in the container. Obviously
-# other targets can be passed as well, making it easier for developers to run
-# single tests.
-TARGET ?= test
+# passing TARGET=static-check on the 'make containerized-test' or 'make
+# containerized-build' commandline will run the selected target instead of
+# 'make test' in the container. Obviously other targets can be passed as well,
+# making it easier for developers to run single tests or build different
+# executables.
+#
+# Defaults:
+#   make containerized-build TARGET=cephcsi -> runs 'make cephcsi'
+#   make containerized-test TARGET=test -> runs 'make test'
+#
+# Other options:
+#   make containerized-build TARGET=e2e.test -> runs 'make e2e.test'
+#   make containerized-test TARGET=static-check -> runs 'make static-check'
 
 # Pass GIT_SINCE for the range of commits to test. Used with the commitlint
 # target.
@@ -110,10 +118,15 @@ cephcsi: check-env
 	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
 	GOOS=linux go build -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
 
-.PHONY: containerized-build containerized-test
-containerized-build: .devel-container-id
-	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make cephcsi
+e2e.test: check-env
+	go test -mod=vendor -c ./e2e
 
+.PHONY: containerized-build containerized-test
+containerized-build: TARGET = cephcsi
+containerized-build: .devel-container-id
+	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make $(TARGET)
+
+containerized-test: TARGET = test
 containerized-test: .test-container-id
 	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE)
 
@@ -142,6 +155,7 @@ clean:
 	go clean -mod=vendor -r -x
 	rm -f deploy/cephcsi/image/cephcsi
 	rm -f _output/cephcsi
+	$(RM) e2e.test
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
 	$(RM) .devel-container-id
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
