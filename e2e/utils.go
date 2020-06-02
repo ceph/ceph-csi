@@ -59,6 +59,7 @@ var (
 	upgradeVersion   string
 	cephCSINamespace string
 	rookNamespace    string
+	radosNamespace   string
 	ns               string
 	vaultAddr        string
 	poll             = 2 * time.Second
@@ -330,6 +331,25 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOpt
 	Expect(err).Should(BeNil())
 }
 
+func createRadosNamespace(f *framework.Framework) {
+	stdOut, stdErr := execCommandInToolBoxPod(f,
+		fmt.Sprintf("rbd namespace ls --pool=%s", defaultRBDPool), rookNamespace)
+	Expect(stdErr).Should(BeEmpty())
+	if !strings.Contains(stdOut, radosNamespace) {
+		_, stdErr = execCommandInToolBoxPod(f,
+			fmt.Sprintf("rbd namespace create %s", rbdOptions(defaultRBDPool)), rookNamespace)
+		Expect(stdErr).Should(BeEmpty())
+	}
+	stdOut, stdErr = execCommandInToolBoxPod(f,
+		fmt.Sprintf("rbd namespace ls --pool=%s", rbdTopologyPool), rookNamespace)
+	Expect(stdErr).Should(BeEmpty())
+	if !strings.Contains(stdOut, radosNamespace) {
+		_, stdErr = execCommandInToolBoxPod(f,
+			fmt.Sprintf("rbd namespace create %s", rbdOptions(rbdTopologyPool)), rookNamespace)
+		Expect(stdErr).Should(BeEmpty())
+	}
+}
+
 func deleteConfigMap(pluginPath string) {
 	path := pluginPath + configMap
 	_, err := framework.RunKubectl(cephCSINamespace, "delete", "-f", path, ns)
@@ -351,8 +371,9 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	// get mon list
 	mons := getMons(rookNamespace, c)
 	conmap := []util.ClusterInfo{{
-		ClusterID: fsID,
-		Monitors:  mons,
+		ClusterID:      fsID,
+		Monitors:       mons,
+		RadosNamespace: radosNamespace,
 	}}
 	if upgradeTesting {
 		subvolumegroup = "csi"
@@ -780,7 +801,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 	if err != nil {
 		Fail(err.Error())
 	}
-	rbdImageSpec := fmt.Sprintf("%s/%s", defaultRBDPool, imageData.imageName)
+	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
 	encryptedState, err := getImageMeta(rbdImageSpec, ".rbd.csi.ceph.com/encrypted", f)
 	if err != nil {
 		Fail(err.Error())
@@ -916,7 +937,8 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 }
 
 func listRBDImages(f *framework.Framework) []string {
-	stdout, stdErr := execCommandInToolBoxPod(f, fmt.Sprintf("rbd ls --pool=%s --format=json", defaultRBDPool), rookNamespace)
+	stdout, stdErr := execCommandInToolBoxPod(f,
+		fmt.Sprintf("rbd ls --format=json %s", rbdOptions(defaultRBDPool)), rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 	var imgInfos []string
 
@@ -1019,7 +1041,7 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 		return err
 	}
 
-	cmd := fmt.Sprintf("rbd rm %s --pool=%s", imageData.imageName, defaultRBDPool)
+	cmd := fmt.Sprintf("rbd rm %s %s", rbdOptions(defaultRBDPool), imageData.imageName)
 	execCommandInToolBoxPod(f, cmd, rookNamespace)
 	return nil
 }
@@ -1148,10 +1170,15 @@ func getPVCImageInfoInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 		return "", err
 	}
 
-	stdOut, stdErr := execCommandInToolBoxPod(f, "rbd info "+pool+"/"+imageData.imageName, rookNamespace)
+	stdOut, stdErr := execCommandInToolBoxPod(f,
+		fmt.Sprintf("rbd info %s", imageSpec(pool, imageData.imageName)), rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 
-	e2elog.Logf("found image %s in pool %s", imageData.imageName, pool)
+	if radosNamespace != "" {
+		e2elog.Logf("found image %s in pool %s namespace %s", imageData.imageName, pool, radosNamespace)
+	} else {
+		e2elog.Logf("found image %s in pool %s", imageData.imageName, pool)
+	}
 
 	return stdOut, nil
 }
@@ -1181,10 +1208,15 @@ func checkPVCImageJournalInPool(f *framework.Framework, pvc *v1.PersistentVolume
 		return err
 	}
 
-	_, stdErr := execCommandInToolBoxPod(f, "rados listomapkeys -p "+pool+" csi.volume."+imageData.imageID, rookNamespace)
+	_, stdErr := execCommandInToolBoxPod(f,
+		fmt.Sprintf("rados listomapkeys %s csi.volume.%s", rbdOptions(pool), imageData.imageID), rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 
-	e2elog.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, pool)
+	if radosNamespace != "" {
+		e2elog.Logf("found image journal %s in pool %s namespace %s", "csi.volume."+imageData.imageID, pool, radosNamespace)
+	} else {
+		e2elog.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, pool)
+	}
 
 	return nil
 }
@@ -1195,10 +1227,15 @@ func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeCl
 		return err
 	}
 
-	_, stdErr := execCommandInToolBoxPod(f, "rados getomapval -p "+pool+" csi.volumes.default csi.volume."+imageData.pvName, rookNamespace)
+	_, stdErr := execCommandInToolBoxPod(f,
+		fmt.Sprintf("rados getomapval %s csi.volumes.default csi.volume.%s", rbdOptions(pool), imageData.pvName), rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 
-	e2elog.Logf("found CSI journal entry %s in pool %s", "csi.volume."+imageData.pvName, pool)
+	if radosNamespace != "" {
+		e2elog.Logf("found CSI journal entry %s in pool %s namespace %s", "csi.volume."+imageData.pvName, pool, radosNamespace)
+	} else {
+		e2elog.Logf("found CSI journal entry %s in pool %s", "csi.volume."+imageData.pvName, pool)
+	}
 
 	return nil
 }
@@ -1306,4 +1343,18 @@ func validateSubvolumegroup(f *framework.Framework, subvolgrp string) error {
 		return fmt.Errorf("error unexpected group path. Found: %s", stdOut)
 	}
 	return nil
+}
+
+func imageSpec(pool, image string) string {
+	if radosNamespace != "" {
+		return pool + "/" + radosNamespace + "/" + image
+	}
+	return pool + "/" + image
+}
+
+func rbdOptions(pool string) string {
+	if radosNamespace != "" {
+		return "--pool=" + pool + " --namespace " + radosNamespace
+	}
+	return "--pool=" + pool
 }
