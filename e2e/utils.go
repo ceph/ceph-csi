@@ -44,6 +44,7 @@ const (
 	rbdProvisionerSecretName = "rook-csi-rbd-provisioner" // nolint: gosec
 
 	rookTolBoxPodLabel = "app=rook-ceph-tools"
+	rbdmountOptions    = "mountOptions"
 )
 
 var (
@@ -310,6 +311,12 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOpt
 	if scOptions["volumeBindingMode"] == "WaitForFirstConsumer" {
 		value := scv1.VolumeBindingWaitForFirstConsumer
 		sc.VolumeBindingMode = &value
+	}
+
+	// comma separated mount options
+	if opt, ok := scOptions[rbdmountOptions]; ok {
+		mOpt := strings.Split(opt, ",")
+		sc.MountOptions = append(sc.MountOptions, mOpt...)
 	}
 	_, err := c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	Expect(err).Should(BeNil())

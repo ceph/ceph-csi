@@ -568,6 +568,40 @@ var _ = Describe("RBD", func() {
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
 
+			// Mount pvc to pod with invalid mount option,expected that
+			// mounting will fail
+			By("Mount pvc to pod with invalid mount option", func() {
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, map[string]string{rbdmountOptions: "debug,invalidOption"}, nil)
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+				pvc.Namespace = f.UniqueName
+
+				app, err := loadApp(appPath)
+				if err != nil {
+					Fail(err.Error())
+				}
+				app.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					Fail(err.Error())
+				}
+				// create an app and wait for 2 min for it to go to running state
+				err = createApp(f.ClientSet, app, 2)
+				if err == nil {
+					Fail("application should not go to running state due to invalid mount option")
+				}
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					Fail(err.Error())
+				}
+
+				deleteResource(rbdExamplePath + "storageclass.yaml")
+				createRBDStorageClass(f.ClientSet, f, nil, nil)
+			})
+
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and Delete PVC when backend pool deleted", func() {

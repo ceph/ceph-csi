@@ -202,8 +202,7 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, cr *util.Credent
 
 func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (string, error) {
 	isNbd := false
-	image := volOpt.RbdImageName
-	imagePath := fmt.Sprintf("%s/%s", volOpt.Pool, image)
+	imagePath := volOpt.String()
 
 	klog.V(5).Infof(util.Log(ctx, "rbd: map mon %s"), volOpt.Monitors)
 
@@ -244,8 +243,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 }
 
 func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdVolume, cr *util.Credentials) error {
-	image := volOptions.RbdImageName
-	imagePath := fmt.Sprintf("%s/%s", volOptions.Pool, image)
+	imagePath := volOptions.String()
 
 	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
 		used, rbdOutput, err := rbdStatus(ctx, volOptions, cr)
