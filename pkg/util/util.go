@@ -14,6 +14,8 @@ limitations under the License.
 package util
 
 import (
+	"os"
+	"path"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -38,4 +40,12 @@ func ValidateDriverName(driverName string) error {
 		err = errors.Wrap(err, msg)
 	}
 	return err
+}
+
+func CleanPath(targetPath string) error {
+	return os.Remove(getParentDirectory(targetPath))
+}
+
+func getParentDirectory(targetPath string) string {
+	return path.Dir(targetPath)
 }
