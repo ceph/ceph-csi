@@ -42,10 +42,7 @@ func ValidateDriverName(driverName string) error {
 	return err
 }
 
+// remove the parent path of targetPath
 func CleanPath(targetPath string) error {
-	return os.Remove(getParentDirectory(targetPath))
-}
-
-func getParentDirectory(targetPath string) string {
-	return path.Dir(targetPath)
+	return os.RemoveAll(path.Dir(targetPath))
 }

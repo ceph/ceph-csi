@@ -19,13 +19,14 @@ package cephfs
 import (
 	"context"
 	"fmt"
-	"github.com/ceph/ceph-csi/pkg/util"
 	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+
+	"github.com/ceph/ceph-csi/pkg/util"
 )
 
 type nodeServer struct {

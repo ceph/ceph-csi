@@ -18,7 +18,6 @@ package rbd
 
 import (
 	"fmt"
-	"github.com/ceph/ceph-csi/pkg/util"
 	"os"
 	"strings"
 
@@ -32,6 +31,8 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+
+	"github.com/ceph/ceph-csi/pkg/util"
 )
 
 type nodeServer struct {
