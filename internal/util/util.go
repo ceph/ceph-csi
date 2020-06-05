@@ -193,3 +193,8 @@ func Mount(source, target, fstype string, options []string) error {
 	dummyMount := mount.New("")
 	return dummyMount.Mount(source, target, fstype, options)
 }
+
+// remove the parent path of targetPath
+func CleanPath(targetPath string) error {
+	return os.RemoveAll(path.Dir(targetPath))
+}

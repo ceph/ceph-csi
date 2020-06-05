@@ -242,9 +242,8 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	err = os.Remove(targetPath)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, status.Error(codes.Internal, err.Error())
+	if err := util.CleanPath(targetPath); err != nil {
+		klog.V(3).Infof("remove targetPath: %v with error: %v", targetPath, err)
 	}
 
 	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully unbinded volume %s from %s"), req.GetVolumeId(), targetPath)
@@ -270,6 +269,10 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	// Unmount the volume
 	if err = unmountVolume(ctx, stagingTargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if err := util.CleanPath(stagingTargetPath); err != nil {
+		klog.V(3).Infof("remove stagingTargetPath: %v with error: %v", stagingTargetPath, err)
 	}
 
 	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully unmounted volume %s from %s"), req.GetVolumeId(), stagingTargetPath)

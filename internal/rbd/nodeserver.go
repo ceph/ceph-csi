@@ -536,8 +536,8 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = os.RemoveAll(targetPath); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if err := util.CleanPath(targetPath); err != nil {
+		klog.V(3).Infof("remove targetPath: %v with error: %v", targetPath, err)
 	}
 
 	klog.V(4).Infof(util.Log(ctx, "rbd: successfully unbound volume %s from %s"), req.GetVolumeId(), targetPath)
@@ -593,14 +593,8 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		}
 	}
 
-	if err = os.Remove(stagingTargetPath); err != nil {
-		// Any error is critical as Staging path is expected to be empty by Kubernetes, it otherwise
-		// keeps invoking Unstage. Hence any errors removing files within this path is a critical
-		// error
-		if !os.IsNotExist(err) {
-			klog.Errorf(util.Log(ctx, "failed to remove staging target path (%s): (%v)"), stagingTargetPath, err)
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+	if err := util.CleanPath(stagingTargetPath); err != nil {
+		klog.V(3).Infof("remove stagingTargetPath: %v with error: %v", stagingTargetPath, err)
 	}
 
 	imgInfo, err := lookupRBDImageMetadataStash(stagingParentPath)
