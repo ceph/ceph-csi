@@ -13,7 +13,7 @@ parameters:
    # Should be unique across all Ceph clusters in use for provisioning,
    # cannot be greater than 36 bytes in length, and should remain immutable for
    # the lifetime of the StorageClass in use.
-   # Ensure to create an entry in the config map named ceph-csi-config, based on
+   # Ensure to create an entry in the configmap named ceph-csi-config, based on
    # csi-config-map-sample.yaml, to accompany the string chosen to
    # represent the Ceph cluster in clusterID below
    clusterID: <cluster-id>
@@ -42,21 +42,21 @@ parameters:
    csi.storage.k8s.io/fstype: ext4
    # uncomment the following to use rbd-nbd as mounter on supported nodes
    # mounter: rbd-nbd
-
+   
    # Prefix to use for naming RBD images.
    # If omitted, defaults to "csi-vol-".
    # volumeNamePrefix: "foo-bar-"
-
+   
    # Instruct the plugin it has to encrypt the volume
    # By default it is disabled. Valid values are "true" or "false".
    # A string is expected here, i.e. "true", not true.
    # encrypted: "true"
-
+   
    # Use external key management system for encryption passphrases by specifying
    # a unique ID matching KMS ConfigMap. The ID is only used for correlation to
-   # config map entry.
+   # configmap entry.
    # encryptionKMSID: <kms-config-id>
-
+   
    # Add topology constrained pools configuration, if topology based pools
    # are setup, and topology constrained provisioning is required.
    # For further information read TODO<doc>

@@ -27,7 +27,7 @@ make image-cephcsi
 **Available command line arguments:**
 
 | Option                | Default value         | Description                                                                                                                                                                                                                                                                          |
-|-----------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--endpoint`          | `unix://tmp/csi.sock` | CSI endpoint, must be a UNIX socket                                                                                                                                                                                                                                                  |
 | `--drivername`        | `rbd.csi.ceph.com`    | Name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)                                                                                                                                                                                   |
 | `--nodeid`            | _empty_               | This node's ID                                                                                                                                                                                                                                                                       |
@@ -50,7 +50,7 @@ make image-cephcsi
 | `clusterID`                                                                                         | yes                  | String representing a Ceph cluster, must be unique across all Ceph clusters in use for provisioning, cannot be greater than 36 bytes in length, and should remain immutable for the lifetime of the Ceph cluster in use |
 | `pool`                                                                                              | yes                  | Ceph pool into which the RBD image shall be created                                                                                                                                                                     |
 | `dataPool`                                                                                          | no                   | Ceph pool used for the data of the RBD images.                                                                                                                                                                          |
-| `volumeNamePrefix`                                                                                  | no                   | Prefix to use for naming RBD images (defaults to `csi-vol-`).                                                                                                                                                    |
+| `volumeNamePrefix`                                                                                  | no                   | Prefix to use for naming RBD images (defaults to `csi-vol-`).                                                                                                                                                           |
 | `snapshotNamePrefix`                                                                                | no                   | Prefix to use for naming RBD snapshot images (defaults to `csi-snap-`).                                                                                                                                                 |
 | `imageFeatures`                                                                                     | no                   | RBD image features. CSI RBD currently supports only `layering` feature. See [man pages](http://docs.ceph.com/docs/mimic/man/8/rbd/#cmdoption-rbd-image-feature)                                                         |
 | `csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-stage-secret-name`           | yes (for Kubernetes) | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value                                                                                                     |
@@ -113,7 +113,7 @@ kubectl create -f csi-nodeplugin-psp.yaml
 kubectl create -f csi-config-map.yaml
 ```
 
-The config map deploys an empty CSI configuration that is mounted as a volume
+The configmap deploys an empty CSI configuration that is mounted as a volume
 within the Ceph CSI plugin pods. To add a specific Ceph clusters configuration
 details, refer to [Creating CSI configuration for RBD based
 provisioning](../examples/README.md#creating-csi-configuration-for-rbd-based-provisioning)
