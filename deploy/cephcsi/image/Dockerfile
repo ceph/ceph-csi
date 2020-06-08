@@ -6,7 +6,7 @@ FROM ${BASE_IMAGE} as builder
 
 LABEL stage="build"
 
-ARG GOLANG_VERSION=1.13.9
+ARG GOLANG_VERSION=1.14.4
 ARG CSI_IMAGE_NAME=quay.io/cephcsi/cephcsi
 ARG CSI_IMAGE_VERSION=canary
 ARG GO_ARCH
