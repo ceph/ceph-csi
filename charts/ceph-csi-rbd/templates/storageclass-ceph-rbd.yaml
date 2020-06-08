@@ -6,7 +6,6 @@ metadata:
    name: csi-rbd-sc
 provisioner: rbd.csi.ceph.com
 parameters:
-   clusterID: {{ .Values.csiConfig[0].clusterID }}
    pool: {{ .Values.storageclass.pool }}
    imageFeatures: layering
 
