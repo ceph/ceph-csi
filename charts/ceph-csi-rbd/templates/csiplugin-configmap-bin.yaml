@@ -1,0 +1,13 @@
+{{- if .Values.manifests.configmap_bin }}
+{{- $envAll := . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: csiplugin-configmap-bin
+data:
+  get_cephinfo.sh: |
+{{ tuple "bin/_get_cephinfo.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  get_userinfo.sh: |
+{{ tuple "bin/_get_userinfo.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}

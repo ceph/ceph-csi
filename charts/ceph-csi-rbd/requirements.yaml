@@ -1,0 +1,4 @@
+dependencies:
+  - name: helm-toolkit
+    repository: http://localhost:8879/charts
+    version: 0.1.0

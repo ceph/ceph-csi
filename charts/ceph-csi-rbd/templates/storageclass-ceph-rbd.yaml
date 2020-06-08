@@ -1,0 +1,38 @@
+{{- if .Values.rbac.create -}}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+   name: csi-rbd-sc
+provisioner: rbd.csi.ceph.com
+parameters:
+   clusterID: {{ .Values.csiConfig[0].clusterID }}
+   pool: {{ .Values.storageclass.pool }}
+   imageFeatures: layering
+
+   # The secrets have to contain Ceph credentials with required access
+   # to the 'pool'.
+   csi.storage.k8s.io/provisioner-secret-name: {{ .Values.storageclass.secretName }}
+   csi.storage.k8s.io/provisioner-secret-namespace: {{ .Values.storageclass.secretNamespace }}
+
+   # TODO. if you need option below. To delete comment and add values in Values.yaml
+   #csi.storage.k8s.io/controller-expand-secret-name: {{ .Values.storageclass.secret-name }}
+   #csi.storage.k8s.io/controller-expand-secret-namespace: {{ .Values.storageclass.secret-namespace }}
+   #csi.storage.k8s.io/node-stage-secret-name: {{ .Values.storageclass.secret-name }}
+   #csi.storage.k8s.io/node-stage-secret-namespace: {{ .Values.storageclass.secret-namespace }}
+   csi.storage.k8s.io/fstype: {{ .Values.storageclass.fstype }}
+
+   # Prefix to use for naming RBD images.
+   # If omitted, defaults to "csi-vol-".
+   # volumeNamePrefix: "foo-bar-"
+
+   # Instruct the plugin it has to encrypt the volume
+   # By default it is disabled. Valid values are "true" or "false".
+   # A string is expected here, i.e. "true", not true.
+   # encrypted: "true"
+
+reclaimPolicy: {{ .Values.storageclass.reclaimPolicy }}
+allowVolumeExpansion: true
+mountOptions:
+   - discard
+{{- end -}}
