@@ -9,7 +9,7 @@ keywords:
   - ceph
   - rbd
   - ceph-csi
-home: https://github.kakaocorp.com/gonzales-son/ceph-csi
+home: https://github.com/juner417/ceph-csi
 sources:
-  - https://github.kakaocorp.com/gonzales-son/ceph-csi/tree/master/charts/ceph-csi-rbd
+  - https://github.com/juner417/ceph-csi/tree/master/charts/ceph-csi-rbd
 icon: https://raw.githubusercontent.com/ceph/ceph-csi/master/assets/ceph-logo.png
