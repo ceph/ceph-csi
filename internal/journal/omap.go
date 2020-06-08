@@ -93,16 +93,25 @@ func removeMapKeys(
 	}
 
 	err = ioctx.RmOmapKeys(oid, keys)
-	if err != nil {
+	switch err {
+	case nil:
+	case rados.ErrNotFound:
+		// the previous implementation of removing omap keys (via the cli)
+		// treated failure to find the omap as a non-error. Do so here to
+		// mimic the previous behavior.
+		klog.V(4).Infof(
+			util.Log(ctx, "when removing omap keys, omap not found (pool=%q, namespace=%q, name=%q): %+v"),
+			poolName, namespace, oid, keys)
+	default:
 		klog.Errorf(
 			util.Log(ctx, "failed removing omap keys (pool=%q, namespace=%q, name=%q): %v"),
 			poolName, namespace, oid, err)
-	} else {
-		klog.V(4).Infof(
-			util.Log(ctx, "removed omap keys (pool=%q, namespace=%q, name=%q): %+v"),
-			poolName, namespace, oid, keys)
+		return err
 	}
-	return err
+	klog.V(4).Infof(
+		util.Log(ctx, "removed omap keys (pool=%q, namespace=%q, name=%q): %+v"),
+		poolName, namespace, oid, keys)
+	return nil
 }
 
 func setOMapKeys(
