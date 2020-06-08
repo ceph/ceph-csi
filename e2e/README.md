@@ -46,7 +46,7 @@ the following parameters are available to configure  kubernetes cluster
 following environment variables can be exported to customize kubernetes deployment
 
 | ENV                  | Description                                      | Default                                                            |
-|----------------------|--------------------------------------------------|--------------------------------------------------------------------|
+| -------------------- | ------------------------------------------------ | ------------------------------------------------------------------ |
 | MINIKUBE_VERSION     | minikube version to install                      | latest                                                             |
 | KUBE_VERSION         | kubernetes version to install                    | v1.14.10                                                           |
 | MEMORY               | Amount of RAM allocated to the minikube VM in MB | 3000                                                               |
@@ -87,9 +87,11 @@ are available while running tests:
 ## Running E2E
 
 `
+
 Note:- Prior to running the tests, you may need to copy the kubernetes configuration
 file to `$HOME/.kube/config` which is required to communicate with kubernetes
 cluster or you can pass `kubeconfig`flag while running tests.
+
 `
 
 Functional tests are run by the `go test` command.
