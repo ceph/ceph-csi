@@ -67,6 +67,14 @@ function enable_psp() {
 	  cp "$DIR"/psp.yaml "$HOME"/.minikube/files/etc/kubernetes/addons/psp.yaml
 }
 
+# Storage providers and the default storage class is not needed for Ceph-CSI
+# testing. In order to reduce resources and potential conflicts between storage
+# plugins, disable them.
+function disable_storage_addons() {
+    minikube addons disable default-storageclass 2>/dev/null || true
+    minikube addons disable storage-provisioner 2>/dev/null || true
+}
+
 # configure minikube
 MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
@@ -124,6 +132,8 @@ up)
         mkdir -p "$HOME"/.kube "$HOME"/.minikube
         install_kubectl
     fi
+
+    disable_storage_addons
 
     echo "starting minikube with kubeadm bootstrapper"
     if minikube_supports_psp; then
