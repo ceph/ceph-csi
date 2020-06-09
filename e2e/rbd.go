@@ -252,7 +252,7 @@ var _ = Describe("RBD", func() {
 					}
 
 					pvc.Namespace = f.UniqueName
-					e2elog.Logf("The PVC  template %+v", pvc)
+					e2elog.Logf("The PVC template %+v", pvc)
 					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 					if err != nil {
 						Fail(err.Error())
@@ -263,32 +263,91 @@ var _ = Describe("RBD", func() {
 						e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
 						Fail("validate backend image failed")
 					}
+					totalCount := 5
 					snap := getSnapshot(snapshotPath)
 					snap.Namespace = f.UniqueName
 					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
-					err = createSnapshot(&snap, deployTimeout)
-					if err != nil {
-						Fail(err.Error())
-					}
-					pool := defaultRBDPool
-					snapList, err := listSnapshots(f, pool, images[0])
-					if err != nil {
-						Fail(err.Error())
-					}
-					if len(snapList) != 1 {
-						e2elog.Logf("backend snapshot not matching kubernetes snap count,snap count = % kubernetes snap count %d", len(snapList), 1)
-						Fail("validate backend snapshot failed")
+					// create snapshot
+					for i := 0; i < totalCount; i++ {
+						snap.Name = fmt.Sprintf("%s%d", f.UniqueName, i)
+						err = createSnapshot(&snap, deployTimeout)
+						if err != nil {
+							Fail(err.Error())
+						}
 					}
 
-					validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
+					imageList := listRBDImages(f)
+					// total images in cluster is 1 parent rbd image+ total snaps
+					if len(imageList) != totalCount+1 {
+						e2elog.Logf("backend images not matching kubernetes pvc,snap count,image count %d kubernetes resource count %d", len(imageList), totalCount+1)
+						Fail("validate backend images failed")
+					}
 
-					err = deleteSnapshot(&snap, deployTimeout)
+					pvcClone, err := loadPVC(pvcClonePath)
 					if err != nil {
 						Fail(err.Error())
 					}
+					appClone, err := loadApp(appClonePath)
+					if err != nil {
+						Fail(err.Error())
+					}
+					// create clone and bind it to an app
+					for i := 0; i < totalCount; i++ {
+						name := fmt.Sprintf("%s%d", f.UniqueName, i)
+						pvcClone.Spec.DataSource.Name = name
+						pvcClone.Namespace = f.UniqueName
+						appClone.Namespace = f.UniqueName
+						err = createPVCAndApp(name, f, pvcClone, appClone, deployTimeout)
+						if err != nil {
+							Fail(err.Error())
+						}
+					}
+
+					imageList = listRBDImages(f)
+					// total images in cluster is 1 parent rbd image+ total
+					// snaps+ total clones
+					totalCloneCount := totalCount + totalCount + 1
+					if len(imageList) != totalCloneCount {
+						e2elog.Logf("backend images not matching kubernetes resource count,image count %d kubernetes resource count %d", len(imageList), totalCount+totalCount+1)
+						Fail("validate backend images failed")
+					}
+
+					// delete parent pvc
 					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 					if err != nil {
 						Fail(err.Error())
+					}
+
+					imageList = listRBDImages(f)
+					totalSnapCount := totalCount + totalCount
+					// total images in cluster is total snaps+ total clones
+					if len(imageList) != totalSnapCount {
+						e2elog.Logf("backend images not matching kubernetes resource count,image count %d kubernetes resource count %d", len(imageList), totalCount+totalCount)
+						Fail("validate backend images failed")
+					}
+					for i := 0; i < totalCount; i++ {
+						snap.Name = fmt.Sprintf("%s%d", f.UniqueName, i)
+						err = deleteSnapshot(&snap, deployTimeout)
+						if err != nil {
+							Fail(err.Error())
+						}
+					}
+
+					imageList = listRBDImages(f)
+					if len(imageList) != totalCount {
+						e2elog.Logf("backend images not matching kubernetes snap count,image count %d kubernetes resource count %d", len(imageList), totalCount)
+						Fail("validate backend images failed")
+					}
+					// create clone and bind it to an app
+					for i := 0; i < totalCount; i++ {
+						name := fmt.Sprintf("%s%d", f.UniqueName, i)
+						pvcClone.Spec.DataSource.Name = name
+						pvcClone.Namespace = f.UniqueName
+						appClone.Namespace = f.UniqueName
+						err = deletePVCAndApp(name, f, pvcClone, appClone)
+						if err != nil {
+							Fail(err.Error())
+						}
 					}
 				}
 			})

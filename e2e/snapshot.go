@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -17,13 +16,6 @@ import (
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	testutils "k8s.io/kubernetes/test/utils"
 )
-
-type snapInfo struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	Size      int64  `json:"size"`
-	Timestamp string `json:"timestamp"`
-}
 
 func getSnapshotClass(path string) snapapi.VolumeSnapshotClass {
 	sc := snapapi.VolumeSnapshotClass{}
@@ -119,17 +111,6 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 
 		return true, nil
 	})
-}
-
-func listSnapshots(f *framework.Framework, pool, imageName string) ([]snapInfo, error) {
-	command := fmt.Sprintf("rbd snap ls %s/%s --format=json", pool, imageName)
-	stdout, stdErr := execCommandInToolBoxPod(f, command, rookNamespace)
-	Expect(stdErr).Should(BeEmpty())
-
-	var snapInfos []snapInfo
-
-	err := json.Unmarshal([]byte(stdout), &snapInfos)
-	return snapInfos, err
 }
 
 func createRBDSnapshotClass(f *framework.Framework) {
