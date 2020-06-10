@@ -56,7 +56,7 @@ make image-cephcsi
 | `csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-stage-secret-name`           | yes (for Kubernetes) | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value                                                                                                     |
 | `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-stage-secret-namespace` | yes (for Kubernetes) | namespaces of the above Secret objects                                                                                                                                                                                  |
 | `mounter`                                                                                           | no                   | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images                                                                                                              |
-| `encrypted`                                                                                         | no                   | disabled by default, use `"true"` to enable LUKS encryption on pvc and `"false"` to disable it. **Do not change for existing storageclasses**                                                                           |
+| `encrypted`                                                                                         | no                   | disabled by default, use `"true"` to enable LUKS encryption on PVC and `"false"` to disable it. **Do not change for existing storageclasses**                                                                           |
 | `encryptionKMSID`                                                                                   | no                   | required if encryption is enabled and a kms is used to store passphrases                                                                                                                                                |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
@@ -252,7 +252,7 @@ be able to review jwt tokens.
 Configure a role(s) for service accounts used for ceph-csi:
 
 * provisioner service account (`rbd-csi-provisioner`) requires only **delete**
-  permissions to delete passphrases on pvc delete
+  permissions to delete passphrases on PVC delete
 * nodeplugin service account (`rbd-csi-nodeplugin`) requires **create** and
   **read** permissions to save new keys and retrieve existing
 
