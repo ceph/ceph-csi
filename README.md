@@ -69,7 +69,7 @@ NOTE:
 |        | Creating and deleting snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
 |        | Provision volume from snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
-|        | Resize volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
+|        | Expand volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
 |        | Metrics Support                                           | Beta           | >= v1.2.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
 |        | Topology Aware Provisioning Support                       | Alpha          | >= v2.1.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
 | CephFS | Dynamically provision, de-provision File mode RWO volume  | Beta           | >= v1.1.0          | >= v1.0.0        | Nautilus (>=14.2.2)  | >= v1.14.0         |
@@ -77,7 +77,7 @@ NOTE:
 |        | Creating and deleting snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
-|        | Resize volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
+|        | Expand volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
 |        | Metrics                                                   | Beta           | >= v1.2.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
 
 `NOTE`: The `Alpha` status reflects possible non-backward
