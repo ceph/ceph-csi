@@ -1,0 +1,16 @@
+ # approval == this is a good idea /approve
+ approvers:
+   - humblec
+   - Madhu-1
+   - nixpanic
+   - ShyamsundarR
+ # review == this code is good /lgtm
+ reviewers:
+   - agarwal-mudit
+   - humblec
+   - Madhu-1
+   - nixpanic
+   - phlogistonjohn
+   - ShyamsundarR
+   - Yuggupta27
+
