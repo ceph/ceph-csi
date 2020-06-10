@@ -21,7 +21,7 @@ go: 1.13.x
 
 env:
   global:
-    - GOLANGCI_VERSION=v1.21.0
+    - GOLANGCI_VERSION=v1.27.0
     - GO111MODULE=on
     - GOSEC_VERSION=2.0.0
     - TEST_COVERAGE=stdout
