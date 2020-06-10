@@ -32,7 +32,7 @@ cluster (not deployed by rook), you need to add the following settings in the
 `mgr` section of the ceph.conf used by the Ceph manager daemon, and restart the
 Ceph manager daemon.
 
-```
+```shell
 [mgr]
 client mount uid = 0
 client mount gid = 0
@@ -44,7 +44,7 @@ that should be resolved in v14.2.3.
 **Available command line arguments:**
 
 | Option                    | Default value               | Description                                                                                                                                                                                                                                                                          |
-|---------------------------|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--endpoint`              | `unix://tmp/csi.sock`       | CSI endpoint, must be a UNIX socket                                                                                                                                                                                                                                                  |
 | `--drivername`            | `cephfs.csi.ceph.com`       | Name of the driver (Kubernetes: `provisioner` field in StorageClass must correspond to this value)                                                                                                                                                                                   |
 | `--nodeid`                | _empty_                     | This node's ID                                                                                                                                                                                                                                                                       |
@@ -83,8 +83,8 @@ is used to define in which namespace you want the configmaps to be stored
 | `fsName`                                                                                            | yes            | CephFS filesystem name into which the volume shall be created                                                                                                                                                           |
 | `mounter`                                                                                           | no             | Mount method to be used for this volume. Available options are `kernel` for Ceph kernel client and `fuse` for Ceph FUSE driver. Defaults to "default mounter".                                                          |
 | `pool`                                                                                              | no             | Ceph pool into which volume data shall be stored                                                                                                                                                                        |
-| `volumeNamePrefix`                                                                                  | no             | Prefix to use for naming subvolumes (defaults to `csi-vol-`).                                                                                                                                                    |
-| `snapshotNamePrefix`                                                                                | no             | Prefix to use for naming snapshots (defaults to `csi-snap-`)
+| `volumeNamePrefix`                                                                                  | no             | Prefix to use for naming subvolumes (defaults to `csi-vol-`).                                                                                                                                                           |
+| `snapshotNamePrefix`                                                                                | no             | Prefix to use for naming snapshots (defaults to `csi-snap-`)                                                                                                                                                            |
 | `kernelMountOptions`                                                                                | no             | Comma separated string of mount options accepted by cephfs kernel mounter, by default no options are passed. Check man mount.ceph for options.                                                                          |
 | `fuseMountOptions`                                                                                  | no             | Comma separated string of mount options accepted by ceph-fuse mounter, by default no options are passed.                                                                                                                |
 | `csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-stage-secret-name`           | for Kubernetes | Name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value                                                                                                     |

@@ -20,7 +20,8 @@ the code and will be pointed out in the review process:
 
 We use the following convention for specifying imports:
 
-```
+```shell
+
 <import standard library packages>
 
 <import third-party packages>

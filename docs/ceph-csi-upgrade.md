@@ -39,7 +39,7 @@ NBD mounter will have this issue.
 
 If you are affected by this issue, you will need to proceed carefully during
 the upgrade to restart your application pods. The recommended step is to modify
-the update strategy of the CSI nodeplugin daemonsets to OnDelete so that you
+the update strategy of the CSI nodeplugin daemonsets to `OnDelete` so that you
 can control when the CSI driver pods are restarted on each node.
 
 To avoid this issue in future upgrades, we recommend that you do not use the
