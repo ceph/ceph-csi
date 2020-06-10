@@ -104,7 +104,7 @@ jobs:
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        # No CI test job is availabe for Arm64 now due to below issues
+        # No CI test job is available for Arm64 now due to below issues
         # - k8s-csi sidecar images for Arm64 are not available
         # - Travis Arm64 CI job runs inside unprivileged LXD which blocks
         #   launching minikube test environment
