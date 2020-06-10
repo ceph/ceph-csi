@@ -63,6 +63,7 @@ oc logs "${jjb_pod}"
 
 # delete the job, so a next run can create it again
 oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" | oc delete --wait -f -
+oc delete pod "${jjb_pod}"
 
 # return the exit status of the pod
 [ "${status}" = 'Succeeded' ]
