@@ -104,6 +104,8 @@ type rbdVolume struct {
 
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection
+	// an opened IOContext, call .openIoctx() before using
+	ioctx *rados.IOContext
 }
 
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics
@@ -151,6 +153,9 @@ func (rv *rbdVolume) Connect(cr *util.Credentials) error {
 // Destroy cleans up the rbdVolume and closes the connection to the Ceph
 // cluster in case one was setup.
 func (rv *rbdVolume) Destroy() {
+	if rv.ioctx != nil {
+		rv.ioctx.Destroy()
+	}
 	if rv.conn != nil {
 		rv.conn.Destroy()
 	}
@@ -200,17 +205,32 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		return err
 	}
 
-	ioctx, err := pOpts.conn.GetIoctx(pOpts.Pool)
+	err = pOpts.openIoctx()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get IOContext")
 	}
-	defer ioctx.Destroy()
 
-	err = librbd.CreateImage(ioctx, pOpts.RbdImageName,
+	err = librbd.CreateImage(pOpts.ioctx, pOpts.RbdImageName,
 		uint64(util.RoundOffVolSize(pOpts.VolSize)*helpers.MiB), options)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create rbd image")
 	}
+
+	return nil
+}
+
+func (rv *rbdVolume) openIoctx() error {
+	if rv.ioctx != nil {
+		return nil
+	}
+
+	ioctx, err := rv.conn.GetIoctx(rv.Pool)
+	if err != nil {
+		// GetIoctx() can return util.ErrPoolNotFound
+		return err
+	}
+
+	rv.ioctx = ioctx
 
 	return nil
 }
@@ -220,13 +240,12 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 // can not be found, other errors will contain more details about other issues
 // (permission denied, ...) and are expected to relate to configuration issues.
 func (rv *rbdVolume) open() (*librbd.Image, error) {
-	ioctx, err := rv.conn.GetIoctx(rv.Pool)
+	err := rv.openIoctx()
 	if err != nil {
-		// GetIoctx() can return util.ErrPoolNotFound
 		return nil, err
 	}
 
-	image, err := librbd.OpenImage(ioctx, rv.RbdImageName, librbd.NoSnapshot)
+	image, err := librbd.OpenImage(rv.ioctx, rv.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
 		if err == librbd.ErrNotFound {
 			err = ErrImageNotFound{rv.RbdImageName, err}
