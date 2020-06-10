@@ -113,7 +113,7 @@ kubectl create -f csi-nodeplugin-psp.yaml
 kubectl create -f csi-config-map.yaml
 ```
 
-The config map deploys an empty CSI configuration that is mounted as a volume
+The configmap deploys an empty CSI configuration that is mounted as a volume
 within the Ceph CSI plugin pods. To add a specific Ceph clusters configuration
 details, refer to [Creating CSI configuration for RBD based
 provisioning](../examples/README.md#creating-csi-configuration-for-rbd-based-provisioning)
@@ -232,8 +232,8 @@ Configuration must include `encryptionKMSType: "vault"`. In order for ceph-csi
 to be able to access the configuration you will need to have it mounted to
 csi-rbdplugin containers in both daemonset (so kms client can be instantiated to
 encrypt/decrypt volumes) and deployment pods (so kms client can be instantiated
-to delete passphrase on volume delete) `ceph-csi-encryption-kms-config` config
-map.
+to delete passphrase on volume delete) `ceph-csi-encryption-kms-config`
+configmap.
 
 > Note: kms configuration must be a map of string values only
 > (`map[string]string`) so for numerical and boolean values make sure to put
