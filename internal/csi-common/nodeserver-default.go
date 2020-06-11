@@ -25,7 +25,6 @@ import (
 	"context"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	csipbv1 "github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
@@ -164,13 +163,13 @@ func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.No
 				Available: available,
 				Total:     capacity,
 				Used:      used,
-				Unit:      csipbv1.VolumeUsage_BYTES,
+				Unit:      csi.VolumeUsage_BYTES,
 			},
 			{
 				Available: inodesFree,
 				Total:     inodes,
 				Used:      inodesUsed,
-				Unit:      csipbv1.VolumeUsage_INODES,
+				Unit:      csi.VolumeUsage_INODES,
 			},
 		},
 	}, nil
