@@ -104,7 +104,7 @@ parameters:
 
    # Use external key management system for encryption passphrases by specifying
    # a unique ID matching KMS ConfigMap. The ID is only used for correlation to
-   # config map entry.
+   # configmap entry.
    encryptionKMSID: <kms-id>
 
 reclaimPolicy: Delete

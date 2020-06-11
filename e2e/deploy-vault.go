@@ -72,7 +72,7 @@ func createORDeleteVault(action string) {
 	data = strings.ReplaceAll(data, "default", cephCSINamespace)
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s vault config map %v", action, err)
+		e2elog.Logf("failed to %s vault configmap %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultPSPPath)
