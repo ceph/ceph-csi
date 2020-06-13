@@ -35,9 +35,35 @@ following files:
   1. as final step, return the bare-metal machine to the CentOS CI for other
      users (it will be re-installed with a minimal CentOS environment again)
 
+- `e2e.groovy` is the Jenkins Pipeline responsible for running End-to-End tests on
+  a multi-node kubernetes cluster hosted on [Centos CI][centos_ci].
+  It verifies complete e2e functionalities for a corresponding Pull request
+  on [ceph-csi][git_repo] repository.
+  It executes the following stages:
+
+  1. dynamically allocate a Jenkins Slave (`node('cico-workspace')`) with tools
+     and configuration to request a bare-metal machine.
+  1. checkout the `centos/ci` branch of the repository, which contains scripts
+     for provisioning and preparing the environment for running tests.
+  1. reserve a bare-metal machine with `cico` (configured on the Jenkins Slave);
+     retry if not immediately available.
+  1. provision the reserved bare-metal machine with additional tools and
+     dependencies to run the test (see `prepare.sh` below).
+  1. set up a multi-node k8s cluster on the bare-metal machine for performing
+     e2e tests (see `multi-node-k8s.sh` below).
+  1. deploy rook on the multi node kubernetes cluster.
+  1. run the e2e tests on the configured setup against the corresponding
+     pull request on the [ceph-csi][git_repo]
+     repository.
+  1. as final step, return the bare-metal machine to the CentOS CI for other
+     users (it will be re-installed with a minimal CentOS environment again).
+
 - `prepare.sh` installs dependencies for the test, and checks out the git
   repository and branch (or Pull Request) that contains the commits to be
   tested (and the test itself)
+
+- `multi-node-k8s.sh` installs the dependencies, and sets up a multi-node
+  kubernetes cluster on the bare-metal machine.
 
 ## Deploying the Jenkins Jobs
 
@@ -53,3 +79,5 @@ directory](deploy/README.md).
 [jjb]: https://jenkins-job-builder.readthedocs.io/en/latest/index.html
 [pipeline]: https://docs.openstack.org/infra/jenkins-job-builder/project_pipeline.html
 [centos_ci_hw]: https://wiki.centos.org/QaWiki/PubHardware
+[centos_ci]: https://wiki.centos.org/QaWiki/CI
+[git_repo]: https://github.com/ceph/ceph-csi
