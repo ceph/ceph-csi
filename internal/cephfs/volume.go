@@ -144,10 +144,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 // subvolume. If the command is not available as a fallback it will use
 // CreateVolume to resize the subvolume.
 func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID, bytesQuota int64) error {
-	supported := false
-	ok := false
-
-	if supported, ok = resizeSupportedList[volOptions.ClusterID]; supported || !ok {
+	if supported, ok := resizeSupportedList[volOptions.ClusterID]; supported || !ok {
 		args := []string{
 			"fs",
 			"subvolume",
