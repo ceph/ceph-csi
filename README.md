@@ -22,7 +22,7 @@ Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-c
 This repo contains Ceph
 [Container Storage Interface (CSI)](https://github.com/container-storage-interface/)
 driver for RBD, CephFS and kubernetes sidecar deployment yamls of provisioner,
-attacher, node-driver-registrar and snapshotter for supporting CSI functionalities.
+attacher, resizer, driver-registrar and snapshotter for supporting CSI functionalities.
 
 ## Overview
 
@@ -94,6 +94,7 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | Master (Branch)         | quay.io/cephcsi/cephcsi      | canary    |
+| v2.1.2 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.2    |
 | v2.1.1 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.1    |
 | v2.1.0 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.0    |
 | v2.0.1 (Release)        | quay.io/cephcsi/cephcsi      | v2.0.1    |
