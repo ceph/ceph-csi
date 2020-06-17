@@ -267,7 +267,7 @@ func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (boo
 	output = string(cmd)
 
 	if err, ok := err.(*exec.Error); ok {
-		if err.Err == exec.ErrNotFound {
+		if errors.Is(err.Err, exec.ErrNotFound) {
 			klog.Errorf(util.Log(ctx, "rbd cmd not found"))
 			// fail fast if command not found
 			return false, output, err

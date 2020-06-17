@@ -41,7 +41,7 @@ if [ -n "$(command -v go)" ]; then
 	# in case of a failed execution, the user will be informed about
 	# the missing packages based on whether they are on rpm or debian
 	# based systems.
-	if ! go run "${LIBCHECK}" > /dev/null; then
+	if ! go run -mod=vendor "${LIBCHECK}" > /dev/null; then
 		if [ -n "${RPM_CMD}" ]; then
 			echo "Packages libcephfs-devel librbd-devel librados-devel need to be installed"
 		elif [ -n "${DPKG_CMD}" ]; then
