@@ -16,6 +16,7 @@ limitations under the License.
 package util
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -150,5 +151,8 @@ func TestKernelVersion(t *testing.T) {
 	}
 	if version == "" {
 		t.Error("version is empty, this is unexpected?!")
+	}
+	if strings.HasSuffix(version, "\x00") {
+		t.Error("version ends with \\x00 byte(s)")
 	}
 }
