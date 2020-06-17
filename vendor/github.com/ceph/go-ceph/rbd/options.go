@@ -69,9 +69,6 @@ const (
 	RbdImageOptionFeaturesClear = ImageOptionFeaturesClear
 	// RbdImageOptionDataPool deprecated alias for ImageOptionDataPool
 	RbdImageOptionDataPool = ImageOptionDataPool
-
-	// introduced with Ceph Mimic
-	//RbdImageOptionFlatten = C.RBD_IMAGE_OPTION_FLATTEN
 )
 
 // ImageOptions represents a group of configurable image options.

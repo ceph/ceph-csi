@@ -9,6 +9,10 @@ package rbd
 // #include <rbd/librbd.h>
 import "C"
 
+import (
+	"github.com/ceph/go-ceph/internal/retry"
+)
+
 // ImageWatcher is a representation of the rbd_image_watcher_t from librbd.h
 type ImageWatcher struct {
 	Addr   string
@@ -30,28 +34,28 @@ func (image *Image) ListWatchers() ([]ImageWatcher, error) {
 		return nil, err
 	}
 
-	count := C.ulong(0)
-	ret := C.rbd_watchers_list(image.image, nil, &count)
-	if ret != 0 && ret != -C.ERANGE {
-		return nil, getError(ret)
-	}
-	if ret == 0 && count == 0 {
-		return nil, nil
-	}
-
-	watchers := make([]C.rbd_image_watcher_t, count)
-	ret = C.rbd_watchers_list(image.image, &watchers[0], &count)
-	if ret != 0 && ret != -C.ERANGE {
-		return nil, getError(ret)
+	var (
+		err      error
+		count    C.size_t
+		watchers []C.rbd_image_watcher_t
+	)
+	retry.WithSizes(16, 4096, func(size int) retry.Hint {
+		count = C.size_t(size)
+		watchers = make([]C.rbd_image_watcher_t, count)
+		ret := C.rbd_watchers_list(image.image, &watchers[0], &count)
+		err = getErrorIfNegative(ret)
+		return retry.Size(int(count)).If(err == errRange)
+	})
+	if err != nil {
+		return nil, err
 	}
 	defer C.rbd_watchers_list_cleanup(&watchers[0], count)
 
-	imageWatchers := make([]ImageWatcher, len(watchers))
-	for i, watcher := range watchers {
+	imageWatchers := make([]ImageWatcher, count)
+	for i, watcher := range watchers[:count] {
 		imageWatchers[i].Addr = C.GoString(watcher.addr)
 		imageWatchers[i].Id = int64(watcher.id)
 		imageWatchers[i].Cookie = uint64(watcher.cookie)
 	}
-
 	return imageWatchers, nil
 }
