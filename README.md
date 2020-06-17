@@ -22,7 +22,7 @@ Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-c
 This repo contains Ceph
 [Container Storage Interface (CSI)](https://github.com/container-storage-interface/)
 driver for RBD, CephFS and kubernetes sidecar deployment yamls of provisioner,
-attacher, node-driver-registrar and snapshotter for supporting CSI functionalities.
+attacher, resizer, driver-registrar and snapshotter for supporting CSI functionalities.
 
 ## Overview
 
@@ -69,7 +69,7 @@ NOTE:
 |        | Creating and deleting snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
 |        | Provision volume from snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
-|        | Resize volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
+|        | Expand volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
 |        | Metrics Support                                           | Beta           | >= v1.2.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
 |        | Topology Aware Provisioning Support                       | Alpha          | >= v2.1.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
 | CephFS | Dynamically provision, de-provision File mode RWO volume  | Beta           | >= v1.1.0          | >= v1.0.0        | Nautilus (>=14.2.2)  | >= v1.14.0         |
@@ -77,7 +77,7 @@ NOTE:
 |        | Creating and deleting snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from snapshot                            | -              | -                  | -                | -                    | -                  |
 |        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
-|        | Resize volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
+|        | Expand volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
 |        | Metrics                                                   | Beta           | >= v1.2.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
 
 `NOTE`: The `Alpha` status reflects possible non-backward
@@ -94,6 +94,7 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | Master (Branch)         | quay.io/cephcsi/cephcsi      | canary    |
+| v2.1.2 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.2    |
 | v2.1.1 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.1    |
 | v2.1.0 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.0    |
 | v2.0.1 (Release)        | quay.io/cephcsi/cephcsi      | v2.0.1    |
