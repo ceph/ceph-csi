@@ -8,6 +8,8 @@ import "C"
 import (
 	"bytes"
 	"unsafe"
+
+	"github.com/ceph/go-ceph/internal/retry"
 )
 
 // ClusterStat represents Ceph cluster statistics.
@@ -140,19 +142,26 @@ func (c *Conn) SetConfigOption(option, value string) error {
 // GetConfigOption returns the value of the Ceph configuration option
 // identified by the given name.
 func (c *Conn) GetConfigOption(name string) (value string, err error) {
-	buf := make([]byte, 4096)
-	c_name := C.CString(name)
-	defer C.free(unsafe.Pointer(c_name))
-	ret := int(C.rados_conf_get(c.cluster, c_name,
-		(*C.char)(unsafe.Pointer(&buf[0])), C.size_t(len(buf))))
-	// FIXME: ret may be -ENAMETOOLONG if the buffer is not large enough. We
-	// can handle this case, but we need a reliable way to test for
-	// -ENAMETOOLONG constant. Will the syscall/Errno stuff in Go help?
-	if ret == 0 {
-		value = C.GoString((*C.char)(unsafe.Pointer(&buf[0])))
-		return value, nil
+	cOption := C.CString(name)
+	defer C.free(unsafe.Pointer(cOption))
+
+	var buf []byte
+	// range from 4k to 256KiB
+	retry.WithSizes(4096, 1<<18, func(size int) retry.Hint {
+		buf = make([]byte, size)
+		ret := C.rados_conf_get(
+			c.cluster,
+			cOption,
+			(*C.char)(unsafe.Pointer(&buf[0])),
+			C.size_t(len(buf)))
+		err = getError(ret)
+		return retry.DoubleSize.If(err == errNameTooLong)
+	})
+	if err != nil {
+		return "", err
 	}
-	return "", RadosError(ret)
+	value = C.GoString((*C.char)(unsafe.Pointer(&buf[0])))
+	return value, nil
 }
 
 // WaitForLatestOSDMap blocks the caller until the latest OSD map has been
@@ -281,122 +290,4 @@ func (c *Conn) GetPoolByID(id int64) (string, error) {
 		return "", RadosError(ret)
 	}
 	return C.GoString((*C.char)(unsafe.Pointer(&buf[0]))), nil
-}
-
-// MonCommand sends a command to one of the monitors
-func (c *Conn) MonCommand(args []byte) (buffer []byte, info string, err error) {
-	return c.monCommand(args, nil)
-}
-
-// MonCommandWithInputBuffer sends a command to one of the monitors, with an input buffer
-func (c *Conn) MonCommandWithInputBuffer(args, inputBuffer []byte) (buffer []byte, info string, err error) {
-	return c.monCommand(args, inputBuffer)
-}
-
-func (c *Conn) monCommand(args, inputBuffer []byte) (buffer []byte, info string, err error) {
-	argv := C.CString(string(args))
-	defer C.free(unsafe.Pointer(argv))
-
-	var (
-		outs, outbuf       *C.char
-		outslen, outbuflen C.size_t
-	)
-	inbuf := C.CString(string(inputBuffer))
-	inbufLen := len(inputBuffer)
-	defer C.free(unsafe.Pointer(inbuf))
-
-	ret := C.rados_mon_command(c.cluster,
-		&argv, 1,
-		inbuf,              // bulk input (e.g. crush map)
-		C.size_t(inbufLen), // length inbuf
-		&outbuf,            // buffer
-		&outbuflen,         // buffer length
-		&outs,              // status string
-		&outslen)
-
-	if outslen > 0 {
-		info = C.GoStringN(outs, C.int(outslen))
-		C.free(unsafe.Pointer(outs))
-	}
-	if outbuflen > 0 {
-		buffer = C.GoBytes(unsafe.Pointer(outbuf), C.int(outbuflen))
-		C.free(unsafe.Pointer(outbuf))
-	}
-	if ret != 0 {
-		err = getError(ret)
-		return nil, info, err
-	}
-
-	return
-}
-
-// PGCommand sends a command to one of the PGs
-//
-// Implements:
-//  int rados_pg_command(rados_t cluster, const char *pgstr,
-//                       const char **cmd, size_t cmdlen,
-//                       const char *inbuf, size_t inbuflen,
-//                       char **outbuf, size_t *outbuflen,
-//                       char **outs, size_t *outslen);
-func (c *Conn) PGCommand(pgid []byte, args [][]byte) (buffer []byte, info string, err error) {
-	return c.pgCommand(pgid, args, nil)
-}
-
-// PGCommandWithInputBuffer sends a command to one of the PGs, with an input buffer
-//
-// Implements:
-//  int rados_pg_command(rados_t cluster, const char *pgstr,
-//                       const char **cmd, size_t cmdlen,
-//                       const char *inbuf, size_t inbuflen,
-//                       char **outbuf, size_t *outbuflen,
-//                       char **outs, size_t *outslen);
-func (c *Conn) PGCommandWithInputBuffer(pgid []byte, args [][]byte, inputBuffer []byte) (buffer []byte, info string, err error) {
-	return c.pgCommand(pgid, args, inputBuffer)
-}
-
-func (c *Conn) pgCommand(pgid []byte, args [][]byte, inputBuffer []byte) (buffer []byte, info string, err error) {
-	name := C.CString(string(pgid))
-	defer C.free(unsafe.Pointer(name))
-
-	argc := len(args)
-	argv := make([]*C.char, argc)
-
-	for i, arg := range args {
-		argv[i] = C.CString(string(arg))
-		defer C.free(unsafe.Pointer(argv[i]))
-	}
-
-	var (
-		outs, outbuf       *C.char
-		outslen, outbuflen C.size_t
-	)
-	inbuf := C.CString(string(inputBuffer))
-	inbufLen := len(inputBuffer)
-	defer C.free(unsafe.Pointer(inbuf))
-
-	ret := C.rados_pg_command(c.cluster,
-		name,
-		&argv[0],
-		C.size_t(argc),
-		inbuf,              // bulk input
-		C.size_t(inbufLen), // length inbuf
-		&outbuf,            // buffer
-		&outbuflen,         // buffer length
-		&outs,              // status string
-		&outslen)
-
-	if outslen > 0 {
-		info = C.GoStringN(outs, C.int(outslen))
-		C.free(unsafe.Pointer(outs))
-	}
-	if outbuflen > 0 {
-		buffer = C.GoBytes(unsafe.Pointer(outbuf), C.int(outbuflen))
-		C.free(unsafe.Pointer(outbuf))
-	}
-	if ret != 0 {
-		err = getError(ret)
-		return nil, info, err
-	}
-
-	return
 }

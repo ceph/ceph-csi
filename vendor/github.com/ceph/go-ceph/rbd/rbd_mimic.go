@@ -15,29 +15,34 @@ import (
 	"bytes"
 	"unsafe"
 
+	"github.com/ceph/go-ceph/internal/retry"
 	"github.com/ceph/go-ceph/rados"
 )
 
 // GetImageNames returns the list of current RBD images.
 func GetImageNames(ioctx *rados.IOContext) (names []string, err error) {
-	buf := make([]byte, 4096)
-	for {
-		size := C.size_t(len(buf))
+	var (
+		buf   []byte
+		csize C.size_t
+	)
+	// from 4KiB to 32KiB
+	retry.WithSizes(4096, 1<<15, func(size int) retry.Hint {
+		csize = C.size_t(size)
+		buf = make([]byte, csize)
 		ret := C.rbd_list(cephIoctx(ioctx),
-			(*C.char)(unsafe.Pointer(&buf[0])), &size)
-		if ret == -C.ERANGE {
-			buf = make([]byte, size)
-			continue
-		} else if ret < 0 {
-			return nil, RBDError(ret)
-		}
-		tmp := bytes.Split(buf[:size-1], []byte{0})
-		for _, s := range tmp {
-			if len(s) > 0 {
-				name := C.GoString((*C.char)(unsafe.Pointer(&s[0])))
-				names = append(names, name)
-			}
-		}
-		return names, nil
+			(*C.char)(unsafe.Pointer(&buf[0])), &csize)
+		err = getErrorIfNegative(ret)
+		return retry.Size(int(csize)).If(err == errRange)
+	})
+	if err != nil {
+		return nil, err
 	}
+	tmp := bytes.Split(buf[:csize-1], []byte{0})
+	for _, s := range tmp {
+		if len(s) > 0 {
+			name := C.GoString((*C.char)(unsafe.Pointer(&s[0])))
+			names = append(names, name)
+		}
+	}
+	return names, nil
 }

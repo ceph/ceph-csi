@@ -11,8 +11,9 @@ package rbd
 import "C"
 
 import (
-	"fmt"
 	"unsafe"
+
+	"github.com/ceph/go-ceph/internal/retry"
 )
 
 // GetParentInfo looks for the parent of the image and stores the pool, name
@@ -76,27 +77,28 @@ func (image *Image) ListChildren() (pools []string, images []string, err error) 
 		return nil, nil, err
 	}
 
-	size := C.size_t(0)
-	ret := C.rbd_list_children3(image.image, nil, &size)
-	if ret < 0 && ret != -C.ERANGE {
-		return nil, nil, RBDError(ret)
-	} else if ret > 0 {
-		return nil, nil, fmt.Errorf("rbd_list_children3() returned %d, expected 0", ret)
-	} else if ret == 0 && size == 0 {
-		return nil, nil, nil
+	var (
+		csize    C.size_t
+		children []C.rbd_linked_image_spec_t
+	)
+	retry.WithSizes(16, 4096, func(size int) retry.Hint {
+		csize = C.size_t(size)
+		children = make([]C.rbd_linked_image_spec_t, csize)
+		ret := C.rbd_list_children3(
+			image.image,
+			(*C.rbd_linked_image_spec_t)(unsafe.Pointer(&children[0])),
+			&csize)
+		err = getErrorIfNegative(ret)
+		return retry.Size(int(csize)).If(err == errRange)
+	})
+	if err != nil {
+		return nil, nil, err
 	}
+	defer C.rbd_linked_image_spec_list_cleanup((*C.rbd_linked_image_spec_t)(unsafe.Pointer(&children[0])), csize)
 
-	// expected: ret == -ERANGE, size contains number of image names
-	children := make([]C.rbd_linked_image_spec_t, size)
-	ret = C.rbd_list_children3(image.image, (*C.rbd_linked_image_spec_t)(unsafe.Pointer(&children[0])), &size)
-	if ret < 0 {
-		return nil, nil, RBDError(ret)
-	}
-	defer C.rbd_linked_image_spec_list_cleanup((*C.rbd_linked_image_spec_t)(unsafe.Pointer(&children[0])), size)
-
-	pools = make([]string, size)
-	images = make([]string, size)
-	for i, child := range children {
+	pools = make([]string, csize)
+	images = make([]string, csize)
+	for i, child := range children[:csize] {
 		pools[i] = C.GoString(child.pool_name)
 		images[i] = C.GoString(child.image_name)
 	}
