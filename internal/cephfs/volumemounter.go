@@ -29,7 +29,6 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	"golang.org/x/sys/unix"
 	"k8s.io/klog"
 )
 
@@ -151,12 +150,10 @@ func loadAvailableMounters(conf *util.Config) error {
 		klog.Errorf("failed to run mount.ceph %v", err)
 	} else {
 		// fetch the current running kernel info
-		utsname := unix.Utsname{}
-		err = unix.Uname(&utsname)
-		if err != nil {
-			return err
+		release, kvErr := util.KernelVersion()
+		if kvErr != nil {
+			return kvErr
 		}
-		release := string(utsname.Release[:64])
 
 		if conf.ForceKernelCephFS || kernelSupportsQuota(release) {
 			klog.V(1).Infof("loaded mounter: %s", volumeMounterKernel)
