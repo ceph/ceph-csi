@@ -148,7 +148,7 @@ func KernelVersion() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(utsname.Release[:]), nil
+	return strings.TrimRight(string(utsname.Release[:]), "\x00"), nil
 }
 
 // GenerateVolID generates a volume ID based on passed in parameters and version, to be returned
