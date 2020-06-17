@@ -285,17 +285,13 @@ func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, v
 		fmt.Sprintf("%s:%s", volOptions.Monitors, volOptions.RootPath),
 		mountPoint,
 	}
-	optionsStr := fmt.Sprintf("name=%s,secretfile=%s", cr.ID, cr.KeyFile)
-	if volOptions.FsName != "" {
-		optionsStr += fmt.Sprintf(",mds_namespace=%s", volOptions.FsName)
-	}
-	if volOptions.KernelMountOptions != "" {
-		optionsStr += fmt.Sprintf(",%s", volOptions.KernelMountOptions)
-	}
 
-	if !strings.Contains(volOptions.KernelMountOptions, netDev) {
-		optionsStr += fmt.Sprintf(",%s", netDev)
+	optionsStr := fmt.Sprintf("name=%s,secretfile=%s", cr.ID, cr.KeyFile)
+	mdsNamespace := ""
+	if volOptions.FsName != "" {
+		mdsNamespace = fmt.Sprintf("mds_namespace=%s", volOptions.FsName)
 	}
+	optionsStr = util.MountOptionsAdd(optionsStr, mdsNamespace, volOptions.KernelMountOptions, netDev)
 
 	args = append(args, "-o", optionsStr)
 
@@ -319,7 +315,7 @@ func bindMount(ctx context.Context, from, to string, readOnly bool, mntOptions [
 	}
 
 	if readOnly {
-		mntOptionSli += ",remount"
+		mntOptionSli = util.MountOptionsAdd(mntOptionSli, "remount")
 		if err := execCommandErr(ctx, "mount", "-o", mntOptionSli, to); err != nil {
 			return fmt.Errorf("failed read-only remount of %s: %v", to, err)
 		}
