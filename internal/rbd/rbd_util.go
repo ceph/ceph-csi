@@ -691,8 +691,8 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 	return rbdSnap
 }
 
-func hasSnapshotFeature(imageFeatures string) bool {
-	arr := strings.Split(imageFeatures, ",")
+func (rv *rbdVolume) hasSnapshotFeature() bool {
+	arr := strings.Split(rv.ImageFeatures, ",")
 	for _, f := range arr {
 		if f == "layering" {
 			return true
