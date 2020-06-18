@@ -17,7 +17,10 @@ limitations under the License.
 package rbd
 
 import (
+	"strings"
 	"testing"
+
+	librbd "github.com/ceph/go-ceph/rbd"
 )
 
 func TestIsLegacyVolumeID(t *testing.T) {
@@ -48,8 +51,11 @@ func TestHasSnapshotFeature(t *testing.T) {
 		{"foo,layering,bar", true},
 	}
 
+	rv := rbdVolume{}
+
 	for _, test := range tests {
-		if got := hasSnapshotFeature(test.features); got != test.hasFeature {
+		rv.imageFeatureSet = librbd.FeatureSetFromNames(strings.Split(test.features, ","))
+		if got := rv.hasSnapshotFeature(); got != test.hasFeature {
 			t.Errorf("hasSnapshotFeature(%s) = %t, want %t", test.features, got, test.hasFeature)
 		}
 	}
