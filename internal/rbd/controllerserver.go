@@ -532,7 +532,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 
 	// Check if source volume was created with required image features for snaps
-	if !hasSnapshotFeature(rbdVol.ImageFeatures) {
+	if !rbdVol.hasSnapshotFeature() {
 		return nil, status.Errorf(codes.InvalidArgument, "volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
 	}
 
