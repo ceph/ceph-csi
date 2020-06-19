@@ -62,7 +62,7 @@ func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) e
 	cachePath := path.Join(nc.BasePath, nc.CacheDir)
 	for _, file := range files {
 		err = decodeObj(cachePath, pattern, file, destObj)
-		if err == errDec {
+		if errors.Is(err, errDec) {
 			continue
 		} else if err == nil {
 			if err = f(strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))); err != nil {

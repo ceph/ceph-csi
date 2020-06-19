@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"regexp"
@@ -176,7 +177,7 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 		return false, nil
 	})
 
-	if err == wait.ErrWaitTimeout {
+	if errors.Is(err, wait.ErrWaitTimeout) {
 		err = fmt.Errorf("%s", reason)
 	}
 	if err != nil {

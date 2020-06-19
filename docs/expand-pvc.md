@@ -10,13 +10,13 @@
 
 ## Prerequisite
 
-- For filesystem resize to be supported for your kubernetes cluster, the
+- For filesystem expansion to be supported for your kubernetes cluster, the
   kubernetes version running in your cluster should be >= v1.15 and for block
-  volume resize support the kubernetes version should be >=1.16. Also,
-  `ExpandCSIVolumes` feature gate has to be enabled for the volume resize
+  volume expand support the kubernetes version should be >=1.16. Also,
+  `ExpandCSIVolumes` feature gate has to be enabled for the volume expand
   functionality to work.
 
-- The controlling StorageClass must have allowVolumeExpansion set to true.
+- The controlling StorageClass must have `allowVolumeExpansion` set to `true`.
 
 ### Expand RBD PVCs
 
@@ -126,8 +126,8 @@ metadata:
   selfLink: ""
 ```
 
-Now you can see the pvc status as `FileSystemResizePending`, once the kubelet
-calls the NodeExpandVolume to resize the PVC on node, the `status conditions`
+Now you can see the PVC status as `FileSystemResizePending`, once the kubelet
+calls the NodeExpandVolume to expand the PVC on node, the `status conditions`
 and `status` will be updated
 
 ```bash
@@ -245,9 +245,9 @@ status:
   phase: Bound
 ```
 
-Now you can see the pvc stats as FileSystemResizePending, once the kubelet calls
-the NodeExpandVolume to resize the PVC on node, the status conditions will be updated
-and status.capacity.storage will be updated.
+Now you can see the PVC stats as `FileSystemResizePending`, once the kubelet calls
+the NodeExpandVolume to expand the PVC on node, the status conditions will be updated
+and `status.capacity.storage` will be updated.
 
 ```bash
 [$]kubectl get pvc
@@ -326,7 +326,7 @@ Filesystem                                                                     S
 [$]kubectl edit pvc csi-cephfs-pvc
 ```
 
-Check PVC status after editing the pvc storage
+Check PVC status after editing the PVC storage
 
 ```yaml
 apiVersion: v1
@@ -367,7 +367,7 @@ metadata:
   selfLink: ""
 ```
 
-Now you can see the pvc status capacity storage is updated with request size
+Now you can see the PVC status capacity storage is updated with request size
 
 ```bash
 [$]kubectl get pvc
