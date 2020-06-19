@@ -19,6 +19,7 @@ package rbd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -260,7 +261,7 @@ func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdV
 		return !used, nil
 	})
 	// return error if rbd image has not become available for the specified timeout
-	if err == wait.ErrWaitTimeout {
+	if errors.Is(err, wait.ErrWaitTimeout) {
 		return fmt.Errorf("rbd image %s is still being used", imagePath)
 	}
 	// return error if any other errors were encountered during waiting for the image to become available

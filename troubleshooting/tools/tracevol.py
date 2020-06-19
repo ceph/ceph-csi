@@ -1,28 +1,24 @@
 #!/usr/bin/python
 """
 Copyright 2019 The Ceph-CSI Authors.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-
 #pylint: disable=line-too-long
 python tool to trace backend image name from pvc
+Note: For the script to work properly python>=3.x is required
 sample input:
 python -c oc -k /home/.kube/config -n default -rn rook-ceph -id admin -key
-adminkey
-
+adminkey -cm ceph-csi-config
 Sample output:
-
++------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                                            RBD                                                            |
 +----------+------------------------------------------+----------------------------------------------+-----------------+--------------+------------------+
 | PVC Name |                 PV Name                  |                  Image
 Name                  | PV name in omap | Image ID in omap | Image in cluster |
@@ -30,6 +26,13 @@ Name                  | PV name in omap | Image ID in omap | Image in cluster |
 | rbd-pvc  | pvc-f1a501dd-03f6-45c9-89f4-85eed7a13ef2 | csi-vol-1b00f5f8-b1c1-11e9-8421-9243c1f659f0 |       True      |     True     |      False       |
 | rbd-pvcq | pvc-09a8bceb-0f60-4036-85b9-dc89912ae372 | csi-vol-b781b9b1-b1c5-11e9-8421-9243c1f659f0 |       True      |     True     |       True       |
 +----------+------------------------------------------+----------------------------------------------+-----------------+--------------+------------------+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                                                  CephFS                                                                                  |
++----------------+------------------------------------------+----------------------------------------------+-----------------+----------------------+----------------------+
+|    PVC Name    |                 PV Name                  |                Subvolume Name                | PV name in omap | Subvolume ID in omap | Subvolume in cluster |
++----------------+------------------------------------------+----------------------------------------------+-----------------+----------------------+----------------------+
+| csi-cephfs-pvc | pvc-b3492186-73c0-4a4e-a810-0d0fa0daf709 | csi-vol-6f283b82-a09d-11ea-81a7-0242ac11000f |       True      |         True         |         True         |
++----------------+------------------------------------------+----------------------------------------------+-----------------+----------------------+----------------------+
 """
 
 import argparse
@@ -58,16 +61,24 @@ PARSER.add_argument("-id", "--userid",
                     default="admin", help="user ID to connect to ceph cluster")
 PARSER.add_argument("-key", "--userkey",
                     default="", help="user password to connect to ceph cluster")
+PARSER.add_argument("-cm", "--configmap", default="ceph-csi-config",
+                    help="configmap name which holds the cephcsi configuration")
 
 
 def list_pvc_vol_name_mapping(arg):
     """
     list pvc and volume name mapping
     """
-    table = prettytable.PrettyTable(
-        ["PVC Name", "PV Name", "Image Name", "PV name in omap",
-         "Image ID in omap", "Image in cluster"]
-    )
+    table_rbd = prettytable.PrettyTable()
+    table_rbd.title = "RBD"
+    table_rbd.field_names = ["PVC Name", "PV Name", "Image Name", "PV name in omap",
+                             "Image ID in omap", "Image in cluster"]
+
+    table_cephfs = prettytable.PrettyTable()
+    table_cephfs.title = "CephFS"
+    table_cephfs.field_names = ["PVC Name", "PV Name", "Subvolume Name", "PV name in omap",
+                                "Subvolume ID in omap", "Subvolume in cluster"]
+
     cmd = [arg.command]
 
     if arg.kubeconfig != "":
@@ -92,16 +103,31 @@ def list_pvc_vol_name_mapping(arg):
     except ValueError as err:
         print(err, stdout)
         sys.exit()
+    format_and_print_tables(arg, pvcs, table_rbd, table_cephfs)
+
+def format_and_print_tables(arg, pvcs, table_rbd, table_cephfs):
+    """
+    format and print tables with all relevant information.
+    """
     if arg.pvcname != "":
-        format_table(arg, pvcs, table)
+        pvname = pvcs['spec']['volumeName']
+        if is_rbd_pv(arg, pvname):
+            format_table(arg, pvcs, table_rbd, True)
+        else:
+            format_table(arg, pvcs, table_cephfs, False)
     else:
         for pvc in pvcs['items']:
-            format_table(arg, pvc, table)
-    print(table)
+            pvname = pvc['spec']['volumeName']
+            if is_rbd_pv(arg, pvname):
+                format_table(arg, pvc, table_rbd, True)
+            else:
+                format_table(arg, pvc, table_cephfs, False)
+    print(table_rbd)
+    print(table_cephfs)
 
-def format_table(arg, pvc_data, table):
+def format_table(arg, pvc_data, table, is_rbd):
     """
-    format table for pvc and image information
+    format tables for pvc and image information
     """
     # pvc name
     pvcname = pvc_data['metadata']['name']
@@ -114,7 +140,7 @@ def format_table(arg, pvc_data, table):
         table.add_row([pvcname, "", "", False,
                        False, False])
         return
-    pool_name = get_pool_name(arg, volume_name)
+    pool_name = get_pool_name(arg, volume_name, is_rbd)
     if pool_name == "":
         table.add_row([pvcname, pvname, "", False,
                        False, False])
@@ -125,27 +151,28 @@ def format_table(arg, pvc_data, table):
         table.add_row([pvcname, pvname, "", False,
                        False, False])
         return
-    # check image details present rados omap
-    pv_present, uuid_present = validate_volume_in_rados(
-        arg, image_id, pvname, pool_name)
-    image_in_cluster = check_image_in_cluster(arg, image_id, pool_name)
+    # check image/subvolume details present rados omap
+    pv_present, uuid_present = validate_volume_in_rados(arg, image_id, pvname, pool_name, is_rbd)
+    present_in_cluster = False
+    if is_rbd:
+        present_in_cluster = check_image_in_cluster(arg, image_id, pool_name)
+    else:
+        subvolname = "csi-vol-%s" % image_id
+        present_in_cluster = check_subvol_in_cluster(arg, subvolname)
     image_name = "csi-vol-%s" % image_id
     table.add_row([pvcname, pvname, image_name, pv_present,
-                   uuid_present, image_in_cluster])
+                   uuid_present, present_in_cluster])
 
 
-def validate_volume_in_rados(arg, image_id, pvc_name, pool_name):
+def validate_volume_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
     """
     validate volume information in rados
     """
-
-    pv_present = check_pv_name_in_rados(arg, image_id, pvc_name, pool_name)
-    uuid_present = check_image_uuid_in_rados(
-        arg, image_id, pvc_name, pool_name)
+    pv_present = check_pv_name_in_rados(arg, image_id, pvc_name, pool_name, is_rbd)
+    uuid_present = check_image_uuid_in_rados(arg, image_id, pvc_name, pool_name, is_rbd)
     return pv_present, uuid_present
 
-
-def check_pv_name_in_rados(arg, image_id, pvc_name, pool_name):
+def check_pv_name_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
     """
     validate pvc information in rados
     """
@@ -154,40 +181,33 @@ def check_pv_name_in_rados(arg, image_id, pvc_name, pool_name):
            omapkey, "--pool", pool_name]
     if not arg.userkey:
         cmd += ["--id", arg.userid, "--key", arg.userkey]
+    if not is_rbd:
+        cmd += ["--namespace", "csi"]
     if arg.toolboxdeployed is True:
-        tool_box_name = get_tool_box_pod_name(arg)
-        kube = [arg.command]
-        if arg.kubeconfig != "":
-            if arg.command == "oc":
-                kube += ["--config", arg.kubeconfig]
-            else:
-                kube += ["--kubeconfig", arg.kubeconfig]
-        kube += ['exec', '-it', tool_box_name, '-n',
-                 arg.rooknamespace, '--']
-        cmd = kube+cmd
+        kube = get_cmd_prefix(arg)
+        cmd = kube + cmd
     out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT)
 
     stdout, stderr = out.communicate()
     if stderr is not None:
         return False
-    name = ''
-    lines = [x.strip() for x in stdout.split("\n")]
+    name = b''
+    lines = [x.strip() for x in stdout.split(b"\n")]
     for line in lines:
-        if ' ' not in line:
+        if b' ' not in line:
             continue
-        if 'value' in line and 'bytes' in line:
+        if b'value' in line and b'bytes' in line:
             continue
-        part = re.findall(r'[A-Za-z0-9\-]+', line)
+        part = re.findall(br'[A-Za-z0-9\-]+', line)
         if part:
             name += part[-1]
-    if name != image_id:
+    if name.decode() != image_id:
         if arg.debug:
             print("expected image Id %s found Id in rados %s" %
-                  (image_id, name))
+                  (image_id, name.decode()))
         return False
     return True
-
 
 def check_image_in_cluster(arg, image_uuid, pool_name):
     """
@@ -198,16 +218,8 @@ def check_image_in_cluster(arg, image_uuid, pool_name):
     if not arg.userkey:
         cmd += ["--id", arg.userid, "--key", arg.userkey]
     if arg.toolboxdeployed is True:
-        tool_box_name = get_tool_box_pod_name(arg)
-        kube = [arg.command]
-        if arg.kubeconfig != "":
-            if arg.command == "oc":
-                kube += ["--config", arg.kubeconfig]
-            else:
-                kube += ["--kubeconfig", arg.kubeconfig]
-        kube += ['exec', '-it', tool_box_name, '-n',
-                 arg.rooknamespace, '--']
-        cmd = kube+cmd
+        kube = get_cmd_prefix(arg)
+        cmd = kube + cmd
 
     out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT)
@@ -215,16 +227,15 @@ def check_image_in_cluster(arg, image_uuid, pool_name):
     stdout, stderr = out.communicate()
     if stderr is not None:
         if arg.debug:
-            print("failed to toolbox %s", stderr)
+            print(b"failed to toolbox %s", stderr)
         return False
-    if "No such file or directory" in stdout:
+    if b"No such file or directory" in stdout:
         if arg.debug:
-            print("image not found in cluster", stdout)
+            print("image not found in cluster")
         return False
     return True
 
-#pylint: disable=too-many-branches
-def check_image_uuid_in_rados(arg, image_id, pvc_name, pool_name):
+def check_image_uuid_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
     """
     validate image uuid in rados
     """
@@ -232,44 +243,51 @@ def check_image_uuid_in_rados(arg, image_id, pvc_name, pool_name):
     cmd = ['rados', 'getomapval', omapkey, "csi.volname", "--pool", pool_name]
     if not arg.userkey:
         cmd += ["--id", arg.userid, "--key", arg.userkey]
+    if not is_rbd:
+        cmd += ["--namespace", "csi"]
     if arg.toolboxdeployed is True:
-        kube = [arg.command]
-        if arg.kubeconfig != "":
-            if arg.command == "oc":
-                kube += ["--config", arg.kubeconfig]
-            else:
-                kube += ["--kubeconfig", arg.kubeconfig]
-        tool_box_name = get_tool_box_pod_name(arg)
-        kube += ['exec', '-it', tool_box_name, '-n',
-                 arg.rooknamespace, '--']
-        cmd = kube+cmd
-
+        kube = get_cmd_prefix(arg)
+        cmd = kube + cmd
     out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT)
 
     stdout, stderr = out.communicate()
     if stderr is not None:
         if arg.debug:
-            print("failed to toolbox %s", stderr)
+            print("failed to get toolbox %s", stderr)
         return False
 
-    name = ''
-    lines = [x.strip() for x in stdout.split("\n")]
+    name = b''
+    lines = [x.strip() for x in stdout.split(b"\n")]
     for line in lines:
-        if ' ' not in line:
+        if b' ' not in line:
             continue
-        if 'value' in line and 'bytes' in line:
+        if b'value' in line and b'bytes' in line:
             continue
-        part = re.findall(r'[A-Za-z0-9\-]+', line)
+        part = re.findall(br'[A-Za-z0-9\-]+', line)
         if part:
             name += part[-1]
-    if name != pvc_name:
+    if name.decode() != pvc_name:
         if arg.debug:
             print("expected image Id %s found Id in rados %s" %
-                  (pvc_name, name))
+                  (pvc_name, name.decode()))
         return False
     return True
 
+
+def get_cmd_prefix(arg):
+    """
+    Returns command prefix
+    """
+    kube = [arg.command]
+    if arg.kubeconfig != "":
+        if arg.command == "oc":
+            kube += ["--config", arg.kubeconfig]
+        else:
+            kube += ["--kubeconfig", arg.kubeconfig]
+    tool_box_name = get_tool_box_pod_name(arg)
+    kube += ['exec', '-it', tool_box_name, '-n', arg.rooknamespace, '--']
+    return kube
 
 def get_image_uuid(volume_handler):
     """
@@ -338,56 +356,156 @@ def get_tool_box_pod_name(arg):
     return ""
 
 #pylint: disable=too-many-branches
-def get_pool_name(arg, vol_id):
+def get_pool_name(arg, vol_id, is_rbd):
     """
     get pool name from ceph backend
     """
-    cmd = ['ceph', 'osd', 'lspools', '--format=json']
+    if is_rbd:
+        cmd = ['ceph', 'osd', 'lspools', '--format=json']
+    else:
+        cmd = ['ceph', 'fs', 'ls', '--format=json']
     if  not arg.userkey:
         cmd += ["--id", arg.userid, "--key", arg.userkey]
     if arg.toolboxdeployed is True:
-        kube = [arg.command]
-        if arg.kubeconfig != "":
-            if arg.command == "oc":
-                kube += ["--config", arg.kubeconfig]
-            else:
-                kube += ["--kubeconfig", arg.kubeconfig]
-        tool_box_name = get_tool_box_pod_name(arg)
-        kube += ['exec', '-it', tool_box_name, '-n',
-                 arg.rooknamespace, '--']
-        cmd = kube+cmd
+        kube = get_cmd_prefix(arg)
+        cmd = kube + cmd
     out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT)
 
     stdout, stderr = out.communicate()
     if stderr is not None:
         if arg.debug:
-            print("failed to pool name %s", stderr)
+            print("failed to get the pool name %s", stderr)
         return ""
     try:
         pools = json.loads(stdout)
     except ValueError as err:
         if arg.debug:
-            print("failed to pool name %s", err)
+            print("failed to get the pool name %s", err)
         return ""
-    pool_id = vol_id.split('-')
-    if len(pool_id) < 4:
-        if arg.debug:
-            print("pood id notin proper format", pool_id)
-        return ""
-    if pool_id[3] in arg.rooknamespace:
-        pool_id = pool_id[4]
+    if is_rbd:
+        pool_id = vol_id.split('-')
+        if len(pool_id) < 4:
+            raise Exception("pool id not in the proper format")
+        if pool_id[3] in arg.rooknamespace:
+            pool_id = pool_id[4]
+        else:
+            pool_id = pool_id[3]
+        for pool in pools:
+            if int(pool_id) is int(pool['poolnum']):
+                return pool['poolname']
     else:
-        pool_id = pool_id[3]
-    for pool in pools:
-        if int(pool_id) is int(pool['poolnum']):
-            return pool['poolname']
+        for pool in pools:
+            return pool['metadata_pool']
     return ""
 
+def check_subvol_in_cluster(arg, subvol_name):
+    """
+    Checks if subvolume exists in cluster or not.
+    """
+    # check if user has specified subvolumeGroup
+    subvol_group = get_subvol_group(arg)
+    if subvol_group == "":
+        # default subvolumeGroup
+        subvol_group = "csi"
+    return check_subvol_path(arg, subvol_name, subvol_group)
+
+def check_subvol_path(arg, subvol_name, subvol_group):
+    """
+    Returns True if subvolume path exists in the cluster.
+    """
+    cmd = ['ceph', 'fs', 'subvolume', 'getpath',
+           'myfs', subvol_name, subvol_group]
+    if not arg.userkey:
+        cmd += ["--id", arg.userid, "--key", arg.userkey]
+    if arg.toolboxdeployed is True:
+        kube = get_cmd_prefix(arg)
+        cmd = kube + cmd
+    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT)
+    stdout, stderr = out.communicate()
+    if stderr is not None:
+        if arg.debug:
+            print("failed to get toolbox %s", stderr)
+        return False
+    if b"Error" in stdout:
+        if arg.debug:
+            print("subvolume not found in cluster", stdout)
+        return False
+    return True
+
+def get_subvol_group(arg):
+    """
+    Returns sub volume group from configmap.
+    """
+    cmd = [arg.command]
+    if arg.kubeconfig != "":
+        if arg.command == "oc":
+            cmd += ["--config", arg.kubeconfig]
+        else:
+            cmd += ["--kubeconfig", arg.kubeconfig]
+    cmd += ['get', 'cm', arg.configmap, '-o', 'json']
+    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT)
+    stdout, stderr = out.communicate()
+    if stderr is not None:
+        if arg.debug:
+            print("failed to get configmap %s", stderr)
+            sys.exit()
+    try:
+        config_map = json.loads(stdout)
+    except ValueError as err:
+        print(err, stdout)
+        sys.exit()
+    cm_data = config_map['data']['config.json']
+    subvol_group = ""
+    if "subvolumeGroup" in cm_data:
+        try:
+            cm_data_json = json.loads(cm_data)
+        except ValueError as err:
+            print(err, stdout)
+            sys.exit()
+        for data in cm_data_json:
+            subvol_group = data['cephFS']['subvolumeGroup']
+    return subvol_group
+
+def is_rbd_pv(arg, pvname):
+    """
+    Checks if volume attributes in a pv has an attribute named 'fsname'.
+    If it has, returns False else return True.
+    """
+    cmd = [arg.command]
+    if arg.kubeconfig != "":
+        cmd += ["--config", arg.kubeconfig]
+    else:
+        cmd += ["--kubeconfig", arg.kubeconfig]
+
+    cmd += ['get', 'pv', pvname, '-o', 'json']
+    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT)
+    stdout, stderr = out.communicate()
+    if stderr is not None:
+        if arg.debug:
+            print("failed to get pv %s", stderr)
+        sys.exit()
+    try:
+        pvdata = json.loads(stdout)
+        volume_attr = pvdata['spec']['csi']['volumeAttributes']
+        key = 'fsName'
+        if key in volume_attr.keys():
+            return False
+    except ValueError as err:
+        if arg.degug:
+            print("failed to get pv %s", err)
+        sys.exit()
+    return True
 
 if __name__ == "__main__":
     ARGS = PARSER.parse_args()
     if ARGS.command not in ["kubectl", "oc"]:
         print("%s command not supported" % ARGS.command)
+        sys.exit(1)
+    if sys.version_info[0] < 3:
+        print("python version less than 3 is not supported.")
         sys.exit(1)
     list_pvc_vol_name_mapping(ARGS)

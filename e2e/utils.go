@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"regexp"
@@ -23,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
-	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -64,7 +64,7 @@ func initResouces() {
 	vaultAddr = fmt.Sprintf("http://vault.%s.svc.cluster.local:8200", cephCSINamespace)
 }
 
-func createNamespace(c clientset.Interface, name string) error {
+func createNamespace(c kubernetes.Interface, name string) error {
 	timeout := time.Duration(deployTimeout) * time.Minute
 	ns := &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -92,7 +92,7 @@ func createNamespace(c clientset.Interface, name string) error {
 	})
 }
 
-func deleteNamespace(c clientset.Interface, name string) error {
+func deleteNamespace(c kubernetes.Interface, name string) error {
 	timeout := time.Duration(deployTimeout) * time.Minute
 	err := c.CoreV1().Namespaces().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil && !apierrs.IsNotFound(err) {
@@ -122,7 +122,7 @@ func replaceNamespaceInTemplate(filePath string) (string, error) {
 	return strings.ReplaceAll(string(read), "namespace: default", fmt.Sprintf("namespace: %s", cephCSINamespace)), nil
 }
 
-func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
+func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
 	e2elog.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start", timeout, ns)
@@ -152,7 +152,7 @@ func waitForDaemonSets(name, ns string, c clientset.Interface, t int) error {
 
 // Waits for the deployment to complete.
 
-func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) error {
+func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) error {
 	var (
 		deployment *apps.Deployment
 		reason     string
@@ -177,7 +177,7 @@ func waitForDeploymentComplete(name, ns string, c clientset.Interface, t int) er
 		return false, nil
 	})
 
-	if err == wait.ErrWaitTimeout {
+	if errors.Is(err, wait.ErrWaitTimeout) {
 		err = fmt.Errorf("%s", reason)
 	}
 	if err != nil {
@@ -1077,7 +1077,7 @@ func createNodeLabel(f *framework.Framework, labelKey, labelValue string) {
 	}
 }
 
-func deleteNodeLabel(c clientset.Interface, labelKey string) {
+func deleteNodeLabel(c kubernetes.Interface, labelKey string) {
 	nodes, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	Expect(err).Should(BeNil())
 	for i := range nodes.Items {
@@ -1085,7 +1085,7 @@ func deleteNodeLabel(c clientset.Interface, labelKey string) {
 	}
 }
 
-func checkNodeHasLabel(c clientset.Interface, labelKey, labelValue string) {
+func checkNodeHasLabel(c kubernetes.Interface, labelKey, labelValue string) {
 	nodes, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	Expect(err).Should(BeNil())
 	for i := range nodes.Items {
@@ -1155,7 +1155,7 @@ func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeCl
 }
 
 // getBoundPV returns a PV details.
-func getBoundPV(client clientset.Interface, pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+func getBoundPV(client kubernetes.Interface, pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
 	// Get new copy of the claim
 	claim, err := client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 	if err != nil {
