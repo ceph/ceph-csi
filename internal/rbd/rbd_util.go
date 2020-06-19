@@ -89,7 +89,7 @@ type rbdVolume struct {
 	JournalPool         string
 	Pool                string `json:"pool"`
 	DataPool            string
-	ImageFeatures       string `json:"imageFeatures"`
+	imageFeatureSet     librbd.FeatureSet
 	AdminID             string `json:"adminId"`
 	UserID              string `json:"userId"`
 	Mounter             string `json:"mounter"`
@@ -133,7 +133,7 @@ type rbdSnapshot struct {
 }
 
 var (
-	supportedFeatures = sets.NewString("layering")
+	supportedFeatures = sets.NewString(librbd.FeatureNameLayering)
 )
 
 // Connect an rbdVolume to the Ceph cluster
@@ -191,11 +191,10 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		}
 	}
 	klog.V(4).Infof(util.Log(ctx, logMsg),
-		pOpts, volSzMiB, pOpts.ImageFeatures, pOpts.Monitors)
+		pOpts, volSzMiB, pOpts.imageFeatureSet.Names(), pOpts.Monitors)
 
-	if pOpts.ImageFeatures != "" {
-		features := imageFeaturesToUint64(ctx, pOpts.ImageFeatures)
-		err := options.SetUint64(librbd.RbdImageOptionFeatures, features)
+	if pOpts.imageFeatureSet != 0 {
+		err := options.SetUint64(librbd.RbdImageOptionFeatures, uint64(pOpts.imageFeatureSet))
 		if err != nil {
 			return errors.Wrapf(err, "failed to set image features")
 		}
@@ -638,7 +637,7 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 					" features are: %v", f, supportedFeatures)
 			}
 		}
-		rbdVol.ImageFeatures = imageFeatures
+		rbdVol.imageFeatureSet = librbd.FeatureSetFromNames(arr)
 	}
 
 	klog.V(3).Infof(util.Log(ctx, "setting disableInUseChecks on rbd volume to: %v"), disableInUseChecks)
@@ -692,29 +691,9 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 	return rbdSnap
 }
 
-func hasSnapshotFeature(imageFeatures string) bool {
-	arr := strings.Split(imageFeatures, ",")
-	for _, f := range arr {
-		if f == "layering" {
-			return true
-		}
-	}
-	return false
-}
-
-// imageFeaturesToUint64 takes the comma separated image features and converts
-// them to a RbdImageOptionFeatures value.
-func imageFeaturesToUint64(ctx context.Context, imageFeatures string) uint64 {
-	features := uint64(0)
-
-	for _, f := range strings.Split(imageFeatures, ",") {
-		if f == "layering" {
-			features |= librbd.RbdFeatureLayering
-		} else {
-			klog.Warningf(util.Log(ctx, "rbd: image feature %s not recognized, skipping"), f)
-		}
-	}
-	return features
+// hasSnapshotFeature checks if Layering is enabled for this image
+func (rv *rbdVolume) hasSnapshotFeature() bool {
+	return (uint64(rv.imageFeatureSet) & librbd.FeatureLayering) == librbd.FeatureLayering
 }
 
 func protectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
@@ -842,8 +821,7 @@ func (rv *rbdVolume) getImageInfo() error {
 	if err != nil {
 		return err
 	}
-	fs := librbd.FeatureSet(features)
-	rv.ImageFeatures = strings.Join(fs.Names(), ",")
+	rv.imageFeatureSet = librbd.FeatureSet(features)
 
 	return nil
 }
