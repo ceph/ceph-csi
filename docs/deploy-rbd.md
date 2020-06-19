@@ -56,7 +56,7 @@ make image-cephcsi
 | `csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-stage-secret-name`           | yes (for Kubernetes) | name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value                                                                                                     |
 | `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-stage-secret-namespace` | yes (for Kubernetes) | namespaces of the above Secret objects                                                                                                                                                                                  |
 | `mounter`                                                                                           | no                   | if set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images                                                                                                              |
-| `encrypted`                                                                                         | no                   | disabled by default, use `"true"` to enable LUKS encryption on pvc and `"false"` to disable it. **Do not change for existing storageclasses**                                                                           |
+| `encrypted`                                                                                         | no                   | disabled by default, use `"true"` to enable LUKS encryption on PVC and `"false"` to disable it. **Do not change for existing storageclasses**                                                                           |
 | `encryptionKMSID`                                                                                   | no                   | required if encryption is enabled and a kms is used to store passphrases                                                                                                                                                |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
@@ -113,7 +113,7 @@ kubectl create -f csi-nodeplugin-psp.yaml
 kubectl create -f csi-config-map.yaml
 ```
 
-The config map deploys an empty CSI configuration that is mounted as a volume
+The configmap deploys an empty CSI configuration that is mounted as a volume
 within the Ceph CSI plugin pods. To add a specific Ceph clusters configuration
 details, refer to [Creating CSI configuration for RBD based
 provisioning](../examples/README.md#creating-csi-configuration-for-rbd-based-provisioning)
@@ -232,8 +232,8 @@ Configuration must include `encryptionKMSType: "vault"`. In order for ceph-csi
 to be able to access the configuration you will need to have it mounted to
 csi-rbdplugin containers in both daemonset (so kms client can be instantiated to
 encrypt/decrypt volumes) and deployment pods (so kms client can be instantiated
-to delete passphrase on volume delete) `ceph-csi-encryption-kms-config` config
-map.
+to delete passphrase on volume delete) `ceph-csi-encryption-kms-config`
+configmap.
 
 > Note: kms configuration must be a map of string values only
 > (`map[string]string`) so for numerical and boolean values make sure to put
@@ -252,7 +252,7 @@ be able to review jwt tokens.
 Configure a role(s) for service accounts used for ceph-csi:
 
 * provisioner service account (`rbd-csi-provisioner`) requires only **delete**
-  permissions to delete passphrases on pvc delete
+  permissions to delete passphrases on PVC delete
 * nodeplugin service account (`rbd-csi-nodeplugin`) requires **create** and
   **read** permissions to save new keys and retrieve existing
 

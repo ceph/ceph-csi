@@ -28,9 +28,9 @@ Gather the following information from the Ceph cluster(s) of choice,
   * Alternatively, choose a `<cluster-id>` value that is distinct per Ceph
     cluster in use by this kubernetes cluster
 
-Update the [sample config map](./csi-config-map-sample.yaml) with values
+Update the [sample configmap](./csi-config-map-sample.yaml) with values
 from a Ceph cluster and replace `<cluster-id>` with the chosen clusterID, to
-create the manifest for the config map which can be updated in the cluster
+create the manifest for the configmap which can be updated in the cluster
 using the following command,
 
 * `kubectl replace -f ./csi-config-map-sample.yaml`

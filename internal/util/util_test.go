@@ -16,6 +16,7 @@ limitations under the License.
 package util
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -140,5 +141,18 @@ func TestRoundOffVolSize(t *testing.T) {
 				t.Errorf("RoundOffVolSize() = %v, want %v", got, ts.want)
 			}
 		})
+	}
+}
+
+func TestKernelVersion(t *testing.T) {
+	version, err := KernelVersion()
+	if err != nil {
+		t.Errorf("failed to get kernel version: %s", err)
+	}
+	if version == "" {
+		t.Error("version is empty, this is unexpected?!")
+	}
+	if strings.HasSuffix(version, "\x00") {
+		t.Error("version ends with \\x00 byte(s)")
 	}
 }

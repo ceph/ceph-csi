@@ -42,10 +42,6 @@ before_script:
   - curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
   - sudo apt-add-repository
     "deb https://download.ceph.com/debian-nautilus $(lsb_release -sc) main"
-  # Ceph does not guarantee arm64 builds, fallback to ceph 14.2.5
-  # yamllint disable rule:line-length
-  - test "$(arch)" != "aarch64" || sudo apt-add-repository
-    "deb https://chacra.ceph.com/r/ceph/nautilus/af06652dc9b2da8c6aadbbecdfafdc7e235abe7d/ubuntu/xenial/flavors/default/ xenial main"
   # yamllint enable rule:line-length
   - sudo apt-get -qq update
   # only the arm64 fallback repo is unsigned and needs --allow-unauthenticated
@@ -96,19 +92,6 @@ jobs:
       name: Build multi-architecture image for amd64 and arm64
       script:
         - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
-
-    - stage: build testing
-      name: cephcsi on Arm64
-      dist: xenial   # There are no arm64 builds available in bionic repo
-      arch: arm64
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        # No CI test job is availabe for Arm64 now due to below issues
-        # - k8s-csi sidecar images for Arm64 are not available
-        # - Travis Arm64 CI job runs inside unprivileged LXD which blocks
-        #   launching minikube test environment
-        - travis_terminate 0    # deploy only on x86
 
     - stage: e2e testing
       name: cephcsi with kube 1.16.9

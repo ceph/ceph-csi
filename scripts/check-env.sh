@@ -3,6 +3,10 @@
 # Check the environment for dependencies and configuration
 #
 
+# check appropriate package installer to recommend corresponding packages
+RPM_CMD=$(command -v rpm)
+DPKG_CMD=$(command -v dpkg)
+
 # count errors, run script to the end before exiting
 ERRORS=0
 fail() {
@@ -10,9 +14,50 @@ fail() {
 	ERRORS=$((ERRORS+1))
 }
 
+# create a temp go file
+LIBCHECK=$(mktemp)
+mv "${LIBCHECK}" "${LIBCHECK}".go
+LIBCHECK=${LIBCHECK}.go
+
+# check for packages using a compile test
+cat << EOF > "${LIBCHECK}"
+package main
+
+/*
+#include <rados/librados.h>
+#include <rbd/librbd.h>
+*/
+import "C"
+
+func main() {
+	_ = C.LIBRADOS_VERSION_CODE
+	_ = C.LIBRBD_VER_MAJOR
+	_ = C.RBD_MAX_IMAGE_NAME_SIZE
+}
+EOF
+
 # check if 'go' is available
-[ -n "$(command -v go)" ] \
-	|| fail "could not find 'go' executable"
+if [ -n "$(command -v go)" ]; then
+	# in case of a failed execution, the user will be informed about
+	# the missing packages based on whether they are on rpm or debian
+	# based systems.
+	if ! go run -mod=vendor "${LIBCHECK}" > /dev/null; then
+		if [ -n "${RPM_CMD}" ]; then
+			echo "Packages libcephfs-devel librbd-devel librados-devel need to be installed"
+		elif [ -n "${DPKG_CMD}" ]; then
+			echo "Packages libcephfs-dev librbd-dev librados-dev need to be installed"
+		else
+			fail "error can't verify Ceph development headers"
+		fi
+		echo "To build ceph-csi in a container: $ make containerized-build"
+	fi
+
+	# remove the temp file
+	rm -f "${LIBCHECK}"
+else
+	fail "could not find 'go' executable"
+	echo "To build ceph-csi in a container: $ make containerized-build"
+fi
 
 # parse the Golang version, return the digit passed as argument
 # 1.13.9 -> go_version 1 -> 1
