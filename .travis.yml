@@ -20,7 +20,6 @@ branches:
 env:
   global:
     - GO111MODULE=on
-    - GOSEC_VERSION=2.0.0
     - TEST_COVERAGE=stdout
     - GO_METALINTER_THREADS=1
     - GO_COVER_DIR=_output
@@ -70,6 +69,7 @@ jobs:
           "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh"
           | bash -s -- -b $GOPATH/bin "${GOLANGCI_VERSION}"
         # install gosec
+        - export GOSEC_VERSION=$(source build.env ; echo ${GOSEC_VERSION})
         - curl -sfL
           "https://raw.githubusercontent.com/securego/gosec/master/install.sh"
           | sh -s -- -b $GOPATH/bin "${GOSEC_VERSION}"

@@ -10,7 +10,6 @@
 
 FROM fedora:latest
 
-ARG GOSEC_VERSION=2.0.0
 ARG GOPATH=/go
 
 ENV \
