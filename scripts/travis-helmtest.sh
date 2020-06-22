@@ -10,6 +10,17 @@ export KUBE_VERSION=$1
 kube_version() {
     echo "${KUBE_VERSION}" | sed 's/^v//' | cut -d'.' -f"${1}"
 }
+
+# configure global environment variables
+# shellcheck source=build.env
+source "$(dirname "${0}")/../build.env"
+cat << EOF | sudo tee -a /etc/environment
+HELM_VERSION=${HELM_VERSION}
+EOF
+
+# helm is installed from this shell, not a new one that reads /etc/environment
+export HELM_VERSION=${HELM_VERSION}
+
 sudo scripts/minikube.sh up
 sudo scripts/minikube.sh deploy-rook
 sudo scripts/minikube.sh create-block-pool
