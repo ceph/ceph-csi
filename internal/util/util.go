@@ -21,6 +21,7 @@ import (
 	"math"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -149,6 +150,90 @@ func KernelVersion() (string, error) {
 		return "", err
 	}
 	return strings.TrimRight(string(utsname.Release[:]), "\x00"), nil
+}
+
+// KernelVersion holds kernel related informations
+type KernelVersion struct {
+	Version      int
+	PatchLevel   int
+	SubLevel     int
+	ExtraVersion int    // prefix of the part after the first "-"
+	Distribution string // component of full extraversion
+	Backport     bool   // backports have a fixed version/patchlevel/sublevel
+}
+
+// CheckKernelSupport checks the running kernel and comparing it to known
+// versions that have support for required features . Distributors of
+// enterprise Linux have backported quota support to previous versions. This
+// function checks if the running kernel is one of the versions that have the
+// feature/fixes backported.
+//
+// `uname -r` (or Uname().Utsname.Release has a format like 1.2.3-rc.vendor
+// This can be slit up in the following components: - version (1) - patchlevel
+// (2) - sublevel (3) - optional, defaults to 0 - extraversion (rc) - optional,
+// matching integers only - distribution (.vendor) - optional, match against
+// whole `uname -r` string
+//
+// For matching multiple versions, the kernelSupport type contains a backport
+// bool, which will cause matching
+// version+patchlevel+sublevel+(>=extraversion)+(~distribution)
+//
+// In case the backport bool is false, a simple check for higher versions than
+// version+patchlevel+sublevel is done.
+func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool {
+	vers := strings.Split(strings.SplitN(release, "-", 2)[0], ".")
+	version, err := strconv.Atoi(vers[0])
+	if err != nil {
+		klog.Errorf("failed to parse version from %s: %v", release, err)
+		return false
+	}
+	patchlevel, err := strconv.Atoi(vers[1])
+	if err != nil {
+		klog.Errorf("failed to parse patchlevel from %s: %v", release, err)
+		return false
+	}
+	sublevel := 0
+	if len(vers) >= 3 {
+		sublevel, err = strconv.Atoi(vers[2])
+		if err != nil {
+			klog.Errorf("failed to parse sublevel from %s: %v", release, err)
+			return false
+		}
+	}
+	extra := strings.SplitN(release, "-", 2)
+	extraversion := 0
+	if len(extra) == 2 {
+		// ignore errors, 1st component of extraversion does not need to be an int
+		extraversion, err = strconv.Atoi(strings.Split(extra[1], ".")[0])
+		if err != nil {
+			// "go lint" wants err to be checked...
+			extraversion = 0
+		}
+	}
+
+	// compare running kernel against known versions
+	for _, kernel := range supportedVersions {
+		if !kernel.Backport {
+			// deal with the default case(s), find >= match for version, patchlevel, sublevel
+			if version > kernel.Version || (version == kernel.Version && patchlevel > kernel.PatchLevel) ||
+				(version == kernel.Version && patchlevel == kernel.PatchLevel && sublevel >= kernel.SubLevel) {
+				return true
+			}
+		} else {
+			// specific backport, match distribution initially
+			if !strings.Contains(release, kernel.Distribution) {
+				continue
+			}
+
+			// strict match version, patchlevel, sublevel, and >= match extraversion
+			if version == kernel.Version && patchlevel == kernel.PatchLevel &&
+				sublevel == kernel.SubLevel && extraversion >= kernel.ExtraVersion {
+				return true
+			}
+		}
+	}
+	klog.Errorf("kernel %s does not support required features", release)
+	return false
 }
 
 // GenerateVolID generates a volume ID based on passed in parameters and version, to be returned

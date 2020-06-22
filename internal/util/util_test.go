@@ -236,3 +236,67 @@ func TestMountOptionsAdd(t *testing.T) {
 		})
 	}
 }
+func TestCheckKernelSupport(t *testing.T) {
+	supportsQuota := []string{
+		"4.17.0",
+		"5.0.0",
+		"4.17.0-rc1",
+		"4.18.0-80.el8",
+		"3.10.0-1062.el7.x86_64",     // 1st backport
+		"3.10.0-1062.4.1.el7.x86_64", // updated backport
+	}
+
+	noQuota := []string{
+		"2.6.32-754.15.3.el6.x86_64", // too old
+		"3.10.0-123.el7.x86_64",      // too old for backport
+		"3.10.0-1062.4.1.el8.x86_64", // nonexisting RHEL-8 kernel
+		"3.11.0-123.el7.x86_64",      // nonexisting RHEL-7 kernel
+	}
+
+	quotaSupport := []KernelVersion{
+		{4, 17, 0, 0, "", false},       // standard 4.17+ versions
+		{3, 10, 0, 1062, ".el7", true}, // RHEL-7.7
+	}
+	for _, kernel := range supportsQuota {
+		ok := CheckKernelSupport(kernel, quotaSupport)
+		if !ok {
+			t.Errorf("support expected for %s", kernel)
+		}
+	}
+
+	for _, kernel := range noQuota {
+		ok := CheckKernelSupport(kernel, quotaSupport)
+		if ok {
+			t.Errorf("no support expected for %s", kernel)
+		}
+	}
+
+	supportsDeepFlatten := []string{
+		"5.2.0",
+		"5.3.0",
+	}
+
+	noDeepFlatten := []string{
+		"4.18.0",                     // too old
+		"3.10.0-123.el7.x86_64",      // too old for backport
+		"3.10.0-1062.4.1.el8.x86_64", // nonexisting RHEL-8 kernel
+		"3.11.0-123.el7.x86_64",      // nonexisting RHEL-7 kernel
+	}
+
+	deepFlattenSupport := []KernelVersion{
+		{5, 2, 0, 0, "", false}, // standard 5.2+ versions
+	}
+	for _, kernel := range supportsDeepFlatten {
+		ok := CheckKernelSupport(kernel, deepFlattenSupport)
+		if !ok {
+			t.Errorf("support expected for %s", kernel)
+		}
+	}
+
+	for _, kernel := range noDeepFlatten {
+		ok := CheckKernelSupport(kernel, deepFlattenSupport)
+		if ok {
+			t.Errorf("no support expected for %s", kernel)
+		}
+	}
+}
