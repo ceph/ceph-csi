@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -137,6 +138,17 @@ func ValidateDriverName(driverName string) error {
 		err = errors.Wrap(err, msg)
 	}
 	return err
+}
+
+// KernelVersion returns the version of the running Unix (like) system from the
+// 'utsname' structs 'release' component.
+func KernelVersion() (string, error) {
+	utsname := unix.Utsname{}
+	err := unix.Uname(&utsname)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimRight(string(utsname.Release[:]), "\x00"), nil
 }
 
 // GenerateVolID generates a volume ID based on passed in parameters and version, to be returned
