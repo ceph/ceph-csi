@@ -6,7 +6,6 @@ FROM ${BASE_IMAGE} as builder
 
 LABEL stage="build"
 
-ARG GOLANG_VERSION=1.13.9
 ARG CSI_IMAGE_NAME=quay.io/cephcsi/cephcsi
 ARG CSI_IMAGE_VERSION=canary
 ARG GO_ARCH
@@ -14,7 +13,10 @@ ARG SRC_DIR
 ARG GIT_COMMIT
 ARG GOROOT=/usr/local/go
 
-RUN mkdir -p ${GOROOT} && \
+COPY build.env /
+
+RUN source /build.env && \
+    mkdir -p ${GOROOT} && \
     curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GO_ARCH}.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
 
 RUN dnf install libcephfs-devel librados-devel librbd-devel /usr/bin/cc make -y
