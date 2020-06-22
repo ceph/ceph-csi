@@ -1,6 +1,6 @@
 ARG SRC_DIR="/go/src/github.com/ceph/ceph-csi/"
 ARG GO_ARCH
-ARG BASE_IMAGE=ceph/ceph:v15
+ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE} as builder
 
