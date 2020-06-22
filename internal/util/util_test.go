@@ -144,8 +144,8 @@ func TestRoundOffVolSize(t *testing.T) {
 	}
 }
 
-func TestKernelVersion(t *testing.T) {
-	version, err := KernelVersion()
+func TestGetKernelVersion(t *testing.T) {
+	version, err := GetKernelVersion()
 	if err != nil {
 		t.Errorf("failed to get kernel version: %s", err)
 	}

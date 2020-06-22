@@ -141,9 +141,9 @@ func ValidateDriverName(driverName string) error {
 	return err
 }
 
-// KernelVersion returns the version of the running Unix (like) system from the
+// GetKernelVersion returns the version of the running Unix (like) system from the
 // 'utsname' structs 'release' component.
-func KernelVersion() (string, error) {
+func GetKernelVersion() (string, error) {
 	utsname := unix.Utsname{}
 	err := unix.Uname(&utsname)
 	if err != nil {

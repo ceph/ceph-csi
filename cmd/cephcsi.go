@@ -111,7 +111,7 @@ func main() {
 		fmt.Println("Go Version:", runtime.Version())
 		fmt.Println("Compiler:", runtime.Compiler)
 		fmt.Printf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-		if kv, err := util.KernelVersion(); err == nil {
+		if kv, err := util.GetKernelVersion(); err == nil {
 			fmt.Println("Kernel:", kv)
 		}
 		os.Exit(0)
