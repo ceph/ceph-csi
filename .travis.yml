@@ -19,7 +19,6 @@ branches:
 
 env:
   global:
-    - GOLANGCI_VERSION=v1.21.0
     - GO111MODULE=on
     - GOSEC_VERSION=2.0.0
     - TEST_COVERAGE=stdout
@@ -66,6 +65,7 @@ jobs:
         - pip install --user --upgrade pip
         - pip install --user yamllint
         # install golangci-lint
+        - export GOLANGCI_VERSION=$(source build.env ; echo ${GOLANGCI_VERSION})
         - curl -sf
           "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh"
           | bash -s -- -b $GOPATH/bin "${GOLANGCI_VERSION}"
