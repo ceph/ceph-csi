@@ -79,7 +79,7 @@ func loadAvailableMounters(conf *util.Config) error {
 		klog.Errorf("failed to run mount.ceph %v", err)
 	} else {
 		// fetch the current running kernel info
-		release, kvErr := util.KernelVersion()
+		release, kvErr := util.GetKernelVersion()
 		if kvErr != nil {
 			return kvErr
 		}
