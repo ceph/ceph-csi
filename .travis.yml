@@ -17,8 +17,6 @@ branches:
   only:
     - master
 
-go: 1.13.x
-
 env:
   global:
     - GOLANGCI_VERSION=v1.21.0
@@ -36,6 +34,9 @@ env:
     - CEPH_CSI_RUN_ALL_TESTS=true
 
 before_install:
+  - export GOLANG_VERSION=$(source build.env ; echo ${GOLANG_VERSION})
+  - gimme ${GOLANG_VERSION}
+  - source ~/.gimme/envs/go${GOLANG_VERSION}.env
   - mkdir -p $GOPATH/bin
 
 before_script:
