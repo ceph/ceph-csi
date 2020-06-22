@@ -74,8 +74,10 @@ all: cephcsi
 test: go-test static-check mod-check
 static-check: check-env go-lint lint-extras gosec
 
+go-test: TEST_COVERAGE ?= $(shell . $(CURDIR)/build.env ; echo $${TEST_COVERAGE})
+go-test: GO_COVER_DIR ?= $(shell . $(CURDIR)/build.env ; echo $${GO_COVER_DIR})
 go-test: check-env
-	./scripts/test-go.sh
+	TEST_COVERAGE=$(TEST_COVERAGE) GO_COVER_DIR=$(GO_COVER_DIR) ./scripts/test-go.sh
 
 mod-check: check-env
 	@echo 'running: go mod verify'
