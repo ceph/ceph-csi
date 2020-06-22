@@ -30,7 +30,7 @@ for gopackage in ${GOPACKAGES}; do
 	fi
 	if [[ ${TEST_COVERAGE} = "html" && -f cover.out ]]; then
 		mkdir -p coverage
-		fn="coverage/${gopackage////-}.html"
+		fn="${GO_COVER_DIR}/${gopackage////-}.html"
 		echo " * generating coverage html: ${fn}"
 		go tool cover -html=cover.out -o "${fn}"
 	fi
