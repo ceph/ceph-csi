@@ -16,6 +16,9 @@ kube_version() {
 source "$(dirname "${0}")/../build.env"
 cat << EOF | sudo tee -a /etc/environment
 HELM_VERSION=${HELM_VERSION}
+MINIKUBE_VERSION=${MINIKUBE_VERSION}
+VM_DRIVER=${VM_DRIVER}
+CHANGE_MINIKUBE_NONE_USER=${CHANGE_MINIKUBE_NONE_USER}
 EOF
 
 # helm is installed from this shell, not a new one that reads /etc/environment
