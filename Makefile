@@ -38,11 +38,6 @@ LDFLAGS += -X $(GO_PROJECT)/internal/util.GitCommit=$(GIT_COMMIT)
 # CSI_IMAGE_VERSION will be considered as the driver version
 LDFLAGS += -X $(GO_PROJECT)/internal/util.DriverVersion=$(CSI_IMAGE_VERSION)
 
-# set GOARCH explicitly for cross building, default to native architecture
-ifndef GOARCH
-GOARCH := $(shell go env GOARCH 2>/dev/null)
-endif
-
 BASE_IMAGE ?= $(shell . $(CURDIR)/build.env ; echo $${BASE_IMAGE})
 
 # passing TARGET=static-check on the 'make containerized-test' or 'make
@@ -142,9 +137,11 @@ containerized-test: .test-container-id
 	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
 
+image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 image-cephcsi:
 	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) --build-arg BASE_IMAGE=$(BASE_IMAGE)
 
+push-image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 push-image-cephcsi: image-cephcsi
 	$(CONTAINER_CMD) tag $(CSI_IMAGE) $(CSI_IMAGE)-$(GOARCH)
 	$(CONTAINER_CMD) push $(CSI_IMAGE)-$(GOARCH)
