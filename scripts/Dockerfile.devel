@@ -1,4 +1,5 @@
-FROM ceph/ceph:v15
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 ARG GOROOT=/usr/local/go
 

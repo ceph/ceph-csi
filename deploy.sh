@@ -40,7 +40,7 @@ push_helm_charts() {
 }
 
 # Build and push images. Steps as below:
-# 1. get base image from original Dockerfile (FROM ceph/ceph:v14.2)
+# 1. get base image from ./build.env (BASE_IMAGE=ceph/ceph:v14.2)
 # 2. parse manifest to get image digest per arch (sha256:XXX, sha256:YYY)
 # 3. patch Dockerfile with amd64 base image (FROM ceph/ceph:v14.2@sha256:XXX)
 # 4. build and push amd64 image
@@ -50,8 +50,8 @@ build_push_images() {
 	# "docker manifest" requires experimental feature enabled
 	export DOCKER_CLI_EXPERIMENTAL=enabled
 
-	dockerfile="deploy/cephcsi/image/Dockerfile"
-	baseimg=$(awk -F = '/^ARG BASE_IMAGE=/ {print $NF}' "${dockerfile}")
+	build_env="build.env"
+	baseimg=$(awk -F = '/^BASE_IMAGE=/ {print $NF}' "${build_env}")
 
 	# get image digest per architecture
 	# {

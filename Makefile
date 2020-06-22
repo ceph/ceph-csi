@@ -43,9 +43,7 @@ ifndef GOARCH
 GOARCH := $(shell go env GOARCH 2>/dev/null)
 endif
 
-ifdef BASE_IMAGE
-BASE_IMAGE_ARG = --build-arg BASE_IMAGE=$(BASE_IMAGE)
-endif
+BASE_IMAGE ?= $(shell . $(CURDIR)/build.env ; echo $${BASE_IMAGE})
 
 # passing TARGET=static-check on the 'make containerized-test' or 'make
 # containerized-build' commandline will run the selected target instead of
@@ -133,7 +131,7 @@ containerized-test: .test-container-id
 # create a (cached) container image with dependencied for building cephcsi
 .devel-container-id: scripts/Dockerfile.devel
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
-	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
+	$(CONTAINER_CMD) build $(CPUSET) --build-arg BASE_IMAGE=$(BASE_IMAGE) -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
 
 # create a (cached) container image with dependencied for testing cephcsi
@@ -143,7 +141,7 @@ containerized-test: .test-container-id
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
 
 image-cephcsi:
-	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) $(BASE_IMAGE_ARG)
+	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) --build-arg BASE_IMAGE=$(BASE_IMAGE)
 
 push-image-cephcsi: image-cephcsi
 	$(CONTAINER_CMD) tag $(CSI_IMAGE) $(CSI_IMAGE)-$(GOARCH)
