@@ -194,3 +194,13 @@ func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) 
 	}
 	return mountOptions
 }
+
+// MountOptionContains checks the opt is present in mountOptions
+func MountOptionContains(mountOptions []string, opt string) bool {
+	for _, mnt := range mountOptions {
+		if mnt == opt {
+			return true
+		}
+	}
+	return false
+}
