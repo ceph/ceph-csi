@@ -19,6 +19,9 @@ RUN source /build.env && \
     mkdir -p ${GOROOT} && \
     curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GO_ARCH}.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
 
+# test if the downloaded version of Golang works (different arch?)
+RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
+
 RUN dnf install libcephfs-devel librados-devel librbd-devel /usr/bin/cc make -y
 
 ENV GOROOT=${GOROOT} \
