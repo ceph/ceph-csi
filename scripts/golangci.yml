@@ -161,3 +161,4 @@ linters:
     - godox
     - wsl
     - funlen
+    - testpackage
