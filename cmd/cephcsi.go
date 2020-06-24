@@ -77,6 +77,8 @@ func init() {
 	flag.StringVar(&conf.HistogramOption, "histogramoption", "0.5,2,6",
 		"[DEPRECATED] Histogram option for grpc metrics, should be comma separated value, ex:= 0.5,2,6 where start=0.5 factor=2, count=6")
 
+	flag.UintVar(&conf.RbdHardMaxCloneDepth, "rbdhardmaxclonedepth", 8, "Hard limit for maximum number of nested volume clones that are taken before a flatten occurs")
+	flag.UintVar(&conf.RbdSoftMaxCloneDepth, "rbdsoftmaxclonedepth", 4, "Soft limit for maximum number of nested volume clones that are taken before a flatten occurs")
 	flag.BoolVar(&conf.Version, "version", false, "Print cephcsi version information")
 
 	klog.InitFlags(nil)
@@ -175,6 +177,7 @@ func main() {
 	klog.V(1).Infof("Starting driver type: %v with name: %v", conf.Vtype, dname)
 	switch conf.Vtype {
 	case rbdType:
+		validateCloneDepthFlag(&conf)
 		driver := rbd.NewDriver()
 		driver.Run(&conf, cp)
 
@@ -193,4 +196,15 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+func validateCloneDepthFlag(conf *util.Config) {
+	// keeping hardlimit to 14 as max to avoid max image depth
+	if conf.RbdHardMaxCloneDepth == 0 || conf.RbdHardMaxCloneDepth > 14 {
+		klog.Fatalln("rbdhardmaxclonedepth flag value should be between 1 and 14")
+	}
+
+	if conf.RbdSoftMaxCloneDepth > conf.RbdHardMaxCloneDepth {
+		klog.Fatalln("rbdsoftmaxclonedepth flag value should not be greater than rbdhardmaxclonedepth")
+	}
 }
