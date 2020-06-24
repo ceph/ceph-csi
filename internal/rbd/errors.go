@@ -66,3 +66,12 @@ type ErrMissingStash struct {
 func (e ErrMissingStash) Error() string {
 	return e.err.Error()
 }
+
+// ErrFlattenInProgress is returned when flatten is inprogess for an image
+type ErrFlattenInProgress struct {
+	err error
+}
+
+func (e ErrFlattenInProgress) Error() string {
+	return e.err.Error()
+}

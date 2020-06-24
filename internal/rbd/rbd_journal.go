@@ -87,28 +87,31 @@ func validateRbdVol(rbdVol *rbdVolume) error {
 }
 
 /*
-checkSnapExists, and its counterpart checkVolExists, function checks if the passed in rbdSnapshot
-or rbdVolume exists on the backend.
+checkSnapCloneExists, and its counterpart checkVolExists, function checks if
+the passed in rbdSnapshot or rbdVolume exists on the backend.
 
-**NOTE:** These functions manipulate the rados omaps that hold information regarding
-volume names as requested by the CSI drivers. Hence, these need to be invoked only when the
-respective CSI driver generated snapshot or volume name based locks are held, as otherwise racy
-access to these omaps may end up leaving them in an inconsistent state.
+**NOTE:** These functions manipulate the rados omaps that hold information
+regarding volume names as requested by the CSI drivers. Hence, these need to be
+invoked only when the respective CSI driver generated snapshot or volume name
+based locks are held, as otherwise racy access to these omaps may end up
+leaving them in an inconsistent state.
 
-These functions need enough information about cluster and pool (ie, Monitors, Pool, IDs filled in)
-to operate. They further require that the RequestName element of the structure have a valid value
-to operate on and determine if the said RequestName already exists on the backend.
+These functions need enough information about cluster and pool (ie, Monitors,
+Pool, IDs filled in) to operate. They further require that the RequestName
+element of the structure have a valid value to operate on and determine if the
+said RequestName already exists on the backend.
 
-These functions populate the snapshot or the image name, its attributes and the CSI snapshot/volume
-ID for the same when successful.
+These functions populate the snapshot or the image name, its attributes and the
+CSI snapshot/volume ID for the same when successful.
 
-These functions also cleanup omap reservations that are stale. I.e when omap entries exist and
-backing images or snapshots are missing, or one of the omaps exist and the next is missing. This is
-because, the order of omap creation and deletion are inverse of each other, and protected by the
-request name lock, and hence any stale omaps are leftovers from incomplete transactions and are
-hence safe to garbage collect.
+These functions also cleanup omap reservations that are stale. I.e when omap
+entries exist and backing images or snapshots are missing, or one of the omaps
+exist and the next is missing. This is because, the order of omap creation and
+deletion are inverse of each other, and protected by the request name lock, and
+hence any stale omaps are leftovers from incomplete transactions and are hence
+safe to garbage collect.
 */
-func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
+func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
 	err := validateRbdSnap(rbdSnap)
 	if err != nil {
 		return false, err
@@ -137,6 +140,36 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 			snapData.ImagePool, rbdSnap.Pool)
 	}
 
+	vol := generateVolFromSnap(rbdSnap)
+	defer vol.Destroy()
+	err = vol.Connect(cr)
+	if err != nil {
+		return false, err
+	}
+	vol.ReservedID = snapUUID
+	// Fetch on-disk image attributes
+	err = vol.getImageInfo()
+	if err != nil {
+		if _, ok := err.(ErrImageNotFound); ok {
+			err = parentVol.deleteSnapshot(ctx, rbdSnap)
+			if err != nil {
+				if _, ok := err.(ErrSnapNotFound); !ok {
+					klog.Errorf(util.Log(ctx, "failed to delete snapshot %s: %v"), rbdSnap, err)
+					return false, err
+				}
+			}
+			err = undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
+		}
+		return false, err
+	}
+
+	// Snapshot creation transaction is rolled forward if rbd clone image
+	// representing the snapshot is found. Any failures till finding the image
+	// causes a roll back of the snapshot creation transaction.
+	// Code from here on, rolls the transaction forward.
+
+	rbdSnap.CreatedAt = vol.CreatedAt
+	rbdSnap.SizeBytes = vol.VolSize
 	// found a snapshot already available, process and return its information
 	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, snapData.ImagePoolID, rbdSnap.Pool,
 		rbdSnap.ClusterID, snapUUID, volIDVersion)
@@ -144,9 +177,43 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 		return false, err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "found existing snap (%s) with snap name (%s) for request (%s)"),
-		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
+	// check snapshot exists if not create it
+	_, err = vol.getSnapInfo(rbdSnap)
+	if _, ok := err.(ErrSnapNotFound); ok {
+		// create snapshot
+		sErr := vol.createSnapshot(ctx, rbdSnap)
+		if sErr != nil {
+			klog.Errorf(util.Log(ctx, "failed to create snapshot %s: %v"), rbdSnap, sErr)
+			err = undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
+			return false, err
+		}
+	}
+	if err != nil {
+		return false, err
+	}
 
+	vol.ImageID, err = j.GetStoredImageID(ctx, vol.JournalPool, vol.ReservedID, cr)
+	if _, ok := err.(util.ErrKeyNotFound); ok {
+		sErr := vol.getImageID()
+		if sErr != nil {
+			klog.Errorf(util.Log(ctx, "failed to get image id %s: %v"), vol, sErr)
+			err = undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
+			return false, err
+		}
+		sErr = j.StoreImageID(ctx, vol.JournalPool, vol.ReservedID, vol.ImageID, cr)
+		if sErr != nil {
+			klog.Errorf(util.Log(ctx, "failed to store volume id %s: %v"), vol, sErr)
+			err = undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
+			return false, err
+		}
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	klog.V(4).Infof(util.Log(ctx, "found existing image (%s) with name (%s) for request (%s)"),
+		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 	return true, nil
 }
 
@@ -184,7 +251,7 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 
-	imageUUID := imageData.ImageUUID
+	rv.ReservedID = imageData.ImageUUID
 	rv.RbdImageName = imageData.ImageAttributes.ImageName
 
 	// check if topology constraints match what is found
@@ -223,7 +290,7 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 
 	// found a volume already available, process and return it!
 	rv.VolID, err = util.GenerateVolID(ctx, rv.Monitors, rv.conn.Creds, imageData.ImagePoolID, rv.Pool,
-		rv.ClusterID, imageUUID, volIDVersion)
+		rv.ClusterID, rv.ReservedID, volIDVersion)
 	if err != nil {
 		return false, err
 	}
@@ -236,10 +303,9 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
 // volume ID for the generated name
-func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) error {
 	var (
-		snapUUID string
-		err      error
+		err error
 	)
 
 	journalPoolID, imagePoolID, err := util.GetPoolIDs(ctx, rbdSnap.Monitors, rbdSnap.JournalPool, rbdSnap.Pool, cr)
@@ -253,15 +319,15 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials
 	}
 	defer j.Destroy()
 
-	snapUUID, rbdSnap.RbdSnapName, err = j.ReserveName(
+	rbdSnap.ReservedID, rbdSnap.RbdSnapName, err = j.ReserveName(
 		ctx, rbdSnap.JournalPool, journalPoolID, rbdSnap.Pool, imagePoolID,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "")
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, "")
 	if err != nil {
 		return err
 	}
 
 	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, imagePoolID, rbdSnap.Pool,
-		rbdSnap.ClusterID, snapUUID, volIDVersion)
+		rbdSnap.ClusterID, rbdSnap.ReservedID, volIDVersion)
 	if err != nil {
 		return err
 	}
@@ -307,8 +373,7 @@ func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 // volume ID for the generated name
 func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 	var (
-		imageUUID string
-		err       error
+		err error
 	)
 
 	err = updateTopologyConstraints(rbdVol, rbdSnap)
@@ -332,7 +397,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 	}
 	defer j.Destroy()
 
-	imageUUID, rbdVol.RbdImageName, err = j.ReserveName(
+	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
 		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
 		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
 	if err != nil {
@@ -340,7 +405,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 	}
 
 	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imagePoolID, rbdVol.Pool,
-		rbdVol.ClusterID, imageUUID, volIDVersion)
+		rbdVol.ClusterID, rbdVol.ReservedID, volIDVersion)
 	if err != nil {
 		return err
 	}
