@@ -696,21 +696,6 @@ func (rv *rbdVolume) hasSnapshotFeature() bool {
 	return (uint64(rv.imageFeatureSet) & librbd.FeatureLayering) == librbd.FeatureLayering
 }
 
-func protectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
-	var output []byte
-
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap protect %s using mon %s"), pOpts, pOpts.Monitors)
-	args := []string{"snap", "protect", pOpts.String(), "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
-
-	output, err := execCommand("rbd", args)
-
-	if err != nil {
-		return errors.Wrapf(err, "failed to protect snapshot, command output: %s", string(output))
-	}
-
-	return nil
-}
-
 func createSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
 	var output []byte
 
@@ -721,21 +706,6 @@ func createSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credential
 
 	if err != nil {
 		return errors.Wrapf(err, "failed to create snapshot, command output: %s", string(output))
-	}
-
-	return nil
-}
-
-func unprotectSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
-	var output []byte
-
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap unprotect %s using mon %s"), pOpts, pOpts.Monitors)
-	args := []string{"snap", "unprotect", pOpts.String(), "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
-
-	output, err := execCommand("rbd", args)
-
-	if err != nil {
-		return errors.Wrapf(err, "failed to unprotect snapshot, command output: %s", string(output))
 	}
 
 	return nil
