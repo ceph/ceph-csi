@@ -95,6 +95,10 @@ type Config struct {
 	IsNodeServer       bool // if set to true start node server
 	Version            bool // cephcsi version
 
+	// SkipForceFlatten is set to false if the kernel supports mounting of
+	// rbd image or the image chain has the deep-flatten feature.
+	SkipForceFlatten bool
+
 	// cephfs related flags
 	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
 

@@ -44,6 +44,7 @@ make image-cephcsi
 | `--domainlabels`         | _empty_               | Kubernetes node labels to use as CSI domain labels for topology aware provisioning, should be a comma separated value (ex:= "failure-domain/region,failure-domain/zone")                                                                                                             |
 | `--rbdhardmaxclonedepth` | `8`                   | Hard limit for maximum number of nested volume clones that are taken before a flatten occurs                                                                                                                                                                                         |
 | `--rbdsoftmaxclonedepth` | `4`                   | Soft limit for maximum number of nested volume clones that are taken before a flatten occurs                                                                                                                                                                                         |
+| `--skipforceflatten`     | `false`               | skip image flattening on kernel < 5.2 which support mapping of rbd images which has the deep-flatten feature                                                                                                                                                                         |
 
 **Available volume parameters:**
 

@@ -79,6 +79,10 @@ func init() {
 
 	flag.UintVar(&conf.RbdHardMaxCloneDepth, "rbdhardmaxclonedepth", 8, "Hard limit for maximum number of nested volume clones that are taken before a flatten occurs")
 	flag.UintVar(&conf.RbdSoftMaxCloneDepth, "rbdsoftmaxclonedepth", 4, "Soft limit for maximum number of nested volume clones that are taken before a flatten occurs")
+
+	flag.BoolVar(&conf.SkipForceFlatten, "skipforceflatten", false,
+		"skip image flattening if kernel support mapping of rbd images which has the deep-flatten feature")
+
 	flag.BoolVar(&conf.Version, "version", false, "Print cephcsi version information")
 
 	klog.InitFlags(nil)
