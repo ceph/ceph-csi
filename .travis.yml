@@ -32,6 +32,7 @@ before_install:
 
 before_script:
   - export CV=$(source build.env ; echo ${CEPH_VERSION})
+  - test -z "${CV}" || export GO_TAGS="-tags=${CV}"
   - curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
   - sudo apt-add-repository
     "deb https://download.ceph.com/debian-${CV} $(lsb_release -sc) main"

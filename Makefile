@@ -40,6 +40,14 @@ LDFLAGS += -X $(GO_PROJECT)/internal/util.DriverVersion=$(CSI_IMAGE_VERSION)
 
 BASE_IMAGE ?= $(shell . $(CURDIR)/build.env ; echo $${BASE_IMAGE})
 
+ifndef CEPH_VERSION
+	CEPH_VERSION = $(shell . $(CURDIR)/build.env ; echo $${CEPH_VERSION})
+endif
+ifdef CEPH_VERSION
+	# pass -tags to go commands (for go-ceph build constraints)
+	GO_TAGS = -tags=$(CEPH_VERSION)
+endif
+
 # passing TARGET=static-check on the 'make containerized-test' or 'make
 # containerized-build' commandline will run the selected target instead of
 # 'make test' in the container. Obviously other targets can be passed as well,
@@ -72,7 +80,7 @@ static-check: check-env go-lint lint-extras gosec
 go-test: TEST_COVERAGE ?= $(shell . $(CURDIR)/build.env ; echo $${TEST_COVERAGE})
 go-test: GO_COVER_DIR ?= $(shell . $(CURDIR)/build.env ; echo $${GO_COVER_DIR})
 go-test: check-env
-	TEST_COVERAGE=$(TEST_COVERAGE) GO_COVER_DIR=$(GO_COVER_DIR) ./scripts/test-go.sh
+	TEST_COVERAGE="$(TEST_COVERAGE)" GO_COVER_DIR="$(GO_COVER_DIR)" GO_TAGS="$(GO_TAGS)" ./scripts/test-go.sh
 
 mod-check: check-env
 	@echo 'running: go mod verify'
@@ -100,10 +108,10 @@ lint-py:
 	./scripts/lint-extras.sh lint-py
 
 gosec:
-	./scripts/gosec.sh
+	GO_TAGS="$(GO_TAGS)" ./scripts/gosec.sh
 
 func-test:
-	go test -mod=vendor github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
+	go test $(GO_TAGS) -mod=vendor github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
 
 check-env:
 	@./scripts/check-env.sh
@@ -114,10 +122,10 @@ commitlint:
 .PHONY: cephcsi
 cephcsi: check-env
 	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
-	GOOS=linux go build -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
+	GOOS=linux go build $(GO_TAGS) -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
 
 e2e.test: check-env
-	go test -mod=vendor -c ./e2e
+	go test $(GO_TAGS) -mod=vendor -c ./e2e
 
 .PHONY: containerized-build containerized-test
 containerized-build: TARGET = cephcsi
