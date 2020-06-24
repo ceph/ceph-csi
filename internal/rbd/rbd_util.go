@@ -96,6 +96,7 @@ type rbdVolume struct {
 	Mounter             string `json:"mounter"`
 	ClusterID           string `json:"clusterId"`
 	RequestName         string
+	ReservedID          string
 	VolName             string `json:"volName"`
 	MonValueFromSecret  string `json:"monValueFromSecret"`
 	VolSize             int64  `json:"volSize"`
@@ -121,6 +122,7 @@ type rbdSnapshot struct {
 	// Pool is where the image snapshot journal and snapshot is stored, and could be the same as `JournalPool`
 	SourceVolumeID string
 	RbdImageName   string
+	ReservedID     string
 	NamePrefix     string
 	RbdSnapName    string
 	SnapID         string
