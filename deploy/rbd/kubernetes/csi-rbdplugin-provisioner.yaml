@@ -112,6 +112,8 @@ spec:
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
             - "--pidlimit=-1"
+            - "--rbdhardmaxclonedepth=8"
+            - "--rbdsoftmaxclonedepth=4"
           env:
             - name: POD_IP
               valueFrom:

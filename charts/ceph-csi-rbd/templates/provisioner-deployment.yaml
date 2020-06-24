@@ -114,6 +114,8 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
+            - "--rbdhardmaxclonedepth={{ .Values.provisioner.hardMaxCloneDepth }}"
+            - "--rbdsoftmaxclonedepth={{ .Values.provisioner.softMaxCloneDepth }}"
           env:
             - name: POD_IP
               valueFrom:

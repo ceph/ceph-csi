@@ -98,6 +98,11 @@ type Config struct {
 	// cephfs related flags
 	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
 
+	// RbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten occurs
+	RbdHardMaxCloneDepth uint
+
+	// RbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before a flatten occurs
+	RbdSoftMaxCloneDepth uint
 }
 
 // CreatePersistanceStorage creates storage path and initializes new cache
