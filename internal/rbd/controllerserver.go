@@ -641,23 +641,6 @@ func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot
 			err = status.Error(codes.Internal, err.Error())
 		}
 	}()
-	err = protectSnapshot(ctx, rbdSnap, cr)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to protect snapshot: %v"), err)
-		return status.Error(codes.Internal, err.Error())
-	}
-	defer func() {
-		if err != nil {
-			errDefer := unprotectSnapshot(ctx, rbdSnap, cr)
-			if errDefer != nil {
-				klog.Errorf(util.Log(ctx, "failed to unprotect snapshot: %v"), errDefer)
-				err = fmt.Errorf("snapshot created but failed to unprotect snapshot due to"+
-					" other failures: %v", err)
-			}
-			err = status.Error(codes.Internal, err.Error())
-		}
-	}()
-
 	err = getSnapshotMetadata(ctx, rbdSnap, cr)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to fetch snapshot metadata: %v"), err)
@@ -735,14 +718,6 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdSnap.RequestName)
 	}
 	defer cs.SnapshotLocks.Release(rbdSnap.RequestName)
-
-	// Unprotect snapshot
-	err = unprotectSnapshot(ctx, rbdSnap, cr)
-	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition,
-			"failed to unprotect snapshot: %s with error: %v",
-			rbdSnap, err)
-	}
 
 	// Deleting snapshot
 	klog.V(4).Infof(util.Log(ctx, "deleting Snaphot %s"), rbdSnap)
