@@ -757,18 +757,33 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 	return err
 }
 
-// nolint: interfacer
-func restoreSnapshot(ctx context.Context, pVolOpts *rbdVolume, pSnapOpts *rbdSnapshot, cr *util.Credentials) error {
-	var output []byte
+func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *rbdSnapshot) error {
+	image := rv.RbdImageName
+	var err error
+	klog.V(4).Infof(util.Log(ctx, "rbd: clone %s %s using mon %s"), pSnapOpts, image, rv.Monitors)
 
-	klog.V(4).Infof(util.Log(ctx, "rbd: clone %s using mon %s"), pVolOpts, pVolOpts.Monitors)
-	args := []string{"clone", pSnapOpts.String(), pVolOpts.String(),
-		"--id", cr.ID, "-m", pVolOpts.Monitors, "--keyfile=" + cr.KeyFile}
+	options := librbd.NewRbdImageOptions()
+	defer options.Destroy()
+	if rv.imageFeatureSet != 0 {
+		err = options.SetUint64(librbd.RbdImageOptionFeatures, uint64(rv.imageFeatureSet))
+		if err != nil {
+			return errors.Wrapf(err, "failed to set image features")
+		}
+	}
 
-	output, err := execCommand("rbd", args)
-
+	err = options.SetUint64(imageOptionCloneFormat, 2)
 	if err != nil {
-		return errors.Wrapf(err, "failed to restore snapshot, command output: %s", string(output))
+		return errors.Wrapf(err, "failed to set image features")
+	}
+
+	err = rv.openIoctx()
+	if err != nil {
+		return errors.Wrapf(err, "failed to get IOContext")
+	}
+
+	err = librbd.CloneImage(rv.ioctx, pSnapOpts.RbdImageName, pSnapOpts.RbdSnapName, rv.ioctx, rv.RbdImageName, options)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create rbd clone")
 	}
 
 	return nil
