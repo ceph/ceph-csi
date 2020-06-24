@@ -89,6 +89,7 @@ type rbdVolume struct {
 	JournalPool         string
 	Pool                string `json:"pool"`
 	DataPool            string
+	ImageID             string
 	imageFeatureSet     librbd.FeatureSet
 	AdminID             string `json:"adminId"`
 	UserID              string `json:"userId"`
@@ -254,6 +255,7 @@ func (rv *rbdVolume) getImageID() error {
 	rv.ImageID = id
 	return nil
 }
+
 // open the rbdVolume after it has been connected.
 // ErrPoolNotFound or ErrImageNotFound are returned in case the pool or image
 // can not be found, other errors will contain more details about other issues
@@ -306,35 +308,31 @@ func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (boo
 	return false, output, nil
 }
 
-// rbdManagerTaskDelete adds a ceph manager task to delete an rbd image, thus deleting
-// it asynchronously. If command is not found returns a bool set to false
-func rbdManagerTaskDeleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (bool, error) {
+// addRbdManagerTask adds a ceph manager task to execute command
+// asynchronously. If command is not found returns a bool set to false
+// example arg ["trash", "remove","pool/image"]
+func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (bool, error) {
 	var output []byte
-
-	args := []string{"rbd", "task", "add", "remove",
-		pOpts.String(),
-		"--id", cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-m", pOpts.Monitors,
-	}
-
+	args := []string{"rbd", "task", "add"}
+	args = append(args, arg...)
+	klog.V(4).Infof(util.Log(ctx, "executing %v for image (%s) using mon %s, pool %s"), args, pOpts.RbdImageName, pOpts.Monitors, pOpts.Pool)
+	supported := true
 	output, err := execCommand("ceph", args)
+
 	if err != nil {
 		switch {
 		case strings.Contains(string(output), rbdTaskRemoveCmdInvalidString1) &&
 			strings.Contains(string(output), rbdTaskRemoveCmdInvalidString2):
-			klog.Warningf(util.Log(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd image"+
-				" deletion (minimum ceph version required is v14.2.3)"), pOpts.ClusterID)
+			klog.Warningf(util.Log(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd commands (minimum ceph version required is v14.2.3)"), pOpts.ClusterID)
+			supported = false
 		case strings.HasPrefix(string(output), rbdTaskRemoveCmdAccessDeniedMessage):
-			klog.Warningf(util.Log(ctx, "access denied to Ceph MGR-based RBD image deletion "+
-				"on cluster ID (%s)"), pOpts.ClusterID)
+			klog.Warningf(util.Log(ctx, "access denied to Ceph MGR-based rbd commands on cluster ID (%s)"), pOpts.ClusterID)
+			supported = false
 		default:
-			klog.Warningf(util.Log(ctx, "uncaught error while scheduling an image deletion task: %s"), err)
+			klog.Warningf(util.Log(ctx, "uncaught error while scheduling a task: %s"), err)
 		}
-		return false, err
 	}
-
-	return true, err
+	return supported, err
 }
 
 // deleteImage deletes a ceph image with provision and volume options.
@@ -342,38 +340,77 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	image := pOpts.RbdImageName
 	found, _, err := rbdStatus(ctx, pOpts, cr)
 	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), pOpts, err)
+		if strings.Contains(err.Error(), "rbd: error opening image "+image+
+			": (2) No such file or directory") {
+			return ErrImageNotFound{image, err}
+		}
 		return err
 	}
 	if found {
-		klog.Errorf(util.Log(ctx, "rbd %s is still being used"), pOpts)
-		return fmt.Errorf("rbd %s is still being used", pOpts)
+		klog.Errorf(util.Log(ctx, "rbd %s is still being used"), image)
+		return fmt.Errorf("rbd %s is still being used", image)
+	}
+	// Support deleting the older rbd images whose imageID is not stored in omap
+	err = pOpts.getImageID()
+	if err != nil {
+		return err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "rbd: rm %s using mon %s"), pOpts, pOpts.Monitors)
+	klog.V(4).Infof(util.Log(ctx, "rbd: delete %s using mon %s, pool %s"), image, pOpts.Monitors, pOpts.Pool)
+
+	err = pOpts.openIoctx()
+	if err != nil {
+		return err
+	}
+
+	rbdImage := librbd.GetImage(pOpts.ioctx, image)
+	err = rbdImage.Trash(0)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s, error: %v"), pOpts, err)
+		return err
+	}
 
 	// attempt to use Ceph manager based deletion support if available
-	rbdCephMgrSupported, err := rbdManagerTaskDeleteImage(ctx, pOpts, cr)
+	args := []string{"trash", "remove",
+		pOpts.Pool + "/" + pOpts.ImageID,
+		"--id", cr.ID,
+		"--keyfile=" + cr.KeyFile,
+		"-m", pOpts.Monitors,
+	}
+	rbdCephMgrSupported, err := addRbdManagerTask(ctx, pOpts, args)
 	if rbdCephMgrSupported && err != nil {
 		klog.Errorf(util.Log(ctx, "failed to add task to delete rbd image: %s, %v"), pOpts, err)
 		return err
 	}
 
 	if !rbdCephMgrSupported {
-		var ioctx *rados.IOContext
-		ioctx, err = pOpts.conn.GetIoctx(pOpts.Pool)
+		err = librbd.TrashRemove(pOpts.ioctx, pOpts.ImageID, true)
 		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s, %v"), pOpts, err)
 			return err
-		}
-		defer ioctx.Destroy()
-
-		rbdImage := librbd.GetImage(ioctx, image)
-		err = rbdImage.Remove()
-		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s, error: %v"), pOpts, err)
 		}
 	}
 
-	return err
+	return nil
+}
+
+func (rv *rbdVolume) removeImageFromTrash() error {
+	err := rv.openIoctx()
+	if err != nil {
+		return err
+	}
+	list, err := librbd.GetTrashList(rv.ioctx)
+	if err != nil {
+		return err
+	}
+	for _, l := range list {
+		if l.Name == rv.RbdImageName {
+			err = librbd.TrashRemove(rv.ioctx, l.Id, true)
+			return err
+		}
+	}
+	return nil
 }
 
 // updateSnapWithImageInfo updates provided rbdSnapshot with information from on-disk data
