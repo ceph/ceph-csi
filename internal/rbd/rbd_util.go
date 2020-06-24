@@ -174,11 +174,6 @@ func (rs *rbdSnapshot) String() string {
 	return fmt.Sprintf("%s/%s@%s", rs.Pool, rs.RbdImageName, rs.RbdSnapName)
 }
 
-// imageSpec returns the image-spec (pool/image) format of the snapshot
-func (rs *rbdSnapshot) imageSpec() string {
-	return fmt.Sprintf("%s/%s", rs.Pool, rs.RbdImageName)
-}
-
 // createImage creates a new ceph image with provision and volume options.
 func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(pOpts.VolSize))
@@ -809,45 +804,26 @@ getSnapInfo queries rbd about the snapshots of the given image and returns its m
 returns ErrImageNotFound if provided image is not found, and ErrSnapNotFound if provided snap
 is not found in the images snapshot list
 */
-func (rs *rbdSnapshot) getSnapInfo(ctx context.Context, monitors string, cr *util.Credentials) (snapInfo, error) {
-	// rbd --format=json snap ls [image-spec]
-
-	var (
-		snpInfo snapInfo
-		snaps   []snapInfo
-	)
-
-	stdout, stderr, err := util.ExecCommand(
-		"rbd",
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile="+cr.KeyFile,
-		"-c", util.CephConfigPath,
-		"--format="+"json",
-		"snap", "ls", rs.imageSpec())
+func (rv *rbdVolume) getSnapInfo(rbdSnap *rbdSnapshot) (librbd.SnapInfo, error) {
+	invalidSnap := librbd.SnapInfo{}
+	image, err := rv.open()
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting snap (%s) information from image (%s): (%s)"),
-			rs.RbdSnapName, rs.imageSpec(), err)
-		if strings.Contains(string(stderr), "rbd: error opening image "+rs.RbdImageName+
-			": (2) No such file or directory") {
-			return snpInfo, ErrImageNotFound{rs.imageSpec(), err}
-		}
-		return snpInfo, err
+		return invalidSnap, err
 	}
+	defer image.Close()
 
-	err = json.Unmarshal(stdout, &snaps)
+	snaps, err := image.GetSnapshotNames()
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to parse JSON output of image snap list (%s): (%s)"), rs.imageSpec(), err)
-		return snpInfo, fmt.Errorf("unmarshal failed: %+v. raw buffer response: %s", err, string(stdout))
+		return invalidSnap, err
 	}
 
 	for _, snap := range snaps {
-		if snap.Name == rs.RbdSnapName {
+		if snap.Name == rbdSnap.RbdSnapName {
 			return snap, nil
 		}
 	}
 
-	return snpInfo, ErrSnapNotFound{rs.String(), fmt.Errorf("snap (%s) not found", rs)}
+	return invalidSnap, ErrSnapNotFound{rbdSnap.RbdSnapName, fmt.Errorf("snap %s not found", rbdSnap.String())}
 }
 
 // rbdImageMetadataStash strongly typed JSON spec for stashed RBD image metadata
