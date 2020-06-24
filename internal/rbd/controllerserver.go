@@ -641,13 +641,7 @@ func (cs *ControllerServer) doSnapshot(ctx context.Context, rbdSnap *rbdSnapshot
 			err = status.Error(codes.Internal, err.Error())
 		}
 	}()
-	err = getSnapshotMetadata(ctx, rbdSnap, cr)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to fetch snapshot metadata: %v"), err)
-		return status.Error(codes.Internal, err.Error())
-	}
-
-	return nil
+	return err
 }
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
