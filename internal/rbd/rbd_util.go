@@ -33,7 +33,6 @@ import (
 	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -415,26 +414,6 @@ func (rv *rbdVolume) removeImageFromTrash() error {
 	return nil
 }
 
-// updateSnapWithImageInfo updates provided rbdSnapshot with information from on-disk data
-// regarding the same
-func updateSnapWithImageInfo(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	snapInfo, err := rbdSnap.getSnapInfo(ctx, rbdSnap.Monitors, cr)
-	if err != nil {
-		return err
-	}
-
-	rbdSnap.SizeBytes = snapInfo.Size
-
-	tm, err := time.Parse(time.ANSIC, snapInfo.Timestamp)
-	if err != nil {
-		return err
-	}
-
-	rbdSnap.CreatedAt, err = ptypes.TimestampProto(tm)
-
-	return err
-}
-
 // genSnapFromSnapID generates a rbdSnapshot structure from the provided identifier, updating
 // the structure with elements from on-disk snapshot metadata as well
 func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID string, cr *util.Credentials) error {
@@ -489,8 +468,6 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 			return err
 		}
 	}
-
-	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
 
 	return err
 }
@@ -802,29 +779,6 @@ func restoreSnapshot(ctx context.Context, pVolOpts *rbdVolume, pSnapOpts *rbdSna
 	return nil
 }
 
-// getSnapshotMetadata fetches on-disk metadata about the snapshot and populates the passed in
-// rbdSnapshot structure
-func getSnapshotMetadata(ctx context.Context, pSnapOpts *rbdSnapshot, cr *util.Credentials) error {
-	snapInfo, err := pSnapOpts.getSnapInfo(ctx, pSnapOpts.Monitors, cr)
-	if err != nil {
-		return err
-	}
-
-	pSnapOpts.SizeBytes = snapInfo.Size
-
-	tm, err := time.Parse(time.ANSIC, snapInfo.Timestamp)
-	if err != nil {
-		return err
-	}
-
-	pSnapOpts.CreatedAt, err = ptypes.TimestampProto(tm)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
 // ErrImageNotFound if provided image is not found
 func (rv *rbdVolume) getImageInfo() error {
@@ -848,14 +802,6 @@ func (rv *rbdVolume) getImageInfo() error {
 	rv.imageFeatureSet = librbd.FeatureSet(features)
 
 	return nil
-}
-
-// snapInfo strongly typed JSON spec for snap ls rbd output
-type snapInfo struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	Size      int64  `json:"size"`
-	Timestamp string `json:"timestamp"`
 }
 
 /*

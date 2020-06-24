@@ -137,17 +137,6 @@ func checkSnapExists(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credent
 			snapData.ImagePool, rbdSnap.Pool)
 	}
 
-	// Fetch on-disk image attributes
-	err = updateSnapWithImageInfo(ctx, rbdSnap, cr)
-	if err != nil {
-		if _, ok := err.(ErrSnapNotFound); ok {
-			err = j.UndoReservation(ctx, rbdSnap.JournalPool,
-				rbdSnap.Pool, rbdSnap.RbdSnapName, rbdSnap.RequestName)
-			return false, err
-		}
-		return false, err
-	}
-
 	// found a snapshot already available, process and return its information
 	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, snapData.ImagePoolID, rbdSnap.Pool,
 		rbdSnap.ClusterID, snapUUID, volIDVersion)
