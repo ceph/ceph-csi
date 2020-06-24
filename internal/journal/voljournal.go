@@ -127,6 +127,10 @@ type Config struct {
 	// Ceph volume was created
 	csiNameKey string
 
+	// CSI ImageID in per Ceph volume object map, containing image ID
+	// of this Ceph volume
+	csiImageIDKey string
+
 	// CSI image-name key in per Ceph volume object map, containing RBD image-name
 	// of this Ceph volume
 	csiImageKey string
@@ -160,6 +164,7 @@ func NewCSIVolumeJournal(suffix string) *Config {
 		csiJournalPool:          "csi.journalpool",
 		cephSnapSourceKey:       "",
 		namespace:               "",
+		csiImageIDKey:           "csi.imageid",
 		encryptKMSKey:           "csi.volume.encryptKMS",
 		commonPrefix:            "csi.",
 	}
@@ -176,6 +181,7 @@ func NewCSISnapshotJournal(suffix string) *Config {
 		csiJournalPool:          "csi.journalpool",
 		cephSnapSourceKey:       "csi.source",
 		namespace:               "",
+		csiImageIDKey:           "csi.imageid",
 		encryptKMSKey:           "csi.volume.encryptKMS",
 		commonPrefix:            "csi.",
 	}
@@ -648,6 +654,24 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 	}
 
 	return imageAttributes, nil
+}
+
+// StoreImageID stores the image ID in omap
+func (conn *Connection) StoreImageID(ctx context.Context, pool, reservedUUID, imageID string, cr *util.Credentials) error {
+	err := util.SetOMapKeyValue(ctx, conn.monitors, cr, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID, conn.config.csiImageIDKey, imageID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetStoredImageID retrives the stored image ID from the omap
+func (conn *Connection) GetStoredImageID(ctx context.Context, pool, reservedUUID string, cr *util.Credentials) (string, error) {
+	imageID, err := util.GetOMapValue(ctx, conn.monitors, cr, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID, conn.config.csiImageIDKey)
+	if err != nil {
+		return "", err
+	}
+	return imageID, nil
 }
 
 // Destroy frees any resources and invalidates the journal connection.
