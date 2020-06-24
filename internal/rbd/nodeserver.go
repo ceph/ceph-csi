@@ -204,7 +204,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	transaction := stageTransaction{}
 
 	var err error
-
+	var readOnly bool
 	var cr *util.Credentials
 	cr, err = util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
@@ -218,6 +218,13 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 		return transaction, err
 	}
 	defer volOptions.Destroy()
+
+	// Allow image to be mounted on multiple nodes if it is ROX
+	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY {
+		klog.V(3).Infof(util.Log(ctx, "setting disableInUseChecks on rbd volume to: %v"), req.GetVolumeId)
+		volOptions.DisableInUseChecks = true
+		volOptions.readOnly = true
+	}
 
 	// Mapping RBD image
 	var devicePath string
@@ -248,15 +255,16 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	transaction.isStagePathCreated = true
 
 	// nodeStage Path
-	err = ns.mountVolumeToStagePath(ctx, req, staticVol, stagingTargetPath, devicePath)
+	readOnly, err = ns.mountVolumeToStagePath(ctx, req, staticVol, stagingTargetPath, devicePath)
 	if err != nil {
 		return transaction, err
 	}
 	transaction.isMounted = true
 
-	// #nosec - allow anyone to write inside the target path
-	err = os.Chmod(stagingTargetPath, 0777)
-
+	if !readOnly {
+		// #nosec - allow anyone to write inside the target path
+		err = os.Chmod(stagingTargetPath, 0777)
+	}
 	return transaction, err
 }
 
@@ -388,7 +396,8 @@ func getLegacyVolumeName(mountPath string) (string, error) {
 	return volName, nil
 }
 
-func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, staticVol bool, stagingPath, devicePath string) error {
+func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, staticVol bool, stagingPath, devicePath string) (bool, error) {
+	readOnly := false
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
 	// rbd images are thin-provisioned and return zeros for unwritten areas.  A freshly created
@@ -404,10 +413,29 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	existingFormat, err := diskMounter.GetDiskFormat(devicePath)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to get disk format for path %s, error: %v"), devicePath, err)
-		return err
+		return readOnly, err
 	}
 
-	if existingFormat == "" && !staticVol {
+	opt := []string{"_netdev"}
+	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+	rOnly := "ro"
+
+	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
+		req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
+		if !csicommon.MountOptionContains(opt, rOnly) {
+			opt = append(opt, rOnly)
+		}
+	}
+	if csicommon.MountOptionContains(opt, rOnly) {
+		readOnly = true
+	}
+
+	if fsType == "xfs" {
+		opt = append(opt, "nouuid")
+	}
+
+	if existingFormat == "" && !staticVol && !readOnly {
 		args := []string{}
 		if fsType == "ext4" {
 			args = []string{"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1", devicePath}
@@ -417,18 +445,11 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 		if len(args) > 0 {
 			cmdOut, cmdErr := diskMounter.Exec.Command("mkfs."+fsType, args...).CombinedOutput()
 			if cmdErr != nil {
-				klog.Errorf(util.Log(ctx, "failed to run mkfs error: %v, output: %v"), cmdErr, cmdOut)
-				return cmdErr
+				klog.Errorf(util.Log(ctx, "failed to run mkfs error: %v, output: %v"), cmdErr, string(cmdOut))
+				return readOnly, cmdErr
 			}
 		}
 	}
-
-	opt := []string{"_netdev"}
-	if fsType == "xfs" {
-		opt = append(opt, "nouuid")
-	}
-	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
-	isBlock := req.GetVolumeCapability().GetBlock() != nil
 
 	if isBlock {
 		opt = append(opt, "bind")
@@ -445,7 +466,7 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 			req.GetVolumeId(),
 			err)
 	}
-	return err
+	return readOnly, err
 }
 
 func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *csi.NodePublishVolumeRequest) error {

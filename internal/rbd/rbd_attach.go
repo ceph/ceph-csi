@@ -225,6 +225,9 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 	// Update options with device type selection
 	mapOptions = append(mapOptions, "--device-type", accessType)
 
+	if volOpt.readOnly {
+		mapOptions = append(mapOptions, "--read-only")
+	}
 	// Execute map
 	output, err := execCommand(rbd, mapOptions)
 	if err != nil {

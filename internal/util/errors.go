@@ -22,6 +22,12 @@ type ErrKeyNotFound struct {
 	err     error
 }
 
+// NewErrKeyNotFound returns a new ErrKeyNotFound error.
+func NewErrKeyNotFound(keyName string, err error) ErrKeyNotFound {
+	return ErrKeyNotFound{keyName, err}
+}
+
+// Error returns the error string for ErrKeyNotFound.
 func (e ErrKeyNotFound) Error() string {
 	return e.err.Error()
 }
@@ -32,6 +38,7 @@ type ErrObjectExists struct {
 	err        error
 }
 
+// Error returns the error string for ErrObjectExists.
 func (e ErrObjectExists) Error() string {
 	return e.err.Error()
 }
@@ -42,6 +49,7 @@ type ErrObjectNotFound struct {
 	err      error
 }
 
+// Error returns the error string for ErrObjectNotFound.
 func (e ErrObjectNotFound) Error() string {
 	return e.err.Error()
 }
@@ -53,6 +61,7 @@ type ErrSnapNameConflict struct {
 	err         error
 }
 
+// Error returns the error string for ErrSnapNameConflict.
 func (e ErrSnapNameConflict) Error() string {
 	return e.err.Error()
 }
@@ -68,6 +77,12 @@ type ErrPoolNotFound struct {
 	Err  error
 }
 
+// Error returns the error string for ErrPoolNotFound.
 func (e ErrPoolNotFound) Error() string {
 	return e.Err.Error()
+}
+
+// NewErrPoolNotFound returns a new ErrPoolNotFound error.
+func NewErrPoolNotFound(pool string, err error) ErrPoolNotFound {
+	return ErrPoolNotFound{pool, err}
 }
