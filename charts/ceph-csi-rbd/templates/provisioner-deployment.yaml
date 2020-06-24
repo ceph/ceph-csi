@@ -116,6 +116,9 @@ spec:
             - "--drivername=$(DRIVER_NAME)"
             - "--rbdhardmaxclonedepth={{ .Values.provisioner.hardMaxCloneDepth }}"
             - "--rbdsoftmaxclonedepth={{ .Values.provisioner.softMaxCloneDepth }}"
+            {{- if .Values.provisioner.skipForceFlatten }}
+            - "--skipforceflatten={{ .Values.provisioner.skipForceFlatten }}"
+            {{- end }}
           env:
             - name: POD_IP
               valueFrom:

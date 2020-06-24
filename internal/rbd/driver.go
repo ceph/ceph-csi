@@ -58,6 +58,8 @@ var (
 
 	// rbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before a flatten occurs
 	rbdSoftMaxCloneDepth uint
+
+	skipForceFlatten bool
 )
 
 // NewDriver returns new rbd driver
@@ -111,6 +113,7 @@ func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	// update clone soft and hard limit
 	rbdHardMaxCloneDepth = conf.RbdHardMaxCloneDepth
 	rbdSoftMaxCloneDepth = conf.RbdSoftMaxCloneDepth
+	skipForceFlatten = conf.SkipForceFlatten
 	// Create instances of the volume and snapshot journal
 	volJournal = journal.NewCSIVolumeJournal(CSIInstanceID)
 	snapJournal = journal.NewCSISnapshotJournal(CSIInstanceID)

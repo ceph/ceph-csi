@@ -27,6 +27,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 
+	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -59,6 +60,22 @@ type stageTransaction struct {
 	// devicePath represents the path where rbd device is mapped
 	devicePath string
 }
+
+var (
+	kernelRelease = ""
+	// deepFlattenSupport holds the list of kernel which support mapping rbd
+	// image with deep-flatten image feature
+	deepFlattenSupport = []util.KernelVersion{
+		{
+			Version:      5,
+			PatchLevel:   2,
+			SubLevel:     0,
+			ExtraVersion: 0,
+			Distribution: "",
+			Backport:     false,
+		}, // standard 5.2+ versions
+	}
+)
 
 // NodeStageVolume mounts the volume to a staging path on the node.
 // Implementation notes:
@@ -205,6 +222,8 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 
 	var err error
 	var readOnly bool
+	var feature bool
+
 	var cr *util.Credentials
 	cr, err = util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
@@ -226,6 +245,27 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 		volOptions.readOnly = true
 	}
 
+	if kernelRelease == "" {
+		// fetch the current running kernel info
+		kernelRelease, err = util.GetKernelVersion()
+		if err != nil {
+			return transaction, err
+		}
+	}
+	if !util.CheckKernelSupport(kernelRelease, deepFlattenSupport) {
+		if !skipForceFlatten {
+			feature, err = volOptions.checkImageChainHasFeature(ctx, librbd.FeatureDeepFlatten)
+			if err != nil {
+				return transaction, err
+			}
+			if feature {
+				err = volOptions.flattenRbdImage(ctx, cr, true)
+				if err != nil {
+					return transaction, err
+				}
+			}
+		}
+	}
 	// Mapping RBD image
 	var devicePath string
 	devicePath, err = attachRBDImage(ctx, volOptions, cr)

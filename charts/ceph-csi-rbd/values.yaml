@@ -113,6 +113,9 @@ provisioner:
   # Soft limit for maximum number of nested volume clones that are taken before
   # a flatten occurs
   softMaxCloneDepth: 4
+  # skip image flattening if kernel support mapping of rbd images
+  # which has the deep-flatten feature
+  # skipForceFlatten: false
 
   httpMetrics:
     # Metrics only available for cephcsi/cephcsi => 1.2.0
