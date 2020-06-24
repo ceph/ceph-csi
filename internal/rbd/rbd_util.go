@@ -235,6 +235,25 @@ func (rv *rbdVolume) openIoctx() error {
 	return nil
 }
 
+// getImageID queries rbd about the given image and stores its id, returns
+// ErrImageNotFound if provided image is not found
+func (rv *rbdVolume) getImageID() error {
+	if rv.ImageID != "" {
+		return nil
+	}
+	image, err := rv.open()
+	if err != nil {
+		return err
+	}
+	defer image.Close()
+
+	id, err := image.GetId()
+	if err != nil {
+		return err
+	}
+	rv.ImageID = id
+	return nil
+}
 // open the rbdVolume after it has been connected.
 // ErrPoolNotFound or ErrImageNotFound are returned in case the pool or image
 // can not be found, other errors will contain more details about other issues
