@@ -754,39 +754,35 @@ func (rv *rbdVolume) hasSnapshotFeature() bool {
 	return (uint64(rv.imageFeatureSet) & librbd.FeatureLayering) == librbd.FeatureLayering
 }
 
-func createSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
-	var output []byte
-
+func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
 	klog.V(4).Infof(util.Log(ctx, "rbd: snap create %s using mon %s"), pOpts, pOpts.Monitors)
-	args := []string{"snap", "create", pOpts.String(), "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
-
-	output, err := execCommand("rbd", args)
-
+	image, err := rv.open()
 	if err != nil {
-		return errors.Wrapf(err, "failed to create snapshot, command output: %s", string(output))
+		return err
 	}
+	defer image.Close()
 
-	return nil
+	_, err = image.CreateSnapshot(pOpts.RbdSnapName)
+	return err
 }
 
-func deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot, cr *util.Credentials) error {
-	var output []byte
-
+func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
 	klog.V(4).Infof(util.Log(ctx, "rbd: snap rm %s using mon %s"), pOpts, pOpts.Monitors)
-	args := []string{"snap", "rm", pOpts.String(), "--id", cr.ID, "-m", pOpts.Monitors, "--keyfile=" + cr.KeyFile}
-
-	output, err := execCommand("rbd", args)
-
+	image, err := rv.open()
 	if err != nil {
-		return errors.Wrapf(err, "failed to delete snapshot, command output: %s", string(output))
+		return err
 	}
+	defer image.Close()
 
-	if err := undoSnapReservation(ctx, pOpts, cr); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s): %s"),
-			pOpts.RequestName, pOpts, err)
+	snap := image.GetSnapshot(pOpts.RbdSnapName)
+	if snap == nil {
+		return errors.Errorf("snapshot value is nil for %s", pOpts.RbdSnapName)
 	}
-
-	return nil
+	err = snap.Remove()
+	if err == librbd.ErrNotFound {
+		return ErrSnapNotFound{snapName: pOpts.RbdSnapName, err: err}
+	}
+	return err
 }
 
 // nolint: interfacer
