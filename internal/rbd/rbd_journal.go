@@ -18,11 +18,11 @@ package rbd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	"github.com/pkg/errors"
 	"k8s.io/klog"
 )
 

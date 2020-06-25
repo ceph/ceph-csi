@@ -18,12 +18,12 @@ package cephfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/pkg/errors"
 
 	"github.com/ceph/ceph-csi/internal/util"
 )
@@ -124,13 +124,13 @@ func getClusterInformation(options map[string]string) (*util.ClusterInfo, error)
 
 	monitors, err := util.Mons(csiConfigFile, clusterID)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", clusterID)
+		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", clusterID, err)
 		return nil, err
 	}
 
 	subvolumeGroup, err := util.CephFSSubvolumeGroup(csiConfigFile, clusterID)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to fetch subvolumegroup using clusterID (%s)", clusterID)
+		err = fmt.Errorf("failed to fetch subvolumegroup using clusterID (%s): %w", clusterID, err)
 		return nil, err
 	}
 	clusterData := &util.ClusterInfo{
@@ -238,11 +238,11 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 	volOptions.FscID = vi.LocationID
 
 	if volOptions.Monitors, err = util.Mons(csiConfigFile, vi.ClusterID); err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", vi.ClusterID)
+		return nil, nil, fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", vi.ClusterID, err)
 	}
 
 	if volOptions.SubvolumeGroup, err = util.CephFSSubvolumeGroup(csiConfigFile, vi.ClusterID); err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to fetch subvolumegroup list using clusterID (%s)", vi.ClusterID)
+		return nil, nil, fmt.Errorf("failed to fetch subvolumegroup list using clusterID (%s): %w", vi.ClusterID, err)
 	}
 
 	cr, err := util.NewAdminCredentials(secrets)
