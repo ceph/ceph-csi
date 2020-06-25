@@ -20,13 +20,13 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
 	"k8s.io/klog"
 )
 
