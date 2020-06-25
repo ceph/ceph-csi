@@ -1136,3 +1136,46 @@ func (rv *rbdVolume) ensureEncryptionMetadataSet(status string) error {
 
 	return nil
 }
+
+// SnapshotInfo holds snapshots details
+type snapshotInfo struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+	Protected string `json:"protected"`
+	Timestamp string `json:"timestamp"`
+	Namespace struct {
+		Type         string `json:"type"`
+		OriginalName string `json:"original_name"`
+	} `json:"namespace"`
+}
+
+// TODO: use go-ceph once https://github.com/ceph/go-ceph/issues/300 is available in a release.
+func (rv *rbdVolume) listSnapshots(ctx context.Context, cr *util.Credentials) ([]snapshotInfo, error) {
+	// rbd snap ls <image> --pool=<pool-name> --all --format=json
+	var snapInfo []snapshotInfo
+	stdout, stderr, err := util.ExecCommand("rbd",
+		"-m", rv.Monitors,
+		"--id", cr.ID,
+		"--keyfile="+cr.KeyFile,
+		"-c", util.CephConfigPath,
+		"--format="+"json",
+		"snap",
+		"ls",
+		"--all", rv.String())
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), rv, err)
+		if strings.Contains(string(stderr), "rbd: error opening image "+rv.RbdImageName+
+			": (2) No such file or directory") {
+			return snapInfo, ErrImageNotFound{rv.String(), err}
+		}
+		return snapInfo, err
+	}
+
+	err = json.Unmarshal(stdout, &snapInfo)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to parse JSON output of snapshot info (%s)"), err)
+		return snapInfo, fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, string(stdout))
+	}
+	return snapInfo, nil
+}
