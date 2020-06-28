@@ -156,3 +156,83 @@ func TestKernelVersion(t *testing.T) {
 		t.Error("version ends with \\x00 byte(s)")
 	}
 }
+
+func TestMountOptionsAdd(t *testing.T) {
+	moaTests := []struct {
+		name         string
+		mountOptions string
+		option       []string
+		result       string
+	}{
+		{
+			"add option to empty string",
+			"",
+			[]string{"new_option"},
+			"new_option",
+		},
+		{
+			"add empty option to string",
+			"orig_option",
+			[]string{""},
+			"orig_option",
+		},
+		{
+			"add empty option to empty string",
+			"",
+			[]string{""},
+			"",
+		},
+		{
+			"add option to single option string",
+			"orig_option",
+			[]string{"new_option"},
+			"orig_option,new_option",
+		},
+		{
+			"add option to multi option string",
+			"orig_option,2nd_option",
+			[]string{"new_option"},
+			"orig_option,2nd_option,new_option",
+		},
+		{
+			"add redundant option to multi option string",
+			"orig_option,2nd_option",
+			[]string{"2nd_option"},
+			"orig_option,2nd_option",
+		},
+		{
+			"add option to multi option string starting with ,",
+			",orig_option,2nd_option",
+			[]string{"new_option"},
+			"orig_option,2nd_option,new_option",
+		},
+		{
+			"add option to multi option string with trailing ,",
+			"orig_option,2nd_option,",
+			[]string{"new_option"},
+			"orig_option,2nd_option,new_option",
+		},
+		{
+			"add options to multi option string",
+			"orig_option,2nd_option,",
+			[]string{"new_option", "another_option"},
+			"orig_option,2nd_option,new_option,another_option",
+		},
+		{
+			"add options (one redundant) to multi option string",
+			"orig_option,2nd_option,",
+			[]string{"new_option", "2nd_option", "another_option"},
+			"orig_option,2nd_option,new_option,another_option",
+		},
+	}
+
+	for _, moaTest := range moaTests {
+		mt := moaTest
+		t.Run(moaTest.name, func(t *testing.T) {
+			result := MountOptionsAdd(mt.mountOptions, mt.option...)
+			if result != mt.result {
+				t.Errorf("MountOptionsAdd(): %v, want %v", result, mt.result)
+			}
+		})
+	}
+}

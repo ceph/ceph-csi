@@ -176,12 +176,12 @@ var _ = Describe("cephfs", func() {
 			})
 
 			By("create a storage class with pool and a PVC then Bind it to an app", func() {
-				createCephfsStorageClass(f.ClientSet, f, true)
+				createCephfsStorageClass(f.ClientSet, f, true, "")
 				validatePVCAndAppBinding(pvcPath, appPath, f)
 				deleteResource(cephfsExamplePath + "storageclass.yaml")
 			})
 
-			createCephfsStorageClass(f.ClientSet, f, false)
+			createCephfsStorageClass(f.ClientSet, f, false, "")
 
 			By("create and delete a PVC", func() {
 				By("create a PVC and Bind it to an app", func() {
@@ -257,6 +257,38 @@ var _ = Describe("cephfs", func() {
 						Fail(err.Error())
 					}
 				})
+
+				By("validate multiple subvolumegroup creation", func() {
+					deleteResource(cephfsExamplePath + "storageclass.yaml")
+					// re-define configmap with information of multiple clusters.
+					subvolgrpInfo := map[string]string{
+						"clusterID-1": "subvolgrp1",
+						"clusterID-2": "subvolgrp2",
+					}
+					createCustomConfigMap(f.ClientSet, cephfsDirPath, subvolgrpInfo)
+					createCephfsStorageClass(f.ClientSet, f, false, "clusterID-1")
+					validatePVCAndAppBinding(pvcPath, appPath, f)
+					deleteResource(cephfsExamplePath + "storageclass.yaml")
+					// verify subvolumegroup creation.
+					err := validateSubvolumegroup(f, "subvolgrp1")
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					// create resources and verify subvolume group creation
+					// for the second cluster.
+					createCephfsStorageClass(f.ClientSet, f, false, "clusterID-2")
+					validatePVCAndAppBinding(pvcPath, appPath, f)
+					deleteResource(cephfsExamplePath + "storageclass.yaml")
+					err = validateSubvolumegroup(f, "subvolgrp2")
+					if err != nil {
+						Fail(err.Error())
+					}
+					deleteConfigMap(cephfsDirPath)
+				})
+
+				createConfigMap(cephfsDirPath, f.ClientSet, f)
+				createCephfsStorageClass(f.ClientSet, f, false, "")
 
 				By("Resize PVC and check application directory size", func() {
 					v, err := f.ClientSet.Discovery().ServerVersion()

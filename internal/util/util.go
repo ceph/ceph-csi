@@ -205,3 +205,35 @@ func Mount(source, target, fstype string, options []string) error {
 	dummyMount := mount.New("")
 	return dummyMount.Mount(source, target, fstype, options)
 }
+
+// MountOptionsAdd adds the `add` mount options to the `options` and returns a
+// new string. In case `add` is already present in the `options`, `add` is not
+// added again.
+func MountOptionsAdd(options string, add ...string) string {
+	opts := strings.Split(options, ",")
+	newOpts := []string{}
+	// clean original options from empty strings
+	for _, opt := range opts {
+		if opt != "" {
+			newOpts = append(newOpts, opt)
+		}
+	}
+
+	for _, opt := range add {
+		if opt != "" && !contains(newOpts, opt) {
+			newOpts = append(newOpts, opt)
+		}
+	}
+
+	return strings.Join(newOpts, ",")
+}
+
+func contains(s []string, key string) bool {
+	for _, v := range s {
+		if v == key {
+			return true
+		}
+	}
+
+	return false
+}
