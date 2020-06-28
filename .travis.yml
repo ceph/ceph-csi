@@ -74,8 +74,12 @@ jobs:
         # yamllint disable rule:line-length
         - mkdir -p /opt/commitlint && pushd /opt/commitlint
           && npm init -y && npm install --save-dev @commitlint/travis-cli && popd
-        # yamllint enable rule:line-length
         - export PATH=/opt/commitlint/node_modules/.bin:$PATH
+        # install pylint and prettytable.
+        # target python script requires python3 dependencies.
+        - sudo apt install python3-pip python3-prettytable python3-setuptools python3-wheel -y
+        - pip3 install pylint
+        # yamllint enable rule:line-length
       script:
         - commitlint-travis
         - make go-lint
