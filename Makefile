@@ -96,6 +96,9 @@ lint-yaml:
 lint-helm:
 	./scripts/lint-extras.sh lint-helm
 
+lint-py:
+	./scripts/lint-extras.sh lint-py
+
 gosec:
 	./scripts/gosec.sh
 
