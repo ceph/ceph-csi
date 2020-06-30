@@ -104,6 +104,9 @@ lint-yaml:
 lint-helm:
 	./scripts/lint-extras.sh lint-helm
 
+lint-py:
+	./scripts/lint-extras.sh lint-py
+
 gosec:
 	GO_TAGS="$(GO_TAGS)" ./scripts/gosec.sh
 
