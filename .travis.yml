@@ -1,6 +1,6 @@
 ---
 # need for docker build
-sudo: true
+os: linux
 dist: bionic
 
 addons:
