@@ -1,5 +1,6 @@
 ---
 # need for docker build
+os: linux
 dist: bionic
 
 addons:
