@@ -1,6 +1,5 @@
 ---
 # need for docker build
-sudo: true
 dist: bionic
 
 addons:
