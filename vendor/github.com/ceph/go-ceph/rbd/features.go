@@ -102,7 +102,7 @@ const (
 	// revive:enable:exported
 )
 
-// FeatureSet is a combination of the bit value for multiple featurs.
+// FeatureSet is a combination of the bit value for multiple features.
 type FeatureSet uint64
 
 var (

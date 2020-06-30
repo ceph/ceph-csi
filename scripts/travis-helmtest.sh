@@ -10,6 +10,20 @@ export KUBE_VERSION=$1
 kube_version() {
     echo "${KUBE_VERSION}" | sed 's/^v//' | cut -d'.' -f"${1}"
 }
+
+# configure global environment variables
+# shellcheck source=build.env
+source "$(dirname "${0}")/../build.env"
+cat << EOF | sudo tee -a /etc/environment
+HELM_VERSION=${HELM_VERSION}
+MINIKUBE_VERSION=${MINIKUBE_VERSION}
+VM_DRIVER=${VM_DRIVER}
+CHANGE_MINIKUBE_NONE_USER=${CHANGE_MINIKUBE_NONE_USER}
+EOF
+
+# helm is installed from this shell, not a new one that reads /etc/environment
+export HELM_VERSION=${HELM_VERSION}
+
 sudo scripts/minikube.sh up
 sudo scripts/minikube.sh deploy-rook
 sudo scripts/minikube.sh create-block-pool
@@ -35,7 +49,7 @@ scripts/install-helm.sh up
 # install cephcsi helm charts
 scripts/install-helm.sh install-cephcsi ${NAMESPACE}
 # functional tests
-go test github.com/ceph/ceph-csi/e2e -mod=vendor --deploy-timeout=10 -timeout=30m --cephcsi-namespace=${NAMESPACE} --deploy-cephfs=false --deploy-rbd=false -v
+go test "${GO_TAGS}" github.com/ceph/ceph-csi/e2e -mod=vendor --deploy-timeout=10 -timeout=30m --cephcsi-namespace=${NAMESPACE} --deploy-cephfs=false --deploy-rbd=false -v
 
 #cleanup
 # skip snapshot operation if kube version is less than 1.17.0

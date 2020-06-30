@@ -59,6 +59,11 @@ function lint_helm() {
     run_check '' helm lint --namespace=test charts/*
 }
 
+function lint_py() {
+    # Install via: sudo apt-get install python3-pylint
+    run_check '.*\.py' pylint --score n --output-format=colorized
+}
+
 function lint_all() {
     # runs all checks
     all_required=1
@@ -66,6 +71,7 @@ function lint_all() {
     lint_yaml
     lint_markdown
     lint_helm
+    lint_py
 }
 case "${1:-}" in
 lint-shell)
@@ -80,6 +86,9 @@ lint-markdown)
 lint-helm)
     lint_helm
     ;;
+lint-py)
+    lint_py
+    ;;
 lint-all)
     lint_all
     ;;
@@ -90,6 +99,7 @@ Available Commands:
   lint-yaml              Lint yaml files
   lint-markdown          Lint markdown files
   lint-helm              Lint helm charts
+  lint-py                Lint python files
   lint-all               Run lint on all non-go files
 " >&2
     ;;

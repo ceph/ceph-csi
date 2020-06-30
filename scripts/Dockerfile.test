@@ -10,8 +10,6 @@
 
 FROM fedora:latest
 
-ARG GOLANGCI_VERSION=v1.21.0
-ARG GOSEC_VERSION=2.0.0
 ARG GOPATH=/go
 
 ENV \
@@ -19,7 +17,10 @@ ENV \
  GO111MODULE=on \
  PATH="${GOPATH}/bin:/opt/commitlint/node_modules/.bin:${PATH}"
 
-RUN dnf -y install \
+COPY build.env /
+
+RUN source /build.env \
+    && dnf -y install \
 	git \
 	make \
 	golang \
@@ -30,6 +31,8 @@ RUN dnf -y install \
 	ShellCheck \
 	yamllint \
 	npm \
+      python3-prettytable \
+      pylint \
     && dnf -y update \
     && dnf -y clean all \
     && gem install mdl \

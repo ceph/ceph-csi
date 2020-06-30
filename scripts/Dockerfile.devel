@@ -1,4 +1,5 @@
-FROM ceph/ceph:v15
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 ARG GOROOT=/usr/local/go
 
@@ -7,8 +8,11 @@ ENV GOPATH=/go \
  GO111MODULE=on \
  PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
 
-RUN mkdir -p /usr/local/go && \
- curl https://storage.googleapis.com/golang/go1.13.9.linux-amd64.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
+COPY build.env /
+
+RUN source /build.env \
+    && mkdir -p /usr/local/go \
+    && curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
 
 RUN dnf -y install \
 	git \

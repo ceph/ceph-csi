@@ -258,7 +258,7 @@ func getStorageClass(path string) scv1.StorageClass {
 	return sc
 }
 
-func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool) {
+func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool, clusterID string) {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc := getStorageClass(scPath)
 	sc.Parameters["fsName"] = "myfs"
@@ -278,6 +278,10 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
+
+	if clusterID != "" {
+		fsID = clusterID
+	}
 	sc.Namespace = cephCSINamespace
 	sc.Parameters["clusterID"] = fsID
 	_, err := c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
@@ -1206,4 +1210,55 @@ func checkPVSelectorValuesForPVC(f *framework.Framework, pvc *v1.PersistentVolum
 func addTopologyDomainsToDSYaml(template, labels string) string {
 	return strings.ReplaceAll(template, "# - \"--domainlabels=failure-domain/region,failure-domain/zone\"",
 		"- \"--domainlabels="+labels+"\"")
+}
+
+// createCustomConfigMap provides multiple clusters information.
+func createCustomConfigMap(c kubernetes.Interface, pluginPath string, subvolgrpInfo map[string]string) {
+	path := pluginPath + configMap
+	cm := v1.ConfigMap{}
+	err := unmarshal(path, &cm)
+	Expect(err).Should(BeNil())
+
+	// get mon list
+	mons := getMons(rookNamespace, c)
+	// get clusterIDs
+	var clusterID []string
+	for key := range subvolgrpInfo {
+		clusterID = append(clusterID, key)
+	}
+	conmap := []util.ClusterInfo{
+		{
+			ClusterID: clusterID[0],
+			Monitors:  mons,
+		},
+		{
+			ClusterID: clusterID[1],
+			Monitors:  mons,
+		}}
+	for i := 0; i < len(subvolgrpInfo); i++ {
+		conmap[i].CephFS.SubvolumeGroup = subvolgrpInfo[clusterID[i]]
+	}
+	data, err := json.Marshal(conmap)
+	Expect(err).Should(BeNil())
+	cm.Data["config.json"] = string(data)
+	cm.Namespace = cephCSINamespace
+	// since a configmap is already created, update the existing configmap
+	_, updateErr := c.CoreV1().ConfigMaps(cephCSINamespace).Update(context.TODO(), &cm, metav1.UpdateOptions{})
+	Expect(updateErr).Should(BeNil())
+}
+
+// validateSubvolumegroup validates whether subvolumegroup is present.
+func validateSubvolumegroup(f *framework.Framework, subvolgrp string) error {
+	cmd := fmt.Sprintf("ceph fs subvolumegroup getpath myfs %s", subvolgrp)
+	stdOut, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+	Expect(err).Should(BeEmpty())
+	if err != "" {
+		return fmt.Errorf("error subvolumegroup %s doesn't exist", subvolgrp)
+	}
+	expectedGrpPath := "/volumes/" + subvolgrp
+	stdOut = strings.TrimSpace(stdOut)
+	if stdOut != expectedGrpPath {
+		return fmt.Errorf("error unexpected group path. Found: %s", stdOut)
+	}
+	return nil
 }

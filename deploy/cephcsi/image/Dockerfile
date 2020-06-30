@@ -1,12 +1,11 @@
 ARG SRC_DIR="/go/src/github.com/ceph/ceph-csi/"
 ARG GO_ARCH
-ARG BASE_IMAGE=ceph/ceph:v15
+ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE} as builder
 
 LABEL stage="build"
 
-ARG GOLANG_VERSION=1.13.9
 ARG CSI_IMAGE_NAME=quay.io/cephcsi/cephcsi
 ARG CSI_IMAGE_VERSION=canary
 ARG GO_ARCH
@@ -14,8 +13,14 @@ ARG SRC_DIR
 ARG GIT_COMMIT
 ARG GOROOT=/usr/local/go
 
-RUN mkdir -p ${GOROOT} && \
+COPY build.env /
+
+RUN source /build.env && \
+    mkdir -p ${GOROOT} && \
     curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GO_ARCH}.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
+
+# test if the downloaded version of Golang works (different arch?)
+RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
 
 RUN dnf install libcephfs-devel librados-devel librbd-devel /usr/bin/cc make -y
 

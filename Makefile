@@ -38,13 +38,14 @@ LDFLAGS += -X $(GO_PROJECT)/internal/util.GitCommit=$(GIT_COMMIT)
 # CSI_IMAGE_VERSION will be considered as the driver version
 LDFLAGS += -X $(GO_PROJECT)/internal/util.DriverVersion=$(CSI_IMAGE_VERSION)
 
-# set GOARCH explicitly for cross building, default to native architecture
-ifndef GOARCH
-GOARCH := $(shell go env GOARCH 2>/dev/null)
-endif
+BASE_IMAGE ?= $(shell . $(CURDIR)/build.env ; echo $${BASE_IMAGE})
 
-ifdef BASE_IMAGE
-BASE_IMAGE_ARG = --build-arg BASE_IMAGE=$(BASE_IMAGE)
+ifndef CEPH_VERSION
+	CEPH_VERSION = $(shell . $(CURDIR)/build.env ; echo $${CEPH_VERSION})
+endif
+ifdef CEPH_VERSION
+	# pass -tags to go commands (for go-ceph build constraints)
+	GO_TAGS = -tags=$(CEPH_VERSION)
 endif
 
 # passing TARGET=static-check on the 'make containerized-test' or 'make
@@ -76,8 +77,10 @@ all: cephcsi
 test: go-test static-check mod-check
 static-check: check-env go-lint lint-extras gosec
 
+go-test: TEST_COVERAGE ?= $(shell . $(CURDIR)/build.env ; echo $${TEST_COVERAGE})
+go-test: GO_COVER_DIR ?= $(shell . $(CURDIR)/build.env ; echo $${GO_COVER_DIR})
 go-test: check-env
-	./scripts/test-go.sh
+	TEST_COVERAGE="$(TEST_COVERAGE)" GO_COVER_DIR="$(GO_COVER_DIR)" GO_TAGS="$(GO_TAGS)" ./scripts/test-go.sh
 
 mod-check: check-env
 	@echo 'running: go mod verify'
@@ -101,11 +104,14 @@ lint-yaml:
 lint-helm:
 	./scripts/lint-extras.sh lint-helm
 
+lint-py:
+	./scripts/lint-extras.sh lint-py
+
 gosec:
-	./scripts/gosec.sh
+	GO_TAGS="$(GO_TAGS)" ./scripts/gosec.sh
 
 func-test:
-	go test -mod=vendor github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
+	go test $(GO_TAGS) -mod=vendor github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
 
 check-env:
 	@./scripts/check-env.sh
@@ -116,10 +122,10 @@ commitlint:
 .PHONY: cephcsi
 cephcsi: check-env
 	if [ ! -d ./vendor ]; then (go mod tidy && go mod vendor); fi
-	GOOS=linux go build -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
+	GOOS=linux go build $(GO_TAGS) -mod vendor -a -ldflags '$(LDFLAGS)' -o _output/cephcsi ./cmd/
 
 e2e.test: check-env
-	go test -mod=vendor -c ./e2e
+	go test $(GO_TAGS) -mod=vendor -c ./e2e
 
 .PHONY: containerized-build containerized-test
 containerized-build: TARGET = cephcsi
@@ -133,18 +139,20 @@ containerized-test: .test-container-id
 # create a (cached) container image with dependencied for building cephcsi
 .devel-container-id: scripts/Dockerfile.devel
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
-	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
+	$(CONTAINER_CMD) build $(CPUSET) --build-arg BASE_IMAGE=$(BASE_IMAGE) -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
 
 # create a (cached) container image with dependencied for testing cephcsi
-.test-container-id: scripts/Dockerfile.test
+.test-container-id: build.env scripts/Dockerfile.test
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
 	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
 
+image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 image-cephcsi:
-	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg GOLANG_VERSION=1.13.8 --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) $(BASE_IMAGE_ARG)
+	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) --build-arg BASE_IMAGE=$(BASE_IMAGE)
 
+push-image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 push-image-cephcsi: image-cephcsi
 	$(CONTAINER_CMD) tag $(CSI_IMAGE) $(CSI_IMAGE)-$(GOARCH)
 	$(CONTAINER_CMD) push $(CSI_IMAGE)-$(GOARCH)

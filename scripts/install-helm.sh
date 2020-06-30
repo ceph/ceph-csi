@@ -5,7 +5,7 @@
 TEMP="/tmp/cephcsi-helm-test"
 
 HELM="helm"
-HELM_VERSION=${HELM_VERSION:-"v3.1.2"}
+HELM_VERSION=${HELM_VERSION:-"latest"}
 arch="${ARCH:-}"
 CEPHFS_CHART_NAME="ceph-csi-cephfs"
 RBD_CHART_NAME="ceph-csi-rbd"

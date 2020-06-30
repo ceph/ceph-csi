@@ -10,8 +10,8 @@ export DOCKER_CLI_EXPERIMENTAL=enabled
 cd "$(dirname "${0}")/.."
 
 # ceph base image used for building multi architecture images
-dockerfile="deploy/cephcsi/image/Dockerfile"
-baseimg=$(awk -F = '/^ARG BASE_IMAGE=/ {print $NF}' "${dockerfile}")
+build_env="build.env"
+baseimg=$(awk -F = '/^BASE_IMAGE=/ {print $NF}' "${build_env}")
 
 # get image digest per architecture
 # {
