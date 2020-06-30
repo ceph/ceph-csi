@@ -280,6 +280,24 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
+	rv.ImageID, err = j.GetStoredImageID(ctx, rv.JournalPool, rv.ReservedID, rv.conn.Creds)
+	if _, ok := err.(util.ErrKeyNotFound); ok {
+		err = rv.getImageID()
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to get image id %s: %v"), rv, err)
+			return false, err
+		}
+		err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID, rv.conn.Creds)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to store volume id %s: %v"), rv, err)
+			return false, err
+		}
+	}
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to get stored image id: %v"), err)
+		return false, err
+	}
+
 	// size checks
 	if rv.VolSize < requestSize {
 		err = fmt.Errorf("image with the same name (%s) but with different size already exists",
