@@ -27,6 +27,11 @@ func (e ErrImageNotFound) Error() string {
 	return e.err.Error()
 }
 
+// Unwrap returns the encapsulated error of ErrImageNotFound.
+func (e ErrImageNotFound) Unwrap() error {
+	return e.err
+}
+
 // ErrSnapNotFound is returned when snap name passed is not found in the list of snapshots for the
 // given image
 type ErrSnapNotFound struct {
@@ -37,6 +42,11 @@ type ErrSnapNotFound struct {
 // Error returns a user presentable string of the error.
 func (e ErrSnapNotFound) Error() string {
 	return e.err.Error()
+}
+
+// Unwrap returns the encapsulated error of ErrSnapNotFound.
+func (e ErrSnapNotFound) Unwrap() error {
+	return e.err
 }
 
 // ErrVolNameConflict is generated when a requested CSI volume name already exists on RBD but with
@@ -51,6 +61,11 @@ func (e ErrVolNameConflict) Error() string {
 	return e.err.Error()
 }
 
+// Unwrap returns the encapsulated error of ErrVolNameConflict.
+func (e ErrVolNameConflict) Unwrap() error {
+	return e.err
+}
+
 // ErrInvalidVolID is returned when a CSI passed VolumeID does not conform to any known volume ID
 // formats
 type ErrInvalidVolID struct {
@@ -60,6 +75,11 @@ type ErrInvalidVolID struct {
 // Error returns a user presentable string of the error.
 func (e ErrInvalidVolID) Error() string {
 	return e.err.Error()
+}
+
+// Unwrap returns the encapsulated error of ErrInvalidVolID.
+func (e ErrInvalidVolID) Unwrap() error {
+	return e.err
 }
 
 // ErrMissingStash is returned when the image metadata stash file is not found
@@ -72,6 +92,11 @@ func (e ErrMissingStash) Error() string {
 	return e.err.Error()
 }
 
+// Unwrap returns the encapsulated error of ErrMissingStash.
+func (e ErrMissingStash) Unwrap() error {
+	return e.err
+}
+
 // ErrFlattenInProgress is returned when flatten is inprogess for an image
 type ErrFlattenInProgress struct {
 	err error
@@ -80,4 +105,9 @@ type ErrFlattenInProgress struct {
 // Error returns a user presentable string of the error.
 func (e ErrFlattenInProgress) Error() string {
 	return e.err.Error()
+}
+
+// Unwrap returns the encapsulated error of ErrFlattenInProgress.
+func (e ErrFlattenInProgress) Unwrap() error {
+	return e.err
 }
