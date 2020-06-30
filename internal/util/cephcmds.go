@@ -142,7 +142,12 @@ func GetOMapValue(ctx context.Context, monitors string, cr *Credentials, poolNam
 		klog.Errorf(Log(ctx, "failed creating a temporary file for key contents"))
 		return "", err
 	}
-	defer tmpFile.Close()
+	defer func() {
+		ce := tmpFile.Close()
+		if ce != nil {
+			klog.Warningf(Log(ctx, "failed closing temporary file: %s"), ce)
+		}
+	}()
 	defer os.Remove(tmpFile.Name())
 
 	args := []string{
