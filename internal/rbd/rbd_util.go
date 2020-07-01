@@ -417,12 +417,42 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 	}
 }
 
-func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, forceFlatten bool) error {
-	depth, err := rv.getCloneDepth(ctx)
+func flattenClonedRbdImages(ctx context.Context, snaps []snapshotInfo, pool, monitors string, cr *util.Credentials) error {
+	rv := &rbdVolume{
+		Monitors: monitors,
+		Pool:     pool,
+	}
+	defer rv.Destroy()
+	err := rv.Connect(cr)
 	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to open connection %s; err %v"), rv, err)
 		return err
 	}
-	klog.Infof(util.Log(ctx, "clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s"), depth, rbdSoftMaxCloneDepth, rbdHardMaxCloneDepth, rv)
+	for _, s := range snaps {
+		if s.Namespace.Type == "trash" {
+			rv.RbdImageName = s.Namespace.OriginalName
+			err = rv.flattenRbdImage(ctx, cr, true)
+			if err != nil {
+				klog.Errorf(util.Log(ctx, "failed to flatten %s; err %v"), rv, err)
+				continue
+			}
+		}
+	}
+	return nil
+}
+
+func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, forceFlatten bool) error {
+	var depth uint
+	var err error
+
+	// skip clone depth check if request is for force flatten
+	if !forceFlatten {
+		depth, err = rv.getCloneDepth(ctx)
+		if err != nil {
+			return err
+		}
+		klog.Infof(util.Log(ctx, "clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s"), depth, rbdSoftMaxCloneDepth, rbdHardMaxCloneDepth, rv)
+	}
 
 	if forceFlatten || (depth >= rbdHardMaxCloneDepth) || (depth >= rbdSoftMaxCloneDepth) {
 		args := []string{"flatten", rv.Pool + "/" + rv.RbdImageName, "--id", cr.ID, "--keyfile=" + cr.KeyFile, "-m", rv.Monitors}

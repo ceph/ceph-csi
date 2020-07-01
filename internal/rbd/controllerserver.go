@@ -723,7 +723,24 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			},
 		}, nil
 	}
+	var snaps []snapshotInfo
+	// check the number of snapshots on image
+	snaps, err = rbdVol.listSnapshots(ctx, cr)
+	if err != nil {
+		var einf ErrImageNotFound
+		if errors.As(err, &einf) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
+	if len(snaps) > int(maxSnapshotsOnImage) {
+		err = flattenClonedRbdImages(ctx, snaps, rbdVol.Pool, rbdVol.Monitors, cr)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return nil, status.Errorf(codes.ResourceExhausted, "rbd image %s has %d snapshots", rbdVol, len(snaps))
+	}
 	err = reserveSnap(ctx, rbdSnap, rbdVol, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
