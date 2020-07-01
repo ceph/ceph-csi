@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -150,12 +151,44 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 
 	klog.V(4).Infof(util.Log(ctx, "cephfs: mounting volume %s with %s"), volID, m.name())
 
+	readOnly := "ro"
+	fuseMountOptions := strings.Split(volOptions.FuseMountOptions, ",")
+	kernelMountOptions := strings.Split(volOptions.KernelMountOptions, ",")
+
+	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
+		req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
+		switch m.(type) {
+		case *fuseMounter:
+			if !csicommon.MountOptionContains(strings.Split(volOptions.FuseMountOptions, ","), readOnly) {
+				volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, readOnly)
+				fuseMountOptions = append(fuseMountOptions, readOnly)
+			}
+		case *kernelMounter:
+			if !csicommon.MountOptionContains(strings.Split(volOptions.KernelMountOptions, ","), readOnly) {
+				volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, readOnly)
+				kernelMountOptions = append(kernelMountOptions, readOnly)
+			}
+		}
+	}
+
 	if err = m.mount(ctx, stagingTargetPath, cr, volOptions); err != nil {
 		klog.Errorf(util.Log(ctx,
 			"failed to mount volume %s: %v Check dmesg logs if required."),
 			volID,
 			err)
 		return status.Error(codes.Internal, err.Error())
+	}
+	if !csicommon.MountOptionContains(kernelMountOptions, readOnly) && !csicommon.MountOptionContains(fuseMountOptions, readOnly) {
+		// #nosec - allow anyone to write inside the stagingtarget path
+		err = os.Chmod(stagingTargetPath, 0777)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to change stagingtarget path %s permission for volume %s: %v"), stagingTargetPath, volID, err)
+			uErr := unmountVolume(ctx, stagingTargetPath)
+			if uErr != nil {
+				klog.Errorf(util.Log(ctx, "failed to umount stagingtarget path %s for volume %s: %v"), stagingTargetPath, volID, uErr)
+			}
+			return status.Error(codes.Internal, err.Error())
+		}
 	}
 	return nil
 }
@@ -210,13 +243,6 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully bind-mounted volume %s to %s"), volID, targetPath)
-
-	// #nosec - allow anyone to write inside the target path
-	err = os.Chmod(targetPath, 0777)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to change targetpath permission for volume %s: %v"), volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }

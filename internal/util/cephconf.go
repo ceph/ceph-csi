@@ -49,7 +49,7 @@ func WriteCephConfig() error {
 		return err
 	}
 
-	err := ioutil.WriteFile(CephConfigPath, cephConfig, 0640)
+	err := ioutil.WriteFile(CephConfigPath, cephConfig, 0600)
 	if err != nil {
 		return err
 	}
