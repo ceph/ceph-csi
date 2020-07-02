@@ -547,6 +547,16 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	defer cs.VolumeLocks.Release(rbdVol.RequestName)
 
+	found, _, err := rbdStatus(ctx, rbdVol, cr)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), rbdVol, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if found {
+		klog.Errorf(util.Log(ctx, "rbd %s is still being used"), rbdVol)
+		return nil, status.Errorf(codes.Internal, "rbd %s is still being used", rbdVol.RbdImageName)
+	}
+
 	// Deleting rbd image
 	klog.V(4).Infof(util.Log(ctx, "deleting image %s"), rbdVol.RbdImageName)
 	if err = deleteImage(ctx, rbdVol, cr); err != nil {
