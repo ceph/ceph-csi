@@ -22,6 +22,7 @@ type ErrImageNotFound struct {
 	err       error
 }
 
+// Error returns a user presentable string of the error.
 func (e ErrImageNotFound) Error() string {
 	return e.err.Error()
 }
@@ -33,6 +34,7 @@ type ErrSnapNotFound struct {
 	err      error
 }
 
+// Error returns a user presentable string of the error.
 func (e ErrSnapNotFound) Error() string {
 	return e.err.Error()
 }
@@ -44,6 +46,7 @@ type ErrVolNameConflict struct {
 	err         error
 }
 
+// Error returns a user presentable string of the error.
 func (e ErrVolNameConflict) Error() string {
 	return e.err.Error()
 }
@@ -54,6 +57,7 @@ type ErrInvalidVolID struct {
 	err error
 }
 
+// Error returns a user presentable string of the error.
 func (e ErrInvalidVolID) Error() string {
 	return e.err.Error()
 }
@@ -63,6 +67,7 @@ type ErrMissingStash struct {
 	err error
 }
 
+// Error returns a user presentable string of the error.
 func (e ErrMissingStash) Error() string {
 	return e.err.Error()
 }
@@ -72,6 +77,7 @@ type ErrFlattenInProgress struct {
 	err error
 }
 
+// Error returns a user presentable string of the error.
 func (e ErrFlattenInProgress) Error() string {
 	return e.err.Error()
 }
