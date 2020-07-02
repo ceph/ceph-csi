@@ -22,6 +22,7 @@ type ErrInvalidVolID struct {
 	err error
 }
 
+// Error returns a user presentable string of the error.
 func (e ErrInvalidVolID) Error() string {
 	return e.err.Error()
 }
@@ -32,6 +33,7 @@ type ErrNonStaticVolume struct {
 	err error
 }
 
+// Error returns a user presentable string of the error.
 func (e ErrNonStaticVolume) Error() string {
 	return e.err.Error()
 }
@@ -41,6 +43,7 @@ type ErrVolumeNotFound struct {
 	err error
 }
 
+// Error returns a user presentable string of the error.
 func (e ErrVolumeNotFound) Error() string {
 	return e.err.Error()
 }
