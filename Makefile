@@ -86,7 +86,10 @@ mod-check: check-env
 	@echo 'running: go mod verify'
 	@go mod verify && [ "$(shell sha512sum go.mod)" = "`sha512sum go.mod`" ] || ( echo "ERROR: go.mod was modified by 'go mod verify'" && false )
 
-go-lint:
+scripts/golangci.yml: scripts/golangci.yml.in
+	sed "s/@@CEPH_VERSION@@/$(CEPH_VERSION)/g" < scripts/golangci.yml.in > scripts/golangci.yml
+
+go-lint: scripts/golangci.yml
 	./scripts/lint-go.sh
 
 lint-extras:
@@ -163,6 +166,7 @@ clean:
 	go clean -mod=vendor -r -x
 	rm -f deploy/cephcsi/image/cephcsi
 	rm -f _output/cephcsi
+	$(RM) scripts/golangci.yml
 	$(RM) e2e.test
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
 	$(RM) .devel-container-id

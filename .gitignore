@@ -14,3 +14,6 @@ deploy/cephcsi/image/cephcsi
 *.orig
 *.patch
 *.rej
+
+# generated golangci-lint configuration
+scripts/golangci.yml
