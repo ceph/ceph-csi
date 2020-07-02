@@ -269,7 +269,7 @@ func (rv *rbdVolume) open() (*librbd.Image, error) {
 
 	image, err := librbd.OpenImage(rv.ioctx, rv.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
-		if err == librbd.ErrNotFound {
+		if errors.Is(err, librbd.ErrNotFound) {
 			err = ErrImageNotFound{rv.RbdImageName, err}
 		}
 		return nil, err
@@ -851,7 +851,7 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 		return fmt.Errorf("snapshot value is nil for %s", pOpts.RbdSnapName)
 	}
 	err = snap.Remove()
-	if err == librbd.ErrNotFound {
+	if errors.Is(err, librbd.ErrNotFound) {
 		return ErrSnapNotFound{snapName: pOpts.RbdSnapName, err: err}
 	}
 	return err

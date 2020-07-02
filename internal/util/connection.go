@@ -73,7 +73,7 @@ func (cc *ClusterConnection) GetIoctx(pool string) (*rados.IOContext, error) {
 	ioctx, err := cc.conn.OpenIOContext(pool)
 	if err != nil {
 		// ErrNotFound indicates the Pool was not found
-		if err == rados.ErrNotFound {
+		if errors.Is(err, rados.ErrNotFound) {
 			err = ErrPoolNotFound{pool, err}
 		} else {
 			err = fmt.Errorf("failed to open IOContext for pool %s: %w", pool, err)
