@@ -19,6 +19,7 @@ package util
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -233,7 +234,8 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 	ioctx, err := conn.GetIoctx(poolName)
 	if err != nil {
-		if _, ok := err.(ErrPoolNotFound); ok {
+		var epnf ErrPoolNotFound
+		if errors.As(err, &epnf) {
 			err = ErrObjectNotFound{poolName, err}
 		}
 		return err
@@ -267,7 +269,8 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 	ioctx, err := conn.GetIoctx(poolName)
 	if err != nil {
-		if _, ok := err.(ErrPoolNotFound); ok {
+		var epnf ErrPoolNotFound
+		if errors.As(err, &epnf) {
 			err = ErrObjectNotFound{poolName, err}
 		}
 		return err

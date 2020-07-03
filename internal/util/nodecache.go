@@ -18,6 +18,8 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -25,7 +27,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
 	"k8s.io/klog"
 )
 
@@ -43,7 +44,7 @@ func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 		// #nosec
 		if err := os.Mkdir(fullPath, 0755); err != nil {
-			return errors.Wrapf(err, "node-cache: failed to create %s folder", fullPath)
+			return fmt.Errorf("node-cache: failed to create %s folder: %w", fullPath, err)
 		}
 	}
 	return nil
@@ -53,11 +54,11 @@ func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) error {
 	err := nc.EnsureCacheDirectory(nc.CacheDir)
 	if err != nil {
-		return errors.Wrap(err, "node-cache: couldn't ensure cache directory exists")
+		return fmt.Errorf("node-cache: couldn't ensure cache directory exists: %w", err)
 	}
 	files, err := ioutil.ReadDir(path.Join(nc.BasePath, nc.CacheDir))
 	if err != nil {
-		return errors.Wrapf(err, "node-cache: failed to read %s folder", nc.BasePath)
+		return fmt.Errorf("node-cache: failed to read %s folder: %w", nc.BasePath, err)
 	}
 	cachePath := path.Join(nc.BasePath, nc.CacheDir)
 	for _, file := range files {
@@ -91,9 +92,9 @@ func decodeObj(fpath, pattern string, file os.FileInfo, destObj interface{}) err
 	decoder := json.NewDecoder(fp)
 	if err = decoder.Decode(destObj); err != nil {
 		if err = fp.Close(); err != nil {
-			return errors.Wrapf(err, "failed to close file %s", file.Name())
+			return fmt.Errorf("failed to close file %s: %w", file.Name(), err)
 		}
-		return errors.Wrapf(err, "node-cache: couldn't decode file %s", file.Name())
+		return fmt.Errorf("node-cache: couldn't decode file %s: %w", file.Name(), err)
 	}
 	return nil
 }
@@ -103,7 +104,7 @@ func (nc *NodeCache) Create(identifier string, data interface{}) error {
 	file := path.Join(nc.BasePath, nc.CacheDir, identifier+".json")
 	fp, err := os.Create(file)
 	if err != nil {
-		return errors.Wrapf(err, "node-cache: failed to create metadata storage file %s\n", file)
+		return fmt.Errorf("node-cache: failed to create metadata storage file %s: %w", file, err)
 	}
 
 	defer func() {
@@ -114,7 +115,7 @@ func (nc *NodeCache) Create(identifier string, data interface{}) error {
 
 	encoder := json.NewEncoder(fp)
 	if err = encoder.Encode(data); err != nil {
-		return errors.Wrapf(err, "node-cache: failed to encode metadata for file: %s\n", file)
+		return fmt.Errorf("node-cache: failed to encode metadata for file: %s: %w", file, err)
 	}
 	klog.V(4).Infof("node-cache: successfully saved metadata into file: %s\n", file)
 	return nil
@@ -126,11 +127,11 @@ func (nc *NodeCache) Get(identifier string, data interface{}) error {
 	// #nosec
 	fp, err := os.Open(file)
 	if err != nil {
-		if os.IsNotExist(errors.Cause(err)) {
+		if errors.Is(err, os.ErrNotExist) {
 			return &CacheEntryNotFound{err}
 		}
 
-		return errors.Wrapf(err, "node-cache: open error for %s", file)
+		return fmt.Errorf("node-cache: open error for %s: %w", file, err)
 	}
 
 	defer func() {
@@ -141,7 +142,7 @@ func (nc *NodeCache) Get(identifier string, data interface{}) error {
 
 	decoder := json.NewDecoder(fp)
 	if err = decoder.Decode(data); err != nil {
-		return errors.Wrap(err, "rbd: decode error")
+		return fmt.Errorf("rbd: decode error: %w", err)
 	}
 
 	return nil
@@ -157,7 +158,7 @@ func (nc *NodeCache) Delete(identifier string) error {
 			return nil
 		}
 
-		return errors.Wrapf(err, "node-cache: error removing file %s", file)
+		return fmt.Errorf("node-cache: error removing file %s: %w", file, err)
 	}
 	klog.V(4).Infof("node-cache: successfully deleted metadata storage file at: %+v\n", file)
 	return nil

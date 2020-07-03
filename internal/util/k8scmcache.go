@@ -23,7 +23,6 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,7 +96,7 @@ func (k8scm *K8sCMCache) ForAll(pattern string, destObj interface{}, f ForAllFun
 	listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", csiMetadataLabelAttr, cmLabel)}
 	cms, err := k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).List(context.TODO(), listOpts)
 	if err != nil {
-		return errors.Wrap(err, "k8s-cm-cache: failed to list metadata configmaps")
+		return fmt.Errorf("k8s-cm-cache: failed to list metadata configmaps: %w", err)
 	}
 
 	for i := range cms.Items {
@@ -110,7 +109,7 @@ func (k8scm *K8sCMCache) ForAll(pattern string, destObj interface{}, f ForAllFun
 			continue
 		}
 		if err = json.Unmarshal([]byte(data), destObj); err != nil {
-			return errors.Wrapf(err, "k8s-cm-cache: JSON unmarshaling failed for configmap %s", cms.Items[i].ObjectMeta.Name)
+			return fmt.Errorf("k8s-cm-cache: JSON unmarshaling failed for configmap %s: %w", cms.Items[i].ObjectMeta.Name, err)
 		}
 		if err = f(cms.Items[i].ObjectMeta.Name); err != nil {
 			return err
@@ -128,7 +127,7 @@ func (k8scm *K8sCMCache) Create(identifier string, data interface{}) error {
 	}
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
-		return errors.Wrapf(err, "k8s-cm-cache: JSON marshaling failed for configmap %s", identifier)
+		return fmt.Errorf("k8s-cm-cache: JSON marshaling failed for configmap %s: %w", identifier, err)
 	}
 	cm = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -148,7 +147,7 @@ func (k8scm *K8sCMCache) Create(identifier string, data interface{}) error {
 			klog.V(4).Infof("k8s-cm-cache: configmap %s already exists", identifier)
 			return nil
 		}
-		return errors.Wrapf(err, "k8s-cm-cache: couldn't persist %s metadata as configmap", identifier)
+		return fmt.Errorf("k8s-cm-cache: couldn't persist %s metadata as configmap: %w", identifier, err)
 	}
 
 	klog.V(4).Infof("k8s-cm-cache: configmap %s successfully created", identifier)
@@ -167,7 +166,7 @@ func (k8scm *K8sCMCache) Get(identifier string, data interface{}) error {
 	}
 	err = json.Unmarshal([]byte(cm.Data[cmDataKey]), data)
 	if err != nil {
-		return errors.Wrapf(err, "k8s-cm-cache: JSON unmarshaling failed for configmap %s", identifier)
+		return fmt.Errorf("k8s-cm-cache: JSON unmarshaling failed for configmap %s: %w", identifier, err)
 	}
 	return nil
 }
@@ -181,7 +180,7 @@ func (k8scm *K8sCMCache) Delete(identifier string) error {
 			return nil
 		}
 
-		return errors.Wrapf(err, "k8s-cm-cache: couldn't delete metadata configmap %s", identifier)
+		return fmt.Errorf("k8s-cm-cache: couldn't delete metadata configmap %s: %w", identifier, err)
 	}
 	klog.V(4).Infof("k8s-cm-cache: successfully deleted metadata configmap %s", identifier)
 	return nil
