@@ -49,7 +49,7 @@ scripts/install-helm.sh up
 # install cephcsi helm charts
 scripts/install-helm.sh install-cephcsi ${NAMESPACE}
 # functional tests
-go test "${GO_TAGS}" github.com/ceph/ceph-csi/e2e -mod=vendor --deploy-timeout=10 -timeout=40m --cephcsi-namespace=${NAMESPACE} --deploy-cephfs=false --deploy-rbd=false -v
+go test "${GO_TAGS}" github.com/ceph/ceph-csi/e2e -mod=vendor --deploy-timeout=10 -timeout="${E2E_TIMEOUT}" --cephcsi-namespace=${NAMESPACE} --deploy-cephfs=false --deploy-rbd=false -v
 
 #cleanup
 # skip snapshot operation if kube version is less than 1.17.0
