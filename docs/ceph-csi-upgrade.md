@@ -2,6 +2,7 @@
 
 - [Ceph-csi Upgrade](#ceph-csi-upgrade)
   - [Pre-upgrade considerations](#pre-upgrade-considerations)
+    - [RBD CSI Snapshot Incompatibility](#rbd-csi-snapshot-incompatibility)
   - [Upgrading from v1.2 to v2.0](#upgrading-from-v12-to-v20)
   - [Upgrading from v2.0 to v2.1](#upgrading-from-v20-to-v21)
     - [Upgrading CephFS](#upgrading-cephfs)
@@ -47,6 +48,58 @@ fuse client or rbd-nbd as of now.
 
 This guide will walk you through the steps to upgrade the software in a cluster
 from v2.0 to v2.1
+
+### RBD CSI Snapshot Incompatibility
+
+CSI snapshot is moved from Alpha to Beta and is not backward compatible. The snapshots
+created with the Alpha version must be deleted before the upgrade.
+
+Check if we have any `v1alpha1` CRD created in our kubernetes cluster, If there
+is no `v1alpha1` CRD created you can skip this step.
+
+```bash
+[$]kubectl get crd volumesnapshotclasses.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+  - name: v1alpha1
+  - v1alpha1
+[$]kubectl get crd volumesnapshotcontents.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+  - name: v1alpha1
+  - v1alpha1
+[$]kubectl get crd volumesnapshots.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+  - name: v1alpha1
+  - v1alpha1
+```
+
+- List all the volumesnapshots created
+
+```bash
+[$] kubectl get volumesnapshot
+NAME               AGE
+rbd-pvc-snapshot   22s
+```
+
+- Delete all volumesnapshots
+
+```bash
+[$] kubectl delete volumesnapshot rbd-pvc-snapshot
+volumesnapshot.snapshot.storage.k8s.io "rbd-pvc-snapshot" deleted
+```
+
+- List all volumesnapshotclasses created
+
+```bash
+[$] kubectl get volumesnapshotclass
+NAME                      AGE
+csi-rbdplugin-snapclass   86s
+```
+
+- Delete all volumesnapshotclasses
+
+```bash
+[$] kubectl delete volumesnapshotclass csi-rbdplugin-snapclass
+volumesnapshotclass.snapshot.storage.k8s.io "csi-rbdplugin-snapclass" deleted
+```
+
+*Note:* The underlying snapshots on the storage system will be deleted by ceph-csi
 
 ## Upgrading from v1.2 to v2.0
 
