@@ -340,21 +340,8 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 // deleteImage deletes a ceph image with provision and volume options.
 func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	image := pOpts.RbdImageName
-	found, _, err := rbdStatus(ctx, pOpts, cr)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), pOpts, err)
-		if strings.Contains(err.Error(), "rbd: error opening image "+image+
-			": (2) No such file or directory") {
-			return ErrImageNotFound{image, err}
-		}
-		return err
-	}
-	if found {
-		klog.Errorf(util.Log(ctx, "rbd %s is still being used"), image)
-		return fmt.Errorf("rbd %s is still being used", image)
-	}
 	// Support deleting the older rbd images whose imageID is not stored in omap
-	err = pOpts.getImageID()
+	err := pOpts.getImageID()
 	if err != nil {
 		return err
 	}
