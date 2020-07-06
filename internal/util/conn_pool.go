@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/ceph/go-ceph/rados"
-	"github.com/pkg/errors"
 )
 
 type connEntry struct {
@@ -99,7 +98,7 @@ func (cp *ConnPool) generateUniqueKey(monitors, user, keyfile string) (string, e
 	// the keyfile can be unique for operations, contents will be the same
 	key, err := ioutil.ReadFile(keyfile) // nolint: gosec, #nosec
 	if err != nil {
-		return "", errors.Wrapf(err, "could not open keyfile %s", keyfile)
+		return "", fmt.Errorf("could not open keyfile %s: %w", keyfile, err)
 	}
 
 	return fmt.Sprintf("%s|%s|%s", monitors, user, string(key)), nil
@@ -123,7 +122,7 @@ func (cp *ConnPool) getConn(unique string) *rados.Conn {
 func (cp *ConnPool) Get(monitors, user, keyfile string) (*rados.Conn, error) {
 	unique, err := cp.generateUniqueKey(monitors, user, keyfile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate unique for connection")
+		return nil, fmt.Errorf("failed to generate unique for connection: %w", err)
 	}
 
 	cp.lock.RLock()
@@ -137,16 +136,16 @@ func (cp *ConnPool) Get(monitors, user, keyfile string) (*rados.Conn, error) {
 	args := []string{"-m", monitors, "--keyfile=" + keyfile}
 	conn, err = rados.NewConnWithUser(user)
 	if err != nil {
-		return nil, errors.Wrapf(err, "creating a new connection failed")
+		return nil, fmt.Errorf("creating a new connection failed: %w", err)
 	}
 	err = conn.ParseCmdLineArgs(args)
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing cmdline args (%v) failed", args)
+		return nil, fmt.Errorf("parsing cmdline args (%v) failed: %w", args, err)
 	}
 
 	err = conn.Connect()
 	if err != nil {
-		return nil, errors.Wrapf(err, "connecting failed")
+		return nil, fmt.Errorf("connecting failed: %w", err)
 	}
 
 	ce := &connEntry{

@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
@@ -73,7 +74,8 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 
 	_, err = getVolumeRootPathCeph(ctx, volOptions, cr, volumeID(vid.FsSubvolName))
 	if err != nil {
-		if _, ok := err.(ErrVolumeNotFound); ok {
+		var evnf ErrVolumeNotFound
+		if errors.As(err, &evnf) {
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
 			return nil, err

@@ -375,7 +375,8 @@ func getSecret(path string) v1.Secret {
 	err := unmarshal(path, &sc)
 	// discard corruptInputError
 	if err != nil {
-		if _, ok := err.(base64.CorruptInputError); !ok {
+		var b64cie base64.CorruptInputError
+		if !errors.As(err, &b64cie) {
 			Expect(err).Should(BeNil())
 		}
 	}

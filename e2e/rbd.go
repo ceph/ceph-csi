@@ -649,8 +649,8 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
-				// create an app and wait for 2 min for it to go to running state
-				err = createApp(f.ClientSet, app, 2)
+				// create an app and wait for 1 min for it to go to running state
+				err = createApp(f.ClientSet, app, 1)
 				if err == nil {
 					Fail("application should not go to running state due to invalid mount option")
 				}
@@ -720,7 +720,7 @@ var _ = Describe("RBD", func() {
 						Fail(err.Error())
 					}
 
-					totalCount := 4
+					totalCount := 2
 					appClone.Namespace = f.UniqueName
 					appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 
