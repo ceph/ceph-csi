@@ -587,6 +587,7 @@ type ImageAttributes struct {
 	SourceName    string // Contains the parent image name for the passed in UUID, if it is a snapshot
 	ImageName     string // Contains the image or subvolume name for the passed in UUID
 	KmsID         string // Contains encryption KMS, if it is an encrypted image
+	ImageID       string // Contains the image id
 	JournalPoolID int64  // Pool ID of the CSI journal pool, stored in big endian format (on-disk data)
 }
 
@@ -609,6 +610,7 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 		cj.encryptKMSKey,
 		cj.csiJournalPool,
 		cj.cephSnapSourceKey,
+		cj.csiImageIDKey,
 	}
 	values, err := getOMapValues(
 		ctx, conn, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+objectUUID,
@@ -625,6 +627,7 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 	var found bool
 	imageAttributes.RequestName = values[cj.csiNameKey]
 	imageAttributes.KmsID = values[cj.encryptKMSKey]
+	imageAttributes.ImageID = values[cj.csiImageIDKey]
 
 	// image key was added at a later point, so not all volumes will have this
 	// key set when ceph-csi was upgraded
