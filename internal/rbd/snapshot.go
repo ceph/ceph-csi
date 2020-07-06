@@ -87,6 +87,7 @@ func generateVolFromSnap(rbdSnap *rbdSnapshot) *rbdVolume {
 	vol.Pool = rbdSnap.Pool
 	vol.JournalPool = rbdSnap.JournalPool
 	vol.RbdImageName = rbdSnap.RbdSnapName
+	vol.ImageID = rbdSnap.ImageID
 	return vol
 }
 

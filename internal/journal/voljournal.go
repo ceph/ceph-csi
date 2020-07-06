@@ -587,6 +587,7 @@ type ImageAttributes struct {
 	SourceName    string // Contains the parent image name for the passed in UUID, if it is a snapshot
 	ImageName     string // Contains the image or subvolume name for the passed in UUID
 	KmsID         string // Contains encryption KMS, if it is an encrypted image
+	ImageID       string // Contains the image id
 	JournalPoolID int64  // Pool ID of the CSI journal pool, stored in big endian format (on-disk data)
 }
 
@@ -609,6 +610,7 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 		cj.encryptKMSKey,
 		cj.csiJournalPool,
 		cj.cephSnapSourceKey,
+		cj.csiImageIDKey,
 	}
 	values, err := getOMapValues(
 		ctx, conn, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+objectUUID,
@@ -625,6 +627,7 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 	var found bool
 	imageAttributes.RequestName = values[cj.csiNameKey]
 	imageAttributes.KmsID = values[cj.encryptKMSKey]
+	imageAttributes.ImageID = values[cj.csiImageIDKey]
 
 	// image key was added at a later point, so not all volumes will have this
 	// key set when ceph-csi was upgraded
@@ -664,20 +667,12 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 
 // StoreImageID stores the image ID in omap
 func (conn *Connection) StoreImageID(ctx context.Context, pool, reservedUUID, imageID string, cr *util.Credentials) error {
-	err := util.SetOMapKeyValue(ctx, conn.monitors, cr, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID, conn.config.csiImageIDKey, imageID)
+	err := setOMapKeys(ctx, conn, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID,
+		map[string]string{conn.config.csiImageIDKey: imageID})
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-// GetStoredImageID retrives the stored image ID from the omap
-func (conn *Connection) GetStoredImageID(ctx context.Context, pool, reservedUUID string, cr *util.Credentials) (string, error) {
-	imageID, err := util.GetOMapValue(ctx, conn.monitors, cr, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID, conn.config.csiImageIDKey)
-	if err != nil {
-		return "", err
-	}
-	return imageID, nil
 }
 
 // Destroy frees any resources and invalidates the journal connection.
