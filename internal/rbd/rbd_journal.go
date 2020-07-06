@@ -18,11 +18,11 @@ package rbd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	"github.com/pkg/errors"
 	"k8s.io/klog"
 )
 
@@ -150,7 +150,8 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	// Fetch on-disk image attributes
 	err = vol.getImageInfo()
 	if err != nil {
-		if _, ok := err.(ErrImageNotFound); ok {
+		var esnf ErrSnapNotFound
+		if errors.As(err, &esnf) {
 			err = parentVol.deleteSnapshot(ctx, rbdSnap)
 			if err != nil {
 				if _, ok := err.(ErrSnapNotFound); !ok {
@@ -272,7 +273,8 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 	// Fetch on-disk image attributes and compare against request
 	err = rv.getImageInfo()
 	if err != nil {
-		if _, ok := err.(ErrImageNotFound); ok {
+		var einf ErrImageNotFound
+		if errors.As(err, &einf) {
 			err = j.UndoReservation(ctx, rv.JournalPool, rv.Pool,
 				rv.RbdImageName, rv.RequestName)
 			return false, err

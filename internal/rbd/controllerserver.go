@@ -200,7 +200,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	found, err := rbdVol.Exists(ctx)
 	if err != nil {
-		if _, ok := err.(ErrVolNameConflict); ok {
+		var evnc ErrVolNameConflict
+		if errors.As(err, &evnc) {
 			return nil, status.Error(codes.AlreadyExists, err.Error())
 		}
 		return nil, status.Error(codes.Internal, err.Error())
@@ -396,11 +397,13 @@ func (cs *ControllerServer) checkSnapshotSource(ctx context.Context, req *csi.Cr
 
 	rbdSnap := &rbdSnapshot{}
 	if err := genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
-		if _, ok := err.(ErrSnapNotFound); !ok {
+		var esnf ErrSnapNotFound
+		if !errors.As(err, &esnf) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		if _, ok := err.(util.ErrPoolNotFound); ok {
+		var epnf util.ErrPoolNotFound
+		if errors.As(err, &epnf) {
 			klog.Errorf(util.Log(ctx, "failed to get backend snapshot for %s: %v"), snapshotID, err)
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
@@ -497,14 +500,16 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	rbdVol, err = genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	if err != nil {
-		switch err.(type) {
-		case util.ErrPoolNotFound:
+		var epnf util.ErrPoolNotFound
+		if errors.As(err, &epnf) {
 			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
+		}
 
 		// If error is ErrInvalidVolID it could be a version 1.0.0 or lower volume, attempt
 		// to process it as such
-		case ErrInvalidVolID:
+		var eivi ErrInvalidVolID
+		if errors.As(err, &eivi) {
 			if isLegacyVolumeID(volumeID) {
 				klog.V(2).Infof(util.Log(ctx, "attempting deletion of potential legacy volume (%s)"), volumeID)
 				return cs.DeleteLegacyVolume(ctx, req, cr)
@@ -512,17 +517,20 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 			// Consider unknown volumeID as a successfully deleted volume
 			return &csi.DeleteVolumeResponse{}, nil
+		}
 
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (image and imageOMap are garbage collected already), hence return
 		// success as deletion is complete
-		case util.ErrKeyNotFound:
+		var eknf util.ErrKeyNotFound
+		if errors.As(err, &eknf) {
 			klog.Warningf(util.Log(ctx, "Failed to volume options for %s: %v"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
+		}
 
 		// All errors other than ErrImageNotFound should return an error back to the caller
-		case ErrImageNotFound:
-		default:
+		var einf ErrImageNotFound
+		if !errors.As(err, &einf) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
@@ -625,13 +633,15 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	// Fetch source volume information
 	rbdVol, err = genVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
 	if err != nil {
-		switch err.(type) {
-		case ErrImageNotFound:
+		var einf ErrImageNotFound
+		var epnf util.ErrPoolNotFound
+		// nolint:gocritic // this ifElseChain can not be rewritten to a switch statement
+		if errors.As(err, &einf) {
 			err = status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
-		case util.ErrPoolNotFound:
+		} else if errors.As(err, &epnf) {
 			klog.Errorf(util.Log(ctx, "failed to get backend volume for %s: %v"), req.GetSourceVolumeId(), err)
 			err = status.Errorf(codes.NotFound, err.Error())
-		default:
+		} else {
 			err = status.Errorf(codes.Internal, err.Error())
 		}
 		return nil, err
@@ -672,7 +682,8 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	// check for the requested source volume id and already allocated source volume id
 	found, err := checkSnapCloneExists(ctx, rbdVol, rbdSnap, cr)
 	if err != nil {
-		if _, ok := err.(util.ErrSnapNameConflict); ok {
+		var esnc util.ErrSnapNameConflict
+		if errors.As(err, &esnc) {
 			return nil, status.Error(codes.AlreadyExists, err.Error())
 		}
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -891,7 +902,8 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
 		// if error is ErrPoolNotFound, the pool is already deleted we dont
 		// need to worry about deleting snapshot or omap data, return success
-		if _, ok := err.(util.ErrPoolNotFound); ok {
+		var epnf util.ErrPoolNotFound
+		if errors.As(err, &epnf) {
 			klog.Warningf(util.Log(ctx, "failed to get backend snapshot for %s: %v"), snapshotID, err)
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
@@ -899,7 +911,8 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (snap and snapOMap are garbage collected already), hence return
 		// success as deletion is complete
-		if _, ok := err.(util.ErrKeyNotFound); ok {
+		var eknf util.ErrKeyNotFound
+		if errors.As(err, &eknf) {
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
 
@@ -1000,13 +1013,15 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	rbdVol, err = genVolFromVolID(ctx, volID, cr, req.GetSecrets())
 	if err != nil {
-		switch err.(type) {
-		case ErrImageNotFound:
+		var einf ErrImageNotFound
+		var epnf util.ErrPoolNotFound
+		// nolint:gocritic // this ifElseChain can not be rewritten to a switch statement
+		if errors.As(err, &einf) {
 			err = status.Errorf(codes.NotFound, "volume ID %s not found", volID)
-		case util.ErrPoolNotFound:
+		} else if errors.As(err, &epnf) {
 			klog.Errorf(util.Log(ctx, "failed to get backend volume for %s: %v"), volID, err)
 			err = status.Errorf(codes.NotFound, err.Error())
-		default:
+		} else {
 			err = status.Errorf(codes.Internal, err.Error())
 		}
 		return nil, err

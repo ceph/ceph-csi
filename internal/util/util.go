@@ -18,6 +18,8 @@ package util
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path"
@@ -25,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -150,7 +151,7 @@ func ValidateDriverName(driverName string) error {
 			err = errors.New(msg)
 			continue
 		}
-		err = errors.Wrap(err, msg)
+		err = fmt.Errorf("%s: %w", msg, err)
 	}
 	return err
 }

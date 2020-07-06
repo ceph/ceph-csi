@@ -19,6 +19,7 @@ package rbd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -36,7 +37,6 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
 	"k8s.io/klog"
@@ -189,7 +189,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		logMsg += fmt.Sprintf(", data pool %s", pOpts.DataPool)
 		err := options.SetString(librbd.RbdImageOptionDataPool, pOpts.DataPool)
 		if err != nil {
-			return errors.Wrapf(err, "failed to set data pool")
+			return fmt.Errorf("failed to set data pool: %w", err)
 		}
 	}
 	klog.V(4).Infof(util.Log(ctx, logMsg),
@@ -198,7 +198,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	if pOpts.imageFeatureSet != 0 {
 		err := options.SetUint64(librbd.RbdImageOptionFeatures, uint64(pOpts.imageFeatureSet))
 		if err != nil {
-			return errors.Wrapf(err, "failed to set image features")
+			return fmt.Errorf("failed to set image features: %w", err)
 		}
 	}
 
@@ -209,13 +209,13 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 
 	err = pOpts.openIoctx()
 	if err != nil {
-		return errors.Wrapf(err, "failed to get IOContext")
+		return fmt.Errorf("failed to get IOContext: %w", err)
 	}
 
 	err = librbd.CreateImage(pOpts.ioctx, pOpts.RbdImageName,
 		uint64(util.RoundOffVolSize(pOpts.VolSize)*helpers.MiB), options)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create rbd image")
+		return fmt.Errorf("failed to create rbd image: %w", err)
 	}
 
 	return nil
@@ -269,7 +269,7 @@ func (rv *rbdVolume) open() (*librbd.Image, error) {
 
 	image, err := librbd.OpenImage(rv.ioctx, rv.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
-		if err == librbd.ErrNotFound {
+		if errors.Is(err, librbd.ErrNotFound) {
 			err = ErrImageNotFound{rv.RbdImageName, err}
 		}
 		return nil, err
@@ -288,8 +288,9 @@ func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (boo
 	cmd, err := execCommand("rbd", args)
 	output = string(cmd)
 
-	if err, ok := err.(*exec.Error); ok {
-		if errors.Is(err.Err, exec.ErrNotFound) {
+	var ee *exec.Error
+	if errors.As(err, &ee) {
+		if errors.Is(ee, exec.ErrNotFound) {
 			klog.Errorf(util.Log(ctx, "rbd cmd not found"))
 			// fail fast if command not found
 			return false, output, err
@@ -687,7 +688,7 @@ func getMonsAndClusterID(ctx context.Context, options map[string]string) (monito
 
 	if monitors, err = util.Mons(csiConfigFile, clusterID); err != nil {
 		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
-		err = errors.Wrapf(err, "failed to fetch monitor list using clusterID (%s)", clusterID)
+		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", clusterID, err)
 		return
 	}
 
@@ -877,10 +878,10 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 
 	snap := image.GetSnapshot(pOpts.RbdSnapName)
 	if snap == nil {
-		return errors.Errorf("snapshot value is nil for %s", pOpts.RbdSnapName)
+		return fmt.Errorf("snapshot value is nil for %s", pOpts.RbdSnapName)
 	}
 	err = snap.Remove()
-	if err == librbd.ErrNotFound {
+	if errors.Is(err, librbd.ErrNotFound) {
 		return ErrSnapNotFound{snapName: pOpts.RbdSnapName, err: err}
 	}
 	return err
@@ -896,23 +897,23 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *r
 	if rv.imageFeatureSet != 0 {
 		err = options.SetUint64(librbd.RbdImageOptionFeatures, uint64(rv.imageFeatureSet))
 		if err != nil {
-			return errors.Wrapf(err, "failed to set image features")
+			return fmt.Errorf("failed to set image features: %w", err)
 		}
 	}
 
 	err = options.SetUint64(imageOptionCloneFormat, 2)
 	if err != nil {
-		return errors.Wrapf(err, "failed to set image features")
+		return fmt.Errorf("failed to set image features: %w", err)
 	}
 
 	err = rv.openIoctx()
 	if err != nil {
-		return errors.Wrapf(err, "failed to get IOContext")
+		return fmt.Errorf("failed to get IOContext: %w", err)
 	}
 
 	err = librbd.CloneImage(rv.ioctx, pSnapOpts.RbdImageName, pSnapOpts.RbdSnapName, rv.ioctx, rv.RbdImageName, options)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create rbd clone")
+		return fmt.Errorf("failed to create rbd clone: %w", err)
 	}
 
 	return nil
@@ -1119,7 +1120,7 @@ func resizeRBDImage(rbdVol *rbdVolume, cr *util.Credentials) error {
 	output, err := execCommand("rbd", args)
 
 	if err != nil {
-		return errors.Wrapf(err, "failed to resize rbd image, command output: %s", string(output))
+		return fmt.Errorf("failed to resize rbd image (%w), command output: %s", err, string(output))
 	}
 
 	return nil
