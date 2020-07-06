@@ -20,10 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/ceph/go-ceph/rados"
 	"k8s.io/klog"
@@ -105,120 +102,6 @@ func GetPoolIDs(ctx context.Context, monitors, journalPool, imagePool string, cr
 	}
 
 	return journalPoolID, imagePoolID, nil
-}
-
-// SetOMapKeyValue sets the given key and value into the provided Ceph omap name
-func SetOMapKeyValue(ctx context.Context, monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey, keyValue string) error {
-	// Command: "rados <options> setomapval oMapName oMapKey keyValue"
-	args := []string{
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-c", CephConfigPath,
-		"-p", poolName,
-		"setomapval", oMapName, oMapKey, keyValue,
-	}
-
-	if namespace != "" {
-		args = append(args, "--namespace="+namespace)
-	}
-
-	_, _, err := ExecCommand("rados", args[:]...)
-	if err != nil {
-		klog.Errorf(Log(ctx, "failed adding key (%s with value %s), to omap (%s) in "+
-			"pool (%s): (%v)"), oMapKey, keyValue, oMapName, poolName, err)
-		return err
-	}
-
-	return nil
-}
-
-// GetOMapValue gets the value for the given key from the named omap
-func GetOMapValue(ctx context.Context, monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey string) (string, error) {
-	// Command: "rados <options> getomapval oMapName oMapKey <outfile>"
-	// No such key: replicapool/csi.volumes.directory.default/csi.volname
-	tmpFile, err := ioutil.TempFile("", "omap-get-")
-	if err != nil {
-		klog.Errorf(Log(ctx, "failed creating a temporary file for key contents"))
-		return "", err
-	}
-	defer func() {
-		ce := tmpFile.Close()
-		if ce != nil {
-			klog.Warningf(Log(ctx, "failed closing temporary file: %s"), ce)
-		}
-	}()
-	defer os.Remove(tmpFile.Name())
-
-	args := []string{
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-c", CephConfigPath,
-		"-p", poolName,
-		"getomapval", oMapName, oMapKey, tmpFile.Name(),
-	}
-
-	if namespace != "" {
-		args = append(args, "--namespace="+namespace)
-	}
-
-	stdout, stderr, err := ExecCommand("rados", args[:]...)
-	if err != nil {
-		// no logs, as attempting to check for non-existent key/value is done even on
-		// regular call sequences
-		stdoutanderr := strings.Join([]string{string(stdout), string(stderr)}, " ")
-		if strings.Contains(stdoutanderr, "No such key: "+poolName+"/"+oMapName+"/"+oMapKey) {
-			return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, err}
-		}
-
-		if strings.Contains(stdoutanderr, "error getting omap value "+
-			poolName+"/"+oMapName+"/"+oMapKey+": (2) No such file or directory") {
-			return "", ErrKeyNotFound{poolName + "/" + oMapName + "/" + oMapKey, err}
-		}
-
-		if strings.Contains(stdoutanderr, "error opening pool "+
-			poolName+": (2) No such file or directory") {
-			return "", ErrPoolNotFound{poolName, err}
-		}
-
-		// log other errors for troubleshooting assistance
-		klog.Errorf(Log(ctx, "failed getting omap value for key (%s) from omap (%s) in pool (%s): (%v)"),
-			oMapKey, oMapName, poolName, err)
-
-		return "", fmt.Errorf("error (%v) occurred, command output streams is (%s)",
-			err.Error(), stdoutanderr)
-	}
-
-	keyValue, err := ioutil.ReadAll(tmpFile)
-	return string(keyValue), err
-}
-
-// RemoveOMapKey removes the omap key from the given omap name
-func RemoveOMapKey(ctx context.Context, monitors string, cr *Credentials, poolName, namespace, oMapName, oMapKey string) error {
-	// Command: "rados <options> rmomapkey oMapName oMapKey"
-	args := []string{
-		"-m", monitors,
-		"--id", cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"-c", CephConfigPath,
-		"-p", poolName,
-		"rmomapkey", oMapName, oMapKey,
-	}
-
-	if namespace != "" {
-		args = append(args, "--namespace="+namespace)
-	}
-
-	_, _, err := ExecCommand("rados", args[:]...)
-	if err != nil {
-		// NOTE: Missing omap key removal does not return an error
-		klog.Errorf(Log(ctx, "failed removing key (%s), from omap (%s) in "+
-			"pool (%s): (%v)"), oMapKey, oMapName, poolName, err)
-		return err
-	}
-
-	return nil
 }
 
 // CreateObject creates the object name passed in and returns ErrObjectExists if the provided object
