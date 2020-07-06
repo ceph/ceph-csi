@@ -20,13 +20,13 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
 	"k8s.io/klog"
 )
 
@@ -281,13 +281,14 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 	values, err := getOMapValues(
 		ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
 		cj.commonPrefix, fetchKeys)
-	switch err.(type) {
-	case nil:
-	case util.ErrKeyNotFound, util.ErrPoolNotFound:
-		// pool or omap (oid) was not present
-		// stop processing but without an error for no reservation exists
-		return nil, nil
-	default:
+	if err != nil {
+		var eknf util.ErrKeyNotFound
+		var epnf util.ErrPoolNotFound
+		if errors.As(err, &eknf) || errors.As(err, &epnf) {
+			// pool or omap (oid) was not present
+			// stop processing but without an error for no reservation exists
+			return nil, nil
+		}
 		return nil, err
 	}
 	objUUIDAndPool, found := values[cj.csiNameKeyPrefix+reqName]
@@ -315,7 +316,8 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 
 		savedImagePool, err = util.GetPoolName(conn.monitors, conn.cr, savedImagePoolID)
 		if err != nil {
-			if _, ok := err.(util.ErrPoolNotFound); ok {
+			var epnf util.ErrPoolNotFound
+			if errors.As(err, &epnf) {
 				err = conn.UndoReservation(ctx, journalPool, "", "", reqName)
 			}
 			return nil, err
@@ -327,7 +329,8 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 	if err != nil {
 		// error should specifically be not found, for image to be absent, any other error
 		// is not conclusive, and we should not proceed
-		if _, ok := err.(util.ErrKeyNotFound); ok {
+		var eknf util.ErrKeyNotFound
+		if errors.As(err, &eknf) {
 			err = conn.UndoReservation(ctx, journalPool, savedImagePool,
 				cj.GetNameForUUID(namePrefix, objUUID, snapSource), reqName)
 		}
@@ -409,7 +412,8 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 
 		err := util.RemoveObject(ctx, conn.monitors, conn.cr, volJournalPool, cj.namespace, cj.cephUUIDDirectoryPrefix+imageUUID)
 		if err != nil {
-			if _, ok := err.(util.ErrObjectNotFound); !ok {
+			var eonf util.ErrObjectNotFound
+			if !errors.As(err, &eonf) {
 				klog.Errorf(util.Log(ctx, "failed removing oMap %s (%s)"), cj.cephUUIDDirectoryPrefix+imageUUID, err)
 				return err
 			}
@@ -441,7 +445,8 @@ func reserveOMapName(ctx context.Context, monitors string, cr *util.Credentials,
 
 		err := util.CreateObject(ctx, monitors, cr, pool, namespace, oMapNamePrefix+iterUUID)
 		if err != nil {
-			if _, ok := err.(util.ErrObjectExists); ok {
+			var eoe util.ErrObjectExists
+			if errors.As(err, &eoe) {
 				attempt++
 				// try again with a different uuid, for maxAttempts tries
 				klog.V(4).Infof(util.Log(ctx, "uuid (%s) conflict detected, retrying (attempt %d of %d)"),
@@ -610,12 +615,13 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 	values, err := getOMapValues(
 		ctx, conn, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+objectUUID,
 		cj.commonPrefix, fetchKeys)
-	switch err.(type) {
-	case nil:
-	case util.ErrPoolNotFound, util.ErrKeyNotFound:
+	if err != nil {
+		var eknf util.ErrKeyNotFound
+		var epnf util.ErrPoolNotFound
+		if !errors.As(err, &eknf) && !errors.As(err, &epnf) {
+			return nil, err
+		}
 		klog.Warningf(util.Log(ctx, "unable to read omap keys: pool or key missing: %v"), err)
-	default:
-		return nil, err
 	}
 
 	var found bool

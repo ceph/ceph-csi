@@ -19,6 +19,7 @@ package util
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 
@@ -59,7 +60,7 @@ func GetPoolID(monitors string, cr *Credentials, poolName string) (int64, error)
 	defer connPool.Put(conn)
 
 	id, err := conn.GetPoolByName(poolName)
-	if err == rados.ErrNotFound {
+	if errors.Is(err, rados.ErrNotFound) {
 		return InvalidPoolID, ErrPoolNotFound{poolName, fmt.Errorf("pool (%s) not found in Ceph cluster", poolName)}
 	} else if err != nil {
 		return InvalidPoolID, err
@@ -116,7 +117,8 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 	ioctx, err := conn.GetIoctx(poolName)
 	if err != nil {
-		if _, ok := err.(ErrPoolNotFound); ok {
+		var epnf ErrPoolNotFound
+		if errors.As(err, &epnf) {
 			err = ErrObjectNotFound{poolName, err}
 		}
 		return err
@@ -128,7 +130,7 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 	}
 
 	err = ioctx.Create(objectName, rados.CreateExclusive)
-	if err == rados.ErrObjectExists {
+	if errors.Is(err, rados.ErrObjectExists) {
 		return ErrObjectExists{objectName, err}
 	} else if err != nil {
 		klog.Errorf(Log(ctx, "failed creating omap (%s) in pool (%s): (%v)"), objectName, poolName, err)
@@ -150,7 +152,8 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 	ioctx, err := conn.GetIoctx(poolName)
 	if err != nil {
-		if _, ok := err.(ErrPoolNotFound); ok {
+		var epnf ErrPoolNotFound
+		if errors.As(err, &epnf) {
 			err = ErrObjectNotFound{poolName, err}
 		}
 		return err
@@ -162,7 +165,7 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 	}
 
 	err = ioctx.Delete(oMapName)
-	if err == rados.ErrNotFound {
+	if errors.Is(err, rados.ErrNotFound) {
 		return ErrObjectNotFound{oMapName, err}
 	} else if err != nil {
 		klog.Errorf(Log(ctx, "failed removing omap (%s) in pool (%s): (%v)"), oMapName, poolName, err)

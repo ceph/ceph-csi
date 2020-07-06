@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"context"
+	"errors"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -244,24 +245,28 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err != nil {
 		// if error is ErrPoolNotFound, the pool is already deleted we dont
 		// need to worry about deleting subvolume or omap data, return success
-		if _, ok := err.(util.ErrPoolNotFound); ok {
+		var epnf util.ErrPoolNotFound
+		if errors.As(err, &epnf) {
 			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), string(volID), err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (subvolume and imageOMap are garbage collected already), hence
 		// return success as deletion is complete
-		if _, ok := err.(util.ErrKeyNotFound); ok {
+		var eknf util.ErrKeyNotFound
+		if errors.As(err, &eknf) {
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 
 		// ErrInvalidVolID may mean this is an 1.0.0 version volume
-		if _, ok := err.(ErrInvalidVolID); ok && cs.MetadataStore != nil {
+		var eivi ErrInvalidVolID
+		if errors.As(err, &eivi) && cs.MetadataStore != nil {
 			return cs.deleteVolumeDeprecated(ctx, req)
 		}
 
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
-		if _, ok := err.(ErrVolumeNotFound); !ok {
+		var evnf ErrVolumeNotFound
+		if !errors.As(err, &evnf) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
@@ -297,7 +302,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err = purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), volID, err)
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
-		if _, ok := err.(ErrVolumeNotFound); !ok {
+		var evnf ErrVolumeNotFound
+		if !errors.As(err, &evnf) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}

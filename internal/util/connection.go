@@ -17,10 +17,11 @@ limitations under the License.
 package util
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ceph/go-ceph/rados"
-	"github.com/pkg/errors"
 )
 
 type ClusterConnection struct {
@@ -46,7 +47,7 @@ func (cc *ClusterConnection) Connect(monitors string, cr *Credentials) error {
 	if cc.conn == nil {
 		conn, err := connPool.Get(monitors, cr.ID, cr.KeyFile)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get connection")
+			return fmt.Errorf("failed to get connection: %w", err)
 		}
 
 		cc.conn = conn
@@ -72,10 +73,10 @@ func (cc *ClusterConnection) GetIoctx(pool string) (*rados.IOContext, error) {
 	ioctx, err := cc.conn.OpenIOContext(pool)
 	if err != nil {
 		// ErrNotFound indicates the Pool was not found
-		if err == rados.ErrNotFound {
+		if errors.Is(err, rados.ErrNotFound) {
 			err = ErrPoolNotFound{pool, err}
 		} else {
-			err = errors.Wrapf(err, "failed to open IOContext for pool %s", pool)
+			err = fmt.Errorf("failed to open IOContext for pool %s: %w", pool, err)
 		}
 		return nil, err
 	}

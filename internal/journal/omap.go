@@ -18,6 +18,7 @@ package journal
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
@@ -60,14 +61,13 @@ func getOMapValues(
 			}
 		},
 	)
-	switch err {
-	case nil:
-	case rados.ErrNotFound:
-		klog.Errorf(
-			util.Log(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v"),
-			poolName, namespace, oid, err)
-		return nil, util.NewErrKeyNotFound(oid, err)
-	default:
+	if err != nil {
+		if errors.Is(err, rados.ErrNotFound) {
+			klog.Errorf(
+				util.Log(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v"),
+				poolName, namespace, oid, err)
+			return nil, util.NewErrKeyNotFound(oid, err)
+		}
 		return nil, err
 	}
 
@@ -93,20 +93,20 @@ func removeMapKeys(
 	}
 
 	err = ioctx.RmOmapKeys(oid, keys)
-	switch err {
-	case nil:
-	case rados.ErrNotFound:
-		// the previous implementation of removing omap keys (via the cli)
-		// treated failure to find the omap as a non-error. Do so here to
-		// mimic the previous behavior.
-		klog.V(4).Infof(
-			util.Log(ctx, "when removing omap keys, omap not found (pool=%q, namespace=%q, name=%q): %+v"),
-			poolName, namespace, oid, keys)
-	default:
-		klog.Errorf(
-			util.Log(ctx, "failed removing omap keys (pool=%q, namespace=%q, name=%q): %v"),
-			poolName, namespace, oid, err)
-		return err
+	if err != nil {
+		if errors.Is(err, rados.ErrNotFound) {
+			// the previous implementation of removing omap keys (via the cli)
+			// treated failure to find the omap as a non-error. Do so here to
+			// mimic the previous behavior.
+			klog.V(4).Infof(
+				util.Log(ctx, "when removing omap keys, omap not found (pool=%q, namespace=%q, name=%q): %+v"),
+				poolName, namespace, oid, keys)
+		} else {
+			klog.Errorf(
+				util.Log(ctx, "failed removing omap keys (pool=%q, namespace=%q, name=%q): %v"),
+				poolName, namespace, oid, err)
+			return err
+		}
 	}
 	klog.V(4).Infof(
 		util.Log(ctx, "removed omap keys (pool=%q, namespace=%q, name=%q): %+v"),
@@ -147,7 +147,7 @@ func setOMapKeys(
 }
 
 func omapPoolError(poolName string, err error) error {
-	if err == rados.ErrNotFound {
+	if errors.Is(err, rados.ErrNotFound) {
 		return util.NewErrPoolNotFound(poolName, err)
 	}
 	return err

@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -88,14 +89,16 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	volOptions, _, err := newVolumeOptionsFromVolID(ctx, string(volID), req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
-		if _, ok := err.(ErrInvalidVolID); !ok {
+		var eivi ErrInvalidVolID
+		if !errors.As(err, &eivi) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		// check for pre-provisioned volumes (plugin versions > 1.0.0)
 		volOptions, _, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
 		if err != nil {
-			if _, ok := err.(ErrNonStaticVolume); !ok {
+			var ensv ErrNonStaticVolume
+			if !errors.As(err, &ensv) {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 
