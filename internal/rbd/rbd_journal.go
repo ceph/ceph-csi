@@ -18,11 +18,11 @@ package rbd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	"github.com/pkg/errors"
 	"k8s.io/klog"
 )
 
@@ -133,6 +133,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	}
 	snapUUID := snapData.ImageUUID
 	rbdSnap.RbdSnapName = snapData.ImageAttributes.ImageName
+	rbdSnap.ImageID = snapData.ImageAttributes.ImageID
 
 	// it should never happen that this disagrees, but check
 	if rbdSnap.Pool != snapData.ImagePool {
@@ -150,7 +151,8 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	// Fetch on-disk image attributes
 	err = vol.getImageInfo()
 	if err != nil {
-		if _, ok := err.(ErrImageNotFound); ok {
+		var esnf ErrSnapNotFound
+		if errors.As(err, &esnf) {
 			err = parentVol.deleteSnapshot(ctx, rbdSnap)
 			if err != nil {
 				if _, ok := err.(ErrSnapNotFound); !ok {
@@ -192,8 +194,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 		return false, err
 	}
 
-	vol.ImageID, err = j.GetStoredImageID(ctx, vol.JournalPool, vol.ReservedID, cr)
-	if _, ok := err.(util.ErrKeyNotFound); ok {
+	if vol.ImageID == "" {
 		sErr := vol.getImageID()
 		if sErr != nil {
 			klog.Errorf(util.Log(ctx, "failed to get image id %s: %v"), vol, sErr)
@@ -253,7 +254,7 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 
 	rv.ReservedID = imageData.ImageUUID
 	rv.RbdImageName = imageData.ImageAttributes.ImageName
-
+	rv.ImageID = imageData.ImageAttributes.ImageID
 	// check if topology constraints match what is found
 	rv.Topology, err = util.MatchTopologyForPool(rv.TopologyPools, rv.TopologyRequirement,
 		imageData.ImagePool)
@@ -272,7 +273,8 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 	// Fetch on-disk image attributes and compare against request
 	err = rv.getImageInfo()
 	if err != nil {
-		if _, ok := err.(ErrImageNotFound); ok {
+		var einf ErrImageNotFound
+		if errors.As(err, &einf) {
 			err = j.UndoReservation(ctx, rv.JournalPool, rv.Pool,
 				rv.RbdImageName, rv.RequestName)
 			return false, err
@@ -280,8 +282,7 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	rv.ImageID, err = j.GetStoredImageID(ctx, rv.JournalPool, rv.ReservedID, rv.conn.Creds)
-	if _, ok := err.(util.ErrKeyNotFound); ok {
+	if rv.ImageID == "" {
 		err = rv.getImageID()
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to get image id %s: %v"), rv, err)

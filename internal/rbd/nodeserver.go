@@ -18,6 +18,7 @@ package rbd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -68,12 +69,20 @@ var (
 	deepFlattenSupport = []util.KernelVersion{
 		{
 			Version:      5,
-			PatchLevel:   2,
+			PatchLevel:   1,
 			SubLevel:     0,
 			ExtraVersion: 0,
 			Distribution: "",
 			Backport:     false,
-		}, // standard 5.2+ versions
+		}, // standard 5.1+ versions
+		{
+			Version:      4,
+			PatchLevel:   18,
+			SubLevel:     0,
+			ExtraVersion: 193,
+			Distribution: ".el8",
+			Backport:     true,
+		}, // RHEL 8.2
 	}
 )
 
@@ -675,7 +684,8 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		}
 
 		// If not mounted, and error is anything other than metadata file missing, it is an error
-		if _, ok := err.(ErrMissingStash); !ok {
+		var ems ErrMissingStash
+		if !errors.As(err, &ems) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 

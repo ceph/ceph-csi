@@ -18,6 +18,8 @@ package util
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path"
@@ -25,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -107,6 +108,11 @@ type Config struct {
 
 	// RbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before a flatten occurs
 	RbdSoftMaxCloneDepth uint
+
+	// MaxSnapshotsOnImage represents the maximum number of snapshots allowed
+	// on rbd image without flattening, once the limit is reached cephcsi will
+	// start flattening the older rbd images to allow more snapshots
+	MaxSnapshotsOnImage uint
 }
 
 // CreatePersistanceStorage creates storage path and initializes new cache
@@ -145,7 +151,7 @@ func ValidateDriverName(driverName string) error {
 			err = errors.New(msg)
 			continue
 		}
-		err = errors.Wrap(err, msg)
+		err = fmt.Errorf("%s: %w", msg, err)
 	}
 	return err
 }
