@@ -907,23 +907,9 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	} else {
-		// save image ID
-		var j = &journal.Connection{}
-		j, err = snapJournal.Connect(rbdSnap.Monitors, cr)
-		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to connect to cluster: %v"), err)
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		defer j.Destroy()
-		// TODO replace GetStoredImageID with GetImageAttributes in all places
-		rbdVol.ImageID, err = j.GetStoredImageID(ctx, rbdSnap.JournalPool, rbdSnap.ReservedID, cr)
-		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to get reserved image id: %v"), err)
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+		rbdVol.ImageID = rbdSnap.ImageID
 		// update parent name to delete the snapshot
 		rbdSnap.RbdImageName = rbdVol.RbdImageName
-
 		err = cleanUpSnapshot(ctx, rbdVol, rbdSnap, rbdVol, cr)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to delete image: %v"), err)

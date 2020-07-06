@@ -133,6 +133,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	}
 	snapUUID := snapData.ImageUUID
 	rbdSnap.RbdSnapName = snapData.ImageAttributes.ImageName
+	rbdSnap.ImageID = snapData.ImageAttributes.ImageID
 
 	// it should never happen that this disagrees, but check
 	if rbdSnap.Pool != snapData.ImagePool {
@@ -192,8 +193,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 		return false, err
 	}
 
-	vol.ImageID, err = j.GetStoredImageID(ctx, vol.JournalPool, vol.ReservedID, cr)
-	if _, ok := err.(util.ErrKeyNotFound); ok {
+	if vol.ImageID == "" {
 		sErr := vol.getImageID()
 		if sErr != nil {
 			klog.Errorf(util.Log(ctx, "failed to get image id %s: %v"), vol, sErr)
@@ -253,7 +253,7 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 
 	rv.ReservedID = imageData.ImageUUID
 	rv.RbdImageName = imageData.ImageAttributes.ImageName
-
+	rv.ImageID = imageData.ImageAttributes.ImageID
 	// check if topology constraints match what is found
 	rv.Topology, err = util.MatchTopologyForPool(rv.TopologyPools, rv.TopologyRequirement,
 		imageData.ImagePool)
@@ -280,8 +280,7 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	rv.ImageID, err = j.GetStoredImageID(ctx, rv.JournalPool, rv.ReservedID, rv.conn.Creds)
-	if _, ok := err.(util.ErrKeyNotFound); ok {
+	if rv.ImageID == "" {
 		err = rv.getImageID()
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to get image id %s: %v"), rv, err)

@@ -124,12 +124,14 @@ type rbdSnapshot struct {
 	// RequestName is the CSI generated snapshot name for the rbdSnapshot
 	// JournalPool is the ceph pool in which the CSI snapshot Journal is stored
 	// Pool is where the image snapshot journal and snapshot is stored, and could be the same as `JournalPool`
+	// ImageID contains the image id of cloned image
 	SourceVolumeID string
 	RbdImageName   string
 	ReservedID     string
 	NamePrefix     string
 	RbdSnapName    string
 	SnapID         string
+	ImageID        string
 	Monitors       string
 	JournalPool    string
 	Pool           string
@@ -532,6 +534,7 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	if err != nil {
 		return err
 	}
+	rbdSnap.ImageID = imageAttributes.ImageID
 	rbdSnap.RequestName = imageAttributes.RequestName
 	rbdSnap.RbdImageName = imageAttributes.SourceName
 	rbdSnap.RbdSnapName = imageAttributes.ImageName
@@ -602,6 +605,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	rbdVol.RequestName = imageAttributes.RequestName
 	rbdVol.RbdImageName = imageAttributes.ImageName
 	rbdVol.ReservedID = vi.ObjectUUID
+	rbdVol.ImageID = imageAttributes.ImageID
 
 	if imageAttributes.KmsID != "" {
 		rbdVol.Encrypted = true
@@ -619,8 +623,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 		}
 	}
 
-	rbdVol.ImageID, err = j.GetStoredImageID(ctx, rbdVol.JournalPool, rbdVol.ReservedID, cr)
-	if _, ok := err.(util.ErrKeyNotFound); ok {
+	if rbdVol.ImageID == "" {
 		err = rbdVol.getImageID()
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to get image id %s: %v"), rbdVol, err)
