@@ -269,7 +269,7 @@ func (rv *rbdVolume) open() (*librbd.Image, error) {
 
 	image, err := librbd.OpenImage(rv.ioctx, rv.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
-		if err == librbd.ErrNotFound {
+		if errors.Is(err, librbd.ErrNotFound) {
 			err = ErrImageNotFound{rv.RbdImageName, err}
 		}
 		return nil, err
@@ -417,12 +417,42 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 	}
 }
 
-func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, forceFlatten bool) error {
-	depth, err := rv.getCloneDepth(ctx)
+func flattenClonedRbdImages(ctx context.Context, snaps []snapshotInfo, pool, monitors string, cr *util.Credentials) error {
+	rv := &rbdVolume{
+		Monitors: monitors,
+		Pool:     pool,
+	}
+	defer rv.Destroy()
+	err := rv.Connect(cr)
 	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to open connection %s; err %v"), rv, err)
 		return err
 	}
-	klog.Infof(util.Log(ctx, "clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s"), depth, rbdSoftMaxCloneDepth, rbdHardMaxCloneDepth, rv)
+	for _, s := range snaps {
+		if s.Namespace.Type == "trash" {
+			rv.RbdImageName = s.Namespace.OriginalName
+			err = rv.flattenRbdImage(ctx, cr, true)
+			if err != nil {
+				klog.Errorf(util.Log(ctx, "failed to flatten %s; err %v"), rv, err)
+				continue
+			}
+		}
+	}
+	return nil
+}
+
+func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, forceFlatten bool) error {
+	var depth uint
+	var err error
+
+	// skip clone depth check if request is for force flatten
+	if !forceFlatten {
+		depth, err = rv.getCloneDepth(ctx)
+		if err != nil {
+			return err
+		}
+		klog.Infof(util.Log(ctx, "clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s"), depth, rbdSoftMaxCloneDepth, rbdHardMaxCloneDepth, rv)
+	}
 
 	if forceFlatten || (depth >= rbdHardMaxCloneDepth) || (depth >= rbdSoftMaxCloneDepth) {
 		args := []string{"flatten", rv.Pool + "/" + rv.RbdImageName, "--id", cr.ID, "--keyfile=" + cr.KeyFile, "-m", rv.Monitors}
@@ -851,7 +881,7 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 		return fmt.Errorf("snapshot value is nil for %s", pOpts.RbdSnapName)
 	}
 	err = snap.Remove()
-	if err == librbd.ErrNotFound {
+	if errors.Is(err, librbd.ErrNotFound) {
 		return ErrSnapNotFound{snapName: pOpts.RbdSnapName, err: err}
 	}
 	return err
@@ -1136,4 +1166,47 @@ func (rv *rbdVolume) ensureEncryptionMetadataSet(status string) error {
 	}
 
 	return nil
+}
+
+// SnapshotInfo holds snapshots details
+type snapshotInfo struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+	Protected string `json:"protected"`
+	Timestamp string `json:"timestamp"`
+	Namespace struct {
+		Type         string `json:"type"`
+		OriginalName string `json:"original_name"`
+	} `json:"namespace"`
+}
+
+// TODO: use go-ceph once https://github.com/ceph/go-ceph/issues/300 is available in a release.
+func (rv *rbdVolume) listSnapshots(ctx context.Context, cr *util.Credentials) ([]snapshotInfo, error) {
+	// rbd snap ls <image> --pool=<pool-name> --all --format=json
+	var snapInfo []snapshotInfo
+	stdout, stderr, err := util.ExecCommand("rbd",
+		"-m", rv.Monitors,
+		"--id", cr.ID,
+		"--keyfile="+cr.KeyFile,
+		"-c", util.CephConfigPath,
+		"--format="+"json",
+		"snap",
+		"ls",
+		"--all", rv.String())
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), rv, err)
+		if strings.Contains(string(stderr), "rbd: error opening image "+rv.RbdImageName+
+			": (2) No such file or directory") {
+			return snapInfo, ErrImageNotFound{rv.String(), err}
+		}
+		return snapInfo, err
+	}
+
+	err = json.Unmarshal(stdout, &snapInfo)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to parse JSON output of snapshot info (%s)"), err)
+		return snapInfo, fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, string(stdout))
+	}
+	return snapInfo, nil
 }

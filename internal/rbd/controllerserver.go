@@ -671,6 +671,13 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 	defer cs.SnapshotLocks.Release(req.GetName())
 
+	// Take lock on parent rbd image
+	if acquired := cs.VolumeLocks.TryAcquire(rbdSnap.SourceVolumeID); !acquired {
+		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), rbdSnap.SourceVolumeID)
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdSnap.SourceVolumeID)
+	}
+	defer cs.VolumeLocks.Release(rbdSnap.SourceVolumeID)
+
 	// Need to check for already existing snapshot name, and if found
 	// check for the requested source volume id and already allocated source volume id
 	found, err := checkSnapCloneExists(ctx, rbdVol, rbdSnap, cr)
@@ -723,7 +730,24 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			},
 		}, nil
 	}
+	var snaps []snapshotInfo
+	// check the number of snapshots on image
+	snaps, err = rbdVol.listSnapshots(ctx, cr)
+	if err != nil {
+		var einf ErrImageNotFound
+		if errors.As(err, &einf) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
+	if len(snaps) > int(maxSnapshotsOnImage) {
+		err = flattenClonedRbdImages(ctx, snaps, rbdVol.Pool, rbdVol.Monitors, cr)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return nil, status.Errorf(codes.ResourceExhausted, "rbd image %s has %d snapshots", rbdVol, len(snaps))
+	}
 	err = reserveSnap(ctx, rbdSnap, rbdVol, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
