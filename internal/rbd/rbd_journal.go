@@ -155,7 +155,8 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 		if errors.As(err, &einf) {
 			err = parentVol.deleteSnapshot(ctx, rbdSnap)
 			if err != nil {
-				if _, ok := err.(ErrSnapNotFound); !ok {
+				var esnf ErrSnapNotFound
+				if !errors.As(err, &esnf) {
 					klog.Errorf(util.Log(ctx, "failed to delete snapshot %s: %v"), rbdSnap, err)
 					return false, err
 				}
@@ -181,7 +182,8 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 
 	// check snapshot exists if not create it
 	_, err = vol.getSnapInfo(rbdSnap)
-	if _, ok := err.(ErrSnapNotFound); ok {
+	var esnf ErrSnapNotFound
+	if errors.As(err, &esnf) {
 		// create snapshot
 		sErr := vol.createSnapshot(ctx, rbdSnap)
 		if sErr != nil {

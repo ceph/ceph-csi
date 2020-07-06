@@ -223,7 +223,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	defer func() {
 		if err != nil {
-			if _, ok := err.(ErrFlattenInProgress); !ok {
+			var efip ErrFlattenInProgress
+			if !errors.As(err, &efip) {
 				errDefer := undoVolReservation(ctx, rbdVol, cr)
 				if errDefer != nil {
 					klog.Warningf(util.Log(ctx, "failed undoing reservation of volume: %s (%s)"), req.GetName(), errDefer)
@@ -234,7 +235,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	err = cs.createBackingImage(ctx, cr, rbdVol, rbdSnap)
 	if err != nil {
-		if _, ok := err.(ErrFlattenInProgress); ok {
+		var efip ErrFlattenInProgress
+		if errors.As(err, &efip) {
 			return nil, status.Error(codes.Aborted, err.Error())
 		}
 		return nil, err
@@ -268,7 +270,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 func checkFlatten(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
 	err := rbdVol.flattenRbdImage(ctx, cr, false)
 	if err != nil {
-		if _, ok := err.(ErrFlattenInProgress); ok {
+		var efip ErrFlattenInProgress
+		if errors.As(err, &efip) {
 			return status.Error(codes.Aborted, err.Error())
 		}
 		if errDefer := deleteImage(ctx, rbdVol, cr); errDefer != nil {
@@ -294,7 +297,8 @@ func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *ut
 
 	err := genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr)
 	if err != nil {
-		if _, ok := err.(util.ErrPoolNotFound); ok {
+		var epnf util.ErrPoolNotFound
+		if errors.As(err, &epnf) {
 			klog.Errorf(util.Log(ctx, "failed to get backend snapshot for %s: %v"), snapshotID, err)
 			return status.Error(codes.InvalidArgument, err.Error())
 		}
@@ -342,7 +346,8 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 
 	defer func() {
 		if err != nil {
-			if _, ok := err.(ErrFlattenInProgress); !ok {
+			var efip ErrFlattenInProgress
+			if !errors.As(err, &efip) {
 				if deleteErr := deleteImage(ctx, rbdVol, cr); deleteErr != nil {
 					klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s with error: %v"), rbdVol, deleteErr)
 				}
@@ -701,7 +706,8 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		defer vol.Destroy()
 
 		err = vol.flattenRbdImage(ctx, cr, false)
-		if _, ok := err.(ErrFlattenInProgress); ok {
+		var efip ErrFlattenInProgress
+		if errors.As(err, &efip) {
 			return &csi.CreateSnapshotResponse{
 				Snapshot: &csi.Snapshot{
 					SizeBytes:      rbdSnap.SizeBytes,
@@ -824,7 +830,8 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 
 	defer func() {
 		if err != nil {
-			if _, ok := err.(ErrFlattenInProgress); !ok {
+			var efip ErrFlattenInProgress
+			if !errors.As(err, &efip) {
 				// cleanup clone and snapshot
 				errCleanUp := cleanUpSnapshot(ctx, cloneRbd, rbdSnap, cloneRbd, cr)
 				if errCleanUp != nil {
@@ -864,7 +871,8 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 
 	err = cloneRbd.flattenRbdImage(ctx, cr, false)
 	if err != nil {
-		if _, ok := err.(ErrFlattenInProgress); ok {
+		var efip ErrFlattenInProgress
+		if errors.As(err, &efip) {
 			return ready, cloneRbd, nil
 		}
 		return ready, cloneRbd, err
@@ -940,7 +948,8 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	err = rbdVol.getImageInfo()
 	if err != nil {
-		if _, ok := err.(ErrImageNotFound); !ok {
+		var einf ErrImageNotFound
+		if !errors.As(err, &einf) {
 			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
