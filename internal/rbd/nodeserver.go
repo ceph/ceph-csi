@@ -69,12 +69,12 @@ var (
 	deepFlattenSupport = []util.KernelVersion{
 		{
 			Version:      5,
-			PatchLevel:   2,
+			PatchLevel:   1,
 			SubLevel:     0,
 			ExtraVersion: 0,
 			Distribution: "",
 			Backport:     false,
-		}, // standard 5.2+ versions
+		}, // standard 5.1+ versions
 	}
 )
 
