@@ -23,7 +23,18 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
-// nolint: gocyclo
+func checkError(t *testing.T, msg string, err error) {
+	if err == nil {
+		t.Errorf(msg)
+	}
+}
+
+func checkAndReportError(t *testing.T, msg string, err error) {
+	if err != nil {
+		t.Errorf("%s (%v)", msg, err)
+	}
+}
+
 // TestFindPoolAndTopology also tests MatchTopologyForPool
 func TestFindPoolAndTopology(t *testing.T) {
 	var err error
@@ -225,9 +236,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 	}
 	// Test nil values
 	_, _, _, err = FindPoolAndTopology(nil, nil)
-	if err != nil {
-		t.Errorf("expected success due to nil in-args (%v)", err)
-	}
+	checkAndReportError(t, "expected success due to nil in-args", err)
 
 	poolName, _, _, err := FindPoolAndTopology(&validMultipleTopoPools, nil)
 	if err != nil || poolName != "" {
@@ -241,87 +250,59 @@ func TestFindPoolAndTopology(t *testing.T) {
 
 	// Test valid accessibility requirement, with invalid topology pools values
 	_, _, _, err = FindPoolAndTopology(&emptyTopoPools, &validAccReq)
-	if err == nil {
-		t.Errorf("expected failure due to empty topology pools")
-	}
+	checkError(t, "expected failure due to empty topology pools", err)
 
 	_, _, _, err = FindPoolAndTopology(&emptyPoolNameTopoPools, &validAccReq)
-	if err == nil {
-		t.Errorf("expected failure due to missing pool name in topology pools")
-	}
+	checkError(t, "expected failure due to missing pool name in topology pools", err)
 
 	_, _, _, err = FindPoolAndTopology(&differentDomainsInTopoPools, &validAccReq)
-	if err == nil {
-		t.Errorf("expected failure due to mismatching domains in topology pools")
-	}
+	checkError(t, "expected failure due to mismatching domains in topology pools", err)
 
 	// Test valid topology pools, with invalid accessibility requirements
 	_, _, _, err = FindPoolAndTopology(&validMultipleTopoPools, &emptyAccReq)
-	if err == nil {
-		t.Errorf("expected failure due to empty accessibility requirements")
-	}
+	checkError(t, "expected failure due to empty accessibility requirements", err)
 
 	_, _, _, err = FindPoolAndTopology(&validSingletonTopoPools, &emptySegmentAccReq)
-	if err == nil {
-		t.Errorf("expected failure due to empty segments in accessibility requirements")
-	}
+	checkError(t, "expected failure due to empty segments in accessibility requirements", err)
 
 	_, _, _, err = FindPoolAndTopology(&validMultipleTopoPools, &partialHigherSegmentAccReq)
-	if err == nil {
-		t.Errorf("expected failure due to partial segments in accessibility requirements")
-	}
+	checkError(t, "expected failure due to partial segments in accessibility requirements", err)
 
 	_, _, _, err = FindPoolAndTopology(&validSingletonTopoPools, &partialLowerSegmentAccReq)
-	if err == nil {
-		t.Errorf("expected failure due to partial segments in accessibility requirements")
-	}
+	checkError(t, "expected failure due to partial segments in accessibility requirements", err)
 
 	_, _, _, err = FindPoolAndTopology(&validMultipleTopoPools, &partialLowerSegmentAccReq)
-	if err == nil {
-		t.Errorf("expected failure due to partial segments in accessibility requirements")
-	}
+	checkError(t, "expected failure due to partial segments in accessibility requirements", err)
 
 	_, _, _, err = FindPoolAndTopology(&validMultipleTopoPools, &differentSegmentAccReq)
-	if err == nil {
-		t.Errorf("expected failure due to mismatching segments in accessibility requirements")
-	}
+	checkError(t, "expected failure due to mismatching segments in accessibility requirements", err)
 
 	// Test success cases
 	// If a pool is a superset of domains (either empty domain labels or partial), it can be selected
 	poolName, _, topoSegment, err := FindPoolAndTopology(&emptyDomainsInTopoPools, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
-	if err != nil {
-		t.Errorf("expected success got: (%v)", err)
-	}
+	checkAndReportError(t, "expected success got:", err)
 
 	poolName, _, topoSegment, err = FindPoolAndTopology(&partialDomainsInTopoPools, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
-	if err != nil {
-		t.Errorf("expected success got: (%v)", err)
-	}
+	checkAndReportError(t, "expected success got:", err)
 
 	// match in a singleton topology pools
 	poolName, _, topoSegment, err = FindPoolAndTopology(&validSingletonTopoPools, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
-	if err != nil {
-		t.Errorf("expected success got: (%v)", err)
-	}
+	checkAndReportError(t, "expected success got:", err)
 
 	// match first in multiple topology pools
 	poolName, _, topoSegment, err = FindPoolAndTopology(&validMultipleTopoPools, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
-	if err != nil {
-		t.Errorf("expected success got: (%v)", err)
-	}
+	checkAndReportError(t, "expected success got:", err)
 
 	// match non-first in multiple topology pools
 	switchPoolOrder := []TopologyConstrainedPool{}
 	switchPoolOrder = append(switchPoolOrder, validMultipleTopoPools[1], validMultipleTopoPools[0])
 	poolName, _, topoSegment, err = FindPoolAndTopology(&switchPoolOrder, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
-	if err != nil {
-		t.Errorf("expected success got: (%v)", err)
-	}
+	checkAndReportError(t, "expected success got:", err)
 
 	// test valid dataPool return
 	for i := range switchPoolOrder {
@@ -329,9 +310,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 	}
 	poolName, dataPoolName, topoSegment, err := FindPoolAndTopology(&switchPoolOrder, &validAccReq)
 	err = checkOutput(err, poolName, topoSegment)
-	if err != nil {
-		t.Errorf("expected success got: (%v)", err)
-	}
+	checkAndReportError(t, "expected success got:", err)
 	if dataPoolName != "ec-"+poolName {
 		t.Errorf("expected data pool to be named ec-%s, got %s", poolName, dataPoolName)
 	}
@@ -346,9 +325,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 	// check for existing pool
 	topoSegment, err = MatchTopologyForPool(&validMultipleTopoPools, &validAccReq, pool1)
 	err = checkOutput(err, pool1, topoSegment)
-	if err != nil {
-		t.Errorf("expected success got: (%v)", err)
-	}
+	checkAndReportError(t, "expected success got:", err)
 }
 
 /*
