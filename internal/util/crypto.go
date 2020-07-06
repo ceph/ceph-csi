@@ -20,12 +20,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"crypto/rand"
 
@@ -186,7 +185,7 @@ func VolumeMapper(volumeID string) (mapperFile, mapperFilePath string) {
 func EncryptVolume(ctx context.Context, devicePath, passphrase string) error {
 	klog.V(4).Infof(Log(ctx, "Encrypting device %s with LUKS"), devicePath)
 	if _, _, err := LuksFormat(devicePath, passphrase); err != nil {
-		return errors.Wrapf(err, "failed to encrypt device %s with LUKS", devicePath)
+		return fmt.Errorf("failed to encrypt device %s with LUKS: %w", devicePath, err)
 	}
 	return nil
 }
