@@ -658,7 +658,8 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 
 // StoreImageID stores the image ID in omap
 func (conn *Connection) StoreImageID(ctx context.Context, pool, reservedUUID, imageID string, cr *util.Credentials) error {
-	err := util.SetOMapKeyValue(ctx, conn.monitors, cr, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID, conn.config.csiImageIDKey, imageID)
+	err := setOMapKeys(ctx, conn, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID,
+		map[string]string{conn.config.csiImageIDKey: imageID})
 	if err != nil {
 		return err
 	}
