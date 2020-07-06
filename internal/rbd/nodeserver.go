@@ -75,6 +75,14 @@ var (
 			Distribution: "",
 			Backport:     false,
 		}, // standard 5.1+ versions
+		{
+			Version:      4,
+			PatchLevel:   18,
+			SubLevel:     0,
+			ExtraVersion: 193,
+			Distribution: ".el8",
+			Backport:     true,
+		}, // RHEL 8.2
 	}
 )
 
