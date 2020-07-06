@@ -675,15 +675,6 @@ func (conn *Connection) StoreImageID(ctx context.Context, pool, reservedUUID, im
 	return nil
 }
 
-// GetStoredImageID retrives the stored image ID from the omap
-func (conn *Connection) GetStoredImageID(ctx context.Context, pool, reservedUUID string, cr *util.Credentials) (string, error) {
-	imageID, err := util.GetOMapValue(ctx, conn.monitors, cr, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID, conn.config.csiImageIDKey)
-	if err != nil {
-		return "", err
-	}
-	return imageID, nil
-}
-
 // Destroy frees any resources and invalidates the journal connection.
 func (conn *Connection) Destroy() {
 	// invalidate cluster connection metadata
