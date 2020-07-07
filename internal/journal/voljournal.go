@@ -111,6 +111,19 @@ const (
 	defaultSnapshotNamingPrefix string = "csi-snap-"
 )
 
+// type customError struct {
+// 	err string
+// 	msg string
+// }
+
+type customErrorMsg struct {
+	msg string
+}
+
+func (e *customErrorMsg) Error() string {
+	return fmt.Sprintf("%s", e.msg)
+}
+
 // CSIJournal defines the interface and the required key names for the above RADOS based OMaps.
 type Config struct {
 	// csiDirectory is the name of the CSI volumes object map that contains CSI volume-name (or
@@ -268,8 +281,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 
 	if parentName != "" {
 		if cj.cephSnapSourceKey == "" {
-			err := errors.New("invalid request, cephSnapSourceKey is nil")
-			return nil, err
+			return nil, &customErrorMsg{"invalid request, cephSnapSourceKey is nil"} //errors.New("invalid request, cephSnapSourceKey is nil")
 		}
 		snapSource = true
 	}

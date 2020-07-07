@@ -23,7 +23,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
-<<<<<<< HEAD
 func checkError(t *testing.T, msg string, err error) {
 	if err == nil {
 		t.Errorf(msg)
@@ -37,13 +36,6 @@ func checkAndReportError(t *testing.T, msg string, err error) {
 }
 
 // TestFindPoolAndTopology also tests MatchTopologyForPool
-||||||| constructed merge base
-// nolint: gocyclo
-// TestFindPoolAndTopology also tests MatchTopologyForPool
-=======
-// nolint: gocyclo
-// TestFindPoolAndTopology also tests MatchTopologyForPool.
->>>>>>> cleanup: address golangci-lint warnings
 func TestFindPoolAndTopology(t *testing.T) {
 	var err error
 	var label1 = "region"
