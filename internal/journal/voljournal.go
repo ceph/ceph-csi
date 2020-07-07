@@ -30,7 +30,7 @@ import (
 	"k8s.io/klog"
 )
 
-// Length of string representation of uuid, xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx is 36 bytes
+// Length of string representation of uuid, xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx is 36 bytes.
 const uuidEncodedLength = 36
 
 /*
@@ -111,7 +111,7 @@ const (
 	defaultSnapshotNamingPrefix string = "csi-snap-"
 )
 
-// CSIJournal defines the interface and the required key names for the above RADOS based OMaps
+// CSIJournal defines the interface and the required key names for the above RADOS based OMaps.
 type Config struct {
 	// csiDirectory is the name of the CSI volumes object map that contains CSI volume-name (or
 	// snapshot name) based keys
@@ -153,7 +153,7 @@ type Config struct {
 	commonPrefix string
 }
 
-// NewCSIVolumeJournal returns an instance of CSIJournal for volumes
+// NewCSIVolumeJournal returns an instance of CSIJournal for volumes.
 func NewCSIVolumeJournal(suffix string) *Config {
 	return &Config{
 		csiDirectory:            "csi.volumes." + suffix,
@@ -170,7 +170,7 @@ func NewCSIVolumeJournal(suffix string) *Config {
 	}
 }
 
-// NewCSISnapshotJournal returns an instance of CSIJournal for snapshots
+// NewCSISnapshotJournal returns an instance of CSIJournal for snapshots.
 func NewCSISnapshotJournal(suffix string) *Config {
 	return &Config{
 		csiDirectory:            "csi.snaps." + suffix,
@@ -195,7 +195,7 @@ func NewCSIVolumeJournalWithNamespace(suffix, ns string) *Config {
 	return j
 }
 
-// GetNameForUUID returns volume name
+// GetNameForUUID returns volume name.
 func (cj *Config) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
 	if prefix == "" {
 		if isSnapshot {
@@ -207,7 +207,7 @@ func (cj *Config) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
 	return prefix + uid
 }
 
-// ImageData contains image name and stored CSI properties
+// ImageData contains image name and stored CSI properties.
 type ImageData struct {
 	ImageUUID       string
 	ImagePool       string
@@ -433,7 +433,7 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 
 // reserveOMapName creates an omap with passed in oMapNamePrefix and a generated <uuid>.
 // It ensures generated omap name does not already exist and if conflicts are detected, a set
-// number of retires with newer uuids are attempted before returning an error
+// number of retires with newer uuids are attempted before returning an error.
 func reserveOMapName(ctx context.Context, monitors string, cr *util.Credentials, pool, namespace, oMapNamePrefix string) (string, error) {
 	var iterUUID string
 
@@ -449,7 +449,7 @@ func reserveOMapName(ctx context.Context, monitors string, cr *util.Credentials,
 			if errors.As(err, &eoe) {
 				attempt++
 				// try again with a different uuid, for maxAttempts tries
-				klog.V(4).Infof(util.Log(ctx, "uuid (%s) conflict detected, retrying (attempt %d of %d)"),
+				klog.V(4).Infof(util.Log(ctx, "uuid (%s) conflict detected, retrying (attempt %d of %d)"), // nolint:gomnd // number specifies log level
 					iterUUID, attempt, maxAttempts)
 				continue
 			}
@@ -500,7 +500,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 
 	if parentName != "" {
 		if cj.cephSnapSourceKey == "" {
-			err := errors.New("invalid request, cephSnapSourceKey is nil")
+			var err = errors.New("invalid request, cephSnapSourceKey is nil")
 			return "", "", err
 		}
 		snapSource = true
@@ -581,7 +581,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	return volUUID, imageName, nil
 }
 
-// ImageAttributes contains all CSI stored image attributes, typically as OMap keys
+// ImageAttributes contains all CSI stored image attributes, typically as OMap keys.
 type ImageAttributes struct {
 	RequestName   string // Contains the request name for the passed in UUID
 	SourceName    string // Contains the parent image name for the passed in UUID, if it is a snapshot
@@ -591,7 +591,7 @@ type ImageAttributes struct {
 	JournalPoolID int64  // Pool ID of the CSI journal pool, stored in big endian format (on-disk data)
 }
 
-// GetImageAttributes fetches all keys and their values, from a UUID directory, returning ImageAttributes structure
+// GetImageAttributes fetches all keys and their values, from a UUID directory, returning ImageAttributes structure.
 func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID string, snapSource bool) (*ImageAttributes, error) {
 	var (
 		err             error
@@ -665,7 +665,7 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 	return imageAttributes, nil
 }
 
-// StoreImageID stores the image ID in omap
+// StoreImageID stores the image ID in omap.
 func (conn *Connection) StoreImageID(ctx context.Context, pool, reservedUUID, imageID string, cr *util.Credentials) error {
 	err := setOMapKeys(ctx, conn, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID,
 		map[string]string{conn.config.csiImageIDKey: imageID})

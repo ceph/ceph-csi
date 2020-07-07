@@ -1,4 +1,4 @@
-package e2e
+package e2e // nolint:testpackage // we're testing internals of the package.
 
 import (
 	"flag"

@@ -14,22 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package util_test
 
 import (
 	"os"
 	"testing"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // minimal test to check if GetPIDLimit() returns an int
-// changing the limit require root permissions, not tested
+// changing the limit require root permissions, not tested.
 func TestGetPIDLimit(t *testing.T) {
 	runTest := os.Getenv("CEPH_CSI_RUN_ALL_TESTS")
 	if runTest == "" {
 		t.Skip("not running test that requires root permissions and cgroup support")
 	}
 
-	limit, err := GetPIDLimit()
+	limit, err := util.GetPIDLimit()
 
 	if err != nil {
 		t.Errorf("no error should be returned, got: %v", err)
@@ -39,12 +41,12 @@ func TestGetPIDLimit(t *testing.T) {
 	}
 
 	// this is expected to fail when not run as root
-	err = SetPIDLimit(4096)
+	err = util.SetPIDLimit(4096)
 	if err != nil {
 		t.Log("failed to set PID limit, are you running as root?")
 	} else {
 		// in case it worked, reset to the previous value
-		err = SetPIDLimit(limit)
+		err = util.SetPIDLimit(limit)
 		if err != nil {
 			t.Logf("failed to reset PID to original limit %d", limit)
 		}

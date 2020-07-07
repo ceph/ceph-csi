@@ -34,7 +34,7 @@ const (
 	csiConfigFile = "/etc/ceph-csi-config/config.json"
 )
 
-// Driver contains the default identity,node and controller struct
+// Driver contains the default identity,node and controller struct.
 type Driver struct {
 	cd *csicommon.CSIDriver
 
@@ -62,19 +62,19 @@ var (
 	skipForceFlatten     bool
 )
 
-// NewDriver returns new rbd driver
+// NewDriver returns new rbd driver.
 func NewDriver() *Driver {
 	return &Driver{}
 }
 
-// NewIdentityServer initialize a identity server for rbd CSI driver
+// NewIdentityServer initialize a identity server for rbd CSI driver.
 func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
 	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
-// NewControllerServer initialize a controller server for rbd CSI driver
+// NewControllerServer initialize a controller server for rbd CSI driver.
 func NewControllerServer(d *csicommon.CSIDriver, cachePersister util.CachePersister) *ControllerServer {
 	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
@@ -95,7 +95,7 @@ func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string)
 }
 
 // Run start a non-blocking grpc controller,node and identityserver for
-// rbd CSI driver which can serve multiple parallel requests
+// rbd CSI driver which can serve multiple parallel requests.
 func (r *Driver) Run(conf *util.Config, cachePersister util.CachePersister) {
 	var err error
 	var topology map[string]string

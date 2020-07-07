@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package csicommon
+package csicommon // nolint:testpackage // we're testing internals of the package.
 
 import (
 	"testing"

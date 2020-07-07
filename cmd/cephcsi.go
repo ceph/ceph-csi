@@ -40,6 +40,9 @@ const (
 	rbdDefaultName      = "rbd.csi.ceph.com"
 	cephfsDefaultName   = "cephfs.csi.ceph.com"
 	livenessDefaultName = "liveness.csi.ceph.com"
+
+	pollTime     = 60 // seconds
+	probeTimeout = 3  // seconds
 )
 
 var (
@@ -70,8 +73,8 @@ func init() {
 	// liveness/grpc metrics related flags
 	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/grpc metrics requests")
 	flag.StringVar(&conf.MetricsPath, "metricspath", "/metrics", "path of prometheus endpoint where metrics will be available")
-	flag.DurationVar(&conf.PollTime, "polltime", time.Second*60, "time interval in seconds between each poll")
-	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*3, "probe timeout in seconds")
+	flag.DurationVar(&conf.PollTime, "polltime", time.Second*pollTime, "time interval in seconds between each poll")
+	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*probeTimeout, "probe timeout in seconds")
 
 	flag.BoolVar(&conf.EnableGRPCMetrics, "enablegrpcmetrics", false, "[DEPRECATED] enable grpc metrics")
 	flag.StringVar(&conf.HistogramOption, "histogramoption", "0.5,2,6",
@@ -123,7 +126,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	klog.V(1).Infof("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
+	klog.V(1).Infof("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit) // nolint:gomnd // number specifies log level
 	var cp util.CachePersister
 
 	if conf.Vtype == "" {
@@ -150,7 +153,7 @@ func main() {
 		if pidErr != nil {
 			klog.Errorf("Failed to get the PID limit, can not reconfigure: %v", pidErr)
 		} else {
-			klog.V(1).Infof("Initial PID limit is set to %d", currentLimit)
+			klog.V(1).Infof("Initial PID limit is set to %d", currentLimit) // nolint:gomnd // number specifies log level
 			err = util.SetPIDLimit(conf.PidLimit)
 			if err != nil {
 				klog.Errorf("Failed to set new PID limit to %d: %v", conf.PidLimit, err)
@@ -159,7 +162,7 @@ func main() {
 				if conf.PidLimit == -1 {
 					s = " (max)"
 				}
-				klog.V(1).Infof("Reconfigured PID limit to %d%s", conf.PidLimit, s)
+				klog.V(1).Infof("Reconfigured PID limit to %d%s", conf.PidLimit, s) // nolint:gomnd // number specifies log level
 			}
 		}
 	}
@@ -178,7 +181,7 @@ func main() {
 		}
 	}
 
-	klog.V(1).Infof("Starting driver type: %v with name: %v", conf.Vtype, dname)
+	klog.V(1).Infof("Starting driver type: %v with name: %v", conf.Vtype, dname) // nolint:gomnd // number specifies log level
 	switch conf.Vtype {
 	case rbdType:
 		validateCloneDepthFlag(&conf)

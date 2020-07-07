@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// ValidateNodeStageVolumeRequest validates the node stage request
+// ValidateNodeStageVolumeRequest validates the node stage request.
 func ValidateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 	if req.GetVolumeCapability() == nil {
 		return status.Error(codes.InvalidArgument, "volume capability missing in request")
@@ -32,7 +32,7 @@ func ValidateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 	return nil
 }
 
-// ValidateNodeUnstageVolumeRequest validates the node unstage request
+// ValidateNodeUnstageVolumeRequest validates the node unstage request.
 func ValidateNodeUnstageVolumeRequest(req *csi.NodeUnstageVolumeRequest) error {
 	if req.GetVolumeId() == "" {
 		return status.Error(codes.InvalidArgument, "volume ID missing in request")
@@ -45,7 +45,7 @@ func ValidateNodeUnstageVolumeRequest(req *csi.NodeUnstageVolumeRequest) error {
 	return nil
 }
 
-// ValidateNodePublishVolumeRequest validates the node publish request
+// ValidateNodePublishVolumeRequest validates the node publish request.
 func ValidateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 	if req.GetVolumeCapability() == nil {
 		return status.Error(codes.InvalidArgument, "volume capability missing in request")
@@ -66,7 +66,7 @@ func ValidateNodePublishVolumeRequest(req *csi.NodePublishVolumeRequest) error {
 	return nil
 }
 
-// ValidateNodeUnpublishVolumeRequest validates the node unpublish request
+// ValidateNodeUnpublishVolumeRequest validates the node unpublish request.
 func ValidateNodeUnpublishVolumeRequest(req *csi.NodeUnpublishVolumeRequest) error {
 	if req.GetVolumeId() == "" {
 		return status.Error(codes.InvalidArgument, "volume ID missing in request")

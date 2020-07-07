@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package util_test
 
 import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 var basePath = "./test_artifacts"
@@ -46,7 +48,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	// TEST: Should fail as clusterid file is missing
-	_, err = Mons(pathToConfig, clusterID1)
+	_, err = util.Mons(pathToConfig, clusterID1)
 	if err == nil {
 		t.Errorf("Failed: expected error due to missing config")
 	}
@@ -58,7 +60,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	// TEST: Should fail as file is empty
-	content, err = Mons(pathToConfig, clusterID1)
+	content, err = util.Mons(pathToConfig, clusterID1)
 	if err == nil {
 		t.Errorf("Failed: want (%s), got (%s)", data, content)
 	}
@@ -70,7 +72,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	// TEST: Should fail as clusterID data is malformed
-	content, err = Mons(pathToConfig, clusterID2)
+	content, err = util.Mons(pathToConfig, clusterID2)
 	if err == nil {
 		t.Errorf("Failed: want (%s), got (%s)", data, content)
 	}
@@ -82,7 +84,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	// TEST: Should fail as monitors key is incorrect/missing
-	content, err = Mons(pathToConfig, clusterID2)
+	content, err = util.Mons(pathToConfig, clusterID2)
 	if err == nil {
 		t.Errorf("Failed: want (%s), got (%s)", data, content)
 	}
@@ -94,7 +96,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	// TEST: Should fail as monitor data is malformed
-	content, err = Mons(pathToConfig, clusterID2)
+	content, err = util.Mons(pathToConfig, clusterID2)
 	if err == nil {
 		t.Errorf("Failed: want (%s), got (%s)", data, content)
 	}
@@ -106,13 +108,13 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	// TEST: Should fail as clusterID is not present in config
-	content, err = Mons(pathToConfig, clusterID1)
+	content, err = util.Mons(pathToConfig, clusterID1)
 	if err == nil {
 		t.Errorf("Failed: want (%s), got (%s)", data, content)
 	}
 
 	// TEST: Should pass as clusterID is present in config
-	content, err = Mons(pathToConfig, clusterID2)
+	content, err = util.Mons(pathToConfig, clusterID2)
 	if err != nil || content != "mon1,mon2,mon3" {
 		t.Errorf("Failed: want (%s), got (%s) (%v)", "mon1,mon2,mon3", content, err)
 	}
@@ -125,7 +127,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	// TEST: Should pass as clusterID is present in config
-	content, err = Mons(pathToConfig, clusterID1)
+	content, err = util.Mons(pathToConfig, clusterID1)
 	if err != nil || content != "mon4,mon5,mon6" {
 		t.Errorf("Failed: want (%s), got (%s) (%v)", "mon4,mon5,mon6", content, err)
 	}

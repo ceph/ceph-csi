@@ -27,57 +27,57 @@ import (
 	"k8s.io/klog"
 )
 
-// DefaultControllerServer points to default driver
+// DefaultControllerServer points to default driver.
 type DefaultControllerServer struct {
 	Driver *CSIDriver
 }
 
-// ControllerPublishVolume publish volume on node
+// ControllerPublishVolume publish volume on node.
 func (cs *DefaultControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// ControllerUnpublishVolume unpublish on node
+// ControllerUnpublishVolume unpublish on node.
 func (cs *DefaultControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// ControllerExpandVolume expand volume
+// ControllerExpandVolume expand volume.
 func (cs *DefaultControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// ListVolumes lists volumes
+// ListVolumes lists volumes.
 func (cs *DefaultControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// GetCapacity get volume capacity
+// GetCapacity get volume capacity.
 func (cs *DefaultControllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // ControllerGetCapabilities implements the default GRPC callout.
-// Default supports all capabilities
+// Default supports all capabilities.
 func (cs *DefaultControllerServer) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	klog.V(5).Infof(util.Log(ctx, "Using default ControllerGetCapabilities"))
+	klog.V(5).Infof(util.Log(ctx, "Using default ControllerGetCapabilities")) // nolint:gomnd // number specifies log level
 
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: cs.Driver.cap,
 	}, nil
 }
 
-// CreateSnapshot creates snapshot
+// CreateSnapshot creates snapshot.
 func (cs *DefaultControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// DeleteSnapshot deletes snapshot
+// DeleteSnapshot deletes snapshot.
 func (cs *DefaultControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// ListSnapshots lists snapshots
+// ListSnapshots lists snapshots.
 func (cs *DefaultControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }

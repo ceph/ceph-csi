@@ -161,7 +161,7 @@ func buildCreateVolumeResponse(ctx context.Context, req *csi.CreateVolumeRequest
 	return &csi.CreateVolumeResponse{Volume: volume}, nil
 }
 
-// CreateVolume creates the volume in backend
+// CreateVolume creates the volume in backend.
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateVolumeReq(ctx, req); err != nil {
 		return nil, err
@@ -264,7 +264,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 // checkFlatten ensures that that the image chain depth is not reached
 // hardlimit or softlimit. if the softlimit is reached it adds a task and
 // return success,the hardlimit is reached it starts a task to flatten the
-// image and return Aborted
+// image and return Aborted.
 func checkFlatten(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
 	err := rbdVol.flattenRbdImage(ctx, cr, false)
 	if err != nil {
@@ -310,7 +310,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *ut
 		return err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "create volume %s from snapshot %s"), rbdVol.RequestName, rbdSnap.RbdSnapName)
+	klog.V(4).Infof(util.Log(ctx, "create volume %s from snapshot %s"), rbdVol.RequestName, rbdSnap.RbdSnapName) // nolint:gomnd // number specifies log level
 	return nil
 }
 
@@ -329,7 +329,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 		if err != nil {
 			return err
 		}
-		klog.V(4).Infof(util.Log(ctx, "created volume %s from snapshot %s"), rbdVol.RequestName, rbdSnap.RbdSnapName)
+		klog.V(4).Infof(util.Log(ctx, "created volume %s from snapshot %s"), rbdVol.RequestName, rbdSnap.RbdSnapName) // nolint:gomnd // number specifies log level
 	} else {
 		err = createImage(ctx, rbdVol, cr)
 		if err != nil {
@@ -338,7 +338,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 		}
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "created volume %s backed by image %s"), rbdVol.RequestName, rbdVol.RbdImageName)
+	klog.V(4).Infof(util.Log(ctx, "created volume %s backed by image %s"), rbdVol.RequestName, rbdVol.RbdImageName) // nolint:gomnd // number specifies log level
 
 	defer func() {
 		if err != nil {
@@ -413,7 +413,7 @@ func (cs *ControllerServer) checkSnapshotSource(ctx context.Context, req *csi.Cr
 	return rbdSnap, nil
 }
 
-// DeleteLegacyVolume deletes a volume provisioned using version 1.0.0 of the plugin
+// DeleteLegacyVolume deletes a volume provisioned using version 1.0.0 of the plugin.
 func (cs *ControllerServer) DeleteLegacyVolume(ctx context.Context, req *csi.DeleteVolumeRequest, cr *util.Credentials) (*csi.DeleteVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 
@@ -453,7 +453,7 @@ func (cs *ControllerServer) DeleteLegacyVolume(ctx context.Context, req *csi.Del
 	// Update rbdImageName as the VolName when dealing with version 1 volumes
 	rbdVol.RbdImageName = rbdVol.VolName
 
-	klog.V(4).Infof(util.Log(ctx, "deleting legacy volume %s"), rbdVol.VolName)
+	klog.V(4).Infof(util.Log(ctx, "deleting legacy volume %s"), rbdVol.VolName) // nolint:gomnd // number specifies log level
 	if err := deleteImage(ctx, rbdVol, cr); err != nil {
 		// TODO: can we detect "already deleted" situations here and proceed?
 		klog.Errorf(util.Log(ctx, "failed to delete legacy rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, err)
@@ -511,7 +511,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		var eivi ErrInvalidVolID
 		if errors.As(err, &eivi) {
 			if isLegacyVolumeID(volumeID) {
-				klog.V(2).Infof(util.Log(ctx, "attempting deletion of potential legacy volume (%s)"), volumeID)
+				klog.V(2).Infof(util.Log(ctx, "attempting deletion of potential legacy volume (%s)"), volumeID) // nolint:gomnd // number specifies log level
 				return cs.DeleteLegacyVolume(ctx, req, cr)
 			}
 
@@ -569,7 +569,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	// Deleting rbd image
-	klog.V(4).Infof(util.Log(ctx, "deleting image %s"), rbdVol.RbdImageName)
+	klog.V(4).Infof(util.Log(ctx, "deleting image %s"), rbdVol.RbdImageName) // nolint:gomnd // number specifies log level
 	if err = deleteImage(ctx, rbdVol, cr); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s with error: %v"),
 			rbdVol, err)
@@ -874,7 +874,7 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 }
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
-// snapshot metadata from store
+// snapshot metadata from store.
 func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		klog.Errorf(util.Log(ctx, "invalid delete snapshot req: %v"), protosanitizer.StripSecrets(req))
@@ -928,7 +928,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	defer cs.SnapshotLocks.Release(rbdSnap.RequestName)
 
 	// Deleting snapshot and cloned volume
-	klog.V(4).Infof(util.Log(ctx, "deleting cloned rbd volume %s"), rbdSnap.RbdSnapName)
+	klog.V(4).Infof(util.Log(ctx, "deleting cloned rbd volume %s"), rbdSnap.RbdSnapName) // nolint:gomnd // number specifies log level
 
 	rbdVol := generateVolFromSnap(rbdSnap)
 
@@ -964,7 +964,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 
-// ControllerExpandVolume expand RBD Volumes on demand based on resizer request
+// ControllerExpandVolume expand RBD Volumes on demand based on resizer request.
 func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
 		klog.Errorf(util.Log(ctx, "invalid expand volume req: %v"), protosanitizer.StripSecrets(req))
@@ -1025,7 +1025,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	// resize volume if required
 	nodeExpansion := false
 	if rbdVol.VolSize < volSize {
-		klog.V(4).Infof(util.Log(ctx, "rbd volume %s size is %v,resizing to %v"), rbdVol, rbdVol.VolSize, volSize)
+		klog.V(4).Infof(util.Log(ctx, "rbd volume %s size is %v,resizing to %v"), rbdVol, rbdVol.VolSize, volSize) // nolint:gomnd // number specifies log level
 		rbdVol.VolSize = volSize
 		nodeExpansion = true
 		err = resizeRBDImage(rbdVol, cr)

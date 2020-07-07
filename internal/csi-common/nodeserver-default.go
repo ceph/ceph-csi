@@ -31,30 +31,30 @@ import (
 	"k8s.io/kubernetes/pkg/volume"
 )
 
-// DefaultNodeServer stores driver object
+// DefaultNodeServer stores driver object.
 type DefaultNodeServer struct {
 	Driver *CSIDriver
 	Type   string
 }
 
-// NodeStageVolume returns unimplemented response
+// NodeStageVolume returns unimplemented response.
 func (ns *DefaultNodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// NodeUnstageVolume returns unimplemented response
+// NodeUnstageVolume returns unimplemented response.
 func (ns *DefaultNodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// NodeExpandVolume returns unimplemented response
+// NodeExpandVolume returns unimplemented response.
 func (ns *DefaultNodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// NodeGetInfo returns node ID
+// NodeGetInfo returns node ID.
 func (ns *DefaultNodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	klog.V(5).Infof(util.Log(ctx, "Using default NodeGetInfo"))
+	klog.V(5).Infof(util.Log(ctx, "Using default NodeGetInfo")) // nolint:gomnd // number specifies log level
 
 	csiTopology := &csi.Topology{
 		Segments: ns.Driver.topology,
@@ -66,9 +66,9 @@ func (ns *DefaultNodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetIn
 	}, nil
 }
 
-// NodeGetCapabilities returns RPC unknow capability
+// NodeGetCapabilities returns RPC unknow capability.
 func (ns *DefaultNodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
-	klog.V(5).Infof(util.Log(ctx, "Using default NodeGetCapabilities"))
+	klog.V(5).Infof(util.Log(ctx, "Using default NodeGetCapabilities")) // nolint:gomnd // number specifies log level
 
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
@@ -83,7 +83,7 @@ func (ns *DefaultNodeServer) NodeGetCapabilities(ctx context.Context, req *csi.N
 	}, nil
 }
 
-// NodeGetVolumeStats returns volume stats
+// NodeGetVolumeStats returns volume stats.
 func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
 	var err error
 	targetPath := req.GetVolumePath()
@@ -175,7 +175,7 @@ func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.No
 	}, nil
 }
 
-// ConstructMountOptions returns only unique mount options in slice
+// ConstructMountOptions returns only unique mount options in slice.
 func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) []string {
 	if m := volCap.GetMount(); m != nil {
 		hasOption := func(options []string, opt string) bool {
@@ -195,7 +195,7 @@ func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) 
 	return mountOptions
 }
 
-// MountOptionContains checks the opt is present in mountOptions
+// MountOptionContains checks the opt is present in mountOptions.
 func MountOptionContains(mountOptions []string, opt string) bool {
 	for _, mnt := range mountOptions {
 		if mnt == opt {

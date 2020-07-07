@@ -116,7 +116,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			klog.Errorf(util.Log(ctx, "failed to create subvolume group %s, for the vol %s(%s)"), volOptions.SubvolumeGroup, string(volID), err)
 			return err
 		}
-		klog.V(4).Infof(util.Log(ctx, "cephfs: created subvolume group %s"), volOptions.SubvolumeGroup)
+		klog.V(4).Infof(util.Log(ctx, "cephfs: created subvolume group %s"), volOptions.SubvolumeGroup) // nolint:gomnd // number specifies log level
 		clusterAdditionalInfo[volOptions.ClusterID].subVolumeGroupCreated = true
 	}
 
@@ -214,11 +214,11 @@ func mountCephRoot(ctx context.Context, volID volumeID, volOptions *volumeOption
 
 	m, err := newMounter(volOptions)
 	if err != nil {
-		return fmt.Errorf("failed to create mounter: %v", err)
+		return fmt.Errorf("failed to create mounter: %w", err)
 	}
 
 	if err = m.mount(ctx, cephRoot, adminCr, volOptions); err != nil {
-		return fmt.Errorf("error mounting ceph root: %v", err)
+		return fmt.Errorf("error mounting ceph root: %w", err)
 	}
 
 	return nil
@@ -253,7 +253,7 @@ func purgeVolumeDeprecated(ctx context.Context, volID volumeID, adminCr *util.Cr
 		}
 	} else {
 		if !pathExists(volRootDeleting) {
-			klog.V(4).Infof(util.Log(ctx, "cephfs: volume %s not found, assuming it to be already deleted"), volID)
+			klog.V(4).Infof(util.Log(ctx, "cephfs: volume %s not found, assuming it to be already deleted"), volID) // nolint:gomnd // number specifies log level
 			return nil
 		}
 	}

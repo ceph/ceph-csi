@@ -142,7 +142,7 @@ func getClusterInformation(options map[string]string) (*util.ClusterInfo, error)
 }
 
 // newVolumeOptions generates a new instance of volumeOptions from the provided
-// CSI request parameters
+// CSI request parameters.
 func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVolumeRequest,
 	secret map[string]string) (*volumeOptions, error) {
 	var (
@@ -218,7 +218,7 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 }
 
 // newVolumeOptionsFromVolID generates a new instance of volumeOptions and volumeIdentifier
-// from the provided CSI VolumeID
+// from the provided CSI VolumeID.
 func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
 	var (
 		vi         util.CSIIdentifier
@@ -309,7 +309,7 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 
 // newVolumeOptionsFromVersion1Context generates a new instance of volumeOptions and
 // volumeIdentifier from the provided CSI volume context, if the provided context was
-// for a volume created by version 1.0.0 (or prior) of the CSI plugin
+// for a volume created by version 1.0.0 (or prior) of the CSI plugin.
 func newVolumeOptionsFromVersion1Context(volID string, options, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
 	var (
 		opts                volumeOptions
@@ -335,7 +335,7 @@ func newVolumeOptionsFromVersion1Context(volID string, options, secrets map[stri
 	}
 
 	if opts.ProvisionVolume, err = strconv.ParseBool(provisionVolumeBool); err != nil {
-		return nil, nil, fmt.Errorf("failed to parse provisionVolume: %v", err)
+		return nil, nil, fmt.Errorf("failed to parse provisionVolume: %w", err)
 	}
 
 	if opts.ProvisionVolume {
@@ -362,7 +362,7 @@ func newVolumeOptionsFromVersion1Context(volID string, options, secrets map[stri
 
 // newVolumeOptionsFromStaticVolume generates a new instance of volumeOptions and
 // volumeIdentifier from the provided CSI volume context, if the provided context is
-// detected to be a statically provisioned volume
+// detected to be a statically provisioned volume.
 func newVolumeOptionsFromStaticVolume(volID string, options map[string]string) (*volumeOptions, *volumeIdentifier, error) {
 	var (
 		opts      volumeOptions
@@ -377,7 +377,7 @@ func newVolumeOptionsFromStaticVolume(volID string, options map[string]string) (
 	}
 
 	if staticVol, err = strconv.ParseBool(val); err != nil {
-		return nil, nil, fmt.Errorf("failed to parse preProvisionedVolume: %v", err)
+		return nil, nil, fmt.Errorf("failed to parse preProvisionedVolume: %w", err)
 	}
 
 	if !staticVol {

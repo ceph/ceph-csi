@@ -42,7 +42,7 @@ func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	klog.V(5).Info("Sending probe request to CSI driver")
+	klog.V(5).Info("Sending probe request to CSI driver") // nolint:gomnd // number specifies log level
 	ready, err := rpc.Probe(ctx, csiConn)
 	if err != nil {
 		liveness.Set(0)
@@ -56,7 +56,7 @@ func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 		return
 	}
 	liveness.Set(1)
-	klog.V(3).Infof("Health check succeeded")
+	klog.V(3).Infof("Health check succeeded") // nolint:gomnd // number specifies log level
 }
 
 func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration) {
@@ -82,9 +82,9 @@ func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration
 	}
 }
 
-// Run starts liveness collection and prometheus endpoint
+// Run starts liveness collection and prometheus endpoint.
 func Run(conf *util.Config) {
-	klog.V(3).Infof("Liveness Running")
+	klog.V(3).Infof("Liveness Running") // nolint:gomnd // number specifies log level
 
 	// start liveness collection
 	go recordLiveness(conf.Endpoint, conf.DriverName, conf.PollTime, conf.PoolTimeout)

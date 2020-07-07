@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rbd
+package rbd // nolint:testpackage // we're testing internals of the package.
 
 import (
 	"testing"

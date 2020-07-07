@@ -30,7 +30,7 @@ import (
 	"k8s.io/klog"
 )
 
-// NodeCache to store metadata
+// NodeCache to store metadata.
 type NodeCache struct {
 	BasePath string
 	CacheDir string
@@ -38,7 +38,7 @@ type NodeCache struct {
 
 var errDec = errors.New("file not found")
 
-// EnsureCacheDirectory creates cache directory if not present
+// EnsureCacheDirectory creates cache directory if not present.
 func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 	fullPath := path.Join(nc.BasePath, cacheDir)
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
@@ -50,7 +50,7 @@ func (nc *NodeCache) EnsureCacheDirectory(cacheDir string) error {
 	return nil
 }
 
-// ForAll list the metadata in Nodecache and filters outs based on the pattern
+// ForAll list the metadata in Nodecache and filters outs based on the pattern.
 func (nc *NodeCache) ForAll(pattern string, destObj interface{}, f ForAllFunc) error {
 	err := nc.EnsureCacheDirectory(nc.CacheDir)
 	if err != nil {
@@ -86,7 +86,7 @@ func decodeObj(fpath, pattern string, file os.FileInfo, destObj interface{}) err
 	// #nosec
 	fp, err := os.Open(path.Join(fpath, file.Name()))
 	if err != nil {
-		klog.V(4).Infof("node-cache: open file: %s err %v", file.Name(), err)
+		klog.V(4).Infof("node-cache: open file: %s err %v", file.Name(), err) // nolint:gomnd // number specifies log level
 		return errDec
 	}
 	decoder := json.NewDecoder(fp)
@@ -99,7 +99,7 @@ func decodeObj(fpath, pattern string, file os.FileInfo, destObj interface{}) err
 	return nil
 }
 
-// Create creates the metadata file in cache directory with identifier name
+// Create creates the metadata file in cache directory with identifier name.
 func (nc *NodeCache) Create(identifier string, data interface{}) error {
 	file := path.Join(nc.BasePath, nc.CacheDir, identifier+".json")
 	fp, err := os.Create(file)
@@ -117,11 +117,11 @@ func (nc *NodeCache) Create(identifier string, data interface{}) error {
 	if err = encoder.Encode(data); err != nil {
 		return fmt.Errorf("node-cache: failed to encode metadata for file: %s: %w", file, err)
 	}
-	klog.V(4).Infof("node-cache: successfully saved metadata into file: %s\n", file)
+	klog.V(4).Infof("node-cache: successfully saved metadata into file: %s\n", file) // nolint:gomnd // number specifies log level
 	return nil
 }
 
-// Get retrieves the metadata from cache directory with identifier name
+// Get retrieves the metadata from cache directory with identifier name.
 func (nc *NodeCache) Get(identifier string, data interface{}) error {
 	file := path.Join(nc.BasePath, nc.CacheDir, identifier+".json")
 	// #nosec
@@ -148,18 +148,18 @@ func (nc *NodeCache) Get(identifier string, data interface{}) error {
 	return nil
 }
 
-// Delete deletes the metadata file from cache directory with identifier name
+// Delete deletes the metadata file from cache directory with identifier name.
 func (nc *NodeCache) Delete(identifier string) error {
 	file := path.Join(nc.BasePath, nc.CacheDir, identifier+".json")
 	err := os.Remove(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			klog.V(4).Infof("node-cache: cannot delete missing metadata storage file %s, assuming it's already deleted", file)
+			klog.V(4).Infof("node-cache: cannot delete missing metadata storage file %s, assuming it's already deleted", file) // nolint:gomnd // number specifies log level
 			return nil
 		}
 
 		return fmt.Errorf("node-cache: error removing file %s: %w", file, err)
 	}
-	klog.V(4).Infof("node-cache: successfully deleted metadata storage file at: %+v\n", file)
+	klog.V(4).Infof("node-cache: successfully deleted metadata storage file at: %+v\n", file) // nolint:gomnd // number specifies log level
 	return nil
 }

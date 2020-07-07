@@ -49,7 +49,7 @@ type CSIIdentifier struct {
 	ObjectUUID      string
 }
 
-// This maximum comes from the CSI spec on max bytes allowed in the various CSI ID fields
+// This maximum comes from the CSI spec on max bytes allowed in the various CSI ID fields.
 const maxVolIDLen = 128
 
 const (
@@ -95,7 +95,7 @@ func (ci CSIIdentifier) ComposeCSIID() (string, error) {
 }
 
 /*
-DecomposeCSIID composes a CSIIdentifier from passed in string
+DecomposeCSIID composes a CSIIdentifier from passed in string.
 */
 func (ci *CSIIdentifier) DecomposeCSIID(composedCSIID string) (err error) {
 	bytesToProcess := uint16(len(composedCSIID))
@@ -127,9 +127,10 @@ func (ci *CSIIdentifier) DecomposeCSIID(composedCSIID string) (err error) {
 	ci.ClusterID = composedCSIID[10 : 10+clusterIDLength]
 	// additional 1 for '-' separator
 	bytesToProcess -= (clusterIDLength + 1)
-	nextFieldStartIdx := 10 + clusterIDLength + 1
+	nextFieldStartIdx := (10 + clusterIDLength + 1)
 
-	if bytesToProcess < 17 {
+	const minLenToDecode = 17
+	if bytesToProcess < minLenToDecode {
 		return errors.New("failed to decode CSI identifier, string underflow")
 	}
 	buf64, err := hex.DecodeString(composedCSIID[nextFieldStartIdx : nextFieldStartIdx+16])

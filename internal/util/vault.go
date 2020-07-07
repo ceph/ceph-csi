@@ -62,7 +62,7 @@ Example JSON structure in the KMS config is,
 		"vaultCAFromSecret": "vault-ca"
 	},
 	...
-}
+}.
 */
 type VaultKMS struct {
 	EncryptionKMSID     string
@@ -76,7 +76,7 @@ type VaultKMS struct {
 	vaultCA             *x509.CertPool
 }
 
-// InitVaultKMS returns an interface to HashiCorp Vault KMS
+// InitVaultKMS returns an interface to HashiCorp Vault KMS.
 func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKMS, error) {
 	var (
 		ok  bool
@@ -136,12 +136,12 @@ func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKM
 	return kms, nil
 }
 
-// GetID is returning correlation ID to KMS configuration
+// GetID is returning correlation ID to KMS configuration.
 func (kms *VaultKMS) GetID() string {
 	return kms.EncryptionKMSID
 }
 
-// GetPassphrase returns passphrase from Vault
+// GetPassphrase returns passphrase from Vault.
 func (kms *VaultKMS) GetPassphrase(key string) (string, error) {
 	var passphrase string
 	resp, err := kms.request("GET", kms.getKeyDataURI(key), nil)
@@ -151,7 +151,8 @@ func (kms *VaultKMS) GetPassphrase(key string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 404 {
+	const errNotFound = 404
+	if resp.StatusCode == errNotFound {
 		return "", MissingPassphrase{fmt.Errorf("passphrase for %s not found", key)}
 	}
 	err = kms.processError(resp, fmt.Sprintf("get passphrase for %s", key))
@@ -182,7 +183,7 @@ func (kms *VaultKMS) GetPassphrase(key string) (string, error) {
 	return passphrase, nil
 }
 
-// SavePassphrase saves new passphrase in Vault
+// SavePassphrase saves new passphrase in Vault.
 func (kms *VaultKMS) SavePassphrase(key, value string) error {
 	data, err := json.Marshal(map[string]map[string]string{
 		"data": {
@@ -206,7 +207,7 @@ func (kms *VaultKMS) SavePassphrase(key, value string) error {
 	return nil
 }
 
-// DeletePassphrase deletes passphrase from Vault
+// DeletePassphrase deletes passphrase from Vault.
 func (kms *VaultKMS) DeletePassphrase(key string) error {
 	vaultToken, err := kms.getAccessToken()
 	if err != nil {
@@ -219,7 +220,8 @@ func (kms *VaultKMS) DeletePassphrase(key string) error {
 		return fmt.Errorf("delete passphrase at %s request to vault failed: %s", key, err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 404 {
+	const errNotFound = 404
+	if resp.StatusCode != errNotFound {
 		err = kms.processError(resp, "delete passphrase")
 		if err != nil {
 			return err
@@ -241,7 +243,7 @@ getVaultAccessToken retrieves vault token using kubernetes authentication:
  1. read jwt service account token from well known location
  2. request token from vault using service account jwt token
 Vault will verify service account jwt token with Kubernetes and return token
-if the requester is allowed
+if the requester is allowed.
 */
 func (kms *VaultKMS) getAccessToken() (string, error) {
 	saToken, err := ioutil.ReadFile(serviceAccountTokenPath)

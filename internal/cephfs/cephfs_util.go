@@ -23,12 +23,12 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
-// MDSMap is a representation of the mds map sub-structure returned by 'ceph fs get'
+// MDSMap is a representation of the mds map sub-structure returned by 'ceph fs get'.
 type MDSMap struct {
 	FilesystemName string `json:"fs_name"`
 }
 
-// CephFilesystemDetails is a representation of the main json structure returned by 'ceph fs get'
+// CephFilesystemDetails is a representation of the main json structure returned by 'ceph fs get'.
 type CephFilesystemDetails struct {
 	ID     int64  `json:"id"`
 	MDSMap MDSMap `json:"mdsmap"`
@@ -53,7 +53,7 @@ func getFscID(ctx context.Context, monitors string, cr *util.Credentials, fsName
 	return fsDetails.ID, nil
 }
 
-// CephFilesystem is a representation of the json structure returned by 'ceph fs ls'
+// CephFilesystem is a representation of the json structure returned by 'ceph fs ls'.
 type CephFilesystem struct {
 	Name           string   `json:"name"`
 	MetadataPool   string   `json:"metadata_pool"`
@@ -87,7 +87,7 @@ func getMetadataPool(ctx context.Context, monitors string, cr *util.Credentials,
 	return "", util.ErrPoolNotFound{Pool: fsName, Err: fmt.Errorf("fsName (%s) not found in Ceph cluster", fsName)}
 }
 
-// CephFilesystemDump is a representation of the main json structure returned by 'ceph fs dump'
+// CephFilesystemDump is a representation of the main json structure returned by 'ceph fs dump'.
 type CephFilesystemDump struct {
 	Filesystems []CephFilesystemDetails `json:"filesystems"`
 }

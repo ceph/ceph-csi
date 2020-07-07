@@ -56,7 +56,7 @@ func init() {
 	hasNBD = checkRbdNbdTools()
 }
 
-// rbdDeviceInfo strongly typed JSON spec for rbd device list output (of type krbd)
+// rbdDeviceInfo strongly typed JSON spec for rbd device list output (of type krbd).
 type rbdDeviceInfo struct {
 	ID     string `json:"id"`
 	Pool   string `json:"pool"`
@@ -67,7 +67,7 @@ type rbdDeviceInfo struct {
 // nbdDeviceInfo strongly typed JSON spec for rbd-nbd device list output (of type nbd)
 // NOTE: There is a bug in rbd output that returns id as number for nbd, and string for krbd, thus
 // requiring 2 different JSON structures to unmarshal the output.
-// NOTE: image key is "name" in krbd output and "image" in nbd output, which is another difference
+// NOTE: image key is "name" in krbd output and "image" in nbd output, which is another difference.
 type nbdDeviceInfo struct {
 	ID     int64  `json:"id"`
 	Pool   string `json:"pool"`
@@ -76,7 +76,7 @@ type nbdDeviceInfo struct {
 }
 
 // rbdGetDeviceList queries rbd about mapped devices and returns a list of rbdDeviceInfo
-// It will selectively list devices mapped using krbd or nbd as specified by accessType
+// It will selectively list devices mapped using krbd or nbd as specified by accessType.
 func rbdGetDeviceList(accessType string) ([]rbdDeviceInfo, error) {
 	// rbd device list --format json --device-type [krbd|nbd]
 	var (
@@ -161,15 +161,15 @@ func checkRbdNbdTools() bool {
 		// try to load the module
 		_, err = execCommand("modprobe", []string{moduleNbd})
 		if err != nil {
-			klog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err)
+			klog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err) // nolint:gomnd // number specifies log level
 			return false
 		}
 	}
 	if _, err := execCommand(rbdTonbd, []string{"--version"}); err != nil {
-		klog.V(3).Infof("rbd-nbd: running rbd-nbd --version failed with error %v", err)
+		klog.V(3).Infof("rbd-nbd: running rbd-nbd --version failed with error %v", err) // nolint:gomnd // number specifies log level
 		return false
 	}
-	klog.V(3).Infof("rbd-nbd tools were found.")
+	klog.V(3).Infof("rbd-nbd tools were found.") // nolint:gomnd // number specifies log level
 	return true
 }
 
@@ -205,7 +205,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 	isNbd := false
 	imagePath := volOpt.String()
 
-	klog.V(5).Infof(util.Log(ctx, "rbd: map mon %s"), volOpt.Monitors)
+	klog.V(5).Infof(util.Log(ctx, "rbd: map mon %s"), volOpt.Monitors) // nolint:gomnd // number specifies log level
 
 	// Map options
 	mapOptions := []string{
@@ -255,7 +255,7 @@ func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdV
 			return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
 		}
 		if (volOptions.DisableInUseChecks) && (used) {
-			klog.V(2).Info(util.Log(ctx, "valid multi-node attach requested, ignoring watcher in-use result"))
+			klog.V(2).Info(util.Log(ctx, "valid multi-node attach requested, ignoring watcher in-use result")) // nolint:gomnd // number specifies log level
 			return used, nil
 		}
 		return !used, nil
@@ -278,7 +278,7 @@ func detachRBDDevice(ctx context.Context, devicePath, volumeID string, encrypted
 }
 
 // detachRBDImageOrDeviceSpec detaches an rbd imageSpec or devicePath, with additional checking
-// when imageSpec is used to decide if image is already unmapped
+// when imageSpec is used to decide if image is already unmapped.
 func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, isImageSpec, ndbType, encrypted bool, volumeID string) error {
 	var output []byte
 
@@ -316,7 +316,7 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 			(strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, imageOrDeviceSpec)) ||
 				strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
 			// Devices found not to be mapped are treated as a successful detach
-			klog.V(5).Infof(util.Log(ctx, "image or device spec (%s) not mapped"), imageOrDeviceSpec)
+			klog.V(5).Infof(util.Log(ctx, "image or device spec (%s) not mapped"), imageOrDeviceSpec) // nolint:gomnd // number specifies log level
 			return nil
 		}
 		return fmt.Errorf("rbd: unmap for spec (%s) failed (%v): (%s)", imageOrDeviceSpec, err, string(output))

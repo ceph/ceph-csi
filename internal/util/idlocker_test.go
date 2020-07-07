@@ -14,16 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package util_test
 
 import (
 	"testing"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
-// very basic tests for the moment
+// very basic tests for the moment.
 func TestIDLocker(t *testing.T) {
 	fakeID := "fake-id"
-	locks := NewVolumeLocks()
+	locks := util.NewVolumeLocks()
 	// acquire lock for fake-id
 	ok := locks.TryAcquire(fakeID)
 

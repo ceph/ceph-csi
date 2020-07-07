@@ -114,14 +114,14 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 
 	_, err := c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("PV Create API error: %v", err)
+		return fmt.Errorf("PV Create API error: %w", err)
 	}
 
 	pvc := getStaticPVC(pvcName, pvName, size, ns, sc, isBlock)
 
 	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("PVC Create API error: %v", err)
+		return fmt.Errorf("PVC Create API error: %w", err)
 	}
 	// bind pvc to app
 	app, err := loadApp(appPath)
@@ -224,7 +224,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	secret.Namespace = cephCSINamespace
 	_, err := c.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &secret, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to create secret, error %v", err)
+		return fmt.Errorf("failed to create secret, error %w", err)
 	}
 
 	opt["clusterID"] = fsID
@@ -234,30 +234,30 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	pv := getStaticPV(pvName, pvName, "4Gi", secretName, cephCSINamespace, sc, "cephfs.csi.ceph.com", false, opt)
 	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to create PV, error %v", err)
+		return fmt.Errorf("failed to create PV, error %w", err)
 	}
 
 	pvc := getStaticPVC(pvcName, pvName, size, ns, sc, false)
 	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to create PVC, error %v", err)
+		return fmt.Errorf("failed to create PVC, error %w", err)
 	}
 	// bind pvc to app
 	app, err := loadApp(appPath)
 	if err != nil {
-		return fmt.Errorf("failed to load app, error %v", err)
+		return fmt.Errorf("failed to load app, error %w", err)
 	}
 
 	app.Namespace = ns
 	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
 	err = createApp(f.ClientSet, app, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to create pod, error %v", err)
+		return fmt.Errorf("failed to create pod, error %w", err)
 	}
 
 	err = deletePod(app.Name, ns, f.ClientSet, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to delete pod, error %v", err)
+		return fmt.Errorf("failed to delete pod, error %w", err)
 	}
 
 	err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{})

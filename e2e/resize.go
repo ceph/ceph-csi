@@ -25,7 +25,7 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 
 	updatedPVC, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("error fetching pvc %q with %v", pvcName, err)
+		return fmt.Errorf("error fetching pvc %q with %w", pvcName, err)
 	}
 	timeout := time.Duration(t) * time.Minute
 

@@ -14,14 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package util_test
 
 import (
 	"testing"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 type testTuple struct {
-	vID           CSIIdentifier
+	vID           util.CSIIdentifier
 	composedVolID string
 	wantEnc       bool
 	wantEncError  bool
@@ -29,10 +31,10 @@ type testTuple struct {
 	wantDecError  bool
 }
 
-// TODO: Add more test tuples to test out other edge conditions
+// TODO: Add more test tuples to test out other edge conditions.
 var testData = []testTuple{
 	{
-		vID: CSIIdentifier{
+		vID: util.CSIIdentifier{
 			LocationID:      0xffff,
 			EncodingVersion: 0xffff,
 			ClusterID:       "01616094-9d93-4178-bf45-c7eac19e8b15",
@@ -49,7 +51,7 @@ var testData = []testTuple{
 func TestComposeDecomposeID(t *testing.T) {
 	var (
 		err           error
-		viDecompose   CSIIdentifier
+		viDecompose   util.CSIIdentifier
 		composedVolID string
 	)
 

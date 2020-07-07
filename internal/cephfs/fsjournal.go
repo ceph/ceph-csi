@@ -26,7 +26,7 @@ import (
 )
 
 // volumeIdentifier structure contains an association between the CSI VolumeID to its subvolume
-// name on the backing CephFS instance
+// name on the backing CephFS instance.
 type volumeIdentifier struct {
 	FsSubvolName string
 	VolumeID     string
@@ -96,13 +96,13 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 		return nil, err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "Found existing volume (%s) with subvolume name (%s) for request (%s)"),
+	klog.V(4).Infof(util.Log(ctx, "Found existing volume (%s) with subvolume name (%s) for request (%s)"), // nolint:gomnd // number specifies log level
 		vid.VolumeID, vid.FsSubvolName, volOptions.RequestName)
 
 	return &vid, nil
 }
 
-// undoVolReservation is a helper routine to undo a name reservation for a CSI VolumeName
+// undoVolReservation is a helper routine to undo a name reservation for a CSI VolumeName.
 func undoVolReservation(ctx context.Context, volOptions *volumeOptions, vid volumeIdentifier, secret map[string]string) error {
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
@@ -137,7 +137,7 @@ func updateTopologyConstraints(volOpts *volumeOptions) error {
 }
 
 // reserveVol is a helper routine to request a UUID reservation for the CSI VolumeName and,
-// to generate the volume identifier for the reserved UUID
+// to generate the volume identifier for the reserved UUID.
 func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[string]string) (*volumeIdentifier, error) {
 	var (
 		vid       volumeIdentifier
@@ -177,7 +177,7 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 		return nil, err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "Generated Volume ID (%s) and subvolume name (%s) for request name (%s)"),
+	klog.V(4).Infof(util.Log(ctx, "Generated Volume ID (%s) and subvolume name (%s) for request name (%s)"), // nolint:gomnd // number specifies log level
 		vid.VolumeID, vid.FsSubvolName, volOptions.RequestName)
 
 	return &vid, nil
