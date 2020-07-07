@@ -33,6 +33,7 @@ func createRBDClone(ctx context.Context, parentVol, cloneRbdVol *rbdVolume, snap
 		return err
 	}
 
+	snap.RbdImageName = parentVol.RbdImageName
 	// create clone image and delete snapshot
 	err = cloneRbdVol.cloneRbdImageFromSnapshot(ctx, snap)
 	if err != nil {

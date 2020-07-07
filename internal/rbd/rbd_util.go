@@ -433,7 +433,7 @@ func flattenClonedRbdImages(ctx context.Context, snaps []snapshotInfo, pool, mon
 	for _, s := range snaps {
 		if s.Namespace.Type == "trash" {
 			rv.RbdImageName = s.Namespace.OriginalName
-			err = rv.flattenRbdImage(ctx, cr, true)
+			err = rv.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 			if err != nil {
 				klog.Errorf(util.Log(ctx, "failed to flatten %s; err %v"), rv, err)
 				continue
@@ -443,7 +443,7 @@ func flattenClonedRbdImages(ctx context.Context, snaps []snapshotInfo, pool, mon
 	return nil
 }
 
-func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, forceFlatten bool) error {
+func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, forceFlatten bool, hardlimit, softlimit uint) error {
 	var depth uint
 	var err error
 
@@ -453,10 +453,10 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 		if err != nil {
 			return err
 		}
-		klog.Infof(util.Log(ctx, "clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s"), depth, rbdSoftMaxCloneDepth, rbdHardMaxCloneDepth, rv)
+		klog.Infof(util.Log(ctx, "clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s"), depth, softlimit, hardlimit, rv)
 	}
 
-	if forceFlatten || (depth >= rbdHardMaxCloneDepth) || (depth >= rbdSoftMaxCloneDepth) {
+	if forceFlatten || (depth >= hardlimit) || (depth >= softlimit) {
 		args := []string{"flatten", rv.Pool + "/" + rv.RbdImageName, "--id", cr.ID, "--keyfile=" + cr.KeyFile, "-m", rv.Monitors}
 		supported, err := addRbdManagerTask(ctx, rv, args)
 		if supported {
@@ -464,13 +464,13 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 				klog.Errorf(util.Log(ctx, "failed to add task flatten for %s : %v"), rv, err)
 				return err
 			}
-			if forceFlatten || depth >= rbdHardMaxCloneDepth {
+			if forceFlatten || depth >= hardlimit {
 				return ErrFlattenInProgress{err: fmt.Errorf("flatten is in progress for image %s", rv.RbdImageName)}
 			}
 		}
 		if !supported {
 			klog.Errorf(util.Log(ctx, "task manager does not support flatten,image will be flattened once hardlimit is reached: %v"), err)
-			if forceFlatten || depth >= rbdHardMaxCloneDepth {
+			if forceFlatten || depth >= hardlimit {
 				err = rv.Connect(cr)
 				if err != nil {
 					return err
@@ -1008,30 +1008,29 @@ func (rv *rbdVolume) getImageInfo() error {
 }
 
 /*
-getSnapInfo queries rbd about the snapshots of the given image and returns its metadata, and
-returns ErrImageNotFound if provided image is not found, and ErrSnapNotFound if provided snap
-is not found in the images snapshot list
+checkSnapExists queries rbd about the snapshots of the given image and returns
+ErrImageNotFound if provided image is not found, and ErrSnapNotFound if
+provided snap is not found in the images snapshot list
 */
-func (rv *rbdVolume) getSnapInfo(rbdSnap *rbdSnapshot) (librbd.SnapInfo, error) {
-	invalidSnap := librbd.SnapInfo{}
+func (rv *rbdVolume) checkSnapExists(rbdSnap *rbdSnapshot) error {
 	image, err := rv.open()
 	if err != nil {
-		return invalidSnap, err
+		return err
 	}
 	defer image.Close()
 
 	snaps, err := image.GetSnapshotNames()
 	if err != nil {
-		return invalidSnap, err
+		return err
 	}
 
 	for _, snap := range snaps {
 		if snap.Name == rbdSnap.RbdSnapName {
-			return snap, nil
+			return nil
 		}
 	}
 
-	return invalidSnap, ErrSnapNotFound{rbdSnap.RbdSnapName, fmt.Errorf("snap %s not found", rbdSnap.String())}
+	return ErrSnapNotFound{rbdSnap.RbdSnapName, fmt.Errorf("snap %s not found", rbdSnap.String())}
 }
 
 // rbdImageMetadataStash strongly typed JSON spec for stashed RBD image metadata
