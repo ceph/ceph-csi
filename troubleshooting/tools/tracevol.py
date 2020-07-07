@@ -111,14 +111,16 @@ def format_and_print_tables(arg, pvcs, table_rbd, table_cephfs):
     """
     if arg.pvcname != "":
         pvname = pvcs['spec']['volumeName']
-        if is_rbd_pv(arg, pvname):
+        pvdata = get_pv_data(arg, pvname)
+        if is_rbd_pv(arg, pvname, pvdata):
             format_table(arg, pvcs, table_rbd, True)
         else:
             format_table(arg, pvcs, table_cephfs, False)
     else:
         for pvc in pvcs['items']:
             pvname = pvc['spec']['volumeName']
-            if is_rbd_pv(arg, pvname):
+            pvdata = get_pv_data(arg, pvname)
+            if is_rbd_pv(arg, pvname, pvdata):
                 format_table(arg, pvc, table_rbd, True)
             else:
                 format_table(arg, pvc, table_cephfs, False)
@@ -162,7 +164,6 @@ def format_table(arg, pvc_data, table, is_rbd):
     image_name = "csi-vol-%s" % image_id
     table.add_row([pvcname, pvname, image_name, pv_present,
                    uuid_present, present_in_cluster])
-
 
 def validate_volume_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
     """
@@ -469,11 +470,27 @@ def get_subvol_group(arg):
             subvol_group = data['cephFS']['subvolumeGroup']
     return subvol_group
 
-def is_rbd_pv(arg, pvname):
+def is_rbd_pv(arg, pvname, pvdata):
     """
     Checks if volume attributes in a pv has an attribute named 'fsname'.
     If it has, returns False else return True.
     """
+    if not pvdata:
+        if arg.debug:
+            print("failed to get pvdata for %s", pvname)
+        sys.exit()
+
+    volume_attr = pvdata['spec']['csi']['volumeAttributes']
+    key = 'fsName'
+    if key in volume_attr.keys():
+        return False
+    return True
+
+def get_pv_data(arg, pvname):
+    """
+    Returns pv data for a given pvname.
+    """
+    pvdata = {}
     cmd = [arg.command]
     if arg.kubeconfig != "":
         cmd += ["--config", arg.kubeconfig]
@@ -490,15 +507,11 @@ def is_rbd_pv(arg, pvname):
         sys.exit()
     try:
         pvdata = json.loads(stdout)
-        volume_attr = pvdata['spec']['csi']['volumeAttributes']
-        key = 'fsName'
-        if key in volume_attr.keys():
-            return False
     except ValueError as err:
-        if arg.degug:
+        if arg.debug:
             print("failed to get pv %s", err)
         sys.exit()
-    return True
+    return pvdata
 
 if __name__ == "__main__":
     ARGS = PARSER.parse_args()
