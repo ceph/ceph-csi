@@ -181,7 +181,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	}
 
 	// check snapshot exists if not create it
-	_, err = vol.getSnapInfo(rbdSnap)
+	err = vol.checkSnapExists(rbdSnap)
 	var esnf ErrSnapNotFound
 	if errors.As(err, &esnf) {
 		// create snapshot
@@ -223,12 +223,18 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 /*
 Check comment on checkSnapExists, to understand how this function behaves
 
-**NOTE:** These functions manipulate the rados omaps that hold information regarding
-volume names as requested by the CSI drivers. Hence, these need to be invoked only when the
-respective CSI snapshot or volume name based locks are held, as otherwise racy access to these
-omaps may end up leaving the omaps in an inconsistent state.
+**NOTE:** These functions manipulate the rados omaps that hold information
+regarding volume names as requested by the CSI drivers. Hence, these need to be
+invoked only when the respective CSI snapshot or volume name based locks are
+held, as otherwise racy access to these omaps may end up leaving the omaps in
+an inconsistent state.
+
+parentVol is required to check the clone is created from the requested parent
+image or not, if temporary snapshots and clones created for the volume when the
+content source is volume we need to recover from the stale entries or complete
+the pending operations.
 */
-func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
+func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, error) {
 	err := validateRbdVol(rv)
 	if err != nil {
 		return false, err
@@ -277,6 +283,16 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 	if err != nil {
 		var einf ErrImageNotFound
 		if errors.As(err, &einf) {
+			// Need to check cloned info here not on createvolume,
+			if parentVol != nil {
+				found, cErr := rv.checkCloneImage(ctx, parentVol)
+				if found && cErr == nil {
+					return true, nil
+				}
+				if cErr != nil {
+					return false, cErr
+				}
+			}
 			err = j.UndoReservation(ctx, rv.JournalPool, rv.Pool,
 				rv.RbdImageName, rv.RequestName)
 			return false, err
