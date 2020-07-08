@@ -272,8 +272,9 @@ func TestCheckKernelSupport(t *testing.T) {
 	}
 
 	supportsDeepFlatten := []string{
-		"5.2.0",
+		"5.1.0", // 5.1+ supports deep-flatten
 		"5.3.0",
+		"4.18.0-193.9.1.el8_2.x86_64", // RHEL 8.2 kernel
 	}
 
 	noDeepFlatten := []string{
@@ -284,7 +285,8 @@ func TestCheckKernelSupport(t *testing.T) {
 	}
 
 	deepFlattenSupport := []KernelVersion{
-		{5, 2, 0, 0, "", false}, // standard 5.2+ versions
+		{5, 1, 0, 0, "", false},       // standard 5.1+ versions
+		{4, 18, 0, 193, ".el8", true}, // RHEL 8.2 backport
 	}
 	for _, kernel := range supportsDeepFlatten {
 		ok := CheckKernelSupport(kernel, deepFlattenSupport)
