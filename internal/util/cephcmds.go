@@ -61,7 +61,8 @@ func GetPoolID(monitors string, cr *Credentials, poolName string) (int64, error)
 
 	id, err := conn.GetPoolByName(poolName)
 	if errors.Is(err, rados.ErrNotFound) {
-		return InvalidPoolID, ErrPoolNotFound{poolName, fmt.Errorf("pool (%s) not found in Ceph cluster", poolName)}
+		return InvalidPoolID, fmt.Errorf("%w: pool (%s) not found in Ceph cluster",
+			ErrPoolNotFound, poolName)
 	} else if err != nil {
 		return InvalidPoolID, err
 	}
@@ -80,7 +81,8 @@ func GetPoolName(monitors string, cr *Credentials, poolID int64) (string, error)
 
 	name, err := conn.GetPoolByID(poolID)
 	if err != nil {
-		return "", ErrPoolNotFound{string(poolID), fmt.Errorf("pool ID (%d) not found in Ceph cluster", poolID)}
+		return "", fmt.Errorf("%w: pool ID (%d) not found in Ceph cluster",
+			ErrPoolNotFound, poolID)
 	}
 	return name, nil
 }
@@ -117,9 +119,8 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 	ioctx, err := conn.GetIoctx(poolName)
 	if err != nil {
-		var epnf ErrPoolNotFound
-		if errors.As(err, &epnf) {
-			err = ErrObjectNotFound{poolName, err}
+		if errors.Is(err, ErrPoolNotFound) {
+			err = JoinErrors(ErrObjectNotFound, err)
 		}
 		return err
 	}
@@ -131,7 +132,7 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 	err = ioctx.Create(objectName, rados.CreateExclusive)
 	if errors.Is(err, rados.ErrObjectExists) {
-		return ErrObjectExists{objectName, err}
+		return JoinErrors(ErrObjectExists, err)
 	} else if err != nil {
 		klog.Errorf(Log(ctx, "failed creating omap (%s) in pool (%s): (%v)"), objectName, poolName, err)
 		return err
@@ -152,9 +153,8 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 	ioctx, err := conn.GetIoctx(poolName)
 	if err != nil {
-		var epnf ErrPoolNotFound
-		if errors.As(err, &epnf) {
-			err = ErrObjectNotFound{poolName, err}
+		if errors.Is(err, ErrPoolNotFound) {
+			err = JoinErrors(ErrObjectNotFound, err)
 		}
 		return err
 	}
@@ -166,7 +166,7 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 
 	err = ioctx.Delete(oMapName)
 	if errors.Is(err, rados.ErrNotFound) {
-		return ErrObjectNotFound{oMapName, err}
+		return JoinErrors(ErrObjectNotFound, err)
 	} else if err != nil {
 		klog.Errorf(Log(ctx, "failed removing omap (%s) in pool (%s): (%v)"), oMapName, poolName, err)
 		return err

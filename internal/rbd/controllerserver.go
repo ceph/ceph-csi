@@ -391,8 +391,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *ut
 
 	err := genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr)
 	if err != nil {
-		var epnf util.ErrPoolNotFound
-		if errors.As(err, &epnf) {
+		if errors.Is(err, util.ErrPoolNotFound) {
 			klog.Errorf(util.Log(ctx, "failed to get backend snapshot for %s: %v"), snapshotID, err)
 			return status.Error(codes.InvalidArgument, err.Error())
 		}
@@ -581,8 +580,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	rbdVol, err = genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	if err != nil {
-		var epnf util.ErrPoolNotFound
-		if errors.As(err, &epnf) {
+		if errors.Is(err, util.ErrPoolNotFound) {
 			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
@@ -590,8 +588,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (image and imageOMap are garbage collected already), hence return
 		// success as deletion is complete
-		var eknf util.ErrKeyNotFound
-		if errors.As(err, &eknf) {
+		if errors.Is(err, util.ErrKeyNotFound) {
 			klog.Warningf(util.Log(ctx, "Failed to volume options for %s: %v"), volumeID, err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
@@ -717,11 +714,10 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	rbdVol, err = genVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
 	if err != nil {
 		var einf ErrImageNotFound
-		var epnf util.ErrPoolNotFound
 		// nolint:gocritic // this ifElseChain can not be rewritten to a switch statement
 		if errors.As(err, &einf) {
 			err = status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
-		} else if errors.As(err, &epnf) {
+		} else if errors.Is(err, util.ErrPoolNotFound) {
 			klog.Errorf(util.Log(ctx, "failed to get backend volume for %s: %v"), req.GetSourceVolumeId(), err)
 			err = status.Errorf(codes.NotFound, err.Error())
 		} else {
@@ -765,8 +761,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	// check for the requested source volume id and already allocated source volume id
 	found, err := checkSnapCloneExists(ctx, rbdVol, rbdSnap, cr)
 	if err != nil {
-		var esnc util.ErrSnapNameConflict
-		if errors.As(err, &esnc) {
+		if errors.Is(err, util.ErrSnapNameConflict) {
 			return nil, status.Error(codes.AlreadyExists, err.Error())
 		}
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -983,8 +978,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
 		// if error is ErrPoolNotFound, the pool is already deleted we dont
 		// need to worry about deleting snapshot or omap data, return success
-		var epnf util.ErrPoolNotFound
-		if errors.As(err, &epnf) {
+		if errors.Is(err, util.ErrPoolNotFound) {
 			klog.Warningf(util.Log(ctx, "failed to get backend snapshot for %s: %v"), snapshotID, err)
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
@@ -992,8 +986,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (snap and snapOMap are garbage collected already), hence return
 		// success as deletion is complete
-		var eknf util.ErrKeyNotFound
-		if errors.As(err, &eknf) {
+		if errors.Is(err, util.ErrKeyNotFound) {
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
 
@@ -1089,11 +1082,10 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	rbdVol, err = genVolFromVolID(ctx, volID, cr, req.GetSecrets())
 	if err != nil {
 		var einf ErrImageNotFound
-		var epnf util.ErrPoolNotFound
 		// nolint:gocritic // this ifElseChain can not be rewritten to a switch statement
 		if errors.As(err, &einf) {
 			err = status.Errorf(codes.NotFound, "volume ID %s not found", volID)
-		} else if errors.As(err, &epnf) {
+		} else if errors.Is(err, util.ErrPoolNotFound) {
 			klog.Errorf(util.Log(ctx, "failed to get backend volume for %s: %v"), volID, err)
 			err = status.Errorf(codes.NotFound, err.Error())
 		} else {

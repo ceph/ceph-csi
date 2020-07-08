@@ -37,7 +37,7 @@ func getOMapValues(
 	// fetch and configure the rados ioctx
 	ioctx, err := conn.conn.GetIoctx(poolName)
 	if err != nil {
-		return nil, omapPoolError(poolName, err)
+		return nil, omapPoolError(err)
 	}
 	defer ioctx.Destroy()
 
@@ -66,7 +66,7 @@ func getOMapValues(
 			klog.Errorf(
 				util.Log(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v"),
 				poolName, namespace, oid, err)
-			return nil, util.NewErrKeyNotFound(oid, err)
+			return nil, util.JoinErrors(util.ErrKeyNotFound, err)
 		}
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func removeMapKeys(
 	// fetch and configure the rados ioctx
 	ioctx, err := conn.conn.GetIoctx(poolName)
 	if err != nil {
-		return omapPoolError(poolName, err)
+		return omapPoolError(err)
 	}
 	defer ioctx.Destroy()
 
@@ -118,7 +118,7 @@ func setOMapKeys(
 	// fetch and configure the rados ioctx
 	ioctx, err := conn.conn.GetIoctx(poolName)
 	if err != nil {
-		return omapPoolError(poolName, err)
+		return omapPoolError(err)
 	}
 	defer ioctx.Destroy()
 
@@ -142,9 +142,9 @@ func setOMapKeys(
 	return nil
 }
 
-func omapPoolError(poolName string, err error) error {
+func omapPoolError(err error) error {
 	if errors.Is(err, rados.ErrNotFound) {
-		return util.NewErrPoolNotFound(poolName, err)
+		return util.JoinErrors(util.ErrPoolNotFound, err)
 	}
 	return err
 }
