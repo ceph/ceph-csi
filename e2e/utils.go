@@ -52,6 +52,8 @@ var (
 	deployTimeout    int
 	deployCephFS     bool
 	deployRBD        bool
+	testCephFS       bool
+	testRBD          bool
 	cephCSINamespace string
 	rookNamespace    string
 	ns               string
