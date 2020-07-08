@@ -4,7 +4,7 @@ set -e
 # This script will be used by travis to run functional test
 # against different kuberentes version
 export KUBE_VERSION=$1
-
+shift
 # parse the kubernetes version, return the digit passed as argument
 # v1.17.0 -> kube_version 1 -> 1
 # v1.17.0 -> kube_version 2 -> 17
@@ -39,7 +39,7 @@ if [[ "${KUBE_MAJOR}" -ge 1 ]] && [[ "${KUBE_MINOR}" -ge 17 ]]; then
 fi
 
 # functional tests
-go test "${GO_TAGS}" github.com/ceph/ceph-csi/e2e --deploy-timeout="${DEPLOY_TIMEOUT}" -timeout="${E2E_TIMEOUT}" --cephcsi-namespace=cephcsi-e2e-$RANDOM -v -mod=vendor
+go test "${GO_TAGS}" github.com/ceph/ceph-csi/e2e --deploy-timeout="${DEPLOY_TIMEOUT}" -timeout="${E2E_TIMEOUT}" --cephcsi-namespace=cephcsi-e2e-$RANDOM -v -mod=vendor "${@}"
 
 if [[ "${KUBE_MAJOR}" -ge 1 ]] && [[ "${KUBE_MINOR}" -ge 17 ]]; then
     # delete snapshot CRD

@@ -4,6 +4,7 @@ set -e
 # This script will be used by travis to run functional test
 # against different kuberentes version
 export KUBE_VERSION=$1
+shift
 # parse the kubernetes version, return the digit passed as argument
 # v1.17.0 -> kube_version 1 -> 1
 # v1.17.0 -> kube_version 2 -> 17
@@ -49,7 +50,7 @@ scripts/install-helm.sh up
 # install cephcsi helm charts
 scripts/install-helm.sh install-cephcsi ${NAMESPACE}
 # functional tests
-go test "${GO_TAGS}" github.com/ceph/ceph-csi/e2e -mod=vendor --deploy-timeout="${DEPLOY_TIMEOUT}" -timeout="${E2E_TIMEOUT}" --cephcsi-namespace=${NAMESPACE} --deploy-cephfs=false --deploy-rbd=false -v
+go test "${GO_TAGS}" github.com/ceph/ceph-csi/e2e -mod=vendor --deploy-timeout="${DEPLOY_TIMEOUT}" -timeout="${E2E_TIMEOUT}" --cephcsi-namespace=${NAMESPACE} --deploy-cephfs=false --deploy-rbd=false -v "${@}"
 
 #cleanup
 # skip snapshot operation if kube version is less than 1.17.0
