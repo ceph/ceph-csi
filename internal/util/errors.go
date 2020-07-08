@@ -18,13 +18,12 @@ package util
 
 // ErrKeyNotFound is returned when requested key in omap is not found
 type ErrKeyNotFound struct {
-	keyName string
-	err     error
+	err error
 }
 
 // NewErrKeyNotFound returns a new ErrKeyNotFound error.
-func NewErrKeyNotFound(keyName string, err error) ErrKeyNotFound {
-	return ErrKeyNotFound{keyName, err}
+func NewErrKeyNotFound(err error) ErrKeyNotFound {
+	return ErrKeyNotFound{err}
 }
 
 // Error returns the error string for ErrKeyNotFound.
@@ -39,8 +38,7 @@ func (e ErrKeyNotFound) Unwrap() error {
 
 // ErrObjectExists is returned when named omap is already present in rados
 type ErrObjectExists struct {
-	objectName string
-	err        error
+	err error
 }
 
 // Error returns the error string for ErrObjectExists.
@@ -55,8 +53,7 @@ func (e ErrObjectExists) Unwrap() error {
 
 // ErrObjectNotFound is returned when named omap is not found in rados
 type ErrObjectNotFound struct {
-	oMapName string
-	err      error
+	err error
 }
 
 // Error returns the error string for ErrObjectNotFound.
@@ -72,8 +69,7 @@ func (e ErrObjectNotFound) Unwrap() error {
 // ErrSnapNameConflict is generated when a requested CSI snap name already exists on RBD but with
 // different properties, and hence is in conflict with the passed in CSI volume name
 type ErrSnapNameConflict struct {
-	requestName string
-	err         error
+	err error
 }
 
 // Error returns the error string for ErrSnapNameConflict.
@@ -87,14 +83,13 @@ func (e ErrSnapNameConflict) Unwrap() error {
 }
 
 // NewErrSnapNameConflict returns a ErrSnapNameConflict error when CSI snap name already exists.
-func NewErrSnapNameConflict(name string, err error) ErrSnapNameConflict {
-	return ErrSnapNameConflict{name, err}
+func NewErrSnapNameConflict(err error) ErrSnapNameConflict {
+	return ErrSnapNameConflict{err}
 }
 
 // ErrPoolNotFound is returned when pool is not found
 type ErrPoolNotFound struct {
-	Pool string
-	Err  error
+	Err error
 }
 
 // Error returns the error string for ErrPoolNotFound.
@@ -108,6 +103,6 @@ func (e ErrPoolNotFound) Unwrap() error {
 }
 
 // NewErrPoolNotFound returns a new ErrPoolNotFound error.
-func NewErrPoolNotFound(pool string, err error) ErrPoolNotFound {
-	return ErrPoolNotFound{pool, err}
+func NewErrPoolNotFound(err error) ErrPoolNotFound {
+	return ErrPoolNotFound{err}
 }

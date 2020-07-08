@@ -66,7 +66,7 @@ func getOMapValues(
 			klog.Errorf(
 				util.Log(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v"),
 				poolName, namespace, oid, err)
-			return nil, util.NewErrKeyNotFound(oid, err)
+			return nil, util.NewErrKeyNotFound(err)
 		}
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func setOMapKeys(
 
 func omapPoolError(poolName string, err error) error {
 	if errors.Is(err, rados.ErrNotFound) {
-		return util.NewErrPoolNotFound(poolName, err)
+		return util.NewErrPoolNotFound(err)
 	}
 	return err
 }

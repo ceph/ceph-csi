@@ -366,7 +366,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 			err = fmt.Errorf("snapname points to different volume, request name (%s)"+
 				" source name (%s) saved source name (%s)",
 				reqName, parentName, savedImageAttributes.SourceName)
-			return nil, util.NewErrSnapNameConflict(reqName, err)
+			return nil, util.NewErrSnapNameConflict(err)
 		}
 	}
 
@@ -657,7 +657,6 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 		imageAttributes.SourceName, found = values[cj.cephSnapSourceKey]
 		if !found {
 			return nil, util.NewErrKeyNotFound(
-				cj.cephSnapSourceKey,
 				fmt.Errorf("no snap source in omap for %q", cj.cephUUIDDirectoryPrefix+objectUUID))
 		}
 	}

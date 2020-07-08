@@ -84,7 +84,7 @@ func getMetadataPool(ctx context.Context, monitors string, cr *util.Credentials,
 		}
 	}
 
-	return "", util.ErrPoolNotFound{Pool: fsName, Err: fmt.Errorf("fsName (%s) not found in Ceph cluster", fsName)}
+	return "", util.ErrPoolNotFound{Err: fmt.Errorf("fsName (%s) not found in Ceph cluster", fsName)}
 }
 
 // CephFilesystemDump is a representation of the main json structure returned by 'ceph fs dump'
@@ -114,5 +114,5 @@ func getFsName(ctx context.Context, monitors string, cr *util.Credentials, fscID
 		}
 	}
 
-	return "", util.ErrPoolNotFound{Pool: string(fscID), Err: fmt.Errorf("fscID (%d) not found in Ceph cluster", fscID)}
+	return "", util.ErrPoolNotFound{Err: fmt.Errorf("fscID (%d) not found in Ceph cluster", fscID)}
 }
