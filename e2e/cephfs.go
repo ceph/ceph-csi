@@ -115,6 +115,9 @@ var _ = Describe("cephfs", func() {
 	var c clientset.Interface
 	// deploy cephfs CSI
 	BeforeEach(func() {
+		if !testCephFS {
+			Skip("Skipping CephFS E2E")
+		}
 		c = f.ClientSet
 		if deployCephFS {
 			if cephCSINamespace != defaultNs {
@@ -130,6 +133,9 @@ var _ = Describe("cephfs", func() {
 	})
 
 	AfterEach(func() {
+		if !testRBD {
+			Skip("Skipping CephFS E2E")
+		}
 		if CurrentGinkgoTestDescription().Failed {
 			// log pods created by helm chart
 			logsCSIPods("app=ceph-csi-cephfs", c)

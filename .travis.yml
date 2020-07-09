@@ -95,25 +95,52 @@ jobs:
         - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
 
     - stage: e2e testing
-      name: cephcsi with kube 1.16.9
+      name: CephFS with kubernetes v1.16.9
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.16.9 || travis_terminate 1;
+        - scripts/travis-functest.sh v1.16.9 --test-cephfs=true
+          --test-rbd=false || travis_terminate 1;
 
     - stage: e2e testing
-      name: cephcsi with kube 1.17.5
+      name: RBD with kubernetes v1.16.9
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.17.5 || travis_terminate 1;
+        - scripts/travis-functest.sh v1.16.9 --test-cephfs=false
+          --test-rbd=true || travis_terminate 1;
 
     - stage: e2e testing
-      name: cephcsi helm charts with kube 1.17.5
+      name: CephFS with kubernetes v1.17.5
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-helmtest.sh v1.17.5 || travis_terminate 1;
+        - scripts/travis-functest.sh v1.17.5 --test-cephfs=true
+          --test-rbd=false|| travis_terminate 1;
+
+    - stage: e2e testing
+      name: RBD with kubernetes v1.17.5
+      script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
+        - make image-cephcsi || travis_terminate 1;
+        - scripts/travis-functest.sh v1.17.5 --test-cephfs=false
+          --test-rbd=true || travis_terminate 1;
+
+    - stage: e2e testing
+      name: CephFS helm charts with kubernetes v1.17.5
+      script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
+        - make image-cephcsi || travis_terminate 1;
+        - scripts/travis-helmtest.sh v1.17.5 --test-cephfs=true
+          --test-rbd=false || travis_terminate 1;
+
+    - stage: e2e testing
+      name: RBD helm charts with kubernetes v1.17.5
+      script:
+        - scripts/skip-doc-change.sh || travis_terminate 0;
+        - make image-cephcsi || travis_terminate 1;
+        - scripts/travis-helmtest.sh v1.17.5 --test-cephfs=false
+          --test-rbd=true || travis_terminate 1;
 
     - stage: deploy
       name: push artifacts to repositories

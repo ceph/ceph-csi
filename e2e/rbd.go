@@ -128,6 +128,9 @@ var _ = Describe("RBD", func() {
 	var c clientset.Interface
 	// deploy RBD CSI
 	BeforeEach(func() {
+		if !testRBD {
+			Skip("Skipping RBD E2E")
+		}
 		c = f.ClientSet
 		if deployRBD {
 			createNodeLabel(f, nodeRegionLabel, regionValue)
@@ -147,6 +150,9 @@ var _ = Describe("RBD", func() {
 	})
 
 	AfterEach(func() {
+		if !testRBD {
+			Skip("Skipping RBD E2E")
+		}
 		if CurrentGinkgoTestDescription().Failed {
 			// log pods created by helm chart
 			logsCSIPods("app=ceph-csi-rbd", c)
