@@ -128,19 +128,19 @@ jobs:
           --test-rbd=true || travis_terminate 1;
 
     - stage: e2e testing
-      name: CephFS helm charts with kubernetes v1.17.5
+      name: CephFS helm charts with kubernetes v1.18.5
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-helmtest.sh v1.17.5 --test-cephfs=true
+        - scripts/travis-helmtest.sh v1.18.5 --test-cephfs=true
           --test-rbd=false || travis_terminate 1;
 
     - stage: e2e testing
-      name: RBD helm charts with kubernetes v1.17.5
+      name: RBD helm charts with kubernetes v1.18.5
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-helmtest.sh v1.17.5 --test-cephfs=false
+        - scripts/travis-helmtest.sh v1.18.5 --test-cephfs=false
           --test-rbd=true || travis_terminate 1;
 
     - stage: deploy
