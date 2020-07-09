@@ -27,7 +27,7 @@ import (
 	"regexp"
 	"strings"
 
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // NodeCache to store metadata

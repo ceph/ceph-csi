@@ -32,7 +32,7 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cloud-provider/volume/helpers"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 	"k8s.io/utils/mount"
 )
 

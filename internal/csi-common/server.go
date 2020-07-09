@@ -28,7 +28,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces

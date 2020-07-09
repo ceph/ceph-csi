@@ -23,7 +23,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/ceph/go-ceph/rados"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // listExcess is the number of false-positive key-value pairs we will

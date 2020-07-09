@@ -19,7 +19,7 @@ package util
 import (
 	"errors"
 
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // ForAllFunc is a unary predicate for visiting all cache entries

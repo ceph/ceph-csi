@@ -23,7 +23,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 func validateNonEmptyField(field, fieldName, structName string) error {
