@@ -21,8 +21,6 @@ import (
 	"errors"
 
 	"github.com/ceph/ceph-csi/internal/util"
-
-	klog "k8s.io/klog/v2"
 )
 
 // volumeIdentifier structure contains an association between the CSI VolumeID to its subvolume
@@ -96,7 +94,7 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 		return nil, err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "Found existing volume (%s) with subvolume name (%s) for request (%s)"),
+	util.DebugLog(ctx, "Found existing volume (%s) with subvolume name (%s) for request (%s)",
 		vid.VolumeID, vid.FsSubvolName, volOptions.RequestName)
 
 	return &vid, nil
@@ -177,7 +175,7 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 		return nil, err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "Generated Volume ID (%s) and subvolume name (%s) for request name (%s)"),
+	util.DebugLog(ctx, "Generated Volume ID (%s) and subvolume name (%s) for request name (%s)",
 		vid.VolumeID, vid.FsSubvolName, volOptions.RequestName)
 
 	return &vid, nil

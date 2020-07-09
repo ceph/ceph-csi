@@ -29,6 +29,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	klog "k8s.io/klog/v2"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces
@@ -113,7 +115,7 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, ids csi.Ident
 	if ns != nil {
 		csi.RegisterNodeServer(server, ns)
 	}
-	klog.V(1).Infof("Listening for connections on address: %#v", listener.Addr())
+	util.DefaultLog("Listening for connections on address: %#v", listener.Addr())
 	if metrics {
 		ho := strings.Split(hstOptions, ",")
 		if len(ho) != 3 {

@@ -116,7 +116,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			klog.Errorf(util.Log(ctx, "failed to create subvolume group %s, for the vol %s(%s)"), volOptions.SubvolumeGroup, string(volID), err)
 			return err
 		}
-		klog.V(4).Infof(util.Log(ctx, "cephfs: created subvolume group %s"), volOptions.SubvolumeGroup)
+		util.DebugLog(ctx, "cephfs: created subvolume group %s", volOptions.SubvolumeGroup)
 		clusterAdditionalInfo[volOptions.ClusterID].subVolumeGroupCreated = true
 	}
 
@@ -253,7 +253,7 @@ func purgeVolumeDeprecated(ctx context.Context, volID volumeID, adminCr *util.Cr
 		}
 	} else {
 		if !pathExists(volRootDeleting) {
-			klog.V(4).Infof(util.Log(ctx, "cephfs: volume %s not found, assuming it to be already deleted"), volID)
+			util.DebugLog(ctx, "cephfs: volume %s not found, assuming it to be already deleted", volID)
 			return nil
 		}
 	}
