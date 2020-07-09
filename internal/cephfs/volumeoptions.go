@@ -275,26 +275,24 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 	volOptions.RequestName = imageAttributes.RequestName
 	vid.FsSubvolName = imageAttributes.ImageName
 
-	if volOpt != nil {
-		if err = extractOptionalOption(&volOptions.Pool, "pool", volOpt); err != nil {
-			return nil, nil, err
-		}
+	if err = extractOptionalOption(&volOptions.Pool, "pool", volOpt); err != nil && volOpt != nil {
+		return nil, nil, err
+	}
 
-		if err = extractOptionalOption(&volOptions.KernelMountOptions, "kernelMountOptions", volOpt); err != nil {
-			return nil, nil, err
-		}
+	if err = extractOptionalOption(&volOptions.KernelMountOptions, "kernelMountOptions", volOpt); err != nil && volOpt != nil {
+		return nil, nil, err
+	}
 
-		if err = extractOptionalOption(&volOptions.FuseMountOptions, "fuseMountOptions", volOpt); err != nil {
-			return nil, nil, err
-		}
+	if err = extractOptionalOption(&volOptions.FuseMountOptions, "fuseMountOptions", volOpt); err != nil && volOpt != nil {
+		return nil, nil, err
+	}
 
-		if err = extractOptionalOption(&volOptions.SubvolumeGroup, "subvolumeGroup", volOpt); err != nil {
-			return nil, nil, err
-		}
+	if err = extractOptionalOption(&volOptions.SubvolumeGroup, "subvolumeGroup", volOpt); err != nil && volOpt != nil {
+		return nil, nil, err
+	}
 
-		if err = extractMounter(&volOptions.Mounter, volOpt); err != nil {
-			return nil, nil, err
-		}
+	if err = extractMounter(&volOptions.Mounter, volOpt); err != nil && volOpt != nil {
+		return nil, nil, err
 	}
 
 	volOptions.ProvisionVolume = true
