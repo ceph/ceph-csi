@@ -71,8 +71,7 @@ func getOMapValues(
 		return nil, err
 	}
 
-	klog.V(4).Infof(
-		util.Log(ctx, "got omap values: (pool=%q, namespace=%q, name=%q): %+v"),
+	util.DebugLog(ctx, "got omap values: (pool=%q, namespace=%q, name=%q): %+v",
 		poolName, namespace, oid, results)
 	return results, nil
 }
@@ -98,8 +97,7 @@ func removeMapKeys(
 			// the previous implementation of removing omap keys (via the cli)
 			// treated failure to find the omap as a non-error. Do so here to
 			// mimic the previous behavior.
-			klog.V(4).Infof(
-				util.Log(ctx, "when removing omap keys, omap not found (pool=%q, namespace=%q, name=%q): %+v"),
+			util.DebugLog(ctx, "when removing omap keys, omap not found (pool=%q, namespace=%q, name=%q): %+v",
 				poolName, namespace, oid, keys)
 		} else {
 			klog.Errorf(
@@ -108,8 +106,7 @@ func removeMapKeys(
 			return err
 		}
 	}
-	klog.V(4).Infof(
-		util.Log(ctx, "removed omap keys (pool=%q, namespace=%q, name=%q): %+v"),
+	util.DebugLog(ctx, "removed omap keys (pool=%q, namespace=%q, name=%q): %+v",
 		poolName, namespace, oid, keys)
 	return nil
 }
@@ -140,8 +137,7 @@ func setOMapKeys(
 			poolName, namespace, oid, pairs, err)
 		return err
 	}
-	klog.V(4).Infof(
-		util.Log(ctx, "set omap keys (pool=%q, namespace=%q, name=%q): %+v)"),
+	util.DebugLog(ctx, "set omap keys (pool=%q, namespace=%q, name=%q): %+v)",
 		poolName, namespace, oid, pairs)
 	return nil
 }

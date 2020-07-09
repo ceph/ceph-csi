@@ -215,7 +215,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 		return false, err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "found existing image (%s) with name (%s) for request (%s)"),
+	util.DebugLog(ctx, "found existing image (%s) with name (%s) for request (%s)",
 		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 	return true, nil
 }
@@ -316,7 +316,7 @@ func (rv *rbdVolume) Exists(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "found existing volume (%s) with image name (%s) for request (%s)"),
+	util.DebugLog(ctx, "found existing volume (%s) with image name (%s) for request (%s)",
 		rv.VolID, rv.RbdImageName, rv.RequestName)
 
 	return true, nil
@@ -353,7 +353,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 		return err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)"),
+	util.DebugLog(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)",
 		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return nil
@@ -431,7 +431,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 		return err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)"),
+	util.DebugLog(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)",
 		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return nil

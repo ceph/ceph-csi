@@ -86,7 +86,7 @@ func decodeObj(fpath, pattern string, file os.FileInfo, destObj interface{}) err
 	// #nosec
 	fp, err := os.Open(path.Join(fpath, file.Name()))
 	if err != nil {
-		klog.V(4).Infof("node-cache: open file: %s err %v", file.Name(), err)
+		DebugLogMsg("node-cache: open file: %s err %v", file.Name(), err)
 		return errDec
 	}
 	decoder := json.NewDecoder(fp)
@@ -117,7 +117,7 @@ func (nc *NodeCache) Create(identifier string, data interface{}) error {
 	if err = encoder.Encode(data); err != nil {
 		return fmt.Errorf("node-cache: failed to encode metadata for file: %s: %w", file, err)
 	}
-	klog.V(4).Infof("node-cache: successfully saved metadata into file: %s\n", file)
+	DebugLogMsg("node-cache: successfully saved metadata into file: %s\n", file)
 	return nil
 }
 
@@ -154,12 +154,12 @@ func (nc *NodeCache) Delete(identifier string) error {
 	err := os.Remove(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			klog.V(4).Infof("node-cache: cannot delete missing metadata storage file %s, assuming it's already deleted", file)
+			DebugLogMsg("node-cache: cannot delete missing metadata storage file %s, assuming it's already deleted", file)
 			return nil
 		}
 
 		return fmt.Errorf("node-cache: error removing file %s: %w", file, err)
 	}
-	klog.V(4).Infof("node-cache: successfully deleted metadata storage file at: %+v\n", file)
+	DebugLogMsg("node-cache: successfully deleted metadata storage file at: %+v\n", file)
 	return nil
 }

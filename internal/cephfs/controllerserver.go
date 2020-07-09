@@ -136,9 +136,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully created backing volume named %s for request name %s"),
+	util.DebugLog(ctx, "cephfs: successfully created backing volume named %s for request name %s",
 		vID.FsSubvolName, requestName)
-
 	volumeContext := req.GetParameters()
 	volumeContext["subvolumeName"] = vID.FsSubvolName
 	volume := &csi.Volume{
@@ -185,7 +184,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(ctx context.Context, req *csi
 	// mons may have changed since create volume,
 	// retrieve the latest mons and override old mons
 	if mon, secretsErr := util.GetMonValFromSecret(secrets); secretsErr == nil && len(mon) > 0 {
-		klog.V(3).Infof(util.Log(ctx, "overriding monitors [%q] with [%q] for volume %s"), ce.VolOptions.Monitors, mon, volID)
+		util.ExtendedLog(ctx, "overriding monitors [%q] with [%q] for volume %s", ce.VolOptions.Monitors, mon, volID)
 		ce.VolOptions.Monitors = mon
 	}
 
@@ -218,7 +217,7 @@ func (cs *ControllerServer) deleteVolumeDeprecated(ctx context.Context, req *csi
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully deleted volume %s"), volID)
+	util.DebugLog(ctx, "cephfs: successfully deleted volume %s", volID)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
@@ -312,7 +311,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully deleted volume %s"), volID)
+	util.DebugLog(ctx, "cephfs: successfully deleted volume %s", volID)
 
 	return &csi.DeleteVolumeResponse{}, nil
 }

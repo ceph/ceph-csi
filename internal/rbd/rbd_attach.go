@@ -161,15 +161,15 @@ func checkRbdNbdTools() bool {
 		// try to load the module
 		_, err = execCommand("modprobe", []string{moduleNbd})
 		if err != nil {
-			klog.V(3).Infof("rbd-nbd: nbd modprobe failed with error %v", err)
+			util.ExtendedLogMsg("rbd-nbd: nbd modprobe failed with error %v", err)
 			return false
 		}
 	}
 	if _, err := execCommand(rbdTonbd, []string{"--version"}); err != nil {
-		klog.V(3).Infof("rbd-nbd: running rbd-nbd --version failed with error %v", err)
+		util.ExtendedLogMsg("rbd-nbd: running rbd-nbd --version failed with error %v", err)
 		return false
 	}
-	klog.V(3).Infof("rbd-nbd tools were found.")
+	util.ExtendedLogMsg("rbd-nbd tools were found.")
 	return true
 }
 
@@ -205,7 +205,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 	isNbd := false
 	imagePath := volOpt.String()
 
-	klog.V(5).Infof(util.Log(ctx, "rbd: map mon %s"), volOpt.Monitors)
+	util.TraceLog(ctx, "rbd: map mon %s", volOpt.Monitors)
 
 	// Map options
 	mapOptions := []string{
@@ -255,7 +255,7 @@ func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdV
 			return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
 		}
 		if (volOptions.DisableInUseChecks) && (used) {
-			klog.V(2).Info(util.Log(ctx, "valid multi-node attach requested, ignoring watcher in-use result"))
+			util.UsefulLog(ctx, "valid multi-node attach requested, ignoring watcher in-use result")
 			return used, nil
 		}
 		return !used, nil
@@ -316,7 +316,7 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 			(strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, imageOrDeviceSpec)) ||
 				strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
 			// Devices found not to be mapped are treated as a successful detach
-			klog.V(5).Infof(util.Log(ctx, "image or device spec (%s) not mapped"), imageOrDeviceSpec)
+			util.TraceLog(ctx, "image or device spec (%s) not mapped", imageOrDeviceSpec)
 			return nil
 		}
 		return fmt.Errorf("rbd: unmap for spec (%s) failed (%v): (%s)", imageOrDeviceSpec, err, string(output))
