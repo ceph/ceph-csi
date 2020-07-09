@@ -111,21 +111,24 @@ def format_and_print_tables(arg, pvcs, table_rbd, table_cephfs):
     """
     if arg.pvcname != "":
         pvname = pvcs['spec']['volumeName']
-        if is_rbd_pv(arg, pvname):
-            format_table(arg, pvcs, table_rbd, True)
+        pvdata = get_pv_data(arg, pvname)
+        if is_rbd_pv(arg, pvname, pvdata):
+            format_table(arg, pvcs, pvdata, table_rbd, True)
         else:
-            format_table(arg, pvcs, table_cephfs, False)
+            format_table(arg, pvcs, pvdata, table_cephfs, False)
     else:
         for pvc in pvcs['items']:
             pvname = pvc['spec']['volumeName']
-            if is_rbd_pv(arg, pvname):
-                format_table(arg, pvc, table_rbd, True)
+            pvdata = get_pv_data(arg, pvname)
+            if is_rbd_pv(arg, pvname, pvdata):
+                format_table(arg, pvc, pvdata, table_rbd, True)
             else:
-                format_table(arg, pvc, table_cephfs, False)
+                format_table(arg, pvc, pvdata, table_cephfs, False)
     print(table_rbd)
     print(table_cephfs)
 
-def format_table(arg, pvc_data, table, is_rbd):
+#pylint: disable=too-many-locals
+def format_table(arg, pvc_data, pvdata, table, is_rbd):
     """
     format tables for pvc and image information
     """
@@ -151,18 +154,19 @@ def format_table(arg, pvc_data, table, is_rbd):
         table.add_row([pvcname, pvname, "", False,
                        False, False])
         return
+    # get volname prefix
+    volname_prefix = get_volname_prefix(arg, pvdata)
     # check image/subvolume details present rados omap
     pv_present, uuid_present = validate_volume_in_rados(arg, image_id, pvname, pool_name, is_rbd)
     present_in_cluster = False
     if is_rbd:
-        present_in_cluster = check_image_in_cluster(arg, image_id, pool_name)
+        present_in_cluster = check_image_in_cluster(arg, image_id, pool_name, volname_prefix)
     else:
-        subvolname = "csi-vol-%s" % image_id
+        subvolname = volname_prefix + image_id
         present_in_cluster = check_subvol_in_cluster(arg, subvolname)
-    image_name = "csi-vol-%s" % image_id
+    image_name = volname_prefix + image_id
     table.add_row([pvcname, pvname, image_name, pv_present,
                    uuid_present, present_in_cluster])
-
 
 def validate_volume_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
     """
@@ -209,11 +213,11 @@ def check_pv_name_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
         return False
     return True
 
-def check_image_in_cluster(arg, image_uuid, pool_name):
+def check_image_in_cluster(arg, image_uuid, pool_name, volname_prefix):
     """
     validate pvc information in ceph backend
     """
-    image = "csi-vol-%s" % image_uuid
+    image = volname_prefix + image_uuid
     cmd = ['rbd', 'info', image, "--pool", pool_name]
     if not arg.userkey:
         cmd += ["--id", arg.userid, "--key", arg.userkey]
@@ -469,11 +473,27 @@ def get_subvol_group(arg):
             subvol_group = data['cephFS']['subvolumeGroup']
     return subvol_group
 
-def is_rbd_pv(arg, pvname):
+def is_rbd_pv(arg, pvname, pvdata):
     """
     Checks if volume attributes in a pv has an attribute named 'fsname'.
     If it has, returns False else return True.
     """
+    if not pvdata:
+        if arg.debug:
+            print("failed to get pvdata for %s", pvname)
+        sys.exit()
+
+    volume_attr = pvdata['spec']['csi']['volumeAttributes']
+    key = 'fsName'
+    if key in volume_attr.keys():
+        return False
+    return True
+
+def get_pv_data(arg, pvname):
+    """
+    Returns pv data for a given pvname.
+    """
+    pvdata = {}
     cmd = [arg.command]
     if arg.kubeconfig != "":
         cmd += ["--config", arg.kubeconfig]
@@ -490,15 +510,27 @@ def is_rbd_pv(arg, pvname):
         sys.exit()
     try:
         pvdata = json.loads(stdout)
-        volume_attr = pvdata['spec']['csi']['volumeAttributes']
-        key = 'fsName'
-        if key in volume_attr.keys():
-            return False
     except ValueError as err:
-        if arg.degug:
+        if arg.debug:
             print("failed to get pv %s", err)
         sys.exit()
-    return True
+    return pvdata
+
+def get_volname_prefix(arg, pvdata):
+    """
+    Returns volname prefix stored in storage class/pv,
+    defaults to "csi-vol-"
+    """
+    volname_prefix = "csi-vol-"
+    if not pvdata:
+        if arg.debug:
+            print("failed to get pv data")
+        sys.exit()
+    volume_attr = pvdata['spec']['csi']['volumeAttributes']
+    key = 'volumeNamePrefix'
+    if key in volume_attr.keys():
+        volname_prefix = volume_attr[key]
+    return volname_prefix
 
 if __name__ == "__main__":
     ARGS = PARSER.parse_args()

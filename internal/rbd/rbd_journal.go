@@ -151,8 +151,8 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	// Fetch on-disk image attributes
 	err = vol.getImageInfo()
 	if err != nil {
-		var esnf ErrSnapNotFound
-		if errors.As(err, &esnf) {
+		var einf ErrImageNotFound
+		if errors.As(err, &einf) {
 			err = parentVol.deleteSnapshot(ctx, rbdSnap)
 			if err != nil {
 				if _, ok := err.(ErrSnapNotFound); !ok {
