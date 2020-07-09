@@ -22,7 +22,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 func createRBDClone(ctx context.Context, parentVol, cloneRbdVol *rbdVolume, snap *rbdSnapshot, cr *util.Credentials) error {

@@ -24,7 +24,7 @@ import (
 	"os/exec"
 
 	"github.com/ceph/go-ceph/rados"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // InvalidPoolID used to denote an invalid pool

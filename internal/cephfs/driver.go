@@ -17,7 +17,7 @@ limitations under the License.
 package cephfs
 
 import (
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"

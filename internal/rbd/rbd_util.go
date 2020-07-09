@@ -39,7 +39,7 @@ import (
 	"github.com/pborman/uuid"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 const (

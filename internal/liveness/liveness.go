@@ -27,7 +27,7 @@ import (
 	"github.com/kubernetes-csi/csi-lib-utils/rpc"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 var (

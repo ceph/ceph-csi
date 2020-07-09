@@ -29,7 +29,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // K8sCMCache to store metadata

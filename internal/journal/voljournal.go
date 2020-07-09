@@ -27,7 +27,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/pborman/uuid"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // Length of string representation of uuid, xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx is 36 bytes
