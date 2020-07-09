@@ -96,19 +96,19 @@ jobs:
         - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
 
     - stage: e2e testing
-      name: CephFS with kubernetes v1.17.5
+      name: CephFS with kubernetes v1.17.8
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.17.5 --test-cephfs=true
-          --test-rbd=false|| travis_terminate 1;
+        - scripts/travis-functest.sh v1.17.8 --test-cephfs=true
+          --test-rbd=false || travis_terminate 1;
 
     - stage: e2e testing
-      name: RBD with kubernetes v1.17.5
+      name: RBD with kubernetes v1.17.8
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.17.5 --test-cephfs=false
+        - scripts/travis-functest.sh v1.17.8 --test-cephfs=false
           --test-rbd=true || travis_terminate 1;
 
     - stage: e2e testing
