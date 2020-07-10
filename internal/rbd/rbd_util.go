@@ -39,7 +39,7 @@ import (
 	"github.com/pborman/uuid"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 const (
@@ -194,7 +194,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 			return fmt.Errorf("failed to set data pool: %w", err)
 		}
 	}
-	klog.V(4).Infof(util.Log(ctx, logMsg),
+	util.DebugLog(ctx, logMsg,
 		pOpts, volSzMiB, pOpts.imageFeatureSet.Names(), pOpts.Monitors)
 
 	if pOpts.imageFeatureSet != 0 {
@@ -285,7 +285,7 @@ func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (boo
 	var output string
 	var cmd []byte
 
-	klog.V(4).Infof(util.Log(ctx, "rbd: status %s using mon %s"), pOpts, pOpts.Monitors)
+	util.DebugLog(ctx, "rbd: status %s using mon %s", pOpts, pOpts.Monitors)
 	args := []string{"status", pOpts.String(), "-m", pOpts.Monitors, "--id", cr.ID, "--keyfile=" + cr.KeyFile}
 	cmd, err := execCommand("rbd", args)
 	output = string(cmd)
@@ -305,7 +305,7 @@ func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (boo
 	}
 
 	if strings.Contains(output, imageWatcherStr) {
-		klog.V(4).Infof(util.Log(ctx, "rbd: watchers on %s: %s"), pOpts, output)
+		util.DebugLog(ctx, "rbd: watchers on %s: %s", pOpts, output)
 		return true, output, nil
 	}
 	klog.Warningf(util.Log(ctx, "rbd: no watchers on %s"), pOpts)
@@ -319,7 +319,7 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 	var output []byte
 	args := []string{"rbd", "task", "add"}
 	args = append(args, arg...)
-	klog.V(4).Infof(util.Log(ctx, "executing %v for image (%s) using mon %s, pool %s"), args, pOpts.RbdImageName, pOpts.Monitors, pOpts.Pool)
+	util.DebugLog(ctx, "executing %v for image (%s) using mon %s, pool %s", args, pOpts.RbdImageName, pOpts.Monitors, pOpts.Pool)
 	supported := true
 	output, err := execCommand("ceph", args)
 
@@ -348,7 +348,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		return err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "rbd: delete %s using mon %s, pool %s"), image, pOpts.Monitors, pOpts.Pool)
+	util.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
 
 	err = pOpts.openIoctx()
 	if err != nil {
@@ -803,7 +803,7 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		rbdVol.imageFeatureSet = librbd.FeatureSetFromNames(arr)
 	}
 
-	klog.V(3).Infof(util.Log(ctx, "setting disableInUseChecks on rbd volume to: %v"), disableInUseChecks)
+	util.ExtendedLog(ctx, "setting disableInUseChecks on rbd volume to: %v", disableInUseChecks)
 	rbdVol.DisableInUseChecks = disableInUseChecks
 
 	rbdVol.Mounter, ok = volOptions["mounter"]
@@ -860,7 +860,7 @@ func (rv *rbdVolume) hasSnapshotFeature() bool {
 }
 
 func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap create %s using mon %s"), pOpts, pOpts.Monitors)
+	util.DebugLog(ctx, "rbd: snap create %s using mon %s", pOpts, pOpts.Monitors)
 	image, err := rv.open()
 	if err != nil {
 		return err
@@ -872,7 +872,7 @@ func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 }
 
 func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
-	klog.V(4).Infof(util.Log(ctx, "rbd: snap rm %s using mon %s"), pOpts, pOpts.Monitors)
+	util.DebugLog(ctx, "rbd: snap rm %s using mon %s", pOpts, pOpts.Monitors)
 	image, err := rv.open()
 	if err != nil {
 		return err
@@ -893,7 +893,7 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *rbdSnapshot) error {
 	image := rv.RbdImageName
 	var err error
-	klog.V(4).Infof(util.Log(ctx, "rbd: clone %s %s using mon %s"), pSnapOpts, image, rv.Monitors)
+	util.DebugLog(ctx, "rbd: clone %s %s using mon %s", pSnapOpts, image, rv.Monitors)
 
 	options := librbd.NewRbdImageOptions()
 	defer options.Destroy()
@@ -1158,7 +1158,7 @@ func (rv *rbdVolume) checkRbdImageEncrypted(ctx context.Context) (string, error)
 	}
 
 	encrypted := strings.TrimSpace(value)
-	klog.V(4).Infof(util.Log(ctx, "image %s encrypted state metadata reports %q"), rv, encrypted)
+	util.DebugLog(ctx, "image %s encrypted state metadata reports %q", rv, encrypted)
 	return encrypted, nil
 }
 

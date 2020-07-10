@@ -27,7 +27,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/pborman/uuid"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // Length of string representation of uuid, xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx is 36 bytes
@@ -449,7 +449,7 @@ func reserveOMapName(ctx context.Context, monitors string, cr *util.Credentials,
 			if errors.As(err, &eoe) {
 				attempt++
 				// try again with a different uuid, for maxAttempts tries
-				klog.V(4).Infof(util.Log(ctx, "uuid (%s) conflict detected, retrying (attempt %d of %d)"),
+				util.DebugLog(ctx, "uuid (%s) conflict detected, retrying (attempt %d of %d)",
 					iterUUID, attempt, maxAttempts)
 				continue
 			}

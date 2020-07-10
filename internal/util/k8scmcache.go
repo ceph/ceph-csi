@@ -29,7 +29,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // K8sCMCache to store metadata
@@ -122,7 +122,7 @@ func (k8scm *K8sCMCache) ForAll(pattern string, destObj interface{}, f ForAllFun
 func (k8scm *K8sCMCache) Create(identifier string, data interface{}) error {
 	cm, err := k8scm.getMetadataCM(identifier)
 	if cm != nil && err == nil {
-		klog.V(4).Infof("k8s-cm-cache: configmap %s already exists, skipping configmap creation", identifier)
+		DebugLogMsg("k8s-cm-cache: configmap %s already exists, skipping configmap creation", identifier)
 		return nil
 	}
 	dataJSON, err := json.Marshal(data)
@@ -144,13 +144,13 @@ func (k8scm *K8sCMCache) Create(identifier string, data interface{}) error {
 	_, err = k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
 	if err != nil {
 		if apierrs.IsAlreadyExists(err) {
-			klog.V(4).Infof("k8s-cm-cache: configmap %s already exists", identifier)
+			DebugLogMsg("k8s-cm-cache: configmap %s already exists", identifier)
 			return nil
 		}
 		return fmt.Errorf("k8s-cm-cache: couldn't persist %s metadata as configmap: %w", identifier, err)
 	}
 
-	klog.V(4).Infof("k8s-cm-cache: configmap %s successfully created", identifier)
+	DebugLogMsg("k8s-cm-cache: configmap %s successfully created", identifier)
 	return nil
 }
 
@@ -176,12 +176,12 @@ func (k8scm *K8sCMCache) Delete(identifier string) error {
 	err := k8scm.Client.CoreV1().ConfigMaps(k8scm.Namespace).Delete(context.TODO(), identifier, metav1.DeleteOptions{})
 	if err != nil {
 		if apierrs.IsNotFound(err) {
-			klog.V(4).Infof("k8s-cm-cache: cannot delete missing metadata configmap %s, assuming it's already deleted", identifier)
+			DebugLogMsg("k8s-cm-cache: cannot delete missing metadata configmap %s, assuming it's already deleted", identifier)
 			return nil
 		}
 
 		return fmt.Errorf("k8s-cm-cache: couldn't delete metadata configmap %s: %w", identifier, err)
 	}
-	klog.V(4).Infof("k8s-cm-cache: successfully deleted metadata configmap %s", identifier)
+	DebugLogMsg("k8s-cm-cache: successfully deleted metadata configmap %s", identifier)
 	return nil
 }

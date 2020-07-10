@@ -133,7 +133,7 @@ var _ = Describe("cephfs", func() {
 	})
 
 	AfterEach(func() {
-		if !testRBD {
+		if !testCephFS {
 			Skip("Skipping CephFS E2E")
 		}
 		if CurrentGinkgoTestDescription().Failed {

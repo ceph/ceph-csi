@@ -27,7 +27,7 @@ import (
 	"github.com/kubernetes-csi/csi-lib-utils/rpc"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 var (
@@ -42,7 +42,7 @@ func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	klog.V(5).Info("Sending probe request to CSI driver")
+	util.TraceLogMsg("Sending probe request to CSI driver")
 	ready, err := rpc.Probe(ctx, csiConn)
 	if err != nil {
 		liveness.Set(0)
@@ -56,7 +56,7 @@ func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 		return
 	}
 	liveness.Set(1)
-	klog.V(3).Infof("Health check succeeded")
+	util.ExtendedLogMsg("Health check succeeded")
 }
 
 func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration) {
@@ -84,7 +84,7 @@ func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration
 
 // Run starts liveness collection and prometheus endpoint
 func Run(conf *util.Config) {
-	klog.V(3).Infof("Liveness Running")
+	util.ExtendedLogMsg("Liveness Running")
 
 	// start liveness collection
 	go recordLiveness(conf.Endpoint, conf.DriverName, conf.PollTime, conf.PoolTimeout)

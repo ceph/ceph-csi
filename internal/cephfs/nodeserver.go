@@ -29,7 +29,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // NodeServer struct of ceph CSI driver with supported methods of CSI
@@ -121,7 +121,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	if isMnt {
-		klog.V(4).Infof(util.Log(ctx, "cephfs: volume %s is already mounted to %s, skipping"), volID, stagingTargetPath)
+		util.DebugLog(ctx, "cephfs: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
@@ -130,7 +130,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, err
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully mounted volume %s to %s"), volID, stagingTargetPath)
+	util.DebugLog(ctx, "cephfs: successfully mounted volume %s to %s", volID, stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
@@ -152,7 +152,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "cephfs: mounting volume %s with %s"), volID, m.name())
+	util.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, m.name())
 
 	readOnly := "ro"
 	fuseMountOptions := strings.Split(volOptions.FuseMountOptions, ",")
@@ -234,7 +234,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	}
 
 	if isMnt {
-		klog.V(4).Infof(util.Log(ctx, "cephfs: volume %s is already bind-mounted to %s"), volID, targetPath)
+		util.DebugLog(ctx, "cephfs: volume %s is already bind-mounted to %s", volID, targetPath)
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
@@ -245,7 +245,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully bind-mounted volume %s to %s"), volID, targetPath)
+	util.DebugLog(ctx, "cephfs: successfully bind-mounted volume %s to %s", volID, targetPath)
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }
@@ -276,7 +276,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully unbinded volume %s from %s"), req.GetVolumeId(), targetPath)
+	util.DebugLog(ctx, "cephfs: successfully unbinded volume %s from %s", req.GetVolumeId(), targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
@@ -301,7 +301,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	klog.V(4).Infof(util.Log(ctx, "cephfs: successfully unmounted volume %s from %s"), req.GetVolumeId(), stagingTargetPath)
+	util.DebugLog(ctx, "cephfs: successfully unmounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }

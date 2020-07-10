@@ -29,7 +29,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/klog"
 )
 
 type volumeID string
@@ -45,7 +44,7 @@ func execCommand(ctx context.Context, program string, args ...string) (stdout, s
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
 
-	klog.V(4).Infof(util.Log(ctx, "cephfs: EXEC %s %s"), program, sanitizedArgs)
+	util.DebugLog(ctx, "cephfs: EXEC %s %s", program, sanitizedArgs)
 
 	if err := cmd.Run(); err != nil {
 		if cmd.Process == nil {

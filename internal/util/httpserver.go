@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // ValidateURL validates the url

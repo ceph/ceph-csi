@@ -29,7 +29,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 const (
@@ -85,10 +85,10 @@ func loadAvailableMounters(conf *util.Config) error {
 		}
 
 		if conf.ForceKernelCephFS || util.CheckKernelSupport(release, quotaSupport) {
-			klog.V(1).Infof("loaded mounter: %s", volumeMounterKernel)
+			util.DefaultLog("loaded mounter: %s", volumeMounterKernel)
 			availableMounters = append(availableMounters, volumeMounterKernel)
 		} else {
-			klog.V(1).Infof("kernel version < 4.17 might not support quota feature, hence not loading kernel client")
+			util.DefaultLog("kernel version < 4.17 might not support quota feature, hence not loading kernel client")
 		}
 	}
 
@@ -96,7 +96,7 @@ func loadAvailableMounters(conf *util.Config) error {
 	if err != nil {
 		klog.Errorf("failed to run ceph-fuse %v", err)
 	} else {
-		klog.V(1).Infof("loaded mounter: %s", volumeMounterFuse)
+		util.DefaultLog("loaded mounter: %s", volumeMounterFuse)
 		availableMounters = append(availableMounters, volumeMounterFuse)
 	}
 
@@ -131,7 +131,7 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 	if chosenMounter == "" {
 		// Otherwise pick whatever is left
 		chosenMounter = availableMounters[0]
-		klog.V(4).Infof("requested mounter: %s, chosen mounter: %s", wantMounter, chosenMounter)
+		util.DebugLogMsg("requested mounter: %s, chosen mounter: %s", wantMounter, chosenMounter)
 	}
 
 	// Create the mounter

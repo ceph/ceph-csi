@@ -17,11 +17,12 @@ package rbd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	"github.com/pkg/errors"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 func createRBDClone(ctx context.Context, parentVol, cloneRbdVol *rbdVolume, snap *rbdSnapshot, cr *util.Credentials) error {
@@ -36,7 +37,7 @@ func createRBDClone(ctx context.Context, parentVol, cloneRbdVol *rbdVolume, snap
 	err = cloneRbdVol.cloneRbdImageFromSnapshot(ctx, snap)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to clone rbd image %s from snapshot %s: %v"), cloneRbdVol.RbdImageName, snap.RbdSnapName, err)
-		err = errors.Errorf("failed to clone rbd image %s from snapshot %s: %v", cloneRbdVol.RbdImageName, snap.RbdSnapName, err)
+		err = fmt.Errorf("failed to clone rbd image %s from snapshot %s: %w", cloneRbdVol.RbdImageName, snap.RbdSnapName, err)
 	}
 	errSnap := parentVol.deleteSnapshot(ctx, snap)
 	if errSnap != nil {
@@ -64,14 +65,16 @@ func createRBDClone(ctx context.Context, parentVol, cloneRbdVol *rbdVolume, snap
 func cleanUpSnapshot(ctx context.Context, parentVol *rbdVolume, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) error {
 	err := parentVol.deleteSnapshot(ctx, rbdSnap)
 	if err != nil {
-		if _, ok := err.(ErrSnapNotFound); !ok {
+		var esnf ErrSnapNotFound
+		if !errors.As(err, &esnf) {
 			klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), err)
 			return err
 		}
 	}
 	err = deleteImage(ctx, rbdVol, cr)
 	if err != nil {
-		if _, ok := err.(ErrImageNotFound); !ok {
+		var einf ErrImageNotFound
+		if !errors.As(err, &einf) {
 			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, err)
 			return err
 		}

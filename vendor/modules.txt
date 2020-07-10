@@ -27,6 +27,8 @@ github.com/docker/spdystream
 github.com/docker/spdystream/spdy
 # github.com/evanphx/json-patch v4.5.0+incompatible
 github.com/evanphx/json-patch
+# github.com/go-logr/logr v0.2.0
+github.com/go-logr/logr
 # github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
@@ -640,6 +642,8 @@ k8s.io/csi-translation-lib
 k8s.io/csi-translation-lib/plugins
 # k8s.io/klog v1.0.0
 k8s.io/klog
+# k8s.io/klog/v2 v2.3.0
+k8s.io/klog/v2
 # k8s.io/kube-openapi v0.0.0-20200121204235-bf4fb3bd569c
 k8s.io/kube-openapi/pkg/util/proto
 # k8s.io/kube-scheduler v0.0.0 => k8s.io/kube-scheduler v0.18.0

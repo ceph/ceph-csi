@@ -30,7 +30,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 func parseEndpoint(ep string) (string, string, error) {
@@ -156,13 +156,13 @@ func contextIDInjector(ctx context.Context, req interface{}, info *grpc.UnarySer
 }
 
 func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	klog.V(3).Infof(util.Log(ctx, "GRPC call: %s"), info.FullMethod)
-	klog.V(5).Infof(util.Log(ctx, "GRPC request: %s"), protosanitizer.StripSecrets(req))
+	util.ExtendedLog(ctx, "GRPC call: %s", info.FullMethod)
+	util.TraceLog(ctx, "GRPC request: %s", protosanitizer.StripSecrets(req))
 	resp, err := handler(ctx, req)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "GRPC error: %v"), err)
 	} else {
-		klog.V(5).Infof(util.Log(ctx, "GRPC response: %s"), protosanitizer.StripSecrets(resp))
+		util.TraceLog(ctx, "GRPC response: %s", protosanitizer.StripSecrets(resp))
 	}
 	return resp, err
 }
