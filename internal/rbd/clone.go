@@ -51,15 +51,13 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		RbdSnapName: rv.RbdImageName,
 		Pool:        rv.Pool,
 	}
-	var einf ErrImageNotFound
-	var esnf ErrSnapNotFound
 	// check if cloned image exists
 	err := rv.getImageInfo()
 	if err == nil {
 		// check if do we have temporary snapshot on temporary cloned image
 		sErr := tempClone.checkSnapExists(snap)
 		if sErr != nil {
-			if errors.As(err, &esnf) {
+			if errors.Is(err, ErrSnapNotFound) {
 				return true, nil
 			}
 			return false, err
@@ -70,14 +68,14 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		}
 		return false, err
 	}
-	if !errors.As(err, &einf) {
+	if !errors.Is(err, ErrImageNotFound) {
 		// return error if its not image not found
 		return false, err
 	}
 
 	err = tempClone.checkSnapExists(snap)
 	if err != nil {
-		if errors.As(err, &esnf) {
+		if errors.Is(err, ErrSnapNotFound) {
 			// check temporary image needs flatten, if yes add task to flatten the
 			// temporary clone
 			err = tempClone.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
@@ -91,7 +89,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 				return false, err
 			}
 			return true, nil
-		} else if !errors.As(err, &einf) {
+		} else if !errors.Is(err, ErrImageNotFound) {
 			// any error other than image not found return error
 			return false, err
 		}
@@ -122,7 +120,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		// create new resources for clearner approach
 		err = parentVol.deleteSnapshot(ctx, snap)
 	}
-	if errors.As(err, &esnf) {
+	if errors.Is(err, ErrSnapNotFound) {
 		return false, nil
 	}
 	return false, err
@@ -164,7 +162,6 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		errFlatten error
 		err        error
 	)
-	var efip ErrFlattenInProgress
 	var j = &journal.Connection{}
 
 	j, err = volJournal.Connect(rv.Monitors, rv.conn.Creds)
@@ -181,7 +178,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 
 	defer func() {
 		if err != nil || errFlatten != nil {
-			if !errors.Is(errFlatten, &efip) {
+			if !errors.Is(errFlatten, ErrFlattenInProgress) {
 				// cleanup snapshot
 				cErr := cleanUpSnapshot(ctx, parentVol, tempSnap, tempClone, rv.conn.Creds)
 				if cErr != nil {
@@ -247,8 +244,7 @@ func (rv *rbdVolume) flattenCloneImage(ctx context.Context) error {
 		return tempClone.flattenRbdImage(ctx, tempClone.conn.Creds, false, hardLimit, softLimit)
 	}
 	if err != nil {
-		var einf ErrImageNotFound
-		if !errors.As(err, &einf) {
+		if !errors.Is(err, ErrImageNotFound) {
 			return err
 		}
 	}
