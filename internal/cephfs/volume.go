@@ -19,7 +19,6 @@ package cephfs
 import (
 	"context"
 	"fmt"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -40,16 +39,12 @@ var (
 	inValidCommmand = "no valid command found"
 )
 
-func getCephRootVolumePathLocalDeprecated(volID volumeID) string {
-	return path.Join(getCephRootPathLocalDeprecated(volID), "csi-volumes", string(volID))
-}
+const (
+	cephEntityClientPrefix = "client."
+)
 
 func getVolumeRootPathCephDeprecated(volID volumeID) string {
 	return path.Join("/", "csi-volumes", string(volID))
-}
-
-func getCephRootPathLocalDeprecated(volID volumeID) string {
-	return fmt.Sprintf("%s/controller/volumes/root-%s", PluginFolder, string(volID))
 }
 
 func getVolumeNotFoundErrorString(volID volumeID) string {
@@ -199,70 +194,6 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 	}
 	clusterAdditionalInfo[volOptions.ClusterID].resizeSupported = false
 	return createVolume(ctx, volOptions, cr, volID, bytesQuota)
-}
-
-func mountCephRoot(ctx context.Context, volID volumeID, volOptions *volumeOptions, adminCr *util.Credentials) error {
-	cephRoot := getCephRootPathLocalDeprecated(volID)
-
-	// Root path is not set for dynamically provisioned volumes
-	// Access to cephfs's / is required
-	volOptions.RootPath = "/"
-
-	if err := util.CreateMountPoint(cephRoot); err != nil {
-		return err
-	}
-
-	m, err := newMounter(volOptions)
-	if err != nil {
-		return fmt.Errorf("failed to create mounter: %v", err)
-	}
-
-	if err = m.mount(ctx, cephRoot, adminCr, volOptions); err != nil {
-		return fmt.Errorf("error mounting ceph root: %v", err)
-	}
-
-	return nil
-}
-
-func unmountCephRoot(ctx context.Context, volID volumeID) {
-	cephRoot := getCephRootPathLocalDeprecated(volID)
-
-	if err := unmountVolume(ctx, cephRoot); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to unmount %s with error %s"), cephRoot, err)
-	} else {
-		if err := os.Remove(cephRoot); err != nil {
-			klog.Errorf(util.Log(ctx, "failed to remove %s with error %s"), cephRoot, err)
-		}
-	}
-}
-
-func purgeVolumeDeprecated(ctx context.Context, volID volumeID, adminCr *util.Credentials, volOptions *volumeOptions) error {
-	if err := mountCephRoot(ctx, volID, volOptions, adminCr); err != nil {
-		return err
-	}
-	defer unmountCephRoot(ctx, volID)
-
-	var (
-		volRoot         = getCephRootVolumePathLocalDeprecated(volID)
-		volRootDeleting = volRoot + "-deleting"
-	)
-
-	if pathExists(volRoot) {
-		if err := os.Rename(volRoot, volRootDeleting); err != nil {
-			return fmt.Errorf("couldn't mark volume %s for deletion: %v", volID, err)
-		}
-	} else {
-		if !pathExists(volRootDeleting) {
-			util.DebugLog(ctx, "cephfs: volume %s not found, assuming it to be already deleted", volID)
-			return nil
-		}
-	}
-
-	if err := os.RemoveAll(volRootDeleting); err != nil {
-		return fmt.Errorf("failed to delete volume %s: %v", volID, err)
-	}
-
-	return nil
 }
 
 func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volOptions *volumeOptions) error {

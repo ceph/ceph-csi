@@ -21,7 +21,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -75,11 +74,6 @@ func execCommandJSON(ctx context.Context, v interface{}, program string, args ..
 	}
 
 	return nil
-}
-
-func pathExists(p string) bool {
-	_, err := os.Stat(p)
-	return err == nil
 }
 
 // Controller service request validation

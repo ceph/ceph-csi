@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
@@ -155,23 +154,16 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	isLegacyVolume := isLegacyVolumeID(volID)
-	volOptions, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks, isLegacyVolume)
+	volOptions, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// get rbd image name from the volume journal
 	// for static volumes, the image name is actually the volume ID itself
-	// for legacy volumes (v1.0.0), the image name can be found in the staging path
 	switch {
 	case staticVol:
 		volOptions.RbdImageName = volID
-	case isLegacyVolume:
-		volOptions.RbdImageName, err = getLegacyVolumeName(stagingTargetPath)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
 	default:
 		var vi util.CSIIdentifier
 		var imageAttributes *journal.ImageAttributes
@@ -419,30 +411,6 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	util.DebugLog(ctx, "rbd: successfully mounted stagingPath %s to targetPath %s", stagingPath, targetPath)
 	return &csi.NodePublishVolumeResponse{}, nil
-}
-
-func getLegacyVolumeName(mountPath string) (string, error) {
-	var volName string
-
-	if strings.HasSuffix(mountPath, "/globalmount") {
-		s := strings.Split(strings.TrimSuffix(mountPath, "/globalmount"), "/")
-		volName = s[len(s)-1]
-		return volName, nil
-	}
-
-	if strings.HasSuffix(mountPath, "/mount") {
-		s := strings.Split(strings.TrimSuffix(mountPath, "/mount"), "/")
-		volName = s[len(s)-1]
-		return volName, nil
-	}
-
-	// get volume name for block volume
-	s := strings.Split(mountPath, "/")
-	if len(s) == 0 {
-		return "", fmt.Errorf("rbd: malformed value of stage target path: %s", mountPath)
-	}
-	volName = s[len(s)-1]
-	return volName, nil
 }
 
 func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeStageVolumeRequest, staticVol bool, stagingPath, devicePath string) (bool, error) {
