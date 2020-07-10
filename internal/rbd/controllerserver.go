@@ -40,7 +40,6 @@ const (
 // controller server spec.
 type ControllerServer struct {
 	*csicommon.DefaultControllerServer
-	MetadataStore util.CachePersister
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
 	VolumeLocks *util.VolumeLocks
@@ -100,7 +99,7 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 	}
 
 	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
-	rbdVol, err := genVolFromVolumeOptions(ctx, req.GetParameters(), req.GetSecrets(), (isMultiNode && isBlock), false)
+	rbdVol, err := genVolFromVolumeOptions(ctx, req.GetParameters(), req.GetSecrets(), (isMultiNode && isBlock))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -418,60 +417,6 @@ func (cs *ControllerServer) checkSnapshotSource(ctx context.Context, req *csi.Cr
 	return rbdSnap, nil
 }
 
-// DeleteLegacyVolume deletes a volume provisioned using version 1.0.0 of the plugin
-func (cs *ControllerServer) DeleteLegacyVolume(ctx context.Context, req *csi.DeleteVolumeRequest, cr *util.Credentials) (*csi.DeleteVolumeResponse, error) {
-	volumeID := req.GetVolumeId()
-
-	if cs.MetadataStore == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "missing metadata store configuration to"+
-			" proceed with deleting legacy volume ID (%s)", volumeID)
-	}
-
-	if acquired := cs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volumeID)
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
-	}
-	defer cs.VolumeLocks.Release(volumeID)
-
-	rbdVol := &rbdVolume{}
-	if err := cs.MetadataStore.Get(volumeID, rbdVol); err != nil {
-		if err, ok := err.(*util.CacheEntryNotFound); ok {
-			klog.Warningf(util.Log(ctx, "metadata for legacy volume %s not found, assuming the volume to be already deleted (%v)"), volumeID, err)
-			return &csi.DeleteVolumeResponse{}, nil
-		}
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	// Fill up Monitors
-	if err := updateMons(rbdVol, nil, req.GetSecrets()); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	defer rbdVol.Destroy()
-
-	err := rbdVol.Connect(cr)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	// Update rbdImageName as the VolName when dealing with version 1 volumes
-	rbdVol.RbdImageName = rbdVol.VolName
-
-	util.DebugLog(ctx, "deleting legacy volume %s", rbdVol.VolName)
-	if err := deleteImage(ctx, rbdVol, cr); err != nil {
-		// TODO: can we detect "already deleted" situations here and proceed?
-		klog.Errorf(util.Log(ctx, "failed to delete legacy rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	if err := cs.MetadataStore.Delete(volumeID); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	return &csi.DeleteVolumeResponse{}, nil
-}
-
 // DeleteVolume deletes the volume in backend and removes the volume metadata
 // from store
 // TODO: make this function less complex
@@ -508,19 +453,6 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		var epnf util.ErrPoolNotFound
 		if errors.As(err, &epnf) {
 			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), volumeID, err)
-			return &csi.DeleteVolumeResponse{}, nil
-		}
-
-		// If error is ErrInvalidVolID it could be a version 1.0.0 or lower volume, attempt
-		// to process it as such
-		var eivi ErrInvalidVolID
-		if errors.As(err, &eivi) {
-			if isLegacyVolumeID(volumeID) {
-				util.UsefulLog(ctx, "attempting deletion of potential legacy volume (%s)", volumeID)
-				return cs.DeleteLegacyVolume(ctx, req, cr)
-			}
-
-			// Consider unknown volumeID as a successfully deleted volume
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 

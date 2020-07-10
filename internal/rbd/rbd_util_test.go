@@ -23,24 +23,6 @@ import (
 	librbd "github.com/ceph/go-ceph/rbd"
 )
 
-func TestIsLegacyVolumeID(t *testing.T) {
-	tests := []struct {
-		volID    string
-		isLegacy bool
-	}{
-		{"prefix-bda37d42-9979-420f-9389-74362f3f98f6", false},
-		{"csi-rbd-vo-f997e783-ff00-48b0-8cc7-30cb36c3df3d", false},
-		{"csi-rbd-vol-this-is-clearly-not-a-valid-UUID----", false},
-		{"csi-rbd-vol-b82f27de-3b3a-43f2-b5e7-9f8d0aad04e9", true},
-	}
-
-	for _, test := range tests {
-		if got := isLegacyVolumeID(test.volID); got != test.isLegacy {
-			t.Errorf("isLegacyVolumeID(%s) = %t, want %t", test.volID, got, test.isLegacy)
-		}
-	}
-}
-
 func TestHasSnapshotFeature(t *testing.T) {
 	tests := []struct {
 		features   string

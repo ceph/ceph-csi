@@ -36,7 +36,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/pborman/uuid"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
 	klog "k8s.io/klog/v2"
@@ -698,66 +697,7 @@ func getMonsAndClusterID(ctx context.Context, options map[string]string) (monito
 	return
 }
 
-// isLegacyVolumeID checks if passed in volume ID string conforms to volume ID naming scheme used
-// by the version 1.0.0 (legacy) of the plugin, and returns true if found to be conforming
-func isLegacyVolumeID(volumeID string) bool {
-	// Version 1.0.0 volumeID format: "csi-rbd-vol-" + UUID string
-	//    length: 12 ("csi-rbd-vol-") + 36 (UUID string)
-
-	// length check
-	if len(volumeID) != 48 {
-		return false
-	}
-
-	// Header check
-	if !strings.HasPrefix(volumeID, "csi-rbd-vol-") {
-		return false
-	}
-
-	// Trailer UUID format check
-	if uuid.Parse(volumeID[12:]) == nil {
-		return false
-	}
-
-	return true
-}
-
-// upadateMons function is used to update the rbdVolume.Monitors for volumes that were provisioned
-// using the 1.0.0 version (legacy) of the plugin.
-func updateMons(rbdVol *rbdVolume, options, credentials map[string]string) error {
-	var ok bool
-
-	// read monitors and MonValueFromSecret from options, else check passed in rbdVolume for
-	// MonValueFromSecret key in credentials
-	monInSecret := ""
-	if options != nil {
-		if rbdVol.Monitors, ok = options["monitors"]; !ok {
-			rbdVol.Monitors = ""
-		}
-		if monInSecret, ok = options["monValueFromSecret"]; !ok {
-			monInSecret = ""
-		}
-	} else {
-		monInSecret = rbdVol.MonValueFromSecret
-	}
-
-	// if monitors are present in secrets and we have the credentials, use monitors from the
-	// credentials overriding monitors from other sources
-	if monInSecret != "" && credentials != nil {
-		monsFromSecret, ok := credentials[monInSecret]
-		if ok {
-			rbdVol.Monitors = monsFromSecret
-		}
-	}
-
-	if rbdVol.Monitors == "" {
-		return errors.New("either monitors or monValueFromSecret must be set")
-	}
-
-	return nil
-}
-
-func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[string]string, disableInUseChecks, isLegacyVolume bool) (*rbdVolume, error) {
+func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[string]string, disableInUseChecks bool) (*rbdVolume, error) {
 	var (
 		ok         bool
 		err        error
@@ -776,16 +716,9 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		rbdVol.NamePrefix = namePrefix
 	}
 
-	if isLegacyVolume {
-		err = updateMons(rbdVol, volOptions, credentials)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		rbdVol.Monitors, rbdVol.ClusterID, err = getMonsAndClusterID(ctx, volOptions)
-		if err != nil {
-			return nil, err
-		}
+	rbdVol.Monitors, rbdVol.ClusterID, err = getMonsAndClusterID(ctx, volOptions)
+	if err != nil {
+		return nil, err
 	}
 
 	// if no image features is provided, it results in empty string

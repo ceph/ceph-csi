@@ -90,10 +90,6 @@ spec:
                   fieldPath: status.podIP
             - name: DRIVER_NAME
               value: {{ .Values.driverName }}
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
             - name: NODE_ID
               valueFrom:
                 fieldRef:

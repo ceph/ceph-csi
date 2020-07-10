@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -79,17 +78,13 @@ var (
 
 // Config holds the parameters list which can be configured
 type Config struct {
-	Vtype           string // driver type [rbd|cephfs|liveness]
-	Endpoint        string // CSI endpoint
-	DriverName      string // name of the driver
-	NodeID          string // node id
-	InstanceID      string // unique ID distinguishing this instance of Ceph CSI
-	MetadataStorage string // metadata persistence method [node|k8s_configmap]
-	PluginPath      string // location of cephcsi plugin
-	DomainLabels    string // list of domain labels to read from the node
-
-	// cephfs related flags
-	MountCacheDir string // mount info cache save dir
+	Vtype        string // driver type [rbd|cephfs|liveness]
+	Endpoint     string // CSI endpoint
+	DriverName   string // name of the driver
+	NodeID       string // node id
+	InstanceID   string // unique ID distinguishing this instance of Ceph CSI
+	PluginPath   string // location of cephcsi plugin
+	DomainLabels string // list of domain labels to read from the node
 
 	// metrics related flags
 	MetricsPath       string        // path of prometheus endpoint where metrics will be available
@@ -122,27 +117,6 @@ type Config struct {
 	// on rbd image without flattening, once the limit is reached cephcsi will
 	// start flattening the older rbd images to allow more snapshots
 	MaxSnapshotsOnImage uint
-}
-
-// CreatePersistanceStorage creates storage path and initializes new cache
-func CreatePersistanceStorage(sPath, metaDataStore, pluginPath string) (CachePersister, error) {
-	var err error
-	if err = CreateMountPoint(path.Join(sPath, "controller")); err != nil {
-		klog.Errorf("failed to create persistent storage for controller: %v", err)
-		return nil, err
-	}
-
-	if err = CreateMountPoint(path.Join(sPath, "node")); err != nil {
-		klog.Errorf("failed to create persistent storage for node: %v", err)
-		return nil, err
-	}
-
-	cp, err := NewCachePersister(metaDataStore, pluginPath)
-	if err != nil {
-		klog.Errorf("failed to define cache persistence method: %v", err)
-		return nil, err
-	}
-	return cp, err
 }
 
 // ValidateDriverName validates the driver name

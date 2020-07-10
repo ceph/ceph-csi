@@ -20,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"time"
 
@@ -54,8 +53,6 @@ func init() {
 	flag.StringVar(&conf.NodeID, "nodeid", "", "node id")
 	flag.StringVar(&conf.InstanceID, "instanceid", "", "Unique ID distinguishing this instance of Ceph CSI among other"+
 		" instances, when sharing Ceph clusters across CSI instances for provisioning")
-	flag.StringVar(&conf.MetadataStorage, "metadatastorage", "", "metadata persistence method [node|k8s_configmap]")
-	flag.StringVar(&conf.PluginPath, "pluginpath", "/var/lib/kubelet/plugins/", "the location of cephcsi plugin")
 	flag.IntVar(&conf.PidLimit, "pidlimit", 0, "the PID limit to configure through cgroups")
 	flag.BoolVar(&conf.IsControllerServer, "controllerserver", false, "start cephcsi controller server")
 	flag.BoolVar(&conf.IsNodeServer, "nodeserver", false, "start cephcsi node server")
@@ -63,8 +60,6 @@ func init() {
 		" domain the node belongs to, separated by ','")
 
 	// cephfs related flags
-	// marking this as deprecated, remove it in next major release
-	flag.StringVar(&conf.MountCacheDir, "mountcachedir", "", "mount info cache save dir")
 	flag.BoolVar(&conf.ForceKernelCephFS, "forcecephkernelclient", false, "enable Ceph Kernel clients on kernel < 4.17 which support quotas")
 
 	// liveness/grpc metrics related flags
@@ -123,7 +118,6 @@ func main() {
 		os.Exit(0)
 	}
 	util.DefaultLog("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
-	var cp util.CachePersister
 
 	if conf.Vtype == "" {
 		klog.Fatalln("driver type not specified")
@@ -133,14 +127,6 @@ func main() {
 	err := util.ValidateDriverName(dname)
 	if err != nil {
 		klog.Fatalln(err) // calls exit
-	}
-	csipluginPath := filepath.Join(conf.PluginPath, dname)
-	if conf.MetadataStorage != "" {
-		cp, err = util.CreatePersistanceStorage(
-			csipluginPath, conf.MetadataStorage, conf.PluginPath)
-		if err != nil {
-			os.Exit(1)
-		}
 	}
 
 	// the driver may need a higher PID limit for handling all concurrent requests
@@ -183,14 +169,11 @@ func main() {
 		validateCloneDepthFlag(&conf)
 		validateMaxSnaphostFlag(&conf)
 		driver := rbd.NewDriver()
-		driver.Run(&conf, cp)
+		driver.Run(&conf)
 
 	case cephfsType:
-		if conf.MountCacheDir != "" {
-			klog.Warning("mountcachedir option is deprecated")
-		}
 		driver := cephfs.NewDriver()
-		driver.Run(&conf, cp)
+		driver.Run(&conf)
 
 	case livenessType:
 		liveness.Run(&conf)

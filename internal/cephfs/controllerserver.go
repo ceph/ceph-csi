@@ -33,15 +33,9 @@ import (
 // controller server spec.
 type ControllerServer struct {
 	*csicommon.DefaultControllerServer
-	MetadataStore util.CachePersister
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
 	VolumeLocks *util.VolumeLocks
-}
-
-type controllerCacheEntry struct {
-	VolOptions volumeOptions
-	VolumeID   volumeID
 }
 
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities
@@ -156,72 +150,6 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{Volume: volume}, nil
 }
 
-// deleteVolumeDeprecated is used to delete volumes created using version 1.0.0 of the plugin,
-// that have state information stored in files or kubernetes config maps
-func (cs *ControllerServer) deleteVolumeDeprecated(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	var (
-		volID   = volumeID(req.GetVolumeId())
-		secrets = req.GetSecrets()
-	)
-
-	ce := &controllerCacheEntry{}
-	if err := cs.MetadataStore.Get(string(volID), ce); err != nil {
-		if err, ok := err.(*util.CacheEntryNotFound); ok {
-			klog.Warningf(util.Log(ctx, "cephfs: metadata for volume %s not found, assuming the volume to be already deleted (%v)"), volID, err)
-			return &csi.DeleteVolumeResponse{}, nil
-		}
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	if !ce.VolOptions.ProvisionVolume {
-		// DeleteVolume() is forbidden for statically provisioned volumes!
-
-		klog.Warningf(util.Log(ctx, "volume %s is provisioned statically, aborting delete"), volID)
-		return &csi.DeleteVolumeResponse{}, nil
-	}
-
-	// mons may have changed since create volume,
-	// retrieve the latest mons and override old mons
-	if mon, secretsErr := util.GetMonValFromSecret(secrets); secretsErr == nil && len(mon) > 0 {
-		util.ExtendedLog(ctx, "overriding monitors [%q] with [%q] for volume %s", ce.VolOptions.Monitors, mon, volID)
-		ce.VolOptions.Monitors = mon
-	}
-
-	// Deleting a volume requires admin credentials
-
-	cr, err := util.NewAdminCredentials(secrets)
-	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to retrieve admin credentials: %v"), err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	defer cr.DeleteCredentials()
-
-	if acquired := cs.VolumeLocks.TryAcquire(string(volID)); !acquired {
-		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, string(volID))
-	}
-	defer cs.VolumeLocks.Release(string(volID))
-
-	if err = purgeVolumeDeprecated(ctx, volID, cr, &ce.VolOptions); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	if err = deleteCephUserDeprecated(ctx, &ce.VolOptions, cr, volID); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to delete ceph user for volume %s: %v"), volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	if err = cs.MetadataStore.Delete(string(volID)); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	util.DebugLog(ctx, "cephfs: successfully deleted volume %s", volID)
-
-	return &csi.DeleteVolumeResponse{}, nil
-}
-
 // DeleteVolume deletes the volume in backend and its reservation
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(); err != nil {
@@ -255,12 +183,6 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		var eknf util.ErrKeyNotFound
 		if errors.As(err, &eknf) {
 			return &csi.DeleteVolumeResponse{}, nil
-		}
-
-		// ErrInvalidVolID may mean this is an 1.0.0 version volume
-		var eivi ErrInvalidVolID
-		if errors.As(err, &eivi) && cs.MetadataStore != nil {
-			return cs.deleteVolumeDeprecated(ctx, req)
 		}
 
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
