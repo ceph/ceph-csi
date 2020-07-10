@@ -28,6 +28,14 @@ function copy_image_to_cluster() {
     docker save "${build_image}" | (eval "$(minikube docker-env --shell bash)" && docker load && docker tag "${build_image}" "${final_image}")
 }
 
+# parse the minikube version, return the digit passed as argument
+# v1.11.0 -> minikube_version 1 -> 1
+# v1.11.0 -> minikube_version 2 -> 11
+# v1.11.0 -> minikube_version 3 -> 0
+minikube_version() {
+    echo "${MINIKUBE_VERSION}" | sed 's/^v//' | cut -d'.' -f"${1}"
+}
+
 # install minikube
 function install_minikube() {
     if type minikube >/dev/null 2>&1; then
@@ -95,6 +103,19 @@ EXTRA_CONFIG="${EXTRA_CONFIG} --extra-config=kubelet.resolv-conf=${RESOLV_CONF}"
 #extra Rook configuration
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
 
+function minikube_supports_psp() {
+    local MINIKUBE_MAJOR
+    local MINIKUBE_MINOR
+    local MINIKUBE_PATCH
+    MINIKUBE_MAJOR=$(minikube_version 1)
+    MINIKUBE_MINOR=$(minikube_version 2)
+    MINIKUBE_PATCH=$(minikube_version 3)
+    if [[ "${MINIKUBE_MAJOR}" -ge 1 ]] && [[ "${MINIKUBE_MINOR}" -ge 11 ]] && [[ "${MINIKUBE_PATCH}" -ge 1 ]] || [[ "${MINIKUBE_MAJOR}" -ge 1 ]] && [[ "${MINIKUBE_MINOR}" -ge 12 ]]; then
+        return 1
+    fi
+    return 0
+}
+
 case "${1:-}" in
 up)
     install_minikube
@@ -104,11 +125,21 @@ up)
         install_kubectl
     fi
 
-    enable_psp
-
     echo "starting minikube with kubeadm bootstrapper"
-    # shellcheck disable=SC2086
-    minikube start --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
+    if minikube_supports_psp; then
+        enable_psp
+        # shellcheck disable=SC2086
+        minikube start --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
+    else
+        # This is a workaround to fix psp issues in minikube >1.6.2 and <1.11.0
+        # shellcheck disable=SC2086
+        minikube start --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}"
+        DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+        kubectl apply -f "$DIR"/psp.yaml
+        minikube stop
+        # shellcheck disable=SC2086
+        minikube start --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
+    fi
 
     # create a link so the default dataDirHostPath will work for this
     # environment
