@@ -184,8 +184,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
-		var evnf ErrVolumeNotFound
-		if !errors.As(err, &evnf) {
+		if !errors.Is(err, ErrVolumeNotFound) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
@@ -221,8 +220,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err = purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), volID, err)
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
-		var evnf ErrVolumeNotFound
-		if !errors.As(err, &evnf) {
+		if !errors.Is(err, ErrVolumeNotFound) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}

@@ -89,16 +89,14 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	volOptions, _, err := newVolumeOptionsFromVolID(ctx, string(volID), req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
-		var eivi ErrInvalidVolID
-		if !errors.As(err, &eivi) {
+		if !errors.Is(err, ErrInvalidVolID) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		// gets mon IPs from the supplied cluster info
 		volOptions, _, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
 		if err != nil {
-			var ensv ErrNonStaticVolume
-			if !errors.As(err, &ensv) {
+			if !errors.Is(err, ErrNonStaticVolume) {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 

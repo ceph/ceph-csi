@@ -16,49 +16,15 @@ limitations under the License.
 
 package cephfs
 
-// ErrInvalidVolID is returned when a CSI passed VolumeID is not conformant to any known volume ID
-// formats.
-type ErrInvalidVolID struct {
-	err error
-}
+import "errors"
 
-// Error returns a user presentable string of the error.
-func (e ErrInvalidVolID) Error() string {
-	return e.err.Error()
-}
-
-// Unwrap returns the encapsulated error of ErrInvalidVolID.
-func (e ErrInvalidVolID) Unwrap() error {
-	return e.err
-}
-
-// ErrNonStaticVolume is returned when a volume is detected as not being
-// statically provisioned.
-type ErrNonStaticVolume struct {
-	err error
-}
-
-// Error returns a user presentable string of the error.
-func (e ErrNonStaticVolume) Error() string {
-	return e.err.Error()
-}
-
-// Unwrap returns the encapsulated error of ErrNonStaticVolume.
-func (e ErrNonStaticVolume) Unwrap() error {
-	return e.err
-}
-
-// ErrVolumeNotFound is returned when a subvolume is not found in CephFS.
-type ErrVolumeNotFound struct {
-	err error
-}
-
-// Error returns a user presentable string of the error.
-func (e ErrVolumeNotFound) Error() string {
-	return e.err.Error()
-}
-
-// Unwrap returns the encapsulated error of ErrVolumeNotFound.
-func (e ErrVolumeNotFound) Unwrap() error {
-	return e.err
-}
+var (
+	// ErrInvalidVolID is returned when a CSI passed VolumeID is not conformant to any known volume ID
+	// formats.
+	ErrInvalidVolID = errors.New("invalid VolumeID")
+	// ErrNonStaticVolume is returned when a volume is detected as not being
+	// statically provisioned.
+	ErrNonStaticVolume = errors.New("volume not static")
+	// ErrVolumeNotFound is returned when a subvolume is not found in CephFS.
+	ErrVolumeNotFound = errors.New("volume not found")
+)

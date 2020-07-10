@@ -230,8 +230,8 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 	// before other errors
 	err := vi.DecomposeCSIID(volID)
 	if err != nil {
-		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, volID)
-		return nil, nil, ErrInvalidVolID{err}
+		err = fmt.Errorf("error decoding volume ID (%s): %w", volID, err)
+		return nil, nil, util.JoinErrors(ErrInvalidVolID, err)
 	}
 	volOptions.ClusterID = vi.ClusterID
 	vid.VolumeID = volID
@@ -372,7 +372,7 @@ func newVolumeOptionsFromStaticVolume(volID string, options map[string]string) (
 
 	val, ok := options["staticVolume"]
 	if !ok {
-		return nil, nil, ErrNonStaticVolume{err}
+		return nil, nil, ErrNonStaticVolume
 	}
 
 	if staticVol, err = strconv.ParseBool(val); err != nil {
@@ -380,7 +380,7 @@ func newVolumeOptionsFromStaticVolume(volID string, options map[string]string) (
 	}
 
 	if !staticVol {
-		return nil, nil, ErrNonStaticVolume{err}
+		return nil, nil, ErrNonStaticVolume
 	}
 
 	// Volume is static, and ProvisionVolume carries bool stating if it was provisioned, hence
