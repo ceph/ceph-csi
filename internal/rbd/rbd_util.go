@@ -268,7 +268,7 @@ func (rv *rbdVolume) open() (*librbd.Image, error) {
 	image, err := librbd.OpenImage(rv.ioctx, rv.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
-			err = ErrImageNotFound{rv.RbdImageName, err}
+			err = util.JoinErrors(ErrImageNotFound, err)
 		}
 		return nil, err
 	}
@@ -408,8 +408,7 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 			// if the parent image is moved to trash the name will be present
 			// in rbd image info but the image will be in trash, in that case
 			// return the found depth
-			var einf ErrImageNotFound
-			if errors.As(err, &einf) {
+			if errors.Is(err, ErrImageNotFound) {
 				return depth, nil
 			}
 			klog.Errorf(util.Log(ctx, "failed to check depth on image %s: %s"), vol, err)
@@ -468,7 +467,7 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 				return err
 			}
 			if forceFlatten || depth >= hardlimit {
-				return ErrFlattenInProgress{err: fmt.Errorf("flatten is in progress for image %s", rv.RbdImageName)}
+				return fmt.Errorf("%w: flatten is in progress for image %s", ErrFlattenInProgress, rv.RbdImageName)
 			}
 		}
 		if !supported {
@@ -601,8 +600,8 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 
 	err := vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
-		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, rbdVol.VolID)
-		return rbdVol, ErrInvalidVolID{err}
+		return rbdVol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
+			ErrInvalidVolID, err, rbdVol.VolID)
 	}
 
 	rbdVol.ClusterID = vi.ClusterID
@@ -822,7 +821,7 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 	}
 	err = snap.Remove()
 	if errors.Is(err, librbd.ErrNotFound) {
-		return ErrSnapNotFound{snapName: pOpts.RbdSnapName, err: err}
+		return util.JoinErrors(ErrSnapNotFound, err)
 	}
 	return err
 }
@@ -904,7 +903,7 @@ func (rv *rbdVolume) updateVolWithImageInfo(cr *util.Credentials) error {
 		klog.Errorf("failed getting information for image (%s): (%s)", rv, err)
 		if strings.Contains(string(stderr), "rbd: error opening image "+rv.RbdImageName+
 			": (2) No such file or directory") {
-			return ErrImageNotFound{rv.String(), err}
+			return util.JoinErrors(ErrImageNotFound, err)
 		}
 		return err
 	}
@@ -979,7 +978,7 @@ func (rv *rbdVolume) checkSnapExists(rbdSnap *rbdSnapshot) error {
 		}
 	}
 
-	return ErrSnapNotFound{rbdSnap.RbdSnapName, fmt.Errorf("snap %s not found", rbdSnap.String())}
+	return fmt.Errorf("%w: snap %s not found", ErrSnapNotFound, rbdSnap.String())
 }
 
 // rbdImageMetadataStash strongly typed JSON spec for stashed RBD image metadata.
@@ -1040,7 +1039,7 @@ func lookupRBDImageMetadataStash(path string) (rbdImageMetadataStash, error) {
 			return imgMeta, fmt.Errorf("failed to read stashed JSON image metadata from path (%s): (%v)", fPath, err)
 		}
 
-		return imgMeta, ErrMissingStash{err}
+		return imgMeta, util.JoinErrors(ErrMissingStash, err)
 	}
 
 	err = json.Unmarshal(encodedBytes, &imgMeta)
@@ -1150,7 +1149,7 @@ func (rv *rbdVolume) listSnapshots(ctx context.Context, cr *util.Credentials) ([
 		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), rv, err)
 		if strings.Contains(string(stderr), "rbd: error opening image "+rv.RbdImageName+
 			": (2) No such file or directory") {
-			return snapInfo, ErrImageNotFound{rv.String(), err}
+			return snapInfo, util.JoinErrors(ErrImageNotFound, err)
 		}
 		return snapInfo, err
 	}

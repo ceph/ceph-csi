@@ -654,8 +654,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		}
 
 		// If not mounted, and error is anything other than metadata file missing, it is an error
-		var ems ErrMissingStash
-		if !errors.As(err, &ems) {
+		if !errors.Is(err, ErrMissingStash) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
