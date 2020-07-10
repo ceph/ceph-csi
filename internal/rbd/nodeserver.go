@@ -260,7 +260,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 				return transaction, err
 			}
 			if feature {
-				err = volOptions.flattenRbdImage(ctx, cr, true)
+				err = volOptions.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 				if err != nil {
 					return transaction, err
 				}

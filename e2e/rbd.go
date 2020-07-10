@@ -190,7 +190,9 @@ var _ = Describe("RBD", func() {
 			rawPvcPath := rbdExamplePath + "raw-block-pvc.yaml"
 			rawAppPath := rbdExamplePath + "raw-block-pod.yaml"
 			pvcClonePath := rbdExamplePath + "pvc-restore.yaml"
+			pvcSmartClonePath := rbdExamplePath + "pvc-clone.yaml"
 			appClonePath := rbdExamplePath + "pod-restore.yaml"
+			appSmartClonePath := rbdExamplePath + "pod-clone.yaml"
 			snapshotPath := rbdExamplePath + "snapshot.yaml"
 
 			By("checking provisioner deployment is running", func() {
@@ -355,6 +357,93 @@ var _ = Describe("RBD", func() {
 							Fail(err.Error())
 						}
 					}
+				}
+			})
+
+			By("create a PVC-PVC clone and bind it to an app", func() {
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Logf("failed to get server version with error %v", err)
+					Fail(err.Error())
+				}
+				// pvc clone is only supported from v1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+					pvc, err := loadPVC(pvcPath)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					pvc.Namespace = f.UniqueName
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+					// validate created backend rbd images
+					images := listRBDImages(f)
+					if len(images) != 1 {
+						e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+						Fail("validate backend image failed")
+					}
+
+					pvcClone, err := loadPVC(pvcSmartClonePath)
+					if err != nil {
+						Fail(err.Error())
+					}
+					pvcClone.Spec.DataSource.Name = pvc.Name
+					pvcClone.Namespace = f.UniqueName
+					appClone, err := loadApp(appSmartClonePath)
+					if err != nil {
+						Fail(err.Error())
+					}
+					appClone.Namespace = f.UniqueName
+					totalCount := 3
+					// create clone and bind it to an app
+					for i := 0; i < totalCount; i++ {
+						name := fmt.Sprintf("%s%d", f.UniqueName, i)
+						err = createPVCAndApp(name, f, pvcClone, appClone, deployTimeout)
+						if err != nil {
+							Fail(err.Error())
+						}
+					}
+
+					images = listRBDImages(f)
+					// total images in cluster is 1 parent rbd image+ total
+					// temporary clone+ total clones
+					totalCloneCount := totalCount + totalCount + 1
+					if len(images) != totalCloneCount {
+						e2elog.Logf("backend images not matching kubernetes resource count,image count %d kubernetes resource count %d", len(images), totalCloneCount)
+						Fail("validate backend images failed")
+					}
+
+					// delete parent pvc
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					images = listRBDImages(f)
+					totalCloneCount = totalCount + totalCount
+					// total images in cluster is total snaps+ total clones
+					if len(images) != totalCloneCount {
+						e2elog.Logf("backend images not matching kubernetes resource count,image count %d kubernetes resource count %d", len(images), totalCloneCount)
+						Fail("validate backend images failed")
+					}
+
+					// delete clone and app
+					for i := 0; i < totalCount; i++ {
+						name := fmt.Sprintf("%s%d", f.UniqueName, i)
+						pvcClone.Spec.DataSource.Name = name
+						err = deletePVCAndApp(name, f, pvcClone, appClone)
+						if err != nil {
+							Fail(err.Error())
+						}
+					}
+					images = listRBDImages(f)
+					if len(images) != 0 {
+						e2elog.Logf("backend images not matching kubernetes snap count,image count %d kubernetes resource count %d", len(images), 0)
+						Fail("validate backend images failed")
+					}
+
 				}
 			})
 
