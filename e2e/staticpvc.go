@@ -83,7 +83,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 		rbdImageName = "test-static-pv"
 		pvName       = "pv-name"
 		pvcName      = "pvc-name"
-		ns           = f.UniqueName
+		namespace    = f.UniqueName
 		// minikube creates default class in cluster, we need to set dummy
 		// storageclass on PV and PVC to avoid storageclass name missmatch
 		sc = "storage-class"
@@ -117,7 +117,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 		return fmt.Errorf("PV Create API error: %v", err)
 	}
 
-	pvc := getStaticPVC(pvcName, pvName, size, ns, sc, isBlock)
+	pvc := getStaticPVC(pvcName, pvName, size, namespace, sc, isBlock)
 
 	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 	if err != nil {
@@ -129,7 +129,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 		return err
 	}
 
-	app.Namespace = ns
+	app.Namespace = namespace
 	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
 	err = createApp(f.ClientSet, app, deployTimeout)
 	if err != nil {
@@ -164,7 +164,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 		fsName        = "myfs"
 		pvName        = "pv-name"
 		pvcName       = "pvc-name"
-		ns            = f.UniqueName
+		namespace     = f.UniqueName
 		// minikube creates default storage class in cluster, we need to set dummy
 		// storageclass on PV and PVC to avoid storageclass name missmatch
 		sc         = "storage-class"
@@ -237,7 +237,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 		return fmt.Errorf("failed to create PV, error %v", err)
 	}
 
-	pvc := getStaticPVC(pvcName, pvName, size, ns, sc, false)
+	pvc := getStaticPVC(pvcName, pvName, size, namespace, sc, false)
 	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create PVC, error %v", err)
@@ -248,14 +248,14 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 		return fmt.Errorf("failed to load app, error %v", err)
 	}
 
-	app.Namespace = ns
+	app.Namespace = namespace
 	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
 	err = createApp(f.ClientSet, app, deployTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to create pod, error %v", err)
 	}
 
-	err = deletePod(app.Name, ns, f.ClientSet, deployTimeout)
+	err = deletePod(app.Name, namespace, f.ClientSet, deployTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to delete pod, error %v", err)
 	}
