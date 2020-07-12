@@ -227,15 +227,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return buildCreateVolumeResponse(ctx, req, rbdVol)
 	}
 
-	if parentVol != nil {
-		// flatten the image or its parent before the reservation to avoid
-		// stale entries in post creation if we return ABORT error and the
-		// delete volume is not called
-		err = parentVol.flattenCloneImage(ctx)
-		if err != nil {
-			return nil, getGRPCErrorForCreateVolume(err)
-		}
+	err = flattenParentImage(ctx, parentVol, cr)
+	if err != nil {
+		return nil, err
 	}
+
 	err = reserveVol(ctx, rbdVol, rbdSnap, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -280,6 +276,50 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			}
 	}
 	return &csi.CreateVolumeResponse{Volume: volume}, nil
+}
+
+func flattenParentImage(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
+	if rbdVol != nil {
+		// flatten the image or its parent before the reservation to avoid
+		// stale entries in post creation if we return ABORT error and the
+		// delete volume is not called
+		err := rbdVol.flattenCloneImage(ctx)
+		if err != nil {
+			return getGRPCErrorForCreateVolume(err)
+		}
+
+		// flatten cloned images if the snapshot count on the parent image
+		// exceeds maxSnapshotsOnImage
+		err = flattenTemporaryClonedImages(ctx, rbdVol, cr)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// check snapshots on the rbd image, as we have limit from krbd that
+// an image cannot have more than 510 snapshot at a given point of time.
+// If the snapshots are more than the `maxSnapshotsOnImage` Add a task to
+// flatten all the temporary cloned images.
+func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
+	snaps, err := rbdVol.listSnapshots(ctx, cr)
+	if err != nil {
+		var einf ErrImageNotFound
+		if errors.As(err, &einf) {
+			return status.Error(codes.InvalidArgument, err.Error())
+		}
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	if len(snaps) > int(maxSnapshotsOnImage) {
+		err = flattenClonedRbdImages(ctx, snaps, rbdVol.Pool, rbdVol.Monitors, cr)
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+		return status.Errorf(codes.ResourceExhausted, "rbd image %s has %d snapshots", rbdVol, len(snaps))
+	}
+	return nil
 }
 
 // checkFlatten ensures that that the image chain depth is not reached
