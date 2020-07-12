@@ -307,10 +307,9 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 	return &volOptions, &vid, nil
 }
 
-// newVolumeOptionsFromVersion1Context generates a new instance of volumeOptions and
-// volumeIdentifier from the provided CSI volume context, if the provided context was
-// for a volume created by version 1.0.0 (or prior) of the CSI plugin
-func newVolumeOptionsFromVersion1Context(volID string, options, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
+// newVolumeOptionsFromMonitorList generates a new instance of volumeOptions and
+// volumeIdentifier from the provided CSI volume context
+func newVolumeOptionsFromMonitorList(volID string, options, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
 	var (
 		opts                volumeOptions
 		vid                 volumeIdentifier
@@ -318,7 +317,7 @@ func newVolumeOptionsFromVersion1Context(volID string, options, secrets map[stri
 		err                 error
 	)
 
-	// Check if monitors is part of the options, that is an indicator this is an 1.0.0 volume
+	// Check if monitors is part of the options
 	if err = extractOption(&opts.Monitors, "monitors", options); err != nil {
 		return nil, nil, err
 	}

@@ -94,7 +94,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		// check for pre-provisioned volumes (plugin versions > 1.0.0)
+		// gets mon IPs from the supplied cluster info
 		volOptions, _, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
 		if err != nil {
 			var ensv ErrNonStaticVolume
@@ -102,8 +102,8 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 
-			// check for volumes from plugin versions <= 1.0.0
-			volOptions, _, err = newVolumeOptionsFromVersion1Context(string(volID), req.GetVolumeContext(),
+			// get mon IPs from the volume context
+			volOptions, _, err = newVolumeOptionsFromMonitorList(string(volID), req.GetVolumeContext(),
 				req.GetSecrets())
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
