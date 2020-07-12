@@ -165,3 +165,5 @@ linters:
     - wsl
     - funlen
     - testpackage
+    # TODO: enable nestif, see: https://github.com/ceph/ceph-csi/issues/1229
+    - nestif
