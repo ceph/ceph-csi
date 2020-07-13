@@ -62,7 +62,6 @@ func execCommandErr(ctx context.Context, program string, args ...string) error {
 	return err
 }
 
-//nolint: unparam
 func execCommandJSON(ctx context.Context, v interface{}, program string, args ...string) error {
 	stdout, _, err := execCommand(ctx, program, args...)
 	if err != nil {
