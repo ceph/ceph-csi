@@ -27,7 +27,7 @@ import (
 	librbd "github.com/ceph/go-ceph/rbd"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // checkCloneImage check the cloned image exists, if the cloned image is not
