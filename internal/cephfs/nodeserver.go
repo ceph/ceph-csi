@@ -53,14 +53,14 @@ func getCredentialsForVolume(volOptions *volumeOptions, req *csi.NodeStageVolume
 
 		cr, err = util.NewAdminCredentials(secrets)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
+			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %w", err)
 		}
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
 		cr, err = util.NewUserCredentials(req.GetSecrets())
 		if err != nil {
-			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
+			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %w", err)
 		}
 	}
 

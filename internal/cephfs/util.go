@@ -47,10 +47,10 @@ func execCommand(ctx context.Context, program string, args ...string) (stdout, s
 
 	if err := cmd.Run(); err != nil {
 		if cmd.Process == nil {
-			return nil, nil, fmt.Errorf("cannot get process pid while running %s %v: %v: %s",
+			return nil, nil, fmt.Errorf("cannot get process pid while running %s %v: %w: %s",
 				program, sanitizedArgs, err, stderrBuf.Bytes())
 		}
-		return nil, nil, fmt.Errorf("an error occurred while running (%d) %s %v: %v: %s",
+		return nil, nil, fmt.Errorf("an error occurred while running (%d) %s %v: %w: %s",
 			cmd.Process.Pid, program, sanitizedArgs, err, stderrBuf.Bytes())
 	}
 
@@ -70,7 +70,7 @@ func execCommandJSON(ctx context.Context, v interface{}, program string, args ..
 	}
 
 	if err = json.Unmarshal(stdout, v); err != nil {
-		return fmt.Errorf("failed to unmarshal JSON for %s %v: %s: %v", program, util.StripSecretInArgs(args), stdout, err)
+		return fmt.Errorf("failed to unmarshal JSON for %s %v: %s: %w", program, util.StripSecretInArgs(args), stdout, err)
 	}
 
 	return nil
@@ -79,7 +79,7 @@ func execCommandJSON(ctx context.Context, v interface{}, program string, args ..
 // Controller service request validation.
 func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		return fmt.Errorf("invalid CreateVolumeRequest: %v", err)
+		return fmt.Errorf("invalid CreateVolumeRequest: %w", err)
 	}
 
 	if req.GetName() == "" {
@@ -102,7 +102,7 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 
 func (cs *ControllerServer) validateDeleteVolumeRequest() error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
-		return fmt.Errorf("invalid DeleteVolumeRequest: %v", err)
+		return fmt.Errorf("invalid DeleteVolumeRequest: %w", err)
 	}
 
 	return nil
@@ -111,7 +111,7 @@ func (cs *ControllerServer) validateDeleteVolumeRequest() error {
 // Controller expand volume request validation.
 func (cs *ControllerServer) validateExpandVolumeRequest(req *csi.ControllerExpandVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
-		return fmt.Errorf("invalid ExpandVolumeRequest: %v", err)
+		return fmt.Errorf("invalid ExpandVolumeRequest: %w", err)
 	}
 
 	if req.GetVolumeId() == "" {
