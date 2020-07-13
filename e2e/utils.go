@@ -183,7 +183,7 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 		err = fmt.Errorf("%s", reason)
 	}
 	if err != nil {
-		return fmt.Errorf("error waiting for deployment %q status to match expectation: %v", name, err)
+		return fmt.Errorf("error waiting for deployment %q status to match expectation: %w", name, err)
 	}
 	return nil
 }
@@ -531,7 +531,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 
 	err = c.CoreV1().PersistentVolumeClaims(nameSpace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
-		return fmt.Errorf("delete of PVC %v failed: %v", name, err)
+		return fmt.Errorf("delete of PVC %v failed: %w", name, err)
 	}
 	start := time.Now()
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
@@ -542,7 +542,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 			return false, nil
 		}
 		if !apierrs.IsNotFound(err) {
-			return false, fmt.Errorf("get on deleted PVC %v failed with error other than \"not found\": %v", name, err)
+			return false, fmt.Errorf("get on deleted PVC %v failed with error other than \"not found\": %w", name, err)
 		}
 
 		// Examine the pv.ClaimRef and UID. Expect nil values.
@@ -552,7 +552,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		}
 
 		if !apierrs.IsNotFound(err) {
-			return false, fmt.Errorf("delete PV %v failed with error other than \"not found\": %v", pv.Name, err)
+			return false, fmt.Errorf("delete PV %v failed with error other than \"not found\": %w", pv.Name, err)
 		}
 
 		return true, nil

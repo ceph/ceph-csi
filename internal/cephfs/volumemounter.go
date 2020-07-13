@@ -182,7 +182,7 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 
 	pid, err := strconv.Atoi(string(match[1]))
 	if err != nil {
-		return fmt.Errorf("failed to parse FUSE daemon PID: %v", err)
+		return fmt.Errorf("failed to parse FUSE daemon PID: %w", err)
 	}
 
 	fusePidMapMtx.Lock()
