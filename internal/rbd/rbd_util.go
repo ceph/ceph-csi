@@ -408,6 +408,13 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 		}
 		err = vol.getImageInfo()
 		if err != nil {
+			// if the parent image is moved to trash the name will be present
+			// in rbd image info but the image will be in trash, in that case
+			// return the found depth
+			var einf ErrImageNotFound
+			if errors.As(err, &einf) {
+				return depth, nil
+			}
 			klog.Errorf(util.Log(ctx, "failed to check depth on image %s: %s"), vol, err)
 			return depth, err
 		}
