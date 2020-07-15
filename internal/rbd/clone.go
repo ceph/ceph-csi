@@ -114,6 +114,8 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		return true, nil
 	}
 	// as the temp clone doesnot exists,check snapshot exists on parent volume
+	// snapshot name is same as temporary clone image
+	snap.RbdImageName = tempClone.RbdImageName
 	err = parentVol.checkSnapExists(snap)
 	if err == nil {
 		// the temp clone exists, delete it lets reserve a new ID and
@@ -145,11 +147,18 @@ func (rv *rbdVolume) generateTempClone() *rbdVolume {
 func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVolume) error {
 	// generate temp cloned volume
 	tempClone := rv.generateTempClone()
-	snap := &rbdSnapshot{
-		RbdSnapName: rv.RbdImageName,
+	tempSnap := &rbdSnapshot{
+		// snapshot name is same as temporary cloned image, This helps to
+		// flatten the temporary cloned images as we cannot have more than 510
+		// snapshots on an rbd image
+		RbdSnapName: tempClone.RbdImageName,
 		Pool:        rv.Pool,
 	}
 
+	cloneSnap := &rbdSnapshot{
+		RbdSnapName: rv.RbdImageName,
+		Pool:        rv.Pool,
+	}
 	var (
 		errClone   error
 		errFlatten error
@@ -165,7 +174,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	defer j.Destroy()
 
 	// create snapshot and temporary clone and delete snapshot
-	err = createRBDClone(ctx, parentVol, tempClone, snap, rv.conn.Creds)
+	err = createRBDClone(ctx, parentVol, tempClone, tempSnap, rv.conn.Creds)
 	if err != nil {
 		return err
 	}
@@ -174,16 +183,16 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		if err != nil || errFlatten != nil {
 			if !errors.Is(errFlatten, &efip) {
 				// cleanup snapshot
-				cErr := cleanUpSnapshot(ctx, parentVol, snap, tempClone, rv.conn.Creds)
+				cErr := cleanUpSnapshot(ctx, parentVol, tempSnap, tempClone, rv.conn.Creds)
 				if cErr != nil {
-					klog.Errorf(util.Log(ctx, "failed to cleanup image %s or snapshot %s: %v"), snap, tempClone, cErr)
+					klog.Errorf(util.Log(ctx, "failed to cleanup image %s or snapshot %s: %v"), tempSnap, tempClone, cErr)
 				}
 			}
 		}
 		if err != nil || errClone != nil {
-			cErr := cleanUpSnapshot(ctx, tempClone, snap, rv, rv.conn.Creds)
+			cErr := cleanUpSnapshot(ctx, tempClone, cloneSnap, rv, rv.conn.Creds)
 			if cErr != nil {
-				klog.Errorf(util.Log(ctx, "failed to cleanup image %s or snapshot %s: %v"), snap, tempClone, cErr)
+				klog.Errorf(util.Log(ctx, "failed to cleanup image %s or snapshot %s: %v"), cloneSnap, tempClone, cErr)
 			}
 		}
 	}()
@@ -195,7 +204,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	// create snap of temp clone from temporary cloned image
 	// create final clone
 	// delete snap of temp clone
-	errClone = createRBDClone(ctx, tempClone, rv, snap, rv.conn.Creds)
+	errClone = createRBDClone(ctx, tempClone, rv, cloneSnap, rv.conn.Creds)
 	if errClone != nil {
 		// set errFlatten error to cleanup temporary snapshot and temporary clone
 		errFlatten = errors.New("failed to create user requested cloned image")
