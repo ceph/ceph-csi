@@ -91,6 +91,11 @@ fi
 
 if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
 	build_step "log in to quay.io as user ${QUAY_IO_USERNAME}"
+	# This is a workaround to fix docker permission denied issue during manifest create in Travis CI.
+	# `docker manifest create` fails due to permission denied on `/etc/docker/certs.d/quay.io`
+	# (https://github.com/docker/for-linux/issues/396).
+	sudo chmod o+x /etc/docker
+
 	"${CONTAINER_CMD:-docker}" login -u "${QUAY_IO_USERNAME}" -p "${QUAY_IO_PASSWORD}" quay.io
 
 	set -xe
