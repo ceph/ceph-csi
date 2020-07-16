@@ -77,7 +77,9 @@ build_push_images() {
 		build_step "make push-image-cephcsi for ${ARCH}"
 		GOARCH=${ARCH} BASE_IMAGE=${base_image} make push-image-cephcsi
 		build_step_log "done: make push-image-cephcsi for ${ARCH} (ret=${?})"
+		GOARCH=${ARCH} make create-manifest
 	done
+	make push-manifest
 }
 
 if [ "${TRAVIS_BRANCH}" == 'master' ]; then
