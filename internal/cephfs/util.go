@@ -97,6 +97,30 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 		}
 	}
 
+	if req.VolumeContentSource != nil {
+		volumeSource := req.VolumeContentSource
+		switch volumeSource.Type.(type) {
+		case *csi.VolumeContentSource_Snapshot:
+			snapshot := req.VolumeContentSource.GetSnapshot()
+			if snapshot == nil {
+				return status.Error(codes.NotFound, "volume Snapshot cannot be empty")
+			}
+			if snapshot.GetSnapshotId() == "" {
+				return status.Errorf(codes.NotFound, "volume Snapshot ID cannot be empty")
+			}
+		case *csi.VolumeContentSource_Volume:
+			vol := req.VolumeContentSource.GetVolume()
+			if vol == nil {
+				return status.Error(codes.NotFound, "volume cannot be empty")
+			}
+			if vol.GetVolumeId() == "" {
+				return status.Errorf(codes.NotFound, "volume ID cannot be empty")
+			}
+
+		default:
+			return status.Error(codes.InvalidArgument, "not a proper volume source")
+		}
+	}
 	return nil
 }
 
