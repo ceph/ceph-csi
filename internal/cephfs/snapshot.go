@@ -22,8 +22,8 @@ import (
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/golang/protobuf/ptypes/timestamp"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/klog"
 )
 

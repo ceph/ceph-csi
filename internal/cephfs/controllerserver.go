@@ -24,6 +24,7 @@ import (
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
@@ -32,6 +33,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	klog "k8s.io/klog/v2"
+)
+
+const (
+	cephFSCloneCompleted = "complete"
 )
 
 // ControllerServer struct of CEPH CSI driver with supported methods of CSI
@@ -48,7 +53,14 @@ type ControllerServer struct {
 }
 
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities
-func (cs *ControllerServer) createBackingVolume(ctx context.Context, volOptions *volumeOptions, vID *volumeIdentifier, parentVolOpt *volumeOptions, pvID *volumeIdentifier, sID *snapshotIdentifier, cr *util.Credentials) error {
+func (cs *ControllerServer) createBackingVolume(
+	ctx context.Context,
+	volOptions *volumeOptions,
+	vID *volumeIdentifier,
+	parentVolOpt *volumeOptions,
+	pvID *volumeIdentifier,
+	sID *snapshotIdentifier,
+	cr *util.Credentials) error {
 	var err error
 	if sID != nil {
 		snapID := volumeID(sID.FsSnapshotName)
@@ -68,15 +80,13 @@ func (cs *ControllerServer) createBackingVolume(ctx context.Context, volOptions 
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to expand volume %s: %v"), vID.FsSubvolName, err)
 			return status.Error(codes.Internal, err.Error())
-
 		}
 		var clone = CloneStatus{}
-		// TODO check
 		clone, err = getcloneInfo(ctx, volOptions, cr, volumeID(vID.FsSubvolName))
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
-		if clone.Status.State != "complete" {
+		if clone.Status.State != cephFSCloneCompleted {
 			return ErrCloneInProgress{err: fmt.Errorf("clone is in progress for %v", vID.FsSubvolName)}
 		}
 		return nil
@@ -94,7 +104,6 @@ func (cs *ControllerServer) createBackingVolume(ctx context.Context, volOptions 
 		klog.Errorf(util.Log(ctx, "failed to create volume %s: %v"), volOptions.RequestName, err)
 		return status.Error(codes.Internal, err.Error())
 	}
-
 	return nil
 }
 
@@ -125,7 +134,7 @@ func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *u
 	case *csi.VolumeContentSource_Volume:
 		// Find the volume using the provided VolumeID
 		volID := req.VolumeContentSource.GetVolume().GetVolumeId()
-		parentVol, pvID, err := newVolumeOptionsFromVolID(ctx, string(volID), nil, req.Secrets)
+		parentVol, pvID, err := newVolumeOptionsFromVolID(ctx, volID, nil, req.Secrets)
 		if err != nil {
 			var evnf ErrVolumeNotFound
 			if !errors.As(err, &evnf) {
@@ -454,11 +463,11 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.InvalidArgument, "requested cluster id %s not matching subvolume cluster id %s", clusterData.ClusterID, parentVolOptions.ClusterID)
 	}
 	// lock out parallel delete operations
-	if acquired := cs.VolumeLocks.TryAcquire(string(sourceVolID)); !acquired {
+	if acquired := cs.VolumeLocks.TryAcquire(sourceVolID); !acquired {
 		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), sourceVolID)
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, string(sourceVolID))
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, sourceVolID)
 	}
-	defer cs.VolumeLocks.Release(string(sourceVolID))
+	defer cs.VolumeLocks.Release(sourceVolID)
 
 	snapName := req.GetName()
 	// Reservation
@@ -485,7 +494,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}, nil
 	}
 
-	// check are we able to retrive the size of parent
+	// check are we able to retrieve the size of parent
 	// ceph fs subvolume info command got added in 14.2.10 and 15.+
 	// as we are not able to retrieve the parent size we are rejecting the
 	// request to create snapshot
@@ -519,7 +528,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}()
 
 	snap := snapshotInfo{}
-	snap, err = doSnapshot(ctx, parentVolOptions, *&vid.FsSubvolName, sID.FsSnapshotName, cr)
+	snap, err = doSnapshot(ctx, parentVolOptions, vid.FsSubvolName, sID.FsSnapshotName, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -556,7 +565,7 @@ func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snaps
 		klog.Errorf(util.Log(ctx, "failed to get snapshot info %s %v"), snapID, err)
 		return snap, err
 	}
-	t := &timestamp.Timestamp{}
+	var t *timestamp.Timestamp
 	t, err = parseTime(ctx, snap.CreatedAt)
 	if err != nil {
 		return snap, err
@@ -573,6 +582,7 @@ func parseTime(ctx context.Context, createTime string) (*timestamp.Timestamp, er
 	tm := &timestamp.Timestamp{}
 	layout := "2006-01-02 15:04:05.000000"
 	// TODO currently paring of timestamp to time.ANSIC generate from ceph fs is failng
+	var t time.Time
 	t, err := time.Parse(layout, createTime)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to parse time %s %v"), createTime, err)

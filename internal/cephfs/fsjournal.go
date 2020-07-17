@@ -57,7 +57,13 @@ because, the order of omap creation and deletion are inverse of each other, and 
 request name lock, and hence any stale omaps are leftovers from incomplete transactions and are
 hence safe to garbage collect.
 */
-func checkVolExists(ctx context.Context, volOptions *volumeOptions, parentVolOpt *volumeOptions, pvID *volumeIdentifier, sID *snapshotIdentifier, cr *util.Credentials) (*volumeIdentifier, error) {
+func checkVolExists(ctx context.Context,
+	volOptions,
+	parentVolOpt *volumeOptions,
+
+	pvID *volumeIdentifier,
+	sID *snapshotIdentifier,
+	cr *util.Credentials) (*volumeIdentifier, error) {
 	var vid volumeIdentifier
 	j, err := volJournal.Connect(volOptions.Monitors, cr)
 	if err != nil {
@@ -103,16 +109,16 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, parentVolOpt
 		vid.VolumeID, vid.FsSubvolName, volOptions.RequestName)
 
 	if sID != nil {
-		clone, err := getcloneInfo(ctx, volOptions, cr, volumeID(vid.FsSubvolName))
-		if err != nil {
-			if errors.As(err, &evnf) {
+		clone, cloneInfoErr := getcloneInfo(ctx, volOptions, cr, volumeID(vid.FsSubvolName))
+		if cloneInfoErr != nil {
+			if errors.As(cloneInfoErr, &evnf) {
 				err = j.UndoReservation(ctx, volOptions.MetadataPool,
 					volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
 				return nil, err
 			}
-			return nil, status.Error(codes.Internal, err.Error())
+			return nil, status.Error(codes.Internal, cloneInfoErr.Error())
 		}
-		if clone.Status.State != "complete" {
+		if clone.Status.State != cephFSCloneCompleted {
 			return nil, ErrCloneInProgress{err: fmt.Errorf("clone is in progress for %v", vid.FsSubvolName)}
 		}
 		// This is a work around to fix sizing issue for cloned images

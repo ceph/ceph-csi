@@ -49,19 +49,6 @@ type volumeOptions struct {
 	SubvolumeGroup      string
 }
 
-type snapshotOptions struct {
-	RequestName    string
-	NamePrefix     string
-	Size           int64
-	ClusterID      string
-	FsName         string
-	FscID          int64
-	MetadataPool   string
-	Monitors       string
-	Pool           string
-	SubvolumeGroup string
-}
-
 func validateNonEmptyField(field, fieldName string) error {
 	if field == "" {
 		return fmt.Errorf("parameter '%s' cannot be empty", fieldName)
@@ -478,7 +465,6 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 	sid.FsSnapshotName = imageAttributes.ImageName
 	sid.FsSubvolName = imageAttributes.SourceName
 
-	fmt.Printf("the image attributres stored on for the snapshots are %+v\n", imageAttributes)
 	_, err = getSnapshotInfo(ctx, &volOptions, cr, volumeID(sid.FsSnapshotName), volumeID(sid.FsSubvolName))
 	if err != nil {
 		return &volOptions, &sid, err

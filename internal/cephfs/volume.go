@@ -54,7 +54,7 @@ type Subvolume struct {
 	CreatedAt     string   `json:"created_at"`
 	Ctime         string   `json:"ctime"`
 	DataPool      string   `json:"data_pool"`
-	Gid           int      `json:"gid"`
+	GID           int      `json:"gid"`
 	Mode          int      `json:"mode"`
 	MonAddrs      []string `json:"mon_addrs"`
 	Mtime         string   `json:"mtime"`

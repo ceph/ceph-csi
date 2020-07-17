@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
+
 	"k8s.io/klog"
 )
 
@@ -72,7 +73,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 	if err != nil {
 		return err
 	}
-	if clone.Status.State != "complete" {
+	if clone.Status.State != cephFSCloneCompleted {
 		return ErrCloneInProgress{err: fmt.Errorf("clone is in progress for %v", cloneID)}
 	}
 	// This is a work around to fix sizing issue for cloned images
@@ -80,7 +81,6 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 	if cloneErr != nil {
 		klog.Errorf(util.Log(ctx, "failed to expand volume %s: %v"), cloneID, cloneErr)
 		return cloneErr
-
 	}
 
 	cloneErr = unprotectSnapshot(ctx, parentvolOpt, cr, snapshotID, volID)
@@ -111,7 +111,7 @@ func checkCloneFromSubvolumeExists(ctx context.Context, volID, cloneID volumeID,
 	if err != nil {
 		return err
 	}
-	if clone.Status.State != "complete" {
+	if clone.Status.State != cephFSCloneCompleted {
 		return ErrCloneInProgress{err: fmt.Errorf("clone is in progress for %v", cloneID)}
 	}
 	// This is a work around to fix sizing issue for cloned images
@@ -119,7 +119,6 @@ func checkCloneFromSubvolumeExists(ctx context.Context, volID, cloneID volumeID,
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to expand volume %s: %v"), cloneID, err)
 		return err
-
 	}
 	_, err = getSnapshotInfo(ctx, parentVolOpt, cr, snapShotID, volID)
 	if err != nil {
