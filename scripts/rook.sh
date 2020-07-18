@@ -1,13 +1,22 @@
 #!/bin/bash -e
 
-ROOK_VERSION=${ROOK_VERSION:-"v1.1.7"}
+ROOK_VERSION=${ROOK_VERSION:-"v1.2.7"}
 ROOK_DEPLOY_TIMEOUT=${ROOK_DEPLOY_TIMEOUT:-300}
 ROOK_URL="https://raw.githubusercontent.com/rook/rook/${ROOK_VERSION}/cluster/examples/kubernetes/ceph"
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
+ROOK_CEPH_CLUSTER_VERSION="v14.2.10"
 
 function deploy_rook() {
 	kubectl create -f "${ROOK_URL}/common.yaml"
 	kubectl create -f "${ROOK_URL}/operator.yaml"
+	# upgrade ceph cluster version to 14.2.10 to support CephFS snapshot functionalities.
+    	TEMP_DIR="$(mktemp -d)"
+    	pushd "$TEMP_DIR"
+    	curl -o cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
+    	sed -i "s/v14.2.7/$ROOK_CEPH_CLUSTER_VERSION/g" cluster-test.yaml
+    	cat cluster-test.yaml
+    	popd
+    	kubectl create -f "${TEMP_DIR}/cluster-test.yaml"
 	kubectl create -f "${ROOK_URL}/cluster-test.yaml"
 	kubectl create -f "${ROOK_URL}/toolbox.yaml"
 	kubectl create -f "${ROOK_URL}/filesystem-test.yaml"
