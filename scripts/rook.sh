@@ -17,7 +17,6 @@ function deploy_rook() {
     	cat cluster-test.yaml
     	popd
     	kubectl create -f "${TEMP_DIR}/cluster-test.yaml"
-	kubectl create -f "${ROOK_URL}/cluster-test.yaml"
 	kubectl create -f "${ROOK_URL}/toolbox.yaml"
 	kubectl create -f "${ROOK_URL}/filesystem-test.yaml"
 	kubectl create -f "${ROOK_URL}/pool-test.yaml"
