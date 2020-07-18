@@ -910,6 +910,7 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 	return nil
 }
 
+/*
 func checkSubvolumeSnapshotExists(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
@@ -924,6 +925,7 @@ func checkSubvolumeSnapshotExists(f *framework.Framework, pvc *v1.PersistentVolu
 	}
 	return nil
 }
+*/
 
 func listRBDImages(f *framework.Framework) []string {
 	stdout, stdErr := execCommandInToolBoxPod(f, fmt.Sprintf("rbd ls --pool=%s --format=json", defaultRBDPool), rookNamespace)
