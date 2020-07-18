@@ -910,6 +910,21 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 	return nil
 }
 
+func checkSubvolumeSnapshotExists(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	_, stdErr := execCommandInToolBoxPod(f, "ceph fs subvolume snapshot ls myfs "+imageData.imageName+" e2e", rookNamespace)
+	Expect(stdErr).Should(BeEmpty())
+
+	if stdErr != "" {
+		return fmt.Errorf("error checking backing subvolume %s snapshot", imageData.imageName)
+	}
+	return nil
+}
+
 func listRBDImages(f *framework.Framework) []string {
 	stdout, stdErr := execCommandInToolBoxPod(f, fmt.Sprintf("rbd ls --pool=%s --format=json", defaultRBDPool), rookNamespace)
 	Expect(stdErr).Should(BeEmpty())

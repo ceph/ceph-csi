@@ -128,3 +128,19 @@ func createRBDSnapshotClass(f *framework.Framework) {
 	_, err = sclient.SnapshotV1beta1().VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	Expect(err).Should(BeNil())
 }
+
+func createCephFSSnapshotClass(f *framework.Framework) {
+	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "snapshotclass.yaml")
+	sc := getSnapshotClass(scPath)
+
+	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
+
+	fsID, stdErr := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+	Expect(stdErr).Should(BeEmpty())
+	fsID = strings.Trim(fsID, "\n")
+	sc.Parameters["clusterID"] = fsID
+	sclient, err := newSnapshotClient()
+	Expect(err).Should(BeNil())
+	_, err = sclient.SnapshotV1beta1().VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+	Expect(err).Should(BeNil())
+}
