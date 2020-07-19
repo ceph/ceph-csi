@@ -35,7 +35,7 @@ const (
 // find the line containing the pids group from the /proc/self/cgroup file
 // $ grep 'pids' /proc/self/cgroup
 // 7:pids:/kubepods.slice/kubepods-besteffort.slice/....scope
-// $ cat /sys/fs/cgroup/pids + *.scope + /pids.max
+// $ cat /sys/fs/cgroup/pids + *.scope + /pids.max.
 func getCgroupPidsFile() (string, error) {
 	cgroup, err := os.Open(procCgroup)
 	if err != nil {

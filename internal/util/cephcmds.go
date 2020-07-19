@@ -27,10 +27,10 @@ import (
 	klog "k8s.io/klog/v2"
 )
 
-// InvalidPoolID used to denote an invalid pool
+// InvalidPoolID used to denote an invalid pool.
 const InvalidPoolID int64 = -1
 
-// ExecCommand executes passed in program with args and returns separate stdout and stderr streams
+// ExecCommand executes passed in program with args and returns separate stdout and stderr streams.
 func ExecCommand(program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
 		cmd           = exec.Command(program, args...) // nolint: gosec, #nosec
@@ -51,7 +51,7 @@ func ExecCommand(program string, args ...string) (stdout, stderr []byte, err err
 }
 
 // GetPoolID fetches the ID of the pool that matches the passed in poolName
-// parameter
+// parameter.
 func GetPoolID(monitors string, cr *Credentials, poolName string) (int64, error) {
 	conn, err := connPool.Get(monitors, cr.ID, cr.KeyFile)
 	if err != nil {
@@ -70,7 +70,7 @@ func GetPoolID(monitors string, cr *Credentials, poolName string) (int64, error)
 }
 
 // GetPoolName fetches the pool whose pool ID is equal to the requested poolID
-// parameter
+// parameter.
 func GetPoolName(monitors string, cr *Credentials, poolID int64) (string, error) {
 	conn, err := connPool.Get(monitors, cr.ID, cr.KeyFile)
 	if err != nil {
@@ -87,7 +87,7 @@ func GetPoolName(monitors string, cr *Credentials, poolID int64) (string, error)
 
 // GetPoolIDs searches a list of pools in a cluster and returns the IDs of the pools that matches
 // the passed in pools
-// TODO this should take in a list and return a map[string(poolname)]int64(poolID)
+// TODO this should take in a list and return a map[string(poolname)]int64(poolID).
 func GetPoolIDs(ctx context.Context, monitors, journalPool, imagePool string, cr *Credentials) (int64, int64, error) {
 	journalPoolID, err := GetPoolID(monitors, cr, journalPool)
 	if err != nil {
@@ -106,7 +106,7 @@ func GetPoolIDs(ctx context.Context, monitors, journalPool, imagePool string, cr
 }
 
 // CreateObject creates the object name passed in and returns ErrObjectExists if the provided object
-// is already present in rados
+// is already present in rados.
 func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolName, namespace, objectName string) error {
 	conn := ClusterConnection{}
 	err := conn.Connect(monitors, cr)
@@ -141,7 +141,7 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 }
 
 // RemoveObject removes the entire omap name passed in and returns ErrObjectNotFound is provided omap
-// is not found in rados
+// is not found in rados.
 func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolName, namespace, oMapName string) error {
 	conn := ClusterConnection{}
 	err := conn.Connect(monitors, cr)

@@ -20,13 +20,13 @@ import (
 
 type contextKey string
 
-// CtxKey for context based logging
+// CtxKey for context based logging.
 var CtxKey = contextKey("ID")
 
-// ReqID for logging request ID
+// ReqID for logging request ID.
 var ReqID = contextKey("Req-ID")
 
-// Log helps in context based logging
+// Log helps in context based logging.
 func Log(ctx context.Context, format string) string {
 	id := ctx.Value(CtxKey)
 	if id == nil {

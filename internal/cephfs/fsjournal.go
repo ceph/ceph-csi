@@ -24,7 +24,7 @@ import (
 )
 
 // volumeIdentifier structure contains an association between the CSI VolumeID to its subvolume
-// name on the backing CephFS instance
+// name on the backing CephFS instance.
 type volumeIdentifier struct {
 	FsSubvolName string
 	VolumeID     string
@@ -100,7 +100,7 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 	return &vid, nil
 }
 
-// undoVolReservation is a helper routine to undo a name reservation for a CSI VolumeName
+// undoVolReservation is a helper routine to undo a name reservation for a CSI VolumeName.
 func undoVolReservation(ctx context.Context, volOptions *volumeOptions, vid volumeIdentifier, secret map[string]string) error {
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
@@ -135,7 +135,7 @@ func updateTopologyConstraints(volOpts *volumeOptions) error {
 }
 
 // reserveVol is a helper routine to request a UUID reservation for the CSI VolumeName and,
-// to generate the volume identifier for the reserved UUID
+// to generate the volume identifier for the reserved UUID.
 func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[string]string) (*volumeIdentifier, error) {
 	var (
 		vid       volumeIdentifier

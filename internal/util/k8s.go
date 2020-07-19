@@ -25,7 +25,7 @@ import (
 	klog "k8s.io/klog/v2"
 )
 
-// NewK8sClient create kubernetes client
+// NewK8sClient create kubernetes client.
 func NewK8sClient() *k8s.Clientset {
 	var cfg *rest.Config
 	var err error

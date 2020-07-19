@@ -29,7 +29,7 @@ type testTuple struct {
 	wantDecError  bool
 }
 
-// TODO: Add more test tuples to test out other edge conditions
+// TODO: Add more test tuples to test out other edge conditions.
 var testData = []testTuple{
 	{
 		vID: CSIIdentifier{

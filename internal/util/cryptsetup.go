@@ -23,22 +23,22 @@ import (
 	"strings"
 )
 
-// LuksFormat sets up volume as an encrypted LUKS partition
+// LuksFormat sets up volume as an encrypted LUKS partition.
 func LuksFormat(devicePath, passphrase string) (stdout, stderr []byte, err error) {
 	return execCryptsetupCommand(&passphrase, "-q", "luksFormat", "--hash", "sha256", devicePath, "-d", "/dev/stdin")
 }
 
-// LuksOpen opens LUKS encrypted partition and sets up a mapping
+// LuksOpen opens LUKS encrypted partition and sets up a mapping.
 func LuksOpen(devicePath, mapperFile, passphrase string) (stdout, stderr []byte, err error) {
 	return execCryptsetupCommand(&passphrase, "luksOpen", devicePath, mapperFile, "-d", "/dev/stdin")
 }
 
-// LuksClose removes existing mapping
+// LuksClose removes existing mapping.
 func LuksClose(mapperFile string) (stdout, stderr []byte, err error) {
 	return execCryptsetupCommand(nil, "luksClose", mapperFile)
 }
 
-// LuksStatus returns encryption status of a provided device
+// LuksStatus returns encryption status of a provided device.
 func LuksStatus(mapperFile string) (stdout, stderr []byte, err error) {
 	return execCryptsetupCommand(nil, "status", mapperFile)
 }
