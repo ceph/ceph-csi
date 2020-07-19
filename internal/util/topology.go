@@ -44,7 +44,7 @@ func k8sGetNodeLabels(nodeName string) (map[string]string, error) {
 
 // GetTopologyFromDomainLabels returns the CSI topology map, determined from
 // the domain labels and their values from the CO system
-// Expects domainLabels in arg to be in the format "[prefix/]<name>,[prefix/]<name>,...",
+// Expects domainLabels in arg to be in the format "[prefix/]<name>,[prefix/]<name>,...",.
 func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map[string]string, error) {
 	if domainLabels == "" {
 		return nil, nil
@@ -122,7 +122,7 @@ type topologySegment struct {
 	DomainValue string `json:"value"`
 }
 
-// TopologyConstrainedPool stores the pool name and a list of its associated topology domain values
+// TopologyConstrainedPool stores the pool name and a list of its associated topology domain values.
 type TopologyConstrainedPool struct {
 	PoolName       string            `json:"poolName"`
 	DataPoolName   string            `json:"dataPool"`
@@ -130,7 +130,7 @@ type TopologyConstrainedPool struct {
 }
 
 // GetTopologyFromRequest extracts TopologyConstrainedPools and passed in accessibility constraints
-// from a CSI CreateVolume request
+// from a CSI CreateVolume request.
 func GetTopologyFromRequest(req *csi.CreateVolumeRequest) (*[]TopologyConstrainedPool, *csi.TopologyRequirement, error) {
 	var (
 		topologyPools []TopologyConstrainedPool
@@ -158,7 +158,7 @@ func GetTopologyFromRequest(req *csi.CreateVolumeRequest) (*[]TopologyConstraine
 }
 
 // MatchTopologyForPool returns the topology map, if the passed in pool matches any
-// passed in accessibility constraints
+// passed in accessibility constraints.
 func MatchTopologyForPool(topologyPools *[]TopologyConstrainedPool,
 	accessibilityRequirements *csi.TopologyRequirement, poolName string) (map[string]string, error) {
 	var topologyPool []TopologyConstrainedPool
@@ -187,7 +187,7 @@ func MatchTopologyForPool(topologyPools *[]TopologyConstrainedPool,
 // FindPoolAndTopology loops through passed in "topologyPools" and also related
 // accessibility requirements, to determine which pool matches the requirement.
 // The return variables are, image poolname, data poolname, and topology map of
-// matched requirement
+// matched requirement.
 func FindPoolAndTopology(topologyPools *[]TopologyConstrainedPool,
 	accessibilityRequirements *csi.TopologyRequirement) (string, string, map[string]string, error) {
 	if topologyPools == nil || accessibilityRequirements == nil {
@@ -217,7 +217,7 @@ func FindPoolAndTopology(topologyPools *[]TopologyConstrainedPool,
 
 // matchPoolToTopology loops through passed in pools, and for each pool checks if all
 // requested topology segments are present and match the request, returning the first pool
-// that hence matches (or an empty string if none match)
+// that hence matches (or an empty string if none match).
 func matchPoolToTopology(topologyPools *[]TopologyConstrainedPool, topology *csi.Topology) TopologyConstrainedPool {
 	domainMap := extractDomainsFromlabels(topology)
 
@@ -243,7 +243,7 @@ func matchPoolToTopology(topologyPools *[]TopologyConstrainedPool, topology *csi
 }
 
 // extractDomainsFromlabels returns the domain name map, from passed in domain segments,
-// which is of the form [prefix/]<name>
+// which is of the form [prefix/]<name>.
 func extractDomainsFromlabels(topology *csi.Topology) map[string]string {
 	domainMap := make(map[string]string)
 	for domainKey, value := range topology.GetSegments() {

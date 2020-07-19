@@ -38,7 +38,7 @@ type ControllerServer struct {
 	VolumeLocks *util.VolumeLocks
 }
 
-// createBackingVolume creates the backing subvolume and on any error cleans up any created entities
+// createBackingVolume creates the backing subvolume and on any error cleans up any created entities.
 func (cs *ControllerServer) createBackingVolume(ctx context.Context, volOptions *volumeOptions, vID *volumeIdentifier, secret map[string]string) error {
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
@@ -54,7 +54,7 @@ func (cs *ControllerServer) createBackingVolume(ctx context.Context, volOptions 
 	return nil
 }
 
-// CreateVolume creates a reservation and the volume in backend, if it is not already present
+// CreateVolume creates a reservation and the volume in backend, if it is not already present.
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
 		klog.Errorf(util.Log(ctx, "CreateVolumeRequest validation failed: %v"), err)
@@ -150,7 +150,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{Volume: volume}, nil
 }
 
-// DeleteVolume deletes the volume in backend and its reservation
+// DeleteVolume deletes the volume in backend and its reservation.
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(); err != nil {
 		klog.Errorf(util.Log(ctx, "DeleteVolumeRequest validation failed: %v"), err)
@@ -256,7 +256,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 	}, nil
 }
 
-// ControllerExpandVolume expands CephFS Volumes on demand based on resizer request
+// ControllerExpandVolume expands CephFS Volumes on demand based on resizer request.
 func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	if err := cs.validateExpandVolumeRequest(req); err != nil {
 		klog.Errorf(util.Log(ctx, "ControllerExpandVolumeRequest validation failed: %v"), err)

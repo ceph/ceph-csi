@@ -49,7 +49,7 @@ type CSIIdentifier struct {
 	ObjectUUID      string
 }
 
-// This maximum comes from the CSI spec on max bytes allowed in the various CSI ID fields
+// This maximum comes from the CSI spec on max bytes allowed in the various CSI ID fields.
 const maxVolIDLen = 128
 
 const (
@@ -95,7 +95,7 @@ func (ci CSIIdentifier) ComposeCSIID() (string, error) {
 }
 
 /*
-DecomposeCSIID composes a CSIIdentifier from passed in string
+DecomposeCSIID composes a CSIIdentifier from passed in string.
 */
 func (ci *CSIIdentifier) DecomposeCSIID(composedCSIID string) (err error) {
 	bytesToProcess := uint16(len(composedCSIID))

@@ -43,12 +43,12 @@ func parseEndpoint(ep string) (string, string, error) {
 	return "", "", fmt.Errorf("invalid endpoint: %v", ep)
 }
 
-// NewVolumeCapabilityAccessMode returns volume access mode
+// NewVolumeCapabilityAccessMode returns volume access mode.
 func NewVolumeCapabilityAccessMode(mode csi.VolumeCapability_AccessMode_Mode) *csi.VolumeCapability_AccessMode {
 	return &csi.VolumeCapability_AccessMode{Mode: mode}
 }
 
-// NewDefaultNodeServer initializes default node server
+// NewDefaultNodeServer initializes default node server.
 func NewDefaultNodeServer(d *CSIDriver, t string, topology map[string]string) *DefaultNodeServer {
 	d.topology = topology
 	return &DefaultNodeServer{
@@ -57,21 +57,21 @@ func NewDefaultNodeServer(d *CSIDriver, t string, topology map[string]string) *D
 	}
 }
 
-// NewDefaultIdentityServer initializes default identity servier
+// NewDefaultIdentityServer initializes default identity servier.
 func NewDefaultIdentityServer(d *CSIDriver) *DefaultIdentityServer {
 	return &DefaultIdentityServer{
 		Driver: d,
 	}
 }
 
-// NewDefaultControllerServer initializes default controller server
+// NewDefaultControllerServer initializes default controller server.
 func NewDefaultControllerServer(d *CSIDriver) *DefaultControllerServer {
 	return &DefaultControllerServer{
 		Driver: d,
 	}
 }
 
-// NewControllerServiceCapability returns controller capabilities
+// NewControllerServiceCapability returns controller capabilities.
 func NewControllerServiceCapability(ctrlCap csi.ControllerServiceCapability_RPC_Type) *csi.ControllerServiceCapability {
 	return &csi.ControllerServiceCapability{
 		Type: &csi.ControllerServiceCapability_Rpc{
@@ -82,7 +82,7 @@ func NewControllerServiceCapability(ctrlCap csi.ControllerServiceCapability_RPC_
 	}
 }
 
-// RunNodePublishServer starts node server
+// RunNodePublishServer starts node server.
 func RunNodePublishServer(endpoint, hstOption string, d *CSIDriver, ns csi.NodeServer, m bool) {
 	ids := NewDefaultIdentityServer(d)
 
@@ -91,7 +91,7 @@ func RunNodePublishServer(endpoint, hstOption string, d *CSIDriver, ns csi.NodeS
 	s.Wait()
 }
 
-// RunControllerPublishServer starts controller server
+// RunControllerPublishServer starts controller server.
 func RunControllerPublishServer(endpoint, hstOption string, d *CSIDriver, cs csi.ControllerServer, m bool) {
 	ids := NewDefaultIdentityServer(d)
 
@@ -100,7 +100,7 @@ func RunControllerPublishServer(endpoint, hstOption string, d *CSIDriver, cs csi
 	s.Wait()
 }
 
-// RunControllerandNodePublishServer starts both controller and node server
+// RunControllerandNodePublishServer starts both controller and node server.
 func RunControllerandNodePublishServer(endpoint, hstOption string, d *CSIDriver, cs csi.ControllerServer, ns csi.NodeServer, m bool) {
 	ids := NewDefaultIdentityServer(d)
 

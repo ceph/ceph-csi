@@ -339,7 +339,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 }
 
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
-// volume ID for the generated name
+// volume ID for the generated name.
 func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) error {
 	var (
 		err error
@@ -407,7 +407,7 @@ func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 }
 
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the
-// volume ID for the generated name
+// volume ID for the generated name.
 func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 	var (
 		err error
@@ -453,7 +453,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 	return nil
 }
 
-// undoSnapReservation is a helper routine to undo a name reservation for rbdSnapshot
+// undoSnapReservation is a helper routine to undo a name reservation for rbdSnapshot.
 func undoSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 	j, err := snapJournal.Connect(rbdSnap.Monitors, cr)
 	if err != nil {
@@ -468,7 +468,7 @@ func undoSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, cr *util.Cre
 	return err
 }
 
-// undoVolReservation is a helper routine to undo a name reservation for rbdVolume
+// undoVolReservation is a helper routine to undo a name reservation for rbdVolume.
 func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
 	j, err := volJournal.Connect(rbdVol.Monitors, cr)
 	if err != nil {

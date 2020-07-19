@@ -67,7 +67,7 @@ var (
 )
 
 // Load available ceph mounters installed on system into availableMounters
-// Called from driver.go's Run()
+// Called from driver.go's Run().
 func loadAvailableMounters(conf *util.Config) error {
 	// #nosec
 	fuseMounterProbe := exec.Command("ceph-fuse", "--version")

@@ -30,7 +30,7 @@ type IdentityServer struct {
 	*csicommon.DefaultIdentityServer
 }
 
-// GetPluginCapabilities returns available capabilities of the rbd driver
+// GetPluginCapabilities returns available capabilities of the rbd driver.
 func (is *IdentityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{

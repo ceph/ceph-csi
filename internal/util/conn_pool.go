@@ -106,7 +106,7 @@ func (cp *ConnPool) generateUniqueKey(monitors, user, keyfile string) (string, e
 
 // getExisting returns the existing rados.Conn associated with the unique key.
 //
-// Requires: locked cp.lock because of ce.get()
+// Requires: locked cp.lock because of ce.get().
 func (cp *ConnPool) getConn(unique string) *rados.Conn {
 	ce, exists := cp.conns[unique]
 	if exists {

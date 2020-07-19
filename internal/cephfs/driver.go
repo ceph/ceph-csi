@@ -37,7 +37,7 @@ const (
 	radosNamespace = "csi"
 )
 
-// Driver contains the default identity,node and controller struct
+// Driver contains the default identity,node and controller struct.
 type Driver struct {
 	cd *csicommon.CSIDriver
 
@@ -56,19 +56,19 @@ var (
 	volJournal *journal.Config
 )
 
-// NewDriver returns new ceph driver
+// NewDriver returns new ceph driver.
 func NewDriver() *Driver {
 	return &Driver{}
 }
 
-// NewIdentityServer initialize a identity server for ceph CSI driver
+// NewIdentityServer initialize a identity server for ceph CSI driver.
 func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
 	return &IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
-// NewControllerServer initialize a controller server for ceph CSI driver
+// NewControllerServer initialize a controller server for ceph CSI driver.
 func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
 	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
@@ -85,7 +85,7 @@ func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string)
 }
 
 // Run start a non-blocking grpc controller,node and identityserver for
-// ceph CSI driver which can serve multiple parallel requests
+// ceph CSI driver which can serve multiple parallel requests.
 func (fs *Driver) Run(conf *util.Config) {
 	var err error
 	var topology map[string]string

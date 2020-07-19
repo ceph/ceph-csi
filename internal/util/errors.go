@@ -16,7 +16,7 @@ limitations under the License.
 
 package util
 
-// ErrKeyNotFound is returned when requested key in omap is not found
+// ErrKeyNotFound is returned when requested key in omap is not found.
 type ErrKeyNotFound struct {
 	keyName string
 	err     error
@@ -37,7 +37,7 @@ func (e ErrKeyNotFound) Unwrap() error {
 	return e.err
 }
 
-// ErrObjectExists is returned when named omap is already present in rados
+// ErrObjectExists is returned when named omap is already present in rados.
 type ErrObjectExists struct {
 	objectName string
 	err        error
@@ -53,7 +53,7 @@ func (e ErrObjectExists) Unwrap() error {
 	return e.err
 }
 
-// ErrObjectNotFound is returned when named omap is not found in rados
+// ErrObjectNotFound is returned when named omap is not found in rados.
 type ErrObjectNotFound struct {
 	oMapName string
 	err      error
@@ -70,7 +70,7 @@ func (e ErrObjectNotFound) Unwrap() error {
 }
 
 // ErrSnapNameConflict is generated when a requested CSI snap name already exists on RBD but with
-// different properties, and hence is in conflict with the passed in CSI volume name
+// different properties, and hence is in conflict with the passed in CSI volume name.
 type ErrSnapNameConflict struct {
 	requestName string
 	err         error
@@ -91,7 +91,7 @@ func NewErrSnapNameConflict(name string, err error) ErrSnapNameConflict {
 	return ErrSnapNameConflict{name, err}
 }
 
-// ErrPoolNotFound is returned when pool is not found
+// ErrPoolNotFound is returned when pool is not found.
 type ErrPoolNotFound struct {
 	Pool string
 	Err  error
