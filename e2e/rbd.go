@@ -3,7 +3,9 @@ package e2e
 import (
 	"fmt"
 	"strings"
+	"sync"
 
+	"github.com/kubernetes-csi/external-snapshotter/v2/pkg/apis/volumesnapshot/v1beta1"
 	. "github.com/onsi/ginkgo" // nolint
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -253,6 +255,9 @@ var _ = Describe("RBD", func() {
 				}
 				// snapshot beta is only supported from v1.17+
 				if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
+					var wg sync.WaitGroup
+					totalCount := 10
+					wg.Add(totalCount)
 					createRBDSnapshotClass(f)
 					pvc, err := loadPVC(pvcPath)
 					if err != nil {
@@ -271,18 +276,22 @@ var _ = Describe("RBD", func() {
 						e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
 						Fail("validate backend image failed")
 					}
-					totalCount := 5
 					snap := getSnapshot(snapshotPath)
 					snap.Namespace = f.UniqueName
 					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 					// create snapshot
 					for i := 0; i < totalCount; i++ {
-						snap.Name = fmt.Sprintf("%s%d", f.UniqueName, i)
-						err = createSnapshot(&snap, deployTimeout)
-						if err != nil {
-							Fail(err.Error())
-						}
+						go func(w *sync.WaitGroup, n int, s v1beta1.VolumeSnapshot) {
+							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+							err = createSnapshot(&s, deployTimeout)
+							if err != nil {
+								e2elog.Logf("failed to create snapshot %v", err)
+								Fail(err.Error())
+							}
+							w.Done()
+						}(&wg, i, snap)
 					}
+					wg.Wait()
 
 					imageList := listRBDImages(f)
 					// total images in cluster is 1 parent rbd image+ total snaps
@@ -299,22 +308,77 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						Fail(err.Error())
 					}
-					// create clone and bind it to an app
+					pvcClone.Namespace = f.UniqueName
+					appClone.Namespace = f.UniqueName
+					pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
+
+					// create multiple PVC from same snapshot
+					wg.Add(totalCount)
 					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						pvcClone.Spec.DataSource.Name = name
-						pvcClone.Namespace = f.UniqueName
-						appClone.Namespace = f.UniqueName
-						err = createPVCAndApp(name, f, pvcClone, appClone, deployTimeout)
-						if err != nil {
-							Fail(err.Error())
-						}
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
+							if err != nil {
+								e2elog.Logf("failed to create pvc and app %v", err)
+								Fail(err.Error())
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
 					}
+					wg.Wait()
 
 					imageList = listRBDImages(f)
 					// total images in cluster is 1 parent rbd image+ total
 					// snaps+ total clones
 					totalCloneCount := totalCount + totalCount + 1
+					if len(imageList) != totalCloneCount {
+						e2elog.Logf("backend images not matching kubernetes resource count,image count %d kubernetes resource count %d", len(imageList), totalCount+totalCount+1)
+						Fail("validate backend images failed")
+					}
+
+					wg.Add(totalCount)
+					// delete clone and app
+					for i := 0; i < totalCount; i++ {
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							p.Spec.DataSource.Name = name
+							err = deletePVCAndApp(name, f, &p, &a)
+							if err != nil {
+								e2elog.Logf("failed to delete pvc and app %v", err)
+								Fail(err.Error())
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
+					}
+					wg.Wait()
+
+					imageList = listRBDImages(f)
+					// total images in cluster is 1 parent rbd image+ total snaps
+					if len(imageList) != totalCount+1 {
+						e2elog.Logf("backend images not matching kubernetes pvc,snap count,image count %d kubernetes resource count %d", len(imageList), totalCount+1)
+						Fail("validate backend images failed")
+					}
+					// create clones from different snapshosts and bind it to an
+					// app
+					wg.Add(totalCount)
+					for i := 0; i < totalCount; i++ {
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							p.Spec.DataSource.Name = name
+							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
+							if err != nil {
+								e2elog.Logf("failed to create pvc and app %v", err)
+								Fail(err.Error())
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
+					}
+					wg.Wait()
+
+					imageList = listRBDImages(f)
+					// total images in cluster is 1 parent rbd image+ total
+					// snaps+ total clones
+					totalCloneCount = totalCount + totalCount + 1
 					if len(imageList) != totalCloneCount {
 						e2elog.Logf("backend images not matching kubernetes resource count,image count %d kubernetes resource count %d", len(imageList), totalCount+totalCount+1)
 						Fail("validate backend images failed")
@@ -333,30 +397,41 @@ var _ = Describe("RBD", func() {
 						e2elog.Logf("backend images not matching kubernetes resource count,image count %d kubernetes resource count %d", len(imageList), totalCount+totalCount)
 						Fail("validate backend images failed")
 					}
+					wg.Add(totalCount)
+					// delete snapshot
 					for i := 0; i < totalCount; i++ {
-						snap.Name = fmt.Sprintf("%s%d", f.UniqueName, i)
-						err = deleteSnapshot(&snap, deployTimeout)
-						if err != nil {
-							Fail(err.Error())
-						}
+						go func(w *sync.WaitGroup, n int, s v1beta1.VolumeSnapshot) {
+							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+							err = deleteSnapshot(&s, deployTimeout)
+							if err != nil {
+								e2elog.Logf("failed to delete snapshot %v", err)
+								Fail(err.Error())
+							}
+							w.Done()
+						}(&wg, i, snap)
 					}
+					wg.Wait()
 
 					imageList = listRBDImages(f)
 					if len(imageList) != totalCount {
 						e2elog.Logf("backend images not matching kubernetes snap count,image count %d kubernetes resource count %d", len(imageList), totalCount)
 						Fail("validate backend images failed")
 					}
-					// create clone and bind it to an app
+					wg.Add(totalCount)
+					// delete clone and app
 					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						pvcClone.Spec.DataSource.Name = name
-						pvcClone.Namespace = f.UniqueName
-						appClone.Namespace = f.UniqueName
-						err = deletePVCAndApp(name, f, pvcClone, appClone)
-						if err != nil {
-							Fail(err.Error())
-						}
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							p.Spec.DataSource.Name = name
+							err = deletePVCAndApp(name, f, &p, &a)
+							if err != nil {
+								e2elog.Logf("failed to delete pvc and app %v", err)
+								Fail(err.Error())
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
 					}
+					wg.Wait()
 				}
 			})
 
@@ -368,6 +443,8 @@ var _ = Describe("RBD", func() {
 				}
 				// pvc clone is only supported from v1.16+
 				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+					var wg sync.WaitGroup
+					totalCount := 10
 					pvc, err := loadPVC(pvcPath)
 					if err != nil {
 						Fail(err.Error())
@@ -396,15 +473,19 @@ var _ = Describe("RBD", func() {
 						Fail(err.Error())
 					}
 					appClone.Namespace = f.UniqueName
-					totalCount := 3
+					wg.Add(totalCount)
 					// create clone and bind it to an app
 					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						err = createPVCAndApp(name, f, pvcClone, appClone, deployTimeout)
-						if err != nil {
-							Fail(err.Error())
-						}
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
+							if err != nil {
+								Fail(err.Error())
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
 					}
+					wg.Wait()
 
 					images = listRBDImages(f)
 					// total images in cluster is 1 parent rbd image+ total
@@ -428,22 +509,25 @@ var _ = Describe("RBD", func() {
 						e2elog.Logf("backend images not matching kubernetes resource count,image count %d kubernetes resource count %d", len(images), totalCloneCount)
 						Fail("validate backend images failed")
 					}
-
+					wg.Add(totalCount)
 					// delete clone and app
 					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						pvcClone.Spec.DataSource.Name = name
-						err = deletePVCAndApp(name, f, pvcClone, appClone)
-						if err != nil {
-							Fail(err.Error())
-						}
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							p.Spec.DataSource.Name = name
+							err = deletePVCAndApp(name, f, &p, &a)
+							if err != nil {
+								Fail(err.Error())
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
 					}
+					wg.Wait()
 					images = listRBDImages(f)
 					if len(images) != 0 {
 						e2elog.Logf("backend images not matching kubernetes snap count,image count %d kubernetes resource count %d", len(images), 0)
 						Fail("validate backend images failed")
 					}
-
 				}
 			})
 
