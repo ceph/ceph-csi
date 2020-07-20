@@ -41,7 +41,7 @@ const (
 	vaultDefaultPassphrasePath = ""
 
 	// vault request headers
-	vaultTokenHeader     = "X-Vault-Token" // nolint: gosec, #nosec
+	vaultTokenHeader     = "X-Vault-Token" // #nosec:G101, value not credential, just references token.
 	vaultNamespaceHeader = "X-Vault-Namespace"
 )
 

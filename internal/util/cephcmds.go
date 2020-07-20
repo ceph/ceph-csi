@@ -33,7 +33,7 @@ const InvalidPoolID int64 = -1
 // ExecCommand executes passed in program with args and returns separate stdout and stderr streams.
 func ExecCommand(program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
-		cmd           = exec.Command(program, args...) // nolint: gosec, #nosec
+		cmd           = exec.Command(program, args...) // #nosec:G204, commands executing not vulnerable.
 		sanitizedArgs = StripSecretInArgs(args)
 		stdoutBuf     bytes.Buffer
 		stderrBuf     bytes.Buffer

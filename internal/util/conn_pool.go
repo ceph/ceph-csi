@@ -96,7 +96,7 @@ func (cp *ConnPool) Destroy() {
 
 func (cp *ConnPool) generateUniqueKey(monitors, user, keyfile string) (string, error) {
 	// the keyfile can be unique for operations, contents will be the same
-	key, err := ioutil.ReadFile(keyfile) // nolint: gosec, #nosec
+	key, err := ioutil.ReadFile(keyfile) // #nosec:G304, file inclusion via variable.
 	if err != nil {
 		return "", fmt.Errorf("could not open keyfile %s: %w", keyfile, err)
 	}
