@@ -18,7 +18,6 @@ package cephfs
 
 import (
 	"context"
-	"fmt"
 	"path"
 	"strconv"
 	"strings"
@@ -37,6 +36,10 @@ var (
 	clusterAdditionalInfo = make(map[string]*localClusterState)
 
 	inValidCommmand = "no valid command found"
+
+	// ceph returns `Error ENOENT:` when subvolume or subvolume group doesnot
+	// exist.
+	errNotFoundString = "Error ENOENT:"
 )
 
 const (
@@ -45,10 +48,6 @@ const (
 
 func getVolumeRootPathCephDeprecated(volID volumeID) string {
 	return path.Join("/", "csi-volumes", string(volID))
-}
-
-func getVolumeNotFoundErrorString(volID volumeID) string {
-	return fmt.Sprintf("Error ENOENT: Subvolume '%s' not found", string(volID))
 }
 
 func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (string, error) {
@@ -67,9 +66,10 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 		"--keyfile="+cr.KeyFile)
 
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get the rootpath for the vol %s(%s)"), string(volID), err)
+		stdErrString := string(stderr)
+		klog.Errorf(util.Log(ctx, "failed to get the rootpath for the vol %s(%s) stdError %s"), string(volID), err, stdErrString)
 
-		if strings.Contains(string(stderr), getVolumeNotFoundErrorString(volID)) {
+		if strings.HasPrefix(stdErrString, errNotFoundString) {
 			return "", ErrVolumeNotFound{err}
 		}
 
@@ -214,7 +214,7 @@ func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volO
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to purge subvolume %s(%s) in fs %s"), string(volID), err, volOptions.FsName)
 
-		if strings.Contains(err.Error(), getVolumeNotFoundErrorString(volID)) {
+		if strings.HasPrefix(err.Error(), errNotFoundString) {
 			return ErrVolumeNotFound{err}
 		}
 
