@@ -46,7 +46,7 @@ func LuksStatus(mapperFile string) (stdout, stderr []byte, err error) {
 func execCryptsetupCommand(stdin *string, args ...string) (stdout, stderr []byte, err error) {
 	var (
 		program       = "cryptsetup"
-		cmd           = exec.Command(program, args...) // nolint: gosec, #nosec
+		cmd           = exec.Command(program, args...) // #nosec:G204, commands executing not vulnerable.
 		sanitizedArgs = StripSecretInArgs(args)
 		stdoutBuf     bytes.Buffer
 		stderrBuf     bytes.Buffer

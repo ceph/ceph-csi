@@ -31,17 +31,18 @@ import (
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
+/* #nosec:G101, values not credententials, just a reference to the location.*/
 const (
 	defaultNs     = "default"
-	vaultSecretNs = "/secret/ceph-csi/" // nolint: gosec
+	vaultSecretNs = "/secret/ceph-csi/"
 
 	// rook created cephfs user
-	cephfsNodePluginSecretName  = "rook-csi-cephfs-node"        // nolint: gosec
-	cephfsProvisionerSecretName = "rook-csi-cephfs-provisioner" // nolint: gosec
+	cephfsNodePluginSecretName  = "rook-csi-cephfs-node"
+	cephfsProvisionerSecretName = "rook-csi-cephfs-provisioner"
 
 	// rook created rbd user
-	rbdNodePluginSecretName  = "rook-csi-rbd-node"        // nolint: gosec
-	rbdProvisionerSecretName = "rook-csi-rbd-provisioner" // nolint: gosec
+	rbdNodePluginSecretName  = "rook-csi-rbd-node"
+	rbdProvisionerSecretName = "rook-csi-rbd-provisioner"
 
 	rookTolBoxPodLabel = "app=rook-ceph-tools"
 	rbdmountOptions    = "mountOptions"

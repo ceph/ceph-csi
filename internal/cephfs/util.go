@@ -34,7 +34,7 @@ type volumeID string
 
 func execCommand(ctx context.Context, program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
-		cmd           = exec.Command(program, args...) // nolint: gosec, #nosec
+		cmd           = exec.Command(program, args...) // #nosec:G204, not called with user specified parameters.
 		sanitizedArgs = util.StripSecretInArgs(args)
 		stdoutBuf     bytes.Buffer
 		stderrBuf     bytes.Buffer
