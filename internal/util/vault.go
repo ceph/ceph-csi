@@ -151,7 +151,7 @@ func (kms *VaultKMS) GetPassphrase(key string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == http.StatusNotFound {
 		return "", MissingPassphrase{fmt.Errorf("passphrase for %s not found", key)}
 	}
 	err = kms.processError(resp, fmt.Sprintf("get passphrase for %s", key))
@@ -219,7 +219,7 @@ func (kms *VaultKMS) DeletePassphrase(key string) error {
 		return fmt.Errorf("delete passphrase at %s request to vault failed: %s", key, err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 404 {
+	if resp.StatusCode != http.StatusNotFound {
 		err = kms.processError(resp, "delete passphrase")
 		if err != nil {
 			return err

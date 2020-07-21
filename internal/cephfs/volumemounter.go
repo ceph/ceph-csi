@@ -47,6 +47,7 @@ var (
 
 	fusePidRx = regexp.MustCompile(`(?m)^ceph-fuse\[(.+)\]: starting fuse$`)
 
+	// nolint:gomnd // numbers specify Kernel versions.
 	quotaSupport = []util.KernelVersion{
 		{
 			Version:      4,
@@ -176,7 +177,10 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 	// and PID of the ceph-fuse daemon for unmount
 
 	match := fusePidRx.FindSubmatch(stderr)
-	if len(match) != 2 {
+	// validMatchLength is set to 2 as match is expected
+	// to have 2 items, starting fuse and PID of the fuse daemon
+	const validMatchLength = 2
+	if len(match) != validMatchLength {
 		return fmt.Errorf("ceph-fuse failed: %s", stderr)
 	}
 

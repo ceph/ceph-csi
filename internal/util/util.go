@@ -125,7 +125,8 @@ func ValidateDriverName(driverName string) error {
 		return errors.New("driver name is empty")
 	}
 
-	if len(driverName) > 63 {
+	const reqDriverNameLen = 63
+	if len(driverName) > reqDriverNameLen {
 		return errors.New("driver name length should be less than 63 chars")
 	}
 	var err error
@@ -191,7 +192,8 @@ func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool 
 		return false
 	}
 	sublevel := 0
-	if len(vers) >= 3 {
+	const minLenForSublvl = 3
+	if len(vers) >= minLenForSublvl {
 		sublevel, err = strconv.Atoi(vers[2])
 		if err != nil {
 			klog.Errorf("failed to parse sublevel from %s: %v", release, err)
@@ -200,7 +202,8 @@ func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool 
 	}
 	extra := strings.SplitN(release, "-", 2)
 	extraversion := 0
-	if len(extra) == 2 {
+	const expectedExtraLen = 2
+	if len(extra) == expectedExtraLen {
 		// ignore errors, 1st component of extraversion does not need to be an int
 		extraversion, err = strconv.Atoi(strings.Split(extra[1], ".")[0])
 		if err != nil {
