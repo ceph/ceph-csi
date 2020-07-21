@@ -62,9 +62,6 @@ const (
 	rbdImageRequiresEncryption = "requiresEncryption"
 	// image metadata key for encryption
 	encryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
-
-	// go-ceph will provide rbd.ImageOptionCloneFormat
-	imageOptionCloneFormat = librbd.RbdImageOption(12)
 )
 
 // rbdVolume represents a CSI volume and its RBD image specifics.
@@ -844,7 +841,7 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *r
 		}
 	}
 
-	err = options.SetUint64(imageOptionCloneFormat, 2)
+	err = options.SetUint64(librbd.ImageOptionCloneFormat, 2)
 	if err != nil {
 		return fmt.Errorf("failed to set image features: %w", err)
 	}
@@ -994,7 +991,8 @@ func (ri *rbdImageMetadataStash) String() string {
 // JSON format.
 func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
 	var imgMeta = rbdImageMetadataStash{
-		Version:   2, // there are no checks for this at present
+		// there are no checks for this at present
+		Version:   2, // nolint:gomnd // number specifies version.
 		Pool:      volOptions.Pool,
 		ImageName: volOptions.RbdImageName,
 		Encrypted: volOptions.Encrypted,

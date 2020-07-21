@@ -52,7 +52,8 @@ func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map
 
 	// size checks on domain label prefix
 	topologyPrefix := strings.ToLower("topology." + driverName)
-	if len(topologyPrefix) > 63 {
+	const lenLimit = 63
+	if len(topologyPrefix) > lenLimit {
 		return nil, fmt.Errorf("computed topology label prefix (%s) for node exceeds length limits", topologyPrefix)
 	}
 	// driverName is validated, and we are adding a lowercase "topology." to it, so no validation for conformance

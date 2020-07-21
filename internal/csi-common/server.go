@@ -118,7 +118,8 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, ids csi.Ident
 	util.DefaultLog("Listening for connections on address: %#v", listener.Addr())
 	if metrics {
 		ho := strings.Split(hstOptions, ",")
-		if len(ho) != 3 {
+		const expectedHo = 3
+		if len(ho) != expectedHo {
 			klog.Fatalf("invalid histogram options provided: %v", hstOptions)
 		}
 		start, e := strconv.ParseFloat(ho[0], 32)

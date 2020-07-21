@@ -39,6 +39,9 @@ const (
 	rbdDefaultName      = "rbd.csi.ceph.com"
 	cephfsDefaultName   = "cephfs.csi.ceph.com"
 	livenessDefaultName = "liveness.csi.ceph.com"
+
+	pollTime     = 60 // seconds
+	probeTimeout = 3  // seconds
 )
 
 var (
@@ -65,8 +68,8 @@ func init() {
 	// liveness/grpc metrics related flags
 	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/grpc metrics requests")
 	flag.StringVar(&conf.MetricsPath, "metricspath", "/metrics", "path of prometheus endpoint where metrics will be available")
-	flag.DurationVar(&conf.PollTime, "polltime", time.Second*60, "time interval in seconds between each poll")
-	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*3, "probe timeout in seconds")
+	flag.DurationVar(&conf.PollTime, "polltime", time.Second*pollTime, "time interval in seconds between each poll")
+	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*probeTimeout, "probe timeout in seconds")
 
 	flag.BoolVar(&conf.EnableGRPCMetrics, "enablegrpcmetrics", false, "[DEPRECATED] enable grpc metrics")
 	flag.StringVar(&conf.HistogramOption, "histogramoption", "0.5,2,6",

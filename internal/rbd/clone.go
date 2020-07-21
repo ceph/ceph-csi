@@ -234,11 +234,13 @@ func (rv *rbdVolume) flattenCloneImage(ctx context.Context) error {
 	// can flatten the parent images before use to avoid the stale omap entries.
 	hardLimit := rbdHardMaxCloneDepth
 	softLimit := rbdSoftMaxCloneDepth
-	if rbdHardMaxCloneDepth < 2 {
-		hardLimit = rbdHardMaxCloneDepth - 2
+	// choosing 2 so that we don't need to flatten the image in the request.
+	const depthToAvoidFlatten = 2
+	if rbdHardMaxCloneDepth < depthToAvoidFlatten {
+		hardLimit = rbdHardMaxCloneDepth - depthToAvoidFlatten
 	}
-	if rbdSoftMaxCloneDepth < 2 {
-		softLimit = rbdSoftMaxCloneDepth - 2
+	if rbdSoftMaxCloneDepth < depthToAvoidFlatten {
+		softLimit = rbdSoftMaxCloneDepth - depthToAvoidFlatten
 	}
 	err := tempClone.getImageInfo()
 	if err == nil {

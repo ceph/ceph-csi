@@ -65,6 +65,7 @@ var (
 	kernelRelease = ""
 	// deepFlattenSupport holds the list of kernel which support mapping rbd
 	// image with deep-flatten image feature
+	// nolint:gomnd // numbers specify Kernel versions.
 	deepFlattenSupport = []util.KernelVersion{
 		{
 			Version:      5,

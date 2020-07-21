@@ -401,7 +401,7 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 
 	cj := conn.config
 	if volName != "" {
-		if len(volName) < 36 {
+		if len(volName) < uuidEncodedLength {
 			return fmt.Errorf("unable to parse UUID from %s, too short", volName)
 		}
 
