@@ -830,10 +830,22 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *rbdSnapshot) error {
 	image := rv.RbdImageName
 	var err error
-	util.DebugLog(ctx, "rbd: clone %s %s using mon %s", pSnapOpts, image, rv.Monitors)
+	logMsg := "rbd: clone %s %s (features: %s) using mon %s"
 
 	options := librbd.NewRbdImageOptions()
 	defer options.Destroy()
+
+	if rv.DataPool != "" {
+		logMsg += fmt.Sprintf(", data pool %s", rv.DataPool)
+		err = options.SetString(librbd.RbdImageOptionDataPool, rv.DataPool)
+		if err != nil {
+			return fmt.Errorf("failed to set data pool: %w", err)
+		}
+	}
+
+	util.DebugLog(ctx, logMsg,
+		pSnapOpts, image, rv.imageFeatureSet.Names(), rv.Monitors)
+
 	if rv.imageFeatureSet != 0 {
 		err = options.SetUint64(librbd.RbdImageOptionFeatures, uint64(rv.imageFeatureSet))
 		if err != nil {
