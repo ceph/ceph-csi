@@ -47,6 +47,7 @@ var (
 
 	fusePidRx = regexp.MustCompile(`(?m)^ceph-fuse\[(.+)\]: starting fuse$`)
 
+	// nolint:gomnd // numbers specify Kernel versions.
 	quotaSupport = []util.KernelVersion{
 		{
 			Version:      4,
@@ -67,7 +68,7 @@ var (
 )
 
 // Load available ceph mounters installed on system into availableMounters
-// Called from driver.go's Run()
+// Called from driver.go's Run().
 func loadAvailableMounters(conf *util.Config) error {
 	// #nosec
 	fuseMounterProbe := exec.Command("ceph-fuse", "--version")
@@ -176,13 +177,16 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 	// and PID of the ceph-fuse daemon for unmount
 
 	match := fusePidRx.FindSubmatch(stderr)
-	if len(match) != 2 {
+	// validMatchLength is set to 2 as match is expected
+	// to have 2 items, starting fuse and PID of the fuse daemon
+	const validMatchLength = 2
+	if len(match) != validMatchLength {
 		return fmt.Errorf("ceph-fuse failed: %s", stderr)
 	}
 
 	pid, err := strconv.Atoi(string(match[1]))
 	if err != nil {
-		return fmt.Errorf("failed to parse FUSE daemon PID: %v", err)
+		return fmt.Errorf("failed to parse FUSE daemon PID: %w", err)
 	}
 
 	fusePidMapMtx.Lock()

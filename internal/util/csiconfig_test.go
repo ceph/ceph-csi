@@ -32,7 +32,8 @@ func cleanupTestData() {
 	os.RemoveAll(basePath)
 }
 
-// nolint: gocyclo
+// TODO: make this function less complex
+// nolint:gocyclo // complexity needs to be reduced.
 func TestCSIConfig(t *testing.T) {
 	var err error
 	var data string
@@ -52,7 +53,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	data = ""
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0644)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -64,7 +65,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	data = "[{\"clusterIDBad\":\"" + clusterID2 + "\",\"monitors\":[\"mon1\",\"mon2\",\"mon3\"]}]"
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0644)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -76,7 +77,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	data = "[{\"clusterID\":\"" + clusterID2 + "\",\"monitorsBad\":[\"mon1\",\"mon2\",\"mon3\"]}]"
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0644)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -88,7 +89,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	data = "[{\"clusterID\":\"" + clusterID2 + "\",\"monitors\":[\"mon1\",2,\"mon3\"]}]"
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0644)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -100,7 +101,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	data = "[{\"clusterID\":\"" + clusterID2 + "\",\"monitors\":[\"mon1\",\"mon2\",\"mon3\"]}]"
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0644)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -119,7 +120,7 @@ func TestCSIConfig(t *testing.T) {
 
 	data = "[{\"clusterID\":\"" + clusterID2 + "\",\"monitors\":[\"mon1\",\"mon2\",\"mon3\"]}," +
 		"{\"clusterID\":\"" + clusterID1 + "\",\"monitors\":[\"mon4\",\"mon5\",\"mon6\"]}]"
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0644)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}

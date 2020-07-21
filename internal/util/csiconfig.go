@@ -29,7 +29,7 @@ const (
 	defaultCsiSubvolumeGroup = "csi"
 )
 
-// ClusterInfo strongly typed JSON spec for the below JSON structure
+// ClusterInfo strongly typed JSON spec for the below JSON structure.
 type ClusterInfo struct {
 	// ClusterID is used for unique identification
 	ClusterID string `json:"clusterID"`
@@ -57,7 +57,7 @@ type ClusterInfo struct {
 //         }
 // 	},
 // 	...
-// ]
+// ].
 func readClusterInfo(pathToConfig, clusterID string) (*ClusterInfo, error) {
 	var config []ClusterInfo
 
@@ -83,7 +83,7 @@ func readClusterInfo(pathToConfig, clusterID string) (*ClusterInfo, error) {
 	return nil, fmt.Errorf("missing configuration for cluster ID (%s)", clusterID)
 }
 
-// Mons returns a comma separated MON list from the csi config for the given clusterID
+// Mons returns a comma separated MON list from the csi config for the given clusterID.
 func Mons(pathToConfig, clusterID string) (string, error) {
 	cluster, err := readClusterInfo(pathToConfig, clusterID)
 	if err != nil {
@@ -96,7 +96,7 @@ func Mons(pathToConfig, clusterID string) (string, error) {
 	return strings.Join(cluster.Monitors, ","), nil
 }
 
-// CephFSSubvolumeGroup returns the subvolumeGroup for CephFS volumes. If not set, it returns the default value "csi"
+// CephFSSubvolumeGroup returns the subvolumeGroup for CephFS volumes. If not set, it returns the default value "csi".
 func CephFSSubvolumeGroup(pathToConfig, clusterID string) (string, error) {
 	cluster, err := readClusterInfo(pathToConfig, clusterID)
 	if err != nil {

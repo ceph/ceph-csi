@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-// very basic tests for the moment
+// very basic tests for the moment.
 func TestIDLocker(t *testing.T) {
 	fakeID := "fake-id"
 	locks := NewVolumeLocks()

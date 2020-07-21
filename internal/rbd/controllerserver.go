@@ -178,7 +178,34 @@ func getGRPCErrorForCreateVolume(err error) error {
 	return status.Error(codes.Internal, err.Error())
 }
 
-// CreateVolume creates the volume in backend
+// validateRequestedVolumeSize validates the request volume size with the
+// source snapshot or volume size, if there is a size missmatch it returns an error.
+func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+	if rbdSnap != nil {
+		vol := generateVolFromSnap(rbdSnap)
+		err := vol.Connect(cr)
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+		defer vol.Destroy()
+
+		err = vol.getImageInfo()
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+		if rbdVol.VolSize != vol.VolSize {
+			return status.Errorf(codes.InvalidArgument, "size missmatch, requested volume size %d and source snapshot size %d", rbdVol.VolSize, vol.VolSize)
+		}
+	}
+	if parentVol != nil {
+		if rbdVol.VolSize != parentVol.VolSize {
+			return status.Errorf(codes.InvalidArgument, "size missmatch, requested volume size %d and source volume size %d", rbdVol.VolSize, parentVol.VolSize)
+		}
+	}
+	return nil
+}
+
+// CreateVolume creates the volume in backend.
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateVolumeReq(ctx, req); err != nil {
 		return nil, err
@@ -230,15 +257,16 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return buildCreateVolumeResponse(ctx, req, rbdVol)
 	}
 
-	if parentVol != nil {
-		// flatten the image or its parent before the reservation to avoid
-		// stale entries in post creation if we return ABORT error and the
-		// delete volume is not called
-		err = parentVol.flattenCloneImage(ctx)
-		if err != nil {
-			return nil, getGRPCErrorForCreateVolume(err)
-		}
+	err = validateRequestedVolumeSize(rbdVol, parentVol, rbdSnap, cr)
+	if err != nil {
+		return nil, err
 	}
+
+	err = flattenParentImage(ctx, parentVol, cr)
+	if err != nil {
+		return nil, err
+	}
+
 	err = reserveVol(ctx, rbdVol, rbdSnap, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -285,10 +313,54 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return &csi.CreateVolumeResponse{Volume: volume}, nil
 }
 
+func flattenParentImage(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
+	if rbdVol != nil {
+		// flatten the image or its parent before the reservation to avoid
+		// stale entries in post creation if we return ABORT error and the
+		// delete volume is not called
+		err := rbdVol.flattenCloneImage(ctx)
+		if err != nil {
+			return getGRPCErrorForCreateVolume(err)
+		}
+
+		// flatten cloned images if the snapshot count on the parent image
+		// exceeds maxSnapshotsOnImage
+		err = flattenTemporaryClonedImages(ctx, rbdVol, cr)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// check snapshots on the rbd image, as we have limit from krbd that
+// an image cannot have more than 510 snapshot at a given point of time.
+// If the snapshots are more than the `maxSnapshotsOnImage` Add a task to
+// flatten all the temporary cloned images.
+func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
+	snaps, err := rbdVol.listSnapshots(ctx, cr)
+	if err != nil {
+		var einf ErrImageNotFound
+		if errors.As(err, &einf) {
+			return status.Error(codes.InvalidArgument, err.Error())
+		}
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	if len(snaps) > int(maxSnapshotsOnImage) {
+		err = flattenClonedRbdImages(ctx, snaps, rbdVol.Pool, rbdVol.Monitors, cr)
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+		return status.Errorf(codes.ResourceExhausted, "rbd image %s has %d snapshots", rbdVol, len(snaps))
+	}
+	return nil
+}
+
 // checkFlatten ensures that that the image chain depth is not reached
 // hardlimit or softlimit. if the softlimit is reached it adds a task and
 // return success,the hardlimit is reached it starts a task to flatten the
-// image and return Aborted
+// image and return Aborted.
 func checkFlatten(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
 	err := rbdVol.flattenRbdImage(ctx, cr, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 	if err != nil {
@@ -626,7 +698,8 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
-// nolint: gocyclo
+// TODO: make this function less complex
+// nolint:gocyclo // complexity needs to be reduced.
 func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	if err := cs.validateSnapshotReq(ctx, req); err != nil {
 		return nil, err
@@ -741,24 +814,12 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			},
 		}, nil
 	}
-	var snaps []snapshotInfo
-	// check the number of snapshots on image
-	snaps, err = rbdVol.listSnapshots(ctx, cr)
+
+	err = flattenTemporaryClonedImages(ctx, rbdVol, cr)
 	if err != nil {
-		var einf ErrImageNotFound
-		if errors.As(err, &einf) {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	if len(snaps) > int(maxSnapshotsOnImage) {
-		err = flattenClonedRbdImages(ctx, snaps, rbdVol.Pool, rbdVol.Monitors, cr)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		return nil, status.Errorf(codes.ResourceExhausted, "rbd image %s has %d snapshots", rbdVol, len(snaps))
-	}
 	err = reserveSnap(ctx, rbdSnap, rbdVol, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -887,7 +948,7 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 }
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
-// snapshot metadata from store
+// snapshot metadata from store.
 func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		klog.Errorf(util.Log(ctx, "invalid delete snapshot req: %v"), protosanitizer.StripSecrets(req))
@@ -985,7 +1046,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 
-// ControllerExpandVolume expand RBD Volumes on demand based on resizer request
+// ControllerExpandVolume expand RBD Volumes on demand based on resizer request.
 func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
 		klog.Errorf(util.Log(ctx, "invalid expand volume req: %v"), protosanitizer.StripSecrets(req))

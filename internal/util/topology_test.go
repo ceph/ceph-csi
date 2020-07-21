@@ -35,7 +35,7 @@ func checkAndReportError(t *testing.T, msg string, err error) {
 	}
 }
 
-// TestFindPoolAndTopology also tests MatchTopologyForPool
+// TestFindPoolAndTopology also tests MatchTopologyForPool.
 func TestFindPoolAndTopology(t *testing.T) {
 	var err error
 	var label1 = "region"

@@ -82,7 +82,7 @@ func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration
 	}
 }
 
-// Run starts liveness collection and prometheus endpoint
+// Run starts liveness collection and prometheus endpoint.
 func Run(conf *util.Config) {
 	util.ExtendedLogMsg("Liveness Running")
 

@@ -43,7 +43,7 @@ func createCephConfigRoot() error {
 }
 
 // WriteCephConfig writes out a basic ceph.conf file, making it easy to use
-// ceph related CLIs
+// ceph related CLIs.
 func WriteCephConfig() error {
 	if err := createCephConfigRoot(); err != nil {
 		return err
@@ -64,7 +64,7 @@ if any ceph commands fails it will log below error message
 /etc/ceph/ceph.client.admin.keyring,/etc/ceph/ceph.keyring,/etc/ceph/keyring,
 /etc/ceph/keyring.bin,: (2) No such file or directory
 */
-// createKeyRingFile creates the keyring files to fix above error message logging
+// createKeyRingFile creates the keyring files to fix above error message logging.
 func createKeyRingFile() error {
 	_, err := os.Create(keyRing)
 	return err

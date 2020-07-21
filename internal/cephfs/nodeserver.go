@@ -53,14 +53,14 @@ func getCredentialsForVolume(volOptions *volumeOptions, req *csi.NodeStageVolume
 
 		cr, err = util.NewAdminCredentials(secrets)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %v", err)
+			return nil, fmt.Errorf("failed to get admin credentials from node stage secrets: %w", err)
 		}
 	} else {
 		// The volume is pre-made, credentials are in node stage secrets
 
 		cr, err = util.NewUserCredentials(req.GetSecrets())
 		if err != nil {
-			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %v", err)
+			return nil, fmt.Errorf("failed to get user credentials from node stage secrets: %w", err)
 		}
 	}
 
@@ -94,7 +94,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		// check for pre-provisioned volumes (plugin versions > 1.0.0)
+		// gets mon IPs from the supplied cluster info
 		volOptions, _, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
 		if err != nil {
 			var ensv ErrNonStaticVolume
@@ -102,8 +102,8 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 
-			// check for volumes from plugin versions <= 1.0.0
-			volOptions, _, err = newVolumeOptionsFromVersion1Context(string(volID), req.GetVolumeContext(),
+			// get mon IPs from the volume context
+			volOptions, _, err = newVolumeOptionsFromMonitorList(string(volID), req.GetVolumeContext(),
 				req.GetSecrets())
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
@@ -197,7 +197,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 }
 
 // NodePublishVolume mounts the volume mounted to the staging path to the target
-// path
+// path.
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	mountOptions := []string{"bind", "_netdev"}
 	if err := util.ValidateNodePublishVolumeRequest(req); err != nil {
@@ -250,7 +250,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
-// NodeUnpublishVolume unmounts the volume from the target path
+// NodeUnpublishVolume unmounts the volume from the target path.
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeUnpublishVolumeRequest(req); err != nil {
@@ -281,7 +281,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-// NodeUnstageVolume unstages the volume from the staging path
+// NodeUnstageVolume unstages the volume from the staging path.
 func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeUnstageVolumeRequest(req); err != nil {
@@ -306,7 +306,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
-// NodeGetCapabilities returns the supported capabilities of the node server
+// NodeGetCapabilities returns the supported capabilities of the node server.
 func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{

@@ -38,7 +38,7 @@ import (
 )
 
 // NodeServer struct of ceph rbd driver with supported methods of CSI
-// node server spec
+// node server spec.
 type NodeServer struct {
 	*csicommon.DefaultNodeServer
 	mounter mount.Interface
@@ -49,7 +49,7 @@ type NodeServer struct {
 
 // stageTransaction struct represents the state a transaction was when it either completed
 // or failed
-// this transaction state can be used to rollback the transaction
+// this transaction state can be used to rollback the transaction.
 type stageTransaction struct {
 	// isStagePathCreated represents whether the mount path to stage the volume on was created or not
 	isStagePathCreated bool
@@ -65,6 +65,7 @@ var (
 	kernelRelease = ""
 	// deepFlattenSupport holds the list of kernel which support mapping rbd
 	// image with deep-flatten image feature
+	// nolint:gomnd // numbers specify Kernel versions.
 	deepFlattenSupport = []util.KernelVersion{
 		{
 			Version:      5,
@@ -98,7 +99,8 @@ var (
 //   - Map the image (creates a device)
 //   - Create the staging file/directory under staging path
 //   - Stage the device (mount the device mapped for image)
-// nolint: gocyclo
+// TODO: make this function less complex
+// nolint:gocyclo // complexity needs to be reduced.
 func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
@@ -375,7 +377,7 @@ func (ns *NodeServer) createStageMountPoint(ctx context.Context, mountPath strin
 }
 
 // NodePublishVolume mounts the volume mounted to the device path to the target
-// path
+// path.
 func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	err := util.ValidateNodePublishVolumeRequest(req)
 	if err != nil {
@@ -539,7 +541,7 @@ func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath strin
 	return notMnt, err
 }
 
-// NodeUnpublishVolume unmounts the volume from the target path
+// NodeUnpublishVolume unmounts the volume from the target path.
 func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	err := util.ValidateNodeUnpublishVolumeRequest(req)
 	if err != nil {
@@ -585,7 +587,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 }
 
 // getStagingTargetPath concats either NodeStageVolumeRequest's or
-// NodeUnstageVolumeRequest's target path with the volumeID
+// NodeUnstageVolumeRequest's target path with the volumeID.
 func getStagingTargetPath(req interface{}) string {
 	switch vr := req.(type) {
 	case *csi.NodeStageVolumeRequest:
@@ -597,7 +599,7 @@ func getStagingTargetPath(req interface{}) string {
 	return ""
 }
 
-// NodeUnstageVolume unstages the volume from the staging path
+// NodeUnstageVolume unstages the volume from the staging path.
 func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeUnstageVolumeRequest(req); err != nil {
@@ -680,7 +682,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
-// NodeExpandVolume resizes rbd volumes
+// NodeExpandVolume resizes rbd volumes.
 func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
@@ -740,7 +742,7 @@ func getDevicePath(ctx context.Context, volumePath string) (string, error) {
 	return "", fmt.Errorf("failed to get device for stagingtarget path %v", volumePath)
 }
 
-// NodeGetCapabilities returns the supported capabilities of the node server
+// NodeGetCapabilities returns the supported capabilities of the node server.
 func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{

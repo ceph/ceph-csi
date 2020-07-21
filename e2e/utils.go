@@ -31,17 +31,18 @@ import (
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
+/* #nosec:G101, values not credententials, just a reference to the location.*/
 const (
 	defaultNs     = "default"
-	vaultSecretNs = "/secret/ceph-csi/" // nolint: gosec
+	vaultSecretNs = "/secret/ceph-csi/"
 
 	// rook created cephfs user
-	cephfsNodePluginSecretName  = "rook-csi-cephfs-node"        // nolint: gosec
-	cephfsProvisionerSecretName = "rook-csi-cephfs-provisioner" // nolint: gosec
+	cephfsNodePluginSecretName  = "rook-csi-cephfs-node"
+	cephfsProvisionerSecretName = "rook-csi-cephfs-provisioner"
 
 	// rook created rbd user
-	rbdNodePluginSecretName  = "rook-csi-rbd-node"        // nolint: gosec
-	rbdProvisionerSecretName = "rook-csi-rbd-provisioner" // nolint: gosec
+	rbdNodePluginSecretName  = "rook-csi-rbd-node"
+	rbdProvisionerSecretName = "rook-csi-rbd-provisioner"
 
 	rookTolBoxPodLabel = "app=rook-ceph-tools"
 	rbdmountOptions    = "mountOptions"
@@ -183,7 +184,7 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 		err = fmt.Errorf("%s", reason)
 	}
 	if err != nil {
-		return fmt.Errorf("error waiting for deployment %q status to match expectation: %v", name, err)
+		return fmt.Errorf("error waiting for deployment %q status to match expectation: %w", name, err)
 	}
 	return nil
 }
@@ -418,7 +419,7 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 
 // updateSecretForEncryption is an hack to update the secrets created by rook to
 // include the encyption key
-// TODO in cephcsi we need to create own users in ceph cluster and use it for E2E
+// TODO in cephcsi we need to create own users in ceph cluster and use it for E2E.
 func updateSecretForEncryption(c kubernetes.Interface) error {
 	secrets, err := c.CoreV1().Secrets(rookNamespace).Get(context.TODO(), rbdProvisionerSecretName, metav1.GetOptions{})
 	if err != nil {
@@ -531,7 +532,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 
 	err = c.CoreV1().PersistentVolumeClaims(nameSpace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
-		return fmt.Errorf("delete of PVC %v failed: %v", name, err)
+		return fmt.Errorf("delete of PVC %v failed: %w", name, err)
 	}
 	start := time.Now()
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
@@ -542,7 +543,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 			return false, nil
 		}
 		if !apierrs.IsNotFound(err) {
-			return false, fmt.Errorf("get on deleted PVC %v failed with error other than \"not found\": %v", name, err)
+			return false, fmt.Errorf("get on deleted PVC %v failed with error other than \"not found\": %w", name, err)
 		}
 
 		// Examine the pv.ClaimRef and UID. Expect nil values.
@@ -552,7 +553,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		}
 
 		if !apierrs.IsNotFound(err) {
-			return false, fmt.Errorf("delete PV %v failed with error other than \"not found\": %v", pv.Name, err)
+			return false, fmt.Errorf("delete PV %v failed with error other than \"not found\": %w", pv.Name, err)
 		}
 
 		return true, nil
@@ -633,7 +634,7 @@ func unmarshal(fileName string, obj interface{}) error {
 }
 
 // createPVCAndApp creates pvc and pod
-// if name is not empty same will be set as pvc and app name
+// if name is not empty same will be set as pvc and app name.
 func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod, pvcTimeout int) error {
 	if name != "" {
 		pvc.Name = name
@@ -649,7 +650,7 @@ func createPVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolu
 }
 
 // deletePVCAndApp delete pvc and pod
-// if name is not empty same will be set as pvc and app name
+// if name is not empty same will be set as pvc and app name.
 func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
 	if name != "" {
 		pvc.Name = name
@@ -703,7 +704,7 @@ type imageInfoFromPVC struct {
 }
 
 // getImageInfoFromPVC reads volume handle of the bound PV to the passed in PVC,
-// and returns imageInfoFromPVC or error
+// and returns imageInfoFromPVC or error.
 func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (imageInfoFromPVC, error) {
 	var imageData imageInfoFromPVC
 
@@ -756,7 +757,7 @@ func getMountType(appName, appNamespace, mountPath string, f *framework.Framewor
 //  * authenticate with vault and ignore any stdout (we do not need output)
 //  * issue get request for particular key
 // resulting in stdOut (first entry in tuple) - output that contains the key
-// or stdErr (second entry in tuple) - error getting the key
+// or stdErr (second entry in tuple) - error getting the key.
 func readVaultSecret(key string, f *framework.Framework) (string, string) {
 	loginCmd := fmt.Sprintf("vault login -address=%s sample_root_token_id > /dev/null", vaultAddr)
 	readSecret := fmt.Sprintf("vault kv get -address=%s %s%s", vaultAddr, vaultSecretNs, key)

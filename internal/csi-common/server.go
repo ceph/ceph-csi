@@ -33,7 +33,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
-// NonBlockingGRPCServer defines Non blocking GRPC server interfaces
+// NonBlockingGRPCServer defines Non blocking GRPC server interfaces.
 type NonBlockingGRPCServer interface {
 	// Start services at the endpoint
 	Start(endpoint, hstOptions string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, metrics bool)
@@ -45,24 +45,24 @@ type NonBlockingGRPCServer interface {
 	ForceStop()
 }
 
-// NewNonBlockingGRPCServer return non-blocking GRPC
+// NewNonBlockingGRPCServer return non-blocking GRPC.
 func NewNonBlockingGRPCServer() NonBlockingGRPCServer {
 	return &nonBlockingGRPCServer{}
 }
 
-// NonBlocking server
+// NonBlocking server.
 type nonBlockingGRPCServer struct {
 	wg     sync.WaitGroup
 	server *grpc.Server
 }
 
-// Start start service on endpoint
+// Start start service on endpoint.
 func (s *nonBlockingGRPCServer) Start(endpoint, hstOptions string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, metrics bool) {
 	s.wg.Add(1)
 	go s.serve(endpoint, hstOptions, ids, cs, ns, metrics)
 }
 
-// Wait blocks until the WaitGroup counter
+// Wait blocks until the WaitGroup counter.
 func (s *nonBlockingGRPCServer) Wait() {
 	s.wg.Wait()
 }
@@ -118,7 +118,8 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, ids csi.Ident
 	util.DefaultLog("Listening for connections on address: %#v", listener.Addr())
 	if metrics {
 		ho := strings.Split(hstOptions, ",")
-		if len(ho) != 3 {
+		const expectedHo = 3
+		if len(ho) != expectedHo {
 			klog.Fatalf("invalid histogram options provided: %v", hstOptions)
 		}
 		start, e := strconv.ParseFloat(ho[0], 32)

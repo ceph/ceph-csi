@@ -33,7 +33,7 @@ const (
 // fakeGet is used as a replacement for ConnPool.Get and does not need a
 // working Ceph cluster to connect to.
 //
-// This is mostly a copy of ConnPool.Get()
+// This is mostly a copy of ConnPool.Get().
 func (cp *ConnPool) fakeGet(monitors, user, keyfile string) (*rados.Conn, string, error) {
 	unique, err := cp.generateUniqueKey(monitors, user, keyfile)
 	if err != nil {

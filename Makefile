@@ -162,8 +162,13 @@ push-image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 push-image-cephcsi: need-container-cmd image-cephcsi
 	$(CONTAINER_CMD) tag $(CSI_IMAGE) $(CSI_IMAGE)-$(GOARCH)
 	$(CONTAINER_CMD) push $(CSI_IMAGE)-$(GOARCH)
-	# push amd64 image as default one
-	if [ $(GOARCH) = amd64 ]; then $(CONTAINER_CMD) push $(CSI_IMAGE); fi
+
+create-manifest: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
+create-manifest: need-container-cmd
+	$(CONTAINER_CMD) manifest create $(CSI_IMAGE) --amend $(CSI_IMAGE)-$(GOARCH)
+
+push-manifest: need-container-cmd
+	$(CONTAINER_CMD) manifest push  $(CSI_IMAGE)
 
 clean:
 	go clean -mod=vendor -r -x
