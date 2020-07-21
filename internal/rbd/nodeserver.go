@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
@@ -61,6 +62,13 @@ type stageTransaction struct {
 	devicePath string
 }
 
+const (
+	// values for xfsHasReflink
+	xfsReflinkUnset int = iota
+	xfsReflinkNoSupport
+	xfsReflinkSupport
+)
+
 var (
 	kernelRelease = ""
 	// deepFlattenSupport holds the list of kernel which support mapping rbd
@@ -84,6 +92,10 @@ var (
 			Backport:     true,
 		}, // RHEL 8.2
 	}
+
+	// xfsHasReflink is set by xfsSupportsReflink(), use the function when
+	// checking the support for reflink
+	xfsHasReflink = xfsReflinkUnset
 )
 
 // NodeStageVolume mounts the volume to a staging path on the node.
@@ -460,6 +472,11 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 			args = []string{"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1", devicePath}
 		} else if fsType == "xfs" {
 			args = []string{"-K", devicePath}
+			// always disable reflink
+			// TODO: make enabling an option, see ceph/ceph-csi#1256
+			if ns.xfsSupportsReflink() {
+				args = append(args, "-m", "reflink=0")
+			}
 		}
 		if len(args) > 0 {
 			cmdOut, cmdErr := diskMounter.Exec.Command("mkfs."+fsType, args...).CombinedOutput()
@@ -868,4 +885,28 @@ func openEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath 
 	}
 
 	return mapperFilePath, nil
+}
+
+// xfsSupportsReflink checks if mkfs.xfs supports the "-m reflink=0|1"
+// argument. In case it is supported, return true.
+func (ns *NodeServer) xfsSupportsReflink() bool {
+	// return cached value, if set
+	if xfsHasReflink != xfsReflinkUnset {
+		return xfsHasReflink == xfsReflinkSupport
+	}
+
+	// run mkfs.xfs in the same namespace as formatting would be done in
+	// mountVolumeToStagePath()
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
+	out, err := diskMounter.Exec.Command("mkfs.xfs").CombinedOutput()
+	if err != nil {
+		// mkfs.xfs should fail with an error message (and help text)
+		if strings.Contains(string(out), "reflink=0|1") {
+			xfsHasReflink = xfsReflinkSupport
+			return true
+		}
+	}
+
+	xfsHasReflink = xfsReflinkNoSupport
+	return false
 }
