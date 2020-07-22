@@ -52,6 +52,7 @@ func getVolumeRootPathCephDeprecated(volID volumeID) string {
 
 func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (string, error) {
 	stdout, stderr, err := util.ExecCommand(
+		ctx,
 		"ceph",
 		"fs",
 		"subvolume",
