@@ -299,6 +299,14 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 
 	volOptions.ProvisionVolume = true
 
+	// TODO remove this check once we stop supporting volumes provisioned by
+	// less than ceph-csi v3.0.0
+	if _, ok := volOpt[subvolumeGroupName]; !ok {
+		// if the subvolumeGroupName is not present on the volumecontext assume
+		// it as PVC created by older cephcsi driver (ie <3.0.0)
+		volOptions.SubvolumeGroup = util.DefaultCsiSubvolumeGroup
+	}
+
 	volOptions.RootPath, err = getVolumeRootPathCeph(ctx, &volOptions, cr, volumeID(vid.FsSubvolName))
 	if err != nil {
 		return &volOptions, &vid, err

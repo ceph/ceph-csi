@@ -38,6 +38,11 @@ type ControllerServer struct {
 	VolumeLocks *util.VolumeLocks
 }
 
+var (
+	subvolumeName      = "subvolumeName"
+	subvolumeGroupName = "subvolumeGroupName"
+)
+
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities.
 func (cs *ControllerServer) createBackingVolume(ctx context.Context, volOptions *volumeOptions, vID *volumeIdentifier, secret map[string]string) error {
 	cr, err := util.NewAdminCredentials(secret)
@@ -92,7 +97,10 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	if vID != nil {
 		volumeContext := req.GetParameters()
-		volumeContext["subvolumeName"] = vID.FsSubvolName
+		volumeContext[subvolumeName] = vID.FsSubvolName
+		// store the subvolumeGroupName in volumeContext for volume created with
+		// v3.0.0+ driver
+		volumeContext[subvolumeGroupName] = volOptions.SubvolumeGroup
 		volume := &csi.Volume{
 			VolumeId:      vID.VolumeID,
 			CapacityBytes: volOptions.Size,
@@ -133,7 +141,10 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	util.DebugLog(ctx, "cephfs: successfully created backing volume named %s for request name %s",
 		vID.FsSubvolName, requestName)
 	volumeContext := req.GetParameters()
-	volumeContext["subvolumeName"] = vID.FsSubvolName
+	// store the subvolumeGroupName in volumeContext for volume created with
+	// v3.0.0+ driver
+	volumeContext[subvolumeName] = vID.FsSubvolName
+	volumeContext[subvolumeGroupName] = volOptions.SubvolumeGroup
 	volume := &csi.Volume{
 		VolumeId:      vID.VolumeID,
 		CapacityBytes: volOptions.Size,

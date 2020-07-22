@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	// defaultCsiSubvolumeGroup defines the default name for the CephFS CSI subvolumegroup.
+	// DefaultCsiSubvolumeGroup defines the default name for the CephFS CSI subvolumegroup.
 	// This was hardcoded once and defaults to the old value to keep backward compatibility.
-	defaultCsiSubvolumeGroup = "csi"
+	DefaultCsiSubvolumeGroup = "csi"
 )
 
 // ClusterInfo strongly typed JSON spec for the below JSON structure.
@@ -104,7 +104,7 @@ func CephFSSubvolumeGroup(pathToConfig, clusterID string) (string, error) {
 	}
 
 	if cluster.CephFS.SubvolumeGroup == "" {
-		return defaultCsiSubvolumeGroup, nil
+		return DefaultCsiSubvolumeGroup, nil
 	}
 	return cluster.CephFS.SubvolumeGroup, nil
 }
