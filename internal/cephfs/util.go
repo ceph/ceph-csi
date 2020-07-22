@@ -41,7 +41,7 @@ func execCommandJSON(ctx context.Context, v interface{}, program string, args ..
 		return err
 	}
 
-	if err = json.Unmarshal(stdout, v); err != nil {
+	if err = json.Unmarshal([]byte(stdout), v); err != nil {
 		return fmt.Errorf("failed to unmarshal JSON for %s %v: %s: %w", program, util.StripSecretInArgs(args), stdout, err)
 	}
 
