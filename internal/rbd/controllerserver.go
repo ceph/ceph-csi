@@ -613,12 +613,12 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	defer cs.VolumeLocks.Release(rbdVol.RequestName)
 
-	found, _, err := rbdStatus(ctx, rbdVol, cr)
+	inUse, err := rbdVol.isInUse()
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), rbdVol, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if found {
+	if inUse {
 		klog.Errorf(util.Log(ctx, "rbd %s is still being used"), rbdVol)
 		return nil, status.Errorf(codes.Internal, "rbd %s is still being used", rbdVol.RbdImageName)
 	}

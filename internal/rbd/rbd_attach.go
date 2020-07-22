@@ -190,7 +190,7 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, cr *util.Credent
 			Steps:    rbdImageWatcherSteps,
 		}
 
-		err = waitForrbdImage(ctx, backoff, volOptions, cr)
+		err = waitForrbdImage(ctx, backoff, volOptions)
 
 		if err != nil {
 			return "", err
@@ -246,13 +246,13 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 	return devicePath, nil
 }
 
-func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdVolume, cr *util.Credentials) error {
+func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdVolume) error {
 	imagePath := volOptions.String()
 
 	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
-		used, rbdOutput, err := rbdStatus(ctx, volOptions, cr)
+		used, err := volOptions.isInUse()
 		if err != nil {
-			return false, fmt.Errorf("fail to check rbd image status with: (%v), rbd output: (%s)", err, rbdOutput)
+			return false, fmt.Errorf("fail to check rbd image status: (%w)", err)
 		}
 		if (volOptions.DisableInUseChecks) && (used) {
 			util.UsefulLog(ctx, "valid multi-node attach requested, ignoring watcher in-use result")
