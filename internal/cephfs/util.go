@@ -31,12 +31,12 @@ import (
 type volumeID string
 
 func execCommandErr(ctx context.Context, program string, args ...string) error {
-	_, _, err := util.ExecCommand(program, args...)
+	_, _, err := util.ExecCommand(ctx, program, args...)
 	return err
 }
 
 func execCommandJSON(ctx context.Context, v interface{}, program string, args ...string) error {
-	stdout, _, err := util.ExecCommand(program, args...)
+	stdout, _, err := util.ExecCommand(ctx, program, args...)
 	if err != nil {
 		return err
 	}

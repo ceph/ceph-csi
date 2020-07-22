@@ -303,7 +303,7 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 	args = append(args, arg...)
 	util.DebugLog(ctx, "executing %v for image (%s) using mon %s, pool %s", args, pOpts.RbdImageName, pOpts.Monitors, pOpts.Pool)
 	supported := true
-	_, stderr, err := util.ExecCommand("ceph", args...)
+	_, stderr, err := util.ExecCommand(ctx, "ceph", args...)
 
 	if err != nil {
 		switch {
@@ -872,7 +872,9 @@ func (rv *rbdVolume) updateVolWithImageInfo(cr *util.Credentials) error {
 	// rbd --format=json info [image-spec | snap-spec]
 	var imgInfo imageInfo
 
-	stdout, stderr, err := util.ExecCommand("rbd",
+	stdout, stderr, err := util.ExecCommand(
+		context.TODO(),
+		"rbd",
 		"-m", rv.Monitors,
 		"--id", cr.ID,
 		"--keyfile="+cr.KeyFile,
@@ -1046,7 +1048,7 @@ func resizeRBDImage(rbdVol *rbdVolume, cr *util.Credentials) error {
 	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(rbdVol.VolSize))
 
 	args := []string{"resize", rbdVol.String(), "--size", volSzMiB, "--id", cr.ID, "-m", mon, "--keyfile=" + cr.KeyFile}
-	_, stderr, err := util.ExecCommand("rbd", args...)
+	_, stderr, err := util.ExecCommand(context.TODO(), "rbd", args...)
 
 	if err != nil {
 		return fmt.Errorf("failed to resize rbd image (%w), command output: %s", err, string(stderr))
@@ -1114,7 +1116,9 @@ type snapshotInfo struct {
 func (rv *rbdVolume) listSnapshots(ctx context.Context, cr *util.Credentials) ([]snapshotInfo, error) {
 	// rbd snap ls <image> --pool=<pool-name> --all --format=json
 	var snapInfo []snapshotInfo
-	stdout, stderr, err := util.ExecCommand("rbd",
+	stdout, stderr, err := util.ExecCommand(
+		ctx,
+		"rbd",
 		"-m", rv.Monitors,
 		"--id", cr.ID,
 		"--keyfile="+cr.KeyFile,

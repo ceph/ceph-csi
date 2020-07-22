@@ -30,8 +30,10 @@ import (
 // InvalidPoolID used to denote an invalid pool.
 const InvalidPoolID int64 = -1
 
-// ExecCommand executes passed in program with args and returns separate stdout and stderr streams.
-func ExecCommand(program string, args ...string) (stdout, stderr []byte, err error) {
+// ExecCommand executes passed in program with args and returns separate stdout
+// and stderr streams. In case ctx is not set to context.TODO(), the command
+// will be logged after it was executed.
+func ExecCommand(ctx context.Context, program string, args ...string) (stdout, stderr []byte, err error) {
 	var (
 		cmd           = exec.Command(program, args...) // #nosec:G204, commands executing not vulnerable.
 		sanitizedArgs = StripSecretInArgs(args)
@@ -43,8 +45,15 @@ func ExecCommand(program string, args ...string) (stdout, stderr []byte, err err
 	cmd.Stderr = &stderrBuf
 
 	if err := cmd.Run(); err != nil {
-		return stdoutBuf.Bytes(), stderrBuf.Bytes(), fmt.Errorf("an error (%v)"+
-			" occurred while running %s args: %v", err, program, sanitizedArgs)
+		err = fmt.Errorf("an error (%w) occurred while running %s args: %v", err, program, sanitizedArgs)
+		if ctx != context.TODO() {
+			UsefulLog(ctx, "%s", err)
+		}
+		return stdoutBuf.Bytes(), stderrBuf.Bytes(), err
+	}
+
+	if ctx != context.TODO() {
+		UsefulLog(ctx, "command succeeded: %s %v", program, sanitizedArgs)
 	}
 
 	return stdoutBuf.Bytes(), nil, nil
