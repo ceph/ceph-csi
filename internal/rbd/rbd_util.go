@@ -275,6 +275,28 @@ func (rv *rbdVolume) open() (*librbd.Image, error) {
 	return image, nil
 }
 
+// isInUse checks if there is a watcher on the image. It returns true if there
+// is a watcher on the image, otherwise returns false.
+func (rv *rbdVolume) isInUse() (bool, error) {
+	image, err := rv.open()
+	if err != nil {
+		if errors.Is(err, ErrImageNotFound) || errors.Is(err, util.ErrPoolNotFound) {
+			return false, err
+		}
+		// any error should assume something else is using the image
+		return true, err
+	}
+	defer image.Close()
+
+	watchers, err := image.ListWatchers()
+	if err != nil {
+		return false, err
+	}
+
+	// because we opened the image, there is at least one watcher
+	return len(watchers) != 1, nil
+}
+
 // rbdStatus checks if there is watcher on the image.
 // It returns true if there is a watcher on the image, otherwise returns false.
 func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (bool, string, error) {
