@@ -33,7 +33,7 @@ const InvalidPoolID int64 = -1
 // ExecCommand executes passed in program with args and returns separate stdout
 // and stderr streams. In case ctx is not set to context.TODO(), the command
 // will be logged after it was executed.
-func ExecCommand(ctx context.Context, program string, args ...string) (stdout, stderr []byte, err error) {
+func ExecCommand(ctx context.Context, program string, args ...string) (string, string, error) {
 	var (
 		cmd           = exec.Command(program, args...) // #nosec:G204, commands executing not vulnerable.
 		sanitizedArgs = StripSecretInArgs(args)
@@ -44,19 +44,23 @@ func ExecCommand(ctx context.Context, program string, args ...string) (stdout, s
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
 
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	stdout := stdoutBuf.String()
+	stderr := stderrBuf.String()
+
+	if err != nil {
 		err = fmt.Errorf("an error (%w) occurred while running %s args: %v", err, program, sanitizedArgs)
 		if ctx != context.TODO() {
 			UsefulLog(ctx, "%s", err)
 		}
-		return stdoutBuf.Bytes(), stderrBuf.Bytes(), err
+		return stdout, stderr, err
 	}
 
 	if ctx != context.TODO() {
 		UsefulLog(ctx, "command succeeded: %s %v", program, sanitizedArgs)
 	}
 
-	return stdoutBuf.Bytes(), nil, nil
+	return stdout, stderr, nil
 }
 
 // GetPoolID fetches the ID of the pool that matches the passed in poolName

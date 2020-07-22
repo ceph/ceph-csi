@@ -90,9 +90,9 @@ func rbdGetDeviceList(ctx context.Context, accessType string) ([]rbdDeviceInfo, 
 	}
 
 	if accessType == accessTypeKRbd {
-		err = json.Unmarshal(stdout, &rbdDeviceList)
+		err = json.Unmarshal([]byte(stdout), &rbdDeviceList)
 	} else {
-		err = json.Unmarshal(stdout, &nbdDeviceList)
+		err = json.Unmarshal([]byte(stdout), &nbdDeviceList)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error to parse JSON output of device list for devices of type (%s): (%v)", accessType, err)
@@ -231,7 +231,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 	// Execute map
 	stdout, stderr, err := util.ExecCommand(ctx, rbd, mapOptions...)
 	if err != nil {
-		klog.Warningf(util.Log(ctx, "rbd: map error %v, rbd output: %s"), err, string(stderr))
+		klog.Warningf(util.Log(ctx, "rbd: map error %v, rbd output: %s"), err, stderr)
 		// unmap rbd image if connection timeout
 		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
 			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd, volOpt.Encrypted, volOpt.VolID)
@@ -239,9 +239,9 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 				klog.Warningf(util.Log(ctx, "rbd: %s unmap error %v"), imagePath, detErr)
 			}
 		}
-		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(stderr))
+		return "", fmt.Errorf("rbd: map failed with error %v, rbd error output: %s", err, stderr)
 	}
-	devicePath := strings.TrimSuffix(string(stdout), "\n")
+	devicePath := strings.TrimSuffix(stdout, "\n")
 
 	return devicePath, nil
 }
@@ -311,13 +311,13 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 		// Messages for krbd and nbd differ, hence checking either of them for missing mapping
 		// This is not applicable when a device path is passed in
 		if isImageSpec &&
-			(strings.Contains(string(stderr), fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, imageOrDeviceSpec)) ||
-				strings.Contains(string(stderr), fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
+			(strings.Contains(stderr, fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, imageOrDeviceSpec)) ||
+				strings.Contains(stderr, fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
 			// Devices found not to be mapped are treated as a successful detach
 			util.TraceLog(ctx, "image or device spec (%s) not mapped", imageOrDeviceSpec)
 			return nil
 		}
-		return fmt.Errorf("rbd: unmap for spec (%s) failed (%v): (%s)", imageOrDeviceSpec, err, string(stderr))
+		return fmt.Errorf("rbd: unmap for spec (%s) failed (%v): (%s)", imageOrDeviceSpec, err, stderr)
 	}
 
 	return nil
