@@ -42,7 +42,6 @@ import (
 )
 
 const (
-	imageWatcherStr = "watcher="
 	// The following three values are used for 30 seconds timeout
 	// while waiting for RBD Watcher to expire.
 	rbdImageWatcherInitDelay = 1 * time.Second
@@ -295,39 +294,6 @@ func (rv *rbdVolume) isInUse() (bool, error) {
 
 	// because we opened the image, there is at least one watcher
 	return len(watchers) != 1, nil
-}
-
-// rbdStatus checks if there is watcher on the image.
-// It returns true if there is a watcher on the image, otherwise returns false.
-func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (bool, string, error) {
-	var output string
-	var cmd []byte
-
-	util.DebugLog(ctx, "rbd: status %s using mon %s", pOpts, pOpts.Monitors)
-	args := []string{"status", pOpts.String(), "-m", pOpts.Monitors, "--id", cr.ID, "--keyfile=" + cr.KeyFile}
-	cmd, err := execCommand("rbd", args)
-	output = string(cmd)
-
-	var ee *exec.Error
-	if errors.As(err, &ee) {
-		if errors.Is(ee, exec.ErrNotFound) {
-			klog.Errorf(util.Log(ctx, "rbd cmd not found"))
-			// fail fast if command not found
-			return false, output, err
-		}
-	}
-
-	// If command never succeed, returns its last error.
-	if err != nil {
-		return false, output, err
-	}
-
-	if strings.Contains(output, imageWatcherStr) {
-		util.DebugLog(ctx, "rbd: watchers on %s: %s", pOpts, output)
-		return true, output, nil
-	}
-	klog.Warningf(util.Log(ctx, "rbd: no watchers on %s"), pOpts)
-	return false, output, nil
 }
 
 // addRbdManagerTask adds a ceph manager task to execute command
