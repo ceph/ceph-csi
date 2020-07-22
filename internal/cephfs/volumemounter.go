@@ -167,7 +167,7 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 		args = append(args, "--client_mds_namespace="+volOptions.FsName)
 	}
 
-	_, stderr, err := execCommand(ctx, "ceph-fuse", args[:]...)
+	_, stderr, err := util.ExecCommand("ceph-fuse", args[:]...)
 	if err != nil {
 		return err
 	}

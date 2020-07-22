@@ -17,11 +17,9 @@ limitations under the License.
 package cephfs
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
@@ -32,38 +30,13 @@ import (
 
 type volumeID string
 
-func execCommand(ctx context.Context, program string, args ...string) (stdout, stderr []byte, err error) {
-	var (
-		cmd           = exec.Command(program, args...) // #nosec:G204, not called with user specified parameters.
-		sanitizedArgs = util.StripSecretInArgs(args)
-		stdoutBuf     bytes.Buffer
-		stderrBuf     bytes.Buffer
-	)
-
-	cmd.Stdout = &stdoutBuf
-	cmd.Stderr = &stderrBuf
-
-	util.DebugLog(ctx, "cephfs: EXEC %s %s", program, sanitizedArgs)
-
-	if err := cmd.Run(); err != nil {
-		if cmd.Process == nil {
-			return nil, nil, fmt.Errorf("cannot get process pid while running %s %v: %w: %s",
-				program, sanitizedArgs, err, stderrBuf.Bytes())
-		}
-		return nil, nil, fmt.Errorf("an error occurred while running (%d) %s %v: %w: %s",
-			cmd.Process.Pid, program, sanitizedArgs, err, stderrBuf.Bytes())
-	}
-
-	return stdoutBuf.Bytes(), stderrBuf.Bytes(), nil
-}
-
 func execCommandErr(ctx context.Context, program string, args ...string) error {
-	_, _, err := execCommand(ctx, program, args...)
+	_, _, err := util.ExecCommand(program, args...)
 	return err
 }
 
 func execCommandJSON(ctx context.Context, v interface{}, program string, args ...string) error {
-	stdout, _, err := execCommand(ctx, program, args...)
+	stdout, _, err := util.ExecCommand(program, args...)
 	if err != nil {
 		return err
 	}
