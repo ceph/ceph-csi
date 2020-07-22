@@ -159,13 +159,13 @@ func checkRbdNbdTools() bool {
 	_, err := os.Stat(fmt.Sprintf("/sys/module/%s", moduleNbd))
 	if os.IsNotExist(err) {
 		// try to load the module
-		_, err = execCommand("modprobe", []string{moduleNbd})
+		_, _, err = util.ExecCommand("modprobe", moduleNbd)
 		if err != nil {
 			util.ExtendedLogMsg("rbd-nbd: nbd modprobe failed with error %v", err)
 			return false
 		}
 	}
-	if _, err := execCommand(rbdTonbd, []string{"--version"}); err != nil {
+	if _, _, err := util.ExecCommand(rbdTonbd, "--version"); err != nil {
 		util.ExtendedLogMsg("rbd-nbd: running rbd-nbd --version failed with error %v", err)
 		return false
 	}
@@ -229,9 +229,9 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 		mapOptions = append(mapOptions, "--read-only")
 	}
 	// Execute map
-	output, err := execCommand(rbd, mapOptions)
+	stdout, stderr, err := util.ExecCommand(rbd, mapOptions...)
 	if err != nil {
-		klog.Warningf(util.Log(ctx, "rbd: map error %v, rbd output: %s"), err, string(output))
+		klog.Warningf(util.Log(ctx, "rbd: map error %v, rbd output: %s"), err, string(stderr))
 		// unmap rbd image if connection timeout
 		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
 			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd, volOpt.Encrypted, volOpt.VolID)
@@ -239,9 +239,9 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 				klog.Warningf(util.Log(ctx, "rbd: %s unmap error %v"), imagePath, detErr)
 			}
 		}
-		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(output))
+		return "", fmt.Errorf("rbd: map failed %v, rbd output: %s", err, string(stderr))
 	}
-	devicePath := strings.TrimSuffix(string(output), "\n")
+	devicePath := strings.TrimSuffix(string(stdout), "\n")
 
 	return devicePath, nil
 }
@@ -280,8 +280,6 @@ func detachRBDDevice(ctx context.Context, devicePath, volumeID string, encrypted
 // detachRBDImageOrDeviceSpec detaches an rbd imageSpec or devicePath, with additional checking
 // when imageSpec is used to decide if image is already unmapped.
 func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, isImageSpec, ndbType, encrypted bool, volumeID string) error {
-	var output []byte
-
 	if encrypted {
 		mapperFile, mapperPath := util.VolumeMapper(volumeID)
 		mappedDevice, mapper, err := util.DeviceEncryptionStatus(ctx, mapperPath)
@@ -308,18 +306,18 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 	}
 	options := []string{"unmap", "--device-type", accessType, imageOrDeviceSpec}
 
-	output, err := execCommand(rbd, options)
+	_, stderr, err := util.ExecCommand(rbd, options...)
 	if err != nil {
 		// Messages for krbd and nbd differ, hence checking either of them for missing mapping
 		// This is not applicable when a device path is passed in
 		if isImageSpec &&
-			(strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, imageOrDeviceSpec)) ||
-				strings.Contains(string(output), fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
+			(strings.Contains(string(stderr), fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, imageOrDeviceSpec)) ||
+				strings.Contains(string(stderr), fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
 			// Devices found not to be mapped are treated as a successful detach
 			util.TraceLog(ctx, "image or device spec (%s) not mapped", imageOrDeviceSpec)
 			return nil
 		}
-		return fmt.Errorf("rbd: unmap for spec (%s) failed (%v): (%s)", imageOrDeviceSpec, err, string(output))
+		return fmt.Errorf("rbd: unmap for spec (%s) failed (%v): (%s)", imageOrDeviceSpec, err, string(stderr))
 	}
 
 	return nil

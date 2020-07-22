@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -300,20 +299,19 @@ func (rv *rbdVolume) isInUse() (bool, error) {
 // asynchronously. If command is not found returns a bool set to false
 // example arg ["trash", "remove","pool/image"].
 func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (bool, error) {
-	var output []byte
 	args := []string{"rbd", "task", "add"}
 	args = append(args, arg...)
 	util.DebugLog(ctx, "executing %v for image (%s) using mon %s, pool %s", args, pOpts.RbdImageName, pOpts.Monitors, pOpts.Pool)
 	supported := true
-	output, err := execCommand("ceph", args)
+	_, stderr, err := util.ExecCommand("ceph", args...)
 
 	if err != nil {
 		switch {
-		case strings.Contains(string(output), rbdTaskRemoveCmdInvalidString1) &&
-			strings.Contains(string(output), rbdTaskRemoveCmdInvalidString2):
+		case strings.Contains(string(stderr), rbdTaskRemoveCmdInvalidString1) &&
+			strings.Contains(string(stderr), rbdTaskRemoveCmdInvalidString2):
 			klog.Warningf(util.Log(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd commands (minimum ceph version required is v14.2.3)"), pOpts.ClusterID)
 			supported = false
-		case strings.HasPrefix(string(output), rbdTaskRemoveCmdAccessDeniedMessage):
+		case strings.HasPrefix(string(stderr), rbdTaskRemoveCmdAccessDeniedMessage):
 			klog.Warningf(util.Log(ctx, "access denied to Ceph MGR-based rbd commands on cluster ID (%s)"), pOpts.ClusterID)
 			supported = false
 		default:
@@ -663,12 +661,6 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 
 	err = rbdVol.getImageInfo()
 	return rbdVol, err
-}
-
-func execCommand(command string, args []string) ([]byte, error) {
-	// #nosec
-	cmd := exec.Command(command, args...)
-	return cmd.CombinedOutput()
 }
 
 func getMonsAndClusterID(ctx context.Context, options map[string]string) (monitors, clusterID string, err error) {
@@ -1050,16 +1042,14 @@ func cleanupRBDImageMetadataStash(path string) error {
 
 // resizeRBDImage resizes the given volume to new size.
 func resizeRBDImage(rbdVol *rbdVolume, cr *util.Credentials) error {
-	var output []byte
-
 	mon := rbdVol.Monitors
 	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(rbdVol.VolSize))
 
 	args := []string{"resize", rbdVol.String(), "--size", volSzMiB, "--id", cr.ID, "-m", mon, "--keyfile=" + cr.KeyFile}
-	output, err := execCommand("rbd", args)
+	_, stderr, err := util.ExecCommand("rbd", args...)
 
 	if err != nil {
-		return fmt.Errorf("failed to resize rbd image (%w), command output: %s", err, string(output))
+		return fmt.Errorf("failed to resize rbd image (%w), command output: %s", err, string(stderr))
 	}
 
 	return nil
