@@ -27,13 +27,13 @@ import (
 )
 
 const (
-	// volIDVersion is the version number of volume ID encoding scheme
+	// volIDVersion is the version number of volume ID encoding scheme.
 	volIDVersion uint16 = 1
 
-	// csiConfigFile is the location of the CSI config file
+	// csiConfigFile is the location of the CSI config file.
 	csiConfigFile = "/etc/ceph-csi-config/config.json"
 
-	// RADOS namespace to store CSI specific objects and keys
+	// RADOS namespace to store CSI specific objects and keys.
 	radosNamespace = "csi"
 )
 
@@ -48,12 +48,16 @@ type Driver struct {
 
 var (
 	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
-	// ceph clusters across CSI instances, to differentiate omap names per CSI instance
+	// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
 	CSIInstanceID = "default"
 
 	// volJournal is used to maintain RADOS based journals for CO generated
-	// VolumeName to backing CephFS subvolumes
+	// VolumeName to backing CephFS subvolumes.
 	volJournal *journal.Config
+
+	// snapJournal is used to maintain RADOS based journals for CO generated
+	// SnapshotName to backing CephFS subvolumes.
+	snapJournal *journal.Config
 )
 
 // NewDriver returns new ceph driver.
@@ -73,6 +77,7 @@ func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
 	return &ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		VolumeLocks:             util.NewVolumeLocks(),
+		SnapshotLocks:           util.NewVolumeLocks(),
 	}
 }
 
@@ -106,6 +111,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	// Create an instance of the volume journal
 	volJournal = journal.NewCSIVolumeJournalWithNamespace(CSIInstanceID, radosNamespace)
 
+	snapJournal = journal.NewCSISnapshotJournalWithNamespace(CSIInstanceID, radosNamespace)
 	// Initialize default library driver
 
 	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
@@ -116,7 +122,9 @@ func (fs *Driver) Run(conf *util.Config) {
 	if conf.IsControllerServer || !conf.IsNodeServer {
 		fs.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+			csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
+			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 		})
 
 		fs.cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{

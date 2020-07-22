@@ -62,3 +62,33 @@ func (e ErrVolumeNotFound) Error() string {
 func (e ErrVolumeNotFound) Unwrap() error {
 	return e.err
 }
+
+// ErrCloneInProgress for cloned subvolume.
+type ErrCloneInProgress struct {
+	err error
+}
+
+// Error returns a user presentable string of the error.
+func (e ErrCloneInProgress) Error() string {
+	return e.err.Error()
+}
+
+// Unwrap returns the encapsulated error of ErrCloneInProgress.
+func (e ErrCloneInProgress) Unwrap() error {
+	return e.err
+}
+
+// InvalidCommand represents invalid command.
+type InvalidCommand struct {
+	err error
+}
+
+// Error returns a user presentable string of the error.
+func (e InvalidCommand) Error() string {
+	return e.err.Error()
+}
+
+// Unwrap returns the encapsulated error of InvalidCommand.
+func (e InvalidCommand) Unwrap() error {
+	return e.err
+}
