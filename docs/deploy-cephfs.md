@@ -108,7 +108,7 @@ User credentials with access to an existing volume
 
 Notes on volume size: when provisioning a new volume, `max_bytes` quota
 attribute for this volume will be set to the requested volume size (see [Ceph
-quota documentation](http://docs.ceph.com/docs/mimic/cephfs/quota/)). A request
+quota documentation](http://docs.ceph.com/docs/nautilus/cephfs/quota/)). A request
 for a zero-sized volume means no quota attribute will be set.
 
 ## Deployment with Kubernetes
