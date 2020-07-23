@@ -1092,7 +1092,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		util.DebugLog(ctx, "rbd volume %s size is %v,resizing to %v", rbdVol, rbdVol.VolSize, volSize)
 		rbdVol.VolSize = volSize
 		nodeExpansion = true
-		err = resizeRBDImage(rbdVol, cr)
+		err = rbdVol.resize(ctx, cr)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to resize rbd image: %s with error: %v"), rbdVol, err)
 			return nil, status.Error(codes.Internal, err.Error())
