@@ -1042,13 +1042,13 @@ func cleanupRBDImageMetadataStash(path string) error {
 	return nil
 }
 
-// resizeRBDImage resizes the given volume to new size.
-func resizeRBDImage(rbdVol *rbdVolume, cr *util.Credentials) error {
-	mon := rbdVol.Monitors
-	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(rbdVol.VolSize))
+// resize the given volume to new size.
+func (rv *rbdVolume) resize(ctx context.Context, cr *util.Credentials) error {
+	mon := rv.Monitors
+	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(rv.VolSize))
 
-	args := []string{"resize", rbdVol.String(), "--size", volSzMiB, "--id", cr.ID, "-m", mon, "--keyfile=" + cr.KeyFile}
-	_, stderr, err := util.ExecCommand(context.TODO(), "rbd", args...)
+	args := []string{"resize", rv.String(), "--size", volSzMiB, "--id", cr.ID, "-m", mon, "--keyfile=" + cr.KeyFile}
+	_, stderr, err := util.ExecCommand(ctx, "rbd", args...)
 
 	if err != nil {
 		return fmt.Errorf("failed to resize rbd image (%w), command output: %s", err, stderr)
