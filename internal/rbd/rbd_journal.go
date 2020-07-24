@@ -151,12 +151,10 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	// Fetch on-disk image attributes
 	err = vol.getImageInfo()
 	if err != nil {
-		var einf ErrImageNotFound
-		if errors.As(err, &einf) {
+		if errors.Is(err, ErrImageNotFound) {
 			err = parentVol.deleteSnapshot(ctx, rbdSnap)
 			if err != nil {
-				var esnf ErrSnapNotFound
-				if !errors.As(err, &esnf) {
+				if !errors.Is(err, ErrSnapNotFound) {
 					klog.Errorf(util.Log(ctx, "failed to delete snapshot %s: %v"), rbdSnap, err)
 					return false, err
 				}
@@ -182,8 +180,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 
 	// check snapshot exists if not create it
 	err = vol.checkSnapExists(rbdSnap)
-	var esnf ErrSnapNotFound
-	if errors.As(err, &esnf) {
+	if errors.Is(err, ErrSnapNotFound) {
 		// create snapshot
 		sErr := vol.createSnapshot(ctx, rbdSnap)
 		if sErr != nil {
@@ -281,8 +278,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	// Fetch on-disk image attributes and compare against request
 	err = rv.getImageInfo()
 	if err != nil {
-		var einf ErrImageNotFound
-		if errors.As(err, &einf) {
+		if errors.Is(err, ErrImageNotFound) {
 			// Need to check cloned info here not on createvolume,
 			if parentVol != nil {
 				found, cErr := rv.checkCloneImage(ctx, parentVol)
@@ -319,9 +315,8 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 
 	// size checks
 	if rv.VolSize < requestSize {
-		err = fmt.Errorf("image with the same name (%s) but with different size already exists",
-			rv.RbdImageName)
-		return false, ErrVolNameConflict{rv.RbdImageName, err}
+		return false, fmt.Errorf("%w: image with the same name (%s) but with different size already exists",
+			ErrVolNameConflict, rv.RbdImageName)
 	}
 	// TODO: We should also ensure image features and format is the same
 

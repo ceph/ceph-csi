@@ -61,27 +61,25 @@ NOTE:
 
 ### Ceph-CSI features and available versions
 
-| Plugin | Features                                                                           | Feature Status | CSI Driver Version | CSI Spec Version | Ceph Cluster Version | Kubernetes Version |
-| ------ | ---------------------------------------------------------------------------------- | -------------- | ------------------ | ---------------- | -------------------- | ------------------ |
-| RBD    | Dynamically provision, de-provision Block mode RWO volume                          | GA             | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
-|        | Dynamically provision, de-provision Block mode RWX volume                          | GA             | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
-|        | Dynamically provision, de-provision File mode RWO volume                           | GA             | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
-|        | Dynamically provision(from snapshot or volume), de-provision File mode ROX volume  | Alpha          | >= v3.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
-|        | Dynamically provision(from snapshot or volume), de-provision Block mode ROX volume | Alpha          | >= v3.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
-|        | Creating and deleting snapshot                                                     | Alpha          | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
-|        | Provision volume from snapshot                                                     | Alpha          | >= v1.0.0          | >= v1.0.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
-|        | Provision volume from another volume                                               | -              | -                  | -                | -                    | -                  |
-|        | Expand volume                                                                      | Beta           | >= v2.0.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
-|        | Metrics Support                                                                    | Beta           | >= v1.2.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.15.0         |
-|        | Topology Aware Provisioning Support                                                | Alpha          | >= v2.1.0          | >= v1.1.0        | Mimic (>=v13.0.0)    | >= v1.14.0         |
-| CephFS | Dynamically provision, de-provision File mode RWO volume                           | Beta           | >= v1.1.0          | >= v1.0.0        | Nautilus (>=14.2.2)  | >= v1.14.0         |
-|        | Dynamically provision, de-provision File mode RWX volume                           | Beta           | >= v1.1.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.14.0         |
-|        | Dynamically provision, de-provision File mode ROX volume                           | Alpha          | >= v3.0.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.14.0         |
-|        | Creating and deleting snapshot                                                     | -              | -                  | -                | -                    | -                  |
-|        | Provision volume from snapshot                                                     | -              | -                  | -                | -                    | -                  |
-|        | Provision volume from another volume                                               | -              | -                  | -                | -                    | -                  |
-|        | Expand volume                                                                      | Beta           | >= v2.0.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
-|        | Metrics                                                                            | Beta           | >= v1.2.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
+| Plugin | Features                                                  | Feature Status | CSI Driver Version | CSI Spec Version | Ceph Cluster Version | Kubernetes Version |
+| ------ | --------------------------------------------------------- | -------------- | ------------------ | ---------------- | -------------------- | ------------------ |
+| RBD    | Dynamically provision, de-provision Block mode RWO volume | GA             | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.14.0         |
+|        | Dynamically provision, de-provision Block mode RWX volume | GA             | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.14.0         |
+|        | Dynamically provision, de-provision File mode RWO volume  | GA             | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.14.0         |
+|        | Creating and deleting snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.17.0         |
+|        | Provision volume from snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.17.0         |
+|        | Provision volume from another volume                      | Alpha          | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.16.0         |
+|        | Expand volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Nautilus (>=14.0.0)  | >= v1.15.0         |
+|        | Metrics Support                                           | Beta           | >= v1.2.0          | >= v1.1.0        | Nautilus (>=14.0.0)  | >= v1.15.0         |
+|        | Topology Aware Provisioning Support                       | Alpha          | >= v2.1.0          | >= v1.1.0        | Nautilus (>=14.0.0)  | >= v1.14.0         |
+| CephFS | Dynamically provision, de-provision File mode RWO volume  | Beta           | >= v1.1.0          | >= v1.0.0        | Nautilus (>=14.2.2)  | >= v1.14.0         |
+|        | Dynamically provision, de-provision File mode RWX volume  | Beta           | >= v1.1.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.14.0         |
+|        | Dynamically provision, de-provision File mode ROX volume  | Alpha          | >= v3.0.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.14.0         |
+|        | Creating and deleting snapshot                            | -              | -                  | -                | -                    | -                  |
+|        | Provision volume from snapshot                            | -              | -                  | -                | -                    | -                  |
+|        | Provision volume from another volume                      | -              | -                  | -                | -                    | -                  |
+|        | Expand volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
+|        | Metrics                                                   | Beta           | >= v1.2.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
 
 `NOTE`: The `Alpha` status reflects possible non-backward
 compatible changes in the future, and is thus not recommended

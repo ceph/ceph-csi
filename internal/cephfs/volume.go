@@ -70,7 +70,7 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 		klog.Errorf(util.Log(ctx, "failed to get the rootpath for the vol %s(%s) stdError %s"), string(volID), err, stdErrString)
 
 		if strings.HasPrefix(stdErrString, errNotFoundString) {
-			return "", ErrVolumeNotFound{err}
+			return "", util.JoinErrors(ErrVolumeNotFound, err)
 		}
 
 		return "", err
@@ -215,7 +215,7 @@ func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volO
 		klog.Errorf(util.Log(ctx, "failed to purge subvolume %s(%s) in fs %s"), string(volID), err, volOptions.FsName)
 
 		if strings.HasPrefix(err.Error(), errNotFoundString) {
-			return ErrVolumeNotFound{err}
+			return util.JoinErrors(ErrVolumeNotFound, err)
 		}
 
 		return err

@@ -66,16 +66,14 @@ func createRBDClone(ctx context.Context, parentVol, cloneRbdVol *rbdVolume, snap
 func cleanUpSnapshot(ctx context.Context, parentVol *rbdVolume, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) error {
 	err := parentVol.deleteSnapshot(ctx, rbdSnap)
 	if err != nil {
-		var esnf ErrSnapNotFound
-		if !errors.As(err, &esnf) {
+		if !errors.Is(err, ErrSnapNotFound) {
 			klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), err)
 			return err
 		}
 	}
 	err = deleteImage(ctx, rbdVol, cr)
 	if err != nil {
-		var einf ErrImageNotFound
-		if !errors.As(err, &einf) {
+		if !errors.Is(err, ErrImageNotFound) {
 			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s/%s with error: %v"), rbdVol.Pool, rbdVol.VolName, err)
 			return err
 		}

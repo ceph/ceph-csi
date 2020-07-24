@@ -172,22 +172,19 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err != nil {
 		// if error is ErrPoolNotFound, the pool is already deleted we dont
 		// need to worry about deleting subvolume or omap data, return success
-		var epnf util.ErrPoolNotFound
-		if errors.As(err, &epnf) {
+		if errors.Is(err, util.ErrPoolNotFound) {
 			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), string(volID), err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
 		// or partially complete (subvolume and imageOMap are garbage collected already), hence
 		// return success as deletion is complete
-		var eknf util.ErrKeyNotFound
-		if errors.As(err, &eknf) {
+		if errors.Is(err, util.ErrKeyNotFound) {
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
-		var evnf ErrVolumeNotFound
-		if !errors.As(err, &evnf) {
+		if !errors.Is(err, ErrVolumeNotFound) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
@@ -223,8 +220,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err = purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), volID, err)
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
-		var evnf ErrVolumeNotFound
-		if !errors.As(err, &evnf) {
+		if !errors.Is(err, ErrVolumeNotFound) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
