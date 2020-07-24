@@ -22,7 +22,7 @@ objects:
         spec:
           containers:
             - name: jjb
-              image: 172.30.254.79:5000/ceph-csi/jjb:latest
+              image: image-registry.openshift-image-registry.svc:5000/ceph-csi/jjb:latest
               env:
                 - name: GIT_REPO
                   value: https://github.com/ceph/ceph-csi
