@@ -48,8 +48,8 @@ in a `jjb` container. To build the container, and provide the configuration for
 Jenkins Job Builder, see the [documentation in the `deploy/`
 directory](deploy/README.md).
 
-[ceph_csi_ci]: https://jenkins-ceph-csi.apps.ci.centos.org
-[app_ci_centos_org]: https://console.apps.ci.centos.org:8443/console/project/ceph-csi
+[ceph_csi_ci]: https://jenkins-ceph-csi.apps.ocp.ci.centos.org
+[app_ci_centos_org]: https://console-openshift-console.apps.ocp.ci.centos.org/k8s/cluster/projects/ceph-csi
 [jjb]: https://jenkins-job-builder.readthedocs.io/en/latest/index.html
 [pipeline]: https://docs.openstack.org/infra/jenkins-job-builder/project_pipeline.html
 [centos_ci_hw]: https://wiki.centos.org/QaWiki/PubHardware
