@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -300,20 +299,19 @@ func (rv *rbdVolume) isInUse() (bool, error) {
 // asynchronously. If command is not found returns a bool set to false
 // example arg ["trash", "remove","pool/image"].
 func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (bool, error) {
-	var output []byte
 	args := []string{"rbd", "task", "add"}
 	args = append(args, arg...)
 	util.DebugLog(ctx, "executing %v for image (%s) using mon %s, pool %s", args, pOpts.RbdImageName, pOpts.Monitors, pOpts.Pool)
 	supported := true
-	output, err := execCommand("ceph", args)
+	_, stderr, err := util.ExecCommand(ctx, "ceph", args...)
 
 	if err != nil {
 		switch {
-		case strings.Contains(string(output), rbdTaskRemoveCmdInvalidString1) &&
-			strings.Contains(string(output), rbdTaskRemoveCmdInvalidString2):
+		case strings.Contains(stderr, rbdTaskRemoveCmdInvalidString1) &&
+			strings.Contains(stderr, rbdTaskRemoveCmdInvalidString2):
 			klog.Warningf(util.Log(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd commands (minimum ceph version required is v14.2.3)"), pOpts.ClusterID)
 			supported = false
-		case strings.HasPrefix(string(output), rbdTaskRemoveCmdAccessDeniedMessage):
+		case strings.HasPrefix(stderr, rbdTaskRemoveCmdAccessDeniedMessage):
 			klog.Warningf(util.Log(ctx, "access denied to Ceph MGR-based rbd commands on cluster ID (%s)"), pOpts.ClusterID)
 			supported = false
 		default:
@@ -665,12 +663,6 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	return rbdVol, err
 }
 
-func execCommand(command string, args []string) ([]byte, error) {
-	// #nosec
-	cmd := exec.Command(command, args...)
-	return cmd.CombinedOutput()
-}
-
 func getMonsAndClusterID(ctx context.Context, options map[string]string) (monitors, clusterID string, err error) {
 	var ok bool
 
@@ -880,7 +872,9 @@ func (rv *rbdVolume) updateVolWithImageInfo(cr *util.Credentials) error {
 	// rbd --format=json info [image-spec | snap-spec]
 	var imgInfo imageInfo
 
-	stdout, stderr, err := util.ExecCommand("rbd",
+	stdout, stderr, err := util.ExecCommand(
+		context.TODO(),
+		"rbd",
 		"-m", rv.Monitors,
 		"--id", cr.ID,
 		"--keyfile="+cr.KeyFile,
@@ -889,17 +883,17 @@ func (rv *rbdVolume) updateVolWithImageInfo(cr *util.Credentials) error {
 		"info", rv.String())
 	if err != nil {
 		klog.Errorf("failed getting information for image (%s): (%s)", rv, err)
-		if strings.Contains(string(stderr), "rbd: error opening image "+rv.RbdImageName+
+		if strings.Contains(stderr, "rbd: error opening image "+rv.RbdImageName+
 			": (2) No such file or directory") {
 			return util.JoinErrors(ErrImageNotFound, err)
 		}
 		return err
 	}
 
-	err = json.Unmarshal(stdout, &imgInfo)
+	err = json.Unmarshal([]byte(stdout), &imgInfo)
 	if err != nil {
 		klog.Errorf("failed to parse JSON output of image info (%s): (%s)", rv, err)
-		return fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s", err, string(stdout))
+		return fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s", err, stdout)
 	}
 
 	rv.VolSize = imgInfo.Size
@@ -1048,18 +1042,16 @@ func cleanupRBDImageMetadataStash(path string) error {
 	return nil
 }
 
-// resizeRBDImage resizes the given volume to new size.
-func resizeRBDImage(rbdVol *rbdVolume, cr *util.Credentials) error {
-	var output []byte
+// resize the given volume to new size.
+func (rv *rbdVolume) resize(ctx context.Context, cr *util.Credentials) error {
+	mon := rv.Monitors
+	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(rv.VolSize))
 
-	mon := rbdVol.Monitors
-	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(rbdVol.VolSize))
-
-	args := []string{"resize", rbdVol.String(), "--size", volSzMiB, "--id", cr.ID, "-m", mon, "--keyfile=" + cr.KeyFile}
-	output, err := execCommand("rbd", args)
+	args := []string{"resize", rv.String(), "--size", volSzMiB, "--id", cr.ID, "-m", mon, "--keyfile=" + cr.KeyFile}
+	_, stderr, err := util.ExecCommand(ctx, "rbd", args...)
 
 	if err != nil {
-		return fmt.Errorf("failed to resize rbd image (%w), command output: %s", err, string(output))
+		return fmt.Errorf("failed to resize rbd image (%w), command output: %s", err, stderr)
 	}
 
 	return nil
@@ -1124,7 +1116,9 @@ type snapshotInfo struct {
 func (rv *rbdVolume) listSnapshots(ctx context.Context, cr *util.Credentials) ([]snapshotInfo, error) {
 	// rbd snap ls <image> --pool=<pool-name> --all --format=json
 	var snapInfo []snapshotInfo
-	stdout, stderr, err := util.ExecCommand("rbd",
+	stdout, stderr, err := util.ExecCommand(
+		ctx,
+		"rbd",
 		"-m", rv.Monitors,
 		"--id", cr.ID,
 		"--keyfile="+cr.KeyFile,
@@ -1135,17 +1129,17 @@ func (rv *rbdVolume) listSnapshots(ctx context.Context, cr *util.Credentials) ([
 		"--all", rv.String())
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), rv, err)
-		if strings.Contains(string(stderr), "rbd: error opening image "+rv.RbdImageName+
+		if strings.Contains(stderr, "rbd: error opening image "+rv.RbdImageName+
 			": (2) No such file or directory") {
 			return snapInfo, util.JoinErrors(ErrImageNotFound, err)
 		}
 		return snapInfo, err
 	}
 
-	err = json.Unmarshal(stdout, &snapInfo)
+	err = json.Unmarshal([]byte(stdout), &snapInfo)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to parse JSON output of snapshot info (%s)"), err)
-		return snapInfo, fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, string(stdout))
+		return snapInfo, fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, stdout)
 	}
 	return snapInfo, nil
 }

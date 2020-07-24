@@ -52,6 +52,7 @@ func getVolumeRootPathCephDeprecated(volID volumeID) string {
 
 func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (string, error) {
 	stdout, stderr, err := util.ExecCommand(
+		ctx,
 		"ceph",
 		"fs",
 		"subvolume",
@@ -66,16 +67,15 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 		"--keyfile="+cr.KeyFile)
 
 	if err != nil {
-		stdErrString := string(stderr)
-		klog.Errorf(util.Log(ctx, "failed to get the rootpath for the vol %s(%s) stdError %s"), string(volID), err, stdErrString)
+		klog.Errorf(util.Log(ctx, "failed to get the rootpath for the vol %s(%s) stdError %s"), string(volID), err, stderr)
 
-		if strings.HasPrefix(stdErrString, errNotFoundString) {
+		if strings.HasPrefix(stderr, errNotFoundString) {
 			return "", util.JoinErrors(ErrVolumeNotFound, err)
 		}
 
 		return "", err
 	}
-	return strings.TrimSuffix(string(stdout), "\n"), nil
+	return strings.TrimSuffix(stdout, "\n"), nil
 }
 
 type localClusterState struct {
