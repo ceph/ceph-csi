@@ -137,6 +137,7 @@ pull_request_rules:
       - "#approved-reviews-by>=2"
       - "#changes-requested-reviews-by=0"
       - "status-success=ci/centos/job-validation"
+      - "status-success=ci/centos/jjb-validate"
       - "status-success=DCO"
       - "status-success=commitlint"
     actions:
@@ -154,6 +155,7 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
       - "status-success=ci/centos/job-validation"
+      - "status-success=ci/centos/jjb-validate"
       - "status-success=DCO"
       - "status-success=commitlint"
     actions:
