@@ -44,7 +44,7 @@ const (
 	// Output strings returned during invocation of "rbd unmap --device-type... <imageSpec>" when
 	// image is not found to be mapped. Used to ignore errors when attempting to unmap such images.
 	// The %s format specifier should contain the <imageSpec> string
-	// NOTE: When using devicePath instead of imageSpec, the error strings are different
+	// NOTE: When using devicePath instead of imageSpec, the error strings are different.
 	rbdUnmapCmdkRbdMissingMap = "rbd: %s: not a mapped image or snapshot"
 	rbdUnmapCmdNbdMissingMap  = "rbd-nbd: %s is not mapped"
 	rbdMapConnectionTimeout   = "Connection timed out"

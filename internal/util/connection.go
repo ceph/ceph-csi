@@ -36,7 +36,7 @@ type ClusterConnection struct {
 var (
 	// large interval and timeout, it should be longer than the maximum
 	// time an operation can take (until refcounting of the connections is
-	// available)
+	// available).
 	cpInterval = 15 * time.Minute
 	cpExpiry   = 10 * time.Minute
 	connPool   = NewConnPool(cpInterval, cpExpiry)

@@ -32,7 +32,7 @@ fuse_set_user_groups = false
 
 const (
 	cephConfigRoot = "/etc/ceph"
-	// CephConfigPath ceph configuration file
+	// CephConfigPath ceph configuration file.
 	CephConfigPath = "/etc/ceph/ceph.conf"
 
 	keyRing = "/etc/ceph/keyring"

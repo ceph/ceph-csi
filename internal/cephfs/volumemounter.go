@@ -41,7 +41,7 @@ const (
 var (
 	availableMounters []string
 
-	// maps a mountpoint to PID of its FUSE daemon
+	// maps a mountpoint to PID of its FUSE daemon.
 	fusePidMap    = make(map[string]int)
 	fusePidMapMtx sync.Mutex
 

@@ -36,11 +36,11 @@ const (
 	defaultNs     = "default"
 	vaultSecretNs = "/secret/ceph-csi/"
 
-	// rook created cephfs user
+	// rook created cephfs user.
 	cephfsNodePluginSecretName  = "rook-csi-cephfs-node"
 	cephfsProvisionerSecretName = "rook-csi-cephfs-provisioner"
 
-	// rook created rbd user
+	// rook created rbd user.
 	rbdNodePluginSecretName  = "rook-csi-rbd-node"
 	rbdProvisionerSecretName = "rook-csi-rbd-provisioner"
 
@@ -49,7 +49,7 @@ const (
 )
 
 var (
-	// cli flags
+	// cli flags.
 	deployTimeout    int
 	deployCephFS     bool
 	deployRBD        bool

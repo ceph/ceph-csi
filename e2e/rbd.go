@@ -27,7 +27,7 @@ var (
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
 	defaultRBDPool     = "replicapool"
-	// Topology related variables
+	// Topology related variables.
 	nodeRegionLabel     = "test.failure-domain/region"
 	regionValue         = "testregion"
 	nodeZoneLabel       = "test.failure-domain/zone"

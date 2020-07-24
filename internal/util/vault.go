@@ -30,17 +30,17 @@ import (
 
 const (
 	// path to service account token that will be used to authenticate with Vault
-	// #nosec
+	// #nosec.
 	serviceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
-	// vault configuration defaults
+	// vault configuration defaults.
 	vaultDefaultAuthPath       = "/v1/auth/kubernetes/login"
 	vaultDefaultRole           = "csi-kubernetes"
 	vaultDefaultNamespace      = ""
 	vaultDefaultPassphraseRoot = "/v1/secret"
 	vaultDefaultPassphrasePath = ""
 
-	// vault request headers
+	// vault request headers.
 	vaultTokenHeader     = "X-Vault-Token" // #nosec:G101, value not credential, just references token.
 	vaultNamespaceHeader = "X-Vault-Namespace"
 )

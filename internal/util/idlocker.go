@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	// VolumeOperationAlreadyExistsFmt string format to return for concurrent operation
+	// VolumeOperationAlreadyExistsFmt string format to return for concurrent operation.
 	VolumeOperationAlreadyExistsFmt = "an operation with the given Volume ID %s already exists"
 
-	// SnapshotOperationAlreadyExistsFmt string format to return for concurrent operation
+	// SnapshotOperationAlreadyExistsFmt string format to return for concurrent operation.
 	SnapshotOperationAlreadyExistsFmt = "an operation with the given Snapshot ID %s already exists"
 )
 

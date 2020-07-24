@@ -57,10 +57,10 @@ const (
 	rbdTaskRemoveCmdInvalidString2      = "Error EINVAL: invalid command"
 	rbdTaskRemoveCmdAccessDeniedMessage = "Error EACCES:"
 
-	// Encryption statuses for RbdImage
+	// Encryption statuses for RbdImage.
 	rbdImageEncrypted          = "encrypted"
 	rbdImageRequiresEncryption = "requiresEncryption"
-	// image metadata key for encryption
+	// image metadata key for encryption.
 	encryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
 )
 

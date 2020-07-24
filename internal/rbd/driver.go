@@ -27,10 +27,10 @@ import (
 )
 
 const (
-	// volIDVersion is the version number of volume ID encoding scheme
+	// volIDVersion is the version number of volume ID encoding scheme.
 	volIDVersion uint16 = 1
 
-	// csiConfigFile is the location of the CSI config file
+	// csiConfigFile is the location of the CSI config file.
 	csiConfigFile = "/etc/ceph-csi-config/config.json"
 )
 
@@ -46,17 +46,17 @@ type Driver struct {
 var (
 
 	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
-	// ceph clusters across CSI instances, to differentiate omap names per CSI instance
+	// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
 	CSIInstanceID = "default"
 
 	// volJournal and snapJournal are used to maintain RADOS based journals for CO generated
-	// VolumeName to backing RBD images
+	// VolumeName to backing RBD images.
 	volJournal  *journal.Config
 	snapJournal *journal.Config
-	// rbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten occurs
+	// rbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten occurs.
 	rbdHardMaxCloneDepth uint
 
-	// rbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before a flatten occurs
+	// rbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before a flatten occurs.
 	rbdSoftMaxCloneDepth uint
 	maxSnapshotsOnImage  uint
 	skipForceFlatten     bool
