@@ -50,3 +50,84 @@ func TestIDLocker(t *testing.T) {
 			true, ok)
 	}
 }
+
+func TestOperationLocks(t *testing.T) {
+	volumeID := "test-vol"
+	lock := NewOperationLock()
+	err := lock.GetCloneLock(volumeID)
+
+	if err != nil {
+		t.Errorf("failed to acquire clone lock for %s %s", volumeID, err)
+	}
+	err = lock.GetDeleteLock(volumeID)
+	if err == nil {
+		t.Errorf("expected to fail for GetDeleteLock for %s", volumeID)
+	}
+
+	err = lock.GetExpandLock(volumeID)
+	if err == nil {
+		t.Errorf("expected to fail for GetExpandLock for %s", volumeID)
+	}
+	lock.ReleaseCloneLock(volumeID)
+
+	// Get multiple clone operation
+	err = lock.GetCloneLock(volumeID)
+	if err != nil {
+		t.Errorf("failed to acquire clone lock for %s %s", volumeID, err)
+	}
+	err = lock.GetCloneLock(volumeID)
+	if err != nil {
+		t.Errorf("failed to acquire clone lock for %s %s", volumeID, err)
+	}
+	err = lock.GetCloneLock(volumeID)
+	if err != nil {
+		t.Errorf("failed to acquire clone lock for %s %s", volumeID, err)
+	}
+	// release all clone locks
+	lock.ReleaseCloneLock(volumeID)
+	lock.ReleaseCloneLock(volumeID)
+	lock.ReleaseCloneLock(volumeID)
+
+	// release extra lock it should not cause any issue as the key is already
+	// deleted from the map
+	lock.ReleaseCloneLock(volumeID)
+
+	// get multiple restore lock
+	err = lock.GetRestoreLock(volumeID)
+	if err != nil {
+		t.Errorf("failed to acquire restore lock for %s %s", volumeID, err)
+	}
+	err = lock.GetRestoreLock(volumeID)
+	if err != nil {
+		t.Errorf("failed to acquire restore lock for %s %s", volumeID, err)
+	}
+	err = lock.GetRestoreLock(volumeID)
+	if err != nil {
+		t.Errorf("failed to acquire restore lock for %s %s", volumeID, err)
+	}
+	// try for snapshot delete lock
+	err = lock.GetDeleteLock(volumeID)
+	if err == nil {
+		t.Errorf("expected to fail for GetDeleteLock for %s", volumeID)
+	}
+	// release all restore locks
+	lock.ReleaseRestoreLock(volumeID)
+	lock.ReleaseRestoreLock(volumeID)
+	lock.ReleaseRestoreLock(volumeID)
+
+	err = lock.GetSnapshotCreateLock(volumeID)
+	if err != nil {
+		t.Errorf("failed to acquire createSnapshot lock for %s %s", volumeID, err)
+	}
+	err = lock.GetDeleteLock(volumeID)
+	if err == nil {
+		t.Errorf("expected to fail for GetDeleteLock for %s", volumeID)
+	}
+	lock.ReleaseSnapshotCreateLock(volumeID)
+
+	err = lock.GetDeleteLock(volumeID)
+	if err != nil {
+		t.Errorf("failed to get GetDeleteLock for %s %v", volumeID, err)
+	}
+	lock.ReleaseDeleteLock(volumeID)
+}

@@ -16,98 +16,46 @@ limitations under the License.
 
 package util
 
-// ErrKeyNotFound is returned when requested key in omap is not found.
-type ErrKeyNotFound struct {
-	keyName string
-	err     error
+import (
+	"errors"
+	"fmt"
+)
+
+var (
+	// ErrKeyNotFound is returned when requested key in omap is not found.
+	ErrKeyNotFound = errors.New("key not found")
+	// ErrObjectExists is returned when named omap is already present in rados.
+	ErrObjectExists = errors.New("object exists")
+	// ErrObjectNotFound is returned when named omap is not found in rados.
+	ErrObjectNotFound = errors.New("object not found")
+	// ErrSnapNameConflict is generated when a requested CSI snap name already exists on RBD but with
+	// different properties, and hence is in conflict with the passed in CSI volume name.
+	ErrSnapNameConflict = errors.New("snapshot name conflict")
+	// ErrPoolNotFound is returned when pool is not found.
+	ErrPoolNotFound = errors.New("pool not found")
+)
+
+type errorPair struct {
+	first  error
+	second error
 }
 
-// NewErrKeyNotFound returns a new ErrKeyNotFound error.
-func NewErrKeyNotFound(keyName string, err error) ErrKeyNotFound {
-	return ErrKeyNotFound{keyName, err}
+func (e errorPair) Error() string {
+	return fmt.Sprintf("%v: %v", e.first, e.second)
 }
 
-// Error returns the error string for ErrKeyNotFound.
-func (e ErrKeyNotFound) Error() string {
-	return e.err.Error()
+// Is checks if target error is wrapped in the first error.
+func (e errorPair) Is(target error) bool {
+	return errors.Is(e.first, target)
 }
 
-// Unwrap returns the encapsulated error.
-func (e ErrKeyNotFound) Unwrap() error {
-	return e.err
+// Unwrap returns the second error.
+func (e errorPair) Unwrap() error {
+	return e.second
 }
 
-// ErrObjectExists is returned when named omap is already present in rados.
-type ErrObjectExists struct {
-	objectName string
-	err        error
-}
-
-// Error returns the error string for ErrObjectExists.
-func (e ErrObjectExists) Error() string {
-	return e.err.Error()
-}
-
-// Unwrap returns the encapsulated error.
-func (e ErrObjectExists) Unwrap() error {
-	return e.err
-}
-
-// ErrObjectNotFound is returned when named omap is not found in rados.
-type ErrObjectNotFound struct {
-	oMapName string
-	err      error
-}
-
-// Error returns the error string for ErrObjectNotFound.
-func (e ErrObjectNotFound) Error() string {
-	return e.err.Error()
-}
-
-// Unwrap returns the encapsulated error.
-func (e ErrObjectNotFound) Unwrap() error {
-	return e.err
-}
-
-// ErrSnapNameConflict is generated when a requested CSI snap name already exists on RBD but with
-// different properties, and hence is in conflict with the passed in CSI volume name.
-type ErrSnapNameConflict struct {
-	requestName string
-	err         error
-}
-
-// Error returns the error string for ErrSnapNameConflict.
-func (e ErrSnapNameConflict) Error() string {
-	return e.err.Error()
-}
-
-// Unwrap returns the encapsulated error.
-func (e ErrSnapNameConflict) Unwrap() error {
-	return e.err
-}
-
-// NewErrSnapNameConflict returns a ErrSnapNameConflict error when CSI snap name already exists.
-func NewErrSnapNameConflict(name string, err error) ErrSnapNameConflict {
-	return ErrSnapNameConflict{name, err}
-}
-
-// ErrPoolNotFound is returned when pool is not found.
-type ErrPoolNotFound struct {
-	Pool string
-	Err  error
-}
-
-// Error returns the error string for ErrPoolNotFound.
-func (e ErrPoolNotFound) Error() string {
-	return e.Err.Error()
-}
-
-// Unwrap returns the encapsulated error.
-func (e ErrPoolNotFound) Unwrap() error {
-	return e.Err
-}
-
-// NewErrPoolNotFound returns a new ErrPoolNotFound error.
-func NewErrPoolNotFound(pool string, err error) ErrPoolNotFound {
-	return ErrPoolNotFound{pool, err}
+// JoinErrors combines two errors. Of the returned error, Is() follows the first
+// branch, Unwrap() folllows the second branch.
+func JoinErrors(e1, e2 error) error {
+	return errorPair{e1, e2}
 }

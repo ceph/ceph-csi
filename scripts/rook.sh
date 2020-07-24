@@ -7,7 +7,7 @@ ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
 ROOK_CEPH_CLUSTER_VERSION="v14.2.10"
 
 rook_version() {
-	echo "${ROOK_VERSION#?v}" | cut -d'.' -f"${1}"
+	echo "${ROOK_VERSION#v}" | cut -d'.' -f"${1}"
 }
 
 function deploy_rook() {
@@ -21,8 +21,8 @@ function deploy_rook() {
 		# upgrade ceph cluster version to 14.2.10 to support CephFS snapshot functionalities.
 		TEMP_DIR="$(mktemp -d)"
 		curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
-		sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" cluster-test.yaml
-		cat cluster-test.yaml
+		sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
+		cat  "${TEMP_DIR}"/cluster-test.yaml
 		kubectl create -f "${TEMP_DIR}/cluster-test.yaml"
 		rm -rf "${TEMP_DIR}"
 	else

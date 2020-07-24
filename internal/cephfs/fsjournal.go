@@ -72,8 +72,7 @@ func checkVolExists(ctx context.Context, volOptions *volumeOptions, secret map[s
 
 	_, err = getVolumeRootPathCeph(ctx, volOptions, cr, volumeID(vid.FsSubvolName))
 	if err != nil {
-		var evnf ErrVolumeNotFound
-		if errors.As(err, &evnf) {
+		if errors.Is(err, ErrVolumeNotFound) {
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
 			return nil, err

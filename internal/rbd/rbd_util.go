@@ -42,7 +42,6 @@ import (
 )
 
 const (
-	imageWatcherStr = "watcher="
 	// The following three values are used for 30 seconds timeout
 	// while waiting for RBD Watcher to expire.
 	rbdImageWatcherInitDelay = 1 * time.Second
@@ -268,44 +267,33 @@ func (rv *rbdVolume) open() (*librbd.Image, error) {
 	image, err := librbd.OpenImage(rv.ioctx, rv.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
-			err = ErrImageNotFound{rv.RbdImageName, err}
+			err = util.JoinErrors(ErrImageNotFound, err)
 		}
 		return nil, err
 	}
 	return image, nil
 }
 
-// rbdStatus checks if there is watcher on the image.
-// It returns true if there is a watcher on the image, otherwise returns false.
-func rbdStatus(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) (bool, string, error) {
-	var output string
-	var cmd []byte
-
-	util.DebugLog(ctx, "rbd: status %s using mon %s", pOpts, pOpts.Monitors)
-	args := []string{"status", pOpts.String(), "-m", pOpts.Monitors, "--id", cr.ID, "--keyfile=" + cr.KeyFile}
-	cmd, err := execCommand("rbd", args)
-	output = string(cmd)
-
-	var ee *exec.Error
-	if errors.As(err, &ee) {
-		if errors.Is(ee, exec.ErrNotFound) {
-			klog.Errorf(util.Log(ctx, "rbd cmd not found"))
-			// fail fast if command not found
-			return false, output, err
-		}
-	}
-
-	// If command never succeed, returns its last error.
+// isInUse checks if there is a watcher on the image. It returns true if there
+// is a watcher on the image, otherwise returns false.
+func (rv *rbdVolume) isInUse() (bool, error) {
+	image, err := rv.open()
 	if err != nil {
-		return false, output, err
+		if errors.Is(err, ErrImageNotFound) || errors.Is(err, util.ErrPoolNotFound) {
+			return false, err
+		}
+		// any error should assume something else is using the image
+		return true, err
+	}
+	defer image.Close()
+
+	watchers, err := image.ListWatchers()
+	if err != nil {
+		return false, err
 	}
 
-	if strings.Contains(output, imageWatcherStr) {
-		util.DebugLog(ctx, "rbd: watchers on %s: %s", pOpts, output)
-		return true, output, nil
-	}
-	klog.Warningf(util.Log(ctx, "rbd: no watchers on %s"), pOpts)
-	return false, output, nil
+	// because we opened the image, there is at least one watcher
+	return len(watchers) != 1, nil
 }
 
 // addRbdManagerTask adds a ceph manager task to execute command
@@ -408,8 +396,7 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 			// if the parent image is moved to trash the name will be present
 			// in rbd image info but the image will be in trash, in that case
 			// return the found depth
-			var einf ErrImageNotFound
-			if errors.As(err, &einf) {
+			if errors.Is(err, ErrImageNotFound) {
 				return depth, nil
 			}
 			klog.Errorf(util.Log(ctx, "failed to check depth on image %s: %s"), vol, err)
@@ -468,7 +455,7 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 				return err
 			}
 			if forceFlatten || depth >= hardlimit {
-				return ErrFlattenInProgress{err: fmt.Errorf("flatten is in progress for image %s", rv.RbdImageName)}
+				return fmt.Errorf("%w: flatten is in progress for image %s", ErrFlattenInProgress, rv.RbdImageName)
 			}
 		}
 		if !supported {
@@ -601,8 +588,8 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 
 	err := vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
-		err = fmt.Errorf("error decoding volume ID (%s) (%s)", err, rbdVol.VolID)
-		return rbdVol, ErrInvalidVolID{err}
+		return rbdVol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
+			ErrInvalidVolID, err, rbdVol.VolID)
 	}
 
 	rbdVol.ClusterID = vi.ClusterID
@@ -822,7 +809,7 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 	}
 	err = snap.Remove()
 	if errors.Is(err, librbd.ErrNotFound) {
-		return ErrSnapNotFound{snapName: pOpts.RbdSnapName, err: err}
+		return util.JoinErrors(ErrSnapNotFound, err)
 	}
 	return err
 }
@@ -904,7 +891,7 @@ func (rv *rbdVolume) updateVolWithImageInfo(cr *util.Credentials) error {
 		klog.Errorf("failed getting information for image (%s): (%s)", rv, err)
 		if strings.Contains(string(stderr), "rbd: error opening image "+rv.RbdImageName+
 			": (2) No such file or directory") {
-			return ErrImageNotFound{rv.String(), err}
+			return util.JoinErrors(ErrImageNotFound, err)
 		}
 		return err
 	}
@@ -979,7 +966,7 @@ func (rv *rbdVolume) checkSnapExists(rbdSnap *rbdSnapshot) error {
 		}
 	}
 
-	return ErrSnapNotFound{rbdSnap.RbdSnapName, fmt.Errorf("snap %s not found", rbdSnap.String())}
+	return fmt.Errorf("%w: snap %s not found", ErrSnapNotFound, rbdSnap.String())
 }
 
 // rbdImageMetadataStash strongly typed JSON spec for stashed RBD image metadata.
@@ -1040,7 +1027,7 @@ func lookupRBDImageMetadataStash(path string) (rbdImageMetadataStash, error) {
 			return imgMeta, fmt.Errorf("failed to read stashed JSON image metadata from path (%s): (%v)", fPath, err)
 		}
 
-		return imgMeta, ErrMissingStash{err}
+		return imgMeta, util.JoinErrors(ErrMissingStash, err)
 	}
 
 	err = json.Unmarshal(encodedBytes, &imgMeta)
@@ -1150,7 +1137,7 @@ func (rv *rbdVolume) listSnapshots(ctx context.Context, cr *util.Credentials) ([
 		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), rv, err)
 		if strings.Contains(string(stderr), "rbd: error opening image "+rv.RbdImageName+
 			": (2) No such file or directory") {
-			return snapInfo, ErrImageNotFound{rv.String(), err}
+			return snapInfo, util.JoinErrors(ErrImageNotFound, err)
 		}
 		return snapInfo, err
 	}

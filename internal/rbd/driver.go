@@ -80,6 +80,7 @@ func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		VolumeLocks:             util.NewVolumeLocks(),
 		SnapshotLocks:           util.NewVolumeLocks(),
+		OperationLocks:          util.NewOperationLock(),
 	}
 }
 
