@@ -130,7 +130,7 @@ var _ = Describe("RBD", func() {
 	var c clientset.Interface
 	// deploy RBD CSI
 	BeforeEach(func() {
-		if !testRBD {
+		if !testRBD || upgradeTesting {
 			Skip("Skipping RBD E2E")
 		}
 		c = f.ClientSet
@@ -152,7 +152,7 @@ var _ = Describe("RBD", func() {
 	})
 
 	AfterEach(func() {
-		if !testRBD {
+		if !testRBD || upgradeTesting {
 			Skip("Skipping RBD E2E")
 		}
 		if CurrentGinkgoTestDescription().Failed {
