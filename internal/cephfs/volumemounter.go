@@ -167,7 +167,7 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 		args = append(args, "--client_mds_namespace="+volOptions.FsName)
 	}
 
-	_, stderr, err := execCommand(ctx, "ceph-fuse", args[:]...)
+	_, stderr, err := util.ExecCommand(ctx, "ceph-fuse", args[:]...)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 	// We need "starting fuse" meaning the mount is ok
 	// and PID of the ceph-fuse daemon for unmount
 
-	match := fusePidRx.FindSubmatch(stderr)
+	match := fusePidRx.FindSubmatch([]byte(stderr))
 	// validMatchLength is set to 2 as match is expected
 	// to have 2 items, starting fuse and PID of the fuse daemon
 	const validMatchLength = 2
