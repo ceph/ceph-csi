@@ -55,6 +55,8 @@ var (
 	deployRBD        bool
 	testCephFS       bool
 	testRBD          bool
+	upgradeTesting   bool
+	upgradeVersion   string
 	cephCSINamespace string
 	rookNamespace    string
 	ns               string
@@ -353,7 +355,10 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 		ClusterID: fsID,
 		Monitors:  mons,
 	}}
-	conmap[0].CephFS.SubvolumeGroup = "e2e"
+	if upgradeTesting {
+		subvolumegroup = "csi"
+	}
+	conmap[0].CephFS.SubvolumeGroup = subvolumegroup
 	data, err := json.Marshal(conmap)
 	Expect(err).Should(BeNil())
 	cm.Data["config.json"] = string(data)
@@ -902,7 +907,7 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 		return err
 	}
 
-	_, stdErr := execCommandInToolBoxPod(f, "ceph fs subvolume rm myfs "+imageData.imageName+" e2e", rookNamespace)
+	_, stdErr := execCommandInToolBoxPod(f, "ceph fs subvolume rm myfs "+imageData.imageName+" "+subvolumegroup, rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 
 	if stdErr != "" {
