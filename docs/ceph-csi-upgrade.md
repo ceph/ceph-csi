@@ -105,13 +105,13 @@ volumesnapshotclass.snapshot.storage.k8s.io "csi-rbdplugin-snapclass" deleted
 ## Upgrading from v1.2 to v2.0
 
 Refer
-[upgrade-from-1.2-v2.0](https://github.com/ceph/ceph-csi/blob/v2.0.1/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi 1.2 to v2.0
+[upgrade-from-v1.2-v2.0](https://github.com/ceph/ceph-csi/blob/v2.0.1/docs/ceph-csi-upgrade.md)
+to upgrade from cephcsi v1.2 to v2.0
 
 ## Upgrading from v2.0 to v2.1
 
 Refer
-[upgrade-from-2.0-v2.1](https://github.com/ceph/ceph-csi/blob/v2.1.2/docs/ceph-csi-upgrade.md)
+[upgrade-from-v2.0-v2.1](https://github.com/ceph/ceph-csi/blob/v2.1.2/docs/ceph-csi-upgrade.md)
 to upgrade from cephcsi v2.0 to v2.1
 
 ## Upgrading from v2.1 to v3.0
