@@ -5,6 +5,7 @@
     - [RBD CSI Snapshot Incompatibility](#rbd-csi-snapshot-incompatibility)
   - [Upgrading from v1.2 to v2.0](#upgrading-from-v12-to-v20)
   - [Upgrading from v2.0 to v2.1](#upgrading-from-v20-to-v21)
+  - [Upgrading from v2.1 to v3.0](#upgrading-from-v21-to-v30)
     - [Upgrading CephFS](#upgrading-cephfs)
       - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
         - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -47,7 +48,7 @@ To avoid this issue in future upgrades, we recommend that you do not use the
 fuse client or rbd-nbd as of now.
 
 This guide will walk you through the steps to upgrade the software in a cluster
-from v2.0 to v2.1
+from v2.1 to v3.0
 
 ### RBD CSI Snapshot Incompatibility
 
@@ -109,6 +110,12 @@ to upgrade from cephcsi 1.2 to v2.0
 
 ## Upgrading from v2.0 to v2.1
 
+Refer
+[upgrade-from-2.0-v2.1](https://github.com/ceph/ceph-csi/blob/v2.1.2/docs/ceph-csi-upgrade.md)
+to upgrade from cephcsi v2.0 to v2.1
+
+## Upgrading from v2.1 to v3.0
+
 **Ceph-csi releases from master are expressly unsupported.** It is strongly
 recommended that you use [official
 releases](https://github.com/ceph/ceph-csi/releases) of Ceph-csi. Unreleased
@@ -117,12 +124,12 @@ that will not be supported in the official releases. Builds from the master
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-git checkout v2.1.0 tag
+git checkout v3.0.0 tag
 
 ```bash
 [$] git clone https://github.com/ceph/ceph-csi.git
 [$] cd ./ceph-csi
-[$] git checkout v2.1.0
+[$] git checkout v3.0.0
 ```
 
 **Note:** While upgrading please Ignore warning messages from kubectl output
@@ -247,7 +254,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded cephfs csi from v2.0 to v2.1
+we have successfully upgraded cephfs csi from v2.1 to v3.0
 
 ### Upgrading RBD
 
@@ -400,7 +407,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded RBD csi from v2.0 to v2.1
+we have successfully upgraded RBD csi from v2.1 to v3.0
 
 ### Handling node reboot hangs due to existing network mounts
 
