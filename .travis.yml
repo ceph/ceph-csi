@@ -15,7 +15,7 @@ services:
 language: go
 branches:
   only:
-    - master
+    - release-v3.0
 
 env:
   global:
