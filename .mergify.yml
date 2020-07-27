@@ -123,6 +123,30 @@ pull_request_rules:
         strict: smart
       dismiss_reviews: {}
       delete_head_branch: {}
+  - name: backport patches to release-v3.0 branch
+    conditions:
+      - base=master
+      - label=backport-to-release-v3.0
+    actions:
+      backport:
+        branches:
+          - release-v3.0
+  # automerge backports if CI successfully ran
+  - name: automerge backport release-v3.0
+    conditions:
+      - author=mergify[bot]
+      - base=release-v3.0
+      - label!=DNM
+      - "#changes-requested-reviews-by=0"
+      - "#approved-reviews-by>=1"
+      - "status-success=continuous-integration/travis-ci/pr"
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+      dismiss_reviews: {}
+      delete_head_branch: {}
   - name: remove outdated approvals on ci/centos
     conditions:
       - base=ci/centos
