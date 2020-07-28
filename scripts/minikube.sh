@@ -88,6 +88,17 @@ function disable_storage_addons() {
     ${minikube} addons disable storage-provisioner 2>/dev/null || true
 }
 
+# minikube has the Busybox losetup, and that does not work with raw-block PVCs.
+# Copy the host losetup executable and hope it works.
+#
+# See https://github.com/kubernetes/minikube/issues/8284
+function minikube_losetup() {
+    # scp should not ask for any confirmation
+    scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$(${minikube} ssh-key)" /sbin/losetup docker@"$(${minikube} ip)":losetup
+    # replace /sbin/losetup symlink with the executable
+    ${minikube} ssh 'sudo sh -c "rm -f /sbin/losetup && cp ~docker/losetup /sbin"'
+}
+
 # configure minikube
 MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
@@ -170,6 +181,7 @@ up)
         wait_for_ssh
         # shellcheck disable=SC2086
         ${minikube} ssh "sudo mkdir -p /mnt/${DISK}/var/lib/rook;sudo ln -s /mnt/${DISK}/var/lib/rook /var/lib/rook"
+        minikube_losetup
     fi
     ${minikube} kubectl -- cluster-info
     ;;
