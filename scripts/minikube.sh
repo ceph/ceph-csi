@@ -92,7 +92,7 @@ function disable_storage_addons() {
 MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
 KUBE_VERSION=${KUBE_VERSION:-"v1.14.10"}
-MEMORY=${MEMORY:-"3000"}
+MEMORY=${MEMORY:-"4096"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
 #configure image repo
 CEPHCSI_IMAGE_REPO=${CEPHCSI_IMAGE_REPO:-"quay.io/cephcsi"}
