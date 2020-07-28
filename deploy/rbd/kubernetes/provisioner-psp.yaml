@@ -1,0 +1,39 @@
+---
+# Source: ceph-csi-rbd/templates/provisioner-psp.yaml
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: ceph-csi-rbd-provisioner
+  labels:
+    app: ceph-csi-rbd
+    chart: ceph-csi-rbd-1.3.0-canary
+    component: provisioner
+    release: ceph-csi-rbd
+    heritage: Helm
+spec:
+  allowPrivilegeEscalation: true
+  allowedCapabilities:
+    - 'SYS_ADMIN'
+  fsGroup:
+    rule: RunAsAny
+  privileged: true
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'hostPath'
+  allowedHostPaths:
+    - pathPrefix: '/dev'
+      readOnly: false
+    - pathPrefix: '/sys'
+      readOnly: false
+    - pathPrefix: '/lib/modules'
+      readOnly: true

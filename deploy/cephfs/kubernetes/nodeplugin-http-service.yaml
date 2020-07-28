@@ -1,0 +1,23 @@
+---
+# Source: ceph-csi-cephfs/templates/nodeplugin-http-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ceph-csi-cephfs-nodeplugin-http-metrics
+  namespace: ceph-csi
+  labels:
+    app: ceph-csi-cephfs
+    chart: ceph-csi-cephfs-1.3.0-canary
+    component: nodeplugin
+    release: ceph-csi-cephfs
+    heritage: Helm
+spec:
+  ports:
+    - name: http-metrics
+      port: 8080
+      targetPort: 8081
+  selector:
+    app: ceph-csi-cephfs
+    component: nodeplugin
+    release: ceph-csi-cephfs
+  type: "ClusterIP"

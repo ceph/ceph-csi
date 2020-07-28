@@ -1,127 +1,136 @@
 ---
-kind: Service
-apiVersion: v1
-metadata:
-  name: csi-rbdplugin-provisioner
-  labels:
-    app: csi-metrics
-spec:
-  selector:
-    app: csi-rbdplugin-provisioner
-  ports:
-    - name: http-metrics
-      port: 8080
-      protocol: TCP
-      targetPort: 8680
-
----
+# Source: ceph-csi-rbd/templates/provisioner-deployment.yaml
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: csi-rbdplugin-provisioner
+  name: ceph-csi-rbd-provisioner
+  namespace: ceph-csi
+  labels:
+    app: ceph-csi-rbd
+    chart: ceph-csi-rbd-1.3.0-canary
+    component: provisioner
+    release: ceph-csi-rbd
+    heritage: Helm
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: csi-rbdplugin-provisioner
+      app: ceph-csi-rbd
+      component: provisioner
+      release: ceph-csi-rbd
   template:
     metadata:
       labels:
-        app: csi-rbdplugin-provisioner
+        app: ceph-csi-rbd
+        chart: ceph-csi-rbd-1.3.0-canary
+        component: provisioner
+        release: ceph-csi-rbd
+        heritage: Helm
     spec:
-      serviceAccount: rbd-csi-provisioner
+      serviceAccountName: ceph-csi-rbd-provisioner
       containers:
         - name: csi-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v1.6.0
+          image: "quay.io/k8scsi/csi-provisioner:v1.6.0"
+          imagePullPolicy: IfNotPresent
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
-            - "--timeout=150s"
-            - "--retry-interval-start=500ms"
+            - "--timeout=60s"
             - "--enable-leader-election=true"
             - "--leader-election-type=leases"
+            - "--retry-interval-start=500ms"
             - "--feature-gates=Topology=true"
           env:
             - name: ADDRESS
-              value: unix:///csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
+              value: "unix:///csi/csi-provisioner.sock"
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-        - name: csi-snapshotter
-          image: quay.io/k8scsi/csi-snapshotter:v2.1.0
-          args:
-            - "--csi-address=$(ADDRESS)"
-            - "--v=5"
-            - "--timeout=150s"
-            - "--leader-election=true"
-          env:
-            - name: ADDRESS
-              value: unix:///csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
-          securityContext:
-            privileged: true
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
-        - name: csi-attacher
-          image: quay.io/k8scsi/csi-attacher:v2.1.1
-          args:
-            - "--v=5"
-            - "--csi-address=$(ADDRESS)"
-            - "--leader-election=true"
-            - "--retry-interval-start=500ms"
-          env:
-            - name: ADDRESS
-              value: /csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
+          resources:
+            {}
         - name: csi-resizer
-          image: quay.io/k8scsi/csi-resizer:v0.5.0
+          image: "quay.io/k8scsi/csi-resizer:v0.5.0"
+          imagePullPolicy: IfNotPresent
           args:
-            - "--csi-address=$(ADDRESS)"
             - "--v=5"
-            - "--csiTimeout=150s"
+            - "--csi-address=$(ADDRESS)"
+            - "--csiTimeout=60s"
             - "--leader-election"
             - "--retry-interval-start=500ms"
           env:
             - name: ADDRESS
-              value: unix:///csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
+              value: "unix:///csi/csi-provisioner.sock"
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-        - name: csi-rbdplugin
+          resources:
+            {}
+        - name: csi-snapshotter
+          image: quay.io/k8scsi/csi-snapshotter:v2.1.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+            - "--timeout=60s"
+            - "--leader-election=true"
+          env:
+            - name: ADDRESS
+              value: "unix:///csi/csi-provisioner.sock"
           securityContext:
             privileged: true
-            capabilities:
-              add: ["SYS_ADMIN"]
-          # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:canary
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            {}
+        - name: csi-attacher
+          image: "quay.io/k8scsi/csi-attacher:v2.1.1"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election=true"
+            - "--retry-interval-start=500ms"
+          env:
+            - name: ADDRESS
+              value: "unix:///csi/csi-provisioner.sock"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            {}
+        - name: csi-rbdplugin
+          image: "quay.io/cephcsi/cephcsi:canary"
+          imagePullPolicy: IfNotPresent
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
             - "--controllerserver=true"
+            - "--pidlimit=-1"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
-            - "--drivername=rbd.csi.ceph.com"
-            - "--pidlimit=-1"
+            - "--drivername=$(DRIVER_NAME)"
             - "--rbdhardmaxclonedepth=8"
             - "--rbdsoftmaxclonedepth=4"
+            - "--maxsnapshotsonimage=450"
           env:
             - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: DRIVER_NAME
+              value: rbd.csi.ceph.com
             - name: NODE_ID
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
-              value: unix:///csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
+              value: "unix:///csi/csi-provisioner.sock"
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -138,18 +147,21 @@ spec:
               mountPath: /etc/ceph-csi-encryption-kms-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+          resources:
+            {}
         - name: liveness-prometheus
-          image: quay.io/cephcsi/cephcsi:canary
+          image: "quay.io/cephcsi/cephcsi:canary"
+          imagePullPolicy: IfNotPresent
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8680"
+            - "--metricsport=8080"
             - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
           env:
             - name: CSI_ENDPOINT
-              value: unix:///csi/csi-provisioner.sock
+              value: "unix:///csi/csi-provisioner.sock"
             - name: POD_IP
               valueFrom:
                 fieldRef:
@@ -157,8 +169,13 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-          imagePullPolicy: "IfNotPresent"
+          resources:
+            {}
       volumes:
+        - name: socket-dir
+          emptyDir: {
+            medium: "Memory"
+          }
         - name: host-dev
           hostPath:
             path: /dev
@@ -168,16 +185,12 @@ spec:
         - name: lib-modules
           hostPath:
             path: /lib/modules
-        - name: socket-dir
-          emptyDir: {
-            medium: "Memory"
-          }
         - name: ceph-csi-config
           configMap:
-            name: ceph-csi-config
+            name: "ceph-csi-config-rbd"
         - name: ceph-csi-encryption-kms-config
           configMap:
-            name: ceph-csi-encryption-kms-config
+            name: "ceph-csi-encryption-kms-config"
         - name: keys-tmp-dir
           emptyDir: {
             medium: "Memory"

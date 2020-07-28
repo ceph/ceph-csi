@@ -1,18 +1,34 @@
 ---
+# Source: ceph-csi-rbd/templates/nodeplugin-daemonset.yaml
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: csi-rbdplugin
+  name: ceph-csi-rbd-nodeplugin
+  namespace: ceph-csi
+  labels:
+    app: ceph-csi-rbd
+    chart: ceph-csi-rbd-1.3.0-canary
+    component: nodeplugin
+    release: ceph-csi-rbd
+    heritage: Helm
 spec:
   selector:
     matchLabels:
-      app: csi-rbdplugin
+      app: ceph-csi-rbd
+      component: nodeplugin
+      release: ceph-csi-rbd
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       labels:
-        app: csi-rbdplugin
+        app: ceph-csi-rbd
+        chart: ceph-csi-rbd-1.3.0-canary
+        component: nodeplugin
+        release: ceph-csi-rbd
+        heritage: Helm
     spec:
-      serviceAccount: rbd-csi-nodeplugin
+      serviceAccountName: ceph-csi-rbd-nodeplugin
       hostNetwork: true
       hostPID: true
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
@@ -25,7 +41,8 @@ spec:
           # created by privileged CSI driver container.
           securityContext:
             privileged: true
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.3.0
+          image: "quay.io/k8scsi/csi-node-driver-registrar:v1.3.0"
+          imagePullPolicy: IfNotPresent
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -48,47 +65,46 @@ spec:
               mountPath: /csi
             - name: registration-dir
               mountPath: /registration
+          resources:
+            {}
         - name: csi-rbdplugin
-          securityContext:
-            privileged: true
-            capabilities:
-              add: ["SYS_ADMIN"]
-            allowPrivilegeEscalation: true
-          # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:canary
+          image: "quay.io/cephcsi/cephcsi:canary"
+          imagePullPolicy: IfNotPresent
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
             - "--nodeserver=true"
+            - "--pidlimit=-1"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
-            - "--drivername=rbd.csi.ceph.com"
-            # If topology based provisioning is desired, configure required
-            # node labels representing the nodes topology domain
-            # and pass the label names below, for CSI to consume and advertize
-            # its equivalent topology domain
-            # - "--domainlabels=failure-domain/region,failure-domain/zone"
+            - "--drivername=$(DRIVER_NAME)"
           env:
             - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: DRIVER_NAME
+              value: rbd.csi.ceph.com
             - name: NODE_ID
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
-              value: unix:///csi/csi.sock
-          imagePullPolicy: "IfNotPresent"
+              value: "unix:///csi/csi.sock"
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
             - mountPath: /dev
               name: host-dev
-            - mountPath: /sys
-              name: host-sys
             - mountPath: /run/mount
               name: host-mount
+            - mountPath: /sys
+              name: host-sys
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
@@ -104,20 +120,23 @@ spec:
               mountPropagation: "Bidirectional"
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+          resources:
+            {}
         - name: liveness-prometheus
           securityContext:
             privileged: true
-          image: quay.io/cephcsi/cephcsi:canary
+          image: "quay.io/cephcsi/cephcsi:canary"
+          imagePullPolicy: IfNotPresent
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--metricsport=8680"
+            - "--metricsport=8080"
             - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
           env:
             - name: CSI_ENDPOINT
-              value: unix:///csi/csi.sock
+              value: "unix:///csi/csi.sock"
             - name: POD_IP
               valueFrom:
                 fieldRef:
@@ -125,12 +144,17 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-          imagePullPolicy: "IfNotPresent"
+          resources:
+            {}
       volumes:
         - name: socket-dir
           hostPath:
             path: /var/lib/kubelet/plugins/rbd.csi.ceph.com
             type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry
+            type: Directory
         - name: plugin-dir
           hostPath:
             path: /var/lib/kubelet/plugins
@@ -139,45 +163,25 @@ spec:
           hostPath:
             path: /var/lib/kubelet/pods
             type: DirectoryOrCreate
-        - name: registration-dir
-          hostPath:
-            path: /var/lib/kubelet/plugins_registry/
-            type: Directory
         - name: host-dev
           hostPath:
             path: /dev
-        - name: host-sys
-          hostPath:
-            path: /sys
         - name: host-mount
           hostPath:
             path: /run/mount
+        - name: host-sys
+          hostPath:
+            path: /sys
         - name: lib-modules
           hostPath:
             path: /lib/modules
         - name: ceph-csi-config
           configMap:
-            name: ceph-csi-config
+            name: "ceph-csi-config-rbd"
         - name: ceph-csi-encryption-kms-config
           configMap:
-            name: ceph-csi-encryption-kms-config
+            name: "ceph-csi-encryption-kms-config"
         - name: keys-tmp-dir
           emptyDir: {
             medium: "Memory"
           }
----
-# This is a service to expose the liveness metrics
-apiVersion: v1
-kind: Service
-metadata:
-  name: csi-metrics-rbdplugin
-  labels:
-    app: csi-metrics
-spec:
-  ports:
-    - name: http-metrics
-      port: 8080
-      protocol: TCP
-      targetPort: 8680
-  selector:
-    app: csi-rbdplugin

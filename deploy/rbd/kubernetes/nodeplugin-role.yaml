@@ -1,0 +1,18 @@
+---
+# Source: ceph-csi-rbd/templates/nodeplugin-role.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ceph-csi-rbd-nodeplugin
+  namespace: ceph-csi
+  labels:
+    app: ceph-csi-rbd
+    chart: ceph-csi-rbd-1.3.0-canary
+    component: nodeplugin
+    release: ceph-csi-rbd
+    heritage: Helm
+rules:
+  - apiGroups: ['policy']
+    resources: ['podsecuritypolicies']
+    verbs: ['use']
+    resourceNames: ['ceph-csi-rbd-nodeplugin']

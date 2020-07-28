@@ -3,13 +3,12 @@
 deployment_base="${1}"
 
 if [[ -z $deployment_base ]]; then
-	deployment_base="../../deploy/cephfs/kubernetes"
+	deployment_base="../../deploy/cephfs/kubernetes/with-rbac.yaml"
 fi
 
-cd "$deployment_base" || exit 1
-
-objects=(csi-provisioner-rbac csi-nodeplugin-rbac csi-config-map csi-cephfsplugin-provisioner csi-cephfsplugin)
-
-for obj in "${objects[@]}"; do
-	kubectl create -f "./$obj.yaml"
-done
+if [ -e $deployment_base ]; then
+  kubectl create -f "$deployment_base"
+else
+  echo "File or directory does not exist: $deployment_base"
+  exit 1
+fi

@@ -1,0 +1,16 @@
+---
+# Source: ceph-csi-rbd/templates/encryptionkms-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "ceph-csi-encryption-kms-config"
+  namespace: ceph-csi
+  labels:
+    app: ceph-csi-rbd
+    chart: ceph-csi-rbd-1.3.0-canary
+    component: nodeplugin
+    release: ceph-csi-rbd
+    heritage: Helm
+data:
+  config.json: |-
+    {}

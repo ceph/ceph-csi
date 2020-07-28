@@ -196,14 +196,16 @@ provisioner:
 topology:
   # Specifies whether topology based provisioning support should
   # be exposed by CSI
-  enabled: false
+  enabled: true
   # domainLabels define which node labels to use as domains
   # for CSI nodeplugins to advertise their domains
   # NOTE: the value here serves as an example and needs to be
   # updated with node labels that define domains of interest
-  domainLabels:
-    - failure-domain/region
-    - failure-domain/zone
+  # Example:
+  # domainLabels:
+  #   - failure-domain/region
+  #   - failure-domain/zone
+  domainLabels: []
 
 #########################################################
 # Variables for 'internal' use please use with caution! #

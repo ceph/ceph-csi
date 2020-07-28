@@ -5,8 +5,7 @@
 Both `rbd` and `cephfs` directories contain `plugin-deploy.sh` and
 `plugin-teardown.sh` helper scripts.  You can use those to help you
 deploy/teardown RBACs, sidecar containers and the plugin in one go.
-By default, they look for the YAML manifests in
-`../../deploy/{rbd,cephfs}/kubernetes`.
+By default they apply/delete `../../deploy/{rbd,cephfs}/kubernetes/v1.14+/with-rbac`.
 You can override this path by running `$ ./plugin-deploy.sh /path/to/my/manifests`.
 
 ## Creating CSI configuration

@@ -1,15 +1,16 @@
-{{- if .Values.rbac.create -}}
+---
+# Source: ceph-csi-cephfs/templates/provisioner-rules-clusterrole.yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ include "ceph-csi-cephfs.provisioner.fullname" . }}-rules
+  name: ceph-csi-cephfs-provisioner-rules
   labels:
-    app: {{ include "ceph-csi-cephfs.name" . }}
-    chart: {{ include "ceph-csi-cephfs.chart" . }}
-    component: {{ .Values.provisioner.name }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
-    rbac.cephfs.csi.ceph.com/aggregate-to-{{ include "ceph-csi-cephfs.provisioner.fullname" . }}: "true"
+    app: ceph-csi-cephfs
+    chart: ceph-csi-cephfs-1.3.0-canary
+    component: provisioner
+    release: ceph-csi-cephfs
+    heritage: Helm
+    rbac.cephfs.csi.ceph.com/aggregate-to-ceph-csi-cephfs-provisioner: "true"
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -26,24 +27,15 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list", "watch", "create", "update", "patch"]
-{{- if .Values.provisioner.attacher.enabled }}
   - apiGroups: ["storage.k8s.io"]
     resources: ["volumeattachments"]
     verbs: ["get", "list", "watch", "update", "patch"]
-{{- end -}}
-{{- if semverCompare ">=1.15" .Capabilities.KubeVersion.GitVersion -}}
-{{- if .Values.provisioner.resizer.enabled }}
   - apiGroups: [""]
     resources: ["persistentvolumeclaims/status"]
     verbs: ["update", "patch"]
-{{- end -}}
-{{- end -}}
-{{- if .Values.topology.enabled }}
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", watch"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["csinodes"]
     verbs: ["get", "list", "watch"]
-{{- end }}
-{{- end -}}

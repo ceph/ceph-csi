@@ -80,7 +80,7 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=$(DRIVER_NAME)"
-{{- if .Values.topology.enabled }}
+{{- if and (.Values.topology.enabled) (.Values.topology.domainLabels) }}
             - "--domainlabels={{ .Values.topology.domainLabels | join "," }}"
 {{- end }}
           env:

@@ -1,0 +1,20 @@
+---
+# Source: ceph-csi-rbd/templates/nodeplugin-clusterrolebinding.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ceph-csi-rbd-nodeplugin
+  labels:
+    app: ceph-csi-rbd
+    chart: ceph-csi-rbd-1.3.0-canary
+    component: nodeplugin
+    release: ceph-csi-rbd
+    heritage: Helm
+subjects:
+  - kind: ServiceAccount
+    name: ceph-csi-rbd-nodeplugin
+    namespace: ceph-csi
+roleRef:
+  kind: ClusterRole
+  name: ceph-csi-rbd-nodeplugin
+  apiGroup: rbac.authorization.k8s.io
