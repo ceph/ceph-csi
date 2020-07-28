@@ -158,7 +158,7 @@ up)
         # shellcheck disable=SC2086
         ${minikube} start --force --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}"
         DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-        kubectl apply -f "$DIR"/psp.yaml
+        ${minikube} kubectl -- apply -f "$DIR"/psp.yaml
         ${minikube} stop
         # shellcheck disable=SC2086
         ${minikube} start --force --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
@@ -171,7 +171,7 @@ up)
         # shellcheck disable=SC2086
         ${minikube} ssh "sudo mkdir -p /mnt/${DISK}/var/lib/rook;sudo ln -s /mnt/${DISK}/var/lib/rook /var/lib/rook"
     fi
-    kubectl cluster-info
+    ${minikube} kubectl -- cluster-info
     ;;
 down)
     ${minikube} stop
