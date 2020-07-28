@@ -63,6 +63,8 @@ PARSER.add_argument("-key", "--userkey",
                     default="", help="user password to connect to ceph cluster")
 PARSER.add_argument("-cm", "--configmap", default="ceph-csi-config",
                     help="configmap name which holds the cephcsi configuration")
+PARSER.add_argument("-cmn", "--configmapnamespace", default="default",
+                    help="namespace where configmap exists")
 
 
 def list_pvc_vol_name_mapping(arg):
@@ -450,6 +452,7 @@ def get_subvol_group(arg):
         else:
             cmd += ["--kubeconfig", arg.kubeconfig]
     cmd += ['get', 'cm', arg.configmap, '-o', 'json']
+    cmd += ['--namespace', arg.configmapnamespace]
     out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT)
     stdout, stderr = out.communicate()
