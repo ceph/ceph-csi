@@ -114,19 +114,33 @@ install_cephcsi_helm_charts() {
     done
 
     # install ceph-csi-cephfs and ceph-csi-rbd charts
-    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true ${CEPHFS_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs
+    "${HELM}" install ${CEPHFS_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs \
+        --namespace ${NAMESPACE} \
+        --create-namespace \
+        --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner \
+        --set nodeplugin.fullnameOverride=csi-cephfsplugin \
+        --set configMapName=ceph-csi-config
 
     check_deployment_status app=ceph-csi-cephfs ${NAMESPACE}
     check_daemonset_status app=ceph-csi-cephfs ${NAMESPACE}
 
     # deleting configmap as a workaround to avoid configmap already present
     # issue when installing ceph-csi-rbd
+    # TODO(wilmardo): Test if this can be removed by making the configMapName unique
     kubectl delete cm ceph-csi-config --namespace ${NAMESPACE}
-    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3
+
+    "${HELM}" install ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd \
+        --namespace ${NAMESPACE} \
+        --create-namespace \
+        --set provisioner.fullnameOverride=csi-rbdplugin-provisioner \
+        --set nodeplugin.fullnameOverride=csi-rbdplugin \
+        --set configMapName=ceph-csi-config \
+        --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" \
+        --set provisioner.maxSnapshotsOnImage=3 \
+        --set "createNamespaceResource=true"
 
     check_deployment_status app=ceph-csi-rbd ${NAMESPACE}
     check_daemonset_status app=ceph-csi-rbd ${NAMESPACE}
-
 }
 
 cleanup_cephcsi_helm_charts() {

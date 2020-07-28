@@ -18,21 +18,15 @@ generate() {
   output_file="${1}"
   templates="${2}"
 
+  # TODO: Helm template ignores the namespace, decide what to do with this
+  # https://github.com/helm/helm/issues/3553
 	helm template \
     "${CHART}" \
 		"charts/${CHART}" \
 		--namespace "ceph-csi" \
-		--set nodeplugin.podSecurityPolicy.enabled=true \
-		--set provisioner.podSecurityPolicy.enabled=true \
-		--set "createNamespaceResource=true" \
+    --create-namespace \
     --show-only "${templates}" \
   > "${OUTPUT_DIR}/${output_file}"
-
-  # # Remove trailing newlines, more then one occur when the attacher is disabled
-  # # csidriver-crd.yaml renders a double newline
-  # printf %s "$(< "${TMP_OUTPUT}")" > "${TMP_OUTPUT}"
-  # # Readd trailing newline. now we are sure there is just one
-  # echo >> "${TMP_OUTPUT}"
 }
 
 plugins="cephfs rbd"

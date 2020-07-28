@@ -92,7 +92,7 @@ nodeplugin:
   # If true, create & use Pod Security Policy resources
   # https://kubernetes.io/docs/concepts/policy/pod-security-policy/
   podSecurityPolicy:
-    enabled: false
+    enabled: true
 
 provisioner:
   name: provisioner
@@ -165,7 +165,7 @@ provisioner:
   # If true, create & use Pod Security Policy resources
   # https://kubernetes.io/docs/concepts/policy/pod-security-policy/
   podSecurityPolicy:
-    enabled: false
+    enabled: true
 
 topology:
   # Specifies whether topology based provisioning support should
