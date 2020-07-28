@@ -7,8 +7,9 @@ e2e.test
 # docker build
 deploy/cephcsi/image/cephcsi
 
-# build container
+# build/test container
 .devel-container-id
+.test-container-id
 
 # git merge files
 *.orig
