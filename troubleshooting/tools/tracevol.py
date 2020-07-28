@@ -86,6 +86,7 @@ def list_pvc_vol_name_mapping(arg):
             cmd += ["--config", arg.kubeconfig]
         else:
             cmd += ["--kubeconfig", arg.kubeconfig]
+    cmd += ["--namespace", arg.namespace]
     if arg.pvcname != "":
         cmd += ['get', 'pvc', arg.pvcname, '-o', 'json']
         # list all pvc and get mapping
