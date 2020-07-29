@@ -156,7 +156,6 @@ up)
     if [[ "${VM_DRIVER}" != "none" ]]; then
         wait_for_ssh
         # shellcheck disable=SC2086
-        minikube ssh "sudo mkdir -p /mnt/${DISK}/${PWD}; sudo mkdir -p $(dirname $PWD); sudo ln -s /mnt/${DISK}/${PWD} $(dirname $PWD)/"
         minikube ssh "sudo mkdir -p /mnt/${DISK}/var/lib/rook;sudo ln -s /mnt/${DISK}/var/lib/rook /var/lib/rook"
     fi
     kubectl cluster-info
