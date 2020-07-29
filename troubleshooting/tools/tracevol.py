@@ -465,16 +465,19 @@ def get_subvol_group(arg):
     except ValueError as err:
         print(err, stdout)
         sys.exit()
-    cm_data = config_map['data']['config.json']
     subvol_group = ""
-    if "subvolumeGroup" in cm_data:
-        try:
-            cm_data_json = json.loads(cm_data)
-        except ValueError as err:
-            print(err, stdout)
-            sys.exit()
-        for data in cm_data_json:
-            subvol_group = data['cephFS']['subvolumeGroup']
+    cm_data = config_map['data'].get('config.json')
+    # Absence of 'config.json' means that the configmap
+    # is created by Rook and there won't be any provision to
+    # specify subvolumeGroup
+    if cm_data:
+        if "subvolumeGroup" in cm_data:
+            try:
+                cm_data_list = json.loads(cm_data)
+            except ValueError as err:
+                print(err, stdout)
+                sys.exit()
+            subvol_group = cm_data_list[0]['cephFS']['subvolumeGroup']
     return subvol_group
 
 def is_rbd_pv(arg, pvname, pvdata):
