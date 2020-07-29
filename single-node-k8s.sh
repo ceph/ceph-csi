@@ -66,6 +66,7 @@ function set_env() {
     export VM_DRIVER="kvm2"
     export CEPH_CSI_RUN_ALL_TESTS=true
     # downloading rook images is sometimes slow, extend timeout to 15 minutes
+    export ROOK_VERSION='v1.3.8'
     export ROOK_DEPLOY_TIMEOUT=900
 
     # script/minikube.sh installs under /usr/local/bin
