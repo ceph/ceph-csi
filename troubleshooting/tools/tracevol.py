@@ -165,8 +165,9 @@ def format_table(arg, pvc_data, pvdata, table, is_rbd):
     if is_rbd:
         present_in_cluster = check_image_in_cluster(arg, image_id, pool_name, volname_prefix)
     else:
+        fsname = get_fsname_from_pvdata(arg, pvdata)
         subvolname = volname_prefix + image_id
-        present_in_cluster = check_subvol_in_cluster(arg, subvolname)
+        present_in_cluster = check_subvol_in_cluster(arg, subvolname, fsname)
     image_name = volname_prefix + image_id
     table.add_row([pvcname, pvname, image_name, pv_present,
                    uuid_present, present_in_cluster])
@@ -406,7 +407,7 @@ def get_pool_name(arg, vol_id, is_rbd):
             return pool['metadata_pool']
     return ""
 
-def check_subvol_in_cluster(arg, subvol_name):
+def check_subvol_in_cluster(arg, subvol_name, fsname):
     """
     Checks if subvolume exists in cluster or not.
     """
@@ -415,14 +416,14 @@ def check_subvol_in_cluster(arg, subvol_name):
     if subvol_group == "":
         # default subvolumeGroup
         subvol_group = "csi"
-    return check_subvol_path(arg, subvol_name, subvol_group)
+    return check_subvol_path(arg, subvol_name, subvol_group, fsname)
 
-def check_subvol_path(arg, subvol_name, subvol_group):
+def check_subvol_path(arg, subvol_name, subvol_group, fsname):
     """
     Returns True if subvolume path exists in the cluster.
     """
     cmd = ['ceph', 'fs', 'subvolume', 'getpath',
-           'myfs', subvol_name, subvol_group]
+           fsname, subvol_name, subvol_group]
     if not arg.userkey:
         cmd += ["--id", arg.userid, "--key", arg.userkey]
     if arg.toolboxdeployed is True:
@@ -538,6 +539,25 @@ def get_volname_prefix(arg, pvdata):
     if key in volume_attr.keys():
         volname_prefix = volume_attr[key]
     return volname_prefix
+
+def get_fsname_from_pvdata(arg, pvdata):
+    """
+    Returns fsname stored in pv data
+    """
+    fsname = 'myfs'
+    if not pvdata:
+        if arg.debug:
+            print("failed to get pv data")
+        sys.exit()
+    volume_attr = pvdata['spec']['csi']['volumeAttributes']
+    key = 'fsName'
+    if key in volume_attr.keys():
+        fsname = volume_attr[key]
+    else:
+        if arg.debug:
+            print("fsname is not set in storageclass/pv")
+        sys.exit()
+    return fsname
 
 if __name__ == "__main__":
     ARGS = PARSER.parse_args()
