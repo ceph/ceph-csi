@@ -413,9 +413,6 @@ def check_subvol_in_cluster(arg, subvol_name, fsname):
     """
     # check if user has specified subvolumeGroup
     subvol_group = get_subvol_group(arg)
-    if subvol_group == "":
-        # default subvolumeGroup
-        subvol_group = "csi"
     return check_subvol_path(arg, subvol_name, subvol_group, fsname)
 
 def check_subvol_path(arg, subvol_name, subvol_group, fsname):
@@ -466,7 +463,8 @@ def get_subvol_group(arg):
     except ValueError as err:
         print(err, stdout)
         sys.exit()
-    subvol_group = ""
+    # default subvolumeGroup
+    subvol_group = "csi"
     cm_data = config_map['data'].get('config.json')
     # Absence of 'config.json' means that the configmap
     # is created by Rook and there won't be any provision to
