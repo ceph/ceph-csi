@@ -726,7 +726,10 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.InvalidArgument, "volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
 	}
 
-	rbdSnap := genSnapFromOptions(ctx, rbdVol, req.GetParameters())
+	rbdSnap, err := genSnapFromOptions(ctx, rbdVol, req.GetParameters())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	rbdSnap.RbdImageName = rbdVol.RbdImageName
 	rbdSnap.SizeBytes = rbdVol.VolSize
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
