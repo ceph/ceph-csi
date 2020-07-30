@@ -750,7 +750,7 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 	return rbdVol, nil
 }
 
-func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[string]string) *rbdSnapshot {
+func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[string]string) (*rbdSnapshot, error) {
 	var err error
 
 	rbdSnap := &rbdSnapshot{}
@@ -759,15 +759,14 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 
 	rbdSnap.Monitors, rbdSnap.ClusterID, err = getMonsAndClusterID(ctx, snapOptions)
 	if err != nil {
-		rbdSnap.Monitors = rbdVol.Monitors
-		rbdSnap.ClusterID = rbdVol.ClusterID
+		return nil, err
 	}
 
 	if namePrefix, ok := snapOptions["snapshotNamePrefix"]; ok {
 		rbdSnap.NamePrefix = namePrefix
 	}
 
-	return rbdSnap
+	return rbdSnap, nil
 }
 
 // hasSnapshotFeature checks if Layering is enabled for this image.
