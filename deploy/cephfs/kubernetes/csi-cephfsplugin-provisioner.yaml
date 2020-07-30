@@ -94,10 +94,6 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-cephfsplugin
-          securityContext:
-            privileged: true
-            capabilities:
-              add: ["SYS_ADMIN"]
           # for stable functionality replace canary with latest release version
           image: quay.io/cephcsi/cephcsi:canary
           args:
