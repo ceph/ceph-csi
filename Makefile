@@ -130,6 +130,22 @@ cephcsi: check-env
 e2e.test: check-env
 	go test $(GO_TAGS) -mod=vendor -c ./e2e
 
+#
+# e2e testing by compiling e2e.test in case it does not exist and running the
+# executable. The e2e.test executable is not checked as a dependency in the
+# make rule, as the phony check-env causes rebuilds for each run.
+#
+# Usage: make run-e2e E2E_ARGS="--test-cephfs=false --test-rbd=true"
+#
+.PHONY: run-e2e
+run-e2e: E2E_TIMEOUT ?= $(shell . $(CURDIR)/build.env ; echo $${E2E_TIMEOUT})
+run-e2e: DEPLOY_TIMEOUT ?= $(shell . $(CURDIR)/build.env ; echo $${DEPLOY_TIMEOUT})
+run-e2e: NAMESPACE ?= cephcsi-e2e-$(shell uuidgen | cut -d- -f1)
+run-e2e:
+	@test -e e2e.test || $(MAKE) e2e.test
+	cd e2e && \
+	../e2e.test -test.v -test.timeout="${E2E_TIMEOUT}" --deploy-timeout="${DEPLOY_TIMEOUT}" --cephcsi-namespace=$(NAMESPACE) $(E2E_ARGS)
+
 need-container-cmd:
 	@test -n "$(shell which $(CONTAINER_CMD) 2>/dev/null)" || { echo "Missing container support, install Podman or Docker"; exit 1; }
 
