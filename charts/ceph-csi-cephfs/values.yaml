@@ -203,7 +203,7 @@ pluginDir: /var/lib/kubelet/plugins
 # Name of the csi-driver
 driverName: cephfs.csi.ceph.com
 # Name of the configmap used for state
-configMapName: ceph-csi-config-cephfs
+configMapName: ceph-csi-config
 # Key to use in the Configmap if not config.json
 # configMapKey:
 # Use an externally provided configmap
