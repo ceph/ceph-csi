@@ -73,7 +73,7 @@ done
 
 set -x
 
-yum -y install git podman make
+dnf -y install git podman make
 
 git clone --depth=1 --branch="${base}" "${gitrepo}" "${workdir}"
 cd "${workdir}"
