@@ -39,7 +39,7 @@ if [[ "${KUBE_MAJOR}" -ge 1 ]] && [[ "${KUBE_MINOR}" -ge 17 ]]; then
 fi
 
 # functional tests
-go test "${GO_TAGS}" github.com/ceph/ceph-csi/e2e --deploy-timeout="${DEPLOY_TIMEOUT}" -timeout="${E2E_TIMEOUT}" --cephcsi-namespace=cephcsi-e2e-$RANDOM -v -mod=vendor "${@}"
+make run-e2e E2E_ARGS="${*}"
 
 if [[ "${KUBE_MAJOR}" -ge 1 ]] && [[ "${KUBE_MINOR}" -ge 17 ]]; then
     # delete snapshot CRD
