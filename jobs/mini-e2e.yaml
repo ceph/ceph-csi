@@ -21,8 +21,8 @@
       lightweight-checkout: true
     triggers:
       - github-pull-request:
-          status-context: ci/centos/mini-e2e
-          trigger-phrase: '/(re)?test ((all)|(ci/centos/mini-e2e))'
+          status-context: ci/centos/mini-e2e/k8s-1.18
+          trigger-phrase: '/(re)?test ((all)|(ci/centos/mini-e2e(/k8s-1.18)?))'
           permit-all: true
           # TODO: set github-hooks to true when it is configured in GitHub
           github-hooks: false
