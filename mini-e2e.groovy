@@ -1,8 +1,7 @@
 def cico_retries = 16
 def cico_retry_interval = 60
-// temporary git repository for testing purpose
-def ci_git_repo = 'https://github.com/nixpanic/ceph-csi'
-def ci_git_branch = 'mini-e2e'
+def ci_git_repo = 'https://github.com/ceph/ceph-csi'
+def ci_git_branch = 'ci/centos'
 def git_repo = 'https://github.com/ceph/ceph-csi'
 def ref = "master"
 
