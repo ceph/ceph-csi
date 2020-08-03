@@ -156,6 +156,13 @@ provisioner:
       pullPolicy: IfNotPresent
     resources: {}
 
+  snapshotter:
+    image:
+      repository: quay.io/k8scsi/csi-snapshotter
+      tag: v2.1.1
+      pullPolicy: IfNotPresent
+    resources: {}
+
   nodeSelector: {}
 
   tolerations: []
