@@ -1,6 +1,14 @@
 ---
-- job:
+- project:
     name: mini-e2e
+    k8s_version:
+      - '1.17.8'
+      - '1.18.5'
+    jobs:
+      - 'mini-e2e/k8s-{k8s_version}'
+
+- job-template:
+    name: 'mini-e2e/k8s-{k8s_version}'
     project-type: pipeline
     sandbox: true
     concurrent: true
@@ -10,6 +18,14 @@
       - build-discarder:
           days-to-keep: 7
           artifact-days-to-keep: 7
+    # default variables
+    k8s_version: '<unset>'
+    # generated parameters for the job (used in the groovy script)
+    parameters:
+      - string:
+        name: k8s_version
+        default: '{k8s_version}'
+        description: Kubernetes version to deploy in the test cluster.
     pipeline-scm:
       scm:
         - git:
@@ -21,8 +37,9 @@
       lightweight-checkout: true
     triggers:
       - github-pull-request:
-          status-context: ci/centos/mini-e2e/k8s-1.18
-          trigger-phrase: '/(re)?test ((all)|(ci/centos/mini-e2e(/k8s-1.18)?))'
+          status-context: 'ci/centos/mini-e2e/k8s-{k8s_version}'
+          # yamllint disable-line rule:line-length
+          trigger-phrase: '/(re)?test ((all)|(ci/centos/mini-e2e(/k8s-{k8s_version})?))'
           permit-all: true
           # TODO: set github-hooks to true when it is configured in GitHub
           github-hooks: false
