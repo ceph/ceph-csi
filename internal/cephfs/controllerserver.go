@@ -36,6 +36,13 @@ type ControllerServer struct {
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
 	VolumeLocks *util.VolumeLocks
+
+	// A map storing all snapshots with ongoing operations so that additional operations
+	// for that same snapshot (as defined by SnapshotID/snapshot name) return an Aborted error
+	SnapshotLocks *util.VolumeLocks
+
+	// A map storing all volumes/snapshots with ongoing operations.
+	OperationLocks *util.OperationLock
 }
 
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities.
