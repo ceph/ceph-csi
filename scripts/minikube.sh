@@ -5,7 +5,7 @@
 function wait_for_ssh() {
     local tries=100
     while ((tries > 0)); do
-        if minikube ssh echo connected &>/dev/null; then
+        if ${minikube} ssh echo connected &>/dev/null; then
             return 0
         fi
         tries=$((tries - 1))
@@ -25,7 +25,7 @@ function copy_image_to_cluster() {
         docker tag "${build_image}" "${final_image}"
         return
     fi
-    docker save "${build_image}" | (eval "$(minikube docker-env --shell bash)" && docker load && docker tag "${build_image}" "${final_image}")
+    docker save "${build_image}" | (eval "$(${minikube} docker-env --shell bash)" && docker load && docker tag "${build_image}" "${final_image}")
 }
 
 # parse the minikube version, return the digit passed as argument
@@ -36,11 +36,24 @@ minikube_version() {
     echo "${MINIKUBE_VERSION}" | sed 's/^v//' | cut -d'.' -f"${1}"
 }
 
+# detect if there is a minikube executable available already. If there is none,
+# fallback to using /usr/local/bin/minikube, as that is where
+# install_minikube() will place it too.
+function detect_minikube() {
+    if type minikube >/dev/null 2>&1; then
+        command -v minikube
+        return
+    fi
+    # default if minikube is not available
+    echo '/usr/local/bin/minikube'
+}
+minikube="$(detect_minikube)"
+
 # install minikube
 function install_minikube() {
-    if type minikube >/dev/null 2>&1; then
+    if type "${minikube}" >/dev/null 2>&1; then
         local mk_version version
-        read -ra mk_version <<<"$(minikube version)"
+        read -ra mk_version <<<"$(${minikube} version)"
         version=${mk_version[2]}
         if [[ "${version}" != "${MINIKUBE_VERSION}" ]]; then
             echo "installed minikube version ${version} is not matching requested version ${MINIKUBE_VERSION}"
@@ -67,11 +80,30 @@ function enable_psp() {
 	  cp "$DIR"/psp.yaml "$HOME"/.minikube/files/etc/kubernetes/addons/psp.yaml
 }
 
+# Storage providers and the default storage class is not needed for Ceph-CSI
+# testing. In order to reduce resources and potential conflicts between storage
+# plugins, disable them.
+function disable_storage_addons() {
+    ${minikube} addons disable default-storageclass 2>/dev/null || true
+    ${minikube} addons disable storage-provisioner 2>/dev/null || true
+}
+
+# minikube has the Busybox losetup, and that does not work with raw-block PVCs.
+# Copy the host losetup executable and hope it works.
+#
+# See https://github.com/kubernetes/minikube/issues/8284
+function minikube_losetup() {
+    # scp should not ask for any confirmation
+    scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$(${minikube} ssh-key)" /sbin/losetup docker@"$(${minikube} ip)":losetup
+    # replace /sbin/losetup symlink with the executable
+    ${minikube} ssh 'sudo sh -c "rm -f /sbin/losetup && cp ~docker/losetup /sbin"'
+}
+
 # configure minikube
 MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
 KUBE_VERSION=${KUBE_VERSION:-"v1.14.10"}
-MEMORY=${MEMORY:-"3000"}
+MEMORY=${MEMORY:-"4096"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
 #configure image repo
 CEPHCSI_IMAGE_REPO=${CEPHCSI_IMAGE_REPO:-"quay.io/cephcsi"}
@@ -125,20 +157,22 @@ up)
         install_kubectl
     fi
 
+    disable_storage_addons
+
     echo "starting minikube with kubeadm bootstrapper"
     if minikube_supports_psp; then
         enable_psp
         # shellcheck disable=SC2086
-        minikube start --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
+        ${minikube} start --force --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
     else
         # This is a workaround to fix psp issues in minikube >1.6.2 and <1.11.0
         # shellcheck disable=SC2086
-        minikube start --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}"
+        ${minikube} start --force --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}"
         DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-        kubectl apply -f "$DIR"/psp.yaml
-        minikube stop
+        ${minikube} kubectl -- apply -f "$DIR"/psp.yaml
+        ${minikube} stop
         # shellcheck disable=SC2086
-        minikube start --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
+        ${minikube} start --force --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
     fi
 
     # create a link so the default dataDirHostPath will work for this
@@ -146,17 +180,17 @@ up)
     if [[ "${VM_DRIVER}" != "none" ]]; then
         wait_for_ssh
         # shellcheck disable=SC2086
-        minikube ssh "sudo mkdir -p /mnt/${DISK}/${PWD}; sudo mkdir -p $(dirname $PWD); sudo ln -s /mnt/${DISK}/${PWD} $(dirname $PWD)/"
-        minikube ssh "sudo mkdir -p /mnt/${DISK}/var/lib/rook;sudo ln -s /mnt/${DISK}/var/lib/rook /var/lib/rook"
+        ${minikube} ssh "sudo mkdir -p /mnt/${DISK}/var/lib/rook;sudo ln -s /mnt/${DISK}/var/lib/rook /var/lib/rook"
+        minikube_losetup
     fi
-    kubectl cluster-info
+    ${minikube} kubectl -- cluster-info
     ;;
 down)
-    minikube stop
+    ${minikube} stop
     ;;
 ssh)
     echo "connecting to minikube"
-    minikube ssh
+    ${minikube} ssh
     ;;
 deploy-rook)
     echo "deploy rook"
@@ -179,8 +213,8 @@ teardown-rook)
     "$DIR"/rook.sh teardown
 
     # delete rook data for minikube
-    minikube ssh "sudo rm -rf /mnt/${DISK}/var/lib/rook; sudo rm -rf /var/lib/rook"
-    minikube ssh "sudo mkdir -p /mnt/${DISK}/var/lib/rook; sudo ln -s /mnt/${DISK}/var/lib/rook /var/lib/rook"
+    ${minikube} ssh "sudo rm -rf /mnt/${DISK}/var/lib/rook; sudo rm -rf /var/lib/rook"
+    ${minikube} ssh "sudo mkdir -p /mnt/${DISK}/var/lib/rook; sudo ln -s /mnt/${DISK}/var/lib/rook /var/lib/rook"
     ;;
 cephcsi)
     echo "copying the cephcsi image"
@@ -195,7 +229,7 @@ k8s-sidecar)
     copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-resizer:v0.5.0 "${K8S_IMAGE_REPO}"/csi-resizer:v0.5.0
     ;;
 clean)
-    minikube delete
+    ${minikube} delete
     ;;
 *)
     echo " $0 [command]

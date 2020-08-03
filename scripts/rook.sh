@@ -26,7 +26,15 @@ function deploy_rook() {
 		kubectl create -f "${TEMP_DIR}/cluster-test.yaml"
 		rm -rf "${TEMP_DIR}"
 	else
-		kubectl create -f "${ROOK_URL}/cluster-test.yaml"
+		# add "mon_warn_on_pool_no_redundancy = false" to ceph.conf if missing
+		# see https://github.com/rook/rook/pull/5925 for upstream status
+		TEMP_DIR="$(mktemp -d)"
+		curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
+		if ! grep -q mon_warn_on_pool_no_redundancy "${TEMP_DIR}"/cluster-test.yaml; then
+			sed -i '/osd_pool_default_size =/a \    mon_warn_on_pool_no_redundancy = false' "${TEMP_DIR}"/cluster-test.yaml
+		fi
+		kubectl create -f "${TEMP_DIR}/cluster-test.yaml"
+		rm -rf "${TEMP_DIR}"
 	fi
 
 	kubectl create -f "${ROOK_URL}/toolbox.yaml"
