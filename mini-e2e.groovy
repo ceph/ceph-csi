@@ -59,12 +59,6 @@ node('cico-workspace') {
 		}
 	}
 
-	catch(exc) {
-		stage('debug time!') {
-			ssh 'sleep 8h'
-		}
-	}
-
 	finally {
 		stage('return bare-metal machine') {
 			sh 'cico node done ${CICO_SSID}'
