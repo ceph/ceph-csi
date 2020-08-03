@@ -269,6 +269,13 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	}
 	defer cs.VolumeLocks.Release(volID)
 
+	// lock out volumeID for clone and delete operation
+	if err := cs.OperationLocks.GetExpandLock(volID); err != nil {
+		klog.Error(util.Log(ctx, err.Error()))
+		return nil, status.Error(codes.Aborted, err.Error())
+	}
+	defer cs.OperationLocks.ReleaseExpandLock(volID)
+
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
