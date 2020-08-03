@@ -283,7 +283,6 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	Expect(stdErr).Should(BeEmpty())
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
-
 	if clusterID != "" {
 		fsID = clusterID
 	}
@@ -926,6 +925,27 @@ func listRBDImages(f *framework.Framework) []string {
 		Fail(err.Error())
 	}
 	return imgInfos
+}
+
+// writeDataInPod fill zero content to a file in the provided POD volume.
+func writeDataInPod(app *v1.Pod, f *framework.Framework) error {
+	app.Labels = map[string]string{"app": "write-data-in-pod"}
+	app.Namespace = f.UniqueName
+
+	err := createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return err
+	}
+	opt := metav1.ListOptions{
+		LabelSelector: "app=write-data-in-pod",
+	}
+	// write data to PVC. The idea here is to fill some content in the file
+	// instead of filling and reverifying the md5sum/data integrity
+	filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+	// While writing more data we are encountering issues in E2E timeout, so keeping it low for now
+	_, writeErr := execCommandInPod(f, fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10 status=none", filePath), app.Namespace, &opt)
+	Expect(writeErr).Should(BeEmpty())
+	return nil
 }
 
 func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
