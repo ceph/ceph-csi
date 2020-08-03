@@ -10,11 +10,16 @@
       - build-discarder:
           days-to-keep: 7
           artifact-days-to-keep: 7
+    parameters:
+      - string:
+          name: ghprbPullId
+          description: GitHub Pull-Request ID for testing
+          default: 0
     dsl: |
       def GIT_REPO = 'https://github.com/ceph/ceph-csi'
       def GIT_BRANCH = 'ci/centos'
 
-      if (params.ghprbPullId != null) {
+      if (params.ghprbPullId != null && "${ghprbPullId}" != "0") {
           GIT_BRANCH = "pull/${ghprbPullId}/head"
       }
 
