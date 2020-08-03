@@ -91,6 +91,38 @@ func (cs *ControllerServer) createBackingVolume(
 	return nil
 }
 
+func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *util.Credentials) (*volumeOptions, *volumeIdentifier, *snapshotIdentifier, error) {
+	if req.VolumeContentSource == nil {
+		return nil, nil, nil, nil
+	}
+	volumeSource := req.VolumeContentSource
+	switch volumeSource.Type.(type) {
+	case *csi.VolumeContentSource_Snapshot:
+		snapshotID := req.VolumeContentSource.GetSnapshot().GetSnapshotId()
+		volOpt, _, sid, err := newSnapshotOptionsFromID(ctx, snapshotID, cr)
+		if err != nil {
+			if errors.Is(err, ErrSnapNotFound) {
+				return nil, nil, nil, status.Error(codes.NotFound, err.Error())
+			}
+			return nil, nil, nil, status.Error(codes.Internal, err.Error())
+		}
+		return volOpt, nil, sid, nil
+	case *csi.VolumeContentSource_Volume:
+		// Find the volume using the provided VolumeID
+		volID := req.VolumeContentSource.GetVolume().GetVolumeId()
+		parentVol, pvID, err := newVolumeOptionsFromVolID(ctx, volID, nil, req.Secrets)
+		if err != nil {
+			if !errors.Is(err, ErrVolumeNotFound) {
+				return nil, nil, nil, status.Error(codes.NotFound, err.Error())
+			}
+			return nil, nil, nil, status.Error(codes.Internal, err.Error())
+		}
+
+		return parentVol, pvID, nil, nil
+	}
+	return nil, nil, nil, status.Errorf(codes.InvalidArgument, "not a proper volume source %v", volumeSource)
+}
+
 // CreateVolume creates a reservation and the volume in backend, if it is not already present.
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
