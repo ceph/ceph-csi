@@ -46,18 +46,48 @@ type ControllerServer struct {
 }
 
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities.
-func (cs *ControllerServer) createBackingVolume(ctx context.Context, volOptions *volumeOptions, vID *volumeIdentifier, secret map[string]string) error {
-	cr, err := util.NewAdminCredentials(secret)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+func (cs *ControllerServer) createBackingVolume(
+	ctx context.Context,
+	volOptions,
+	parentVolOpt *volumeOptions,
+
+	vID,
+	pvID *volumeIdentifier,
+	sID *snapshotIdentifier,
+	cr *util.Credentials) error {
+	var err error
+	if sID != nil {
+		if err = cs.OperationLocks.GetRestoreLock(sID.SnapshotID); err != nil {
+			klog.Error(util.Log(ctx, err.Error()))
+			return status.Error(codes.Aborted, err.Error())
+		}
+		defer cs.OperationLocks.ReleaseRestoreLock(sID.SnapshotID)
+
+		err = createCloneFromSnapshot(ctx, parentVolOpt, volOptions, vID, sID, cr)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to create clone from snapshot %s: %v"), sID.FsSnapshotName, err)
+			return err
+		}
+		return err
 	}
-	defer cr.DeleteCredentials()
+	if parentVolOpt != nil {
+		if err = cs.OperationLocks.GetCloneLock(pvID.VolumeID); err != nil {
+			klog.Error(util.Log(ctx, err.Error()))
+			return status.Error(codes.Aborted, err.Error())
+		}
+		defer cs.OperationLocks.ReleaseCloneLock(pvID.VolumeID)
+		err = createCloneFromSubvolume(ctx, volumeID(pvID.FsSubvolName), volumeID(vID.FsSubvolName), volOptions, parentVolOpt, cr)
+		if err != nil {
+			klog.Errorf(util.Log(ctx, "failed to create clone from subvolume %s: %v"), volumeID(pvID.FsSubvolName), err)
+			return err
+		}
+		return nil
+	}
 
 	if err = createVolume(ctx, volOptions, cr, volumeID(vID.FsSubvolName), volOptions.Size); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to create volume %s: %v"), volOptions.RequestName, err)
 		return status.Error(codes.Internal, err.Error())
 	}
-
 	return nil
 }
 
