@@ -23,9 +23,9 @@
     # generated parameters for the job (used in the groovy script)
     parameters:
       - string:
-        name: k8s_version
-        default: '{k8s_version}'
-        description: Kubernetes version to deploy in the test cluster.
+          name: k8s_version
+          default: '{k8s_version}'
+          description: Kubernetes version to deploy in the test cluster.
     pipeline-scm:
       scm:
         - git:
