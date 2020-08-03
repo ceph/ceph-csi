@@ -134,7 +134,7 @@ provisioner:
   provisioner:
     image:
       repository: quay.io/k8scsi/csi-provisioner
-      tag: v1.4.0
+      tag: v1.6.0
       pullPolicy: IfNotPresent
     resources: {}
 
