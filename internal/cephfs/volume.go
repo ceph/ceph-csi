@@ -34,12 +34,6 @@ var (
 	// Subvolumegroup creation and volume resize decisions are
 	// taken through this additional cluster information.
 	clusterAdditionalInfo = make(map[string]*localClusterState)
-
-	inValidCommmand = "no valid command found"
-
-	// ceph returns `Error ENOENT:` when subvolume or subvolume group doesnot
-	// exist.
-	errNotFoundString = "Error ENOENT:"
 )
 
 const (
