@@ -75,8 +75,7 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to get the rootpath for the vol %s(%s) stdError %s"), string(volID), err, stderr)
-
-		if strings.HasPrefix(stderr, errNotFoundString) {
+		if strings.Contains(stderr, ErrVolumeNotFound.Error()) {
 			return "", util.JoinErrors(ErrVolumeNotFound, err)
 		}
 
@@ -197,7 +196,6 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 	if _, keyPresent = clusterAdditionalInfo[volOptions.ClusterID]; !keyPresent {
 		clusterAdditionalInfo[volOptions.ClusterID] = &localClusterState{}
 	}
-
 	// resize subvolume when either it's supported, or when corresponding
 	// clusterID key was not present.
 	if clusterAdditionalInfo[volOptions.ClusterID].resizeSupported || !keyPresent {
@@ -226,7 +224,7 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			return nil
 		}
 		// Incase the error is other than invalid command return error to the caller.
-		if !strings.Contains(err.Error(), inValidCommmand) {
+		if !strings.Contains(err.Error(), ErrInvalidCommand.Error()) {
 			klog.Errorf(util.Log(ctx, "failed to resize subvolume %s(%s) in fs %s"), string(volID), err, volOptions.FsName)
 			return err
 		}
@@ -235,10 +233,8 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 	return createVolume(ctx, volOptions, cr, volID, bytesQuota)
 }
 
-func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volOptions *volumeOptions) error {
-	err := execCommandErr(
-		ctx,
-		"ceph",
+func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volOptions *volumeOptions, force bool) error {
+	arg := []string{
 		"fs",
 		"subvolume",
 		"rm",
@@ -248,15 +244,19 @@ func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volO
 		volOptions.SubvolumeGroup,
 		"-m", volOptions.Monitors,
 		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix+cr.ID,
-		"--keyfile="+cr.KeyFile)
+		"-n", cephEntityClientPrefix + cr.ID,
+		"--keyfile=" + cr.KeyFile,
+	}
+	if force {
+		arg = append(arg, "--force")
+	}
+
+	err := execCommandErr(ctx, "ceph", arg...)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to purge subvolume %s(%s) in fs %s"), string(volID), err, volOptions.FsName)
-
-		if strings.HasPrefix(err.Error(), errNotFoundString) {
+		if strings.HasPrefix(err.Error(), ErrVolumeNotFound.Error()) {
 			return util.JoinErrors(ErrVolumeNotFound, err)
 		}
-
 		return err
 	}
 
