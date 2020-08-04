@@ -726,7 +726,10 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.InvalidArgument, "volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
 	}
 
-	rbdSnap := genSnapFromOptions(ctx, rbdVol, req.GetParameters())
+	rbdSnap, err := genSnapFromOptions(ctx, rbdVol, req.GetParameters())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	rbdSnap.RbdImageName = rbdVol.RbdImageName
 	rbdSnap.SizeBytes = rbdVol.VolSize
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
@@ -1090,13 +1093,12 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	nodeExpansion := false
 	if rbdVol.VolSize < volSize {
 		util.DebugLog(ctx, "rbd volume %s size is %v,resizing to %v", rbdVol, rbdVol.VolSize, volSize)
-		rbdVol.VolSize = volSize
-		nodeExpansion = true
-		err = rbdVol.resize(ctx, cr)
+		err = rbdVol.resize(volSize)
 		if err != nil {
 			klog.Errorf(util.Log(ctx, "failed to resize rbd image: %s with error: %v"), rbdVol, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+		nodeExpansion = true
 	}
 
 	return &csi.ControllerExpandVolumeResponse{
