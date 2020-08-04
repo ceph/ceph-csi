@@ -236,6 +236,13 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	defer cs.VolumeLocks.Release(string(volID))
 
+	// lock out volumeID for clone and expand operation
+	if err := cs.OperationLocks.GetDeleteLock(req.GetVolumeId()); err != nil {
+		klog.Error(util.Log(ctx, err.Error()))
+		return nil, status.Error(codes.Aborted, err.Error())
+	}
+	defer cs.OperationLocks.ReleaseDeleteLock(req.GetVolumeId())
+
 	// Find the volume using the provided VolumeID
 	volOptions, vID, err := newVolumeOptionsFromVolID(ctx, string(volID), nil, secrets)
 	if err != nil {
@@ -251,6 +258,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		if errors.Is(err, util.ErrKeyNotFound) {
 			return &csi.DeleteVolumeResponse{}, nil
 		}
+
+		klog.Errorf(util.Log(ctx, "Error returned from newVolumeOptionsFromVolID: %v"), err)
 
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
 		if !errors.Is(err, ErrVolumeNotFound) {
@@ -286,7 +295,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	defer cr.DeleteCredentials()
 
-	if err = purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions); err != nil {
+	if err = purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, false); err != nil {
 		klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), volID, err)
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
 		if !errors.Is(err, ErrVolumeNotFound) {
