@@ -64,6 +64,7 @@ function set_env() {
     export GO111MODULE="on"
     export TEST_COVERAGE="stdout"
     export VM_DRIVER="kvm2"
+    export MEMORY="8192"
     export CEPH_CSI_RUN_ALL_TESTS=true
     # downloading rook images is sometimes slow, extend timeout to 15 minutes
     export ROOK_VERSION='v1.3.8'
