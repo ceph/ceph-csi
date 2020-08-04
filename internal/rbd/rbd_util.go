@@ -458,6 +458,11 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 		supported, err := addRbdManagerTask(ctx, rv, args)
 		if supported {
 			if err != nil {
+				// discard flattening error if the image doesnot have any parent
+				rbdFlattenNoParent := fmt.Sprintf("Image %s/%s does not have a parent", rv.Pool, rv.RbdImageName)
+				if strings.Contains(err.Error(), rbdFlattenNoParent) {
+					return nil
+				}
 				klog.Errorf(util.Log(ctx, "failed to add task flatten for %s : %v"), rv, err)
 				return err
 			}
@@ -472,16 +477,51 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 				if err != nil {
 					return err
 				}
-				rbdImage, err := rv.open()
+				err := rv.flatten()
 				if err != nil {
-					return err
-				}
-				defer rbdImage.Close()
-				if err = rbdImage.Flatten(); err != nil {
 					klog.Errorf(util.Log(ctx, "rbd failed to flatten image %s %s: %v"), rv.Pool, rv.RbdImageName, err)
 					return err
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func (rv *rbdVolume) getParentName() (string, error) {
+	rbdImage, err := rv.open()
+	if err != nil {
+		return "", err
+	}
+	defer rbdImage.Close()
+
+	parentPool := make([]byte, 128)
+	parentName := make([]byte, 128)
+	parentSnapname := make([]byte, 128)
+
+	err = rbdImage.GetParentInfo(parentPool, parentName, parentSnapname)
+	if err != nil {
+		return "", err
+	}
+	return string(parentName), nil
+}
+
+func (rv *rbdVolume) flatten() error {
+	rbdImage, err := rv.open()
+	if err != nil {
+		return err
+	}
+	defer rbdImage.Close()
+
+	err = rbdImage.Flatten()
+	if err != nil {
+		// rbd image flatten will fail if the rbd image does not have a parent
+		parent, pErr := rv.getParentName()
+		if pErr != nil {
+			return util.JoinErrors(err, pErr)
+		}
+		if parent == "" {
+			return nil
 		}
 	}
 	return nil
