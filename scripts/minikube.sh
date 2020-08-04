@@ -104,6 +104,7 @@ MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
 KUBE_VERSION=${KUBE_VERSION:-"v1.14.10"}
 MEMORY=${MEMORY:-"4096"}
+CPUS=${CPUS:-"$(nproc)"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
 #configure image repo
 CEPHCSI_IMAGE_REPO=${CEPHCSI_IMAGE_REPO:-"quay.io/cephcsi"}
@@ -163,16 +164,16 @@ up)
     if minikube_supports_psp; then
         enable_psp
         # shellcheck disable=SC2086
-        ${minikube} start --force --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
+        ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
     else
         # This is a workaround to fix psp issues in minikube >1.6.2 and <1.11.0
         # shellcheck disable=SC2086
-        ${minikube} start --force --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}"
+        ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}"
         DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
         ${minikube} kubectl -- apply -f "$DIR"/psp.yaml
         ${minikube} stop
         # shellcheck disable=SC2086
-        ${minikube} start --force --memory="${MEMORY}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
+        ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --vm-driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG}
     fi
 
     # create a link so the default dataDirHostPath will work for this
