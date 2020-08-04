@@ -46,7 +46,7 @@ node('cico-workspace') {
 			// build e2e.test executable
 			ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman TARGET=e2e.test'
 		}
-		stage("deploy k8s v{k8s_version} and rook") {
+		stage("deploy k8s v${k8s_version} and rook") {
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh "./single-node-k8s.sh --k8s-version=v${k8s_version}"
 			}
