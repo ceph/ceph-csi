@@ -40,6 +40,19 @@ const (
 	cephEntityClientPrefix = "client."
 )
 
+// Subvolume holds subvolume information.
+type Subvolume struct {
+	BytesQuota    int      `json:"bytes_quota"`
+	DataPool      string   `json:"data_pool"`
+	GID           int      `json:"gid"`
+	Mode          int      `json:"mode"`
+	MonAddrs      []string `json:"mon_addrs"`
+	Path          string   `json:"path"`
+	PoolNamespace string   `json:"pool_namespace"`
+	Type          string   `json:"type"`
+	UID           int      `json:"uid"`
+}
+
 func getVolumeRootPathCephDeprecated(volID volumeID) string {
 	return path.Join("/", "csi-volumes", string(volID))
 }
@@ -70,6 +83,38 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 		return "", err
 	}
 	return strings.TrimSuffix(stdout, "\n"), nil
+}
+
+func getSubVolumeInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (Subvolume, error) {
+	info := Subvolume{}
+	err := execCommandJSON(
+		ctx,
+		&info,
+		"ceph",
+		"fs",
+		"subvolume",
+		"info",
+		volOptions.FsName,
+		string(volID),
+		"--group_name",
+		volOptions.SubvolumeGroup,
+		"-m", volOptions.Monitors,
+		"-c", util.CephConfigPath,
+		"-n", cephEntityClientPrefix+cr.ID,
+		"--keyfile="+cr.KeyFile)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to get subvolume info for the vol %s(%s)"), string(volID), err)
+		if strings.HasPrefix(err.Error(), ErrVolumeNotFound.Error()) {
+			return info, ErrVolumeNotFound
+		}
+		// Incase the error is other than invalid command return error to the caller.
+		if !strings.Contains(err.Error(), ErrInvalidCommand.Error()) {
+			return info, ErrInvalidCommand
+		}
+
+		return info, err
+	}
+	return info, nil
 }
 
 type localClusterState struct {
