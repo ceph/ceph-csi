@@ -232,8 +232,12 @@ var _ = Describe("cephfs", func() {
 						}
 
 					}
-					// TODO add cephfs backend validation
-
+					subVol := listCephFSSubVolumes(f, "myfs", subvolumegroup)
+					if len(subVol) != totalCount {
+						msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), totalCount)
+						e2elog.Logf(msg)
+						Fail(msg)
+					}
 					// delete pvc and app
 					for i := 0; i < totalCount; i++ {
 						name := fmt.Sprintf("%s%d", f.UniqueName, i)
@@ -242,6 +246,12 @@ var _ = Describe("cephfs", func() {
 							Fail(err.Error())
 						}
 
+					}
+					subVol = listCephFSSubVolumes(f, "myfs", subvolumegroup)
+					if len(subVol) != 0 {
+						msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), 0)
+						e2elog.Logf(msg)
+						Fail(msg)
 					}
 				})
 
