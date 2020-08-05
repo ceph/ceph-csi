@@ -4,6 +4,7 @@ def ci_git_repo = 'https://github.com/ceph/ceph-csi'
 def ci_git_branch = 'ci/centos'
 def git_repo = 'https://github.com/ceph/ceph-csi'
 def ref = "master"
+def namespace = 'cephcsi-e2e-' + UUID.randomUUID().toString().split('-')[-1]
 
 def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
@@ -53,21 +54,20 @@ node('cico-workspace') {
 		}
 		stage('deploy ceph-csi through helm') {
 			timeout(time: 30, unit: 'MINUTES') {
-				env.NAMESPACE = 'cephcsi-e2e-' + UUID.randomUUID().toString().split('-')[-1]
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh up'
-				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi ${NAMESPACE}'
+				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi ${namespace}'
 			}
 		}
 		stage('run e2e') {
 			timeout(time: 60, unit: 'MINUTES') {
-				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e NAMESPACE="${NAMESPACE}" E2E_ARGS="--deploy-cephfs=false --deploy-rbd=false"'
+				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e NAMESPACE="${namespace}" E2E_ARGS="--deploy-cephfs=false --deploy-rbd=false"'
 			}
 		}
 		stage('cleanup ceph-csi deployment') {
 			timeout(time: 30, unit: 'MINUTES') {
-				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh cleanup-cephcsi ${NAMESPACE}'
+				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh cleanup-cephcsi ${namespace}'
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh clean'
-				ssh 'kubectl delete namespace ${NAMESPACE}'
+				ssh 'kubectl delete namespace ${namespace}'
 			}
 		}
 	}
