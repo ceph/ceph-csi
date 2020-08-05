@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	ca "github.com/ceph/go-ceph/cephfs/admin"
 	"github.com/ceph/go-ceph/rados"
 )
 
@@ -82,4 +83,12 @@ func (cc *ClusterConnection) GetIoctx(pool string) (*rados.IOContext, error) {
 	}
 
 	return ioctx, nil
+}
+
+func (cc *ClusterConnection) GetFSAdmin() (*ca.FSAdmin, error) {
+	if cc.conn == nil {
+		return nil, errors.New("cluster is not connected yet")
+	}
+
+	return ca.NewFromConn(cc.conn), nil
 }
