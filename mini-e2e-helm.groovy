@@ -60,7 +60,7 @@ node('cico-workspace') {
 		}
 		stage('run e2e') {
 			timeout(time: 60, unit: 'MINUTES') {
-				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e NAMESPACE="${NAMESPACE}" E2E_ARGS="--deploy-cephfs=false --deploy-rbd=false'
+				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e NAMESPACE="${NAMESPACE}" E2E_ARGS="--deploy-cephfs=false --deploy-rbd=false"'
 			}
 		}
 		stage('cleanup ceph-csi deployment') {
