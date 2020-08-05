@@ -40,7 +40,7 @@ RUN source /build.env \
        | bash -s -- -b ${GOPATH}/bin "${GOLANGCI_VERSION}" \
     && curl -sfL "https://raw.githubusercontent.com/securego/gosec/master/install.sh" \
        | sh -s -- -b $GOPATH/bin "${GOSEC_VERSION}" \
-    && curl -L https://git.io/get_helm.sh | bash \
+    && curl -L https://git.io/get_helm.sh | bash -s -- --version "${HELM_VERSION}" \
     && mkdir /opt/commitlint && pushd /opt/commitlint \
     && npm init -y \
     && npm install @commitlint/cli \
