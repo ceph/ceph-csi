@@ -23,6 +23,8 @@ import (
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
+
+	fsAdmin "github.com/ceph/go-ceph/cephfs/admin"
 )
 
 var (
@@ -135,20 +137,16 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 		clusterAdditionalInfo[volOptions.ClusterID] = &localClusterState{}
 	}
 
+	ca, err := volOptions.conn.GetFSAdmin()
+	if err != nil {
+		util.ErrorLog(ctx, "could not get FSAdmin, can not create subvolume %s: %s", string(volID), err)
+		return err
+	}
+
 	// create subvolumegroup if not already created for the cluster.
 	if !clusterAdditionalInfo[volOptions.ClusterID].subVolumeGroupCreated {
-		err := execCommandErr(
-			ctx,
-			"ceph",
-			"fs",
-			"subvolumegroup",
-			"create",
-			volOptions.FsName,
-			volOptions.SubvolumeGroup,
-			"-m", volOptions.Monitors,
-			"-c", util.CephConfigPath,
-			"-n", cephEntityClientPrefix+cr.ID,
-			"--keyfile="+cr.KeyFile)
+		opts := fsAdmin.SubVolumeGroupOptions{}
+		err = ca.CreateSubVolumeGroup(volOptions.FsName, volOptions.SubvolumeGroup, &opts)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to create subvolume group %s, for the vol %s: %s", volOptions.SubvolumeGroup, string(volID), err)
 			return err
@@ -157,30 +155,16 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 		clusterAdditionalInfo[volOptions.ClusterID].subVolumeGroupCreated = true
 	}
 
-	args := []string{
-		"fs",
-		"subvolume",
-		"create",
-		volOptions.FsName,
-		string(volID),
-		strconv.FormatInt(bytesQuota, 10),
-		"--group_name",
-		volOptions.SubvolumeGroup,
-		"--mode", "777",
-		"-m", volOptions.Monitors,
-		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.ID,
-		"--keyfile=" + cr.KeyFile,
+	opts := fsAdmin.SubVolumeOptions{
+		Size: fsAdmin.ByteCount(bytesQuota),
+		Mode: 0777,
 	}
-
 	if volOptions.Pool != "" {
-		args = append(args, "--pool_layout", volOptions.Pool)
+		opts.PoolLayout = volOptions.Pool
 	}
 
-	err := execCommandErr(
-		ctx,
-		"ceph",
-		args[:]...)
+	// FIXME: check if the right credentials are used ("-n", cephEntityClientPrefix + cr.ID)
+	err = ca.CreateSubVolume(volOptions.FsName, volOptions.SubvolumeGroup, string(volID), &opts)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create subvolume %s in fs %s: %s", string(volID), volOptions.FsName, err)
 		return err
