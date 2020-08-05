@@ -107,6 +107,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 			}
 		}
 	}
+	defer volOptions.Destroy()
 
 	// Check if the volume is already mounted
 
