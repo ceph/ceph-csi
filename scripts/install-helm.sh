@@ -4,12 +4,15 @@
 
 TEMP="/tmp/cephcsi-helm-test"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+# shellcheck source=build.env
+[ ! -e "${SCRIPT_DIR}"/../build.env ] || source "${SCRIPT_DIR}"/../build.env
+
 HELM="helm"
 HELM_VERSION=${HELM_VERSION:-"latest"}
 arch="${ARCH:-}"
 CEPHFS_CHART_NAME="ceph-csi-cephfs"
 RBD_CHART_NAME="ceph-csi-rbd"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 DEPLOY_TIMEOUT=600
 
 # ceph-csi specific variables
