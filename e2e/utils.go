@@ -948,6 +948,22 @@ func writeDataInPod(app *v1.Pod, f *framework.Framework) error {
 	return nil
 }
 
+type cephfsSubVolume struct {
+	Name string `json:"name"`
+}
+
+func listCephFSSubVolumes(f *framework.Framework, filesystem, groupname string) []cephfsSubVolume {
+	stdout, stdErr := execCommandInToolBoxPod(f, fmt.Sprintf("ceph fs subvolume ls %s --group_name=%s --format=json", filesystem, groupname), rookNamespace)
+	Expect(stdErr).Should(BeEmpty())
+	var subVols []cephfsSubVolume
+
+	err := json.Unmarshal([]byte(stdout), &subVols)
+	if err != nil {
+		Fail(err.Error())
+	}
+	return subVols
+}
+
 func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	data := "checking data persist"
 	pvc, err := loadPVC(pvcPath)
