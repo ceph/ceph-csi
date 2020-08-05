@@ -55,20 +55,19 @@ node('cico-workspace') {
 		stage('deploy ceph-csi through helm') {
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh up'
-				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi ${namespace}'
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi '${namespace}'"
 			}
 		}
 		stage('run e2e') {
 			timeout(time: 60, unit: 'MINUTES') {
-				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e NAMESPACE="${namespace}" E2E_ARGS="--deploy-cephfs=false --deploy-rbd=false"'
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e NAMESPACE='${namespace}' E2E_ARGS='--deploy-cephfs=false --deploy-rbd=false'"
 			}
 		}
 		stage('cleanup ceph-csi deployment') {
 			timeout(time: 30, unit: 'MINUTES') {
-				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh cleanup-cephcsi ${namespace}'
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh cleanup-cephcsi '${namespace}'"
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh clean'
-				ssh 'kubectl delete namespace ${namespace}'
-			}
+				ssh "kubectl delete namespace '${namespace}'"			}
 		}
 	}
 
