@@ -55,6 +55,7 @@ node('cico-workspace') {
 		stage('deploy ceph-csi through helm') {
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh up'
+				ssh "kubectl create namespace '${namespace}'"
 				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi '${namespace}'"
 			}
 		}
