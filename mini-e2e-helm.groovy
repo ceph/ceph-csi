@@ -6,8 +6,10 @@ def git_repo = 'https://github.com/ceph/ceph-csi'
 def ref = "master"
 def namespace = 'cephcsi-e2e-' + UUID.randomUUID().toString().split('-')[-1]
 
+// ssh executes a given command on the reserved bare-metal machine
+// NOTE: do not pass " symbols on the command line, use ' only.
 def ssh(cmd) {
-	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
+	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \"${cmd}\""
 }
 
 node('cico-workspace') {
