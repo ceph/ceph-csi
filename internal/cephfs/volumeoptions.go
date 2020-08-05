@@ -48,6 +48,32 @@ type volumeOptions struct {
 	FuseMountOptions    string `json:"fuseMountOptions"`
 	SubvolumeGroup      string
 	Features            []string
+
+	// conn is a connection to the Ceph cluster obtained from a ConnPool
+	conn *util.ClusterConnection
+}
+
+// Connect a CephFS volume to the Ceph cluster.
+func (vo *volumeOptions) Connect(cr *util.Credentials) error {
+	if vo.conn != nil {
+		return nil
+	}
+
+	conn := &util.ClusterConnection{}
+	if err := conn.Connect(vo.Monitors, cr); err != nil {
+		return err
+	}
+
+	vo.conn = conn
+	return nil
+}
+
+// Destroy cleans up the CephFS volume object and closes the connection to the
+// Ceph cluster in case one was setup.
+func (vo *volumeOptions) Destroy() {
+	if vo.conn != nil {
+		vo.conn.Destroy()
+	}
 }
 
 func validateNonEmptyField(field, fieldName string) error {
@@ -190,6 +216,11 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 	}
 	defer cr.DeleteCredentials()
 
+	err = opts.Connect(cr)
+	if err != nil {
+		return nil, err
+	}
+
 	opts.FscID, err = getFscID(ctx, opts.Monitors, cr, opts.FsName)
 	if err != nil {
 		return nil, err
@@ -252,6 +283,11 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		return nil, nil, err
 	}
 	defer cr.DeleteCredentials()
+
+	err = volOptions.Connect(cr)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	volOptions.FsName, err = getFsName(ctx, volOptions.Monitors, cr, volOptions.FscID)
 	if err != nil {

@@ -156,6 +156,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		util.ErrorLog(ctx, "validation and extraction of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	defer volOptions.Destroy()
 
 	if req.GetCapacityRange() != nil {
 		volOptions.Size = util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
@@ -166,6 +167,10 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err != nil {
 		return nil, err
 	}
+	if parentVol != nil {
+		defer parentVol.Destroy()
+	}
+
 	vID, err := checkVolExists(ctx, volOptions, parentVol, pvID, sID, cr)
 	if err != nil {
 		if errors.Is(err, ErrCloneInProgress) {
@@ -325,6 +330,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 		return &csi.DeleteVolumeResponse{}, nil
 	}
+	defer volOptions.Destroy()
 
 	// lock out parallel delete and create requests against the same volume name as we
 	// cleanup the subvolume and associated omaps for the same
@@ -410,11 +416,11 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	defer cr.DeleteCredentials()
 
 	volOptions, volIdentifier, err := newVolumeOptionsFromVolID(ctx, volID, nil, secret)
-
 	if err != nil {
 		util.ErrorLog(ctx, "validation and extraction of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	defer volOptions.Destroy()
 
 	RoundOffSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
 
@@ -476,6 +482,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	defer parentVolOptions.Destroy()
 
 	if clusterData.ClusterID != parentVolOptions.ClusterID {
 		return nil, status.Errorf(codes.InvalidArgument, "requested cluster id %s not matching subvolume cluster id %s", clusterData.ClusterID, parentVolOptions.ClusterID)
