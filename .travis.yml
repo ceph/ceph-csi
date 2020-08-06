@@ -49,7 +49,7 @@ before_script:
 # Only run the deploy stage on push (not pull_request) events.
 stages:
   - build testing
-  - e2e testing
+  - upgrade testing
   - name: deploy
     if: type = push
 
@@ -96,54 +96,6 @@ jobs:
       name: Build multi-architecture image for amd64 and arm64
       script:
         - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
-
-    - stage: e2e testing
-      name: CephFS with kubernetes v1.17.8
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.17.8 --test-cephfs=true
-          --test-rbd=false || travis_terminate 1;
-
-    - stage: e2e testing
-      name: RBD with kubernetes v1.17.8
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.17.8 --test-cephfs=false
-          --test-rbd=true || travis_terminate 1;
-
-    - stage: e2e testing
-      name: CephFS with kubernetes v1.18.5
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.18.5 --test-cephfs=true
-          --test-rbd=false || travis_terminate 1;
-
-    - stage: e2e testing
-      name: RBD with kubernetes v1.18.5
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.18.5 --test-cephfs=false
-          --test-rbd=true || travis_terminate 1;
-
-    - stage: e2e testing
-      name: CephFS helm charts with kubernetes v1.18.5
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-helmtest.sh v1.18.5 --test-cephfs=true
-          --test-rbd=false || travis_terminate 1;
-
-    - stage: e2e testing
-      name: RBD helm charts with kubernetes v1.18.5
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-helmtest.sh v1.18.5 --test-cephfs=false
-          --test-rbd=true || travis_terminate 1;
 
     - stage: upgrade testing
       name: CephFS upgrade tesing with CSI v2.1.2
