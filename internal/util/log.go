@@ -52,6 +52,24 @@ func Log(ctx context.Context, format string) string {
 	return a + format
 }
 
+// FatalLog helps in logging fatal errors.
+func FatalLog(message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(message, args...)
+	klog.FatalDepth(1, logMessage)
+}
+
+// ErrorLog helps in logging errors.
+func ErrorLog(message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(message, args...)
+	klog.ErrorDepth(1, logMessage)
+}
+
+// WarningLog helps in logging warnings.
+func WarningLog(message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(message, args...)
+	klog.WarningDepth(1, logMessage)
+}
+
 // DefaultLog helps in logging with klog.level 1.
 func DefaultLog(message string, args ...interface{}) {
 	logMessage := fmt.Sprintf(message, args...)
