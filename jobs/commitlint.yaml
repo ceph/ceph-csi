@@ -1,0 +1,36 @@
+---
+- job:
+    name: commitlint
+    description: Allow re-running commitlint tests, in case the commitlint app
+      does not work correctly.
+    project-type: pipeline
+    sandbox: true
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/ceph/ceph-csi
+      - build-discarder:
+          days-to-keep: 7
+          artifact-days-to-keep: 7
+    pipeline-scm:
+      scm:
+        - git:
+            name: origin
+            url: https://github.com/ceph/ceph-csi
+            branches:
+              - ci/centos
+      script-path: containerized-tests.groovy
+      lightweight-checkout: true
+    triggers:
+      - github-pull-request:
+          # the "commitlint" status context is use by the commitlint app
+          status-context: commitlint
+          trigger-phrase: '/(re)?test ((all)|(commitlint))'
+          permit-all: false
+          # TODO: set github-hooks to true when it is configured in GitHub
+          github-hooks: false
+          cron: 'H/5 * * * *'
+          admin-list:
+            - nixpanic
+          org-list:
+            - ceph
