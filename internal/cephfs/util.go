@@ -21,10 +21,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	klog "k8s.io/klog/v2"
@@ -157,4 +160,22 @@ func getMonsAndClusterID(ctx context.Context, options map[string]string) (monito
 	}
 
 	return
+}
+
+func parseTime(ctx context.Context, createTime string) (*timestamp.Timestamp, error) {
+	tm := &timestamp.Timestamp{}
+	layout := "2006-01-02 15:04:05.000000"
+	// TODO currently parsing of timestamp to time.ANSIC generate from ceph fs is failng
+	var t time.Time
+	t, err := time.Parse(layout, createTime)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to parse time %s %v"), createTime, err)
+		return tm, err
+	}
+	tm, err = ptypes.TimestampProto(t)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to convert time %s %v"), createTime, err)
+		return tm, err
+	}
+	return tm, nil
 }
