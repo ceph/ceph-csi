@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	klog "k8s.io/klog/v2"
 )
 
 // ValidateURL validates the url.
@@ -22,6 +21,6 @@ func StartMetricsServer(c *Config) {
 	http.Handle(c.MetricsPath, promhttp.Handler())
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
-		klog.Fatalln(err)
+		FatalLog("failed to listen on address %v: %s", addr, err)
 	}
 }
