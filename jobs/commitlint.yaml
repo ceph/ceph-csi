@@ -19,13 +19,14 @@
             url: https://github.com/ceph/ceph-csi
             branches:
               - ci/centos
-      script-path: containerized-tests.groovy
+      script-path: commitlint.groovy
       lightweight-checkout: true
     triggers:
       - github-pull-request:
           # the "commitlint" status context is use by the commitlint app
           status-context: commitlint
           trigger-phrase: '/(re)?test ((all)|(commitlint))'
+          # only run on PRs where the trigger-phrase is posted
           permit-all: false
           # TODO: set github-hooks to true when it is configured in GitHub
           github-hooks: false

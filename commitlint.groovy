@@ -37,7 +37,7 @@ node('cico-workspace') {
 			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${ci_git_repo} --ref=${ref}"
 		}
 
-		stage('test & build') {
+		stage('run commitlint') {
 			if (params.ghprbTargetBranch != null) {
 				git_since = "origin/${ghprbTargetBranch}"
 			}
