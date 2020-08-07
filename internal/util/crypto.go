@@ -27,8 +27,6 @@ import (
 	"strings"
 
 	"crypto/rand"
-
-	klog "k8s.io/klog/v2"
 )
 
 const (
@@ -160,7 +158,7 @@ func GetCryptoPassphrase(ctx context.Context, volumeID string, kms EncryptionKMS
 		}
 		return passphrase, nil
 	}
-	klog.Errorf(Log(ctx, "failed to get encryption passphrase for %s: %s"), volumeID, err)
+	ErrorLog(Log(ctx, "failed to get encryption passphrase for %s: %s"), volumeID, err)
 	return "", err
 }
 
