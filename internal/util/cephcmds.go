@@ -24,7 +24,6 @@ import (
 	"os/exec"
 
 	"github.com/ceph/go-ceph/rados"
-	klog "k8s.io/klog/v2"
 )
 
 // InvalidPoolID used to denote an invalid pool.
@@ -147,7 +146,7 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 	if errors.Is(err, rados.ErrObjectExists) {
 		return JoinErrors(ErrObjectExists, err)
 	} else if err != nil {
-		klog.Errorf(Log(ctx, "failed creating omap (%s) in pool (%s): (%v)"), objectName, poolName, err)
+		ErrorLog(Log(ctx, "failed creating omap (%s) in pool (%s): (%v)"), objectName, poolName, err)
 		return err
 	}
 
@@ -181,7 +180,7 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 	if errors.Is(err, rados.ErrNotFound) {
 		return JoinErrors(ErrObjectNotFound, err)
 	} else if err != nil {
-		klog.Errorf(Log(ctx, "failed removing omap (%s) in pool (%s): (%v)"), oMapName, poolName, err)
+		ErrorLog(Log(ctx, "failed removing omap (%s) in pool (%s): (%v)"), oMapName, poolName, err)
 		return err
 	}
 
