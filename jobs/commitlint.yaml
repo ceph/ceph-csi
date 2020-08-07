@@ -31,7 +31,3 @@
           # TODO: set github-hooks to true when it is configured in GitHub
           github-hooks: false
           cron: 'H/5 * * * *'
-          admin-list:
-            - nixpanic
-          org-list:
-            - ceph
