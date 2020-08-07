@@ -18,7 +18,6 @@ import (
 	"sync"
 
 	"k8s.io/apimachinery/pkg/util/sets"
-	klog "k8s.io/klog/v2"
 )
 
 const (
@@ -254,6 +253,6 @@ func (ol *OperationLock) release(op operation, volumeID string) {
 			}
 		}
 	default:
-		klog.Errorf("%v operation not supported", op)
+		ErrorLog("%v operation not supported", op)
 	}
 }
