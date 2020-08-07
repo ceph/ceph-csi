@@ -16,6 +16,17 @@ package util
 import (
 	"context"
 	"fmt"
+
+	klog "k8s.io/klog/v2"
+)
+
+// enum defining logging levels.
+const (
+	Default klog.Level = iota + 1
+	Useful
+	Extended
+	Debug
+	Trace
 )
 
 type contextKey string
@@ -39,4 +50,76 @@ func Log(ctx context.Context, format string) string {
 	}
 	a += fmt.Sprintf("Req-ID: %v ", reqID)
 	return a + format
+}
+
+// DefaultLog helps in logging with klog.level 1.
+func DefaultLog(message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(message, args...)
+	// If logging is disabled, don't evaluate the arguments
+	if klog.V(Default).Enabled() {
+		klog.InfoDepth(1, logMessage)
+	}
+}
+
+// UsefulLog helps in logging with klog.level 2.
+func UsefulLog(ctx context.Context, message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(Log(ctx, message), args...)
+	// If logging is disabled, don't evaluate the arguments
+	if klog.V(Useful).Enabled() {
+		klog.InfoDepth(1, logMessage)
+	}
+}
+
+// ExtendedLogMsg helps in logging a message with klog.level 3.
+func ExtendedLogMsg(message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(message, args...)
+	// If logging is disabled, don't evaluate the arguments
+	if klog.V(Extended).Enabled() {
+		klog.InfoDepth(1, logMessage)
+	}
+}
+
+// ExtendedLog helps in logging with klog.level 3.
+func ExtendedLog(ctx context.Context, message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(Log(ctx, message), args...)
+	// If logging is disabled, don't evaluate the arguments
+	if klog.V(Extended).Enabled() {
+		klog.InfoDepth(1, logMessage)
+	}
+}
+
+// DebugLogMsg helps in logging a message with klog.level 4.
+func DebugLogMsg(message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(message, args...)
+	// If logging is disabled, don't evaluate the arguments
+	if klog.V(Debug).Enabled() {
+		klog.InfoDepth(1, logMessage)
+	}
+}
+
+// DebugLog helps in logging with klog.level 4.
+func DebugLog(ctx context.Context, message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(Log(ctx, message), args...)
+	// If logging is disabled, don't evaluate the arguments
+	if klog.V(Debug).Enabled() {
+		klog.InfoDepth(1, logMessage)
+	}
+}
+
+// TraceLogMsg helps in logging a message with klog.level 5.
+func TraceLogMsg(message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(message, args...)
+	// If logging is disabled, don't evaluate the arguments
+	if klog.V(Trace).Enabled() {
+		klog.InfoDepth(1, logMessage)
+	}
+}
+
+// TraceLog helps in logging with klog.level 5.
+func TraceLog(ctx context.Context, message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(Log(ctx, message), args...)
+	// If logging is disabled, don't evaluate the arguments
+	if klog.V(Trace).Enabled() {
+		klog.InfoDepth(1, logMessage)
+	}
 }
