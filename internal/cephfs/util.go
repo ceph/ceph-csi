@@ -19,7 +19,6 @@ package cephfs
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -135,31 +134,15 @@ func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (sn
 	cephfsSnap.RequestName = req.GetName()
 	snapOptions := req.GetParameters()
 
-	cephfsSnap.Monitors, cephfsSnap.ClusterID, err = getMonsAndClusterID(ctx, snapOptions)
+	cephfsSnap.Monitors, cephfsSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
 	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
 		return nil, err
 	}
 	if namePrefix, ok := snapOptions["snapshotNamePrefix"]; ok {
 		cephfsSnap.NamePrefix = namePrefix
 	}
 	return cephfsSnap, nil
-}
-
-func getMonsAndClusterID(ctx context.Context, options map[string]string) (monitors, clusterID string, err error) {
-	var ok bool
-
-	if clusterID, ok = options["clusterID"]; !ok {
-		err = errors.New("clusterID must be set")
-		return
-	}
-
-	if monitors, err = util.Mons(util.CsiConfigFile, clusterID); err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
-		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", clusterID, err)
-		return
-	}
-
-	return
 }
 
 func parseTime(ctx context.Context, createTime string) (*timestamp.Timestamp, error) {

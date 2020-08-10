@@ -18,6 +18,7 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -110,4 +111,20 @@ func CephFSSubvolumeGroup(pathToConfig, clusterID string) (string, error) {
 		return defaultCsiSubvolumeGroup, nil
 	}
 	return cluster.CephFS.SubvolumeGroup, nil
+}
+
+// GetMonsAndClusterID returns monitors and clusterID information read from
+// configfile.
+func GetMonsAndClusterID(options map[string]string) (string, string, error) {
+	clusterID, ok := options["clusterID"]
+	if !ok {
+		return "", "", errors.New("clusterID must be set")
+	}
+
+	monitors, err := Mons(CsiConfigFile, clusterID)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", clusterID, err)
+	}
+
+	return monitors, clusterID, nil
 }
