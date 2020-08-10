@@ -16,6 +16,7 @@ import (
 	scv1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/wait"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -406,6 +407,71 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	}
 	if !strings.Contains(persistData, data) {
 		return fmt.Errorf("data not persistent expected data %s received data %s  ", data, persistData)
+	}
+
+	err = deletePVCAndApp("", f, pvc, app)
+	return err
+}
+
+func checkMappingMetrics(cephfs bool, pvcPath, appPath string, f *framework.Framework) error {
+	pvc, err := loadPVC(pvcPath)
+	if pvc == nil {
+		return err
+	}
+
+	pvc.Namespace = f.UniqueName
+
+	app, err := loadApp(appPath)
+	if err != nil {
+		return err
+	}
+	app.Labels = map[string]string{"app": "validate-metrics"}
+	app.Namespace = f.UniqueName
+
+	err = createPVCAndApp("", f, pvc, app, deployTimeout)
+	if err != nil {
+		return err
+	}
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+	var (
+		metrics     string
+		command     string
+		commandHelm string
+		stdOut      string
+		stdOutHelm  string
+	)
+	if cephfs {
+		metrics = fmt.Sprintf(`csi_ceph_fs{pv_name="%s",pvc_name="%s",pvc_namespace="%s",subvolume_group="%s",subvolume_name="%s",volume_name="%s"} 1`,
+			imageData.pvName, pvc.Name, pvc.Namespace, "e2e", imageData.imageName, "myfs")
+		command = fmt.Sprintf("curl http://csi-cephfsplugin-provisioner.%s:8080/metrics", cephCSINamespace)
+		commandHelm = fmt.Sprintf("curl http://csi-cephfsplugin-provisioner-http-metrics.%s:8080/metrics", cephCSINamespace)
+	} else {
+		metrics = fmt.Sprintf(`csi_ceph_rbd{imageID="%s",pool="%s",pv_name="%s",pvc_name="%s",pvc_namespace="%s"} 1`,
+			imageData.imageName, defaultRBDPool, imageData.pvName, pvc.Name, pvc.Namespace)
+		command = fmt.Sprintf("curl http://csi-rbdplugin-provisioner.%s:8080/metrics", cephCSINamespace)
+		commandHelm = fmt.Sprintf("curl http://csi-rbdplugin-provisioner-http-metrics.%s:8080/metrics", cephCSINamespace)
+	}
+	e2elog.Logf("start check metrics: %s", metrics)
+	// get mapping metrics data in pod
+	timeoutMinutes := 2
+	timeout := time.Duration(timeoutMinutes) * time.Minute
+	opt := metav1.ListOptions{
+		LabelSelector: "app=validate-metrics",
+	}
+	err = wait.PollImmediate(poll, timeout, func() (bool, error) {
+		stdOut, _ = execCommandInPodAndAllowFail(f, command, app.Namespace, &opt)
+		stdOutHelm, _ = execCommandInPodAndAllowFail(f, commandHelm, app.Namespace, &opt)
+		if strings.Contains(stdOut, metrics) || strings.Contains(stdOutHelm, metrics) {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		e2elog.Logf("all metrics: %s\n%s", stdOut, stdOutHelm)
+		return errors.New("mapping metrics data of pod not persistent")
 	}
 
 	err = deletePVCAndApp("", f, pvc, app)

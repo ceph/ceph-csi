@@ -268,6 +268,13 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 0)
 			})
 
+			By("create a PVC and check mapping metrics", func() {
+				err := checkMappingMetrics(false, pvcPath, appPath, f)
+				if err != nil {
+					Fail(err.Error())
+				}
+			})
+
 			By("create a PVC and bind it to an app with normal user", func() {
 				err := validateNormalUserPVCAccess(pvcPath, f)
 				if err != nil {

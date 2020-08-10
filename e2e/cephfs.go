@@ -339,7 +339,6 @@ var _ = Describe("cephfs", func() {
 					e2elog.Failf("failed to load PVC with error %v", err)
 				}
 				pvc.Namespace = f.UniqueName
-
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC with error %v", err)
@@ -353,6 +352,13 @@ var _ = Describe("cephfs", func() {
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to delete PVC with error %v", err)
+				}
+			})
+
+			By("create a PVC and check mapping metrics", func() {
+				err := checkMappingMetrics(true, pvcPath, appPath, f)
+				if err != nil {
+					Fail(err.Error())
 				}
 			})
 
