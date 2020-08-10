@@ -245,6 +245,18 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
+	// check for number of snapshots for volume-volume cloning
+	if pvID != nil && parentVol != nil {
+		snaps, err := listSnapshots(ctx, parentVol, cr, volumeID(pvID.FsSubvolName))
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		if len(snaps) > maximumSnapshotsOnSubVolume {
+			return nil, status.Errorf(codes.ResourceExhausted, "for subvolume %s snaphot count %d reached the maximum %d", pvID.FsSubvolName, len(snaps), maximumSnapshotsOnSubVolume)
+		}
+	}
+
 	// Create a volume
 	err = cs.createBackingVolume(ctx, volOptions, parentVol, vID, pvID, sID, cr)
 	if err != nil {
