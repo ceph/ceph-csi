@@ -40,8 +40,9 @@ const (
 	cephfsDefaultName   = "cephfs.csi.ceph.com"
 	livenessDefaultName = "liveness.csi.ceph.com"
 
-	pollTime     = 60 // seconds
-	probeTimeout = 3  // seconds
+	pollTime             = 60 // seconds
+	probeTimeout         = 3  // seconds
+	scrapeMetricsTimeout = 30 // seconds
 )
 
 var (
@@ -72,6 +73,9 @@ func init() {
 	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*probeTimeout, "probe timeout in seconds")
 
 	flag.BoolVar(&conf.EnableGRPCMetrics, "enablegrpcmetrics", false, "[DEPRECATED] enable grpc metrics")
+	flag.BoolVar(&conf.EnableMappingMetrics, "enablemappingmetrics", false, "enable metrics of mapping between pvc and image/subvolume")
+	flag.DurationVar(&conf.ScrapeMetricsTimeout, "scrapeMetricsTimeout", time.Second*scrapeMetricsTimeout, "scrape metrics timeout in seconds")
+	flag.IntVar(&conf.ScrapeMetricsGoroutines, "scrapeMetricsJobs", 1, "number of goroutines used to collect mapping metrics")
 	flag.StringVar(&conf.HistogramOption, "histogramoption", "0.5,2,6",
 		"[DEPRECATED] Histogram option for grpc metrics, should be comma separated value, ex:= 0.5,2,6 where start=0.5 factor=2, count=6")
 

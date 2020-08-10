@@ -77,18 +77,21 @@ type Config struct {
 	DomainLabels string // list of domain labels to read from the node
 
 	// metrics related flags
-	MetricsPath       string        // path of prometheus endpoint where metrics will be available
-	HistogramOption   string        // Histogram option for grpc metrics, should be comma separated value, ex:= "0.5,2,6" where start=0.5 factor=2, count=6
-	MetricsIP         string        // TCP port for liveness/ metrics requests
-	PidLimit          int           // PID limit to configure through cgroups")
-	MetricsPort       int           // TCP port for liveness/grpc metrics requests
-	PollTime          time.Duration // time interval in seconds between each poll
-	PoolTimeout       time.Duration // probe timeout in seconds
-	EnableGRPCMetrics bool          // option to enable grpc metrics
+	MetricsPath             string        // path of prometheus endpoint where metrics will be available
+	HistogramOption         string        // Histogram option for grpc metrics, should be comma separated value, ex:= "0.5,2,6" where start=0.5 factor=2, count=6
+	MetricsIP               string        // TCP port for liveness/ metrics requests
+	PidLimit                int           // PID limit to configure through cgroups")
+	MetricsPort             int           // TCP port for liveness/grpc metrics requests
+	ScrapeMetricsGoroutines int           // number of goroutines to collect mapping metrics
+	PollTime                time.Duration // time interval in seconds between each poll
+	PoolTimeout             time.Duration // probe timeout in seconds
+	ScrapeMetricsTimeout    time.Duration // scrape metrics timeout in seconds
 
-	IsControllerServer bool // if set to true start provisoner server
-	IsNodeServer       bool // if set to true start node server
-	Version            bool // cephcsi version
+	EnableGRPCMetrics    bool // option to enable grpc metrics
+	EnableMappingMetrics bool // option to enable mapping metrics
+	IsControllerServer   bool // if set to true start provisoner server
+	IsNodeServer         bool // if set to true start node server
+	Version              bool // cephcsi version
 
 	// SkipForceFlatten is set to false if the kernel supports mounting of
 	// rbd image or the image chain has the deep-flatten feature.

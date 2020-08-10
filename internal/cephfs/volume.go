@@ -270,3 +270,11 @@ func checkSubvolumeHasFeature(feature string, subVolFeatures []string) bool {
 	}
 	return false
 }
+
+// CheckSubVolumeInCluster check if subvolume in cluster.
+func CheckSubVolumeInCluster(monitors, subvolume, volumegroup, volume string, cr *util.Credentials) bool {
+	util.DebugLogMsg("cephfs: check exist of subvolume %s", subvolume)
+	var volOptions = &volumeOptions{FsName: volume, SubvolumeGroup: volumegroup, Monitors: monitors}
+	_, err := getVolumeRootPathCeph(context.TODO(), volOptions, cr, volumeID(subvolume))
+	return err == nil
+}

@@ -85,7 +85,20 @@ func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration
 func Run(conf *util.Config) {
 	util.ExtendedLogMsg("Liveness Running")
 
+	liveMetricsManager := metrics.NewCSIMetricsManager(conf.DriverName)
+	csiConn, err := connlib.Connect(conf.Endpoint, liveMetricsManager)
+	if err != nil {
+		// connlib should retry forever so a returned error should mean
+		// the grpc client is misconfigured rather than an error on the network
+		util.FatalLogMsg("failed to establish connection to CSI driver: %v", err)
+	}
 	// start liveness collection
+	if conf.EnableMappingMetrics {
+		if err := util.WriteCephConfig(); err != nil {
+			util.FatalLogMsg("failed to write ceph configuration file (%v)", err)
+		}
+		go recordMapping(conf.PollTime, conf.PoolTimeout, csiConn, conf.ScrapeMetricsTimeout, conf.ScrapeMetricsGoroutines)
+	}
 	go recordLiveness(conf.Endpoint, conf.DriverName, conf.PollTime, conf.PoolTimeout)
 
 	// start up prometheus endpoint
