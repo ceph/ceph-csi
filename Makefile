@@ -54,6 +54,7 @@ lint-yaml:
 	./scripts/lint-extras.sh lint-yaml
 
 commitlint:
+	git fetch -v $(shell cut -d/ -f1 <<< "$(GIT_SINCE)") $(shell cut -d/ -f2- <<< "$(GIT_SINCE)")
 	commitlint --from $(GIT_SINCE)
 
 .PHONY: containerized-test
