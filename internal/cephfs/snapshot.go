@@ -238,3 +238,40 @@ func cloneSnapshot(ctx context.Context, parentVolOptions *volumeOptions, cr *uti
 	}
 	return nil
 }
+
+// Snapshots holds the snapshot name.
+type Snapshots struct {
+	Name string `json:"name"`
+}
+
+func listSnapshots(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) ([]Snapshots, error) {
+	snaps := []Snapshots{}
+	args := []string{
+		"fs",
+		"subvolume",
+		"snapshot",
+		"ls",
+		volOptions.FsName,
+		string(volID),
+		"--group_name",
+		volOptions.SubvolumeGroup,
+		"-m", volOptions.Monitors,
+		"-c", util.CephConfigPath,
+		"-n", cephEntityClientPrefix + cr.ID,
+		"--keyfile=" + cr.KeyFile,
+		"--format=json",
+	}
+	err := execCommandJSON(
+		ctx,
+		&snaps,
+		"ceph",
+		args[:]...)
+	if err != nil {
+		if strings.Contains(err.Error(), ErrSnapNotFound.Error()) {
+			return []Snapshots{}, err
+		}
+		klog.Errorf(util.Log(ctx, "failed to list subvolume snapshots %s(%s) in fs %s"), string(volID), err, volOptions.FsName)
+		return []Snapshots{}, err
+	}
+	return snaps, nil
+}
