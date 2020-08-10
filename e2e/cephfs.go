@@ -26,6 +26,7 @@ var (
 	cephfsDirPath         = "../deploy/cephfs/kubernetes/"
 	cephfsExamplePath     = "../examples/cephfs/"
 	subvolumegroup        = "e2e"
+	fileSystemName        = "myfs"
 )
 
 func deployCephfsPlugin() {
@@ -232,7 +233,7 @@ var _ = Describe("cephfs", func() {
 						}
 
 					}
-					subVol := listCephFSSubVolumes(f, "myfs", subvolumegroup)
+					subVol := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
 					if len(subVol) != totalCount {
 						msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), totalCount)
 						e2elog.Logf(msg)
@@ -247,7 +248,7 @@ var _ = Describe("cephfs", func() {
 						}
 
 					}
-					subVol = listCephFSSubVolumes(f, "myfs", subvolumegroup)
+					subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
 					if len(subVol) != 0 {
 						msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), 0)
 						e2elog.Logf(msg)
@@ -389,6 +390,9 @@ var _ = Describe("cephfs", func() {
 					if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
 						var wg sync.WaitGroup
 						totalCount := 3
+						// totalSubvolumes represents the subvolumes in backend
+						// always totalCount+parentPVC
+						totalSubvolumes := totalCount + 1
 						wg.Add(totalCount)
 						createCephFSSnapshotClass(f)
 						pvc, err := loadPVC(pvcPath)
@@ -460,6 +464,12 @@ var _ = Describe("cephfs", func() {
 						}
 						wg.Wait()
 
+						subVol := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+						if len(subVol) != totalSubvolumes {
+							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), totalSubvolumes)
+							e2elog.Logf(msg)
+							Fail(msg)
+						}
 						wg.Add(totalCount)
 						// delete clone and app
 						for i := 0; i < totalCount; i++ {
@@ -476,6 +486,13 @@ var _ = Describe("cephfs", func() {
 						}
 						wg.Wait()
 
+						parentPVCCount := totalSubvolumes - totalCount
+						subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+						if len(subVol) != parentPVCCount {
+							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), parentPVCCount)
+							e2elog.Logf(msg)
+							Fail(msg)
+						}
 						// create clones from different snapshosts and bind it to an
 						// app
 						wg.Add(totalCount)
@@ -492,6 +509,13 @@ var _ = Describe("cephfs", func() {
 							}(&wg, i, *pvcClone, *appClone)
 						}
 						wg.Wait()
+
+						subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+						if len(subVol) != totalSubvolumes {
+							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), totalSubvolumes)
+							e2elog.Logf(msg)
+							Fail(msg)
+						}
 
 						wg.Add(totalCount)
 						// delete snapshot
@@ -524,10 +548,23 @@ var _ = Describe("cephfs", func() {
 						}
 						wg.Wait()
 
+						subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+						if len(subVol) != parentPVCCount {
+							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), parentPVCCount)
+							e2elog.Logf(msg)
+							Fail(msg)
+						}
 						// delete parent pvc
 						err = deletePVCAndApp("", f, pvc, app)
 						if err != nil {
 							Fail(err.Error())
+						}
+
+						subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+						if len(subVol) != 0 {
+							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), 0)
+							e2elog.Logf(msg)
+							Fail(msg)
 						}
 					}
 				})
@@ -542,6 +579,9 @@ var _ = Describe("cephfs", func() {
 					if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
 						var wg sync.WaitGroup
 						totalCount := 3
+						// totalSubvolumes represents the subvolumes in backend
+						// always totalCount+parentPVC
+						totalSubvolumes := totalCount + 1
 						pvc, err := loadPVC(pvcPath)
 						if err != nil {
 							Fail(err.Error())
@@ -587,6 +627,13 @@ var _ = Describe("cephfs", func() {
 							}(&wg, i, *pvcClone, *appClone)
 						}
 						wg.Wait()
+
+						subVol := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+						if len(subVol) != totalSubvolumes {
+							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), totalSubvolumes)
+							e2elog.Logf(msg)
+							Fail(msg)
+						}
 						// delete parent pvc
 						err = deletePVCAndApp("", f, pvc, app)
 						if err != nil {
@@ -607,6 +654,13 @@ var _ = Describe("cephfs", func() {
 							}(&wg, i, *pvcClone, *appClone)
 						}
 						wg.Wait()
+
+						subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+						if len(subVol) != 0 {
+							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), 0)
+							e2elog.Logf(msg)
+							Fail(msg)
+						}
 					}
 				})
 
