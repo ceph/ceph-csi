@@ -27,7 +27,11 @@
           status-context: commitlint
           trigger-phrase: '/(re)?test ((all)|(commitlint))'
           # only run on PRs where the trigger-phrase is posted
+          only-trigger-phrase: true
           permit-all: false
           # TODO: set github-hooks to true when it is configured in GitHub
           github-hooks: false
           cron: 'H/5 * * * *'
+          org-list:
+            - ceph
+          allow-whitelist-orgs-as-admins: true

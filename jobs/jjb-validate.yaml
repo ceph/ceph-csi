@@ -43,7 +43,6 @@
           cron: 'H/5 * * * *'
           white-list-target-branches:
             - ci/centos
-          admin-list:
-            - nixpanic
           org-list:
             - ceph
+          allow-whitelist-orgs-as-admins: true
