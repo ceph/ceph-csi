@@ -19,13 +19,18 @@ package cephfs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	klog "k8s.io/klog/v2"
 )
 
 type volumeID string
@@ -35,6 +40,7 @@ func execCommandErr(ctx context.Context, program string, args ...string) error {
 	return err
 }
 
+// nolint:unparam //  todo:program values has to be revisited later
 func execCommandJSON(ctx context.Context, v interface{}, program string, args ...string) error {
 	stdout, _, err := util.ExecCommand(ctx, program, args...)
 	if err != nil {
@@ -69,6 +75,32 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 		}
 	}
 
+	if req.VolumeContentSource != nil {
+		volumeSource := req.VolumeContentSource
+		switch volumeSource.Type.(type) {
+		case *csi.VolumeContentSource_Snapshot:
+			snapshot := req.VolumeContentSource.GetSnapshot()
+			// CSI spec requires returning NOT_FOUND when the volumeSource is missing/incorrect.
+			if snapshot == nil {
+				return status.Error(codes.NotFound, "volume Snapshot cannot be empty")
+			}
+			if snapshot.GetSnapshotId() == "" {
+				return status.Error(codes.NotFound, "volume Snapshot ID cannot be empty")
+			}
+		case *csi.VolumeContentSource_Volume:
+			// CSI spec requires returning NOT_FOUND when the volumeSource is missing/incorrect.
+			vol := req.VolumeContentSource.GetVolume()
+			if vol == nil {
+				return status.Error(codes.NotFound, "volume cannot be empty")
+			}
+			if vol.GetVolumeId() == "" {
+				return status.Error(codes.NotFound, "volume ID cannot be empty")
+			}
+
+		default:
+			return status.Error(codes.InvalidArgument, "unsupported volume data source")
+		}
+	}
 	return nil
 }
 
@@ -96,4 +128,54 @@ func (cs *ControllerServer) validateExpandVolumeRequest(req *csi.ControllerExpan
 	}
 
 	return nil
+}
+
+func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (snap *cephfsSnapshot, err error) {
+	cephfsSnap := &cephfsSnapshot{}
+	cephfsSnap.RequestName = req.GetName()
+	snapOptions := req.GetParameters()
+
+	cephfsSnap.Monitors, cephfsSnap.ClusterID, err = getMonsAndClusterID(ctx, snapOptions)
+	if err != nil {
+		return nil, err
+	}
+	if namePrefix, ok := snapOptions["snapshotNamePrefix"]; ok {
+		cephfsSnap.NamePrefix = namePrefix
+	}
+	return cephfsSnap, nil
+}
+
+func getMonsAndClusterID(ctx context.Context, options map[string]string) (monitors, clusterID string, err error) {
+	var ok bool
+
+	if clusterID, ok = options["clusterID"]; !ok {
+		err = errors.New("clusterID must be set")
+		return
+	}
+
+	if monitors, err = util.Mons(csiConfigFile, clusterID); err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
+		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", clusterID, err)
+		return
+	}
+
+	return
+}
+
+func parseTime(ctx context.Context, createTime string) (*timestamp.Timestamp, error) {
+	tm := &timestamp.Timestamp{}
+	layout := "2006-01-02 15:04:05.000000"
+	// TODO currently parsing of timestamp to time.ANSIC generate from ceph fs is failng
+	var t time.Time
+	t, err := time.Parse(layout, createTime)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to parse time %s %v"), createTime, err)
+		return tm, err
+	}
+	tm, err = ptypes.TimestampProto(t)
+	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed to convert time %s %v"), createTime, err)
+		return tm, err
+	}
+	return tm, nil
 }

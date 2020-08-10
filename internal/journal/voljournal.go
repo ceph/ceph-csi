@@ -195,6 +195,14 @@ func NewCSIVolumeJournalWithNamespace(suffix, ns string) *Config {
 	return j
 }
 
+// NewCSISnapshotJournalWithNamespace returns an instance of CSIJournal for
+// snapshots using a predetermined namespace value.
+func NewCSISnapshotJournalWithNamespace(suffix, ns string) *Config {
+	j := NewCSISnapshotJournal(suffix)
+	j.namespace = ns
+	return j
+}
+
 // GetNameForUUID returns volume name.
 func (cj *Config) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
 	if prefix == "" {

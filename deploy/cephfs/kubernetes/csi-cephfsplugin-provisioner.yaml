@@ -32,7 +32,7 @@ spec:
       serviceAccount: cephfs-csi-provisioner
       containers:
         - name: csi-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v1.4.0
+          image: quay.io/k8scsi/csi-provisioner:v1.6.0
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
@@ -60,6 +60,22 @@ spec:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
           imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+        - name: csi-snapshotter
+          image: quay.io/k8scsi/csi-snapshotter:v2.1.1
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+            - "--timeout=150s"
+            - "--leader-election=true"
+          env:
+            - name: ADDRESS
+              value: unix:///csi/csi-provisioner.sock
+          imagePullPolicy: "IfNotPresent"
+          securityContext:
+            privileged: true
           volumeMounts:
             - name: socket-dir
               mountPath: /csi

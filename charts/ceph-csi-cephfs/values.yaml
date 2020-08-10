@@ -134,7 +134,7 @@ provisioner:
   provisioner:
     image:
       repository: quay.io/k8scsi/csi-provisioner
-      tag: v1.4.0
+      tag: v1.6.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -153,6 +153,13 @@ provisioner:
     image:
       repository: quay.io/k8scsi/csi-resizer
       tag: v0.5.0
+      pullPolicy: IfNotPresent
+    resources: {}
+
+  snapshotter:
+    image:
+      repository: quay.io/k8scsi/csi-snapshotter
+      tag: v2.1.1
       pullPolicy: IfNotPresent
     resources: {}
 
