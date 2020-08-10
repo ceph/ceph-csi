@@ -48,6 +48,14 @@ type ControllerServer struct {
 	OperationLocks *util.OperationLock
 }
 
+const (
+	// maximumSnapshotsOnSubVolume represents the maximum number of snapshots
+	// allowed on a single subvolume.
+	// Kernel client only supports up to 400 snapshots per filesystem
+	// see https://tracker.ceph.com/issues/21420.
+	maximumSnapshotsOnSubVolume = 400
+)
+
 // createBackingVolume creates the backing subvolume and on any error cleans up any created entities.
 func (cs *ControllerServer) createBackingVolume(
 	ctx context.Context,
@@ -543,6 +551,14 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}, nil
 	}
 
+	snaps, err := listSnapshots(ctx, parentVolOptions, cr, volumeID(vid.FsSubvolName))
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if len(snaps) > maximumSnapshotsOnSubVolume {
+		return nil, status.Errorf(codes.ResourceExhausted, "for subvolume %s snaphot count %d reached the maximum %d", vid.FsSubvolName, len(snaps), maximumSnapshotsOnSubVolume)
+	}
 	// Reservation
 	sID, err := reserveSnap(ctx, parentVolOptions, vid.FsSubvolName, cephfsSnap, cr)
 	if err != nil {
