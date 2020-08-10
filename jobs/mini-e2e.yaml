@@ -47,8 +47,6 @@
           cron: 'H/5 * * * *'
           black-list-target-branches:
             - ci/centos
-          admin-list:
-            - nixpanic
           org-list:
             - ceph
 
@@ -91,7 +89,6 @@
           cron: 'H/5 * * * *'
           black-list-target-branches:
             - ci/centos
-          admin-list:
-            - nixpanic
           org-list:
             - ceph
+          allow-whitelist-orgs-as-admins: true
