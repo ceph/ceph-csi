@@ -111,6 +111,13 @@ provisioner:
     enabled: true
     # The port of the container to expose the metrics
     containerPort: 8081
+    # collect mappings metrics from pvc to subvolume
+    mappingmetrics:
+      enabled: false
+      # Timeout for waiting for collecting mapping metrics
+      timeout: 30s
+      # number of goroutine used to collect mapping metrics
+      goroutineNumber: 1
 
     service:
       # Specifies whether a service should be created for the metrics

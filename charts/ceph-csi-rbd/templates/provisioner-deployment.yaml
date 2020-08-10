@@ -181,6 +181,11 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--metricsport={{ .Values.provisioner.httpMetrics.containerPort }}"
             - "--metricspath=/metrics"
+{{- if .Values.provisioner.httpMetrics.mappingmetrics.enabled }}
+            - "--enablemappingmetrics={{ .Values.provisioner.httpMetrics.mappingmetrics.enabled }}"
+            - "--scrapeMetricsTimeout={{ .Values.provisioner.httpMetrics.mappingmetrics.timeout }}"
+            - "--scrapeMetricsJobs={{ .Values.provisioner.httpMetrics.mappingmetrics.goroutineNumber }}"
+{{- end }}
             - "--polltime=60s"
             - "--timeout=3s"
           env:
@@ -190,9 +195,15 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: DRIVER_TYPE
+              value: "rbd"
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- end }}

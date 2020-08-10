@@ -153,6 +153,9 @@ spec:
             - "--metricspath=/metrics"
             - "--polltime=60s"
             - "--timeout=3s"
+            - "--enablemappingmetrics=true"
+            - "--scrapeMetricsTimeout=60s"
+            - "--scrapeMetricsJobs=1"
           env:
             - name: CSI_ENDPOINT
               value: unix:///csi/csi-provisioner.sock
@@ -160,7 +163,13 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: DRIVER_TYPE
+              value: "cephfs"
           volumeMounts:
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
             - name: socket-dir
               mountPath: /csi
           imagePullPolicy: "IfNotPresent"
