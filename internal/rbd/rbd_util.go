@@ -973,7 +973,7 @@ func (rv *rbdVolume) getImageInfo() error {
 }
 
 // GetImageInfo general func used by other package.
-func GetImageInfo(ctx context.Context, monitors string, cr *util.Credentials, poolName, imageName string, radosNamespace string) error {
+func GetImageInfo(ctx context.Context, monitors string, cr *util.Credentials, poolName, imageName, radosNamespace string) error {
 	var rbdVol = &rbdVolume{Pool: poolName, RbdImageName: imageName, Monitors: monitors, RadosNamespace: radosNamespace}
 	defer rbdVol.Destroy()
 	err := rbdVol.Connect(cr)

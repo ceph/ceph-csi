@@ -97,9 +97,9 @@ func Run(conf *util.Config) {
 		if err := util.WriteCephConfig(); err != nil {
 			util.FatalLogMsg("failed to write ceph configuration file (%v)", err)
 		}
-		go recordMapping(conf.PollTime, conf.PoolTimeout, csiConn, conf.ScrapeMetricsTimeout, conf.ScrapeMetricsGoroutines)
+		go recordMapping(conf.PollTime, conf.PollTimeout, csiConn, conf.ScrapeMetricsTimeout, conf.ScrapeMetricsGoroutines)
 	}
-	go recordLiveness(conf.Endpoint, conf.DriverName, conf.PollTime, conf.PoolTimeout)
+	go recordLiveness(conf.Endpoint, conf.DriverName, conf.PollTime, conf.PollTimeout)
 
 	// start up prometheus endpoint
 	util.StartMetricsServer(conf)

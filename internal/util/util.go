@@ -84,7 +84,7 @@ type Config struct {
 	MetricsPort             int           // TCP port for liveness/grpc metrics requests
 	ScrapeMetricsGoroutines int           // number of goroutines to collect mapping metrics
 	PollTime                time.Duration // time interval in seconds between each poll
-	PoolTimeout             time.Duration // probe timeout in seconds
+	PollTimeout             time.Duration // probe timeout in seconds
 	ScrapeMetricsTimeout    time.Duration // scrape metrics timeout in seconds
 
 	EnableGRPCMetrics    bool // option to enable grpc metrics
