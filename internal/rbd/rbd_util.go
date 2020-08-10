@@ -671,7 +671,7 @@ func getMonsAndClusterID(ctx context.Context, options map[string]string) (monito
 		return
 	}
 
-	if monitors, err = util.Mons(csiConfigFile, clusterID); err != nil {
+	if monitors, err = util.Mons(util.CsiConfigFile, clusterID); err != nil {
 		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
 		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", clusterID, err)
 		return
