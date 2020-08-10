@@ -4,6 +4,7 @@
   - [Introduction](#introduction)
   - [Install Kubernetes](#install-kubernetes)
   - [Test parameters](#test-parameters)
+  - [E2E for snapshot](#e2e-for-snapshot)
   - [Running E2E](#running-e2e)
 
 ## Introduction
@@ -87,6 +88,47 @@ are available while running tests:
 | kubeconfig        | Path to kubeconfig containing embedded authinfo (default: $HOME/.kube/config) |
 | timeout           | Panic test binary after duration d (default 0, timeout disabled)              |
 | v                 | Verbose: print additional output                                              |
+
+## E2E for snapshot
+
+After the support for snapshot/clone has been added to ceph-csi,
+you need to follow these steps before running e2e.
+Please note that the snapshot operation works only if the Kubernetes version
+is greater than or equal to 1.17.0.
+
+- Delete Alpha snapshot CRD created by ceph-csi in rook.
+  - Check if you have any `v1alpha1` CRD created in our Kubernetes cluster
+
+      ```bash
+      [$]kubectl get crd volumesnapshotclasses.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+        - name: v1alpha1
+        - v1alpha1
+      [$]kubectl get crd volumesnapshotcontents.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+        - name: v1alpha1
+        - v1alpha1
+      [$]kubectl get crd volumesnapshots.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+        - name: v1alpha1
+        - v1alpha1
+      ```
+
+  - If you have Alpha CRD, delete it as from Kubernetes 1.17.0+ the snapshot
+    should be `v1beta1`
+
+    ```console
+    $./install-snapshot.sh delete-crd
+    ```
+
+- Install snapshot controller and Beta snapshot CRD
+
+    ```console
+    $./install-snapshot.sh install
+    ```
+
+Once you are done running e2e please perform the cleanup by running following:
+
+```console
+    $./install-snapshot.sh cleanup
+```
 
 ## Running E2E
 
