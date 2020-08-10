@@ -531,8 +531,9 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	rbdSnap.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdSnap.ClusterID
 
-	rbdSnap.Monitors, _, err = getMonsAndClusterID(ctx, options)
+	rbdSnap.Monitors, _, err = util.GetMonsAndClusterID(options)
 	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
 		return err
 	}
 
@@ -593,8 +594,9 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	rbdVol.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdVol.ClusterID
 
-	rbdVol.Monitors, _, err = getMonsAndClusterID(ctx, options)
+	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(options)
 	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
 		return rbdVol, err
 	}
 
@@ -663,23 +665,6 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	return rbdVol, err
 }
 
-func getMonsAndClusterID(ctx context.Context, options map[string]string) (monitors, clusterID string, err error) {
-	var ok bool
-
-	if clusterID, ok = options["clusterID"]; !ok {
-		err = errors.New("clusterID must be set")
-		return
-	}
-
-	if monitors, err = util.Mons(util.CsiConfigFile, clusterID); err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
-		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", clusterID, err)
-		return
-	}
-
-	return
-}
-
 func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[string]string, disableInUseChecks bool) (*rbdVolume, error) {
 	var (
 		ok         bool
@@ -699,8 +684,9 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		rbdVol.NamePrefix = namePrefix
 	}
 
-	rbdVol.Monitors, rbdVol.ClusterID, err = getMonsAndClusterID(ctx, volOptions)
+	rbdVol.Monitors, rbdVol.ClusterID, err = util.GetMonsAndClusterID(volOptions)
 	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
 		return nil, err
 	}
 
@@ -757,8 +743,9 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 	rbdSnap.Pool = rbdVol.Pool
 	rbdSnap.JournalPool = rbdVol.JournalPool
 
-	rbdSnap.Monitors, rbdSnap.ClusterID, err = getMonsAndClusterID(ctx, snapOptions)
+	rbdSnap.Monitors, rbdSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
 	if err != nil {
+		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
 		return nil, err
 	}
 
