@@ -449,13 +449,13 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	sourceVolID := req.GetSourceVolumeId()
 	// Existence and conflict checks
 	if acquired := cs.SnapshotLocks.TryAcquire(requestName); !acquired {
-		klog.Errorf(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), requestName)
+		util.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, requestName)
 		return nil, status.Errorf(codes.Aborted, util.SnapshotOperationAlreadyExistsFmt, requestName)
 	}
 	defer cs.SnapshotLocks.Release(requestName)
 
 	if err = cs.OperationLocks.GetSnapshotCreateLock(sourceVolID); err != nil {
-		klog.Error(util.Log(ctx, err.Error()))
+		util.ErrorLog(ctx, err.Error())
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
 
@@ -486,7 +486,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// lock out parallel snapshot create operations
 	if acquired := cs.VolumeLocks.TryAcquire(sourceVolID); !acquired {
-		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), sourceVolID)
+		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, sourceVolID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, sourceVolID)
 	}
 	defer cs.VolumeLocks.Release(sourceVolID)
