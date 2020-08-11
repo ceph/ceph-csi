@@ -130,7 +130,7 @@ func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *u
 // nolint:gocognit:gocyclo // TODO: reduce complexity
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
-		klog.Errorf(util.Log(ctx, "CreateVolumeRequest validation failed: %v"), err)
+		util.ErrorLog(ctx, "CreateVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
 
@@ -140,7 +140,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to retrieve admin credentials: %v"), err)
+		util.ErrorLog(ctx, "failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
@@ -154,7 +154,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	volOptions, err := newVolumeOptions(ctx, requestName, req, secret)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "validation and extraction of volume options failed: %v"), err)
+		util.ErrorLog(ctx, "validation and extraction of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -185,7 +185,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			err = resizeVolume(ctx, volOptions, cr, volumeID(vID.FsSubvolName), volOptions.Size)
 			if err != nil {
 				if purgeErr := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, false); err != nil {
-					klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), requestName, purgeErr)
+					util.ErrorLog(ctx, "failed to delete volume %s: %v", requestName, purgeErr)
 					// All errors other than ErrVolumeNotFound should return an error back to the caller
 					if !errors.Is(purgeErr, ErrVolumeNotFound) {
 						return nil, status.Error(codes.Internal, purgeErr.Error())
@@ -196,7 +196,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 					klog.Warningf(util.Log(ctx, "failed undoing reservation of volume: %s (%s)"),
 						requestName, errUndo)
 				}
-				klog.Errorf(util.Log(ctx, "failed to expand volume %s: %v"), volumeID(vID.FsSubvolName), err)
+				util.ErrorLog(ctx, "failed to expand volume %s: %v", volumeID(vID.FsSubvolName), err)
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 		}
