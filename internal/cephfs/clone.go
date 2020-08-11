@@ -162,7 +162,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 		if err != nil {
 			if !errors.Is(err, ErrCloneInProgress) {
 				if dErr := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, true); dErr != nil {
-					klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), vID.FsSubvolName, dErr)
+					util.ErrorLog(ctx, "failed to delete volume %s: %v", vID.FsSubvolName, dErr)
 				}
 			}
 		}
@@ -183,7 +183,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 		// in the new cloned volume too. Till then we are explicitly making the size set
 		err = resizeVolume(ctx, volOptions, cr, volumeID(vID.FsSubvolName), volOptions.Size)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to expand volume %s with error: %v"), vID.FsSubvolName, err)
+			util.ErrorLog(ctx, "failed to expand volume %s with error: %v", vID.FsSubvolName, err)
 			return err
 		}
 	}
