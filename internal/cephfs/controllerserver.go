@@ -269,7 +269,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 // DeleteVolume deletes the volume in backend and its reservation.
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(); err != nil {
-		klog.Errorf(util.Log(ctx, "DeleteVolumeRequest validation failed: %v"), err)
+		util.ErrorLog(ctx, "DeleteVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
 
@@ -278,14 +278,14 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	// lock out parallel delete operations
 	if acquired := cs.VolumeLocks.TryAcquire(string(volID)); !acquired {
-		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, string(volID))
 	}
 	defer cs.VolumeLocks.Release(string(volID))
 
 	// lock out volumeID for clone and expand operation
 	if err := cs.OperationLocks.GetDeleteLock(req.GetVolumeId()); err != nil {
-		klog.Error(util.Log(ctx, err.Error()))
+		util.ErrorLog(ctx, err.Error())
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
 	defer cs.OperationLocks.ReleaseDeleteLock(req.GetVolumeId())
@@ -306,7 +306,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 
-		klog.Errorf(util.Log(ctx, "Error returned from newVolumeOptionsFromVolID: %v"), err)
+		util.ErrorLog(ctx, "Error returned from newVolumeOptionsFromVolID: %v", err)
 
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
 		if !errors.Is(err, ErrVolumeNotFound) {
@@ -337,13 +337,13 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// Deleting a volume requires admin credentials
 	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to retrieve admin credentials: %v"), err)
+		util.ErrorLog(ctx, "failed to retrieve admin credentials: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
 
 	if err = purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, false); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), volID, err)
+		util.ErrorLog(ctx, "failed to delete volume %s: %v", volID, err)
 		// All errors other than ErrVolumeNotFound should return an error back to the caller
 		if !errors.Is(err, ErrVolumeNotFound) {
 			return nil, status.Error(codes.Internal, err.Error())
