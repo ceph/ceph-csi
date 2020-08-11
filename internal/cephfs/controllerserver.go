@@ -29,7 +29,6 @@ import (
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	klog "k8s.io/klog/v2"
 )
 
 // ControllerServer struct of CEPH CSI driver with supported methods of CSI
@@ -465,7 +464,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	parentVolOptions, vid, err := newVolumeOptionsFromVolID(ctx, sourceVolID, nil, req.GetSecrets())
 	if err != nil {
 		if errors.Is(err, util.ErrPoolNotFound) {
-			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), sourceVolID, err)
+			util.WarningLog(ctx, "failed to get backend volume for %s: %v", sourceVolID, err)
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
 
@@ -513,7 +512,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		if sid != nil {
 			errDefer := undoSnapReservation(ctx, parentVolOptions, *sid, snapName, cr)
 			if errDefer != nil {
-				klog.Warningf(util.Log(ctx, "failed undoing reservation of snapshot: %s (%s)"),
+				util.WarningLog(ctx, "failed undoing reservation of snapshot: %s (%s)",
 					requestName, errDefer)
 			}
 		}
@@ -527,7 +526,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			err = protectSnapshot(ctx, parentVolOptions, cr, volumeID(sid.FsSnapshotName), volumeID(vid.FsSubvolName))
 			if err != nil {
 				protected = false
-				klog.Warningf(util.Log(ctx, "failed to protect snapshot of snapshot: %s (%s)"),
+				util.WarningLog(ctx, "failed to protect snapshot of snapshot: %s (%s)",
 					sid.FsSnapshotName, err)
 			}
 		}
@@ -552,7 +551,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		if err != nil {
 			errDefer := undoSnapReservation(ctx, parentVolOptions, *sID, snapName, cr)
 			if errDefer != nil {
-				klog.Warningf(util.Log(ctx, "failed undoing reservation of snapshot: %s (%s)"),
+				util.WarningLog(ctx, "failed undoing reservation of snapshot: %s (%s)",
 					requestName, errDefer)
 			}
 		}
@@ -661,7 +660,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		// if error is ErrPoolNotFound, the pool is already deleted we dont
 		// need to worry about deleting snapshot or omap data, return success
 		if errors.Is(err, util.ErrPoolNotFound) {
-			klog.Warningf(util.Log(ctx, "failed to get backend snapshot for %s: %v"), snapshotID, err)
+			util.WarningLog(ctx, "failed to get backend snapshot for %s: %v", snapshotID, err)
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
 
