@@ -1,5 +1,10 @@
 ---
 pull_request_rules:
+  - name: rebase on request
+    conditions: []
+    actions:
+      rebase:
+        bot_account: ceph-csi-bot
   - name: remove outdated approvals
     conditions:
       - base=master
@@ -31,6 +36,7 @@ pull_request_rules:
         method: rebase
         rebase_fallback: merge
         strict: smart
+        bot_account: ceph-csi-bot
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: automatic merge PR having ready-to-merge label
@@ -53,6 +59,7 @@ pull_request_rules:
         method: rebase
         rebase_fallback: merge
         strict: smart
+        bot_account: ceph-csi-bot
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release v1.2.0 branch
@@ -77,6 +84,7 @@ pull_request_rules:
         method: rebase
         rebase_fallback: merge
         strict: smart
+        bot_account: ceph-csi-bot
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v2.0 branch
@@ -101,6 +109,7 @@ pull_request_rules:
         method: rebase
         rebase_fallback: merge
         strict: smart
+        bot_account: ceph-csi-bot
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v2.1 branch
@@ -125,6 +134,7 @@ pull_request_rules:
         method: rebase
         rebase_fallback: merge
         strict: smart
+        bot_account: ceph-csi-bot
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v3.0 branch
@@ -149,6 +159,7 @@ pull_request_rules:
         method: rebase
         rebase_fallback: merge
         strict: smart
+        bot_account: ceph-csi-bot
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v3.1 branch
@@ -206,6 +217,7 @@ pull_request_rules:
         method: rebase
         rebase_fallback: merge
         strict: smart
+        bot_account: ceph-csi-bot
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: automatic merge PR having ready-to-merge label on ci/centos
@@ -224,5 +236,6 @@ pull_request_rules:
         method: rebase
         rebase_fallback: merge
         strict: smart
+        bot_account: ceph-csi-bot
       dismiss_reviews: {}
       delete_head_branch: {}
