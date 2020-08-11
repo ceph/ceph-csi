@@ -380,7 +380,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 // ControllerExpandVolume expands CephFS Volumes on demand based on resizer request.
 func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	if err := cs.validateExpandVolumeRequest(req); err != nil {
-		klog.Errorf(util.Log(ctx, "ControllerExpandVolumeRequest validation failed: %v"), err)
+		util.ErrorLog(ctx, "ControllerExpandVolumeRequest validation failed: %v", err)
 		return nil, err
 	}
 
@@ -389,14 +389,14 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	// lock out parallel delete operations
 	if acquired := cs.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer cs.VolumeLocks.Release(volID)
 
 	// lock out volumeID for clone and delete operation
 	if err := cs.OperationLocks.GetExpandLock(volID); err != nil {
-		klog.Error(util.Log(ctx, err.Error()))
+		util.ErrorLog(ctx, err.Error())
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
 	defer cs.OperationLocks.ReleaseExpandLock(volID)
@@ -410,14 +410,14 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	volOptions, volIdentifier, err := newVolumeOptionsFromVolID(ctx, volID, nil, secret)
 
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "validation and extraction of volume options failed: %v"), err)
+		util.ErrorLog(ctx, "validation and extraction of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	RoundOffSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
 
 	if err = resizeVolume(ctx, volOptions, cr, volumeID(volIdentifier.FsSubvolName), RoundOffSize); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to expand volume %s: %v"), volumeID(volIdentifier.FsSubvolName), err)
+		util.ErrorLog(ctx, "failed to expand volume %s: %v", volumeID(volIdentifier.FsSubvolName), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
