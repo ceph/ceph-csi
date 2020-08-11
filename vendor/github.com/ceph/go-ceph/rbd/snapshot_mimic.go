@@ -12,8 +12,9 @@ package rbd
 import "C"
 
 import (
-	"bytes"
 	"unsafe"
+
+	"github.com/ceph/go-ceph/internal/cutil"
 )
 
 // GetParentInfo looks for the parent of the image and stores the pool, name
@@ -40,7 +41,7 @@ func (image *Image) GetParentInfo(p_pool, p_name, p_snapname []byte) error {
 	if ret == 0 {
 		return nil
 	} else {
-		return RBDError(ret)
+		return rbdError(ret)
 	}
 }
 
@@ -66,7 +67,7 @@ func (image *Image) ListChildren() (pools []string, images []string, err error) 
 		return nil, nil, nil
 	}
 	if ret < 0 && ret != -C.ERANGE {
-		return nil, nil, RBDError(ret)
+		return nil, nil, rbdError(ret)
 	}
 
 	pools_buf := make([]byte, c_pools_len)
@@ -78,24 +79,10 @@ func (image *Image) ListChildren() (pools []string, images []string, err error) 
 		(*C.char)(unsafe.Pointer(&images_buf[0])),
 		&c_images_len)
 	if ret < 0 {
-		return nil, nil, RBDError(ret)
+		return nil, nil, rbdError(ret)
 	}
 
-	tmp := bytes.Split(pools_buf[:c_pools_len-1], []byte{0})
-	for _, s := range tmp {
-		if len(s) > 0 {
-			name := C.GoString((*C.char)(unsafe.Pointer(&s[0])))
-			pools = append(pools, name)
-		}
-	}
-
-	tmp = bytes.Split(images_buf[:c_images_len-1], []byte{0})
-	for _, s := range tmp {
-		if len(s) > 0 {
-			name := C.GoString((*C.char)(unsafe.Pointer(&s[0])))
-			images = append(images, name)
-		}
-	}
-
+	pools = cutil.SplitSparseBuffer(pools_buf[:c_pools_len])
+	images = cutil.SplitSparseBuffer(images_buf[:c_images_len])
 	return pools, images, nil
 }

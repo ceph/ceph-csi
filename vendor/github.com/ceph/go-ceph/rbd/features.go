@@ -152,7 +152,7 @@ func (image *Image) GetFeatures() (features uint64, err error) {
 	}
 
 	if ret := C.rbd_get_features(image.image, (*C.uint64_t)(&features)); ret < 0 {
-		return 0, RBDError(ret)
+		return 0, rbdError(ret)
 	}
 
 	return features, nil

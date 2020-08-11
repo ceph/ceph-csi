@@ -7,7 +7,7 @@ package rbd
 #include <stdlib.h>
 #include <rbd/librbd.h>
 
-extern int callDiffIterateCallback(uint64_t ofs, size_t len, int exists, int index);
+extern int diffIterateCallback(uint64_t, size_t, int, void *);
 
 // cgo is having trouble converting the callback from the librbd header
 // to a unsafe.Pointer. This shim exists solely to help it along.
@@ -16,9 +16,8 @@ static inline int wrap_rbd_diff_iterate2(
 			const char *fromsnapname,
 			uint64_t ofs, uint64_t len,
 			uint8_t include_parent, uint8_t whole_object,
-			void *cb,
-			uintptr_t arg) {
-	return rbd_diff_iterate2(image, fromsnapname, ofs, len, include_parent, whole_object, cb, (void*)arg);
+			uintptr_t index) {
+	return rbd_diff_iterate2(image, fromsnapname, ofs, len, include_parent, whole_object, diffIterateCallback, (void*)index);
 }
 */
 import "C"
@@ -99,7 +98,7 @@ func (image *Image) DiffIterate(config DiffIterateConfig) error {
 		return err
 	}
 	if config.Callback == nil {
-		return RBDError(C.EINVAL)
+		return rbdError(C.EINVAL)
 	}
 
 	var cSnapName *C.char
@@ -118,7 +117,6 @@ func (image *Image) DiffIterate(config DiffIterateConfig) error {
 		C.uint64_t(config.Length),
 		C.uint8_t(config.IncludeParent),
 		C.uint8_t(config.WholeObject),
-		C.callDiffIterateCallback,
 		C.uintptr_t(cbIndex))
 
 	return getError(ret)
@@ -126,9 +124,9 @@ func (image *Image) DiffIterate(config DiffIterateConfig) error {
 
 //export diffIterateCallback
 func diffIterateCallback(
-	offset C.uint64_t, length C.size_t, exists, index C.int) C.int {
+	offset C.uint64_t, length C.size_t, exists C.int, index unsafe.Pointer) C.int {
 
-	v := diffIterateCallbacks.Lookup(int(index))
+	v := diffIterateCallbacks.Lookup(int(uintptr(index)))
 	config := v.(DiffIterateConfig)
 	return C.int(config.Callback(
 		uint64(offset), uint64(length), int(exists), config.Data))
