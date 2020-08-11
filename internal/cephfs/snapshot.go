@@ -131,7 +131,7 @@ func getSnapshotInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Cr
 		if strings.Contains(err.Error(), ErrSnapNotFound.Error()) {
 			return snapshotInfo{}, err
 		}
-		klog.Errorf(util.Log(ctx, "failed to get subvolume snapshot info %s %s(%s) in fs %s"), string(snapID), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to get subvolume snapshot info %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
 		return snapshotInfo{}, err
 	}
 	return snap, nil
