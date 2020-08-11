@@ -206,13 +206,13 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	volID := req.GetVolumeId()
 
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
 
 	if err := util.CreateMountPoint(targetPath); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to create mount point at %s: %v"), targetPath, err)
+		util.ErrorLog(ctx, "failed to create mount point at %s: %v", targetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -227,7 +227,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	isMnt, err := util.IsMountPoint(targetPath)
 
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "stat failed: %v"), err)
+		util.ErrorLog(ctx, "stat failed: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -239,7 +239,7 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	// It's not, mount now
 
 	if err = bindMount(ctx, req.GetStagingTargetPath(), req.GetTargetPath(), req.GetReadonly(), mountOptions); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to bind-mount volume %s: %v"), volID, err)
+		util.ErrorLog(ctx, "failed to bind-mount volume %s: %v", volID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
