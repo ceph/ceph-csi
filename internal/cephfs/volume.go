@@ -225,7 +225,7 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 		}
 		// Incase the error is other than invalid command return error to the caller.
 		if !strings.Contains(err.Error(), ErrInvalidCommand.Error()) {
-			klog.Errorf(util.Log(ctx, "failed to resize subvolume %s(%s) in fs %s"), string(volID), err, volOptions.FsName)
+			util.ErrorLog(ctx, "failed to resize subvolume %s(%s) in fs %s", string(volID), err, volOptions.FsName)
 			return err
 		}
 	}
