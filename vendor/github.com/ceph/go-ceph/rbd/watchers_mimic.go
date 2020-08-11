@@ -4,12 +4,30 @@
 
 package rbd
 
-// #cgo LDFLAGS: -lrbd
-// #include <errno.h>
-// #include <rbd/librbd.h>
+/*
+#cgo LDFLAGS: -lrbd
+#include <rbd/librbd.h>
+
+extern void imageWatchCallback(void *);
+
+// cgo has trouble converting the types of the callback and data arg defined in
+// librbd header. It wants the callback function to be a byte pointer and
+// the arg to be a pointer, which is pretty much the opposite of what we
+// actually want. This shim exists to help coerce the auto-type-conversion
+// to do the right thing for us.
+static inline int wrap_rbd_update_watch(
+			rbd_image_t image,
+			uint64_t *handle,
+			uintptr_t index) {
+	return rbd_update_watch(image, handle, imageWatchCallback, (void*)index);
+}
+*/
 import "C"
 
 import (
+	"unsafe"
+
+	"github.com/ceph/go-ceph/internal/callbacks"
 	"github.com/ceph/go-ceph/internal/retry"
 )
 
@@ -58,4 +76,77 @@ func (image *Image) ListWatchers() ([]ImageWatcher, error) {
 		imageWatchers[i].Cookie = uint64(watcher.cookie)
 	}
 	return imageWatchers, nil
+}
+
+// watchCallbacks tracks the active callbacks for rbd watches
+var watchCallbacks = callbacks.New()
+
+// WatchCallback defines the function signature needed for the UpdateWatch
+// callback.
+type WatchCallback func(interface{})
+
+type watchCallbackCtx struct {
+	callback WatchCallback
+	data     interface{}
+}
+
+// Watch represents an ongoing image metadata watch.
+type Watch struct {
+	image   *Image
+	wcc     watchCallbackCtx
+	handle  C.uint64_t
+	cbIndex int
+}
+
+// UpdateWatch updates the image object to watch metadata changes to the
+// image, returning a Watch object.
+//
+// Implements:
+//  int rbd_update_watch(rbd_image_t image, uint64_t *handle,
+//                       rbd_update_callback_t watch_cb, void *arg);
+func (image *Image) UpdateWatch(cb WatchCallback, data interface{}) (*Watch, error) {
+	if err := image.validate(imageIsOpen); err != nil {
+		return nil, err
+	}
+	wcc := watchCallbackCtx{
+		callback: cb,
+		data:     data,
+	}
+	w := &Watch{
+		image:   image,
+		wcc:     wcc,
+		cbIndex: watchCallbacks.Add(wcc),
+	}
+
+	ret := C.wrap_rbd_update_watch(
+		image.image,
+		&w.handle,
+		C.uintptr_t(w.cbIndex))
+	if ret != 0 {
+		return nil, getError(ret)
+	}
+	return w, nil
+}
+
+// Unwatch un-registers the image watch.
+//
+// Implements:
+//  int rbd_update_unwatch(rbd_image_t image, uint64_t handle);
+func (w *Watch) Unwatch() error {
+	if w.image == nil {
+		return ErrImageNotOpen
+	}
+	if err := w.image.validate(imageIsOpen); err != nil {
+		return err
+	}
+	ret := C.rbd_update_unwatch(w.image.image, w.handle)
+	watchCallbacks.Remove(w.cbIndex)
+	return getError(ret)
+}
+
+//export imageWatchCallback
+func imageWatchCallback(index unsafe.Pointer) {
+	v := watchCallbacks.Lookup(int(uintptr(index)))
+	wcc := v.(watchCallbackCtx)
+	wcc.callback(wcc.data)
 }
