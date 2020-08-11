@@ -29,7 +29,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	klog "k8s.io/klog/v2"
 )
 
 // NodeServer struct of ceph CSI driver with supported methods of CSI
@@ -288,7 +287,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	volID := req.GetVolumeId()
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
