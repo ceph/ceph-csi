@@ -29,7 +29,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	klog "k8s.io/klog/v2"
 )
 
 type volumeID string
@@ -136,7 +135,7 @@ func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (sn
 
 	cephfsSnap.Monitors, cephfsSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
+		util.ErrorLog(ctx, "failed getting mons (%s)", err)
 		return nil, err
 	}
 	if namePrefix, ok := snapOptions["snapshotNamePrefix"]; ok {
