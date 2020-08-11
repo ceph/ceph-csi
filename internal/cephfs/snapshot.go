@@ -195,7 +195,7 @@ func unprotectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.
 		if strings.Contains(err.Error(), ErrSnapProtectionExist.Error()) {
 			return nil
 		}
-		klog.Errorf(util.Log(ctx, "failed to unprotect subvolume snapshot %s %s(%s) in fs %s"), string(snapID), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to unprotect subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
 		return err
 	}
 	return nil
