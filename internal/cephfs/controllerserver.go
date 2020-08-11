@@ -629,7 +629,7 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 // snapshot metadata from store.
 func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
-		klog.Errorf(util.Log(ctx, "invalid delete snapshot req: %v"), protosanitizer.StripSecrets(req))
+		util.ErrorLog(ctx, "invalid delete snapshot req: %v", protosanitizer.StripSecrets(req))
 		return nil, err
 	}
 
@@ -644,14 +644,14 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	if acquired := cs.SnapshotLocks.TryAcquire(snapshotID); !acquired {
-		klog.Errorf(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), snapshotID)
+		util.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, snapshotID)
 		return nil, status.Errorf(codes.Aborted, util.SnapshotOperationAlreadyExistsFmt, snapshotID)
 	}
 	defer cs.SnapshotLocks.Release(snapshotID)
 
 	// lock out snapshotID for restore operation
 	if err = cs.OperationLocks.GetDeleteLock(snapshotID); err != nil {
-		klog.Error(util.Log(ctx, err.Error()))
+		util.ErrorLog(ctx, err.Error())
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
 	defer cs.OperationLocks.ReleaseDeleteLock(snapshotID)
@@ -674,7 +674,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		if errors.Is(err, ErrSnapNotFound) {
 			err = undoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
 			if err != nil {
-				klog.Errorf(util.Log(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)"),
+				util.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
 					sid.FsSubvolName, sid.FsSnapshotName, err)
 				return nil, status.Error(codes.Internal, err.Error())
 			}
@@ -686,7 +686,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	// safeguard against parallel create or delete requests against the same
 	// name
 	if acquired := cs.SnapshotLocks.TryAcquire(sid.RequestName); !acquired {
-		klog.Errorf(util.Log(ctx, util.SnapshotOperationAlreadyExistsFmt), sid.RequestName)
+		util.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, sid.RequestName)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, sid.RequestName)
 	}
 	defer cs.SnapshotLocks.Release(sid.RequestName)
@@ -706,7 +706,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 	err = undoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)"),
+		util.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
 			sid.RequestName, sid.FsSnapshotName, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
