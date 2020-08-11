@@ -64,6 +64,12 @@ func ErrorLogMsg(message string, args ...interface{}) {
 	klog.ErrorDepth(1, logMessage)
 }
 
+// ErrorLog helps in logging errors with context.
+func ErrorLog(ctx context.Context, message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(Log(ctx, message), args...)
+	klog.ErrorDepth(1, logMessage)
+}
+
 // WarningLog helps in logging warnings.
 func WarningLog(message string, args ...interface{}) {
 	logMessage := fmt.Sprintf(message, args...)
