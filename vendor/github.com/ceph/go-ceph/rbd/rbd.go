@@ -11,13 +11,14 @@ package rbd
 import "C"
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"time"
 	"unsafe"
 
+	"github.com/ceph/go-ceph/internal/cutil"
 	"github.com/ceph/go-ceph/internal/retry"
+	ts "github.com/ceph/go-ceph/internal/timespec"
 	"github.com/ceph/go-ceph/rados"
 )
 
@@ -45,6 +46,9 @@ const (
 	NoSnapshot = ""
 )
 
+// Timespec is a public type for the internal C 'struct timespec'
+type Timespec ts.Timespec
+
 // ImageInfo represents the status information for an image.
 type ImageInfo struct {
 	Size              uint64
@@ -52,8 +56,6 @@ type ImageInfo struct {
 	Num_objs          uint64
 	Order             int
 	Block_name_prefix string
-	Parent_pool       int64
-	Parent_name       string
 }
 
 // SnapInfo represents the status information for a snapshot.
@@ -89,18 +91,6 @@ type TrashInfo struct {
 	Name             string    // Original name of trashed RBD.
 	DeletionTime     time.Time // Date / time at which the RBD was moved to the trash.
 	DefermentEndTime time.Time // Date / time after which the trashed RBD may be permanently deleted.
-}
-
-//
-func split(buf []byte) (values []string) {
-	tmp := bytes.Split(buf[:len(buf)-1], []byte{0})
-	for _, s := range tmp {
-		if len(s) > 0 {
-			go_s := C.GoString((*C.char)(unsafe.Pointer(&s[0])))
-			values = append(values, go_s)
-		}
-	}
-	return values
 }
 
 // cephIoctx returns a ceph rados_ioctx_t given a go-ceph rados IOContext.
@@ -178,7 +168,7 @@ func Create(ioctx *rados.IOContext, name string, size uint64, order int,
 	}
 
 	if ret < 0 {
-		return nil, RBDError(ret)
+		return nil, rbdError(ret)
 	}
 
 	return &Image{
@@ -204,7 +194,7 @@ func Create2(ioctx *rados.IOContext, name string, size uint64, features uint64,
 	ret = C.rbd_create2(cephIoctx(ioctx), c_name,
 		C.uint64_t(size), C.uint64_t(features), &c_order)
 	if ret < 0 {
-		return nil, RBDError(ret)
+		return nil, rbdError(ret)
 	}
 
 	return &Image{
@@ -233,7 +223,7 @@ func Create3(ioctx *rados.IOContext, name string, size uint64, features uint64,
 		C.uint64_t(size), C.uint64_t(features), &c_order,
 		C.uint64_t(stripe_unit), C.uint64_t(stripe_count))
 	if ret < 0 {
-		return nil, RBDError(ret)
+		return nil, rbdError(ret)
 	}
 
 	return &Image{
@@ -267,7 +257,7 @@ func (image *Image) Clone(snapname string, c_ioctx *rados.IOContext, c_name stri
 		cephIoctx(c_ioctx),
 		c_c_name, C.uint64_t(features), &c_order)
 	if ret < 0 {
-		return nil, RBDError(ret)
+		return nil, rbdError(ret)
 	}
 
 	return &Image{
@@ -316,7 +306,7 @@ func (image *Image) Rename(destname string) error {
 	defer C.free(unsafe.Pointer(c_srcname))
 	defer C.free(unsafe.Pointer(c_destname))
 
-	err := RBDError(C.rbd_rename(cephIoctx(image.ioctx),
+	err := rbdError(C.rbd_rename(cephIoctx(image.ioctx),
 		c_srcname, c_destname))
 	if err == 0 {
 		image.name = destname
@@ -377,7 +367,7 @@ func (image *Image) Close() error {
 	}
 
 	if ret := C.rbd_close(image.image); ret != 0 {
-		return RBDError(ret)
+		return rbdError(ret)
 	}
 
 	image.image = nil
@@ -408,7 +398,7 @@ func (image *Image) Stat() (info *ImageInfo, err error) {
 	var c_stat C.rbd_image_info_t
 
 	if ret := C.rbd_stat(image.image, &c_stat, C.size_t(unsafe.Sizeof(info))); ret < 0 {
-		return info, RBDError(ret)
+		return info, rbdError(ret)
 	}
 
 	return &ImageInfo{
@@ -416,9 +406,7 @@ func (image *Image) Stat() (info *ImageInfo, err error) {
 		Obj_size:          uint64(c_stat.obj_size),
 		Num_objs:          uint64(c_stat.num_objs),
 		Order:             int(c_stat.order),
-		Block_name_prefix: C.GoString((*C.char)(&c_stat.block_name_prefix[0])),
-		Parent_pool:       int64(c_stat.parent_pool),
-		Parent_name:       C.GoString((*C.char)(&c_stat.parent_name[0]))}, nil
+		Block_name_prefix: C.GoString((*C.char)(&c_stat.block_name_prefix[0]))}, nil
 }
 
 // IsOldFormat returns true if the rbd image uses the old format.
@@ -434,7 +422,7 @@ func (image *Image) IsOldFormat() (old_format bool, err error) {
 	ret := C.rbd_get_old_format(image.image,
 		&c_old_format)
 	if ret < 0 {
-		return false, RBDError(ret)
+		return false, rbdError(ret)
 	}
 
 	return c_old_format != 0, nil
@@ -450,7 +438,7 @@ func (image *Image) GetSize() (size uint64, err error) {
 	}
 
 	if ret := C.rbd_get_size(image.image, (*C.uint64_t)(&size)); ret < 0 {
-		return 0, RBDError(ret)
+		return 0, rbdError(ret)
 	}
 
 	return size, nil
@@ -466,7 +454,7 @@ func (image *Image) GetStripeUnit() (stripe_unit uint64, err error) {
 	}
 
 	if ret := C.rbd_get_stripe_unit(image.image, (*C.uint64_t)(&stripe_unit)); ret < 0 {
-		return 0, RBDError(ret)
+		return 0, rbdError(ret)
 	}
 
 	return stripe_unit, nil
@@ -482,7 +470,7 @@ func (image *Image) GetStripeCount() (stripe_count uint64, err error) {
 	}
 
 	if ret := C.rbd_get_stripe_count(image.image, (*C.uint64_t)(&stripe_count)); ret < 0 {
-		return 0, RBDError(ret)
+		return 0, rbdError(ret)
 	}
 
 	return stripe_count, nil
@@ -499,7 +487,7 @@ func (image *Image) GetOverlap() (overlap uint64, err error) {
 	}
 
 	if ret := C.rbd_get_overlap(image.image, (*C.uint64_t)(&overlap)); ret < 0 {
-		return overlap, RBDError(ret)
+		return overlap, rbdError(ret)
 	}
 
 	return overlap, nil
@@ -598,12 +586,12 @@ func (image *Image) ListLockers() (tag string, lockers []Locker, err error) {
 	// but *0* is unexpected here because first rbd_list_lockers already
 	// dealt with no locker case
 	if int(c_locker_cnt) <= 0 {
-		return "", nil, RBDError(c_locker_cnt)
+		return "", nil, rbdError(c_locker_cnt)
 	}
 
-	clients := split(clients_buf)
-	cookies := split(cookies_buf)
-	addrs := split(addrs_buf)
+	clients := cutil.SplitSparseBuffer(clients_buf)
+	cookies := cutil.SplitSparseBuffer(cookies_buf)
+	addrs := cutil.SplitSparseBuffer(addrs_buf)
 
 	lockers = make([]Locker, c_locker_cnt)
 	for i := 0; i < int(c_locker_cnt); i++ {
@@ -704,7 +692,7 @@ func (image *Image) Read(data []byte) (int, error) {
 		(*C.char)(unsafe.Pointer(&data[0]))))
 
 	if ret < 0 {
-		return 0, RBDError(ret)
+		return 0, rbdError(ret)
 	}
 
 	image.offset += int64(ret)
@@ -729,7 +717,7 @@ func (image *Image) Write(data []byte) (n int, err error) {
 	}
 
 	if ret != len(data) {
-		err = RBDError(-C.EPERM)
+		err = rbdError(-C.EPERM)
 	}
 
 	return ret, err
@@ -767,7 +755,7 @@ func (image *Image) Discard(ofs uint64, length uint64) (int, error) {
 
 	ret := C.rbd_discard(image.image, C.uint64_t(ofs), C.uint64_t(length))
 	if ret < 0 {
-		return 0, RBDError(ret)
+		return 0, rbdError(ret)
 	}
 
 	return int(ret), nil
@@ -790,7 +778,7 @@ func (image *Image) ReadAt(data []byte, off int64) (int, error) {
 		(*C.char)(unsafe.Pointer(&data[0]))))
 
 	if ret < 0 {
-		return 0, RBDError(ret)
+		return 0, rbdError(ret)
 	}
 
 	if ret < len(data) {
@@ -814,7 +802,7 @@ func (image *Image) WriteAt(data []byte, off int64) (n int, err error) {
 		C.size_t(len(data)), (*C.char)(unsafe.Pointer(&data[0]))))
 
 	if ret != len(data) {
-		err = RBDError(-C.EPERM)
+		err = rbdError(-C.EPERM)
 	}
 
 	return ret, err
@@ -852,7 +840,7 @@ func (image *Image) GetSnapshotNames() (snaps []SnapInfo, err error) {
 	ret = C.rbd_snap_list(image.image,
 		&c_snaps[0], &c_max_snaps)
 	if ret < 0 {
-		return nil, RBDError(ret)
+		return nil, rbdError(ret)
 	}
 
 	for i, s := range c_snaps {
@@ -913,7 +901,7 @@ func (image *Image) SetMetadata(key string, value string) error {
 
 	ret := C.rbd_metadata_set(image.image, c_key, c_value)
 	if ret < 0 {
-		return RBDError(ret)
+		return rbdError(ret)
 	}
 
 	return nil
@@ -933,7 +921,7 @@ func (image *Image) RemoveMetadata(key string) error {
 
 	ret := C.rbd_metadata_remove(image.image, c_key)
 	if ret < 0 {
-		return RBDError(ret)
+		return rbdError(ret)
 	}
 
 	return nil
@@ -1205,7 +1193,7 @@ func CreateImage(ioctx *rados.IOContext, name string, size uint64, rio *ImageOpt
 		return ErrNoName
 	}
 	if rio == nil {
-		return RBDError(C.EINVAL)
+		return rbdError(C.EINVAL)
 	}
 
 	c_name := C.CString(name)
@@ -1244,7 +1232,7 @@ func CloneImage(ioctx *rados.IOContext, parentName, snapName string,
 	destctx *rados.IOContext, name string, rio *ImageOptions) error {
 
 	if rio == nil {
-		return RBDError(C.EINVAL)
+		return rbdError(C.EINVAL)
 	}
 
 	cParentName := C.CString(parentName)
