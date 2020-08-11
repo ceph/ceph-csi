@@ -61,34 +61,34 @@ func (cs *ControllerServer) createBackingVolume(
 	var err error
 	if sID != nil {
 		if err = cs.OperationLocks.GetRestoreLock(sID.SnapshotID); err != nil {
-			util.ErrorLog(util.Log(ctx, err.Error()))
+			util.ErrorLog(ctx, err.Error())
 			return status.Error(codes.Aborted, err.Error())
 		}
 		defer cs.OperationLocks.ReleaseRestoreLock(sID.SnapshotID)
 
 		err = createCloneFromSnapshot(ctx, parentVolOpt, volOptions, vID, sID, cr)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to create clone from snapshot %s: %v"), sID.FsSnapshotName, err)
+			util.ErrorLog(ctx, "failed to create clone from snapshot %s: %v", sID.FsSnapshotName, err)
 			return err
 		}
 		return err
 	}
 	if parentVolOpt != nil {
 		if err = cs.OperationLocks.GetCloneLock(pvID.VolumeID); err != nil {
-			klog.Error(util.Log(ctx, err.Error()))
+			util.ErrorLog(ctx, err.Error())
 			return status.Error(codes.Aborted, err.Error())
 		}
 		defer cs.OperationLocks.ReleaseCloneLock(pvID.VolumeID)
 		err = createCloneFromSubvolume(ctx, volumeID(pvID.FsSubvolName), volumeID(vID.FsSubvolName), volOptions, parentVolOpt, cr)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to create clone from subvolume %s: %v"), volumeID(pvID.FsSubvolName), err)
+			util.ErrorLog(ctx, "failed to create clone from subvolume %s: %v", volumeID(pvID.FsSubvolName), err)
 			return err
 		}
 		return nil
 	}
 
 	if err = createVolume(ctx, volOptions, cr, volumeID(vID.FsSubvolName), volOptions.Size); err != nil {
-		klog.Errorf(util.Log(ctx, "failed to create volume %s: %v"), volOptions.RequestName, err)
+		util.ErrorLog(ctx, "failed to create volume %s: %v", volOptions.RequestName, err)
 		return status.Error(codes.Internal, err.Error())
 	}
 	return nil
