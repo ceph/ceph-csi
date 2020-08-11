@@ -259,7 +259,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	targetPath := req.GetTargetPath()
 
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
