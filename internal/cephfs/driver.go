@@ -30,9 +30,6 @@ const (
 	// volIDVersion is the version number of volume ID encoding scheme
 	volIDVersion uint16 = 1
 
-	// csiConfigFile is the location of the CSI config file
-	csiConfigFile = "/etc/ceph-csi-config/config.json"
-
 	// RADOS namespace to store CSI specific objects and keys
 	radosNamespace = "csi"
 )

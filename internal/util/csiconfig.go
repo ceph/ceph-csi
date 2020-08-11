@@ -18,6 +18,7 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -27,6 +28,9 @@ const (
 	// defaultCsiSubvolumeGroup defines the default name for the CephFS CSI subvolumegroup.
 	// This was hardcoded once and defaults to the old value to keep backward compatibility.
 	defaultCsiSubvolumeGroup = "csi"
+
+	// CsiConfigFile is the location of the CSI config file
+	CsiConfigFile = "/etc/ceph-csi-config/config.json"
 )
 
 // ClusterInfo strongly typed JSON spec for the below JSON structure.
@@ -107,4 +111,20 @@ func CephFSSubvolumeGroup(pathToConfig, clusterID string) (string, error) {
 		return defaultCsiSubvolumeGroup, nil
 	}
 	return cluster.CephFS.SubvolumeGroup, nil
+}
+
+// GetMonsAndClusterID returns monitors and clusterID information read from
+// configfile.
+func GetMonsAndClusterID(options map[string]string) (string, string, error) {
+	clusterID, ok := options["clusterID"]
+	if !ok {
+		return "", "", errors.New("clusterID must be set")
+	}
+
+	monitors, err := Mons(CsiConfigFile, clusterID)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", clusterID, err)
+	}
+
+	return monitors, clusterID, nil
 }

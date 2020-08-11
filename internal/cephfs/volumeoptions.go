@@ -122,13 +122,13 @@ func getClusterInformation(options map[string]string) (*util.ClusterInfo, error)
 		return nil, err
 	}
 
-	monitors, err := util.Mons(csiConfigFile, clusterID)
+	monitors, err := util.Mons(util.CsiConfigFile, clusterID)
 	if err != nil {
 		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", clusterID, err)
 		return nil, err
 	}
 
-	subvolumeGroup, err := util.CephFSSubvolumeGroup(csiConfigFile, clusterID)
+	subvolumeGroup, err := util.CephFSSubvolumeGroup(util.CsiConfigFile, clusterID)
 	if err != nil {
 		err = fmt.Errorf("failed to fetch subvolumegroup using clusterID (%s): %w", clusterID, err)
 		return nil, err
@@ -237,11 +237,11 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 	vid.VolumeID = volID
 	volOptions.FscID = vi.LocationID
 
-	if volOptions.Monitors, err = util.Mons(csiConfigFile, vi.ClusterID); err != nil {
+	if volOptions.Monitors, err = util.Mons(util.CsiConfigFile, vi.ClusterID); err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", vi.ClusterID, err)
 	}
 
-	if volOptions.SubvolumeGroup, err = util.CephFSSubvolumeGroup(csiConfigFile, vi.ClusterID); err != nil {
+	if volOptions.SubvolumeGroup, err = util.CephFSSubvolumeGroup(util.CsiConfigFile, vi.ClusterID); err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch subvolumegroup list using clusterID (%s): %w", vi.ClusterID, err)
 	}
 
@@ -430,11 +430,11 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 	sid.SnapshotID = snapID
 	volOptions.FscID = vi.LocationID
 
-	if volOptions.Monitors, err = util.Mons(csiConfigFile, vi.ClusterID); err != nil {
+	if volOptions.Monitors, err = util.Mons(util.CsiConfigFile, vi.ClusterID); err != nil {
 		return &volOptions, nil, &sid, fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", vi.ClusterID, err)
 	}
 
-	if volOptions.SubvolumeGroup, err = util.CephFSSubvolumeGroup(csiConfigFile, vi.ClusterID); err != nil {
+	if volOptions.SubvolumeGroup, err = util.CephFSSubvolumeGroup(util.CsiConfigFile, vi.ClusterID); err != nil {
 		return &volOptions, nil, &sid, fmt.Errorf("failed to fetch subvolumegroup list using clusterID (%s): %w", vi.ClusterID, err)
 	}
 
