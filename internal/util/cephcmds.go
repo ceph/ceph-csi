@@ -146,7 +146,7 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 	if errors.Is(err, rados.ErrObjectExists) {
 		return JoinErrors(ErrObjectExists, err)
 	} else if err != nil {
-		ErrorLogMsg(Log(ctx, "failed creating omap (%s) in pool (%s): (%v)"), objectName, poolName, err)
+		ErrorLog(ctx, "failed creating omap (%s) in pool (%s): (%v)", objectName, poolName, err)
 		return err
 	}
 
@@ -180,7 +180,7 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 	if errors.Is(err, rados.ErrNotFound) {
 		return JoinErrors(ErrObjectNotFound, err)
 	} else if err != nil {
-		ErrorLogMsg(Log(ctx, "failed removing omap (%s) in pool (%s): (%v)"), oMapName, poolName, err)
+		ErrorLog(ctx, "failed removing omap (%s) in pool (%s): (%v)", oMapName, poolName, err)
 		return err
 	}
 
