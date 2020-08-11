@@ -21,6 +21,6 @@ func StartMetricsServer(c *Config) {
 	http.Handle(c.MetricsPath, promhttp.Handler())
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
-		FatalLog("failed to listen on address %v: %s", addr, err)
+		FatalLogMsg("failed to listen on address %v: %s", addr, err)
 	}
 }
