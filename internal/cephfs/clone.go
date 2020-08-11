@@ -22,8 +22,6 @@ import (
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
-
-	klog "k8s.io/klog/v2"
 )
 
 const (
@@ -219,7 +217,7 @@ func getCloneInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 		"ceph",
 		args[:]...)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get subvolume clone info %s(%s) in fs %s"), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to get subvolume clone info %s(%s) in fs %s", string(volID), err, volOptions.FsName)
 		return clone, err
 	}
 	return clone, nil
