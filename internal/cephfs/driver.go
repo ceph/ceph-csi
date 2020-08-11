@@ -17,8 +17,6 @@ limitations under the License.
 package cephfs
 
 import (
-	klog "k8s.io/klog/v2"
-
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -156,7 +154,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	server := csicommon.NewNonBlockingGRPCServer()
 	server.Start(conf.Endpoint, conf.HistogramOption, fs.is, fs.cs, fs.ns, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {
-		klog.Warning("EnableGRPCMetrics is deprecated")
+		util.WarningLogMsg("EnableGRPCMetrics is deprecated")
 		go util.StartMetricsServer(conf)
 	}
 	server.Wait()
