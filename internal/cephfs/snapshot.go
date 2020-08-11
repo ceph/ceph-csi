@@ -89,7 +89,7 @@ func deleteSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Cre
 		"ceph",
 		args[:]...)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to delete subvolume snapshot %s %s(%s) in fs %s"), string(snapID), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to delete subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
 		return err
 	}
 	return nil
