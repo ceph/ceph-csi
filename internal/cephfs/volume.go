@@ -146,7 +146,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			"-n", cephEntityClientPrefix+cr.ID,
 			"--keyfile="+cr.KeyFile)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to create subvolume group %s, for the vol %s(%s)"), volOptions.SubvolumeGroup, string(volID), err)
+			util.ErrorLog(ctx, "failed to create subvolume group %s, for the vol %s(%s)", volOptions.SubvolumeGroup, string(volID), err)
 			return err
 		}
 		util.DebugLog(ctx, "cephfs: created subvolume group %s", volOptions.SubvolumeGroup)
@@ -178,7 +178,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 		"ceph",
 		args[:]...)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to create subvolume %s(%s) in fs %s"), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to create subvolume %s(%s) in fs %s", string(volID), err, volOptions.FsName)
 		return err
 	}
 
