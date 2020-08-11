@@ -13,18 +13,43 @@ rook_version() {
 }
 
 kubectl_retry() {
-    local retries=0
+    local retries=0 action="${1}" ret=0 stdout stderr
+    shift
 
-    while ! kubectl "${@}"
+    # temporary files for kubectl output
+    stdout=$(mktemp rook-kubectl-stdout.XXXXXXXX)
+    stderr=$(mktemp rook-kubectl-stderr.XXXXXXXX)
+
+    while ! kubectl "${action}" "${@}" 2>"${stderr}" 1>"${stdout}"
     do
+        # in case of a failure when running "create", ignore errors with "AlreadyExists"
+        if [ "${action}" == 'create' ]
+        then
+            # count lines in stderr that do not have "AlreadyExists"
+            ret=$(grep -cvw 'AlreadyExists' "${stderr}")
+            if [ "${ret}" -eq 0 ]
+            then
+                # Succes! stderr is empty after removing all "AlreadyExists" lines.
+                break
+            fi
+        fi
+
         retries=$((retries+1))
         if [ ${retries} -eq ${KUBECTL_RETRY} ]
         then
-            return 1
+            ret=1
+            break
         fi
         sleep ${KUBECTL_RETRY_DELAY}
     done
-    return 0
+
+    # write output so that calling functions can consume it
+    cat "${stdout}" > /dev/stdout
+    cat "${stderr}" > /dev/stderr
+
+    rm -f "${stdout}" "${stderr}"
+
+    return ${ret}
 }
 
 function deploy_rook() {
