@@ -98,7 +98,7 @@ jobs:
         - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
 
     - stage: upgrade testing
-      name: CephFS upgrade tesing with CSI v2.1.2
+      name: CephFS upgrade tesing with CSI v3.0.0
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
@@ -107,7 +107,7 @@ jobs:
           --upgrade-version="${UPGRADE_VERSION}" || travis_terminate 1;
 
     - stage: upgrade testing
-      name: RBD upgrade tesing with CSI v2.1.2
+      name: RBD upgrade tesing with CSI v3.0.0
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
