@@ -28,8 +28,6 @@ import (
 	"sync"
 
 	"github.com/ceph/ceph-csi/internal/util"
-
-	klog "k8s.io/klog/v2"
 )
 
 const (
@@ -276,10 +274,10 @@ func unmountVolume(ctx context.Context, mountPoint string) error {
 	if ok {
 		p, err := os.FindProcess(pid)
 		if err != nil {
-			klog.Warningf(util.Log(ctx, "failed to find process %d: %v"), pid, err)
+			util.WarningLog(ctx, "failed to find process %d: %v", pid, err)
 		} else {
 			if _, err = p.Wait(); err != nil {
-				klog.Warningf(util.Log(ctx, "%d is not a child process: %v"), pid, err)
+				util.WarningLog(ctx, "%d is not a child process: %v", pid, err)
 			}
 		}
 	}
