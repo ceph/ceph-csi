@@ -147,7 +147,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// Existence and conflict checks
 	if acquired := cs.VolumeLocks.TryAcquire(requestName); !acquired {
-		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), requestName)
+		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, requestName)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, requestName)
 	}
 	defer cs.VolumeLocks.Release(requestName)
@@ -193,7 +193,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				}
 				errUndo := undoVolReservation(ctx, volOptions, *vID, secret)
 				if errUndo != nil {
-					klog.Warningf(util.Log(ctx, "failed undoing reservation of volume: %s (%s)"),
+					util.WarningLog(ctx, "failed undoing reservation of volume: %s (%s)",
 						requestName, errUndo)
 				}
 				util.ErrorLog(ctx, "failed to expand volume %s: %v", volumeID(vID.FsSubvolName), err)
@@ -230,7 +230,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			if !errors.Is(err, ErrCloneInProgress) {
 				errDefer := undoVolReservation(ctx, volOptions, *vID, secret)
 				if errDefer != nil {
-					klog.Warningf(util.Log(ctx, "failed undoing reservation of volume: %s (%s)"),
+					util.WarningLog(ctx, "failed undoing reservation of volume: %s (%s)",
 						requestName, errDefer)
 				}
 			}
