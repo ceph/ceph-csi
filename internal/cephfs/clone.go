@@ -190,6 +190,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 	return nil
 }
 
+// CloneStatus represents the subvolume clone status.
 type CloneStatus struct {
 	Status struct {
 		State string `json:"state"`
