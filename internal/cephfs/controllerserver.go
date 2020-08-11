@@ -296,7 +296,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		// if error is ErrPoolNotFound, the pool is already deleted we dont
 		// need to worry about deleting subvolume or omap data, return success
 		if errors.Is(err, util.ErrPoolNotFound) {
-			klog.Warningf(util.Log(ctx, "failed to get backend volume for %s: %v"), string(volID), err)
+			util.WarningLog(ctx, "failed to get backend volume for %s: %v", string(volID), err)
 			return &csi.DeleteVolumeResponse{}, nil
 		}
 		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
