@@ -82,7 +82,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	volID := volumeID(req.GetVolumeId())
 
 	if acquired := ns.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
-		klog.Errorf(util.Log(ctx, util.VolumeOperationAlreadyExistsFmt), volID)
+		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
 	}
 	defer ns.VolumeLocks.Release(req.GetVolumeId())
@@ -114,7 +114,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	isMnt, err := util.IsMountPoint(stagingTargetPath)
 
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "stat failed: %v"), err)
+		util.ErrorLog(ctx, "stat failed: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
