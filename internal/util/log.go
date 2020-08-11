@@ -53,7 +53,7 @@ func Log(ctx context.Context, format string) string {
 }
 
 // FatalLog helps in logging fatal errors.
-func FatalLog(message string, args ...interface{}) {
+func FatalLogMsg(message string, args ...interface{}) {
 	logMessage := fmt.Sprintf(message, args...)
 	klog.FatalDepth(1, logMessage)
 }
