@@ -140,13 +140,13 @@ func cleanupCloneFromSubvolumeSnapshot(ctx context.Context, volID, cloneID volum
 	if snapInfo.Protected == snapshotIsProtected {
 		err = unprotectSnapshot(ctx, parentVolOpt, cr, snapShotID, volID)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to unprotect snapshot %s %v"), snapShotID, err)
+			util.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapShotID, err)
 			return err
 		}
 	}
 	err = deleteSnapshot(ctx, parentVolOpt, cr, snapShotID, volID)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to delete snapshot %s %v"), snapShotID, err)
+		util.ErrorLog(ctx, "failed to delete snapshot %s %v", snapShotID, err)
 		return err
 	}
 	return nil
