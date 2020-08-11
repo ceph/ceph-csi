@@ -41,7 +41,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 	snapshotID := cloneID
 	err := createSnapshot(ctx, parentvolOpt, cr, snapshotID, volID)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to create snapshot %s %v"), snapshotID, err)
+		util.ErrorLog(ctx, "failed to create snapshot %s %v", snapshotID, err)
 		return err
 	}
 	var (
@@ -54,36 +54,36 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		if protectErr != nil {
 			err = deleteSnapshot(ctx, parentvolOpt, cr, snapshotID, volID)
 			if err != nil {
-				klog.Errorf(util.Log(ctx, "failed to delete snapshot %s %v"), snapshotID, err)
+				util.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
 			}
 		}
 
 		if cloneErr != nil {
 			if err = purgeVolume(ctx, cloneID, cr, volOpt, true); err != nil {
-				klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), cloneID, err)
+				util.ErrorLog(ctx, "failed to delete volume %s: %v", cloneID, err)
 			}
 			if err = unprotectSnapshot(ctx, parentvolOpt, cr, snapshotID, volID); err != nil {
 				// Incase the snap is already unprotected we get ErrSnapProtectionExist error code
 				// in that case we are safe and we could discard this error and we are good to go
 				// ahead with deletion
 				if !errors.Is(err, ErrSnapProtectionExist) {
-					klog.Errorf(util.Log(ctx, "failed to unprotect snapshot %s %v"), snapshotID, err)
+					util.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapshotID, err)
 				}
 			}
 			if err = deleteSnapshot(ctx, parentvolOpt, cr, snapshotID, volID); err != nil {
-				klog.Errorf(util.Log(ctx, "failed to delete snapshot %s %v"), snapshotID, err)
+				util.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
 			}
 		}
 	}()
 	protectErr = protectSnapshot(ctx, parentvolOpt, cr, snapshotID, volID)
 	if protectErr != nil {
-		klog.Errorf(util.Log(ctx, "failed to protect snapshot %s %v"), snapshotID, protectErr)
+		util.ErrorLog(ctx, "failed to protect snapshot %s %v", snapshotID, protectErr)
 		return protectErr
 	}
 
 	cloneErr = cloneSnapshot(ctx, parentvolOpt, cr, volID, snapshotID, cloneID, volOpt)
 	if cloneErr != nil {
-		klog.Errorf(util.Log(ctx, "failed to clone snapshot %s %s to %s %v"), volID, snapshotID, cloneID, cloneErr)
+		util.ErrorLog(ctx, "failed to clone snapshot %s %s to %s %v", volID, snapshotID, cloneID, cloneErr)
 		return cloneErr
 	}
 	var clone CloneStatus
@@ -94,17 +94,17 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 
 	switch clone.Status.State {
 	case cephFSCloneInprogress:
-		klog.Errorf(util.Log(ctx, "clone is in progress for %v"), cloneID)
+		util.ErrorLog(ctx, "clone is in progress for %v", cloneID)
 		return ErrCloneInProgress
 	case cephFSCloneFailed:
-		klog.Errorf(util.Log(ctx, "clone failed for %v"), cloneID)
+		util.ErrorLog(ctx, "clone failed for %v", cloneID)
 		cloneFailedErr := fmt.Errorf("clone %s is in %s state", cloneID, clone.Status.State)
 		return cloneFailedErr
 	case cephFSCloneComplete:
 		// This is a work around to fix sizing issue for cloned images
 		err = resizeVolume(ctx, volOpt, cr, cloneID, volOpt.Size)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to expand volume %s: %v"), cloneID, err)
+			util.ErrorLog(ctx, "failed to expand volume %s: %v", cloneID, err)
 			return err
 		}
 		// As we completed clone, remove the intermediate snap
@@ -113,12 +113,12 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 			// in that case we are safe and we could discard this error and we are good to go
 			// ahead with deletion
 			if !errors.Is(err, ErrSnapProtectionExist) {
-				klog.Errorf(util.Log(ctx, "failed to unprotect snapshot %s %v"), snapshotID, err)
+				util.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapshotID, err)
 				return err
 			}
 		}
 		if err = deleteSnapshot(ctx, parentvolOpt, cr, snapshotID, volID); err != nil {
-			klog.Errorf(util.Log(ctx, "failed to delete snapshot %s %v"), snapshotID, err)
+			util.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
 			return err
 		}
 	}
