@@ -152,12 +152,12 @@ func parseTime(ctx context.Context, createTime string) (*timestamp.Timestamp, er
 	var t time.Time
 	t, err := time.Parse(layout, createTime)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to parse time %s %v"), createTime, err)
+		util.ErrorLog(ctx, "failed to parse time %s %v", createTime, err)
 		return tm, err
 	}
 	tm, err = ptypes.TimestampProto(t)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to convert time %s %v"), createTime, err)
+		util.ErrorLog(ctx, "failed to convert time %s %v", createTime, err)
 		return tm, err
 	}
 	return tm, nil
