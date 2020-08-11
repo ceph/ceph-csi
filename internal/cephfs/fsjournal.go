@@ -109,7 +109,7 @@ func checkVolExists(ctx context.Context,
 		if clone.Status.State == cephFSCloneFailed {
 			err = purgeVolume(ctx, volumeID(vid.FsSubvolName), cr, volOptions, true)
 			if err != nil {
-				klog.Errorf(util.Log(ctx, "failed to delete volume %s: %v"), vid.FsSubvolName, err)
+				util.ErrorLog(ctx, "failed to delete volume %s: %v", vid.FsSubvolName, err)
 				return nil, err
 			}
 			if pvID != nil {
