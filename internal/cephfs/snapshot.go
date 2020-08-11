@@ -23,7 +23,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
-	klog "k8s.io/klog/v2"
 )
 
 // cephfsSnapshot represents a CSI snapshot and its cluster information.
@@ -230,7 +229,7 @@ func cloneSnapshot(ctx context.Context, parentVolOptions *volumeOptions, cr *uti
 		args[:]...)
 
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to clone subvolume snapshot %s %s(%s) in fs %s"), string(cloneID), string(volID), err, parentVolOptions.FsName)
+		util.ErrorLog(ctx, "failed to clone subvolume snapshot %s %s(%s) in fs %s", string(cloneID), string(volID), err, parentVolOptions.FsName)
 		if strings.HasPrefix(err.Error(), ErrVolumeNotFound.Error()) {
 			return ErrVolumeNotFound
 		}
