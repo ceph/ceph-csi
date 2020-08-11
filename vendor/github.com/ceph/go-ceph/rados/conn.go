@@ -6,11 +6,13 @@ package rados
 import "C"
 
 import (
-	"bytes"
 	"unsafe"
 
+	"github.com/ceph/go-ceph/internal/cutil"
 	"github.com/ceph/go-ceph/internal/retry"
 )
+
+var argvPlaceholder = "placeholder"
 
 // ClusterStat represents Ceph cluster statistics.
 type ClusterStat struct {
@@ -117,14 +119,7 @@ func (c *Conn) ListPools() (names []string, err error) {
 			continue
 		}
 
-		tmp := bytes.SplitAfter(buf[:ret-1], []byte{0})
-		for _, s := range tmp {
-			if len(s) > 0 {
-				name := C.GoString((*C.char)(unsafe.Pointer(&s[0])))
-				names = append(names, name)
-			}
-		}
-
+		names = cutil.SplitSparseBuffer(buf[:ret])
 		return names, nil
 	}
 }
@@ -197,28 +192,47 @@ func (c *Conn) GetClusterStats() (stat ClusterStat, err error) {
 	}, nil
 }
 
-// ParseCmdLineArgs configures the connection from command line arguments.
-func (c *Conn) ParseCmdLineArgs(args []string) error {
-	// add an empty element 0 -- Ceph treats the array as the actual contents
-	// of argv and skips the first element (the executable name)
-	argc := C.int(len(args) + 1)
-	argv := make([]*C.char, argc)
-
-	// make the first element a string just in case it is ever examined
-	argv[0] = C.CString("placeholder")
-	defer C.free(unsafe.Pointer(argv[0]))
-
-	for i, arg := range args {
-		argv[i+1] = C.CString(arg)
-		defer C.free(unsafe.Pointer(argv[i+1]))
+// ParseConfigArgv configures the connection using a unix style command line
+// argument vector.
+//
+// Implements:
+//  int rados_conf_parse_argv(rados_t cluster, int argc,
+//                            const char **argv);
+func (c *Conn) ParseConfigArgv(argv []string) error {
+	if c.cluster == nil {
+		return ErrNotConnected
+	}
+	if len(argv) == 0 {
+		return ErrEmptyArgument
+	}
+	cargv := make([]*C.char, len(argv))
+	for i := range argv {
+		cargv[i] = C.CString(argv[i])
+		defer C.free(unsafe.Pointer(cargv[i]))
 	}
 
-	ret := C.rados_conf_parse_argv(c.cluster, argc, &argv[0])
+	ret := C.rados_conf_parse_argv(c.cluster, C.int(len(cargv)), &cargv[0])
 	return getError(ret)
 }
 
+// ParseCmdLineArgs configures the connection from command line arguments.
+//
+// This function passes a placeholder value to Ceph as argv[0], see
+// ParseConfigArgv for a version of this function that allows the caller to
+// specify argv[0].
+func (c *Conn) ParseCmdLineArgs(args []string) error {
+	argv := make([]string, len(args)+1)
+	// Ceph expects a proper argv array as the actual contents with the
+	// first element containing the executable name
+	argv[0] = argvPlaceholder
+	for i := range args {
+		argv[i+1] = args[i]
+	}
+	return c.ParseConfigArgv(argv)
+}
+
 // ParseDefaultConfigEnv configures the connection from the default Ceph
-// environment variable(s).
+// environment variable CEPH_ARGS.
 func (c *Conn) ParseDefaultConfigEnv() error {
 	ret := C.rados_conf_parse_env(c.cluster, nil)
 	return getError(ret)
@@ -273,7 +287,7 @@ func (c *Conn) GetPoolByName(name string) (int64, error) {
 	defer C.free(unsafe.Pointer(c_name))
 	ret := int64(C.rados_pool_lookup(c.cluster, c_name))
 	if ret < 0 {
-		return 0, RadosError(ret)
+		return 0, radosError(ret)
 	}
 	return ret, nil
 }
@@ -287,7 +301,7 @@ func (c *Conn) GetPoolByID(id int64) (string, error) {
 	c_id := C.int64_t(id)
 	ret := int(C.rados_pool_reverse_lookup(c.cluster, c_id, (*C.char)(unsafe.Pointer(&buf[0])), C.size_t(len(buf))))
 	if ret < 0 {
-		return "", RadosError(ret)
+		return "", radosError(ret)
 	}
 	return C.GoString((*C.char)(unsafe.Pointer(&buf[0]))), nil
 }

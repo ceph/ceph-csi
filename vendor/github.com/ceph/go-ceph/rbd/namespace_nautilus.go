@@ -13,9 +13,9 @@ package rbd
 import "C"
 
 import (
-	"bytes"
 	"unsafe"
 
+	"github.com/ceph/go-ceph/internal/cutil"
 	"github.com/ceph/go-ceph/internal/retry"
 	"github.com/ceph/go-ceph/rados"
 )
@@ -100,12 +100,7 @@ func NamespaceList(ioctx *rados.IOContext) (names []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-	tmpList := bytes.Split(buf[:cSize-1], []byte{0})
-	for _, s := range tmpList {
-		if len(s) > 0 {
-			name := C.GoString((*C.char)(unsafe.Pointer(&s[0])))
-			names = append(names, name)
-		}
-	}
+
+	names = cutil.SplitSparseBuffer(buf[:cSize])
 	return names, nil
 }

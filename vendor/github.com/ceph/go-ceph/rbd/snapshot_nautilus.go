@@ -32,7 +32,7 @@ func (image *Image) GetParentInfo(pool, name, snapname []byte) error {
 	parentSnap := C.rbd_snap_spec_t{}
 	ret := C.rbd_get_parent(image.image, &parentImage, &parentSnap)
 	if ret != 0 {
-		return RBDError(ret)
+		return rbdError(ret)
 	}
 
 	defer C.rbd_linked_image_spec_cleanup(&parentImage)
@@ -40,26 +40,26 @@ func (image *Image) GetParentInfo(pool, name, snapname []byte) error {
 
 	strlen := int(C.strlen(parentImage.pool_name))
 	if len(pool) < strlen {
-		return RBDError(C.ERANGE)
+		return rbdError(C.ERANGE)
 	}
 	if copy(pool, C.GoString(parentImage.pool_name)) != strlen {
-		return RBDError(C.ERANGE)
+		return rbdError(C.ERANGE)
 	}
 
 	strlen = int(C.strlen(parentImage.image_name))
 	if len(name) < strlen {
-		return RBDError(C.ERANGE)
+		return rbdError(C.ERANGE)
 	}
 	if copy(name, C.GoString(parentImage.image_name)) != strlen {
-		return RBDError(C.ERANGE)
+		return rbdError(C.ERANGE)
 	}
 
 	strlen = int(C.strlen(parentSnap.name))
 	if len(snapname) < strlen {
-		return RBDError(C.ERANGE)
+		return rbdError(C.ERANGE)
 	}
 	if copy(snapname, C.GoString(parentSnap.name)) != strlen {
-		return RBDError(C.ERANGE)
+		return rbdError(C.ERANGE)
 	}
 
 	return nil

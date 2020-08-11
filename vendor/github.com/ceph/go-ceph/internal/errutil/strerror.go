@@ -14,6 +14,7 @@ package errutil
 import "C"
 
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -37,9 +38,15 @@ func FormatErrno(errno int) (int, string) {
 	return errno, C.GoString((*C.char)(unsafe.Pointer(&buf[0])))
 }
 
-// StrError returns a string describing the errno. The string will be empty if
-// the errno is not known.
-func StrError(errno int) string {
-	_, s := FormatErrno(errno)
-	return s
+// FormatErrorCode returns a string that describes the supplied error source
+// and error code as a string. Suitable to use in Error() methods.  If the
+// error code maps to an errno the string will contain a description of the
+// error. Otherwise the string will only indicate the source and value if the
+// value does not map to a known errno.
+func FormatErrorCode(source string, errValue int) string {
+	_, s := FormatErrno(errValue)
+	if s == "" {
+		return fmt.Sprintf("%s: ret=%d", source, errValue)
+	}
+	return fmt.Sprintf("%s: ret=%d, %s", source, errValue, s)
 }

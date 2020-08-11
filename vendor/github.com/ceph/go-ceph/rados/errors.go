@@ -7,32 +7,27 @@ import "C"
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/ceph/go-ceph/internal/errutil"
 )
 
-// revive:disable:exported Temporarily live with stuttering
+// radosError represents an error condition returned from the Ceph RADOS APIs.
+type radosError int
 
-// RadosError represents an error condition returned from the Ceph RADOS APIs.
-type RadosError int
+// Error returns the error string for the radosError type.
+func (e radosError) Error() string {
+	return errutil.FormatErrorCode("rados", int(e))
+}
 
-// revive:enable:exported
-
-// Error returns the error string for the RadosError type.
-func (e RadosError) Error() string {
-	errno, s := errutil.FormatErrno(int(e))
-	if s == "" {
-		return fmt.Sprintf("rados: ret=%d", errno)
-	}
-	return fmt.Sprintf("rados: ret=%d, %s", errno, s)
+func (e radosError) ErrorCode() int {
+	return int(e)
 }
 
 func getError(e C.int) error {
 	if e == 0 {
 		return nil
 	}
-	return RadosError(e)
+	return radosError(e)
 }
 
 // getErrorIfNegative converts a ceph return code to error if negative.
@@ -48,19 +43,26 @@ func getErrorIfNegative(ret C.int) error {
 // Public go errors:
 
 var (
-	// ErrNotConnected is returned when functions are called without a RADOS connection
+	// ErrNotConnected is returned when functions are called
+	// without a RADOS connection.
 	ErrNotConnected = errors.New("RADOS not connected")
+	// ErrEmptyArgument may be returned if a function argument is passed
+	// a zero-length slice or map.
+	ErrEmptyArgument = errors.New("Argument must contain at least one item")
+	// ErrInvalidIOContext may be returned if an api call requires an IOContext
+	// but IOContext is not ready for use.
+	ErrInvalidIOContext = errors.New("IOContext is not ready for use")
 )
 
-// Public RadosErrors:
+// Public radosErrors:
 
 const (
 	// ErrNotFound indicates a missing resource.
-	ErrNotFound = RadosError(-C.ENOENT)
+	ErrNotFound = radosError(-C.ENOENT)
 	// ErrPermissionDenied indicates a permissions issue.
-	ErrPermissionDenied = RadosError(-C.EPERM)
+	ErrPermissionDenied = radosError(-C.EPERM)
 	// ErrObjectExists indicates that an exclusive object creation failed.
-	ErrObjectExists = RadosError(-C.EEXIST)
+	ErrObjectExists = radosError(-C.EEXIST)
 
 	// RadosErrorNotFound indicates a missing resource.
 	//
@@ -75,7 +77,7 @@ const (
 // Private errors:
 
 const (
-	errNameTooLong = RadosError(-C.ENAMETOOLONG)
+	errNameTooLong = radosError(-C.ENAMETOOLONG)
 
-	errRange = RadosError(-C.ERANGE)
+	errRange = radosError(-C.ERANGE)
 )
