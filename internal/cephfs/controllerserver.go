@@ -61,7 +61,7 @@ func (cs *ControllerServer) createBackingVolume(
 	var err error
 	if sID != nil {
 		if err = cs.OperationLocks.GetRestoreLock(sID.SnapshotID); err != nil {
-			klog.Error(util.Log(ctx, err.Error()))
+			util.ErrorLog(util.Log(ctx, err.Error()))
 			return status.Error(codes.Aborted, err.Error())
 		}
 		defer cs.OperationLocks.ReleaseRestoreLock(sID.SnapshotID)

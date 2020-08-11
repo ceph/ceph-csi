@@ -173,12 +173,12 @@ func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool 
 	vers := strings.Split(strings.SplitN(release, "-", 2)[0], ".")
 	version, err := strconv.Atoi(vers[0])
 	if err != nil {
-		ErrorLog("failed to parse version from %s: %v", release, err)
+		ErrorLogMsg("failed to parse version from %s: %v", release, err)
 		return false
 	}
 	patchlevel, err := strconv.Atoi(vers[1])
 	if err != nil {
-		ErrorLog("failed to parse patchlevel from %s: %v", release, err)
+		ErrorLogMsg("failed to parse patchlevel from %s: %v", release, err)
 		return false
 	}
 	sublevel := 0
@@ -186,7 +186,7 @@ func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool 
 	if len(vers) >= minLenForSublvl {
 		sublevel, err = strconv.Atoi(vers[2])
 		if err != nil {
-			ErrorLog("failed to parse sublevel from %s: %v", release, err)
+			ErrorLogMsg("failed to parse sublevel from %s: %v", release, err)
 			return false
 		}
 	}
@@ -223,7 +223,7 @@ func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool 
 			}
 		}
 	}
-	ErrorLog("kernel %s does not support required features", release)
+	ErrorLogMsg("kernel %s does not support required features", release)
 	return false
 }
 
