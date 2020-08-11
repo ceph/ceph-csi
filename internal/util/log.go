@@ -76,6 +76,12 @@ func WarningLogMsg(message string, args ...interface{}) {
 	klog.WarningDepth(1, logMessage)
 }
 
+// WarningLog helps in logging warnings with context.
+func WarningLog(ctx context.Context, message string, args ...interface{}) {
+	logMessage := fmt.Sprintf(Log(ctx, message), args...)
+	klog.WarningDepth(1, logMessage)
+}
+
 // DefaultLog helps in logging with klog.level 1.
 func DefaultLog(message string, args ...interface{}) {
 	logMessage := fmt.Sprintf(message, args...)
