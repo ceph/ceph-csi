@@ -102,7 +102,7 @@ func getSubVolumeInfo(ctx context.Context, volOptions *volumeOptions, cr *util.C
 		"-n", cephEntityClientPrefix+cr.ID,
 		"--keyfile="+cr.KeyFile)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get subvolume info for the vol %s(%s)"), string(volID), err)
+		util.ErrorLog(ctx, "failed to get subvolume info for the vol %s(%s)", string(volID), err)
 		if strings.HasPrefix(err.Error(), ErrVolumeNotFound.Error()) {
 			return info, ErrVolumeNotFound
 		}
