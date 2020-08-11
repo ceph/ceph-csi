@@ -92,6 +92,15 @@ type IOContext struct {
 	ioctx C.rados_ioctx_t
 }
 
+// validate returns an error if the ioctx is not ready to be used
+// with ceph C calls.
+func (ioctx *IOContext) validate() error {
+	if ioctx.ioctx == nil {
+		return ErrInvalidIOContext
+	}
+	return nil
+}
+
 // Pointer returns a pointer reference to an internal structure.
 // This function should NOT be used outside of go-ceph itself.
 func (ioctx *IOContext) Pointer() unsafe.Pointer {
@@ -247,6 +256,15 @@ func (ioctx *IOContext) GetPoolStats() (stat PoolStat, err error) {
 		Num_wr:                         uint64(c_stat.num_wr),
 		Num_wr_kb:                      uint64(c_stat.num_wr_kb),
 	}, nil
+}
+
+// GetPoolID returns the pool ID associated with the I/O context.
+//
+// Implements:
+//  int64_t rados_ioctx_get_id(rados_ioctx_t io)
+func (ioctx *IOContext) GetPoolID() int64 {
+	ret := C.rados_ioctx_get_id(ioctx.ioctx)
+	return int64(ret)
 }
 
 // GetPoolName returns the name of the pool associated with the I/O context.
@@ -589,7 +607,7 @@ func (ioctx *IOContext) ListLockers(oid, name string) (*LockInfo, error) {
 	}
 
 	if ret < 0 {
-		return nil, RadosError(ret)
+		return nil, radosError(ret)
 	}
 	return &LockInfo{int(ret), c_exclusive == 1, C.GoString(c_tag), splitCString(c_clients, c_clients_len), splitCString(c_cookies, c_cookies_len), splitCString(c_addrs, c_addrs_len)}, nil
 }
@@ -627,4 +645,17 @@ func (ioctx *IOContext) BreakLock(oid, name, client, cookie string) (int, error)
 	default:
 		return int(ret), getError(ret)
 	}
+}
+
+// GetLastVersion will return the version number of the last object read or
+// written to.
+//
+// Implements:
+//  uint64_t rados_get_last_version(rados_ioctx_t io);
+func (ioctx *IOContext) GetLastVersion() (uint64, error) {
+	if err := ioctx.validate(); err != nil {
+		return 0, err
+	}
+	v := C.rados_get_last_version(ioctx.ioctx)
+	return uint64(v), nil
 }

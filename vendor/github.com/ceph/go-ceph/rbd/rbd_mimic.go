@@ -12,9 +12,9 @@ package rbd
 import "C"
 
 import (
-	"bytes"
 	"unsafe"
 
+	"github.com/ceph/go-ceph/internal/cutil"
 	"github.com/ceph/go-ceph/internal/retry"
 	"github.com/ceph/go-ceph/rados"
 )
@@ -37,12 +37,6 @@ func GetImageNames(ioctx *rados.IOContext) (names []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-	tmp := bytes.Split(buf[:csize-1], []byte{0})
-	for _, s := range tmp {
-		if len(s) > 0 {
-			name := C.GoString((*C.char)(unsafe.Pointer(&s[0])))
-			names = append(names, name)
-		}
-	}
+	names = cutil.SplitSparseBuffer(buf[:csize])
 	return names, nil
 }

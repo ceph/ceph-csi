@@ -30,7 +30,7 @@ func (image *Image) CreateSnapshot(snapname string) (*Snapshot, error) {
 
 	ret := C.rbd_snap_create(image.image, c_snapname)
 	if ret < 0 {
-		return nil, RBDError(ret)
+		return nil, rbdError(ret)
 	}
 
 	return &Snapshot{
@@ -139,7 +139,7 @@ func (snapshot *Snapshot) IsProtected() (bool, error) {
 	ret := C.rbd_snap_is_protected(snapshot.image.image, c_snapname,
 		&c_is_protected)
 	if ret < 0 {
-		return false, RBDError(ret)
+		return false, rbdError(ret)
 	}
 
 	return c_is_protected != 0, nil
