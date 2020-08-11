@@ -77,7 +77,7 @@ func loadAvailableMounters(conf *util.Config) error {
 
 	err := kernelMounterProbe.Run()
 	if err != nil {
-		klog.Errorf("failed to run mount.ceph %v", err)
+		util.ErrorLogMsg("failed to run mount.ceph %v", err)
 	} else {
 		// fetch the current running kernel info
 		release, kvErr := util.GetKernelVersion()
@@ -95,7 +95,7 @@ func loadAvailableMounters(conf *util.Config) error {
 
 	err = fuseMounterProbe.Run()
 	if err != nil {
-		klog.Errorf("failed to run ceph-fuse %v", err)
+		util.ErrorLogMsg("failed to run ceph-fuse %v", err)
 	} else {
 		util.DefaultLog("loaded mounter: %s", volumeMounterFuse)
 		availableMounters = append(availableMounters, volumeMounterFuse)
