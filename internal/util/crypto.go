@@ -158,7 +158,7 @@ func GetCryptoPassphrase(ctx context.Context, volumeID string, kms EncryptionKMS
 		}
 		return passphrase, nil
 	}
-	ErrorLog(Log(ctx, "failed to get encryption passphrase for %s: %s"), volumeID, err)
+	ErrorLogMsg(Log(ctx, "failed to get encryption passphrase for %s: %s"), volumeID, err)
 	return "", err
 }
 

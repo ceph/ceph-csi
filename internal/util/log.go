@@ -58,8 +58,8 @@ func FatalLog(message string, args ...interface{}) {
 	klog.FatalDepth(1, logMessage)
 }
 
-// ErrorLog helps in logging errors.
-func ErrorLog(message string, args ...interface{}) {
+// ErrorLogMsg helps in logging errors with message.
+func ErrorLogMsg(message string, args ...interface{}) {
 	logMessage := fmt.Sprintf(message, args...)
 	klog.ErrorDepth(1, logMessage)
 }

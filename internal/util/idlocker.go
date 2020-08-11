@@ -253,6 +253,6 @@ func (ol *OperationLock) release(op operation, volumeID string) {
 			}
 		}
 	default:
-		ErrorLog("%v operation not supported", op)
+		ErrorLogMsg("%v operation not supported", op)
 	}
 }
