@@ -24,7 +24,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
-	klog "k8s.io/klog/v2"
 )
 
 // volumeIdentifier structure contains an association between the CSI VolumeID to its subvolume
@@ -354,13 +353,13 @@ func checkSnapExists(
 		if err != nil {
 			err = deleteSnapshot(ctx, volOptions, cr, volumeID(snapID), volumeID(parentSubVolName))
 			if err != nil {
-				klog.Errorf(util.Log(ctx, "failed to delete snapshot %s: %v"), snapID, err)
+				util.ErrorLog(ctx, "failed to delete snapshot %s: %v", snapID, err)
 				return
 			}
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, snapID, snap.RequestName)
 			if err != nil {
-				klog.Errorf(util.Log(ctx, "removing reservation failed for snapshot %s: %v"), snapID, err)
+				util.ErrorLog(ctx, "removing reservation failed for snapshot %s: %v", snapID, err)
 			}
 		}
 	}()
