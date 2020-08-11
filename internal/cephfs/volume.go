@@ -74,7 +74,7 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 		"--keyfile="+cr.KeyFile)
 
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get the rootpath for the vol %s(%s) stdError %s"), string(volID), err, stderr)
+		util.ErrorLog(ctx, "failed to get the rootpath for the vol %s(%s) stdError %s", string(volID), err, stderr)
 		if strings.Contains(stderr, ErrVolumeNotFound.Error()) {
 			return "", util.JoinErrors(ErrVolumeNotFound, err)
 		}
