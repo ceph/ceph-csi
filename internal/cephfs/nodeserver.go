@@ -139,14 +139,14 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 
 	cr, err := getCredentialsForVolume(volOptions, req)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get ceph credentials for volume %s: %v"), volID, err)
+		util.ErrorLog(ctx, "failed to get ceph credentials for volume %s: %v", volID, err)
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer cr.DeleteCredentials()
 
 	m, err := newMounter(volOptions)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to create mounter for volume %s: %v"), volID, err)
+		util.ErrorLog(ctx, "failed to create mounter for volume %s: %v", volID, err)
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -173,8 +173,8 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 	}
 
 	if err = m.mount(ctx, stagingTargetPath, cr, volOptions); err != nil {
-		klog.Errorf(util.Log(ctx,
-			"failed to mount volume %s: %v Check dmesg logs if required."),
+		util.ErrorLog(ctx,
+			"failed to mount volume %s: %v Check dmesg logs if required.",
 			volID,
 			err)
 		return status.Error(codes.Internal, err.Error())
@@ -183,10 +183,10 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 		// #nosec - allow anyone to write inside the stagingtarget path
 		err = os.Chmod(stagingTargetPath, 0777)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to change stagingtarget path %s permission for volume %s: %v"), stagingTargetPath, volID, err)
+			util.ErrorLog(ctx, "failed to change stagingtarget path %s permission for volume %s: %v", stagingTargetPath, volID, err)
 			uErr := unmountVolume(ctx, stagingTargetPath)
 			if uErr != nil {
-				klog.Errorf(util.Log(ctx, "failed to umount stagingtarget path %s for volume %s: %v"), stagingTargetPath, volID, uErr)
+				util.ErrorLog(ctx, "failed to umount stagingtarget path %s for volume %s: %v", stagingTargetPath, volID, uErr)
 			}
 			return status.Error(codes.Internal, err.Error())
 		}
