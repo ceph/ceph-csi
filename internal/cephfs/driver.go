@@ -95,11 +95,11 @@ func (fs *Driver) Run(conf *util.Config) {
 
 	// Configuration
 	if err = loadAvailableMounters(conf); err != nil {
-		klog.Fatalf("cephfs: failed to load ceph mounters: %v", err)
+		util.FatalLogMsg("cephfs: failed to load ceph mounters: %v", err)
 	}
 
 	if err = util.WriteCephConfig(); err != nil {
-		klog.Fatalf("failed to write ceph configuration file: %v", err)
+		util.FatalLogMsg("failed to write ceph configuration file: %v", err)
 	}
 
 	// Use passed in instance ID, if provided for omap suffix naming
@@ -114,7 +114,7 @@ func (fs *Driver) Run(conf *util.Config) {
 
 	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
 	if fs.cd == nil {
-		klog.Fatalln("failed to initialize CSI driver")
+		util.FatalLogMsg("failed to initialize CSI driver")
 	}
 
 	if conf.IsControllerServer || !conf.IsNodeServer {
@@ -136,7 +136,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	if conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			klog.Fatalln(err)
+			util.FatalLogMsg(err.Error())
 		}
 		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology)
 	}
@@ -147,7 +147,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	if !conf.IsControllerServer && !conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			klog.Fatalln(err)
+			util.FatalLogMsg(err.Error())
 		}
 		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology)
 		fs.cs = NewControllerServer(fs.cd)
