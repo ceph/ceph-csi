@@ -579,20 +579,20 @@ func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snaps
 	snap := snapshotInfo{}
 	err := createSnapshot(ctx, volOpt, cr, snapID, volID)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to create snapshot %s %v"), snapID, err)
+		util.ErrorLog(ctx, "failed to create snapshot %s %v", snapID, err)
 		return snap, err
 	}
 	defer func() {
 		if err != nil {
 			dErr := deleteSnapshot(ctx, volOpt, cr, snapID, volID)
 			if dErr != nil {
-				klog.Errorf(util.Log(ctx, "failed to delete snapshot %s %v"), snapID, err)
+				util.ErrorLog(ctx, "failed to delete snapshot %s %v", snapID, err)
 			}
 		}
 	}()
 	snap, err = getSnapshotInfo(ctx, volOpt, cr, snapID, volID)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get snapshot info %s %v"), snapID, err)
+		util.ErrorLog(ctx, "failed to get snapshot info %s %v", snapID, err)
 		return snap, fmt.Errorf("failed to get snapshot info for snapshot:%s", snapID)
 	}
 	var t *timestamp.Timestamp
@@ -603,7 +603,7 @@ func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snaps
 	snap.CreationTime = t
 	err = protectSnapshot(ctx, volOpt, cr, snapID, volID)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to protect snapshot %s %v"), snapID, err)
+		util.ErrorLog(ctx, "failed to protect snapshot %s %v", snapID, err)
 	}
 	return snap, err
 }
