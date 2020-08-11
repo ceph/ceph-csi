@@ -70,8 +70,8 @@ func ErrorLog(ctx context.Context, message string, args ...interface{}) {
 	klog.ErrorDepth(1, logMessage)
 }
 
-// WarningLog helps in logging warnings.
-func WarningLog(message string, args ...interface{}) {
+// WarningLogMsg helps in logging warnings with message.
+func WarningLogMsg(message string, args ...interface{}) {
 	logMessage := fmt.Sprintf(message, args...)
 	klog.WarningDepth(1, logMessage)
 }
