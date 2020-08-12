@@ -261,8 +261,7 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		return nil, nil, err
 	}
 
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
+	j, err := volJournal.Connect(volOptions.Monitors, cr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -449,8 +448,7 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 		return &volOptions, nil, &sid, err
 	}
 
-	// Connect to cephfs' default radosNamespace (csi)
-	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
+	j, err := snapJournal.Connect(volOptions.Monitors, cr)
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}

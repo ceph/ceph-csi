@@ -19,7 +19,7 @@ package rbd
 import "errors"
 
 var (
-	// ErrImageNotFound is returned when image name is not found in the cluster on the given pool and/or namespace.
+	// ErrImageNotFound is returned when image name is not found in the cluster on the given pool.
 	ErrImageNotFound = errors.New("image not found")
 	// ErrSnapNotFound is returned when snap name passed is not found in the list of snapshots for the
 	// given image.

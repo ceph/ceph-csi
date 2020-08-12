@@ -187,7 +187,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		j, err2 := volJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
+		j, err2 := volJournal.Connect(volOptions.Monitors, cr)
 		if err2 != nil {
 			klog.Errorf(
 				util.Log(ctx, "failed to establish cluster connection: %v"),
@@ -751,7 +751,7 @@ func getDevicePath(ctx context.Context, volumePath string) (string, error) {
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "failed to find image metadata: %v"), err)
 	}
-	device, found := findDeviceMappingImage(ctx, imgInfo.Pool, imgInfo.RadosNamespace, imgInfo.ImageName, imgInfo.NbdAccess)
+	device, found := findDeviceMappingImage(ctx, imgInfo.Pool, imgInfo.ImageName, imgInfo.NbdAccess)
 	if found {
 		return device, nil
 	}

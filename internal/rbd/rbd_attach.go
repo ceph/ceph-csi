@@ -58,11 +58,10 @@ func init() {
 
 // rbdDeviceInfo strongly typed JSON spec for rbd device list output (of type krbd).
 type rbdDeviceInfo struct {
-	ID             string `json:"id"`
-	Pool           string `json:"pool"`
-	RadosNamespace string `json:"radosNamespace"`
-	Name           string `json:"name"`
-	Device         string `json:"device"`
+	ID     string `json:"id"`
+	Pool   string `json:"pool"`
+	Name   string `json:"name"`
+	Device string `json:"device"`
 }
 
 // nbdDeviceInfo strongly typed JSON spec for rbd-nbd device list output (of type nbd)
@@ -70,11 +69,10 @@ type rbdDeviceInfo struct {
 // requiring 2 different JSON structures to unmarshal the output.
 // NOTE: image key is "name" in krbd output and "image" in nbd output, which is another difference.
 type nbdDeviceInfo struct {
-	ID             int64  `json:"id"`
-	Pool           string `json:"pool"`
-	RadosNamespace string `json:"radosNamespace"`
-	Name           string `json:"image"`
-	Device         string `json:"device"`
+	ID     int64  `json:"id"`
+	Pool   string `json:"pool"`
+	Name   string `json:"image"`
+	Device string `json:"device"`
 }
 
 // rbdGetDeviceList queries rbd about mapped devices and returns a list of rbdDeviceInfo
@@ -106,11 +104,10 @@ func rbdGetDeviceList(ctx context.Context, accessType string) ([]rbdDeviceInfo, 
 			rbdDeviceList = append(
 				rbdDeviceList,
 				rbdDeviceInfo{
-					ID:             strconv.FormatInt(device.ID, 10),
-					Pool:           device.Pool,
-					RadosNamespace: device.RadosNamespace,
-					Name:           device.Name,
-					Device:         device.Device,
+					ID:     strconv.FormatInt(device.ID, 10),
+					Pool:   device.Pool,
+					Name:   device.Name,
+					Device: device.Device,
 				})
 		}
 	}
@@ -118,26 +115,21 @@ func rbdGetDeviceList(ctx context.Context, accessType string) ([]rbdDeviceInfo, 
 	return rbdDeviceList, nil
 }
 
-// findDeviceMappingImage finds a devicePath, if available, based on image spec (pool/{namespace/}image) on the node.
-func findDeviceMappingImage(ctx context.Context, pool, namespace, image string, useNbdDriver bool) (string, bool) {
+// findDeviceMappingImage finds a devicePath, if available, based on image spec (pool/image) on the node.
+func findDeviceMappingImage(ctx context.Context, pool, image string, useNbdDriver bool) (string, bool) {
 	accessType := accessTypeKRbd
 	if useNbdDriver {
 		accessType = accessTypeNbd
 	}
 
-	imageSpec := fmt.Sprintf("%s/%s", pool, image)
-	if namespace != "" {
-		imageSpec = fmt.Sprintf("%s/%s/%s", pool, namespace, image)
-	}
-
 	rbdDeviceList, err := rbdGetDeviceList(ctx, accessType)
 	if err != nil {
-		klog.Warningf(util.Log(ctx, "failed to determine if image (%s) is mapped to a device (%v)"), imageSpec, err)
+		klog.Warningf(util.Log(ctx, "failed to determine if image (%s/%s) is mapped to a device (%v)"), pool, image, err)
 		return "", false
 	}
 
 	for _, device := range rbdDeviceList {
-		if device.Name == image && device.Pool == pool && device.RadosNamespace == namespace {
+		if device.Name == image && device.Pool == pool {
 			return device.Device, true
 		}
 	}
@@ -146,13 +138,13 @@ func findDeviceMappingImage(ctx context.Context, pool, namespace, image string, 
 }
 
 // Stat a path, if it doesn't exist, retry maxRetries times.
-func waitForPath(ctx context.Context, pool, namespace, image string, maxRetries int, useNbdDriver bool) (string, bool) {
+func waitForPath(ctx context.Context, pool, image string, maxRetries int, useNbdDriver bool) (string, bool) {
 	for i := 0; i < maxRetries; i++ {
 		if i != 0 {
 			time.Sleep(time.Second)
 		}
 
-		device, found := findDeviceMappingImage(ctx, pool, namespace, image, useNbdDriver)
+		device, found := findDeviceMappingImage(ctx, pool, image, useNbdDriver)
 		if found {
 			return device, found
 		}
@@ -190,7 +182,7 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, cr *util.Credent
 		useNBD = true
 	}
 
-	devicePath, found := waitForPath(ctx, volOptions.Pool, volOptions.RadosNamespace, image, 1, useNBD)
+	devicePath, found := waitForPath(ctx, volOptions.Pool, image, 1, useNBD)
 	if !found {
 		backoff := wait.Backoff{
 			Duration: rbdImageWatcherInitDelay,
