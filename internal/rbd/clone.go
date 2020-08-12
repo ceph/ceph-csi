@@ -164,7 +164,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	)
 	var j = &journal.Connection{}
 
-	j, err = volJournal.Connect(rv.Monitors, rv.RadosNamespace, rv.conn.Creds)
+	j, err = volJournal.Connect(rv.Monitors, rv.conn.Creds)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}

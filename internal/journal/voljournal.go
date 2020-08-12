@@ -235,8 +235,7 @@ type Connection struct {
 }
 
 // Connect establishes a new connection to a ceph cluster for journal metadata.
-func (cj *Config) Connect(monitors, namespace string, cr *util.Credentials) (*Connection, error) {
-	cj.namespace = namespace
+func (cj *Config) Connect(monitors string, cr *util.Credentials) (*Connection, error) {
 	cc := &util.ClusterConnection{}
 	if err := cc.Connect(monitors, cr); err != nil {
 		return nil, err
