@@ -121,7 +121,7 @@ check-env:
 
 commitlint:
 	git fetch -v $(shell cut -d/ -f1 <<< "$(GIT_SINCE)") $(shell cut -d/ -f2- <<< "$(GIT_SINCE)")
-	commitlint --from $(GIT_SINCE)
+	commitlint --from FETCH_HEAD
 
 .PHONY: cephcsi
 cephcsi: check-env
