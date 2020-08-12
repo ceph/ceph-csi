@@ -63,4 +63,5 @@ replace (
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.18.6
 	k8s.io/metrics => k8s.io/metrics v0.18.6
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.18.6
+	vbom.ml/util => github.com/fvbommel/util v0.0.0-20180919145318-efcd4e0f9787
 )
