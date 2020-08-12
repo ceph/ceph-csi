@@ -2,7 +2,11 @@ def cico_retries = 16
 def cico_retry_interval = 60
 def ci_git_repo = 'https://github.com/ceph/ceph-csi'
 def ci_git_branch = 'ci/centos'
+def git_repo = 'https://github.com/ceph/ceph-csi'
 def ref = "master"
+def git_since = 'master'
+def workdir = '/opt/build/go/src/github.com/ceph/ceph-csi'
+def doc_change = 0
 
 node('cico-workspace') {
 
@@ -10,6 +14,29 @@ node('cico-workspace') {
 		git url: "${ci_git_repo}",
 			branch: "${ci_git_branch}",
 			changelog: false
+	}
+
+	stage('checkout PR') {
+		if (params.ghprbPullId != null) {
+			ref = "pull/${ghprbPullId}/head"
+		}
+		if (params.ghprbTargetBranch != null) {
+			git_since = "${ghprbTargetBranch}"
+		}
+
+		sh "git clone --depth=1 --branch='${git_since}' '${git_repo}' ~/build/ceph-csi"
+		sh "cd ~/build/ceph-csi && git fetch origin ${ref} && git checkout -b ${ref} FETCH_HEAD"
+	}
+
+	stage('check doc-only change') {
+		doc_change = sh(
+			script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/skip-doc-change.sh origin/${git_since}",
+			returnStatus: true)
+	}
+	// if doc_change (return value of skip-doc-change.sh is 1, do not run the other stages
+	if (doc_change == 1) {
+		currentBuild.result = 'SUCCESS'
+		return
 	}
 
 	stage('reserve bare-metal machine') {
@@ -30,11 +57,9 @@ node('cico-workspace') {
 
 	try {
 		stage('prepare bare-metal machine') {
-			if (params.ghprbPullId != null) {
-				ref = "pull/${ghprbPullId}/head"
-			}
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh root@${CICO_NODE}:'
-			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${ci_git_repo} --ref=${ref}"
+			// TODO: already checked out the PR on the node, scp the contents?
+			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=${workdir} --gitrepo=${git_repo} --ref=${ref}"
 		}
 		stage('test & build') {
 			parallel test: {
