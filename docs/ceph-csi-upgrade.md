@@ -2,10 +2,11 @@
 
 - [Ceph-csi Upgrade](#ceph-csi-upgrade)
   - [Pre-upgrade considerations](#pre-upgrade-considerations)
-    - [RBD CSI Snapshot Incompatibility](#rbd-csi-snapshot-incompatibility)
+    - [snapshot-controller and snapshot Beta CRD](#snapshot-controller-and-snapshot-beta-crd)
   - [Upgrading from v1.2 to v2.0](#upgrading-from-v12-to-v20)
   - [Upgrading from v2.0 to v2.1](#upgrading-from-v20-to-v21)
   - [Upgrading from v2.1 to v3.0](#upgrading-from-v21-to-v30)
+  - [Upgrading from v3.0 to v3.1](#upgrading-from-v30-to-v31)
     - [Upgrading CephFS](#upgrading-cephfs)
       - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
         - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -18,7 +19,6 @@
       - [3. Upgrade RBD Provisioner resources](#3-upgrade-rbd-provisioner-resources)
         - [3.1 Update the RBD Provisioner RBAC](#31-update-the-rbd-provisioner-rbac)
         - [3.2 Update the RBD Provisioner deployment](#32-update-the-rbd-provisioner-deployment)
-        - [3.3 Update snapshot CRD from Alpha to Beta](#33-update-snapshot-crd-from-alpha-to-beta)
       - [4. Upgrade RBD Nodeplugin resources](#4-upgrade-rbd-nodeplugin-resources)
         - [4.1 Update the RBD Nodeplugin RBAC](#41-update-the-rbd-nodeplugin-rbac)
         - [4.2 Update the RBD Nodeplugin daemonset](#42-update-the-rbd-nodeplugin-daemonset)
@@ -48,59 +48,13 @@ To avoid this issue in future upgrades, we recommend that you do not use the
 fuse client or rbd-nbd as of now.
 
 This guide will walk you through the steps to upgrade the software in a cluster
-from v2.1 to v3.0
+from v3.0 to v3.1
 
-### RBD CSI Snapshot Incompatibility
+### snapshot-controller and snapshot Beta CRD
 
-CSI snapshot is moved from Alpha to Beta and is not backward compatible. The snapshots
-created with the Alpha version must be deleted before the upgrade.
-
-Check if we have any `v1alpha1` CRD created in our kubernetes cluster, If there
-is no `v1alpha1` CRD created you can skip this step.
-
-```bash
-[$]kubectl get crd volumesnapshotclasses.snapshot.storage.k8s.io -o yaml |grep v1alpha1
-  - name: v1alpha1
-  - v1alpha1
-[$]kubectl get crd volumesnapshotcontents.snapshot.storage.k8s.io -o yaml |grep v1alpha1
-  - name: v1alpha1
-  - v1alpha1
-[$]kubectl get crd volumesnapshots.snapshot.storage.k8s.io -o yaml |grep v1alpha1
-  - name: v1alpha1
-  - v1alpha1
-```
-
-- List all the volumesnapshots created
-
-```bash
-[$] kubectl get volumesnapshot
-NAME               AGE
-rbd-pvc-snapshot   22s
-```
-
-- Delete all volumesnapshots
-
-```bash
-[$] kubectl delete volumesnapshot rbd-pvc-snapshot
-volumesnapshot.snapshot.storage.k8s.io "rbd-pvc-snapshot" deleted
-```
-
-- List all volumesnapshotclasses created
-
-```bash
-[$] kubectl get volumesnapshotclass
-NAME                      AGE
-csi-rbdplugin-snapclass   86s
-```
-
-- Delete all volumesnapshotclasses
-
-```bash
-[$] kubectl delete volumesnapshotclass csi-rbdplugin-snapclass
-volumesnapshotclass.snapshot.storage.k8s.io "csi-rbdplugin-snapclass" deleted
-```
-
-*Note:* The underlying snapshots on the storage system will be deleted by ceph-csi
+Its kubernetes distributor responsibility to install new snapshot
+controller and snapshot beta CRD. more info can be found
+[here](https://github.com/kubernetes-csi/external-snapshotter/tree/master#usage)
 
 ## Upgrading from v1.2 to v2.0
 
@@ -116,6 +70,12 @@ to upgrade from cephcsi v2.0 to v2.1
 
 ## Upgrading from v2.1 to v3.0
 
+Refer
+[upgrade-from-v2.1-v3.0](https://github.com/ceph/ceph-csi/blob/v3.0.0/docs/ceph-csi-upgrade.md)
+to upgrade from cephcsi v2.1 to v3.0
+
+## Upgrading from v3.0 to v3.1
+
 **Ceph-csi releases from master are expressly unsupported.** It is strongly
 recommended that you use [official
 releases](https://github.com/ceph/ceph-csi/releases) of Ceph-csi. Unreleased
@@ -124,12 +84,12 @@ that will not be supported in the official releases. Builds from the master
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-git checkout v3.0.0 tag
+git checkout v3.1.0 tag
 
 ```bash
 [$] git clone https://github.com/ceph/ceph-csi.git
 [$] cd ./ceph-csi
-[$] git checkout v3.0.0
+[$] git checkout v3.1.0
 ```
 
 **Note:** While upgrading please Ignore warning messages from kubectl output
@@ -254,7 +214,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded cephfs csi from v2.1 to v3.0
+we have successfully upgraded cephfs csi from v3.0 to v3.1
 
 ### Upgrading RBD
 
@@ -296,41 +256,6 @@ csi-rbdplugin-provisioner      3/3     3            3           139m
 ```
 
 deployment UP-TO-DATE value must be same as READY
-
-##### 3.3 Update snapshot CRD from Alpha to Beta
-
-As we are updating the snapshot resources from `Alpha` to `Beta` we need to
-delete the old `alphav1` snapshot CRD created by external-snapshotter sidecar container
-
-Check if we have any `v1alpha1` CRD created in our kubernetes cluster
-
-```bash
-[$]kubectl get crd volumesnapshotclasses.snapshot.storage.k8s.io -o yaml |grep v1alpha1
-  - name: v1alpha1
-  - v1alpha1
-[$]kubectl get crd volumesnapshotcontents.snapshot.storage.k8s.io -o yaml |grep v1alpha1
-  - name: v1alpha1
-  - v1alpha1
-[$]kubectl get crd volumesnapshots.snapshot.storage.k8s.io -o yaml |grep v1alpha1
-  - name: v1alpha1
-  - v1alpha1
-```
-
-As we have `v1alpha1` CRD created in our kubernetes cluster,we need to delete
-the Alpha CRD
-
-```bash
-[$]kubectl delete crd volumesnapshotclasses.snapshot.storage.k8s.io
-customresourcedefinition.apiextensions.k8s.io "volumesnapshotclasses.snapshot.storage.k8s.io" deleted
-[$]kubectl delete crd volumesnapshotcontents.snapshot.storage.k8s.io
-customresourcedefinition.apiextensions.k8s.io "volumesnapshotcontents.snapshot.storage.k8s.io" deleted
-[$]kubectl delete crd volumesnapshots.snapshot.storage.k8s.io
-customresourcedefinition.apiextensions.k8s.io "volumesnapshots.snapshot.storage.k8s.io" deleted
-```
-
-**Note**: Its kubernetes distributor responsibility to install new snapshot
-controller and snapshot beta CRD. more info can be found
-[here](https://github.com/kubernetes-csi/external-snapshotter/tree/master#usage)
 
 #### 4. Upgrade RBD Nodeplugin resources
 
@@ -407,7 +332,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded RBD csi from v2.1 to v3.0
+we have successfully upgraded RBD csi from v3.0 to v3.1
 
 ### Handling node reboot hangs due to existing network mounts
 
