@@ -3,7 +3,9 @@ def cico_retry_interval = 60
 def ci_git_repo = 'https://github.com/ceph/ceph-csi'
 def ci_git_branch = 'ci/centos'
 def ref = 'ci/centos'
+def git_since = 'ci/centos'
 def base = ''
+def doc_change = 0
 
 node('cico-workspace') {
 	stage('checkout ci repository') {
@@ -12,6 +14,29 @@ node('cico-workspace') {
 		}
 		checkout([$class: 'GitSCM', branches: [[name: 'FETCH_HEAD']],
 			userRemoteConfigs: [[url: "${ci_git_repo}", refspec: "${ref}"]]])
+	}
+
+	stage('checkout PR') {
+		if (params.ghprbPullId != null) {
+			ref = "pull/${ghprbPullId}/head"
+		}
+		if (params.ghprbTargetBranch != null) {
+			git_since = "${ghprbTargetBranch}"
+		}
+
+		sh "git clone --depth=1 --branch='${git_since}' '${git_repo}' ~/build/ceph-csi"
+		sh "cd ~/build/ceph-csi && git fetch origin ${ref} && git checkout -b ${ref} FETCH_HEAD"
+	}
+
+	stage('check doc-only change') {
+		doc_change = sh(
+			script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/skip-doc-change.sh origin/${git_since}",
+			returnStatus: true)
+	}
+	// if doc_change (return value of skip-doc-change.sh is 1, do not run the other stages
+	if (doc_change == 1) {
+		currentBuild.result = 'SUCCESS'
+		return
 	}
 
 	stage('reserve bare-metal machine') {
