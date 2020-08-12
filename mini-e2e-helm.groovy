@@ -4,6 +4,8 @@ def ci_git_repo = 'https://github.com/ceph/ceph-csi'
 def ci_git_branch = 'ci/centos'
 def git_repo = 'https://github.com/ceph/ceph-csi'
 def ref = "master"
+def git_since = "master"
+def doc_change = 0
 def namespace = 'cephcsi-e2e-' + UUID.randomUUID().toString().split('-')[-1]
 
 // ssh executes a given command on the reserved bare-metal machine
@@ -17,6 +19,29 @@ node('cico-workspace') {
 		git url: "${ci_git_repo}",
 			branch: "${ci_git_branch}",
 			changelog: false
+	}
+
+	stage('checkout PR') {
+		if (params.ghprbPullId != null) {
+			ref = "pull/${ghprbPullId}/head"
+		}
+		if (params.ghprbTargetBranch != null) {
+			git_since = "${ghprbTargetBranch}"
+		}
+
+		sh "git clone --depth=1 --branch='${git_since}' '${git_repo}' ~/build/ceph-csi"
+		sh "cd ~/build/ceph-csi && git fetch origin ${ref} && git checkout -b ${ref} FETCH_HEAD"
+	}
+
+	stage('check doc-only change') {
+		doc_change = sh(
+			script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/skip-doc-change.sh origin/${git_since}",
+			returnStatus: true)
+	}
+	// if doc_change (return value of skip-doc-change.sh is 1, do not run the other stages
+	if (doc_change == 1) {
+		currentBuild.result = 'SUCCESS'
+		return
 	}
 
 	stage('reserve bare-metal machine') {
