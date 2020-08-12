@@ -553,7 +553,7 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	}
 	rbdSnap.JournalPool = rbdSnap.Pool
 
-	rbdSnap.RadosNamespace, err = util.RadosNamespace(csiConfigFile, rbdSnap.ClusterID)
+	rbdSnap.RadosNamespace, err = util.RadosNamespace(util.CsiConfigFile, rbdSnap.ClusterID)
 	if err != nil {
 		return err
 	}
@@ -626,7 +626,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	}
 	rbdVol.JournalPool = rbdVol.Pool
 
-	rbdVol.RadosNamespace, err = util.RadosNamespace(csiConfigFile, rbdVol.ClusterID)
+	rbdVol.RadosNamespace, err = util.RadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -710,7 +710,7 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		return nil, err
 	}
 
-	rbdVol.RadosNamespace, err = util.RadosNamespace(csiConfigFile, rbdVol.ClusterID)
+	rbdVol.RadosNamespace, err = util.RadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
 	if err != nil {
 		return nil, err
 	}
