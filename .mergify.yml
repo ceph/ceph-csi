@@ -151,6 +151,39 @@ pull_request_rules:
         strict: smart
       dismiss_reviews: {}
       delete_head_branch: {}
+  - name: backport patches to release-v3.1 branch
+    conditions:
+      - base=master
+      - label=backport-to-release-v3.1
+    actions:
+      backport:
+        branches:
+          - release-v3.1
+  # automerge backports if CI successfully ran
+  - name: automerge backport release-v3.1
+    conditions:
+      - author=mergify[bot]
+      - base=release-v3.1
+      - label!=DNM
+      - "#changes-requested-reviews-by=0"
+      - "#approved-reviews-by>=1"
+      - "status-success=continuous-integration/travis-ci/pr"
+      - "status-success=continuous-integration/travis-ci/pr"
+      - "status-success=ci/centos/containerized-tests"
+      - "status-success=ci/centos/mini-e2e-helm/k8s-1.17.8"
+      - "status-success=ci/centos/mini-e2e-helm/k8s-1.18.5"
+      - "status-success=ci/centos/mini-e2e/k8s-1.17.8"
+      - "status-success=ci/centos/mini-e2e/k8s-1.17.8"
+      - "status-success=DCO"
+      - "status-success=commitlint"
+    actions:
+      merge:
+        method: rebase
+        rebase_fallback: merge
+        strict: smart
+        strict_method: rebase
+      dismiss_reviews: {}
+      delete_head_branch: {}
   - name: remove outdated approvals on ci/centos
     conditions:
       - base=ci/centos
