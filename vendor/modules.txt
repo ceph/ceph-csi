@@ -12,7 +12,7 @@ github.com/ceph/go-ceph/rados
 github.com/ceph/go-ceph/rbd
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
-# github.com/container-storage-interface/spec v1.2.0
+# github.com/container-storage-interface/spec v1.3.0
 github.com/container-storage-interface/spec/lib/go/csi
 # github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 github.com/coreos/go-systemd/journal
