@@ -2,6 +2,7 @@ def cico_retries = 16
 def cico_retry_interval = 60
 def ci_git_repo = 'https://github.com/ceph/ceph-csi'
 def ci_git_branch = 'ci/centos'
+def git_repo = 'https://github.com/ceph/ceph-csi'
 def ref = 'ci/centos'
 def git_since = 'ci/centos'
 def base = ''
