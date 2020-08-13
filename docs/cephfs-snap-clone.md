@@ -19,6 +19,10 @@
   be a `volumesnapshotclass` object present in the cluster
   for snapshot request to be satisified.
 
+**NOTE: At present, there is a limit of 400 snapshots per cephFS filesystem.
+Also PVC cannot be deleted if it's having snapshots. Make sure all the snapshots
+on the PVC are deleted before you delete the PVC.**
+
 ## Snapshot
 
 ### Create snapshotclass
