@@ -61,6 +61,7 @@ function set_env() {
     # it and will cause a failure if not annotated with /dev/null.
     # shellcheck source=/dev/null
     source "${GOPATH}"/src/github.com/ceph/ceph-csi/build.env
+    CSI_IMAGE_VERSION=${CSI_IMAGE_VERSION:-"canary"}
     export GO111MODULE="on"
     export TEST_COVERAGE="stdout"
     export VM_DRIVER="kvm2"
@@ -139,7 +140,7 @@ set_env
 install_minikube
 
 install_docker
-podman2minikube quay.io/cephcsi/cephcsi:canary
+podman2minikube "quay.io/cephcsi/cephcsi:${CSI_IMAGE_VERSION}"
 
 deploy_rook
 
