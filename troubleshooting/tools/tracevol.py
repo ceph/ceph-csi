@@ -502,9 +502,10 @@ def get_pv_data(arg, pvname):
     pvdata = {}
     cmd = [arg.command]
     if arg.kubeconfig != "":
-        cmd += ["--config", arg.kubeconfig]
-    else:
-        cmd += ["--kubeconfig", arg.kubeconfig]
+        if arg.command == "oc":
+            cmd += ["--config", arg.kubeconfig]
+        else:
+            cmd += ["--kubeconfig", arg.kubeconfig]
 
     cmd += ['get', 'pv', pvname, '-o', 'json']
     out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
