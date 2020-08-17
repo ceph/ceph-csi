@@ -73,6 +73,12 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 		}
 	}
 
+	// Allow readonly access mode for volume with content source
+	err := util.CheckReadOnlyManyIsSupported(req)
+	if err != nil {
+		return err
+	}
+
 	if req.VolumeContentSource != nil {
 		volumeSource := req.VolumeContentSource
 		switch volumeSource.Type.(type) {
