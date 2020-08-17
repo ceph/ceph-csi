@@ -73,7 +73,7 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get the rootpath for the vol %s(%s) stdError %s", string(volID), err, stderr)
-		if strings.Contains(stderr, ErrVolumeNotFound.Error()) {
+		if strings.Contains(stderr, volumeNotFound) {
 			return "", util.JoinErrors(ErrVolumeNotFound, err)
 		}
 
@@ -101,11 +101,11 @@ func getSubVolumeInfo(ctx context.Context, volOptions *volumeOptions, cr *util.C
 		"--keyfile="+cr.KeyFile)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get subvolume info for the vol %s(%s)", string(volID), err)
-		if strings.HasPrefix(err.Error(), ErrVolumeNotFound.Error()) {
+		if strings.HasPrefix(err.Error(), volumeNotFound) {
 			return info, ErrVolumeNotFound
 		}
 		// Incase the error is other than invalid command return error to the caller.
-		if !strings.Contains(err.Error(), ErrInvalidCommand.Error()) {
+		if !strings.Contains(err.Error(), invalidCommand) {
 			return info, ErrInvalidCommand
 		}
 
@@ -222,7 +222,7 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			return nil
 		}
 		// Incase the error is other than invalid command return error to the caller.
-		if !strings.Contains(err.Error(), ErrInvalidCommand.Error()) {
+		if !strings.Contains(err.Error(), invalidCommand) {
 			util.ErrorLog(ctx, "failed to resize subvolume %s(%s) in fs %s", string(volID), err, volOptions.FsName)
 			return err
 		}
@@ -252,7 +252,7 @@ func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volO
 	err := execCommandErr(ctx, "ceph", arg...)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to purge subvolume %s(%s) in fs %s", string(volID), err, volOptions.FsName)
-		if strings.Contains(err.Error(), ErrVolumeNotFound.Error()) {
+		if strings.Contains(err.Error(), volumeNotFound) {
 			return util.JoinErrors(ErrVolumeNotFound, err)
 		}
 		return err
