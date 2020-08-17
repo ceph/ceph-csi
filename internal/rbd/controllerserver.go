@@ -80,6 +80,13 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	if value, ok := options["volumeNamePrefix"]; ok && value == "" {
 		return status.Error(codes.InvalidArgument, "empty volume name prefix to provision volume from")
 	}
+
+	// Allow readonly access mode for volume with content source
+	err := util.CheckReadOnlyManyIsSupported(req)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
