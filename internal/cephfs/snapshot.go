@@ -127,8 +127,8 @@ func getSnapshotInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Cr
 		"ceph",
 		args[:]...)
 	if err != nil {
-		if strings.Contains(err.Error(), ErrSnapNotFound.Error()) {
-			return snapshotInfo{}, err
+		if strings.Contains(err.Error(), snapNotFound) {
+			return snapshotInfo{}, ErrSnapNotFound
 		}
 		util.ErrorLog(ctx, "failed to get subvolume snapshot info %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
 		return snapshotInfo{}, err
@@ -158,7 +158,7 @@ func protectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Cr
 		"ceph",
 		args[:]...)
 	if err != nil {
-		if strings.Contains(err.Error(), ErrSnapProtectionExist.Error()) {
+		if strings.Contains(err.Error(), snapProtectionExist) {
 			return nil
 		}
 		util.ErrorLog(ctx, "failed to protect subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
@@ -191,7 +191,7 @@ func unprotectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.
 	if err != nil {
 		// Incase the snap is already unprotected we get ErrSnapProtectionExist error code
 		// in that case we are safe and we could discard this error.
-		if strings.Contains(err.Error(), ErrSnapProtectionExist.Error()) {
+		if strings.Contains(err.Error(), snapProtectionExist) {
 			return nil
 		}
 		util.ErrorLog(ctx, "failed to unprotect subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
@@ -230,7 +230,7 @@ func cloneSnapshot(ctx context.Context, parentVolOptions *volumeOptions, cr *uti
 
 	if err != nil {
 		util.ErrorLog(ctx, "failed to clone subvolume snapshot %s %s(%s) in fs %s", string(cloneID), string(volID), err, parentVolOptions.FsName)
-		if strings.HasPrefix(err.Error(), ErrVolumeNotFound.Error()) {
+		if strings.HasPrefix(err.Error(), volumeNotFound) {
 			return ErrVolumeNotFound
 		}
 		return err

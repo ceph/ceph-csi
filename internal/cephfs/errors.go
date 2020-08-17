@@ -18,27 +18,42 @@ package cephfs
 
 import (
 	"errors"
-	"fmt"
+)
+
+// Error strings for comparison with CLI errors.
+const (
+	// volumeNotFound is returned when a subvolume is not found in CephFS.
+	volumeNotFound = "Error ENOENT"
+	// invalidCommand is returned when a command is not known to the cluster
+	invalidCommand = "Error EINVAL"
+	// snapNotFound is returned when snap name passed is not found in the list
+	// of snapshots for the given image.
+	snapNotFound = "Error ENOENT"
+	// snapProtectionExist is returned when the snapshot is already protected
+	snapProtectionExist = "Error EEXIST"
 )
 
 var (
+	// ErrCloneInProgress is returned when snapshot clone state is `in progress`
+	ErrCloneInProgress = errors.New("in progress")
+
 	// ErrInvalidVolID is returned when a CSI passed VolumeID is not conformant to any known volume ID
 	// formats.
 	ErrInvalidVolID = errors.New("invalid VolumeID")
 	// ErrNonStaticVolume is returned when a volume is detected as not being
 	// statically provisioned.
 	ErrNonStaticVolume = errors.New("volume not static")
-	// ErrVolNotEmpty is returned when a subvolume has snapshots in it.
-	ErrVolNotEmpty = fmt.Errorf("%v", "Error ENOTEMPTY")
-	// ErrVolumeNotFound is returned when a subvolume is not found in CephFS.
-	ErrVolumeNotFound = fmt.Errorf("%v", "Error ENOENT")
-	// ErrInvalidCommand is returned when a command is not known to the cluster
-	ErrInvalidCommand = fmt.Errorf("%v", "Error EINVAL")
-	// ErrSnapNotFound is returned when snap name passed is not found in the list of snapshots for the
-	// given image.
-	ErrSnapNotFound = fmt.Errorf("%v", "Error ENOENT")
+
 	// ErrSnapProtectionExist is returned when the snapshot is already protected
-	ErrSnapProtectionExist = fmt.Errorf("%v", "Error EEXIST")
-	// ErrCloneInProgress is returned when snapshot clone state is `in progress`
-	ErrCloneInProgress = fmt.Errorf("in progress")
+	ErrSnapProtectionExist = errors.New("snapshot  protection already exists")
+
+	// ErrSnapNotFound is returned when snap name passed is not found in the list
+	// of snapshots for the given image.
+	ErrSnapNotFound = errors.New("snapshot not found")
+
+	// ErrVolumeNotFound is returned when a subvolume is not found in CephFS.
+	ErrVolumeNotFound = errors.New("volume not found")
+
+	// ErrInvalidCommand is returned when a command is not known to the cluster
+	ErrInvalidCommand = errors.New("invalid command")
 )
