@@ -213,16 +213,34 @@ var _ = Describe("RBD", func() {
 
 			By("create a PVC and Bind it to an app", func() {
 				validatePVCAndAppBinding(pvcPath, appPath, f)
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
+				}
 			})
 
 			By("create a PVC and Bind it to an app with normal user", func() {
 				validateNormalUserPVCAccess(pvcPath, f)
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
+				}
 			})
 
 			By("create a PVC and Bind it to an app with ext4 as the FS ", func() {
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"csi.storage.k8s.io/fstype": "ext4"})
 				validatePVCAndAppBinding(pvcPath, appPath, f)
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
+				}
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
@@ -231,6 +249,12 @@ var _ = Describe("RBD", func() {
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"encrypted": "true"})
 				validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
+				}
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
@@ -243,6 +267,12 @@ var _ = Describe("RBD", func() {
 				}
 				createRBDStorageClass(f.ClientSet, f, nil, scOpts)
 				validateEncryptedPVCAndAppBinding(pvcPath, appPath, "vault", f)
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
+				}
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
@@ -432,6 +462,12 @@ var _ = Describe("RBD", func() {
 						}(&wg, i, *pvcClone, *appClone)
 					}
 					wg.Wait()
+					// validate created backend rbd images
+					images = listRBDImages(f)
+					if len(images) != 0 {
+						e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+						Fail("validate backend image failed")
+					}
 				}
 			})
 
@@ -587,6 +623,12 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
+				}
 			})
 
 			By("Resize Filesystem PVC and check application directory size", func() {
@@ -612,6 +654,12 @@ var _ = Describe("RBD", func() {
 						Fail(err.Error())
 
 					}
+					// validate created backend rbd images
+					images := listRBDImages(f)
+					if len(images) != 0 {
+						e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+						Fail("validate backend image failed")
+					}
 				}
 			})
 
@@ -628,6 +676,12 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						e2elog.Logf("failed to resize block PVC %v", err)
 						Fail(err.Error())
+					}
+					// validate created backend rbd images
+					images := listRBDImages(f)
+					if len(images) != 0 {
+						e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+						Fail("validate backend image failed")
 					}
 				}
 			})
@@ -649,6 +703,12 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 1 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+					Fail("validate backend image failed")
+				}
 				// delete rbd nodeplugin pods
 				err = deletePodWithLabel("app=csi-rbdplugin", cephCSINamespace, false)
 				if err != nil {
@@ -663,6 +723,12 @@ var _ = Describe("RBD", func() {
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
 					Fail(err.Error())
+				}
+				// validate created backend rbd images
+				images = listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
 				}
 			})
 
@@ -682,6 +748,12 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 1 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+					Fail("validate backend image failed")
+				}
 				// list RBD images and check if one of them has the same prefix
 				foundIt := false
 				for _, imgName := range listRBDImages(f) {
@@ -697,6 +769,12 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
+				// validate created backend rbd images
+				images = listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
+				}
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
 
@@ -710,12 +788,24 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
+				}
 			})
 
 			By("validate RBD static Block PVC", func() {
 				err := validateRBDStaticPV(f, rawAppPath, true)
 				if err != nil {
 					Fail(err.Error())
+				}
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
 				}
 			})
 
@@ -724,6 +814,12 @@ var _ = Describe("RBD", func() {
 				err := checkMountOptions(pvcPath, appPath, f, mountFlags)
 				if err != nil {
 					Fail(err.Error())
+				}
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
 				}
 			})
 
@@ -828,6 +924,12 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 1 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+					Fail("validate backend image failed")
+				}
 				// create an app and wait for 1 min for it to go to running state
 				err = createApp(f.ClientSet, app, 1)
 				if err == nil {
@@ -838,6 +940,12 @@ var _ = Describe("RBD", func() {
 					Fail(err.Error())
 				}
 
+				// validate created backend rbd images
+				images = listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
+				}
 				deleteResource(rbdExamplePath + "storageclass.yaml")
 				createRBDStorageClass(f.ClientSet, f, nil, nil)
 			})
@@ -866,7 +974,12 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						Fail(err.Error())
 					}
-
+					// validate created backend rbd images
+					images := listRBDImages(f)
+					if len(images) != 1 {
+						e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+						Fail("validate backend image failed")
+					}
 					// delete pod as we should not create snapshot for in-use pvc
 					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 					if err != nil {
@@ -881,7 +994,14 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						Fail(err.Error())
 					}
-
+					// validate created backend rbd images
+					images = listRBDImages(f)
+					// parent PVC + snapshot
+					totalImages := 2
+					if len(images) != totalImages {
+						e2elog.Logf("backend image count %d expected image count %d", len(images), totalImages)
+						Fail("validate backend image failed")
+					}
 					pvcClone, err := loadPVC(pvcClonePath)
 					if err != nil {
 						Fail(err.Error())
@@ -893,6 +1013,14 @@ var _ = Describe("RBD", func() {
 					err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
 					if err != nil {
 						Fail(err.Error())
+					}
+					// validate created backend rbd images
+					// parent pvc+ snapshot + clone
+					totalImages = 3
+					images = listRBDImages(f)
+					if len(images) != totalImages {
+						e2elog.Logf("backend image count %d expected image count %d", len(images), totalImages)
+						Fail("validate backend image failed")
 					}
 					appClone, err := loadApp(appClonePath)
 					if err != nil {
@@ -954,6 +1082,12 @@ var _ = Describe("RBD", func() {
 					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 					if err != nil {
 						Fail(err.Error())
+					}
+					// validate created backend rbd images
+					images = listRBDImages(f)
+					if len(images) != 0 {
+						e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+						Fail("validate backend image failed")
 					}
 				}
 			})
@@ -1077,6 +1211,12 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					Fail(err.Error())
 				}
+				// validate created backend rbd images
+				images := listRBDImages(f)
+				if len(images) != 1 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+					Fail("validate backend image failed")
+				}
 
 				opt := metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("app=%s", app.Name),
@@ -1093,6 +1233,12 @@ var _ = Describe("RBD", func() {
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
 					Fail(err.Error())
+				}
+				// validate created backend rbd images
+				images = listRBDImages(f)
+				if len(images) != 0 {
+					e2elog.Logf("backend image count %d expected image count %d", len(images), 0)
+					Fail("validate backend image failed")
 				}
 			})
 
