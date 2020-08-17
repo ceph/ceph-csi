@@ -42,9 +42,7 @@
           # yamllint disable-line rule:line-length
           trigger-phrase: '/(re)?test ((all)|(ci/centos/mini-e2e(/k8s-{k8s_version})?))'
           permit-all: true
-          # TODO: set github-hooks to true when it is configured in GitHub
-          github-hooks: false
-          cron: 'H/5 * * * *'
+          github-hooks: true
           black-list-target-branches:
             - ci/centos
           org-list:
@@ -84,9 +82,7 @@
           # yamllint disable-line rule:line-length
           trigger-phrase: '/(re)?test ((all)|(ci/centos/mini-e2e-helm(/k8s-{k8s_version})?))'
           permit-all: true
-          # TODO: set github-hooks to true when it is configured in GitHub
-          github-hooks: false
-          cron: 'H/5 * * * *'
+          github-hooks: true
           black-list-target-branches:
             - ci/centos
           org-list:
