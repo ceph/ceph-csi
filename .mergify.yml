@@ -1,10 +1,5 @@
 ---
 pull_request_rules:
-  - name: rebase on request
-    conditions: []
-    actions:
-      rebase:
-        bot_account: ceph-csi-bot
   - name: remove outdated approvals
     conditions:
       - base=master
