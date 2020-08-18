@@ -77,7 +77,7 @@ node('cico-workspace') {
 			}
 		}
 		stage('run e2e') {
-			timeout(time: 60, unit: 'MINUTES') {
+			timeout(time: 120, unit: 'MINUTES') {
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e'
 			}
 		}
