@@ -47,7 +47,6 @@ function detect_minikube() {
     # default if minikube is not available
     echo '/usr/local/bin/minikube'
 }
-minikube="$(detect_minikube)"
 
 # install minikube
 function install_minikube() {
@@ -99,6 +98,19 @@ function minikube_losetup() {
     ${minikube} ssh 'sudo sh -c "rm -f /sbin/losetup && cp ~docker/losetup /sbin"'
 }
 
+function minikube_supports_psp() {
+    local MINIKUBE_MAJOR
+    local MINIKUBE_MINOR
+    local MINIKUBE_PATCH
+    MINIKUBE_MAJOR=$(minikube_version 1)
+    MINIKUBE_MINOR=$(minikube_version 2)
+    MINIKUBE_PATCH=$(minikube_version 3)
+    if [[ "${MINIKUBE_MAJOR}" -ge 1 ]] && [[ "${MINIKUBE_MINOR}" -ge 11 ]] && [[ "${MINIKUBE_PATCH}" -ge 1 ]] || [[ "${MINIKUBE_MAJOR}" -ge 1 ]] && [[ "${MINIKUBE_MINOR}" -ge 12 ]]; then
+        return 1
+    fi
+    return 0
+}
+
 # configure minikube
 MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
@@ -136,18 +148,7 @@ EXTRA_CONFIG="${EXTRA_CONFIG} --extra-config=kubelet.resolv-conf=${RESOLV_CONF}"
 #extra Rook configuration
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
 
-function minikube_supports_psp() {
-    local MINIKUBE_MAJOR
-    local MINIKUBE_MINOR
-    local MINIKUBE_PATCH
-    MINIKUBE_MAJOR=$(minikube_version 1)
-    MINIKUBE_MINOR=$(minikube_version 2)
-    MINIKUBE_PATCH=$(minikube_version 3)
-    if [[ "${MINIKUBE_MAJOR}" -ge 1 ]] && [[ "${MINIKUBE_MINOR}" -ge 11 ]] && [[ "${MINIKUBE_PATCH}" -ge 1 ]] || [[ "${MINIKUBE_MAJOR}" -ge 1 ]] && [[ "${MINIKUBE_MINOR}" -ge 12 ]]; then
-        return 1
-    fi
-    return 0
-}
+minikube="$(detect_minikube)"
 
 case "${1:-}" in
 up)
