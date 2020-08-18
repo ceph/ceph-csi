@@ -7,12 +7,14 @@ gitrepo="https://github.com/ceph/ceph-csi"
 workdir="tip/"
 ref="master"
 base="master"
+history="no"
 
 ARGUMENT_LIST=(
     "ref"
     "workdir"
     "gitrepo"
     "base"
+    "history"
 )
 
 opts=$(getopt \
@@ -41,6 +43,7 @@ while true; do
         echo "--workdir                 specify the working directory"
         echo "--gitrepo                 specify the git repository"
         echo "--base                    specify the base branch to checkout"
+        echo "--history                 fetch the history of the base branch"
         echo " "
         echo "Sample Usage:"
         echo "./prepare.sh --gitrepo=https://github.com/example --workdir=/opt/build --ref=pull/123/head"
@@ -63,6 +66,10 @@ while true; do
         shift
         base=${1}
         ;;
+    --history)
+        shift
+        history="yes"
+        ;;
     --)
         shift
         break
@@ -75,7 +82,14 @@ set -x
 
 dnf -y install git podman make
 
-git clone --depth=1 --branch="${base}" "${gitrepo}" "${workdir}"
+# if --history is passed, don't pass --depth=1
+depth='--depth=1'
+if [[ "${history}" == 'yes' ]]
+then
+    depth=''
+fi
+
+git clone "${depth}" --branch="${base}" "${gitrepo}" "${workdir}"
 cd "${workdir}"
 git fetch origin "${ref}:tip/${ref}"
 git checkout "tip/${ref}"
