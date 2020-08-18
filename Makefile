@@ -127,7 +127,7 @@ check-env:
 commitlint: REBASE ?= 0
 commitlint:
 	git fetch -v $(shell cut -d/ -f1 <<< "$(GIT_SINCE)") $(shell cut -d/ -f2- <<< "$(GIT_SINCE)")
-	@test $(REBASE) -eq 0 || git -c user.name=commitlint -c user.email=commitline@localhost rebase $(GIT_SINCE)
+	@test $(REBASE) -eq 0 || git -c user.name=commitlint -c user.email=commitline@localhost rebase FETCH_HEAD
 	commitlint --from FETCH_HEAD
 
 .PHONY: cephcsi
