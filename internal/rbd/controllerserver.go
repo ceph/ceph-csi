@@ -74,7 +74,7 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	if value, ok := options["dataPool"]; ok && value == "" {
 		return status.Error(codes.InvalidArgument, "empty datapool name to provision volume from")
 	}
-	if value, ok := options["raodsNamespace"]; ok && value == "" {
+	if value, ok := options["radosNamespace"]; ok && value == "" {
 		return status.Error(codes.InvalidArgument, "empty namespace name to provision volume from")
 	}
 	if value, ok := options["volumeNamePrefix"]; ok && value == "" {
