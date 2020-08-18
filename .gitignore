@@ -7,8 +7,9 @@ e2e.test
 # docker build
 deploy/cephcsi/image/cephcsi
 
-# build container
+# cached container image IDs
 .devel-container-id
+.test-container-id
 
 # detected 'docker' or 'podman'
 .container-cmd
