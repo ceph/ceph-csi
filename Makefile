@@ -14,9 +14,9 @@
 
 .PHONY: all cephcsi check-env
 
-CONTAINER_CMD?=$(shell docker version >/dev/null 2>&1 && echo docker)
+CONTAINER_CMD?=$(shell podman version >/dev/null 2>&1 && echo podman)
 ifeq ($(CONTAINER_CMD),)
-    CONTAINER_CMD=$(shell podman version >/dev/null 2>&1 && echo podman)
+    CONTAINER_CMD=$(shell docker version >/dev/null 2>&1 && echo docker)
 endif
 CPUS?=$(shell nproc --ignore=1)
 CPUSET?=--cpuset-cpus=0-${CPUS}
