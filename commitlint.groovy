@@ -41,7 +41,7 @@ node('cico-workspace') {
 			if (params.ghprbTargetBranch != null) {
 				git_since = "origin/${ghprbTargetBranch}"
 			}
-			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test CONTAINER_CMD=podman TARGET=commitlint GIT_SINCE=${git_since}'"
+			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test CONTAINER_CMD=podman TARGET=commitlint GIT_SINCE=${git_since} REBASE=1'"
 		}
 	}
 
