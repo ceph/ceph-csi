@@ -14,11 +14,10 @@ ARGUMENT_LIST=(
     "workdir"
     "gitrepo"
     "base"
-    "history"
 )
 
 opts=$(getopt \
-    --longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")help" \
+    --longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")history,help" \
     --name "$(basename "${0}")" \
     --options "" \
     -- "$@"
@@ -67,7 +66,6 @@ while true; do
         base=${1}
         ;;
     --history)
-        shift
         history="yes"
         ;;
     --)
@@ -89,7 +87,7 @@ then
     depth=''
 fi
 
-git clone "${depth}" --branch="${base}" "${gitrepo}" "${workdir}"
+git clone ${depth} --branch="${base}" "${gitrepo}" "${workdir}"
 cd "${workdir}"
 git fetch origin "${ref}:tip/${ref}"
 git checkout "tip/${ref}"
