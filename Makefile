@@ -53,13 +53,21 @@ lint-markdown:
 lint-yaml:
 	./scripts/lint-extras.sh lint-yaml
 
+#
+# commitlint will do a rebase on top of GIT_SINCE when REBASE=1 is passed.
+#
+# Usage: make commitlint REBASE=1
+#
+commitlint: REBASE ?= 0
 commitlint:
 	git fetch -v $(shell cut -d/ -f1 <<< "$(GIT_SINCE)") $(shell cut -d/ -f2- <<< "$(GIT_SINCE)")
+	@test $(REBASE) -eq 0 || git -c user.name=commitlint -c user.email=commitline@localhost rebase $(GIT_SINCE)
 	commitlint --from FETCH_HEAD
 
 .PHONY: containerized-test
+containerized-test: REBASE ?= 0
 containerized-test: .test-container-id
-	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE)
+	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE) REBASE=$(REBASE)
 
 # create a (cached) container image with dependencies for testing the CI jobs
 .test-container-id: scripts/Dockerfile.test
