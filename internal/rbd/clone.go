@@ -134,6 +134,7 @@ func (rv *rbdVolume) generateTempClone() *rbdVolume {
 	tempClone.ClusterID = rv.ClusterID
 	tempClone.Monitors = rv.Monitors
 	tempClone.Pool = rv.Pool
+	tempClone.RadosNamespace = rv.RadosNamespace
 	// The temp cloned image name will be always (rbd image name + "-temp")
 	// this name will be always unique, as cephcsi never creates an image with
 	// this format for new rbd images
