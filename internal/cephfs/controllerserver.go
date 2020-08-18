@@ -331,7 +331,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if acquired := cs.VolumeLocks.TryAcquire(volOptions.RequestName); !acquired {
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volOptions.RequestName)
 	}
-	defer cs.VolumeLocks.Release(string(volID))
+	defer cs.VolumeLocks.Release(volOptions.RequestName)
 
 	// Deleting a volume requires admin credentials
 	cr, err := util.NewAdminCredentials(secrets)
