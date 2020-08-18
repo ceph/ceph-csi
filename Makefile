@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: all cephcsi check-env need-container-cmd
+.PHONY: all cephcsi check-env
 
 CONTAINER_CMD?=$(shell docker version >/dev/null 2>&1 && echo docker)
 ifeq ($(CONTAINER_CMD),)
@@ -147,44 +147,45 @@ run-e2e:
 	cd e2e && \
 	../e2e.test -test.v -test.timeout="${E2E_TIMEOUT}" --deploy-timeout="${DEPLOY_TIMEOUT}" --cephcsi-namespace=$(NAMESPACE) $(E2E_ARGS)
 
-need-container-cmd:
+.container-cmd:
 	@test -n "$(shell which $(CONTAINER_CMD) 2>/dev/null)" || { echo "Missing container support, install Podman or Docker"; exit 1; }
+	@echo "$(CONTAINER_CMD)" > .container-cmd
 
 .PHONY: containerized-build containerized-test
 containerized-build: TARGET = cephcsi
-containerized-build: need-container-cmd .devel-container-id
+containerized-build: .container-cmd .devel-container-id
 	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make $(TARGET)
 
 containerized-test: TARGET = test
-containerized-test: need-container-cmd .test-container-id
+containerized-test: .container-cmd .test-container-id
 	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE)
 
 # create a (cached) container image with dependencied for building cephcsi
-.devel-container-id: need-container-cmd scripts/Dockerfile.devel
+.devel-container-id: .container-cmd scripts/Dockerfile.devel
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
 	$(CONTAINER_CMD) build $(CPUSET) --build-arg BASE_IMAGE=$(BASE_IMAGE) -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
 
 # create a (cached) container image with dependencied for testing cephcsi
-.test-container-id: need-container-cmd build.env scripts/Dockerfile.test
+.test-container-id: .container-cmd build.env scripts/Dockerfile.test
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
 	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
 
 image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
-image-cephcsi: need-container-cmd
+image-cephcsi: .container-cmd
 	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE) -f deploy/cephcsi/image/Dockerfile . --build-arg CSI_IMAGE_NAME=$(CSI_IMAGE_NAME) --build-arg CSI_IMAGE_VERSION=$(CSI_IMAGE_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --build-arg GO_ARCH=$(GOARCH) --build-arg BASE_IMAGE=$(BASE_IMAGE)
 
 push-image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
-push-image-cephcsi: need-container-cmd image-cephcsi
+push-image-cephcsi: .container-cmd image-cephcsi
 	$(CONTAINER_CMD) tag $(CSI_IMAGE) $(CSI_IMAGE)-$(GOARCH)
 	$(CONTAINER_CMD) push $(CSI_IMAGE)-$(GOARCH)
 
 create-manifest: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
-create-manifest: need-container-cmd
+create-manifest: .container-cmd
 	$(CONTAINER_CMD) manifest create $(CSI_IMAGE) --amend $(CSI_IMAGE)-$(GOARCH)
 
-push-manifest: need-container-cmd
+push-manifest: .container-cmd
 	$(CONTAINER_CMD) manifest push  $(CSI_IMAGE)
 
 clean:
