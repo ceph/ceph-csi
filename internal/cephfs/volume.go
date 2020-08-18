@@ -252,7 +252,7 @@ func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volO
 	err := execCommandErr(ctx, "ceph", arg...)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to purge subvolume %s(%s) in fs %s", string(volID), err, volOptions.FsName)
-		if strings.HasPrefix(err.Error(), ErrVolumeNotFound.Error()) {
+		if strings.Contains(err.Error(), ErrVolumeNotFound.Error()) {
 			return util.JoinErrors(ErrVolumeNotFound, err)
 		}
 		return err
