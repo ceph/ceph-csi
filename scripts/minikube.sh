@@ -54,10 +54,6 @@ function install_minikube() {
         local mk_version version
         read -ra mk_version <<<"$(${minikube} version)"
         version=${mk_version[2]}
-        if [[ "${version}" != "${MINIKUBE_VERSION}" ]]; then
-            echo "installed minikube version ${version} is not matching requested version ${MINIKUBE_VERSION}"
-            exit 1
-        fi
         echo "minikube already installed with ${version}"
         return
     fi
