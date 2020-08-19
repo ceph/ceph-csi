@@ -13,7 +13,7 @@ rules:
   scope-empty: [1, always]
   # valid types/prefixes, see docs/development-guide.md
   type-enum:
-    - 1
+    - 2
     - always
     - - build
       - cephfs
