@@ -72,7 +72,24 @@ function install_minikube() {
     curl -Lo minikube https://storage.googleapis.com/minikube/releases/"${latest_version}"/minikube-linux-"${MINIKUBE_ARCH}" && chmod +x minikube && mv minikube /usr/local/bin/
 }
 
+function detect_kubectl() {
+    if type kubectl >/dev/null 2>&1; then
+        command -v kubectl
+        return
+    fi
+    # default if kubectl is not available
+    echo '/usr/local/bin/kubectl'
+}
+
 function install_kubectl() {
+    if type "${kubectl}" >/dev/null 2>&1; then
+        local kubectl_version
+        kubectl_version=$(kubectl version --client --short | cut -d' ' -f3)
+        if [[ "${kubectl_version}" == "${KUBE_VERSION}" ]]; then
+            echo "kubectl already installed with ${kubectl_version}"
+            return
+        fi
+    fi
     # Download kubectl, which is a requirement for using minikube.
     echo "Installing kubectl. Version: ${KUBE_VERSION}"
     curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/"${KUBE_VERSION}"/bin/linux/"${MINIKUBE_ARCH}"/kubectl && chmod +x kubectl && mv kubectl /usr/local/bin/
@@ -120,7 +137,7 @@ function minikube_supports_psp() {
 # configure minikube
 MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
-KUBE_VERSION=${KUBE_VERSION:-"v1.14.10"}
+KUBE_VERSION=${KUBE_VERSION:-"latest"}
 MEMORY=${MEMORY:-"4096"}
 CPUS=${CPUS:-"$(nproc)"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
@@ -154,7 +171,13 @@ EXTRA_CONFIG="${EXTRA_CONFIG} --extra-config=kubelet.resolv-conf=${RESOLV_CONF}"
 #extra Rook configuration
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
 
+if [[ "${KUBE_VERSION}" == "latest" ]]; then
+    # update the version string from latest with the real version
+    KUBE_VERSION=$(curl -L https://storage.googleapis.com/kubernetes-release/release/stable.txt 2> /dev/null)
+fi
+
 minikube="$(detect_minikube)"
+kubectl="$(detect_kubectl)"
 
 case "${1:-}" in
 up)
