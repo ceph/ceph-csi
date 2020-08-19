@@ -22,8 +22,6 @@ import (
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
-
-	klog "k8s.io/klog/v2"
 )
 
 func validateNonEmptyField(field, fieldName, structName string) error {
@@ -155,7 +153,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 			err = parentVol.deleteSnapshot(ctx, rbdSnap)
 			if err != nil {
 				if !errors.Is(err, ErrSnapNotFound) {
-					klog.Errorf(util.Log(ctx, "failed to delete snapshot %s: %v"), rbdSnap, err)
+					util.ErrorLog(ctx, "failed to delete snapshot %s: %v", rbdSnap, err)
 					return false, err
 				}
 			}
@@ -184,7 +182,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 		// create snapshot
 		sErr := vol.createSnapshot(ctx, rbdSnap)
 		if sErr != nil {
-			klog.Errorf(util.Log(ctx, "failed to create snapshot %s: %v"), rbdSnap, sErr)
+			util.ErrorLog(ctx, "failed to create snapshot %s: %v", rbdSnap, sErr)
 			err = undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
 			return false, err
 		}
@@ -196,13 +194,13 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	if vol.ImageID == "" {
 		sErr := vol.getImageID()
 		if sErr != nil {
-			klog.Errorf(util.Log(ctx, "failed to get image id %s: %v"), vol, sErr)
+			util.ErrorLog(ctx, "failed to get image id %s: %v", vol, sErr)
 			err = undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
 			return false, err
 		}
 		sErr = j.StoreImageID(ctx, vol.JournalPool, vol.ReservedID, vol.ImageID, cr)
 		if sErr != nil {
-			klog.Errorf(util.Log(ctx, "failed to store volume id %s: %v"), vol, sErr)
+			util.ErrorLog(ctx, "failed to store volume id %s: %v", vol, sErr)
 			err = undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
 			return false, err
 		}
@@ -299,17 +297,17 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	if rv.ImageID == "" {
 		err = rv.getImageID()
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to get image id %s: %v"), rv, err)
+			util.ErrorLog(ctx, "failed to get image id %s: %v", rv, err)
 			return false, err
 		}
 		err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID, rv.conn.Creds)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to store volume id %s: %v"), rv, err)
+			util.ErrorLog(ctx, "failed to store volume id %s: %v", rv, err)
 			return false, err
 		}
 	}
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get stored image id: %v"), err)
+		util.ErrorLog(ctx, "failed to get stored image id: %v", err)
 		return false, err
 	}
 
