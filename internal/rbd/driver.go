@@ -22,7 +22,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	klog "k8s.io/klog/v2"
 	"k8s.io/utils/mount"
 )
 
@@ -99,7 +98,7 @@ func (r *Driver) Run(conf *util.Config) {
 
 	// Create ceph.conf for use with CLI commands
 	if err = util.WriteCephConfig(); err != nil {
-		klog.Fatalf("failed to write ceph configuration file (%v)", err)
+		util.FatalLogMsg("failed to write ceph configuration file (%v)", err)
 	}
 
 	// Use passed in instance ID, if provided for omap suffix naming
@@ -119,7 +118,7 @@ func (r *Driver) Run(conf *util.Config) {
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
 	if r.cd == nil {
-		klog.Fatalln("Failed to initialize CSI Driver.")
+		util.FatalLogMsg("Failed to initialize CSI Driver.")
 	}
 	if conf.IsControllerServer || !conf.IsNodeServer {
 		r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
@@ -143,11 +142,11 @@ func (r *Driver) Run(conf *util.Config) {
 	if conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			klog.Fatalln(err)
+			util.FatalLogMsg(err.Error())
 		}
 		r.ns, err = NewNodeServer(r.cd, conf.Vtype, topology)
 		if err != nil {
-			klog.Fatalf("failed to start node server, err %v\n", err)
+			util.FatalLogMsg("failed to start node server, err %v\n", err)
 		}
 	}
 
@@ -157,11 +156,11 @@ func (r *Driver) Run(conf *util.Config) {
 	if !conf.IsControllerServer && !conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			klog.Fatalln(err)
+			util.FatalLogMsg(err.Error())
 		}
 		r.ns, err = NewNodeServer(r.cd, conf.Vtype, topology)
 		if err != nil {
-			klog.Fatalf("failed to start node server, err %v\n", err)
+			util.FatalLogMsg("failed to start node server, err %v\n", err)
 		}
 		r.cs = NewControllerServer(r.cd)
 	}
@@ -169,7 +168,7 @@ func (r *Driver) Run(conf *util.Config) {
 	s := csicommon.NewNonBlockingGRPCServer()
 	s.Start(conf.Endpoint, conf.HistogramOption, r.ids, r.cs, r.ns, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {
-		klog.Warning("EnableGRPCMetrics is deprecated")
+		util.WarningLogMsg("EnableGRPCMetrics is deprecated")
 		go util.StartMetricsServer(conf)
 	}
 	s.Wait()
