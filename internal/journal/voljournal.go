@@ -27,7 +27,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/pborman/uuid"
-	klog "k8s.io/klog/v2"
 )
 
 // Length of string representation of uuid, xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx is 36 bytes.
@@ -418,7 +417,7 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 		err := util.RemoveObject(ctx, conn.monitors, conn.cr, volJournalPool, cj.namespace, cj.cephUUIDDirectoryPrefix+imageUUID)
 		if err != nil {
 			if !errors.Is(err, util.ErrObjectNotFound) {
-				klog.Errorf(util.Log(ctx, "failed removing oMap %s (%s)"), cj.cephUUIDDirectoryPrefix+imageUUID, err)
+				util.ErrorLog(ctx, "failed removing oMap %s (%s)", cj.cephUUIDDirectoryPrefix+imageUUID, err)
 				return err
 			}
 		}
@@ -428,7 +427,7 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 	err := removeMapKeys(ctx, conn, csiJournalPool, cj.namespace, cj.csiDirectory,
 		[]string{cj.csiNameKeyPrefix + reqName})
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed removing oMap key %s (%s)"), cj.csiNameKeyPrefix+reqName, err)
+		util.ErrorLog(ctx, "failed removing oMap key %s (%s)", cj.csiNameKeyPrefix+reqName, err)
 		return err
 	}
 
@@ -538,10 +537,10 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	}
 	defer func() {
 		if err != nil {
-			klog.Warningf(util.Log(ctx, "reservation failed for volume: %s"), reqName)
+			util.WarningLog(ctx, "reservation failed for volume: %s", reqName)
 			errDefer := conn.UndoReservation(ctx, imagePool, journalPool, imageName, reqName)
 			if errDefer != nil {
-				klog.Warningf(util.Log(ctx, "failed undoing reservation of volume: %s (%v)"), reqName, errDefer)
+				util.WarningLog(ctx, "failed undoing reservation of volume: %s (%v)", reqName, errDefer)
 			}
 		}
 	}()
@@ -622,7 +621,7 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 		if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) {
 			return nil, err
 		}
-		klog.Warningf(util.Log(ctx, "unable to read omap keys: pool or key missing: %v"), err)
+		util.WarningLog(ctx, "unable to read omap keys: pool or key missing: %v", err)
 	}
 
 	var found bool
