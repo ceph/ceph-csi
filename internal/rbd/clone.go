@@ -27,7 +27,6 @@ import (
 	librbd "github.com/ceph/go-ceph/rbd"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	klog "k8s.io/klog/v2"
 )
 
 // checkCloneImage check the cloned image exists, if the cloned image is not
@@ -100,13 +99,13 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		// and add task to flatten temporary cloned image
 		err = rv.cloneRbdImageFromSnapshot(ctx, snap)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to clone rbd image %s from snapshot %s: %v"), rv.RbdImageName, snap.RbdSnapName, err)
+			util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)
 			err = fmt.Errorf("failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)
 			return false, err
 		}
 		err = tempClone.deleteSnapshot(ctx, snap)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to delete snapshot: %v"), err)
+			util.ErrorLog(ctx, "failed to delete snapshot: %v", err)
 			return false, err
 		}
 		return true, nil
@@ -182,14 +181,14 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 				// cleanup snapshot
 				cErr := cleanUpSnapshot(ctx, parentVol, tempSnap, tempClone, rv.conn.Creds)
 				if cErr != nil {
-					klog.Errorf(util.Log(ctx, "failed to cleanup image %s or snapshot %s: %v"), tempSnap, tempClone, cErr)
+					util.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", tempSnap, tempClone, cErr)
 				}
 			}
 		}
 		if err != nil || errClone != nil {
 			cErr := cleanUpSnapshot(ctx, tempClone, cloneSnap, rv, rv.conn.Creds)
 			if cErr != nil {
-				klog.Errorf(util.Log(ctx, "failed to cleanup image %s or snapshot %s: %v"), cloneSnap, tempClone, cErr)
+				util.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", cloneSnap, tempClone, cErr)
 			}
 		}
 	}()
@@ -209,13 +208,13 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	}
 	err = rv.getImageID()
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get volume id %s: %v"), rv, err)
+		util.ErrorLog(ctx, "failed to get volume id %s: %v", rv, err)
 		return err
 	}
 
 	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID, rv.conn.Creds)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to store volume %s: %v"), rv, err)
+		util.ErrorLog(ctx, "failed to store volume %s: %v", rv, err)
 		return err
 	}
 	return nil
