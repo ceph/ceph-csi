@@ -34,7 +34,20 @@ it is **highly** encouraged to:
 * Fork the [ceph-csi repo](https://github.com/ceph/ceph-csi) on Github.
 * Add your fork as a git remote:
    `$ git remote add fork https://github.com/<your-github-username>/ceph-csi`
+* Set up a pre-commit hook to catch issues locally.
 
+   `$ pip install pre-commit==2.5.1`
+
+   `$ pre-commit install`
+
+   See the [pre-commit installation
+   instructions](https://pre-commit.com/#installation) for more
+   details.
+
+   Pre-commit will be now be triggered next time we commit changes.
+   This will catch some trivial style nitpicks (if any),
+   which will then need resolving. Once the warnings are resolved,
+   the user will be allowed to proceed with the commit.
 > Editors: Our favorite editor is vim with the [vim-go](https://github.com/fatih/vim-go)
 > plugin, but there are many others like [vscode](https://github.com/Microsoft/vscode-go)
 
