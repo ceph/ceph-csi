@@ -29,7 +29,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"k8s.io/apimachinery/pkg/util/wait"
-	klog "k8s.io/klog/v2"
 )
 
 const (
@@ -132,7 +131,7 @@ func findDeviceMappingImage(ctx context.Context, pool, namespace, image string, 
 
 	rbdDeviceList, err := rbdGetDeviceList(ctx, accessType)
 	if err != nil {
-		klog.Warningf(util.Log(ctx, "failed to determine if image (%s) is mapped to a device (%v)"), imageSpec, err)
+		util.WarningLog(ctx, "failed to determine if image (%s) is mapped to a device (%v)", imageSpec, err)
 		return "", false
 	}
 
@@ -239,12 +238,12 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 	// Execute map
 	stdout, stderr, err := util.ExecCommand(ctx, rbd, mapOptions...)
 	if err != nil {
-		klog.Warningf(util.Log(ctx, "rbd: map error %v, rbd output: %s"), err, stderr)
+		util.WarningLog(ctx, "rbd: map error %v, rbd output: %s", err, stderr)
 		// unmap rbd image if connection timeout
 		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
 			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd, volOpt.Encrypted, volOpt.VolID)
 			if detErr != nil {
-				klog.Warningf(util.Log(ctx, "rbd: %s unmap error %v"), imagePath, detErr)
+				util.WarningLog(ctx, "rbd: %s unmap error %v", imagePath, detErr)
 			}
 		}
 		return "", fmt.Errorf("rbd: map failed with error %v, rbd error output: %s", err, stderr)
@@ -292,7 +291,7 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 		mapperFile, mapperPath := util.VolumeMapper(volumeID)
 		mappedDevice, mapper, err := util.DeviceEncryptionStatus(ctx, mapperPath)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "error determining LUKS device on %s, %s: %s"),
+			util.ErrorLog(ctx, "error determining LUKS device on %s, %s: %s",
 				mapperPath, imageOrDeviceSpec, err)
 			return err
 		}
@@ -300,7 +299,7 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 			// mapper found, so it is open Luks device
 			err = util.CloseEncryptedVolume(ctx, mapperFile)
 			if err != nil {
-				klog.Errorf(util.Log(ctx, "error closing LUKS device on %s, %s: %s"),
+				util.ErrorLog(ctx, "error closing LUKS device on %s, %s: %s",
 					mapperPath, imageOrDeviceSpec, err)
 				return err
 			}
