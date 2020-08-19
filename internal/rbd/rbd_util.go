@@ -37,7 +37,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
-	klog "k8s.io/klog/v2"
 )
 
 const (
@@ -318,13 +317,13 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 		switch {
 		case strings.Contains(stderr, rbdTaskRemoveCmdInvalidString1) &&
 			strings.Contains(stderr, rbdTaskRemoveCmdInvalidString2):
-			klog.Warningf(util.Log(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd commands (minimum ceph version required is v14.2.3)"), pOpts.ClusterID)
+			util.WarningLog(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd commands (minimum ceph version required is v14.2.3)", pOpts.ClusterID)
 			supported = false
 		case strings.HasPrefix(stderr, rbdTaskRemoveCmdAccessDeniedMessage):
-			klog.Warningf(util.Log(ctx, "access denied to Ceph MGR-based rbd commands on cluster ID (%s)"), pOpts.ClusterID)
+			util.WarningLog(ctx, "access denied to Ceph MGR-based rbd commands on cluster ID (%s)", pOpts.ClusterID)
 			supported = false
 		default:
-			klog.Warningf(util.Log(ctx, "uncaught error while scheduling a task: %s"), err)
+			util.WarningLog(ctx, "uncaught error while scheduling a task: %s", err)
 		}
 	}
 	return supported, err
@@ -349,7 +348,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	rbdImage := librbd.GetImage(pOpts.ioctx, image)
 	err = rbdImage.Trash(0)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s, error: %v"), pOpts, err)
+		util.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", pOpts, err)
 		return err
 	}
 
@@ -362,14 +361,14 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	}
 	rbdCephMgrSupported, err := addRbdManagerTask(ctx, pOpts, args)
 	if rbdCephMgrSupported && err != nil {
-		klog.Errorf(util.Log(ctx, "failed to add task to delete rbd image: %s, %v"), pOpts, err)
+		util.ErrorLog(ctx, "failed to add task to delete rbd image: %s, %v", pOpts, err)
 		return err
 	}
 
 	if !rbdCephMgrSupported {
 		err = librbd.TrashRemove(pOpts.ioctx, pOpts.ImageID, true)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to delete rbd image: %s, %v"), pOpts, err)
+			util.ErrorLog(ctx, "failed to delete rbd image: %s, %v", pOpts, err)
 			return err
 		}
 	}
@@ -406,7 +405,7 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 			if errors.Is(err, ErrImageNotFound) {
 				return depth, nil
 			}
-			klog.Errorf(util.Log(ctx, "failed to check depth on image %s: %s"), vol, err)
+			util.ErrorLog(ctx, "failed to check depth on image %s: %s", vol, err)
 			return depth, err
 		}
 		if vol.ParentName != "" {
@@ -424,7 +423,7 @@ func flattenClonedRbdImages(ctx context.Context, snaps []snapshotInfo, pool, mon
 	defer rv.Destroy()
 	err := rv.Connect(cr)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to open connection %s; err %v"), rv, err)
+		util.ErrorLog(ctx, "failed to open connection %s; err %v", rv, err)
 		return err
 	}
 	for _, s := range snaps {
@@ -432,7 +431,7 @@ func flattenClonedRbdImages(ctx context.Context, snaps []snapshotInfo, pool, mon
 			rv.RbdImageName = s.Namespace.OriginalName
 			err = rv.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 			if err != nil {
-				klog.Errorf(util.Log(ctx, "failed to flatten %s; err %v"), rv, err)
+				util.ErrorLog(ctx, "failed to flatten %s; err %v", rv, err)
 				continue
 			}
 		}
@@ -450,7 +449,7 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 		if err != nil {
 			return err
 		}
-		klog.Infof(util.Log(ctx, "clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s"), depth, softlimit, hardlimit, rv)
+		util.ExtendedLog(ctx, "clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s", depth, softlimit, hardlimit, rv)
 	}
 
 	if forceFlatten || (depth >= hardlimit) || (depth >= softlimit) {
@@ -463,7 +462,7 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 				if strings.Contains(err.Error(), rbdFlattenNoParent) {
 					return nil
 				}
-				klog.Errorf(util.Log(ctx, "failed to add task flatten for %s : %v"), rv, err)
+				util.ErrorLog(ctx, "failed to add task flatten for %s : %v", rv, err)
 				return err
 			}
 			if forceFlatten || depth >= hardlimit {
@@ -471,7 +470,7 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 			}
 		}
 		if !supported {
-			klog.Errorf(util.Log(ctx, "task manager does not support flatten,image will be flattened once hardlimit is reached: %v"), err)
+			util.ErrorLog(ctx, "task manager does not support flatten,image will be flattened once hardlimit is reached: %v", err)
 			if forceFlatten || depth >= hardlimit {
 				err = rv.Connect(cr)
 				if err != nil {
@@ -479,7 +478,7 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 				}
 				err := rv.flatten()
 				if err != nil {
-					klog.Errorf(util.Log(ctx, "rbd failed to flatten image %s %s: %v"), rv.Pool, rv.RbdImageName, err)
+					util.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", rv.Pool, rv.RbdImageName, err)
 					return err
 				}
 			}
@@ -551,7 +550,7 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 		}
 		err = vol.getImageInfo()
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to get image info for %s: %s"), vol, err)
+			util.ErrorLog(ctx, "failed to get image info for %s: %s", vol, err)
 			return false, err
 		}
 		if f := vol.hasFeature(feature); f {
@@ -574,7 +573,7 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 
 	err := vi.DecomposeCSIID(rbdSnap.SnapID)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "error decoding snapshot ID (%s) (%s)"), err, rbdSnap.SnapID)
+		util.ErrorLog(ctx, "error decoding snapshot ID (%s) (%s)", err, rbdSnap.SnapID)
 		return err
 	}
 
@@ -583,7 +582,7 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 
 	rbdSnap.Monitors, _, err = util.GetMonsAndClusterID(options)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
+		util.ErrorLog(ctx, "failed getting mons (%s)", err)
 		return err
 	}
 
@@ -651,7 +650,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 
 	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(options)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
+		util.ErrorLog(ctx, "failed getting mons (%s)", err)
 		return rbdVol, err
 	}
 
@@ -707,17 +706,17 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	if rbdVol.ImageID == "" {
 		err = rbdVol.getImageID()
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to get image id %s: %v"), rbdVol, err)
+			util.ErrorLog(ctx, "failed to get image id %s: %v", rbdVol, err)
 			return rbdVol, err
 		}
 		err = j.StoreImageID(ctx, rbdVol.JournalPool, rbdVol.ReservedID, rbdVol.ImageID, cr)
 		if err != nil {
-			klog.Errorf(util.Log(ctx, "failed to store volume id %s: %v"), rbdVol, err)
+			util.ErrorLog(ctx, "failed to store volume id %s: %v", rbdVol, err)
 			return rbdVol, err
 		}
 	}
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to get stored image id: %v"), err)
+		util.ErrorLog(ctx, "failed to get stored image id: %v", err)
 		return rbdVol, err
 	}
 
@@ -746,7 +745,7 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 
 	rbdVol.Monitors, rbdVol.ClusterID, err = util.GetMonsAndClusterID(volOptions)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
+		util.ErrorLog(ctx, "failed getting mons (%s)", err)
 		return nil, err
 	}
 
@@ -810,7 +809,7 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 
 	rbdSnap.Monitors, rbdSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting mons (%s)"), err)
+		util.ErrorLog(ctx, "failed getting mons (%s)", err)
 		return nil, err
 	}
 
@@ -933,7 +932,7 @@ func (rv *rbdVolume) updateVolWithImageInfo(cr *util.Credentials) error {
 		"--format="+"json",
 		"info", rv.String())
 	if err != nil {
-		klog.Errorf("failed getting information for image (%s): (%s)", rv, err)
+		util.ErrorLogMsg("failed getting information for image (%s): (%s)", rv, err)
 		if strings.Contains(stderr, "rbd: error opening image "+rv.RbdImageName+
 			": (2) No such file or directory") {
 			return util.JoinErrors(ErrImageNotFound, err)
@@ -943,7 +942,7 @@ func (rv *rbdVolume) updateVolWithImageInfo(cr *util.Credentials) error {
 
 	err = json.Unmarshal([]byte(stdout), &imgInfo)
 	if err != nil {
-		klog.Errorf("failed to parse JSON output of image info (%s): (%s)", rv, err)
+		util.ErrorLogMsg("failed to parse JSON output of image info (%s): (%s)", rv, err)
 		return fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s", err, stdout)
 	}
 
@@ -1141,7 +1140,7 @@ func (rv *rbdVolume) SetMetadata(key, value string) error {
 func (rv *rbdVolume) checkRbdImageEncrypted(ctx context.Context) (string, error) {
 	value, err := rv.GetMetadata(encryptionMetaKey)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "checking image %s encrypted state metadata failed: %s"), rv, err)
+		util.ErrorLog(ctx, "checking image %s encrypted state metadata failed: %s", rv, err)
 		return "", err
 	}
 
@@ -1188,7 +1187,7 @@ func (rv *rbdVolume) listSnapshots(ctx context.Context, cr *util.Credentials) ([
 		"ls",
 		"--all", rv.String())
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed getting information for image (%s): (%s)"), rv, err)
+		util.ErrorLog(ctx, "failed getting information for image (%s): (%s)", rv, err)
 		if strings.Contains(stderr, "rbd: error opening image "+rv.RbdImageName+
 			": (2) No such file or directory") {
 			return snapInfo, util.JoinErrors(ErrImageNotFound, err)
@@ -1198,7 +1197,7 @@ func (rv *rbdVolume) listSnapshots(ctx context.Context, cr *util.Credentials) ([
 
 	err = json.Unmarshal([]byte(stdout), &snapInfo)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "failed to parse JSON output of snapshot info (%s)"), err)
+		util.ErrorLog(ctx, "failed to parse JSON output of snapshot info (%s)", err)
 		return snapInfo, fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, stdout)
 	}
 	return snapInfo, nil
