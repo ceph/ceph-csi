@@ -176,6 +176,13 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	}
 
 	defer func() {
+		if err != nil || errClone != nil {
+			cErr := cleanUpSnapshot(ctx, tempClone, cloneSnap, rv, rv.conn.Creds)
+			if cErr != nil {
+				util.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", cloneSnap, tempClone, cErr)
+			}
+		}
+
 		if err != nil || errFlatten != nil {
 			if !errors.Is(errFlatten, ErrFlattenInProgress) {
 				// cleanup snapshot
@@ -183,12 +190,6 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 				if cErr != nil {
 					util.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", tempSnap, tempClone, cErr)
 				}
-			}
-		}
-		if err != nil || errClone != nil {
-			cErr := cleanUpSnapshot(ctx, tempClone, cloneSnap, rv, rv.conn.Creds)
-			if cErr != nil {
-				util.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", cloneSnap, tempClone, cErr)
 			}
 		}
 	}()
