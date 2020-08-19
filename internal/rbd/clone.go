@@ -195,7 +195,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	// flatten clone
 	errFlatten = tempClone.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 	if errFlatten != nil {
-		return err
+		return errFlatten
 	}
 	// create snap of temp clone from temporary cloned image
 	// create final clone
