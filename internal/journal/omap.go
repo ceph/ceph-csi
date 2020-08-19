@@ -23,7 +23,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/ceph/go-ceph/rados"
-	klog "k8s.io/klog/v2"
 )
 
 // listExcess is the number of false-positive key-value pairs we will
@@ -63,8 +62,7 @@ func getOMapValues(
 	)
 	if err != nil {
 		if errors.Is(err, rados.ErrNotFound) {
-			klog.Errorf(
-				util.Log(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v"),
+			util.ErrorLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
 			return nil, util.JoinErrors(util.ErrKeyNotFound, err)
 		}
@@ -100,8 +98,7 @@ func removeMapKeys(
 			util.DebugLog(ctx, "when removing omap keys, omap not found (pool=%q, namespace=%q, name=%q): %+v",
 				poolName, namespace, oid, keys)
 		} else {
-			klog.Errorf(
-				util.Log(ctx, "failed removing omap keys (pool=%q, namespace=%q, name=%q): %v"),
+			util.ErrorLog(ctx, "failed removing omap keys (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
 			return err
 		}
@@ -132,8 +129,7 @@ func setOMapKeys(
 	}
 	err = ioctx.SetOmap(oid, bpairs)
 	if err != nil {
-		klog.Errorf(
-			util.Log(ctx, "failed setting omap keys (pool=%q, namespace=%q, name=%q, pairs=%+v): %v"),
+		util.ErrorLog(ctx, "failed setting omap keys (pool=%q, namespace=%q, name=%q, pairs=%+v): %v",
 			poolName, namespace, oid, pairs, err)
 		return err
 	}
