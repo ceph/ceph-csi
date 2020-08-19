@@ -50,16 +50,26 @@ function detect_minikube() {
 
 # install minikube
 function install_minikube() {
+    local mku_version latest_version
+    mku_version=$(${minikube} update-check 2> /dev/null | grep "LatestVersion" || true)
+    latest_version=$(echo "${mku_version}" | cut -d' ' -f2)
+    if [[ -z "${latest_version}" ]]; then
+        # skip: update-check failed for some reason, lets continue with what we have
+        latest_version=${MINIKUBE_VERSION}
+    fi
     if type "${minikube}" >/dev/null 2>&1; then
         local mk_version version
         read -ra mk_version <<<"$(${minikube} version)"
         version=${mk_version[2]}
         echo "minikube already installed with ${version}"
-        return
+        if [[ "${version}" == "${latest_version}" ]]; then
+            echo "minikube is already the latest version"
+            return
+        fi
     fi
 
-    echo "Installing minikube. Version: ${MINIKUBE_VERSION}"
-    curl -Lo minikube https://storage.googleapis.com/minikube/releases/"${MINIKUBE_VERSION}"/minikube-linux-"${MINIKUBE_ARCH}" && chmod +x minikube && mv minikube /usr/local/bin/
+    echo "Installing minikube. Version: ${latest_version}"
+    curl -Lo minikube https://storage.googleapis.com/minikube/releases/"${latest_version}"/minikube-linux-"${MINIKUBE_ARCH}" && chmod +x minikube && mv minikube /usr/local/bin/
 }
 
 function install_kubectl() {
