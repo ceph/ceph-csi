@@ -12,7 +12,7 @@ CHANGED_FILES=$(git diff --name-only "${GIT_SINCE}")
 
 skip=0
 #files to be skipped
-declare -a FILES=(^docs/ .md$ ^scripts/ LICENSE .mergify.yml .github .gitignore)
+declare -a FILES=(^docs/ .md$ ^scripts/ LICENSE .mergify.yml .github .gitignore .commitlintrc.yml)
 
 function check_file_present() {
     local file=$1
