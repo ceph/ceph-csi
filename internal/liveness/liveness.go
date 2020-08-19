@@ -27,7 +27,6 @@ import (
 	"github.com/kubernetes-csi/csi-lib-utils/rpc"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
-	klog "k8s.io/klog/v2"
 )
 
 var (
@@ -46,13 +45,13 @@ func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 	ready, err := rpc.Probe(ctx, csiConn)
 	if err != nil {
 		liveness.Set(0)
-		klog.Errorf("health check failed: %v", err)
+		util.ErrorLogMsg("health check failed: %v", err)
 		return
 	}
 
 	if !ready {
 		liveness.Set(0)
-		klog.Error("driver responded but is not ready")
+		util.ErrorLogMsg("driver responded but is not ready")
 		return
 	}
 	liveness.Set(1)
@@ -64,14 +63,14 @@ func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration
 	// register prometheus metrics
 	err := prometheus.Register(liveness)
 	if err != nil {
-		klog.Fatalln(err)
+		util.FatalLogMsg(err.Error())
 	}
 
 	csiConn, err := connlib.Connect(endpoint, liveMetricsManager)
 	if err != nil {
 		// connlib should retry forever so a returned error should mean
 		// the grpc client is misconfigured rather than an error on the network
-		klog.Fatalf("failed to establish connection to CSI driver: %v", err)
+		util.FatalLogMsg("failed to establish connection to CSI driver: %v", err)
 	}
 
 	// get liveness periodically
