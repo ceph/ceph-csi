@@ -76,7 +76,7 @@ function enable_psp() {
     echo "prepare minikube to support pod security policies"
     mkdir -p "$HOME"/.minikube/files/etc/kubernetes/addons
     DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-	  cp "$DIR"/psp.yaml "$HOME"/.minikube/files/etc/kubernetes/addons/psp.yaml
+    cp "$DIR"/psp.yaml "$HOME"/.minikube/files/etc/kubernetes/addons/psp.yaml
 }
 
 # Storage providers and the default storage class is not needed for Ceph-CSI
