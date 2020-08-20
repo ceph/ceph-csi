@@ -36,6 +36,8 @@ var (
 	nodeCSIZoneLabel    = "topology.rbd.csi.ceph.com/zone"
 	rbdTopologyPool     = "newrbdpool"
 	rbdTopologyDataPool = "replicapool" // NOTE: should be different than rbdTopologyPool for test to be effective
+	nameSpacedUser      = "client.namespaced-user"
+	nameSpacedUserNS    = "testns"
 )
 
 func deployRBDPlugin() {
@@ -983,6 +985,101 @@ var _ = Describe("RBD", func() {
 				}
 
 				updateConfigMap("e2e-ns")
+
+				// Create a PVC and Bind it to an app within the namesapce
+				validatePVCAndAppBinding(pvcPath, appPath, f)
+
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Logf("failed to get server version with error %v", err)
+					Fail(err.Error())
+				}
+
+				// Resize Block PVC and check Device size within the namespace
+				// Block PVC resize is supported in kubernetes 1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+					err = resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
+					if err != nil {
+						e2elog.Logf("failed to resize block PVC %v", err)
+						Fail(err.Error())
+					}
+				}
+
+				// Create a PVC clone and bind it to an app within the namespace
+				// snapshot beta is only supported from v1.17+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
+					pvc, err := loadPVC(pvcPath)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					pvc.Namespace = f.UniqueName
+					e2elog.Logf("The PVC  template %+v", pvc)
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+					// validate created backend rbd images
+					images := listRBDImages(f)
+					if len(images) != 1 {
+						e2elog.Logf("backend image count %d expected image count %d", len(images), 1)
+						Fail("validate backend image failed")
+					}
+					snap := getSnapshot(snapshotPath)
+					snap.Namespace = f.UniqueName
+					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+					err = createSnapshot(&snap, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+					expectedImages := len(images) + 1
+					images = listRBDImages(f)
+					if len(images) != expectedImages {
+						e2elog.Logf("backend images not matching kubernetes resource count,image count %d kubernetes resource count %d", len(images), 2)
+						Fail("validate backend images failed")
+					}
+
+					validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
+
+					err = deleteSnapshot(&snap, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+				}
+
+				updateConfigMap("")
+			})
+
+			By("ensuring all operations will work within a rados namespace with non limited user", func() {
+				updateConfigMap := func(radosNS string) {
+					radosNamespace = radosNS
+					deleteConfigMap(rbdDirPath)
+					createConfigMap(rbdDirPath, f.ClientSet, f)
+					createRadosNamespaceWithUser(f)
+					replaceRBDSecretWithNonAdmin(f.ClientSet, f)
+
+					// delete csi pods
+					err := deletePodWithLabel("app in (ceph-csi-rbd, csi-rbdplugin, csi-rbdplugin-provisioner)",
+						cephCSINamespace, false)
+					if err != nil {
+						Fail(err.Error())
+					}
+					// wait for csi pods to come up
+					err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+					err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						Fail(err.Error())
+					}
+				}
+
+				updateConfigMap(nameSpacedUserNS)
 
 				// Create a PVC and Bind it to an app within the namesapce
 				validatePVCAndAppBinding(pvcPath, appPath, f)

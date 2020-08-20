@@ -350,6 +350,39 @@ func createRadosNamespace(f *framework.Framework) {
 	}
 }
 
+func createRadosNamespaceWithUser(f *framework.Framework) {
+	stdOut, stdErr := execCommandInToolBoxPod(f,
+		fmt.Sprintf("ceph auth ls"), rookNamespace)
+	if !strings.Contains(stdOut, nameSpacedUser) {
+		stdOut, stdErr = execCommandInToolBoxPod(f,
+			fmt.Sprintf("ceph auth add %s", nameSpacedUser), rookNamespace)
+	}
+	stdOut, stdErr = execCommandInToolBoxPod(f,
+		fmt.Sprintf("ceph auth get-key %s", nameSpacedUser), rookNamespace)
+	Expect(stdErr).Should(BeEmpty())
+	if !strings.Contains(stdOut, "profile") {
+		_, stdErr = execCommandInToolBoxPod(f,
+			fmt.Sprintf("ceph auth caps %s mgr 'allow rw' mon 'profile rbd' osd 'profile rbd pool=%s namespace=%s'", nameSpacedUser, defaultRBDPool, nameSpacedUserNS), rookNamespace)
+		Expect(stdErr).To(ContainSubstring("updated caps for"))
+	}
+	stdOut, stdErr = execCommandInToolBoxPod(f,
+		fmt.Sprintf("rbd namespace ls --pool=%s", defaultRBDPool), rookNamespace)
+	Expect(stdErr).Should(BeEmpty())
+	if !strings.Contains(stdOut, nameSpacedUserNS) {
+		_, stdErr = execCommandInToolBoxPod(f,
+			fmt.Sprintf("rbd namespace create %s", rbdOptions(defaultRBDPool)), rookNamespace)
+		Expect(stdErr).Should(BeEmpty())
+	}
+	stdOut, stdErr = execCommandInToolBoxPod(f,
+		fmt.Sprintf("rbd namespace ls --pool=%s", rbdTopologyPool), rookNamespace)
+	Expect(stdErr).Should(BeEmpty())
+	if !strings.Contains(stdOut, nameSpacedUserNS) {
+		_, stdErr = execCommandInToolBoxPod(f,
+			fmt.Sprintf("rbd namespace create %s", rbdOptions(rbdTopologyPool)), rookNamespace)
+		Expect(stdErr).Should(BeEmpty())
+	}
+}
+
 func deleteConfigMap(pluginPath string) {
 	path := pluginPath + configMap
 	_, err := framework.RunKubectl(cephCSINamespace, "delete", "-f", path, ns)
@@ -436,6 +469,24 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) {
 	sc.StringData["userKey"] = adminKey
 	sc.Namespace = cephCSINamespace
 	_, err := c.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &sc, metav1.CreateOptions{})
+	Expect(err).Should(BeNil())
+
+	err = updateSecretForEncryption(c)
+	Expect(err).Should(BeNil())
+}
+
+func replaceRBDSecretWithNonAdmin(c kubernetes.Interface, f *framework.Framework) {
+	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "secret.yaml")
+	sc := getSecret(scPath)
+
+	nameSpacedUserKey, stdErr := execCommandInToolBoxPod(f, fmt.Sprintf("ceph auth get-key %s", nameSpacedUser), rookNamespace)
+	Expect(stdErr).Should(BeEmpty())
+	sc.StringData["userID"] = nameSpacedUser
+	sc.StringData["userKey"] = nameSpacedUserKey
+	sc.Namespace = cephCSINamespace
+	err := c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+	Expect(err).Should(BeNil())
+	_, err = c.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &sc, metav1.CreateOptions{})
 	Expect(err).Should(BeNil())
 
 	err = updateSecretForEncryption(c)
