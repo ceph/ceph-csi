@@ -2,7 +2,7 @@
 
 # This script can be used to install/delete snapshotcontroller and snapshot beta CRD
 
-SNAPSHOT_VERSION=${SNAPSHOT_VERSION:-"master"}
+SNAPSHOT_VERSION=${SNAPSHOT_VERSION:-"v2.1.1"}
 
 SCRIPT_DIR="$(dirname "${0}")"
 
