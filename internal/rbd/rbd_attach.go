@@ -289,7 +289,7 @@ func detachRBDDevice(ctx context.Context, devicePath, volumeID, unmapOptions str
 
 // detachRBDImageOrDeviceSpec detaches an rbd imageSpec or devicePath, with additional checking
 // when imageSpec is used to decide if image is already unmapped.
-func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, isImageSpec, ndbType, encrypted bool, volumeID, unmapOptions string) error {
+func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, isImageSpec, isNbd, encrypted bool, volumeID, unmapOptions string) error {
 	if encrypted {
 		mapperFile, mapperPath := util.VolumeMapper(volumeID)
 		mappedDevice, mapper, err := util.DeviceEncryptionStatus(ctx, mapperPath)
@@ -311,7 +311,7 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 	}
 
 	accessType := accessTypeKRbd
-	if ndbType {
+	if isNbd {
 		accessType = accessTypeNbd
 	}
 	unmapArgs := []string{"unmap", "--device-type", accessType, imageOrDeviceSpec}
