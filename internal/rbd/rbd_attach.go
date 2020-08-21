@@ -208,6 +208,20 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, cr *util.Credent
 	return devicePath, err
 }
 
+func appendDeviceTypeAndOptions(cmdArgs []string, isNbd bool, userOptions string) []string {
+	accessType := accessTypeKRbd
+	if isNbd {
+		accessType = accessTypeNbd
+	}
+
+	cmdArgs = append(cmdArgs, "--device-type", accessType)
+	if userOptions != "" {
+		cmdArgs = append(cmdArgs, "--options", userOptions)
+	}
+
+	return cmdArgs
+}
+
 func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (string, error) {
 	isNbd := false
 	imagePath := volOpt.String()
@@ -222,22 +236,15 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 	}
 
 	// Choose access protocol
-	accessType := accessTypeKRbd
 	if volOpt.Mounter == rbdTonbd && hasNBD {
 		isNbd = true
-		accessType = accessTypeNbd
 	}
 
-	// Update options with device type selection
-	mapArgs = append(mapArgs, "--device-type", accessType)
-
+	mapArgs = appendDeviceTypeAndOptions(mapArgs, isNbd, volOpt.MapOptions)
 	if volOpt.readOnly {
 		mapArgs = append(mapArgs, "--read-only")
 	}
 
-	if volOpt.MapOptions != "" {
-		mapArgs = append(mapArgs, "--options", volOpt.MapOptions)
-	}
 	// Execute map
 	stdout, stderr, err := util.ExecCommand(ctx, rbd, mapArgs...)
 	if err != nil {
@@ -310,14 +317,8 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 		}
 	}
 
-	accessType := accessTypeKRbd
-	if isNbd {
-		accessType = accessTypeNbd
-	}
-	unmapArgs := []string{"unmap", "--device-type", accessType, imageOrDeviceSpec}
-	if unmapOptions != "" {
-		unmapArgs = append(unmapArgs, "--options", unmapOptions)
-	}
+	unmapArgs := []string{"unmap", imageOrDeviceSpec}
+	unmapArgs = appendDeviceTypeAndOptions(unmapArgs, isNbd, unmapOptions)
 
 	_, stderr, err := util.ExecCommand(ctx, rbd, unmapArgs...)
 	if err != nil {
