@@ -243,5 +243,5 @@ spec:
 persistentvolumeclaim/cephfs-static-pvc created
 ```
 
-**Note** deleting PV and PVC doesnot deleted the backend CephFS subvolume,
-user needs to manually delete the CephFS subvolume if required
+**Note** deleting PV and PVC does not delete the backend CephFS subvolume,
+user needs to manually delete the CephFS subvolume if required.
