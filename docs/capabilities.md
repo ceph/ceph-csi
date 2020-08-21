@@ -1,4 +1,4 @@
-# Capabilities of an user required for a ceph-csi in an Ceph cluster
+# Capabilities of a user required for ceph-csi in a Ceph cluster
 
 Ceph uses the term capabilities to describe authorizing an authenticated user
 to exercise the functionality of the monitors, OSDs and metadata servers.
@@ -61,7 +61,7 @@ to change as per your requirement.
 ### create user for RBD
 
 The command for provisioner and node stage secret for rbd will be same as
-they have similiar capability requirements.
+they have similar capability requirements.
 
 ```bash
 ceph auth get-or-create client.kubernetes \
