@@ -900,64 +900,6 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *r
 	return nil
 }
 
-// imageInfo strongly typed JSON spec for image info.
-type imageInfo struct {
-	ObjectUUID string     `json:"name"`
-	Size       int64      `json:"size"`
-	Features   []string   `json:"features"`
-	CreatedAt  string     `json:"create_timestamp"`
-	Parent     parentInfo `json:"parent"`
-}
-
-// parentInfo  spec for parent volume  info.
-type parentInfo struct {
-	Image    string `json:"image"`
-	Pool     string `json:"pool"`
-	Snapshot string `json:"snapshost"`
-}
-
-// updateVolWithImageInfo updates provided rbdVolume with information from on-disk data
-// regarding the same.
-func (rv *rbdVolume) updateVolWithImageInfo(cr *util.Credentials) error {
-	// rbd --format=json info [image-spec | snap-spec]
-	var imgInfo imageInfo
-
-	stdout, stderr, err := util.ExecCommand(
-		context.TODO(),
-		"rbd",
-		"-m", rv.Monitors,
-		"--id", cr.ID,
-		"--keyfile="+cr.KeyFile,
-		"-c", util.CephConfigPath,
-		"--format="+"json",
-		"info", rv.String())
-	if err != nil {
-		util.ErrorLogMsg("failed getting information for image (%s): (%s)", rv, err)
-		if strings.Contains(stderr, "rbd: error opening image "+rv.RbdImageName+
-			": (2) No such file or directory") {
-			return util.JoinErrors(ErrImageNotFound, err)
-		}
-		return err
-	}
-
-	err = json.Unmarshal([]byte(stdout), &imgInfo)
-	if err != nil {
-		util.ErrorLogMsg("failed to parse JSON output of image info (%s): (%s)", rv, err)
-		return fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s", err, stdout)
-	}
-
-	rv.VolSize = imgInfo.Size
-	rv.ParentName = imgInfo.Parent.Image
-
-	tm, err := time.Parse(time.ANSIC, imgInfo.CreatedAt)
-	if err != nil {
-		return err
-	}
-
-	rv.CreatedAt, err = ptypes.TimestampProto(tm)
-	return err
-}
-
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
 // ErrImageNotFound if provided image is not found.
 func (rv *rbdVolume) getImageInfo() error {
@@ -979,11 +921,36 @@ func (rv *rbdVolume) getImageInfo() error {
 		return err
 	}
 	rv.imageFeatureSet = librbd.FeatureSet(features)
-	err = rv.updateVolWithImageInfo(rv.conn.Creds)
+
+	// Get parent information.
+	// TODO: Replace GetParentInfo() after
+	// https://github.com/ceph/go-ceph/issues/347 is fixed.
+	parentPool := make([]byte, 128)
+	parentName := make([]byte, 128)
+	parentSnapname := make([]byte, 128)
+	err = image.GetParentInfo(parentPool, parentName, parentSnapname)
+	if err != nil {
+		// Caller should decide whether not finding
+		// the parent is an error or not.
+		if strings.Contains(err.Error(), "No such file or directory") {
+			rv.ParentName = ""
+		} else {
+			return err
+		}
+	} else {
+		rv.ParentName = string(parentName)
+	}
+	// Get image creation time
+	tm, err := image.GetCreateTimestamp()
 	if err != nil {
 		return err
 	}
-
+	t := time.Unix(tm.Sec, tm.Nsec)
+	protoTime, err := ptypes.TimestampProto(t)
+	if err != nil {
+		return err
+	}
+	rv.CreatedAt = protoTime
 	return nil
 }
 
