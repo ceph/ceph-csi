@@ -1,0 +1,71 @@
+#!/usr/bin/python
+'''
+Fetches the labels of an Issue or Pull-Request from GitHub.
+
+Parameters:
+ --id=<id>: the number of the the GitHub Issue or Pull-Request
+ --has-label=<label>: label to check (exit 0 if set, 1 unset), without
+                      --has-label, all labels of the Issue or Pull-Request
+                      get printed.
+'''
+
+import argparse
+import sys
+import requests
+
+LABEL_URL_FMT = 'https://api.github.com/repos/ceph/ceph-csi/issues/%s/labels'
+'''
+Formatted URL for fetching the labels, replace '%s' with the number of  the
+Issue or Pull-Request.
+'''
+
+
+def get_json_labels(gh_id):
+    '''
+    Fetch the labels from GitHub, return the full JSON structures that were
+    obtained. These include several ID's, color, decription, name and more.
+    '''
+    url = LABEL_URL_FMT % gh_id
+    headers = {'Accept': 'application/vnd.github.v3+json'}
+    res = requests.get(url, headers=headers)
+    return res.json()
+
+
+def get_names(gh_labels):
+    '''
+    Take the JSON formatted labels, and return a list of the name for each label.
+    '''
+    names = list()
+    for label in gh_labels:
+        names.append(label['name'])
+    return names
+
+
+def main():
+    '''
+    main() function to parse arguments and run the actions.
+    '''
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--id', type=int, required=True, help='ID of the Issue or Pull-Request')
+    parser.add_argument('--has-label', help='check if the Issue or Pull-Request has the label set')
+    args = parser.parse_args()
+
+    # get the labels for the issue
+    json = get_json_labels(args.id)
+    names = get_names(json)
+
+    # in case --has-label is passed, exit with 0 or 1
+    if args.has_label:
+        if args.has_label in names:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    # --has-label was not passed, list all labels
+    else:
+        for name in names:
+            print(name)
+
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
