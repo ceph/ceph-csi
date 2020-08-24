@@ -704,7 +704,16 @@ func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "volume ID must be provided")
 	}
-	volumePath := req.GetVolumePath()
+
+	// Get volume path
+	// With Kubernetes version>=v1.19.0, expand request carries volume_path and
+	// staging_target_path, what csi requires is staging_target_path.
+	volumePath := req.GetStagingTargetPath()
+	if volumePath == "" {
+		// If Kubernetes version < v1.19.0 the volume_path would be
+		// having the staging_target_path information
+		volumePath = req.GetVolumePath()
+	}
 	if volumePath == "" {
 		return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
 	}
