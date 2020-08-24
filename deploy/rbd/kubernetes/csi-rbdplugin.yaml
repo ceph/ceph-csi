@@ -30,14 +30,6 @@ spec:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
             - "--kubelet-registration-path=/var/lib/kubelet/plugins/rbd.csi.ceph.com/csi.sock"
-          lifecycle:
-            preStop:
-              exec:
-                command: [
-                  "/bin/sh", "-c",
-                  "rm -rf /registration/rbd.csi.ceph.com \
-                  /registration/rbd.csi.ceph.com-reg.sock"
-                ]
           env:
             - name: KUBE_NODE_NAME
               valueFrom:

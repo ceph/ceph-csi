@@ -45,18 +45,6 @@ spec:
             - "--v=5"
             - "--csi-address=/csi/{{ .Values.pluginSocketFile }}"
             - "--kubelet-registration-path={{ .Values.socketDir }}/{{ .Values.pluginSocketFile }}"
-          lifecycle:
-            preStop:
-              exec:
-                {{- /*
-                NOTE(wilmardo): The replace functions ensures there are no spaces in the string.
-                To avoid `rm -rf /registration/driver name`
-                */}}
-                command: [
-                  "/bin/sh", "-c",
-                  "rm -rf /registration/{{ .Values.driverName | replace " " "" }} \
-                  /registration/{{ .Values.driverName | replace " " "" }}-reg.sock"
-                ]
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
