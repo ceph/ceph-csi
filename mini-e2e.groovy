@@ -5,6 +5,7 @@ def ci_git_branch = 'ci/centos'
 def git_repo = 'https://github.com/ceph/ceph-csi'
 def ref = "master"
 def git_since = 'master'
+def skip_e2e = 0
 def doc_change = 0
 
 def ssh(cmd) {
@@ -16,6 +17,21 @@ node('cico-workspace') {
 		git url: "${ci_git_repo}",
 			branch: "${ci_git_branch}",
 			changelog: false
+	}
+
+	stage('skip ci/skip/e2e label') {
+		if (params.ghprbPullId == null) {
+			skip_e2e = 1
+			return
+		}
+		skip_e2e = sh(
+			script: "./scripts/get_github_labels.py --id=${ghprbPullId} --has-label=ci/skip/e2e",
+			returnStatus: true)
+	}
+	// if skip_e2e returned 0, do not run full tests
+	if (skip_e2e == 0) {
+		currentBuild.result = 'SUCCESS'
+		return
 	}
 
 	stage('checkout PR') {
