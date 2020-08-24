@@ -966,7 +966,7 @@ var _ = Describe("RBD", func() {
 					radosNamespace = radosNS
 					deleteConfigMap(rbdDirPath)
 					createConfigMap(rbdDirPath, f.ClientSet, f)
-					createRadosNamespaceWithUser(f)
+					createRadosNamespace(f)
 					replaceRBDSecretWithNonAdmin(f.ClientSet, f)
 
 					// delete csi pods

@@ -332,32 +332,11 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOpt
 }
 
 func createRadosNamespace(f *framework.Framework) {
-	stdOut, stdErr := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rbd namespace ls --pool=%s", defaultRBDPool), rookNamespace)
-	Expect(stdErr).Should(BeEmpty())
-	if !strings.Contains(stdOut, radosNamespace) {
-		_, stdErr = execCommandInToolBoxPod(f,
-			fmt.Sprintf("rbd namespace create %s", rbdOptions(defaultRBDPool)), rookNamespace)
-		Expect(stdErr).Should(BeEmpty())
-	}
-	stdOut, stdErr = execCommandInToolBoxPod(f,
-		fmt.Sprintf("rbd namespace ls --pool=%s", rbdTopologyPool), rookNamespace)
-	Expect(stdErr).Should(BeEmpty())
-	if !strings.Contains(stdOut, radosNamespace) {
-		_, stdErr = execCommandInToolBoxPod(f,
-			fmt.Sprintf("rbd namespace create %s", rbdOptions(rbdTopologyPool)), rookNamespace)
-		Expect(stdErr).Should(BeEmpty())
-	}
-}
-
-func createRadosNamespaceWithUser(f *framework.Framework) {
-	stdOut, stdErr := execCommandInToolBoxPod(f,
-		fmt.Sprintf("ceph auth ls"), rookNamespace)
+	stdOut, _ := execCommandInToolBoxPod(f, "ceph auth ls", rookNamespace)
 	if !strings.Contains(stdOut, nameSpacedUser) {
-		stdOut, stdErr = execCommandInToolBoxPod(f,
-			fmt.Sprintf("ceph auth add %s", nameSpacedUser), rookNamespace)
+		execCommandInToolBoxPod(f, fmt.Sprintf("ceph auth add %s", nameSpacedUser), rookNamespace)
 	}
-	stdOut, stdErr = execCommandInToolBoxPod(f,
+	stdOut, stdErr := execCommandInToolBoxPod(f,
 		fmt.Sprintf("ceph auth get-key %s", nameSpacedUser), rookNamespace)
 	Expect(stdErr).Should(BeEmpty())
 	if !strings.Contains(stdOut, "profile") {
