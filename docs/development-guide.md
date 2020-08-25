@@ -200,6 +200,32 @@ change it is often desirable to first build a consensus in an issue discussion
 and/or create an initial design doc PR. Once the design has been agreed upon
 one or more PRs implementing the plan can be made.
 
+Pull requests get labelled by maintainers of the repository. Labels help
+reviewers with selecting the pull requests of interest based on components:
+
+* component/build: Issues and PRs related to compiling Ceph-CSI
+* component/cephfs: Issues related to CephFS
+* component/deployment: Helm chart, kubernetes templates and configuration Issues/PRs
+* component/docs: Issues and PRs related to documentation
+* component/journal: This PR has a change in volume journal
+* component/rbd: Issues related to RBD
+* component/testing: Additional test cases or CI work
+* component/util: Utility functions shared between CephFS and RBD
+
+There are other labels as well, to indicate dependencies between projects:
+
+* dependency/ceph: depends on core Ceph functionality
+* dependency/go-ceph: depends on go-ceph functionality
+* dependency/k8s: depends on Kubernetes features
+* dependency/rook: depends on, or requires changes in Rook
+* rebase: update the version of an external component
+
+A few labels interact with automation around the pull requests:
+
+* ready-to-merge: This PR is ready to be merged and it doesn't need second review
+* DNM: DO NOT MERGE (Mergify will not merge this PR)
+* ci/skip/e2e: skip running e2e CI jobs
+
 **Review Process:**
 Once your PR has been submitted for review the following criteria will
 need to be met before it will be merged:
