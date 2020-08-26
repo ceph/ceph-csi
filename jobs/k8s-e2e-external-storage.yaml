@@ -1,0 +1,38 @@
+---
+- job:
+    name: k8s-e2e-external-storage
+    project-type: pipeline
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/ceph/ceph-csi
+      - build-discarder:
+          days-to-keep: 7
+          artifact-days-to-keep: 7
+    parameters:
+      - string:
+          name: k8s_version
+          default: '1.19.2'
+          description: Kubernetes version to deploy in the test cluster.
+    pipeline-scm:
+      scm:
+        - git:
+            name: origin
+            url: https://github.com/ceph/ceph-csi
+            branches:
+              - ci/centos
+      script-path: k8s-e2e-external-storage.groovy
+      lightweight-checkout: true
+    triggers:
+      - github-pull-request:
+          status-context: ci/centos/k8s-e2e-external-storage
+          # yamllint disable-line rule:line-length
+          trigger-phrase: '/(re)?test ci/centos/k8s-e2e-external-storage'
+          only-trigger-phrase: true
+          permit-all: true
+          github-hooks: true
+          black-list-target-branches:
+            - ci/centos
+          org-list:
+            - ceph
+          allow-whitelist-orgs-as-admins: true
