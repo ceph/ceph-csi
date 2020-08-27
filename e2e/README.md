@@ -49,7 +49,7 @@ following environment variables can be exported to customize kubernetes deployme
 | ENV                  | Description                                      | Default                                                            |
 |----------------------|--------------------------------------------------|--------------------------------------------------------------------|
 | MINIKUBE_VERSION     | minikube version to install                      | latest                                                             |
-| KUBE_VERSION         | kubernetes version to install                    | v1.14.10                                                           |
+| KUBE_VERSION         | kubernetes version to install                    | latest                                                             |
 | MEMORY               | Amount of RAM allocated to the minikube VM in MB | 3000                                                               |
 | VM_DRIVER            | VM driver to create virtual machine              | virtualbox                                                         |
 | CEPHCSI_IMAGE_REPO   | Repo URL to pull cephcsi images                  | quay.io/cephcsi                                                    |
