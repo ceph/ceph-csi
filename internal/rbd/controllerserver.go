@@ -347,7 +347,7 @@ func flattenParentImage(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // If the snapshots are more than the `maxSnapshotsOnImage` Add a task to
 // flatten all the temporary cloned images.
 func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
-	snaps, err := rbdVol.listSnapshots(ctx, cr)
+	snaps, err := rbdVol.listSnapshots()
 	if err != nil {
 		if errors.Is(err, ErrImageNotFound) {
 			return status.Error(codes.InvalidArgument, err.Error())
@@ -356,7 +356,13 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 	}
 
 	if len(snaps) > int(maxSnapshotsOnImage) {
-		err = flattenClonedRbdImages(ctx, snaps, rbdVol.Pool, rbdVol.Monitors, cr)
+		err = flattenClonedRbdImages(
+			ctx,
+			snaps,
+			rbdVol.Pool,
+			rbdVol.Monitors,
+			rbdVol.RbdImageName,
+			cr)
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
