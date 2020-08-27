@@ -415,7 +415,7 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 	}
 }
 
-func flattenClonedRbdImages(ctx context.Context, snaps []snapshotInfo, pool, monitors string, cr *util.Credentials) error {
+func flattenClonedRbdImages(ctx context.Context, snaps []librbd.SnapInfo, pool, monitors string, cr *util.Credentials) error {
 	rv := &rbdVolume{
 		Monitors: monitors,
 		Pool:     pool,
@@ -426,9 +426,24 @@ func flattenClonedRbdImages(ctx context.Context, snaps []snapshotInfo, pool, mon
 		util.ErrorLog(ctx, "failed to open connection %s; err %v", rv, err)
 		return err
 	}
-	for _, s := range snaps {
-		if s.Namespace.Type == "trash" {
-			rv.RbdImageName = s.Namespace.OriginalName
+
+	for _, snapInfo := range snaps {
+		// check if the snapshot belongs to trash namespace.
+		isTrash, err := rv.isTrashSnap(snapInfo.Id)
+		if err != nil {
+			util.ErrorLog(ctx, "failed at isTrashSnap() %s; err %v", rv, err)
+			return err
+		}
+
+		if isTrash {
+			// get original snap name for the snapshots in trash namespace
+			origSnapName, err := rv.getOrigSnapName(snapInfo.Id)
+			if err != nil {
+				util.ErrorLog(ctx, "failed at getOrigSnapName() %s; err %v", rv, err)
+				return err
+			}
+
+			rv.RbdImageName = origSnapName
 			err = rv.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 			if err != nil {
 				util.ErrorLog(ctx, "failed to flatten %s; err %v", rv, err)
@@ -1125,47 +1140,53 @@ func (rv *rbdVolume) ensureEncryptionMetadataSet(status string) error {
 	return nil
 }
 
-// SnapshotInfo holds snapshots details.
-type snapshotInfo struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Size      int64  `json:"size"`
-	Protected string `json:"protected"`
-	Timestamp string `json:"timestamp"`
-	Namespace struct {
-		Type         string `json:"type"`
-		OriginalName string `json:"original_name"`
-	} `json:"namespace"`
+func (rv *rbdVolume) listSnapshots() ([]librbd.SnapInfo, error) {
+	image, err := rv.open()
+	if err != nil {
+		return nil, err
+	}
+	defer image.Close()
+
+	snapInfoList, err := image.GetSnapshotNames()
+	if err != nil {
+		return nil, err
+	}
+	return snapInfoList, nil
 }
 
-// TODO: use go-ceph once https://github.com/ceph/go-ceph/issues/300 is available in a release.
-func (rv *rbdVolume) listSnapshots(ctx context.Context, cr *util.Credentials) ([]snapshotInfo, error) {
-	// rbd snap ls <image> --pool=<pool-name> --all --format=json
-	var snapInfo []snapshotInfo
-	stdout, stderr, err := util.ExecCommand(
-		ctx,
-		"rbd",
-		"-m", rv.Monitors,
-		"--id", cr.ID,
-		"--keyfile="+cr.KeyFile,
-		"-c", util.CephConfigPath,
-		"--format="+"json",
-		"snap",
-		"ls",
-		"--all", rv.String())
+// isTrashSnap returns true if the snapshot belongs to trash namespace.
+func (rv *rbdVolume) isTrashSnap(snapID uint64) (bool, error) {
+	image, err := rv.open()
 	if err != nil {
-		util.ErrorLog(ctx, "failed getting information for image (%s): (%s)", rv, err)
-		if strings.Contains(stderr, "rbd: error opening image "+rv.RbdImageName+
-			": (2) No such file or directory") {
-			return snapInfo, util.JoinErrors(ErrImageNotFound, err)
-		}
-		return snapInfo, err
+		return false, err
+	}
+	defer image.Close()
+
+	// Get namespace type for the snapshot
+	nsType, err := image.GetSnapNamespaceType(snapID)
+	if err != nil {
+		return false, err
 	}
 
-	err = json.Unmarshal([]byte(stdout), &snapInfo)
-	if err != nil {
-		util.ErrorLog(ctx, "failed to parse JSON output of snapshot info (%s)", err)
-		return snapInfo, fmt.Errorf("unmarshal failed: %w. raw buffer response: %s", err, stdout)
+	if nsType == librbd.SnapNamespaceTypeTrash {
+		return true, nil
 	}
-	return snapInfo, nil
+	return false, nil
+}
+
+// getOrigSnapName returns the original snap name for
+// the snapshots in Trash Namespace.
+func (rv *rbdVolume) getOrigSnapName(snapID uint64) (string, error) {
+	image, err := rv.open()
+	if err != nil {
+		return "", err
+	}
+	defer image.Close()
+
+	origSnapName, err := image.GetSnapTrashNamespace(snapID)
+	if err != nil {
+		return "", err
+	}
+
+	return origSnapName, nil
 }
