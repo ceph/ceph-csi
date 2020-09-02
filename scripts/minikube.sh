@@ -164,7 +164,7 @@ CPUS=${CPUS:-"$(nproc)"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
 #configure image repo
 CEPHCSI_IMAGE_REPO=${CEPHCSI_IMAGE_REPO:-"quay.io/cephcsi"}
-K8S_IMAGE_REPO=${K8S_IMAGE_REPO:-"quay.io/k8scsi"}
+K8S_IMAGE_REPO=${K8S_IMAGE_REPO:-"k8s.gcr.io/sig-storage"}
 DISK="sda1"
 if [[ "${VM_DRIVER}" == "kvm2" ]]; then
     # use vda1 instead of sda1 when running with the libvirt driver
