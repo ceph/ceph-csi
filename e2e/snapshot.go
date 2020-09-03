@@ -113,32 +113,46 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	})
 }
 
-func createRBDSnapshotClass(f *framework.Framework) {
+func createRBDSnapshotClass(f *framework.Framework) error {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "snapshotclass.yaml")
 	sc := getSnapshotClass(scPath)
 
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
 
-	fsID, stdErr := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
-	Expect(stdErr).Should(BeEmpty())
+	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+	if err != nil {
+		return err
+	}
+	if stdErr != "" {
+		return fmt.Errorf("failed to get fsid from ceph cluster %s", stdErr)
+	}
 	fsID = strings.Trim(fsID, "\n")
 	sc.Parameters["clusterID"] = fsID
 	sclient, err := newSnapshotClient()
-	Expect(err).Should(BeNil())
+	if err != nil {
+		return err
+	}
 	_, err = sclient.SnapshotV1beta1().VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
-	Expect(err).Should(BeNil())
+	return err
 }
 
-func createCephFSSnapshotClass(f *framework.Framework) {
+func createCephFSSnapshotClass(f *framework.Framework) error {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "snapshotclass.yaml")
 	sc := getSnapshotClass(scPath)
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
-	fsID, stdErr := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
-	Expect(stdErr).Should(BeEmpty())
+	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+	if err != nil {
+		return err
+	}
+	if stdErr != "" {
+		return fmt.Errorf("failed to get fsid from ceph cluster %s", stdErr)
+	}
 	fsID = strings.Trim(fsID, "\n")
 	sc.Parameters["clusterID"] = fsID
 	sclient, err := newSnapshotClient()
-	Expect(err).Should(BeNil())
+	if err != nil {
+		return err
+	}
 	_, err = sclient.SnapshotV1beta1().VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
-	Expect(err).Should(BeNil())
+	return err
 }

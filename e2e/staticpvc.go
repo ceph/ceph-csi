@@ -91,7 +91,10 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 
 	c := f.ClientSet
 
-	fsID, e := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+	fsID, e, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+	if err != nil {
+		return err
+	}
 	if e != "" {
 		return fmt.Errorf("failed to get fsid from ceph cluster %s", e)
 	}
@@ -101,7 +104,10 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 	// create rbd image
 	cmd := fmt.Sprintf("rbd create %s --size=%d --image-feature=layering %s", rbdImageName, 4096, rbdOptions(defaultRBDPool))
 
-	_, e = execCommandInToolBoxPod(f, cmd, rookNamespace)
+	_, e, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
+	if err != nil {
+		return err
+	}
 	if e != "" {
 		return fmt.Errorf("failed to create rbd image %s", e)
 	}
@@ -115,7 +121,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 
 	pv := getStaticPV(pvName, rbdImageName, size, "csi-rbd-secret", cephCSINamespace, sc, "rbd.csi.ceph.com", isBlock, opt)
 
-	_, err := c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
+	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("PV Create API error: %w", err)
 	}
@@ -155,10 +161,11 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 	}
 
 	cmd = fmt.Sprintf("rbd rm %s %s", rbdImageName, rbdOptions(defaultRBDPool))
-	execCommandInToolBoxPod(f, cmd, rookNamespace)
-	return nil
+	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
+	return err
 }
 
+// nolint:gocyclo // reduce complexity
 func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) error {
 	opt := make(map[string]string)
 	var (
@@ -180,7 +187,10 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 		LabelSelector: "app=rook-ceph-tools",
 	}
 
-	fsID, e := execCommandInPod(f, "ceph fsid", rookNamespace, &listOpt)
+	fsID, e, err := execCommandInPod(f, "ceph fsid", rookNamespace, &listOpt)
+	if err != nil {
+		return err
+	}
 	if e != "" {
 		return fmt.Errorf("failed to get fsid from ceph cluster %s", e)
 	}
@@ -193,21 +203,30 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	// create subvolumegroup, command will work even if group is already present.
 	cmd := fmt.Sprintf("ceph fs subvolumegroup create %s %s", fsName, groupName)
 
-	_, e = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	_, e, err = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	if err != nil {
+		return err
+	}
 	if e != "" {
 		return fmt.Errorf("failed to create subvolumegroup %s", e)
 	}
 
 	// create subvolume
 	cmd = fmt.Sprintf("ceph fs subvolume create %s %s %s --size %s", fsName, cephFsVolName, groupName, size)
-	_, e = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	_, e, err = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	if err != nil {
+		return err
+	}
 	if e != "" {
 		return fmt.Errorf("failed to create subvolume %s", e)
 	}
 
 	// get rootpath
 	cmd = fmt.Sprintf("ceph fs subvolume getpath %s %s %s", fsName, cephFsVolName, groupName)
-	rootPath, e := execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	rootPath, e, err := execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	if err != nil {
+		return err
+	}
 	if e != "" {
 		return fmt.Errorf("failed to get rootpath %s", e)
 	}
@@ -215,17 +234,22 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	rootPath = strings.Trim(rootPath, "\n")
 
 	// create secret
-	userID := "admin" // nolint
-	secret := getSecret(scPath)
-	adminKey, e := execCommandInPod(f, "ceph auth get-key client.admin", rookNamespace, &listOpt)
+	secret, err := getSecret(scPath)
+	if err != nil {
+		return err
+	}
+	adminKey, e, err := execCommandInPod(f, "ceph auth get-key client.admin", rookNamespace, &listOpt)
+	if err != nil {
+		return err
+	}
 	if e != "" {
 		return fmt.Errorf("failed to get adminKey %s", e)
 	}
-	secret.StringData["userID"] = userID
+	secret.StringData["userID"] = adminUser
 	secret.StringData["userKey"] = adminKey
 	secret.Name = secretName
 	secret.Namespace = cephCSINamespace
-	_, err := c.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &secret, metav1.CreateOptions{})
+	_, err = c.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &secret, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create secret, error %w", err)
 	}
@@ -280,14 +304,20 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 
 	// delete subvolume
 	cmd = fmt.Sprintf("ceph fs subvolume rm %s %s %s", fsName, cephFsVolName, groupName)
-	_, e = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	_, e, err = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	if err != nil {
+		return err
+	}
 	if e != "" {
 		return fmt.Errorf("failed to remove sub-volume %s", e)
 	}
 
 	// delete subvolume group
 	cmd = fmt.Sprintf("ceph fs subvolumegroup rm %s %s", fsName, groupName)
-	_, e = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	_, e, err = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	if err != nil {
+		return err
+	}
 	if e != "" {
 		return fmt.Errorf("failed to remove subvolume group %s", e)
 	}
