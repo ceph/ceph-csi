@@ -97,13 +97,14 @@ function install_kubectl() {
 }
 
 function validate_container_cmd() {
-    if [[ "${CONTAINER_CMD}" == "docker" ]] || [[ "${CONTAINER_CMD}" == "podman" ]]; then
-        if ! command -v "${CONTAINER_CMD}" &> /dev/null; then
-            echo "'${CONTAINER_CMD}' not found"
+    local cmd="${CONTAINER_CMD##* }"
+    if [[ "${cmd}" == "docker" ]] || [[ "${cmd}" == "podman" ]]; then
+        if ! command -v "${cmd}" &> /dev/null; then
+            echo "'${cmd}' not found"
             exit 1
         fi
     else
-        echo "'CONTAINER_CMD' should be either docker or podman and not '${CONTAINER_CMD}'"
+        echo "'CONTAINER_CMD' should be either docker or podman and not '${cmd}'"
         exit 1
     fi
 }
