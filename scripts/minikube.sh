@@ -18,14 +18,15 @@ function wait_for_ssh() {
 function copy_image_to_cluster() {
     local build_image=$1
     local final_image=$2
-    if [ -z "$(docker images -q "${build_image}")" ]; then
-        docker pull "${build_image}"
+    validate_container_cmd
+    if [ -z "$(${CONTAINER_CMD} images -q "${build_image}")" ]; then
+        ${CONTAINER_CMD} pull "${build_image}"
     fi
     if [[ "${VM_DRIVER}" == "none" ]]; then
-        docker tag "${build_image}" "${final_image}"
+        ${CONTAINER_CMD} tag "${build_image}" "${final_image}"
         return
     fi
-    docker save "${build_image}" | (eval "$(${minikube} docker-env --shell bash)" && docker load && docker tag "${build_image}" "${final_image}")
+    ${CONTAINER_CMD} save "${build_image}" | (eval "$(${minikube} docker-env --shell bash)" && docker load && docker tag "${build_image}" "${final_image}")
 }
 
 # parse the minikube version, return the digit passed as argument
@@ -73,6 +74,18 @@ function install_kubectl() {
     curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/"${KUBE_VERSION}"/bin/linux/"${MINIKUBE_ARCH}"/kubectl && chmod +x kubectl && mv kubectl /usr/local/bin/
 }
 
+function validate_container_cmd() {
+    if [[ "${CONTAINER_CMD}" == "docker" ]] || [[ "${CONTAINER_CMD}" == "podman" ]]; then
+        if ! command -v "${CONTAINER_CMD}" &> /dev/null; then
+            echo "'${CONTAINER_CMD}' not found"
+            exit 1
+        fi
+    else
+        echo "'CONTAINER_CMD' should be either docker or podman and not '${CONTAINER_CMD}'"
+        exit 1
+    fi
+}
+
 function enable_psp() {
     echo "prepare minikube to support pod security policies"
     mkdir -p "$HOME"/.minikube/files/etc/kubernetes/addons
@@ -103,6 +116,7 @@ function minikube_losetup() {
 MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
 KUBE_VERSION=${KUBE_VERSION:-"v1.14.10"}
+CONTAINER_CMD=${CONTAINER_CMD:-"docker"}
 MEMORY=${MEMORY:-"4096"}
 CPUS=${CPUS:-"$(nproc)"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
