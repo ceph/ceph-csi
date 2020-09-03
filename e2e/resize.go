@@ -161,8 +161,10 @@ func checkAppMntSize(f *framework.Framework, opt *metav1.ListOptions, size, cmd,
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		e2elog.Logf("executing cmd %s (%d seconds elapsed)", cmd, int(time.Since(start).Seconds()))
-		output, stdErr := execCommandInPod(f, cmd, ns, opt)
-
+		output, stdErr, err := execCommandInPod(f, cmd, ns, opt)
+		if err != nil {
+			return false, err
+		}
 		if stdErr != "" {
 			e2elog.Logf("failed to execute command in app pod %v", stdErr)
 			return false, nil
