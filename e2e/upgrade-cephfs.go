@@ -22,6 +22,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		app *v1.Pod
 		// cwd stores the initial working directory.
 		cwd string
+		err error
 	)
 	// deploy cephfs CSI
 	BeforeEach(func() {
@@ -30,26 +31,34 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		}
 		c = f.ClientSet
 		if cephCSINamespace != defaultNs {
-			err := createNamespace(c, cephCSINamespace)
+			err = createNamespace(c, cephCSINamespace)
 			if err != nil {
-				Fail(err.Error())
+				e2elog.Failf("failed to create namespace with error %v", err)
 			}
 		}
 
 		// fetch current working directory to switch back
 		// when we are done upgrading.
-		var err error
 		cwd, err = os.Getwd()
 		if err != nil {
-			Fail(err.Error())
+			e2elog.Failf("failed to getwd with error %v", err)
 		}
 		err = upgradeAndDeployCSI(upgradeVersion, "cephfs")
 		if err != nil {
-			Fail(err.Error())
+			e2elog.Failf("failed to upgrade csi with error %v", err)
 		}
-		createConfigMap(cephfsDirPath, f.ClientSet, f)
-		createCephfsSecret(f.ClientSet, f)
-		createCephfsStorageClass(f.ClientSet, f, true, "")
+		err = createConfigMap(cephfsDirPath, f.ClientSet, f)
+		if err != nil {
+			e2elog.Failf("failed to create configmap with error %v", err)
+		}
+		err = createCephfsSecret(f.ClientSet, f)
+		if err != nil {
+			e2elog.Failf("failed to create secret with error %v", err)
+		}
+		err = createCephfsStorageClass(f.ClientSet, f, true, "")
+		if err != nil {
+			e2elog.Failf("failed to create storageclass with error %v", err)
+		}
 	})
 	AfterEach(func() {
 		if !testCephFS || !upgradeTesting {
@@ -63,15 +72,26 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 			// log node plugin
 			logsCSIPods("app=csi-cephfsplugin", c)
 		}
-		deleteConfigMap(cephfsDirPath)
-		deleteResource(cephfsExamplePath + "secret.yaml")
-		deleteResource(cephfsExamplePath + "storageclass.yaml")
+		err = deleteConfigMap(cephfsDirPath)
+		if err != nil {
+			e2elog.Failf("failed to delete configmap with error %v", err)
+		}
+		err = deleteResource(cephfsExamplePath + "secret.yaml")
+		if err != nil {
+			e2elog.Failf("failed to delete secret with error %v", err)
+		}
+		err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+		if err != nil {
+			e2elog.Failf("failed to delete storageclass with error %v", err)
+		}
 		if deployCephFS {
 			deleteCephfsPlugin()
 			if cephCSINamespace != defaultNs {
 				err := deleteNamespace(c, cephCSINamespace)
 				if err != nil {
-					Fail(err.Error())
+					if err != nil {
+						e2elog.Failf("failed to delete namespace with error %v", err)
+					}
 				}
 			}
 		}
@@ -83,13 +103,13 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 			By("checking provisioner deployment is running")
 			err := waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
 			if err != nil {
-				Fail(err.Error())
+				e2elog.Failf("timeout waiting for deployment %s with error %v", cephfsDeploymentName, err)
 			}
 
-			By("checking nodeplugin deamonsets is running")
+			By("checking nodeplugin deamonset pods are running")
 			err = waitForDaemonSets(cephfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
 			if err != nil {
-				Fail(err.Error())
+				e2elog.Failf("timeout waiting for daemonset %s with error%v", cephfsDeamonSetName, err)
 			}
 
 			By("upgrade to latest changes and verify app re-mount", func() {
@@ -100,32 +120,31 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 
 				pvc, err = loadPVC(pvcPath)
 				if pvc == nil {
-					Fail(err.Error())
+					e2elog.Failf("failed to load pvc with error %v", err)
 				}
 				pvc.Namespace = f.UniqueName
-				e2elog.Logf("The PVC  template %+v", pvc)
 
 				app, err = loadApp(appPath)
 				if err != nil {
-					Fail(err.Error())
+					e2elog.Failf("failed to load application with error %v", err)
 				}
 				app.Namespace = f.UniqueName
 				app.Labels = map[string]string{"app": "upgrade-testing"}
 				pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
-					Fail(err.Error())
+					e2elog.Failf("failed to create pvc and application with error %v", err)
 				}
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					Fail(err.Error())
+					e2elog.Failf("failed to delete application with error %v", err)
 				}
 				deleteCephfsPlugin()
 
 				// switch back to current changes.
 				err = os.Chdir(cwd)
 				if err != nil {
-					Fail(err.Error())
+					e2elog.Failf("failed to d chdir with error %v", err)
 				}
 				deployCephfsPlugin()
 
@@ -134,7 +153,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				// an earlier release.
 				err = createApp(f.ClientSet, app, deployTimeout)
 				if err != nil {
-					Fail(err.Error())
+					e2elog.Failf("failed to create application with error %v", err)
 				}
 			})
 
@@ -144,7 +163,6 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				v, err = f.ClientSet.Discovery().ServerVersion()
 				if err != nil {
 					e2elog.Logf("failed to get server version with error %v", err)
-					Fail(err.Error())
 				}
 				// Resize 0.3.0 is only supported from v1.15+
 				if v.Major > "1" || (v.Major == "1" && v.Minor >= "15") {
@@ -153,23 +171,23 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 					}
 					pvc, err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to get pvc with error %v", err)
 					}
 
 					// resize PVC
 					err = expandPVCSize(f.ClientSet, pvc, pvcExpandSize, deployTimeout)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to expand pvc with error %v", err)
 					}
 					// wait for application pod to come up after resize
 					err = waitForPodInRunningState(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("timout waiting for pod to be in running state with error %v", err)
 					}
 					// validate if resize is successful.
 					err = checkDirSize(app, f, &opt, pvcExpandSize)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to check directory size with error %v", err)
 					}
 				}
 
@@ -178,7 +196,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 			By("delete pvc and app")
 			err = deletePVCAndApp("", f, pvc, app)
 			if err != nil {
-				Fail(err.Error())
+				e2elog.Failf("failed to delete pvc and application with error %v", err)
 			}
 		})
 	})

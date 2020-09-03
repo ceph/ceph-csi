@@ -34,21 +34,21 @@ func deployCephfsPlugin() {
 
 	data, err := replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisionerRBAC)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsProvisionerRBAC, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerRBAC, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, "--ignore-not-found=true", ns, "delete", "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to delete provisioner rbac %s %v", cephfsDirPath+cephfsProvisionerRBAC, err)
+		e2elog.Failf("failed to delete provisioner rbac %s with error %v", cephfsDirPath+cephfsProvisionerRBAC, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePluginRBAC)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsNodePluginRBAC, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, "delete", "--ignore-not-found=true", ns, "-f", "-")
 
 	if err != nil {
-		e2elog.Logf("failed to delete nodeplugin rbac %s %v", cephfsDirPath+cephfsNodePluginRBAC, err)
+		e2elog.Failf("failed to delete nodeplugin rbac %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
 	}
 
 	createORDeleteCephfsResouces("create")
@@ -61,63 +61,73 @@ func deleteCephfsPlugin() {
 func createORDeleteCephfsResouces(action string) {
 	data, err := replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisioner)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsProvisioner, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisioner, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s cephfs provisioner %v", action, err)
+		e2elog.Failf("failed to %s CephFS provisioner with error %v", action, err)
 	}
-
 	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisionerRBAC)
+
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsProvisionerRBAC, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerRBAC, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s cephfs provisioner rbac %v", action, err)
+		e2elog.Failf("failed to %s CephFS provisioner rbac with error %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisionerPSP)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsProvisionerPSP, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerPSP, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s cephfs provisioner psp %v", action, err)
+		e2elog.Failf("failed to %s CephFS provisioner psp with error %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePlugin)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsNodePlugin, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePlugin, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s cephfs nodeplugin %v", action, err)
+		e2elog.Failf("failed to %s CephFS nodeplugin with error %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePluginRBAC)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsNodePluginRBAC, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s cephfs nodeplugin rbac %v", action, err)
+		e2elog.Failf("failed to %s CephFS nodeplugin rbac with error %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePluginPSP)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", cephfsDirPath+cephfsNodePluginPSP, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginPSP, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s cephfs nodeplugin psp %v", action, err)
+		e2elog.Failf("failed to %s CephFS nodeplugin psp with error %v", action, err)
+	}
+}
+
+func validateSubvolumeCount(f *framework.Framework, count int, fileSystemName, subvolumegroup string) {
+	subVol, err := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+	if err != nil {
+		e2elog.Failf("failed to list CephFS subvolumes with error %v", err)
+	}
+	if len(subVol) != count {
+		e2elog.Failf("subvolumes [%v]. subvolume count %d not matching expected count %v", subVol, len(subVol), count)
 	}
 }
 
 var _ = Describe("cephfs", func() {
 	f := framework.NewDefaultFramework("cephfs")
 	var c clientset.Interface
-	// deploy cephfs CSI
+	// deploy CephFS CSI
 	BeforeEach(func() {
 		if !testCephFS || upgradeTesting {
 			Skip("Skipping CephFS E2E")
@@ -127,13 +137,19 @@ var _ = Describe("cephfs", func() {
 			if cephCSINamespace != defaultNs {
 				err := createNamespace(c, cephCSINamespace)
 				if err != nil {
-					Fail(err.Error())
+					e2elog.Failf("failed to create namespace %s with error %v", cephCSINamespace, err)
 				}
 			}
 			deployCephfsPlugin()
 		}
-		createConfigMap(cephfsDirPath, f.ClientSet, f)
-		createCephfsSecret(f.ClientSet, f)
+		err := createConfigMap(cephfsDirPath, f.ClientSet, f)
+		if err != nil {
+			e2elog.Failf("failed to create configmap with error %v", err)
+		}
+		err = createCephfsSecret(f.ClientSet, f)
+		if err != nil {
+			e2elog.Failf("failed to create secret with error %v", err)
+		}
 	})
 
 	AfterEach(func() {
@@ -148,22 +164,31 @@ var _ = Describe("cephfs", func() {
 			// log node plugin
 			logsCSIPods("app=csi-cephfsplugin", c)
 		}
-		deleteConfigMap(cephfsDirPath)
-		deleteResource(cephfsExamplePath + "secret.yaml")
-		deleteResource(cephfsExamplePath + "storageclass.yaml")
+		err := deleteConfigMap(cephfsDirPath)
+		if err != nil {
+			e2elog.Failf("failed to delete configmap with error %v", err)
+		}
+		err = deleteResource(cephfsExamplePath + "secret.yaml")
+		if err != nil {
+			e2elog.Failf("failed to delete secret with error %v", err)
+		}
+		err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+		if err != nil {
+			e2elog.Failf("failed to delete storageclass with error %v", err)
+		}
 		if deployCephFS {
 			deleteCephfsPlugin()
 			if cephCSINamespace != defaultNs {
 				err := deleteNamespace(c, cephCSINamespace)
 				if err != nil {
-					Fail(err.Error())
+					e2elog.Failf("failed to delete namespace %s with error %v", cephCSINamespace, err)
 				}
 			}
 		}
 	})
 
-	Context("Test cephfs CSI", func() {
-		It("Test cephfs CSI", func() {
+	Context("Test CephFS CSI", func() {
+		It("Test CephFS CSI", func() {
 			pvcPath := cephfsExamplePath + "pvc.yaml"
 			appPath := cephfsExamplePath + "pod.yaml"
 			pvcClonePath := cephfsExamplePath + "pvc-restore.yaml"
@@ -172,549 +197,543 @@ var _ = Describe("cephfs", func() {
 			appSmartClonePath := cephfsExamplePath + "pod-clone.yaml"
 			snapshotPath := cephfsExamplePath + "snapshot.yaml"
 
-			By("checking provisioner deployment is running")
-			var err error
-			err = waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
-			if err != nil {
-				Fail(err.Error())
-			}
+			By("checking provisioner deployment is running", func() {
+				err := waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for deployment %s with error %v", cephfsDeploymentName, err)
+				}
+			})
 
-			By("checking nodeplugin deamonsets is running")
-			err = waitForDaemonSets(cephfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
-			if err != nil {
-				Fail(err.Error())
-			}
+			By("checking nodeplugin deamonset pods are running", func() {
+				err := waitForDaemonSets(cephfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for daemonset %s with error %v", cephfsDeamonSetName, err)
+				}
+			})
 
 			By("check static PVC", func() {
 				scPath := cephfsExamplePath + "secret.yaml"
 				err := validateCephFsStaticPV(f, appPath, scPath)
 				if err != nil {
-					Fail(err.Error())
+					e2elog.Failf("failed to validate CephFS static pv with error %v", err)
 				}
 			})
 
-			By("create a storage class with pool and a PVC then Bind it to an app", func() {
-				createCephfsStorageClass(f.ClientSet, f, true, "")
-				validatePVCAndAppBinding(pvcPath, appPath, f)
-				deleteResource(cephfsExamplePath + "storageclass.yaml")
+			By("create a storageclass with pool and a PVC then bind it to an app", func() {
+				err := createCephfsStorageClass(f.ClientSet, f, true, "")
+				if err != nil {
+					e2elog.Failf("failed to create CephFS storageclass with error %v", err)
+				}
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate CephFS pvc and application binding with error %v", err)
+				}
+				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
+				}
 			})
 
-			createCephfsStorageClass(f.ClientSet, f, false, "")
+			By("create a PVC and bind it to an app", func() {
+				err := createCephfsStorageClass(f.ClientSet, f, false, "")
+				if err != nil {
+					e2elog.Failf("failed to create CephFS storageclass with error %v", err)
+				}
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate CephFS pvc and application  binding with error %v", err)
+				}
+			})
 
-			By("create and delete a PVC", func() {
-				By("create a PVC and Bind it to an app", func() {
-					validatePVCAndAppBinding(pvcPath, appPath, f)
+			By("create a PVC and bind it to an app with normal user", func() {
+				err := validateNormalUserPVCAccess(pvcPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate normal user CephFS pvc and application binding with error %v", err)
+				}
+			})
 
-				})
+			By("create/delete multiple PVCs and Apps", func() {
+				totalCount := 2
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+				pvc.Namespace = f.UniqueName
 
-				By("create a PVC and Bind it to an app with normal user", func() {
-					validateNormalUserPVCAccess(pvcPath, f)
-				})
+				app, err := loadApp(appPath)
+				if err != nil {
+					e2elog.Failf("failed to load application with error %v", err)
+				}
+				app.Namespace = f.UniqueName
+				// create PVC and app
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					err = createPVCAndApp(name, f, pvc, app, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC or application with error %v", err)
+					}
 
-				By("create/delete multiple PVCs and Apps", func() {
-					totalCount := 2
+				}
+
+				validateSubvolumeCount(f, totalCount, fileSystemName, subvolumegroup)
+				// delete PVC and app
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					err = deletePVCAndApp(name, f, pvc, app)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC or application with error %v", err)
+					}
+
+				}
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+			})
+
+			By("check data persist after recreating pod", func() {
+				err := checkDataPersist(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to check data persist in pvc with error %v", err)
+				}
+			})
+
+			By("create PVC, delete backing subvolume and check pv deletion", func() {
+				pvc, err := loadPVC(pvcPath)
+				if pvc == nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC with error %v", err)
+				}
+
+				err = deleteBackingCephFSVolume(f, pvc)
+				if err != nil {
+					e2elog.Failf("failed to delete CephFS subvolume with error %v", err)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC with error %v", err)
+				}
+			})
+
+			By("validate multiple subvolumegroup creation", func() {
+				err := deleteResource(cephfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				// re-define configmap with information of multiple clusters.
+				subvolgrpInfo := map[string]string{
+					"clusterID-1": "subvolgrp1",
+					"clusterID-2": "subvolgrp2",
+				}
+				err = createCustomConfigMap(f.ClientSet, cephfsDirPath, subvolgrpInfo)
+				if err != nil {
+					e2elog.Failf("failed to create configmap with error %v", err)
+				}
+				err = createCephfsStorageClass(f.ClientSet, f, false, "clusterID-1")
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate pvc and application with error %v", err)
+				}
+				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				// verify subvolumegroup creation.
+				err = validateSubvolumegroup(f, "subvolgrp1")
+				if err != nil {
+					e2elog.Failf("failed to validate subvolume group with error %v", err)
+				}
+
+				// create resources and verify subvolume group creation
+				// for the second cluster.
+				err = createCephfsStorageClass(f.ClientSet, f, false, "clusterID-2")
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate pvc and application with error %v", err)
+				}
+				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = validateSubvolumegroup(f, "subvolgrp2")
+				if err != nil {
+					e2elog.Failf("failed to validate subvolume group with error %v", err)
+				}
+				err = deleteConfigMap(cephfsDirPath)
+				if err != nil {
+					e2elog.Failf("failed to delete configmap with error %v", err)
+				}
+				err = createConfigMap(cephfsDirPath, f.ClientSet, f)
+				if err != nil {
+					e2elog.Failf("failed to create configmap with error %v", err)
+				}
+				err = createCephfsStorageClass(f.ClientSet, f, false, "")
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+			})
+
+			By("Resize PVC and check application directory size", func() {
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Failf("failed to get server version with error with error %v", err)
+				}
+
+				// Resize 0.3.0 is only supported from v1.15+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "15") {
+					err := resizePVCAndValidateSize(pvcPath, appPath, f)
+					if err != nil {
+						e2elog.Failf("failed to resize PVC with error %v", err)
+					}
+				}
+			})
+
+			By("Mount pvc as readonly in pod", func() {
+				// create PVC and bind it to an app
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+
+				app, err := loadApp(appPath)
+				if err != nil {
+					e2elog.Failf("failed to load application with error %v", err)
+				}
+
+				app.Namespace = f.UniqueName
+				label := map[string]string{
+					"app": app.Name,
+				}
+				app.Labels = label
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+				app.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
+				err = createPVCAndApp("", f, pvc, app, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC or application with error %v", err)
+				}
+
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("app=%s", app.Name),
+				}
+
+				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+				_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), app.Namespace, &opt)
+				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+				if !strings.Contains(stdErr, readOnlyErr) {
+					e2elog.Failf(stdErr)
+				}
+
+				// delete PVC and app
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC or application with error %v", err)
+				}
+			})
+
+			By("create a PVC clone and bind it to an app", func() {
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Failf("failed to get server version with error with error %v", err)
+				}
+				// snapshot beta is only supported from v1.17+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
+					var wg sync.WaitGroup
+					totalCount := 3
+					// totalSubvolumes represents the subvolumes in backend
+					// always totalCount+parentPVC
+					totalSubvolumes := totalCount + 1
+					wg.Add(totalCount)
+					err = createCephFSSnapshotClass(f)
+					if err != nil {
+						e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
+					}
 					pvc, err := loadPVC(pvcPath)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to load PVC with error %v", err)
 					}
+
 					pvc.Namespace = f.UniqueName
-
-					app, err := loadApp(appPath)
-					if err != nil {
-						Fail(err.Error())
-					}
-					app.Namespace = f.UniqueName
-					// create pvc and app
-					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						err := createPVCAndApp(name, f, pvc, app, deployTimeout)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-					}
-					subVol := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
-					if len(subVol) != totalCount {
-						msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), totalCount)
-						e2elog.Logf(msg)
-						Fail(msg)
-					}
-					// delete pvc and app
-					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						err := deletePVCAndApp(name, f, pvc, app)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-					}
-					subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
-					if len(subVol) != 0 {
-						msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), 0)
-						e2elog.Logf(msg)
-						Fail(msg)
-					}
-				})
-
-				By("check data persist after recreating pod with same pvc", func() {
-					err := checkDataPersist(pvcPath, appPath, f)
-					if err != nil {
-						Fail(err.Error())
-					}
-				})
-
-				By("creating a PVC, deleting backing subvolume, and checking successful PV deletion", func() {
-					pvc, err := loadPVC(pvcPath)
-					if pvc == nil {
-						Fail(err.Error())
-					}
-					pvc.Namespace = f.UniqueName
-
 					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to create PVC with error %v", err)
 					}
-
-					err = deleteBackingCephFSVolume(f, pvc)
-					if err != nil {
-						Fail(err.Error())
-					}
-
-					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-					if err != nil {
-						Fail(err.Error())
-					}
-				})
-
-				By("validate multiple subvolumegroup creation", func() {
-					deleteResource(cephfsExamplePath + "storageclass.yaml")
-					// re-define configmap with information of multiple clusters.
-					subvolgrpInfo := map[string]string{
-						"clusterID-1": "subvolgrp1",
-						"clusterID-2": "subvolgrp2",
-					}
-					createCustomConfigMap(f.ClientSet, cephfsDirPath, subvolgrpInfo)
-					createCephfsStorageClass(f.ClientSet, f, false, "clusterID-1")
-					validatePVCAndAppBinding(pvcPath, appPath, f)
-					deleteResource(cephfsExamplePath + "storageclass.yaml")
-					// verify subvolumegroup creation.
-					err := validateSubvolumegroup(f, "subvolgrp1")
-					if err != nil {
-						Fail(err.Error())
-					}
-
-					// create resources and verify subvolume group creation
-					// for the second cluster.
-					createCephfsStorageClass(f.ClientSet, f, false, "clusterID-2")
-					validatePVCAndAppBinding(pvcPath, appPath, f)
-					deleteResource(cephfsExamplePath + "storageclass.yaml")
-					err = validateSubvolumegroup(f, "subvolgrp2")
-					if err != nil {
-						Fail(err.Error())
-					}
-					deleteConfigMap(cephfsDirPath)
-				})
-
-				createConfigMap(cephfsDirPath, f.ClientSet, f)
-				createCephfsStorageClass(f.ClientSet, f, false, "")
-
-				By("Resize PVC and check application directory size", func() {
-					v, err := f.ClientSet.Discovery().ServerVersion()
-					if err != nil {
-						e2elog.Logf("failed to get server version with error %v", err)
-						Fail(err.Error())
-					}
-
-					// Resize 0.3.0 is only supported from v1.15+
-					if v.Major > "1" || (v.Major == "1" && v.Minor >= "15") {
-						err := resizePVCAndValidateSize(pvcPath, appPath, f)
-						if err != nil {
-							e2elog.Logf("failed to resize PVC %v", err)
-							Fail(err.Error())
-						}
-					}
-
-				})
-
-				By("Mount pvc as readonly in pod", func() {
-					// create pvc and bind it to an app
-					pvc, err := loadPVC(pvcPath)
-					if err != nil {
-						Fail(err.Error())
-					}
-
-					pvc.Namespace = f.UniqueName
 
 					app, err := loadApp(appPath)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to load application with error %v", err)
 					}
 
 					app.Namespace = f.UniqueName
-					label := map[string]string{
-						"app": app.Name,
-					}
-					app.Labels = label
 					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-					app.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
-					err = createPVCAndApp("", f, pvc, app, deployTimeout)
+					wErr := writeDataInPod(app, f)
+					if wErr != nil {
+						e2elog.Failf("failed to  write data  with error %v", wErr)
+					}
+
+					snap := getSnapshot(snapshotPath)
+					snap.Namespace = f.UniqueName
+					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+					// create snapshot
+					for i := 0; i < totalCount; i++ {
+						go func(w *sync.WaitGroup, n int, s vs.VolumeSnapshot) {
+							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+							err = createSnapshot(&s, deployTimeout)
+							if err != nil {
+								e2elog.Failf("failed to create snapshot with error %v", err)
+							}
+							w.Done()
+						}(&wg, i, snap)
+					}
+					wg.Wait()
+
+					pvcClone, err := loadPVC(pvcClonePath)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to load PVC with error %v", err)
 					}
-
-					opt := metav1.ListOptions{
-						LabelSelector: fmt.Sprintf("app=%s", app.Name),
+					appClone, err := loadApp(appClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load application with error %v", err)
 					}
+					pvcClone.Namespace = f.UniqueName
+					appClone.Namespace = f.UniqueName
+					pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
 
-					filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-					_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), app.Namespace, &opt)
-					readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
-					if !strings.Contains(stdErr, readOnlyErr) {
-						Fail(stdErr)
+					// create multiple PVC from same snapshot
+					wg.Add(totalCount)
+					for i := 0; i < totalCount; i++ {
+
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
+							if err != nil {
+								e2elog.Failf("failed to create PVC and app with error %v", err)
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
 					}
+					wg.Wait()
 
-					// delete pvc and app
+					validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
+
+					wg.Add(totalCount)
+					// delete clone and app
+					for i := 0; i < totalCount; i++ {
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							p.Spec.DataSource.Name = name
+							err = deletePVCAndApp(name, f, &p, &a)
+							if err != nil {
+								e2elog.Failf("failed to delete PVC and app with error %v", err)
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
+					}
+					wg.Wait()
+
+					parentPVCCount := totalSubvolumes - totalCount
+					validateSubvolumeCount(f, parentPVCCount, fileSystemName, subvolumegroup)
+					// create clones from different snapshosts and bind it to an
+					// app
+					wg.Add(totalCount)
+					for i := 0; i < totalCount; i++ {
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							p.Spec.DataSource.Name = name
+							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
+							if err != nil {
+								e2elog.Failf("failed to create PVC and app with error %v", err)
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
+					}
+					wg.Wait()
+
+					validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
+
+					wg.Add(totalCount)
+					// delete snapshot
+					for i := 0; i < totalCount; i++ {
+						go func(w *sync.WaitGroup, n int, s vs.VolumeSnapshot) {
+							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+							err = deleteSnapshot(&s, deployTimeout)
+							if err != nil {
+								e2elog.Failf("failed to delete snapshot with error %v", err)
+							}
+							w.Done()
+						}(&wg, i, snap)
+					}
+					wg.Wait()
+
+					wg.Add(totalCount)
+					// delete clone and app
+					for i := 0; i < totalCount; i++ {
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							p.Spec.DataSource.Name = name
+							err = deletePVCAndApp(name, f, &p, &a)
+							if err != nil {
+								e2elog.Failf("failed to delete PVC and app with error %v", err)
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
+					}
+					wg.Wait()
+
+					validateSubvolumeCount(f, parentPVCCount, fileSystemName, subvolumegroup)
+					// delete parent pvc
 					err = deletePVCAndApp("", f, pvc, app)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to delete PVC or application with error %v", err)
 					}
-				})
 
-				By("create a PVC clone and bind it to an app", func() {
-					v, err := f.ClientSet.Discovery().ServerVersion()
-					if err != nil {
-						e2elog.Logf("failed to get server version with error %v", err)
-						Fail(err.Error())
-					}
-					// snapshot beta is only supported from v1.17+
-					if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
-						var wg sync.WaitGroup
-						totalCount := 3
-						// totalSubvolumes represents the subvolumes in backend
-						// always totalCount+parentPVC
-						totalSubvolumes := totalCount + 1
-						wg.Add(totalCount)
-						createCephFSSnapshotClass(f)
-						pvc, err := loadPVC(pvcPath)
-						if err != nil {
-							Fail(err.Error())
-						}
+					validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				}
+			})
 
-						pvc.Namespace = f.UniqueName
-						e2elog.Logf("The PVC template %+v", pvc)
-						err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-						app, err := loadApp(appPath)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-						app.Namespace = f.UniqueName
-						app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-						wErr := writeDataInPod(app, f)
-						if wErr != nil {
-							Fail(wErr.Error())
-						}
-
-						snap := getSnapshot(snapshotPath)
-						snap.Namespace = f.UniqueName
-						snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
-						// create snapshot
-						for i := 0; i < totalCount; i++ {
-							go func(w *sync.WaitGroup, n int, s vs.VolumeSnapshot) {
-								s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
-								err = createSnapshot(&s, deployTimeout)
-								if err != nil {
-									e2elog.Logf("failed to create snapshot %v", err)
-									Fail(err.Error())
-								}
-								w.Done()
-							}(&wg, i, snap)
-						}
-						wg.Wait()
-
-						pvcClone, err := loadPVC(pvcClonePath)
-						if err != nil {
-							Fail(err.Error())
-						}
-						appClone, err := loadApp(appClonePath)
-						if err != nil {
-							Fail(err.Error())
-						}
-						pvcClone.Namespace = f.UniqueName
-						appClone.Namespace = f.UniqueName
-						pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
-
-						// create multiple PVC from same snapshot
-						wg.Add(totalCount)
-						for i := 0; i < totalCount; i++ {
-
-							go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-								name := fmt.Sprintf("%s%d", f.UniqueName, n)
-								err = createPVCAndApp(name, f, &p, &a, deployTimeout)
-								if err != nil {
-									e2elog.Logf("failed to create pvc and app %v", err)
-									Fail(err.Error())
-								}
-								w.Done()
-							}(&wg, i, *pvcClone, *appClone)
-						}
-						wg.Wait()
-
-						subVol := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
-						if len(subVol) != totalSubvolumes {
-							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), totalSubvolumes)
-							e2elog.Logf(msg)
-							Fail(msg)
-						}
-						wg.Add(totalCount)
-						// delete clone and app
-						for i := 0; i < totalCount; i++ {
-							go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-								name := fmt.Sprintf("%s%d", f.UniqueName, n)
-								p.Spec.DataSource.Name = name
-								err = deletePVCAndApp(name, f, &p, &a)
-								if err != nil {
-									e2elog.Logf("failed to delete pvc and app %v", err)
-									Fail(err.Error())
-								}
-								w.Done()
-							}(&wg, i, *pvcClone, *appClone)
-						}
-						wg.Wait()
-
-						parentPVCCount := totalSubvolumes - totalCount
-						subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
-						if len(subVol) != parentPVCCount {
-							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), parentPVCCount)
-							e2elog.Logf(msg)
-							Fail(msg)
-						}
-						// create clones from different snapshosts and bind it to an
-						// app
-						wg.Add(totalCount)
-						for i := 0; i < totalCount; i++ {
-							go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-								name := fmt.Sprintf("%s%d", f.UniqueName, n)
-								p.Spec.DataSource.Name = name
-								err = createPVCAndApp(name, f, &p, &a, deployTimeout)
-								if err != nil {
-									e2elog.Logf("failed to create pvc and app %v", err)
-									Fail(err.Error())
-								}
-								w.Done()
-							}(&wg, i, *pvcClone, *appClone)
-						}
-						wg.Wait()
-
-						subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
-						if len(subVol) != totalSubvolumes {
-							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), totalSubvolumes)
-							e2elog.Logf(msg)
-							Fail(msg)
-						}
-
-						wg.Add(totalCount)
-						// delete snapshot
-						for i := 0; i < totalCount; i++ {
-							go func(w *sync.WaitGroup, n int, s vs.VolumeSnapshot) {
-								s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
-								err = deleteSnapshot(&s, deployTimeout)
-								if err != nil {
-									e2elog.Logf("failed to delete snapshot %v", err)
-									Fail(err.Error())
-								}
-								w.Done()
-							}(&wg, i, snap)
-						}
-						wg.Wait()
-
-						wg.Add(totalCount)
-						// delete clone and app
-						for i := 0; i < totalCount; i++ {
-							go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-								name := fmt.Sprintf("%s%d", f.UniqueName, n)
-								p.Spec.DataSource.Name = name
-								err = deletePVCAndApp(name, f, &p, &a)
-								if err != nil {
-									e2elog.Logf("failed to delete pvc and app %v", err)
-									Fail(err.Error())
-								}
-								w.Done()
-							}(&wg, i, *pvcClone, *appClone)
-						}
-						wg.Wait()
-
-						subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
-						if len(subVol) != parentPVCCount {
-							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), parentPVCCount)
-							e2elog.Logf(msg)
-							Fail(msg)
-						}
-						// delete parent pvc
-						err = deletePVCAndApp("", f, pvc, app)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-						subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
-						if len(subVol) != 0 {
-							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), 0)
-							e2elog.Logf(msg)
-							Fail(msg)
-						}
-					}
-				})
-
-				By("create a PVC-PVC clone and bind it to an app", func() {
-					v, err := f.ClientSet.Discovery().ServerVersion()
-					if err != nil {
-						e2elog.Logf("failed to get server version with error %v", err)
-						Fail(err.Error())
-					}
-					// pvc clone is only supported from v1.16+
-					if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
-						var wg sync.WaitGroup
-						totalCount := 3
-						// totalSubvolumes represents the subvolumes in backend
-						// always totalCount+parentPVC
-						totalSubvolumes := totalCount + 1
-						pvc, err := loadPVC(pvcPath)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-						pvc.Namespace = f.UniqueName
-						err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-						if err != nil {
-							Fail(err.Error())
-						}
-						app, err := loadApp(appPath)
-						if err != nil {
-							Fail(err.Error())
-						}
-						app.Namespace = f.UniqueName
-						app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-						wErr := writeDataInPod(app, f)
-						if wErr != nil {
-							Fail(wErr.Error())
-						}
-
-						pvcClone, err := loadPVC(pvcSmartClonePath)
-						if err != nil {
-							Fail(err.Error())
-						}
-						pvcClone.Spec.DataSource.Name = pvc.Name
-						pvcClone.Namespace = f.UniqueName
-						appClone, err := loadApp(appSmartClonePath)
-						if err != nil {
-							Fail(err.Error())
-						}
-						appClone.Namespace = f.UniqueName
-						wg.Add(totalCount)
-						// create clone and bind it to an app
-						for i := 0; i < totalCount; i++ {
-							go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-								name := fmt.Sprintf("%s%d", f.UniqueName, n)
-								err = createPVCAndApp(name, f, &p, &a, deployTimeout)
-								if err != nil {
-									Fail(err.Error())
-								}
-								w.Done()
-							}(&wg, i, *pvcClone, *appClone)
-						}
-						wg.Wait()
-
-						subVol := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
-						if len(subVol) != totalSubvolumes {
-							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), totalSubvolumes)
-							e2elog.Logf(msg)
-							Fail(msg)
-						}
-						// delete parent pvc
-						err = deletePVCAndApp("", f, pvc, app)
-						if err != nil {
-							Fail(err.Error())
-						}
-
-						wg.Add(totalCount)
-						// delete clone and app
-						for i := 0; i < totalCount; i++ {
-							go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-								name := fmt.Sprintf("%s%d", f.UniqueName, n)
-								p.Spec.DataSource.Name = name
-								err = deletePVCAndApp(name, f, &p, &a)
-								if err != nil {
-									Fail(err.Error())
-								}
-								w.Done()
-							}(&wg, i, *pvcClone, *appClone)
-						}
-						wg.Wait()
-
-						subVol = listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
-						if len(subVol) != 0 {
-							msg := fmt.Sprintf("subvolumes %v. subvolume count %d not matching expected count %v", subVol, len(subVol), 0)
-							e2elog.Logf(msg)
-							Fail(msg)
-						}
-					}
-				})
-
-				By("Create ROX PVC and Bind it to an app", func() {
-					// create pvc and bind it to an app
+			By("create a PVC-PVC clone and bind it to an app", func() {
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Failf("failed to get server version with error with error %v", err)
+				}
+				// pvc clone is only supported from v1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+					var wg sync.WaitGroup
+					totalCount := 3
+					// totalSubvolumes represents the subvolumes in backend
+					// always totalCount+parentPVC
+					totalSubvolumes := totalCount + 1
 					pvc, err := loadPVC(pvcPath)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to load PVC with error %v", err)
 					}
 
 					pvc.Namespace = f.UniqueName
-					pvc.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC with error %v", err)
+					}
 					app, err := loadApp(appPath)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to load application with error %v", err)
 					}
-
 					app.Namespace = f.UniqueName
-					label := map[string]string{
-						"app": app.Name,
-					}
-					app.Labels = label
 					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-					err = createPVCAndApp("", f, pvc, app, deployTimeout)
+					wErr := writeDataInPod(app, f)
+					if wErr != nil {
+						e2elog.Failf("failed to write data from application %v", wErr)
+					}
+
+					pvcClone, err := loadPVC(pvcSmartClonePath)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to load PVC with error %v", err)
 					}
-
-					opt := metav1.ListOptions{
-						LabelSelector: fmt.Sprintf("app=%s", app.Name),
+					pvcClone.Spec.DataSource.Name = pvc.Name
+					pvcClone.Namespace = f.UniqueName
+					appClone, err := loadApp(appSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load application with error %v", err)
 					}
-
-					filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-					_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), app.Namespace, &opt)
-					readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
-					if !strings.Contains(stdErr, readOnlyErr) {
-						Fail(stdErr)
+					appClone.Namespace = f.UniqueName
+					wg.Add(totalCount)
+					// create clone and bind it to an app
+					for i := 0; i < totalCount; i++ {
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
+							if err != nil {
+								e2elog.Failf("failed to create PVC or application with error %v", err)
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
 					}
+					wg.Wait()
 
-					// delete pvc and app
+					validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
+
+					// delete parent pvc
 					err = deletePVCAndApp("", f, pvc, app)
 					if err != nil {
-						Fail(err.Error())
+						e2elog.Failf("failed to delete PVC or application with error %v", err)
 					}
-				})
-				// Make sure this should be last testcase in this file, because
-				// it deletes pool
-				By("Create a PVC and Delete PVC when backend pool deleted", func() {
-					err := pvcDeleteWhenPoolNotFound(pvcPath, true, f)
-					if err != nil {
-						Fail(err.Error())
-					}
-				})
 
+					wg.Add(totalCount)
+					// delete clone and app
+					for i := 0; i < totalCount; i++ {
+						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							p.Spec.DataSource.Name = name
+							err = deletePVCAndApp(name, f, &p, &a)
+							if err != nil {
+								e2elog.Failf("failed to delete PVC or application with error %v", err)
+							}
+							w.Done()
+						}(&wg, i, *pvcClone, *appClone)
+					}
+					wg.Wait()
+
+					validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				}
+			})
+
+			By("Create ROX PVC and bind it to an app", func() {
+				// create PVC and bind it to an app
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+
+				pvc.Namespace = f.UniqueName
+				pvc.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+				app, err := loadApp(appPath)
+				if err != nil {
+					e2elog.Failf("failed to load application with error %v", err)
+				}
+
+				app.Namespace = f.UniqueName
+				label := map[string]string{
+					"app": app.Name,
+				}
+				app.Labels = label
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+				err = createPVCAndApp("", f, pvc, app, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC or application with error %v", err)
+				}
+
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("app=%s", app.Name),
+				}
+
+				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+				_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), app.Namespace, &opt)
+				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+				if !strings.Contains(stdErr, readOnlyErr) {
+					e2elog.Failf(stdErr)
+				}
+
+				// delete PVC and app
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC or application with error %v", err)
+				}
+			})
+			// Make sure this should be last testcase in this file, because
+			// it deletes pool
+			By("Create a PVC and delete PVC when backend pool deleted", func() {
+				err := pvcDeleteWhenPoolNotFound(pvcPath, true, f)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC with error %v", err)
+				}
 			})
 
 		})
