@@ -102,7 +102,7 @@ jobs:
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.18.5 --test-cephfs=true
+        - scripts/travis-functest.sh v1.19.0 --test-cephfs=true
           --test-rbd=false --upgrade-testing=true
           --upgrade-version="${UPGRADE_VERSION}" || travis_terminate 1;
 
@@ -111,7 +111,7 @@ jobs:
       script:
         - scripts/skip-doc-change.sh || travis_terminate 0;
         - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.18.5 --test-cephfs=false
+        - scripts/travis-functest.sh v1.19.0 --test-cephfs=false
           --test-rbd=true --upgrade-testing=true
           --upgrade-version="${UPGRADE_VERSION}" || travis_terminate 1;
 
