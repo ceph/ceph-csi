@@ -205,6 +205,9 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	volOptions.VolID = volID
 	transaction := stageTransaction{}
 
+	volOptions.MapOptions = req.GetVolumeContext()["mapOptions"]
+	volOptions.UnmapOptions = req.GetVolumeContext()["unmapOptions"]
+
 	// Stash image details prior to mapping the image (useful during Unstage as it has no
 	// voloptions passed to the RPC as per the CSI spec)
 	err = stashRBDImageMetadata(volOptions, stagingParentPath)
@@ -213,7 +216,7 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 	defer func() {
 		if err != nil {
-			ns.undoStagingTransaction(ctx, req, transaction)
+			ns.undoStagingTransaction(ctx, req, transaction, volOptions)
 		}
 	}()
 
@@ -320,7 +323,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	return transaction, err
 }
 
-func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeStageVolumeRequest, transaction stageTransaction) {
+func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeStageVolumeRequest, transaction stageTransaction, volOptions *rbdVolume) {
 	var err error
 
 	stagingTargetPath := getStagingTargetPath(req)
@@ -345,7 +348,7 @@ func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeS
 
 	// Unmapping rbd device
 	if transaction.devicePath != "" {
-		err = detachRBDDevice(ctx, transaction.devicePath, volID, transaction.isEncrypted)
+		err = detachRBDDevice(ctx, transaction.devicePath, volID, volOptions.UnmapOptions, transaction.isEncrypted)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to unmap rbd device: %s for volume %s with error: %v", transaction.devicePath, volID, err)
 			// continue on failure to delete the stash file, as kubernetes will fail to delete the staging path otherwise
@@ -679,7 +682,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	// Unmapping rbd device
 	imageSpec := imgInfo.String()
-	if err = detachRBDImageOrDeviceSpec(ctx, imageSpec, true, imgInfo.NbdAccess, imgInfo.Encrypted, req.GetVolumeId()); err != nil {
+	if err = detachRBDImageOrDeviceSpec(ctx, imageSpec, true, imgInfo.NbdAccess, imgInfo.Encrypted, req.GetVolumeId(), imgInfo.UnmapOptions); err != nil {
 		util.ErrorLog(ctx, "error unmapping volume (%s) from staging path (%s): (%v)", req.GetVolumeId(), stagingTargetPath, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}

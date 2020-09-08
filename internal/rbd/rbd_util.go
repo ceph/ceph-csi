@@ -95,6 +95,8 @@ type rbdVolume struct {
 	ClusterID           string `json:"clusterId"`
 	RequestName         string
 	ReservedID          string
+	MapOptions          string
+	UnmapOptions        string
 	VolName             string `json:"volName"`
 	MonValueFromSecret  string `json:"monValueFromSecret"`
 	VolSize             int64  `json:"volSize"`
@@ -986,6 +988,7 @@ type rbdImageMetadataStash struct {
 	Pool           string `json:"pool"`
 	RadosNamespace string `json:"radosNamespace"`
 	ImageName      string `json:"image"`
+	UnmapOptions   string `json:"unmapOptions"`
 	NbdAccess      bool   `json:"accessType"`
 	Encrypted      bool   `json:"encrypted"`
 }
@@ -1006,11 +1009,12 @@ func (ri *rbdImageMetadataStash) String() string {
 func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
 	var imgMeta = rbdImageMetadataStash{
 		// there are no checks for this at present
-		Version:        2, // nolint:gomnd // number specifies version.
+		Version:        3, // nolint:gomnd // number specifies version.
 		Pool:           volOptions.Pool,
 		RadosNamespace: volOptions.RadosNamespace,
 		ImageName:      volOptions.RbdImageName,
 		Encrypted:      volOptions.Encrypted,
+		UnmapOptions:   volOptions.UnmapOptions,
 	}
 
 	imgMeta.NbdAccess = false
