@@ -66,6 +66,10 @@ NOTE:
 | RBD    | Dynamically provision, de-provision Block mode RWO volume | GA             | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.14.0         |
 |        | Dynamically provision, de-provision Block mode RWX volume | GA             | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.14.0         |
 |        | Dynamically provision, de-provision File mode RWO volume  | GA             | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.14.0         |
+|        | Provision File Mode ROX volume from snapshot              | Alpha          | >= v3.0.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.17.0         |
+|        | Provision File Mode ROX volume from another volume        | Alpha          | >= v3.0.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.16.0         |
+|        | Provision Block Mode ROX volume from snapshot             | Alpha          | >= v3.0.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.17.0         |
+|        | Provision Block Mode ROX volume from another volume       | Alpha          | >= v3.0.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.16.0         |
 |        | Creating and deleting snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.17.0         |
 |        | Provision volume from snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.17.0         |
 |        | Provision volume from another volume                      | Alpha          | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.16.0         |
