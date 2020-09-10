@@ -693,7 +693,18 @@ var _ = Describe("cephfs", func() {
 				}
 
 				pvc.Namespace = f.UniqueName
-				pvc.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC with error %v", err)
+				}
+
+				pvcClone, err := loadPVC(pvcSmartClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+				pvcClone.Namespace = f.UniqueName
+				pvcClone.Spec.DataSource.Name = pvc.Name
+				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
 				app, err := loadApp(appPath)
 				if err != nil {
 					e2elog.Failf("failed to load application with error %v", err)
@@ -704,8 +715,8 @@ var _ = Describe("cephfs", func() {
 					"app": app.Name,
 				}
 				app.Labels = label
-				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-				err = createPVCAndApp("", f, pvc, app, deployTimeout)
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+				err = createPVCAndApp("", f, pvcClone, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC or application with error %v", err)
 				}
@@ -721,10 +732,16 @@ var _ = Describe("cephfs", func() {
 					e2elog.Failf(stdErr)
 				}
 
-				// delete PVC and app
-				err = deletePVCAndApp("", f, pvc, app)
+				// delete cloned ROX pvc and app
+				err = deletePVCAndApp("", f, pvcClone, app)
 				if err != nil {
 					e2elog.Failf("failed to delete PVC or application with error %v", err)
+				}
+
+				// delete parent pvc
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC with error %v", err)
 				}
 			})
 			// Make sure this should be last testcase in this file, because
