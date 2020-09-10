@@ -42,13 +42,19 @@ const (
 type Subvolume struct {
 	BytesQuota    int      `json:"bytes_quota"`
 	DataPool      string   `json:"data_pool"`
+	Features      []string `json:"features"`
 	GID           int      `json:"gid"`
 	Mode          int      `json:"mode"`
 	MonAddrs      []string `json:"mon_addrs"`
 	Path          string   `json:"path"`
 	PoolNamespace string   `json:"pool_namespace"`
-	Type          string   `json:"type"`
-	UID           int      `json:"uid"`
+	// The subvolume "state" is based on the current state of the subvolume.
+	// It contains one of the following values:
+	// * "complete": subvolume is ready for all operations.
+	// * "snapshot-retained": subvolume is removed but its snapshots are retained.
+	State string `json:"state"`
+	Type  string `json:"type"`
+	UID   int    `json:"uid"`
 }
 
 func getVolumeRootPathCephDeprecated(volID volumeID) string {
@@ -247,6 +253,9 @@ func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volO
 	}
 	if force {
 		arg = append(arg, "--force")
+	}
+	if checkSubvolumeHasFeature("snapshot-retention", volOptions.Features) {
+		arg = append(arg, "--retain-snapshots")
 	}
 
 	err := execCommandErr(ctx, "ceph", arg...)
