@@ -47,6 +47,7 @@ type volumeOptions struct {
 	KernelMountOptions  string `json:"kernelMountOptions"`
 	FuseMountOptions    string `json:"fuseMountOptions"`
 	SubvolumeGroup      string
+	Features            []string
 }
 
 func validateNonEmptyField(field, fieldName string) error {
@@ -224,6 +225,7 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		vi         util.CSIIdentifier
 		volOptions volumeOptions
 		vid        volumeIdentifier
+		info       Subvolume
 	)
 
 	// Decode the VolID first, to detect older volumes or pre-provisioned volumes
@@ -299,11 +301,18 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 	}
 
 	volOptions.ProvisionVolume = true
-	volOptions.RootPath, err = getVolumeRootPathCeph(ctx, &volOptions, cr, volumeID(vid.FsSubvolName))
-	if err != nil {
-		return &volOptions, &vid, err
+
+	info, err = getSubVolumeInfo(ctx, &volOptions, cr, volumeID(vid.FsSubvolName))
+	if err == nil {
+		volOptions.RootPath = info.Path
+		volOptions.Features = info.Features
 	}
-	return &volOptions, &vid, nil
+
+	if errors.Is(err, ErrInvalidCommand) {
+		volOptions.RootPath, err = getVolumeRootPathCeph(ctx, &volOptions, cr, volumeID(vid.FsSubvolName))
+	}
+
+	return &volOptions, &vid, err
 }
 
 // newVolumeOptionsFromMonitorList generates a new instance of volumeOptions and
