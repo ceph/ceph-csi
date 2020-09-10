@@ -269,3 +269,16 @@ func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volO
 
 	return nil
 }
+
+// checkSubvolumeHasFeature verifies if the referred subvolume has
+// the required feature.
+func checkSubvolumeHasFeature(feature string, subVolFeatures []string) bool {
+	// The subvolume "features" are based on the internal version of the subvolume.
+	// Verify if subvolume supports the required feature.
+	for _, subvolFeature := range subVolFeatures {
+		if subvolFeature == feature {
+			return true
+		}
+	}
+	return false
+}
