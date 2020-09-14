@@ -23,7 +23,7 @@ limitPerRun: 5
 
 # Specify configuration settings that are specific to issues
 issues:
-  daysUntilStale: 60
+  daysUntilStale: 90
   daysUntilClose: 7
   markComment: >
     This issue has been automatically marked as stale because it has not had
