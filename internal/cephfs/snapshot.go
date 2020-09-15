@@ -25,6 +25,10 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
+// autoProtect points to the snapshot auto-protect feature of
+// the subvolume.
+const autoProtect = "snapshot-autoprotect"
+
 // cephfsSnapshot represents a CSI snapshot and its cluster information.
 type cephfsSnapshot struct {
 	NamePrefix string
@@ -137,6 +141,11 @@ func getSnapshotInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Cr
 }
 
 func protectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, snapID, volID volumeID) error {
+	// If "snapshot-autoprotect" feature is present, The ProtectSnapshot
+	// call should be treated as a no-op.
+	if checkSubvolumeHasFeature(autoProtect, volOptions.Features) {
+		return nil
+	}
 	args := []string{
 		"fs",
 		"subvolume",
