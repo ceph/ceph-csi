@@ -384,10 +384,17 @@ var _ = Describe("RBD", func() {
 					// create snapshot
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, s v1beta1.VolumeSnapshot) {
+							defer GinkgoRecover()
 							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 							err = createSnapshot(&s, deployTimeout)
 							if err != nil {
 								e2elog.Failf("failed to create snapshot with error %v", err)
+								// log pods created by helm chart
+								logsCSIPods("app=ceph-csi-rbd", c)
+								// log provisoner
+								logsCSIPods("app=csi-rbdplugin-provisioner", c)
+								// log node plugin
+								logsCSIPods("app=csi-rbdplugin", c)
 							}
 							w.Done()
 						}(&wg, i, snap)
@@ -412,6 +419,7 @@ var _ = Describe("RBD", func() {
 					wg.Add(totalCount)
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							defer GinkgoRecover()
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
 							if err != nil {
@@ -430,6 +438,7 @@ var _ = Describe("RBD", func() {
 					// delete clone and app
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							defer GinkgoRecover()
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
 							err = deletePVCAndApp(name, f, &p, &a)
@@ -449,6 +458,7 @@ var _ = Describe("RBD", func() {
 					wg.Add(totalCount)
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							defer GinkgoRecover()
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
 							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
@@ -477,6 +487,7 @@ var _ = Describe("RBD", func() {
 					// delete snapshot
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, s v1beta1.VolumeSnapshot) {
+							defer GinkgoRecover()
 							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 							err = deleteSnapshot(&s, deployTimeout)
 							if err != nil {
@@ -492,6 +503,7 @@ var _ = Describe("RBD", func() {
 					// delete clone and app
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							defer GinkgoRecover()
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
 							err = deletePVCAndApp(name, f, &p, &a)
@@ -543,6 +555,7 @@ var _ = Describe("RBD", func() {
 					// create clone and bind it to an app
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							defer GinkgoRecover()
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
 							if err != nil {
@@ -569,6 +582,7 @@ var _ = Describe("RBD", func() {
 					// delete clone and app
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+							defer GinkgoRecover()
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
 							err = deletePVCAndApp(name, f, &p, &a)
