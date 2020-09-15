@@ -7,6 +7,7 @@ def ref = "master"
 def git_since = 'master'
 def skip_e2e = 0
 def doc_change = 0
+def k8s_release = 'latest'
 
 def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
@@ -32,6 +33,13 @@ node('cico-workspace') {
 	if (skip_e2e == 0) {
 		currentBuild.result = 'SUCCESS'
 		return
+	}
+
+	stage("detect k8s-${k8s_version} patch release") {
+		k8s_release = sh(
+			script: "./scripts/get_patch_release.py --version=${k8s_version}",
+			returnStdout: true).trim()
+		echo "detected Kubernetes patch release: ${k8s_release}"
 	}
 
 	stage('checkout PR') {
@@ -87,9 +95,9 @@ node('cico-workspace') {
 			// build e2e.test executable
 			ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman TARGET=e2e.test'
 		}
-		stage("deploy k8s v${k8s_version} and rook") {
+		stage("deploy k8s-${k8s_version} and rook") {
 			timeout(time: 30, unit: 'MINUTES') {
-				ssh "./single-node-k8s.sh --k8s-version=v${k8s_version}"
+				ssh "./single-node-k8s.sh --k8s-version=${k8s_release}"
 			}
 		}
 		stage('run e2e') {
