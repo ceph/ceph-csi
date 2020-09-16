@@ -27,7 +27,9 @@ import (
 
 // autoProtect points to the snapshot auto-protect feature of
 // the subvolume.
-const autoProtect = "snapshot-autoprotect"
+const (
+	autoProtect = "snapshot-autoprotect"
+)
 
 // cephfsSnapshot represents a CSI snapshot and its cluster information.
 type cephfsSnapshot struct {
@@ -177,6 +179,11 @@ func protectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Cr
 }
 
 func unprotectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, snapID, volID volumeID) error {
+	// If "snapshot-autoprotect" feature is present, The UnprotectSnapshot
+	// call should be treated as a no-op.
+	if checkSubvolumeHasFeature(autoProtect, volOptions.Features) {
+		return nil
+	}
 	args := []string{
 		"fs",
 		"subvolume",
