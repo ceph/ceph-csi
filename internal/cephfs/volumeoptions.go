@@ -475,6 +475,12 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 	sid.FsSnapshotName = imageAttributes.ImageName
 	sid.FsSubvolName = imageAttributes.SourceName
 
+	subvolInfo, err := getSubVolumeInfo(ctx, &volOptions, cr, volumeID(sid.FsSubvolName))
+	if err != nil {
+		return &volOptions, nil, &sid, err
+	}
+	volOptions.Features = subvolInfo.Features
+
 	info, err := getSnapshotInfo(ctx, &volOptions, cr, volumeID(sid.FsSnapshotName), volumeID(sid.FsSubvolName))
 	if err != nil {
 		return &volOptions, nil, &sid, err
