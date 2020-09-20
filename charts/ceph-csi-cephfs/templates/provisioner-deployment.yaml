@@ -25,6 +25,22 @@ spec:
         release: {{ .Release.Name }}
         heritage: {{ .Release.Service }}
     spec:
+{{- if gt (int .Values.provisioner.replicaCount) 1 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - {{ include "ceph-csi-cephfs.name" . }}
+                  - key: component
+                    operator: In
+                    values:
+                      - {{ .Values.provisioner.name }}
+              topologyKey: "kubernetes.io/hostname"
+{{- end }}
       serviceAccountName: {{ include "ceph-csi-cephfs.serviceAccountName.provisioner" . }}
       containers:
         - name: csi-provisioner
