@@ -29,6 +29,16 @@ spec:
       labels:
         app: csi-rbdplugin-provisioner
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - csi-rbdplugin-provisioner
+              topologyKey: "kubernetes.io/hostname"
       serviceAccount: rbd-csi-provisioner
       containers:
         - name: csi-provisioner

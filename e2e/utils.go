@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"strings"
 	"time"
 
@@ -491,4 +492,9 @@ func checkMountOptions(pvcPath, appPath string, f *framework.Framework, mountFla
 func addTopologyDomainsToDSYaml(template, labels string) string {
 	return strings.ReplaceAll(template, "# - \"--domainlabels=failure-domain/region,failure-domain/zone\"",
 		"- \"--domainlabels="+labels+"\"")
+}
+
+func oneReplicaDeployYaml(template string) string {
+	var re = regexp.MustCompile(`(\s+replicas:) \d+`)
+	return re.ReplaceAllString(template, `$1 1`)
 }
