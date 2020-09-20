@@ -29,6 +29,16 @@ spec:
       labels:
         app: csi-cephfsplugin-provisioner
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - csi-cephfsplugin-provisioner
+              topologyKey: "kubernetes.io/hostname"
       serviceAccount: cephfs-csi-provisioner
       containers:
         - name: csi-provisioner
