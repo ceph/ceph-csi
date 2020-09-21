@@ -55,7 +55,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to create secret with error %v", err)
 		}
-		err = createCephfsStorageClass(f.ClientSet, f, true, "")
+		err = createCephfsStorageClass(f.ClientSet, f, true, nil)
 		if err != nil {
 			e2elog.Failf("failed to create storageclass with error %v", err)
 		}

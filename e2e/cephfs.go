@@ -220,7 +220,7 @@ var _ = Describe("cephfs", func() {
 			})
 
 			By("create a storageclass with pool and a PVC then bind it to an app", func() {
-				err := createCephfsStorageClass(f.ClientSet, f, true, "")
+				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
 					e2elog.Failf("failed to create CephFS storageclass with error %v", err)
 				}
@@ -235,7 +235,7 @@ var _ = Describe("cephfs", func() {
 			})
 
 			By("create a PVC and bind it to an app", func() {
-				err := createCephfsStorageClass(f.ClientSet, f, false, "")
+				err := createCephfsStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
 					e2elog.Failf("failed to create CephFS storageclass with error %v", err)
 				}
@@ -332,7 +332,10 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to create configmap with error %v", err)
 				}
-				err = createCephfsStorageClass(f.ClientSet, f, false, "clusterID-1")
+				params := map[string]string{
+					"clusterID": "clusterID-1",
+				}
+				err = createCephfsStorageClass(f.ClientSet, f, false, params)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -352,7 +355,8 @@ var _ = Describe("cephfs", func() {
 
 				// create resources and verify subvolume group creation
 				// for the second cluster.
-				err = createCephfsStorageClass(f.ClientSet, f, false, "clusterID-2")
+				params["clusterID"] = "clusterID-2"
+				err = createCephfsStorageClass(f.ClientSet, f, false, params)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -376,7 +380,7 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to create configmap with error %v", err)
 				}
-				err = createCephfsStorageClass(f.ClientSet, f, false, "")
+				err = createCephfsStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}

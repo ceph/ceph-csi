@@ -34,7 +34,7 @@ func validateSubvolumegroup(f *framework.Framework, subvolgrp string) error {
 	return nil
 }
 
-func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool, clusterID string) error {
+func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool, params map[string]string) error {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
 	if err != nil {
@@ -53,20 +53,29 @@ func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, en
 	if enablePool {
 		sc.Parameters["pool"] = "myfs-data0"
 	}
-	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
-	if err != nil {
-		return err
+
+	// overload any parameters that were passed
+	if params == nil {
+		// create an empty params, so that params["clusterID"] below
+		// does not panic
+		params = map[string]string{}
 	}
-	if stdErr != "" {
-		return fmt.Errorf("error getting fsid %v", stdErr)
+	for param, value := range params {
+		sc.Parameters[param] = value
 	}
-	// remove new line present in fsID
-	fsID = strings.Trim(fsID, "\n")
-	if clusterID != "" {
-		fsID = clusterID
+
+	// fetch and set fsID from the cluster if not set in params
+	if _, found := params["clusterID"]; !found {
+		fsID, stdErr, failErr := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+		if failErr != nil {
+			return failErr
+		}
+		if stdErr != "" {
+			return fmt.Errorf("error getting fsid %v", stdErr)
+		}
+		sc.Parameters["clusterID"] = strings.Trim(fsID, "\n")
 	}
 	sc.Namespace = cephCSINamespace
-	sc.Parameters["clusterID"] = fsID
 	_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	return err
 }
