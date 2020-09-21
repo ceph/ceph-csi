@@ -31,6 +31,8 @@ const (
 	snapNotFound = "Error ENOENT"
 	// snapProtectionExist is returned when the snapshot is already protected
 	snapProtectionExist = "Error EEXIST"
+	// volumeNotEmpty is returned when the volume is not empty.
+	volumeNotEmpty = "Error ENOTEMPTY"
 )
 
 var (
@@ -56,4 +58,7 @@ var (
 
 	// ErrInvalidCommand is returned when a command is not known to the cluster
 	ErrInvalidCommand = errors.New("invalid command")
+
+	// ErrVolumeHasSnapshots is returned when a subvolume has snapshots.
+	ErrVolumeHasSnapshots = errors.New("volume has snapshots")
 )
