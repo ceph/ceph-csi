@@ -154,12 +154,13 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix + cr.ID, "--keyfile=" + cr.KeyFile,
 		"-r", volOptions.RootPath,
-		"-o", "nonempty",
 	}
 
+	fmo := "nonempty"
 	if volOptions.FuseMountOptions != "" {
-		args = append(args, ","+volOptions.FuseMountOptions)
+		fmo += "," + strings.TrimSpace(volOptions.FuseMountOptions)
 	}
+	args = append(args, "-o", fmo)
 
 	if volOptions.FsName != "" {
 		args = append(args, "--client_mds_namespace="+volOptions.FsName)
