@@ -234,6 +234,43 @@ var _ = Describe("cephfs", func() {
 				}
 			})
 
+			By("create a storageclass with ceph-fuse and a PVC then bind it to an app", func() {
+				params := map[string]string{
+					"mounter": "fuse",
+				}
+				err := createCephfsStorageClass(f.ClientSet, f, true, params)
+				if err != nil {
+					e2elog.Failf("failed to create CephFS storageclass with error %v", err)
+				}
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate CephFS pvc and application binding with error %v", err)
+				}
+				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
+				}
+			})
+
+			By("create a storageclass with ceph-fuse, mount-options and a PVC then bind it to an app", func() {
+				params := map[string]string{
+					"mounter":          "fuse",
+					"fuseMountOptions": "debug",
+				}
+				err := createCephfsStorageClass(f.ClientSet, f, true, params)
+				if err != nil {
+					e2elog.Failf("failed to create CephFS storageclass with error %v", err)
+				}
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate CephFS pvc and application binding with error %v", err)
+				}
+				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
+				}
+			})
+
 			By("create a PVC and bind it to an app", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
