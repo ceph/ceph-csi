@@ -9,7 +9,6 @@
       - build-discarder:
           days-to-keep: 7
           artifact-days-to-keep: 7
-    parameters:
     dsl: |
       def GIT_REPO = 'https://github.com/ceph/ceph-csi'
       def GIT_BRANCH = 'ci/centos'
