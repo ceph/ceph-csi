@@ -14,4 +14,4 @@ set -e
 git init .
 git remote add origin "${GIT_REPO}"
 git fetch origin "${GIT_REF}"
-git checkout "${GIT_REF}"
+git checkout FETCH_HEAD
