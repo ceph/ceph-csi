@@ -5,6 +5,7 @@
     test_type:
       - 'cephfs'
       - 'rbd'
+    csi_upgrade_version: 'v3.1.0'
     jobs:
       - 'upgrade-tests-{test_type}'
 
@@ -21,6 +22,7 @@
     # default variables
     k8s_version: '<unset>'
     test_type: '<unset>'
+    csi_upgrade_version: '<unset>'
     # generated parameters for the job (used in the groovy script)
     parameters:
       - string:
@@ -31,6 +33,10 @@
           name: test_type
           default: '{test_type}'
           description: Mentions whether upgrade tests run for rbd/cephfs.
+      - string:
+          name: csi_upgrade_version
+          default: '{csi_upgrade_version}'
+          description: Ceph CSI base version to be used before upgrade.
     pipeline-scm:
       scm:
         - git:
