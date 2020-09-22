@@ -106,7 +106,7 @@ node('cico-workspace') {
 				if ("${test_type}" == "cephfs"){
 					upgrade_args = "--test-cephfs=true --test-rbd=false --upgrade-testing=true"
 				}
-				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && source build.env && scripts/travis-functest.sh ${k8s_release} --upgrade-version=${UPGRADE_VERSION} ${upgrade_args}"
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && source build.env && scripts/travis-functest.sh ${k8s_release} --upgrade-version=\${UPGRADE_VERSION} ${upgrade_args}"
 			}
 		}
 	}
