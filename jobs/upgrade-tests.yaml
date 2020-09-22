@@ -1,0 +1,55 @@
+---
+- project:
+    name: upgrade-tests
+    k8s_version: '1.19'
+    test_type:
+      - 'cephfs'
+      - 'rbd'
+    jobs:
+      - 'upgrade-tests-cephfs'
+      - 'upgrade-tests-rbd'
+
+- job-template:
+    name: 'upgrade-tests-{test_type}'
+    project-type: pipeline
+    sandbox: true
+    concurrent: true
+    properties:
+      - github:
+          url: https://github.com/ceph/ceph-csi
+      - build-discarder:
+          days-to-keep: 7
+          artifact-days-to-keep: 7
+    # default variables
+    k8s_version: '<unset>'
+    test_type: '<unset>'
+    # generated parameters for the job (used in the groovy script)
+    parameters:
+      - name: k8s_version
+        type: string
+        default: '{k8s_version}'
+        description: Kubernetes version to deploy in the test cluster.
+      - name: test_type
+        type: string
+        default: '{test_type}'
+        description: Mentions whether upgrade tests run for rbd/cephfs.
+    pipeline-scm:
+      scm:
+        - git:
+            name: origin
+            url: https://github.com/ceph/ceph-csi
+            branches:
+              - ci/centos
+      script-path: upgrade-tests.groovy
+      lightweight-checkout: true
+    triggers:
+      - github-pull-request:
+          status-context: 'ci/centos/upgrade-tests-{test_type}'
+          # yamllint disable-line rule:line-length
+          trigger-phrase: '/(re)?test ((all)|(ci/centos/upgrade-tests(-{test_type})?))'
+          permit-all: true
+          github-hooks: true
+          black-list-target-branches:
+            - ci/centos
+          org-list:
+            - ceph
