@@ -27,9 +27,13 @@ objects:
                 - name: GIT_REPO
                   value: https://github.com/ceph/ceph-csi
                 - name: GIT_REF
-                  value: ci/centos
+                  value: "${GIT_REF}"
           restartPolicy: Never
 parameters:
   - name: SESSION
     description: unique ID for the session to track the pod for the job
     required: true
+  - name: GIT_REF
+    description: the git branch or other ref to checkout and validate
+    value: ci/centos
+    required: false

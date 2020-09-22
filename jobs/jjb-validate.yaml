@@ -25,7 +25,7 @@
               refspec: "${GIT_BRANCH}"]]])
         }
         stage('validation') {
-          sh './deploy/jjb.sh validate'
+          sh "GIT_REF=${GIT_BRANCH} ./deploy/jjb.sh validate"
         }
       }
     triggers:
