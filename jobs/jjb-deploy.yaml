@@ -2,7 +2,6 @@
 - job:
     name: jjb-deploy
     project-type: pipeline
-    sandbox: true
     concurrent: false
     properties:
       - github:

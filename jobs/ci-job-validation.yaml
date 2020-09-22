@@ -2,7 +2,6 @@
 - job:
     name: ci-job-validation
     project-type: pipeline
-    sandbox: true
     concurrent: true
     properties:
       - github:
