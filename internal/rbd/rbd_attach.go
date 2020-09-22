@@ -214,8 +214,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 
 	util.TraceLog(ctx, "rbd: map mon %s", volOpt.Monitors)
 
-	// Map options
-	mapOptions := []string{
+	mapArgs := []string{
 		"--id", cr.ID,
 		"-m", volOpt.Monitors,
 		"--keyfile=" + cr.KeyFile,
@@ -230,17 +229,17 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 	}
 
 	// Update options with device type selection
-	mapOptions = append(mapOptions, "--device-type", accessType)
+	mapArgs = append(mapArgs, "--device-type", accessType)
 
 	if volOpt.readOnly {
-		mapOptions = append(mapOptions, "--read-only")
+		mapArgs = append(mapArgs, "--read-only")
 	}
 
 	if volOpt.MapOptions != "" {
-		mapOptions = append(mapOptions, "--options", volOpt.MapOptions)
+		mapArgs = append(mapArgs, "--options", volOpt.MapOptions)
 	}
 	// Execute map
-	stdout, stderr, err := util.ExecCommand(ctx, rbd, mapOptions...)
+	stdout, stderr, err := util.ExecCommand(ctx, rbd, mapArgs...)
 	if err != nil {
 		util.WarningLog(ctx, "rbd: map error %v, rbd output: %s", err, stderr)
 		// unmap rbd image if connection timeout
@@ -315,11 +314,12 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 	if ndbType {
 		accessType = accessTypeNbd
 	}
-	options := []string{"unmap", "--device-type", accessType, imageOrDeviceSpec}
+	unmapArgs := []string{"unmap", "--device-type", accessType, imageOrDeviceSpec}
 	if unmapOptions != "" {
-		options = append(options, "--options", unmapOptions)
+		unmapArgs = append(unmapArgs, "--options", unmapOptions)
 	}
-	_, stderr, err := util.ExecCommand(ctx, rbd, options...)
+
+	_, stderr, err := util.ExecCommand(ctx, rbd, unmapArgs...)
 	if err != nil {
 		// Messages for krbd and nbd differ, hence checking either of them for missing mapping
 		// This is not applicable when a device path is passed in
