@@ -23,14 +23,14 @@
     test_type: '<unset>'
     # generated parameters for the job (used in the groovy script)
     parameters:
-      - name: k8s_version
-        type: string
-        default: '{k8s_version}'
-        description: Kubernetes version to deploy in the test cluster.
-      - name: test_type
-        type: string
-        default: '{test_type}'
-        description: Mentions whether upgrade tests run for rbd/cephfs.
+      - string:
+          name: k8s_version
+          default: '{k8s_version}'
+          description: Kubernetes version to deploy in the test cluster.
+      - string:
+          name: test_type
+          default: '{test_type}'
+          description: Mentions whether upgrade tests run for rbd/cephfs.
     pipeline-scm:
       scm:
         - git:
