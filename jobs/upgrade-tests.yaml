@@ -6,8 +6,7 @@
       - 'cephfs'
       - 'rbd'
     jobs:
-      - 'upgrade-tests-cephfs'
-      - 'upgrade-tests-rbd'
+      - 'upgrade-tests-{test_type}'
 
 - job-template:
     name: 'upgrade-tests-{test_type}'
