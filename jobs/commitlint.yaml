@@ -4,7 +4,6 @@
     description: Allow re-running commitlint tests, in case the commitlint app
       does not work correctly.
     project-type: pipeline
-    sandbox: true
     concurrent: true
     properties:
       - github:

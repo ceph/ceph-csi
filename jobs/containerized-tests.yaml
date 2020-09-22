@@ -2,7 +2,6 @@
 - job:
     name: containerized-tests
     project-type: pipeline
-    sandbox: true
     concurrent: true
     properties:
       - github:

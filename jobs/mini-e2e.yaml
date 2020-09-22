@@ -11,7 +11,6 @@
 - job-template:
     name: 'mini-e2e_k8s-{k8s_version}'
     project-type: pipeline
-    sandbox: true
     concurrent: true
     properties:
       - github:
@@ -51,7 +50,6 @@
 - job-template:
     name: 'mini-e2e-helm_k8s-{k8s_version}'
     project-type: pipeline
-    sandbox: true
     concurrent: true
     properties:
       - github:

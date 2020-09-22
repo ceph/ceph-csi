@@ -2,7 +2,6 @@
 - job:
     name: jjb-validate
     project-type: pipeline
-    sandbox: true
     concurrent: true
     properties:
       - github:
