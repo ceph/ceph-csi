@@ -215,7 +215,15 @@ func appendDeviceTypeAndOptions(cmdArgs []string, isNbd bool, userOptions string
 	}
 
 	cmdArgs = append(cmdArgs, "--device-type", accessType)
+	if !isNbd {
+		// Enable mapping and unmapping images from a non-initial network
+		// namespace (e.g. for Multus CNI).  The network namespace must be
+		// owned by the initial user namespace.
+		cmdArgs = append(cmdArgs, "--options", "noudev")
+	}
 	if userOptions != "" {
+		// userOptions is appended after, possibly overriding the above
+		// default options.
 		cmdArgs = append(cmdArgs, "--options", userOptions)
 	}
 
