@@ -40,6 +40,7 @@ cd "$(dirname "${0}")"
 # unique ID for the session
 SESSION=$(uuidgen)
 
+oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" -p=GIT_REF="${GIT_REF}"
 oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" -p=GIT_REF="${GIT_REF}" | oc create -f -
 
 # loop until pod is available
