@@ -4,11 +4,17 @@
 # script will wait for completion of the validation, and uses the result of the
 # container to report the status.
 #
+# Usage:
+# - arguments to the script can be "validate" or "deploy"
+# - the GIT_REF environment variable is injected in the batch job so that it
+#   can use a particular GitHub PR
+#
 
 # error out in case a command fails
 set -e
 
 CMD="${1}"
+GIT_REF=${GIT_REF:-"ci/centos"}
 
 get_pod_status() {
 	oc get "pod/${1}" --no-headers -o=jsonpath='{.status.phase}'
@@ -34,7 +40,7 @@ cd "$(dirname "${0}")"
 # unique ID for the session
 SESSION=$(uuidgen)
 
-oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" | oc create -f -
+oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" -p=GIT_REF="${GIT_REF}" | oc create -f -
 
 # loop until pod is available
 while true
