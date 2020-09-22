@@ -1183,10 +1183,14 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						e2elog.Failf("failed to delete snapshot with error %v", err)
 					}
+					// as snapshot is deleted the image count should be one
+					validateRBDImageCount(f, 1)
+
 					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to delete PVC with error %v", err)
 					}
+					validateRBDImageCount(f, 0)
 				}
 
 				updateConfigMap("")
