@@ -17,13 +17,17 @@ parameters:
    # csi-config-map-sample.yaml, to accompany the string chosen to
    # represent the Ceph cluster in clusterID below
    clusterID: <cluster-id>
-   # If you want to use erasure coded pool with RBD, you need to create
-   # two pools. one erasure coded and one replicated.
+
+   # (optional) If you want to use erasure coded pool with RBD, you need to
+   # create two pools. one erasure coded and one replicated.
    # You need to specify the replicated pool here in the `pool` parameter, it is
    # used for the metadata of the images.
    # The erasure coded pool must be set as the `dataPool` parameter below.
-   # dataPool: ec-data-pool
-   pool: rbd
+   # dataPool: <ec-data-pool>
+
+   # (required) Ceph pool into which the RBD image shall be created
+   # eg: pool: rbdpool
+   pool: <rbd-pool-name>
 
    # RBD image features, CSI creates image with image-format 2
    # CSI RBD currently supports only `layering` feature.

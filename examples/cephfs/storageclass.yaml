@@ -14,11 +14,12 @@ parameters:
   # represent the Ceph cluster in clusterID below
   clusterID: <cluster-id>
 
-  # CephFS filesystem name into which the volume shall be created
-  fsName: myfs
+  # (required) CephFS filesystem name into which the volume shall be created
+  # eg: fsName: myfs
+  fsName: <cephfs-name>
 
   # (optional) Ceph pool into which volume data shall be stored
-  # pool: cephfs_data
+  # pool: <cephfs-data-pool>
 
   # (optional) Comma separated string of Ceph-fuse mount options.
   # For eg:
