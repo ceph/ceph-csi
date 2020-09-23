@@ -9,7 +9,7 @@ provisioner: rbd.csi.ceph.com
 # For further information read TODO<doc>
 # volumeBindingMode: WaitForFirstConsumer
 parameters:
-   # String representing a Ceph cluster to provision storage from.
+   # (required) String representing a Ceph cluster to provision storage from.
    # Should be unique across all Ceph clusters in use for provisioning,
    # cannot be greater than 36 bytes in length, and should remain immutable for
    # the lifetime of the StorageClass in use.
@@ -29,18 +29,18 @@ parameters:
    # eg: pool: rbdpool
    pool: <rbd-pool-name>
 
-   # RBD image features, CSI creates image with image-format 2
+   # (required) RBD image features, CSI creates image with image-format 2
    # CSI RBD currently supports only `layering` feature.
    imageFeatures: layering
 
-   # mapOptions is a comma-separated list of map options.
+   # (optional) mapOptions is a comma-separated list of map options.
    # For krbd options refer
    # https://docs.ceph.com/docs/master/man/8/rbd/#kernel-rbd-krbd-options
    # For nbd options refer
    # https://docs.ceph.com/docs/master/man/8/rbd-nbd/#options
    # mapOptions: lock_on_read,queue_depth=1024
 
-   # unmapOptions is a comma-separated list of unmap options.
+   # (optional) unmapOptions is a comma-separated list of unmap options.
    # For krbd options refer
    # https://docs.ceph.com/docs/master/man/8/rbd/#kernel-rbd-krbd-options
    # For nbd options refer
@@ -55,24 +55,27 @@ parameters:
    csi.storage.k8s.io/controller-expand-secret-namespace: default
    csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
    csi.storage.k8s.io/node-stage-secret-namespace: default
-   # Specify the filesystem type of the volume. If not specified,
+
+   # (optional) Specify the filesystem type of the volume. If not specified,
    # csi-provisioner will set default as `ext4`.
    csi.storage.k8s.io/fstype: ext4
-   # uncomment the following to use rbd-nbd as mounter on supported nodes
+
+   # (optional) uncomment the following to use rbd-nbd as mounter
+   # on supported nodes
    # mounter: rbd-nbd
 
-   # Prefix to use for naming RBD images.
+   # (optional) Prefix to use for naming RBD images.
    # If omitted, defaults to "csi-vol-".
    # volumeNamePrefix: "foo-bar-"
 
-   # Instruct the plugin it has to encrypt the volume
+   # (optional) Instruct the plugin it has to encrypt the volume
    # By default it is disabled. Valid values are "true" or "false".
    # A string is expected here, i.e. "true", not true.
    # encrypted: "true"
 
-   # Use external key management system for encryption passphrases by specifying
-   # a unique ID matching KMS ConfigMap. The ID is only used for correlation to
-   # configmap entry.
+   # (optional) Use external key management system for encryption passphrases by
+   # specifying a unique ID matching KMS ConfigMap. The ID is only used for
+   # correlation to configmap entry.
    # encryptionKMSID: <kms-config-id>
 
    # Add topology constrained pools configuration, if topology based pools
