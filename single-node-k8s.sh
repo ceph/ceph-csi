@@ -75,14 +75,6 @@ function set_env() {
     export PATH=$PATH:/usr/local/bin
 }
 
-# FIXME: unfortunately minikube does not work with podman (yet)
-function install_docker()
-{
-    curl https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/docker-ce.repo
-    dnf -y --nobest install docker-ce
-    systemctl enable --now docker
-}
-
 function install_minikube()
 {
     dnf -y groupinstall 'Virtualization Host'
@@ -130,7 +122,12 @@ function deploy_rook()
 # When an image was built with podman, it needs importing into minikube.
 function podman2minikube()
 {
-    podman image save "${1}" | (eval "$(minikube docker-env --shell bash)" && docker image load)
+    # "minikube ssh" fails to read the image, so use standard ssh instead
+    podman image save "${1}" | \
+        ssh \
+            -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+            -l docker -i "$(minikube ssh-key)" \
+            "$(minikube ip)" docker image load
 }
 
 # Set environment variables
@@ -139,7 +136,6 @@ set_env
 # prepare minikube environment
 install_minikube
 
-install_docker
 podman2minikube "quay.io/cephcsi/cephcsi:${CSI_IMAGE_VERSION}"
 
 deploy_rook
