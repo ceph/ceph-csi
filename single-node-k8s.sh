@@ -79,7 +79,7 @@ function set_env() {
 function install_docker()
 {
     curl https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/docker-ce.repo
-    dnf -y --nobest install docker-ce
+    dnf -y --nobest install docker-ce --allowerasing
     systemctl enable --now docker
 }
 
