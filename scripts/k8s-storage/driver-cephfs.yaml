@@ -1,0 +1,67 @@
+---
+ShortName: cephcsi-cephfs-test
+StorageClass:
+  FromExistingClassName: k8s-storage-e2e-cephfs
+  # FromFile: sc-cephfs.yaml
+
+SnapshotClass:
+  # Must be set to enable snapshotting tests
+  FromName: false
+
+DriverInfo:
+  # Internal name of the driver, display name in the test case and test objects
+  Name: cephfs.csi.ceph.com
+
+  # The range of disk size supported by this driver
+  SupportedSizeRange:
+    Min: 1Gi
+    Max: 16Ti
+
+  # Map of strings for supported mount options
+  SupportedMountOption:
+    rw: {}
+
+  # Map of strings for required mount options
+  RequiredMountOption:
+    rw: {}
+
+  # Optional list of access modes required for provisiong. Default is RWO
+  # RequiredAcccessModes:
+
+  # Map that represents the capabilities the driver supports
+  Capabilities:
+    # Data is persistest accross pod restarts
+    persistence: true
+
+    # Volume ownership via fsGroup
+    fsGroup: true
+
+    # Raw block mode
+    block: false
+
+    # Exec a file in the volume
+    exec: true
+
+    # Support for volume limits
+    volumeLimits: false
+
+    # Support for volume expansion in controllers
+    controllerExpansion: false
+
+    # Support for volume expansion in nodes
+    nodeExpansion: false
+
+    # Support volume that an run on single node only (like hostpath)
+    singleNodeVolume: false
+
+    # Support ReadWriteMany access modes
+    RWX: true
+
+    # Support topology
+    topology: false
+
+    # Support populate data from snapshot
+    snapshotDataSource: false
+
+    # Support populated data from PVC
+    pvcDataSource: false
