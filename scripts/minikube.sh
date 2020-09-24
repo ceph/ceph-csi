@@ -26,7 +26,13 @@ function copy_image_to_cluster() {
         ${CONTAINER_CMD} tag "${build_image}" "${final_image}"
         return
     fi
-    ${CONTAINER_CMD} save "${build_image}" | (eval "$(${minikube} docker-env --shell bash)" && docker load && docker tag "${build_image}" "${final_image}")
+
+    # "minikube ssh" fails to read the image, so use standard ssh instead
+    ${CONTAINER_CMD} save "${build_image}" | \
+        ssh \
+            -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+            -i "$(${minikube} ssh-key)" -l docker \
+            "$(${minikube} ip)" docker image load
 }
 
 # parse the minikube version, return the digit passed as argument
