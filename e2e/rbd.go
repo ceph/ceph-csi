@@ -378,6 +378,23 @@ var _ = Describe("RBD", func() {
 						e2elog.Failf("failed to create PVC with error %v", err)
 					}
 					validateRBDImageCount(f, 1)
+
+					app, err := loadApp(appPath)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					//write data in PVC
+					app.Namespace = f.UniqueName
+					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+					wErr := writeDataInPod(app, f)
+					if wErr != nil {
+						Fail(wErr.Error())
+					}
+					md5sum, err := calMd5sum(app, f)
+					if err != nil {
+						e2elog.Failf("failed to calculate md5sum error %v", err)
+					}
 					snap := getSnapshot(snapshotPath)
 					snap.Namespace = f.UniqueName
 					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
@@ -407,7 +424,6 @@ var _ = Describe("RBD", func() {
 					pvcClone.Namespace = f.UniqueName
 					appClone.Namespace = f.UniqueName
 					pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
-
 					// create multiple PVC from same snapshot
 					wg.Add(totalCount)
 					for i := 0; i < totalCount; i++ {
@@ -416,6 +432,13 @@ var _ = Describe("RBD", func() {
 							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
 							if err != nil {
 								e2elog.Failf("failed to create PVC and application with error %v", err)
+							}
+							md5sumClone, err := calMd5sum(&a, f)
+							if err != nil {
+								e2elog.Failf("failed to calculate md5sum with error %v", err)
+							}
+							if md5sumClone == md5sum {
+								Fail("md5sum value doesnot match")
 							}
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)
@@ -528,6 +551,24 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 1)
+
+					app, err := loadApp(appPath)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					//write data in PVC
+					app.Namespace = f.UniqueName
+					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+					wErr := writeDataInPod(app, f)
+					if wErr != nil {
+						Fail(wErr.Error())
+					}
+					md5sum, err := calMd5sum(app, f)
+					if err != nil {
+						e2elog.Failf("failed to calculate md5sum with error %v", err)
+					}
+
 					pvcClone, err := loadPVC(pvcSmartClonePath)
 					if err != nil {
 						e2elog.Failf("failed to load PVC with error %v", err)
@@ -547,6 +588,13 @@ var _ = Describe("RBD", func() {
 							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
 							if err != nil {
 								e2elog.Failf("failed to create PVC with error %v", err)
+							}
+							md5sumClone, err := calMd5sum(&a, f)
+							if err != nil {
+								e2elog.Failf("failed to calculate md5sum with error %v", err)
+							}
+							if md5sumClone == md5sum {
+								Fail("md5sum value doesnot match")
 							}
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)

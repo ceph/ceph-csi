@@ -351,6 +351,26 @@ func writeDataInPod(app *v1.Pod, f *framework.Framework) error {
 	return err
 }
 
+//calculate md5sum
+func calMd5sum(app *v1.Pod, f *framework.Framework) (string, error) {
+	app.Namespace = f.UniqueName
+	opt := metav1.ListOptions{
+		LabelSelector: "app=cal-md5sum-value",
+	}
+	filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+	//calculate md5sum value of the file
+	md5sum, stdErr, err := execCommandInPod(f, fmt.Sprintf("md5sum %s", filePath), app.Namespace, &opt)
+	if err != nil {
+		return "", err
+	}
+	if stdErr != "" {
+		err = fmt.Errorf("failed to write data %v", stdErr)
+	}
+
+	return md5sum, err
+
+}
+
 func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	data := "checking data persist"
 	pvc, err := loadPVC(pvcPath)
