@@ -53,6 +53,7 @@
           trigger-phrase: '/(re)?test ((all)|(ci/centos/upgrade-tests(-{test_type})?))'
           permit-all: true
           github-hooks: true
+          only-trigger-phrase: true
           black-list-target-branches:
             - ci/centos
           org-list:
