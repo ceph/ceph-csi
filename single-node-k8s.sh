@@ -85,6 +85,7 @@ function install_docker()
 
 function install_minikube()
 {
+    dnf update -y
     dnf -y groupinstall 'Virtualization Host'
     systemctl enable --now libvirtd
     # Warning about "No ACPI IVRS table found", not critical
