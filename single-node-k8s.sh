@@ -70,6 +70,8 @@ function set_env() {
     # downloading rook images is sometimes slow, extend timeout to 15 minutes
     export ROOK_VERSION='v1.3.9'
     export ROOK_DEPLOY_TIMEOUT=900
+    # use podman for minikube.sh, Docker is not installed on the host
+    export CONTAINER_CMD='podman'
 
     # script/minikube.sh installs under /usr/local/bin
     export PATH=$PATH:/usr/local/bin
