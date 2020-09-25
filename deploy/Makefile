@@ -5,4 +5,4 @@ test:
 	cd $(WORKDIR) && jenkins-jobs test -o $(OUTPUT) jobs
 
 deploy:
-	cd $(WORKDIR) && jenkins-jobs update jobs
+	cd $(WORKDIR) && jenkins-jobs update --delete-old jobs
