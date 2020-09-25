@@ -27,7 +27,7 @@ import (
 const (
 	// cephFSCloneFailed indicates that clone is in failed state.
 	cephFSCloneFailed = "failed"
-	// cephFSCloneCompleted indicates that clone is in in-progress state.
+	// cephFSCloneInprogress indicates that clone is in in-progress state.
 	cephFSCloneInprogress = "in-progress"
 	// cephFSCloneComplete indicates that clone is in complete state.
 	cephFSCloneComplete = "complete"
