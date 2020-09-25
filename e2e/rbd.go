@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -377,6 +378,29 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						e2elog.Failf("failed to create PVC with error %v", err)
 					}
+
+					app, err := loadApp(appPath)
+					if err != nil {
+						Fail(err.Error())
+					}
+					// write data in PVC
+					app.Namespace = f.UniqueName
+					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+					wErr := writeDataInPod(app, f)
+					if wErr != nil {
+						Fail(wErr.Error())
+					}
+					opt := metav1.ListOptions{
+						LabelSelector: "app=write-data-in-pod",
+					}
+					mountPath := getMountPath(app)
+					filePath := filepath.Join(mountPath, "test")
+
+					checkSum, err := calculateSHA512sum(f, app, filePath, &opt)
+					if err != nil {
+						e2elog.Failf("failed to calculate checksum of %v", filePath)
+					}
+
 					validateRBDImageCount(f, 1)
 					snap := getSnapshot(snapshotPath)
 					snap.Namespace = f.UniqueName
@@ -416,6 +440,16 @@ var _ = Describe("RBD", func() {
 							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
 							if err != nil {
 								e2elog.Failf("failed to create PVC and application with error %v", err)
+							}
+							mountPath := getMountPath(&a)
+							filePathClone := filepath.Join(mountPath, "test")
+
+							checkSumClone, wErr := calculateSHA512sum(f, &a, filePathClone, &opt)
+							if wErr != nil {
+								e2elog.Failf("failed to calculate checksum of %v", filePathClone)
+							}
+							if checkSumClone != checkSum {
+								Fail("checksum value did not match")
 							}
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)
@@ -526,6 +560,28 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						e2elog.Failf("failed to create PVC with error %v", err)
 					}
+					app, err := loadApp(appPath)
+					if err != nil {
+						Fail(err.Error())
+					}
+					// write data in PVC
+					app.Namespace = f.UniqueName
+					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+					wErr := writeDataInPod(app, f)
+					if wErr != nil {
+						Fail(wErr.Error())
+					}
+					opt := metav1.ListOptions{
+						LabelSelector: "app=write-data-in-pod",
+					}
+					mountPath := getMountPath(app)
+					filePath := filepath.Join(mountPath, "test")
+
+					checkSum, err := calculateSHA512sum(f, app, filePath, &opt)
+					if err != nil {
+						e2elog.Failf("failed to calculate checksum of %v", filePath)
+					}
+
 					// validate created backend rbd images
 					validateRBDImageCount(f, 1)
 					pvcClone, err := loadPVC(pvcSmartClonePath)
@@ -548,6 +604,18 @@ var _ = Describe("RBD", func() {
 							if err != nil {
 								e2elog.Failf("failed to create PVC with error %v", err)
 							}
+							mountPath := getMountPath(&a)
+							filePathClone := filepath.Join(mountPath, "test")
+
+							checkSumClone, wErr := calculateSHA512sum(f, &a, filePathClone, &opt)
+							if wErr != nil {
+								e2elog.Failf("failed to calculate checksum of %v", filePathClone)
+							}
+
+							if checkSumClone != checkSum {
+								Fail("md5sum value doesnot match")
+							}
+
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)
 					}
