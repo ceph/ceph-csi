@@ -35,6 +35,7 @@ kubectl create -f ../examples/cephfs/snapshotclass.yaml
 
 The snapshot is created on/for an existing PVC. You should
 have a PVC in bound state before creating snapshot from it.
+It is recommended to do a snapshot only when the volume is not in use.
 Please refer pvc creation [doc](https://github.com/ceph/ceph-csi/blob/master/docs/deploy-cephfs.md)
 for more information on how to create a PVC.
 

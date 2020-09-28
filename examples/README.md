@@ -75,6 +75,8 @@ your Ceph cluster setup.
 If you followed the documentation to create the rbdplugin, you shouldn't
 have to edit any other file.
 
+Note that it is recommended to do a snapshot only when the volume is not in use. 
+
 After configuring everything you needed, deploy the snapshot class:
 
 ```bash
