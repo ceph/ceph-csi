@@ -55,7 +55,7 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
           # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:v3.1-canary
+          image: quay.io/cephcsi/cephcsi:v3.1.1
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
@@ -107,7 +107,7 @@ spec:
         - name: liveness-prometheus
           securityContext:
             privileged: true
-          image: quay.io/cephcsi/cephcsi:v3.1-canary
+          image: quay.io/cephcsi/cephcsi:v3.1.1
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
