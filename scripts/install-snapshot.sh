@@ -2,7 +2,7 @@
 
 # This script can be used to install/delete snapshotcontroller and snapshot beta CRD
 
-SNAPSHOT_VERSION=${SNAPSHOT_VERSION:-"v2.1.1"}
+SNAPSHOT_VERSION=${SNAPSHOT_VERSION:-"v3.0.1"}
 
 SCRIPT_DIR="$(dirname "${0}")"
 
@@ -14,9 +14,9 @@ SNAPSHOT_RBAC="${SNAPSHOTTER_URL}/deploy/kubernetes/snapshot-controller/rbac-sna
 SNAPSHOT_CONTROLLER="${SNAPSHOTTER_URL}/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml"
 
 # snapshot CRD
-SNAPSHOTCLASS="${SNAPSHOTTER_URL}/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml"
-VOLUME_SNAPSHOT_CONTENT="${SNAPSHOTTER_URL}/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml"
-VOLUME_SNAPSHOT="${SNAPSHOTTER_URL}/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml"
+SNAPSHOTCLASS="${SNAPSHOTTER_URL}/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml"
+VOLUME_SNAPSHOT_CONTENT="${SNAPSHOTTER_URL}/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml"
+VOLUME_SNAPSHOT="${SNAPSHOTTER_URL}/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml"
 
 function install_snapshot_controller() {
     local namespace=$1
