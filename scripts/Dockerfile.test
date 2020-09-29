@@ -12,18 +12,26 @@ FROM fedora:latest
 
 ARG GOPATH=/go
 
+ARG GOROOT=/usr/local/go
+
+
 ENV \
  GOPATH=${GOPATH} \
+ GOROOT=${GOROOT} \
  GO111MODULE=on \
- PATH="${GOPATH}/bin:/opt/commitlint/node_modules/.bin:${PATH}"
+ PATH="${GOROOT}/bin:${GOPATH}/bin:/opt/commitlint/node_modules/.bin:${PATH}"
 
 COPY build.env /
+
+RUN source /build.env \
+    && mkdir -p /usr/local/go \
+    && curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
 
 RUN source /build.env \
     && dnf -y install \
 	git \
 	make \
-	golang \
+	# golang \
 	gcc \
 	librados-devel \
 	librbd-devel \

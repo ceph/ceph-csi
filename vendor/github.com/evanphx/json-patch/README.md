@@ -1,5 +1,5 @@
 # JSON-Patch
-`jsonpatch` is a library which provides functionallity for both applying
+`jsonpatch` is a library which provides functionality for both applying
 [RFC6902 JSON patches](http://tools.ietf.org/html/rfc6902) against documents, as
 well as for calculating & applying [RFC7396 JSON merge patches](https://tools.ietf.org/html/rfc7396).
 
@@ -9,12 +9,13 @@ well as for calculating & applying [RFC7396 JSON merge patches](https://tools.ie
 
 # Get It!
 
-**Latest and greatest**: 
+**Latest and greatest**:
 ```bash
-go get -u github.com/evanphx/json-patch
+go get -u github.com/evanphx/json-patch/v5
 ```
 
 **Stable Versions**:
+* Version 5: `go get -u gopkg.in/evanphx/json-patch.v5`
 * Version 4: `go get -u gopkg.in/evanphx/json-patch.v4`
 
 (previous versions below `v3` are unavailable)
@@ -40,9 +41,9 @@ go get -u github.com/evanphx/json-patch
 
 ## Create and apply a merge patch
 Given both an original JSON document and a modified JSON document, you can create
-a [Merge Patch](https://tools.ietf.org/html/rfc7396) document. 
+a [Merge Patch](https://tools.ietf.org/html/rfc7396) document.
 
-It can describe the changes needed to convert from the original to the 
+It can describe the changes needed to convert from the original to the
 modified JSON document.
 
 Once you have a merge patch, you can apply it to other JSON documents using the
@@ -82,11 +83,11 @@ When ran, you get the following output:
 ```bash
 $ go run main.go
 patch document:   {"height":null,"name":"Jane"}
-updated tina doc: {"age":28,"name":"Jane"}
+updated alternative doc: {"age":28,"name":"Jane"}
 ```
 
 ## Create and apply a JSON Patch
-You can create patch objects using `DecodePatch([]byte)`, which can then 
+You can create patch objects using `DecodePatch([]byte)`, which can then
 be applied against JSON documents.
 
 The following is an example of creating a patch from two operations, and
@@ -133,9 +134,9 @@ Modified document: {"age":24,"name":"Jane"}
 
 ## Comparing JSON documents
 Due to potential whitespace and ordering differences, one cannot simply compare
-JSON strings or byte-arrays directly. 
+JSON strings or byte-arrays directly.
 
-As such, you can instead use `jsonpatch.Equal(document1, document2)` to 
+As such, you can instead use `jsonpatch.Equal(document1, document2)` to
 determine if two JSON documents are _structurally_ equal. This ignores
 whitespace differences, and key-value ordering.
 
@@ -164,7 +165,7 @@ func main() {
 	}
 
 	if !jsonpatch.Equal(original, different) {
-		fmt.Println(`"original" is _not_ structurally equal to "similar"`)
+		fmt.Println(`"original" is _not_ structurally equal to "different"`)
 	}
 }
 ```
@@ -173,16 +174,16 @@ When ran, you get the following output:
 ```bash
 $ go run main.go
 "original" is structurally equal to "similar"
-"original" is _not_ structurally equal to "similar"
+"original" is _not_ structurally equal to "different"
 ```
 
 ## Combine merge patches
-Given two JSON merge patch documents, it is possible to combine them into a 
+Given two JSON merge patch documents, it is possible to combine them into a
 single merge patch which can describe both set of changes.
 
 The resulting merge patch can be used such that applying it results in a
 document structurally similar as merging each merge patch to the document
-in succession. 
+in succession.
 
 ```go
 package main
@@ -242,8 +243,8 @@ combined merge patch: {"age":4.23,"eyes":"blue","height":null,"name":"Jane"}
 # CLI for comparing JSON documents
 You can install the commandline program `json-patch`.
 
-This program can take multiple JSON patch documents as arguments, 
-and fed a JSON document from `stdin`. It will apply the patch(es) against 
+This program can take multiple JSON patch documents as arguments,
+and fed a JSON document from `stdin`. It will apply the patch(es) against
 the document and output the modified doc.
 
 **patch.1.json**
@@ -293,5 +294,5 @@ Contributors can run tests using:
 go test -cover ./...
 ```
 
-Builds for pull requests are tested automatically 
+Builds for pull requests are tested automatically
 using [TravisCI](https://travis-ci.org/evanphx/json-patch).
