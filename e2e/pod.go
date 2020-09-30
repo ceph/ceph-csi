@@ -210,3 +210,19 @@ func deletePodWithLabel(label, ns string, skipNotFound bool) error {
 	}
 	return err
 }
+
+// calculateSHA512sum returns the sha512sum of a file inside a pod.
+func calculateSHA512sum(f *framework.Framework, app *v1.Pod, filePath string, opt *metav1.ListOptions) (string, error) {
+	cmd := fmt.Sprintf("sha512sum %s", filePath)
+	sha512sumOut, stdErr, err := execCommandInPod(f, cmd, app.Namespace, opt)
+	if err != nil {
+		return "", err
+	}
+	if stdErr != "" {
+		return "", fmt.Errorf("error: sha512sum could not be calculated %v", stdErr)
+	}
+	// extract checksum from sha512sum output.
+	checkSum := strings.Split(sha512sumOut, "")[0]
+	e2elog.Logf("Calculated checksum  %s", checkSum)
+	return checkSum, nil
+}
