@@ -2,7 +2,10 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo" // nolint
 	v1 "k8s.io/api/core/v1"
@@ -17,12 +20,24 @@ import (
 var _ = Describe("CephFS Upgrade Testing", func() {
 	f := framework.NewDefaultFramework("upgrade-test-cephfs")
 	var (
-		c   clientset.Interface
-		pvc *v1.PersistentVolumeClaim
-		app *v1.Pod
+		c        clientset.Interface
+		pvc      *v1.PersistentVolumeClaim
+		pvcClone *v1.PersistentVolumeClaim
+		app      *v1.Pod
+		appClone *v1.Pod
 		// cwd stores the initial working directory.
 		cwd string
 		err error
+		// checkSum stores the md5sum of a file to verify uniqueness.
+		checkSum string
+		// newCheckSum stores the md5sum of a file in the cloned pvc.
+		newCheckSum string
+		v           *version.Info
+	)
+	const (
+		pvcSize  = "2Gi"
+		appKey   = "app"
+		appLabel = "cephfs-upgrade-testing"
 	)
 	// deploy cephfs CSI
 	BeforeEach(func() {
@@ -55,6 +70,10 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to create secret with error %v", err)
 		}
+		err = createCephFSSnapshotClass(f)
+		if err != nil {
+			e2elog.Failf("failed to create snapshotclass with error %v", err)
+		}
 		err = createCephfsStorageClass(f.ClientSet, f, true, nil)
 		if err != nil {
 			e2elog.Failf("failed to create storageclass with error %v", err)
@@ -84,10 +103,14 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to delete storageclass with error %v", err)
 		}
+		err = deleteResource(cephfsExamplePath + "snapshotclass.yaml")
+		if err != nil {
+			e2elog.Failf("failed to delete storageclass with error %v", err)
+		}
 		if deployCephFS {
 			deleteCephfsPlugin()
 			if cephCSINamespace != defaultNs {
-				err := deleteNamespace(c, cephCSINamespace)
+				err = deleteNamespace(c, cephCSINamespace)
 				if err != nil {
 					if err != nil {
 						e2elog.Failf("failed to delete namespace with error %v", err)
@@ -100,24 +123,29 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 	Context("Cephfs Upgrade Test", func() {
 		It("Cephfs Upgrade Test", func() {
 
-			By("checking provisioner deployment is running")
-			err := waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
-			if err != nil {
-				e2elog.Failf("timeout waiting for deployment %s with error %v", cephfsDeploymentName, err)
-			}
-
-			By("checking nodeplugin deamonset pods are running")
-			err = waitForDaemonSets(cephfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
-			if err != nil {
-				e2elog.Failf("timeout waiting for daemonset %s with error%v", cephfsDeamonSetName, err)
-			}
+			By("checking provisioner deployment is running", func() {
+				err = waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for deployment %s with error %v", cephfsDeploymentName, err)
+				}
+			})
+			By("checking nodeplugin deamonset pods are running", func() {
+				err = waitForDaemonSets(cephfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for daemonset %s with error%v", cephfsDeamonSetName, err)
+				}
+			})
 
 			By("upgrade to latest changes and verify app re-mount", func() {
 				// TODO: fetch pvc size from spec.
-				pvcSize := "2Gi"
 				pvcPath := cephfsExamplePath + "pvc.yaml"
 				appPath := cephfsExamplePath + "pod.yaml"
-
+				data := "check data persists"
+				label := make(map[string]string)
+				v, err = f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Failf("failed to get server version with error %v", err)
+				}
 				pvc, err = loadPVC(pvcPath)
 				if pvc == nil {
 					e2elog.Failf("failed to load pvc with error %v", err)
@@ -128,12 +156,52 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				if err != nil {
 					e2elog.Failf("failed to load application with error %v", err)
 				}
+				label[appKey] = appLabel
 				app.Namespace = f.UniqueName
-				app.Labels = map[string]string{"app": "upgrade-testing"}
+				app.Labels = label
+				pvc.Namespace = f.UniqueName
 				pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create pvc and application with error %v", err)
+				}
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+				}
+				// fetch the path where volume is mounted.
+				mountPath := app.Spec.Containers[0].VolumeMounts[0].MountPath
+				filePath := filepath.Join(mountPath, "testClone")
+
+				// create a test file at the mountPath.
+				_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo %s > %s", data, filePath), app.Namespace, &opt)
+				if stdErr != "" {
+					e2elog.Failf("failed to write data to a file %s", stdErr)
+				}
+
+				// force an immediate write of all cached data to disk.
+				_, stdErr = execCommandInPodAndAllowFail(f, fmt.Sprintf("sync %s", filePath), app.Namespace, &opt)
+				if stdErr != "" {
+					e2elog.Failf("failed to sync data to a disk %s", stdErr)
+				}
+
+				e2elog.Logf("Calculating checksum of %s", filePath)
+				checkSum, err = calculateSHA512sum(f, app, filePath, &opt)
+				if err != nil {
+					e2elog.Failf("failed to calculate checksum of %s", filePath)
+				}
+
+				// pvc clone is only supported from v1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
+					// Create snapshot of the pvc
+					snapshotPath := cephfsExamplePath + "snapshot.yaml"
+					snap := getSnapshot(snapshotPath)
+					snap.Name = "cephfs-pvc-snapshot"
+					snap.Namespace = f.UniqueName
+					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+					err = createSnapshot(&snap, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create snapshot %v", err)
+					}
 				}
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
@@ -148,7 +216,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				}
 				deployCephfsPlugin()
 
-				app.Labels = map[string]string{"app": "upgrade-testing"}
+				app.Labels = label
 				// validate if the app gets bound to a pvc created by
 				// an earlier release.
 				err = createApp(f.ClientSet, app, deployTimeout)
@@ -157,17 +225,137 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				}
 			})
 
+			By("Create clone from a snapshot", func() {
+				pvcClonePath := cephfsExamplePath + "pvc-restore.yaml"
+				appClonePath := cephfsExamplePath + "pod-restore.yaml"
+				label := make(map[string]string)
+				v, err = f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Failf("failed to get server version with error %v", err)
+				}
+				// pvc clone is only supported from v1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
+					pvcClone, err = loadPVC(pvcClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load pvc with error %v", err)
+					}
+					pvcClone.Namespace = f.UniqueName
+					pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
+					appClone, err = loadApp(appClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load application with error %v", err)
+					}
+					label[appKey] = "validate-snap-cephfs"
+					appClone.Namespace = f.UniqueName
+					appClone.Name = "snap-clone-cephfs"
+					appClone.Labels = label
+					err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create pvc and application with error %v", err)
+					}
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+					}
+					mountPath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath
+					testFilePath := filepath.Join(mountPath, "testClone")
+
+					newCheckSum, err = calculateSHA512sum(f, appClone, testFilePath, &opt)
+					if err != nil {
+						e2elog.Failf("failed to calculate checksum of %s", testFilePath)
+					}
+
+					if strings.Compare(newCheckSum, checkSum) != 0 {
+						e2elog.Failf("The checksum of files did not match, expected %s received %s  ", checkSum, newCheckSum)
+					}
+					e2elog.Logf("The checksum of files matched")
+
+					// delete cloned pvc and pod
+					err = deletePVCAndApp("", f, pvcClone, appClone)
+					if err != nil {
+						Fail(err.Error())
+					}
+
+					// Delete the snapshot of the parent pvc.
+					snapshotPath := cephfsExamplePath + "snapshot.yaml"
+					snap := getSnapshot(snapshotPath)
+					snap.Name = "cephfs-pvc-snapshot"
+					snap.Namespace = f.UniqueName
+					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+					err = deleteSnapshot(&snap, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete snapshot %v", err)
+					}
+
+				}
+			})
+
+			By("Create clone from existing PVC", func() {
+				pvcSmartClonePath := cephfsExamplePath + "pvc-clone.yaml"
+				appSmartClonePath := cephfsExamplePath + "pod-clone.yaml"
+				label := make(map[string]string)
+				v, err = f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Failf("failed to get server version with error %v", err)
+					Fail(err.Error())
+				}
+				// pvc clone is only supported from v1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+					pvcClone, err = loadPVC(pvcSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load pvc with error %v", err)
+					}
+					pvcClone.Spec.DataSource.Name = pvc.Name
+					pvcClone.Namespace = f.UniqueName
+					pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
+					appClone, err = loadApp(appSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load application with error %v", err)
+					}
+					label[appKey] = "validate-snap-cephfs"
+					appClone.Namespace = f.UniqueName
+					appClone.Name = "appclone"
+					appClone.Labels = label
+					err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create pvc and application with error %v", err)
+					}
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+					}
+					mountPath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath
+					testFilePath := filepath.Join(mountPath, "testClone")
+					newCheckSum, err = calculateSHA512sum(f, appClone, testFilePath, &opt)
+					if err != nil {
+						e2elog.Failf("failed to calculate checksum of %s", testFilePath)
+					}
+
+					if strings.Compare(newCheckSum, checkSum) != 0 {
+						e2elog.Failf("The checksum of files did not match, expected %s received %s", checkSum, newCheckSum)
+					}
+					e2elog.Logf("The checksum of files matched")
+
+					// delete cloned pvc and pod
+					err = deletePVCAndApp("", f, pvcClone, appClone)
+					if err != nil {
+						e2elog.Failf("failed to delete pvc and application with error %v", err)
+					}
+
+				}
+			})
+
 			By("Resize pvc and verify expansion", func() {
 				var v *version.Info
 				pvcExpandSize := "5Gi"
+				label := make(map[string]string)
 				v, err = f.ClientSet.Discovery().ServerVersion()
 				if err != nil {
-					e2elog.Logf("failed to get server version with error %v", err)
+					e2elog.Failf("failed to get server version with error %v", err)
 				}
 				// Resize 0.3.0 is only supported from v1.15+
 				if v.Major > "1" || (v.Major == "1" && v.Minor >= "15") {
+					label[appKey] = appLabel
 					opt := metav1.ListOptions{
-						LabelSelector: "app=upgrade-testing",
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
 					}
 					pvc, err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 					if err != nil {
