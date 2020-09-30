@@ -50,8 +50,7 @@ spec:
             - "--csi-address=$(ADDRESS)"
             - "--v={{ .Values.logLevel }}"
             - "--timeout={{ .Values.provisioner.timeout }}"
-            - "--enable-leader-election=true"
-            - "--leader-election-type=leases"
+            - "--leader-election=true"
             - "--retry-interval-start=500ms"
 {{- if .Values.topology.enabled }}
             - "--feature-gates=Topology=true"
@@ -108,9 +107,10 @@ spec:
           args:
             - "--v={{ .Values.logLevel }}"
             - "--csi-address=$(ADDRESS)"
-            - "--csiTimeout={{ .Values.provisioner.timeout }}"
+            - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election"
             - "--retry-interval-start=500ms"
+            - "--handle-volume-inuse-error=false"
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
