@@ -284,11 +284,11 @@ cephcsi)
     ;;
 k8s-sidecar)
     echo "copying the kubernetes sidecar images"
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-attacher:v2.2.0 "${K8S_IMAGE_REPO}"/csi-attacher:v2.2.0
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-snapshotter:v2.1.1 $"${K8S_IMAGE_REPO}"/csi-snapshotter:v2.1.1
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-provisioner:v1.4.0 "${K8S_IMAGE_REPO}"/csi-provisioner:v1.4.0
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.3.0 "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v1.3.0
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-resizer:v0.5.0 "${K8S_IMAGE_REPO}"/csi-resizer:v0.5.0
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-attacher:v3.0.2 "${K8S_IMAGE_REPO}"/csi-attacher:v3.0.2
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-snapshotter:v3.0.2 $"${K8S_IMAGE_REPO}"/csi-snapshotter:v3.0.2
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-provisioner:v2.0.4 "${K8S_IMAGE_REPO}"/csi-provisioner:v2.0.4
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v2.0.1 "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v2.0.1
+    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-resizer:v1.0.1 "${K8S_IMAGE_REPO}"/csi-resizer:v1.0.1
     ;;
 clean)
     ${minikube} delete
