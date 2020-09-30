@@ -2,7 +2,10 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo" // nolint
 	v1 "k8s.io/api/core/v1"
@@ -21,6 +24,13 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		c   clientset.Interface
 		pvc *v1.PersistentVolumeClaim
 		app *v1.Pod
+		// checkSum stores the md5sum of a file to verify uniqueness.
+		checkSum string
+	)
+	const (
+		pvcSize  = "2Gi"
+		appKey   = "app"
+		appLabel = "rbd-upgrade-testing"
 	)
 
 	// deploy rbd CSI
@@ -61,6 +71,10 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to create secret with error %v", err)
 		}
+		err = createRBDSnapshotClass(f)
+		if err != nil {
+			e2elog.Failf("failed to create snapshotclass with error %v", err)
+		}
 
 		err = createNodeLabel(f, nodeRegionLabel, regionValue)
 		if err != nil {
@@ -95,6 +109,10 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		err = deleteResource(rbdExamplePath + "storageclass.yaml")
 		if err != nil {
 			e2elog.Failf("failed to delete storageclass with error %v", err)
+		}
+		err = deleteResource(rbdExamplePath + "snapshotclass.yaml")
+		if err != nil {
+			e2elog.Failf("failed to delete snapshotclass with error %v", err)
 		}
 		deleteVault()
 		if deployRBD {
@@ -137,8 +155,13 @@ var _ = Describe("RBD Upgrade Testing", func() {
 
 			By("upgrade to latest changes and verify app re-mount", func() {
 				// TODO: fetch pvc size from spec.
-				pvcSize := "2Gi"
 				var err error
+				label := make(map[string]string)
+				data := "check data persists"
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Failf("failed to get server version with error %v", err)
+				}
 				pvc, err = loadPVC(pvcPath)
 				if pvc == nil {
 					e2elog.Failf("failed to load pvc with error %v", err)
@@ -149,12 +172,54 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				if err != nil {
 					e2elog.Failf("failed to load application with error %v", err)
 				}
+				label[appKey] = appLabel
 				app.Namespace = f.UniqueName
-				app.Labels = map[string]string{"app": "upgrade-testing"}
+				app.Labels = label
 				pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create pvc with error %v", err)
+				}
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+				}
+				// fetch the path where volume is mounted.
+				mountPath := app.Spec.Containers[0].VolumeMounts[0].MountPath
+				filePath := filepath.Join(mountPath, "testClone")
+
+				// create a test file at the mountPath.
+				_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo %s > %s", data, filePath), app.Namespace, &opt)
+				if stdErr != "" {
+					e2elog.Failf("failed to write data to a file %s", stdErr)
+				}
+
+				// force an immediate write of all cached data to disk.
+				_, stdErr = execCommandInPodAndAllowFail(f, fmt.Sprintf("sync %s", filePath), app.Namespace, &opt)
+				if stdErr != "" {
+					e2elog.Failf("failed to sync data to a disk %s", stdErr)
+				}
+
+				opt = metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("app=%s", appLabel),
+				}
+				e2elog.Logf("Calculating checksum of %s", filePath)
+				checkSum, err = calculateSHA512sum(f, app, filePath, &opt)
+				if err != nil {
+					e2elog.Failf("failed to calculate checksum of %s", filePath)
+				}
+
+				// pvc clone is only supported from v1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+					// Create snapshot of the pvc
+					snapshotPath := rbdExamplePath + "snapshot.yaml"
+					snap := getSnapshot(snapshotPath)
+					snap.Name = "rbd-pvc-snapshot"
+					snap.Namespace = f.UniqueName
+					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+					err = createSnapshot(&snap, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create snapshot %v", err)
+					}
 				}
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
@@ -170,24 +235,129 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				deployRBDPlugin()
 				// validate if the app gets bound to a pvc created by
 				// an earlier release.
-				app.Labels = map[string]string{"app": "upgrade-testing"}
+				app.Labels = label
 				err = createApp(f.ClientSet, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create application with error %v", err)
 				}
 			})
 
-			By("Resize pvc and verify expansion", func() {
-				pvcExpandSize := "5Gi"
-
+			By("Create clone from a snapshot", func() {
+				pvcClonePath := rbdExamplePath + "pvc-restore.yaml"
+				appClonePath := rbdExamplePath + "pod-restore.yaml"
+				label := make(map[string]string)
 				v, err := f.ClientSet.Discovery().ServerVersion()
 				if err != nil {
-					e2elog.Logf("failed to get server version with error %v", err)
+					e2elog.Failf("failed to get server version with error %v", err)
+				}
+				// pvc clone is only supported from v1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+					pvcClone, err := loadPVC(pvcClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load pvc with error %v", err)
+					}
+					pvcClone.Namespace = f.UniqueName
+					pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
+					pvcClone.Spec.DataSource.Name = "rbd-pvc-snapshot"
+					appClone, err := loadApp(appClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load application with error %v", err)
+					}
+					label[appKey] = "validate-snap-clone"
+					appClone.Namespace = f.UniqueName
+					appClone.Name = "app-clone-from-snap"
+					appClone.Labels = label
+					err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create pvc with error %v", err)
+					}
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+					}
+					mountPath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath
+					testFilePath := filepath.Join(mountPath, "testClone")
+					newCheckSum, err := calculateSHA512sum(f, appClone, testFilePath, &opt)
+					if err != nil {
+						e2elog.Failf("failed to calculate checksum of %s", testFilePath)
+					}
+					if strings.Compare(newCheckSum, checkSum) != 0 {
+						e2elog.Failf("The checksum of files did not match, expected %s received %s  ", checkSum, newCheckSum)
+					}
+					e2elog.Logf("The checksum of files matched")
+
+					// delete cloned pvc and pod
+					err = deletePVCAndApp("", f, pvcClone, appClone)
+					if err != nil {
+						e2elog.Failf("failed to delete pvc and application with error %v", err)
+					}
+
+				}
+			})
+
+			By("Create clone from existing PVC", func() {
+				pvcSmartClonePath := rbdExamplePath + "pvc-clone.yaml"
+				appSmartClonePath := rbdExamplePath + "pod-clone.yaml"
+				label := make(map[string]string)
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Failf("failed to get server version with error %v", err)
+				}
+				// pvc clone is only supported from v1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+					pvcClone, err := loadPVC(pvcSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load pvc with error %v", err)
+					}
+					pvcClone.Spec.DataSource.Name = pvc.Name
+					pvcClone.Namespace = f.UniqueName
+					pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
+					appClone, err := loadApp(appSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load application with error %v", err)
+					}
+					label[appKey] = "validate-clone"
+					appClone.Namespace = f.UniqueName
+					appClone.Name = "appclone"
+					appClone.Labels = label
+					err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create pvc with error %v", err)
+					}
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+					}
+					mountPath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath
+					testFilePath := filepath.Join(mountPath, "testClone")
+					newCheckSum, err := calculateSHA512sum(f, appClone, testFilePath, &opt)
+					if err != nil {
+						e2elog.Failf("failed to calculate checksum of %s", testFilePath)
+					}
+					if strings.Compare(newCheckSum, checkSum) != 0 {
+						e2elog.Failf("The checksum of files did not match, expected %s received %s  ", checkSum, newCheckSum)
+					}
+					e2elog.Logf("The checksum of files matched")
+
+					// delete cloned pvc and pod
+					err = deletePVCAndApp("", f, pvcClone, appClone)
+					if err != nil {
+						e2elog.Failf("failed to delete pvc and application with error %v", err)
+					}
+
+				}
+			})
+
+			By("Resize pvc and verify expansion", func() {
+				pvcExpandSize := "5Gi"
+				label := make(map[string]string)
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Failf("failed to get server version with error %v", err)
 				}
 				// Resize 0.3.0 is only supported from v1.15+
 				if v.Major > "1" || (v.Major == "1" && v.Minor >= "15") {
+					label[appKey] = appLabel
 					opt := metav1.ListOptions{
-						LabelSelector: "app=upgrade-testing",
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
 					}
 					pvc, err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 					if err != nil {
