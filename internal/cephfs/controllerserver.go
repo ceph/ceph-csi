@@ -86,7 +86,7 @@ func (cs *ControllerServer) createBackingVolume(
 		return nil
 	}
 
-	if err = createVolume(ctx, volOptions, cr, volumeID(vID.FsSubvolName), volOptions.Size); err != nil {
+	if err = createVolume(ctx, volOptions, volumeID(vID.FsSubvolName), volOptions.Size); err != nil {
 		util.ErrorLog(ctx, "failed to create volume %s: %v", volOptions.RequestName, err)
 		return status.Error(codes.Internal, err.Error())
 	}
