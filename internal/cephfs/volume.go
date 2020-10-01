@@ -130,7 +130,7 @@ type localClusterState struct {
 	subVolumeGroupCreated bool
 }
 
-func createVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID, bytesQuota int64) error {
+func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID, bytesQuota int64) error {
 	// verify if corresponding ClusterID key is present in the map,
 	// and if not, initialize with default values(false).
 	if _, keyPresent := clusterAdditionalInfo[volOptions.ClusterID]; !keyPresent {
@@ -218,7 +218,7 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 		}
 	}
 	clusterAdditionalInfo[volOptions.ClusterID].resizeSupported = false
-	return createVolume(ctx, volOptions, cr, volID, bytesQuota)
+	return createVolume(ctx, volOptions, volID, bytesQuota)
 }
 
 func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volOptions *volumeOptions, force bool) error {
