@@ -151,7 +151,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	defer cs.VolumeLocks.Release(requestName)
 
-	volOptions, err := newVolumeOptions(ctx, requestName, req, secret)
+	volOptions, err := newVolumeOptions(ctx, requestName, req, cr)
 	if err != nil {
 		util.ErrorLog(ctx, "validation and extraction of volume options failed: %v", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())

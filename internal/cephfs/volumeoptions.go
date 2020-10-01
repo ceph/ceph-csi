@@ -171,7 +171,7 @@ func getClusterInformation(options map[string]string) (*util.ClusterInfo, error)
 // newVolumeOptions generates a new instance of volumeOptions from the provided
 // CSI request parameters.
 func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVolumeRequest,
-	secret map[string]string) (*volumeOptions, error) {
+	cr *util.Credentials) (*volumeOptions, error) {
 	var (
 		opts volumeOptions
 		err  error
@@ -209,12 +209,6 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 	}
 
 	opts.RequestName = requestName
-
-	cr, err := util.NewAdminCredentials(secret)
-	if err != nil {
-		return nil, err
-	}
-	defer cr.DeleteCredentials()
 
 	err = opts.Connect(cr)
 	if err != nil {
