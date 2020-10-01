@@ -38,6 +38,10 @@ var (
 
 const (
 	cephEntityClientPrefix = "client."
+
+	// modeAllRWX can be used for setting permissions to Read-Write-eXecute
+	// for User, Group and Other.
+	modeAllRWX = 0777
 )
 
 // Subvolume holds subvolume information.
@@ -157,7 +161,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 
 	opts := fsAdmin.SubVolumeOptions{
 		Size: fsAdmin.ByteCount(bytesQuota),
-		Mode: 0777,
+		Mode: modeAllRWX,
 	}
 	if volOptions.Pool != "" {
 		opts.PoolLayout = volOptions.Pool
