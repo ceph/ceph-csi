@@ -55,13 +55,13 @@ type CephFilesystem struct {
 	DataPoolIDs    []int    `json:"data_pool_ids"`
 }
 
-func getMetadataPool(ctx context.Context, monitors string, cr *util.Credentials, fsName string) (string, error) {
+func (vo *volumeOptions) getMetadataPool(ctx context.Context, cr *util.Credentials) (string, error) {
 	// ./tbox ceph fs ls --format=json
 	// [{"name":"myfs","metadata_pool":"myfs-metadata","metadata_pool_id":4,...},...]
 	var filesystems []CephFilesystem
 	err := execCommandJSON(ctx, &filesystems,
 		"ceph",
-		"-m", monitors,
+		"-m", vo.Monitors,
 		"--id", cr.ID,
 		"--keyfile="+cr.KeyFile,
 		"-c", util.CephConfigPath,
@@ -72,12 +72,12 @@ func getMetadataPool(ctx context.Context, monitors string, cr *util.Credentials,
 	}
 
 	for _, fs := range filesystems {
-		if fs.Name == fsName {
+		if fs.Name == vo.FsName {
 			return fs.MetadataPool, nil
 		}
 	}
 
-	return "", fmt.Errorf("%w: fsName (%s) not found in Ceph cluster", util.ErrPoolNotFound, fsName)
+	return "", fmt.Errorf("%w: fsName (%s) not found in Ceph cluster", util.ErrPoolNotFound, vo.FsName)
 }
 
 func (vo *volumeOptions) getFsName(ctx context.Context) (string, error) {
