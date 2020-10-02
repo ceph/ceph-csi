@@ -220,7 +220,7 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 		return nil, err
 	}
 
-	opts.MetadataPool, err = getMetadataPool(ctx, opts.Monitors, cr, opts.FsName)
+	opts.MetadataPool, err = opts.getMetadataPool(ctx, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		return nil, nil, err
 	}
 
-	volOptions.MetadataPool, err = getMetadataPool(ctx, volOptions.Monitors, cr, volOptions.FsName)
+	volOptions.MetadataPool, err = volOptions.getMetadataPool(ctx, cr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -503,7 +503,7 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 		return &volOptions, nil, &sid, err
 	}
 
-	volOptions.MetadataPool, err = getMetadataPool(ctx, volOptions.Monitors, cr, volOptions.FsName)
+	volOptions.MetadataPool, err = volOptions.getMetadataPool(ctx, cr)
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}
