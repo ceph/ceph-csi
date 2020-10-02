@@ -283,7 +283,7 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 		return nil, nil, err
 	}
 
-	volOptions.FsName, err = volOptions.getFsName(ctx, cr)
+	volOptions.FsName, err = volOptions.getFsName(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -478,7 +478,7 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 		return &volOptions, nil, &sid, fmt.Errorf("failed to fetch subvolumegroup list using clusterID (%s): %w", vi.ClusterID, err)
 	}
 
-	volOptions.FsName, err = volOptions.getFsName(ctx, cr)
+	volOptions.FsName, err = volOptions.getFsName(ctx)
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}
