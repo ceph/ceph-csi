@@ -23,17 +23,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
-// MDSMap is a representation of the mds map sub-structure returned by 'ceph fs get'.
-type MDSMap struct {
-	FilesystemName string `json:"fs_name"`
-}
-
-// CephFilesystemDetails is a representation of the main json structure returned by 'ceph fs get'.
-type CephFilesystemDetails struct {
-	ID     int64  `json:"id"`
-	MDSMap MDSMap `json:"mdsmap"`
-}
-
 func (vo *volumeOptions) getFscID(ctx context.Context) (int64, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
@@ -91,30 +80,22 @@ func getMetadataPool(ctx context.Context, monitors string, cr *util.Credentials,
 	return "", fmt.Errorf("%w: fsName (%s) not found in Ceph cluster", util.ErrPoolNotFound, fsName)
 }
 
-// CephFilesystemDump is a representation of the main json structure returned by 'ceph fs dump'.
-type CephFilesystemDump struct {
-	Filesystems []CephFilesystemDetails `json:"filesystems"`
-}
-
-func (vo *volumeOptions) getFsName(ctx context.Context, cr *util.Credentials) (string, error) {
-	// ./tbox ceph fs dump --format=json
-	// JSON: {...,"filesystems":[{"mdsmap":{},"id":<n>},...],...}
-	var fsDump CephFilesystemDump
-	err := execCommandJSON(ctx, &fsDump,
-		"ceph",
-		"-m", vo.Monitors,
-		"--id", cr.ID,
-		"--keyfile="+cr.KeyFile,
-		"-c", util.CephConfigPath,
-		"fs", "dump", "--format=json",
-	)
+func (vo *volumeOptions) getFsName(ctx context.Context) (string, error) {
+	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
+		util.ErrorLog(ctx, "could not get FSAdmin, can not fetch filesystem name for ID %d:", vo.FscID, err)
 		return "", err
 	}
 
-	for _, fs := range fsDump.Filesystems {
-		if fs.ID == vo.FscID {
-			return fs.MDSMap.FilesystemName, nil
+	volumes, err := fsa.EnumerateVolumes()
+	if err != nil {
+		util.ErrorLog(ctx, "could not list volumes, can not fetch filesystem name for ID %d:", vo.FscID, err)
+		return "", err
+	}
+
+	for _, vol := range volumes {
+		if vol.ID == vo.FscID {
+			return vol.Name, nil
 		}
 	}
 
