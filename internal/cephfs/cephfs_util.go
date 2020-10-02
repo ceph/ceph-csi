@@ -34,17 +34,17 @@ type CephFilesystemDetails struct {
 	MDSMap MDSMap `json:"mdsmap"`
 }
 
-func getFscID(ctx context.Context, monitors string, cr *util.Credentials, fsName string) (int64, error) {
+func (vo *volumeOptions) getFscID(ctx context.Context, cr *util.Credentials) (int64, error) {
 	// ceph fs get myfs --format=json
 	// {"mdsmap":{...},"id":2}
 	var fsDetails CephFilesystemDetails
 	err := execCommandJSON(ctx, &fsDetails,
 		"ceph",
-		"-m", monitors,
+		"-m", vo.Monitors,
 		"--id", cr.ID,
 		"--keyfile="+cr.KeyFile,
 		"-c", util.CephConfigPath,
-		"fs", "get", fsName, "--format=json",
+		"fs", "get", vo.FsName, "--format=json",
 	)
 	if err != nil {
 		return 0, err

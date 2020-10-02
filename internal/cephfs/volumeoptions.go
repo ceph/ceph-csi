@@ -215,7 +215,7 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 		return nil, err
 	}
 
-	opts.FscID, err = getFscID(ctx, opts.Monitors, cr, opts.FsName)
+	opts.FscID, err = opts.getFscID(ctx, cr)
 	if err != nil {
 		return nil, err
 	}
