@@ -96,13 +96,13 @@ type CephFilesystemDump struct {
 	Filesystems []CephFilesystemDetails `json:"filesystems"`
 }
 
-func getFsName(ctx context.Context, monitors string, cr *util.Credentials, fscID int64) (string, error) {
+func (vo *volumeOptions) getFsName(ctx context.Context, cr *util.Credentials) (string, error) {
 	// ./tbox ceph fs dump --format=json
 	// JSON: {...,"filesystems":[{"mdsmap":{},"id":<n>},...],...}
 	var fsDump CephFilesystemDump
 	err := execCommandJSON(ctx, &fsDump,
 		"ceph",
-		"-m", monitors,
+		"-m", vo.Monitors,
 		"--id", cr.ID,
 		"--keyfile="+cr.KeyFile,
 		"-c", util.CephConfigPath,
@@ -113,10 +113,10 @@ func getFsName(ctx context.Context, monitors string, cr *util.Credentials, fscID
 	}
 
 	for _, fs := range fsDump.Filesystems {
-		if fs.ID == fscID {
+		if fs.ID == vo.FscID {
 			return fs.MDSMap.FilesystemName, nil
 		}
 	}
 
-	return "", fmt.Errorf("%w: fscID (%d) not found in Ceph cluster", util.ErrPoolNotFound, fscID)
+	return "", fmt.Errorf("%w: fscID (%d) not found in Ceph cluster", util.ErrPoolNotFound, vo.FscID)
 }
