@@ -46,38 +46,26 @@ func (vo *volumeOptions) getFscID(ctx context.Context) (int64, error) {
 	return 0, ErrVolumeNotFound
 }
 
-// CephFilesystem is a representation of the json structure returned by 'ceph fs ls'.
-type CephFilesystem struct {
-	Name           string   `json:"name"`
-	MetadataPool   string   `json:"metadata_pool"`
-	MetadataPoolID int      `json:"metadata_pool_id"`
-	DataPools      []string `json:"data_pools"`
-	DataPoolIDs    []int    `json:"data_pool_ids"`
-}
-
-func (vo *volumeOptions) getMetadataPool(ctx context.Context, cr *util.Credentials) (string, error) {
-	// ./tbox ceph fs ls --format=json
-	// [{"name":"myfs","metadata_pool":"myfs-metadata","metadata_pool_id":4,...},...]
-	var filesystems []CephFilesystem
-	err := execCommandJSON(ctx, &filesystems,
-		"ceph",
-		"-m", vo.Monitors,
-		"--id", cr.ID,
-		"--keyfile="+cr.KeyFile,
-		"-c", util.CephConfigPath,
-		"fs", "ls", "--format=json",
-	)
+func (vo *volumeOptions) getMetadataPool(ctx context.Context) (string, error) {
+	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
+		util.ErrorLog(ctx, "could not get FSAdmin, can not fetch metadata pool for %s:", vo.FsName, err)
 		return "", err
 	}
 
-	for _, fs := range filesystems {
-		if fs.Name == vo.FsName {
-			return fs.MetadataPool, nil
+	fsPoolInfos, err := fsa.ListFileSystems()
+	if err != nil {
+		util.ErrorLog(ctx, "could not list filesystems, can not fetch metadata pool for %s:", vo.FsName, err)
+		return "", err
+	}
+
+	for _, fspi := range fsPoolInfos {
+		if fspi.Name == vo.FsName {
+			return fspi.MetadataPool, nil
 		}
 	}
 
-	return "", fmt.Errorf("%w: fsName (%s) not found in Ceph cluster", util.ErrPoolNotFound, vo.FsName)
+	return "", fmt.Errorf("%w: could not find metadata pool for %s", util.ErrPoolNotFound, vo.FsName)
 }
 
 func (vo *volumeOptions) getFsName(ctx context.Context) (string, error) {
