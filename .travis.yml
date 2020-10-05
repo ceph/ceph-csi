@@ -97,24 +97,6 @@ jobs:
       script:
         - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
 
-    - stage: upgrade testing
-      name: CephFS upgrade tesing with CSI v3.0.0
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.19.0 --test-cephfs=true
-          --test-rbd=false --upgrade-testing=true
-          --upgrade-version="${UPGRADE_VERSION}" || travis_terminate 1;
-
-    - stage: upgrade testing
-      name: RBD upgrade tesing with CSI v3.0.0
-      script:
-        - scripts/skip-doc-change.sh || travis_terminate 0;
-        - make image-cephcsi || travis_terminate 1;
-        - scripts/travis-functest.sh v1.19.0 --test-cephfs=false
-          --test-rbd=true --upgrade-testing=true
-          --upgrade-version="${UPGRADE_VERSION}" || travis_terminate 1;
-
     - stage: deploy
       name: push artifacts to repositories
       script: ./deploy.sh

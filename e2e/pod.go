@@ -211,21 +211,16 @@ func deletePodWithLabel(label, ns string, skipNotFound bool) error {
 	return err
 }
 
-// getMountPath fetches the path on an app where volume is mounted.
-func getMountPath(app *v1.Pod) string {
-	path := app.Spec.Containers[0].VolumeMounts[0].MountPath
-	return path
-}
 
 // calculateSHA512sum returns the sha512sum of a file inside a pod.
 func calculateSHA512sum(f *framework.Framework, app *v1.Pod, filePath string, opt *metav1.ListOptions) (string, error) {
 	cmd := fmt.Sprintf("sha512sum %s", filePath)
-	sha512sumOut, e, err := execCommandInPod(f, cmd, app.Namespace, opt)
+	sha512sumOut, stdErr, err := execCommandInPod(f, cmd, app.Namespace, opt)
 	if err != nil {
 		return "", err
 	}
-	if e != "" {
-		return "", fmt.Errorf("error: sha512sum could not be calculated %v", e)
+	if stdErr != "" {
+		return "", fmt.Errorf("error: sha512sum could not be calculated %v", stdErr)
 	}
 	// extract checksum from sha512sum output.
 	checkSum := strings.Split(sha512sumOut, "")[0]

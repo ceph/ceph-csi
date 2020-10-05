@@ -47,6 +47,8 @@ pull_request_rules:
       - "status-success=ci/centos/mini-e2e-helm/k8s-1.18"
       - "status-success=ci/centos/mini-e2e/k8s-1.19"
       - "status-success=ci/centos/mini-e2e/k8s-1.18"
+      - "status-success=ci/centos/upgrade-tests-cephfs"
+      - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
       merge:
@@ -184,6 +186,8 @@ pull_request_rules:
       - "status-success=ci/centos/mini-e2e-helm/k8s-1.18"
       - "status-success=ci/centos/mini-e2e/k8s-1.19"
       - "status-success=ci/centos/mini-e2e/k8s-1.18"
+      - "status-success=ci/centos/upgrade-tests-cephfs"
+      - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
       merge:

@@ -63,6 +63,7 @@ func createORDeleteCephfsResouces(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisioner, err)
 	}
+	data = oneReplicaDeployYaml(data)
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS provisioner with error %v", action, err)
