@@ -161,6 +161,8 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--health-port=9809"
+            - "--metrics-address=:8081"
+            - "--metrics-path=/metrics"
             - "--v=5"
           env:
             - name: ADDRESS
