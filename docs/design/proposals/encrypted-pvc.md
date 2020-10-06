@@ -127,3 +127,10 @@ data:
 metadata:
   name: ceph-csi-encryption-kms-config
 ```
+
+NOTE:
+
+KMS vault can be authenticated using token auth method or kubernetes auth
+method. Ceph CSI driver is capable of authenticating with both methods,
+however kubernetes auth based authentication method is recommended for
+production use.

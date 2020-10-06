@@ -139,6 +139,10 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) error {
 	}
 
 	err = updateSecretForEncryption(c)
+	if err != nil {
+		return err
+	}
+	err = updateVaultTokenForEncryption(c)
 	return err
 }
 

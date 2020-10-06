@@ -58,6 +58,8 @@ Example JSON structure in the KMS config is,
 		"vaultNamespace": "",
 		"vaultPassphraseRoot": "/v1/secret",
 		"vaultPassphrasePath": "",
+                "vaultTokenAuth": true,
+		"vaultTokenFromSecret": "vault-token",
 		"vaultCAVerify": true,
 		"vaultCAFromSecret": "vault-ca"
 	},
@@ -72,6 +74,8 @@ type VaultKMS struct {
 	VaultNamespace      string
 	VaultPassphraseRoot string
 	VaultPassphrasePath string
+	VaultToken          string
+	VaultTokenAuth      bool
 	VaultCAVerify       bool
 	vaultCA             *x509.CertPool
 }
@@ -89,6 +93,14 @@ func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKM
 	if !ok || kms.VaultAddress == "" {
 		return nil, fmt.Errorf("missing 'vaultAddress' for vault KMS %s", kmsID)
 	}
+	kms.VaultTokenAuth = false
+	err = parseVaultToken(kms, config, secrets)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse 'vaultTokenAuth' for vault <%s> kms config: %s",
+			kmsID, err)
+	}
+
+	// we are falling back to kubernetes auth method
 	kms.VaultAuthPath, ok = config["vaultAuthPath"]
 	if !ok || kms.VaultAuthPath == "" {
 		kms.VaultAuthPath = vaultDefaultAuthPath
@@ -97,6 +109,7 @@ func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKM
 	if !ok || kms.VaultRole == "" {
 		kms.VaultRole = vaultDefaultRole
 	}
+
 	kms.VaultNamespace, ok = config["vaultNamespace"]
 	if !ok || kms.VaultNamespace == "" {
 		kms.VaultNamespace = vaultDefaultNamespace
@@ -134,6 +147,35 @@ func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKM
 	}
 
 	return kms, nil
+}
+
+func parseVaultToken(kms *VaultKMS, config, secrets map[string]string) error {
+	var ok bool
+	var err error
+	var token, authToken, vaultTokenFromSecret string
+	authToken, ok = config["vaultTokenAuth"]
+	if ok {
+		kms.VaultTokenAuth, err = strconv.ParseBool(authToken)
+		if err != nil {
+			return fmt.Errorf("failed to parse 'vaultTokenAuth' for vault  kms config: %v", err)
+		}
+	}
+	// Check if vaultTokenAuth is enabled and if yes, use token based auth
+	if kms.VaultTokenAuth {
+		// Parse VaultToken from secret
+		vaultTokenFromSecret, ok = config["vaultTokenFromSecret"]
+		if ok && vaultTokenFromSecret != "" {
+			token, ok = secrets[vaultTokenFromSecret]
+			if !ok {
+				return fmt.Errorf("missing vault Token in secret %s", vaultTokenFromSecret)
+			}
+			if token == "" {
+				return fmt.Errorf("vault Token in secret %s is nil", vaultTokenFromSecret)
+			}
+			kms.VaultToken = token
+		}
+	}
+	return nil
 }
 
 // GetID is returning correlation ID to KMS configuration.
@@ -213,7 +255,6 @@ func (kms *VaultKMS) DeletePassphrase(key string) error {
 		return fmt.Errorf("could not retrieve vault token to delete the passphrase at %s: %s",
 			key, err)
 	}
-
 	resp, err := kms.send("DELETE", kms.getKeyMetadataURI(key), &vaultToken, nil)
 	if err != nil {
 		return fmt.Errorf("delete passphrase at %s request to vault failed: %s", key, err)
@@ -244,6 +285,9 @@ Vault will verify service account jwt token with Kubernetes and return token
 if the requester is allowed.
 */
 func (kms *VaultKMS) getAccessToken() (string, error) {
+	if kms.VaultToken != "" {
+		return kms.VaultToken, nil
+	}
 	saToken, err := ioutil.ReadFile(serviceAccountTokenPath)
 	if err != nil {
 		return "", fmt.Errorf("service account token could not be read: %s", err)

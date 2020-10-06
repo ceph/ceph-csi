@@ -37,6 +37,10 @@ const (
 
 	rookTolBoxPodLabel = "app=rook-ceph-tools"
 	rbdmountOptions    = "mountOptions"
+
+	// vault specific constants
+	defaultVaultToken    = "sample_root_token_id"
+	defaultVaultTokenKey = "vault-token"
 )
 
 var (
@@ -125,6 +129,32 @@ func updateSecretForEncryption(c kubernetes.Interface) error {
 		return err
 	}
 	return nil
+}
+
+// updateVaultTokenForEncryption is an hack to update the secrets created by rook to
+// include the vault token key.
+func updateVaultTokenForEncryption(c kubernetes.Interface) error {
+	secrets, err := c.CoreV1().Secrets(rookNamespace).Get(context.TODO(), rbdProvisionerSecretName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	secrets.Data[defaultVaultTokenKey] = []byte(defaultVaultToken)
+
+	_, err = c.CoreV1().Secrets(rookNamespace).Update(context.TODO(), secrets, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+
+	secrets, err = c.CoreV1().Secrets(rookNamespace).Get(context.TODO(), rbdNodePluginSecretName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	secrets.Data[defaultVaultTokenKey] = []byte(defaultVaultToken)
+
+	_, err = c.CoreV1().Secrets(rookNamespace).Update(context.TODO(), secrets, metav1.UpdateOptions{})
+	return err
 }
 
 func deleteResource(scPath string) error {

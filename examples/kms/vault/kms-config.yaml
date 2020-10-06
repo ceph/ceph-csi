@@ -9,6 +9,8 @@ data:
         "vaultAddress": "http://vault.default.svc.cluster.local:8200",
         "vaultAuthPath": "/v1/auth/kubernetes/login",
         "vaultRole": "csi-kubernetes",
+        "vaultTokenAuth": "true",
+        "vaultTokenFromSecret": "vault-token",
         "vaultPassphraseRoot": "/v1/secret",
         "vaultPassphrasePath": "ceph-csi/",
         "vaultCAVerify": "false"
