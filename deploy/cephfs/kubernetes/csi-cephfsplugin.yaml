@@ -93,6 +93,31 @@ spec:
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+          ports:
+            - name: liveness-port
+              containerPort: 9809
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: liveness-port
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 2
+            failureThreshold: 5
+        - name: liveness-probe
+          image: quay.io/k8scsi/livenessprobe:canary
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--health-port=9809"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: unix:///csi/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
         - name: liveness-prometheus
           securityContext:
             privileged: true
