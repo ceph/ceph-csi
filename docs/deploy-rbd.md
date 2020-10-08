@@ -183,13 +183,6 @@ The Helm chart is located in `charts/ceph-csi-rbd`.
 Volumes provisioned with Ceph RBD do not have encryption by default. It is
 possible to encrypt them with ceph-csi by using LUKS encryption.
 
-To enable encryption set `encrypted` option in storage class to `"true"` and
-set encryption passphrase in kubernetes secrets under `encryptionPassphrase` key.
-
-To use different passphrase you need to have different storage classes and point
-to a different K8s secrets (different `csi.storage.k8s.io/node-stage-secret-name`
-and `csi.storage.k8s.io/node-stage-secret-namespace`).
-
 ### Life-cycle for encrypted volumes
 
 **Create volume**:
@@ -205,7 +198,7 @@ and `csi.storage.k8s.io/node-stage-secret-namespace`).
 * on first time attachment
   (no file system on the attached device, checked with blkid)
   * new passphrase is generated and stored in selected KMS if KMS is in use
-  * device is encrypted with LUKS using a passphrase from K8s secrets
+  * device is encrypted with LUKS using a passphrase from K8s secrets.
   * image-meta updated to "encrypted" in Ceph
 * passphrase is retrieved from selected KMS if KMS is in use
 * device is open and device path is changed to use a mapper device
@@ -222,7 +215,13 @@ and `csi.storage.k8s.io/node-stage-secret-namespace`).
 To encrypt rbd volumes with LUKS you need to set encryption passphrase in
 secrets under `encryptionPassphrase` key and switch `encrypted` option in
 StorageClass to `"true"`. This is not supported for storage classes that already
-have PVs provisioned.
+have PVs provisioned. The `node-stage-secret-name` and the `provisioner-secret-name`
+should carry this key and value for encryption to work.
+
+To use different passphrase you need to have different storage classes and point
+to a different K8s secrets `csi.storage.k8s.io/node-stage-secret-name`
+and `csi.storage.k8s.io/provisioner-secret-name` which carry new passphrase value
+for `encryptionPassphrase` key in these secrets.
 
 ### Encryption KMS configuration
 
