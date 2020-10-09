@@ -41,6 +41,7 @@ type cephfsSnapshot struct {
 	Pool         string
 	ClusterID    string
 	RequestName  string
+	ReservedID   string
 }
 
 func createSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, snapID, volID volumeID) error {

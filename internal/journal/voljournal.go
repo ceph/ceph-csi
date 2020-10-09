@@ -437,18 +437,22 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 // reserveOMapName creates an omap with passed in oMapNamePrefix and a generated <uuid>.
 // It ensures generated omap name does not already exist and if conflicts are detected, a set
 // number of retires with newer uuids are attempted before returning an error.
-func reserveOMapName(ctx context.Context, monitors string, cr *util.Credentials, pool, namespace, oMapNamePrefix string) (string, error) {
+func reserveOMapName(ctx context.Context, monitors string, cr *util.Credentials, pool, namespace, oMapNamePrefix, volUUID string) (string, error) {
 	var iterUUID string
 
 	maxAttempts := 5
 	attempt := 1
 	for attempt <= maxAttempts {
-		// generate a uuid for the image name
-		iterUUID = uuid.NewUUID().String()
+		if volUUID != "" {
+			iterUUID = volUUID
+		} else {
+			// generate a uuid for the image name
+			iterUUID = uuid.NewUUID().String()
+		}
 
 		err := util.CreateObject(ctx, monitors, cr, pool, namespace, oMapNamePrefix+iterUUID)
 		if err != nil {
-			if errors.Is(err, util.ErrObjectExists) {
+			if volUUID == "" && errors.Is(err, util.ErrObjectExists) {
 				attempt++
 				// try again with a different uuid, for maxAttempts tries
 				util.DebugLog(ctx, "uuid (%s) conflict detected, retrying (attempt %d of %d)",
@@ -483,6 +487,8 @@ Input arguments:
 	- namePrefix: Prefix to use when generating the image/subvolume name (suffix is an auto-genetated UUID)
 	- parentName: Name of the parent image/subvolume if reservation is for a snapshot (optional)
 	- kmsConf: Name of the key management service used to encrypt the image (optional)
+       - volUUID: UUID need to be reserved instead of auto-generating one (this is
+         useful for mirroring and metro-DR)
 
 Return values:
 	- string: Contains the UUID that was reserved for the passed in reqName
@@ -492,17 +498,18 @@ Return values:
 func (conn *Connection) ReserveName(ctx context.Context,
 	journalPool string, journalPoolID int64,
 	imagePool string, imagePoolID int64,
-	reqName, namePrefix, parentName, kmsConf string) (string, string, error) {
+	reqName, namePrefix, parentName, kmsConf, volUUID string) (string, string, error) {
 	// TODO: Take in-arg as ImageAttributes?
 	var (
 		snapSource bool
 		nameKeyVal string
 		cj         = conn.config
+		err        error
 	)
 
 	if parentName != "" {
 		if cj.cephSnapSourceKey == "" {
-			err := errors.New("invalid request, cephSnapSourceKey is nil")
+			err = errors.New("invalid request, cephSnapSourceKey is nil")
 			return "", "", err
 		}
 		snapSource = true
@@ -512,7 +519,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	// NOTE: If any service loss occurs post creation of the UUID directory, and before
 	// setting the request name key (csiNameKey) to point back to the UUID directory, the
 	// UUID directory key will be leaked
-	volUUID, err := reserveOMapName(ctx, conn.monitors, conn.cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix)
+	volUUID, err = reserveOMapName(ctx, conn.monitors, conn.cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix, volUUID)
 	if err != nil {
 		return "", "", err
 	}

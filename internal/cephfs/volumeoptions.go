@@ -38,6 +38,7 @@ type volumeOptions struct {
 	ClusterID           string
 	FsName              string
 	FscID               int64
+	ReservedID          string
 	MetadataPool        string
 	Monitors            string `json:"monitors"`
 	Pool                string `json:"pool"`

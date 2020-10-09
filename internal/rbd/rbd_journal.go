@@ -357,7 +357,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 
 	rbdSnap.ReservedID, rbdSnap.RbdSnapName, err = j.ReserveName(
 		ctx, rbdSnap.JournalPool, journalPoolID, rbdSnap.Pool, imagePoolID,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, "")
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, "", rbdSnap.ReservedID)
 	if err != nil {
 		return err
 	}
@@ -435,7 +435,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 
 	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
 		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
-		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
+		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, rbdVol.ReservedID)
 	if err != nil {
 		return err
 	}
