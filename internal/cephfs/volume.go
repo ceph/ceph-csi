@@ -94,7 +94,7 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 	return strings.TrimSuffix(stdout, "\n"), nil
 }
 
-func getSubVolumeInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (Subvolume, error) {
+func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, cr *util.Credentials, volID volumeID) (Subvolume, error) {
 	info := Subvolume{}
 	err := execCommandJSON(
 		ctx,
@@ -103,11 +103,11 @@ func getSubVolumeInfo(ctx context.Context, volOptions *volumeOptions, cr *util.C
 		"fs",
 		"subvolume",
 		"info",
-		volOptions.FsName,
+		vo.FsName,
 		string(volID),
 		"--group_name",
-		volOptions.SubvolumeGroup,
-		"-m", volOptions.Monitors,
+		vo.SubvolumeGroup,
+		"-m", vo.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix+cr.ID,
 		"--keyfile="+cr.KeyFile)

@@ -513,7 +513,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	// request to create snapshot.
 	// TODO: For this purpose we could make use of cached clusterAdditionalInfo too.
 	var info Subvolume
-	info, err = getSubVolumeInfo(ctx, parentVolOptions, cr, volumeID(vid.FsSubvolName))
+	info, err = parentVolOptions.getSubVolumeInfo(ctx, cr, volumeID(vid.FsSubvolName))
 	if err != nil {
 		// Check error code value against ErrInvalidCommand to understand the cluster
 		// support it or not, its safe to evaluat as the filtering
