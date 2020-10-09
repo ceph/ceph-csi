@@ -339,7 +339,7 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 
 	volOptions.ProvisionVolume = true
 
-	info, err = getSubVolumeInfo(ctx, &volOptions, cr, volumeID(vid.FsSubvolName))
+	info, err = volOptions.getSubVolumeInfo(ctx, cr, volumeID(vid.FsSubvolName))
 	if err == nil {
 		volOptions.RootPath = info.Path
 		volOptions.Features = info.Features
@@ -525,7 +525,7 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 	sid.FsSnapshotName = imageAttributes.ImageName
 	sid.FsSubvolName = imageAttributes.SourceName
 
-	subvolInfo, err := getSubVolumeInfo(ctx, &volOptions, cr, volumeID(sid.FsSubvolName))
+	subvolInfo, err := volOptions.getSubVolumeInfo(ctx, cr, volumeID(sid.FsSubvolName))
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}
