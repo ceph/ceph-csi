@@ -38,16 +38,18 @@ type volumeOptions struct {
 	ClusterID           string
 	FsName              string
 	FscID               int64
-	MetadataPool        string
-	Monitors            string `json:"monitors"`
-	Pool                string `json:"pool"`
-	RootPath            string `json:"rootPath"`
-	Mounter             string `json:"mounter"`
-	ProvisionVolume     bool   `json:"provisionVolume"`
-	KernelMountOptions  string `json:"kernelMountOptions"`
-	FuseMountOptions    string `json:"fuseMountOptions"`
-	SubvolumeGroup      string
-	Features            []string
+	// ReservedID represents the ID reserved for a subvolume
+	ReservedID         string
+	MetadataPool       string
+	Monitors           string `json:"monitors"`
+	Pool               string `json:"pool"`
+	RootPath           string `json:"rootPath"`
+	Mounter            string `json:"mounter"`
+	ProvisionVolume    bool   `json:"provisionVolume"`
+	KernelMountOptions string `json:"kernelMountOptions"`
+	FuseMountOptions   string `json:"fuseMountOptions"`
+	SubvolumeGroup     string
+	Features           []string
 
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection

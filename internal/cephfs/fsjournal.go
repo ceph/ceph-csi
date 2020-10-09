@@ -234,7 +234,7 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 	imageUUID, vid.FsSubvolName, err = j.ReserveName(
 		ctx, volOptions.MetadataPool, util.InvalidPoolID,
 		volOptions.MetadataPool, util.InvalidPoolID, volOptions.RequestName,
-		volOptions.NamePrefix, "", "")
+		volOptions.NamePrefix, "", "", volOptions.ReservedID)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +271,7 @@ func reserveSnap(ctx context.Context, volOptions *volumeOptions, parentSubVolNam
 	imageUUID, vid.FsSnapshotName, err = j.ReserveName(
 		ctx, volOptions.MetadataPool, util.InvalidPoolID,
 		volOptions.MetadataPool, util.InvalidPoolID, snap.RequestName,
-		snap.NamePrefix, parentSubVolName, "")
+		snap.NamePrefix, parentSubVolName, "", snap.ReservedID)
 	if err != nil {
 		return nil, err
 	}
