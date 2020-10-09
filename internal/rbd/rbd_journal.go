@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
@@ -270,14 +271,34 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 		rv.Pool = imageData.ImagePool
 	}
 
+	exist, err := rv.validateImageWithRequest(ctx, parentVol, j)
+	if err != nil {
+		return exist, err
+	}
+	// found a volume already available, process and return it!
+	rv.VolID, err = util.GenerateVolID(ctx, rv.Monitors, rv.conn.Creds, imageData.ImagePoolID, rv.Pool,
+		rv.ClusterID, rv.ReservedID, volIDVersion)
+	if err != nil {
+		return false, err
+	}
+
+	util.DebugLog(ctx, "found existing volume (%s) with image name (%s) for request (%s)",
+		rv.VolID, rv.RbdImageName, rv.RequestName)
+
+	return true, nil
+}
+
+// validateImageWithRequest will validate the current rbd image details with
+// the requested parameters like size,features etc and also verifies that clone
+// exists.
+func (rv *rbdVolume) validateImageWithRequest(ctx context.Context, parentVol *rbdVolume, j *journal.Connection) (bool, error) {
 	// NOTE: Return volsize should be on-disk volsize, not request vol size, so
 	// save it for size checks before fetching image data
 	requestSize := rv.VolSize
 	// Fetch on-disk image attributes and compare against request
-	err = rv.getImageInfo()
+	err := rv.getImageInfo()
 	if err != nil {
 		if errors.Is(err, ErrImageNotFound) {
-			// Need to check cloned info here not on createvolume,
 			if parentVol != nil {
 				found, cErr := rv.checkCloneImage(ctx, parentVol)
 				if found && cErr == nil {
@@ -313,17 +334,6 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 			ErrVolNameConflict, rv.RbdImageName)
 	}
 	// TODO: We should also ensure image features and format is the same
-
-	// found a volume already available, process and return it!
-	rv.VolID, err = util.GenerateVolID(ctx, rv.Monitors, rv.conn.Creds, imageData.ImagePoolID, rv.Pool,
-		rv.ClusterID, rv.ReservedID, volIDVersion)
-	if err != nil {
-		return false, err
-	}
-
-	util.DebugLog(ctx, "found existing volume (%s) with image name (%s) for request (%s)",
-		rv.VolID, rv.RbdImageName, rv.RequestName)
-
 	return true, nil
 }
 
