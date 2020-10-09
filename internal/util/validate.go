@@ -1,6 +1,8 @@
 package util
 
 import (
+	"strconv"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -86,6 +88,35 @@ func CheckReadOnlyManyIsSupported(req *csi.CreateVolumeRequest) error {
 		if m := cap.GetAccessMode().Mode; m == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY || m == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
 			if req.GetVolumeContentSource() == nil {
 				return status.Error(codes.InvalidArgument, "readOnly accessMode is supported only with content source")
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateCommonParameters validates the common parameters of cephfs and rbd.
+func ValidateCommonParameters(req *csi.CreateVolumeRequest) error {
+	parameters := req.GetParameters()
+	if val, ok := parameters[PVCNaming]; ok {
+		enable, err := strconv.ParseBool(val)
+		if err != nil {
+			return err
+		}
+		if enable {
+			// update NamePrefix with pvc and namespace name
+			pvcName, ok := parameters[PVCName]
+			if !ok {
+				return status.Error(codes.InvalidArgument, "missing PVC name parameter")
+			}
+			if pvcName == "" {
+				return status.Error(codes.InvalidArgument, "empty PVC name")
+			}
+			pvcNameSpace, ok := parameters[PVCNamespaceName]
+			if !ok {
+				return status.Error(codes.InvalidArgument, "missing PVC namespace parameter")
+			}
+			if pvcNameSpace == "" {
+				return status.Error(codes.InvalidArgument, "empty Namespace name")
 			}
 		}
 	}

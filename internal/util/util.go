@@ -34,6 +34,17 @@ import (
 	"k8s.io/utils/mount"
 )
 
+var (
+	// PVCName is the key in volume parameters for pvcName
+	PVCName = "csi.storage.k8s.io/pvc/name"
+	// PVCNamespaceName is the key in volume parameters for pvc namespace name
+	PVCNamespaceName = "csi.storage.k8s.io/pvc/namespace"
+
+	// PVCNaming is the key in request to indicate volume should be named with
+	// PVCName+namespaceName+UUID
+	PVCNaming = "pvcNaming"
+)
+
 // RoundOffVolSize rounds up given quantity upto chunks of MiB/GiB.
 func RoundOffVolSize(size int64) int64 {
 	size = RoundOffBytes(size)

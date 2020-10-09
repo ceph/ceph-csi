@@ -87,6 +87,11 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 		return err
 	}
 
+	err = util.ValidateCommonParameters(req)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
