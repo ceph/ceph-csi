@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/ceph/go-ceph/rados"
@@ -103,6 +104,7 @@ type rbdVolume struct {
 	DisableInUseChecks  bool   `json:"disableInUseChecks"`
 	Encrypted           bool
 	readOnly            bool
+	PVCNaming           bool
 	KMS                 util.EncryptionKMS
 	CreatedAt           *timestamp.Timestamp
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
@@ -762,6 +764,17 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		rbdVol.NamePrefix = namePrefix
 	}
 
+	if val, found := volOptions[util.PVCNaming]; found {
+		enable, pErr := strconv.ParseBool(val)
+		if pErr != nil {
+			return nil, pErr
+		}
+		if enable {
+			rbdVol.PVCNaming = true
+			// update NamePrefix with pvc name and namespace name
+			rbdVol.NamePrefix = journal.GenerateNameFromNameAndNamespace(rbdVol.NamePrefix, volOptions[util.PVCName], volOptions[util.PVCNamespaceName], false)
+		}
+	}
 	rbdVol.Monitors, rbdVol.ClusterID, err = util.GetMonsAndClusterID(volOptions)
 	if err != nil {
 		util.ErrorLog(ctx, "failed getting mons (%s)", err)

@@ -47,6 +47,10 @@ parameters:
    # https://docs.ceph.com/docs/master/man/8/rbd-nbd/#options
    # unmapOptions: force
 
+   # (optional)pvcNaming to indicate volume name should be derived from
+   # pvc name, namespace name and UUID.
+   # pvcNaming: true
+
    # The secrets have to contain Ceph credentials with required access
    # to the 'pool'.
    csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret

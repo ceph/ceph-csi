@@ -214,6 +214,20 @@ func (cj *Config) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
 	return prefix + uid
 }
 
+// GenerateNameFromNameAndNamespace generates the name based on the prefix,name and namespace.
+func GenerateNameFromNameAndNamespace(prefix, name, namespace string, snap bool) string {
+	uName := name + "-" + namespace + "-"
+
+	if prefix != "" && !strings.HasSuffix(prefix, "-") {
+		prefix += "-"
+	}
+
+	if snap {
+		return prefix + defaultSnapshotNamingPrefix + uName
+	}
+	return prefix + defaultVolumeNamingPrefix + uName
+}
+
 // ImageData contains image name and stored CSI properties.
 type ImageData struct {
 	ImageUUID       string

@@ -20,9 +20,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
+)
+
+const (
+	// retained key is set to "yes" incase if the image is retained and should
+	// not be used.
+	retained = "retained"
 )
 
 func validateNonEmptyField(field, fieldName, structName string) error {
@@ -231,6 +238,7 @@ content source is volume we need to recover from the stale entries or complete
 the pending operations.
 */
 func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, error) {
+	var regeneratedOmap bool
 	err := validateRbdVol(rv)
 	if err != nil {
 		return false, err
@@ -253,7 +261,19 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 		return false, err
 	}
 	if imageData == nil {
-		return false, nil
+		// imageData is nil means the image metadata doesn't exists in
+		// omap or pool not found, incase of failover the storage is already
+		// replicated but omap data is not created yet. check image exists and
+		// restore the omap data.
+		if rv.PVCNaming {
+			regeneratedOmap = true
+			imageData, err = rv.restoreOmapData(ctx, kmsID, j, rv.conn.Creds)
+			if err != nil || imageData == nil {
+				return false, err
+			}
+		} else {
+			return false, nil
+		}
 	}
 
 	rv.ReservedID = imageData.ImageUUID
@@ -271,7 +291,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 		rv.Pool = imageData.ImagePool
 	}
 
-	exist, err := rv.validateImageWithRequest(ctx, parentVol, j)
+	exist, err := rv.validateImageWithRequest(ctx, parentVol, regeneratedOmap, j)
 	if err != nil {
 		return exist, err
 	}
@@ -291,7 +311,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 // validateImageWithRequest will validate the current rbd image details with
 // the requested parameters like size,features etc and also verifies that clone
 // exists.
-func (rv *rbdVolume) validateImageWithRequest(ctx context.Context, parentVol *rbdVolume, j *journal.Connection) (bool, error) {
+func (rv *rbdVolume) validateImageWithRequest(ctx context.Context, parentVol *rbdVolume, regeneratedOmap bool, j *journal.Connection) (bool, error) {
 	// NOTE: Return volsize should be on-disk volsize, not request vol size, so
 	// save it for size checks before fetching image data
 	requestSize := rv.VolSize
@@ -327,14 +347,82 @@ func (rv *rbdVolume) validateImageWithRequest(ctx context.Context, parentVol *rb
 			return false, err
 		}
 	}
-
+	// cleanup omap if any validation fails
+	defer func() {
+		if err != nil && rv.PVCNaming {
+			if regeneratedOmap {
+				err = j.UndoReservation(ctx, rv.JournalPool, rv.Pool,
+					rv.RbdImageName, rv.RequestName)
+				if err != nil {
+					util.ErrorLog(ctx, "failed to undo reservation %s: %v", rv, err)
+				}
+			}
+		}
+	}()
 	// size checks
 	if rv.VolSize < requestSize {
-		return false, fmt.Errorf("%w: image with the same name (%s) but with different size already exists",
+		err = fmt.Errorf("%w: image with the same name (%s) but with different size already exists",
 			ErrVolNameConflict, rv.RbdImageName)
+		return false, err
 	}
 	// TODO: We should also ensure image features and format is the same
 	return true, nil
+}
+
+// restoreOmapData checks the image exists with NamePrefix pattern, if yes it
+// will restore the omap data.
+func (rv *rbdVolume) restoreOmapData(ctx context.Context, kmsID string, j *journal.Connection, cr *util.Credentials) (*journal.ImageData, error) {
+	imageData := &journal.ImageData{}
+	err := rv.openIoctx()
+	if err != nil {
+		return imageData, err
+	}
+	images, err := getImageNamesFromPattern(rv.ioctx, rv.NamePrefix)
+	if err != nil {
+		return imageData, err
+	}
+	if len(images) == 0 {
+		return imageData, nil
+	}
+
+	rbdSnap := &rbdSnapshot{}
+	image := ""
+	for _, i := range images {
+		// The admin/operator has to set "retained:true" on the image when pvc
+		// is deleted and pv is retained.
+		r := rbdVolume{
+			Pool:         rv.Pool,
+			RbdImageName: i,
+			ioctx:        rv.ioctx,
+			conn:         rv.conn,
+		}
+		retained, rErr := r.GetMetadata(retained)
+		if rErr != nil {
+			return imageData, rErr
+		}
+		// image is not retained
+		if retained == "" {
+			image = i
+			break
+		}
+	}
+
+	// all the found images are retained return empty imageData so that we can
+	// create new image
+	if image == "" {
+		return imageData, nil
+	}
+	// extract the UUID from image name
+	rv.ReservedID = strings.Replace(image, rv.NamePrefix, "", 1)
+	err = reserveVol(ctx, rv, rbdSnap, cr)
+	if err != nil {
+		return imageData, err
+	}
+	// TODO optimize it, instead of checking the reservation again, regenerate
+	// the imageData
+	imageData, err = j.CheckReservation(
+		ctx, rv.JournalPool, rv.RequestName, rv.NamePrefix, "", kmsID)
+	return imageData, err
 }
 
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
