@@ -977,6 +977,22 @@ func listImages(ioctx *rados.IOContext) ([]string, error) {
 	return librbd.GetImageNames(ioctx)
 }
 
+// getImageNamesFromPattern lists all the images in the pool and checks the image
+// is starting with the pattern.
+func getImageNamesFromPattern(ioctx *rados.IOContext, pattern string) ([]string, error) {
+	foundImages := []string{}
+	images, err := listImages(ioctx)
+	if err != nil {
+		return foundImages, err
+	}
+	for _, image := range images {
+		if strings.HasPrefix(image, pattern) {
+			foundImages = append(foundImages, image)
+		}
+	}
+	return foundImages, nil
+}
+
 /*
 checkSnapExists queries rbd about the snapshots of the given image and returns
 ErrImageNotFound if provided image is not found, and ErrSnapNotFound if
