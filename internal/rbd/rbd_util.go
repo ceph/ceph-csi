@@ -973,6 +973,10 @@ func (rv *rbdVolume) getImageInfo() error {
 	return nil
 }
 
+func listImages(ioctx *rados.IOContext) ([]string, error) {
+	return librbd.GetImageNames(ioctx)
+}
+
 /*
 checkSnapExists queries rbd about the snapshots of the given image and returns
 ErrImageNotFound if provided image is not found, and ErrSnapNotFound if
