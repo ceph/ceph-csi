@@ -25,7 +25,7 @@ import (
 
 // LuksFormat sets up volume as an encrypted LUKS partition.
 func LuksFormat(devicePath, passphrase string) (stdout, stderr []byte, err error) {
-	return execCryptsetupCommand(&passphrase, "-q", "luksFormat", "--hash", "sha256", devicePath, "-d", "/dev/stdin")
+	return execCryptsetupCommand(&passphrase, "-q", "luksFormat", "--type", "luks2", "--hash", "sha256", devicePath, "-d", "/dev/stdin")
 }
 
 // LuksOpen opens LUKS encrypted partition and sets up a mapping.

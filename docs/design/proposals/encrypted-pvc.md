@@ -3,7 +3,7 @@
 ## Proposal
 
 Subject of this proposal is to add support for encryption of RBD volumes in
-Ceph-CSI.
+Ceph-CSI with type LUKS version 2.
 
 Some but not all the benefits of this approach:
 
