@@ -512,8 +512,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	// as we are not able to retrieve the parent size we are rejecting the
 	// request to create snapshot.
 	// TODO: For this purpose we could make use of cached clusterAdditionalInfo too.
-	var info Subvolume
-	info, err = parentVolOptions.getSubVolumeInfo(ctx, cr, volumeID(vid.FsSubvolName))
+	info, err := parentVolOptions.getSubVolumeInfo(ctx, volumeID(vid.FsSubvolName))
 	if err != nil {
 		// Check error code value against ErrInvalidCommand to understand the cluster
 		// support it or not, its safe to evaluat as the filtering
@@ -545,7 +544,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 		return &csi.CreateSnapshotResponse{
 			Snapshot: &csi.Snapshot{
-				SizeBytes:      int64(info.BytesQuota),
+				SizeBytes:      info.BytesQuota,
 				SnapshotId:     sid.SnapshotID,
 				SourceVolumeId: req.GetSourceVolumeId(),
 				CreationTime:   sid.CreationTime,
@@ -575,7 +574,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
-			SizeBytes:      int64(info.BytesQuota),
+			SizeBytes:      info.BytesQuota,
 			SnapshotId:     sID.SnapshotID,
 			SourceVolumeId: req.GetSourceVolumeId(),
 			CreationTime:   snap.CreationTime,
