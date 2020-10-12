@@ -105,6 +105,7 @@ type rbdVolume struct {
 	Encrypted           bool
 	readOnly            bool
 	PVCNaming           bool
+	Primary             bool
 	KMS                 util.EncryptionKMS
 	CreatedAt           *timestamp.Timestamp
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
@@ -303,8 +304,14 @@ func (rv *rbdVolume) isInUse() (bool, error) {
 		return false, err
 	}
 
+	defaultWatchers := 1
+	if rv.Primary {
+		// a watcher will be added by the rbd mirror daemon if the image is primary
+		defaultWatchers = 2
+		return len(watchers) == defaultWatchers, nil
+	}
 	// because we opened the image, there is at least one watcher
-	return len(watchers) != 1, nil
+	return len(watchers) != defaultWatchers, nil
 }
 
 // addRbdManagerTask adds a ceph manager task to execute command
@@ -983,6 +990,14 @@ func (rv *rbdVolume) getImageInfo() error {
 		return err
 	}
 	rv.CreatedAt = protoTime
+
+	// TODO replica this with logic to get mirroring inforation once
+	// https://github.com/ceph/go-ceph/issues/379 is fixed
+	err = rv.updateVolWithImageInfo(rv.conn.Creds)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1004,6 +1019,51 @@ func getImageNamesFromPattern(ioctx *rados.IOContext, pattern string) ([]string,
 		}
 	}
 	return foundImages, nil
+}
+
+// imageInfo strongly typed JSON spec for image info.
+type imageInfo struct {
+	Mirroring mirroring `json:"mirroring"`
+}
+
+// parentInfo  spec for parent volume  info.
+type mirroring struct {
+	Mode     string `json:"mode"`
+	State    string `json:"state"`
+	GlobalID string `json:"global_id"`
+	Primary  bool   `json:"primary"`
+}
+
+// updateVolWithImageInfo updates provided rbdVolume with information from on-disk data
+// regarding the same.
+func (rv *rbdVolume) updateVolWithImageInfo(cr *util.Credentials) error {
+	// rbd --format=json info [image-spec | snap-spec]
+	var imgInfo imageInfo
+
+	stdout, stderr, err := util.ExecCommand(
+		context.TODO(),
+		"rbd",
+		"-m", rv.Monitors,
+		"--id", cr.ID,
+		"--keyfile="+cr.KeyFile,
+		"-c", util.CephConfigPath,
+		"--format="+"json",
+		"info", rv.String())
+	if err != nil {
+		if strings.Contains(stderr, "rbd: error opening image "+rv.RbdImageName+
+			": (2) No such file or directory") {
+			return util.JoinErrors(ErrImageNotFound, err)
+		}
+		return err
+	}
+
+	err = json.Unmarshal([]byte(stdout), &imgInfo)
+	if err != nil {
+		return fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s", err, stdout)
+	}
+
+	rv.Primary = imgInfo.Mirroring.Primary
+	return nil
 }
 
 /*
