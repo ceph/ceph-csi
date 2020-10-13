@@ -12,11 +12,16 @@ Exit codes:
  0: success
  1: any unexpected failure
  2: --has-label=<label> was passed, <label> is not set on the PR
+
+Environment:
+ GITHUB_API_TOKEN: the GitHub "personal access token" to use
 '''
 
 import argparse
-import sys
+import os
 import requests
+from requests.auth import HTTPBasicAuth
+import sys
 
 LABEL_URL_FMT = 'https://api.github.com/repos/ceph/ceph-csi/issues/%s/labels'
 '''
@@ -32,7 +37,15 @@ def get_json_labels(gh_id):
     '''
     url = LABEL_URL_FMT % gh_id
     headers = {'Accept': 'application/vnd.github.v3+json'}
-    res = requests.get(url, headers=headers)
+
+    auth = None
+    if 'GITHUB_API_TOKEN' in os.environ:
+        github_api_token = os.environ['GITHUB_API_TOKEN']
+        if github_api_token != '':
+            # the username "unused" is not relevant, needs to be non-empty
+            auth = HTTPBasicAuth('unused', github_api_token)
+
+    res = requests.get(url, headers=headers, auth=auth)
 
     # if "res.status_code != requests.codes.ok", raise an exception
     res.raise_for_status()
