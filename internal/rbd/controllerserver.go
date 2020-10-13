@@ -189,7 +189,7 @@ func getGRPCErrorForCreateVolume(err error) error {
 }
 
 // validateRequestedVolumeSize validates the request volume size with the
-// source snapshot or volume size, if there is a size missmatch it returns an error.
+// source snapshot or volume size, if there is a size mismatches it returns an error.
 func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 	if rbdSnap != nil {
 		vol := generateVolFromSnap(rbdSnap)
@@ -204,12 +204,12 @@ func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnaps
 			return status.Error(codes.Internal, err.Error())
 		}
 		if rbdVol.VolSize != vol.VolSize {
-			return status.Errorf(codes.InvalidArgument, "size missmatch, requested volume size %d and source snapshot size %d", rbdVol.VolSize, vol.VolSize)
+			return status.Errorf(codes.InvalidArgument, "size mismatches, requested volume size %d and source snapshot size %d", rbdVol.VolSize, vol.VolSize)
 		}
 	}
 	if parentVol != nil {
 		if rbdVol.VolSize != parentVol.VolSize {
-			return status.Errorf(codes.InvalidArgument, "size missmatch, requested volume size %d and source volume size %d", rbdVol.VolSize, parentVol.VolSize)
+			return status.Errorf(codes.InvalidArgument, "size mismatches, requested volume size %d and source volume size %d", rbdVol.VolSize, parentVol.VolSize)
 		}
 	}
 	return nil
