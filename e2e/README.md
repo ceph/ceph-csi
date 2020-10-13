@@ -53,7 +53,7 @@ following environment variables can be exported to customize kubernetes deployme
 | MEMORY               | Amount of RAM allocated to the minikube VM in MB | 4096                                                               |
 | VM_DRIVER            | VM driver to create virtual machine              | virtualbox                                                         |
 | CEPHCSI_IMAGE_REPO   | Repo URL to pull cephcsi images                  | quay.io/cephcsi                                                    |
-| K8S_IMAGE_REPO       | Repo URL to pull kubernetes sidecar images       | quay.io/k8scsi                                                     |
+| K8S_IMAGE_REPO       | Repo URL to pull kubernetes sidecar images       | k8s.gcr.io/sig-storage                                             |
 | K8S_FEATURE_GATES    | Feature gates to enable on kubernetes cluster    | BlockVolume=true,CSIBlockVolume=true,VolumeSnapshotDataSource=true |
 | ROOK_BLOCK_POOL_NAME | Block pool name to create in the rook instance   | newrbdpool                                                         |
 
