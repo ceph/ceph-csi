@@ -205,7 +205,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				e2elog.Logf("Calculating checksum of %s", filePath)
 				checkSum, err = calculateSHA512sum(f, app, filePath, &opt)
 				if err != nil {
-					e2elog.Failf("failed to calculate checksum of %s", filePath)
+					e2elog.Failf("failed to calculate checksum with error %v", err)
 				}
 
 				// pvc clone is only supported from v1.16+
@@ -273,10 +273,9 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 					}
 					mountPath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath
 					testFilePath := filepath.Join(mountPath, "testClone")
-
 					newCheckSum, err = calculateSHA512sum(f, appClone, testFilePath, &opt)
 					if err != nil {
-						e2elog.Failf("failed to calculate checksum of %s", testFilePath)
+						e2elog.Failf("failed to calculate checksum with error %v", err)
 					}
 
 					if strings.Compare(newCheckSum, checkSum) != 0 {
@@ -337,7 +336,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 					testFilePath := filepath.Join(mountPath, "testClone")
 					newCheckSum, err = calculateSHA512sum(f, appClone, testFilePath, &opt)
 					if err != nil {
-						e2elog.Failf("failed to calculate checksum of %s", testFilePath)
+						e2elog.Failf("failed to calculate checksum with error %v", err)
 					}
 
 					if strings.Compare(newCheckSum, checkSum) != 0 {
