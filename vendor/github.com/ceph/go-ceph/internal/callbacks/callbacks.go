@@ -19,17 +19,17 @@ import (
 // to control and validate what "callbacks" get used.
 type Callbacks struct {
 	mutex sync.RWMutex
-	cmap  map[int]interface{}
+	cmap  map[uintptr]interface{}
 }
 
 // New returns a new callbacks tracker.
 func New() *Callbacks {
-	return &Callbacks{cmap: make(map[int]interface{})}
+	return &Callbacks{cmap: make(map[uintptr]interface{})}
 }
 
 // Add a callback/object to the tracker and return a new index
 // for the object.
-func (cb *Callbacks) Add(v interface{}) int {
+func (cb *Callbacks) Add(v interface{}) uintptr {
 	cb.mutex.Lock()
 	defer cb.mutex.Unlock()
 	// this approach assumes that there are typically very few callbacks
@@ -38,7 +38,7 @@ func (cb *Callbacks) Add(v interface{}) int {
 	// until we find a free key like in the cgo wiki page.
 	// If this code ever becomes a hot path there's surely plenty of room
 	// for optimization in the future :-)
-	index := len(cb.cmap) + 1
+	index := uintptr(len(cb.cmap) + 1)
 	for {
 		if _, found := cb.cmap[index]; !found {
 			break
@@ -50,14 +50,14 @@ func (cb *Callbacks) Add(v interface{}) int {
 }
 
 // Remove a callback/object given it's index.
-func (cb *Callbacks) Remove(index int) {
+func (cb *Callbacks) Remove(index uintptr) {
 	cb.mutex.Lock()
 	defer cb.mutex.Unlock()
 	delete(cb.cmap, index)
 }
 
 // Lookup returns a mapped callback/object given an index.
-func (cb *Callbacks) Lookup(index int) interface{} {
+func (cb *Callbacks) Lookup(index uintptr) interface{} {
 	cb.mutex.RLock()
 	defer cb.mutex.RUnlock()
 	return cb.cmap[index]

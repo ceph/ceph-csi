@@ -3,7 +3,7 @@ module github.com/ceph/ceph-csi
 go 1.13
 
 require (
-	github.com/ceph/go-ceph v0.5.0
+	github.com/ceph/go-ceph v0.6.0
 	github.com/container-storage-interface/spec v1.3.0
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect

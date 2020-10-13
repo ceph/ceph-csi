@@ -9,18 +9,6 @@ package rbd
 #include <rbd/librbd.h>
 
 extern void imageWatchCallback(void *);
-
-// cgo has trouble converting the types of the callback and data arg defined in
-// librbd header. It wants the callback function to be a byte pointer and
-// the arg to be a pointer, which is pretty much the opposite of what we
-// actually want. This shim exists to help coerce the auto-type-conversion
-// to do the right thing for us.
-static inline int wrap_rbd_update_watch(
-			rbd_image_t image,
-			uint64_t *handle,
-			uintptr_t index) {
-	return rbd_update_watch(image, handle, imageWatchCallback, (void*)index);
-}
 */
 import "C"
 
@@ -28,6 +16,7 @@ import (
 	"unsafe"
 
 	"github.com/ceph/go-ceph/internal/callbacks"
+	"github.com/ceph/go-ceph/internal/cutil"
 	"github.com/ceph/go-ceph/internal/retry"
 )
 
@@ -95,7 +84,7 @@ type Watch struct {
 	image   *Image
 	wcc     watchCallbackCtx
 	handle  C.uint64_t
-	cbIndex int
+	cbIndex uintptr
 }
 
 // UpdateWatch updates the image object to watch metadata changes to the
@@ -118,10 +107,11 @@ func (image *Image) UpdateWatch(cb WatchCallback, data interface{}) (*Watch, err
 		cbIndex: watchCallbacks.Add(wcc),
 	}
 
-	ret := C.wrap_rbd_update_watch(
+	ret := C.rbd_update_watch(
 		image.image,
 		&w.handle,
-		C.uintptr_t(w.cbIndex))
+		C.rbd_update_callback_t(C.imageWatchCallback),
+		cutil.VoidPtr(w.cbIndex))
 	if ret != 0 {
 		return nil, getError(ret)
 	}
@@ -146,7 +136,7 @@ func (w *Watch) Unwatch() error {
 
 //export imageWatchCallback
 func imageWatchCallback(index unsafe.Pointer) {
-	v := watchCallbacks.Lookup(int(uintptr(index)))
+	v := watchCallbacks.Lookup(uintptr(index))
 	wcc := v.(watchCallbackCtx)
 	wcc.callback(wcc.data)
 }

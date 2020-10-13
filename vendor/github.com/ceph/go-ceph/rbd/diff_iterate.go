@@ -7,18 +7,8 @@ package rbd
 #include <stdlib.h>
 #include <rbd/librbd.h>
 
+typedef int (*diff_iterate_callback_t)(uint64_t, size_t, int, void *);
 extern int diffIterateCallback(uint64_t, size_t, int, void *);
-
-// cgo is having trouble converting the callback from the librbd header
-// to a unsafe.Pointer. This shim exists solely to help it along.
-static inline int wrap_rbd_diff_iterate2(
-			rbd_image_t image,
-			const char *fromsnapname,
-			uint64_t ofs, uint64_t len,
-			uint8_t include_parent, uint8_t whole_object,
-			uintptr_t index) {
-	return rbd_diff_iterate2(image, fromsnapname, ofs, len, include_parent, whole_object, diffIterateCallback, (void*)index);
-}
 */
 import "C"
 
@@ -26,6 +16,7 @@ import (
 	"unsafe"
 
 	"github.com/ceph/go-ceph/internal/callbacks"
+	"github.com/ceph/go-ceph/internal/cutil"
 )
 
 var diffIterateCallbacks = callbacks.New()
@@ -110,14 +101,15 @@ func (image *Image) DiffIterate(config DiffIterateConfig) error {
 	cbIndex := diffIterateCallbacks.Add(config)
 	defer diffIterateCallbacks.Remove(cbIndex)
 
-	ret := C.wrap_rbd_diff_iterate2(
+	ret := C.rbd_diff_iterate2(
 		image.image,
 		cSnapName,
 		C.uint64_t(config.Offset),
 		C.uint64_t(config.Length),
 		C.uint8_t(config.IncludeParent),
 		C.uint8_t(config.WholeObject),
-		C.uintptr_t(cbIndex))
+		C.diff_iterate_callback_t(C.diffIterateCallback),
+		cutil.VoidPtr(cbIndex))
 
 	return getError(ret)
 }
@@ -126,7 +118,7 @@ func (image *Image) DiffIterate(config DiffIterateConfig) error {
 func diffIterateCallback(
 	offset C.uint64_t, length C.size_t, exists C.int, index unsafe.Pointer) C.int {
 
-	v := diffIterateCallbacks.Lookup(int(uintptr(index)))
+	v := diffIterateCallbacks.Lookup(uintptr(index))
 	config := v.(DiffIterateConfig)
 	return C.int(config.Callback(
 		uint64(offset), uint64(length), int(exists), config.Data))
