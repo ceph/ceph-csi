@@ -206,10 +206,6 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 		}
 	}
 
-	if err != nil {
-		return false, err
-	}
-
 	util.DebugLog(ctx, "found existing image (%s) with name (%s) for request (%s)",
 		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 	return true, nil
