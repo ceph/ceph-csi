@@ -59,14 +59,26 @@ following environment variables can be exported to customize kubernetes deployme
 
 - creating kubernetes  cluster
 
-```console
-$./minikube.sh up
-```
+    From the ceph-csi root directory, run:
+
+    ```console
+    ./scripts/minikube.sh up
+    ```
 
 - Teardown kubernetes cluster
 
+    ```console
+    ./scripts/minikube.sh clean
+    ```
+
+## Deploy Rook
+
+The cephcsi E2E tests expects that you already have rook running in your cluster.
+
+Thanks to [minikube](../scripts/minikube.sh) script for the handy `deploy-rook` option.
+
 ```console
-$./minikube.sh clean
+./scripts/minikube.sh deploy-rook
 ```
 
 ## Test parameters
@@ -100,13 +112,13 @@ is greater than or equal to 1.17.0.
   - Check if you have any `v1alpha1` CRD created in our Kubernetes cluster
 
       ```bash
-      [$]kubectl get crd volumesnapshotclasses.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+      $ kubectl get crd volumesnapshotclasses.snapshot.storage.k8s.io -o yaml |grep v1alpha1
         - name: v1alpha1
         - v1alpha1
-      [$]kubectl get crd volumesnapshotcontents.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+      $ kubectl get crd volumesnapshotcontents.snapshot.storage.k8s.io -o yaml |grep v1alpha1
         - name: v1alpha1
         - v1alpha1
-      [$]kubectl get crd volumesnapshots.snapshot.storage.k8s.io -o yaml |grep v1alpha1
+      $ kubectl get crd volumesnapshots.snapshot.storage.k8s.io -o yaml |grep v1alpha1
         - name: v1alpha1
         - v1alpha1
       ```
@@ -115,20 +127,20 @@ is greater than or equal to 1.17.0.
     should be `v1beta1`
 
     ```console
-    $./install-snapshot.sh delete-crd
+    ./scripts/install-snapshot.sh delete-crd
     ```
 
 - Install snapshot controller and Beta snapshot CRD
 
     ```console
-    $./install-snapshot.sh install
+    ./scripts/install-snapshot.sh install
     ```
 
-Once you are done running e2e please perform the cleanup by running following:
+    Once you are done running e2e please perform the cleanup by running following:
 
-```console
-    $./install-snapshot.sh cleanup
-```
+    ```console
+    ./scripts/install-snapshot.sh cleanup
+    ```
 
 ## Running E2E
 
@@ -140,12 +152,12 @@ cluster or you can pass `kubeconfig`flag while running tests.
 
 Functional tests are run by the `go test` command.
 
- ```console
- $go test ./e2e/ -timeout=20m -v -mod=vendor
- ```
+```console
+go test ./e2e/ -timeout=20m -v -mod=vendor
+```
 
-Functional  tests can be invoked by `make` command
+You can also invoke functional tests with `make` command
 
 ```console
-$make func-test TESTOPTIONS="--deploy-timeout=10  -timeout=30m -v"
+make func-test TESTOPTIONS="-deploy-timeout=10 -timeout=30m -v"
 ```
