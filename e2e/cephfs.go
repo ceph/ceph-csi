@@ -682,7 +682,13 @@ var _ = Describe("cephfs", func() {
 
 					app.Namespace = f.UniqueName
 					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-					wErr := writeDataInPod(app, f)
+					label := make(map[string]string)
+					label[appKey] = appLabel
+					app.Labels = label
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+					}
+					wErr := writeDataInPod(app, &opt, f)
 					if wErr != nil {
 						e2elog.Failf("failed to  write data  with error %v", wErr)
 					}
@@ -893,7 +899,13 @@ var _ = Describe("cephfs", func() {
 					}
 					app.Namespace = f.UniqueName
 					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-					wErr := writeDataInPod(app, f)
+					label := make(map[string]string)
+					label[appKey] = appLabel
+					app.Labels = label
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+					}
+					wErr := writeDataInPod(app, &opt, f)
 					if wErr != nil {
 						e2elog.Failf("failed to write data from application %v", wErr)
 					}

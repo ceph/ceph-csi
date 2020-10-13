@@ -34,6 +34,9 @@ const (
 	retainPolicy = v1.PersistentVolumeReclaimRetain
 	// deletePolicy is the default policy in E2E.
 	deletePolicy = v1.PersistentVolumeReclaimDelete
+	// Default key and label for Listoptions
+	appKey   = "app"
+	appLabel = "write-data-in-pod"
 )
 
 var (
@@ -294,22 +297,19 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 }
 
 // writeDataInPod fill zero content to a file in the provided POD volume.
-func writeDataInPod(app *v1.Pod, f *framework.Framework) error {
-	app.Labels = map[string]string{"app": "write-data-in-pod"}
+func writeDataInPod(app *v1.Pod, opt *metav1.ListOptions, f *framework.Framework) error {
 	app.Namespace = f.UniqueName
 
 	err := createApp(f.ClientSet, app, deployTimeout)
 	if err != nil {
 		return err
 	}
-	opt := metav1.ListOptions{
-		LabelSelector: "app=write-data-in-pod",
-	}
+
 	// write data to PVC. The idea here is to fill some content in the file
 	// instead of filling and reverifying the md5sum/data integrity
 	filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 	// While writing more data we are encountering issues in E2E timeout, so keeping it low for now
-	_, writeErr, err := execCommandInPod(f, fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10 status=none", filePath), app.Namespace, &opt)
+	_, writeErr, err := execCommandInPod(f, fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10 status=none", filePath), app.Namespace, opt)
 	if err != nil {
 		return err
 	}
@@ -471,19 +471,67 @@ func enableTopologyInTemplate(data string) string {
 	return strings.ReplaceAll(data, "--feature-gates=Topology=false", "--feature-gates=Topology=true")
 }
 
-func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *framework.Framework) {
+func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.Framework) (string, error) {
+	filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+	// write data in PVC
+	err := writeDataInPod(app, opt, f)
+	if err != nil {
+		e2elog.Logf("failed to write data in the pod with error %v", err)
+		return "", err
+	}
+
+	checkSum, err := calculateSHA512sum(f, app, filePath, opt)
+	if err != nil {
+		e2elog.Logf("failed to calculate checksum with error %v", err)
+		return checkSum, err
+	}
+
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		e2elog.Failf("failed to delete pod with error %v", err)
+	}
+	return checkSum, nil
+}
+
+// nolint:gocyclo // reduce complexity
+func validatePVCClone(sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string, f *framework.Framework) {
 	var wg sync.WaitGroup
 	totalCount := 10
 	wgErrs := make([]error, totalCount)
+	chErrs := make([]error, totalCount)
 	pvc, err := loadPVC(sourcePvcPath)
 	if err != nil {
 		e2elog.Failf("failed to load PVC with error %v", err)
 	}
 
+	label := make(map[string]string)
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to create PVC with error %v", err)
+	}
+	app, err := loadApp(sourceAppPath)
+	if err != nil {
+		e2elog.Failf("failed to load app with error %v", err)
+	}
+	label[appKey] = appLabel
+	app.Namespace = f.UniqueName
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	app.Labels = label
+	opt := metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+	}
+
+	checkSum := ""
+	pvc, err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
+	if err != nil {
+		e2elog.Failf("failed to get pvc %v", err)
+	}
+	if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem {
+		checkSum, err = writeDataAndCalChecksum(app, &opt, f)
+		if err != nil {
+			e2elog.Failf("failed to calculate checksum with error %v", err)
+		}
 	}
 	// validate created backend rbd images
 	validateRBDImageCount(f, 1)
@@ -503,7 +551,26 @@ func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *fr
 	for i := 0; i < totalCount; i++ {
 		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			label := make(map[string]string)
+			label[appKey] = name
+			a.Labels = label
+			opt := metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+			}
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+			if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem && wgErrs[n] == nil {
+				filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+				checkSumClone := ""
+				e2elog.Logf("Calculating checksum clone for filepath %s", filePath)
+				checkSumClone, chErrs[n] = calculateSHA512sum(f, &a, filePath, &opt)
+				e2elog.Logf("checksum for clone is %s", checkSumClone)
+				if chErrs[n] != nil {
+					e2elog.Logf("Failed calculating checksum clone %s", chErrs[n])
+				}
+				if checkSumClone != checkSum {
+					e2elog.Logf("checksum didn't match. checksum=%s and checksumclone=%s", checkSum, checkSumClone)
+				}
+			}
 			w.Done()
 		}(&wg, i, *pvcClone, *appClone)
 	}
@@ -519,6 +586,17 @@ func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *fr
 	}
 	if failed != 0 {
 		e2elog.Failf("creating PVCs failed, %d errors were logged", failed)
+	}
+
+	for i, err := range chErrs {
+		if err != nil {
+			// not using Failf() as it aborts the test and does not log other errors
+			e2elog.Logf("failed to calculate checksum (%s%d): %v", f.UniqueName, i, err)
+			failed++
+		}
+	}
+	if failed != 0 {
+		e2elog.Failf("calculating checksum failed, %d errors were logged", failed)
 	}
 
 	// total images in cluster is 1 parent rbd image+ total
