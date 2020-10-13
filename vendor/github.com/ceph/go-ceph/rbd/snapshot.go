@@ -7,6 +7,8 @@ import "C"
 
 import (
 	"unsafe"
+
+	ts "github.com/ceph/go-ceph/internal/timespec"
 )
 
 // Snapshot represents a snapshot on a particular rbd image.
@@ -159,4 +161,26 @@ func (snapshot *Snapshot) Set() error {
 	defer C.free(unsafe.Pointer(c_snapname))
 
 	return getError(C.rbd_snap_set(snapshot.image.image, c_snapname))
+}
+
+// GetSnapTimestamp returns the timestamp of a snapshot for an image.
+// For a non-existing snap ID, GetSnapTimestamp() may trigger an assertion
+// and crash in the ceph library.
+// Check https://tracker.ceph.com/issues/47287 for details.
+//
+// Implements:
+//  int rbd_snap_get_timestamp(rbd_image_t image, uint64_t snap_id, struct timespec *timestamp)
+func (image *Image) GetSnapTimestamp(snapID uint64) (Timespec, error) {
+	if err := image.validate(imageIsOpen); err != nil {
+		return Timespec{}, err
+	}
+
+	var cts C.struct_timespec
+
+	ret := C.rbd_snap_get_timestamp(image.image, C.uint64_t(snapID), &cts)
+	if ret < 0 {
+		return Timespec{}, getError(ret)
+	}
+
+	return Timespec(ts.CStructToTimespec(ts.CTimespecPtr(&cts))), nil
 }

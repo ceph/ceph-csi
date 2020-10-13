@@ -101,3 +101,17 @@ func (image *Image) GetModifyTimestamp() (Timespec, error) {
 
 	return Timespec(ts.CStructToTimespec(ts.CTimespecPtr(&cts))), nil
 }
+
+// Sparsify makes an image sparse by deallocating runs of zeros.
+// The sparseSize value will be used to find runs of zeros and must be
+// a power of two no less than 4096 and no larger than the image size.
+//
+// Implements:
+//  int rbd_sparsify(rbd_image_t image, size_t sparse_size);
+func (image *Image) Sparsify(sparseSize uint) error {
+	if err := image.validate(imageIsOpen); err != nil {
+		return err
+	}
+
+	return getError(C.rbd_sparsify(image.image, C.size_t(sparseSize)))
+}

@@ -65,6 +65,60 @@ func (image *Image) GetParentInfo(pool, name, snapname []byte) error {
 	return nil
 }
 
+// ImageSpec represents the image information.
+type ImageSpec struct {
+	ImageName string
+	PoolName  string
+}
+
+// SnapSpec represents the snapshot infomation.
+type SnapSpec struct {
+	ID       uint64
+	SnapName string
+}
+
+// ParentInfo represents the parent image and the parent snapshot information.
+type ParentInfo struct {
+	Image ImageSpec
+	Snap  SnapSpec
+}
+
+// GetParent looks for the parent of the image and returns the parent image
+// information which includes the image name, the pool name and
+// the snapshot information.
+//
+// Implements:
+// int rbd_get_parent(rbd_image_t image, rbd_linked_image_spec_t *parent_image, rbd_snap_spec_t *parent_snap)
+func (image *Image) GetParent() (*ParentInfo, error) {
+	if err := image.validate(imageIsOpen); err != nil {
+		return nil, err
+	}
+
+	parentImage := C.rbd_linked_image_spec_t{}
+	parentSnap := C.rbd_snap_spec_t{}
+	ret := C.rbd_get_parent(image.image, &parentImage, &parentSnap)
+	if ret != 0 {
+		return nil, getError(ret)
+	}
+	defer C.rbd_linked_image_spec_cleanup(&parentImage)
+	defer C.rbd_snap_spec_cleanup(&parentSnap)
+
+	imageSpec := ImageSpec{
+		ImageName: C.GoString(parentImage.image_name),
+		PoolName:  C.GoString(parentImage.pool_name),
+	}
+
+	snapSpec := SnapSpec{
+		ID:       uint64(parentSnap.id),
+		SnapName: C.GoString(parentSnap.name),
+	}
+
+	return &ParentInfo{
+		Image: imageSpec,
+		Snap:  snapSpec,
+	}, nil
+}
+
 // ListChildren returns arrays with the pools and names of the images that are
 // children of the given image. The index of the pools and images arrays can be
 // used to link the two items together.
@@ -103,4 +157,18 @@ func (image *Image) ListChildren() (pools []string, images []string, err error) 
 		images[i] = C.GoString(child.image_name)
 	}
 	return pools, images, nil
+}
+
+// SetSnapByID updates the rbd image (not the Snapshot) such that the snapshot
+// is the source of readable data.
+//
+// Implements:
+//  int rbd_snap_set_by_id(rbd_image_t image, uint64_t snap_id);
+func (image *Image) SetSnapByID(snapID uint64) error {
+	if err := image.validate(imageIsOpen); err != nil {
+		return err
+	}
+
+	ret := C.rbd_snap_set_by_id(image.image, C.uint64_t(snapID))
+	return getError(ret)
 }
