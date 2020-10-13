@@ -19,6 +19,25 @@
   be a `volumesnapshotclass` object present in the cluster
   for snapshot request to be satisified.
 
+  - To install snapshot controller and CRD
+
+    ```console
+    $./scripts/install-snapshot.sh install
+    ```
+
+    To install from specific external-snapshotter version, you can leverage
+    `SNAPSHOT_VERSION` variable, for example:
+
+    ```console
+    $SNAPSHOT_VERSION="v3.0.1" ./scripts/install-snapshot.sh install
+    ```
+
+  - In the future, you can choose to cleanup by running
+
+    ```console
+    $./scripts/install-snapshot.sh cleanup
+    ```
+
 **NOTE: At present, there is a limit of 400 snapshots per cephFS filesystem.
 Also PVC cannot be deleted if it's having snapshots. Make sure all the snapshots
 on the PVC are deleted before you delete the PVC.**
