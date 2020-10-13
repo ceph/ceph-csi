@@ -25,6 +25,10 @@ def get_json_releases():
     '''
     headers = {'Accept': 'application/vnd.github.v3+json'}
     res = requests.get(RELEASE_URL, headers=headers)
+
+    # if "res.status_code != requests.codes.ok", raise an exception
+    res.raise_for_status()
+
     return res.json()
 
 
@@ -47,7 +51,12 @@ def main():
     args = parser.parse_args()
 
     # get all the releases
-    json = get_json_releases()
+    try:
+        json = get_json_releases()
+    except Exception as err:
+        print('Error: %s' % err)
+        sys.exit(1)
+
     releases = get_releases(json)
 
     # in case --version is passed, exit with 0 or 1

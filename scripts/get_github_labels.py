@@ -4,9 +4,14 @@ Fetches the labels of an Issue or Pull-Request from GitHub.
 
 Parameters:
  --id=<id>: the number of the the GitHub Issue or Pull-Request
- --has-label=<label>: label to check (exit 0 if set, 1 unset), without
+ --has-label=<label>: label to check (exit 0 if set, 2 unset), without
                       --has-label, all labels of the Issue or Pull-Request
                       get printed.
+
+Exit codes:
+ 0: success
+ 1: any unexpected failure
+ 2: --has-label=<label> was passed, <label> is not set on the PR
 '''
 
 import argparse
@@ -28,6 +33,10 @@ def get_json_labels(gh_id):
     url = LABEL_URL_FMT % gh_id
     headers = {'Accept': 'application/vnd.github.v3+json'}
     res = requests.get(url, headers=headers)
+
+    # if "res.status_code != requests.codes.ok", raise an exception
+    res.raise_for_status()
+
     return res.json()
 
 
@@ -51,15 +60,20 @@ def main():
     args = parser.parse_args()
 
     # get the labels for the issue
-    json = get_json_labels(args.id)
+    try:
+        json = get_json_labels(args.id)
+    except Exception as err:
+        print('Error: %s' % err)
+        sys.exit(1)
+
     names = get_names(json)
 
-    # in case --has-label is passed, exit with 0 or 1
+    # in case --has-label is passed, exit with 0 or 2
     if args.has_label:
         if args.has_label in names:
             sys.exit(0)
         else:
-            sys.exit(1)
+            sys.exit(2)
     # --has-label was not passed, list all labels
     else:
         for name in names:
