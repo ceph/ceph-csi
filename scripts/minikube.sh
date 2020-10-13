@@ -249,6 +249,11 @@ deploy-rook)
     DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
     "$DIR"/rook.sh deploy
     ;;
+install-snapshotter)
+    echo "install snapshot controller"
+    DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+    "$DIR"/install-snapshot.sh install
+    ;;
 create-block-pool)
     echo "creating a block pool named $ROOK_BLOCK_POOL_NAME"
     DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -258,6 +263,11 @@ delete-block-pool)
     echo "deleting block pool named $ROOK_BLOCK_POOL_NAME"
     DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
     "$DIR"/rook.sh delete-block-pool
+    ;;
+cleanup-snapshotter)
+    echo "cleanup snapshot controller"
+    DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+    "$DIR"/install-snapshot.sh cleanup
     ;;
 teardown-rook)
     echo "teardown rook"
@@ -286,16 +296,18 @@ clean)
 *)
     echo " $0 [command]
 Available Commands:
-  up                Starts a local kubernetes cluster and prepare disk for rook
-  down              Stops a running local kubernetes cluster
-  clean             Deletes a local kubernetes cluster
-  ssh               Log into or run a command on a minikube machine with SSH
-  deploy-rook       Deploy rook to minikube
-  create-block-pool Creates a rook block pool (named $ROOK_BLOCK_POOL_NAME)
-  delete-block-pool Deletes a rook block pool (named $ROOK_BLOCK_POOL_NAME)
-  teardown-rook     Teardown a rook from minikube
-  cephcsi           Copy built docker images to kubernetes cluster
-  k8s-sidecar       Copy kubernetes sidecar docker images to kubernetes cluster
+  up                   Starts a local kubernetes cluster and prepare disk for rook
+  down                 Stops a running local kubernetes cluster
+  clean                Deletes a local kubernetes cluster
+  ssh                  Log into or run a command on a minikube machine with SSH
+  deploy-rook          Deploy rook to minikube
+  install-snapshotter  Install snapshot controller
+  create-block-pool    Creates a rook block pool (named $ROOK_BLOCK_POOL_NAME)
+  delete-block-pool    Deletes a rook block pool (named $ROOK_BLOCK_POOL_NAME)
+  cleanup-snapshotter  Cleanup snapshot controller
+  teardown-rook        Teardown rook from minikube
+  cephcsi              Copy built docker images to kubernetes cluster
+  k8s-sidecar          Copy kubernetes sidecar docker images to kubernetes cluster
 " >&2
     ;;
 esac
