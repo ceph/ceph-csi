@@ -25,6 +25,10 @@ node('cico-workspace') {
 			skip_e2e = 1
 			return
 		}
+
+		// "github-api-token" is a secret text credential configured in Jenkins
+		env.GITHUB_API_TOKEN = credentials("github-api-token")
+
 		skip_e2e = sh(
 			script: "./scripts/get_github_labels.py --id=${ghprbPullId} --has-label=ci/skip/e2e",
 			returnStatus: true)
