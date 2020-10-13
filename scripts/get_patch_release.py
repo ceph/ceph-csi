@@ -5,11 +5,16 @@ release for a major version.
 
 Parameters:
  --version=<version>: the major version to find the latest patch release for, i.e. v1.19
+
+Environment:
+ GITHUB_API_TOKEN: the GitHub "personal access token" to use
 '''
 
 import argparse
-import sys
+import os
 import requests
+from requests.auth import HTTPBasicAuth
+import sys
 
 RELEASE_URL = 'https://api.github.com/repos/kubernetes/kubernetes/releases'
 '''
@@ -24,6 +29,14 @@ def get_json_releases():
     obtained.
     '''
     headers = {'Accept': 'application/vnd.github.v3+json'}
+
+    auth = None
+    if 'GITHUB_API_TOKEN' in os.environ:
+        github_api_token = os.environ['GITHUB_API_TOKEN']
+        if github_api_token != '':
+            # the username "unused" is not relevant, needs to be non-empty
+            auth = HTTPBasicAuth('unused', github_api_token)
+
     res = requests.get(RELEASE_URL, headers=headers)
 
     # if "res.status_code != requests.codes.ok", raise an exception
