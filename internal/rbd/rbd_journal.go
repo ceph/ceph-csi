@@ -306,10 +306,6 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 			return false, err
 		}
 	}
-	if err != nil {
-		util.ErrorLog(ctx, "failed to get stored image id: %v", err)
-		return false, err
-	}
 
 	// size checks
 	if rv.VolSize < requestSize {
