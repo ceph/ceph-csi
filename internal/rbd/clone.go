@@ -244,10 +244,8 @@ func (rv *rbdVolume) flattenCloneImage(ctx context.Context) error {
 	if err == nil {
 		return tempClone.flattenRbdImage(ctx, tempClone.conn.Creds, false, hardLimit, softLimit)
 	}
-	if err != nil {
-		if !errors.Is(err, ErrImageNotFound) {
-			return err
-		}
+	if !errors.Is(err, ErrImageNotFound) {
+		return err
 	}
 	return rv.flattenRbdImage(ctx, rv.conn.Creds, false, hardLimit, softLimit)
 }
