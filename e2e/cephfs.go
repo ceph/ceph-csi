@@ -425,13 +425,8 @@ var _ = Describe("cephfs", func() {
 			})
 
 			By("Resize PVC and check application directory size", func() {
-				v, err := f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error with error %v", err)
-				}
-
 				// Resize 0.3.0 is only supported from v1.15+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "15") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 15) {
 					err := resizePVCAndValidateSize(pvcPath, appPath, f)
 					if err != nil {
 						e2elog.Failf("failed to resize PVC with error %v", err)
@@ -483,19 +478,15 @@ var _ = Describe("cephfs", func() {
 			})
 
 			By("create a PVC clone and bind it to an app", func() {
-				v, err := f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error with error %v", err)
-				}
 				// snapshot beta is only supported from v1.17+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
 					var wg sync.WaitGroup
 					totalCount := 3
 					// totalSubvolumes represents the subvolumes in backend
 					// always totalCount+parentPVC
 					totalSubvolumes := totalCount + 1
 					wg.Add(totalCount)
-					err = createCephFSSnapshotClass(f)
+					err := createCephFSSnapshotClass(f)
 					if err != nil {
 						e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
 					}
@@ -643,12 +634,8 @@ var _ = Describe("cephfs", func() {
 			})
 
 			By("create a PVC-PVC clone and bind it to an app", func() {
-				v, err := f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error with error %v", err)
-				}
 				// pvc clone is only supported from v1.16+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
 					var wg sync.WaitGroup
 					totalCount := 3
 					// totalSubvolumes represents the subvolumes in backend
