@@ -23,21 +23,44 @@ returned releases from default 30 to 50 (max 100).
 '''
 
 
-def get_json_releases():
-    '''
-    Fetch the releases from GitHub, return the full JSON structures that were
-    obtained.
-    '''
-    headers = {'Accept': 'application/vnd.github.v3+json'}
+def log_rate_limit(res):
+    limit = -1
+    if 'X-Ratelimit-Limit' in res.headers:
+        limit = int(res.headers['X-Ratelimit-Limit'])
 
+    remaining = -1
+    if 'X-Ratelimit-Remaining' in res.headers:
+        remaining = int(res.headers['X-Ratelimit-Remaining'])
+
+    used = -1
+    if 'X-Ratelimit-Used' in res.headers:
+        used = int(res.headers['X-Ratelimit-Used'])
+
+    print('Rate limit (limit/used/remaining): %d/%d/%d' % (limit, used, remaining))
+
+
+def get_github_auth():
     auth = None
+
     if 'GITHUB_API_TOKEN' in os.environ:
         github_api_token = os.environ['GITHUB_API_TOKEN']
         if github_api_token != '':
             # the username "unused" is not relevant, needs to be non-empty
             auth = HTTPBasicAuth('unused', github_api_token)
 
-    res = requests.get(RELEASE_URL, headers=headers)
+    return auth
+
+
+def get_json_releases():
+    '''
+    Fetch the releases from GitHub, return the full JSON structures that were
+    obtained.
+    '''
+    headers = {'Accept': 'application/vnd.github.v3+json'}
+    res = requests.get(RELEASE_URL, headers=headers, auth=get_github_auth())
+
+    if res.status_code == 403:
+        log_rate_limit(res)
 
     # if "res.status_code != requests.codes.ok", raise an exception
     res.raise_for_status()
