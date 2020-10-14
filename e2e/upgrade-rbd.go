@@ -158,10 +158,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				var err error
 				label := make(map[string]string)
 				data := "check data persists"
-				v, err := f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error %v", err)
-				}
+
 				pvc, err = loadPVC(pvcPath)
 				if pvc == nil {
 					e2elog.Failf("failed to load pvc with error %v", err)
@@ -209,7 +206,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				}
 
 				// pvc clone is only supported from v1.16+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
 					// Create snapshot of the pvc
 					snapshotPath := rbdExamplePath + "snapshot.yaml"
 					snap := getSnapshot(snapshotPath)
@@ -246,12 +243,9 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				pvcClonePath := rbdExamplePath + "pvc-restore.yaml"
 				appClonePath := rbdExamplePath + "pod-restore.yaml"
 				label := make(map[string]string)
-				v, err := f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error %v", err)
-				}
+
 				// pvc clone is only supported from v1.16+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
 					pvcClone, err := loadPVC(pvcClonePath)
 					if err != nil {
 						e2elog.Failf("failed to load pvc with error %v", err)
@@ -298,12 +292,9 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				pvcSmartClonePath := rbdExamplePath + "pvc-clone.yaml"
 				appSmartClonePath := rbdExamplePath + "pod-clone.yaml"
 				label := make(map[string]string)
-				v, err := f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error %v", err)
-				}
+
 				// pvc clone is only supported from v1.16+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
 					pvcClone, err := loadPVC(pvcSmartClonePath)
 					if err != nil {
 						e2elog.Failf("failed to load pvc with error %v", err)
@@ -349,16 +340,14 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			By("Resize pvc and verify expansion", func() {
 				pvcExpandSize := "5Gi"
 				label := make(map[string]string)
-				v, err := f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error %v", err)
-				}
+
 				// Resize 0.3.0 is only supported from v1.15+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "15") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 15) {
 					label[appKey] = appLabel
 					opt := metav1.ListOptions{
 						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
 					}
+					var err error
 					pvc, err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 					if err != nil {
 						e2elog.Failf("failed to get pvc with error %v", err)
