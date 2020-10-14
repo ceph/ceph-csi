@@ -479,7 +479,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	err = j.StoreImageID(ctx, rbdVol.JournalPool, rbdVol.ReservedID, rbdVol.ImageID, cr)
+	err = j.StoreImageID(ctx, rbdVol.JournalPool, rbdVol.ReservedID, rbdVol.ImageID)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to reserve volume %s: %v", rbdVol, err)
 		return status.Error(codes.Internal, err.Error())
@@ -932,7 +932,7 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 	}
 	defer j.Destroy()
 
-	err = j.StoreImageID(ctx, rbdSnap.JournalPool, rbdSnap.ReservedID, cloneRbd.ImageID, cr)
+	err = j.StoreImageID(ctx, rbdSnap.JournalPool, rbdSnap.ReservedID, cloneRbd.ImageID)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to reserve volume id: %v", err)
 		return ready, cloneRbd, err
