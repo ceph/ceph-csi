@@ -568,3 +568,27 @@ func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *fr
 	wg.Wait()
 	validateRBDImageCount(f, 0)
 }
+
+// k8sVersionGreaterEquals checks the ServerVersion of the Kubernetes cluster
+// and compares it to the major.minor version passed. In case the version of
+// the cluster is equal or higher to major.minor, `true` is returned, `false`
+// otherwise.
+//
+// If fetching the ServerVersion of the Kubernetes cluster fails, the calling
+// test case is marked as `FAILED` and gets aborted.
+//
+// nolint:unparam // currently major is always 1, this can change in the future
+func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
+	v, err := c.Discovery().ServerVersion()
+	if err != nil {
+		e2elog.Failf("failed to get server version with error %v", err)
+		// Failf() marks the case as failure, and returns from the
+		// Go-routine that runs the case. This function will not have a
+		// return value.
+	}
+
+	maj := fmt.Sprintf("%d", major)
+	min := fmt.Sprintf("%d", minor)
+
+	return (v.Major > maj) || (v.Major == maj && v.Minor >= min)
+}
