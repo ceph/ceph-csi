@@ -11,7 +11,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/version"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -32,7 +31,6 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		checkSum string
 		// newCheckSum stores the md5sum of a file in the cloned pvc.
 		newCheckSum string
-		v           *version.Info
 	)
 	const (
 		pvcSize  = "2Gi"
@@ -142,10 +140,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				appPath := cephfsExamplePath + "pod.yaml"
 				data := "check data persists"
 				label := make(map[string]string)
-				v, err = f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error %v", err)
-				}
+
 				pvc, err = loadPVC(pvcPath)
 				if pvc == nil {
 					e2elog.Failf("failed to load pvc with error %v", err)
@@ -191,7 +186,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				}
 
 				// pvc clone is only supported from v1.16+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
 					// Create snapshot of the pvc
 					snapshotPath := cephfsExamplePath + "snapshot.yaml"
 					snap := getSnapshot(snapshotPath)
@@ -229,12 +224,9 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				pvcClonePath := cephfsExamplePath + "pvc-restore.yaml"
 				appClonePath := cephfsExamplePath + "pod-restore.yaml"
 				label := make(map[string]string)
-				v, err = f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error %v", err)
-				}
+
 				// pvc clone is only supported from v1.16+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "17") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
 					pvcClone, err = loadPVC(pvcClonePath)
 					if err != nil {
 						e2elog.Failf("failed to load pvc with error %v", err)
@@ -293,13 +285,9 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				pvcSmartClonePath := cephfsExamplePath + "pvc-clone.yaml"
 				appSmartClonePath := cephfsExamplePath + "pod-clone.yaml"
 				label := make(map[string]string)
-				v, err = f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error %v", err)
-					Fail(err.Error())
-				}
+
 				// pvc clone is only supported from v1.16+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
 					pvcClone, err = loadPVC(pvcSmartClonePath)
 					if err != nil {
 						e2elog.Failf("failed to load pvc with error %v", err)
@@ -344,15 +332,11 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 			})
 
 			By("Resize pvc and verify expansion", func() {
-				var v *version.Info
 				pvcExpandSize := "5Gi"
 				label := make(map[string]string)
-				v, err = f.ClientSet.Discovery().ServerVersion()
-				if err != nil {
-					e2elog.Failf("failed to get server version with error %v", err)
-				}
+
 				// Resize 0.3.0 is only supported from v1.15+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "15") {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 15) {
 					label[appKey] = appLabel
 					opt := metav1.ListOptions{
 						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
