@@ -1,7 +1,10 @@
 #!/usr/bin/python
 '''
 Fetches the Kubernetes releases from GitHub and returns the most recent patch
-release for a major version.
+release for a major version (like 1.19). In case the version that is passed
+contains the patch release already, the latest patch release will not be
+detected, but the passed version will be returned (enables forcing a particular
+version in CI jobs).
 
 Parameters:
  --version=<version>: the major version to find the latest patch release for, i.e. v1.19
@@ -100,6 +103,12 @@ def main():
         version = args.version
         if not version.startswith('v'):
             version = 'v' + version
+
+        # when version already contains the patch release, do not run any
+        # detection
+        if len(version.split('.')) >= 3:
+            print(version)
+            sys.exit(0)
 
         # releases are ordered from newest to oldest, so the 1st match is the
         # most current patch update
