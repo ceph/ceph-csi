@@ -38,7 +38,6 @@ func execCommandErr(ctx context.Context, program string, args ...string) error {
 	return err
 }
 
-// nolint:unparam //  todo:program values has to be revisited later
 func execCommandJSON(ctx context.Context, v interface{}, program string, args ...string) error {
 	stdout, _, err := util.ExecCommand(ctx, program, args...)
 	if err != nil {
