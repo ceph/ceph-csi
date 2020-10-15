@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -497,4 +498,73 @@ func addTopologyDomainsToDSYaml(template, labels string) string {
 func oneReplicaDeployYaml(template string) string {
 	var re = regexp.MustCompile(`(\s+replicas:) \d+`)
 	return re.ReplaceAllString(template, `$1 1`)
+}
+
+func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *framework.Framework) {
+	var wg sync.WaitGroup
+	totalCount := 10
+	pvc, err := loadPVC(sourcePvcPath)
+	if err != nil {
+		e2elog.Failf("failed to load PVC with error %v", err)
+	}
+
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		e2elog.Failf("failed to create PVC with error %v", err)
+	}
+	// validate created backend rbd images
+	validateRBDImageCount(f, 1)
+	pvcClone, err := loadPVC(clonePvcPath)
+	if err != nil {
+		e2elog.Failf("failed to load PVC with error %v", err)
+	}
+	pvcClone.Spec.DataSource.Name = pvc.Name
+	pvcClone.Namespace = f.UniqueName
+	appClone, err := loadApp(clonePvcAppPath)
+	if err != nil {
+		e2elog.Failf("failed to load application with error %v", err)
+	}
+	appClone.Namespace = f.UniqueName
+	wg.Add(totalCount)
+	// create clone and bind it to an app
+	for i := 0; i < totalCount; i++ {
+		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			err = createPVCAndApp(name, f, &p, &a, deployTimeout)
+			if err != nil {
+				e2elog.Failf("failed to create PVC with error %v", err)
+			}
+			w.Done()
+		}(&wg, i, *pvcClone, *appClone)
+	}
+	wg.Wait()
+
+	// total images in cluster is 1 parent rbd image+ total
+	// temporary clone+ total clones
+	totalCloneCount := totalCount + totalCount + 1
+	validateRBDImageCount(f, totalCloneCount)
+	// delete parent pvc
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		e2elog.Failf("failed to delete PVC with error %v", err)
+	}
+
+	totalCloneCount = totalCount + totalCount
+	validateRBDImageCount(f, totalCloneCount)
+	wg.Add(totalCount)
+	// delete clone and app
+	for i := 0; i < totalCount; i++ {
+		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			p.Spec.DataSource.Name = name
+			err = deletePVCAndApp(name, f, &p, &a)
+			if err != nil {
+				e2elog.Failf("failed to delete PVC and application with error %v", err)
+			}
+			w.Done()
+		}(&wg, i, *pvcClone, *appClone)
+	}
+	wg.Wait()
+	validateRBDImageCount(f, 0)
 }
