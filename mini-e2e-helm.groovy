@@ -17,6 +17,11 @@ def ssh(cmd) {
 }
 
 node('cico-workspace') {
+	environment {
+		// "github-api-token" is a secret text credential configured in Jenkins
+		GITHUB_API_TOKEN = credentials("github-api-token")
+	}
+
 	stage('checkout ci repository') {
 		git url: "${ci_git_repo}",
 			branch: "${ci_git_branch}",
@@ -24,11 +29,6 @@ node('cico-workspace') {
 	}
 
 	stage('skip ci/skip/e2e label') {
-		environment {
-			// "github-api-token" is a secret text credential configured in Jenkins
-			GITHUB_API_TOKEN = credentials("github-api-token")
-		}
-
 		if (params.ghprbPullId == null) {
 			skip_e2e = 1
 			return
