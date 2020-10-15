@@ -1,7 +1,7 @@
 ---
 - project:
     name: upgrade-tests
-    k8s_version: '1.18'
+    k8s_version: '1.18.9'
     test_type:
       - 'cephfs'
       - 'rbd'
