@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: block-pvc-clone
+spec:
+  storageClassName: csi-rbd-sc
+  volumeMode: Block
+  dataSource:
+    name: raw-block-pvc
+    kind: PersistentVolumeClaim
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
