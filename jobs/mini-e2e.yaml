@@ -3,7 +3,7 @@
     name: mini-e2e
     k8s_version:
       - '1.18'
-      - '1.19'
+      - '1.19.2'
     jobs:
       - 'mini-e2e_k8s-{k8s_version}'
       - 'mini-e2e-helm_k8s-{k8s_version}'
