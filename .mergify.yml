@@ -24,6 +24,12 @@ pull_request_rules:
       - "#changes-requested-reviews-by=0"
       - "status-success=continuous-integration/travis-ci/pr"
       - "status-success=ci/centos/containerized-tests"
+      - "status-success=ci/centos/mini-e2e-helm/k8s-1.19.2"
+      - "status-success=ci/centos/mini-e2e-helm/k8s-1.18.9"
+      - "status-success=ci/centos/mini-e2e/k8s-1.19.2"
+      - "status-success=ci/centos/mini-e2e/k8s-1.18.9"
+      - "status-success=ci/centos/upgrade-tests-cephfs"
+      - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
       merge:
