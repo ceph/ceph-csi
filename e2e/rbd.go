@@ -517,7 +517,7 @@ var _ = Describe("RBD", func() {
 				}
 				// pvc clone is only supported from v1.16+
 				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
-					validatePVCClone(pvcPath, pvcSmartClonePath, appSmartClonePath, f)
+					validatePVCClone(pvcPath, pvcSmartClonePath, appSmartClonePath, "", f)
 				}
 
 			})
@@ -535,7 +535,17 @@ var _ = Describe("RBD", func() {
 				}
 				// pvc clone is only supported from v1.16+
 				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
-					validatePVCClone(rawPvcPath, pvcBlockSmartClonePath, appBlockSmartClonePath, f)
+					validatePVCClone(rawPvcPath, pvcBlockSmartClonePath, appBlockSmartClonePath, "", f)
+				}
+			})
+			By("create a Block mode PVC-PVC clone and bind it to an app", func() {
+				v, err := f.ClientSet.Discovery().ServerVersion()
+				if err != nil {
+					e2elog.Failf("failed to get server version with error %v", err)
+				}
+				// pvc clone is only supported from v1.16+
+				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
+					validatePVCClone(rawPvcPath, pvcBlockSmartClonePath, appBlockSmartClonePath, "2", f)
 				}
 			})
 			By("create/delete multiple PVCs and Apps", func() {
