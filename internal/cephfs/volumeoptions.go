@@ -478,6 +478,19 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 		return &volOptions, nil, &sid, fmt.Errorf("failed to fetch subvolumegroup list using clusterID (%s): %w", vi.ClusterID, err)
 	}
 
+	err = volOptions.Connect(cr)
+	if err != nil {
+		return &volOptions, nil, &sid, err
+	}
+	// in case of an error, volOptions is returned, but callers may not
+	// expect to need to call Destroy() on it. So, make sure to release any
+	// resources that may have been allocated
+	defer func() {
+		if err != nil {
+			volOptions.Destroy()
+		}
+	}()
+
 	volOptions.FsName, err = volOptions.getFsName(ctx)
 	if err != nil {
 		return &volOptions, nil, &sid, err
