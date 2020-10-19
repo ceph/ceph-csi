@@ -186,10 +186,10 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		j, err2 := volJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
-		if err2 != nil {
-			util.ErrorLog(ctx, "failed to establish cluster connection: %v", err2)
-			return nil, status.Error(codes.Internal, err.Error())
+		j, connErr := volJournal.Connect(volOptions.Monitors, volOptions.RadosNamespace, cr)
+		if connErr != nil {
+			util.ErrorLog(ctx, "failed to establish cluster connection: %v", connErr)
+			return nil, status.Error(codes.Internal, connErr.Error())
 		}
 		defer j.Destroy()
 
