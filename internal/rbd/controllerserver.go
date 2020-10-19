@@ -90,7 +90,7 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	return nil
 }
 
-func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.CreateVolumeRequest) (*rbdVolume, error) {
+func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.CreateVolumeRequest) (*rbdVolume, bool, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
 	isMultiNode := false
@@ -107,13 +107,13 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 
 	// We want to fail early if the user is trying to create a RWX on a non-block type device
 	if isMultiNode && !isBlock {
-		return nil, status.Error(codes.InvalidArgument, "multi node access modes are only supported on rbd `block` type volumes")
+		return nil, isBlock, status.Error(codes.InvalidArgument, "multi node access modes are only supported on rbd `block` type volumes")
 	}
 
 	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
 	rbdVol, err := genVolFromVolumeOptions(ctx, req.GetParameters(), req.GetSecrets(), (isMultiNode && isBlock))
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, isBlock, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	rbdVol.RequestName = req.GetName()
@@ -134,12 +134,12 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 	// store topology information from the request
 	rbdVol.TopologyPools, rbdVol.TopologyRequirement, err = util.GetTopologyFromRequest(req)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, isBlock, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// NOTE: rbdVol does not contain VolID and RbdImageName populated, everything
 	// else is populated post create request parsing
-	return rbdVol, nil
+	return rbdVol, isBlock, nil
 }
 
 func buildCreateVolumeResponse(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume) (*csi.CreateVolumeResponse, error) {
