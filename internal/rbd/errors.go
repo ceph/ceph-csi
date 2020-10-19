@@ -32,6 +32,6 @@ var (
 	ErrInvalidVolID = errors.New("invalid VolumeID")
 	// ErrMissingStash is returned when the image metadata stash file is not found.
 	ErrMissingStash = errors.New("missing stash")
-	// ErrFlattenInProgress is returned when flatten is in progess for an image.
+	// ErrFlattenInProgress is returned when flatten is in progress for an image.
 	ErrFlattenInProgress = errors.New("flatten in progress")
 )
