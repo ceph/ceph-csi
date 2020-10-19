@@ -183,11 +183,13 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			// explictly
 			err = resizeVolume(ctx, volOptions, cr, volumeID(vID.FsSubvolName), volOptions.Size)
 			if err != nil {
-				if purgeErr := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, false); err != nil {
+				purgeErr := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, false)
+				if purgeErr != nil {
 					util.ErrorLog(ctx, "failed to delete volume %s: %v", requestName, purgeErr)
 					// All errors other than ErrVolumeNotFound should return an error back to the caller
 					if !errors.Is(purgeErr, ErrVolumeNotFound) {
 						return nil, status.Error(codes.Internal, purgeErr.Error())
+
 					}
 				}
 				errUndo := undoVolReservation(ctx, volOptions, *vID, secret)
