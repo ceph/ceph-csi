@@ -282,6 +282,13 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 	if err != nil {
 		return nil, nil, err
 	}
+	// in case of an error, volOptions is not returned, release any
+	// resources that may have been allocated
+	defer func() {
+		if err != nil {
+			volOptions.Destroy()
+		}
+	}()
 
 	volOptions.FsName, err = volOptions.getFsName(ctx)
 	if err != nil {
