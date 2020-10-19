@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -500,7 +502,7 @@ func oneReplicaDeployYaml(template string) string {
 	return re.ReplaceAllString(template, `$1 1`)
 }
 
-func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *framework.Framework) {
+func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath, biggerSizeStr string, f *framework.Framework) {
 	var wg sync.WaitGroup
 	totalCount := 10
 	pvc, err := loadPVC(sourcePvcPath)
@@ -516,6 +518,9 @@ func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *fr
 	// validate created backend rbd images
 	validateRBDImageCount(f, 1)
 	pvcClone, err := loadPVC(clonePvcPath)
+	if biggerSizeStr != "" {
+		pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(biggerSizeStr)
+	}
 	if err != nil {
 		e2elog.Failf("failed to load PVC with error %v", err)
 	}
