@@ -13,12 +13,12 @@ def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
 }
 
-node('cico-workspace') {
-	environment {
-		// "github-api-token" is a secret text credential configured in Jenkins
-		GITHUB_API_TOKEN = credentials("github-api-token")
-	}
+environment {
+	// "github-api-token" is a secret text credential configured in Jenkins
+	GITHUB_API_TOKEN = credentials("github-api-token")
+}
 
+node('cico-workspace') {
 	stage('checkout ci repository') {
 		git url: "${ci_git_repo}",
 			branch: "${ci_git_branch}",
