@@ -235,7 +235,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVol, err := cs.parseVolCreateRequest(ctx, req)
+	rbdVol, isBlock, err := cs.parseVolCreateRequest(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -304,6 +304,16 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			return nil, status.Error(codes.Aborted, err.Error())
 		}
 		return nil, err
+	}
+
+	// we have to resize the RBD volume with block mode request
+	if expansionRequired {
+		util.DebugLog(ctx, "\n requested volume size: %v is greater than the parent volume, increasing the size", newVolSize)
+		err := rbdVol.resize(newVolSize)
+		if err != nil {
+			util.ErrorLog(ctx, "failed to resize rbd image for Block Mode PVC: %s with error: %v", rbdVol, err)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	volumeContext := req.GetParameters()
