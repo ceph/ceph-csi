@@ -188,31 +188,37 @@ func getGRPCErrorForCreateVolume(err error) error {
 	return status.Error(codes.Internal, err.Error())
 }
 
-// validateRequestedVolumeSize validates the request volume size with the
-// source snapshot or volume size, if there is a size mismatches it returns an error.
-func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+// source snapshot or volume size, if there is a size missmatch and if the new volume is not block mode
+// it returns an error.
+func validateRequestedVolumeSize(rbdVol *rbdVolume, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials, isBlock bool) (bool, error) {
 	if rbdSnap != nil {
 		vol := generateVolFromSnap(rbdSnap)
 		err := vol.Connect(cr)
 		if err != nil {
-			return status.Error(codes.Internal, err.Error())
+			return false, status.Error(codes.Internal, err.Error())
 		}
 		defer vol.Destroy()
 
 		err = vol.getImageInfo()
 		if err != nil {
-			return status.Error(codes.Internal, err.Error())
+			return false, status.Error(codes.Internal, err.Error())
 		}
-		if rbdVol.VolSize != vol.VolSize {
-			return status.Errorf(codes.InvalidArgument, "size mismatches, requested volume size %d and source snapshot size %d", rbdVol.VolSize, vol.VolSize)
+		if rbdVol.VolSize > vol.VolSize {
+			if isBlock {
+				return true, nil
+			}
+			return false, status.Error(codes.InvalidArgument, "requested volume size is more than parent volume size for filesystem mode PVC")
 		}
 	}
 	if parentVol != nil {
-		if rbdVol.VolSize != parentVol.VolSize {
-			return status.Errorf(codes.InvalidArgument, "size mismatches, requested volume size %d and source volume size %d", rbdVol.VolSize, parentVol.VolSize)
+		if rbdVol.VolSize > parentVol.VolSize {
+			if isBlock {
+				return true, nil
+			}
+			return false, status.Error(codes.InvalidArgument, "requested volume size is more than parent volume size for filesystem mode PVC")
 		}
 	}
-	return nil
+	return false, nil
 }
 
 // CreateVolume creates the volume in backend.
@@ -266,8 +272,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 		return buildCreateVolumeResponse(ctx, req, rbdVol)
 	}
-
-	err = validateRequestedVolumeSize(rbdVol, parentVol, rbdSnap, cr)
+	newVolSize := rbdVol.VolSize
+	expansionRequired, err := validateRequestedVolumeSize(rbdVol, parentVol, rbdSnap, cr, isBlock)
 	if err != nil {
 		return nil, err
 	}
