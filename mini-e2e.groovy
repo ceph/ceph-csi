@@ -13,11 +13,6 @@ def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
 }
 
-environment {
-	// "github-api-token" is a secret text credential configured in Jenkins
-	GITHUB_API_TOKEN = credentials("github-api-token")
-}
-
 node('cico-workspace') {
 	stage('checkout ci repository') {
 		git url: "${ci_git_repo}",
@@ -25,27 +20,30 @@ node('cico-workspace') {
 			changelog: false
 	}
 
-	stage('skip ci/skip/e2e label') {
-		if (params.ghprbPullId == null) {
-			skip_e2e = 1
+	// "github-api-token" is a secret text credential configured in Jenkins
+	withCredentials([string(credentialsId: 'github-api-token', variable: 'GITHUB_API_TOKEN')]) {
+		stage('skip ci/skip/e2e label') {
+			if (params.ghprbPullId == null) {
+				skip_e2e = 1
+				return
+			}
+
+			skip_e2e = sh(
+				script: "./scripts/get_github_labels.py --id=${ghprbPullId} --has-label=ci/skip/e2e",
+				returnStatus: true)
+		}
+		// if skip_e2e returned 0, do not run full tests
+		if (skip_e2e == 0) {
+			currentBuild.result = 'SUCCESS'
 			return
 		}
 
-		skip_e2e = sh(
-			script: "./scripts/get_github_labels.py --id=${ghprbPullId} --has-label=ci/skip/e2e",
-			returnStatus: true)
-	}
-	// if skip_e2e returned 0, do not run full tests
-	if (skip_e2e == 0) {
-		currentBuild.result = 'SUCCESS'
-		return
-	}
-
-	stage("detect k8s-${k8s_version} patch release") {
-		k8s_release = sh(
-			script: "./scripts/get_patch_release.py --version=${k8s_version}",
-			returnStdout: true).trim()
-		echo "detected Kubernetes patch release: ${k8s_release}"
+		stage("detect k8s-${k8s_version} patch release") {
+			k8s_release = sh(
+				script: "./scripts/get_patch_release.py --version=${k8s_version}",
+				returnStdout: true).trim()
+			echo "detected Kubernetes patch release: ${k8s_release}"
+		}
 	}
 
 	stage('checkout PR') {
