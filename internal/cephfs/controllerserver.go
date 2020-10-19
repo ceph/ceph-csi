@@ -373,8 +373,8 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
 	req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	// Cephfs doesn't support Block volume
-	for _, cap := range req.VolumeCapabilities {
-		if cap.GetBlock() != nil {
+	for _, capability := range req.VolumeCapabilities {
+		if capability.GetBlock() != nil {
 			return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
 		}
 	}
