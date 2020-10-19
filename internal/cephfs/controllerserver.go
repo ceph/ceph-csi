@@ -691,6 +691,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	defer volOpt.Destroy()
 
 	// safeguard against parallel create or delete requests against the same
 	// name
