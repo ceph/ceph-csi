@@ -41,6 +41,11 @@ csiConfig: []
 #     vaultCAVerify: "false"
 encryptionKMSConfig: {}
 
+# Set logging level for csi containers.
+# Supported values from 0 to 5. 0 for general useful logs,
+# 5 for trace level verbosity.
+logLevel: 5
+
 nodeplugin:
   name: nodeplugin
   # if you are using rbd-nbd client set this value to OnDelete

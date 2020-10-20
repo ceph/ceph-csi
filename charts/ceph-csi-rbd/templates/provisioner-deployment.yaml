@@ -48,7 +48,7 @@ spec:
           imagePullPolicy: {{ .Values.provisioner.provisioner.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
-            - "--v=5"
+            - "--v={{ .Values.logLevel }}"
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--enable-leader-election=true"
             - "--leader-election-type=leases"
@@ -69,7 +69,7 @@ spec:
           image: "{{ .Values.provisioner.resizer.image.repository }}:{{ .Values.provisioner.resizer.image.tag }}"
           imagePullPolicy: {{ .Values.provisioner.resizer.image.pullPolicy }}
           args:
-            - "--v=5"
+            - "--v={{ .Values.logLevel }}"
             - "--csi-address=$(ADDRESS)"
             - "--csiTimeout={{ .Values.provisioner.timeout }}"
             - "--leader-election"
@@ -88,7 +88,7 @@ spec:
           imagePullPolicy: {{ .Values.provisioner.snapshotter.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
-            - "--v=5"
+            - "--v={{ .Values.logLevel }}"
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election=true"
           env:
@@ -106,7 +106,7 @@ spec:
           image: "{{ .Values.provisioner.attacher.image.repository }}:{{ .Values.provisioner.attacher.image.tag }}"
           imagePullPolicy: {{ .Values.provisioner.attacher.image.pullPolicy }}
           args:
-            - "--v=5"
+            - "--v={{ .Values.logLevel }}"
             - "--csi-address=$(ADDRESS)"
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
@@ -128,7 +128,7 @@ spec:
             - "--controllerserver=true"
             - "--pidlimit=-1"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--v=5"
+            - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
             - "--rbdhardmaxclonedepth={{ .Values.provisioner.hardMaxCloneDepth }}"
             - "--rbdsoftmaxclonedepth={{ .Values.provisioner.softMaxCloneDepth }}"

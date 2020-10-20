@@ -42,7 +42,7 @@ spec:
           image: "{{ .Values.nodeplugin.registrar.image.repository }}:{{ .Values.nodeplugin.registrar.image.tag }}"
           imagePullPolicy: {{ .Values.nodeplugin.registrar.image.pullPolicy }}
           args:
-            - "--v=5"
+            - "--v={{ .Values.logLevel }}"
             - "--csi-address=/csi/{{ .Values.pluginSocketFile }}"
             - "--kubelet-registration-path={{ .Values.socketDir }}/{{ .Values.pluginSocketFile }}"
           env:
@@ -66,7 +66,7 @@ spec:
             - "--nodeserver=true"
             - "--pidlimit=-1"
             - "--endpoint=$(CSI_ENDPOINT)"
-            - "--v=5"
+            - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
 {{- if .Values.topology.enabled }}
             - "--domainlabels={{ .Values.topology.domainLabels | join "," }}"
