@@ -32,11 +32,6 @@ node('cico-workspace') {
 				script: "./scripts/get_github_labels.py --id=${ghprbPullId} --has-label=ci/skip/e2e",
 				returnStatus: true)
 		}
-		// if skip_e2e returned 0, do not run full tests
-		if (skip_e2e == 0) {
-			currentBuild.result = 'SUCCESS'
-			return
-		}
 
 		stage("detect k8s-${k8s_version} patch release") {
 			k8s_release = sh(
@@ -44,6 +39,12 @@ node('cico-workspace') {
 				returnStdout: true).trim()
 			echo "detected Kubernetes patch release: ${k8s_release}"
 		}
+	}
+
+	// if skip_e2e returned 0, do not run full tests
+	if (skip_e2e == 0) {
+		currentBuild.result = 'SUCCESS'
+		return
 	}
 
 	stage('checkout PR') {
