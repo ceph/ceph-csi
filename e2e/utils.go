@@ -98,7 +98,7 @@ func getSecret(path string) (v1.Secret, error) {
 }
 
 // updateSecretForEncryption is an hack to update the secrets created by rook to
-// include the encyption key
+// include the encryption key
 // TODO in cephcsi we need to create own users in ceph cluster and use it for E2E.
 func updateSecretForEncryption(c kubernetes.Interface) error {
 	secrets, err := c.CoreV1().Secrets(rookNamespace).Get(context.TODO(), rbdProvisionerSecretName, metav1.GetOptions{})
