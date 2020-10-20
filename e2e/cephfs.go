@@ -335,7 +335,7 @@ var _ = Describe("cephfs", func() {
 
 			By("create PVC, delete backing subvolume and check pv deletion", func() {
 				pvc, err := loadPVC(pvcPath)
-				if pvc == nil {
+				if err != nil {
 					e2elog.Failf("failed to load PVC with error %v", err)
 				}
 				pvc.Namespace = f.UniqueName
