@@ -65,13 +65,13 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 	size := "1Gi"
 	expandSize := "10Gi"
 	pvc, err := loadPVC(pvcPath)
-	if pvc == nil {
+	if err != nil {
 		return err
 	}
 	pvc.Namespace = f.UniqueName
 
 	resizePvc, err := loadPVC(pvcPath)
-	if resizePvc == nil {
+	if err != nil {
 		return err
 	}
 	resizePvc.Namespace = f.UniqueName

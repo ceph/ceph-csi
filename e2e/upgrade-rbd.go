@@ -160,7 +160,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				data := "check data persists"
 
 				pvc, err = loadPVC(pvcPath)
-				if pvc == nil {
+				if err != nil {
 					e2elog.Failf("failed to load pvc with error %v", err)
 				}
 				pvc.Namespace = f.UniqueName

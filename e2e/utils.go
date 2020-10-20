@@ -188,7 +188,7 @@ func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolu
 
 func createPVCAndAppBinding(pvcPath, appPath string, f *framework.Framework, pvcTimeout int) (*v1.PersistentVolumeClaim, *v1.Pod, error) {
 	pvc, err := loadPVC(pvcPath)
-	if pvc == nil {
+	if err != nil {
 		return nil, nil, err
 	}
 	pvc.Namespace = f.UniqueName
@@ -356,7 +356,7 @@ func writeDataInPod(app *v1.Pod, f *framework.Framework) error {
 func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	data := "checking data persist"
 	pvc, err := loadPVC(pvcPath)
-	if pvc == nil {
+	if err != nil {
 		return err
 	}
 
@@ -450,7 +450,7 @@ func pvcDeleteWhenPoolNotFound(pvcPath string, cephfs bool, f *framework.Framewo
 
 func checkMountOptions(pvcPath, appPath string, f *framework.Framework, mountFlags []string) error {
 	pvc, err := loadPVC(pvcPath)
-	if pvc == nil {
+	if err != nil {
 		return err
 	}
 

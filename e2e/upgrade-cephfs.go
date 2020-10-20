@@ -142,7 +142,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				label := make(map[string]string)
 
 				pvc, err = loadPVC(pvcPath)
-				if pvc == nil {
+				if err != nil {
 					e2elog.Failf("failed to load pvc with error %v", err)
 				}
 				pvc.Namespace = f.UniqueName
