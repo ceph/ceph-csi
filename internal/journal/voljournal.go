@@ -434,9 +434,12 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 	return err
 }
 
-// reserveOMapName creates an omap with passed in oMapNamePrefix and a generated <uuid>.
-// It ensures generated omap name does not already exist and if conflicts are detected, a set
-// number of retires with newer uuids are attempted before returning an error.
+// reserveOMapName creates an omap with passed in oMapNamePrefix and a
+// generated <uuid>. If the passed volUUID is not empty it will use it instead
+// of generating its own UUID and it will return an error immediately if omap
+// already exists.if the passed volUUID is empty It ensures generated omap name
+// does not already exist and if conflicts are detected, a set number of
+// retires with newer uuids are attempted before returning an error.
 func reserveOMapName(ctx context.Context, monitors string, cr *util.Credentials, pool, namespace, oMapNamePrefix, volUUID string) (string, error) {
 	var iterUUID string
 
@@ -489,8 +492,8 @@ Input arguments:
 	- namePrefix: Prefix to use when generating the image/subvolume name (suffix is an auto-genetated UUID)
 	- parentName: Name of the parent image/subvolume if reservation is for a snapshot (optional)
 	- kmsConf: Name of the key management service used to encrypt the image (optional)
-       - volUUID: UUID need to be reserved instead of auto-generating one (this is
-         useful for mirroring and metro-DR)
+        - volUUID: UUID need to be reserved instead of auto-generating one (this is
+          useful for mirroring and metro-DR)
 
 Return values:
 	- string: Contains the UUID that was reserved for the passed in reqName
@@ -688,4 +691,44 @@ func (conn *Connection) Destroy() {
 	// invalidate cluster connection metadata
 	conn.monitors = ""
 	conn.cr = nil
+}
+
+// CheckNewUUIDMapping checks is there any UUID mapping between old
+// volumeHandle and the newly generated volumeHandle.
+func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
+	journalPool, volumeHandle string) (string, error) {
+	var cj = conn.config
+
+	// check if request name is already part of the directory omap
+	fetchKeys := []string{
+		cj.csiNameKeyPrefix + volumeHandle,
+	}
+	values, err := getOMapValues(
+		ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
+		cj.commonPrefix, fetchKeys)
+	if err != nil {
+		if errors.Is(err, util.ErrKeyNotFound) || errors.Is(err, util.ErrPoolNotFound) {
+			// pool or omap (oid) was not present
+			// stop processing but without an error for no reservation exists
+			return "", nil
+		}
+		return "", err
+	}
+	return values[cj.csiNameKeyPrefix+volumeHandle], nil
+}
+
+// ReserveNewUUIDMapping creates the omap mapping between the oldVolumeHandle
+// and the newVolumeHandle. Incase of Async Mirroring the PV is statically
+// created it will have oldVolumeHandle,the volumeHandle is composed of
+// clusterID,PoolID etc. as the poolID and clusterID might be different at the
+// secondary cluster cephcsi will generate the new mapping and keep it for
+// internal reference.
+func (conn *Connection) ReserveNewUUIDMapping(ctx context.Context,
+	journalPool, oldVolumeHandle, newVolumeHandle string) error {
+	var cj = conn.config
+
+	setKeys := map[string]string{
+		cj.csiNameKeyPrefix + oldVolumeHandle: newVolumeHandle,
+	}
+	return setOMapKeys(ctx, conn, journalPool, cj.namespace, cj.csiDirectory, setKeys)
 }
