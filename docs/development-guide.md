@@ -257,3 +257,40 @@ The flow for getting a fix into a release branch is:
 1. If there are any conflicts you will need to resolve them by pulling the
    branch, resolving the conflicts and force push back the branch
 1. After the CI is green, the bot will automatically merge the backport PR.
+
+### Retriggering the CI Jobs
+
+The CI Jobs gets triggered automatically on these events, such as on
+opening fresh PRs, rebase of PRs and force pushing changes to existing PRs.
+
+Right now, we also have below commands to manually retrigger the CI jobs
+
+1. To retrigger all the CI jobs, comment the PR with command: `/retest all`
+
+   **Note**:
+
+   This will rerun all the jobs including the jobs which are already passed
+
+1. To retrigger a specific CI job, comment the PR with command: `/retest <job-name>`
+
+   example:
+
+   ```
+   /retest ci/centos/containerized-tests
+   ```
+
+**Caution**: Please do not retrigger the CI jobs without an understanding of
+             the root cause, because:
+
+* We may miss some of the important corner cases which are true negatives,
+  and hard to reproduce
+* Retriggering jobs for known failures can unnecessarily put CI resources
+  under pressure
+
+Hence it is recommended that you please go through the CI logs first, if you
+are certain about the flaky test failure behavior, then comment on the PR
+indicating the logs about a particular test that went flaky and use the
+appropriate command to retrigger the job[s].
+If you are uncertain about the CI failure, we prefer that you ping us on
+[Slack channel #ci](https://cephcsi.slack.com) with more details on
+failures before retriggering the jobs, we will be happy to help.
