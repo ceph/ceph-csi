@@ -31,7 +31,7 @@ node('cico-workspace') {
 	try {
 		stage('prepare bare-metal machine') {
 			if (params.ghprbPullId != null) {
-				ref = "pull/${ghprbPullId}/head"
+				ref = "pull/${ghprbPullId}/merge"
 			}
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh root@${CICO_NODE}:'
 			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${ci_git_repo} --ref=${ref} --history"
@@ -41,7 +41,7 @@ node('cico-workspace') {
 			if (params.ghprbTargetBranch != null) {
 				git_since = "origin/${ghprbTargetBranch}"
 			}
-			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test CONTAINER_CMD=podman TARGET=commitlint GIT_SINCE=${git_since} REBASE=1'"
+			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test CONTAINER_CMD=podman TARGET=commitlint GIT_SINCE=${git_since}'"
 		}
 	}
 
