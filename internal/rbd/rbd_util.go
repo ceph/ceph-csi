@@ -663,6 +663,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 		options map[string]string
 		vi      util.CSIIdentifier
 		rbdVol  *rbdVolume
+		err     error
 	)
 	options = make(map[string]string)
 
@@ -670,11 +671,13 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	//              Mounter, MultiNodeWritable
 	rbdVol = &rbdVolume{VolID: volumeID}
 
-	err := vi.DecomposeCSIID(rbdVol.VolID)
+	err = vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
 		return rbdVol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
 			ErrInvalidVolID, err, rbdVol.VolID)
 	}
+
+	// TODO check clusterID mapping exists
 
 	rbdVol.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdVol.ClusterID
@@ -684,17 +687,6 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 		util.ErrorLog(ctx, "failed getting mons (%s)", err)
 		return rbdVol, err
 	}
-
-	rbdVol.Pool, err = util.GetPoolName(rbdVol.Monitors, cr, vi.LocationID)
-	if err != nil {
-		return rbdVol, err
-	}
-
-	err = rbdVol.Connect(cr)
-	if err != nil {
-		return rbdVol, err
-	}
-	rbdVol.JournalPool = rbdVol.Pool
 
 	rbdVol.RadosNamespace, err = util.RadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
 	if err != nil {
@@ -706,6 +698,31 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 		return rbdVol, err
 	}
 	defer j.Destroy()
+
+	// check is there any volumeID mapping exists.
+	id, err := j.CheckNewUUIDMapping(ctx, rbdVol.JournalPool, volumeID)
+	if err != nil {
+		return rbdVol, fmt.Errorf("failed to get volume id %s mapping %w",
+			volumeID, err)
+	}
+	if id != "" {
+		rbdVol.VolID = id
+		err = vi.DecomposeCSIID(rbdVol.VolID)
+		if err != nil {
+			return rbdVol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
+				ErrInvalidVolID, err, rbdVol.VolID)
+		}
+	}
+	rbdVol.Pool, err = util.GetPoolName(rbdVol.Monitors, cr, vi.LocationID)
+	if err != nil {
+		return rbdVol, err
+	}
+
+	err = rbdVol.Connect(cr)
+	if err != nil {
+		return rbdVol, err
+	}
+	rbdVol.JournalPool = rbdVol.Pool
 
 	imageAttributes, err := j.GetImageAttributes(
 		ctx, rbdVol.Pool, vi.ObjectUUID, false)
@@ -982,10 +999,7 @@ type imageInfo struct {
 
 // parentInfo  spec for parent volume  info.
 type mirroring struct {
-	Mode     string `json:"mode"`
-	State    string `json:"state"`
-	GlobalID string `json:"global_id"`
-	Primary  bool   `json:"primary"`
+	Primary bool `json:"primary"`
 }
 
 // updateVolWithImageInfo updates provided rbdVolume with information from on-disk data

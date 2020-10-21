@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
@@ -464,5 +465,152 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 	err = j.UndoReservation(ctx, rbdVol.JournalPool, rbdVol.Pool,
 		rbdVol.RbdImageName, rbdVol.RequestName)
 
+	return err
+}
+
+// RegenerateJournal regenerates the omap data for the static volumes, the
+// input parameters imageName, volumeID, pool, journalPool, requestName will be
+// present in the PV.Spec.CSI object based on that we can regenerate the
+// complete omap mapping between imageName and volumeID.
+
+// RegenerateJournal performs below operations
+// Extract information from volumeID
+// Get pool ID from pool name
+// Extract uuid from volumeID
+// Reserve omap data
+// Generate new volume Handler
+// Create old volumeHandler to new handler mapping
+// The volume handler wont remain same as its contains poolID,clusterID etc
+// which are not same across clusters.
+func RegenerateJournal(imageName, volumeID, pool, journalPool, requestName string, cr *util.Credentials) error {
+	ctx := context.Background()
+	var (
+		options map[string]string
+		vi      util.CSIIdentifier
+		rbdVol  *rbdVolume
+	)
+
+	options = make(map[string]string)
+	rbdVol = &rbdVolume{VolID: volumeID}
+
+	err := vi.DecomposeCSIID(rbdVol.VolID)
+	if err != nil {
+		return fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
+			ErrInvalidVolID, err, rbdVol.VolID)
+	}
+
+	// TODO check clusterID mapping exists
+	rbdVol.ClusterID = vi.ClusterID
+	options["clusterID"] = rbdVol.ClusterID
+
+	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(options)
+	if err != nil {
+		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+		return err
+	}
+
+	rbdVol.Pool = pool
+	err = rbdVol.Connect(cr)
+	if err != nil {
+		return err
+	}
+	rbdVol.JournalPool = journalPool
+	if rbdVol.JournalPool == "" {
+		rbdVol.JournalPool = rbdVol.Pool
+	}
+	volJournal = journal.NewCSIVolumeJournal("default")
+	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
+	if err != nil {
+		return err
+	}
+	defer j.Destroy()
+
+	journalPoolID, imagePoolID, err := util.GetPoolIDs(ctx, rbdVol.Monitors, rbdVol.JournalPool, rbdVol.Pool, cr)
+	if err != nil {
+		return err
+	}
+
+	rbdVol.RequestName = requestName
+	// TODO add Nameprefix also
+
+	kmsID := ""
+	imageData, err := j.CheckReservation(
+		ctx, rbdVol.JournalPool, rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
+	if err != nil {
+		return err
+	}
+	if imageData != nil {
+		rbdVol.ReservedID = imageData.ImageUUID
+		rbdVol.ImageID = imageData.ImageAttributes.ImageID
+		if rbdVol.ImageID == "" {
+			err = rbdVol.getImageID()
+			if err != nil {
+				util.ErrorLog(ctx, "failed to get image id %s: %v", rbdVol, err)
+				return err
+			}
+			err = j.StoreImageID(ctx, rbdVol.JournalPool, rbdVol.ReservedID, rbdVol.ImageID)
+			if err != nil {
+				util.ErrorLog(ctx, "failed to store volume id %s: %v", rbdVol, err)
+				return err
+			}
+		}
+		err = rbdVol.addNewUUIDMapping(ctx, imagePoolID, j)
+		if err != nil {
+			util.ErrorLog(ctx, "failed to add UUID mapping %s: %v", rbdVol, err)
+			return err
+		}
+	}
+
+	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
+		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
+		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, vi.ObjectUUID)
+	if err != nil {
+		return err
+	}
+
+	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imagePoolID, rbdVol.Pool,
+		rbdVol.ClusterID, rbdVol.ReservedID, volIDVersion)
+	if err != nil {
+		return err
+	}
+
+	util.DebugLog(ctx, "re-generated Volume ID (%s) and image name (%s) for request name (%s)",
+		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
+	if rbdVol.ImageID == "" {
+		err = rbdVol.getImageID()
+		if err != nil {
+			util.ErrorLog(ctx, "failed to get image id %s: %v", rbdVol, err)
+			return err
+		}
+		err = j.StoreImageID(ctx, rbdVol.JournalPool, rbdVol.ReservedID, rbdVol.ImageID)
+		if err != nil {
+			util.ErrorLog(ctx, "failed to store volume id %s: %v", rbdVol, err)
+			return err
+		}
+	}
+
+	if volumeID != rbdVol.VolID {
+		return j.ReserveNewUUIDMapping(ctx, rbdVol.JournalPool, volumeID, rbdVol.VolID)
+	}
+	return nil
+}
+
+// addNewUUIDMapping creates the mapping between two volumeID.
+func (rv *rbdVolume) addNewUUIDMapping(ctx context.Context, imagePoolID int64, j *journal.Connection) error {
+	var err error
+	volID := ""
+
+	id, err := j.CheckNewUUIDMapping(ctx, rv.JournalPool, rv.VolID)
+	if err == nil && id == "" {
+		volID, err = util.GenerateVolID(ctx, rv.Monitors, rv.conn.Creds, imagePoolID, rv.Pool,
+			rv.ClusterID, rv.ReservedID, volIDVersion)
+		if err != nil {
+			return err
+		}
+		if rv.VolID == volID {
+			return nil
+		}
+		return j.ReserveNewUUIDMapping(ctx, rv.JournalPool, rv.VolID, volID)
+	}
 	return err
 }
