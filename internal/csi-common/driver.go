@@ -33,9 +33,9 @@ type CSIDriver struct {
 	nodeID  string
 	version string
 	// topology constraints that this nodeserver will advertise
-	topology map[string]string
-	cap      []*csi.ControllerServiceCapability
-	vc       []*csi.VolumeCapability_AccessMode
+	topology     map[string]string
+	capabilities []*csi.ControllerServiceCapability
+	vc           []*csi.VolumeCapability_AccessMode
 }
 
 // NewCSIDriver Creates a NewCSIDriver object. Assumes vendor
@@ -73,7 +73,7 @@ func (d *CSIDriver) ValidateControllerServiceRequest(c csi.ControllerServiceCapa
 		return nil
 	}
 
-	for _, capability := range d.cap {
+	for _, capability := range d.capabilities {
 		if c == capability.GetRpc().GetType() {
 			return nil
 		}
@@ -91,7 +91,7 @@ func (d *CSIDriver) AddControllerServiceCapabilities(cl []csi.ControllerServiceC
 		csc = append(csc, NewControllerServiceCapability(c))
 	}
 
-	d.cap = csc
+	d.capabilities = csc
 }
 
 // AddVolumeCapabilityAccessModes stores volume access modes.

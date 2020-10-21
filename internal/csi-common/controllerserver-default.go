@@ -62,7 +62,7 @@ func (cs *DefaultControllerServer) ControllerGetCapabilities(ctx context.Context
 	util.TraceLog(ctx, "Using default ControllerGetCapabilities")
 
 	return &csi.ControllerGetCapabilitiesResponse{
-		Capabilities: cs.Driver.cap,
+		Capabilities: cs.Driver.capabilities,
 	}, nil
 }
 
