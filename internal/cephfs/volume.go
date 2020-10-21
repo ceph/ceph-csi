@@ -177,27 +177,27 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 // resizeVolume will try to use ceph fs subvolume resize command to resize the
 // subvolume. If the command is not available as a fallback it will use
 // CreateVolume to resize the subvolume.
-func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID, bytesQuota int64) error {
+func (vo *volumeOptions) resizeVolume(ctx context.Context, cr *util.Credentials, volID volumeID, bytesQuota int64) error {
 	// keyPresent checks whether corresponding clusterID key is present in clusterAdditionalInfo
 	var keyPresent bool
 	// verify if corresponding ClusterID key is present in the map,
 	// and if not, initialize with default values(false).
-	if _, keyPresent = clusterAdditionalInfo[volOptions.ClusterID]; !keyPresent {
-		clusterAdditionalInfo[volOptions.ClusterID] = &localClusterState{}
+	if _, keyPresent = clusterAdditionalInfo[vo.ClusterID]; !keyPresent {
+		clusterAdditionalInfo[vo.ClusterID] = &localClusterState{}
 	}
 	// resize subvolume when either it's supported, or when corresponding
 	// clusterID key was not present.
-	if clusterAdditionalInfo[volOptions.ClusterID].resizeSupported || !keyPresent {
+	if clusterAdditionalInfo[vo.ClusterID].resizeSupported || !keyPresent {
 		args := []string{
 			"fs",
 			"subvolume",
 			"resize",
-			volOptions.FsName,
+			vo.FsName,
 			string(volID),
 			strconv.FormatInt(bytesQuota, 10),
 			"--group_name",
-			volOptions.SubvolumeGroup,
-			"-m", volOptions.Monitors,
+			vo.SubvolumeGroup,
+			"-m", vo.Monitors,
 			"-c", util.CephConfigPath,
 			"-n", cephEntityClientPrefix + cr.ID,
 			"--keyfile=" + cr.KeyFile,
@@ -209,17 +209,17 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			args[:]...)
 
 		if err == nil {
-			clusterAdditionalInfo[volOptions.ClusterID].resizeSupported = true
+			clusterAdditionalInfo[vo.ClusterID].resizeSupported = true
 			return nil
 		}
 		// Incase the error is other than invalid command return error to the caller.
 		if !strings.Contains(err.Error(), invalidCommand) {
-			util.ErrorLog(ctx, "failed to resize subvolume %s in fs %s: %s", string(volID), volOptions.FsName, err)
+			util.ErrorLog(ctx, "failed to resize subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
 			return err
 		}
 	}
-	clusterAdditionalInfo[volOptions.ClusterID].resizeSupported = false
-	return createVolume(ctx, volOptions, volID, bytesQuota)
+	clusterAdditionalInfo[vo.ClusterID].resizeSupported = false
+	return createVolume(ctx, vo, volID, bytesQuota)
 }
 
 func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volOptions *volumeOptions, force bool) error {
