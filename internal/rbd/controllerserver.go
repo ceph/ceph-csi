@@ -95,12 +95,12 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 
 	isMultiNode := false
 	isBlock := false
-	for _, cap := range req.VolumeCapabilities {
+	for _, capability := range req.VolumeCapabilities {
 		// RO modes need to be handled independently (ie right now even if access mode is RO, they'll be RW upon attach)
-		if cap.GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+		if capability.GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
 			isMultiNode = true
 		}
-		if cap.GetBlock() != nil {
+		if capability.GetBlock() != nil {
 			isBlock = true
 		}
 	}
@@ -689,8 +689,8 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, status.Error(codes.InvalidArgument, "empty volume capabilities in request")
 	}
 
-	for _, cap := range req.VolumeCapabilities {
-		if cap.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
+	for _, capability := range req.VolumeCapabilities {
+		if capability.GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER {
 			return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
 		}
 	}
