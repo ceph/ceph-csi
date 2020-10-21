@@ -6,9 +6,10 @@ require (
 	github.com/ceph/go-ceph v0.6.0
 	github.com/container-storage-interface/spec v1.3.0
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
+	github.com/go-logr/logr v0.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.3.5
-	github.com/googleapis/gnostic v0.3.1 // indirect
+	github.com/googleapis/gnostic v0.4.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
@@ -39,6 +40,7 @@ require (
 	k8s.io/kubectl v0.18.6 // indirect
 	k8s.io/kubernetes v1.18.6
 	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
+	sigs.k8s.io/controller-runtime v0.6.0
 )
 
 replace (
