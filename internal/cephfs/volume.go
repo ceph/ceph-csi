@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"strconv"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -188,26 +187,13 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, cr *util.Credentials,
 	// resize subvolume when either it's supported, or when corresponding
 	// clusterID key was not present.
 	if clusterAdditionalInfo[vo.ClusterID].resizeSupported || !keyPresent {
-		args := []string{
-			"fs",
-			"subvolume",
-			"resize",
-			vo.FsName,
-			string(volID),
-			strconv.FormatInt(bytesQuota, 10),
-			"--group_name",
-			vo.SubvolumeGroup,
-			"-m", vo.Monitors,
-			"-c", util.CephConfigPath,
-			"-n", cephEntityClientPrefix + cr.ID,
-			"--keyfile=" + cr.KeyFile,
+		fsa, err := vo.conn.GetFSAdmin()
+		if err != nil {
+			util.ErrorLog(ctx, "could not get FSAdmin, can not resize volume %s:", vo.FsName, err)
+			return err
 		}
 
-		err := execCommandErr(
-			ctx,
-			"ceph",
-			args[:]...)
-
+		_, err = fsa.ResizeSubVolume(vo.FsName, vo.SubvolumeGroup, string(volID), fsAdmin.ByteCount(bytesQuota), true)
 		if err == nil {
 			clusterAdditionalInfo[vo.ClusterID].resizeSupported = true
 			return nil
