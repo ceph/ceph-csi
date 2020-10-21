@@ -110,19 +110,6 @@ func NewAdminCredentials(secrets map[string]string) (*Credentials, error) {
 	return newCredentialsFromSecret(credAdminID, credAdminKey, secrets)
 }
 
-// NewCredentials generates new credentials when id and key are provided.
-func NewCredentials(id, key string) (*Credentials, error) {
-	var c = &Credentials{}
-
-	c.ID = id
-	keyFile, err := storeKey(key)
-	if err == nil {
-		c.KeyFile = keyFile
-	}
-
-	return c, err
-}
-
 // GetMonValFromSecret returns monitors from secret.
 func GetMonValFromSecret(secrets map[string]string) (string, error) {
 	if mons, ok := secrets[credMonitors]; ok {
