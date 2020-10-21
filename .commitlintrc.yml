@@ -14,7 +14,7 @@ rules:
   subject-empty: [2, never]
 
   # we do not use scopes for commit messages
-  scope-empty: [1, always]
+  scope-empty: [0, always]
 
   # Body shouldn't be empty
   body-min-length: [2, always, 1]
