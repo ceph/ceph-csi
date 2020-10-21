@@ -9,8 +9,21 @@ rules:
   header-max-length: [2, always, 72]
   # the subject may not end with a "."
   header-full-stop: [2, never, "."]
+
+  # the subject cannot be empty
+  subject-empty: [2, never]
+
   # we do not use scopes for commit messages
   scope-empty: [1, always]
+
+  # Body shouldn't be empty
+  body-min-length: [2, always, 1]
+  # Wrap the lines to 80 characters.
+  body-max-line-length: [1, always, 80]
+
+  # always sign off the commit
+  signed-off-by: [2, always, "Signed-off-by:"]
+
   # valid types/prefixes, see docs/development-guide.md
   type-enum:
     - 2
