@@ -186,7 +186,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			// it will be fixed in cephfs soon with the parentvolume size. Till then by below
 			// resize we are making sure we return or satisfy the requested size by setting the size
 			// explictly
-			err = volOptions.resizeVolume(ctx, cr, volumeID(vID.FsSubvolName), volOptions.Size)
+			err = volOptions.resizeVolume(ctx, volumeID(vID.FsSubvolName), volOptions.Size)
 			if err != nil {
 				purgeErr := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, false)
 				if purgeErr != nil {
@@ -426,7 +426,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	RoundOffSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
 
-	if err = volOptions.resizeVolume(ctx, cr, volumeID(volIdentifier.FsSubvolName), RoundOffSize); err != nil {
+	if err = volOptions.resizeVolume(ctx, volumeID(volIdentifier.FsSubvolName), RoundOffSize); err != nil {
 		util.ErrorLog(ctx, "failed to expand volume %s: %v", volumeID(volIdentifier.FsSubvolName), err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}

@@ -100,7 +100,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		return cloneFailedErr
 	case cephFSCloneComplete:
 		// This is a work around to fix sizing issue for cloned images
-		err = volOpt.resizeVolume(ctx, cr, cloneID, volOpt.Size)
+		err = volOpt.resizeVolume(ctx, cloneID, volOpt.Size)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to expand volume %s: %v", cloneID, err)
 			return err
@@ -179,7 +179,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 		// The clonedvolume currently does not reflect the proper size due to an issue in cephfs
 		// however this is getting addressed in cephfs and the parentvolume size will be reflected
 		// in the new cloned volume too. Till then we are explicitly making the size set
-		err = volOptions.resizeVolume(ctx, cr, volumeID(vID.FsSubvolName), volOptions.Size)
+		err = volOptions.resizeVolume(ctx, volumeID(vID.FsSubvolName), volOptions.Size)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to expand volume %s with error: %v", vID.FsSubvolName, err)
 			return err

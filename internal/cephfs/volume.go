@@ -176,7 +176,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 // resizeVolume will try to use ceph fs subvolume resize command to resize the
 // subvolume. If the command is not available as a fallback it will use
 // CreateVolume to resize the subvolume.
-func (vo *volumeOptions) resizeVolume(ctx context.Context, cr *util.Credentials, volID volumeID, bytesQuota int64) error {
+func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytesQuota int64) error {
 	// keyPresent checks whether corresponding clusterID key is present in clusterAdditionalInfo
 	var keyPresent bool
 	// verify if corresponding ClusterID key is present in the map,
