@@ -1,6 +1,6 @@
 ---
 # rules are documented at https://commitlint.js.org/#/reference-rules
-# each rule has a n arry of three values:
+# each rule has an array of three values:
 # - 0, 1, 2 (rule is disabled, warning or error)
 # - always/never
 # - value
