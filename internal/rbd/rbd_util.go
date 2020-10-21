@@ -103,6 +103,7 @@ type rbdVolume struct {
 	DisableInUseChecks  bool   `json:"disableInUseChecks"`
 	Encrypted           bool
 	readOnly            bool
+	Primary             bool
 	KMS                 util.EncryptionKMS
 	CreatedAt           *timestamp.Timestamp
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
@@ -301,8 +302,19 @@ func (rv *rbdVolume) isInUse() (bool, error) {
 		return false, err
 	}
 
+	// TODO replace this with logic to get mirroring information once
+	// https://github.com/ceph/go-ceph/issues/379 is fixed
+	err = rv.updateVolWithImageInfo()
+	if err != nil {
+		return false, err
+	}
 	// because we opened the image, there is at least one watcher
-	return len(watchers) != 1, nil
+	defaultWatchers := 1
+	if rv.Primary {
+		// a watcher will be added by the rbd mirror daemon if the image is primary
+		defaultWatchers++
+	}
+	return len(watchers) != defaultWatchers, nil
 }
 
 // addRbdManagerTask adds a ceph manager task to execute command
@@ -960,6 +972,52 @@ func (rv *rbdVolume) getImageInfo() error {
 		return err
 	}
 	rv.CreatedAt = protoTime
+	return nil
+}
+
+// imageInfo strongly typed JSON spec for image info.
+type imageInfo struct {
+	Mirroring mirroring `json:"mirroring"`
+}
+
+// parentInfo  spec for parent volume  info.
+type mirroring struct {
+	Mode     string `json:"mode"`
+	State    string `json:"state"`
+	GlobalID string `json:"global_id"`
+	Primary  bool   `json:"primary"`
+}
+
+// updateVolWithImageInfo updates provided rbdVolume with information from on-disk data
+// regarding the same.
+func (rv *rbdVolume) updateVolWithImageInfo() error {
+	// rbd --format=json info [image-spec | snap-spec]
+	var imgInfo imageInfo
+
+	stdout, stderr, err := util.ExecCommand(
+		context.TODO(),
+		"rbd",
+		"-m", rv.Monitors,
+		"--id", rv.conn.Creds.ID,
+		"--keyfile="+rv.conn.Creds.KeyFile,
+		"-c", util.CephConfigPath,
+		"--format="+"json",
+		"info", rv.String())
+	if err != nil {
+		if strings.Contains(stderr, "rbd: error opening image "+rv.RbdImageName+
+			": (2) No such file or directory") {
+			return util.JoinErrors(ErrImageNotFound, err)
+		}
+		return err
+	}
+
+	if stdout != "" {
+		err = json.Unmarshal([]byte(stdout), &imgInfo)
+		if err != nil {
+			return fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s", err, stdout)
+		}
+		rv.Primary = imgInfo.Mirroring.Primary
+	}
 	return nil
 }
 
