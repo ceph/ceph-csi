@@ -53,6 +53,7 @@ spec:
             - "--feature-gates=Topology=false"
             # if fstype is not specified in storageclass, ext4 is default
             - "--default-fstype=ext4"
+            - "--extra-create-metadata=true"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
