@@ -53,6 +53,7 @@ spec:
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
             - "--default-fstype={{ .Values.provisioner.defaultFSType }}"
+            - "--extra-create-metadata=true"
 {{- if .Values.topology.enabled }}
             - "--feature-gates=Topology=true"
 {{- end }}

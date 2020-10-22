@@ -50,6 +50,7 @@ spec:
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
             - "--feature-gates=Topology=false"
+            - "--extra-create-metadata=true"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
