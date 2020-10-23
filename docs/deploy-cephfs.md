@@ -163,7 +163,7 @@ for more information.
 kubectl create -f csi-cephfsplugin-provisioner.yaml
 ```
 
-Deploys stateful set of provision which includes external-provisioner
+Deploys deployment of provision which includes external-provisioner
 ,external-attacher for CSI CephFS.
 
 **Deploy CSI CephFS driver:**

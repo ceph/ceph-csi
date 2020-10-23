@@ -130,7 +130,7 @@ for more information.
 kubectl create -f csi-rbdplugin-provisioner.yaml
 ```
 
-Deploys stateful set of provision which includes external-provisioner
+Deploys deployment of provision which includes external-provisioner
 ,external-attacher,csi-snapshotter sidecar containers and CSI RBD plugin.
 
 **Deploy RBD CSI driver:**
