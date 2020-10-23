@@ -1,0 +1,42 @@
+---
+- job:
+    name: build-images
+    description: Build container images from the master branch.
+    project-type: pipeline
+    concurrent: false
+    properties:
+      - github:
+          url: https://github.com/ceph/ceph-csi
+      - build-discarder:
+          days-to-keep: 7
+          artifact-days-to-keep: 7
+    # yamllint disable rule:line-length
+    dsl: |
+      def GIT_REPO = 'http://github.com/ceph/ceph-csi'
+      def GIT_BRANCH = 'master'
+      node {
+        stage('checkout repository') {
+          git url: "${GIT_REPO}", branch: "${GIT_BRANCH}", changelog: false
+        }
+        stage('build images') {
+          parallel canary: {
+            sh 'source build.env && oc start-build --follow --build-arg=BASE_IMAGE="${BASE_IMAGE}" --build-arg=GO_ARCH=amd64 ceph-csi-canary'
+          },
+          test: {
+            sh 'oc start-build --follow ceph-csi-test'
+          },
+          devel: {
+            sh 'source build.env && oc start-build --follow --build-arg=BASE_IMAGE="${BASE_IMAGE}" ceph-csi-devel'
+          }
+        }
+      }
+    # yamllint enable rule:line-length
+    scm:
+      - git:
+          name: origin
+          url: https://github.com/ceph/ceph-csi
+          branches:
+            - master
+    triggers:
+      - pollscm:
+          cron: "H/5 * * * *"
