@@ -2,7 +2,7 @@
 - job:
     name: jjb-validate
     project-type: pipeline
-    concurrent: true
+    concurrent: false
     properties:
       - github:
           url: https://github.com/ceph/ceph-csi
