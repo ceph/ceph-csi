@@ -59,6 +59,12 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 	err = wait.PollImmediate(poll, timeout, func() (bool, error) {
 		deployment, err = c.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
+			// a StatusError is not marked as 'retryable', but we want to retry anyway
+			if testutils.IsRetryableAPIError(err) || strings.Contains(err.Error(), "etcdserver: request timed out") {
+				// hide API-server timeouts, so that PollImmediate() retries
+				e2elog.Logf("deployment error: %v", err)
+				return false, nil
+			}
 			return false, err
 		}
 
