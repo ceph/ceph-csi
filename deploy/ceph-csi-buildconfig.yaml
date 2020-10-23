@@ -1,0 +1,75 @@
+---
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: ceph-csi-canary
+  labels:
+    app: ceph-csi
+spec:
+  runPolicy: Serial
+  successfulBuildsHistoryLimit: 1
+  failedBuildsHistoryLimit: 1
+  source:
+    git:
+      uri: https://github.com/ceph/ceph-csi
+      ref: master
+    contextDir: .
+  strategy:
+    dockerStrategy:
+      dockerfilePath: deploy/cephcsi/image/Dockerfile
+  output:
+    to:
+      kind: DockerImage
+      name: registry-ceph-csi.apps.ocp.ci.centos.org/ceph-csi:canary
+    pushSecret:
+      name: container-registry-auth
+---
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: ceph-csi-test
+  labels:
+    app: ceph-csi
+spec:
+  runPolicy: Serial
+  successfulBuildsHistoryLimit: 1
+  failedBuildsHistoryLimit: 1
+  source:
+    git:
+      uri: https://github.com/ceph/ceph-csi
+      ref: master
+    contextDir: .
+  strategy:
+    dockerStrategy:
+      dockerfilePath: scripts/Dockerfile.test
+  output:
+    to:
+      kind: DockerImage
+      name: registry-ceph-csi.apps.ocp.ci.centos.org/ceph-csi:test
+    pushSecret:
+      name: container-registry-auth
+---
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: ceph-csi-devel
+  labels:
+    app: ceph-csi
+spec:
+  runPolicy: Serial
+  successfulBuildsHistoryLimit: 1
+  failedBuildsHistoryLimit: 1
+  source:
+    git:
+      uri: https://github.com/ceph/ceph-csi
+      ref: master
+    contextDir: .
+  strategy:
+    dockerStrategy:
+      dockerfilePath: scripts/Dockerfile.devel
+  output:
+    to:
+      kind: DockerImage
+      name: registry-ceph-csi.apps.ocp.ci.centos.org/ceph-csi:devel
+    pushSecret:
+      name: container-registry-auth
