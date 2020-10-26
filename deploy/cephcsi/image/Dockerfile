@@ -23,7 +23,12 @@ RUN source /build.env && \
 # test if the downloaded version of Golang works (different arch?)
 RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
 
-RUN dnf install libcephfs-devel librados-devel librbd-devel /usr/bin/cc make -y
+RUN dnf -y install \
+	libcephfs-devel librados-devel librbd-devel \
+	/usr/bin/cc \
+	make \
+	git \
+    && true
 
 ENV GOROOT=${GOROOT} \
     GOPATH=/go \
