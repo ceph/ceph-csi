@@ -191,11 +191,11 @@ func main() {
 func validateCloneDepthFlag(conf *util.Config) {
 	// keeping hardlimit to 14 as max to avoid max image depth
 	if conf.RbdHardMaxCloneDepth == 0 || conf.RbdHardMaxCloneDepth > 14 {
-		klog.Fatalln("rbdhardmaxclonedepth flag value should be between 1 and 14")
+		logAndExit("rbdhardmaxclonedepth flag value should be between 1 and 14")
 	}
 
 	if conf.RbdSoftMaxCloneDepth > conf.RbdHardMaxCloneDepth {
-		klog.Fatalln("rbdsoftmaxclonedepth flag value should not be greater than rbdhardmaxclonedepth")
+		logAndExit("rbdsoftmaxclonedepth flag value should not be greater than rbdhardmaxclonedepth")
 	}
 }
 
