@@ -129,7 +129,7 @@ func main() {
 	dname := getDriverName()
 	err := util.ValidateDriverName(dname)
 	if err != nil {
-		klog.Fatalln(err) // calls exit
+		logAndExit(err.Error())
 	}
 
 	// the driver may need a higher PID limit for handling all concurrent requests
