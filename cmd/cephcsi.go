@@ -162,7 +162,7 @@ func main() {
 		}
 		err = util.ValidateURL(&conf)
 		if err != nil {
-			klog.Fatalln(err)
+			logAndExit(err.Error())
 		}
 	}
 
