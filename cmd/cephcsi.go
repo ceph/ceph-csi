@@ -205,7 +205,7 @@ func validateMaxSnaphostFlag(conf *util.Config) {
 	// [1] https://github.com/torvalds/linux/blob/master/drivers/block/rbd.c#L98
 	// [2] https://github.com/torvalds/linux/blob/master/drivers/block/rbd.c#L92
 	if conf.MaxSnapshotsOnImage == 0 || conf.MaxSnapshotsOnImage > 500 {
-		klog.Fatalln("maxsnapshotsonimage flag value should be between 1 and 500")
+		logAndExit("maxsnapshotsonimage flag value should be between 1 and 500")
 	}
 }
 
