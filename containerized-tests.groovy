@@ -18,7 +18,7 @@ node('cico-workspace') {
 
 	stage('checkout PR') {
 		if (params.ghprbPullId != null) {
-			ref = "pull/${ghprbPullId}/head"
+			ref = "pull/${ghprbPullId}/merge"
 		}
 		if (params.ghprbTargetBranch != null) {
 			git_since = "${ghprbTargetBranch}"
