@@ -180,9 +180,6 @@ func main() {
 
 	case livenessType:
 		liveness.Run(&conf)
-
-	default:
-		klog.Fatalln("invalid volume type", conf.Vtype) // calls exit
 	}
 
 	os.Exit(0)
