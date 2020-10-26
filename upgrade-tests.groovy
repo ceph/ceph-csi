@@ -89,7 +89,7 @@ node('cico-workspace') {
 	try {
 		stage('prepare bare-metal machine') {
 			if (params.ghprbPullId != null) {
-				ref = "pull/${ghprbPullId}/head"
+				ref = "pull/${ghprbPullId}/merge"
 			}
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh ./single-node-k8s.sh root@${CICO_NODE}:'
 			ssh "./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${git_repo} --ref=${ref}"

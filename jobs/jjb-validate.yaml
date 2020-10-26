@@ -14,7 +14,7 @@
       def GIT_BRANCH = 'ci/centos'
 
       if (params.ghprbPullId != null) {
-          GIT_BRANCH = "pull/${ghprbPullId}/head"
+          GIT_BRANCH = "pull/${ghprbPullId}/merge"
       }
 
       node {

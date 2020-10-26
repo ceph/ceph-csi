@@ -11,7 +11,7 @@ def doc_change = 0
 node('cico-workspace') {
 	stage('checkout ci repository') {
 		if (params.ghprbPullId != null) {
-			ref = "pull/${ghprbPullId}/head"
+			ref = "pull/${ghprbPullId}/merge"
 		}
 		checkout([$class: 'GitSCM', branches: [[name: 'FETCH_HEAD']],
 			userRemoteConfigs: [[url: "${ci_git_repo}", refspec: "${ref}"]]])
@@ -19,7 +19,7 @@ node('cico-workspace') {
 
 	stage('checkout PR') {
 		if (params.ghprbPullId != null) {
-			ref = "pull/${ghprbPullId}/head"
+			ref = "pull/${ghprbPullId}/merge"
 		}
 		if (params.ghprbTargetBranch != null) {
 			git_since = "${ghprbTargetBranch}"
@@ -65,7 +65,7 @@ node('cico-workspace') {
 			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${ci_git_repo} --ref=${ref} ${base}"
 		}
 		stage('test') {
-			sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "cd /opt/build/go/src/github.com/ceph/ceph-csi && make REBASE=1"'
+			sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "cd /opt/build/go/src/github.com/ceph/ceph-csi && make"'
 		}
 	}
 
