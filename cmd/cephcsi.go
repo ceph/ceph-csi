@@ -123,7 +123,7 @@ func main() {
 	util.DefaultLog("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
 
 	if conf.Vtype == "" {
-		klog.Fatalln("driver type not specified")
+		logAndExit("driver type not specified")
 	}
 
 	dname := getDriverName()
