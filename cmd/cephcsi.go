@@ -208,3 +208,8 @@ func validateMaxSnaphostFlag(conf *util.Config) {
 		klog.Fatalln("maxsnapshotsonimage flag value should be between 1 and 500")
 	}
 }
+
+func logAndExit(msg string) {
+	klog.Errorln(msg)
+	os.Exit(1)
+}
