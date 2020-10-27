@@ -12,7 +12,7 @@
     parameters:
       - string:
           name: k8s_version
-          default: '1.19.2'
+          default: '1.19'
           description: Kubernetes version to deploy in the test cluster.
     pipeline-scm:
       scm:
