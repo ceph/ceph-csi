@@ -33,3 +33,18 @@ Fixes: #issue_number
 
 List items that are not part of the PR and do not impact it's
 functionality, but are work items that can be taken up subsequently.
+
+---
+
+<details>
+<summary>Show available bot commands</summary>
+
+These commands are normally not required, but in case of issues, leave any of
+the following bot commands in an otherwise empty comment in this PR:
+
+- `/retest ci/centos/<job-name>`: retest the `<job-name>` after unrelated
+  failure (please report the failure too!)
+- `/retest all`: run this in case the CentOS CI failed to start/report any test
+  progress or results
+
+</details>
