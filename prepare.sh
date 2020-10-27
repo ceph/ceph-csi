@@ -87,7 +87,7 @@ then
     depth=''
 fi
 
-git clone ${depth} --branch="${base}" "${gitrepo}" "${workdir}"
+git clone "${depth}" --branch="${base}" "${gitrepo}" "${workdir}"
 cd "${workdir}"
 git fetch origin "${ref}:tip/${ref}"
 git checkout "tip/${ref}"
