@@ -1241,6 +1241,23 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("validate the functionality of controller", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = validateController(f, pvcPath, appPath, rbdExamplePath+"storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to validate controller with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0)
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+
+			})
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and delete PVC when backend pool deleted", func() {

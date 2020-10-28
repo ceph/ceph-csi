@@ -14,6 +14,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
@@ -39,6 +40,7 @@ const (
 	rbdmountOptions    = "mountOptions"
 
 	retainPolicy = v1.PersistentVolumeReclaimRetain
+	// deletePolicy is the default policy in E2E.
 	deletePolicy = v1.PersistentVolumeReclaimDelete
 )
 
@@ -589,6 +591,124 @@ func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *fr
 	}
 
 	validateRBDImageCount(f, 0)
+}
+
+// validateController simulates the required operations to validate the
+// controller.
+// Controller will generates the omap data when the PV is created.
+// for that we need to do below operations
+// Create PVC with Retain policy
+// Store the PVC and PV kubernetes objects so that we can create static
+// binding between PVC-PV
+// Delete the omap data created for PVC
+// Create the static PVC and PV and let controller regenerate the omap
+// Mount the PVC to application (NodeStage/NodePublish should work)
+// Resize the PVC
+// Delete the Application and PVC.
+func validateController(f *framework.Framework, pvcPath, appPath, scPath string) error {
+	size := "1Gi"
+	poolName := defaultRBDPool
+	expandSize := "10Gi"
+	var err error
+	// create storageclass with retain
+	err = createRBDStorageClass(f.ClientSet, f, nil, nil, retainPolicy)
+	if err != nil {
+		return fmt.Errorf("failed to create storageclass with error %v", err)
+	}
+
+	// create pvc
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return fmt.Errorf("failed to load PVC with error %v", err)
+	}
+	resizePvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return fmt.Errorf("failed to load PVC with error %v", err)
+	}
+	resizePvc.Namespace = f.UniqueName
+
+	pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(size)
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create PVC with error %v", err)
+	}
+	// get pvc and pv object
+	pvc, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to get PVC with error %v", err)
+	}
+	// Recreate storageclass with delete policy
+	err = deleteResource(scPath)
+	if err != nil {
+		return fmt.Errorf("failed to delete storageclass with error %v", err)
+	}
+	err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+	if err != nil {
+		return fmt.Errorf("failed to create storageclass with error %v", err)
+	}
+	// delete omap data
+	err = deletePVCImageJournalInPool(f, pvc, poolName)
+	if err != nil {
+		return err
+	}
+	err = deletePVCCSIJournalInPool(f, pvc, poolName)
+	if err != nil {
+		return err
+	}
+	// delete pvc and pv
+	err = deletePVCAndPV(f.ClientSet, pvc, pv, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete PVC or PV with error %v", err)
+	}
+	// create pvc and pv with application
+	pv.Spec.ClaimRef = nil
+	pv.Spec.PersistentVolumeReclaimPolicy = deletePolicy
+	// unset the resource version as should not be set on objects to be created
+	pvc.ResourceVersion = ""
+	pv.ResourceVersion = ""
+	err = createPVCAndPV(f.ClientSet, pvc, pv)
+	if err != nil {
+		e2elog.Failf("failed to create PVC or PV with error %v", err)
+	}
+	// bind PVC to application
+	app, err := loadApp(appPath)
+	if err != nil {
+		return err
+	}
+	app.Labels = map[string]string{"app": "resize-pvc"}
+	app.Namespace = f.UniqueName
+	opt := metav1.ListOptions{
+		LabelSelector: "app=resize-pvc",
+	}
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return err
+	}
+	// resize PVC
+	err = expandPVCSize(f.ClientSet, resizePvc, expandSize, deployTimeout)
+	if err != nil {
+		return err
+	}
+	if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem {
+		err = checkDirSize(app, f, &opt, expandSize)
+		if err != nil {
+			return err
+		}
+	}
+
+	if *pvc.Spec.VolumeMode == v1.PersistentVolumeBlock {
+		err = checkDeviceSize(app, f, &opt, expandSize)
+		if err != nil {
+			return err
+		}
+	}
+	// delete pvc and storageclass
+	err = deletePVCAndApp("", f, resizePvc, app)
+	if err != nil {
+		return err
+	}
+	return deleteResource(rbdExamplePath + "storageclass.yaml")
 }
 
 // k8sVersionGreaterEquals checks the ServerVersion of the Kubernetes cluster

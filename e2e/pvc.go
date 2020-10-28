@@ -74,6 +74,73 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	})
 }
 
+func createPVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v1.PersistentVolume) error {
+	_, err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
+	return err
+}
+
+func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v1.PersistentVolume, t int) error {
+	err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	err = c.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	timeout := time.Duration(t) * time.Minute
+	start := time.Now()
+	err = wait.PollImmediate(poll, timeout, func() (bool, error) {
+		// Check that the PVC is deleted.
+		e2elog.Logf("waiting for PVC %s in state %s to be deleted (%d seconds elapsed)", pvc.Name, pvc.Status.String(), int(time.Since(start).Seconds()))
+		_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
+		if err == nil {
+			return false, nil
+		}
+		if !apierrs.IsNotFound(err) {
+			return false, fmt.Errorf("get on deleted PVC %v failed with error other than \"not found\": %w", pvc.Name, err)
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+	start = time.Now()
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		// Check that the PV is deleted.
+		e2elog.Logf("waiting for PV %s in state %s to be deleted (%d seconds elapsed)", pv.Name, pv.Status.String(), int(time.Since(start).Seconds()))
+
+		_, err = c.CoreV1().PersistentVolumes().Get(context.TODO(), pv.Name, metav1.GetOptions{})
+		if err == nil {
+			return false, nil
+		}
+
+		if !apierrs.IsNotFound(err) {
+			return false, fmt.Errorf("delete PV %v failed with error other than \"not found\": %w", pv.Name, err)
+		}
+
+		return true, nil
+	})
+}
+
+func getPVCAndPV(c kubernetes.Interface, pvcName, pvcNamespace string) (*v1.PersistentVolumeClaim, *v1.PersistentVolume, error) {
+	pvc, err := c.CoreV1().PersistentVolumeClaims(pvcNamespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get PVC with error %v", err)
+	}
+	pv, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
+	if err != nil {
+		return pvc, nil, fmt.Errorf("failed to delete PV with error %v", err)
+	}
+	return pvc, pv, nil
+}
+
 func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	nameSpace := pvc.Namespace
