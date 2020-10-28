@@ -30,7 +30,7 @@ func rbdOptions(pool string) string {
 	return "--pool=" + pool
 }
 
-func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOptions, parameters map[string]string) error {
+func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOptions, parameters map[string]string, policy v1.PersistentVolumeReclaimPolicy) error {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
 	if err != nil {
@@ -72,6 +72,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOpt
 		mOpt := strings.Split(opt, ",")
 		sc.MountOptions = append(sc.MountOptions, mOpt...)
 	}
+	sc.ReclaimPolicy = &policy
 	_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	return err
 }
