@@ -24,15 +24,21 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
+// cephFSCloneState describes the status of the clone.
+type cephFSCloneState string
+
 const (
+	// cephFSCloneError indicates that fetching the clone state returned an error.
+	cephFSCloneError = cephFSCloneState("")
 	// cephFSCloneFailed indicates that clone is in failed state.
-	cephFSCloneFailed = "failed"
+	cephFSCloneFailed = cephFSCloneState("failed")
 	// cephFSClonePending indicates that clone is in pending state.
-	cephFSClonePending = "pending"
+	cephFSClonePending = cephFSCloneState("pending")
 	// cephFSCloneInprogress indicates that clone is in in-progress state.
-	cephFSCloneInprogress = "in-progress"
+	cephFSCloneInprogress = cephFSCloneState("in-progress")
 	// cephFSCloneComplete indicates that clone is in complete state.
-	cephFSCloneComplete = "complete"
+	cephFSCloneComplete = cephFSCloneState("complete")
+
 	// snapshotIsProtected string indicates that the snapshot is currently protected.
 	snapshotIsProtected = "yes"
 )
@@ -86,13 +92,13 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		util.ErrorLog(ctx, "failed to clone snapshot %s %s to %s %v", volID, snapshotID, cloneID, cloneErr)
 		return cloneErr
 	}
-	var clone CloneStatus
-	clone, cloneErr = getCloneInfo(ctx, volOpt, cr, cloneID)
+
+	cloneState, cloneErr := getCloneState(ctx, volOpt, cr, cloneID)
 	if cloneErr != nil {
 		return cloneErr
 	}
 
-	switch clone.Status.State {
+	switch cloneState {
 	case cephFSCloneInprogress:
 		util.ErrorLog(ctx, "clone is in progress for %v", cloneID)
 		return ErrCloneInProgress
@@ -101,7 +107,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		return ErrClonePending
 	case cephFSCloneFailed:
 		util.ErrorLog(ctx, "clone failed for %v", cloneID)
-		cloneFailedErr := fmt.Errorf("clone %s is in %s state", cloneID, clone.Status.State)
+		cloneFailedErr := fmt.Errorf("clone %s is in %s state", cloneID, cloneState)
 		return cloneFailedErr
 	case cephFSCloneComplete:
 		// This is a work around to fix sizing issue for cloned images
@@ -176,18 +182,19 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 			}
 		}
 	}()
-	var clone = CloneStatus{}
-	clone, err = getCloneInfo(ctx, volOptions, cr, volumeID(vID.FsSubvolName))
+
+	cloneState, err := getCloneState(ctx, volOptions, cr, volumeID(vID.FsSubvolName))
 	if err != nil {
 		return err
 	}
-	switch clone.Status.State {
+
+	switch cloneState {
 	case cephFSCloneInprogress:
 		return ErrCloneInProgress
 	case cephFSClonePending:
 		return ErrClonePending
 	case cephFSCloneFailed:
-		return fmt.Errorf("clone %s is in %s state", vID.FsSubvolName, clone.Status.State)
+		return fmt.Errorf("clone %s is in %s state", vID.FsSubvolName, cloneState)
 	case cephFSCloneComplete:
 		// The clonedvolume currently does not reflect the proper size due to an issue in cephfs
 		// however this is getting addressed in cephfs and the parentvolume size will be reflected
@@ -201,15 +208,14 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 	return nil
 }
 
-// CloneStatus represents the subvolume clone status.
-type CloneStatus struct {
-	Status struct {
-		State string `json:"state"`
-	} `json:"status"`
-}
+func getCloneState(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (cephFSCloneState, error) {
+	type cloneStatus struct {
+		Status struct {
+			State string `json:"state"`
+		} `json:"status"`
+	}
 
-func getCloneInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (CloneStatus, error) {
-	clone := CloneStatus{}
+	cs := cloneStatus{}
 	args := []string{
 		"fs",
 		"clone",
@@ -226,12 +232,12 @@ func getCloneInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 	}
 	err := execCommandJSON(
 		ctx,
-		&clone,
+		&cs,
 		"ceph",
 		args[:]...)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get subvolume clone info %s(%s) in fs %s", string(volID), err, volOptions.FsName)
-		return clone, err
+		return cephFSCloneError, err
 	}
-	return clone, nil
+	return cephFSCloneState(cs.Status.State), nil
 }

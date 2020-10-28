@@ -83,7 +83,7 @@ func checkVolExists(ctx context.Context,
 	vid.FsSubvolName = imageData.ImageAttributes.ImageName
 
 	if sID != nil || pvID != nil {
-		clone, cloneInfoErr := getCloneInfo(ctx, volOptions, cr, volumeID(vid.FsSubvolName))
+		cloneState, cloneInfoErr := getCloneState(ctx, volOptions, cr, volumeID(vid.FsSubvolName))
 		if cloneInfoErr != nil {
 			if errors.Is(cloneInfoErr, ErrVolumeNotFound) {
 				if pvID != nil {
@@ -102,13 +102,13 @@ func checkVolExists(ctx context.Context,
 			}
 			return nil, err
 		}
-		if clone.Status.State == cephFSCloneInprogress {
+		if cloneState == cephFSCloneInprogress {
 			return nil, ErrCloneInProgress
 		}
-		if clone.Status.State == cephFSClonePending {
+		if cloneState == cephFSClonePending {
 			return nil, ErrClonePending
 		}
-		if clone.Status.State == cephFSCloneFailed {
+		if cloneState == cephFSCloneFailed {
 			err = purgeVolume(ctx, volumeID(vid.FsSubvolName), cr, volOptions, true)
 			if err != nil {
 				util.ErrorLog(ctx, "failed to delete volume %s: %v", vid.FsSubvolName, err)
@@ -128,7 +128,7 @@ func checkVolExists(ctx context.Context,
 				volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
 			return nil, err
 		}
-		if clone.Status.State != cephFSCloneComplete {
+		if cloneState != cephFSCloneComplete {
 			return nil, fmt.Errorf("clone is not in complete state for %s", vid.FsSubvolName)
 		}
 	} else {
