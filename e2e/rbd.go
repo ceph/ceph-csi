@@ -165,7 +165,7 @@ var _ = Describe("RBD", func() {
 		if err != nil {
 			e2elog.Failf("failed to create configmap with error %v", err)
 		}
-		err = createRBDStorageClass(f.ClientSet, f, nil, nil)
+		err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
 		if err != nil {
 			e2elog.Failf("failed to create storageclass with error %v", err)
 		}
@@ -282,7 +282,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"csi.storage.k8s.io/fstype": "ext4"})
+				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"csi.storage.k8s.io/fstype": "ext4"}, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -296,7 +296,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, nil)
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -307,7 +307,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"encrypted": "true"})
+				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"encrypted": "true"}, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -321,7 +321,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, nil)
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -336,7 +336,7 @@ var _ = Describe("RBD", func() {
 					"encrypted":       "true",
 					"encryptionKMSID": "vault-test",
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, scOpts)
+				err = createRBDStorageClass(f.ClientSet, f, nil, scOpts, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -350,7 +350,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, nil)
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -640,7 +640,7 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						e2elog.Failf("failed to delete storageclass with error %v", err)
 					}
-					err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"csi.storage.k8s.io/fstype": "xfs"})
+					err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"csi.storage.k8s.io/fstype": "xfs"}, deletePolicy)
 					if err != nil {
 						e2elog.Failf("failed to create storageclass with error %v", err)
 					}
@@ -710,7 +710,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"volumeNamePrefix": volumeNamePrefix})
+				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"volumeNamePrefix": volumeNamePrefix}, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -753,7 +753,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, nil)
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -812,7 +812,7 @@ var _ = Describe("RBD", func() {
 					"{\"domainLabel\":\"zone\",\"value\":\"" + zoneValue + "\"}]}]"
 				err = createRBDStorageClass(f.ClientSet, f,
 					map[string]string{"volumeBindingMode": "WaitForFirstConsumer"},
-					map[string]string{"topologyConstrainedPools": topologyConstraint})
+					map[string]string{"topologyConstrainedPools": topologyConstraint}, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -861,7 +861,7 @@ var _ = Describe("RBD", func() {
 						"{\"domainLabel\":\"zone\",\"value\":\"" + zoneValue + "\"}]}]"
 					err = createRBDStorageClass(f.ClientSet, f,
 						map[string]string{"volumeBindingMode": "WaitForFirstConsumer"},
-						map[string]string{"topologyConstrainedPools": topologyConstraint})
+						map[string]string{"topologyConstrainedPools": topologyConstraint}, deletePolicy)
 					if err != nil {
 						e2elog.Failf("failed to create storageclass with error %v", err)
 					}
@@ -895,7 +895,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, nil)
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -908,7 +908,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, map[string]string{rbdmountOptions: "debug,invalidOption"}, nil)
+				err = createRBDStorageClass(f.ClientSet, f, map[string]string{rbdmountOptions: "debug,invalidOption"}, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -946,7 +946,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, nil)
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -1223,7 +1223,7 @@ var _ = Describe("RBD", func() {
 				}
 				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{
 					"mapOptions":   "lock_on_read,queue_depth=1024",
-					"unmapOptions": "force"})
+					"unmapOptions": "force"}, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -1235,7 +1235,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, nil, nil)
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}

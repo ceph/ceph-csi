@@ -37,6 +37,9 @@ const (
 
 	rookTolBoxPodLabel = "app=rook-ceph-tools"
 	rbdmountOptions    = "mountOptions"
+
+	retainPolicy = v1.PersistentVolumeReclaimRetain
+	deletePolicy = v1.PersistentVolumeReclaimDelete
 )
 
 var (
