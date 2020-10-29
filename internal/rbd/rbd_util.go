@@ -690,7 +690,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 
 	rbdVol.RadosNamespace, err = util.RadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
 	if err != nil {
-		return nil, err
+		return rbdVol, err
 	}
 
 	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
