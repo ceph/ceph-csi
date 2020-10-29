@@ -606,10 +606,9 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	defer cs.OperationLocks.ReleaseDeleteLock(volumeID)
 
-	rbdVol := &rbdVolume{}
-	defer rbdVol.Destroy()
-
+	var rbdVol = &rbdVolume{}
 	rbdVol, err = genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	defer rbdVol.Destroy()
 	if err != nil {
 		if errors.Is(err, util.ErrPoolNotFound) {
 			util.WarningLog(ctx, "failed to get backend volume for %s: %v", volumeID, err)
@@ -643,7 +642,6 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		}
 		return &csi.DeleteVolumeResponse{}, nil
 	}
-	defer rbdVol.Destroy()
 
 	// lock out parallel create requests against the same volume name as we
 	// cleanup the image and associated omaps for the same
@@ -737,10 +735,10 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVol := &rbdVolume{}
-	defer rbdVol.Destroy()
+	var rbdVol = &rbdVolume{}
 	// Fetch source volume information
 	rbdVol, err = genVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
+	defer rbdVol.Destroy()
 	if err != nil {
 		// nolint:gocritic // this ifElseChain can not be rewritten to a switch statement
 		if errors.Is(err, ErrImageNotFound) {
@@ -753,7 +751,6 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 		return nil, err
 	}
-	defer rbdVol.Destroy()
 
 	// TODO: re-encrypt snapshot with a new passphrase
 	if rbdVol.Encrypted {
@@ -1109,10 +1106,9 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVol := &rbdVolume{}
-	defer rbdVol.Destroy()
-
+	var rbdVol = &rbdVolume{}
 	rbdVol, err = genVolFromVolID(ctx, volID, cr, req.GetSecrets())
+	defer rbdVol.Destroy()
 	if err != nil {
 		// nolint:gocritic // this ifElseChain can not be rewritten to a switch statement
 		if errors.Is(err, ErrImageNotFound) {
@@ -1125,7 +1121,6 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		}
 		return nil, err
 	}
-	defer rbdVol.Destroy()
 
 	if rbdVol.Encrypted {
 		return nil, status.Errorf(codes.InvalidArgument, "encrypted volumes do not support resize (%s)",
