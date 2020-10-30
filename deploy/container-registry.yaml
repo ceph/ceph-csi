@@ -1,0 +1,100 @@
+#
+#
+# Also requires linking the pushSecret to the builder Service Account:
+#   $ oc secrets link builder container-registry-auth
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: container-registry-auth
+  labels:
+    app: container-registry
+stringData:
+  username: "@@USERNAME@@"
+  password: "@@RANDOM_STRING@@"
+  # contents created with:
+  #   $ htpasswd -Bbn $USER $PASSWD
+  htpasswd: |-
+    "@@REPLACE_WITH_OUTPUT_OF_HTPASSWD_CMD@@"
+  # contents created with:
+  #   $ podman login -u $USER -p $PASSWD --authfile=config.json $URL
+  config.json: |-
+    {
+      "auths": {
+        "registry-ceph-csi.apps.ocp.ci.centos.org": {
+          "auth": "@@SOME_B64ENCODED_STRING@@"
+        }
+      }
+    }
+---
+kind: DeploymentConfig
+apiVersion: apps.openshift.io/v1
+metadata:
+  name: container-registry
+  labels:
+    app: container-registry
+spec:
+  triggers:
+    - type: ConfigChange
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: container-registry
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: docker-registry
+          image: docker.io/library/registry:2
+          volumeMounts:
+            - name: container-images
+              mountPath: /var/lib/registry
+            - name: htpasswd
+              mountPath: /auth
+          env:
+            - name: REGISTRY_AUTH
+              value: htpasswd
+            - name: REGISTRY_AUTH_HTPASSWD_REALM
+              value: Ceph-CSI CI Container Registry
+            - name: REGISTRY_AUTH_HTPASSWD_PATH
+              value: /auth/htpasswd
+      volumes:
+        - name: container-images
+          persistentVolumeClaim:
+            claimName: ceph-csi-image-registry
+        - name: htpasswd
+          secret:
+            secretName: container-registry-auth
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: container-registry
+  labels:
+    app: container-registry
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5000
+      protocol: TCP
+      targetPort: 5000
+  selector:
+    name: container-registry
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: registry
+  labels:
+    app: container-registry
+spec:
+  port:
+    targetPort: 5000
+  tls:
+    insecureEdgeTerminationPolicy: Allow
+    termination: edge
+  to:
+    kind: Service
+    name: container-registry
+    weight: 100
+  wildcardPolicy: None
