@@ -7,6 +7,10 @@ def ref = "master"
 def git_since = 'master'
 def workdir = '/opt/build/go/src/github.com/ceph/ceph-csi'
 def doc_change = 0
+def rebuild_test_container = 0
+def rebuild_devel_container = 0
+// private, internal container image repository
+def cached_image = 'registry-ceph-csi.apps.ocp.ci.centos.org/ceph-csi'
 
 node('cico-workspace') {
 
@@ -61,15 +65,58 @@ node('cico-workspace') {
 			// TODO: already checked out the PR on the node, scp the contents?
 			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=${workdir} --gitrepo=${git_repo} --ref=${ref}"
 		}
-		stage('test & build') {
+
+		// run two jobs in parallel, one for the test container, and
+		// one for the devel container
+		//
+		// - check if the PR modifies the container image files
+		// - pull the container image from the repository of no
+		//   modifications are detected
+		stage('pull container images') {
+			rebuild_test_container = sh(
+				script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/container-needs-rebuild.sh test origin/${git_since}",
+				returnStatus: true)
+
+			rebuild_devel_container = sh(
+				script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/container-needs-rebuild.sh devel origin/${git_since}",
+				returnStatus: true)
+
 			parallel test: {
-				node ('cico-workspace') {
-					sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test CONTAINER_CMD=podman"'
+				node('cico-workspace') {
+					if (rebuild_test_container == 10) {
+						// container needs rebuild, don't pull
+						return
+					}
+
+					withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
+						sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'podman pull --creds=${CREDS_USER}:${CREDS_PASSWD} ${cached_image}:test'"
+						sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'podman inspect -f \'{{.Id}}\' ${cached_image}:test > /opt/build/go/src/github.com/ceph/ceph-csi/.test-container-id'"
+					}
 				}
 			},
 			build: {
 				node('cico-workspace') {
-					sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman"'
+					if (rebuild_devel_container == 10) {
+						// container needs rebuild, don't pull
+						return
+					}
+
+					withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
+						sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'podman pull --creds=${CREDS_USER}:${CREDS_PASSWD} ${cached_image}:devel'"
+						sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'podman inspect -f \'{{.Id}}\' ${cached_image}:devel > /opt/build/go/src/github.com/ceph/ceph-csi/.devel-container-id'"
+					}
+				}
+			}
+		}
+		stage('test & build') {
+			parallel test: {
+				node ('cico-workspace') {
+					sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${cached_image}'"
+				}
+			},
+			build: {
+				node('cico-workspace') {
+					sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${cached_image}'"
 				}
 			}
 		}
