@@ -7,6 +7,8 @@ def ref = 'ci/centos'
 def git_since = 'ci/centos'
 def base = ''
 def doc_change = 0
+// private, internal container image repository
+def cached_image = 'registry-ceph-csi.apps.ocp.ci.centos.org/ceph-csi'
 
 node('cico-workspace') {
 	stage('checkout ci repository') {
@@ -64,8 +66,25 @@ node('cico-workspace') {
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh root@${CICO_NODE}:'
 			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${ci_git_repo} --ref=${ref} ${base}"
 		}
+
+		// - check if the PR modifies the container image files
+		// - pull the container image from the repository of no
+		//   modifications are detected
+		stage('pull container image') {
+			def rebuild_container = sh(
+				script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/container-needs-rebuild.sh test origin/${git_since}",
+				returnStatus: true)
+			if (rebuild_container == 10) {
+				// container needs rebuild, don't pull
+				return
+			}
+
+			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
+				sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'podman pull --creds=${CREDS_USER}:${CREDS_PASSWD} ${cached_image}:test'"
+			}
+		}
 		stage('test') {
-			sh 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "cd /opt/build/go/src/github.com/ceph/ceph-csi && make"'
+			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make ENV_CSI_IMAGE_NAME=${cached_image} USE_PULLED_IMAGE=yes'"
 		}
 	}
 
