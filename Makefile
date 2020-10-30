@@ -20,6 +20,7 @@ CPUS?=$(shell nproc --ignore=1)
 CPUSET?=--cpuset-cpus=0-${CPUS}
 
 CSI_IMAGE_NAME=$(if $(ENV_CSI_IMAGE_NAME),$(ENV_CSI_IMAGE_NAME),quay.io/cephcsi/cephcsi)
+USE_PULLED_IMAGE ?= no
 
 # passing TARGET=static-check on the 'make containerized-test' commandline will
 # run the selected target instead of 'make test' in the container. Obviously
@@ -69,11 +70,17 @@ containerized-test: REBASE ?= 0
 containerized-test: .test-container-id
 	$(CONTAINER_CMD) run --rm -v $(PWD):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE) REBASE=$(REBASE)
 
+ifeq ($(USE_PULLED_IMAGE),no)
 # create a (cached) container image with dependencies for testing the CI jobs
 .test-container-id: scripts/Dockerfile.test
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
 	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
+else
+# use the pulled image, just create .test-container-id
+.test-container-id:
+	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
+endif
 
 clean:
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
