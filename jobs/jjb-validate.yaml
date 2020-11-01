@@ -3,6 +3,15 @@
     name: jjb-validate
     project-type: pipeline
     concurrent: false
+    parameters:
+      - string:
+          name: GIT_REPO
+          default: http://github.com/ceph/ceph-csi
+          description: The git repo url
+      - string:
+          name: GIT_BRANCH
+          default: ci/centos
+          description: The git branch
     properties:
       - github:
           url: https://github.com/ceph/ceph-csi
@@ -10,9 +19,6 @@
           days-to-keep: 7
           artifact-days-to-keep: 7
     dsl: |
-      def GIT_REPO = 'https://github.com/ceph/ceph-csi'
-      def GIT_BRANCH = 'ci/centos'
-
       if (params.ghprbPullId != null) {
           GIT_BRANCH = "pull/${ghprbPullId}/merge"
       }
@@ -24,13 +30,14 @@
               refspec: "${GIT_BRANCH}"]]])
         }
         stage('validation') {
-          sh "GIT_REF=${GIT_BRANCH} ./deploy/jjb.sh validate"
+          sh "./deploy/jjb.sh --cmd validate \
+              --GIT_REF ${GIT_BRANCH} --GIT_REPO ${GIT_REPO}"
         }
       }
     triggers:
       - github-pull-request:
           status-context: ci/centos/jjb-validate
-          trigger-phrase: '/(re)?test ((all)|(ci/centos/jjb-validate))'
+          trigger-phrase: "/(re)?test ((all)|(ci/centos/jjb-validate))"
           permit-all: true
           github-hooks: true
           white-list-target-branches:

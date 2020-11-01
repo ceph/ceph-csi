@@ -3,6 +3,15 @@
     name: jjb-deploy
     project-type: pipeline
     concurrent: false
+    parameters:
+      - string:
+          name: GIT_REPO
+          default: http://github.com/ceph/ceph-csi
+          description: The git repo url
+      - string:
+          name: GIT_BRANCH
+          default: ci/centos
+          description: The git branch
     properties:
       - github:
           url: https://github.com/ceph/ceph-csi
@@ -10,22 +19,21 @@
           days-to-keep: 7
           artifact-days-to-keep: 7
     dsl: |
-      def GIT_REPO = 'http://github.com/ceph/ceph-csi'
-      def GIT_BRANCH = 'ci/centos'
       node {
         stage('checkout ci repository') {
           git url: "${GIT_REPO}", branch: "${GIT_BRANCH}", changelog: false
         }
         stage('deployment') {
-          sh './deploy/jjb.sh deploy'
+          sh "./deploy/jjb.sh --cmd deploy \
+              --GIT_REF ${GIT_BRANCH} --GIT_REPO ${GIT_REPO}"
         }
       }
     scm:
       - git:
           name: origin
-          url: https://github.com/ceph/ceph-csi
+          url: $GIT_REPO
           branches:
-            - ci/centos
+            - $GIT_BRANCH
     triggers:
       - pollscm:
           cron: "H/5 * * * *"

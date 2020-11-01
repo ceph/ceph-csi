@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Create a new Job in OCP that runs the jbb-validate container once. This
 # script will wait for completion of the validation, and uses the result of the
@@ -11,25 +11,72 @@
 #
 
 # error out in case a command fails
-set -e
+export PS4='\e[32m+ ${FUNCNAME:-main}@${BASH_SOURCE}:${LINENO} \e[0m'
+set -ex
 
-CMD="${1}"
-GIT_REF=${GIT_REF:-"ci/centos"}
+GIT_REF="ci/centos"
+GIT_REPO="https://github.com/ceph/ceph-csi"
+
+function usage() {
+    echo "Options:"
+    echo "--cmd         the mode of this script. can be validate or deploy"
+    echo "--GIT_REF     specify the branch to build from (default: ${GIT_REF})"
+    echo "--GIT_REPO    specify the repo to build from (default: ${GIT_REPO})"
+    echo "--help        specify the flags"
+    echo " "
+    exit 0
+}
+
+ARGUMENT_LIST=(
+    "cmd"
+    "GIT_REF"
+    "GIT_REPO"
+)
+
+opts=$(getopt \
+    --longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")help" \
+    --name "$(basename "${0}")" \
+    --options "" \
+    -- "$@"
+)
+rc=$?
+
+if [ ${rc} -ne 0 ]
+then
+    echo "Try '--help' for more information."
+    exit 1
+fi
+
+eval set -- "${opts}"
+
+while true; do
+    case "${1}" in
+        --cmd)          CMD=${2}
+                        shift 2
+                        if [ "${CMD}" != "deploy" ] && [ "${CMD}" != "validate" ]
+                        then
+                            echo "no such command: ${CMD}"
+                            exit 1
+                        fi ;;
+        --GIT_REF)      GIT_REF=${2}
+                        shift 2 ;;
+        --GIT_REPO)     GIT_REPO=${2}
+                        shift 2 ;;
+        --help)         usage ;;
+        --)             shift 1
+                        break ;;
+    esac
+done
+
+if [ -z "${CMD}" ]
+then
+	echo "missing --cmd <command>."
+	usage
+fi
 
 get_pod_status() {
 	oc get "pod/${1}" --no-headers -o=jsonpath='{.status.phase}'
 }
-
-case "${CMD}" in
-	"validate")
-		;;
-	"deploy")
-		;;
-	*)
-		echo "no such command: ${CMD}"
-		exit 1
-		;;
-esac
 
 # make sure there is a valid OCP session
 oc version
@@ -40,8 +87,8 @@ cd "$(dirname "${0}")"
 # unique ID for the session
 SESSION=$(uuidgen)
 
-oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" -p=GIT_REF="${GIT_REF}"
-oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" -p=GIT_REF="${GIT_REF}" | oc create -f -
+oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" -p=GIT_REF="${GIT_REF}" -p=GIT_REPO="${GIT_REPO}"
+oc process -f "jjb-${CMD}.yaml" -p=SESSION="${SESSION}" -p=GIT_REF="${GIT_REF}" -p=GIT_REPO="${GIT_REPO}" | oc create -f -
 
 # loop until pod is available
 while true
