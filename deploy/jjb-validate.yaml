@@ -25,7 +25,7 @@ objects:
               image: image-registry.openshift-image-registry.svc:5000/ceph-csi/jjb:latest
               env:
                 - name: GIT_REPO
-                  value: https://github.com/ceph/ceph-csi
+                  value: "${GIT_REPO}"
                 - name: GIT_REF
                   value: "${GIT_REF}"
           restartPolicy: Never
@@ -36,4 +36,8 @@ parameters:
   - name: GIT_REF
     description: the git branch or other ref to checkout and validate
     value: ci/centos
+    required: false
+  - name: GIT_REPO
+    description: the git repo or other fork to checkout and validate
+    value: https://github.com/ceph/ceph-csi
     required: false
