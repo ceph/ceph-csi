@@ -25,6 +25,9 @@ CSI_IMAGE_NAME=$(if $(ENV_CSI_IMAGE_NAME),$(ENV_CSI_IMAGE_NAME),quay.io/cephcsi/
 CSI_IMAGE_VERSION=$(if $(ENV_CSI_IMAGE_VERSION),$(ENV_CSI_IMAGE_VERSION),canary)
 CSI_IMAGE=$(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION)
 
+# Pass USE_PULLED_IMAGE=yes to skip building a new :test or :devel image.
+USE_PULLED_IMAGE?=no
+
 $(info cephcsi image settings: $(CSI_IMAGE_NAME) version $(CSI_IMAGE_VERSION))
 ifndef GIT_COMMIT
 GIT_COMMIT=$(shell git rev-list -1 HEAD)
@@ -168,17 +171,29 @@ containerized-test: REBASE ?= 0
 containerized-test: .container-cmd .test-container-id
 	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE) REBASE=$(REBASE)
 
+ifeq ($(USE_PULLED_IMAGE),no)
 # create a (cached) container image with dependencied for building cephcsi
 .devel-container-id: .container-cmd scripts/Dockerfile.devel
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
 	$(CONTAINER_CMD) build $(CPUSET) --build-arg BASE_IMAGE=$(BASE_IMAGE) -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
+else
+# create the .devel-container-id file based on pulled image
+.devel-container-id: .container-cmd
+	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
+endif
 
+ifeq ($(USE_PULLED_IMAGE),no)
 # create a (cached) container image with dependencied for testing cephcsi
 .test-container-id: .container-cmd build.env scripts/Dockerfile.test
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
 	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
+else
+# create the .test-container-id file based on the pulled image
+.test-container-id: .container-cmd
+	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
+endif
 
 image-cephcsi: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 image-cephcsi: .container-cmd
