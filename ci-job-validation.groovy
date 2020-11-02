@@ -9,6 +9,7 @@ def base = ''
 def doc_change = 0
 // private, internal container image repository
 def cached_image = 'registry-ceph-csi.apps.ocp.ci.centos.org/ceph-csi'
+def use_pulled_image = 'USE_PULLED_IMAGE=yes'
 
 node('cico-workspace') {
 	stage('checkout ci repository') {
@@ -76,6 +77,7 @@ node('cico-workspace') {
 				returnStatus: true)
 			if (rebuild_container == 10) {
 				// container needs rebuild, don't pull
+				use_pulled_image = 'USE_PULLED_IMAGE=no'
 				return
 			}
 
@@ -84,7 +86,7 @@ node('cico-workspace') {
 			}
 		}
 		stage('test') {
-			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make ENV_CSI_IMAGE_NAME=${cached_image} USE_PULLED_IMAGE=yes'"
+			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make ENV_CSI_IMAGE_NAME=${cached_image} ${use_pulled_image}'"
 		}
 	}
 
