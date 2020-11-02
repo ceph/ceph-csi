@@ -517,15 +517,11 @@ func (rv *rbdVolume) getParentName() (string, error) {
 	}
 	defer rbdImage.Close()
 
-	parentPool := make([]byte, 128)
-	parentName := make([]byte, 128)
-	parentSnapname := make([]byte, 128)
-
-	err = rbdImage.GetParentInfo(parentPool, parentName, parentSnapname)
+	parentInfo, err := rbdImage.GetParent()
 	if err != nil {
 		return "", err
 	}
-	return string(parentName), nil
+	return parentInfo.Image.ImageName, nil
 }
 
 func (rv *rbdVolume) flatten() error {
@@ -941,22 +937,17 @@ func (rv *rbdVolume) getImageInfo() error {
 	rv.imageFeatureSet = librbd.FeatureSet(features)
 
 	// Get parent information.
-	// TODO: Replace GetParentInfo() after
-	// https://github.com/ceph/go-ceph/issues/347 is fixed.
-	parentPool := make([]byte, 128)
-	parentName := make([]byte, 128)
-	parentSnapname := make([]byte, 128)
-	err = image.GetParentInfo(parentPool, parentName, parentSnapname)
+	parentInfo, err := image.GetParent()
 	if err != nil {
 		// Caller should decide whether not finding
 		// the parent is an error or not.
-		if strings.Contains(err.Error(), "No such file or directory") {
+		if errors.Is(err, librbd.ErrNotFound) {
 			rv.ParentName = ""
 		} else {
 			return err
 		}
 	} else {
-		rv.ParentName = string(parentName)
+		rv.ParentName = parentInfo.Image.ImageName
 	}
 	// Get image creation time
 	tm, err := image.GetCreateTimestamp()
