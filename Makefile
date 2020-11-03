@@ -14,6 +14,7 @@
 
 .PHONY: all cephcsi check-env
 
+CONTAINERIZED?=no
 CONTAINER_CMD?=$(shell podman version >/dev/null 2>&1 && echo podman)
 ifeq ($(CONTAINER_CMD),)
     CONTAINER_CMD=$(shell docker version >/dev/null 2>&1 && echo docker)
@@ -77,7 +78,13 @@ endif
 all: cephcsi
 
 .PHONY: go-test static-check mod-check go-lint lint-extras gosec commitlint
+ifeq ($(CONTAINERIZED),no)
+# include mod-check in non-containerized runs
 test: go-test static-check mod-check
+else
+# exclude mod-check for containerized runs (CI runs it separately)
+test: go-test static-check
+endif
 static-check: check-env go-lint lint-extras gosec
 
 go-test: TEST_COVERAGE ?= $(shell . $(CURDIR)/build.env ; echo $${TEST_COVERAGE})
@@ -164,12 +171,12 @@ run-e2e:
 .PHONY: containerized-build containerized-test
 containerized-build: TARGET = cephcsi
 containerized-build: .container-cmd .devel-container-id
-	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make $(TARGET)
+	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):devel make $(TARGET) CONTAINERIZED=yes
 
 containerized-test: TARGET = test
 containerized-test: REBASE ?= 0
 containerized-test: .container-cmd .test-container-id
-	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE) REBASE=$(REBASE)
+	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE) REBASE=$(REBASE) CONTAINERIZED=yes
 
 ifeq ($(USE_PULLED_IMAGE),no)
 # create a (cached) container image with dependencied for building cephcsi
