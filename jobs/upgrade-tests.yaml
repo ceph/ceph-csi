@@ -48,6 +48,7 @@
       lightweight-checkout: true
     triggers:
       - github-pull-request:
+          status-url: ${RUN_DISPLAY_URL}
           status-context: 'ci/centos/upgrade-tests-{test_type}'
           # yamllint disable-line rule:line-length
           trigger-phrase: '/(re)?test ((all)|(ci/centos/upgrade-tests(-{test_type})?))'

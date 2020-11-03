@@ -20,6 +20,7 @@
       lightweight-checkout: true
     triggers:
       - github-pull-request:
+          status-url: ${RUN_DISPLAY_URL}
           status-context: ci/centos/job-validation
           trigger-phrase: '/(re)?test ((all)|(ci/centos/job-validation))'
           permit-all: true

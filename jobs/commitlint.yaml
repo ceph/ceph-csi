@@ -22,6 +22,7 @@
       lightweight-checkout: true
     triggers:
       - github-pull-request:
+          status-url: ${RUN_DISPLAY_URL}
           # the "commitlint" status context is use by the commitlint app
           status-context: commitlint
           trigger-phrase: '/(re)?test ((all)|(commitlint))'
