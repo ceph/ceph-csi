@@ -17,6 +17,7 @@ spec:
   strategy:
     dockerStrategy:
       dockerfilePath: deploy/cephcsi/image/Dockerfile
+      imageOptimizationPolicy: SkipLayers
   output:
     to:
       kind: DockerImage
@@ -42,6 +43,7 @@ spec:
   strategy:
     dockerStrategy:
       dockerfilePath: scripts/Dockerfile.test
+      imageOptimizationPolicy: SkipLayers
   output:
     to:
       kind: DockerImage
@@ -67,6 +69,7 @@ spec:
   strategy:
     dockerStrategy:
       dockerfilePath: scripts/Dockerfile.devel
+      imageOptimizationPolicy: SkipLayers
   output:
     to:
       kind: DockerImage
