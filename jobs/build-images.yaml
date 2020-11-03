@@ -19,14 +19,21 @@
           git url: "${GIT_REPO}", branch: "${GIT_BRANCH}", changelog: false
         }
         stage('build images') {
+          def base_image = sh(script: 'source ${WORKSPACE}/build.env && echo ${BASE_IMAGE}',
+                              returnStdout: true).trim()
           parallel canary: {
-            sh 'source build.env && oc start-build --follow --build-arg=BASE_IMAGE="${BASE_IMAGE}" --build-arg=GO_ARCH=amd64 ceph-csi-canary'
+            sh "oc start-build --follow \
+                  --build-arg=BASE_IMAGE='${base_image}' \
+                  --build-arg=GO_ARCH=amd64 \
+                  ceph-csi-canary"
           },
           test: {
             sh 'oc start-build --follow ceph-csi-test'
           },
           devel: {
-            sh 'source build.env && oc start-build --follow --build-arg=BASE_IMAGE="${BASE_IMAGE}" ceph-csi-devel'
+            sh "oc start-build --follow \
+                  --build-arg=BASE_IMAGE='${base_image}' \
+                  ceph-csi-devel"
           }
         }
       }
