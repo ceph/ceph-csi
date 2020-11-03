@@ -118,6 +118,11 @@ node('cico-workspace') {
 					ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${cached_image} ${use_test_image}"
 				}
 			},
+			verify: {
+				node ('cico-workspace') {
+					ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test TARGET=mod-check CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${cached_image} ${use_test_image}"
+				}
+			},
 			build: {
 				node('cico-workspace') {
 					ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${cached_image} ${use_build_image}"
