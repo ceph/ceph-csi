@@ -25,6 +25,7 @@
       lightweight-checkout: true
     triggers:
       - github-pull-request:
+          status-url: ${RUN_DISPLAY_URL}
           status-context: ci/centos/k8s-e2e-external-storage
           # yamllint disable-line rule:line-length
           trigger-phrase: '/(re)?test ci/centos/k8s-e2e-external-storage'

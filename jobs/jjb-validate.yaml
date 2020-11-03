@@ -36,6 +36,7 @@
       }
     triggers:
       - github-pull-request:
+          status-url: ${RUN_DISPLAY_URL}
           status-context: ci/centos/jjb-validate
           trigger-phrase: "/(re)?test ((all)|(ci/centos/jjb-validate))"
           permit-all: true
