@@ -46,26 +46,13 @@ type cephfsSnapshot struct {
 }
 
 func (vo *volumeOptions) createSnapshot(ctx context.Context, cr *util.Credentials, snapID, volID volumeID) error {
-	args := []string{
-		"fs",
-		"subvolume",
-		"snapshot",
-		"create",
-		vo.FsName,
-		string(volID),
-		string(snapID),
-		"--group_name",
-		vo.SubvolumeGroup,
-		"-m", vo.Monitors,
-		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.ID,
-		"--keyfile=" + cr.KeyFile,
+	fsa, err := vo.conn.GetFSAdmin()
+	if err != nil {
+		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+		return err
 	}
 
-	err := execCommandErr(
-		ctx,
-		"ceph",
-		args[:]...)
+	err = fsa.CreateSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, vo.FsName)
 		return err
