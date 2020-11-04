@@ -24,7 +24,6 @@ function usage() {
     echo "--GIT_REPO    specify the repo to build from (default: ${GIT_REPO})"
     echo "--help        specify the flags"
     echo " "
-    exit 0
 }
 
 ARGUMENT_LIST=(
@@ -62,7 +61,8 @@ while true; do
                         shift 2 ;;
         --GIT_REPO)     GIT_REPO=${2}
                         shift 2 ;;
-        --help)         usage ;;
+        --help)         usage
+                        exit 0 ;;
         --)             shift 1
                         break ;;
     esac
@@ -71,7 +71,7 @@ done
 if [ -z "${CMD}" ]
 then
 	echo "missing --cmd <command>."
-	usage
+	exit 1
 fi
 
 get_pod_status() {
