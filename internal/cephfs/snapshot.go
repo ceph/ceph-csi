@@ -62,27 +62,13 @@ func (vo *volumeOptions) createSnapshot(ctx context.Context, snapID, volID volum
 }
 
 func (vo *volumeOptions) deleteSnapshot(ctx context.Context, cr *util.Credentials, snapID, volID volumeID) error {
-	args := []string{
-		"fs",
-		"subvolume",
-		"snapshot",
-		"rm",
-		vo.FsName,
-		string(volID),
-		string(snapID),
-		"--group_name",
-		vo.SubvolumeGroup,
-		"-m", vo.Monitors,
-		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"--force",
+	fsa, err := vo.conn.GetFSAdmin()
+	if err != nil {
+		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+		return err
 	}
 
-	err := execCommandErr(
-		ctx,
-		"ceph",
-		args[:]...)
+	err = fsa.ForceRemoveSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
 	if err != nil {
 		util.ErrorLog(ctx, "failed to delete subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, vo.FsName)
 		return err
