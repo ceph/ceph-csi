@@ -503,6 +503,7 @@ func oneReplicaDeployYaml(template string) string {
 func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *framework.Framework) {
 	var wg sync.WaitGroup
 	totalCount := 10
+	wgErrs := make([]error, totalCount)
 	pvc, err := loadPVC(sourcePvcPath)
 	if err != nil {
 		e2elog.Failf("failed to load PVC with error %v", err)
@@ -531,14 +532,23 @@ func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *fr
 	for i := 0; i < totalCount; i++ {
 		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
-			err = createPVCAndApp(name, f, &p, &a, deployTimeout)
-			if err != nil {
-				e2elog.Failf("failed to create PVC with error %v", err)
-			}
+			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 			w.Done()
 		}(&wg, i, *pvcClone, *appClone)
 	}
 	wg.Wait()
+
+	failed := 0
+	for i, err := range wgErrs {
+		if err != nil {
+			// not using Failf() as it aborts the test and does not log other errors
+			e2elog.Logf("failed to create PVC (%s%d): %v", f.UniqueName, i, err)
+			failed++
+		}
+	}
+	if failed != 0 {
+		e2elog.Failf("creating PVCs failed, %d errors were logged", failed)
+	}
 
 	// total images in cluster is 1 parent rbd image+ total
 	// temporary clone+ total clones
@@ -558,14 +568,23 @@ func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *fr
 		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
-			err = deletePVCAndApp(name, f, &p, &a)
-			if err != nil {
-				e2elog.Failf("failed to delete PVC and application with error %v", err)
-			}
+			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 			w.Done()
 		}(&wg, i, *pvcClone, *appClone)
 	}
 	wg.Wait()
+
+	for i, err := range wgErrs {
+		if err != nil {
+			// not using Failf() as it aborts the test and does not log other errors
+			e2elog.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+			failed++
+		}
+	}
+	if failed != 0 {
+		e2elog.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
+	}
+
 	validateRBDImageCount(f, 0)
 }
 
