@@ -93,7 +93,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		return cloneErr
 	}
 
-	cloneState, cloneErr := getCloneState(ctx, volOpt, cr, cloneID)
+	cloneState, cloneErr := volOpt.getCloneState(ctx, cr, cloneID)
 	if cloneErr != nil {
 		return cloneErr
 	}
@@ -183,7 +183,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 		}
 	}()
 
-	cloneState, err := getCloneState(ctx, volOptions, cr, volumeID(vID.FsSubvolName))
+	cloneState, err := volOptions.getCloneState(ctx, cr, volumeID(vID.FsSubvolName))
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 	return nil
 }
 
-func getCloneState(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (cephFSCloneState, error) {
+func (vo *volumeOptions) getCloneState(ctx context.Context, cr *util.Credentials, volID volumeID) (cephFSCloneState, error) {
 	type cloneStatus struct {
 		Status struct {
 			State string `json:"state"`
@@ -220,11 +220,11 @@ func getCloneState(ctx context.Context, volOptions *volumeOptions, cr *util.Cred
 		"fs",
 		"clone",
 		"status",
-		volOptions.FsName,
+		vo.FsName,
 		string(volID),
 		"--group_name",
-		volOptions.SubvolumeGroup,
-		"-m", volOptions.Monitors,
+		vo.SubvolumeGroup,
+		"-m", vo.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix + cr.ID,
 		"--keyfile=" + cr.KeyFile,
@@ -236,7 +236,7 @@ func getCloneState(ctx context.Context, volOptions *volumeOptions, cr *util.Cred
 		"ceph",
 		args[:]...)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get subvolume clone info %s(%s) in fs %s", string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to get subvolume clone info %s(%s) in fs %s", string(volID), err, vo.FsName)
 		return cephFSCloneError, err
 	}
 	return cephFSCloneState(cs.Status.State), nil
