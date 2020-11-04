@@ -83,7 +83,7 @@ type Config struct {
 	PidLimit          int           // PID limit to configure through cgroups")
 	MetricsPort       int           // TCP port for liveness/grpc metrics requests
 	PollTime          time.Duration // time interval in seconds between each poll
-	PoolTimeout       time.Duration // probe timeout in seconds
+	ProbeTimeout      time.Duration // probe timeout in seconds
 	EnableGRPCMetrics bool          // option to enable grpc metrics
 
 	IsControllerServer bool // if set to true start provisoner server

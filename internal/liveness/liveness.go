@@ -86,7 +86,7 @@ func Run(conf *util.Config) {
 	util.ExtendedLogMsg("Liveness Running")
 
 	// start liveness collection
-	go recordLiveness(conf.Endpoint, conf.DriverName, conf.PollTime, conf.PoolTimeout)
+	go recordLiveness(conf.Endpoint, conf.DriverName, conf.PollTime, conf.ProbeTimeout)
 
 	// start up prometheus endpoint
 	util.StartMetricsServer(conf)
