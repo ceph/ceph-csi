@@ -354,7 +354,7 @@ func checkSnapExists(
 
 	defer func() {
 		if err != nil {
-			err = volOptions.deleteSnapshot(ctx, cr, volumeID(snapID), volumeID(parentSubVolName))
+			err = volOptions.deleteSnapshot(ctx, volumeID(snapID), volumeID(parentSubVolName))
 			if err != nil {
 				util.ErrorLog(ctx, "failed to delete snapshot %s: %v", snapID, err)
 				return
