@@ -209,35 +209,17 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 }
 
 func (vo *volumeOptions) getCloneState(ctx context.Context, cr *util.Credentials, volID volumeID) (cephFSCloneState, error) {
-	type cloneStatus struct {
-		Status struct {
-			State string `json:"state"`
-		} `json:"status"`
-	}
-
-	cs := cloneStatus{}
-	args := []string{
-		"fs",
-		"clone",
-		"status",
-		vo.FsName,
-		string(volID),
-		"--group_name",
-		vo.SubvolumeGroup,
-		"-m", vo.Monitors,
-		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"--format=json",
-	}
-	err := execCommandJSON(
-		ctx,
-		&cs,
-		"ceph",
-		args[:]...)
+	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get subvolume clone info %s(%s) in fs %s", string(volID), err, vo.FsName)
+		util.ErrorLog(ctx, "could not get FSAdmin, can get clone status for volume %s with ID %s: %v", vo.FsName, string(volID), err)
 		return cephFSCloneError, err
 	}
-	return cephFSCloneState(cs.Status.State), nil
+
+	cs, err := fsa.CloneStatus(vo.FsName, vo.SubvolumeGroup, string(volID))
+	if err != nil {
+		util.ErrorLog(ctx, "could not get clone state for volume %s with ID %s: %v", vo.FsName, string(volID), err)
+		return cephFSCloneError, err
+	}
+
+	return cephFSCloneState(cs.State), nil
 }
