@@ -4,7 +4,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -17,7 +16,7 @@ func ValidateURL(c *Config) error {
 
 // StartMetricsServer starts http server.
 func StartMetricsServer(c *Config) {
-	addr := net.JoinHostPort(c.MetricsIP, strconv.Itoa(c.MetricsPort))
+	addr := net.JoinHostPort(c.MetricsIP, c.MetricsPort)
 	http.Handle(c.MetricsPath, promhttp.Handler())
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {

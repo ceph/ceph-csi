@@ -66,7 +66,7 @@ func init() {
 	flag.BoolVar(&conf.ForceKernelCephFS, "forcecephkernelclient", false, "enable Ceph Kernel clients on kernel < 4.17 which support quotas")
 
 	// liveness/grpc metrics related flags
-	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/grpc metrics requests")
+	flag.StringVar(&conf.MetricsPort, "metricsport", "8080", "TCP port for liveness/grpc metrics requests")
 	flag.StringVar(&conf.MetricsPath, "metricspath", "/metrics", "path of prometheus endpoint where metrics will be available")
 	flag.DurationVar(&conf.PollTime, "polltime", time.Second*pollTime, "time interval in seconds between each poll")
 	flag.DurationVar(&conf.ProbeTimeout, "timeout", time.Second*probeTimeout, "probe timeout in seconds")

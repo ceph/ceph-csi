@@ -81,7 +81,7 @@ type Config struct {
 	HistogramOption   string        // Histogram option for grpc metrics, should be comma separated value, ex:= "0.5,2,6" where start=0.5 factor=2, count=6
 	MetricsIP         string        // TCP port for liveness/ metrics requests
 	PidLimit          int           // PID limit to configure through cgroups")
-	MetricsPort       int           // TCP port for liveness/grpc metrics requests
+	MetricsPort       string        // TCP port for liveness/grpc metrics requests
 	PollTime          time.Duration // time interval in seconds between each poll
 	ProbeTimeout      time.Duration // probe timeout in seconds
 	EnableGRPCMetrics bool          // option to enable grpc metrics
