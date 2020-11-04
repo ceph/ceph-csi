@@ -93,7 +93,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		return cloneErr
 	}
 
-	cloneState, cloneErr := volOpt.getCloneState(ctx, cr, cloneID)
+	cloneState, cloneErr := volOpt.getCloneState(ctx, cloneID)
 	if cloneErr != nil {
 		return cloneErr
 	}
@@ -183,7 +183,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 		}
 	}()
 
-	cloneState, err := volOptions.getCloneState(ctx, cr, volumeID(vID.FsSubvolName))
+	cloneState, err := volOptions.getCloneState(ctx, volumeID(vID.FsSubvolName))
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 	return nil
 }
 
-func (vo *volumeOptions) getCloneState(ctx context.Context, cr *util.Credentials, volID volumeID) (cephFSCloneState, error) {
+func (vo *volumeOptions) getCloneState(ctx context.Context, volID volumeID) (cephFSCloneState, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin, can get clone status for volume %s with ID %s: %v", vo.FsName, string(volID), err)

@@ -83,7 +83,7 @@ func checkVolExists(ctx context.Context,
 	vid.FsSubvolName = imageData.ImageAttributes.ImageName
 
 	if sID != nil || pvID != nil {
-		cloneState, cloneStateErr := volOptions.getCloneState(ctx, cr, volumeID(vid.FsSubvolName))
+		cloneState, cloneStateErr := volOptions.getCloneState(ctx, volumeID(vid.FsSubvolName))
 		if cloneStateErr != nil {
 			if errors.Is(cloneStateErr, ErrVolumeNotFound) {
 				if pvID != nil {
