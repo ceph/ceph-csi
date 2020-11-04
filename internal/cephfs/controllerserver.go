@@ -594,7 +594,7 @@ func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snaps
 	}
 	defer func() {
 		if err != nil {
-			dErr := deleteSnapshot(ctx, volOpt, cr, snapID, volID)
+			dErr := volOpt.deleteSnapshot(ctx, cr, snapID, volID)
 			if dErr != nil {
 				util.ErrorLog(ctx, "failed to delete snapshot %s %v", snapID, err)
 			}
@@ -711,7 +711,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
-	err = deleteSnapshot(ctx, volOpt, cr, volumeID(sid.FsSnapshotName), volumeID(sid.FsSubvolName))
+	err = volOpt.deleteSnapshot(ctx, cr, volumeID(sid.FsSnapshotName), volumeID(sid.FsSubvolName))
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

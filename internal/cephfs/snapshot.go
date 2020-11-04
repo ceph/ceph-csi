@@ -61,18 +61,18 @@ func (vo *volumeOptions) createSnapshot(ctx context.Context, snapID, volID volum
 	return nil
 }
 
-func deleteSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, snapID, volID volumeID) error {
+func (vo *volumeOptions) deleteSnapshot(ctx context.Context, cr *util.Credentials, snapID, volID volumeID) error {
 	args := []string{
 		"fs",
 		"subvolume",
 		"snapshot",
 		"rm",
-		volOptions.FsName,
+		vo.FsName,
 		string(volID),
 		string(snapID),
 		"--group_name",
-		volOptions.SubvolumeGroup,
-		"-m", volOptions.Monitors,
+		vo.SubvolumeGroup,
+		"-m", vo.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix + cr.ID,
 		"--keyfile=" + cr.KeyFile,
@@ -84,7 +84,7 @@ func deleteSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Cre
 		"ceph",
 		args[:]...)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to delete subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to delete subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, vo.FsName)
 		return err
 	}
 	return nil
