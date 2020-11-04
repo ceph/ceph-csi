@@ -34,7 +34,10 @@ import (
 type volumeID string
 
 func execCommandErr(ctx context.Context, program string, args ...string) error {
-	_, _, err := util.ExecCommand(ctx, program, args...)
+	_, stdErr, err := util.ExecCommand(ctx, program, args...)
+	if err != nil {
+		util.ErrorLog(ctx, "stdErr occurred: %s", stdErr)
+	}
 	return err
 }
 
