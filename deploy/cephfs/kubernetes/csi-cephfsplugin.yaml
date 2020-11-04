@@ -105,7 +105,7 @@ spec:
             - "--metricspath=/metrics"
             - "--healthzport=9681"
             - "--healthzpath=/healthz"
-            - "--polltime=60s"
+            - "--polltime=15s"
             - "--timeout=3s"
           env:
             - name: CSI_ENDPOINT
