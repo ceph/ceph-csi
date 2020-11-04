@@ -587,7 +587,7 @@ func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snaps
 	volID := volumeID(subvolumeName)
 	snapID := volumeID(snapshotName)
 	snap := snapshotInfo{}
-	err := createSnapshot(ctx, volOpt, cr, snapID, volID)
+	err := volOpt.createSnapshot(ctx, cr, snapID, volID)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create snapshot %s %v", snapID, err)
 		return snap, err

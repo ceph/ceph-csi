@@ -45,7 +45,7 @@ const (
 
 func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volOpt, parentvolOpt *volumeOptions, cr *util.Credentials) error {
 	snapshotID := cloneID
-	err := createSnapshot(ctx, parentvolOpt, cr, snapshotID, volID)
+	err := parentvolOpt.createSnapshot(ctx, cr, snapshotID, volID)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create snapshot %s %v", snapshotID, err)
 		return err

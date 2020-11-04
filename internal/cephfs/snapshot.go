@@ -45,18 +45,18 @@ type cephfsSnapshot struct {
 	ReservedID string
 }
 
-func createSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, snapID, volID volumeID) error {
+func (vo *volumeOptions) createSnapshot(ctx context.Context, cr *util.Credentials, snapID, volID volumeID) error {
 	args := []string{
 		"fs",
 		"subvolume",
 		"snapshot",
 		"create",
-		volOptions.FsName,
+		vo.FsName,
 		string(volID),
 		string(snapID),
 		"--group_name",
-		volOptions.SubvolumeGroup,
-		"-m", volOptions.Monitors,
+		vo.SubvolumeGroup,
+		"-m", vo.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix + cr.ID,
 		"--keyfile=" + cr.KeyFile,
@@ -67,7 +67,7 @@ func createSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Cre
 		"ceph",
 		args[:]...)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to create subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to create subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, vo.FsName)
 		return err
 	}
 	return nil
