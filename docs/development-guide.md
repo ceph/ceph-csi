@@ -146,6 +146,7 @@ The `component` in the subject of the commit message can be one of the following
 
 * `cephfs`: bugs or enhancements related to CephFS
 * `rbd`: bugs or enhancements related to RBD
+* `liveness`: bugs or enhancements related to Liveness
 * `doc`: documentation updates
 * `util`: utilities shared between components use `cephfs` or `rbd` if the
    change is only relevant for one of the type of storage

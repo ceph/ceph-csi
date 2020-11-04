@@ -37,6 +37,7 @@ rules:
       - e2e
       - helm
       - journal
+      - liveness
       - rbd
       - rebase
       - revert
