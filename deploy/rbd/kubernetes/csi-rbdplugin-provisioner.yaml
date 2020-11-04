@@ -152,6 +152,7 @@ spec:
           image: quay.io/cephcsi/cephcsi:canary
           args:
             - "--type=liveness"
+            - "--v=5"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--metricsport=8680"
             - "--metricspath=/metrics"
