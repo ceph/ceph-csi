@@ -61,7 +61,7 @@ func (vo *volumeOptions) createSnapshot(ctx context.Context, snapID, volID volum
 	return nil
 }
 
-func (vo *volumeOptions) deleteSnapshot(ctx context.Context, cr *util.Credentials, snapID, volID volumeID) error {
+func (vo *volumeOptions) deleteSnapshot(ctx context.Context, snapID, volID volumeID) error {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
