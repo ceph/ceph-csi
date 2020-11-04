@@ -361,6 +361,7 @@ var _ = Describe("RBD", func() {
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
 					var wg sync.WaitGroup
 					totalCount := 10
+					wgErrs := make([]error, totalCount)
 					wg.Add(totalCount)
 					err := createRBDSnapshotClass(f)
 					if err != nil {
@@ -384,14 +385,23 @@ var _ = Describe("RBD", func() {
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, s v1beta1.VolumeSnapshot) {
 							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
-							err = createSnapshot(&s, deployTimeout)
-							if err != nil {
-								e2elog.Failf("failed to create snapshot with error %v", err)
-							}
+							wgErrs[n] = createSnapshot(&s, deployTimeout)
 							w.Done()
 						}(&wg, i, snap)
 					}
 					wg.Wait()
+
+					failed := 0
+					for i, err := range wgErrs {
+						if err != nil {
+							// not using Failf() as it aborts the test and does not log other errors
+							e2elog.Logf("failed to create snapshot (%s%d): %v", f.UniqueName, i, err)
+							failed++
+						}
+					}
+					if failed != 0 {
+						e2elog.Failf("creating snapshots failed, %d errors were logged", failed)
+					}
 
 					// total images in cluster is 1 parent rbd image+ total snaps
 					validateRBDImageCount(f, totalCount+1)
@@ -412,14 +422,22 @@ var _ = Describe("RBD", func() {
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
-							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
-							if err != nil {
-								e2elog.Failf("failed to create PVC and application with error %v", err)
-							}
+							wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)
 					}
 					wg.Wait()
+
+					for i, err := range wgErrs {
+						if err != nil {
+							// not using Failf() as it aborts the test and does not log other errors
+							e2elog.Logf("failed to create PVC and application (%s%d): %v", f.UniqueName, i, err)
+							failed++
+						}
+					}
+					if failed != 0 {
+						e2elog.Failf("creating PVCs and applications failed, %d errors were logged", failed)
+					}
 
 					// total images in cluster is 1 parent rbd image+ total
 					// snaps+ total clones
@@ -431,14 +449,22 @@ var _ = Describe("RBD", func() {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
-							err = deletePVCAndApp(name, f, &p, &a)
-							if err != nil {
-								e2elog.Failf("failed to delete PVC and app with error %v", err)
-							}
+							wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)
 					}
 					wg.Wait()
+
+					for i, err := range wgErrs {
+						if err != nil {
+							// not using Failf() as it aborts the test and does not log other errors
+							e2elog.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+							failed++
+						}
+					}
+					if failed != 0 {
+						e2elog.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
+					}
 
 					// total images in cluster is 1 parent rbd image+ total
 					// snaps
@@ -450,14 +476,22 @@ var _ = Describe("RBD", func() {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
-							err = createPVCAndApp(name, f, &p, &a, deployTimeout)
-							if err != nil {
-								e2elog.Failf("failed to create PVC and app with error %v", err)
-							}
+							wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)
 					}
 					wg.Wait()
+
+					for i, err := range wgErrs {
+						if err != nil {
+							// not using Failf() as it aborts the test and does not log other errors
+							e2elog.Logf("failed to create PVC and application (%s%d): %v", f.UniqueName, i, err)
+							failed++
+						}
+					}
+					if failed != 0 {
+						e2elog.Failf("creating PVCs and applications failed, %d errors were logged", failed)
+					}
 
 					// total images in cluster is 1 parent rbd image+ total
 					// snaps+ total clones
@@ -477,14 +511,22 @@ var _ = Describe("RBD", func() {
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, s v1beta1.VolumeSnapshot) {
 							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
-							err = deleteSnapshot(&s, deployTimeout)
-							if err != nil {
-								e2elog.Failf("failed to delete snapshot with error %v", err)
-							}
+							wgErrs[n] = deleteSnapshot(&s, deployTimeout)
 							w.Done()
 						}(&wg, i, snap)
 					}
 					wg.Wait()
+
+					for i, err := range wgErrs {
+						if err != nil {
+							// not using Failf() as it aborts the test and does not log other errors
+							e2elog.Logf("failed to delete snapshot (%s%d): %v", f.UniqueName, i, err)
+							failed++
+						}
+					}
+					if failed != 0 {
+						e2elog.Failf("deleting snapshots failed, %d errors were logged", failed)
+					}
 
 					validateRBDImageCount(f, totalCount)
 					wg.Add(totalCount)
@@ -493,14 +535,23 @@ var _ = Describe("RBD", func() {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
-							err = deletePVCAndApp(name, f, &p, &a)
-							if err != nil {
-								e2elog.Failf("failed to delete PVC and application with error %v", err)
-							}
+							wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)
 					}
 					wg.Wait()
+
+					for i, err := range wgErrs {
+						if err != nil {
+							// not using Failf() as it aborts the test and does not log other errors
+							e2elog.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+							failed++
+						}
+					}
+					if failed != 0 {
+						e2elog.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
+					}
+
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0)
 				}
