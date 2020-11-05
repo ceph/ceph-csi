@@ -25,9 +25,10 @@ import (
 	"github.com/ceph/go-ceph/rados"
 )
 
-// listExcess is the number of false-positive key-value pairs we will
-// accept from ceph when getting omap values.
-var listExcess = 32
+// chunkSize is the number of key-value pairs that will be fetched in
+// one call. This is set fairly large to avoid calling into ceph APIs
+// over and over.
+const chunkSize int64 = 512
 
 func getOMapValues(
 	ctx context.Context,
@@ -51,15 +52,26 @@ func getOMapValues(
 	for i := range keys {
 		want[keys[i]] = true
 	}
+	numKeys := uint64(0)
+	startAfter := ""
+	for {
+		prevNumKeys := numKeys
+		err = ioctx.ListOmapValues(
+			oid, startAfter, prefix, chunkSize,
+			func(key string, value []byte) {
+				numKeys++
+				startAfter = key
+				if want[key] {
+					results[key] = string(value)
+				}
+			},
+		)
+		// if we hit an error, or no new keys were seen, exit the loop
+		if err != nil || numKeys == prevNumKeys {
+			break
+		}
+	}
 
-	err = ioctx.ListOmapValues(
-		oid, "", prefix, int64(len(want)+listExcess),
-		func(key string, value []byte) {
-			if want[key] {
-				results[key] = string(value)
-			}
-		},
-	)
 	if err != nil {
 		if errors.Is(err, rados.ErrNotFound) {
 			util.ErrorLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
