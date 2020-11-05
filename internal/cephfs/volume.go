@@ -104,16 +104,20 @@ func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (
 		return nil, err
 	}
 
+	subvol := Subvolume{
+		// only set BytesQuota when it is of type ByteCount
+		Path:     info.Path,
+		Features: make([]string, len(info.Features)),
+	}
 	bc, ok := info.BytesQuota.(fsAdmin.ByteCount)
 	if !ok {
-		// info.BytesQuota == Infinite
-		return nil, fmt.Errorf("subvolume %s has unsupported quota: %v", string(volID), info.BytesQuota)
-	}
-
-	subvol := Subvolume{
-		BytesQuota: int64(bc),
-		Path:       info.Path,
-		Features:   make([]string, len(info.Features)),
+		// we ignore info.BytesQuota == Infinite and just continue
+		// without returning quota information
+		if info.BytesQuota != fsAdmin.Infinite {
+			return nil, fmt.Errorf("subvolume %s has unsupported quota: %v", string(volID), info.BytesQuota)
+		}
+	} else {
+		subvol.BytesQuota = int64(bc)
 	}
 	for i, feature := range info.Features {
 		subvol.Features[i] = string(feature)
