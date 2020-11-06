@@ -46,21 +46,21 @@ func getLiveness(c *probeConn) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.config.ProbeTimeout)
 	defer cancel()
 
-	util.TraceLogMsg("Sending probe request to CSI driver")
+	util.TraceLog(ctx, "Metrics req: Sending probe request to CSI driver: %s", c.config.DriverName)
 	ready, err := rpc.Probe(ctx, c.conn)
 	if err != nil {
 		liveness.Set(0)
-		util.ErrorLogMsg("health check failed: %v", err)
+		util.ErrorLog(ctx, "Metrics req: health check failed: %v", err)
 		return
 	}
 
 	if !ready {
 		liveness.Set(0)
-		util.ErrorLogMsg("driver responded but is not ready")
+		util.ErrorLog(ctx, "Metrics req: driver responded but is not ready")
 		return
 	}
 	liveness.Set(1)
-	util.ExtendedLogMsg("Health check succeeded")
+	util.ExtendedLog(ctx, "Metrics req: Health check succeeded")
 }
 
 func recordLiveness(c *probeConn) {
@@ -90,6 +90,13 @@ func Run(conf *util.Config) {
 		// the grpc client is misconfigured rather than an error on the network
 		util.FatalLogMsg("failed to establish connection to CSI driver: %v", err)
 	}
+
+	conf.DriverName, err = rpc.GetDriverName(context.Background(), csiConn)
+	if err != nil {
+		util.FatalLogMsg("failed to get CSI driver name: %v", err)
+	}
+	liveMetricsManager.SetDriverName(conf.DriverName)
+	util.ExtendedLogMsg("CSI driver: %s, Endpoint: %s", conf.DriverName, conf.Endpoint)
 
 	pc := &probeConn{
 		config: conf,
