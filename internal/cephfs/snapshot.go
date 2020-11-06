@@ -60,12 +60,12 @@ func createSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Cre
 		"--keyfile=" + cr.KeyFile,
 	}
 
-	err := execCommandErr(
+	stdErr, err := execCommandWithStdErr(
 		ctx,
 		"ceph",
 		args[:]...)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to create subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to create subvolume snapshot %s %s in fs %s with Error: %v. stdError %s", string(snapID), string(volID), volOptions.FsName, err, stdErr)
 		return err
 	}
 	return nil
@@ -89,12 +89,12 @@ func deleteSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Cre
 		"--force",
 	}
 
-	err := execCommandErr(
+	stdErr, err := execCommandWithStdErr(
 		ctx,
 		"ceph",
 		args[:]...)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to delete subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to delete subvolume snapshot %s %s in fs %s with Error: %v. stdError: %s", string(snapID), string(volID), volOptions.FsName, err, stdErr)
 		return err
 	}
 	return nil
@@ -127,16 +127,16 @@ func getSnapshotInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Cr
 		"--keyfile=" + cr.KeyFile,
 		"--format=json",
 	}
-	err := execCommandJSON(
+	stdErr, err := execCommandJSON(
 		ctx,
 		&snap,
 		"ceph",
 		args[:]...)
 	if err != nil {
-		if strings.Contains(err.Error(), snapNotFound) {
+		util.ErrorLog(ctx, "failed to get subvolume snapshot info %s %s in fs %s with Error: %v. stdError: %s", string(snapID), string(volID), volOptions.FsName, err, stdErr)
+		if strings.Contains(stdErr, snapNotFound) {
 			return snapshotInfo{}, ErrSnapNotFound
 		}
-		util.ErrorLog(ctx, "failed to get subvolume snapshot info %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
 		return snapshotInfo{}, err
 	}
 	return snap, nil
@@ -164,15 +164,15 @@ func protectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Cr
 		"--keyfile=" + cr.KeyFile,
 	}
 
-	err := execCommandErr(
+	stdErr, err := execCommandWithStdErr(
 		ctx,
 		"ceph",
 		args[:]...)
 	if err != nil {
-		if strings.Contains(err.Error(), snapProtectionExist) {
+		util.ErrorLog(ctx, "failed to protect subvolume snapshot %s %s in fs %s with Error: %v. stdError: %s", string(snapID), string(volID), volOptions.FsName, err, stdErr)
+		if strings.Contains(stdErr, snapProtectionExist) {
 			return nil
 		}
-		util.ErrorLog(ctx, "failed to protect subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
 		return err
 	}
 	return nil
@@ -200,17 +200,17 @@ func unprotectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.
 		"--keyfile=" + cr.KeyFile,
 	}
 
-	err := execCommandErr(
+	stdErr, err := execCommandWithStdErr(
 		ctx,
 		"ceph",
 		args[:]...)
 	if err != nil {
+		util.ErrorLog(ctx, "failed to unprotect subvolume snapshot %s %s in fs %s with Error: %vv stdError: %s", string(snapID), string(volID), volOptions.FsName, err, stdErr)
 		// Incase the snap is already unprotected we get ErrSnapProtectionExist error code
 		// in that case we are safe and we could discard this error.
-		if strings.Contains(err.Error(), snapProtectionExist) {
+		if strings.Contains(stdErr, snapProtectionExist) {
 			return nil
 		}
-		util.ErrorLog(ctx, "failed to unprotect subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
 		return err
 	}
 	return nil
@@ -239,14 +239,14 @@ func cloneSnapshot(ctx context.Context, parentVolOptions *volumeOptions, cr *uti
 		args = append(args, "--pool_layout", cloneVolOptions.Pool)
 	}
 
-	err := execCommandErr(
+	stdErr, err := execCommandWithStdErr(
 		ctx,
 		"ceph",
 		args[:]...)
 
 	if err != nil {
-		util.ErrorLog(ctx, "failed to clone subvolume snapshot %s %s(%s) in fs %s", string(cloneID), string(volID), err, parentVolOptions.FsName)
-		if strings.HasPrefix(err.Error(), volumeNotFound) {
+		util.ErrorLog(ctx, "failed to clone subvolume snapshot %s %s in fs %s with Error: %v. stdError: %s", string(cloneID), string(volID), parentVolOptions.FsName, err, stdErr)
+		if strings.HasPrefix(stdErr, volumeNotFound) {
 			return ErrVolumeNotFound
 		}
 		return err

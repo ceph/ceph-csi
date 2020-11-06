@@ -90,7 +90,7 @@ func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *u
 
 func getSubVolumeInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (Subvolume, error) {
 	info := Subvolume{}
-	err := execCommandJSON(
+	stdErr, err := execCommandJSON(
 		ctx,
 		&info,
 		"ceph",
@@ -106,12 +106,11 @@ func getSubVolumeInfo(ctx context.Context, volOptions *volumeOptions, cr *util.C
 		"-n", cephEntityClientPrefix+cr.ID,
 		"--keyfile="+cr.KeyFile)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get subvolume info for the vol %s(%s)", string(volID), err)
-		if strings.HasPrefix(err.Error(), volumeNotFound) {
+		util.ErrorLog(ctx, "failed to get subvolume info %s in fs %s with Error: %v. stdError: %s", string(volID), volOptions.FsName, err, stdErr)
+		if strings.HasPrefix(stdErr, volumeNotFound) || strings.HasPrefix(err.Error(), volumeNotFound) {
 			return info, ErrVolumeNotFound
 		}
-		// Incase the error is other than invalid command return error to the caller.
-		if !strings.Contains(err.Error(), invalidCommand) {
+		if strings.Contains(stdErr, invalidCommand) || strings.Contains(err.Error(), invalidCommand) {
 			return info, ErrInvalidCommand
 		}
 
@@ -218,7 +217,7 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			"--keyfile=" + cr.KeyFile,
 		}
 
-		err := execCommandErr(
+		stdErr, err := execCommandWithStdErr(
 			ctx,
 			"ceph",
 			args[:]...)
@@ -228,8 +227,8 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			return nil
 		}
 		// Incase the error is other than invalid command return error to the caller.
-		if !strings.Contains(err.Error(), invalidCommand) {
-			util.ErrorLog(ctx, "failed to resize subvolume %s(%s) in fs %s", string(volID), err, volOptions.FsName)
+		if !strings.Contains(err.Error(), invalidCommand) && !strings.Contains(stdErr, invalidCommand) {
+			util.ErrorLog(ctx, "failed to resize subvolume %s in fs %s with Error: %v. stdError: %s", string(volID), volOptions.FsName, err, stdErr)
 			return err
 		}
 	}

@@ -39,17 +39,23 @@ func execCommandErr(ctx context.Context, program string, args ...string) error {
 }
 
 // nolint:unparam //  todo:program values has to be revisited later
-func execCommandJSON(ctx context.Context, v interface{}, program string, args ...string) error {
-	stdout, _, err := util.ExecCommand(ctx, program, args...)
+func execCommandWithStdErr(ctx context.Context, program string, args ...string) (string, error) {
+	_, stdErr, err := util.ExecCommand(ctx, program, args...)
+	return stdErr, err
+}
+
+// nolint:unparam //  todo:program values has to be revisited later
+func execCommandJSON(ctx context.Context, v interface{}, program string, args ...string) (string, error) {
+	stdout, stderr, err := util.ExecCommand(ctx, program, args...)
 	if err != nil {
-		return err
+		return stderr, err
 	}
 
 	if err = json.Unmarshal([]byte(stdout), v); err != nil {
-		return fmt.Errorf("failed to unmarshal JSON for %s %v: %s: %w", program, util.StripSecretInArgs(args), stdout, err)
+		return "", fmt.Errorf("failed to unmarshal JSON for %s %v: %s: %w", program, util.StripSecretInArgs(args), stdout, err)
 	}
 
-	return nil
+	return "", nil
 }
 
 // Controller service request validation.
