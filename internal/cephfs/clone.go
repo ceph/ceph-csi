@@ -27,6 +27,8 @@ import (
 const (
 	// cephFSCloneFailed indicates that clone is in failed state.
 	cephFSCloneFailed = "failed"
+	// cephFSClonePending indicates that clone is in pending state.
+	cephFSClonePending = "pending"
 	// cephFSCloneCompleted indicates that clone is in in-progress state.
 	cephFSCloneInprogress = "in-progress"
 	// cephFSCloneComplete indicates that clone is in complete state.
@@ -94,6 +96,9 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 	case cephFSCloneInprogress:
 		util.ErrorLog(ctx, "clone is in progress for %v", cloneID)
 		return ErrCloneInProgress
+	case cephFSClonePending:
+		util.ErrorLog(ctx, "clone is pending for %v", cloneID)
+		return ErrClonePending
 	case cephFSCloneFailed:
 		util.ErrorLog(ctx, "clone failed for %v", cloneID)
 		cloneFailedErr := fmt.Errorf("clone %s is in %s state", cloneID, clone.Status.State)
@@ -150,6 +155,12 @@ func cleanupCloneFromSubvolumeSnapshot(ctx context.Context, volID, cloneID volum
 	return nil
 }
 
+// isCloneRetryError returns true if the clone error is pending,in-progress
+// error.
+func isCloneRetryError(err error) bool {
+	return errors.Is(err, ErrCloneInProgress) || errors.Is(err, ErrClonePending)
+}
+
 func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volumeOptions, vID *volumeIdentifier, sID *snapshotIdentifier, cr *util.Credentials) error {
 	snapID := volumeID(sID.FsSnapshotName)
 	err := cloneSnapshot(ctx, parentVolOpt, cr, volumeID(sID.FsSubvolName), snapID, volumeID(vID.FsSubvolName), volOptions)
@@ -158,7 +169,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 	}
 	defer func() {
 		if err != nil {
-			if !errors.Is(err, ErrCloneInProgress) {
+			if !isCloneRetryError(err) {
 				if dErr := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, true); dErr != nil {
 					util.ErrorLog(ctx, "failed to delete volume %s: %v", vID.FsSubvolName, dErr)
 				}
@@ -173,6 +184,8 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 	switch clone.Status.State {
 	case cephFSCloneInprogress:
 		return ErrCloneInProgress
+	case cephFSClonePending:
+		return ErrClonePending
 	case cephFSCloneFailed:
 		return fmt.Errorf("clone %s is in %s state", vID.FsSubvolName, clone.Status.State)
 	case cephFSCloneComplete:
