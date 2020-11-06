@@ -38,7 +38,7 @@ func getFscID(ctx context.Context, monitors string, cr *util.Credentials, fsName
 	// ceph fs get myfs --format=json
 	// {"mdsmap":{...},"id":2}
 	var fsDetails CephFilesystemDetails
-	err := execCommandJSON(ctx, &fsDetails,
+	stdErr, err := execCommandJSON(ctx, &fsDetails,
 		"ceph",
 		"-m", monitors,
 		"--id", cr.ID,
@@ -47,6 +47,7 @@ func getFscID(ctx context.Context, monitors string, cr *util.Credentials, fsName
 		"fs", "get", fsName, "--format=json",
 	)
 	if err != nil {
+		util.ErrorLog(ctx, "failed to get filesystem details %s with Error: %v. stdError: %s", fsName, err, stdErr)
 		return 0, err
 	}
 
@@ -66,7 +67,7 @@ func getMetadataPool(ctx context.Context, monitors string, cr *util.Credentials,
 	// ./tbox ceph fs ls --format=json
 	// [{"name":"myfs","metadata_pool":"myfs-metadata","metadata_pool_id":4,...},...]
 	var filesystems []CephFilesystem
-	err := execCommandJSON(ctx, &filesystems,
+	stdErr, err := execCommandJSON(ctx, &filesystems,
 		"ceph",
 		"-m", monitors,
 		"--id", cr.ID,
@@ -75,6 +76,7 @@ func getMetadataPool(ctx context.Context, monitors string, cr *util.Credentials,
 		"fs", "ls", "--format=json",
 	)
 	if err != nil {
+		util.ErrorLog(ctx, "failed to list filesystem with Error: %v. stdError: %s", err, stdErr)
 		return "", err
 	}
 
@@ -96,7 +98,7 @@ func getFsName(ctx context.Context, monitors string, cr *util.Credentials, fscID
 	// ./tbox ceph fs dump --format=json
 	// JSON: {...,"filesystems":[{"mdsmap":{},"id":<n>},...],...}
 	var fsDump CephFilesystemDump
-	err := execCommandJSON(ctx, &fsDump,
+	stdErr, err := execCommandJSON(ctx, &fsDump,
 		"ceph",
 		"-m", monitors,
 		"--id", cr.ID,
@@ -105,6 +107,7 @@ func getFsName(ctx context.Context, monitors string, cr *util.Credentials, fscID
 		"fs", "dump", "--format=json",
 	)
 	if err != nil {
+		util.ErrorLog(ctx, "failed to dump filesystem details with Error: %v. stdError: %s", err, stdErr)
 		return "", err
 	}
 

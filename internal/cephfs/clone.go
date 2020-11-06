@@ -211,13 +211,13 @@ func getCloneInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 		"--keyfile=" + cr.KeyFile,
 		"--format=json",
 	}
-	err := execCommandJSON(
+	stdErr, err := execCommandJSON(
 		ctx,
 		&clone,
 		"ceph",
 		args[:]...)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get subvolume clone info %s(%s) in fs %s", string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to get subvolume clone info %s in fs %s with Error: %v. stdError: %s", string(volID), volOptions.FsName, err, stdErr)
 		return clone, err
 	}
 	return clone, nil
