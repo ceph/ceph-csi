@@ -29,6 +29,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+type probeConn struct {
+	conn   *grpc.ClientConn
+	config *util.Config
+}
+
 var (
 	liveness = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "csi",
@@ -37,12 +42,12 @@ var (
 	})
 )
 
-func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func getLiveness(c *probeConn) {
+	ctx, cancel := context.WithTimeout(context.Background(), c.config.ProbeTimeout)
 	defer cancel()
 
 	util.TraceLogMsg("Sending probe request to CSI driver")
-	ready, err := rpc.Probe(ctx, csiConn)
+	ready, err := rpc.Probe(ctx, c.conn)
 	if err != nil {
 		liveness.Set(0)
 		util.ErrorLogMsg("health check failed: %v", err)
@@ -58,26 +63,18 @@ func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 	util.ExtendedLogMsg("Health check succeeded")
 }
 
-func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration) {
-	liveMetricsManager := metrics.NewCSIMetricsManager(drivername)
+func recordLiveness(c *probeConn) {
 	// register prometheus metrics
 	err := prometheus.Register(liveness)
 	if err != nil {
 		util.FatalLogMsg(err.Error())
 	}
 
-	csiConn, err := connlib.Connect(endpoint, liveMetricsManager)
-	if err != nil {
-		// connlib should retry forever so a returned error should mean
-		// the grpc client is misconfigured rather than an error on the network
-		util.FatalLogMsg("failed to establish connection to CSI driver: %v", err)
-	}
-
 	// get liveness periodically
-	ticker := time.NewTicker(pollTime)
+	ticker := time.NewTicker(c.config.PollTime)
 	defer ticker.Stop()
 	for range ticker.C {
-		getLiveness(timeout, csiConn)
+		getLiveness(c)
 	}
 }
 
@@ -85,8 +82,22 @@ func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration
 func Run(conf *util.Config) {
 	util.ExtendedLogMsg("Liveness Running")
 
+	liveMetricsManager := metrics.NewCSIMetricsManager("")
+
+	csiConn, err := connlib.Connect(conf.Endpoint, liveMetricsManager)
+	if err != nil {
+		// connlib should retry forever so a returned error should mean
+		// the grpc client is misconfigured rather than an error on the network
+		util.FatalLogMsg("failed to establish connection to CSI driver: %v", err)
+	}
+
+	pc := &probeConn{
+		config: conf,
+		conn:   csiConn,
+	}
+
 	// start liveness collection
-	go recordLiveness(conf.Endpoint, conf.DriverName, conf.PollTime, conf.ProbeTimeout)
+	go recordLiveness(pc)
 
 	// start up prometheus endpoint
 	util.StartMetricsServer(conf)
