@@ -19,8 +19,12 @@ func StartMetricsServer(c *Config) {
 	addr := net.JoinHostPort(c.MetricsIP, c.MetricsPort)
 	http.Handle(c.MetricsPath, promhttp.Handler())
 	ExtendedLogMsg("Serving Metrics requests on: http://%s%s", addr, c.MetricsPath)
-	err := http.ListenAndServe(addr, nil)
-	if err != nil {
-		FatalLogMsg("failed to listen on address %v: %s", addr, err)
-	}
+
+	// Spawn a new go routine to listen on specified endpoint
+	go func() {
+		err := http.ListenAndServe(addr, nil)
+		if err != nil {
+			FatalLogMsg("failed to listen on address %v: %s", addr, err)
+		}
+	}()
 }

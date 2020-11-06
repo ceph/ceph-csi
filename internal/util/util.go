@@ -82,6 +82,8 @@ type Config struct {
 	MetricsIP         string        // TCP port for liveness/ metrics requests
 	PidLimit          int           // PID limit to configure through cgroups")
 	MetricsPort       string        // TCP port for liveness/grpc metrics requests
+	HealthzPort       string        // TCP port for liveness/health requests
+	HealthzPath       string        // path for liveness/health requests
 	PollTime          time.Duration // time interval in seconds between each poll
 	ProbeTimeout      time.Duration // probe timeout in seconds
 	EnableGRPCMetrics bool          // option to enable grpc metrics

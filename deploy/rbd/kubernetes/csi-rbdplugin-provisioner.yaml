@@ -156,6 +156,8 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--metricsport=8680"
             - "--metricspath=/metrics"
+            - "--healthzport=9680"
+            - "--healthzpath=/healthz"
             - "--polltime=60s"
             - "--timeout=3s"
           env:

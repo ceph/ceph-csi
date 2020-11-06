@@ -70,6 +70,8 @@ func init() {
 	flag.StringVar(&conf.MetricsPath, "metricspath", "/metrics", "path of prometheus endpoint where metrics will be available")
 	flag.DurationVar(&conf.PollTime, "polltime", time.Second*pollTime, "time interval in seconds between each poll")
 	flag.DurationVar(&conf.ProbeTimeout, "timeout", time.Second*probeTimeout, "probe timeout in seconds")
+	flag.StringVar(&conf.HealthzPort, "healthzport", "9808", "TCP ports for listening healthz requests")
+	flag.StringVar(&conf.HealthzPath, "healthzpath", "/healthz", "path of liveness endpoint where health status will be available")
 
 	flag.BoolVar(&conf.EnableGRPCMetrics, "enablegrpcmetrics", false, "[DEPRECATED] enable grpc metrics")
 	flag.StringVar(&conf.HistogramOption, "histogramoption", "0.5,2,6",

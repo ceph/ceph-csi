@@ -18,6 +18,8 @@ package liveness
 
 import (
 	"context"
+	"net"
+	"net/http"
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -41,6 +43,41 @@ var (
 		Help:      "Liveness Probe",
 	})
 )
+
+func (c *probeConn) checkProbe(w http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithTimeout(req.Context(), c.config.ProbeTimeout)
+	defer cancel()
+
+	util.TraceLog(ctx, "Healthz req: Sending probe request to CSI driver %s", c.config.DriverName)
+	ready, err := rpc.Probe(ctx, c.conn)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err = w.Write([]byte(err.Error()))
+		if err != nil {
+			util.ErrorLog(ctx, "Healthz req: write failed: %v", err)
+		}
+		util.ErrorLog(ctx, "Healthz req: health check failed: %v", err)
+		return
+	}
+
+	if !ready {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err = w.Write([]byte("Healthz req: driver responded but is not ready"))
+		if err != nil {
+			util.ErrorLog(ctx, "Healthz req: write failed: %v", err)
+		}
+
+		util.ErrorLog(ctx, "Healthz req: driver responded but is not ready")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write([]byte(`ok`))
+	if err != nil {
+		util.ErrorLog(ctx, "Healthz req: write failed: %v", err)
+	}
+	util.ExtendedLog(ctx, "Healthz req: Health check succeeded")
+}
 
 func getLiveness(c *probeConn) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.config.ProbeTimeout)
@@ -108,4 +145,12 @@ func Run(conf *util.Config) {
 
 	// start up prometheus endpoint
 	util.StartMetricsServer(conf)
+
+	address := net.JoinHostPort(conf.MetricsIP, conf.HealthzPort)
+	http.HandleFunc(conf.HealthzPath, pc.checkProbe)
+	util.ExtendedLogMsg("Serving Health requests on: http://%s%s", address, conf.HealthzPath)
+	err = http.ListenAndServe(address, nil)
+	if err != nil {
+		util.FatalLogMsg("failed to listen on address %s: %v", address, err)
+	}
 }
