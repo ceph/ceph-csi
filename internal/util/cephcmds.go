@@ -48,7 +48,7 @@ func ExecCommand(ctx context.Context, program string, args ...string) (string, s
 	stderr := stderrBuf.String()
 
 	if err != nil {
-		err = fmt.Errorf("an error (%w) occurred while running %s args: %v", err, program, sanitizedArgs)
+		err = fmt.Errorf("an error (%w) and stdError (%s) occurred while running %s args: %v", err, stderr, program, sanitizedArgs)
 		if ctx != context.TODO() {
 			UsefulLog(ctx, "%s", err)
 		}
