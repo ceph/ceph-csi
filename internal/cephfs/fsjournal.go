@@ -105,6 +105,9 @@ func checkVolExists(ctx context.Context,
 		if clone.Status.State == cephFSCloneInprogress {
 			return nil, ErrCloneInProgress
 		}
+		if clone.Status.State == cephFSClonePending {
+			return nil, ErrClonePending
+		}
 		if clone.Status.State == cephFSCloneFailed {
 			err = purgeVolume(ctx, volumeID(vid.FsSubvolName), cr, volOptions, true)
 			if err != nil {
