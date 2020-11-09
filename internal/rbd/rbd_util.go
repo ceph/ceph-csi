@@ -98,6 +98,7 @@ type rbdVolume struct {
 	Encrypted           bool
 	readOnly            bool
 	Primary             bool
+	ThickProvision      bool
 	KMS                 util.EncryptionKMS
 	// Owner is the creator (tenant, Kubernetes Namespace) of the volume.
 	Owner     string

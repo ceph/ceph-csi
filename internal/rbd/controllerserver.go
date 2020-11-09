@@ -19,6 +19,8 @@ package rbd
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
@@ -114,6 +116,14 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 	rbdVol, err := genVolFromVolumeOptions(ctx, req.GetParameters(), req.GetSecrets(), (isMultiNode && isBlock))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	tp := "thickProvision"
+	thick := req.GetParameters()[tp]
+	if thick != "" {
+		if rbdVol.ThickProvision, err = strconv.ParseBool(thick); err != nil {
+			return nil, fmt.Errorf("failed to parse %q: %w", tp, err)
+		}
 	}
 
 	rbdVol.RequestName = req.GetName()
