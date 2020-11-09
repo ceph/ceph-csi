@@ -155,6 +155,12 @@ func cleanupCloneFromSubvolumeSnapshot(ctx context.Context, volID, cloneID volum
 	return nil
 }
 
+// isCloneRetryError returns true if the clone error is pending,in-progress
+// error.
+func isCloneRetryError(err error) bool {
+	return errors.Is(err, ErrCloneInProgress) || errors.Is(err, ErrClonePending)
+}
+
 func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volumeOptions, vID *volumeIdentifier, sID *snapshotIdentifier, cr *util.Credentials) error {
 	snapID := volumeID(sID.FsSnapshotName)
 	err := cloneSnapshot(ctx, parentVolOpt, cr, volumeID(sID.FsSubvolName), snapID, volumeID(vID.FsSubvolName), volOptions)
