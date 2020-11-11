@@ -40,23 +40,26 @@ for more information realted to Volume cloning in kubernetes.
 
 ### RBD CLI commands to create snapshot
 
-```bash
-[$] rbd snap ls <RBD image for src k8s volume> --all
+```
+rbd snap ls <RBD image for src k8s volume> --all
+
 // If the parent has more snapshots than the configured `maxsnapshotsonimage`
-add backgound tasks to flatten the temporary cloned images( temporary cloned
-image names will be same as snapshot names)
-[$] ceph rbd task add flatten <RBD image for temporary snap images>
-[$] rbd snap create <RBD image for src k8s volume>@<random snap name>
-[$] rbd clone --rbd-default-clone-format 2 --image-feature
+// add backgound tasks to flatten the temporary cloned images (temporary cloned
+// image names will be same as snapshot names)
+ceph rbd task add flatten <RBD image for temporary snap images>
+
+rbd snap create <RBD image for src k8s volume>@<random snap name>
+rbd clone --rbd-default-clone-format 2 --image-feature
     layering,deep-flatten <RBD image for src k8s volume>@<random snap>
     <RBD image for temporary snap image>
-[$] rbd snap rm <RBD image for src k8s volume>@<random snap name>
-[$] rbd snap create <RBD image for temporary snap image>@<random snap name>
+rbd snap rm <RBD image for src k8s volume>@<random snap name>
+rbd snap create <RBD image for temporary snap image>@<random snap name>
+
 // check the depth, if the depth is greater than configured hardlimit add a
 // task to flatten the cloned image, return snapshot status ready as `false`,
 // if the depth is greater than softlimit add a task to flatten the image
 // and return success
-[$] ceph rbd task add flatten <RBD image for temporary snap image>
+ceph rbd task add flatten <RBD image for temporary snap image>
 ```
 
 ## Create PVC from a snapshot (datasource snapshot)
@@ -69,17 +72,18 @@ image names will be same as snapshot names)
 
 ### RBD CLI commands to create clone from snapshot
 
-```bash
+```
 // check the depth, if the depth is greater than configured (hardlimit)
 // Add a task to value flatten the cloned image
-[$] ceph rbd task add flatten <RBD image for temporary snap image>
-[$] rbd clone --rbd-default-clone-format 2 --image-feature <k8s dst vol config>
+ceph rbd task add flatten <RBD image for temporary snap image>
+
+rbd clone --rbd-default-clone-format 2 --image-feature <k8s dst vol config>
     <RBD image for temporary snap image>@<random snap name>
     <RBD image for k8s dst vol>
 // check the depth,if the depth is greater than configured hardlimit add a task
 // to flatten the cloned image return ABORT error, if the depth is greater than
 // softlimit add a task to flatten the image and return success
-[$] ceph rbd task add flatten <RBD image for k8s dst vol>
+ceph rbd task add flatten <RBD image for k8s dst vol>
 ```
 
 ## Delete a snapshot
@@ -92,10 +96,10 @@ image names will be same as snapshot names)
 
 ### RBD CLI commands to delete a snapshot
 
-```bash
-[$] rbd snap create <RBD image for temporary snap image>@<random snap name>
-[$] rbd trash mv <RBD image for temporary snap image>
-[$] ceph rbd task trash remove <RBD image for temporary snap image ID>
+```
+rbd snap create <RBD image for temporary snap image>@<random snap name>
+rbd trash mv <RBD image for temporary snap image>
+ceph rbd task trash remove <RBD image for temporary snap image ID>
 ```
 
 ## Delete a Volume (PVC)
@@ -112,7 +116,7 @@ image(this will be applicable for both normal image and cloned image)
 
 ### RBD CLI commands to delete a volume
 
-```bash
+```
 1) rbd trash mv <image>
 2) ceph rbd task trash remove <image>
 ```
@@ -136,19 +140,20 @@ for more information realted to Volume cloning in kubernetes.
 
 ### RBD CLI commands to create a Volume from Volume
 
-```bash
+```
 // check the image depth of the parent image if flatten required add a
 // task to flatten image and return ABORT to avoid leak(same hardlimit and
 // softlimit check will be done)
-[$] ceph rbd task add flatten <RBD image for src k8s volume>
-[$] rbd snap create <RBD image for src k8s volume>@<random snap name>
-[$] rbd clone --rbd-default-clone-format 2 --image-feature
+ceph rbd task add flatten <RBD image for src k8s volume>
+
+rbd snap create <RBD image for src k8s volume>@<random snap name>
+rbd clone --rbd-default-clone-format 2 --image-feature
     layering,deep-flatten <RBD image for src k8s volume>@<random snap>
     <RBD image for temporary snap image>
-[$] rbd snap rm <RBD image for src k8s volume>@<random snap name>
-[$] rbd snap create <RBD image for temporary snap image>@<random snap name>
-[$] rbd clone --rbd-default-clone-format 2 --image-feature <k8s dst vol config>
+rbd snap rm <RBD image for src k8s volume>@<random snap name>
+rbd snap create <RBD image for temporary snap image>@<random snap name>
+rbd clone --rbd-default-clone-format 2 --image-feature <k8s dst vol config>
     <RBD image for temporary snap image>@<random snap name>
     <RBD image for k8s dst vol>
-[$] rbd snap rm <RBD image for src k8s volume>@<random snap name>
+rbd snap rm <RBD image for src k8s volume>@<random snap name>
 ```
