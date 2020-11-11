@@ -14,7 +14,7 @@ We have provisioner, controller expand and node stage secrets in storage class.
 For the provisioner and controller expand stage secret in storageclass, the
 user needs to have the  below mentioned ceph capabilities.
 
-```text
+```
 "mon", "profile rbd",
 "mgr", "allow rw",
 "osd", "profile rbd"
@@ -23,7 +23,7 @@ user needs to have the  below mentioned ceph capabilities.
 And for the node stage secret in storageclass, the user needs to have the
 below mentioned ceph capabilities.
 
-```text
+```
 "mon", "profile rbd",
 "osd", "profile rbd",
 "mgr", "allow rw"
@@ -34,7 +34,7 @@ below mentioned ceph capabilities.
 Similarly in CephFS, for the provisioner and controller expand stage secret in
 storageclass, the user needs to have the below mentioned ceph capabilities.
 
-```text
+```
 "mon", "allow r",
 "mgr", "allow rw",
 "osd", "allow rw tag cephfs metadata=*"
@@ -43,7 +43,7 @@ storageclass, the user needs to have the below mentioned ceph capabilities.
 And for node stage secret in storageclass, the user needs to have
 the below mentioned ceph capabilities.
 
-```text
+```
 "mon", "allow r",
 "mgr", "allow rw",
 "osd", "allow rw tag cephfs *=*",

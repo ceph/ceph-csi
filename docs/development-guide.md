@@ -119,7 +119,7 @@ contribution. See the [DCO](DCO) file for details.
 Contributors sign-off that they adhere to these requirements by adding a
 Signed-off-by line to commit messages. For example:
 
-```text
+```
 subsystem: This is my commit message
 
 More details on what this commit does
@@ -144,7 +144,7 @@ We follow a rough convention for commit messages that is designed to answer two
 questions: what changed and why? The subject line should feature the what and
 the body of the commit should describe the why.
 
-```text
+```
 cephfs: update cephfs resize
 
 use cephfs resize to resize subvolume
@@ -154,7 +154,7 @@ Signed-off-by: Random J Developer <random@developer.example.org>
 
 The format can be described more formally as follows:
 
-```text
+```
 <component>: <subject of the change>
 <BLANK LINE>
 <paragraph(s) with reason/description>
