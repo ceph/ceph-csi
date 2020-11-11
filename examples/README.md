@@ -7,7 +7,11 @@ Both `rbd` and `cephfs` directories contain `plugin-deploy.sh` and
 deploy/teardown RBACs, sidecar containers and the plugin in one go.
 By default, they look for the YAML manifests in
 `../../deploy/{rbd,cephfs}/kubernetes`.
-You can override this path by running `$ ./plugin-deploy.sh /path/to/my/manifests`.
+You can override this path by running
+
+```bash
+./plugin-deploy.sh /path/to/my/manifests
+```
 
 ## Creating CSI configuration
 
@@ -33,7 +37,9 @@ from a Ceph cluster and replace `<cluster-id>` with the chosen clusterID, to
 create the manifest for the configmap which can be updated in the cluster
 using the following command,
 
-* `kubectl replace -f ./csi-config-map-sample.yaml`
+```bash
+kubectl replace -f ./csi-config-map-sample.yaml
+```
 
 Storage class and snapshot class, using `<cluster-id>` as the value for the
 option `clusterID`, can now be created on the cluster.
@@ -110,7 +116,6 @@ To check the status of the snapshot, run the following:
 
 ```bash
 $ kubectl describe volumesnapshot rbd-pvc-snapshot
-
 Name:         rbd-pvc-snapshot
 Namespace:    default
 Labels:       <none>

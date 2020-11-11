@@ -34,7 +34,7 @@ Lets create a new rbd image in ceph cluster which we are going to use for
 static PVC
 
 ```console
-[$]rbd create static-image --size=1024 --pool=replicapool
+rbd create static-image --size=1024 --pool=replicapool
 ```
 
 ### Create RBD static PV
@@ -90,7 +90,7 @@ static RBD PV
 delete attempt in csi-provisioner.
 
 ```bash
-[$] kubectl create -f fs-static-pv.yaml
+$ kubectl create -f fs-static-pv.yaml
 persistentvolume/fs-static-pv created
 ```
 
@@ -118,7 +118,7 @@ spec:
 ```
 
 ```bash
-[$] kubectl create -f fs-static-pvc.yaml
+$ kubectl create -f fs-static-pvc.yaml
 persistentvolumeclaim/fs-static-pvc created
 ```
 
@@ -141,11 +141,11 @@ the subvolumegroup. **myfs** is the filesystem name(volume name) inside
 which subvolume should be created.
 
 ```console
-[$]ceph fs subvolumegroup create myfs testGroup
+ceph fs subvolumegroup create myfs testGroup
 ```
 
 ```console
-[$]ceph fs subvolume create myfs testSubVolume testGroup --size=1073741824
+ceph fs subvolume create myfs testSubVolume testGroup --size=1073741824
 ```
 
 **Note:** volume here refers to the filesystem.
@@ -156,7 +156,7 @@ To create the CephFS PV you need to know the `volume rootpath`, and `clusterID`,
 here is the command to get the root path in ceph cluster
 
 ```bash
-[$]ceph fs subvolume getpath myfs testSubVolume testGroup
+$ ceph fs subvolume getpath myfs testSubVolume testGroup
 /volumes/testGroup/testSubVolume
 ```
 
@@ -213,7 +213,7 @@ static CephFS PV
 delete attempt in csi-provisioner.
 
 ```bash
-[$] kubectl create -f cephfs-static-pv.yaml
+$ kubectl create -f cephfs-static-pv.yaml
 persistentvolume/cephfs-static-pv created
 ```
 
@@ -239,7 +239,7 @@ spec:
 ```
 
 ```bash
-[$] kubectl create -f cephfs-static-pvc.yaml
+$ kubectl create -f cephfs-static-pvc.yaml
 persistentvolumeclaim/cephfs-static-pvc created
 ```
 

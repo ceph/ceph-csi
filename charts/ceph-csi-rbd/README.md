@@ -15,7 +15,7 @@ helm repo add ceph-csi https://ceph.github.io/csi-charts
 we need to enter into the directory where all charts are present
 
 ```console
-[$]cd charts
+cd charts
 ```
 
 **Note:** charts directory is present in root of the ceph-csi project

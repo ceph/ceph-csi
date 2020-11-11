@@ -22,20 +22,20 @@
   - To install snapshot controller and CRD
 
     ```console
-    $./scripts/install-snapshot.sh install
+    ./scripts/install-snapshot.sh install
     ```
 
     To install from specific external-snapshotter version, you can leverage
     `SNAPSHOT_VERSION` variable, for example:
 
     ```console
-    $SNAPSHOT_VERSION="v3.0.1" ./scripts/install-snapshot.sh install
+    SNAPSHOT_VERSION="v3.0.1" ./scripts/install-snapshot.sh install
     ```
 
   - In the future, you can choose to cleanup by running
 
     ```console
-    $./scripts/install-snapshot.sh cleanup
+    ./scripts/install-snapshot.sh cleanup
     ```
 
 **NOTE: At present, there is a limit of 400 snapshots per cephFS filesystem.
@@ -93,8 +93,10 @@ snapcontent-34476204-a14a-4d59-bfbc-2bbba695652c   true         1073741824    De
 ## Restore snapshot to a new PVC
 
 ```console
+kubectl create -f ../examples/cephfs/pvc-restore.yaml
+```
 
-$ kubectl create -f ../examples/cephfs/pvc-restore.yaml
+```console
 $ kubectl get pvc
 NAME                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 csi-cephfs-pvc       Bound    pvc-1ea51547-a88b-4ab0-8b4a-812caeaf025d   1Gi        RWX            csi-cephfs-sc  20h
@@ -104,7 +106,10 @@ cephfs-pvc-restore   Bound    pvc-95308c75-6c93-4928-a551-6b5137192209   1Gi    
 ## Clone PVC
 
 ```console
-$ kubectl create -f ../examples/cephfs/pvc-clone.yaml
+kubectl create -f ../examples/cephfs/pvc-clone.yaml
+```
+
+```console
 $ kubectl get pvc
 NAME                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 csi-cephfs-pvc       Bound    pvc-1ea51547-a88b-4ab0-8b4a-812caeaf025d   1Gi        RWX            csi-cephfs-sc  20h

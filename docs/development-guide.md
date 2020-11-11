@@ -28,17 +28,27 @@ it is **highly** encouraged to:
    distributions. See the [go-ceph installaton
    instructions](https://github.com/ceph/go-ceph#installation) for more
    details.
-* Run `$ go get -d github.com/ceph/ceph-csi`
+* Run
+
+    ```console
+    go get -d github.com/ceph/ceph-csi`
+    ```
+
    This will just download the source and not build it. The downloaded source
    will be at `$GOPATH/src/github.com/ceph/ceph-csi`
 * Fork the [ceph-csi repo](https://github.com/ceph/ceph-csi) on Github.
 * Add your fork as a git remote:
-   `$ git remote add fork https://github.com/<your-github-username>/ceph-csi`
+
+    ```console
+    git remote add fork https://github.com/<your-github-username>/ceph-csi`
+    ```
+
 * Set up a pre-commit hook to catch issues locally.
 
-   `$ pip install pre-commit==2.5.1`
-
-   `$ pre-commit install`
+   ```console
+   pip install pre-commit==2.5.1
+   pre-commit install
+   ```
 
    See the [pre-commit installation
    instructions](https://pre-commit.com/#installation) for more
@@ -54,10 +64,16 @@ it is **highly** encouraged to:
 ### Building Ceph-CSI
 
 To build ceph-csi locally run:
-`$ make`
+
+```console
+make
+```
 
 To build ceph-csi in a container:
-`$ make containerized-build`
+
+```console
+make containerized-build
+```
 
 The built binary will be present under `_output/` directory.
 
@@ -68,13 +84,17 @@ that validate the style and other basics of the source code. Execute the unit
 tests (in the `*_test.go` files) and check the formatting of YAML files,
 MarkDown documents and shell scripts:
 
-`$ make containerized-test`
+```console
+make containerized-test
+```
 
 It is also possible to run only selected tests, these are the targets in the
 `Makefile` in the root of the project. For example, run the different static
 checks with:
 
-`$ make containerized-test TARGET=static-check`
+```console
+make containerized-test TARGET=static-check
+```
 
 In addition to running tests locally, each Pull Request that is created will
 trigger Continous Integration tests that include the `containerized-test`, but
@@ -168,16 +188,20 @@ git tools.
 Here is a short guide on how to work on a new patch.  In this example, we will
 work on a patch called *hellopatch*:
 
-* `$ git checkout master`
-* `$ git pull`
-* `$ git checkout -b hellopatch`
+```console
+git checkout master
+git pull
+git checkout -b hellopatch
+```
 
 Do your work here and commit.
 
 Run the test suite, which includes linting checks, static code check, and unit
 tests:
 
-`$ make test`
+```console
+make test
+```
 
 Certain unit tests may require extended permissions or other external resources
 that are not available by default. To run these tests as well, export the
@@ -188,7 +212,9 @@ wherever applicable.
 
 Once you are ready to push, you will type the following:
 
-`$ git push fork hellopatch`
+```console
+git push fork hellopatch
+```
 
 **Creating A Pull Request:**
 When you are satisfied with your changes, you will then need to go to your repo

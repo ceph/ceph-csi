@@ -87,9 +87,9 @@ compatibility support and without prior notice.
 git checkout v3.1.0 tag
 
 ```bash
-[$] git clone https://github.com/ceph/ceph-csi.git
-[$] cd ./ceph-csi
-[$] git checkout v3.1.0
+git clone https://github.com/ceph/ceph-csi.git
+cd ./ceph-csi
+git checkout v3.1.0
 ```
 
 **Note:** While upgrading please Ignore warning messages from kubectl output
@@ -112,7 +112,7 @@ Provisioner deployment
 ##### 1.1 Update the CephFS Provisioner RBAC
 
 ```bash
-[$] kubectl apply -f deploy/cephfs/kubernetes/csi-provisioner-rbac.yaml
+$ kubectl apply -f deploy/cephfs/kubernetes/csi-provisioner-rbac.yaml
 serviceaccount/cephfs-csi-provisioner configured
 clusterrole.rbac.authorization.k8s.io/cephfs-external-provisioner-runner configured
 clusterrole.rbac.authorization.k8s.io/cephfs-external-provisioner-runner-rules configured
@@ -124,7 +124,7 @@ rolebinding.rbac.authorization.k8s.io/cephfs-csi-provisioner-role-cfg configured
 ##### 1.2 Update the CephFS Provisioner deployment
 
 ```bash
-[$]kubectl apply -f deploy/cephfs/kubernetes/csi-cephfsplugin-provisioner.yaml
+$ kubectl apply -f deploy/cephfs/kubernetes/csi-cephfsplugin-provisioner.yaml
 service/csi-cephfsplugin-provisioner configured
 deployment.apps/csi-cephfsplugin-provisioner configured
 ```
@@ -132,7 +132,7 @@ deployment.apps/csi-cephfsplugin-provisioner configured
 wait for the deployment to complete
 
 ```bash
-[$]kubectl get deployment
+$ kubectl get deployment
 NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
 csi-cephfsplugin-provisioner   3/3     1            3           104m
 ```
@@ -147,7 +147,7 @@ nodeplugin daemonset
 ##### 2.1 Update the CephFS Nodeplugin RBAC
 
 ```bash
-[$]kubectl apply -f deploy/cephfs/kubernetes/csi-nodeplugin-rbac.yaml
+$ kubectl apply -f deploy/cephfs/kubernetes/csi-nodeplugin-rbac.yaml
 serviceaccount/cephfs-csi-nodeplugin configured
 clusterrole.rbac.authorization.k8s.io/cephfs-csi-nodeplugin configured
 clusterrole.rbac.authorization.k8s.io/cephfs-csi-nodeplugin-rules configured
@@ -188,7 +188,7 @@ daemonset spec
 ##### 2.2 Update the CephFS Nodeplugin daemonset
 
 ```bash
-[$]kubectl apply -f deploy/cephfs/kubernetes/csi-cephfsplugin.yaml
+$ kubectl apply -f deploy/cephfs/kubernetes/csi-cephfsplugin.yaml
 daemonset.apps/csi-cephfsplugin configured
 service/csi-metrics-cephfsplugin configured
 ```
@@ -230,7 +230,7 @@ Provisioner deployment
 ##### 3.1 Update the RBD Provisioner RBAC
 
 ```bash
-[$]kubectl apply -f deploy/rbd/kubernetes/csi-provisioner-rbac.yaml
+$ kubectl apply -f deploy/rbd/kubernetes/csi-provisioner-rbac.yaml
 serviceaccount/rbd-csi-provisioner configured
 clusterrole.rbac.authorization.k8s.io/rbd-external-provisioner-runner configured
 clusterrole.rbac.authorization.k8s.io/rbd-external-provisioner-runner-rules configured
@@ -242,7 +242,7 @@ rolebinding.rbac.authorization.k8s.io/rbd-csi-provisioner-role-cfg configured
 ##### 3.2 Update the RBD Provisioner deployment
 
 ```bash
-[$]kubectl apply -f deploy/rbd/kubernetes/csi-rbdplugin-provisioner.yaml
+$ kubectl apply -f deploy/rbd/kubernetes/csi-rbdplugin-provisioner.yaml
 service/csi-rbdplugin-provisioner configured
 deployment.apps/csi-rbdplugin-provisioner configured
 ```
@@ -250,7 +250,7 @@ deployment.apps/csi-rbdplugin-provisioner configured
 wait for the deployment to complete
 
 ```bash
-[$]kubectl get deployments
+$ kubectl get deployments
 NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
 csi-rbdplugin-provisioner      3/3     3            3           139m
 ```
@@ -265,7 +265,7 @@ nodeplugin daemonset
 ##### 4.1 Update the RBD Nodeplugin RBAC
 
 ```bash
-[$]kubectl apply -f deploy/rbd/kubernetes/csi-nodeplugin-rbac.yaml
+$ kubectl apply -f deploy/rbd/kubernetes/csi-nodeplugin-rbac.yaml
 serviceaccount/rbd-csi-nodeplugin configured
 clusterrole.rbac.authorization.k8s.io/rbd-csi-nodeplugin configured
 clusterrole.rbac.authorization.k8s.io/rbd-csi-nodeplugin-rules configured
@@ -306,7 +306,7 @@ daemonset spec
 ##### 4.2 Update the RBD Nodeplugin daemonset
 
 ```bash
-[$]kubectl apply -f deploy/rbd/kubernetes/csi-rbdplugin.yaml
+$ kubectl apply -f deploy/rbd/kubernetes/csi-rbdplugin.yaml
 daemonset.apps/csi-rbdplugin configured
 service/csi-metrics-rbdplugin configured
 ```
