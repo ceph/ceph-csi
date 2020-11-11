@@ -68,3 +68,26 @@ import (
   or retry for it and/or is fully recoverable.
 * Use log level `ERROR` when something occurs which is fatal to the operation,
   but not to the service or application.
+
+### Mark Down Rules
+
+* MD014 - Dollar signs used before commands without showing output
+
+  The dollar signs are unnecessary, it is easier to copy and paste and
+  less noisy if the dollar signs are omitted. Especially when the
+  command doesn't list the output, but if the command follows output
+  we can use '$ ' (dollar+space) mainly to differentiate between
+  command and its ouput.
+
+  scenario 1: when command doesn't follow output
+
+  ```console
+  cd ~/work
+  ```
+
+  scenario 2: when command follow output (use dollar+space)
+
+  ```console
+  $ ls ~/work
+  file1 file2 dir1 dir2 ...
+  ```
