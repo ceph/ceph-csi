@@ -17,15 +17,17 @@ limitations under the License.
 package util
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/hashicorp/vault/api"
+	loss "github.com/libopenstorage/secrets"
+	"github.com/libopenstorage/secrets/vault"
 )
 
 const (
@@ -37,12 +39,7 @@ const (
 	vaultDefaultAuthPath       = "/v1/auth/kubernetes/login"
 	vaultDefaultRole           = "csi-kubernetes"
 	vaultDefaultNamespace      = ""
-	vaultDefaultPassphraseRoot = "/v1/secret"
 	vaultDefaultPassphrasePath = ""
-
-	// vault request headers
-	vaultTokenHeader     = "X-Vault-Token" // #nosec:G101, value not credential, just references token.
-	vaultNamespaceHeader = "X-Vault-Namespace"
 )
 
 /*
@@ -65,73 +62,110 @@ Example JSON structure in the KMS config is,
 }.
 */
 type VaultKMS struct {
-	EncryptionKMSID     string
-	VaultAddress        string
-	VaultAuthPath       string
-	VaultRole           string
-	VaultNamespace      string
-	VaultPassphraseRoot string
-	VaultPassphrasePath string
-	VaultCAVerify       bool
-	vaultCA             *x509.CertPool
+	EncryptionKMSID string
+
+	// vaultPassphrasePath (VPP) used to be added before the "key" of the
+	// secret (like /v1/secret/data/<VPP>/key)
+	vaultPassphrasePath string
+
+	secrets    loss.Secrets
+	keyContext map[string]string
 }
 
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.
+//
+// nolint:gocyclo // this is a long function, as it constructs the Vault config
 func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKMS, error) {
 	var (
 		ok  bool
 		err error
 	)
+
+	vaultConfig := make(map[string]interface{})
+	keyContext := make(map[string]string)
+
 	kms := &VaultKMS{}
 	kms.EncryptionKMSID = kmsID
 
-	kms.VaultAddress, ok = config["vaultAddress"]
-	if !ok || kms.VaultAddress == "" {
+	vaultAddress, ok := config["vaultAddress"]
+	if !ok || vaultAddress == "" {
 		return nil, fmt.Errorf("missing 'vaultAddress' for vault KMS %s", kmsID)
 	}
-	kms.VaultAuthPath, ok = config["vaultAuthPath"]
-	if !ok || kms.VaultAuthPath == "" {
-		kms.VaultAuthPath = vaultDefaultAuthPath
+	vaultConfig[api.EnvVaultAddress] = vaultAddress
+
+	vaultAuthPath, ok := config["vaultAuthPath"]
+	if !ok || vaultAuthPath == "" {
+		vaultAuthPath = vaultDefaultAuthPath
 	}
-	kms.VaultRole, ok = config["vaultRole"]
-	if !ok || kms.VaultRole == "" {
-		kms.VaultRole = vaultDefaultRole
+	vaultConfig[vault.AuthMountPath], err = detectAuthMountPath(vaultAuthPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set %s in Vault config: %w", vault.AuthMountPath, err)
 	}
-	kms.VaultNamespace, ok = config["vaultNamespace"]
-	if !ok || kms.VaultNamespace == "" {
-		kms.VaultNamespace = vaultDefaultNamespace
+
+	vaultRole, ok := config["vaultRole"]
+	if !ok || vaultRole == "" {
+		vaultRole = vaultDefaultRole
 	}
-	kms.VaultPassphraseRoot, ok = config["vaultPassphraseRoot"]
-	if !ok || kms.VaultPassphraseRoot == "" {
-		kms.VaultPassphraseRoot = vaultDefaultPassphraseRoot
+	vaultConfig[vault.AuthKubernetesRole] = vaultRole
+
+	vaultNamespace, ok := config["vaultNamespace"]
+	if !ok || vaultNamespace == "" {
+		vaultNamespace = vaultDefaultNamespace
 	}
-	kms.VaultPassphrasePath, ok = config["vaultPassphrasePath"]
-	if !ok || kms.VaultPassphrasePath == "" {
-		kms.VaultPassphrasePath = vaultDefaultPassphrasePath
+	vaultConfig[api.EnvVaultNamespace] = vaultNamespace
+	keyContext[loss.KeyVaultNamespace] = vaultNamespace
+
+	// vault.VaultBackendPathKey is "secret/" by default, use vaultPassphraseRoot if configured
+	vaultPassphraseRoot, ok := config["vaultPassphraseRoot"]
+	if ok && vaultPassphraseRoot != "" {
+		// the old example did have "/v1/secret/", convert that format
+		if strings.HasPrefix(vaultPassphraseRoot, "/v1/") {
+			vaultConfig[vault.VaultBackendPathKey] = strings.TrimPrefix(vaultPassphraseRoot, "/v1/")
+		} else {
+			vaultConfig[vault.VaultBackendPathKey] = vaultPassphraseRoot
+		}
 	}
-	kms.VaultCAVerify = true
+
+	kms.vaultPassphrasePath, ok = config["vaultPassphrasePath"]
+	if !ok || kms.vaultPassphrasePath == "" {
+		kms.vaultPassphrasePath = vaultDefaultPassphrasePath
+	}
+
 	verifyCA, ok := config["vaultCAVerify"]
 	if ok {
-		kms.VaultCAVerify, err = strconv.ParseBool(verifyCA)
+		var vaultCAVerify bool
+		vaultCAVerify, err = strconv.ParseBool(verifyCA)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse 'vaultCAVerify' for vault <%s> kms config: %s",
 				kmsID, err)
 		}
+		vaultConfig[api.EnvVaultInsecure] = !vaultCAVerify
 	}
+
 	vaultCAFromSecret, ok := config["vaultCAFromSecret"]
 	if ok && vaultCAFromSecret != "" {
 		caPEM, ok := secrets[vaultCAFromSecret]
 		if !ok {
 			return nil, fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
 		}
-		roots := x509.NewCertPool()
-		ok = roots.AppendCertsFromPEM([]byte(caPEM))
-		if !ok {
-			return nil, fmt.Errorf("failed loading CA bundle for vault from secret %s",
-				vaultCAFromSecret)
+		vaultConfig[api.EnvVaultCACert], err = createTempFile("vault-ca-cert", []byte(caPEM))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
 		}
-		kms.vaultCA = roots
+		// TODO: delete f.Name() when VaultKMS is destroyed
 	}
+
+	// FIXME: vault.AuthKubernetesTokenPath is not enough? EnvVaultToken needs to be set?
+	vaultConfig[vault.AuthMethod] = vault.AuthMethodKubernetes
+	vaultConfig[vault.AuthKubernetesTokenPath] = serviceAccountTokenPath
+
+	v, err := vault.New(vaultConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating new Vault Secrets: %w", err)
+	}
+	kms.secrets = v
+
+	kms.keyContext = keyContext
 
 	return kms, nil
 }
@@ -141,40 +175,21 @@ func (kms *VaultKMS) GetID() string {
 	return kms.EncryptionKMSID
 }
 
-// GetPassphrase returns passphrase from Vault.
+// GetPassphrase returns passphrase from Vault. The passphrase is stored in a
+// data.data.passphrase structure.
 func (kms *VaultKMS) GetPassphrase(key string) (string, error) {
-	var passphrase string
-	resp, err := kms.request("GET", kms.getKeyDataURI(key), nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to retrieve passphrase for %s from vault: %s",
-			key, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return "", MissingPassphrase{fmt.Errorf("passphrase for %s not found", key)}
-	}
-	err = kms.processError(resp, fmt.Sprintf("get passphrase for %s", key))
-	if err != nil {
+	s, err := kms.secrets.GetSecret(filepath.Join(kms.vaultPassphrasePath, key), kms.keyContext)
+	if errors.Is(err, loss.ErrInvalidSecretId) {
+		return "", MissingPassphrase{err}
+	} else if err != nil {
 		return "", err
 	}
 
-	// parse resp as JSON and retrieve vault token
-	var result map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	if err != nil {
-		return "", fmt.Errorf("failed parsing passphrase for %s from response: %s",
-			key, err)
-	}
-	data, ok := result["data"].(map[string]interface{})
+	data, ok := s["data"].(map[string]interface{})
 	if !ok {
 		return "", fmt.Errorf("failed parsing data for get passphrase request for %s", key)
 	}
-	data, ok = data["data"].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("failed parsing data.data for get passphrase request for %s", key)
-	}
-	passphrase, ok = data["passphrase"].(string)
+	passphrase, ok := data["passphrase"].(string)
 	if !ok {
 		return "", fmt.Errorf("failed parsing passphrase for get passphrase request for %s", key)
 	}
@@ -184,23 +199,16 @@ func (kms *VaultKMS) GetPassphrase(key string) (string, error) {
 
 // SavePassphrase saves new passphrase in Vault.
 func (kms *VaultKMS) SavePassphrase(key, value string) error {
-	data, err := json.Marshal(map[string]map[string]string{
-		"data": {
+	data := map[string]interface{}{
+		"data": map[string]string{
 			"passphrase": value,
 		},
-	})
-	if err != nil {
-		return fmt.Errorf("passphrase request data is broken: %s", err)
 	}
 
-	resp, err := kms.request("POST", kms.getKeyDataURI(key), data)
+	pathKey := filepath.Join(kms.vaultPassphrasePath, key)
+	err := kms.secrets.PutSecret(pathKey, data, kms.keyContext)
 	if err != nil {
-		return fmt.Errorf("failed to POST passphrase for %s to vault: %s", key, err)
-	}
-	defer resp.Body.Close()
-	err = kms.processError(resp, "save passphrase")
-	if err != nil {
-		return err
+		return fmt.Errorf("saving passphrase at %s request to vault failed: %w", pathKey, err)
 	}
 
 	return nil
@@ -208,130 +216,75 @@ func (kms *VaultKMS) SavePassphrase(key, value string) error {
 
 // DeletePassphrase deletes passphrase from Vault.
 func (kms *VaultKMS) DeletePassphrase(key string) error {
-	vaultToken, err := kms.getAccessToken()
+	pathKey := filepath.Join(kms.vaultPassphrasePath, key)
+	err := kms.secrets.DeleteSecret(pathKey, kms.keyContext)
 	if err != nil {
-		return fmt.Errorf("could not retrieve vault token to delete the passphrase at %s: %s",
-			key, err)
+		return fmt.Errorf("delete passphrase at %s request to vault failed: %w", pathKey, err)
 	}
 
-	resp, err := kms.send("DELETE", kms.getKeyMetadataURI(key), &vaultToken, nil)
-	if err != nil {
-		return fmt.Errorf("delete passphrase at %s request to vault failed: %s", key, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		err = kms.processError(resp, "delete passphrase")
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-func (kms *VaultKMS) getKeyDataURI(key string) string {
-	return kms.VaultPassphraseRoot + "/data/" + kms.VaultPassphrasePath + key
+// detectAuthMountPath takes the vaultAuthPath configuration option that
+// defaults to "/v1/auth/kubernetes/login" and makes it a vault.AuthMountPath
+// like "kubernetes".
+func detectAuthMountPath(path string) (string, error) {
+	var authMountPath string
+
+	if path == "" {
+		return "", errors.New("path is empty")
+	}
+
+	// add all components betweed "login" and "auth" to authMountPath
+	match := false
+	parts := strings.Split(path, "/")
+	for _, part := range parts {
+		if part == "auth" {
+			match = true
+			continue
+		}
+		if part == "login" {
+			break
+		}
+		if match && authMountPath == "" {
+			authMountPath = part
+		} else if match {
+			authMountPath += "/" + part
+		}
+	}
+
+	// in case authMountPath is empty, return original path as it was
+	if authMountPath == "" {
+		authMountPath = path
+	}
+
+	return authMountPath, nil
 }
 
-func (kms *VaultKMS) getKeyMetadataURI(key string) string {
-	return kms.VaultPassphraseRoot + "/metadata/" + kms.VaultPassphrasePath + key
-}
-
-/*
-getVaultAccessToken retrieves vault token using kubernetes authentication:
- 1. read jwt service account token from well known location
- 2. request token from vault using service account jwt token
-Vault will verify service account jwt token with Kubernetes and return token
-if the requester is allowed.
-*/
-func (kms *VaultKMS) getAccessToken() (string, error) {
-	saToken, err := ioutil.ReadFile(serviceAccountTokenPath)
+// createTempFile writes data to a temporary file that contains the pattern in
+// the filename (see ioutil.TempFile for details).
+func createTempFile(pattern string, data []byte) (string, error) {
+	t, err := ioutil.TempFile("", pattern)
 	if err != nil {
-		return "", fmt.Errorf("service account token could not be read: %s", err)
+		return "", fmt.Errorf("failed to create temporary file: %w", err)
 	}
-	data, err := json.Marshal(map[string]string{
-		"role": kms.VaultRole,
-		"jwt":  string(saToken),
-	})
+
+	// delete the tmpfile on error
+	defer func() {
+		if err != nil {
+			// ignore error on failure to remove tmpfile (gosec complains)
+			_ = os.Remove(t.Name())
+		}
+	}()
+
+	s, err := t.Write(data)
+	if err != nil || s != len(data) {
+		return "", fmt.Errorf("failed to write temporary file: %w", err)
+	}
+	err = t.Close()
 	if err != nil {
-		return "", fmt.Errorf("vault token request data is broken: %s", err)
-	}
-	resp, err := kms.send("POST", kms.VaultAuthPath, nil, data)
-	if err != nil {
-		return "", fmt.Errorf("failed to retrieve vault token: %s", err)
-	}
-	defer resp.Body.Close()
-
-	err = kms.processError(resp, "retrieve vault token")
-	if err != nil {
-		return "", err
-	}
-	// parse resp as JSON and retrieve vault token
-	var result map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	if err != nil {
-		return "", fmt.Errorf("failed parsing vaultToken from response: %s", err)
+		return "", fmt.Errorf("failed to close temporary file: %w", err)
 	}
 
-	auth, ok := result["auth"].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("failed parsing vault token auth data")
-	}
-	vaultToken, ok := auth["client_token"].(string)
-	if !ok {
-		return "", fmt.Errorf("failed parsing vault client_token")
-	}
-
-	return vaultToken, nil
-}
-
-func (kms *VaultKMS) processError(resp *http.Response, action string) error {
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return nil
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to %s (%v), error body parsing failed: %s",
-			action, resp.StatusCode, err)
-	}
-	return fmt.Errorf("failed to %s (%v): %s", action, resp.StatusCode, body)
-}
-
-func (kms *VaultKMS) request(method, path string, data []byte) (*http.Response, error) {
-	vaultToken, err := kms.getAccessToken()
-	if err != nil {
-		return nil, err
-	}
-
-	return kms.send(method, path, &vaultToken, data)
-}
-
-func (kms *VaultKMS) send(method, path string, token *string, data []byte) (*http.Response, error) {
-	tlsConfig := &tls.Config{}
-	if !kms.VaultCAVerify {
-		tlsConfig.InsecureSkipVerify = true
-	}
-	if kms.vaultCA != nil {
-		tlsConfig.RootCAs = kms.vaultCA
-	}
-	netTransport := &http.Transport{TLSClientConfig: tlsConfig}
-	client := &http.Client{Transport: netTransport}
-
-	var dataToSend io.Reader
-	if data != nil {
-		dataToSend = strings.NewReader(string(data))
-	}
-
-	req, err := http.NewRequest(method, kms.VaultAddress+path, dataToSend)
-	if err != nil {
-		return nil, fmt.Errorf("could not create a Vault request: %s", err)
-	}
-
-	if kms.VaultNamespace != "" {
-		req.Header.Set(vaultNamespaceHeader, kms.VaultNamespace)
-	}
-	if token != nil {
-		req.Header.Set(vaultTokenHeader, *token)
-	}
-
-	return client.Do(req)
+	return t.Name(), nil
 }
