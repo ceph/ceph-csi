@@ -82,11 +82,11 @@ items:
         # create policy to use keys related to the cluster
         vault policy write "${CLUSTER_IDENTIFIER}" - << EOS
         path "secret/data/ceph-csi/*" {
-          capabilities = ["create", "update", "delete", "read"]
+          capabilities = ["create", "update", "delete", "read", "list"]
         }
 
         path "secret/metadata/ceph-csi/*" {
-          capabilities = ["read", "delete"]
+          capabilities = ["read", "delete", "list"]
         }
         EOS
 
