@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/cephfs"
+	"github.com/ceph/ceph-csi/internal/controller"
+	"github.com/ceph/ceph-csi/internal/controller/persistentvolume"
 	"github.com/ceph/ceph-csi/internal/liveness"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -32,9 +34,10 @@ import (
 )
 
 const (
-	rbdType      = "rbd"
-	cephfsType   = "cephfs"
-	livenessType = "liveness"
+	rbdType        = "rbd"
+	cephfsType     = "cephfs"
+	livenessType   = "liveness"
+	controllerType = "controller"
 
 	rbdDefaultName      = "rbd.csi.ceph.com"
 	cephfsDefaultName   = "cephfs.csi.ceph.com"
@@ -42,6 +45,9 @@ const (
 
 	pollTime     = 60 // seconds
 	probeTimeout = 3  // seconds
+
+	// use default namespace if namespace is not set
+	defaultNS = "default"
 )
 
 var (
@@ -50,9 +56,10 @@ var (
 
 func init() {
 	// common flags
-	flag.StringVar(&conf.Vtype, "type", "", "driver type [rbd|cephfs|liveness]")
+	flag.StringVar(&conf.Vtype, "type", "", "driver type [rbd|cephfs|liveness|controller]")
 	flag.StringVar(&conf.Endpoint, "endpoint", "unix://tmp/csi.sock", "CSI endpoint")
 	flag.StringVar(&conf.DriverName, "drivername", "", "name of the driver")
+	flag.StringVar(&conf.DriverNamespace, "drivernamespace", defaultNS, "namespace in which driver is deployed")
 	flag.StringVar(&conf.NodeID, "nodeid", "", "node id")
 	flag.StringVar(&conf.InstanceID, "instanceid", "", "Unique ID distinguishing this instance of Ceph CSI among other"+
 		" instances, when sharing Ceph clusters across CSI instances for provisioning")
@@ -181,9 +188,27 @@ func main() {
 
 	case livenessType:
 		liveness.Run(&conf)
+
+	case controllerType:
+		cfg := controller.Config{
+			DriverName: dname,
+			Namespace:  conf.DriverNamespace,
+		}
+		// initialize all controllers before starting.
+		initControllers()
+		err = controller.Start(cfg)
+		if err != nil {
+			logAndExit(err.Error())
+		}
 	}
 
 	os.Exit(0)
+}
+
+// initControllers will initialize all the controllers.
+func initControllers() {
+	// Add list of controller here.
+	persistentvolume.Init()
 }
 
 func validateCloneDepthFlag(conf *util.Config) {
