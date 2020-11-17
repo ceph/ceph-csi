@@ -102,13 +102,13 @@ node('cico-workspace') {
 			).trim()
 
 			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-				ssh "podman login --authfile=~/.docker/config.json --username=${CREDS_USER} --password='${CREDS_PASSWD}' ${ci_registry}"
+				ssh "podman login --authfile=~/.podman-auth.json --username=${CREDS_USER} --password='${CREDS_PASSWD}' ${ci_registry}"
 			}
 
 			// base_image is like ceph/ceph:v15
-			ssh "podman pull ${ci_registry}/${base_image} && podman tag ${ci_registry}/${base_image} ${base_image}"
+			ssh "podman pull --authfile=~/.podman-auth.json ${ci_registry}/${base_image} && podman tag ${ci_registry}/${base_image} ${base_image}"
 			// cephcsi:devel is used with 'make containerized-build'
-			ssh "podman pull ${ci_registry}/cephcsi:devel"
+			ssh "podman pull --authfile=~/.podman-auth.json ${ci_registry}/cephcsi:devel"
 		}
 		stage('build artifacts') {
 			// build container image
