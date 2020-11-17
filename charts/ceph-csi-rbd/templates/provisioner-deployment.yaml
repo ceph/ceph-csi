@@ -173,6 +173,35 @@ spec:
               mountPath: /tmp/csi/keys
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
+{{- if .Values.provisioner.deployController }}
+        - name: csi-rbdplugin-controller
+          image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
+          imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
+          args:
+            - "--type=controller"
+            - "--v={{ .Values.logLevel }}"
+            - "--drivername=$(DRIVER_NAME)"
+            - "--drivernamespace=$(DRIVER_NAMESPACE)"
+          env:
+            - name: DRIVER_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: DRIVER_NAME
+              value: {{ .Values.driverName }}
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          volumeMounts:
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
+          resources:
+{{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
+{{- end }}
 {{- if .Values.provisioner.httpMetrics.enabled }}
         - name: liveness-prometheus
           image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"

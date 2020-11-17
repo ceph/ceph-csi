@@ -110,6 +110,9 @@ nodeplugin:
 provisioner:
   name: provisioner
   replicaCount: 3
+  # deployController to enable or disable the deployment of controller which
+  # generates the OMAP data if its not Present.
+  deployController: true
   # Timeout for waiting for creation or deletion of a volume
   timeout: 60s
   # Hard limit for maximum number of nested volume clones that are taken before
