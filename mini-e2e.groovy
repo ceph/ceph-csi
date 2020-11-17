@@ -108,13 +108,13 @@ node('cico-workspace') {
 			// base_image is like ceph/ceph:v15
 			ssh "podman pull --authfile=~/.podman-auth.json ${ci_registry}/${base_image} && podman tag ${ci_registry}/${base_image} ${base_image}"
 			// cephcsi:devel is used with 'make containerized-build'
-			ssh "podman pull --authfile=~/.podman-auth.json ${ci_registry}/cephcsi:devel"
+			ssh "podman pull --authfile=~/.podman-auth.json ${ci_registry}/ceph-csi:devel"
 		}
 		stage('build artifacts') {
 			// build container image
 			ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make image-cephcsi GOARCH=amd64 CONTAINER_CMD=podman'
 			// build e2e.test executable
-			ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman TARGET=e2e.test ENV_CSI_IMAGE_NAME=${ci_registry}/cephcsi USE_PULLED_IMAGE=yes"
+			ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman TARGET=e2e.test ENV_CSI_IMAGE_NAME=${ci_registry}/ceph-csi USE_PULLED_IMAGE=yes"
 		}
 		stage("deploy k8s-${k8s_version} and rook") {
 			timeout(time: 30, unit: 'MINUTES') {
