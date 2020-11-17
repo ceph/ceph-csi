@@ -102,7 +102,7 @@ node('cico-workspace') {
 			).trim()
 
 			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-				ssh "podman login --username=${CREDS_USER} --password='${CREDS_PASSWD}' ${ci_registry}"
+				ssh "podman login --authfile=~/.docker/config.json --username=${CREDS_USER} --password='${CREDS_PASSWD}' ${ci_registry}"
 			}
 
 			// base_image is like ceph/ceph:v15
