@@ -78,6 +78,7 @@ func init() {
 	flag.UintVar(&conf.RbdHardMaxCloneDepth, "rbdhardmaxclonedepth", 8, "Hard limit for maximum number of nested volume clones that are taken before a flatten occurs")
 	flag.UintVar(&conf.RbdSoftMaxCloneDepth, "rbdsoftmaxclonedepth", 4, "Soft limit for maximum number of nested volume clones that are taken before a flatten occurs")
 	flag.UintVar(&conf.MaxSnapshotsOnImage, "maxsnapshotsonimage", 450, "Maximum number of snapshots allowed on rbd image without flattening")
+	flag.UintVar(&conf.MinSnapshotsOnImage, "minsnapshotsonimage", 250, "Minimum number of snapshots required on rbd image to start flattening")
 	flag.BoolVar(&conf.SkipForceFlatten, "skipforceflatten", false,
 		"skip image flattening if kernel support mapping of rbd images which has the deep-flatten feature")
 
@@ -203,6 +204,10 @@ func validateMaxSnaphostFlag(conf *util.Config) {
 	// [2] https://github.com/torvalds/linux/blob/master/drivers/block/rbd.c#L92
 	if conf.MaxSnapshotsOnImage == 0 || conf.MaxSnapshotsOnImage > 500 {
 		logAndExit("maxsnapshotsonimage flag value should be between 1 and 500")
+	}
+
+	if conf.MinSnapshotsOnImage > conf.MaxSnapshotsOnImage {
+		logAndExit("minsnapshotsonimage flag value should be less than maxsnapshotsonimage")
 	}
 }
 
