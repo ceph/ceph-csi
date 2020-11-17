@@ -68,13 +68,14 @@ var (
 
 // Config holds the parameters list which can be configured.
 type Config struct {
-	Vtype        string // driver type [rbd|cephfs|liveness]
-	Endpoint     string // CSI endpoint
-	DriverName   string // name of the driver
-	NodeID       string // node id
-	InstanceID   string // unique ID distinguishing this instance of Ceph CSI
-	PluginPath   string // location of cephcsi plugin
-	DomainLabels string // list of domain labels to read from the node
+	Vtype           string // driver type [rbd|cephfs|liveness|controller]
+	Endpoint        string // CSI endpoint
+	DriverName      string // name of the driver
+	DriverNamespace string // namespace in which driver is deployed
+	NodeID          string // node id
+	InstanceID      string // unique ID distinguishing this instance of Ceph CSI
+	PluginPath      string // location of cephcsi plugin
+	DomainLabels    string // list of domain labels to read from the node
 
 	// metrics related flags
 	MetricsPath       string        // path of prometheus endpoint where metrics will be available
