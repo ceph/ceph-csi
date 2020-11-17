@@ -342,10 +342,12 @@ func flattenParentImage(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 	return nil
 }
 
-// check snapshots on the rbd image, as we have limit from krbd that
-// an image cannot have more than 510 snapshot at a given point of time.
-// If the snapshots are more than the `maxSnapshotsOnImage` Add a task to
-// flatten all the temporary cloned images.
+// check snapshots on the rbd image, as we have limit from krbd that an image
+// cannot have more than 510 snapshot at a given point of time. If the
+// snapshots are more than the `maxSnapshotsOnImage` Add a task to flatten all
+// the temporary cloned images and return ABORT error message. If the snapshots
+// are more than the `minSnapshotOnImage` Add a task to flatten all the
+// temporary cloned images.
 func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
 	snaps, err := rbdVol.listSnapshots(ctx, cr)
 	if err != nil {
@@ -356,11 +358,40 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 	}
 
 	if len(snaps) > int(maxSnapshotsOnImage) {
+<<<<<<< HEAD
 		err = flattenClonedRbdImages(ctx, snaps, rbdVol.Pool, rbdVol.Monitors, cr)
+=======
+		util.DebugLog(ctx, "snapshots count %d on image: %s reached configured hard limit %d", len(snaps), rbdVol, maxSnapshotsOnImage)
+		err = flattenClonedRbdImages(
+			ctx,
+			snaps,
+			rbdVol.Pool,
+			rbdVol.Monitors,
+			rbdVol.RbdImageName,
+			cr)
+>>>>>>> 8d3a44d0c... rbd: add minsnapshotsonimage flag
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
 		return status.Errorf(codes.ResourceExhausted, "rbd image %s has %d snapshots", rbdVol, len(snaps))
+	}
+
+	if len(snaps) > int(minSnapshotsOnImageToStartFlatten) {
+		util.DebugLog(ctx, "snapshots count %d on image: %s reached configured soft limit %d", len(snaps), rbdVol, minSnapshotsOnImageToStartFlatten)
+		// If we start flattening all the snapshots at one shot the volume
+		// creation time will be affected,so we will flatten only the extra
+		// snapshots.
+		snaps = snaps[minSnapshotsOnImageToStartFlatten-1:]
+		err = flattenClonedRbdImages(
+			ctx,
+			snaps,
+			rbdVol.Pool,
+			rbdVol.Monitors,
+			rbdVol.RbdImageName,
+			cr)
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
 	}
 	return nil
 }

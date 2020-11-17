@@ -117,6 +117,7 @@ spec:
             - "--rbdhardmaxclonedepth={{ .Values.provisioner.hardMaxCloneDepth }}"
             - "--rbdsoftmaxclonedepth={{ .Values.provisioner.softMaxCloneDepth }}"
             - "--maxsnapshotsonimage={{ .Values.provisioner.maxSnapshotsOnImage }}"
+            - "--minsnapshotsonimage={{ .Values.provisioner.minSnapshotsOnImage }}"
             {{- if .Values.provisioner.skipForceFlatten }}
             - "--skipforceflatten={{ .Values.provisioner.skipForceFlatten }}"
             {{- end }}
