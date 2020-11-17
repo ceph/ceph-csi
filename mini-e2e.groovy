@@ -99,7 +99,7 @@ node('cico-workspace') {
 			def base_image = ssh 'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${BASE_IMAGE}'
 
 			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-				ssh "podman login --username=${CREDS_USER} --password='${CREDS_PASSWD}'"
+				ssh "podman login --username=${CREDS_USER} --password='${CREDS_PASSWD}' ${ci_registry}"
 			}
 
 			// base_image is like ceph/ceph:v15
