@@ -25,7 +25,7 @@
           status-url: ${RUN_DISPLAY_URL}
           # the "commitlint" status context is use by the commitlint app
           status-context: commitlint
-          trigger-phrase: '/(re)?test ((all)|(commitlint))'
+          trigger-phrase: '/(re)?test commitlint'
           # only run on PRs where the trigger-phrase is posted
           only-trigger-phrase: true
           permit-all: true
