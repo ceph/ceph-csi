@@ -115,6 +115,8 @@ provisioner:
   softMaxCloneDepth: 4
   # Maximum number of snapshots allowed on rbd image without flattening
   maxSnapshotsOnImage: 450
+  # Minimum number of snapshots allowed on rbd image to trigger flattening
+  minSnapshotsOnImage: 250
   # skip image flattening if kernel support mapping of rbd images
   # which has the deep-flatten feature
   # skipForceFlatten: false

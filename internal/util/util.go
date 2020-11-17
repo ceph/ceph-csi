@@ -107,6 +107,11 @@ type Config struct {
 	// on rbd image without flattening, once the limit is reached cephcsi will
 	// start flattening the older rbd images to allow more snapshots
 	MaxSnapshotsOnImage uint
+
+	// MinSnapshotsOnImage represents the soft limit for maximum number of
+	// snapshots allowed on rbd image without flattening, once the soft limit is
+	// reached cephcsi will start flattening the older rbd images.
+	MinSnapshotsOnImage uint
 }
 
 // ValidateDriverName validates the driver name.
