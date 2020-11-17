@@ -96,7 +96,10 @@ node('cico-workspace') {
 			ssh "./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${git_repo} --ref=${ref}"
 		}
 		stage('pull base container images') {
-			def base_image = ssh 'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${BASE_IMAGE}'
+			def base_image = sh(
+				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${BASE_IMAGE}"',
+				returnStdout: true
+			).trim()
 
 			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
 				ssh "podman login --username=${CREDS_USER} --password='${CREDS_PASSWD}' ${ci_registry}"
