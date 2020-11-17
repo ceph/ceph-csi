@@ -8,6 +8,7 @@ def git_since = 'master'
 def skip_e2e = 0
 def doc_change = 0
 def k8s_release = 'latest'
+def ci_registry = 'registry-ceph-csi.apps.ocp.ci.centos.org'
 
 def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
@@ -94,11 +95,23 @@ node('cico-workspace') {
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh ./single-node-k8s.sh root@${CICO_NODE}:'
 			ssh "./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${git_repo} --ref=${ref}"
 		}
+		stage('pull base container images') {
+			def base_image = ssh 'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${BASE_IMAGE}'
+
+			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
+				ssh "podman login --user=${CREDS_USER} --password='${CREDS_PASSWD}'"
+			}
+
+			// base_image is like ceph/ceph:v15
+			ssh "podman pull ${ci_registry}/${base_image} && podman tag ${ci_registry}/${base_image} ${base_image}"
+			// cephcsi:devel is used with 'make containerized-build'
+			ssh "podman pull ${ci_registry}/cephcsi:devel"
+		}
 		stage('build artifacts') {
 			// build container image
 			ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make image-cephcsi GOARCH=amd64 CONTAINER_CMD=podman'
 			// build e2e.test executable
-			ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman TARGET=e2e.test'
+			ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman TARGET=e2e.test ENV_CSI_IMAGE_NAME=${ci_registry}/cephcsi USE_PULLED_IMAGE=yes"
 		}
 		stage("deploy k8s-${k8s_version} and rook") {
 			timeout(time: 30, unit: 'MINUTES') {
