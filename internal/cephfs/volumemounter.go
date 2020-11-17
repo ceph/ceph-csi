@@ -27,7 +27,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/v3/internal/util"
 )
 
 const (

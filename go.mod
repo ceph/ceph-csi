@@ -1,4 +1,4 @@
-module github.com/ceph/ceph-csi
+module github.com/ceph/ceph-csi/v3
 
 go 1.13
 

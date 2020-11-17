@@ -30,7 +30,7 @@ import (
 	"google.golang.org/grpc"
 	klog "k8s.io/klog/v2"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/v3/internal/util"
 )
 
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces.

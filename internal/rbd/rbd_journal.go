@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/v3/internal/util"
 )
 
 func validateNonEmptyField(field, fieldName, structName string) error {

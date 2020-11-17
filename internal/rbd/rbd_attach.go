@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/v3/internal/util"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 )

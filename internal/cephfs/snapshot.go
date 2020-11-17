@@ -20,7 +20,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/v3/internal/util"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 )

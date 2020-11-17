@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/v3/internal/util"
 )
 
 func (vo *volumeOptions) getFscID(ctx context.Context) (int64, error) {

@@ -21,8 +21,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/journal"
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/v3/internal/journal"
+	"github.com/ceph/ceph-csi/v3/internal/util"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"google.golang.org/grpc/codes"

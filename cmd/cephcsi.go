@@ -23,10 +23,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ceph/ceph-csi/internal/cephfs"
-	"github.com/ceph/ceph-csi/internal/liveness"
-	"github.com/ceph/ceph-csi/internal/rbd"
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/v3/internal/cephfs"
+	"github.com/ceph/ceph-csi/v3/internal/liveness"
+	"github.com/ceph/ceph-csi/v3/internal/rbd"
+	"github.com/ceph/ceph-csi/v3/internal/util"
 
 	klog "k8s.io/klog/v2"
 )

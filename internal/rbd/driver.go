@@ -17,9 +17,9 @@ limitations under the License.
 package rbd
 
 import (
-	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
-	"github.com/ceph/ceph-csi/internal/journal"
-	"github.com/ceph/ceph-csi/internal/util"
+	csicommon "github.com/ceph/ceph-csi/v3/internal/csi-common"
+	"github.com/ceph/ceph-csi/v3/internal/journal"
+	"github.com/ceph/ceph-csi/v3/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/utils/mount"

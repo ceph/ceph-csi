@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc/status"
 	klog "k8s.io/klog/v2"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/v3/internal/util"
 )
 
 // CSIDriver stores driver information.
