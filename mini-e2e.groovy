@@ -97,7 +97,7 @@ node('cico-workspace') {
 		}
 		stage('pull base container images') {
 			def base_image = sh(
-				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${BASE_IMAGE}"',
+				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} "source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${BASE_IMAGE}"',
 				returnStdout: true
 			).trim()
 
