@@ -121,24 +121,13 @@ function deploy_rook()
     ${GOPATH}/src/github.com/ceph/ceph-csi/scripts/install-snapshot.sh install
 }
 
-# When an image was built with podman, it needs importing into minikube.
-function podman2minikube()
-{
-    # "minikube ssh" fails to read the image, so use standard ssh instead
-    podman image save "${1}" | \
-        ssh \
-            -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-            -l docker -i "$(minikube ssh-key)" \
-            "$(minikube ip)" docker image load
-}
-
 # Set environment variables
 set_env
 
 # prepare minikube environment
 install_minikube
 
-podman2minikube "quay.io/cephcsi/cephcsi:${CSI_IMAGE_VERSION}"
+./podman2minikube.sh "quay.io/cephcsi/cephcsi:${CSI_IMAGE_VERSION}"
 
 deploy_rook
 
