@@ -14,12 +14,12 @@ def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
 }
 
-def podman_login(username, passwd) {
-	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${ci_registry}"
+def podman_login(registry, username, passwd) {
+	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${registry}"
 }
 
-def podman_pull(image) {
-	ssh "podman pull --authfile=~/.podman-auth.json ${ci_registry}/${image} && podman tag ${ci_registry}/${image} ${image}"
+def podman_pull(registry, image) {
+	ssh "podman pull --authfile=~/.podman-auth.json ${registry}/${image} && podman tag ${registry}/${image} ${image}"
 }
 
 node('cico-workspace') {
@@ -110,13 +110,13 @@ node('cico-workspace') {
 			).trim()
 
 			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-				podman_login("${CREDS_USER}", "${CREDS_PASSWD}")
+				podman_login(ci_registry, "${CREDS_USER}", "${CREDS_PASSWD}")
 			}
 
 			// base_image is like ceph/ceph:v15
-			podman_pull("${base_image}")
+			podman_pull(ci_registry, "${base_image}")
 			// cephcsi:devel is used with 'make containerized-build'
-			podman_pull("ceph-csi:devel")
+			podman_pull(ci_registry, "ceph-csi:devel")
 		}
 		stage('build artifacts') {
 			// build container image
@@ -130,9 +130,9 @@ node('cico-workspace') {
 			}
 
 			// vault:latest and nginx:latest are used by the e2e tests
-			podman_pull("vault:latest")
+			podman_pull(ci_registry, "vault:latest")
 			ssh "./podman2minikube.sh vault:latest"
-			podman_pull("nginx:latest")
+			podman_pull(ci_registry, "nginx:latest")
 			ssh "./podman2minikube.sh nginx:latest"
 		}
 		stage("run ${test_type} upgrade tests") {

@@ -17,12 +17,12 @@ def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
 }
 
-def podman_login(username, passwd) {
-	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${ci_registry}"
+def podman_login(registry, username, passwd) {
+	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${registry}"
 }
 
-def podman_pull(image) {
-	ssh "podman pull --authfile=~/.podman-auth.json ${ci_registry}/${image} && podman tag ${ci_registry}/${image} ${image}"
+def podman_pull(registry, image) {
+	ssh "podman pull --authfile=~/.podman-auth.json ${registry}/${image} && podman tag ${registry}/${image} ${image}"
 }
 
 node('cico-workspace') {
@@ -95,7 +95,7 @@ node('cico-workspace') {
 				returnStatus: true)
 
 			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-				podman_login("${CREDS_USER}", "${CREDS_PASSWD}")
+				podman_login(ci_registry, "${CREDS_USER}", "${CREDS_PASSWD}")
 			}
 
 			parallel test: {
@@ -106,7 +106,7 @@ node('cico-workspace') {
 						return
 					}
 
-					podman_pull("${cached_image}:test")
+					podman_pull(ci_registry, "${cached_image}:test")
 				}
 			},
 			devel: {
@@ -117,7 +117,7 @@ node('cico-workspace') {
 						return
 					}
 
-					podman_pull("${cached_image}:devel")
+					podman_pull(ci_registry, "${cached_image}:devel")
 				}
 			},
 			ceph: {
@@ -128,7 +128,7 @@ node('cico-workspace') {
 					).trim()
 
 					// base_image is like ceph/ceph:v15
-					podman_pull("${base_image}")
+					podman_pull(ci_registry, "${base_image}")
 				}
 			}
 		}
