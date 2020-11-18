@@ -113,7 +113,7 @@ node('cico-workspace') {
 			).trim()
 
 			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-				podman_login("${CREDS_USER}", "${CREDS_PASSWD}:)
+				podman_login("${CREDS_USER}", "${CREDS_PASSWD}":)
 			}
 
 			// base_image is like ceph/ceph:v15
