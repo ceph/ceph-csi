@@ -8,12 +8,21 @@ def git_since = 'master'
 def workdir = '/opt/build/go/src/github.com/ceph/ceph-csi'
 def doc_change = 0
 // private, internal container image repository
-def cached_image = 'registry-ceph-csi.apps.ocp.ci.centos.org/ceph-csi'
+def ci_registry = 'registry-ceph-csi.apps.ocp.ci.centos.org'
+def cached_image = "ceph-csi"
 def use_test_image = 'USE_PULLED_IMAGE=yes'
 def use_build_image = 'USE_PULLED_IMAGE=yes'
 
 def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
+}
+
+def podman_login(username, passwd) {
+	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${ci_registry}"
+}
+
+def podman_pull(image) {
+	ssh "podman pull --authfile=~/.podman-auth.json ${ci_registry}/${image} && podman tag ${ci_registry}/${image} ${image}"
 }
 
 node('cico-workspace') {
@@ -85,6 +94,10 @@ node('cico-workspace') {
 				script: "cd ~/build/ceph-csi && \${OLDPWD}/scripts/container-needs-rebuild.sh devel origin/${git_since}",
 				returnStatus: true)
 
+			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
+				podman_login("${CREDS_USER}", "${CREDS_PASSWD}:)
+			}
+
 			parallel test: {
 				node('cico-workspace') {
 					if (rebuild_test_container == 10) {
@@ -93,9 +106,7 @@ node('cico-workspace') {
 						return
 					}
 
-					withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-						ssh "podman pull --creds=${CREDS_USER}:${CREDS_PASSWD} ${cached_image}:test"
-					}
+					podman_pull("${cached_image}:test")
 				}
 			},
 			devel: {
@@ -106,9 +117,18 @@ node('cico-workspace') {
 						return
 					}
 
-					withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-						ssh "podman pull --creds=${CREDS_USER}:${CREDS_PASSWD} ${cached_image}:devel"
-					}
+					podman_pull("${cached_image}:devel")
+				}
+			},
+			ceph: {
+				node('cico-workspace') {
+					def base_image = sh(
+						script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${BASE_IMAGE}\'',
+						returnStdout: true
+					).trim()
+
+					// base_image is like ceph/ceph:v15
+					podman_pull("${base_image}")
 				}
 			}
 		}
