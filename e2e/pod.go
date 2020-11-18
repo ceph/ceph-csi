@@ -150,6 +150,9 @@ func loadApp(path string) (*v1.Pod, error) {
 	if err != nil {
 		return nil, err
 	}
+	for i := range app.Spec.Containers {
+		app.Spec.Containers[i].ImagePullPolicy = v1.PullIfNotPresent
+	}
 	return &app, nil
 }
 
