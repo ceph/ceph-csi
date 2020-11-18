@@ -8,9 +8,18 @@ def git_since = 'master'
 def skip_e2e = 0
 def doc_change = 0
 def k8s_release = 'latest'
+def ci_registry = 'registry-ceph-csi.apps.ocp.ci.centos.org'
 
 def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
+}
+
+def podman_login(username, passwd) {
+	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${ci_registry}"
+}
+
+def podman_pull(image) {
+	ssh "podman pull --authfile=~/.podman-auth.json ${ci_registry}/${image} && podman tag ${ci_registry}/${image} ${image}"
 }
 
 node('cico-workspace') {
@@ -93,6 +102,21 @@ node('cico-workspace') {
 			}
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh ./single-node-k8s.sh root@${CICO_NODE}:'
 			ssh "./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${git_repo} --ref=${ref}"
+		}
+		stage('pull base container images') {
+			def base_image = sh(
+				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${BASE_IMAGE}\'',
+				returnStdout: true
+			).trim()
+
+			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
+				podman_login("${CREDS_USER}", "${CREDS_PASSWD}:)
+			}
+
+			// base_image is like ceph/ceph:v15
+			podman_pull("${base_image}")
+			// cephcsi:devel is used with 'make containerized-build'
+			podman_pull("ceph-csi:devel")
 		}
 		stage('build artifacts') {
 			// build container image
