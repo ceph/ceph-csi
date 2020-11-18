@@ -128,6 +128,12 @@ node('cico-workspace') {
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh "./single-node-k8s.sh --k8s-version=${k8s_release}"
 			}
+
+			// vault:latest and nginx:latest are used by the e2e tests
+			podman_pull("vault:latest")
+			ssh "./podman2minikube.sh vault:latest"
+			podman_pull("nginx:latest")
+			ssh "./podman2minikube.sh nginx:latest"
 		}
 		stage("run ${test_type} upgrade tests") {
 			timeout(time: 120, unit: 'MINUTES') {
