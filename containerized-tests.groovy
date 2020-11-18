@@ -95,7 +95,7 @@ node('cico-workspace') {
 				returnStatus: true)
 
 			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-				podman_login("${CREDS_USER}", "${CREDS_PASSWD}:)
+				podman_login("${CREDS_USER}", "${CREDS_PASSWD}")
 			}
 
 			parallel test: {
