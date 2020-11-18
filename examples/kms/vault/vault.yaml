@@ -88,6 +88,10 @@ items:
         path "secret/metadata/ceph-csi/*" {
           capabilities = ["read", "delete", "list"]
         }
+
+        path "sys/mounts" {
+          capabilities = ["read"]
+        }
         EOS
 
         # create a role
