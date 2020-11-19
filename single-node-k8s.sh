@@ -129,6 +129,12 @@ install_minikube
 
 ./podman2minikube.sh "quay.io/cephcsi/cephcsi:${CSI_IMAGE_VERSION}"
 
+# incase rook/ceph is available on the local system, push it into the VM
+if podman inspect "rook/ceph:${ROOK_VERSION}"
+then
+    ./podman2minikube.sh "rook/ceph:${ROOK_VERSION}"
+fi
+
 deploy_rook
 
 # running e2e.test requires librados and librbd

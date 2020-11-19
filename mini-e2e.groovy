@@ -125,6 +125,16 @@ node('cico-workspace') {
 			ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman TARGET=e2e.test ENV_CSI_IMAGE_NAME=${ci_registry}/ceph-csi USE_PULLED_IMAGE=yes"
 		}
 		stage("deploy k8s-${k8s_version} and rook") {
+			def rook_version = sh(
+				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${ROOK_VERSION}\'',
+				returnStdout: true
+			).trim()
+
+			if (rook_version != '') {
+				// single-node-k8s.sh pushes the image into minikube
+				podman_pull(ci_registry, "rook/ceph:${rook_version}")
+			}
+
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh "./single-node-k8s.sh --k8s-version=${k8s_release}"
 			}
