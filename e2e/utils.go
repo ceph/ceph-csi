@@ -276,7 +276,7 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 			Containers: []v1.Container{
 				{
 					Name:    "write-pod",
-					Image:   "alpine",
+					Image:   "registry.centos.org/centos:latest",
 					Command: []string{"/bin/sleep", "999999"},
 					SecurityContext: &v1.SecurityContext{
 						RunAsUser: &user,
