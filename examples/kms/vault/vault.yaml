@@ -147,4 +147,5 @@ spec:
           command:
             - /bin/sh
             - /init-scripts/init-vault.sh
+          imagePullPolicy: "IfNotPresent"
       restartPolicy: Never
