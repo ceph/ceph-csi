@@ -244,7 +244,7 @@ func getMountType(appName, appNamespace, mountPath string, f *framework.Framewor
 // or stdErr (second entry in tuple) - error getting the key.
 func readVaultSecret(key string, f *framework.Framework) (string, string) {
 	loginCmd := fmt.Sprintf("vault login -address=%s sample_root_token_id > /dev/null", vaultAddr)
-	readSecret := fmt.Sprintf("vault kv get -address=%s %s%s", vaultAddr, vaultSecretNs, key)
+	readSecret := fmt.Sprintf("vault kv get -address=%s -field=data %s%s", vaultAddr, vaultSecretNs, key)
 	cmd := fmt.Sprintf("%s && %s", loginCmd, readSecret)
 	opt := metav1.ListOptions{
 		LabelSelector: "app=vault",
