@@ -84,12 +84,12 @@ that will not be supported in the official releases. Builds from the master
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-git checkout v3.1.1 tag
+git checkout v3.1.2 tag
 
 ```bash
 [$] git clone https://github.com/ceph/ceph-csi.git
 [$] cd ./ceph-csi
-[$] git checkout v3.1.1
+[$] git checkout v3.1.2
 ```
 
 **Note:** While upgrading please Ignore warning messages from kubectl output
