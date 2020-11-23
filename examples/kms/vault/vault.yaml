@@ -39,7 +39,7 @@ spec:
     spec:
       containers:
         - name: vault
-          image: vault
+          image: docker.io/vault:latest
           securityContext:
             runAsUser: 100
           env:
