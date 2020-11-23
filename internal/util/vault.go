@@ -136,7 +136,7 @@ func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKM
 		var vaultCAVerify bool
 		vaultCAVerify, err = strconv.ParseBool(verifyCA)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse 'vaultCAVerify' for vault <%s> kms config: %s",
+			return nil, fmt.Errorf("failed to parse 'vaultCAVerify' for vault <%s> kms config: %w",
 				kmsID, err)
 		}
 		vaultConfig[api.EnvVaultInsecure] = !vaultCAVerify
