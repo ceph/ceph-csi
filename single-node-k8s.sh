@@ -130,7 +130,7 @@ install_minikube
 ./podman2minikube.sh "quay.io/cephcsi/cephcsi:${CSI_IMAGE_VERSION}"
 
 # incase rook/ceph is available on the local system, push it into the VM
-if podman inspect "rook/ceph:${ROOK_VERSION}"
+if podman inspect "rook/ceph:${ROOK_VERSION}" > /dev/null
 then
     ./podman2minikube.sh "rook/ceph:${ROOK_VERSION}"
 fi
