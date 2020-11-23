@@ -19,6 +19,7 @@ def ssh(cmd) {
 
 def podman_login(registry, username, passwd) {
 	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${registry}"
+	ssh 'cp container-registry.conf /etc/containers/registries.conf'
 }
 
 def podman_pull(registry, image) {
@@ -74,7 +75,7 @@ node('cico-workspace') {
 
 	try {
 		stage('prepare bare-metal machine') {
-			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh root@${CICO_NODE}:'
+			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh container-registry.conf root@${CICO_NODE}:'
 			// TODO: already checked out the PR on the node, scp the contents?
 			ssh "./prepare.sh --workdir=${workdir} --gitrepo=${git_repo} --ref=${ref}"
 		}
@@ -128,7 +129,7 @@ node('cico-workspace') {
 					).trim()
 
 					// base_image is like ceph/ceph:v15
-					podman_pull(ci_registry, "${base_image}")
+					podman_pull("docker.io", "${base_image}")
 				}
 			}
 		}

@@ -16,6 +16,7 @@ def ssh(cmd) {
 
 def podman_login(registry, username, passwd) {
 	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${registry}"
+	ssh 'cp container-registry.conf /etc/containers/registries.conf'
 }
 
 def podman_pull(registry, image) {
@@ -100,7 +101,7 @@ node('cico-workspace') {
 			if (params.ghprbPullId != null) {
 				ref = "pull/${ghprbPullId}/merge"
 			}
-			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh ./single-node-k8s.sh ./podman2minikube.sh root@${CICO_NODE}:'
+			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh ./single-node-k8s.sh ./podman2minikube.sh container-registry.conf root@${CICO_NODE}:'
 			ssh "./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${git_repo} --ref=${ref}"
 		}
 		stage('pull base container images') {
@@ -114,7 +115,7 @@ node('cico-workspace') {
 			}
 
 			// base_image is like ceph/ceph:v15
-			podman_pull(ci_registry, "${base_image}")
+			podman_pull("docker.io", "${base_image}")
 			// cephcsi:devel is used with 'make containerized-build'
 			podman_pull(ci_registry, "ceph-csi:devel")
 		}
@@ -132,7 +133,7 @@ node('cico-workspace') {
 
 			if (rook_version != '') {
 				// single-node-k8s.sh pushes the image into minikube
-				podman_pull(ci_registry, "rook/ceph:${rook_version}")
+				podman_pull("docker.io", "rook/ceph:${rook_version}")
 			}
 
 			timeout(time: 30, unit: 'MINUTES') {
@@ -140,9 +141,9 @@ node('cico-workspace') {
 			}
 
 			// vault:latest and nginx:latest are used by the e2e tests
-			podman_pull(ci_registry, "vault:latest")
+			podman_pull("docker.io", "vault:latest")
 			ssh "./podman2minikube.sh vault:latest"
-			podman_pull(ci_registry, "nginx:latest")
+			podman_pull("docker.io", "nginx:latest")
 			ssh "./podman2minikube.sh nginx:latest"
 		}
 		stage("run ${test_type} upgrade tests") {

@@ -49,6 +49,8 @@ spec:
           volumeMounts:
             - name: container-images
               mountPath: /var/lib/registry
+            - name: config
+              mountPath: /etc/docker/registry
             - name: htpasswd
               mountPath: /auth
           env:
@@ -62,6 +64,9 @@ spec:
         - name: container-images
           persistentVolumeClaim:
             claimName: ceph-csi-image-registry
+        - name: config
+          secret:
+            secretName: container-registry-config
         - name: htpasswd
           secret:
             secretName: container-registry-auth
