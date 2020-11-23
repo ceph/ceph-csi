@@ -144,10 +144,15 @@ node('cico-workspace') {
 			}
 
 			// vault:latest and nginx:latest are used by the e2e tests
+			// Tag the images with qualified and unqualified names,
+			// so that moving to qualified names everywhere becomes
+			// possible.
 			podman_pull("docker.io", "vault:latest")
 			ssh "./podman2minikube.sh vault:latest"
+			ssh "./podman2minikube.sh docker.io/vault:latest"
 			podman_pull("docker.io", "nginx:latest")
 			ssh "./podman2minikube.sh nginx:latest"
+			ssh "./podman2minikube.sh docker.io/nginx:latest"
 		}
 		stage('deploy ceph-csi through helm') {
 			timeout(time: 30, unit: 'MINUTES') {
