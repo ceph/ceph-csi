@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -E
 
 ROOK_VERSION=${ROOK_VERSION:-"v1.2.7"}
 ROOK_DEPLOY_TIMEOUT=${ROOK_DEPLOY_TIMEOUT:-300}
@@ -7,6 +7,25 @@ ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
 ROOK_CEPH_CLUSTER_VERSION="v14.2.10"
 KUBECTL_RETRY=5
 KUBECTL_RETRY_DELAY=10
+
+trap log_errors ERR
+
+# log_errors is called on exit (see 'trap' above) and tries to provide
+# sufficient information to debug deployment problems
+function log_errors() {
+	# enable verbose execution
+	set -x
+	kubectl get nodes
+	kubectl -n rook-ceph get events
+	kubectl -n rook-ceph describe pods
+	kubectl -n rook-ceph logs -l app=rook-ceph-operator
+	kubectl -n rook-ceph get CephClusters -oyaml
+	kubectl -n rook-ceph get CephFilesystems -oyaml
+	kubectl -n rook-ceph get CephBlockPools -oyaml
+
+	# this function should not return, a fatal error was caught!
+	exit 1
+}
 
 rook_version() {
 	echo "${ROOK_VERSION#v}" | cut -d'.' -f"${1}"
