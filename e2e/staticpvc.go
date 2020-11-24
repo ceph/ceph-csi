@@ -85,7 +85,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 		pvcName      = "pvc-name"
 		namespace    = f.UniqueName
 		// minikube creates default class in cluster, we need to set dummy
-		// storageclass on PV and PVC to avoid storageclass name missmatch
+		// storageclass on PV and PVC to avoid storageclass name mismatch
 		sc = "storage-class"
 	)
 
@@ -176,7 +176,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 		pvcName       = "pvc-name"
 		namespace     = f.UniqueName
 		// minikube creates default storage class in cluster, we need to set dummy
-		// storageclass on PV and PVC to avoid storageclass name missmatch
+		// storageclass on PV and PVC to avoid storageclass name mismatch
 		sc         = "storage-class"
 		secretName = "cephfs-static-pv-sc" // #nosec
 	)

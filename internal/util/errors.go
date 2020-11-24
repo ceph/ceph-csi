@@ -55,7 +55,7 @@ func (e errorPair) Unwrap() error {
 }
 
 // JoinErrors combines two errors. Of the returned error, Is() follows the first
-// branch, Unwrap() folllows the second branch.
+// branch, Unwrap() follows the second branch.
 func JoinErrors(e1, e2 error) error {
 	return errorPair{e1, e2}
 }

@@ -10,7 +10,7 @@
     - [Create CephFS subvolume](#create-cephfs-subvolume)
     - [Create CephFS static PV](#create-cephfs-static-pv)
     - [Node stage secret ref in CephFS PV](#node-stage-secret-ref-in-cephfs-pv)
-    - [CephFS Volume Attributes in PV](#cephfs-volume-attributes-in-pv)
+    - [CephFS volume attributes in PV](#cephfs-volume-attributes-in-pv)
     - [Create CephFS static PVC](#create-cephfs-static-pvc)
 
 This document outlines how to create static PV and static PVC from
@@ -78,12 +78,12 @@ spec:
 Below table explains the list of volume attributes can be set when creating a
 static RBD PV
 
-|  Attributes  |                                                                Description                                                                 | Required |
-| :----------: | :----------------------------------------------------------------------------------------------------------------------------------------: | :------: |
+|  Attributes  |                                                                     Description                                                                      | Required |
+| :----------: | :--------------------------------------------------------------------------------------------------------------------------------------------------: | :------: |
 |  clusterID   | The clusterID is used by the CSI plugin to uniquely identify and use a Ceph cluster (this is the key in configmap created duing ceph-csi deployment) |   Yes    |
-|     pool     |                                                The pool name in which rbd image is created                                                 |   Yes    |
-| staticVolume |                                      Value must be set to `true` to mount and unmount static rbd PVC                                       |   yes    |
-|   mounter    |                 If set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images                 |    No    |
+|     pool     |                                                     The pool name in which rbd image is created                                                      |   Yes    |
+| staticVolume |                                           Value must be set to `true` to mount and unmount static rbd PVC                                            |   yes    |
+|   mounter    |                      If set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images                      |    No    |
 
 **Note** ceph-csi does not supports rbd image deletion for static PV.
 `persistentVolumeReclaimPolicy` in PV spec must be set to `Retain` to avoid PV
@@ -122,7 +122,7 @@ $ kubectl create -f fs-static-pvc.yaml
 persistentvolumeclaim/fs-static-pvc created
 ```
 
-**Note** deleting PV and PVC doesnot deleted the backend rbd image, user need to
+**Note** deleting PV and PVC does not removed the backend rbd image, user need to
 manually delete the rbd image if required
 
 ## CephFS static PVC
@@ -201,12 +201,12 @@ Format for the secret should be same as detailed [here](https://github.com/ceph/
 Below table explains the list of volume attributes can be set when creating a
 static CephFS PV
 
-|  Attributes  |                                                                Description                                                                 | Required |
-| :----------: | :----------------------------------------------------------------------------------------------------------------------------------------: | :------: |
+|  Attributes  |                                                                     Description                                                                      | Required |
+| :----------: | :--------------------------------------------------------------------------------------------------------------------------------------------------: | :------: |
 |  clusterID   | The clusterID is used by the CSI plugin to uniquely identify and use a Ceph cluster (this is the key in configmap created duing ceph-csi deployment) |   Yes    |
-|  fsName      |                         CephFS filesystem name into which the subvolume should be created/present                                         |   Yes    |
-| staticVolume |                                      Value must be set to `true` to mount and unmount static rbd PVC                                       |   Yes    |
-|   rootPath    |                 Actual path of the subvolume in ceph cluster, can be retrieved by issuing getpath command as described above                 |    Yes    |
+|    fsName    |                                      CephFS filesystem name into which the subvolume should be created/present                                       |   Yes    |
+| staticVolume |                                           Value must be set to `true` to mount and unmount static rbd PVC                                            |   Yes    |
+|   rootPath   |                     Actual path of the subvolume in ceph cluster, can be retrieved by issuing getpath command as described above                     |   Yes    |
 
 **Note** ceph-csi does not supports CephFS subvolume deletion for static PV.
 `persistentVolumeReclaimPolicy` in PV spec must be set to `Retain` to avoid PV

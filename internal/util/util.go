@@ -34,7 +34,7 @@ import (
 	"k8s.io/utils/mount"
 )
 
-// RoundOffVolSize rounds up given quantity upto chunks of MiB/GiB.
+// RoundOffVolSize rounds up given quantity up to chunks of MiB/GiB.
 func RoundOffVolSize(size int64) int64 {
 	size = RoundOffBytes(size)
 	// convert size back to MiB for rbd CLI
@@ -147,7 +147,7 @@ func GetKernelVersion() (string, error) {
 	return strings.TrimRight(string(utsname.Release[:]), "\x00"), nil
 }
 
-// KernelVersion holds kernel related informations.
+// KernelVersion holds kernel related information.
 type KernelVersion struct {
 	Version      int
 	PatchLevel   int

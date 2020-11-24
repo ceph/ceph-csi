@@ -130,7 +130,7 @@ func (ci *CSIIdentifier) DecomposeCSIID(composedCSIID string) (err error) {
 	nextFieldStartIdx := (10 + clusterIDLength + 1)
 
 	// minLenToDecode is now 17 as composedCSIID should include
-	// atleast 16 for poolID encoding and 1 for '-' separator.
+	// at least 16 for poolID encoding and 1 for '-' separator.
 	const minLenToDecode = 17
 	if bytesToProcess < minLenToDecode {
 		return errors.New("failed to decode CSI identifier, string underflow")

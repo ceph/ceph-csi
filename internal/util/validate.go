@@ -27,7 +27,7 @@ func ValidateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 	// validate stagingpath exists
 	ok := checkDirExists(req.GetStagingTargetPath())
 	if !ok {
-		return status.Errorf(codes.InvalidArgument, "staging path %s does not exists on node", req.GetStagingTargetPath())
+		return status.Errorf(codes.InvalidArgument, "staging path %s does not exist on node", req.GetStagingTargetPath())
 	}
 	return nil
 }

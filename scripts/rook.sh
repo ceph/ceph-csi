@@ -48,7 +48,7 @@ kubectl_retry() {
             ret=$(grep -cvw 'AlreadyExists' "${stderr}")
             if [ "${ret}" -eq 0 ]
             then
-                # Succes! stderr is empty after removing all "AlreadyExists" lines.
+                # Success! stderr is empty after removing all "AlreadyExists" lines.
                 break
             fi
         fi

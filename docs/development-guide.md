@@ -21,7 +21,7 @@ it is **highly** encouraged to:
   to set it to `1` as we need to build with go-ceph bindings.
 * `GO111MODULE` is enabled by default, if `GO111MODULE` is set to `off` we need
   to set it to `on` as cephcsi uses go modules for dependency.
-* Ceph-CSI uses the native Ceph libaries through the [go-ceph
+* Ceph-CSI uses the native Ceph libraries through the [go-ceph
    package](https://github.com/ceph/go-ceph). It is required to install the
    Ceph C headers in order to compile Ceph-CSI. The packages are called
    `libcephfs-devel`, `librados-devel` and `librbd-devel` on many Linux
@@ -97,7 +97,7 @@ make containerized-test TARGET=static-check
 ```
 
 In addition to running tests locally, each Pull Request that is created will
-trigger Continous Integration tests that include the `containerized-test`, but
+trigger Continuous Integration tests that include the `containerized-test`, but
 also additional functionality tests that are defined under the `e2e/`
 directory.
 

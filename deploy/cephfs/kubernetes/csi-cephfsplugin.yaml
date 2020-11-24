@@ -56,7 +56,7 @@ spec:
             - "--drivername=cephfs.csi.ceph.com"
             # If topology based provisioning is desired, configure required
             # node labels representing the nodes topology domain
-            # and pass the label names below, for CSI to consume and advertize
+            # and pass the label names below, for CSI to consume and advertise
             # its equivalent topology domain
             # - "--domainlabels=failure-domain/region,failure-domain/zone"
           env:

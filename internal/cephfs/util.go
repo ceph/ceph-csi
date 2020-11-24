@@ -152,7 +152,7 @@ func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (sn
 func parseTime(ctx context.Context, createTime string) (*timestamp.Timestamp, error) {
 	tm := &timestamp.Timestamp{}
 	layout := "2006-01-02 15:04:05.000000"
-	// TODO currently parsing of timestamp to time.ANSIC generate from ceph fs is failng
+	// TODO currently parsing of timestamp to time.ANSIC generate from ceph fs is failing
 	var t time.Time
 	t, err := time.Parse(layout, createTime)
 	if err != nil {

@@ -69,7 +69,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 				util.ErrorLog(ctx, "failed to delete volume %s: %v", cloneID, err)
 			}
 			if err = unprotectSnapshot(ctx, parentvolOpt, cr, snapshotID, volID); err != nil {
-				// Incase the snap is already unprotected we get ErrSnapProtectionExist error code
+				// In case the snap is already unprotected we get ErrSnapProtectionExist error code
 				// in that case we are safe and we could discard this error and we are good to go
 				// ahead with deletion
 				if !errors.Is(err, ErrSnapProtectionExist) {
@@ -118,7 +118,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		}
 		// As we completed clone, remove the intermediate snap
 		if err = unprotectSnapshot(ctx, parentvolOpt, cr, snapshotID, volID); err != nil {
-			// Incase the snap is already unprotected we get ErrSnapProtectionExist error code
+			// In case the snap is already unprotected we get ErrSnapProtectionExist error code
 			// in that case we are safe and we could discard this error and we are good to go
 			// ahead with deletion
 			if !errors.Is(err, ErrSnapProtectionExist) {

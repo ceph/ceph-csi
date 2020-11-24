@@ -73,7 +73,7 @@ When a volume create request is received (or a snapshot create, the snapshot is 
 it is used to read its references to reach the UUID that backs this VolName, to check if the
 UUID based volume can satisfy the requirements for the request
   - If during the process of checking the same, it is found that some linking information is stale
-  or missing, the corresponding keys upto the key in the csiDirectory is cleaned up, to start afresh
+  or missing, the corresponding keys up to the key in the csiDirectory is cleaned up, to start afresh
 
 - If the key with the CO VolName is not found, or was cleaned up, the request is treated as a
 new create request, and an CephUUIDDirectory is created first with a generated uuid, this ensures

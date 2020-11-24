@@ -179,7 +179,7 @@ containerized-test: .container-cmd .test-container-id
 	$(CONTAINER_CMD) run --rm -v $(CURDIR):/go/src/github.com/ceph/ceph-csi$(SELINUX_VOL_FLAG) $(CSI_IMAGE_NAME):test make $(TARGET) GIT_SINCE=$(GIT_SINCE) REBASE=$(REBASE) CONTAINERIZED=yes
 
 ifeq ($(USE_PULLED_IMAGE),no)
-# create a (cached) container image with dependencied for building cephcsi
+# create a (cached) container image with dependencies for building cephcsi
 .devel-container-id: .container-cmd scripts/Dockerfile.devel
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
 	$(CONTAINER_CMD) build $(CPUSET) --build-arg BASE_IMAGE=$(BASE_IMAGE) -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
@@ -191,7 +191,7 @@ else
 endif
 
 ifeq ($(USE_PULLED_IMAGE),no)
-# create a (cached) container image with dependencied for testing cephcsi
+# create a (cached) container image with dependencies for testing cephcsi
 .test-container-id: .container-cmd build.env scripts/Dockerfile.test
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
 	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
