@@ -59,6 +59,12 @@ kubectl_retry() {
             ret=1
             break
         fi
+
+	# log stderr and empty the tmpfile
+	cat "${stderr}" > /dev/stderr
+	true > "${stderr}"
+	echo "kubectl_retry ${*} failed, will retry in ${KUBECTL_RETRY_DELAY} seconds"
+
         sleep ${KUBECTL_RETRY_DELAY}
     done
 
@@ -160,7 +166,7 @@ function check_ceph_cluster_health() {
 
 	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
 		echo "[Timeout] CEPH cluster not in a healthy state (timeout)"
-		exit 1
+		return 1
 	fi
 	echo ""
 }
@@ -186,7 +192,7 @@ function check_mds_stat() {
 
 	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
 		echo "[Timeout] Failed to get ceph filesystem pods"
-		exit 1
+		return 1
 	fi
 	echo ""
 }
@@ -213,7 +219,7 @@ function check_rbd_stat() {
 
 	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
 		echo "[Timeout] Failed to get RBD pool stats"
-		exit 1
+		return 1
 	fi
 	echo ""
 }
