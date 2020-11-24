@@ -354,7 +354,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 					// wait for application pod to come up after resize
 					err = waitForPodInRunningState(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 					if err != nil {
-						e2elog.Failf("timout waiting for pod to be in running state with error %v", err)
+						e2elog.Failf("timeout waiting for pod to be in running state with error %v", err)
 					}
 					// validate if resize is successful.
 					err = checkDirSize(app, f, &opt, pvcExpandSize)

@@ -66,7 +66,7 @@ func (ns *DefaultNodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetIn
 	}, nil
 }
 
-// NodeGetCapabilities returns RPC unknow capability.
+// NodeGetCapabilities returns RPC unknown capability.
 func (ns *DefaultNodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	util.TraceLog(ctx, "Using default NodeGetCapabilities")
 
@@ -116,7 +116,7 @@ func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.No
 
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s doesnot exist", targetPath)
+			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s does not exist", targetPath)
 		}
 		return nil, err
 	}

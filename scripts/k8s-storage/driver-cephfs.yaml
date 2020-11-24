@@ -25,12 +25,12 @@ DriverInfo:
   RequiredMountOption:
     rw: {}
 
-  # Optional list of access modes required for provisiong. Default is RWO
+  # Optional list of access modes required for provisioning. Default is RWO
   # RequiredAcccessModes:
 
   # Map that represents the capabilities the driver supports
   Capabilities:
-    # Data is persistest accross pod restarts
+    # Data is persistest across pod restarts
     persistence: true
 
     # Volume ownership via fsGroup

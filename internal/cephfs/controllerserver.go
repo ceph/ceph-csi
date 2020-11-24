@@ -185,7 +185,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			// while cloning the volume the size is not populated properly to the new volume now.
 			// it will be fixed in cephfs soon with the parentvolume size. Till then by below
 			// resize we are making sure we return or satisfy the requested size by setting the size
-			// explictly
+			// explicitly
 			err = volOptions.resizeVolume(ctx, volumeID(vID.FsSubvolName), volOptions.Size)
 			if err != nil {
 				purgeErr := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, false)

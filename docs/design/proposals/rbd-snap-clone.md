@@ -23,7 +23,7 @@ snapshot, Restore RBD snapshot and Create new RBD image from existing RBD image.
 ## Create a snapshot from PVC
 
 Refer [snapshot](https://kubernetes.io/docs/concepts/storage/volume-snapshots/)
-for more information realted to Volume cloning in kubernetes.
+for more information related to Volume cloning in kubernetes.
 
 ### steps to create a snapshot
 
@@ -44,7 +44,7 @@ for more information realted to Volume cloning in kubernetes.
 rbd snap ls <RBD image for src k8s volume> --all
 
 // If the parent has more snapshots than the configured `maxsnapshotsonimage`
-// add backgound tasks to flatten the temporary cloned images (temporary cloned
+// add background tasks to flatten the temporary cloned images (temporary cloned
 // image names will be same as snapshot names)
 ceph rbd task add flatten <RBD image for temporary snap images>
 
@@ -125,7 +125,7 @@ image(this will be applicable for both normal image and cloned image)
 
 Refer
 [volume-cloning](https://kubernetes.io/docs/concepts/storage/volume-pvc-datasource/)
-for more information realted to Volume cloning in kubernetes.
+for more information related to Volume cloning in kubernetes.
 
 ### steps to create a Volume from Volume
 

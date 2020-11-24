@@ -271,7 +271,7 @@ var _ = Describe("RBD", func() {
 			By("create a PVC and bind it to an app with normal user", func() {
 				err := validateNormalUserPVCAccess(pvcPath, f)
 				if err != nil {
-					e2elog.Failf("failed to validate normal user pvc and application bidning with error %v", err)
+					e2elog.Failf("failed to validate normal user pvc and application binding with error %v", err)
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0)

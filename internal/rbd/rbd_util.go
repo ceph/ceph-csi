@@ -480,7 +480,7 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 		supported, err := addRbdManagerTask(ctx, rv, args)
 		if supported {
 			if err != nil {
-				// discard flattening error if the image doesnot have any parent
+				// discard flattening error if the image does not have any parent
 				rbdFlattenNoParent := fmt.Sprintf("Image %s/%s does not have a parent", rv.Pool, rv.RbdImageName)
 				if strings.Contains(err.Error(), rbdFlattenNoParent) {
 					return nil

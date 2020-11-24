@@ -96,7 +96,7 @@ func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (
 		if strings.HasPrefix(err.Error(), volumeNotFound) {
 			return nil, ErrVolumeNotFound
 		}
-		// Incase the error is other than invalid command return error to the caller.
+		// In case the error is other than invalid command return error to the caller.
 		if !strings.Contains(err.Error(), invalidCommand) {
 			return nil, ErrInvalidCommand
 		}
@@ -202,7 +202,7 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 			clusterAdditionalInfo[vo.ClusterID].resizeSupported = true
 			return nil
 		}
-		// Incase the error is other than invalid command return error to the caller.
+		// In case the error is other than invalid command return error to the caller.
 		if !strings.Contains(err.Error(), invalidCommand) {
 			util.ErrorLog(ctx, "failed to resize subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
 			return err

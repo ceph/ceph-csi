@@ -110,7 +110,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		}
 		return true, nil
 	}
-	// as the temp clone doesnot exists,check snapshot exists on parent volume
+	// as the temp clone does not exist,check snapshot exists on parent volume
 	// snapshot name is same as temporary clone image
 	snap.RbdImageName = tempClone.RbdImageName
 	err = parentVol.checkSnapExists(snap)

@@ -17,7 +17,7 @@
   Refer [external-snapshotter](https://github.com/kubernetes-csi/external-snapshotter/)
   for more information on these sidecar controllers. There should
   be a `volumesnapshotclass` object present in the cluster
-  for snapshot request to be satisified.
+  for snapshot request to be satisfied.
 
   - To install snapshot controller and CRD
 

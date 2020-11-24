@@ -205,7 +205,7 @@ func unprotectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.
 		"ceph",
 		args[:]...)
 	if err != nil {
-		// Incase the snap is already unprotected we get ErrSnapProtectionExist error code
+		// In case the snap is already unprotected we get ErrSnapProtectionExist error code
 		// in that case we are safe and we could discard this error.
 		if strings.Contains(err.Error(), snapProtectionExist) {
 			return nil

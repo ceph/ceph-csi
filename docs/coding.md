@@ -77,7 +77,7 @@ import (
   less noisy if the dollar signs are omitted. Especially when the
   command doesn't list the output, but if the command follows output
   we can use '$ ' (dollar+space) mainly to differentiate between
-  command and its ouput.
+  command and its output.
 
   scenario 1: when command doesn't follow output
 

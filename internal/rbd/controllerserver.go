@@ -545,7 +545,7 @@ func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *u
 			if !errors.Is(err, ErrSnapNotFound) {
 				return nil, nil, status.Error(codes.Internal, err.Error())
 			}
-			return nil, nil, status.Errorf(codes.NotFound, "%s snapshot doesnot exists", snapshotID)
+			return nil, nil, status.Errorf(codes.NotFound, "%s snapshot does not exist", snapshotID)
 		}
 		return nil, rbdSnap, nil
 	case *csi.VolumeContentSource_Volume:
@@ -564,7 +564,7 @@ func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *u
 			if !errors.Is(err, ErrImageNotFound) {
 				return nil, nil, status.Error(codes.Internal, err.Error())
 			}
-			return nil, nil, status.Errorf(codes.NotFound, "%s image doesnot exists", volID)
+			return nil, nil, status.Errorf(codes.NotFound, "%s image does not exist", volID)
 		}
 		return rbdvol, nil, nil
 	}
