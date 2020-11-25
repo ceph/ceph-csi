@@ -148,6 +148,9 @@ type Config struct {
 	// encryptKMS in which encryption passphrase was saved, default is no encryption
 	encryptKMSKey string
 
+	// ownerKey is used to identify the owner of the volume, can be used with some KMS configurations
+	ownerKey string
+
 	// commonPrefix is the prefix common to all omap keys for this Config
 	commonPrefix string
 }
@@ -165,6 +168,7 @@ func NewCSIVolumeJournal(suffix string) *Config {
 		namespace:               "",
 		csiImageIDKey:           "csi.imageid",
 		encryptKMSKey:           "csi.volume.encryptKMS",
+		ownerKey:                "csi.volume.owner",
 		commonPrefix:            "csi.",
 	}
 }
@@ -182,6 +186,7 @@ func NewCSISnapshotJournal(suffix string) *Config {
 		namespace:               "",
 		csiImageIDKey:           "csi.imageid",
 		encryptKMSKey:           "csi.volume.encryptKMS",
+		ownerKey:                "csi.volume.owner",
 		commonPrefix:            "csi.",
 	}
 }
@@ -494,6 +499,7 @@ Input arguments:
 	- kmsConf: Name of the key management service used to encrypt the image (optional)
         - volUUID: UUID need to be reserved instead of auto-generating one (this is
           useful for mirroring and metro-DR)
+	- owner: the owner of the volume (optional)
 
 Return values:
 	- string: Contains the UUID that was reserved for the passed in reqName
@@ -503,7 +509,7 @@ Return values:
 func (conn *Connection) ReserveName(ctx context.Context,
 	journalPool string, journalPoolID int64,
 	imagePool string, imagePoolID int64,
-	reqName, namePrefix, parentName, kmsConf, volUUID string) (string, string, error) {
+	reqName, namePrefix, parentName, kmsConf, volUUID, owner string) (string, string, error) {
 	// TODO: Take in-arg as ImageAttributes?
 	var (
 		snapSource bool
@@ -574,6 +580,11 @@ func (conn *Connection) ReserveName(ctx context.Context,
 		omapValues[cj.encryptKMSKey] = kmsConf
 	}
 
+	// if owner is passed, set it in the UUID directory too
+	if owner != "" {
+		omapValues[cj.ownerKey] = owner
+	}
+
 	if journalPool != imagePool && journalPoolID != util.InvalidPoolID {
 		buf64 := make([]byte, 8)
 		binary.BigEndian.PutUint64(buf64, uint64(journalPoolID))
@@ -601,6 +612,7 @@ type ImageAttributes struct {
 	SourceName    string // Contains the parent image name for the passed in UUID, if it is a snapshot
 	ImageName     string // Contains the image or subvolume name for the passed in UUID
 	KmsID         string // Contains encryption KMS, if it is an encrypted image
+	Owner         string // Contains the owner to be used in combination with KmsID (for some KMS)
 	ImageID       string // Contains the image id
 	JournalPoolID int64  // Pool ID of the CSI journal pool, stored in big endian format (on-disk data)
 }
@@ -625,6 +637,7 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 		cj.csiJournalPool,
 		cj.cephSnapSourceKey,
 		cj.csiImageIDKey,
+		cj.ownerKey,
 	}
 	values, err := getOMapValues(
 		ctx, conn, pool, cj.namespace, cj.cephUUIDDirectoryPrefix+objectUUID,
@@ -639,6 +652,7 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 	var found bool
 	imageAttributes.RequestName = values[cj.csiNameKey]
 	imageAttributes.KmsID = values[cj.encryptKMSKey]
+	imageAttributes.Owner = values[cj.ownerKey]
 	imageAttributes.ImageID = values[cj.csiImageIDKey]
 
 	// image key was added at a later point, so not all volumes will have this
