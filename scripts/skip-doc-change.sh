@@ -12,15 +12,12 @@ CHANGED_FILES=$(git diff --name-only "${GIT_SINCE}")
 
 skip=0
 #files to be skipped
-declare -a FILES=(^docs/ .md$ ^scripts/ LICENSE .mergify.yml .github .gitignore .commitlintrc.yml)
+declare -a FILES=(^docs/ .md$ LICENSE .mergify.yml .github .gitignore .commitlintrc.yml)
 
 function check_file_present() {
     local file=$1
     for FILE in "${FILES[@]}"; do
         if [[ $file =~ $FILE ]]; then
-            if [[ $file =~ (minikube.sh|travis-functest.sh) ]]; then
-                continue
-            fi
             return 0
         fi
     done
