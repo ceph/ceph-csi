@@ -344,7 +344,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 
 	rbdSnap.ReservedID, rbdSnap.RbdSnapName, err = j.ReserveName(
 		ctx, rbdSnap.JournalPool, journalPoolID, rbdSnap.Pool, imagePoolID,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, "", rbdSnap.ReservedID)
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, "", rbdSnap.ReservedID, rbdVol.Owner)
 	if err != nil {
 		return err
 	}
@@ -422,7 +422,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 
 	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
 		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
-		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, rbdVol.ReservedID)
+		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, rbdVol.ReservedID, rbdVol.Owner)
 	if err != nil {
 		return err
 	}
@@ -542,6 +542,7 @@ func RegenerateJournal(imageName, volumeID, pool, journalPool, requestName strin
 	if imageData != nil {
 		rbdVol.ReservedID = imageData.ImageUUID
 		rbdVol.ImageID = imageData.ImageAttributes.ImageID
+		rbdVol.Owner = imageData.ImageAttributes.Owner
 		if rbdVol.ImageID == "" {
 			err = rbdVol.storeImageID(ctx, j)
 			if err != nil {
@@ -559,7 +560,7 @@ func RegenerateJournal(imageName, volumeID, pool, journalPool, requestName strin
 
 	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
 		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
-		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, vi.ObjectUUID)
+		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, vi.ObjectUUID, rbdVol.Owner)
 	if err != nil {
 		return err
 	}
