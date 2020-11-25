@@ -135,6 +135,12 @@ then
     ./podman2minikube.sh "rook/ceph:${ROOK_VERSION}"
 fi
 
+# Rook also uses ceph/ceph:v15 (build.env:BASE_IMAGE), so push it into the VM
+if [ -n "${BASE_IMAGE}" ] && podman inspect "${BASE_IMAGE}" > /dev/null
+then
+    ./podman2minikube.sh "${BASE_IMAGE}"
+fi
+
 deploy_rook
 
 # running e2e.test requires librados and librbd
