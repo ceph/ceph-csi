@@ -61,52 +61,34 @@ Example JSON structure in the KMS config is,
 	...
 }.
 */
-type VaultKMS struct {
+
+type vaultConnection struct {
 	EncryptionKMSID string
+	vaultConfig     map[string]interface{}
+	keyContext      map[string]string
+}
+
+type VaultKMS struct {
+	vaultConnection
 
 	// vaultPassphrasePath (VPP) used to be added before the "key" of the
 	// secret (like /v1/secret/data/<VPP>/key)
 	vaultPassphrasePath string
 
-	secrets    loss.Secrets
-	keyContext map[string]string
+	secrets loss.Secrets
 }
 
-// InitVaultKMS returns an interface to HashiCorp Vault KMS.
-//
-// nolint:gocyclo // this is a long function, as it constructs the Vault config
-func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKMS, error) {
-	var (
-		ok  bool
-		err error
-	)
-
+func (vc *vaultConnection) initConnection(kmsID string, config, secrets map[string]string) error {
 	vaultConfig := make(map[string]interface{})
 	keyContext := make(map[string]string)
 
-	kms := &VaultKMS{}
-	kms.EncryptionKMSID = kmsID
+	vc.EncryptionKMSID = kmsID
 
 	vaultAddress, ok := config["vaultAddress"]
 	if !ok || vaultAddress == "" {
-		return nil, fmt.Errorf("missing 'vaultAddress' for vault KMS %s", kmsID)
+		return errors.New("missing 'vaultAddress' for Vault connection")
 	}
 	vaultConfig[api.EnvVaultAddress] = vaultAddress
-
-	vaultAuthPath, ok := config["vaultAuthPath"]
-	if !ok || vaultAuthPath == "" {
-		vaultAuthPath = vaultDefaultAuthPath
-	}
-	vaultConfig[vault.AuthMountPath], err = detectAuthMountPath(vaultAuthPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set %s in Vault config: %w", vault.AuthMountPath, err)
-	}
-
-	vaultRole, ok := config["vaultRole"]
-	if !ok || vaultRole == "" {
-		vaultRole = vaultDefaultRole
-	}
-	vaultConfig[vault.AuthKubernetesRole] = vaultRole
 
 	vaultNamespace, ok := config["vaultNamespace"]
 	if !ok || vaultNamespace == "" {
@@ -115,29 +97,12 @@ func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKM
 	vaultConfig[api.EnvVaultNamespace] = vaultNamespace
 	keyContext[loss.KeyVaultNamespace] = vaultNamespace
 
-	// vault.VaultBackendPathKey is "secret/" by default, use vaultPassphraseRoot if configured
-	vaultPassphraseRoot, ok := config["vaultPassphraseRoot"]
-	if ok && vaultPassphraseRoot != "" {
-		// the old example did have "/v1/secret/", convert that format
-		if strings.HasPrefix(vaultPassphraseRoot, "/v1/") {
-			vaultConfig[vault.VaultBackendPathKey] = strings.TrimPrefix(vaultPassphraseRoot, "/v1/")
-		} else {
-			vaultConfig[vault.VaultBackendPathKey] = vaultPassphraseRoot
-		}
-	}
-
-	kms.vaultPassphrasePath, ok = config["vaultPassphrasePath"]
-	if !ok || kms.vaultPassphrasePath == "" {
-		kms.vaultPassphrasePath = vaultDefaultPassphrasePath
-	}
-
 	verifyCA, ok := config["vaultCAVerify"]
 	if ok {
 		var vaultCAVerify bool
-		vaultCAVerify, err = strconv.ParseBool(verifyCA)
+		vaultCAVerify, err := strconv.ParseBool(verifyCA)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse 'vaultCAVerify' for vault <%s> kms config: %w",
-				kmsID, err)
+			return fmt.Errorf("failed to parse 'vaultCAVerify': %w", err)
 		}
 		vaultConfig[api.EnvVaultInsecure] = !vaultCAVerify
 	}
@@ -146,33 +111,83 @@ func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKM
 	if ok && vaultCAFromSecret != "" {
 		caPEM, ok := secrets[vaultCAFromSecret]
 		if !ok {
-			return nil, fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
+			return fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
 		}
+
+		var err error
 		vaultConfig[api.EnvVaultCACert], err = createTempFile("vault-ca-cert", []byte(caPEM))
 		if err != nil {
-			return nil, fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
+			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
 		}
-		// TODO: delete f.Name() when VaultKMS is destroyed
+		// TODO: delete f.Name() when vaultConnection is destroyed
+	}
+
+	vc.keyContext = keyContext
+	vc.vaultConfig = vaultConfig
+
+	return nil
+}
+
+// InitVaultKMS returns an interface to HashiCorp Vault KMS.
+func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKMS, error) {
+	var (
+		ok  bool
+		err error
+	)
+
+	kms := &VaultKMS{}
+	err = kms.initConnection(kmsID, config, secrets)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
+	}
+
+	vaultAuthPath, ok := config["vaultAuthPath"]
+	if !ok || vaultAuthPath == "" {
+		vaultAuthPath = vaultDefaultAuthPath
+	}
+	kms.vaultConfig[vault.AuthMountPath], err = detectAuthMountPath(vaultAuthPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set %s in Vault config: %w", vault.AuthMountPath, err)
+	}
+
+	vaultRole, ok := config["vaultRole"]
+	if !ok || vaultRole == "" {
+		vaultRole = vaultDefaultRole
+	}
+	kms.vaultConfig[vault.AuthKubernetesRole] = vaultRole
+
+	// vault.VaultBackendPathKey is "secret/" by default, use vaultPassphraseRoot if configured
+	vaultPassphraseRoot, ok := config["vaultPassphraseRoot"]
+	if ok && vaultPassphraseRoot != "" {
+		// the old example did have "/v1/secret/", convert that format
+		if strings.HasPrefix(vaultPassphraseRoot, "/v1/") {
+			kms.vaultConfig[vault.VaultBackendPathKey] = strings.TrimPrefix(vaultPassphraseRoot, "/v1/")
+		} else {
+			kms.vaultConfig[vault.VaultBackendPathKey] = vaultPassphraseRoot
+		}
+	}
+
+	kms.vaultPassphrasePath, ok = config["vaultPassphrasePath"]
+	if !ok || kms.vaultPassphrasePath == "" {
+		kms.vaultPassphrasePath = vaultDefaultPassphrasePath
 	}
 
 	// FIXME: vault.AuthKubernetesTokenPath is not enough? EnvVaultToken needs to be set?
-	vaultConfig[vault.AuthMethod] = vault.AuthMethodKubernetes
-	vaultConfig[vault.AuthKubernetesTokenPath] = serviceAccountTokenPath
+	kms.vaultConfig[vault.AuthMethod] = vault.AuthMethodKubernetes
+	kms.vaultConfig[vault.AuthKubernetesTokenPath] = serviceAccountTokenPath
 
-	v, err := vault.New(vaultConfig)
+	v, err := vault.New(kms.vaultConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating new Vault Secrets: %w", err)
 	}
 	kms.secrets = v
 
-	kms.keyContext = keyContext
-
 	return kms, nil
 }
 
 // GetID is returning correlation ID to KMS configuration.
-func (kms *VaultKMS) GetID() string {
-	return kms.EncryptionKMSID
+func (vc *vaultConnection) GetID() string {
+	return vc.EncryptionKMSID
 }
 
 // GetPassphrase returns passphrase from Vault. The passphrase is stored in a
