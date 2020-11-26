@@ -188,7 +188,7 @@ metadata:
 spec:
   containers:
     - name: my-container
-      image: docker.io/debian:latest
+      image: docker.io/library/debian:latest
       command: ["/bin/bash", "-c"]
       args: [ "tail -f /dev/null" ]
       volumeDevices:
@@ -215,7 +215,7 @@ metadata:
 spec:
   containers:
     - name: my-container
-      image: docker.io/debian:latest
+      image: docker.io/library/debian:latest
       command: ["/bin/bash", "-c"]
       args: [ "tail -f /dev/null" ]
       volumeDevices:

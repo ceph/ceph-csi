@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: web-server
-          image: docker.io/nginx:latest
+          image: docker.io/library/nginx:latest
           volumeMounts:
             - name: mypvc
               mountPath: /var/lib/www/html
