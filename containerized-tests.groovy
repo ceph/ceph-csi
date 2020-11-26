@@ -19,11 +19,15 @@ def ssh(cmd) {
 
 def podman_login(registry, username, passwd) {
 	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${registry}"
-	ssh 'cp container-registry.conf /etc/containers/registries.conf'
 }
 
-def podman_pull(registry, image) {
-	ssh "podman pull --authfile=~/.podman-auth.json ${registry}/${image} && podman tag ${registry}/${image} ${image}"
+// podman_pull pulls image from the source (CI internal) registry, and tags it
+// as unqualified image name and into the destination registry. This prevents
+// pulling from the destination registry.
+//
+// Images need to be pre-pushed into the source registry, though.
+def podman_pull(source, destination, image) {
+	ssh "podman pull --authfile=~/.podman-auth.json ${source}/${image} && podman tag ${source}/${image} ${image} ${destination}/${image}"
 }
 
 node('cico-workspace') {
@@ -75,7 +79,7 @@ node('cico-workspace') {
 
 	try {
 		stage('prepare bare-metal machine') {
-			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh container-registry.conf root@${CICO_NODE}:'
+			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh root@${CICO_NODE}:'
 			// TODO: already checked out the PR on the node, scp the contents?
 			ssh "./prepare.sh --workdir=${workdir} --gitrepo=${git_repo} --ref=${ref}"
 		}
@@ -107,7 +111,7 @@ node('cico-workspace') {
 						return
 					}
 
-					podman_pull(ci_registry, "${cached_image}:test")
+					podman_pull(ci_registry, ci_registry, "${cached_image}:test")
 				}
 			},
 			devel: {
@@ -118,7 +122,7 @@ node('cico-workspace') {
 						return
 					}
 
-					podman_pull(ci_registry, "${cached_image}:devel")
+					podman_pull(ci_registry, ci_registry, "${cached_image}:devel")
 				}
 			},
 			ceph: {
@@ -129,24 +133,24 @@ node('cico-workspace') {
 					).trim()
 
 					// base_image is like ceph/ceph:v15
-					podman_pull("docker.io", "${base_image}")
+					podman_pull(ci_registry, "docker.io", "${base_image}")
 				}
 			}
 		}
 		stage('test & build') {
 			parallel test: {
 				node ('cico-workspace') {
-					ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${cached_image} ${use_test_image}"
+					ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${ci_registry}/${cached_image} ${use_test_image}"
 				}
 			},
 			verify: {
 				node ('cico-workspace') {
-					ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test TARGET=mod-check CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${cached_image} ${use_test_image}"
+					ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-test TARGET=mod-check CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${ci_registry}/${cached_image} ${use_test_image}"
 				}
 			},
 			build: {
 				node('cico-workspace') {
-					ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${cached_image} ${use_build_image}"
+					ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${ci_registry}/${cached_image} ${use_build_image}"
 				}
 			}
 		}

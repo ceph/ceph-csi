@@ -16,11 +16,15 @@ def ssh(cmd) {
 
 def podman_login(registry, username, passwd) {
 	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${registry}"
-	ssh 'cp container-registry.conf /etc/containers/registries.conf'
 }
 
-def podman_pull(registry, image) {
-	ssh "podman pull --authfile=~/.podman-auth.json ${registry}/${image} && podman tag ${registry}/${image} ${image}"
+// podman_pull pulls image from the source (CI internal) registry, and tags it
+// as unqualified image name and into the destination registry. This prevents
+// pulling from the destination registry.
+//
+// Images need to be pre-pushed into the source registry, though.
+def podman_pull(source, destination, image) {
+	ssh "podman pull --authfile=~/.podman-auth.json ${source}/${image} && podman tag ${source}/${image} ${image} ${destination}/${image}"
 }
 
 node('cico-workspace') {
@@ -101,7 +105,7 @@ node('cico-workspace') {
 			if (params.ghprbPullId != null) {
 				ref = "pull/${ghprbPullId}/merge"
 			}
-			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh ./single-node-k8s.sh ./podman2minikube.sh container-registry.conf root@${CICO_NODE}:'
+			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh ./single-node-k8s.sh ./podman2minikube.sh root@${CICO_NODE}:'
 			ssh "./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${git_repo} --ref=${ref}"
 		}
 		stage('pull base container images') {
@@ -115,9 +119,9 @@ node('cico-workspace') {
 			}
 
 			// base_image is like ceph/ceph:v15
-			podman_pull("docker.io", "${base_image}")
+			podman_pull(ci_registry, "docker.io", "${base_image}")
 			// cephcsi:devel is used with 'make containerized-build'
-			podman_pull(ci_registry, "ceph-csi:devel")
+			podman_pull(ci_registry, ci_registry, "ceph-csi:devel")
 		}
 		stage('build artifacts') {
 			// build container image
@@ -133,7 +137,7 @@ node('cico-workspace') {
 
 			if (rook_version != '') {
 				// single-node-k8s.sh pushes the image into minikube
-				podman_pull("docker.io", "rook/ceph:${rook_version}")
+				podman_pull(ci_registry, "docker.io", "rook/ceph:${rook_version}")
 			}
 
 			timeout(time: 30, unit: 'MINUTES') {
@@ -141,9 +145,9 @@ node('cico-workspace') {
 			}
 
 			// vault:latest and nginx:latest are used by the e2e tests
-			podman_pull("docker.io", "library/vault:latest")
+			podman_pull(ci_registry, "docker.io", "library/vault:latest")
 			ssh "./podman2minikube.sh docker.io/library/vault:latest"
-			podman_pull("docker.io", "library/nginx:latest")
+			podman_pull(ci_registry, "docker.io", "library/nginx:latest")
 			ssh "./podman2minikube.sh docker.io/library/nginx:latest"
 		}
 		stage('run e2e') {
