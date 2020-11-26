@@ -57,30 +57,20 @@ func getVolumeRootPathCephDeprecated(volID volumeID) string {
 }
 
 func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, volID volumeID) (string, error) {
-	stdout, stderr, err := util.ExecCommand(
-		ctx,
-		"ceph",
-		"fs",
-		"subvolume",
-		"getpath",
-		volOptions.FsName,
-		string(volID),
-		"--group_name",
-		volOptions.SubvolumeGroup,
-		"-m", volOptions.Monitors,
-		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix+cr.ID,
-		"--keyfile="+cr.KeyFile)
-
+	fsa, err := volOptions.conn.GetFSAdmin()
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get the rootpath for the vol %s: %s (stdError: %s)", string(volID), err, stderr)
-		if strings.Contains(stderr, volumeNotFound) {
-			return "", util.JoinErrors(ErrVolumeNotFound, err)
-		}
-
+		util.ErrorLog(ctx, "could not get FSAdmin err %s", err)
 		return "", err
 	}
-	return strings.TrimSuffix(stdout, "\n"), nil
+	svPath, err := fsa.SubVolumePath(volOptions.FsName, volOptions.SubvolumeGroup, string(volID))
+	if err != nil {
+		util.ErrorLog(ctx, "failed to get the rootpath for the vol %s: %s", string(volID), err)
+		if strings.Contains(err.Error(), volumeNotFound) {
+			return "", util.JoinErrors(ErrVolumeNotFound, err)
+		}
+		return "", err
+	}
+	return svPath, nil
 }
 
 func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (*Subvolume, error) {
