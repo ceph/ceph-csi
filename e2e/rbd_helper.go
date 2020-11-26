@@ -190,6 +190,50 @@ func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string,
 	return strings.TrimSpace(stdOut), nil
 }
 
+// validateImageOwner checks the "csi.volume.owner" key on the image journal
+// and verifies that the owner is set to the namespace where the PVC is
+// created.
+func validateImageOwner(pvcPath string, f *framework.Framework) error {
+	const ownerKey = "csi.volume.owner"
+
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return err
+	}
+	pvc.Namespace = f.UniqueName
+	pvc.Name = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return err
+	}
+
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	stdOut, stdErr, err := execCommandInToolBoxPod(f,
+		fmt.Sprintf("rados %s getomapval csi.volume.%s %s", rbdOptions(defaultRBDPool), imageData.imageID, ownerKey), rookNamespace)
+	if err != nil {
+		return err
+	}
+	if stdErr != "" {
+		return fmt.Errorf("failed to getomapval %v", stdErr)
+	}
+
+	if radosNamespace != "" {
+		e2elog.Logf("found image journal %s in pool %s namespace %s", "csi.volume."+imageData.imageID, defaultRBDPool, radosNamespace)
+	} else {
+		e2elog.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, defaultRBDPool)
+	}
+
+	if !strings.Contains(stdOut, pvc.Namespace) {
+		return fmt.Errorf("%q does not contain %q: %s", ownerKey, pvc.Namespace, stdOut)
+	}
+
+	return deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+}
+
 func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framework.Framework) error {
 	pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
 	if err != nil {

@@ -260,6 +260,15 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("create a PVC and validate owner", func() {
+				err := validateImageOwner(pvcPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate owner of pvc with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0)
+			})
+
 			By("create a PVC and bind it to an app", func() {
 				err := validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
@@ -1109,8 +1118,15 @@ var _ = Describe("RBD", func() {
 
 				updateConfigMap("e2e-ns")
 
+				err := validateImageOwner(pvcPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate owner of pvc with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0)
+
 				// Create a PVC and bind it to an app within the namesapce
-				err := validatePVCAndAppBinding(pvcPath, appPath, f)
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
 					e2elog.Failf("failed to validate pvc and application binding with error %v", err)
 				}
