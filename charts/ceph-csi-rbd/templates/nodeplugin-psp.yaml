@@ -40,12 +40,6 @@ spec:
       readOnly: false
     - pathPrefix: '/lib/modules'
       readOnly: true
-    - pathPrefix: '/var/lib/kubelet/pods'
-      readOnly: false
-    - pathPrefix: '{{ .Values.socketDir }}'
-      readOnly: false
-    - pathPrefix: '{{ .Values.registrationDir }}'
-      readOnly: false
-    - pathPrefix: '{{ .Values.pluginDir }}'
+    - pathPrefix: '{{ .Values.kubeletDir }}'
       readOnly: false
 {{- end }}
