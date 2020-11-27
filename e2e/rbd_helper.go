@@ -299,6 +299,13 @@ func deletePool(name string, cephfs bool, f *framework.Framework) error {
 	return nil
 }
 
+func createPool(f *framework.Framework, name string) error {
+	// ceph osd pool create replicapool
+	cmd := fmt.Sprintf("ceph osd pool create %s", name)
+	_, _, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+	return err
+}
+
 func getPVCImageInfoInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool string) (string, error) {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
