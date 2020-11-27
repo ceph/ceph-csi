@@ -44,7 +44,7 @@ spec:
           args:
             - "--v={{ .Values.logLevel }}"
             - "--csi-address=/csi/{{ .Values.pluginSocketFile }}"
-            - "--kubelet-registration-path={{ .Values.socketDir }}/{{ .Values.pluginSocketFile }}"
+            - "--kubelet-registration-path={{ .Values.kubeletDir }}/{{ .Values.driverName }}/{{ .Values.pluginSocketFile }}"
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
@@ -106,10 +106,10 @@ spec:
             - name: ceph-csi-encryption-kms-config
               mountPath: /etc/ceph-csi-encryption-kms-config/
             - name: plugin-dir
-              mountPath: /var/lib/kubelet/plugins
+              mountPath: {{ .Values.kubeletDir }}/plugins
               mountPropagation: "Bidirectional"
             - name: mountpoint-dir
-              mountPath: /var/lib/kubelet/pods
+              mountPath: {{ .Values.kubeletDir }}/pods
               mountPropagation: "Bidirectional"
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
@@ -144,19 +144,19 @@ spec:
       volumes:
         - name: socket-dir
           hostPath:
-            path: {{ .Values.socketDir }}
+            path: "{{ .Values.kubeletDir }}/{{ .Values.driverName }}"
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
-            path: {{ .Values.registrationDir }}
+            path: {{ .Values.kubeletDir }}/plugins_registry
             type: Directory
         - name: plugin-dir
           hostPath:
-            path: {{ .Values.pluginDir }}
+            path: {{ .Values.kubeletDir }}/plugins
             type: Directory
         - name: mountpoint-dir
           hostPath:
-            path: /var/lib/kubelet/pods
+            path: {{ .Values.kubeletDir }}/pods
             type: DirectoryOrCreate
         - name: host-dev
           hostPath:

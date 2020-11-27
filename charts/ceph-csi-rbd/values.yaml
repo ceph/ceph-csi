@@ -219,16 +219,12 @@ topology:
 # Variables for 'internal' use please use with caution! #
 #########################################################
 
-# The directory where the provisioner and pluginSocketFile will be mounted
-socketDir: /var/lib/kubelet/plugins/rbd.csi.ceph.com
 # The filename of the provisioner socket
 provisionerSocketFile: csi-provisioner.sock
 # The filename of the plugin socket
 pluginSocketFile: csi.sock
-# The directory where nodeplugin socket is created
-registrationDir: /var/lib/kubelet/plugins_registry
-# The nodeplugin plugins directory
-pluginDir: /var/lib/kubelet/plugins
+# kubelet working directory,can be set using `--root-dir` when starting kubelet.
+kubeletDir: /var/lib/kubelet
 # Name of the csi-driver
 driverName: rbd.csi.ceph.com
 # Name of the configmap used for state
