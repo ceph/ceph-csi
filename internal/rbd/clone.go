@@ -96,8 +96,8 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		// snap will be create after we flatten the temporary cloned image,no
 		// need to check for flatten here.
 		// as the snap exists,create clone image and delete temporary snapshot
-		// and add task to flatten temporary cloned image
-		err = rv.cloneRbdImageFromSnapshot(ctx, snap)
+		// and add task to flatten temporary cloned
+		err = rv.cloneRbdImageFromSnapshot(ctx, snap, parentVol)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)
 			err = fmt.Errorf("failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)

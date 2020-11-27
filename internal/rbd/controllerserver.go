@@ -434,8 +434,17 @@ func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *ut
 
 	// update parent name(rbd image name in snapshot)
 	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
+	parentVol := generateVolFromSnap(rbdSnap)
+	// as we are operating on single cluster reuse the connection
+	parentVol.conn = rbdVol.conn
+	err = parentVol.openIoctx()
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to get parent IOContext: %v", err)
+	}
+	defer parentVol.ioctx.Destroy()
+
 	// create clone image and delete snapshot
-	err = rbdVol.cloneRbdImageFromSnapshot(ctx, rbdSnap)
+	err = rbdVol.cloneRbdImageFromSnapshot(ctx, rbdSnap, parentVol)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rbdSnap, err)
 		return err
