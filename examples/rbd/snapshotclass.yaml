@@ -14,6 +14,12 @@ parameters:
   # represent the Ceph cluster in clusterID below
   clusterID: <cluster-id>
 
+  # (optional) Ceph pool into which the RBD image shall be created, if not
+  # specified RBD image will be created in the same pool where parent RBD image
+  # exists.
+  # eg: pool: rbdpool
+  # pool: <rbd-pool-name>
+
   # Prefix to use for naming RBD snapshots.
   # If omitted, defaults to "csi-snap-".
   # snapshotNamePrefix: "foo-bar-"

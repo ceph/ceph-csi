@@ -860,6 +860,10 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 		rbdSnap.NamePrefix = namePrefix
 	}
 
+	if pool, ok := snapOptions["pool"]; ok {
+		rbdSnap.JournalPool = pool
+		rbdSnap.Pool = pool
+	}
 	return rbdSnap, nil
 }
 
