@@ -121,7 +121,7 @@ func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (
 
 type localClusterState struct {
 	// set true if cluster supports resize functionality.
-	resizeSupported bool
+	resizeSupported *bool
 	// set true once a subvolumegroup is created
 	// for corresponding cluster.
 	subVolumeGroupCreated bool
@@ -183,7 +183,10 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 	}
 	// resize subvolume when either it's supported, or when corresponding
 	// clusterID key was not present.
-	if clusterAdditionalInfo[vo.ClusterID].resizeSupported || !keyPresent {
+	if clusterAdditionalInfo[vo.ClusterID].resizeSupported == nil || *clusterAdditionalInfo[vo.ClusterID].resizeSupported {
+		if clusterAdditionalInfo[vo.ClusterID].resizeSupported == nil {
+			clusterAdditionalInfo[vo.ClusterID].resizeSupported = new(bool)
+		}
 		fsa, err := vo.conn.GetFSAdmin()
 		if err != nil {
 			util.ErrorLog(ctx, "could not get FSAdmin, can not resize volume %s:", vo.FsName, err)
@@ -192,7 +195,7 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 
 		_, err = fsa.ResizeSubVolume(vo.FsName, vo.SubvolumeGroup, string(volID), fsAdmin.ByteCount(bytesQuota), true)
 		if err == nil {
-			clusterAdditionalInfo[vo.ClusterID].resizeSupported = true
+			*clusterAdditionalInfo[vo.ClusterID].resizeSupported = true
 			return nil
 		}
 		var invalid fsAdmin.NotImplementedError
@@ -202,7 +205,7 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 			return err
 		}
 	}
-	clusterAdditionalInfo[vo.ClusterID].resizeSupported = false
+	*clusterAdditionalInfo[vo.ClusterID].resizeSupported = false
 	return createVolume(ctx, vo, volID, bytesQuota)
 }
 
