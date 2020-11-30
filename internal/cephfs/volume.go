@@ -85,7 +85,7 @@ func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (
 	info, err := fsa.SubVolumeInfo(vo.FsName, vo.SubvolumeGroup, string(volID))
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get subvolume info for the vol %s: %s", string(volID), err)
-		if strings.HasPrefix(err.Error(), volumeNotFound) {
+		if errors.Is(err, rados.ErrNotFound) {
 			return nil, ErrVolumeNotFound
 		}
 		// In case the error is other than invalid command return error to the caller.
