@@ -92,11 +92,6 @@ jobs:
         - make go-test TEST_COVERAGE=stdout GO_COVER_DIR=_output/
         - make mod-check
 
-    - stage: build testing
-      name: Build multi-architecture image for amd64 and arm64
-      script:
-        - ./scripts/build-multi-arch-image.sh || travis_terminate 1;
-
     - stage: deploy
       name: push artifacts to repositories
       script: ./deploy.sh
