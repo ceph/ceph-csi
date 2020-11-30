@@ -88,8 +88,9 @@ func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (
 		if errors.Is(err, rados.ErrNotFound) {
 			return nil, ErrVolumeNotFound
 		}
-		// In case the error is other than invalid command return error to the caller.
-		if !strings.Contains(err.Error(), invalidCommand) {
+		// In case the error is invalid command return error to the caller.
+		var invalid fsAdmin.NotImplementedError
+		if errors.As(err, &invalid) {
 			return nil, ErrInvalidCommand
 		}
 
