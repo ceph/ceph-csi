@@ -718,7 +718,7 @@ func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
 }
 
 // ReserveNewUUIDMapping creates the omap mapping between the oldVolumeHandle
-// and the newVolumeHandle. Incase of Async Mirroring the PV is statically
+// and the newVolumeHandle. In case of Async Mirroring the PV is statically
 // created it will have oldVolumeHandle,the volumeHandle is composed of
 // clusterID,PoolID etc. as the poolID and clusterID might be different at the
 // secondary cluster cephcsi will generate the new mapping and keep it for

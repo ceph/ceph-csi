@@ -59,7 +59,7 @@ csi:
 CreateVolume to refer to the volume on all subsequent calls.
 
 Once the static PVC is created on the secondary cluster, the Kubernetes User
-can try delete the PVC,expand the PVC or mount the PVC. Incase of mounting
+can try delete the PVC,expand the PVC or mount the PVC. In case of mounting
 (NodeStageVolume) we will get the volume context in RPC call but not in the
 Delete/Expand Request. In Delete/Expand RPC request only the VolumeHandle
 (`clusterID-poolID-volumeuniqueID`) will be sent where it contains the encoded

@@ -235,7 +235,7 @@ func detectAuthMountPath(path string) (string, error) {
 		return "", errors.New("path is empty")
 	}
 
-	// add all components betweed "login" and "auth" to authMountPath
+	// add all components between "login" and "auth" to authMountPath
 	match := false
 	parts := strings.Split(path, "/")
 	for _, part := range parts {
