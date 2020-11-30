@@ -56,13 +56,13 @@ func getVolumeRootPathCephDeprecated(volID volumeID) string {
 	return path.Join("/", "csi-volumes", string(volID))
 }
 
-func getVolumeRootPathCeph(ctx context.Context, volOptions *volumeOptions, volID volumeID) (string, error) {
-	fsa, err := volOptions.conn.GetFSAdmin()
+func (vo *volumeOptions) getVolumeRootPathCeph(ctx context.Context, volID volumeID) (string, error) {
+	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin err %s", err)
 		return "", err
 	}
-	svPath, err := fsa.SubVolumePath(volOptions.FsName, volOptions.SubvolumeGroup, string(volID))
+	svPath, err := fsa.SubVolumePath(vo.FsName, vo.SubvolumeGroup, string(volID))
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get the rootpath for the vol %s: %s", string(volID), err)
 		if strings.Contains(err.Error(), volumeNotFound) {
