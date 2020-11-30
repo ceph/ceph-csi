@@ -363,7 +363,7 @@ var _ = Describe("RBD", func() {
 					totalCount := 10
 					wgErrs := make([]error, totalCount)
 					wg.Add(totalCount)
-					err := createRBDSnapshotClass(f)
+					err := createRBDSnapshotClass(f, nil)
 					if err != nil {
 						e2elog.Failf("failed to create storageclass with error %v", err)
 					}

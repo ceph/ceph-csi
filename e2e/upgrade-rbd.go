@@ -71,7 +71,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to create secret with error %v", err)
 		}
-		err = createRBDSnapshotClass(f)
+		err = createRBDSnapshotClass(f, nil)
 		if err != nil {
 			e2elog.Failf("failed to create snapshotclass with error %v", err)
 		}
