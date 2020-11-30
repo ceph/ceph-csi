@@ -954,6 +954,103 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("create rbd snapshots in different pool", func() {
+				// snapshot beta is only supported from v1.17+
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
+					err := deleteResource(rbdExamplePath + "snapshotclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete snapshotclass with error %v", err)
+					}
+					snapshotPool := "snapshot-test"
+					// create pool for snapshots
+					err = createPool(f, snapshotPool)
+					if err != nil {
+						e2elog.Failf("failed to create pool %s with error %v", snapshotPool, err)
+					}
+					// create snapshotclass to with pool option
+					param := map[string]string{
+						"pool": snapshotPool,
+					}
+					err = createRBDSnapshotClass(f, param)
+					if err != nil {
+						e2elog.Failf("failed to create snapshotclass with error %v", err)
+					}
+					err = validateSnapshotInDifferentPool(f, snapshotPool, "", defaultRBDPool)
+					if err != nil {
+						e2elog.Failf("failed to validate snapshot in different pool with error %v", err)
+					}
+
+					err = deletePool(snapshotPool, false, f)
+					if err != nil {
+						e2elog.Failf("failed to delete pool %s with error %v", snapshotPool, err)
+					}
+					err = deleteResource(rbdExamplePath + "snapshotclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete snapshotclass with error %v", err)
+					}
+					err = createRBDSnapshotClass(f, nil)
+					if err != nil {
+						e2elog.Failf("failed to create snapshotclass with error %v", err)
+					}
+				}
+			})
+
+			By("create rbd clones in different pool", func() {
+				// snapshot beta is only supported from v1.17+
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
+					err := deleteResource(rbdExamplePath + "snapshotclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete snapshotclass with error %v", err)
+					}
+					clonePool := "clone-test"
+					// create pool for clones
+					err = createPool(f, clonePool)
+					if err != nil {
+						e2elog.Failf("failed to create pool %s with error %v", clonePool, err)
+					}
+					// create snapshotclass to with pool option
+					param := map[string]string{
+						"pool": defaultRBDPool,
+					}
+					err = createRBDSnapshotClass(f, param)
+					if err != nil {
+						e2elog.Failf("failed to create snapshotclass with error %v", err)
+					}
+					cloneSC := "clone-storageclass"
+					param = map[string]string{
+						"pool": clonePool,
+					}
+					// create new storageclass to with new pool
+					err = createRBDStorageClass(f.ClientSet, f, cloneSC, nil, param, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass with error %v", err)
+					}
+					err = validateSnapshotInDifferentPool(f, defaultRBDPool, cloneSC, clonePool)
+					if err != nil {
+						e2elog.Failf("failed to validate clone in different pool with error %v", err)
+					}
+
+					_, err = framework.RunKubectl(cephCSINamespace, "delete", "sc", cloneSC, "--ignore-not-found=true")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass %s with error %v", cloneSC, err)
+					}
+
+					err = deleteResource(rbdExamplePath + "snapshotclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete snapshotclass with error %v", err)
+					}
+
+					err = deletePool(clonePool, false, f)
+					if err != nil {
+						e2elog.Failf("failed to delete pool %s with error %v", clonePool, err)
+					}
+					err = createRBDSnapshotClass(f, nil)
+					if err != nil {
+						e2elog.Failf("failed to create snapshotclass with error %v", err)
+					}
+				}
+			})
+
 			By("create ROX PVC clone and mount it to multiple pods", func() {
 				// snapshot beta is only supported from v1.17+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
