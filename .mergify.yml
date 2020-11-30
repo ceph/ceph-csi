@@ -23,6 +23,7 @@ pull_request_rules:
       - "#approved-reviews-by>=2"
       - "#changes-requested-reviews-by=0"
       - "status-success=continuous-integration/travis-ci/pr"
+      - "status-success=codespell"
       - "status-success=ci/centos/containerized-tests"
       - "status-success=ci/centos/mini-e2e-helm/k8s-1.19"
       - "status-success=ci/centos/mini-e2e-helm/k8s-1.18"
@@ -46,6 +47,7 @@ pull_request_rules:
       - label=ready-to-merge
       - base=master
       - "#approved-reviews-by>=1"
+      - "status-success=codespell"
       - "#changes-requested-reviews-by=0"
       - "status-success=continuous-integration/travis-ci/pr"
       - "status-success=ci/centos/containerized-tests"
