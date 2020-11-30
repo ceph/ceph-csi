@@ -240,11 +240,11 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 	return nil
 }
 
-func listRBDImages(f *framework.Framework) ([]string, error) {
+func listRBDImages(f *framework.Framework, pool string) ([]string, error) {
 	var imgInfos []string
 
 	stdout, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rbd ls --format=json %s", rbdOptions(defaultRBDPool)), rookNamespace)
+		fmt.Sprintf("rbd ls --format=json %s", rbdOptions(pool)), rookNamespace)
 	if err != nil {
 		return imgInfos, err
 	}
