@@ -347,7 +347,7 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 	}
 
 	if errors.Is(err, ErrInvalidCommand) {
-		volOptions.RootPath, err = getVolumeRootPathCeph(ctx, &volOptions, volumeID(vid.FsSubvolName))
+		volOptions.RootPath, err = volOptions.getVolumeRootPathCeph(ctx, volumeID(vid.FsSubvolName))
 	}
 
 	return &volOptions, &vid, err

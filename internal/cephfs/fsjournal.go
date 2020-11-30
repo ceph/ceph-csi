@@ -132,7 +132,7 @@ func checkVolExists(ctx context.Context,
 			return nil, fmt.Errorf("clone is not in complete state for %s", vid.FsSubvolName)
 		}
 	} else {
-		_, err = getVolumeRootPathCeph(ctx, volOptions, volumeID(vid.FsSubvolName))
+		_, err = volOptions.getVolumeRootPathCeph(ctx, volumeID(vid.FsSubvolName))
 		if err != nil {
 			if errors.Is(err, ErrVolumeNotFound) {
 				err = j.UndoReservation(ctx, volOptions.MetadataPool,
