@@ -1,0 +1,19 @@
+---
+name: multi-arch-build
+# yamllint disable-line rule:truthy
+on:
+  push:
+  pull_request:
+    branches:
+      - '*'
+jobs:
+  codespell:
+    name: multi-arch-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: multi-arch-build
+        # podman cannot pull images with both tag and digest
+        # https://github.com/containers/buildah/issues/1407
+        # use docker to build images
+        run: CONTAINER_CMD=docker ./scripts/build-multi-arch-image.sh
