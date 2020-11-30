@@ -121,7 +121,7 @@ func getSubVolumeInfo(ctx context.Context, volOptions *volumeOptions, cr *util.C
 
 type localClusterState struct {
 	// set true if cluster supports resize functionality.
-	resizeSupported bool
+	resizeSupported *bool
 	// set true once a subvolumegroup is created
 	// for corresponding cluster.
 	subVolumeGroupCreated bool
@@ -201,7 +201,10 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 	}
 	// resize subvolume when either it's supported, or when corresponding
 	// clusterID key was not present.
-	if clusterAdditionalInfo[volOptions.ClusterID].resizeSupported || !keyPresent {
+	if clusterAdditionalInfo[volOptions.ClusterID].resizeSupported == nil || *clusterAdditionalInfo[volOptions.ClusterID].resizeSupported {
+		if clusterAdditionalInfo[volOptions.ClusterID].resizeSupported == nil {
+			clusterAdditionalInfo[volOptions.ClusterID].resizeSupported = new(bool)
+		}
 		args := []string{
 			"fs",
 			"subvolume",
@@ -223,7 +226,7 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			args[:]...)
 
 		if err == nil {
-			clusterAdditionalInfo[volOptions.ClusterID].resizeSupported = true
+			*clusterAdditionalInfo[volOptions.ClusterID].resizeSupported = true
 			return nil
 		}
 		// Incase the error is other than invalid command return error to the caller.
@@ -232,7 +235,7 @@ func resizeVolume(ctx context.Context, volOptions *volumeOptions, cr *util.Crede
 			return err
 		}
 	}
-	clusterAdditionalInfo[volOptions.ClusterID].resizeSupported = false
+	*clusterAdditionalInfo[volOptions.ClusterID].resizeSupported = false
 	return createVolume(ctx, volOptions, cr, volID, bytesQuota)
 }
 
