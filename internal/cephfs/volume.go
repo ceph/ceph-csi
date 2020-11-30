@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	fsAdmin "github.com/ceph/go-ceph/cephfs/admin"
+	"github.com/ceph/go-ceph/rados"
 )
 
 var (
@@ -65,7 +67,7 @@ func (vo *volumeOptions) getVolumeRootPathCeph(ctx context.Context, volID volume
 	svPath, err := fsa.SubVolumePath(vo.FsName, vo.SubvolumeGroup, string(volID))
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get the rootpath for the vol %s: %s", string(volID), err)
-		if strings.Contains(err.Error(), volumeNotFound) {
+		if errors.Is(err, rados.ErrNotFound) {
 			return "", util.JoinErrors(ErrVolumeNotFound, err)
 		}
 		return "", err
