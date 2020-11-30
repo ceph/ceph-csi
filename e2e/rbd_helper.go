@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 
+	"github.com/kubernetes-csi/external-snapshotter/v2/pkg/apis/volumesnapshot/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
 
@@ -191,6 +193,164 @@ func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string,
 		return strings.TrimSpace(stdOut), fmt.Errorf(stdErr)
 	}
 	return strings.TrimSpace(stdOut), nil
+}
+
+// nolint:gocyclo // reduce complexity
+func validateSnapshotInDifferentPool(f *framework.Framework, snapshotPool, cloneSc, destImagePool string) error {
+	var wg sync.WaitGroup
+	totalCount := 10
+	wgErrs := make([]error, totalCount)
+	wg.Add(totalCount)
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return fmt.Errorf("failed to load PVC with error %v", err)
+	}
+
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create PVC with error %v", err)
+	}
+	validateRBDImageCount(f, 1, defaultRBDPool)
+	snap := getSnapshot(snapshotPath)
+	snap.Namespace = f.UniqueName
+	snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+	// create snapshot
+	for i := 0; i < totalCount; i++ {
+		go func(w *sync.WaitGroup, n int, s v1beta1.VolumeSnapshot) {
+			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+			wgErrs[n] = createSnapshot(&s, deployTimeout)
+			w.Done()
+		}(&wg, i, snap)
+	}
+	wg.Wait()
+
+	failed := 0
+	for i, err := range wgErrs {
+		if err != nil {
+			// not using Failf() as it aborts the test and does not log other errors
+			e2elog.Logf("failed to create snapshot (%s%d): %v", f.UniqueName, i, err)
+			failed++
+		}
+	}
+	if failed != 0 {
+		return fmt.Errorf("creating snapshots failed, %d errors were logged", failed)
+	}
+
+	// delete parent pvc
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete PVC with error %v", err)
+	}
+
+	// validate the rbd images created for snapshots
+	validateRBDImageCount(f, totalCount, snapshotPool)
+
+	pvcClone, err := loadPVC(pvcClonePath)
+	if err != nil {
+		return fmt.Errorf("failed to load PVC with error %v", err)
+	}
+	appClone, err := loadApp(appClonePath)
+	if err != nil {
+		return fmt.Errorf("failed to load application with error %v", err)
+	}
+	pvcClone.Namespace = f.UniqueName
+	// if request is to create clone with different sc
+	if cloneSc != "" {
+		pvcClone.Spec.StorageClassName = &cloneSc
+	}
+	appClone.Namespace = f.UniqueName
+	pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
+
+	// create multiple PVC from same snapshot
+	wg.Add(totalCount)
+	for i := 0; i < totalCount; i++ {
+		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+			w.Done()
+		}(&wg, i, *pvcClone, *appClone)
+	}
+	wg.Wait()
+
+	for i, err := range wgErrs {
+		if err != nil {
+			// not using Failf() as it aborts the test and does not log other errors
+			e2elog.Logf("failed to create PVC and application (%s%d): %v", f.UniqueName, i, err)
+			failed++
+		}
+	}
+	if failed != 0 {
+		return fmt.Errorf("creating PVCs and applications failed, %d errors were logged", failed)
+	}
+
+	// total images in pool is total snaps + total clones
+	if destImagePool == snapshotPool {
+		totalCloneCount := totalCount + totalCount
+		validateRBDImageCount(f, totalCloneCount, snapshotPool)
+	} else {
+		// if clones are created in different pool we will have only rbd images of
+		// count equal to totalCount
+		validateRBDImageCount(f, totalCount, destImagePool)
+	}
+	wg.Add(totalCount)
+	// delete clone and app
+	for i := 0; i < totalCount; i++ {
+		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			p.Spec.DataSource.Name = name
+			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
+			w.Done()
+		}(&wg, i, *pvcClone, *appClone)
+	}
+	wg.Wait()
+
+	for i, err := range wgErrs {
+		if err != nil {
+			// not using Failf() as it aborts the test and does not log other errors
+			e2elog.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+			failed++
+		}
+	}
+	if failed != 0 {
+		return fmt.Errorf("deleting PVCs and applications failed, %d errors were logged", failed)
+	}
+
+	if destImagePool == snapshotPool {
+		// as we have deleted all clones total images in pool is total snaps
+		validateRBDImageCount(f, totalCount, snapshotPool)
+	} else {
+		// we have deleted all clones
+		validateRBDImageCount(f, 0, destImagePool)
+	}
+
+	wg.Add(totalCount)
+	// delete snapshot
+	for i := 0; i < totalCount; i++ {
+		go func(w *sync.WaitGroup, n int, s v1beta1.VolumeSnapshot) {
+			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+			wgErrs[n] = deleteSnapshot(&s, deployTimeout)
+			w.Done()
+		}(&wg, i, snap)
+	}
+	wg.Wait()
+
+	for i, err := range wgErrs {
+		if err != nil {
+			// not using Failf() as it aborts the test and does not log other errors
+			e2elog.Logf("failed to delete snapshot (%s%d): %v", f.UniqueName, i, err)
+			failed++
+		}
+	}
+	if failed != 0 {
+		return fmt.Errorf("deleting snapshots failed, %d errors were logged", failed)
+	}
+
+	// validate all pools are empty
+	validateRBDImageCount(f, 0, snapshotPool)
+	validateRBDImageCount(f, 0, defaultRBDPool)
+	validateRBDImageCount(f, 0, destImagePool)
+	return nil
 }
 
 func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framework.Framework) error {
