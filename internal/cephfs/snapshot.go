@@ -54,7 +54,8 @@ func (vo *volumeOptions) createSnapshot(ctx context.Context, snapID, volID volum
 
 	err = fsa.CreateSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
 	if err != nil {
-		util.ErrorLog(ctx, "failed to create subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, vo.FsName)
+		util.ErrorLog(ctx, "failed to create subvolume snapshot %s %s in fs %s: %s",
+			string(snapID), string(volID), vo.FsName, err)
 		return err
 	}
 	return nil
