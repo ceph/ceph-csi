@@ -24,8 +24,6 @@ import (
 const (
 	// volumeNotFound is returned when a subvolume is not found in CephFS.
 	volumeNotFound = "Error ENOENT"
-	// invalidCommand is returned when a command is not known to the cluster
-	invalidCommand = "Error EINVAL"
 	// snapNotFound is returned when snap name passed is not found in the list
 	// of snapshots for the given image.
 	snapNotFound = "Error ENOENT"
