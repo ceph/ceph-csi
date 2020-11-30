@@ -125,7 +125,7 @@ spec:
             name: init-scripts
       containers:
         - name: vault-init-job
-          image: vault
+          image: docker.io/library/vault:latest
           volumeMounts:
             - mountPath: /init-scripts
               name: init-scripts-volume
