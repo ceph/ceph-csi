@@ -194,8 +194,9 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 			clusterAdditionalInfo[vo.ClusterID].resizeSupported = true
 			return nil
 		}
+		var invalid fsAdmin.NotImplementedError
 		// In case the error is other than invalid command return error to the caller.
-		if !strings.Contains(err.Error(), invalidCommand) {
+		if !errors.As(err, &invalid) {
 			util.ErrorLog(ctx, "failed to resize subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
 			return err
 		}
