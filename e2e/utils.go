@@ -611,7 +611,7 @@ func validateController(f *framework.Framework, pvcPath, appPath, scPath string)
 	expandSize := "10Gi"
 	var err error
 	// create storageclass with retain
-	err = createRBDStorageClass(f.ClientSet, f, nil, nil, retainPolicy)
+	err = createRBDStorageClass(f.ClientSet, f, "", nil, nil, retainPolicy)
 	if err != nil {
 		return fmt.Errorf("failed to create storageclass with error %v", err)
 	}
@@ -643,7 +643,7 @@ func validateController(f *framework.Framework, pvcPath, appPath, scPath string)
 	if err != nil {
 		return fmt.Errorf("failed to delete storageclass with error %v", err)
 	}
-	err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+	err = createRBDStorageClass(f.ClientSet, f, "", nil, nil, deletePolicy)
 	if err != nil {
 		return fmt.Errorf("failed to create storageclass with error %v", err)
 	}

@@ -63,7 +63,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to create configmap with error %v", err)
 		}
-		err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+		err = createRBDStorageClass(f.ClientSet, f, "", nil, nil, deletePolicy)
 		if err != nil {
 			e2elog.Failf("failed to create storageclass with error %v", err)
 		}
