@@ -480,7 +480,7 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // Reserve omap data
 // Generate new volume Handler
 // Create old volumeHandler to new handler mapping
-// The volume handler wont remain same as its contains poolID,clusterID etc
+// The volume handler won't remain same as its contains poolID,clusterID etc
 // which are not same across clusters.
 func RegenerateJournal(imageName, volumeID, pool, journalPool, requestName string, cr *util.Credentials) error {
 	ctx := context.Background()
