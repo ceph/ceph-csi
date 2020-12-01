@@ -88,6 +88,7 @@ type rbdVolume struct {
 	RadosNamespace      string
 	ImageID             string
 	ParentName          string
+	ParentPool          string
 	imageFeatureSet     librbd.FeatureSet
 	AdminID             string `json:"adminId"`
 	UserID              string `json:"userId"`
@@ -986,6 +987,7 @@ func (rv *rbdVolume) getImageInfo() error {
 		}
 	} else {
 		rv.ParentName = parentInfo.Image.ImageName
+		rv.ParentPool = parentInfo.Image.PoolName
 	}
 	// Get image creation time
 	tm, err := image.GetCreateTimestamp()
