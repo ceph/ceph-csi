@@ -400,19 +400,18 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 		conn:         rv.conn,
 	}
 
-	err := vol.openIoctx()
-	if err != nil {
-		return depth, err
-	}
-
-	defer func() {
-		vol.ioctx.Destroy()
-	}()
 	for {
 		if vol.RbdImageName == "" {
 			return depth, nil
 		}
+		err := vol.openIoctx()
+		if err != nil {
+			return depth, err
+		}
+
 		err = vol.getImageInfo()
+		vol.ioctx.Destroy()
+		vol.ioctx = nil
 		if err != nil {
 			// if the parent image is moved to trash the name will be present
 			// in rbd image info but the image will be in trash, in that case
@@ -570,17 +569,19 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 		RbdImageName:   rv.RbdImageName,
 		conn:           rv.conn,
 	}
-	err := vol.openIoctx()
-	if err != nil {
-		return false, err
-	}
-	defer vol.ioctx.Destroy()
 
 	for {
 		if vol.RbdImageName == "" {
 			return false, nil
 		}
+		err := vol.openIoctx()
+		if err != nil {
+			return false, err
+		}
+
 		err = vol.getImageInfo()
+		vol.ioctx.Destroy()
+		vol.ioctx = nil
 		if err != nil {
 			util.ErrorLog(ctx, "failed to get image info for %s: %s", vol, err)
 			return false, err
