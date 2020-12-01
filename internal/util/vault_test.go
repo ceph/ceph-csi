@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"errors"
 	"os"
 	"testing"
 )
@@ -52,5 +53,45 @@ func TestCreateTempFile(t *testing.T) {
 	err = os.Remove(tmpfile)
 	if err != nil {
 		t.Errorf("failed to remove tmpfile (%s): %s", tmpfile, err)
+	}
+}
+
+func TestSetConfigString(t *testing.T) {
+	const defaultValue = "default-value"
+	options := make(map[string]interface{})
+
+	// noSuchOption: no default value, option unavailable
+	noSuchOption := ""
+	err := setConfigString(&noSuchOption, options, "nonexistent")
+	switch {
+	case err == nil:
+		t.Error("did not get an error when one was expected")
+	case !errors.Is(err, errConfigOptionMissing):
+		t.Errorf("expected errConfigOptionMissing, but got %T: %s", err, err)
+	case noSuchOption != "":
+		t.Error("value should not have been modified")
+	}
+
+	// noOptionDefault: default value, option unavailable
+	noOptionDefault := defaultValue
+	err = setConfigString(&noOptionDefault, options, "nonexistent")
+	switch {
+	case err == nil:
+		t.Error("did not get an error when one was expected")
+	case !errors.Is(err, errConfigOptionMissing):
+		t.Errorf("expected errConfigOptionMissing, but got %T: %s", err, err)
+	case noOptionDefault != defaultValue:
+		t.Error("value should not have been modified")
+	}
+
+	// optionDefaultOverload: default value, option available
+	optionDefaultOverload := defaultValue
+	options["set-me"] = "non-default"
+	err = setConfigString(&optionDefaultOverload, options, "set-me")
+	switch {
+	case err != nil:
+		t.Errorf("unexpected error returned: %s", err)
+	case optionDefaultOverload != "non-default":
+		t.Error("optionDefaultOverload should have been updated")
 	}
 }
