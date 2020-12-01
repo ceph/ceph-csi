@@ -800,7 +800,7 @@ func cloneFromSnapshot(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnaps
 	vol := generateVolFromSnap(rbdSnap)
 	err := vol.Connect(cr)
 	if err != nil {
-		uErr := undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
+		uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
 		if uErr != nil {
 			util.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", rbdSnap.RequestName, uErr)
 		}
@@ -824,7 +824,7 @@ func cloneFromSnapshot(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnaps
 	if errors.Is(err, ErrFlattenInProgress) {
 		readyToUse = false
 	} else if err != nil {
-		uErr := undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
+		uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
 		if uErr != nil {
 			util.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", rbdSnap.RequestName, uErr)
 		}
