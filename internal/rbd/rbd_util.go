@@ -873,7 +873,7 @@ func (rv *rbdVolume) hasSnapshotFeature() bool {
 }
 
 func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
-	util.DebugLog(ctx, "rbd: snap create %s using mon %s", pOpts, pOpts.Monitors)
+	util.DebugLog(ctx, "rbd: snap create %s@%s using mon %s", rv, pOpts.RbdSnapName, pOpts.Monitors)
 	image, err := rv.open()
 	if err != nil {
 		return err
