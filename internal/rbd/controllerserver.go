@@ -798,7 +798,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		vol := generateVolFromSnap(rbdSnap)
 		err = vol.Connect(cr)
 		if err != nil {
-			uErr := undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
+			uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
 			if uErr != nil {
 				util.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", req.GetName(), uErr)
 			}
@@ -819,7 +819,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			}, nil
 		}
 		if err != nil {
-			uErr := undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
+			uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
 			if uErr != nil {
 				util.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", req.GetName(), uErr)
 			}
