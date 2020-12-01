@@ -24,6 +24,7 @@ IMAGE="${1}"
 
 # import the image, save response in STDOUT
 STDOUT=$(podman image save "${IMAGE}" | minikube_ssh docker image load)
+echo "${STDOUT}"
 
 # check the name of the image that was imported in docker
 DOCKER_IMAGE=$(awk '/Loaded image/ {print $NF}' <<< "${STDOUT}")
