@@ -885,7 +885,7 @@ func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 }
 
 func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
-	util.DebugLog(ctx, "rbd: snap rm %s using mon %s", pOpts, pOpts.Monitors)
+	util.DebugLog(ctx, "rbd: snap rm %s@%s using mon %s", rv, pOpts.RbdSnapName, pOpts.Monitors)
 	image, err := rv.open()
 	if err != nil {
 		return err
