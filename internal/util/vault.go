@@ -107,7 +107,7 @@ func setConfigString(option *string, config map[string]interface{}, key string) 
 	return nil
 }
 
-func (vc *vaultConnection) initConnection(kmsID string, config, secrets map[string]string) error {
+func (vc *vaultConnection) initConnection(kmsID string, config map[string]interface{}, secrets map[string]string) error {
 	vaultConfig := make(map[string]interface{})
 	keyContext := make(map[string]string)
 
@@ -165,7 +165,7 @@ func (vc *vaultConnection) initConnection(kmsID string, config, secrets map[stri
 }
 
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.
-func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKMS, error) {
+func InitVaultKMS(kmsID string, config map[string]interface{}, secrets map[string]string) (EncryptionKMS, error) {
 	kms := &VaultKMS{}
 	err := kms.initConnection(kmsID, config, secrets)
 	if err != nil {

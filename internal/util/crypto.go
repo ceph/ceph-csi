@@ -115,17 +115,9 @@ func GetKMS(kmsID string, secrets map[string]string) (EncryptionKMS, error) {
 		return nil, fmt.Errorf("failed to parse kms configuration: %s", err)
 	}
 
-	kmsConfigData, ok := config[kmsID].(map[string]interface{})
+	kmsConfig, ok := config[kmsID].(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("missing encryption KMS configuration with %s", kmsID)
-	}
-	kmsConfig := make(map[string]string)
-	for key, value := range kmsConfigData {
-		kmsConfig[key], ok = value.(string)
-		if !ok {
-			return nil, fmt.Errorf("broken KMS config: '%s' for '%s' is not a string",
-				value, key)
-		}
 	}
 
 	kmsType, ok := kmsConfig[kmsTypeKey]
