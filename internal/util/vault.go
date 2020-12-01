@@ -40,6 +40,12 @@ const (
 	vaultDefaultRole           = "csi-kubernetes"
 	vaultDefaultNamespace      = ""
 	vaultDefaultPassphrasePath = ""
+	vaultDefaultCAVerify       = "true"
+)
+
+var (
+	errConfigOptionMissing = errors.New("configuration option not set")
+	errConfigOptionInvalid = errors.New("configuration option not valid")
 )
 
 /*
@@ -78,37 +84,65 @@ type VaultKMS struct {
 	secrets loss.Secrets
 }
 
+// setConfigString fetches a value from a configuration map and converts it to
+// a string.
+//
+// If the value is not available, *option is not adjusted and
+// errConfigOptionMissing is returned.
+// In case the value is available, but can not be converted to a string,
+// errConfigOptionInvalid is returned.
+func setConfigString(option *string, config map[string]interface{}, key string) error {
+	value, ok := config[key]
+	if !ok {
+		return fmt.Errorf("%w: %s", errConfigOptionMissing, key)
+	}
+
+	s, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("%w: expected string for %q, but got %T",
+			errConfigOptionInvalid, key, value)
+	}
+
+	*option = s
+	return nil
+}
+
 func (vc *vaultConnection) initConnection(kmsID string, config, secrets map[string]string) error {
 	vaultConfig := make(map[string]interface{})
 	keyContext := make(map[string]string)
 
 	vc.EncryptionKMSID = kmsID
 
-	vaultAddress, ok := config["vaultAddress"]
-	if !ok || vaultAddress == "" {
-		return errors.New("missing 'vaultAddress' for Vault connection")
+	vaultAddress := ""
+	err := setConfigString(&vaultAddress, config, "vaultAddress")
+	if err != nil {
+		return err
 	}
 	vaultConfig[api.EnvVaultAddress] = vaultAddress
 
-	vaultNamespace, ok := config["vaultNamespace"]
-	if !ok || vaultNamespace == "" {
-		vaultNamespace = vaultDefaultNamespace
+	vaultNamespace := vaultDefaultNamespace
+	err = setConfigString(&vaultNamespace, config, "vaultNamespace")
+	if err != nil {
+		return err
 	}
 	vaultConfig[api.EnvVaultNamespace] = vaultNamespace
 	keyContext[loss.KeyVaultNamespace] = vaultNamespace
 
-	verifyCA, ok := config["vaultCAVerify"]
-	if ok {
-		var vaultCAVerify bool
-		vaultCAVerify, err := strconv.ParseBool(verifyCA)
-		if err != nil {
-			return fmt.Errorf("failed to parse 'vaultCAVerify': %w", err)
-		}
-		vaultConfig[api.EnvVaultInsecure] = !vaultCAVerify
+	verifyCA := vaultDefaultCAVerify
+	err = setConfigString(&verifyCA, config, "vaultCAVerify")
+	if err != nil {
+		return err
 	}
 
-	vaultCAFromSecret, ok := config["vaultCAFromSecret"]
-	if ok && vaultCAFromSecret != "" {
+	vaultCAVerify, err := strconv.ParseBool(verifyCA)
+	if err != nil {
+		return fmt.Errorf("failed to parse 'vaultCAVerify': %w", err)
+	}
+	vaultConfig[api.EnvVaultInsecure] = !vaultCAVerify
+
+	vaultCAFromSecret := ""
+	err = setConfigString(&vaultCAFromSecret, config, "vaultCAFromSecret")
+	if err == nil && vaultCAFromSecret != "" {
 		caPEM, ok := secrets[vaultCAFromSecret]
 		if !ok {
 			return fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
@@ -120,6 +154,8 @@ func (vc *vaultConnection) initConnection(kmsID string, config, secrets map[stri
 			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
 		}
 		// TODO: delete f.Name() when vaultConnection is destroyed
+	} else if !errors.Is(err, errConfigOptionMissing) {
+		return err
 	}
 
 	vc.keyContext = keyContext
@@ -130,46 +166,48 @@ func (vc *vaultConnection) initConnection(kmsID string, config, secrets map[stri
 
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.
 func InitVaultKMS(kmsID string, config, secrets map[string]string) (EncryptionKMS, error) {
-	var (
-		ok  bool
-		err error
-	)
-
 	kms := &VaultKMS{}
-	err = kms.initConnection(kmsID, config, secrets)
+	err := kms.initConnection(kmsID, config, secrets)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
 	}
 
-	vaultAuthPath, ok := config["vaultAuthPath"]
-	if !ok || vaultAuthPath == "" {
-		vaultAuthPath = vaultDefaultAuthPath
+	vaultAuthPath := vaultDefaultAuthPath
+	err = setConfigString(&vaultAuthPath, config, "vaultAuthPath")
+	if err != nil {
+		return nil, err
 	}
+
 	kms.vaultConfig[vault.AuthMountPath], err = detectAuthMountPath(vaultAuthPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set %s in Vault config: %w", vault.AuthMountPath, err)
 	}
 
-	vaultRole, ok := config["vaultRole"]
-	if !ok || vaultRole == "" {
-		vaultRole = vaultDefaultRole
+	vaultRole := vaultDefaultRole
+	err = setConfigString(&vaultRole, config, "vaultRole")
+	if err != nil {
+		return nil, err
 	}
 	kms.vaultConfig[vault.AuthKubernetesRole] = vaultRole
 
 	// vault.VaultBackendPathKey is "secret/" by default, use vaultPassphraseRoot if configured
-	vaultPassphraseRoot, ok := config["vaultPassphraseRoot"]
-	if ok && vaultPassphraseRoot != "" {
+	vaultPassphraseRoot := ""
+	err = setConfigString(&vaultPassphraseRoot, config, "vaultPassphraseRoot")
+	if err == nil {
 		// the old example did have "/v1/secret/", convert that format
 		if strings.HasPrefix(vaultPassphraseRoot, "/v1/") {
 			kms.vaultConfig[vault.VaultBackendPathKey] = strings.TrimPrefix(vaultPassphraseRoot, "/v1/")
 		} else {
 			kms.vaultConfig[vault.VaultBackendPathKey] = vaultPassphraseRoot
 		}
+	} else if !errors.Is(err, errConfigOptionMissing) {
+		return nil, err
 	}
 
-	kms.vaultPassphrasePath, ok = config["vaultPassphrasePath"]
-	if !ok || kms.vaultPassphrasePath == "" {
-		kms.vaultPassphrasePath = vaultDefaultPassphrasePath
+	kms.vaultPassphrasePath = vaultDefaultPassphrasePath
+	err = setConfigString(&kms.vaultPassphrasePath, config, "vaultPassphrasePath")
+	if err != nil {
+		return nil, err
 	}
 
 	// FIXME: vault.AuthKubernetesTokenPath is not enough? EnvVaultToken needs to be set?
