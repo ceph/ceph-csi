@@ -945,6 +945,20 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 		return ready, cloneRbd, err
 	}
 
+	defer func() {
+		// If we hit any error below, cleanup the snapshot created on the clone
+		if err != nil {
+			if !errors.Is(err, ErrFlattenInProgress) {
+				errCleaup := cloneRbd.deleteSnapshot(ctx, rbdSnap)
+				if errCleaup != nil {
+					if !errors.Is(errCleaup, ErrSnapNotFound) {
+						util.ErrorLog(ctx, "failed to delete snapshot: %v", errCleaup)
+					}
+				}
+			}
+		}
+	}()
+
 	err = cloneRbd.getImageID()
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get image id: %v", err)
