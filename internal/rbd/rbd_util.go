@@ -740,7 +740,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 
 	if imageAttributes.KmsID != "" {
 		rbdVol.Encrypted = true
-		rbdVol.KMS, err = util.GetKMS(imageAttributes.KmsID, secrets)
+		rbdVol.KMS, err = util.GetKMS(rbdVol.Owner, imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdVol, err
 		}
@@ -838,7 +838,7 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 			// deliberately ignore if parsing failed as GetKMS will return default
 			// implementation of kmsID is empty
 			kmsID := volOptions["encryptionKMSID"]
-			rbdVol.KMS, err = util.GetKMS(kmsID, credentials)
+			rbdVol.KMS, err = util.GetKMS(rbdVol.Owner, kmsID, credentials)
 			if err != nil {
 				return nil, fmt.Errorf("invalid encryption kms configuration: %w", err)
 			}
