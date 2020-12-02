@@ -87,7 +87,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		return protectErr
 	}
 
-	cloneErr = cloneSnapshot(ctx, parentvolOpt, cr, volID, snapshotID, cloneID, volOpt)
+	cloneErr = parentvolOpt.cloneSnapshot(ctx, volID, snapshotID, cloneID, volOpt)
 	if cloneErr != nil {
 		util.ErrorLog(ctx, "failed to clone snapshot %s %s to %s %v", volID, snapshotID, cloneID, cloneErr)
 		return cloneErr
@@ -169,7 +169,7 @@ func isCloneRetryError(err error) bool {
 
 func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volumeOptions, vID *volumeIdentifier, sID *snapshotIdentifier, cr *util.Credentials) error {
 	snapID := volumeID(sID.FsSnapshotName)
-	err := cloneSnapshot(ctx, parentVolOpt, cr, volumeID(sID.FsSubvolName), snapID, volumeID(vID.FsSubvolName), volOptions)
+	err := parentVolOpt.cloneSnapshot(ctx, volumeID(sID.FsSubvolName), snapID, volumeID(vID.FsSubvolName), volOptions)
 	if err != nil {
 		return err
 	}

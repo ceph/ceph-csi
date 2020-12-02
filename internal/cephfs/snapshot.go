@@ -22,8 +22,9 @@ import (
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/ceph/go-ceph/rados"
 
+	"github.com/ceph/go-ceph/cephfs/admin"
+	"github.com/ceph/go-ceph/rados"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
@@ -171,37 +172,23 @@ func (vo *volumeOptions) unprotectSnapshot(ctx context.Context, snapID, volID vo
 	return nil
 }
 
-func cloneSnapshot(ctx context.Context, parentVolOptions *volumeOptions, cr *util.Credentials, volID, snapID, cloneID volumeID, cloneVolOptions *volumeOptions) error {
-	args := []string{
-		"fs",
-		"subvolume",
-		"snapshot",
-		"clone",
-		parentVolOptions.FsName,
-		string(volID),
-		string(snapID),
-		string(cloneID),
-		"--group_name",
-		parentVolOptions.SubvolumeGroup,
-		"--target_group_name",
-		cloneVolOptions.SubvolumeGroup,
-		"-m", parentVolOptions.Monitors,
-		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.ID,
-		"--keyfile=" + cr.KeyFile,
+func (vo *volumeOptions) cloneSnapshot(ctx context.Context, volID, snapID, cloneID volumeID, cloneVolOptions *volumeOptions) error {
+	fsa, err := vo.conn.GetFSAdmin()
+	if err != nil {
+		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+		return err
+	}
+	co := &admin.CloneOptions{
+		TargetGroup: cloneVolOptions.SubvolumeGroup,
 	}
 	if cloneVolOptions.Pool != "" {
-		args = append(args, "--pool_layout", cloneVolOptions.Pool)
+		co.PoolLayout = cloneVolOptions.Pool
 	}
 
-	err := execCommandErr(
-		ctx,
-		"ceph",
-		args[:]...)
-
+	err = fsa.CloneSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID), string(cloneID), co)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to clone subvolume snapshot %s %s(%s) in fs %s", string(cloneID), string(volID), err, parentVolOptions.FsName)
-		if strings.HasPrefix(err.Error(), volumeNotFound) {
+		util.ErrorLog(ctx, "failed to clone subvolume snapshot %s %s in fs %s with error: %s", string(volID), string(snapID), string(cloneID), vo.FsName, err)
+		if errors.Is(err, rados.ErrNotFound) {
 			return ErrVolumeNotFound
 		}
 		return err
