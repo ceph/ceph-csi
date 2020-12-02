@@ -112,36 +112,52 @@ func (vc *vaultConnection) initConnection(kmsID string, config map[string]interf
 
 	vc.EncryptionKMSID = kmsID
 
-	vaultAddress := ""
+	firstInit := (vc.vaultConfig == nil)
+
+	vaultAddress := "" // required
 	err := setConfigString(&vaultAddress, config, "vaultAddress")
-	if err != nil {
+	switch {
+	case errors.Is(err, errConfigOptionInvalid):
 		return err
+	case firstInit && errors.Is(err, errConfigOptionMissing):
+		return err
+	case !errors.Is(err, errConfigOptionMissing):
+		vaultConfig[api.EnvVaultAddress] = vaultAddress
 	}
-	vaultConfig[api.EnvVaultAddress] = vaultAddress
+	// default: !firstInit
 
-	vaultNamespace := vaultDefaultNamespace
+	vaultNamespace := vaultDefaultNamespace // optional
 	err = setConfigString(&vaultNamespace, config, "vaultNamespace")
-	if err != nil {
+	if errors.Is(err, errConfigOptionInvalid) {
 		return err
 	}
-	vaultConfig[api.EnvVaultNamespace] = vaultNamespace
-	keyContext[loss.KeyVaultNamespace] = vaultNamespace
+	// set the option if the value was not invalid
+	if firstInit || !errors.Is(err, errConfigOptionMissing) {
+		vaultConfig[api.EnvVaultNamespace] = vaultNamespace
+		keyContext[loss.KeyVaultNamespace] = vaultNamespace
+	}
 
-	verifyCA := vaultDefaultCAVerify
+	verifyCA := vaultDefaultCAVerify // optional
 	err = setConfigString(&verifyCA, config, "vaultCAVerify")
-	if err != nil {
+	if errors.Is(err, errConfigOptionInvalid) {
 		return err
 	}
-
-	vaultCAVerify, err := strconv.ParseBool(verifyCA)
-	if err != nil {
-		return fmt.Errorf("failed to parse 'vaultCAVerify': %w", err)
+	if firstInit || !errors.Is(err, errConfigOptionMissing) {
+		vaultCAVerify := false
+		vaultCAVerify, err = strconv.ParseBool(verifyCA)
+		if err != nil {
+			return fmt.Errorf("failed to parse 'vaultCAVerify': %w", err)
+		}
+		vaultConfig[api.EnvVaultInsecure] = !vaultCAVerify
 	}
-	vaultConfig[api.EnvVaultInsecure] = !vaultCAVerify
 
-	vaultCAFromSecret := ""
+	vaultCAFromSecret := "" // optional
 	err = setConfigString(&vaultCAFromSecret, config, "vaultCAFromSecret")
-	if err == nil && vaultCAFromSecret != "" {
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	}
+	// ignore errConfigOptionMissing, no default was set
+	if vaultCAFromSecret != "" {
 		caPEM, ok := secrets[vaultCAFromSecret]
 		if !ok {
 			return fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
@@ -152,12 +168,23 @@ func (vc *vaultConnection) initConnection(kmsID string, config map[string]interf
 			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
 		}
 		// TODO: delete f.Name() when vaultConnection is destroyed
-	} else if !errors.Is(err, errConfigOptionMissing) {
-		return err
 	}
 
-	vc.keyContext = keyContext
-	vc.vaultConfig = vaultConfig
+	// update the existing config only if no config is available yet
+	if vc.keyContext != nil {
+		for key, value := range keyContext {
+			vc.keyContext[key] = value
+		}
+	} else {
+		vc.keyContext = keyContext
+	}
+	if vc.vaultConfig != nil {
+		for key, value := range vaultConfig {
+			vc.vaultConfig[key] = value
+		}
+	} else {
+		vc.vaultConfig = vaultConfig
+	}
 
 	return nil
 }
