@@ -97,7 +97,13 @@ func (kms SecretsKMS) GetID() string {
 }
 
 // GetKMS returns an instance of Key Management System.
-func GetKMS(kmsID string, secrets map[string]string) (EncryptionKMS, error) {
+//
+// - tenant is the owner of the Volume, used to fetch the Vault Token from the
+//   Kubernetes Namespace where the PVC lives
+// - kmsID is the service name of the KMS configuration
+// - secrets contain additional details, like TLS certificates to connect to
+//   the KMS
+func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, error) {
 	if kmsID == "" || kmsID == defaultKMSType {
 		return initSecretsKMS(secrets)
 	}
