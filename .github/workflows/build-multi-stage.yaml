@@ -5,7 +5,7 @@ on:
   push:
   pull_request:
     branches:
-      - '*'
+      - '**'
 jobs:
   codespell:
     name: multi-arch-build
