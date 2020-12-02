@@ -27,8 +27,6 @@ const (
 	// snapNotFound is returned when snap name passed is not found in the list
 	// of snapshots for the given image.
 	snapNotFound = "Error ENOENT"
-	// snapProtectionExist is returned when the snapshot is already protected
-	snapProtectionExist = "Error EEXIST"
 	// volumeNotEmpty is returned when the volume is not empty.
 	volumeNotEmpty = "Error ENOTEMPTY"
 )

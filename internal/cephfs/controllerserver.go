@@ -534,7 +534,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		// check snapshot is protected
 		protected := true
 		if !(snapInfo.Protected == snapshotIsProtected) {
-			err = protectSnapshot(ctx, parentVolOptions, cr, volumeID(sid.FsSnapshotName), volumeID(vid.FsSubvolName))
+			err = parentVolOptions.protectSnapshot(ctx, volumeID(sid.FsSnapshotName), volumeID(vid.FsSubvolName))
 			if err != nil {
 				protected = false
 				util.WarningLog(ctx, "failed to protect snapshot of snapshot: %s (%s)",
@@ -611,7 +611,7 @@ func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snaps
 		return snap, err
 	}
 	snap.CreationTime = t
-	err = protectSnapshot(ctx, volOpt, cr, snapID, volID)
+	err = volOpt.protectSnapshot(ctx, snapID, volID)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to protect snapshot %s %v", snapID, err)
 	}
@@ -706,7 +706,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return nil, status.Errorf(codes.FailedPrecondition, "snapshot %s has pending clones", snapshotID)
 	}
 	if snapInfo.Protected == snapshotIsProtected {
-		err = unprotectSnapshot(ctx, volOpt, cr, volumeID(sid.FsSnapshotName), volumeID(sid.FsSubvolName))
+		err = volOpt.unprotectSnapshot(ctx, volumeID(sid.FsSnapshotName), volumeID(sid.FsSubvolName))
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
