@@ -70,6 +70,7 @@ Example JSON structure in the KMS config is,
 
 type vaultConnection struct {
 	EncryptionKMSID string
+	secrets         loss.Secrets
 	vaultConfig     map[string]interface{}
 	keyContext      map[string]string
 }
@@ -80,8 +81,6 @@ type VaultKMS struct {
 	// vaultPassphrasePath (VPP) used to be added before the "key" of the
 	// secret (like /v1/secret/data/<VPP>/key)
 	vaultPassphrasePath string
-
-	secrets loss.Secrets
 }
 
 // setConfigString fetches a value from a configuration map and converts it to
@@ -148,7 +147,6 @@ func (vc *vaultConnection) initConnection(kmsID string, config map[string]interf
 			return fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
 		}
 
-		var err error
 		vaultConfig[api.EnvVaultCACert], err = createTempFile("vault-ca-cert", []byte(caPEM))
 		if err != nil {
 			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
@@ -160,6 +158,18 @@ func (vc *vaultConnection) initConnection(kmsID string, config map[string]interf
 
 	vc.keyContext = keyContext
 	vc.vaultConfig = vaultConfig
+
+	return nil
+}
+
+// connectVault creates a new connection to Vault. This should be called after
+// filling vc.vaultConfig.
+func (vc *vaultConnection) connectVault() error {
+	v, err := vault.New(vc.vaultConfig)
+	if err != nil {
+		return fmt.Errorf("failed creating new Vault Secrets: %w", err)
+	}
+	vc.secrets = v
 
 	return nil
 }
@@ -214,11 +224,10 @@ func InitVaultKMS(kmsID string, config map[string]interface{}, secrets map[strin
 	kms.vaultConfig[vault.AuthMethod] = vault.AuthMethodKubernetes
 	kms.vaultConfig[vault.AuthKubernetesTokenPath] = serviceAccountTokenPath
 
-	v, err := vault.New(kms.vaultConfig)
+	err = kms.connectVault()
 	if err != nil {
-		return nil, fmt.Errorf("failed creating new Vault Secrets: %w", err)
+		return nil, err
 	}
-	kms.secrets = v
 
 	return kms, nil
 }
