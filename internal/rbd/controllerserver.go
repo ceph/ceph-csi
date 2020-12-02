@@ -979,7 +979,16 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 		return ready, cloneRbd, err
 	}
 
-	err = cloneRbd.flattenRbdImage(ctx, cr, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+	forceFlatten := false
+	//  As once the snapshot limit on a parent is reached we cannot flatten the
+	//  images as we dont know the pool in which clones are created,
+	// if the parent image pool and clone pool are different flatten the image
+	//  to break the clone chain.
+	if rbdSnap.Pool != parentVol.ParentPool {
+		forceFlatten = true
+	}
+
+	err = cloneRbd.flattenRbdImage(ctx, cr, forceFlatten, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 	if err != nil {
 		if errors.Is(err, ErrFlattenInProgress) {
 			return ready, cloneRbd, nil

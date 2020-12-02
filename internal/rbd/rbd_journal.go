@@ -110,6 +110,7 @@ deletion are inverse of each other, and protected by the request name lock, and
 hence any stale omaps are leftovers from incomplete transactions and are hence
 safe to garbage collect.
 */
+// nolint:gocyclo // reduce complexity
 func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
 	err := validateRbdSnap(rbdSnap)
 	if err != nil {
@@ -190,6 +191,24 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	}
 	if err != nil {
 		return false, err
+	}
+
+	//  As once the snapshot limit on a parent is reached we cannot flatten the
+	//  cloned images as we dont know the pool in which clones are created,
+	// if the parent image pool and clone pool are different flatten the image
+	//  to break the clone chain now only.
+	if rbdSnap.Pool != parentVol.ParentPool {
+		var d uint
+		d, err = vol.getCloneDepth(ctx)
+		if err != nil {
+			return false, err
+		}
+		if d != 0 {
+			err = vol.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+			if err != nil {
+				return false, err
+			}
+		}
 	}
 
 	if vol.ImageID == "" {
