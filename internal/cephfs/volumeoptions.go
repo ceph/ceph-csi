@@ -532,7 +532,7 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 	}
 	volOptions.Features = subvolInfo.Features
 
-	info, err := getSnapshotInfo(ctx, &volOptions, cr, volumeID(sid.FsSnapshotName), volumeID(sid.FsSubvolName))
+	info, err := volOptions.getSnapshotInfo(ctx, volumeID(sid.FsSnapshotName), volumeID(sid.FsSubvolName))
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}

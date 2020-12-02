@@ -342,7 +342,7 @@ func checkSnapExists(
 	snapUUID := snapData.ImageUUID
 	snapID := snapData.ImageAttributes.ImageName
 	sid.FsSnapshotName = snapData.ImageAttributes.ImageName
-	snapInfo, err := getSnapshotInfo(ctx, volOptions, cr, volumeID(snapID), volumeID(parentSubVolName))
+	snapInfo, err := volOptions.getSnapshotInfo(ctx, volumeID(snapID), volumeID(parentSubVolName))
 	if err != nil {
 		if errors.Is(err, ErrSnapNotFound) {
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
