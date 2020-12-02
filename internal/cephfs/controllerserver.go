@@ -600,7 +600,7 @@ func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snaps
 			}
 		}
 	}()
-	snap, err = getSnapshotInfo(ctx, volOpt, cr, snapID, volID)
+	snap, err = volOpt.getSnapshotInfo(ctx, snapID, volID)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get snapshot info %s %v", snapID, err)
 		return snap, fmt.Errorf("failed to get snapshot info for snapshot:%s", snapID)

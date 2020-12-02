@@ -138,7 +138,7 @@ func cleanupCloneFromSubvolumeSnapshot(ctx context.Context, volID, cloneID volum
 	// snapshot name is same as clone name as we need a name which can be
 	// identified during PVC-PVC cloning.
 	snapShotID := cloneID
-	snapInfo, err := getSnapshotInfo(ctx, parentVolOpt, cr, snapShotID, volID)
+	snapInfo, err := parentVolOpt.getSnapshotInfo(ctx, snapShotID, volID)
 	if err != nil {
 		if errors.Is(err, ErrSnapNotFound) {
 			return nil

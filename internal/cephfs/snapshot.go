@@ -19,7 +19,7 @@ package cephfs
 import (
 	"context"
 	"errors"
-	"strings"
+	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
@@ -81,44 +81,31 @@ func (vo *volumeOptions) deleteSnapshot(ctx context.Context, snapID, volID volum
 }
 
 type snapshotInfo struct {
-	CreatedAt        string `json:"created_at"`
+	CreatedAt        time.Time
 	CreationTime     *timestamp.Timestamp
-	DataPool         string `json:"data_pool"`
-	HasPendingClones string `json:"has_pending_clones"`
-	Protected        string `json:"protected"`
-	Size             int    `json:"size"`
+	HasPendingClones string
+	Protected        string
 }
 
-func getSnapshotInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, snapID, volID volumeID) (snapshotInfo, error) {
+func (vo *volumeOptions) getSnapshotInfo(ctx context.Context, snapID, volID volumeID) (snapshotInfo, error) {
 	snap := snapshotInfo{}
-	args := []string{
-		"fs",
-		"subvolume",
-		"snapshot",
-		"info",
-		volOptions.FsName,
-		string(volID),
-		string(snapID),
-		"--group_name",
-		volOptions.SubvolumeGroup,
-		"-m", volOptions.Monitors,
-		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.ID,
-		"--keyfile=" + cr.KeyFile,
-		"--format=json",
-	}
-	err := execCommandJSON(
-		ctx,
-		&snap,
-		"ceph",
-		args[:]...)
+	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
-		if strings.Contains(err.Error(), snapNotFound) {
-			return snapshotInfo{}, ErrSnapNotFound
-		}
-		util.ErrorLog(ctx, "failed to get subvolume snapshot info %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
-		return snapshotInfo{}, err
+		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+		return snap, err
 	}
+
+	info, err := fsa.SubVolumeSnapshotInfo(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
+	if err != nil {
+		if errors.Is(err, rados.ErrNotFound) {
+			return snap, ErrSnapNotFound
+		}
+		util.ErrorLog(ctx, "failed to get subvolume snapshot info %s %s in fs %s with error %s", string(volID), string(snapID), vo.FsName, err)
+		return snap, err
+	}
+	snap.CreatedAt = info.CreatedAt.Time
+	snap.HasPendingClones = info.HasPendingClones
+	snap.Protected = info.Protected
 	return snap, nil
 }
 

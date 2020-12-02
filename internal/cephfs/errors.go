@@ -24,9 +24,6 @@ import (
 const (
 	// volumeNotFound is returned when a subvolume is not found in CephFS.
 	volumeNotFound = "Error ENOENT"
-	// snapNotFound is returned when snap name passed is not found in the list
-	// of snapshots for the given image.
-	snapNotFound = "Error ENOENT"
 	// volumeNotEmpty is returned when the volume is not empty.
 	volumeNotEmpty = "Error ENOTEMPTY"
 )

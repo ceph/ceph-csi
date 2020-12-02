@@ -18,7 +18,6 @@ package cephfs
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -36,19 +35,6 @@ type volumeID string
 func execCommandErr(ctx context.Context, program string, args ...string) error {
 	_, _, err := util.ExecCommand(ctx, program, args...)
 	return err
-}
-
-func execCommandJSON(ctx context.Context, v interface{}, program string, args ...string) error {
-	stdout, _, err := util.ExecCommand(ctx, program, args...)
-	if err != nil {
-		return err
-	}
-
-	if err = json.Unmarshal([]byte(stdout), v); err != nil {
-		return fmt.Errorf("failed to unmarshal JSON for %s %v: %s: %w", program, util.StripSecretInArgs(args), stdout, err)
-	}
-
-	return nil
 }
 
 // Controller service request validation.
@@ -149,17 +135,8 @@ func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (sn
 	return cephfsSnap, nil
 }
 
-func parseTime(ctx context.Context, createTime string) (*timestamp.Timestamp, error) {
-	tm := &timestamp.Timestamp{}
-	layout := "2006-01-02 15:04:05.000000"
-	// TODO currently parsing of timestamp to time.ANSIC generate from ceph fs is failing
-	var t time.Time
-	t, err := time.Parse(layout, createTime)
-	if err != nil {
-		util.ErrorLog(ctx, "failed to parse time %s %v", createTime, err)
-		return tm, err
-	}
-	tm, err = ptypes.TimestampProto(t)
+func parseTime(ctx context.Context, createTime time.Time) (*timestamp.Timestamp, error) {
+	tm, err := ptypes.TimestampProto(createTime)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to convert time %s %v", createTime, err)
 		return tm, err
