@@ -18,9 +18,11 @@ package cephfs
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/go-ceph/rados"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
@@ -119,75 +121,51 @@ func getSnapshotInfo(ctx context.Context, volOptions *volumeOptions, cr *util.Cr
 	return snap, nil
 }
 
-func protectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, snapID, volID volumeID) error {
+func (vo *volumeOptions) protectSnapshot(ctx context.Context, snapID, volID volumeID) error {
 	// If "snapshot-autoprotect" feature is present, The ProtectSnapshot
 	// call should be treated as a no-op.
-	if checkSubvolumeHasFeature(autoProtect, volOptions.Features) {
+	if checkSubvolumeHasFeature(autoProtect, vo.Features) {
 		return nil
 	}
-	args := []string{
-		"fs",
-		"subvolume",
-		"snapshot",
-		"protect",
-		volOptions.FsName,
-		string(volID),
-		string(snapID),
-		"--group_name",
-		volOptions.SubvolumeGroup,
-		"-m", volOptions.Monitors,
-		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.ID,
-		"--keyfile=" + cr.KeyFile,
+	fsa, err := vo.conn.GetFSAdmin()
+	if err != nil {
+		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+		return err
 	}
 
-	err := execCommandErr(
-		ctx,
-		"ceph",
-		args[:]...)
+	err = fsa.ProtectSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID),
+		string(snapID))
 	if err != nil {
-		if strings.Contains(err.Error(), snapProtectionExist) {
+		if errors.Is(err, rados.ErrObjectExists) {
 			return nil
 		}
-		util.ErrorLog(ctx, "failed to protect subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to protect subvolume snapshot %s %s in fs %s with error: %s", string(volID), string(snapID), vo.FsName, err)
 		return err
 	}
 	return nil
 }
 
-func unprotectSnapshot(ctx context.Context, volOptions *volumeOptions, cr *util.Credentials, snapID, volID volumeID) error {
+func (vo *volumeOptions) unprotectSnapshot(ctx context.Context, snapID, volID volumeID) error {
 	// If "snapshot-autoprotect" feature is present, The UnprotectSnapshot
 	// call should be treated as a no-op.
-	if checkSubvolumeHasFeature(autoProtect, volOptions.Features) {
+	if checkSubvolumeHasFeature(autoProtect, vo.Features) {
 		return nil
 	}
-	args := []string{
-		"fs",
-		"subvolume",
-		"snapshot",
-		"unprotect",
-		volOptions.FsName,
-		string(volID),
-		string(snapID),
-		"--group_name",
-		volOptions.SubvolumeGroup,
-		"-m", volOptions.Monitors,
-		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.ID,
-		"--keyfile=" + cr.KeyFile,
+	fsa, err := vo.conn.GetFSAdmin()
+	if err != nil {
+		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+		return err
 	}
 
-	err := execCommandErr(
-		ctx,
-		"ceph",
-		args[:]...)
+	err = fsa.UnprotectSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID),
+		string(snapID))
 	if err != nil {
 		// In case the snap is already unprotected we get ErrSnapProtectionExist error code
 		// in that case we are safe and we could discard this error.
-		if strings.Contains(err.Error(), snapProtectionExist) {
+		if errors.Is(err, rados.ErrObjectExists) {
 			return nil
 		}
-		util.ErrorLog(ctx, "failed to unprotect subvolume snapshot %s %s(%s) in fs %s", string(snapID), string(volID), err, volOptions.FsName)
+		util.ErrorLog(ctx, "failed to unprotect subvolume snapshot %s %s in fs %s with error: %s", string(volID), string(snapID), vo.FsName, err)
 		return err
 	}
 	return nil
