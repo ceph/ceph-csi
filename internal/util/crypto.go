@@ -51,6 +51,7 @@ const (
 // EncryptionKMS provides external Key Management System for encryption
 // passphrases storage.
 type EncryptionKMS interface {
+	Destroy()
 	GetPassphrase(key string) (string, error)
 	SavePassphrase(key, value string) error
 	DeletePassphrase(key string) error
@@ -73,6 +74,11 @@ func initSecretsKMS(secrets map[string]string) (EncryptionKMS, error) {
 		return nil, errors.New("missing encryption passphrase in secrets")
 	}
 	return SecretsKMS{passphrase: passphraseValue}, nil
+}
+
+// Destroy frees all used resources.
+func (kms SecretsKMS) Destroy() {
+	// nothing to do
 }
 
 // GetPassphrase returns passphrase from Kubernetes secrets.
