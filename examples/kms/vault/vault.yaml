@@ -40,6 +40,7 @@ spec:
       containers:
         - name: vault
           image: docker.io/library/vault:latest
+          imagePullPolicy: "IfNotPresent"
           securityContext:
             runAsUser: 100
           env:
