@@ -189,6 +189,9 @@ var _ = Describe("RBD", func() {
 			logsCSIPods("app=csi-rbdplugin-provisioner", c)
 			// log node plugin
 			logsCSIPods("app=csi-rbdplugin", c)
+
+			// log all details from the namespace where Ceph-CSI is deployed
+			framework.DumpAllNamespaceInfo(c, cephCSINamespace)
 		}
 
 		err := deleteConfigMap(rbdDirPath)

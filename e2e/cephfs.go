@@ -164,6 +164,9 @@ var _ = Describe("cephfs", func() {
 			logsCSIPods("app=csi-cephfsplugin-provisioner", c)
 			// log node plugin
 			logsCSIPods("app=csi-cephfsplugin", c)
+
+			// log all details from the namespace where Ceph-CSI is deployed
+			framework.DumpAllNamespaceInfo(c, cephCSINamespace)
 		}
 		err := deleteConfigMap(cephfsDirPath)
 		if err != nil {
