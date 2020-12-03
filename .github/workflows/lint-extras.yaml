@@ -1,0 +1,28 @@
+---
+name: lint-extras
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - "*"
+jobs:
+  lint-extras:
+    name: lint-extras
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        # yamllint disable rule:line-length
+        run: |
+           sudo apt -y install software-properties-common
+           sudo apt-add-repository ppa:brightbox/ruby-ng
+           sudo apt-get -qq update
+           sudo apt-get install ruby2.6 gem python3-pip python3-prettytable python3-setuptools python3-wheel -y
+           sudo gem install chef-utils -v 16.6.14
+           sudo gem install mdl
+           python -m pip install --user --upgrade pip
+           python -m pip install --user yamllint pylint
+      - name: lint-extras
+        run: |
+          make lint-extras
