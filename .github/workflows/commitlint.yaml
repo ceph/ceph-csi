@@ -1,0 +1,20 @@
+---
+name: commitlint
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - "*"
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: wagoid/commitlint-github-action@v1.6.0
+        with:
+          configFile: ".commitlintrc.yml"
+          helpURL: https://github.com/ceph/ceph-csi/blob/master/docs/development-guide.md#commit-messages
