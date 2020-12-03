@@ -1,0 +1,33 @@
+---
+name: gosec
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - "*"
+jobs:
+  gosec:
+    name: gosec
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+      - name: Install dependencies
+        # yamllint disable rule:line-length
+        run: |
+           curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
+           export CV=$(source build.env ; echo ${CEPH_VERSION})
+           test -z "${CV}" || export GO_TAGS="-tags=${CV}"
+           curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
+           sudo apt-add-repository "deb https://download.ceph.com/debian-${CV} $(lsb_release -sc) main"
+           sudo apt-get -qq update
+           sudo apt-get -y --allow-unauthenticated install librados-dev librbd-dev
+      - name: gosec
+        # yamllint disable rule:line-length
+        run: |
+          export GOSEC_VERSION=$(source build.env ; echo ${GOSEC_VERSION})
+          curl -sfL "https://raw.githubusercontent.com/securego/gosec/master/install.sh" | sudo sh -s -- -b $GOPATH/bin "${GOSEC_VERSION}"
+          make gosec
