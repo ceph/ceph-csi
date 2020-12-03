@@ -134,7 +134,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 	return nil
 }
 
-func cleanupCloneFromSubvolumeSnapshot(ctx context.Context, volID, cloneID volumeID, parentVolOpt *volumeOptions, cr *util.Credentials) error {
+func cleanupCloneFromSubvolumeSnapshot(ctx context.Context, volID, cloneID volumeID, parentVolOpt *volumeOptions) error {
 	// snapshot name is same as clone name as we need a name which can be
 	// identified during PVC-PVC cloning.
 	snapShotID := cloneID
