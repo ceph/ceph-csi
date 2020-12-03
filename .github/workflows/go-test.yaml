@@ -1,0 +1,30 @@
+---
+name: go-test
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - "*"
+jobs:
+  go-test:
+    name: go-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+      - name: Install dependencies
+        # yamllint disable rule:line-length
+        run: |
+           curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
+           export CV=$(source build.env ; echo ${CEPH_VERSION})
+           test -z "${CV}" || export GO_TAGS="-tags=${CV}"
+           curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
+           sudo apt-add-repository "deb https://download.ceph.com/debian-${CV} $(lsb_release -sc) main"
+           sudo apt-get -qq update
+           sudo apt-get -y --allow-unauthenticated install librados-dev librbd-dev
+      - name: go-test
+        run: |
+          make go-test TEST_COVERAGE=stdout GO_COVER_DIR=_output/
