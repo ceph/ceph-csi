@@ -31,6 +31,7 @@ RUN source /build.env \
 	ShellCheck \
 	yamllint \
 	npm \
+	diffutils \
       python3-prettytable \
       pylint \
     && dnf -y update \
