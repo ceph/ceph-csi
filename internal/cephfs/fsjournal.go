@@ -90,8 +90,7 @@ func checkVolExists(ctx context.Context,
 					err = cleanupCloneFromSubvolumeSnapshot(
 						ctx, volumeID(pvID.FsSubvolName),
 						volumeID(vid.FsSubvolName),
-						parentVolOpt,
-						cr)
+						parentVolOpt)
 					if err != nil {
 						return nil, err
 					}
@@ -118,8 +117,7 @@ func checkVolExists(ctx context.Context,
 				err = cleanupCloneFromSubvolumeSnapshot(
 					ctx, volumeID(pvID.FsSubvolName),
 					volumeID(vid.FsSubvolName),
-					parentVolOpt,
-					cr)
+					parentVolOpt)
 				if err != nil {
 					return nil, err
 				}
@@ -160,7 +158,7 @@ func checkVolExists(ctx context.Context,
 		vid.VolumeID, vid.FsSubvolName, volOptions.RequestName)
 
 	if parentVolOpt != nil && pvID != nil {
-		err = cleanupCloneFromSubvolumeSnapshot(ctx, volumeID(pvID.FsSubvolName), volumeID(vid.FsSubvolName), parentVolOpt, cr)
+		err = cleanupCloneFromSubvolumeSnapshot(ctx, volumeID(pvID.FsSubvolName), volumeID(vid.FsSubvolName), parentVolOpt)
 		if err != nil {
 			return nil, err
 		}

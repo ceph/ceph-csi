@@ -568,7 +568,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 	}()
 	snap := snapshotInfo{}
-	snap, err = doSnapshot(ctx, parentVolOptions, vid.FsSubvolName, sID.FsSnapshotName, cr)
+	snap, err = doSnapshot(ctx, parentVolOptions, vid.FsSubvolName, sID.FsSnapshotName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -583,7 +583,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}, nil
 }
 
-func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snapshotName string, cr *util.Credentials) (snapshotInfo, error) {
+func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snapshotName string) (snapshotInfo, error) {
 	volID := volumeID(subvolumeName)
 	snapID := volumeID(snapshotName)
 	snap := snapshotInfo{}
