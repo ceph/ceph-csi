@@ -61,11 +61,6 @@ jobs:
         - gem install mdl
         - pip install --user --upgrade pip
         - pip install --user yamllint
-        # install golangci-lint
-        - export GOLANGCI_VERSION=$(source build.env ; echo ${GOLANGCI_VERSION})
-        - curl -sf
-          "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh"
-          | bash -s -- -b $GOPATH/bin "${GOLANGCI_VERSION}"
         # install gosec
         - export GOSEC_VERSION=$(source build.env ; echo ${GOSEC_VERSION})
         - curl -sfL
@@ -86,7 +81,6 @@ jobs:
         # yamllint enable rule:line-length
       script:
         - commitlint-travis
-        - make go-lint
         - make lint-extras
         - make gosec
         - make go-test TEST_COVERAGE=stdout GO_COVER_DIR=_output/
