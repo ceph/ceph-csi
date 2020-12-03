@@ -65,17 +65,12 @@ jobs:
         - export HELM_VERSION=$(source build.env ; echo ${HELM_VERSION})
         - curl -L https://git.io/get_helm.sh
           | bash -s -- -v "${HELM_VERSION}"
-        # yamllint disable rule:line-length
-        - mkdir -p /opt/commitlint && pushd /opt/commitlint
-          && npm init -y && npm install --save-dev @commitlint/travis-cli && popd
-        - export PATH=/opt/commitlint/node_modules/.bin:$PATH
         # install pylint and prettytable.
         # target python script requires python3 dependencies.
         - sudo apt install python3-pip python3-prettytable python3-setuptools python3-wheel -y
         - pip3 install pylint
         # yamllint enable rule:line-length
       script:
-        - commitlint-travis
         - make lint-extras
         - make go-test TEST_COVERAGE=stdout GO_COVER_DIR=_output/
         - make mod-check
