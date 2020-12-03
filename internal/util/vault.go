@@ -167,7 +167,6 @@ func (vc *vaultConnection) initConnection(kmsID string, config map[string]interf
 		if err != nil {
 			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
 		}
-		// TODO: delete f.Name() when vaultConnection is destroyed
 	}
 
 	// update the existing config only if no config is available yet
@@ -199,6 +198,18 @@ func (vc *vaultConnection) connectVault() error {
 	vc.secrets = v
 
 	return nil
+}
+
+// Destroy frees allocated resources. For a vaultConnection that means removing
+// the created temporary files.
+func (vc *vaultConnection) Destroy() {
+	if vc.vaultConfig != nil {
+		tmpFile, ok := vc.vaultConfig[api.EnvVaultCACert]
+		if ok {
+			// ignore error on failure to remove tmpfile (gosec complains)
+			_ = os.Remove(tmpFile.(string))
+		}
+	}
 }
 
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.

@@ -169,6 +169,9 @@ func (rv *rbdVolume) Destroy() {
 	if rv.conn != nil {
 		rv.conn.Destroy()
 	}
+	if rv.KMS != nil {
+		rv.KMS.Destroy()
+	}
 }
 
 // String returns the image-spec (pool/{namespace/}image) format of the image.
