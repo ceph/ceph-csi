@@ -73,7 +73,6 @@ jobs:
       script:
         - make lint-extras
         - make go-test TEST_COVERAGE=stdout GO_COVER_DIR=_output/
-        - make mod-check
 
     - stage: deploy
       name: push artifacts to repositories
