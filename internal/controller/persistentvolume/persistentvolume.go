@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	ctrl "github.com/ceph/ceph-csi/internal/controller"
 	"github.com/ceph/ceph-csi/internal/rbd"
@@ -94,6 +95,18 @@ func (r *ReconcilePersistentVolume) getCredentials(name, namespace string) (map[
 	return credentials, nil
 }
 
+func checkStaticVolume(staticVol string) (bool, error) {
+	static := false
+	var err error
+	if staticVol != "" {
+		static, err = strconv.ParseBool(staticVol)
+		if err != nil {
+			return false, fmt.Errorf("failed to parse preProvisionedVolume: %w", err)
+		}
+	}
+	return static, nil
+}
+
 // reconcilePV will extract the image details from the pv spec and regenerates
 // the omap data.
 func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
@@ -109,7 +122,15 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 		volumeHandler := pv.Spec.CSI.VolumeHandle
 		secretName := ""
 		secretNamespace := ""
-
+		// check static volume
+		static, err := checkStaticVolume(pv.Spec.CSI.VolumeAttributes["staticVolume"])
+		if err != nil {
+			return err
+		}
+		// if the volume is static, dont generate OMAP data
+		if static {
+			return nil
+		}
 		if pv.Spec.CSI.ControllerExpandSecretRef != nil {
 			secretName = pv.Spec.CSI.ControllerExpandSecretRef.Name
 			secretNamespace = pv.Spec.CSI.ControllerExpandSecretRef.Namespace
