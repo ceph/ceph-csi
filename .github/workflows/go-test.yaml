@@ -1,0 +1,15 @@
+---
+name: go-test
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - '*'
+jobs:
+  go-test:
+    name: go-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: go-test
+        run: CONTAINER_CMD=docker make containerized-test TARGET=go-test

@@ -16,82 +16,17 @@ language: go
 branches:
   only:
     - master
-
-env:
-  global:
-    - GO111MODULE=on
-    - KUBECONFIG=$HOME/.kube/config
-    # set CEPH_CSI_RUN_ALL_TESTS to non-empty to run all tests
-    - CEPH_CSI_RUN_ALL_TESTS=true
-
-before_install:
-  - export GOLANG_VERSION=$(source build.env ; echo ${GOLANG_VERSION})
-  - gimme ${GOLANG_VERSION}
-  - source ~/.gimme/envs/go${GOLANG_VERSION}.env
-  - mkdir -p $GOPATH/bin
-  # csi release to use for upgrade testing
-  - export UPGRADE_VERSION=$(source build.env ; echo ${UPGRADE_VERSION})
-
-before_script:
-  - export CV=$(source build.env ; echo ${CEPH_VERSION})
-  - test -z "${CV}" || export GO_TAGS="-tags=${CV}"
-  - curl https://download.ceph.com/keys/release.asc | sudo apt-key add -
-  - sudo apt-add-repository
-    "deb https://download.ceph.com/debian-${CV} $(lsb_release -sc) main"
-  # yamllint enable rule:line-length
-  - sudo apt-get -qq update
-  # only the arm64 fallback repo is unsigned and needs --allow-unauthenticated
-  - sudo apt-get -y --allow-unauthenticated install librados-dev librbd-dev
-  - sudo apt-get -y install conntrack
-
-# Two stages for testing, each stage runs its jobs in parallel, but stages are
-# run after each other, unless the last stage fails.
 # Only run the deploy stage on push (not pull_request) events.
 stages:
-  - build testing
-  - upgrade testing
   - name: deploy
     if: type = push
 
 jobs:
   include:
-    - stage: build testing
-      name: static-check-make
+    - stage: deploy
+      name: push artifacts to repositories
       install:
-        - gem install mdl
-        - pip install --user --upgrade pip
-        - pip install --user yamllint
-        # install golangci-lint
-        - export GOLANGCI_VERSION=$(source build.env ; echo ${GOLANGCI_VERSION})
-        - curl -sf
-          "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh"
-          | bash -s -- -b $GOPATH/bin "${GOLANGCI_VERSION}"
-        # install gosec
-        - export GOSEC_VERSION=$(source build.env ; echo ${GOSEC_VERSION})
-        - curl -sfL
-          "https://raw.githubusercontent.com/securego/gosec/master/install.sh"
-          | sh -s -- -b $GOPATH/bin "${GOSEC_VERSION}"
-        # install helm for helm lint
         - export HELM_VERSION=$(source build.env ; echo ${HELM_VERSION})
         - curl -L https://git.io/get_helm.sh
           | bash -s -- -v "${HELM_VERSION}"
-        # yamllint disable rule:line-length
-        - mkdir -p /opt/commitlint && pushd /opt/commitlint
-          && npm init -y && npm install --save-dev @commitlint/travis-cli && popd
-        - export PATH=/opt/commitlint/node_modules/.bin:$PATH
-        # install pylint and prettytable.
-        # target python script requires python3 dependencies.
-        - sudo apt install python3-pip python3-prettytable python3-setuptools python3-wheel -y
-        - pip3 install pylint
-        # yamllint enable rule:line-length
-      script:
-        - commitlint-travis
-        - make go-lint
-        - make lint-extras
-        - make gosec
-        - make go-test TEST_COVERAGE=stdout GO_COVER_DIR=_output/
-        - make mod-check
-
-    - stage: deploy
-      name: push artifacts to repositories
       script: ./deploy.sh
