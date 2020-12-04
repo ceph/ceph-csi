@@ -570,6 +570,15 @@ func RegenerateJournal(imageName, volumeID, pool, journalPool, requestName strin
 		return err
 	}
 
+	defer func() {
+		if err != nil {
+			undoErr := j.UndoReservation(ctx, rbdVol.JournalPool, rbdVol.Pool,
+				rbdVol.RbdImageName, rbdVol.RequestName)
+			if undoErr != nil {
+				util.ErrorLog(ctx, "failed to undo reservation %s: %v", rbdVol, undoErr)
+			}
+		}
+	}()
 	rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imagePoolID, rbdVol.Pool,
 		rbdVol.ClusterID, rbdVol.ReservedID, volIDVersion)
 	if err != nil {
