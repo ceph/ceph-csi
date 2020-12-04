@@ -494,15 +494,8 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 			}
 		}
 	}()
-	err = rbdVol.getImageID()
+	err = rbdVol.storeImageID(ctx, j)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get volume id %s: %v", rbdVol, err)
-		return status.Error(codes.Internal, err.Error())
-	}
-
-	err = j.StoreImageID(ctx, rbdVol.JournalPool, rbdVol.ReservedID, rbdVol.ImageID)
-	if err != nil {
-		util.ErrorLog(ctx, "failed to reserve volume %s: %v", rbdVol, err)
 		return status.Error(codes.Internal, err.Error())
 	}
 

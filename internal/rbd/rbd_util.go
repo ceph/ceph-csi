@@ -752,14 +752,8 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	}
 
 	if rbdVol.ImageID == "" {
-		err = rbdVol.getImageID()
+		err = rbdVol.storeImageID(ctx, j)
 		if err != nil {
-			util.ErrorLog(ctx, "failed to get image id %s: %v", rbdVol, err)
-			return rbdVol, err
-		}
-		err = j.StoreImageID(ctx, rbdVol.JournalPool, rbdVol.ReservedID, rbdVol.ImageID)
-		if err != nil {
-			util.ErrorLog(ctx, "failed to store volume id %s: %v", rbdVol, err)
 			return rbdVol, err
 		}
 	}
