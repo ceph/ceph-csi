@@ -81,7 +81,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-func (r *ReconcilePersistentVolume) getCredentials(name, namespace string) (map[string]string, error) {
+func (r *ReconcilePersistentVolume) getCredentials(name, namespace string) (*util.Credentials, error) {
+	var cr *util.Credentials
+
+	if name == "" || namespace == "" {
+		errStr := "secret name or secret namespace is empty"
+		util.ErrorLogMsg(errStr)
+		return nil, errors.New(errStr)
+	}
 	secret := &corev1.Secret{}
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, secret)
 	if err != nil {
@@ -92,12 +99,20 @@ func (r *ReconcilePersistentVolume) getCredentials(name, namespace string) (map[
 	for key, value := range secret.Data {
 		credentials[key] = string(value)
 	}
-	return credentials, nil
+
+	cr, err = util.NewUserCredentials(credentials)
+	if err != nil {
+		util.ErrorLogMsg("failed to get user credentials %s", err)
+		return nil, err
+	}
+	return cr, nil
 }
 
-func checkStaticVolume(staticVol string) (bool, error) {
+func checkStaticVolume(pv *corev1.PersistentVolume) (bool, error) {
 	static := false
 	var err error
+
+	staticVol := pv.Spec.CSI.VolumeAttributes["staticVolume"]
 	if staticVol != "" {
 		static, err = strconv.ParseBool(staticVol)
 		if err != nil {
@@ -123,7 +138,7 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 		secretName := ""
 		secretNamespace := ""
 		// check static volume
-		static, err := checkStaticVolume(pv.Spec.CSI.VolumeAttributes["staticVolume"])
+		static, err := checkStaticVolume(pv)
 		if err != nil {
 			return err
 		}
@@ -138,23 +153,14 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 			secretName = pv.Spec.CSI.NodeStageSecretRef.Name
 			secretNamespace = pv.Spec.CSI.NodeStageSecretRef.Namespace
 		}
-		if secretName == "" || secretNamespace == "" {
-			errStr := "secretname or secret namespace is empty"
-			util.ErrorLogMsg(errStr)
-			return errors.New(errStr)
-		}
 
-		secrets, err := r.getCredentials(secretName, secretNamespace)
+		cr, err := r.getCredentials(secretName, secretNamespace)
 		if err != nil {
-			util.ErrorLogMsg("failed to get secrets %s", err)
-			return err
-		}
-		cr, err := util.NewUserCredentials(secrets)
-		if err != nil {
-			util.ErrorLogMsg("failed to get user credentials %s", err)
+			util.ErrorLogMsg("failed to get credentials %s", err)
 			return err
 		}
 		defer cr.DeleteCredentials()
+
 		err = rbd.RegenerateJournal(imageName, volumeHandler, pool, journalPool, requestName, cr)
 		if err != nil {
 			util.ErrorLogMsg("failed to regenerate journal %s", err)
