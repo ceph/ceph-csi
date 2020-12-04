@@ -559,6 +559,8 @@ func RegenerateJournal(imageName, volumeID, pool, journalPool, requestName strin
 			util.ErrorLog(ctx, "failed to add UUID mapping %s: %v", rbdVol, err)
 			return err
 		}
+		// As the omap already exists for this image ID return nil.
+		return nil
 	}
 
 	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
