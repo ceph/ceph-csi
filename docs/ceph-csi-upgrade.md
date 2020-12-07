@@ -7,6 +7,7 @@
   - [Upgrading from v2.0 to v2.1](#upgrading-from-v20-to-v21)
   - [Upgrading from v2.1 to v3.0](#upgrading-from-v21-to-v30)
   - [Upgrading from v3.0 to v3.1](#upgrading-from-v30-to-v31)
+  - [Upgrading from v3.1 to v3.2](#upgrading-from-v31-to-v32)
     - [Upgrading CephFS](#upgrading-cephfs)
       - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
         - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -24,6 +25,7 @@
         - [4.2 Update the RBD Nodeplugin daemonset](#42-update-the-rbd-nodeplugin-daemonset)
         - [4.3 Manual deletion of RBD Nodeplugin daemonset pods](#43-manual-deletion-of-rbd-nodeplugin-daemonset-pods)
     - [Handling node reboot hangs due to existing network mounts](#handling-node-reboot-hangs-due-to-existing-network-mounts)
+    - [CSI Sidecar containers consideration](#csi-sidecar-containers-consideration)
 
 ## Pre-upgrade considerations
 
@@ -76,6 +78,11 @@ to upgrade from cephcsi v2.1 to v3.0
 
 ## Upgrading from v3.0 to v3.1
 
+Refer [upgrade-from-v3.0-v3.1](https://github.com/ceph/ceph-csi/blob/v3.1.2/docs/ceph-csi-upgrade.md)
+to upgrade from cephcsi v3.0 to v3.1
+
+## Upgrading from v3.1 to v3.2
+
 **Ceph-csi releases from master are expressly unsupported.** It is strongly
 recommended that you use [official
 releases](https://github.com/ceph/ceph-csi/releases) of Ceph-csi. Unreleased
@@ -84,12 +91,12 @@ that will not be supported in the official releases. Builds from the master
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-git checkout v3.1.0 tag
+git checkout v3.2.0 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.1.0
+git checkout v3.2.0
 ```
 
 **Note:** While upgrading please Ignore warning messages from kubectl output
@@ -332,7 +339,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded RBD csi from v3.0 to v3.1
+we have successfully upgraded RBD csi from v3.1 to v3.2
 
 ### Handling node reboot hangs due to existing network mounts
 
@@ -345,3 +352,15 @@ reboot.
 It is suggested to upgrade to the latest ceph-csi release and drain application
 pods on all the nodes so that new mount option `_netdev` can be added to all
 the mountpoints.
+
+### CSI Sidecar containers consideration
+
+With 3.2.0 version of ceph-csi we have updated the versions of CSI sidecar
+containers. These versions are generally compatible with kubernetes
+version>=1.17 but based on the kubernetes version you are using, you need to
+update the templates with required sidecar versions.
+You also might need to update or remove a few arguments based on the sidecar
+versions you are using.
+Refer
+[sidecar-compatibility](https://kubernetes-csi.github.io/docs/sidecar-containers.html)
+for more details.
