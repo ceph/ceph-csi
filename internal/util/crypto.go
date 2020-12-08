@@ -150,11 +150,11 @@ func GetCryptoPassphrase(ctx context.Context, volumeID string, kms EncryptionKMS
 			volumeID)
 		passphrase, err = generateNewEncryptionPassphrase()
 		if err != nil {
-			return "", fmt.Errorf("failed to generate passphrase for %s: %s", volumeID, err)
+			return "", fmt.Errorf("failed to generate passphrase for %s: %w", volumeID, err)
 		}
 		err = kms.SavePassphrase(volumeID, passphrase)
 		if err != nil {
-			return "", fmt.Errorf("failed to save the passphrase for %s: %s", volumeID, err)
+			return "", fmt.Errorf("failed to save the passphrase for %s: %w", volumeID, err)
 		}
 		return passphrase, nil
 	}
