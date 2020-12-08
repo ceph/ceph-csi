@@ -92,7 +92,7 @@ func (r *ReconcilePersistentVolume) getCredentials(name, namespace string) (*uti
 	secret := &corev1.Secret{}
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, secret)
 	if err != nil {
-		return nil, fmt.Errorf("error getting secret %s in namespace %s: %v", name, namespace, err)
+		return nil, fmt.Errorf("error getting secret %s in namespace %s: %w", name, namespace, err)
 	}
 
 	credentials := map[string]string{}
