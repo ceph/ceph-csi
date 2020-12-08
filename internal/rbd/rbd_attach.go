@@ -330,7 +330,7 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 			util.TraceLog(ctx, "image or device spec (%s) not mapped", imageOrDeviceSpec)
 			return nil
 		}
-		return fmt.Errorf("rbd: unmap for spec (%s) failed (%v): (%s)", imageOrDeviceSpec, err, stderr)
+		return fmt.Errorf("rbd: unmap for spec (%s) failed (%w): (%s)", imageOrDeviceSpec, err, stderr)
 	}
 
 	return nil
