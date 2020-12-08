@@ -87,7 +87,7 @@ func rbdGetDeviceList(ctx context.Context, accessType string) ([]rbdDeviceInfo, 
 
 	stdout, _, err := util.ExecCommand(ctx, rbd, "device", "list", "--format="+"json", "--device-type", accessType)
 	if err != nil {
-		return nil, fmt.Errorf("error getting device list from rbd for devices of type (%s): (%v)", accessType, err)
+		return nil, fmt.Errorf("error getting device list from rbd for devices of type (%s): %w", accessType, err)
 	}
 
 	if accessType == accessTypeKRbd {
@@ -96,7 +96,7 @@ func rbdGetDeviceList(ctx context.Context, accessType string) ([]rbdDeviceInfo, 
 		err = json.Unmarshal([]byte(stdout), &nbdDeviceList)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error to parse JSON output of device list for devices of type (%s): (%v)", accessType, err)
+		return nil, fmt.Errorf("error to parse JSON output of device list for devices of type (%s): %w", accessType, err)
 	}
 
 	// convert output to a rbdDeviceInfo list for consumers
