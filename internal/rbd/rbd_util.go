@@ -1097,13 +1097,13 @@ func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
 
 	encodedBytes, err := json.Marshal(imgMeta)
 	if err != nil {
-		return fmt.Errorf("failed to marshall JSON image metadata for image (%s): (%v)", volOptions, err)
+		return fmt.Errorf("failed to marshall JSON image metadata for image (%s): %w", volOptions, err)
 	}
 
 	fPath := filepath.Join(path, stashFileName)
 	err = ioutil.WriteFile(fPath, encodedBytes, 0600)
 	if err != nil {
-		return fmt.Errorf("failed to stash JSON image metadata for image (%s) at path (%s): (%v)", volOptions, fPath, err)
+		return fmt.Errorf("failed to stash JSON image metadata for image (%s) at path (%s): %w", volOptions, fPath, err)
 	}
 
 	return nil
