@@ -1022,7 +1022,7 @@ func (rv *rbdVolume) updateVolWithImageInfo() error {
 	if stdout != "" {
 		err = json.Unmarshal([]byte(stdout), &imgInfo)
 		if err != nil {
-			return fmt.Errorf("unmarshal failed: %+v.  raw buffer response: %s", err, stdout)
+			return fmt.Errorf("unmarshal failed (%w), raw buffer response: %s", err, stdout)
 		}
 		rv.Primary = imgInfo.Mirroring.Primary
 	}
