@@ -505,6 +505,10 @@ func oneReplicaDeployYaml(template string) string {
 	return re.ReplaceAllString(template, `$1 1`)
 }
 
+func enableTopologyInTemplate(data string) string {
+	return strings.ReplaceAll(data, "--feature-gates=Topology=false", "--feature-gates=Topology=true")
+}
+
 func validatePVCClone(sourcePvcPath, clonePvcPath, clonePvcAppPath string, f *framework.Framework) {
 	var wg sync.WaitGroup
 	totalCount := 10
