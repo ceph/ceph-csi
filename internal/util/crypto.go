@@ -137,8 +137,11 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 		return nil, fmt.Errorf("encryption KMS configuration for %s is missing KMS type", kmsID)
 	}
 
-	if kmsType == "vault" {
+	switch kmsType {
+	case "vault":
 		return InitVaultKMS(kmsID, kmsConfig, secrets)
+	case kmsTypeVaultTokens:
+		return InitVaultTokensKMS(tenant, kmsID, kmsConfig, secrets)
 	}
 	return nil, fmt.Errorf("unknown encryption KMS type %s", kmsType)
 }
