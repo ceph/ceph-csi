@@ -1117,7 +1117,7 @@ func lookupRBDImageMetadataStash(path string) (rbdImageMetadataStash, error) {
 	encodedBytes, err := ioutil.ReadFile(fPath) // #nosec - intended reading from fPath
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return imgMeta, fmt.Errorf("failed to read stashed JSON image metadata from path (%s): (%v)", fPath, err)
+			return imgMeta, fmt.Errorf("failed to read stashed JSON image metadata from path (%s): %w", fPath, err)
 		}
 
 		return imgMeta, util.JoinErrors(ErrMissingStash, err)
@@ -1125,7 +1125,7 @@ func lookupRBDImageMetadataStash(path string) (rbdImageMetadataStash, error) {
 
 	err = json.Unmarshal(encodedBytes, &imgMeta)
 	if err != nil {
-		return imgMeta, fmt.Errorf("failed to unmarshall stashed JSON image metadata from path (%s): (%v)", fPath, err)
+		return imgMeta, fmt.Errorf("failed to unmarshall stashed JSON image metadata from path (%s): %w", fPath, err)
 	}
 
 	return imgMeta, nil
