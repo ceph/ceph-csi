@@ -1196,7 +1196,7 @@ func (rv *rbdVolume) checkRbdImageEncrypted(ctx context.Context) (string, error)
 func (rv *rbdVolume) ensureEncryptionMetadataSet(status string) error {
 	err := rv.SetMetadata(encryptionMetaKey, status)
 	if err != nil {
-		return fmt.Errorf("failed to save encryption status for %s: %v", rv, err)
+		return fmt.Errorf("failed to save encryption status for %s: %w", rv, err)
 	}
 
 	return nil
