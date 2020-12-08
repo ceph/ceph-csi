@@ -106,6 +106,11 @@ func setConfigString(option *string, config map[string]interface{}, key string) 
 	return nil
 }
 
+// initConnection sets VAULT_* environment variables in the vc.vaultConfig map,
+// these settings will be used when connecting to the Vault service with
+// vc.connectVault().
+//
+// nolint:gocyclo // iterating through many config options, not complex at all.
 func (vc *vaultConnection) initConnection(kmsID string, config map[string]interface{}, secrets map[string]string) error {
 	vaultConfig := make(map[string]interface{})
 	keyContext := make(map[string]string)
@@ -125,6 +130,26 @@ func (vc *vaultConnection) initConnection(kmsID string, config map[string]interf
 		vaultConfig[api.EnvVaultAddress] = vaultAddress
 	}
 	// default: !firstInit
+
+	vaultBackendPath := "" // optional
+	err = setConfigString(&vaultBackendPath, config, "vaultBackendPath")
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	}
+	// set the option if the value was not invalid
+	if !errors.Is(err, errConfigOptionMissing) {
+		vaultConfig[vault.VaultBackendPathKey] = vaultBackendPath
+	}
+
+	vaultTLSServerName := "" // optional
+	err = setConfigString(&vaultTLSServerName, config, "vaultTLSServerName")
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	}
+	// set the option if the value was not invalid
+	if !errors.Is(err, errConfigOptionMissing) {
+		vaultConfig[api.EnvVaultTLSServerName] = vaultTLSServerName
+	}
 
 	vaultNamespace := vaultDefaultNamespace // optional
 	err = setConfigString(&vaultNamespace, config, "vaultNamespace")
