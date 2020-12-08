@@ -50,6 +50,7 @@ spec:
             - "--retry-interval-start=500ms"
             - "--leader-election=true"
             - "--feature-gates=Topology=true"
+            - "--default-fstype=ext4"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock

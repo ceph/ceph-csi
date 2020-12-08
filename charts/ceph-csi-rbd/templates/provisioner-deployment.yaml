@@ -55,6 +55,7 @@ spec:
 {{- if .Values.topology.enabled }}
             - "--feature-gates=Topology=true"
 {{- end }}
+            - "--default-fstype=ext4"
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
