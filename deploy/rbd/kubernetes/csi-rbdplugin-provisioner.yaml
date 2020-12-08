@@ -51,6 +51,8 @@ spec:
             - "--leader-election=true"
             #  set it to true to use topology based provisioning
             - "--feature-gates=Topology=false"
+            # if fstype is not specified in storageclass, ext4 is default
+            - "--default-fstype=ext4"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
