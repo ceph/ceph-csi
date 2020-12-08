@@ -71,13 +71,13 @@ func readClusterInfo(pathToConfig, clusterID string) (*ClusterInfo, error) {
 	// #nosec
 	content, err := ioutil.ReadFile(pathToConfig)
 	if err != nil {
-		err = fmt.Errorf("error fetching configuration for cluster ID (%s). (%s)", clusterID, err)
+		err = fmt.Errorf("error fetching configuration for cluster ID %q: %w", clusterID, err)
 		return nil, err
 	}
 
 	err = json.Unmarshal(content, &config)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal failed: %v. raw buffer response: %s",
+		return nil, fmt.Errorf("unmarshal failed (%w), raw buffer response: %s",
 			err, string(content))
 	}
 
@@ -87,7 +87,7 @@ func readClusterInfo(pathToConfig, clusterID string) (*ClusterInfo, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("missing configuration for cluster ID (%s)", clusterID)
+	return nil, fmt.Errorf("missing configuration for cluster ID %q", clusterID)
 }
 
 // Mons returns a comma separated MON list from the csi config for the given clusterID.
