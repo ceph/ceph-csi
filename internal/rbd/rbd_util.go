@@ -1135,7 +1135,7 @@ func lookupRBDImageMetadataStash(path string) (rbdImageMetadataStash, error) {
 func cleanupRBDImageMetadataStash(path string) error {
 	fPath := filepath.Join(path, stashFileName)
 	if err := os.Remove(fPath); err != nil {
-		return fmt.Errorf("failed to cleanup stashed JSON data (%s): (%v)", fPath, err)
+		return fmt.Errorf("failed to cleanup stashed JSON data (%s): %w", fPath, err)
 	}
 
 	return nil
