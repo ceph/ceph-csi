@@ -243,13 +243,13 @@ func (m *kernelMounter) name() string { return "Ceph kernel client" }
 func bindMount(ctx context.Context, from, to string, readOnly bool, mntOptions []string) error {
 	mntOptionSli := strings.Join(mntOptions, ",")
 	if err := execCommandErr(ctx, "mount", "-o", mntOptionSli, from, to); err != nil {
-		return fmt.Errorf("failed to bind-mount %s to %s: %v", from, to, err)
+		return fmt.Errorf("failed to bind-mount %s to %s: %w", from, to, err)
 	}
 
 	if readOnly {
 		mntOptionSli = util.MountOptionsAdd(mntOptionSli, "remount")
 		if err := execCommandErr(ctx, "mount", "-o", mntOptionSli, to); err != nil {
-			return fmt.Errorf("failed read-only remount of %s: %v", to, err)
+			return fmt.Errorf("failed read-only remount of %s: %w", to, err)
 		}
 	}
 
