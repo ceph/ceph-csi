@@ -202,11 +202,11 @@ func (kms *VaultKMS) GetPassphrase(key string) (string, error) {
 
 	data, ok := s["data"].(map[string]interface{})
 	if !ok {
-		return "", fmt.Errorf("failed parsing data for get passphrase request for %s", key)
+		return "", fmt.Errorf("failed parsing data for get passphrase request for %q", key)
 	}
 	passphrase, ok := data["passphrase"].(string)
 	if !ok {
-		return "", fmt.Errorf("failed parsing passphrase for get passphrase request for %s", key)
+		return "", fmt.Errorf("failed parsing passphrase for get passphrase request for %q", key)
 	}
 
 	return passphrase, nil
