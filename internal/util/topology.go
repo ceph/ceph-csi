@@ -35,7 +35,7 @@ func k8sGetNodeLabels(nodeName string) (map[string]string, error) {
 	client := NewK8sClient()
 	node, err := client.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get node (%s) information : %v", nodeName, err)
+		return nil, fmt.Errorf("failed to get node %q information: %w", nodeName, err)
 	}
 
 	return node.GetLabels(), nil
