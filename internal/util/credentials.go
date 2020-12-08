@@ -42,7 +42,7 @@ type Credentials struct {
 func storeKey(key string) (string, error) {
 	tmpfile, err := ioutil.TempFile(tmpKeyFileLocation, tmpKeyFileNamePrefix)
 	if err != nil {
-		return "", fmt.Errorf("error creating a temporary keyfile (%s)", err)
+		return "", fmt.Errorf("error creating a temporary keyfile: %w", err)
 	}
 	defer func() {
 		if err != nil {
@@ -52,17 +52,17 @@ func storeKey(key string) (string, error) {
 	}()
 
 	if _, err = tmpfile.Write([]byte(key)); err != nil {
-		return "", fmt.Errorf("error writing key to temporary keyfile (%s)", err)
+		return "", fmt.Errorf("error writing key to temporary keyfile: %w", err)
 	}
 
 	keyFile := tmpfile.Name()
 	if keyFile == "" {
-		err = fmt.Errorf("error reading temporary filename for key (%s)", err)
+		err = fmt.Errorf("error reading temporary filename for key: %w", err)
 		return "", err
 	}
 
 	if err = tmpfile.Close(); err != nil {
-		return "", fmt.Errorf("error closing temporary filename (%s)", err)
+		return "", fmt.Errorf("error closing temporary filename: %w", err)
 	}
 
 	return keyFile, nil
