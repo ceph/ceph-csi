@@ -735,7 +735,7 @@ func (ns *NodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 	resizer := resizefs.NewResizeFs(diskMounter)
 	ok, err := resizer.Resize(devicePath, volumePath)
 	if !ok {
-		return nil, fmt.Errorf("rbd: resize failed on path %s, error: %v", req.GetVolumePath(), err)
+		return nil, status.Errorf(codes.Internal, "rbd: resize failed on path %s, error: %v", req.GetVolumePath(), err)
 	}
 	return &csi.NodeExpandVolumeResponse{}, nil
 }
