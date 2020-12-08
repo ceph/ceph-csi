@@ -71,6 +71,7 @@ func createORDeleteRbdResouces(action string) {
 		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdProvisioner, err)
 	}
 	data = oneReplicaDeployYaml(data)
+	data = enableTopologyInTemplate(data)
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Failf("failed to %s rbd provisioner with error %v", action, err)
