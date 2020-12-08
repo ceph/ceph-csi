@@ -796,14 +796,14 @@ func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rb
 		var existingFormat string
 		existingFormat, err = diskMounter.GetDiskFormat(devicePath)
 		if err != nil {
-			return "", fmt.Errorf("failed to get disk format for path %s, error: %v", devicePath, err)
+			return "", fmt.Errorf("failed to get disk format for path %s: %w", devicePath, err)
 		}
 
 		switch existingFormat {
 		case "":
 			err = encryptDevice(ctx, volOptions, devicePath)
 			if err != nil {
-				return "", fmt.Errorf("failed to encrypt rbd image %s: %v", imageSpec, err)
+				return "", fmt.Errorf("failed to encrypt rbd image %s: %w", imageSpec, err)
 			}
 		case "crypt":
 			util.WarningLog(ctx, "rbd image %s is encrypted, but encryption state was not updated",
