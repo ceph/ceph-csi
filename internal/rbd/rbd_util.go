@@ -828,7 +828,7 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 			kmsID := volOptions["encryptionKMSID"]
 			rbdVol.KMS, err = util.GetKMS(kmsID, credentials)
 			if err != nil {
-				return nil, fmt.Errorf("invalid encryption kms configuration: %s", err)
+				return nil, fmt.Errorf("invalid encryption kms configuration: %w", err)
 			}
 		}
 	}
