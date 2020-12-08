@@ -49,7 +49,8 @@ spec:
             - "--timeout=150s"
             - "--retry-interval-start=500ms"
             - "--leader-election=true"
-            - "--feature-gates=Topology=true"
+            #  set it to true to use topology based provisioning
+            - "--feature-gates=Topology=false"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
