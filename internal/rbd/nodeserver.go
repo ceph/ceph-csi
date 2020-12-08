@@ -838,7 +838,7 @@ func encryptDevice(ctx context.Context, rbdVol *rbdVolume, devicePath string) er
 	}
 
 	if err = util.EncryptVolume(ctx, devicePath, passphrase); err != nil {
-		err = fmt.Errorf("failed to encrypt volume %s: %v", rbdVol, err)
+		err = fmt.Errorf("failed to encrypt volume %s: %w", rbdVol, err)
 		util.ErrorLog(ctx, err.Error())
 		return err
 	}
