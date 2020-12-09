@@ -2,11 +2,12 @@
 
 # shellcheck source=scripts/build_step.inc.sh
 source "$(dirname "${0}")/scripts/build_step.inc.sh"
+source "$(dirname "${0}")/build.env"
 
 push_helm_charts() {
 	PACKAGE=$1
 	CHARTDIR=$2
-	VERSION=${ENV_CSI_IMAGE_VERSION//v/} # Set version (without v prefix)
+	VERSION=${CSI_IMAGE_VERSION//v/} # Set version (without v prefix)
 
 	# update information in Chart.yaml if the branch is not master
 	if [ "$TRAVIS_BRANCH" != "master" ]; then
