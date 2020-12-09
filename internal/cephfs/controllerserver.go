@@ -55,8 +55,7 @@ func (cs *ControllerServer) createBackingVolume(
 
 	vID,
 	pvID *volumeIdentifier,
-	sID *snapshotIdentifier,
-	cr *util.Credentials) error {
+	sID *snapshotIdentifier) error {
 	var err error
 	if sID != nil {
 		if err = cs.OperationLocks.GetRestoreLock(sID.SnapshotID); err != nil {
@@ -65,7 +64,7 @@ func (cs *ControllerServer) createBackingVolume(
 		}
 		defer cs.OperationLocks.ReleaseRestoreLock(sID.SnapshotID)
 
-		err = createCloneFromSnapshot(ctx, parentVolOpt, volOptions, vID, sID, cr)
+		err = createCloneFromSnapshot(ctx, parentVolOpt, volOptions, vID, sID)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to create clone from snapshot %s: %v", sID.FsSnapshotName, err)
 			return err
@@ -78,7 +77,7 @@ func (cs *ControllerServer) createBackingVolume(
 			return status.Error(codes.Aborted, err.Error())
 		}
 		defer cs.OperationLocks.ReleaseCloneLock(pvID.VolumeID)
-		err = createCloneFromSubvolume(ctx, volumeID(pvID.FsSubvolName), volumeID(vID.FsSubvolName), volOptions, parentVolOpt, cr)
+		err = createCloneFromSubvolume(ctx, volumeID(pvID.FsSubvolName), volumeID(vID.FsSubvolName), volOptions, parentVolOpt)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to create clone from subvolume %s: %v", volumeID(pvID.FsSubvolName), err)
 			return err
@@ -188,7 +187,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			// explicitly
 			err = volOptions.resizeVolume(ctx, volumeID(vID.FsSubvolName), volOptions.Size)
 			if err != nil {
-				purgeErr := volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, false)
+				purgeErr := volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), false)
 				if purgeErr != nil {
 					util.ErrorLog(ctx, "failed to delete volume %s: %v", requestName, purgeErr)
 					// All errors other than ErrVolumeNotFound should return an error back to the caller
@@ -244,7 +243,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}()
 
 	// Create a volume
-	err = cs.createBackingVolume(ctx, volOptions, parentVol, vID, pvID, sID, cr)
+	err = cs.createBackingVolume(ctx, volOptions, parentVol, vID, pvID, sID)
 	if err != nil {
 		if isCloneRetryError(err) {
 			return nil, status.Error(codes.Aborted, err.Error())
@@ -349,7 +348,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	defer cr.DeleteCredentials()
 
-	if err = volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, false); err != nil {
+	if err = volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), false); err != nil {
 		util.ErrorLog(ctx, "failed to delete volume %s: %v", volID, err)
 		if errors.Is(err, ErrVolumeHasSnapshots) {
 			return nil, status.Error(codes.FailedPrecondition, err.Error())
