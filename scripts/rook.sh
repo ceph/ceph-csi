@@ -66,6 +66,10 @@ kubectl_retry() {
 	echo "kubectl_retry ${*} failed, will retry in ${KUBECTL_RETRY_DELAY} seconds"
 
         sleep ${KUBECTL_RETRY_DELAY}
+
+	# reset ret so that a next working kubectl does not cause a non-zero
+	# return of the function
+        ret=0
     done
 
     # write output so that calling functions can consume it
