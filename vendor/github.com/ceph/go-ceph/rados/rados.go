@@ -25,6 +25,33 @@ const (
 	RadosAllNamespaces = AllNamespaces
 )
 
+// OpFlags are flags that can be set on a per-op basis.
+type OpFlags uint
+
+const (
+	// OpFlagNone can be use to not set any flags.
+	OpFlagNone = OpFlags(0)
+	// OpFlagExcl marks an op to fail a create operation if the object
+	// already exists.
+	OpFlagExcl = OpFlags(C.LIBRADOS_OP_FLAG_EXCL)
+	// OpFlagFailOk allows the transaction to succeed even if the flagged
+	// op fails.
+	OpFlagFailOk = OpFlags(C.LIBRADOS_OP_FLAG_FAILOK)
+	// OpFlagFAdviseRandom indicates read/write op random.
+	OpFlagFAdviseRandom = OpFlags(C.LIBRADOS_OP_FLAG_FADVISE_RANDOM)
+	// OpFlagFAdviseSequential indicates read/write op sequential.
+	OpFlagFAdviseSequential = OpFlags(C.LIBRADOS_OP_FLAG_FADVISE_SEQUENTIAL)
+	// OpFlagFAdviseWillNeed indicates read/write data will be accessed in
+	// the near future (by someone).
+	OpFlagFAdviseWillNeed = OpFlags(C.LIBRADOS_OP_FLAG_FADVISE_WILLNEED)
+	// OpFlagFAdviseDontNeed indicates read/write data will not accessed in
+	// the near future (by anyone).
+	OpFlagFAdviseDontNeed = OpFlags(C.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
+	// OpFlagFAdviseNoCache indicates read/write data will not accessed
+	// again (by *this* client).
+	OpFlagFAdviseNoCache = OpFlags(C.LIBRADOS_OP_FLAG_FADVISE_NOCACHE)
+)
+
 // Version returns the major, minor, and patch components of the version of
 // the RADOS library linked against.
 func Version() (int, int, int) {

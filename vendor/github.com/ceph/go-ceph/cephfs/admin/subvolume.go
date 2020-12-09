@@ -87,7 +87,7 @@ func (fsa *FSAdmin) ListSubVolumes(volume, group string) ([]string, error) {
 // Similar To:
 //  ceph fs subvolume rm <volume> --group-name=<group> <name>
 func (fsa *FSAdmin) RemoveSubVolume(volume, group, name string) error {
-	return fsa.rmSubVolume(volume, group, name, rmFlags{})
+	return fsa.RemoveSubVolumeWithFlags(volume, group, name, SubVolRmFlags{})
 }
 
 // ForceRemoveSubVolume will delete a CephFS subvolume in a volume and optional
@@ -96,10 +96,18 @@ func (fsa *FSAdmin) RemoveSubVolume(volume, group, name string) error {
 // Similar To:
 //  ceph fs subvolume rm <volume> --group-name=<group> <name> --force
 func (fsa *FSAdmin) ForceRemoveSubVolume(volume, group, name string) error {
-	return fsa.rmSubVolume(volume, group, name, rmFlags{force: true})
+	return fsa.RemoveSubVolumeWithFlags(volume, group, name, SubVolRmFlags{Force: true})
 }
 
-func (fsa *FSAdmin) rmSubVolume(volume, group, name string, o rmFlags) error {
+// RemoveSubVolumeWithFlags will delete a CephFS subvolume in a volume and
+// optional subvolume group. This function accepts a SubVolRmFlags type that
+// can be used to specify flags that modify the operations behavior.
+// Equivalent to RemoveSubVolume with no flags set.
+// Equivalent to ForceRemoveSubVolume if only the "Force" flag is set.
+//
+// Similar To:
+//  ceph fs subvolume rm <volume> --group-name=<group> <name> [...flags...]
+func (fsa *FSAdmin) RemoveSubVolumeWithFlags(volume, group, name string, o SubVolRmFlags) error {
 	m := map[string]string{
 		"prefix":   "fs subvolume rm",
 		"vol_name": volume,
@@ -109,7 +117,7 @@ func (fsa *FSAdmin) rmSubVolume(volume, group, name string, o rmFlags) error {
 	if group != NoGroup {
 		m["group_name"] = group
 	}
-	return fsa.marshalMgrCommand(o.Update(m)).noData().End()
+	return fsa.marshalMgrCommand(mergeFlags(m, o)).noData().End()
 }
 
 type subVolumeResizeFields struct {
@@ -264,7 +272,7 @@ func (fsa *FSAdmin) CreateSubVolumeSnapshot(volume, group, source, name string) 
 // Similar To:
 //  ceph fs subvolume snapshot rm <volume> --group-name=<group> <subvolume> <name>
 func (fsa *FSAdmin) RemoveSubVolumeSnapshot(volume, group, subvolume, name string) error {
-	return fsa.rmSubVolumeSnapshot(volume, group, subvolume, name, rmFlags{})
+	return fsa.rmSubVolumeSnapshot(volume, group, subvolume, name, commonRmFlags{})
 }
 
 // ForceRemoveSubVolumeSnapshot removes the specified snapshot from the subvolume.
@@ -272,10 +280,10 @@ func (fsa *FSAdmin) RemoveSubVolumeSnapshot(volume, group, subvolume, name strin
 // Similar To:
 //  ceph fs subvolume snapshot rm <volume> --group-name=<group> <subvolume> <name> --force
 func (fsa *FSAdmin) ForceRemoveSubVolumeSnapshot(volume, group, subvolume, name string) error {
-	return fsa.rmSubVolumeSnapshot(volume, group, subvolume, name, rmFlags{force: true})
+	return fsa.rmSubVolumeSnapshot(volume, group, subvolume, name, commonRmFlags{force: true})
 }
 
-func (fsa *FSAdmin) rmSubVolumeSnapshot(volume, group, subvolume, name string, o rmFlags) error {
+func (fsa *FSAdmin) rmSubVolumeSnapshot(volume, group, subvolume, name string, o commonRmFlags) error {
 
 	m := map[string]string{
 		"prefix":    "fs subvolume snapshot rm",
@@ -287,7 +295,7 @@ func (fsa *FSAdmin) rmSubVolumeSnapshot(volume, group, subvolume, name string, o
 	if group != NoGroup {
 		m["group_name"] = group
 	}
-	return fsa.marshalMgrCommand(o.Update(m)).noData().End()
+	return fsa.marshalMgrCommand(mergeFlags(m, o)).noData().End()
 }
 
 // ListSubVolumeSnapshots returns a listing of snapshots for a given subvolume.
