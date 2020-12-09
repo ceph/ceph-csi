@@ -43,7 +43,7 @@ const (
 	snapshotIsProtected = "yes"
 )
 
-func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volOpt, parentvolOpt *volumeOptions, cr *util.Credentials) error {
+func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volOpt, parentvolOpt *volumeOptions) error {
 	snapshotID := cloneID
 	err := parentvolOpt.createSnapshot(ctx, snapshotID, volID)
 	if err != nil {
@@ -65,7 +65,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		}
 
 		if cloneErr != nil {
-			if err = volOpt.purgeVolume(ctx, cloneID, cr, true); err != nil {
+			if err = volOpt.purgeVolume(ctx, cloneID, true); err != nil {
 				util.ErrorLog(ctx, "failed to delete volume %s: %v", cloneID, err)
 			}
 			if err = parentvolOpt.unprotectSnapshot(ctx, snapshotID, volID); err != nil {
@@ -167,7 +167,7 @@ func isCloneRetryError(err error) bool {
 	return errors.Is(err, ErrCloneInProgress) || errors.Is(err, ErrClonePending)
 }
 
-func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volumeOptions, vID *volumeIdentifier, sID *snapshotIdentifier, cr *util.Credentials) error {
+func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volumeOptions, vID *volumeIdentifier, sID *snapshotIdentifier) error {
 	snapID := volumeID(sID.FsSnapshotName)
 	err := parentVolOpt.cloneSnapshot(ctx, volumeID(sID.FsSubvolName), snapID, volumeID(vID.FsSubvolName), volOptions)
 	if err != nil {
@@ -176,7 +176,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 	defer func() {
 		if err != nil {
 			if !isCloneRetryError(err) {
-				if dErr := volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, true); dErr != nil {
+				if dErr := volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), true); dErr != nil {
 					util.ErrorLog(ctx, "failed to delete volume %s: %v", vID.FsSubvolName, dErr)
 				}
 			}

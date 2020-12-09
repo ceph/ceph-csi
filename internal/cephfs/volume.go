@@ -209,7 +209,7 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 	return createVolume(ctx, vo, volID, bytesQuota)
 }
 
-func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, force bool) error {
+func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, force bool) error {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin %s:", err)
