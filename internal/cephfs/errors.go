@@ -22,10 +22,8 @@ import (
 
 // Error strings for comparison with CLI errors.
 const (
-	// volumeNotFound is returned when a subvolume is not found in CephFS.
-	volumeNotFound = "Error ENOENT"
 	// volumeNotEmpty is returned when the volume is not empty.
-	volumeNotEmpty = "Error ENOTEMPTY"
+	volumeNotEmpty = "Directory not empty"
 )
 
 var (
