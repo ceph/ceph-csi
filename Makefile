@@ -23,7 +23,7 @@ CPUS?=$(shell nproc --ignore=1)
 CPUSET?=--cpuset-cpus=0-${CPUS}
 
 CSI_IMAGE_NAME=$(if $(ENV_CSI_IMAGE_NAME),$(ENV_CSI_IMAGE_NAME),quay.io/cephcsi/cephcsi)
-CSI_IMAGE_VERSION=$(if $(ENV_CSI_IMAGE_VERSION),$(ENV_CSI_IMAGE_VERSION),canary)
+CSI_IMAGE_VERSION=$(shell . $(CURDIR)/build.env ; echo $${CSI_IMAGE_VERSION})
 CSI_IMAGE=$(CSI_IMAGE_NAME):$(CSI_IMAGE_VERSION)
 
 # Pass USE_PULLED_IMAGE=yes to skip building a new :test or :devel image.

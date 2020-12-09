@@ -82,9 +82,7 @@ build_push_images() {
 	make push-manifest
 }
 
-if [ "${TRAVIS_BRANCH}" == 'master' ]; then
-	export ENV_CSI_IMAGE_VERSION='canary'
-else
+if [ "${TRAVIS_BRANCH}" != 'release-v3.2' ]; then
 	echo "!!! Branch ${TRAVIS_BRANCH} is not a deployable branch; exiting"
 	exit 0 # Exiting 0 so that this isn't marked as failing
 fi
