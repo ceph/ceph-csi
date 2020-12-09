@@ -188,7 +188,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			// explicitly
 			err = volOptions.resizeVolume(ctx, volumeID(vID.FsSubvolName), volOptions.Size)
 			if err != nil {
-				purgeErr := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, false)
+				purgeErr := volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, false)
 				if purgeErr != nil {
 					util.ErrorLog(ctx, "failed to delete volume %s: %v", requestName, purgeErr)
 					// All errors other than ErrVolumeNotFound should return an error back to the caller
@@ -349,7 +349,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	defer cr.DeleteCredentials()
 
-	if err = purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, false); err != nil {
+	if err = volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, false); err != nil {
 		util.ErrorLog(ctx, "failed to delete volume %s: %v", volID, err)
 		if errors.Is(err, ErrVolumeHasSnapshots) {
 			return nil, status.Error(codes.FailedPrecondition, err.Error())
