@@ -12,7 +12,25 @@ data:
         "vaultPassphraseRoot": "/v1/secret",
         "vaultPassphrasePath": "ceph-csi/",
         "vaultCAVerify": "false"
-      }
+      },
+      "vault-tokens-test": {
+          "encryptionKMSType": "vaulttokens",
+          "vaultAddress": "http://vault.default.svc.cluster.local:8200",
+          "vaultBackendPath": "secret/",
+          "vaultTLSServerName": "vault.default.svc.cluster.local",
+          "vaultCAVerify": "false",
+          "tenantConfigName": "ceph-csi-kms-config",
+          "tenantTokenName": "ceph-csi-kms-token",
+          "tenants": {
+              "my-app": {
+                  "vaultAddress": "https://vault.example.com",
+                  "vaultCAVerify": "true"
+              },
+              "an-other-app": {
+                  "tenantTokenName": "storage-encryption-token"
+              }
+          }
+       }
     }
 metadata:
   name: ceph-csi-encryption-kms-config

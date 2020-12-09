@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -337,7 +338,7 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
-			By("create a PVC and bind it to an app with encrypted RBD volume with Vault KMS", func() {
+			By("create a PVC and bind it to an app with encrypted RBD volume with VaultKMS", func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
@@ -356,6 +357,56 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0)
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+			})
+
+			By("create a PVC and bind it to an app with encrypted RBD volume with VaultTokensKMS", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				scOpts := map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "vault-tokens-test",
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, scOpts, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+
+				// name(space) of the Tenant
+				tenant := f.UniqueName
+
+				// create the Secret with Vault Token in the Tenants namespace
+				token, err := getSecret(vaultExamplePath + "tenant-token.yaml")
+				if err != nil {
+					e2elog.Failf("failed to load tenant token from secret: %v", err)
+				}
+				_, err = c.CoreV1().Secrets(tenant).Create(context.TODO(), &token, metav1.CreateOptions{})
+				if err != nil {
+					e2elog.Failf("failed to create Secret with tenant token: %v", err)
+				}
+
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "vaulttokens", f)
+				if err != nil {
+					e2elog.Failf("failed to validate encrypted pvc with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0)
+
+				// delete the Secret of the Tenant
+				err = c.CoreV1().Secrets(tenant).Delete(context.TODO(), token.Name, metav1.DeleteOptions{})
+				if err != nil {
+					e2elog.Failf("failed to delete Secret with tenant token: %v", err)
+				}
+
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
