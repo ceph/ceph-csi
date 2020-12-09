@@ -3,7 +3,7 @@ module github.com/ceph/ceph-csi
 go 1.13
 
 require (
-	github.com/ceph/go-ceph v0.6.0
+	github.com/ceph/go-ceph v0.7.0
 	github.com/container-storage-interface/spec v1.3.0
 	github.com/go-logr/logr v0.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect

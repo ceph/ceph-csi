@@ -12,14 +12,15 @@ import (
 
 // Callbacks provides a tracker for data that is to be passed between Go
 // and C callback functions. The Go callback/object may not be passed
-// by a pointer to C code and so instead integer indexes into an internal
+// by a pointer to C code and so instead integer IDs into an internal
 // map are used.
 // Typically the item being added will either be a callback function or
 // a data structure containing a callback function. It is up to the caller
 // to control and validate what "callbacks" get used.
 type Callbacks struct {
-	mutex sync.RWMutex
-	cmap  map[uintptr]interface{}
+	mutex  sync.RWMutex
+	cmap   map[uintptr]interface{}
+	lastID uintptr
 }
 
 // New returns a new callbacks tracker.
@@ -27,38 +28,38 @@ func New() *Callbacks {
 	return &Callbacks{cmap: make(map[uintptr]interface{})}
 }
 
-// Add a callback/object to the tracker and return a new index
+// getID returns a unique ID.
+// NOTE: cb.mutex must be locked already!
+func (cb *Callbacks) getID() uintptr {
+	for exists := true; exists; {
+		cb.lastID++
+		// Sanity check for the very unlikely case of an integer overflow in long
+		// running processes.
+		_, exists = cb.cmap[cb.lastID]
+	}
+	return cb.lastID
+}
+
+// Add a callback/object to the tracker and return a new ID
 // for the object.
 func (cb *Callbacks) Add(v interface{}) uintptr {
 	cb.mutex.Lock()
 	defer cb.mutex.Unlock()
-	// this approach assumes that there are typically very few callbacks
-	// in play at once and can just use the length of the map as our
-	// index. But in case of collisions we fall back to simply incrementing
-	// until we find a free key like in the cgo wiki page.
-	// If this code ever becomes a hot path there's surely plenty of room
-	// for optimization in the future :-)
-	index := uintptr(len(cb.cmap) + 1)
-	for {
-		if _, found := cb.cmap[index]; !found {
-			break
-		}
-		index++
-	}
-	cb.cmap[index] = v
-	return index
+	id := cb.getID()
+	cb.cmap[id] = v
+	return id
 }
 
-// Remove a callback/object given it's index.
-func (cb *Callbacks) Remove(index uintptr) {
+// Remove a callback/object given it's ID.
+func (cb *Callbacks) Remove(id uintptr) {
 	cb.mutex.Lock()
 	defer cb.mutex.Unlock()
-	delete(cb.cmap, index)
+	delete(cb.cmap, id)
 }
 
-// Lookup returns a mapped callback/object given an index.
-func (cb *Callbacks) Lookup(index uintptr) interface{} {
+// Lookup returns a mapped callback/object given an ID.
+func (cb *Callbacks) Lookup(id uintptr) interface{} {
 	cb.mutex.RLock()
 	defer cb.mutex.RUnlock()
-	return cb.cmap[index]
+	return cb.cmap[id]
 }

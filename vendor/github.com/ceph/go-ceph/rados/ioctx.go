@@ -109,6 +109,10 @@ func (ioctx *IOContext) Pointer() unsafe.Pointer {
 
 // SetNamespace sets the namespace for objects within this IO context (pool).
 // Setting namespace to a empty or zero length string sets the pool to the default namespace.
+//
+// Implements:
+//  void rados_ioctx_set_namespace(rados_ioctx_t io,
+//                                 const char *nspace);
 func (ioctx *IOContext) SetNamespace(namespace string) {
 	var c_ns *C.char
 	if len(namespace) > 0 {

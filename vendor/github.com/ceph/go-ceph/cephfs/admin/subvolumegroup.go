@@ -69,23 +69,23 @@ func (fsa *FSAdmin) ListSubVolumeGroups(volume string) ([]string, error) {
 // Similar To:
 //  ceph fs subvolumegroup rm <volume> <group_name>
 func (fsa *FSAdmin) RemoveSubVolumeGroup(volume, name string) error {
-	return fsa.rmSubVolumeGroup(volume, name, rmFlags{})
+	return fsa.rmSubVolumeGroup(volume, name, commonRmFlags{})
 }
 
 // ForceRemoveSubVolumeGroup will delete a subvolume group in a volume.
 // Similar To:
 //  ceph fs subvolumegroup rm <volume> <group_name> --force
 func (fsa *FSAdmin) ForceRemoveSubVolumeGroup(volume, name string) error {
-	return fsa.rmSubVolumeGroup(volume, name, rmFlags{force: true})
+	return fsa.rmSubVolumeGroup(volume, name, commonRmFlags{force: true})
 }
 
-func (fsa *FSAdmin) rmSubVolumeGroup(volume, name string, o rmFlags) error {
-	res := fsa.marshalMgrCommand(o.Update(map[string]string{
+func (fsa *FSAdmin) rmSubVolumeGroup(volume, name string, o commonRmFlags) error {
+	res := fsa.marshalMgrCommand(mergeFlags(map[string]string{
 		"prefix":     "fs subvolumegroup rm",
 		"vol_name":   volume,
 		"group_name": name,
 		"format":     "json",
-	}))
+	}, o))
 	return res.noData().End()
 }
 
@@ -102,60 +102,4 @@ func (fsa *FSAdmin) SubVolumeGroupPath(volume, name string) (string, error) {
 		// ceph doesn't respond in json for this cmd (even if you ask)
 	}
 	return parsePathResponse(fsa.marshalMgrCommand(m))
-}
-
-// CreateSubVolumeGroupSnapshot creates a new snapshot from the source subvolume group.
-//
-// Similar To:
-//  ceph fs subvolumegroup snapshot create <volume> <group> <name>
-func (fsa *FSAdmin) CreateSubVolumeGroupSnapshot(volume, group, name string) error {
-	m := map[string]string{
-		"prefix":     "fs subvolumegroup snapshot create",
-		"vol_name":   volume,
-		"group_name": group,
-		"snap_name":  name,
-		"format":     "json",
-	}
-	return fsa.marshalMgrCommand(m).noData().End()
-}
-
-// RemoveSubVolumeGroupSnapshot removes the specified snapshot from the subvolume group.
-//
-// Similar To:
-//  ceph fs subvolumegroup snapshot rm <volume> <group> <name>
-func (fsa *FSAdmin) RemoveSubVolumeGroupSnapshot(volume, group, name string) error {
-	return fsa.rmSubVolumeGroupSnapshot(volume, group, name, rmFlags{})
-}
-
-// ForceRemoveSubVolumeGroupSnapshot removes the specified snapshot from the subvolume group.
-//
-// Similar To:
-//  ceph fs subvolumegroup snapshot rm <volume> <group> <name> --force
-func (fsa *FSAdmin) ForceRemoveSubVolumeGroupSnapshot(volume, group, name string) error {
-	return fsa.rmSubVolumeGroupSnapshot(volume, group, name, rmFlags{force: true})
-}
-
-func (fsa *FSAdmin) rmSubVolumeGroupSnapshot(volume, group, name string, o rmFlags) error {
-	m := map[string]string{
-		"prefix":     "fs subvolumegroup snapshot rm",
-		"vol_name":   volume,
-		"group_name": group,
-		"snap_name":  name,
-		"format":     "json",
-	}
-	return fsa.marshalMgrCommand(o.Update(m)).noData().End()
-}
-
-// ListSubVolumeGroupSnapshots returns a listing of snapshots for a given subvolume group.
-//
-// Similar To:
-//  ceph fs subvolumegroup snapshot ls <volume> <group>
-func (fsa *FSAdmin) ListSubVolumeGroupSnapshots(volume, group string) ([]string, error) {
-	m := map[string]string{
-		"prefix":     "fs subvolumegroup snapshot ls",
-		"vol_name":   volume,
-		"group_name": group,
-		"format":     "json",
-	}
-	return parseListNames(fsa.marshalMgrCommand(m))
 }
