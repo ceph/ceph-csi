@@ -65,7 +65,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		}
 
 		if cloneErr != nil {
-			if err = purgeVolume(ctx, cloneID, cr, volOpt, true); err != nil {
+			if err = volOpt.purgeVolume(ctx, cloneID, cr, true); err != nil {
 				util.ErrorLog(ctx, "failed to delete volume %s: %v", cloneID, err)
 			}
 			if err = parentvolOpt.unprotectSnapshot(ctx, snapshotID, volID); err != nil {
@@ -176,7 +176,7 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 	defer func() {
 		if err != nil {
 			if !isCloneRetryError(err) {
-				if dErr := purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, volOptions, true); dErr != nil {
+				if dErr := volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), cr, true); dErr != nil {
 					util.ErrorLog(ctx, "failed to delete volume %s: %v", vID.FsSubvolName, dErr)
 				}
 			}

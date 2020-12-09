@@ -209,16 +209,16 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 	return createVolume(ctx, vo, volID, bytesQuota)
 }
 
-func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volOptions *volumeOptions, force bool) error {
+func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, force bool) error {
 	arg := []string{
 		"fs",
 		"subvolume",
 		"rm",
-		volOptions.FsName,
+		vo.FsName,
 		string(volID),
 		"--group_name",
-		volOptions.SubvolumeGroup,
-		"-m", volOptions.Monitors,
+		vo.SubvolumeGroup,
+		"-m", vo.Monitors,
 		"-c", util.CephConfigPath,
 		"-n", cephEntityClientPrefix + cr.ID,
 		"--keyfile=" + cr.KeyFile,
@@ -226,13 +226,13 @@ func purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, volO
 	if force {
 		arg = append(arg, "--force")
 	}
-	if checkSubvolumeHasFeature("snapshot-retention", volOptions.Features) {
+	if checkSubvolumeHasFeature("snapshot-retention", vo.Features) {
 		arg = append(arg, "--retain-snapshots")
 	}
 
 	err := execCommandErr(ctx, "ceph", arg...)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to purge subvolume %s in fs %s: %s", string(volID), volOptions.FsName, err)
+		util.ErrorLog(ctx, "failed to purge subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
 		if strings.Contains(err.Error(), volumeNotEmpty) {
 			return util.JoinErrors(ErrVolumeHasSnapshots, err)
 		}
