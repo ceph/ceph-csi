@@ -210,33 +210,26 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 }
 
 func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, cr *util.Credentials, force bool) error {
-	arg := []string{
-		"fs",
-		"subvolume",
-		"rm",
-		vo.FsName,
-		string(volID),
-		"--group_name",
-		vo.SubvolumeGroup,
-		"-m", vo.Monitors,
-		"-c", util.CephConfigPath,
-		"-n", cephEntityClientPrefix + cr.ID,
-		"--keyfile=" + cr.KeyFile,
-	}
-	if force {
-		arg = append(arg, "--force")
-	}
-	if checkSubvolumeHasFeature("snapshot-retention", vo.Features) {
-		arg = append(arg, "--retain-snapshots")
+	fsa, err := vo.conn.GetFSAdmin()
+	if err != nil {
+		util.ErrorLog(ctx, "could not get FSAdmin %s:", err)
+		return err
 	}
 
-	err := execCommandErr(ctx, "ceph", arg...)
+	opt := fsAdmin.SubVolRmFlags{}
+	opt.Force = force
+
+	if checkSubvolumeHasFeature("snapshot-retention", vo.Features) {
+		opt.RetainSnapshots = true
+	}
+
+	err = fsa.RemoveSubVolumeWithFlags(vo.FsName, vo.SubvolumeGroup, string(volID), opt)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to purge subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
 		if strings.Contains(err.Error(), volumeNotEmpty) {
 			return util.JoinErrors(ErrVolumeHasSnapshots, err)
 		}
-		if strings.Contains(err.Error(), volumeNotFound) {
+		if errors.Is(err, rados.ErrNotFound) {
 			return util.JoinErrors(ErrVolumeNotFound, err)
 		}
 		return err
