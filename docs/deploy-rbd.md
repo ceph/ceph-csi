@@ -229,21 +229,36 @@ To further improve security robustness it is possible to use unique passphrases
 generated for each volume and stored in a Key Management System (KMS). Currently
 HashiCorp Vault is the only KMS supported.
 
+There are two options to use Hashicorp Vault as a KMS:
+
+1. with Kubernetes ServiceAccount
+1. with a Vault Token per Tenant (a Kubernetes Namespace)
+
 To use Vault as KMS set `encryptionKMSID` to a unique identifier for Vault
 configuration. You will also need to create vault configuration similar to the
 [example](../examples/rbd/kms-config.yaml) and use same `encryptionKMSID`.
-Configuration must include `encryptionKMSType: "vault"`. In order for ceph-csi
-to be able to access the configuration you will need to have it mounted to
-csi-rbdplugin containers in both daemonset (so kms client can be instantiated to
-encrypt/decrypt volumes) and deployment pods (so kms client can be instantiated
-to delete passphrase on volume delete) `ceph-csi-encryption-kms-config`
-configmap.
+
+To use the Kubernetes ServiceAccount to access Vault, the configuration must
+include `encryptionKMSType: "vault"`. If Tenants are expected to place their
+Vault Token in a Kubernetes Secret in their Namespace, set `encryptionKMSType:
+"vaulttokens"`.
+
+In order for ceph-csi to be able to access the configuration you will need to
+have it mounted to csi-rbdplugin containers in both daemonset (so kms client
+can be instantiated to encrypt/decrypt volumes) and deployment pods (so kms
+client can be instantiated to delete passphrase on volume delete)
+`ceph-csi-encryption-kms-config` configmap.
 
 > Note: kms configuration must be a map of string values only
 > (`map[string]string`) so for numerical and boolean values make sure to put
 > quotes around.
 
-#### Configuring HashiCorp Vault
+When the Tenants need to provide their own Vault Token, they will need to place
+it in a Kubernetes Secret (by default) called `ceph-csi-kms-token`, where the
+Vault Token is stored in the `token` key as shown in [the
+example](../examples/kms/vault/tenant-token.yaml).
+
+#### Configuring HashiCorp Vault with Kubernetes ServiceAccount
 
 Using Vault as KMS you need to configure Kubernetes authentication method as
 described in [official
