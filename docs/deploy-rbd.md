@@ -236,7 +236,8 @@ There are two options to use Hashicorp Vault as a KMS:
 
 To use Vault as KMS set `encryptionKMSID` to a unique identifier for Vault
 configuration. You will also need to create vault configuration similar to the
-[example](../examples/rbd/kms-config.yaml) and use same `encryptionKMSID`.
+[example](../examples/kms/vault/kms-config.yaml) and use same
+`encryptionKMSID`.
 
 To use the Kubernetes ServiceAccount to access Vault, the configuration must
 include `encryptionKMSType: "vault"`. If Tenants are expected to place their
@@ -265,8 +266,9 @@ described in [official
 documentation](https://www.vaultproject.io/docs/auth/kubernetes.html).
 
 If token reviewer is used, you will need to configure service account for
-that also like in [example](../examples/rbd/csi-vaulttokenreview-rbac.yaml) to
-be able to review jwt tokens.
+that also like in
+[example](../examples/kms/vault/csi-vaulttokenreview-rbac.yaml) to be able to
+review jwt tokens.
 
 Configure a role(s) for service accounts used for ceph-csi:
 
