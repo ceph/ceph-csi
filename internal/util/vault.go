@@ -31,6 +31,8 @@ import (
 )
 
 const (
+	kmsTypeVault = "vault"
+
 	// path to service account token that will be used to authenticate with Vault
 	// #nosec
 	serviceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
