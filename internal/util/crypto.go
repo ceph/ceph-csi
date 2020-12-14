@@ -138,7 +138,7 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 	}
 
 	switch kmsType {
-	case "vault":
+	case kmsTypeVault:
 		return InitVaultKMS(kmsID, kmsConfig, secrets)
 	case kmsTypeVaultTokens:
 		return InitVaultTokensKMS(tenant, kmsID, kmsConfig, secrets)
