@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 
@@ -46,6 +47,14 @@ const (
 	// Passphrase size - 20 bytes is 160 bits to satisfy:
 	// https://tools.ietf.org/html/rfc6749#section-10.10
 	encryptionPassphraseSize = 20
+	// podNamespace ENV should be set in the cephcsi container
+	podNamespace = "POD_NAMESPACE"
+
+	// kmsConfigMapName env to read a ConfigMap by name
+	kmsConfigMapName = "KMS_CONFIGMAP_NAME"
+
+	// defaultConfigMapToRead default ConfigMap name to fetch kms connection details
+	defaultConfigMapToRead = "csi-kms-connection-details"
 )
 
 // EncryptionKMS provides external Key Management System for encryption
@@ -113,18 +122,34 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 	if kmsID == "" || kmsID == defaultKMSType {
 		return initSecretsKMS(secrets)
 	}
-
+	var config map[string]interface{}
 	// #nosec
 	content, err := ioutil.ReadFile(kmsConfigPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read kms configuration from %s: %s",
-			kmsConfigPath, err)
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to read kms configuration from %s: %w",
+				kmsConfigPath, err)
+		}
+		// If the configmap is not mounted to the CSI pods read the configmap
+		// the kubernetes.
+		namespace := os.Getenv(podNamespace)
+		if namespace != "" {
+			return nil, fmt.Errorf("%q is not set", podNamespace)
+		}
+		name := os.Getenv(kmsConfigMapName)
+		if name != "" {
+			name = defaultConfigMapToRead
+		}
+		config, err = getVaultConfiguration(namespace, name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read kms configuration from configmap %s in namespace %s: %w",
+				namespace, name, err)
+		}
 	}
 
-	var config map[string]interface{}
 	err = json.Unmarshal(content, &config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse kms configuration: %s", err)
+		return nil, fmt.Errorf("failed to parse kms configuration: %w", err)
 	}
 
 	kmsConfig, ok := config[kmsID].(map[string]interface{})
