@@ -180,8 +180,73 @@ data:
   vaultBackendPath: "secret/ceph-csi-encryption/"
   vaultTLSServerName: "vault.infosec.example.org"
   vaultCAFromSecret: "vault-infosec-ca"
+  vaultClientCertFromSecret: "vault-client-cert"
+  vaultClientCertKeyFromSecret: "vault-client-cert-key"
   vaultCAVerify: "true"
 ```
 
 Only parameters with the `vault`-prefix may be changed in the Kubernetes
 ConfigMap of the Tenant.
+
+### Certificates stored in the Tenants Kubernetes Namespace
+
+The `vaultCAFromSecret` , `vaultClientCertFromSecret` and
+`vaultClientCertKeyFromSecret` secrets should be created in the namespace where
+Ceph-CSI is deployed. The sample of secrets for the CA and client Certificate.
+
+#### CA Certificate to verify Vault server TLS certificate
+
+```yaml
+---
+apiVersion: v1
+kind: secret
+metadata:
+  name: vault-infosec-ca
+stringData:
+  ca.cert: |
+    MIIC2DCCAcCgAwIBAgIBATANBgkqh...
+```
+
+#### Client Certificate for Vault connection
+
+```yaml
+---
+apiVersion: v1
+kind: secret
+metadata:
+  name: vault-client-cert
+stringData:
+  tls.cert: |
+    BATANBgkqcCgAwIBAgIBATANBAwI...
+```
+
+#### Client Certificate key for Vault connection
+
+```yaml
+---
+apiVersion: v1
+kind: secret
+metadata:
+  name: vault-client-cert-key
+stringData:
+  tls.key: |
+    KNSC2DVVXcCgkqcCgAwIBAgIwewrvx...
+```
+
+Its also possible that a user can create a single secret for the certificates
+and update the configuration to fetch certificates from a secret.
+
+```yaml
+---
+apiVersion: v1
+kind: secret
+metadata:
+  name: vault-certificates
+stringData:
+  ca.cert: |
+    MIIC2DCCAcCgAwIBAgIBATANBgkqh...
+  tls.cert: |
+    BATANBgkqcCgAwIBAgIBATANBAwI...
+  tls.key: |
+    KNSC2DVVXcCgkqcCgAwIBAgIwewrvx...
+```
