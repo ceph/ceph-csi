@@ -127,6 +127,11 @@ func InitVaultTokensKMS(tenant, kmsID string, config map[string]interface{}) (En
 				}
 			}
 		}
+
+		err = kms.parseTenantConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse config for tenant: %w", err)
+		}
 	}
 
 	// fetch the Vault Token from the Secret (TokenName) in the Kubernetes
@@ -338,4 +343,63 @@ func getCertificate(tenant, secretName, key string) (string, error) {
 	}
 
 	return string(cert), nil
+}
+
+// isTenantConfigOption return true if a tenant may (re)configure the option in
+// their own ConfigMap, false otherwise.
+func isTenantConfigOption(opt string) bool {
+	switch opt {
+	case "vaultAddress":
+	case "vaultBackendPath":
+	case "vaultTLSServerName":
+	case "vaultCAFromSecret":
+	case "vaultCAVerify":
+	default:
+		return false
+	}
+
+	return true
+}
+
+// parseTenantConfig gets the optional ConfigMap from the Tenants namespace,
+// and applies the allowable options (see isTenantConfigOption) to the KMS
+// configuration.
+func (kms *VaultTokensKMS) parseTenantConfig() error {
+	if kms.Tenant == "" || kms.ConfigName == "" {
+		return nil
+	}
+
+	// fetch the ConfigMap from the tanants namespace
+	c := NewK8sClient()
+	cm, err := c.CoreV1().ConfigMaps(kms.Tenant).Get(context.TODO(),
+		kms.ConfigName, metav1.GetOptions{})
+	if apierrs.IsNotFound(err) {
+		// the tenant did not (re)configure any options
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to get config (%s) for tenant (%s): %w",
+			kms.ConfigName, kms.Tenant, err)
+	}
+
+	// create a new map with config options, but only include the options
+	// that a tenant may (re)configure
+	config := make(map[string]interface{})
+	for k, v := range cm.Data {
+		if isTenantConfigOption(k) {
+			config[k] = v
+		} // else: silently ignore the option
+	}
+	if len(config) == 0 {
+		// no options configured by the tenant
+		return nil
+	}
+
+	// apply the configuration options from the tenant
+	err = kms.parseConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to parse config (%s) for tenant (%s): %w",
+			kms.ConfigName, kms.Tenant, err)
+	}
+
+	return nil
 }
