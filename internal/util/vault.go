@@ -113,7 +113,7 @@ func setConfigString(option *string, config map[string]interface{}, key string) 
 // vc.connectVault().
 //
 // nolint:gocyclo // iterating through many config options, not complex at all.
-func (vc *vaultConnection) initConnection(kmsID string, config map[string]interface{}, secrets map[string]string) error {
+func (vc *vaultConnection) initConnection(kmsID string, config map[string]interface{}) error {
 	vaultConfig := make(map[string]interface{})
 	keyContext := make(map[string]string)
 
@@ -183,18 +183,6 @@ func (vc *vaultConnection) initConnection(kmsID string, config map[string]interf
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err
 	}
-	// ignore errConfigOptionMissing, no default was set
-	if vaultCAFromSecret != "" {
-		caPEM, ok := secrets[vaultCAFromSecret]
-		if !ok {
-			return fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
-		}
-
-		vaultConfig[api.EnvVaultCACert], err = createTempFile("vault-ca-cert", []byte(caPEM))
-		if err != nil {
-			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
-		}
-	}
 
 	// update the existing config only if no config is available yet
 	if vc.keyContext != nil {
@@ -210,6 +198,38 @@ func (vc *vaultConnection) initConnection(kmsID string, config map[string]interf
 		}
 	} else {
 		vc.vaultConfig = vaultConfig
+	}
+
+	return nil
+}
+
+// initCertificates sets VAULT_* environment variables in the vc.vaultConfig map,
+// these settings will be used when connecting to the Vault service with
+// vc.connectVault().
+//
+func (vc *vaultConnection) initCertificates(config map[string]interface{}, secrets map[string]string) error {
+	vaultConfig := make(map[string]interface{})
+
+	vaultCAFromSecret := "" // optional
+	err := setConfigString(&vaultCAFromSecret, config, "vaultCAFromSecret")
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	}
+	// ignore errConfigOptionMissing, no default was set
+	if vaultCAFromSecret != "" {
+		caPEM, ok := secrets[vaultCAFromSecret]
+		if !ok {
+			return fmt.Errorf("missing vault CA in secret %s", vaultCAFromSecret)
+		}
+
+		vaultConfig[api.EnvVaultCACert], err = createTempFile("vault-ca-cert", []byte(caPEM))
+		if err != nil {
+			return fmt.Errorf("failed to create temporary file for Vault CA: %w", err)
+		}
+		// update the existing config
+		for key, value := range vaultConfig {
+			vc.vaultConfig[key] = value
+		}
 	}
 
 	return nil
@@ -242,9 +262,14 @@ func (vc *vaultConnection) Destroy() {
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.
 func InitVaultKMS(kmsID string, config map[string]interface{}, secrets map[string]string) (EncryptionKMS, error) {
 	kms := &VaultKMS{}
-	err := kms.initConnection(kmsID, config, secrets)
+	err := kms.initConnection(kmsID, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
+	}
+
+	err = kms.initCertificates(config, secrets)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Vault certificates: %w", err)
 	}
 
 	vaultAuthPath := vaultDefaultAuthPath

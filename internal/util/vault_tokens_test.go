@@ -26,10 +26,9 @@ func TestParseConfig(t *testing.T) {
 	kms := VaultTokensKMS{}
 
 	config := make(map[string]interface{})
-	secrets := make(map[string]string)
 
 	// empty config map
-	err := kms.parseConfig(config, secrets)
+	err := kms.parseConfig(config)
 	if !errors.Is(err, errConfigOptionMissing) {
 		t.Errorf("unexpected error (%T): %s", err, err)
 	}
@@ -40,7 +39,7 @@ func TestParseConfig(t *testing.T) {
 	config["tenantTokenName"] = vaultTokensDefaultTokenName
 
 	// parsing with all required options
-	err = kms.parseConfig(config, secrets)
+	err = kms.parseConfig(config)
 	switch {
 	case err != nil:
 		t.Errorf("unexpected error: %s", err)
@@ -53,7 +52,7 @@ func TestParseConfig(t *testing.T) {
 	// tenant "bob" uses a different kms.ConfigName
 	bob := make(map[string]interface{})
 	bob["tenantConfigName"] = "the-config-from-bob"
-	err = kms.parseConfig(bob, secrets)
+	err = kms.parseConfig(bob)
 	switch {
 	case err != nil:
 		t.Errorf("unexpected error: %s", err)
@@ -75,10 +74,9 @@ func TestInitVaultTokensKMS(t *testing.T) {
 	}
 
 	config := make(map[string]interface{})
-	secrets := make(map[string]string)
 
 	// empty config map
-	_, err := InitVaultTokensKMS("bob", "vault-tokens-config", config, secrets)
+	_, err := InitVaultTokensKMS("bob", "vault-tokens-config", config)
 	if !errors.Is(err, errConfigOptionMissing) {
 		t.Errorf("unexpected error (%T): %s", err, err)
 	}
@@ -87,7 +85,7 @@ func TestInitVaultTokensKMS(t *testing.T) {
 	config["vaultAddress"] = "https://vault.default.cluster.svc"
 
 	// parsing with all required options
-	_, err = InitVaultTokensKMS("bob", "vault-tokens-config", config, secrets)
+	_, err = InitVaultTokensKMS("bob", "vault-tokens-config", config)
 	if err != nil && !strings.Contains(err.Error(), "VAULT_TOKEN") {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -97,7 +95,7 @@ func TestInitVaultTokensKMS(t *testing.T) {
 	config["tenants"] = tenants
 
 	// empty tenants list
-	_, err = InitVaultTokensKMS("bob", "vault-tokens-config", config, secrets)
+	_, err = InitVaultTokensKMS("bob", "vault-tokens-config", config)
 	if err != nil && !strings.Contains(err.Error(), "VAULT_TOKEN") {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -107,7 +105,7 @@ func TestInitVaultTokensKMS(t *testing.T) {
 	config["tenants"].(map[string]interface{})["bob"] = bob
 	bob["vaultAddress"] = "https://vault.bob.example.org"
 
-	_, err = InitVaultTokensKMS("bob", "vault-tokens-config", config, secrets)
+	_, err = InitVaultTokensKMS("bob", "vault-tokens-config", config)
 	if err != nil && !strings.Contains(err.Error(), "VAULT_TOKEN") {
 		t.Errorf("unexpected error: %s", err)
 	}
