@@ -18,6 +18,7 @@ package util
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -51,6 +52,73 @@ const (
 	// contains the VAULT_TOKEN.
 	vaultTokenSecretKey = "token"
 )
+
+type standardVault struct {
+	KmsPROVIDER        string `json:"KMS_PROVIDER"`
+	VaultADDR          string `json:"VAULT_ADDR"`
+	VaultBackendPath   string `json:"VAULT_BACKEND_PATH"`
+	VaultCACert        string `json:"VAULT_CACERT"`
+	VaultTLSServerName string `json:"VAULT_TLS_SERVER_NAME"`
+	VaultClientCert    string `json:"VAULT_CLIENT_CERT"`
+	VaultClientKey     string `json:"VAULT_CLIENT_KEY"`
+	VaultNamespace     string `json:"VAULT_NAMESPACE"`
+}
+
+type vaultTokenConf struct {
+	EncryptionKMSType            string `json:"encryptionKMSType"`
+	VaultAddress                 string `json:"vaultAddress"`
+	VaultBackendPath             string `json:"vaultBackendPath"`
+	VaultCAFromSecret            string `json:"vaultCAFromSecret"`
+	VaultTLSServerName           string `json:"vaultTLSServerName"`
+	VaultClientCertFromSecret    string `json:"vaultClientCertFromSecret"`
+	VaultClientCertKeyFromSecret string `json:"vaultClientCertKeyFromSecret"`
+	VaultNamespace               string `json:"vaultNamespace"`
+}
+
+func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
+	v.EncryptionKMSType = s.KmsPROVIDER
+	v.VaultAddress = s.VaultADDR
+	v.VaultBackendPath = s.VaultBackendPath
+	v.VaultCAFromSecret = s.VaultCACert
+	v.VaultClientCertFromSecret = s.VaultClientCert
+	v.VaultClientCertKeyFromSecret = s.VaultClientKey
+	v.VaultNamespace = s.VaultNamespace
+	v.VaultTLSServerName = s.VaultTLSServerName
+}
+
+// getVaultConfiguration fetches the vault configuration from the kubernetes
+// configmap and converts the standard vault configuration (see json tag of
+// standardVault structure) to the CSI vault configuration.
+func getVaultConfiguration(namespace, name string) (map[string]interface{}, error) {
+	c := NewK8sClient()
+	cm, err := c.CoreV1().ConfigMaps(namespace).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	config := make(map[string]interface{})
+	// convert the standard vault configuration to CSI vault configuration and
+	// store it in the map that CSI expects
+	for k, v := range cm.Data {
+		sv := &standardVault{}
+		err = json.Unmarshal([]byte(v), sv)
+		if err != nil {
+			return nil, fmt.Errorf("failed to Unmarshal the vault configuration for %q: %w", k, err)
+		}
+		vc := vaultTokenConf{}
+		vc.convertStdVaultToCSIConfig(sv)
+		data, err := json.Marshal(vc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to Marshal the CSI vault configuration for %q: %w", k, err)
+		}
+		jsonMap := make(map[string]interface{})
+		err = json.Unmarshal(data, &jsonMap)
+		if err != nil {
+			return nil, fmt.Errorf("failed to Unmarshal the CSI vault configuration for %q: %w", k, err)
+		}
+		config[k] = jsonMap
+	}
+	return config, nil
+}
 
 /*
 VaultTokens represents a Hashicorp Vault KMS configuration that provides a
