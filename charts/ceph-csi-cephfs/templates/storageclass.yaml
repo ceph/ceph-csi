@@ -1,0 +1,57 @@
+{{- if .Values.storageClass.create -}}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+   name: {{ .Values.storageClass.name }}
+   namespace: {{ .Release.Namespace }}
+   labels:
+     app: {{ include "ceph-csi-cephfs.name" . }}
+     chart: {{ include "ceph-csi-cephfs.chart" . }}
+     release: {{ .Release.Name }}
+     heritage: {{ .Release.Service }}
+provisioner: {{ .Values.driverName }}
+parameters:
+  clusterID: {{ .Values.storageClass.clusterID }}
+  fsName: {{ .Values.storageClass.fsName }}
+{{- if .Values.storageClass.pool }}
+  pool: {{ .Values.storageClass.pool }}
+{{- end }}
+{{- if .Values.storageClass.fuseMountOptions }}
+  fuseMountOptions: "{{ .Values.storageClass.fuseMountOptions }}"
+{{- end }}
+{{- if .Values.storageClass.kernelMountOptions }}
+  kernelMountOptions: "{{ .Values.storageClass.kernelMountOptions }}"
+{{- end }}
+{{- if .Values.storageClass.mounter }}
+  mounter: "{{ .Values.storageClass.mounter }}"
+{{- end }}
+{{- if .Values.storageClass.volumeNamePrefix }}
+  volumeNamePrefix: "{{ .Values.storageClass.volumeNamePrefix }}"
+{{- end }}
+  csi.storage.k8s.io/provisioner-secret-name: {{ .Values.storageClass.provisionerSecret }}
+{{- if .Values.storageClass.provisionerSecretNamespace }}
+  csi.storage.k8s.io/provisioner-secret-namespace: {{ .Values.storageClass.provisionerSecretNamespace }}
+{{ else }}
+  csi.storage.k8s.io/provisioner-secret-namespace: {{ .Release.Namespace }}
+{{- end }}
+  csi.storage.k8s.io/controller-expand-secret-name: {{ .Values.storageClass.controllerExpandSecret }}
+{{- if .Values.storageClass.controllerExpandSecretNamespace }}
+  csi.storage.k8s.io/controller-expand-secret-namespace: {{ .Values.storageClass.controllerExpandSecretNamespace }}
+{{ else }}
+  csi.storage.k8s.io/controller-expand-secret-namespace: {{ .Release.Namespace }}
+{{- end }}
+  csi.storage.k8s.io/node-stage-secret-name: {{ .Values.storageClass.nodeStageSecret }}
+{{- if .Values.storageClass.nodeStageSecretNamespace }}
+  csi.storage.k8s.io/node-stage-secret-namespace: {{ .Values.storageClass.nodeStageSecretNamespace }}
+{{ else }}
+  csi.storage.k8s.io/node-stage-secret-namespace: {{ .Release.Namespace }}
+{{- end }}
+reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClass.allowVolumeExpansion }}
+{{- if .Values.storageClass.mountOptions }}
+mountOptions:
+  {{- range .Values.storageClass.mountOptions }}
+  - {{ . }}
+  {{- end }}
+{{- end }}
+{{- end -}}
