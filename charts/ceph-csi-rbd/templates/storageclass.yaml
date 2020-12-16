@@ -1,0 +1,70 @@
+{{- if .Values.storageClass.create -}}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+   name: {{ .Values.storageClass.name }}
+   namespace: {{ .Release.Namespace }}
+   labels:
+     app: {{ include "ceph-csi-rbd.name" . }}
+     chart: {{ include "ceph-csi-rbd.chart" . }}
+     release: {{ .Release.Name }}
+     heritage: {{ .Release.Service }}
+provisioner: {{ .Values.driverName }}
+parameters:
+  clusterID: {{ .Values.storageClass.clusterID }}
+  pool: {{ .Values.storageClass.pool }}
+  imageFeatures: {{ .Values.storageClass.imageFeatures }}
+  thickProvision: {{ .Values.storageClass.thickProvision | quote}}
+{{- if .Values.storageClass.mounter }}
+  mounter: {{ .Values.storageClass.mounter }}
+{{- end }}
+{{- if .Values.storageClass.dataPool }}
+  dataPool: {{ .Values.storageClass.dataPool }}
+{{- end }}
+{{- if .Values.storageClass.volumeNamePrefix }}
+  volumeNamePrefix: "{{ .Values.storageClass.volumeNamePrefix }}"
+{{- end }}
+{{- if .Values.storageClass.encrypted }}
+  encrypted: "{{ .Values.storageClass.encrypted }}"
+{{- end }}
+{{- if .Values.storageClass.encryptionKMSID }}
+  encryptionKMSID: {{ .Values.storageClass.encryptionKMSID }}
+{{- end }}
+{{- if .Values.storageClass.topologyConstrainedPools }}
+  topologyConstrainedPools:
+  {{ toYaml .Values.storageClass.topologyConstrainedPools | indent 4 -}}
+{{- end }}
+{{- if .Values.storageClass.mapOptions }}
+  mapOptions: {{ .Values.storageClass.mapOptions }}
+{{- end }}
+{{- if .Values.storageClass.unmapOptions }}
+  unmapOptions: {{ .Values.storageClass.unmapOptions }}
+{{- end }}
+  csi.storage.k8s.io/provisioner-secret-name: {{ .Values.storageClass.provisionerSecret }}
+{{- if .Values.storageClass.provisionerSecretNamespace }}
+  csi.storage.k8s.io/provisioner-secret-namespace: {{ .Values.storageClass.provisionerSecretNamespace }}
+{{ else }}
+  csi.storage.k8s.io/provisioner-secret-namespace: {{ .Release.Namespace }}
+{{- end }}
+  csi.storage.k8s.io/controller-expand-secret-name: {{ .Values.storageClass.controllerExpandSecret }}
+{{- if .Values.storageClass.controllerExpandSecretNamespace }}
+  csi.storage.k8s.io/controller-expand-secret-namespace: {{ .Values.storageClass.controllerExpandSecretNamespace }}
+{{ else }}
+  csi.storage.k8s.io/controller-expand-secret-namespace: {{ .Release.Namespace }}
+{{- end }}
+  csi.storage.k8s.io/node-stage-secret-name: {{ .Values.storageClass.nodeStageSecret }}
+{{- if .Values.storageClass.nodeStageSecretNamespace }}
+  csi.storage.k8s.io/node-stage-secret-namespace: {{ .Values.storageClass.nodeStageSecretNamespace }}
+{{ else }}
+  csi.storage.k8s.io/node-stage-secret-namespace: {{ .Release.Namespace }}
+{{- end }}
+  csi.storage.k8s.io/fstype: {{ .Values.storageClass.fstype }}
+reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClass.allowVolumeExpansion }}
+{{- if .Values.storageClass.mountOptions }}
+mountOptions:
+  {{- range .Values.storageClass.mountOptions }}
+  - {{ . }}
+  {{- end }}
+{{- end }}
+{{- end -}}
