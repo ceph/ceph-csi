@@ -12,8 +12,12 @@ rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get"]
+  # allow to read Vault Token and connection options from the Tenants namespace
   - apiGroups: [""]
     resources: ["secrets"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
     verbs: ["get"]
 ---
 kind: ClusterRoleBinding
