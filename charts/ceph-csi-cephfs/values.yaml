@@ -205,6 +205,68 @@ topology:
     - failure-domain/region
     - failure-domain/zone
 
+storageClass:
+  # Specifies whether the Storage class should be created
+  create: false
+  name: csi-cephfs-sc
+  # String representing a Ceph cluster to provision storage from.
+  # Should be unique across all Ceph clusters in use for provisioning,
+  # cannot be greater than 36 bytes in length, and should remain immutable for
+  # the lifetime of the StorageClass in use.
+  clusterID: <cluster-ID>
+  # (required) CephFS filesystem name into which the volume shall be created
+  # eg: fsName: myfs
+  fsName: myfs
+  # (optional) Ceph pool into which volume data shall be stored
+  # pool: <cephfs-data-pool>
+  # For eg:
+  # pool: "replicapool"
+  pool: ""
+  # (optional) Comma separated string of Ceph-fuse mount options.
+  # For eg:
+  # fuseMountOptions: debug
+  fuseMountOptions: ""
+  # (optional) Comma separated string of Cephfs kernel mount options.
+  # Check man mount.ceph for mount options. For eg:
+  # kernelMountOptions: readdir_max_bytes=1048576,norbytes
+  kernelMountOptions: ""
+  # (optional) The driver can use either ceph-fuse (fuse) or
+  # ceph kernelclient (kernel).
+  # If omitted, default volume mounter will be used - this is
+  # determined by probing for ceph-fuse and mount.ceph
+  # mounter: kernel
+  mounter: ""
+  # (optional) Prefix to use for naming subvolumes.
+  # If omitted, defaults to "csi-vol-".
+  # volumeNamePrefix: "foo-bar-"
+  volumeNamePrefix: ""
+  # The secrets have to contain user and/or Ceph admin credentials.
+  provisionerSecret: csi-cephfs-secret
+  # If the Namespaces are not specified, the secrets are assumed to
+  # be in the Release namespace.
+  provisionerSecretNamespace: ""
+  controllerExpandSecret: csi-cephfs-secret
+  controllerExpandSecretNamespace: ""
+  nodeStageSecret: csi-cephfs-secret
+  nodeStageSecretNamespace: ""
+  reclaimPolicy: Delete
+  allowVolumeExpansion: true
+  mountOptions: []
+  # Mount Options
+  # Example:
+  # mountOptions:
+  #   - discard
+
+secret:
+  # Specifies whether the secret should be created
+  create: false
+  name: csi-cephfs-secret
+  # Key values correspond to a user name and its key, as defined in the
+  # ceph cluster. User ID should have required access to the 'pool'
+  # specified in the storage class
+  adminID: <plaintext ID>
+  adminKey: <Ceph auth key corresponding to ID above>
+
 #########################################################
 # Variables for 'internal' use please use with caution! #
 #########################################################
