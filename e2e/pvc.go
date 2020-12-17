@@ -14,7 +14,6 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2epv "k8s.io/kubernetes/test/e2e/framework/pv"
-	testutils "k8s.io/kubernetes/test/utils"
 )
 
 func loadPVC(path string) (*v1.PersistentVolumeClaim, error) {
@@ -46,7 +45,7 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		pvc, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			e2elog.Logf("Error getting pvc in namespace: '%s': %v", pvc.Namespace, err)
-			if testutils.IsRetryableAPIError(err) {
+			if isRetryableAPIError(err) {
 				return false, nil
 			}
 			if apierrs.IsNotFound(err) {

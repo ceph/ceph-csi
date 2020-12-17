@@ -16,7 +16,6 @@ import (
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
-	testutils "k8s.io/kubernetes/test/utils"
 )
 
 func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
@@ -31,7 +30,7 @@ func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 			if strings.Contains(err.Error(), "not found") {
 				return false, nil
 			}
-			if testutils.IsRetryableAPIError(err) {
+			if isRetryableAPIError(err) {
 				return false, nil
 			}
 			return false, err
@@ -60,7 +59,7 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 		deployment, err = c.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			// a StatusError is not marked as 'retryable', but we want to retry anyway
-			if testutils.IsRetryableAPIError(err) || strings.Contains(err.Error(), "etcdserver: request timed out") {
+			if isRetryableAPIError(err) || strings.Contains(err.Error(), "etcdserver: request timed out") {
 				// hide API-server timeouts, so that PollImmediate() retries
 				e2elog.Logf("deployment error: %v", err)
 				return false, nil

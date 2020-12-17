@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
-	testutils "k8s.io/kubernetes/test/utils"
 )
 
 func getSnapshotClass(path string) snapapi.VolumeSnapshotClass {
@@ -64,7 +63,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 		snaps, err := sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			e2elog.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
-			if testutils.IsRetryableAPIError(err) {
+			if isRetryableAPIError(err) {
 				return false, nil
 			}
 			if apierrs.IsNotFound(err) {
