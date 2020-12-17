@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
-	testutils "k8s.io/kubernetes/test/utils"
 )
 
 func createNamespace(c kubernetes.Interface, name string) error {
@@ -35,7 +34,7 @@ func createNamespace(c kubernetes.Interface, name string) error {
 			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
-			if testutils.IsRetryableAPIError(err) {
+			if isRetryableAPIError(err) {
 				return false, nil
 			}
 			return false, err
@@ -57,7 +56,7 @@ func deleteNamespace(c kubernetes.Interface, name string) error {
 				return true, nil
 			}
 			e2elog.Logf("Error getting namespace: '%s': %v", name, err)
-			if testutils.IsRetryableAPIError(err) {
+			if isRetryableAPIError(err) {
 				return false, nil
 			}
 			return false, err
