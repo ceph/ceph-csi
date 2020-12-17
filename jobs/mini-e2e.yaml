@@ -2,7 +2,6 @@
 - project:
     name: mini-e2e
     k8s_version:
-      - '1.18'
       - '1.19'
       - '1.20'
     jobs:
