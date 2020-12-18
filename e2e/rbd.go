@@ -1153,6 +1153,10 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						e2elog.Failf("failed to create rados namespace with error %v", err)
 					}
+					err = createRBDSecret(f.ClientSet, f)
+					if err != nil {
+						e2elog.Failf("failed to create rbd secret with error %v", err)
+					}
 					// delete csi pods
 					err = deletePodWithLabel("app in (ceph-csi-rbd, csi-rbdplugin, csi-rbdplugin-provisioner)",
 						cephCSINamespace, false)

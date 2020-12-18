@@ -10,10 +10,15 @@ import (
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+)
+
+const (
+	rbdUser = "rbd.user"
 )
 
 func imageSpec(pool, image string) string {
@@ -28,6 +33,19 @@ func rbdOptions(pool string) string {
 		return "--pool=" + pool + " --namespace " + radosNamespace
 	}
 	return "--pool=" + pool
+}
+
+func rbdUserCapsOptions(pools ...string) string {
+	options := "mon 'profile rbd' osd '"
+	osdCaps := []string{}
+	for _, pool := range pools {
+		osdCap := "profile rbd pool=" + pool
+		if radosNamespace != "" {
+			osdCap += " namespace=" + radosNamespace
+		}
+		osdCaps = append(osdCaps, osdCap)
+	}
+	return options + strings.Join(osdCaps, ",") + "'"
 }
 
 func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOptions, parameters map[string]string, policy v1.PersistentVolumeReclaimPolicy) error {
@@ -124,16 +142,31 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) error {
 	if err != nil {
 		return err
 	}
-	adminKey, stdErr, err := execCommandInToolBoxPod(f, "ceph auth get-key client.admin", rookNamespace)
+
+	// delete previous client
+	_, _, err = execCommandInToolBoxPod(f,
+		fmt.Sprintf("ceph auth del client.%s", rbdUser), rookNamespace)
+	if err != nil {
+		return err
+	}
+
+	rbdUserKey, stdErr, err := execCommandInToolBoxPod(f,
+		fmt.Sprintf("ceph auth get-or-create-key client.%s %s", rbdUser, rbdUserCapsOptions(defaultRBDPool, rbdTopologyPool)), rookNamespace)
 	if err != nil {
 		return err
 	}
 	if stdErr != "" {
-		return fmt.Errorf("error getting admin key %v", stdErr)
+		return fmt.Errorf("error getting %q key %v", rbdUser, stdErr)
 	}
-	sc.StringData["userID"] = adminUser
-	sc.StringData["userKey"] = adminKey
+	sc.StringData["userID"] = rbdUser
+	sc.StringData["userKey"] = rbdUserKey
 	sc.Namespace = cephCSINamespace
+
+	err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
 	_, err = c.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &sc, metav1.CreateOptions{})
 	if err != nil {
 		return err
