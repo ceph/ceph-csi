@@ -224,6 +224,16 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		return fmt.Errorf("failed to create rbd image: %w", err)
 	}
 
+	if pOpts.ThickProvision {
+		err = pOpts.allocate(ctx)
+		if err != nil {
+			// nolint:errcheck // deleteImage() will log errors in
+			// case it fails, no need to log them here again
+			_ = deleteImage(ctx, pOpts, cr)
+			return fmt.Errorf("failed to thick provision image: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -282,6 +292,39 @@ func (rv *rbdVolume) open() (*librbd.Image, error) {
 		return nil, err
 	}
 	return image, nil
+}
+
+// allocate uses the stripe-period of the image to fully allocate (thick
+// provision) the image.
+func (rv *rbdVolume) allocate(ctx context.Context) error {
+	util.DebugLog(ctx, "going to allocate %q with %d bytes, this may take time", rv.String(), rv.VolSize)
+
+	image, err := rv.open()
+	if err != nil {
+		return err
+	}
+	defer image.Close()
+
+	st, err := image.Stat()
+	if err != nil {
+		return err
+	}
+
+	sc, err := image.GetStripeCount()
+	if err != nil {
+		return err
+	}
+
+	// zeroBlock is the stripe-period: size of the object-size multiplied
+	// by the stripe-count
+	zeroBlock := make([]byte, sc*(1<<st.Order))
+
+	// the actual size of the image as available in the pool, can be
+	// marginally different from the requested image size
+	s, err := image.WriteSame(0, st.Size, zeroBlock, rados.OpFlagNone)
+	util.DebugLog(ctx, "wrote %d bytes to %q", s, rv.String())
+
+	return err
 }
 
 // isInUse checks if there is a watcher on the image. It returns true if there
