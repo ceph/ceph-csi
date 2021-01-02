@@ -59,7 +59,7 @@ func init() {
 type rbdDeviceInfo struct {
 	ID             string `json:"id"`
 	Pool           string `json:"pool"`
-	RadosNamespace string `json:"radosNamespace"`
+	RadosNamespace string `json:"namespace"`
 	Name           string `json:"name"`
 	Device         string `json:"device"`
 }
@@ -71,7 +71,7 @@ type rbdDeviceInfo struct {
 type nbdDeviceInfo struct {
 	ID             int64  `json:"id"`
 	Pool           string `json:"pool"`
-	RadosNamespace string `json:"radosNamespace"`
+	RadosNamespace string `json:"namespace"`
 	Name           string `json:"image"`
 	Device         string `json:"device"`
 }
