@@ -1184,12 +1184,22 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to validate pvc and application binding with error %v", err)
 				}
+
 				// Resize Block PVC and check Device size within the namespace
 				// Block PVC resize is supported in kubernetes 1.16+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
 					err = resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
 					if err != nil {
 						e2elog.Failf("failed to resize block PVC with error %v", err)
+					}
+				}
+
+				// Resize Filesystem PVC and check application directory size
+				// Resize 0.3.0 is only supported from v1.15+
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 15) {
+					err := resizePVCAndValidateSize(pvcPath, appPath, f)
+					if err != nil {
+						e2elog.Failf("failed to resize filesystem PVC %v", err)
 					}
 				}
 
