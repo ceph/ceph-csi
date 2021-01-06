@@ -313,6 +313,63 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 	return err
 }
 
+// rbdDuImage contains the disk-usage statistics of an RBD image.
+type rbdDuImage struct {
+	Name            string `json:"name"`
+	ProvisionedSize uint64 `json:"provisioned_size"`
+	UsedSize        uint64 `json:"used_size"`
+}
+
+// rbdDuImageList contains the list of images returned by 'rbd du'.
+type rbdDuImageList struct {
+	Images []*rbdDuImage `json:"images"`
+}
+
+// getRbdDu runs 'rbd du' on the RBD image and returns a rbdDuImage struct with
+// the result.
+func getRbdDu(f *framework.Framework, pvc *v1.PersistentVolumeClaim) (*rbdDuImage, error) {
+	rdil := rbdDuImageList{}
+
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := fmt.Sprintf("rbd du --format=json %s %s", rbdOptions(defaultRBDPool), imageData.imageName)
+	stdout, _, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal([]byte(stdout), &rdil)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, image := range rdil.Images {
+		if image.Name == imageData.imageName {
+			return image, nil
+		}
+	}
+
+	return nil, fmt.Errorf("image %s not found", imageData.imageName)
+}
+
+// sparsifyBackingRBDImage runs `rbd sparsify` on the RBD image. Once done, all
+// data blocks that contain zeros are discarded/trimmed/unmapped and do not
+// take up any space anymore. This can be used to verify that an empty, but
+// allocated (with zerofill) extents have been released.
+func sparsifyBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	cmd := fmt.Sprintf("rbd sparsify %s %s", rbdOptions(defaultRBDPool), imageData.imageName)
+	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
+	return err
+}
+
 func deletePool(name string, cephfs bool, f *framework.Framework) error {
 	var cmds = []string{}
 	if cephfs {

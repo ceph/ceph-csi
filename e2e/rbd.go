@@ -1297,6 +1297,83 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 0)
 			})
 
+			By("create a thick-provisioned PVC", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{
+					"thickProvision": "true"}, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+
+				pvc, err := loadPVC(rawPvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC with error %v", err)
+				}
+				validateRBDImageCount(f, 1)
+
+				// nothing has been written, but the image should be allocated
+				du, err := getRbdDu(f, pvc)
+				if err != nil {
+					e2elog.Failf("failed to get allocations of RBD image: %v", err)
+				} else if du.UsedSize == 0 || du.UsedSize != du.ProvisionedSize {
+					e2elog.Failf("backing RBD image is not thick-provisioned (%d/%d)", du.UsedSize, du.ProvisionedSize)
+				}
+
+				// expanding the PVC should thick-allocate the expansion
+				// nolint:mnd // we want 2x the size so that extending is done
+				newSize := du.ProvisionedSize * 2
+				err = expandPVCSize(f.ClientSet, pvc, fmt.Sprintf("%d", newSize), deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to expand PVC: %v", err)
+				}
+
+				// after expansion, the updated 'du' should be larger
+				du, err = getRbdDu(f, pvc)
+				if err != nil {
+					e2elog.Failf("failed to get allocations of RBD image: %v", err)
+				} else if du.UsedSize != newSize {
+					e2elog.Failf("backing RBD image is not extended thick-provisioned (%d/%d)", du.UsedSize, newSize)
+				}
+
+				// thick provisioning allows for sparsifying
+				err = sparsifyBackingRBDImage(f, pvc)
+				if err != nil {
+					e2elog.Failf("failed to sparsify RBD image: %v", err)
+				}
+
+				// after sparsifying the image should not have any allocations
+				du, err = getRbdDu(f, pvc)
+				if err != nil {
+					e2elog.Failf("backing RBD image is not thick-provisioned: %v", err)
+				} else if du.UsedSize != 0 {
+					e2elog.Failf("backing RBD image was not sparsified")
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC with error: %v", err)
+				}
+				validateRBDImageCount(f, 0)
+
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+			})
+
 			By("create a PVC and Bind it to an app for mapped rbd image with options", func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
