@@ -17,18 +17,13 @@ limitations under the License.
 package csicommon
 
 import (
-	"fmt"
-	"os"
+	"context"
 
 	"github.com/ceph/ceph-csi/internal/util"
-
-	"context"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/volume"
 )
 
 // DefaultNodeServer stores driver object.
@@ -85,94 +80,7 @@ func (ns *DefaultNodeServer) NodeGetCapabilities(ctx context.Context, req *csi.N
 
 // NodeGetVolumeStats returns volume stats.
 func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	var err error
-	targetPath := req.GetVolumePath()
-	if targetPath == "" {
-		err = fmt.Errorf("targetpath %v is empty", targetPath)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	/*
-		volID := req.GetVolumeId()
-
-		TODO: Map the volumeID to the targetpath.
-
-		CephFS:
-		   we need secret to connect to the ceph cluster to get the volumeID from volume
-		   Name, however `secret` field/option is not available  in NodeGetVolumeStats spec,
-		   Below issue covers this request and once its available, we can do the validation
-		   as per the spec.
-
-		   https://github.com/container-storage-interface/spec/issues/371
-
-		RBD:
-		   Below issue covers this request for RBD and once its available, we can do the validation
-		   as per the spec.
-
-		   https://github.com/ceph/ceph-csi/issues/511
-
-	*/
-
-	isMnt, err := util.IsMountPoint(targetPath)
-
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s does not exist", targetPath)
-		}
-		return nil, err
-	}
-	if !isMnt {
-		return nil, status.Errorf(codes.InvalidArgument, "targetpath %s is not mounted", targetPath)
-	}
-
-	cephMetricsProvider := volume.NewMetricsStatFS(targetPath)
-	volMetrics, volMetErr := cephMetricsProvider.GetMetrics()
-	if volMetErr != nil {
-		return nil, status.Error(codes.Internal, volMetErr.Error())
-	}
-
-	available, ok := (*(volMetrics.Available)).AsInt64()
-	if !ok {
-		klog.Errorf(util.Log(ctx, "failed to fetch available bytes"))
-	}
-	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
-	if !ok {
-		klog.Errorf(util.Log(ctx, "failed to fetch capacity bytes"))
-		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
-	}
-	used, ok := (*(volMetrics.Used)).AsInt64()
-	if !ok {
-		klog.Errorf(util.Log(ctx, "failed to fetch used bytes"))
-	}
-	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
-	if !ok {
-		klog.Errorf(util.Log(ctx, "failed to fetch available inodes"))
-		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
-	}
-	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
-	if !ok {
-		klog.Errorf(util.Log(ctx, "failed to fetch free inodes"))
-	}
-
-	inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
-	if !ok {
-		klog.Errorf(util.Log(ctx, "failed to fetch used inodes"))
-	}
-	return &csi.NodeGetVolumeStatsResponse{
-		Usage: []*csi.VolumeUsage{
-			{
-				Available: available,
-				Total:     capacity,
-				Used:      used,
-				Unit:      csi.VolumeUsage_BYTES,
-			},
-			{
-				Available: inodesFree,
-				Total:     inodes,
-				Used:      inodesUsed,
-				Unit:      csi.VolumeUsage_INODES,
-			},
-		},
-	}, nil
+	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // ConstructMountOptions returns only unique mount options in slice.

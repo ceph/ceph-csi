@@ -19,6 +19,7 @@ package csicommon
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime/debug"
 	"strings"
 	"sync/atomic"
@@ -33,6 +34,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/volume"
 )
 
 func parseEndpoint(ep string) (string, string, error) {
@@ -184,4 +186,72 @@ func panicHandler(ctx context.Context, req interface{}, info *grpc.UnaryServerIn
 		}
 	}()
 	return handler(ctx, req)
+}
+
+// FilesystemNodeGetVolumeStats can be used for getting the metrics as
+// requested by the NodeGetVolumeStats CSI procedure.
+// It is shared for FileMode volumes, both the CephFS and RBD NodeServers call
+// this.
+func FilesystemNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
+	isMnt, err := util.IsMountPoint(targetPath)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s does not exist", targetPath)
+		}
+		return nil, err
+	}
+	if !isMnt {
+		return nil, status.Errorf(codes.InvalidArgument, "targetpath %s is not mounted", targetPath)
+	}
+
+	cephMetricsProvider := volume.NewMetricsStatFS(targetPath)
+	volMetrics, volMetErr := cephMetricsProvider.GetMetrics()
+	if volMetErr != nil {
+		return nil, status.Error(codes.Internal, volMetErr.Error())
+	}
+
+	available, ok := (*(volMetrics.Available)).AsInt64()
+	if !ok {
+		util.ErrorLog(ctx, "failed to fetch available bytes")
+	}
+	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
+	if !ok {
+		util.ErrorLog(ctx, "failed to fetch capacity bytes")
+		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
+	}
+	used, ok := (*(volMetrics.Used)).AsInt64()
+	if !ok {
+		util.ErrorLog(ctx, "failed to fetch used bytes")
+	}
+	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
+	if !ok {
+		util.ErrorLog(ctx, "failed to fetch available inodes")
+		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
+	}
+	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
+	if !ok {
+		util.ErrorLog(ctx, "failed to fetch free inodes")
+	}
+
+	inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
+	if !ok {
+		util.ErrorLog(ctx, "failed to fetch used inodes")
+	}
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			{
+				Available: available,
+				Total:     capacity,
+				Used:      used,
+				Unit:      csi.VolumeUsage_BYTES,
+			},
+			{
+				Available: inodesFree,
+				Total:     inodes,
+				Used:      inodesUsed,
+				Unit:      csi.VolumeUsage_INODES,
+			},
+		},
+	}, nil
 }
