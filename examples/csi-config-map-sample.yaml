@@ -13,8 +13,8 @@ kind: ConfigMap
 # To add more clusters or edit MON addresses in an existing configmap, use
 # the `kubectl replace` command.
 # The <rados-namespace> is optional and represents a radosNamespace in the pool.
-# If any given all the of the rbd images, snapshots and other metadata
-# will be store within the radosNamespace.
+# If any given, all of the rbd images, snapshots, and other metadata will be
+# stored within the radosNamespace.
 # NOTE: The given radosNamespace must already exists in the pool.
 # NOTE: Make sure you don't add radosNamespace option to a currently in use
 # configuration as it will cause issues.
