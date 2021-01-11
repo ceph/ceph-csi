@@ -325,3 +325,24 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 		},
 	}, nil
 }
+
+// NodeGetVolumeStats returns volume stats.
+func (ns *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	var err error
+	targetPath := req.GetVolumePath()
+	if targetPath == "" {
+		err = fmt.Errorf("targetpath %v is empty", targetPath)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	stat, err := os.Stat(targetPath)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "failed to get stat for targetpath %q: %v", targetPath, err)
+	}
+
+	if stat.Mode().IsDir() {
+		return csicommon.FilesystemNodeGetVolumeStats(ctx, targetPath)
+	}
+
+	return nil, fmt.Errorf("targetpath %q is not a directory or device", targetPath)
+}
