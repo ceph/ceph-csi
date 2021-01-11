@@ -875,3 +875,58 @@ func (ns *NodeServer) xfsSupportsReflink() bool {
 	xfsHasReflink = xfsReflinkNoSupport
 	return false
 }
+
+// NodeGetVolumeStats returns volume stats.
+func (ns *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	var err error
+	targetPath := req.GetVolumePath()
+	if targetPath == "" {
+		err = fmt.Errorf("targetpath %v is empty", targetPath)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	stat, err := os.Stat(targetPath)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "failed to get stat for targetpath %q: %v", targetPath, err)
+	}
+
+	if stat.Mode().IsDir() {
+		return csicommon.FilesystemNodeGetVolumeStats(ctx, targetPath)
+	} else if (stat.Mode() & os.ModeDevice) == os.ModeDevice {
+		return blockNodeGetVolumeStats(ctx, targetPath)
+	}
+
+	return nil, fmt.Errorf("targetpath %q is not a block device", targetPath)
+}
+
+// blockNodeGetVolumeStats gets the metrics for a `volumeMode: Block` type of
+// volume. At the moment, only the size of the block-device can be returned, as
+// there are no secrets in the NodeGetVolumeStats request that enables us to
+// connect to the Ceph cluster.
+//
+// TODO: https://github.com/container-storage-interface/spec/issues/371#issuecomment-756834471
+func blockNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
+	args := []string{"--noheadings", "--bytes", "--output=SIZE", targetPath}
+	lsblkSize, _, err := util.ExecCommand(ctx, "/bin/lsblk", args...)
+	if err != nil {
+		err = fmt.Errorf("lsblk %v returned an error: %w", args, err)
+		util.ErrorLog(ctx, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	size, err := strconv.ParseInt(strings.TrimSpace(lsblkSize), 10, 64)
+	if err != nil {
+		err = fmt.Errorf("failed to convert %q to bytes: %w", lsblkSize, err)
+		util.ErrorLog(ctx, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			{
+				Total: size,
+				Unit:  csi.VolumeUsage_BYTES,
+			},
+		},
+	}, nil
+}
