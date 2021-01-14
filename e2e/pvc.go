@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -243,4 +244,45 @@ func checkPVSelectorValuesForPVC(f *framework.Framework, pvc *v1.PersistentVolum
 		}
 	}
 	return nil
+}
+
+func getMetricsForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, t int) error {
+	kubelet, err := getKubeletIP(f.ClientSet)
+	if err != nil {
+		return err
+	}
+
+	// kubelet needs to be started with --read-only-port=10255
+	cmd := fmt.Sprintf("curl --silent 'http://%s:10255/metrics'", kubelet)
+
+	// retry as kubelet does not immediately have the metrics available
+	timeout := time.Duration(t) * time.Minute
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+		if err != nil {
+			e2elog.Logf("failed to get metrics for pvc %q (%v): %v", pvc.Name, err, stdErr)
+			return false, nil
+		}
+		if stdOut == "" {
+			e2elog.Logf("no metrics received from kublet on IP %s", kubelet)
+			return false, nil
+		}
+
+		namespace := fmt.Sprintf("namespace=%q", pvc.Namespace)
+		name := fmt.Sprintf("persistentvolumeclaim=%q", pvc.Name)
+
+		for _, line := range strings.Split(stdOut, "\n") {
+			if !strings.HasPrefix(line, "kubelet_volume_stats_") {
+				continue
+			}
+			if strings.Contains(line, namespace) && strings.Contains(line, name) {
+				// TODO: validate metrics if possible
+				e2elog.Logf("found metrics for pvc %s/%s: %s", pvc.Namespace, pvc.Name, line)
+				return true, nil
+			}
+		}
+
+		e2elog.Logf("no metrics found for pvc %s/%s", pvc.Namespace, pvc.Name)
+		return false, nil
+	})
 }
