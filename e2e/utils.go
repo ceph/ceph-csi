@@ -302,6 +302,19 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 	if stdErr != "" {
 		return fmt.Errorf("failed to touch a file as non-root user %v", stdErr)
 	}
+
+	// metrics for BlockMode was added in Kubernetes 1.22
+	isBlockMode := false
+	if pvc.Spec.VolumeMode != nil {
+		isBlockMode = (*pvc.Spec.VolumeMode == v1.PersistentVolumeBlock)
+	}
+	if !isBlockMode || k8sVersionGreaterEquals(f.ClientSet, 1, 22) {
+		err = getMetricsForPVC(f, pvc, deployTimeout)
+		if err != nil {
+			return err
+		}
+	}
+
 	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 	if err != nil {
 		return err
