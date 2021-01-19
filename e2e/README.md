@@ -156,6 +156,18 @@ Functional tests are run by the `go test` command.
 go test ./e2e/ -timeout=20m -v -mod=vendor
 ```
 
+To run specific tests, you can specify options
+
+```console
+go test ./e2e/ --test-cephfs=false --test-rbd=false --upgrade-testing=true
+```
+
+To run e2e for specific tests with `make`, use
+
+```console
+make run-e2e E2E_ARGS="--test-cephfs=false --test-rbd=true --upgrade-testing=false"
+```
+
 You can also invoke functional tests with `make` command
 
 ```console
