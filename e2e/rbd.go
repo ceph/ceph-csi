@@ -349,6 +349,31 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("create a PVC and bind it to an app using rbd-nbd mounter", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"mounter": "rbd-nbd"}, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate pvc and application binding with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0)
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+			})
+
 			By("create a PVC and bind it to an app with encrypted RBD volume", func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
