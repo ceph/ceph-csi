@@ -299,6 +299,15 @@ func (rv *rbdVolume) open() (*librbd.Image, error) {
 func (rv *rbdVolume) allocate(ctx context.Context) error {
 	util.DebugLog(ctx, "going to allocate %q with %d bytes, this may take time", rv.String(), rv.VolSize)
 
+	// We do not want to call discard, we really want to write zeros to get
+	// the allocation. This sets the option for the re-used connection, and
+	// all subsequent images that are opened. That is not a problem, as
+	// this is the only place images get written.
+	err := rv.conn.DisableDiscardOnZeroedWriteSame()
+	if err != nil {
+		return err
+	}
+
 	image, err := rv.open()
 	if err != nil {
 		return err
