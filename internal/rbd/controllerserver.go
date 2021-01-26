@@ -455,8 +455,8 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 	}
 	defer j.Destroy()
 
-	// nolint:gocritic // this ifElseChain can not be rewritten to a switch statement
-	if rbdSnap != nil {
+	switch {
+	case rbdSnap != nil:
 		if err = cs.OperationLocks.GetRestoreLock(rbdSnap.SnapID); err != nil {
 			util.ErrorLog(ctx, err.Error())
 			return status.Error(codes.Aborted, err.Error())
@@ -468,14 +468,14 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 			return err
 		}
 		util.DebugLog(ctx, "created volume %s from snapshot %s", rbdVol.RequestName, rbdSnap.RbdSnapName)
-	} else if parentVol != nil {
+	case parentVol != nil:
 		if err = cs.OperationLocks.GetCloneLock(parentVol.VolID); err != nil {
 			util.ErrorLog(ctx, err.Error())
 			return status.Error(codes.Aborted, err.Error())
 		}
 		defer cs.OperationLocks.ReleaseCloneLock(parentVol.VolID)
 		return rbdVol.createCloneFromImage(ctx, parentVol)
-	} else {
+	default:
 		err = createImage(ctx, rbdVol, cr)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to create volume: %v", err)
@@ -733,13 +733,13 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	rbdVol, err = genVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
-		// nolint:gocritic // this ifElseChain can not be rewritten to a switch statement
-		if errors.Is(err, ErrImageNotFound) {
+		switch {
+		case errors.Is(err, ErrImageNotFound):
 			err = status.Errorf(codes.NotFound, "source Volume ID %s not found", req.GetSourceVolumeId())
-		} else if errors.Is(err, util.ErrPoolNotFound) {
+		case errors.Is(err, util.ErrPoolNotFound):
 			util.ErrorLog(ctx, "failed to get backend volume for %s: %v", req.GetSourceVolumeId(), err)
 			err = status.Errorf(codes.NotFound, err.Error())
-		} else {
+		default:
 			err = status.Errorf(codes.Internal, err.Error())
 		}
 		return nil, err
@@ -1103,13 +1103,13 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	rbdVol, err = genVolFromVolID(ctx, volID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
-		// nolint:gocritic // this ifElseChain can not be rewritten to a switch statement
-		if errors.Is(err, ErrImageNotFound) {
+		switch {
+		case errors.Is(err, ErrImageNotFound):
 			err = status.Errorf(codes.NotFound, "volume ID %s not found", volID)
-		} else if errors.Is(err, util.ErrPoolNotFound) {
+		case errors.Is(err, util.ErrPoolNotFound):
 			util.ErrorLog(ctx, "failed to get backend volume for %s: %v", volID, err)
 			err = status.Errorf(codes.NotFound, err.Error())
-		} else {
+		default:
 			err = status.Errorf(codes.Internal, err.Error())
 		}
 		return nil, err
