@@ -228,7 +228,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	}
 
 	if pOpts.ThickProvision {
-		err = pOpts.allocate(ctx)
+		err = pOpts.allocate(0)
 		if err != nil {
 			// nolint:errcheck // deleteImage() will log errors in
 			// case it fails, no need to log them here again
@@ -307,9 +307,7 @@ func (rv *rbdVolume) open() (*librbd.Image, error) {
 
 // allocate uses the stripe-period of the image to fully allocate (thick
 // provision) the image.
-func (rv *rbdVolume) allocate(ctx context.Context) error {
-	util.DebugLog(ctx, "going to allocate %q with %d bytes, this may take time", rv.String(), rv.VolSize)
-
+func (rv *rbdVolume) allocate(offset uint64) error {
 	// We do not want to call discard, we really want to write zeros to get
 	// the allocation. This sets the option for the re-used connection, and
 	// all subsequent images that are opened. That is not a problem, as
@@ -341,8 +339,7 @@ func (rv *rbdVolume) allocate(ctx context.Context) error {
 
 	// the actual size of the image as available in the pool, can be
 	// marginally different from the requested image size
-	s, err := image.WriteSame(0, st.Size, zeroBlock, rados.OpFlagNone)
-	util.DebugLog(ctx, "wrote %d bytes to %q", s, rv.String())
+	_, err = image.WriteSame(offset, st.Size-offset, zeroBlock, rados.OpFlagNone)
 
 	return err
 }
@@ -1223,13 +1220,42 @@ func (rv *rbdVolume) resize(newSize int64) error {
 	}
 	defer image.Close()
 
+	thick, err := rv.isThickProvisioned()
+	if err != nil {
+		return err
+	}
+
+	// offset is used to track from where on the expansion is done, so that
+	// the extents can be allocated in case the image is thick-provisioned
+	var offset uint64
+	if thick {
+		st, statErr := image.Stat()
+		if statErr != nil {
+			return statErr
+		}
+
+		offset = st.Size
+	}
+
 	err = image.Resize(uint64(util.RoundOffVolSize(newSize) * helpers.MiB))
 	if err != nil {
 		return err
 	}
 
+	if thick {
+		err = rv.allocate(offset)
+		if err != nil {
+			resizeErr := image.Resize(offset)
+			if resizeErr != nil {
+				err = fmt.Errorf("failed to shrink image (%v) after failed allocation: %w", resizeErr, err)
+			}
+			return err
+		}
+	}
+
 	// update Volsize of rbdVolume object to newSize.
 	rv.VolSize = newSize
+
 	return nil
 }
 
