@@ -133,11 +133,11 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 		// If the configmap is not mounted to the CSI pods read the configmap
 		// the kubernetes.
 		namespace := os.Getenv(podNamespace)
-		if namespace != "" {
+		if namespace == "" {
 			return nil, fmt.Errorf("%q is not set", podNamespace)
 		}
 		name := os.Getenv(kmsConfigMapName)
-		if name != "" {
+		if name == "" {
 			name = defaultConfigMapToRead
 		}
 		config, err = getVaultConfiguration(namespace, name)
