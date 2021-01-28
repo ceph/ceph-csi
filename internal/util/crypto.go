@@ -105,8 +105,30 @@ func GetKMS(kmsID string, secrets map[string]string) (EncryptionKMS, error) {
 	// #nosec
 	content, err := ioutil.ReadFile(kmsConfigPath)
 	if err != nil {
+<<<<<<< HEAD
 		return nil, fmt.Errorf("failed to read kms configuration from %s: %s",
 			kmsConfigPath, err)
+=======
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to read kms configuration from %s: %w",
+				kmsConfigPath, err)
+		}
+		// If the configmap is not mounted to the CSI pods read the configmap
+		// the kubernetes.
+		namespace := os.Getenv(podNamespace)
+		if namespace == "" {
+			return nil, fmt.Errorf("%q is not set", podNamespace)
+		}
+		name := os.Getenv(kmsConfigMapName)
+		if name == "" {
+			name = defaultConfigMapToRead
+		}
+		config, err = getVaultConfiguration(namespace, name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read kms configuration from configmap %s in namespace %s: %w",
+				namespace, name, err)
+		}
+>>>>>>> 584a43dc2... rbd: fix issue in ENV variable check
 	}
 
 	var config map[string]interface{}
