@@ -53,6 +53,9 @@ const (
 	rbdTaskRemoveCmdInvalidString1      = "no valid command found"
 	rbdTaskRemoveCmdInvalidString2      = "Error EINVAL: invalid command"
 	rbdTaskRemoveCmdAccessDeniedMessage = "Error EACCES:"
+
+	// image metadata key for thick-provisioning
+	thickProvisionMetaKey = ".rbd.csi.ceph.com/thick-provisioned"
 )
 
 // rbdVolume represents a CSI volume and its RBD image specifics.
@@ -231,6 +234,14 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 			// case it fails, no need to log them here again
 			_ = deleteImage(ctx, pOpts, cr)
 			return fmt.Errorf("failed to thick provision image: %w", err)
+		}
+
+		err = pOpts.setThickProvisioned()
+		if err != nil {
+			// nolint:errcheck // deleteImage() will log errors in
+			// case it fails, no need to log them here again
+			_ = deleteImage(ctx, pOpts, cr)
+			return fmt.Errorf("failed to mark image as thick-provisioned: %w", err)
 		}
 	}
 
@@ -1240,6 +1251,36 @@ func (rv *rbdVolume) SetMetadata(key, value string) error {
 	defer image.Close()
 
 	return image.SetMetadata(key, value)
+}
+
+// setThickProvisioned records in the image metadata that it has been
+// thick-provisioned.
+func (rv *rbdVolume) setThickProvisioned() error {
+	err := rv.SetMetadata(thickProvisionMetaKey, "true")
+	if err != nil {
+		return fmt.Errorf("failed to set metadata %q for %q: %w", thickProvisionMetaKey, rv.String(), err)
+	}
+
+	return nil
+}
+
+// isThickProvisioned checks in the image metadata if the image has been marked
+// as thick-provisioned. This can be used while expanding the image, so that
+// the expansion can be allocated too.
+func (rv *rbdVolume) isThickProvisioned() (bool, error) {
+	value, err := rv.GetMetadata(thickProvisionMetaKey)
+	if err != nil {
+		if err == librbd.ErrNotFound {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get metadata %q for %q: %w", thickProvisionMetaKey, rv.String(), err)
+	}
+
+	thick, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("failed to convert %q=%q to a boolean: %w", thickProvisionMetaKey, value, err)
+	}
+	return thick, nil
 }
 
 func (rv *rbdVolume) listSnapshots() ([]librbd.SnapInfo, error) {
