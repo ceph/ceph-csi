@@ -62,6 +62,7 @@ type standardVault struct {
 	VaultClientCert    string `json:"VAULT_CLIENT_CERT"`
 	VaultClientKey     string `json:"VAULT_CLIENT_KEY"`
 	VaultNamespace     string `json:"VAULT_NAMESPACE"`
+	VaultSkipVerify    *bool  `json:"VAULT_SKIP_VERIFY"`
 }
 
 type vaultTokenConf struct {
@@ -73,6 +74,7 @@ type vaultTokenConf struct {
 	VaultClientCertFromSecret    string `json:"vaultClientCertFromSecret"`
 	VaultClientCertKeyFromSecret string `json:"vaultClientCertKeyFromSecret"`
 	VaultNamespace               string `json:"vaultNamespace"`
+	VaultCAVerify                bool   `json:"vaultCAVerify"`
 }
 
 func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
@@ -84,6 +86,13 @@ func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 	v.VaultClientCertKeyFromSecret = s.VaultClientKey
 	v.VaultNamespace = s.VaultNamespace
 	v.VaultTLSServerName = s.VaultTLSServerName
+
+	// by default the CA should get verified, only when VaultSkipVerify is
+	// set, verification should be disabled
+	v.VaultCAVerify = true
+	if s.VaultSkipVerify != nil {
+		v.VaultCAVerify = *s.VaultSkipVerify
+	}
 }
 
 // getVaultConfiguration fetches the vault configuration from the kubernetes
