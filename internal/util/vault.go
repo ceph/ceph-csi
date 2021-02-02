@@ -175,7 +175,7 @@ func (vc *vaultConnection) initConnection(kmsID string, config map[string]interf
 		if err != nil {
 			return fmt.Errorf("failed to parse 'vaultCAVerify': %w", err)
 		}
-		vaultConfig[api.EnvVaultInsecure] = !vaultCAVerify
+		vaultConfig[api.EnvVaultInsecure] = strconv.FormatBool(!vaultCAVerify)
 	}
 
 	vaultCAFromSecret := "" // optional
