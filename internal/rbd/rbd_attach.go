@@ -208,7 +208,7 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, cr *util.Credent
 	return devicePath, err
 }
 
-func appendDeviceTypeAndOptions(cmdArgs []string, isNbd bool, userOptions string) []string {
+func appendDeviceTypeAndOptions(cmdArgs []string, isNbd, isThick bool, userOptions string) []string {
 	accessType := accessTypeKRbd
 	if isNbd {
 		accessType = accessTypeNbd
@@ -220,6 +220,11 @@ func appendDeviceTypeAndOptions(cmdArgs []string, isNbd bool, userOptions string
 		// namespace (e.g. for Multus CNI).  The network namespace must be
 		// owned by the initial user namespace.
 		cmdArgs = append(cmdArgs, "--options", "noudev")
+	}
+	if isThick {
+		// When an image is thick-provisioned, any discard/unmap/trim
+		// requests should not free extents.
+		cmdArgs = append(cmdArgs, "--options", "notrim")
 	}
 	if userOptions != "" {
 		// userOptions is appended after, possibly overriding the above
@@ -248,7 +253,13 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 		isNbd = true
 	}
 
-	mapArgs = appendDeviceTypeAndOptions(mapArgs, isNbd, volOpt.MapOptions)
+	// check if the image should stay thick-provisioned
+	isThick, err := volOpt.isThickProvisioned()
+	if err != nil {
+		util.WarningLog(ctx, "failed to detect if image %q is thick-provisioned: %v", volOpt.String(), err)
+	}
+
+	mapArgs = appendDeviceTypeAndOptions(mapArgs, isNbd, isThick, volOpt.MapOptions)
 	if volOpt.readOnly {
 		mapArgs = append(mapArgs, "--read-only")
 	}
@@ -326,7 +337,7 @@ func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, i
 	}
 
 	unmapArgs := []string{"unmap", imageOrDeviceSpec}
-	unmapArgs = appendDeviceTypeAndOptions(unmapArgs, isNbd, unmapOptions)
+	unmapArgs = appendDeviceTypeAndOptions(unmapArgs, isNbd, false, unmapOptions)
 
 	_, stderr, err := util.ExecCommand(ctx, rbd, unmapArgs...)
 	if err != nil {
