@@ -44,7 +44,7 @@ spec:
           args:
             - "--v={{ .Values.logLevel }}"
             - "--csi-address=/csi/{{ .Values.pluginSocketFile }}"
-            - "--kubelet-registration-path={{ .Values.kubeletDir }}/{{ .Values.driverName }}/{{ .Values.pluginSocketFile }}"
+            - "--kubelet-registration-path={{ .Values.kubeletDir }}/plugins/{{ .Values.driverName }}/{{ .Values.pluginSocketFile }}"
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
@@ -144,7 +144,7 @@ spec:
       volumes:
         - name: socket-dir
           hostPath:
-            path: "{{ .Values.kubeletDir }}/{{ .Values.driverName }}"
+            path: "{{ .Values.kubeletDir }}/plugins/{{ .Values.driverName }}"
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:
