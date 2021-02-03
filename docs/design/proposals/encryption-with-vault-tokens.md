@@ -203,7 +203,7 @@ kind: secret
 metadata:
   name: vault-infosec-ca
 stringData:
-  ca.cert: |
+  cert: |
     MIIC2DCCAcCgAwIBAgIBATANBgkqh...
 ```
 
@@ -216,7 +216,7 @@ kind: secret
 metadata:
   name: vault-client-cert
 stringData:
-  tls.cert: |
+  cert: |
     BATANBgkqcCgAwIBAgIBATANBAwI...
 ```
 
@@ -229,7 +229,7 @@ kind: secret
 metadata:
   name: vault-client-cert-key
 stringData:
-  tls.key: |
+  key: |
     KNSC2DVVXcCgkqcCgAwIBAgIwewrvx...
 ```
 
@@ -243,10 +243,10 @@ kind: secret
 metadata:
   name: vault-certificates
 stringData:
-  ca.cert: |
+  cert: |
     MIIC2DCCAcCgAwIBAgIBATANBgkqh...
-  tls.cert: |
+  cert: |
     BATANBgkqcCgAwIBAgIBATANBAwI...
-  tls.key: |
+  key: |
     KNSC2DVVXcCgkqcCgAwIBAgIwewrvx...
 ```
