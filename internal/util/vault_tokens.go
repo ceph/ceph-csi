@@ -328,7 +328,7 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 		// if the certificate is not present in tenant namespace get it from
 		// cephcsi pod namespace
 		if apierrs.IsNotFound(err) {
-			certKey, err = getCertificate(csiNamespace, vaultClientCertFromSecret, "key")
+			certKey, err = getCertificate(csiNamespace, vaultClientCertKeyFromSecret, "key")
 			if err != nil {
 				return fmt.Errorf("failed to get client certificate key from secret %s: %w", vaultCAFromSecret, err)
 			}
