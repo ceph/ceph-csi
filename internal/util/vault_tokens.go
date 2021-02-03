@@ -268,14 +268,14 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 	}
 	// ignore errConfigOptionMissing, no default was set
 	if vaultCAFromSecret != "" {
-		cert, cErr := getCertificate(kms.Tenant, vaultCAFromSecret, "ca.cert")
+		cert, cErr := getCertificate(kms.Tenant, vaultCAFromSecret, "cert")
 		if cErr != nil && !apierrs.IsNotFound(err) {
 			return fmt.Errorf("failed to get CA certificate from secret %s: %w", vaultCAFromSecret, cErr)
 		}
 		// if the certificate is not present in tenant namespace get it from
 		// cephcsi pod namespace
 		if apierrs.IsNotFound(cErr) {
-			cert, cErr = getCertificate(csiNamespace, vaultCAFromSecret, "ca.cert")
+			cert, cErr = getCertificate(csiNamespace, vaultCAFromSecret, "cert")
 			if cErr != nil {
 				return fmt.Errorf("failed to get CA certificate from secret %s: %w", vaultCAFromSecret, cErr)
 			}
@@ -293,14 +293,14 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 	}
 	// ignore errConfigOptionMissing, no default was set
 	if vaultClientCertFromSecret != "" {
-		cert, cErr := getCertificate(kms.Tenant, vaultClientCertFromSecret, "tls.cert")
+		cert, cErr := getCertificate(kms.Tenant, vaultClientCertFromSecret, "cert")
 		if cErr != nil && !apierrs.IsNotFound(cErr) {
 			return fmt.Errorf("failed to get client certificate from secret %s: %w", vaultClientCertFromSecret, cErr)
 		}
 		// if the certificate is not present in tenant namespace get it from
 		// cephcsi pod namespace
 		if apierrs.IsNotFound(cErr) {
-			cert, cErr = getCertificate(csiNamespace, vaultClientCertFromSecret, "tls.cert")
+			cert, cErr = getCertificate(csiNamespace, vaultClientCertFromSecret, "cert")
 			if cErr != nil {
 				return fmt.Errorf("failed to get client certificate from secret %s: %w", vaultCAFromSecret, cErr)
 			}
@@ -319,14 +319,14 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 
 	// ignore errConfigOptionMissing, no default was set
 	if vaultClientCertKeyFromSecret != "" {
-		certKey, err := getCertificate(kms.Tenant, vaultClientCertKeyFromSecret, "tls.key")
+		certKey, err := getCertificate(kms.Tenant, vaultClientCertKeyFromSecret, "key")
 		if err != nil && !apierrs.IsNotFound(err) {
 			return fmt.Errorf("failed to get client certificate key from secret %s: %w", vaultClientCertKeyFromSecret, err)
 		}
 		// if the certificate is not present in tenant namespace get it from
 		// cephcsi pod namespace
 		if apierrs.IsNotFound(err) {
-			certKey, err = getCertificate(csiNamespace, vaultClientCertFromSecret, "tls.key")
+			certKey, err = getCertificate(csiNamespace, vaultClientCertFromSecret, "key")
 			if err != nil {
 				return fmt.Errorf("failed to get client certificate key from secret %s: %w", vaultCAFromSecret, err)
 			}
