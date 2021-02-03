@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/hashicorp/vault/api"
 	loss "github.com/libopenstorage/secrets"
@@ -74,7 +75,7 @@ type vaultTokenConf struct {
 	VaultClientCertFromSecret    string `json:"vaultClientCertFromSecret"`
 	VaultClientCertKeyFromSecret string `json:"vaultClientCertKeyFromSecret"`
 	VaultNamespace               string `json:"vaultNamespace"`
-	VaultCAVerify                bool   `json:"vaultCAVerify"`
+	VaultCAVerify                string `json:"vaultCAVerify"`
 }
 
 func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
@@ -89,9 +90,9 @@ func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 
 	// by default the CA should get verified, only when VaultSkipVerify is
 	// set, verification should be disabled
-	v.VaultCAVerify = true
+	v.VaultCAVerify = "true"
 	if s.VaultSkipVerify != nil {
-		v.VaultCAVerify = *s.VaultSkipVerify
+		v.VaultCAVerify = strconv.FormatBool(*s.VaultSkipVerify)
 	}
 }
 
