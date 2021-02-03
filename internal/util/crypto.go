@@ -145,11 +145,11 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 			return nil, fmt.Errorf("failed to read kms configuration from configmap %s in namespace %s: %w",
 				namespace, name, err)
 		}
-	}
-
-	err = json.Unmarshal(content, &config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse kms configuration: %w", err)
+	} else {
+		err = json.Unmarshal(content, &config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse kms configuration: %w", err)
+		}
 	}
 
 	kmsConfig, ok := config[kmsID].(map[string]interface{})
