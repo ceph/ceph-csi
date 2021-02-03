@@ -271,7 +271,7 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 	// ignore errConfigOptionMissing, no default was set
 	if vaultCAFromSecret != "" {
 		cert, cErr := getCertificate(kms.Tenant, vaultCAFromSecret, "cert")
-		if cErr != nil && !apierrs.IsNotFound(err) {
+		if cErr != nil && !apierrs.IsNotFound(cErr) {
 			return fmt.Errorf("failed to get CA certificate from secret %s: %w", vaultCAFromSecret, cErr)
 		}
 		// if the certificate is not present in tenant namespace get it from
