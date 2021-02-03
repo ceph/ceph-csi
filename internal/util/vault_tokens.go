@@ -172,6 +172,7 @@ type VaultTokensKMS struct {
 // InitVaultTokensKMS returns an interface to HashiCorp Vault KMS.
 func InitVaultTokensKMS(tenant, kmsID string, config map[string]interface{}) (EncryptionKMS, error) {
 	kms := &VaultTokensKMS{}
+	kms.Tenant = tenant
 	err := kms.initConnection(kmsID, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
