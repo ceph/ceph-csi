@@ -207,6 +207,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 		volumeContext := req.GetParameters()
 		volumeContext["subvolumeName"] = vID.FsSubvolName
+		volumeContext["subvolumePath"] = volOptions.RootPath
 		volume := &csi.Volume{
 			VolumeId:      vID.VolumeID,
 			CapacityBytes: volOptions.Size,
@@ -250,10 +251,31 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 		return nil, err
 	}
+
+	volOptions.RootPath, err = volOptions.getVolumeRootPathCeph(ctx, volumeID(vID.FsSubvolName))
+	if err != nil {
+		purgeErr := volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), true)
+		if purgeErr != nil {
+			util.ErrorLog(ctx, "failed to delete volume %s: %v", vID.FsSubvolName, purgeErr)
+			// All errors other than ErrVolumeNotFound should return an error back to the caller
+			if !errors.Is(purgeErr, ErrVolumeNotFound) {
+				// If the subvolume deletion is failed, we should not cleanup
+				// the OMAP entry it will stale subvolume in cluster.
+				// set err=nil so that when we get the request again we can get
+				// the subvolume info.
+				err = nil
+				return nil, status.Error(codes.Internal, purgeErr.Error())
+			}
+		}
+		util.ErrorLog(ctx, "failed to get subvolume path %s: %v", vID.FsSubvolName, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	util.DebugLog(ctx, "cephfs: successfully created backing volume named %s for request name %s",
 		vID.FsSubvolName, requestName)
 	volumeContext := req.GetParameters()
 	volumeContext["subvolumeName"] = vID.FsSubvolName
+	volumeContext["subvolumePath"] = volOptions.RootPath
 	volume := &csi.Volume{
 		VolumeId:      vID.VolumeID,
 		CapacityBytes: volOptions.Size,
