@@ -4,7 +4,6 @@ ROOK_VERSION=${ROOK_VERSION:-"v1.2.7"}
 ROOK_DEPLOY_TIMEOUT=${ROOK_DEPLOY_TIMEOUT:-300}
 ROOK_URL="https://raw.githubusercontent.com/rook/rook/${ROOK_VERSION}/cluster/examples/kubernetes/ceph"
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
-ROOK_CEPH_CLUSTER_VERSION="v14.2.10"
 KUBECTL_RETRY=5
 KUBECTL_RETRY_DELAY=10
 
@@ -82,50 +81,40 @@ kubectl_retry() {
 }
 
 function deploy_rook() {
-	kubectl_retry create -f "${ROOK_URL}/common.yaml"
-	kubectl_retry create -f "${ROOK_URL}/operator.yaml"
-	# find out the rook version to decide on the ceph cluster image to be used
-	ROOK_MAJOR=$(rook_version 1)
-	ROOK_MINOR=$(rook_version 2)
-	if { [ "${ROOK_MAJOR}" -eq 1 ] && [ "${ROOK_MINOR}" -le 2 ]; }; then
-		ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH="image: ceph/ceph:${ROOK_CEPH_CLUSTER_VERSION}"
-		# upgrade ceph cluster version to 14.2.10 to support CephFS snapshot functionalities.
-		TEMP_DIR="$(mktemp -d)"
-		curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
-		sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
-		cat  "${TEMP_DIR}"/cluster-test.yaml
-		kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
-		rm -rf "${TEMP_DIR}"
-	else
-		# add "mon_warn_on_pool_no_redundancy = false" to ceph.conf if missing
-		# see https://github.com/rook/rook/pull/5925 for upstream status
-		TEMP_DIR="$(mktemp -d)"
-		curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
-		if ! grep -q mon_warn_on_pool_no_redundancy "${TEMP_DIR}"/cluster-test.yaml; then
-			sed -i '/osd_pool_default_size =/a \    mon_warn_on_pool_no_redundancy = false' "${TEMP_DIR}"/cluster-test.yaml
-		fi
-		kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
-		rm -rf "${TEMP_DIR}"
-	fi
+        kubectl_retry create -f "${ROOK_URL}/common.yaml"
+        kubectl_retry create -f "${ROOK_URL}/operator.yaml"
+        # Override the ceph version which rook installs by default.
+        if  [ -z "${ROOK_CEPH_CLUSTER_IMAGE}" ]
+        then
+            kubectl_retry create -f "${ROOK_URL}/cluster-test.yaml"
+        else
+            ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH="image: ${ROOK_CEPH_CLUSTER_IMAGE}"
+            TEMP_DIR="$(mktemp -d)"
+            curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
+            sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
+            cat  "${TEMP_DIR}"/cluster-test.yaml
+            kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
+            rm -rf "${TEMP_DIR}"
+        fi
 
-	kubectl_retry create -f "${ROOK_URL}/toolbox.yaml"
-	kubectl_retry create -f "${ROOK_URL}/filesystem-test.yaml"
-	kubectl_retry create -f "${ROOK_URL}/pool-test.yaml"
+        kubectl_retry create -f "${ROOK_URL}/toolbox.yaml"
+        kubectl_retry create -f "${ROOK_URL}/filesystem-test.yaml"
+        kubectl_retry create -f "${ROOK_URL}/pool-test.yaml"
 
-	# Check if CephCluster is empty
-	if ! kubectl_retry -n rook-ceph get cephclusters -oyaml | grep 'items: \[\]' &>/dev/null; then
-		check_ceph_cluster_health
-	fi
+        # Check if CephCluster is empty
+        if ! kubectl_retry -n rook-ceph get cephclusters -oyaml | grep 'items: \[\]' &>/dev/null; then
+            check_ceph_cluster_health
+        fi
 
-	# Check if CephFileSystem is empty
-	if ! kubectl_retry -n rook-ceph get cephfilesystems -oyaml | grep 'items: \[\]' &>/dev/null; then
-		check_mds_stat
-	fi
+        # Check if CephFileSystem is empty
+        if ! kubectl_retry -n rook-ceph get cephfilesystems -oyaml | grep 'items: \[\]' &>/dev/null; then
+            check_mds_stat
+        fi
 
-	# Check if CephBlockPool is empty
-	if ! kubectl_retry -n rook-ceph get cephblockpools -oyaml | grep 'items: \[\]' &>/dev/null; then
-		check_rbd_stat ""
-	fi
+        # Check if CephBlockPool is empty
+        if ! kubectl_retry -n rook-ceph get cephblockpools -oyaml | grep 'items: \[\]' &>/dev/null; then
+            check_rbd_stat ""
+        fi
 }
 
 function teardown_rook() {
