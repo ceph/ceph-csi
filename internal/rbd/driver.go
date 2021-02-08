@@ -168,7 +168,12 @@ func (r *Driver) Run(conf *util.Config) {
 	}
 
 	s := csicommon.NewNonBlockingGRPCServer()
-	s.Start(conf.Endpoint, conf.HistogramOption, r.ids, r.cs, r.ns, conf.EnableGRPCMetrics)
+	srv := csicommon.Servers{
+		IS: r.ids,
+		CS: r.cs,
+		NS: r.ns,
+	}
+	s.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {
 		util.WarningLogMsg("EnableGRPCMetrics is deprecated")
 		go util.StartMetricsServer(conf)
