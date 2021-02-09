@@ -32,9 +32,11 @@ const (
 	cephfsNodePluginSecretName  = "rook-csi-cephfs-node"
 	cephfsProvisionerSecretName = "rook-csi-cephfs-provisioner"
 
-	// rook created rbd user
-	rbdNodePluginSecretName  = "rook-csi-rbd-node"
-	rbdProvisionerSecretName = "rook-csi-rbd-provisioner"
+	// Secret created inside the cephCSINamespace, can be modified. The
+	// Rook secrets get reconciled and changes are undone (needed for
+	// encryption).
+	rbdNodePluginSecretName  = "csi-rbd-secret"
+	rbdProvisionerSecretName = "csi-rbd-secret"
 
 	rookTolBoxPodLabel = "app=rook-ceph-tools"
 	rbdmountOptions    = "mountOptions"
@@ -100,36 +102,6 @@ func getSecret(path string) (v1.Secret, error) {
 		}
 	}
 	return sc, nil
-}
-
-// updateSecretForEncryption is an hack to update the secrets created by rook to
-// include the encryption key
-// TODO in cephcsi we need to create own users in ceph cluster and use it for E2E.
-func updateSecretForEncryption(c kubernetes.Interface) error {
-	secrets, err := c.CoreV1().Secrets(rookNamespace).Get(context.TODO(), rbdProvisionerSecretName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	secrets.Data["encryptionPassphrase"] = []byte("test_passphrase")
-
-	_, err = c.CoreV1().Secrets(rookNamespace).Update(context.TODO(), secrets, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
-	secrets, err = c.CoreV1().Secrets(rookNamespace).Get(context.TODO(), rbdNodePluginSecretName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	secrets.Data["encryptionPassphrase"] = []byte("test_passphrase")
-
-	_, err = c.CoreV1().Secrets(rookNamespace).Update(context.TODO(), secrets, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func deleteResource(scPath string) error {
