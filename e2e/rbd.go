@@ -374,6 +374,92 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("perform IO on rbd-nbd volume after nodeplugin restart and expect a failure", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				// Storage class with rbd-nbd mounter
+				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"mounter": "rbd-nbd"}, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+
+				app, err := loadApp(appPath)
+				if err != nil {
+					e2elog.Failf("failed to load application with error %v", err)
+				}
+
+				app.Namespace = f.UniqueName
+				label := map[string]string{
+					"app": app.Name,
+				}
+				app.Labels = label
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+				err = createPVCAndApp("", f, pvc, app, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC and application with error %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1)
+
+				selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
+				if err != nil {
+					e2elog.Failf("failed to get the labels with error %v", err)
+				}
+				// delete rbd nodeplugin pods
+				err = deletePodWithLabel(selector, cephCSINamespace, false)
+				if err != nil {
+					e2elog.Failf("fail to delete pod with error %v", err)
+				}
+
+				// wait for nodeplugin pods to come up
+				err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for daemonset pods with error %v", err)
+				}
+
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("app=%s", app.Name),
+				}
+
+				// FIXME: Fix this behavior, i.e. when the nodeplugin is
+				// restarted, the rbd-nbd processes should be back to life
+				// as rbd-nbd processes are responsible for IO
+
+				// For now to prove this isn't working, write something to
+				// mountpoint and expect a failure as the processes are terminated.
+				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+				_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), app.Namespace, &opt)
+				IOErr := fmt.Sprintf("cannot create %s: Input/output error", filePath)
+				if !strings.Contains(stdErr, IOErr) {
+					e2elog.Failf(stdErr)
+				} else {
+					e2elog.Logf("failed IO as expected: %v", stdErr)
+				}
+
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC and application with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0)
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+			})
+
 			By("create a PVC and bind it to an app with encrypted RBD volume", func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
