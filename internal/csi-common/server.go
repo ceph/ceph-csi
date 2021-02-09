@@ -26,6 +26,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/kube-storage/spec/lib/go/replication"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	klog "k8s.io/klog/v2"
@@ -50,6 +51,7 @@ type Servers struct {
 	IS csi.IdentityServer
 	CS csi.ControllerServer
 	NS csi.NodeServer
+	RS replication.ControllerServer
 }
 
 // NewNonBlockingGRPCServer return non-blocking GRPC.
@@ -122,6 +124,10 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, srv Servers, 
 	if srv.NS != nil {
 		csi.RegisterNodeServer(server, srv.NS)
 	}
+	if srv.RS != nil {
+		replication.RegisterControllerServer(server, srv.RS)
+	}
+
 	util.DefaultLog("Listening for connections on address: %#v", listener.Addr())
 	if metrics {
 		ho := strings.Split(hstOptions, ",")
