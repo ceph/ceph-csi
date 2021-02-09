@@ -37,13 +37,13 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOpt
 		return nil
 	}
 	sc.Parameters["pool"] = defaultRBDPool
-	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-name"] = rbdProvisionerSecretName
 
-	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/controller-expand-secret-name"] = rbdProvisionerSecretName
 
-	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = rookNamespace
+	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = rbdNodePluginSecretName
 
 	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
@@ -139,7 +139,6 @@ func createRBDSecret(c kubernetes.Interface, f *framework.Framework) error {
 		return err
 	}
 
-	err = updateSecretForEncryption(c)
 	return err
 }
 
