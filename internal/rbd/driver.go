@@ -172,6 +172,8 @@ func (r *Driver) Run(conf *util.Config) {
 		IS: r.ids,
 		CS: r.cs,
 		NS: r.ns,
+		// Register the replication controller to expose replication operations.
+		RS: r.cs,
 	}
 	s.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {
