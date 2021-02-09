@@ -125,6 +125,29 @@ func validateSubvolumeCount(f *framework.Framework, count int, fileSystemName, s
 	}
 }
 
+func validateSubvolumePath(f *framework.Framework, pvcName, pvcNamespace, fileSystemName, subvolumegroup string) error {
+	_, pv, err := getPVCAndPV(f.ClientSet, pvcName, pvcNamespace)
+	if err != nil {
+		return fmt.Errorf("failed to get PVC %s in namespace %s with error %w", pvcName, pvcNamespace, err)
+	}
+	subVolumePathInPV := pv.Spec.CSI.VolumeAttributes["subvolumePath"]
+	subVolume := pv.Spec.CSI.VolumeAttributes["subvolumeName"]
+	if subVolumePathInPV == "" {
+		return fmt.Errorf("subvolumePath is not set in %s PVC", pvcName)
+	}
+	if subVolume == "" {
+		return fmt.Errorf("subvolumeName is not set in %s PVC", pvcName)
+	}
+	subVolumePath, err := getSubvolumePath(f, fileSystemName, subvolumegroup, subVolume)
+	if err != nil {
+		return err
+	}
+	if subVolumePath != subVolumePathInPV {
+		return fmt.Errorf("subvolumePath %s is not matching the subvolumePath %s in PV", subVolumePath, subVolumePathInPV)
+	}
+	return nil
+}
+
 var _ = Describe("cephfs", func() {
 	f := framework.NewDefaultFramework("cephfs")
 	var c clientset.Interface
@@ -313,7 +336,10 @@ var _ = Describe("cephfs", func() {
 					if err != nil {
 						e2elog.Failf("failed to create PVC or application with error %v", err)
 					}
-
+					err = validateSubvolumePath(f, pvc.Name, pvc.Namespace, fileSystemName, subvolumegroup)
+					if err != nil {
+						e2elog.Failf("failed to validate subvolumePath with error %v", err)
+					}
 				}
 
 				validateSubvolumeCount(f, totalCount, fileSystemName, subvolumegroup)
@@ -561,6 +587,12 @@ var _ = Describe("cephfs", func() {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+							if wgErrs[n] == nil {
+								err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, subvolumegroup)
+								if err != nil {
+									wgErrs[n] = err
+								}
+							}
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)
 					}
@@ -612,6 +644,12 @@ var _ = Describe("cephfs", func() {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
 							wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+							if wgErrs[n] == nil {
+								err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, subvolumegroup)
+								if err != nil {
+									wgErrs[n] = err
+								}
+							}
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)
 					}

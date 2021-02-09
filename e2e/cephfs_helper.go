@@ -138,3 +138,16 @@ func listCephFSSubVolumes(f *framework.Framework, filesystem, groupname string) 
 	}
 	return subVols, nil
 }
+
+// getSubvolumepath validates whether subvolumegroup is present.
+func getSubvolumePath(f *framework.Framework, filesystem, subvolgrp, subvolume string) (string, error) {
+	cmd := fmt.Sprintf("ceph fs subvolume getpath %s %s --group_name=%s", filesystem, subvolume, subvolgrp)
+	stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+	if err != nil {
+		return "", err
+	}
+	if stdErr != "" {
+		return "", fmt.Errorf("failed to getpath for subvolume %s with error %s", subvolume, stdErr)
+	}
+	return strings.TrimSpace(stdOut), nil
+}
