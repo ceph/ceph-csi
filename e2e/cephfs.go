@@ -571,6 +571,63 @@ var _ = Describe("cephfs", func() {
 				}
 			})
 
+			By("Delete snapshot after deleting subvolume and snapshot from backend", func() {
+				// snapshot beta is only supported from v1.17+
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
+					err := createCephFSSnapshotClass(f)
+					if err != nil {
+						e2elog.Failf("failed to create CephFS snapshotclass with error %v", err)
+					}
+					pvc, err := loadPVC(pvcPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC with error %v", err)
+					}
+
+					pvc.Namespace = f.UniqueName
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC with error %v", err)
+					}
+
+					snap := getSnapshot(snapshotPath)
+					snap.Namespace = f.UniqueName
+					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+					// create snapshot
+					snap.Name = f.UniqueName
+					err = createSnapshot(&snap, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create snapshot (%s): %v", snap.Name, err)
+					}
+
+					err = deleteBackingCephFSSubvolumeSnapshot(f, pvc, &snap)
+					if err != nil {
+						e2elog.Failf("failed to delete backing snapshot for snapname with error=%s", err)
+					}
+
+					err = deleteBackingCephFSVolume(f, pvc)
+					if err != nil {
+						e2elog.Failf("failed to delete backing subvolume error=%s", err)
+					}
+
+					err = deleteSnapshot(&snap, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete snapshot with error=%s", err)
+					} else {
+						e2elog.Logf("successfully deleted snapshot")
+					}
+
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC with error %v", err)
+					}
+
+					err = deleteResource(cephfsExamplePath + "snapshotclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete CephFS snapshotclass with error %v", err)
+					}
+				}
+			})
+
 			By("Test snapshot retention feature", func() {
 				// Delete the PVC after creating a snapshot,
 				// this should work because of the snapshot
