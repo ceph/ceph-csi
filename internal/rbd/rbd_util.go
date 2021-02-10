@@ -337,7 +337,7 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 			util.WarningLog(ctx, "access denied to Ceph MGR-based rbd commands on cluster ID (%s)", pOpts.ClusterID)
 			supported = false
 		default:
-			util.WarningLog(ctx, "uncaught error while scheduling a task: %s", err)
+			util.WarningLog(ctx, "uncaught error while scheduling a task (%v): %s", err, stderr)
 		}
 	}
 	return supported, err
