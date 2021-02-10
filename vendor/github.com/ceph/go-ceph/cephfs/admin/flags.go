@@ -41,7 +41,7 @@ func (f SubVolRmFlags) flags() map[string]bool {
 		o["force"] = true
 	}
 	if f.RetainSnapshots {
-		o["retain-snapshots"] = true
+		o["retain_snapshots"] = true
 	}
 	return o
 }

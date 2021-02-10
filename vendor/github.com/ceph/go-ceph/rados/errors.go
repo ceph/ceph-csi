@@ -52,6 +52,9 @@ var (
 	// ErrInvalidIOContext may be returned if an api call requires an IOContext
 	// but IOContext is not ready for use.
 	ErrInvalidIOContext = errors.New("IOContext is not ready for use")
+	// ErrOperationIncomplete is returned from write op or read op steps for
+	// which the operation has not been performed yet.
+	ErrOperationIncomplete = errors.New("Operation has not been performed yet")
 )
 
 // Public radosErrors:

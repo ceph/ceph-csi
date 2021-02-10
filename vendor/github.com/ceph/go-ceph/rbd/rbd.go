@@ -95,7 +95,11 @@ type TrashInfo struct {
 
 // cephIoctx returns a ceph rados_ioctx_t given a go-ceph rados IOContext.
 func cephIoctx(radosIoctx *rados.IOContext) C.rados_ioctx_t {
-	return C.rados_ioctx_t(radosIoctx.Pointer())
+	p := radosIoctx.Pointer()
+	if p == nil {
+		panic("invalid IOContext pointer")
+	}
+	return C.rados_ioctx_t(p)
 }
 
 // test if a bit is set in the given value
