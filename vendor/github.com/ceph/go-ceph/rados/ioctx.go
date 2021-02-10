@@ -128,15 +128,10 @@ func (ioctx *IOContext) SetNamespace(namespace string) {
 //  void rados_write_op_create(rados_write_op_t write_op, int exclusive,
 //                             const char* category)
 func (ioctx *IOContext) Create(oid string, exclusive CreateOption) error {
-	c_oid := C.CString(oid)
-	defer C.free(unsafe.Pointer(c_oid))
-
-	op := C.rados_create_write_op()
-	C.rados_write_op_create(op, C.int(exclusive), nil)
-	ret := C.rados_write_op_operate(op, ioctx.ioctx, c_oid, nil, 0)
-	C.rados_release_write_op(op)
-
-	return getError(ret)
+	op := CreateWriteOp()
+	defer op.Release()
+	op.Create(exclusive)
+	return op.operateCompat(ioctx, oid)
 }
 
 // Write writes len(data) bytes to the object with key oid starting at byte

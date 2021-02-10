@@ -197,23 +197,48 @@ const (
 	SnapshotRetentionFeature = Feature("snapshot-retention")
 )
 
+// SubVolumeState is used to define constant value for the state of
+// a subvolume.
+type SubVolumeState string
+
+const (
+	// StateUnset indicates a subvolume without any state.
+	StateUnset = SubVolumeState("")
+	// StateInit indicates that the subvolume is in initializing state.
+	StateInit = SubVolumeState("init")
+	// StatePending indicates that the subvolume is in pending state.
+	StatePending = SubVolumeState("pending")
+	// StateInProgress indicates that the subvolume is in in-progress state.
+	StateInProgress = SubVolumeState("in-progress")
+	// StateFailed indicates that the subvolume is in failed state.
+	StateFailed = SubVolumeState("failed")
+	// StateComplete indicates that the subvolume is in complete state.
+	StateComplete = SubVolumeState("complete")
+	// StateCanceled indicates that the subvolume is in canceled state.
+	StateCanceled = SubVolumeState("canceled")
+	// StateSnapRetained indicates that the subvolume is in
+	// snapshot-retained state.
+	StateSnapRetained = SubVolumeState("snapshot-retained")
+)
+
 // SubVolumeInfo reports various informational values about a subvolume.
 type SubVolumeInfo struct {
-	Type          string    `json:"type"`
-	Path          string    `json:"path"`
-	Uid           int       `json:"uid"`
-	Gid           int       `json:"gid"`
-	Mode          int       `json:"mode"`
-	BytesPercent  string    `json:"bytes_pcent"`
-	BytesUsed     ByteCount `json:"bytes_used"`
-	BytesQuota    QuotaSize `json:"-"`
-	DataPool      string    `json:"data_pool"`
-	PoolNamespace string    `json:"pool_namespace"`
-	Atime         TimeStamp `json:"atime"`
-	Mtime         TimeStamp `json:"mtime"`
-	Ctime         TimeStamp `json:"ctime"`
-	CreatedAt     TimeStamp `json:"created_at"`
-	Features      []Feature `json:"features"`
+	Type          string         `json:"type"`
+	Path          string         `json:"path"`
+	State         SubVolumeState `json:"state"`
+	Uid           int            `json:"uid"`
+	Gid           int            `json:"gid"`
+	Mode          int            `json:"mode"`
+	BytesPercent  string         `json:"bytes_pcent"`
+	BytesUsed     ByteCount      `json:"bytes_used"`
+	BytesQuota    QuotaSize      `json:"-"`
+	DataPool      string         `json:"data_pool"`
+	PoolNamespace string         `json:"pool_namespace"`
+	Atime         TimeStamp      `json:"atime"`
+	Mtime         TimeStamp      `json:"mtime"`
+	Ctime         TimeStamp      `json:"ctime"`
+	CreatedAt     TimeStamp      `json:"created_at"`
+	Features      []Feature      `json:"features"`
 }
 
 type subVolumeInfoWrapper struct {

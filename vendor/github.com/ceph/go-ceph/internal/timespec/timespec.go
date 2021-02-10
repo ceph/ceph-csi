@@ -28,3 +28,12 @@ func CStructToTimespec(cts CTimespecPtr) Timespec {
 		Nsec: int64(t.tv_nsec),
 	}
 }
+
+// CopyToCStruct copies the time values from a Timespec to a previously
+// allocated C `struct timespec`. Due to restrictions on Cgo the C pointer
+// must be passed via the CTimespecPtr wrapper.
+func CopyToCStruct(ts Timespec, cts CTimespecPtr) {
+	t := (*C.struct_timespec)(cts)
+	t.tv_sec = C.time_t(ts.Sec)
+	t.tv_nsec = C.long(ts.Nsec)
+}

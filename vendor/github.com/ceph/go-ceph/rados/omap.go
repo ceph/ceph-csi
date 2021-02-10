@@ -1,69 +1,230 @@
 package rados
 
-// #cgo LDFLAGS: -lrados
-// #include <stdlib.h>
-// #include <rados/librados.h>
-//
+/*
+#cgo LDFLAGS: -lrados
+#include <stdlib.h>
+#include <rados/librados.h>
+
+typedef void* voidptr;
+
+*/
 import "C"
 
 import (
+	"runtime"
 	"unsafe"
 )
 
-// SetOmap appends the map `pairs` to the omap `oid`
-func (ioctx *IOContext) SetOmap(oid string, pairs map[string][]byte) error {
-	c_oid := C.CString(oid)
-	defer C.free(unsafe.Pointer(c_oid))
+const (
+	ptrSize   = C.sizeof_voidptr
+	sizeTSize = C.sizeof_size_t
+)
 
-	var s C.size_t
-	var c *C.char
-	ptrSize := unsafe.Sizeof(c)
+// setOmapStep is a write op step. It holds C memory used in the operation.
+type setOmapStep struct {
+	withRefs
+	withoutUpdate
 
-	c_keys := C.malloc(C.size_t(len(pairs)) * C.size_t(ptrSize))
-	c_values := C.malloc(C.size_t(len(pairs)) * C.size_t(ptrSize))
-	c_lengths := C.malloc(C.size_t(len(pairs)) * C.size_t(unsafe.Sizeof(s)))
+	// C arguments
+	cKeys    **C.char
+	cValues  **C.char
+	cLengths *C.size_t
+	cNum     C.size_t
+}
 
-	defer C.free(unsafe.Pointer(c_keys))
-	defer C.free(unsafe.Pointer(c_values))
-	defer C.free(unsafe.Pointer(c_lengths))
+func newSetOmapStep(pairs map[string][]byte) *setOmapStep {
 
-	i := 0
+	maplen := C.size_t(len(pairs))
+	cKeys := C.malloc(maplen * ptrSize)
+	cValues := C.malloc(maplen * ptrSize)
+	cLengths := C.malloc(maplen * sizeTSize)
+
+	sos := &setOmapStep{
+		cKeys:    (**C.char)(cKeys),
+		cValues:  (**C.char)(cValues),
+		cLengths: (*C.size_t)(cLengths),
+		cNum:     C.size_t(len(pairs)),
+	}
+	sos.add(cKeys)
+	sos.add(cValues)
+	sos.add(cLengths)
+
+	var i uintptr
 	for key, value := range pairs {
 		// key
-		c_key_ptr := (**C.char)(unsafe.Pointer(uintptr(c_keys) + uintptr(i)*ptrSize))
-		*c_key_ptr = C.CString(key)
-		defer C.free(unsafe.Pointer(*c_key_ptr))
+		ck := C.CString(key)
+		sos.add(unsafe.Pointer(ck))
+		ckp := (**C.char)(unsafe.Pointer(uintptr(cKeys) + i*ptrSize))
+		*ckp = ck
 
 		// value and its length
-		c_value_ptr := (**C.char)(unsafe.Pointer(uintptr(c_values) + uintptr(i)*ptrSize))
-
-		var c_length C.size_t
-		if len(value) > 0 {
-			*c_value_ptr = (*C.char)(unsafe.Pointer(&value[0]))
-			c_length = C.size_t(len(value))
+		cvp := (**C.char)(unsafe.Pointer(uintptr(cValues) + i*ptrSize))
+		vlen := C.size_t(len(value))
+		if vlen > 0 {
+			cv := C.CBytes(value)
+			sos.add(cv)
+			*cvp = (*C.char)(cv)
 		} else {
-			*c_value_ptr = nil
-			c_length = C.size_t(0)
+			*cvp = nil
 		}
 
-		c_length_ptr := (*C.size_t)(unsafe.Pointer(uintptr(c_lengths) + uintptr(i)*ptrSize))
-		*c_length_ptr = c_length
+		clp := (*C.size_t)(unsafe.Pointer(uintptr(cLengths) + i*ptrSize))
+		*clp = vlen
 
 		i++
 	}
 
-	op := C.rados_create_write_op()
-	C.rados_write_op_omap_set(
-		op,
-		(**C.char)(c_keys),
-		(**C.char)(c_values),
-		(*C.size_t)(c_lengths),
-		C.size_t(len(pairs)))
+	runtime.SetFinalizer(sos, opStepFinalizer)
+	return sos
+}
 
-	ret := C.rados_write_op_operate(op, ioctx.ioctx, c_oid, nil, 0)
-	C.rados_release_write_op(op)
+func (sos *setOmapStep) free() {
+	sos.cKeys = nil
+	sos.cValues = nil
+	sos.cLengths = nil
+	sos.withRefs.free()
+}
 
-	return getError(ret)
+// OmapKeyValue items are returned by the GetOmapStep's Next call.
+type OmapKeyValue struct {
+	Key   string
+	Value []byte
+}
+
+// GetOmapStep values are used to get the results of an GetOmapValues call
+// on a WriteOp. Until the Operate method of the WriteOp is called the Next
+// call will return an error. After Operate is called, the Next call will
+// return valid results.
+//
+// The life cycle of the GetOmapStep is bound to the ReadOp, if the ReadOp
+// Release method is called the public methods of the step must no longer be
+// used and may return errors.
+type GetOmapStep struct {
+	// inputs:
+	startAfter   string
+	filterPrefix string
+	maxReturn    uint64
+
+	// arguments:
+	cStartAfter   *C.char
+	cFilterPrefix *C.char
+
+	// C returned data:
+	iter C.rados_omap_iter_t
+	more C.uchar
+	rval C.int
+
+	// internal state:
+
+	// canIterate is only set after the operation is performed and is
+	// intended to prevent premature fetching of data
+	canIterate bool
+}
+
+func newGetOmapStep(startAfter, filterPrefix string, maxReturn uint64) *GetOmapStep {
+	gos := &GetOmapStep{
+		startAfter:    startAfter,
+		filterPrefix:  filterPrefix,
+		maxReturn:     maxReturn,
+		cStartAfter:   C.CString(startAfter),
+		cFilterPrefix: C.CString(filterPrefix),
+	}
+	runtime.SetFinalizer(gos, opStepFinalizer)
+	return gos
+}
+
+func (gos *GetOmapStep) free() {
+	gos.canIterate = false
+	if gos.iter != nil {
+		C.rados_omap_get_end(gos.iter)
+	}
+	gos.iter = nil
+	gos.more = 0
+	gos.rval = 0
+	C.free(unsafe.Pointer(gos.cStartAfter))
+	gos.cStartAfter = nil
+	C.free(unsafe.Pointer(gos.cFilterPrefix))
+	gos.cFilterPrefix = nil
+}
+
+func (gos *GetOmapStep) update() error {
+	err := getError(gos.rval)
+	gos.canIterate = (err == nil)
+	return err
+}
+
+// Next returns the next key value pair or nil if iteration is exhausted.
+func (gos *GetOmapStep) Next() (*OmapKeyValue, error) {
+	if !gos.canIterate {
+		return nil, ErrOperationIncomplete
+	}
+	var (
+		cKey *C.char
+		cVal *C.char
+		cLen C.size_t
+	)
+	ret := C.rados_omap_get_next(gos.iter, &cKey, &cVal, &cLen)
+	if ret != 0 {
+		return nil, getError(ret)
+	}
+	if cKey == nil {
+		return nil, nil
+	}
+	return &OmapKeyValue{
+		Key:   C.GoString(cKey),
+		Value: C.GoBytes(unsafe.Pointer(cVal), C.int(cLen)),
+	}, nil
+}
+
+// More returns true if there are more matching keys available.
+func (gos *GetOmapStep) More() bool {
+	// tad bit hacky, but go can't automatically convert from
+	// unsigned char to bool
+	return gos.more != 0
+}
+
+// removeOmapKeysStep is a write operation step used to track state, especially
+// C memory, across the setup and use of a WriteOp.
+type removeOmapKeysStep struct {
+	withRefs
+	withoutUpdate
+
+	// arguments:
+	cKeys **C.char
+	cNum  C.size_t
+}
+
+func newRemoveOmapKeysStep(keys []string) *removeOmapKeysStep {
+	cKeys := C.malloc(C.size_t(len(keys)) * ptrSize)
+	roks := &removeOmapKeysStep{
+		cKeys: (**C.char)(cKeys),
+		cNum:  C.size_t(len(keys)),
+	}
+	roks.add(cKeys)
+
+	i := 0
+	for _, key := range keys {
+		ckp := (**C.char)(unsafe.Pointer(uintptr(cKeys) + uintptr(i)*ptrSize))
+		*ckp = C.CString(key)
+		roks.add(unsafe.Pointer(*ckp))
+		i++
+	}
+
+	runtime.SetFinalizer(roks, opStepFinalizer)
+	return roks
+}
+
+func (roks *removeOmapKeysStep) free() {
+	roks.cKeys = nil
+	roks.withRefs.free()
+}
+
+// SetOmap appends the map `pairs` to the omap `oid`
+func (ioctx *IOContext) SetOmap(oid string, pairs map[string][]byte) error {
+	op := CreateWriteOp()
+	defer op.Release()
+	op.SetOmap(pairs)
+	return op.operateCompat(ioctx, oid)
 }
 
 // OmapListFunc is the type of the function called for each omap key
@@ -78,58 +239,25 @@ type OmapListFunc func(key string, value []byte)
 // `maxReturn`: iterate no more than `maxReturn` key/value pairs
 // `listFn`: the function called at each iteration
 func (ioctx *IOContext) ListOmapValues(oid string, startAfter string, filterPrefix string, maxReturn int64, listFn OmapListFunc) error {
-	c_oid := C.CString(oid)
-	c_start_after := C.CString(startAfter)
-	c_filter_prefix := C.CString(filterPrefix)
-	c_max_return := C.uint64_t(maxReturn)
 
-	defer C.free(unsafe.Pointer(c_oid))
-	defer C.free(unsafe.Pointer(c_start_after))
-	defer C.free(unsafe.Pointer(c_filter_prefix))
-
-	op := C.rados_create_read_op()
-
-	var c_iter C.rados_omap_iter_t
-	var c_prval C.int
-	C.rados_read_op_omap_get_vals2(
-		op,
-		c_start_after,
-		c_filter_prefix,
-		c_max_return,
-		&c_iter,
-		nil,
-		&c_prval,
-	)
-
-	ret := C.rados_read_op_operate(op, ioctx.ioctx, c_oid, 0)
-
-	if int(ret) != 0 {
-		return getError(ret)
-	} else if int(c_prval) != 0 {
-		return getError(c_prval)
+	op := CreateReadOp()
+	defer op.Release()
+	gos := op.GetOmapValues(startAfter, filterPrefix, uint64(maxReturn))
+	err := op.operateCompat(ioctx, oid)
+	if err != nil {
+		return err
 	}
 
 	for {
-		var c_key *C.char
-		var c_val *C.char
-		var c_len C.size_t
-
-		ret = C.rados_omap_get_next(c_iter, &c_key, &c_val, &c_len)
-
-		if int(ret) != 0 {
-			return getError(ret)
+		kv, err := gos.Next()
+		if err != nil {
+			return err
 		}
-
-		if c_key == nil {
+		if kv == nil {
 			break
 		}
-
-		listFn(C.GoString(c_key), C.GoBytes(unsafe.Pointer(c_val), C.int(c_len)))
+		listFn(kv.Key, kv.Value)
 	}
-
-	C.rados_omap_get_end(c_iter)
-	C.rados_release_read_op(op)
-
 	return nil
 }
 
@@ -184,45 +312,16 @@ func (ioctx *IOContext) GetAllOmapValues(oid string, startAfter string, filterPr
 
 // RmOmapKeys removes the specified `keys` from the omap `oid`
 func (ioctx *IOContext) RmOmapKeys(oid string, keys []string) error {
-	c_oid := C.CString(oid)
-	defer C.free(unsafe.Pointer(c_oid))
-
-	var c *C.char
-	ptrSize := unsafe.Sizeof(c)
-
-	c_keys := C.malloc(C.size_t(len(keys)) * C.size_t(ptrSize))
-	defer C.free(unsafe.Pointer(c_keys))
-
-	i := 0
-	for _, key := range keys {
-		c_key_ptr := (**C.char)(unsafe.Pointer(uintptr(c_keys) + uintptr(i)*ptrSize))
-		*c_key_ptr = C.CString(key)
-		defer C.free(unsafe.Pointer(*c_key_ptr))
-		i++
-	}
-
-	op := C.rados_create_write_op()
-	C.rados_write_op_omap_rm_keys(
-		op,
-		(**C.char)(c_keys),
-		C.size_t(len(keys)))
-
-	ret := C.rados_write_op_operate(op, ioctx.ioctx, c_oid, nil, 0)
-	C.rados_release_write_op(op)
-
-	return getError(ret)
+	op := CreateWriteOp()
+	defer op.Release()
+	op.RmOmapKeys(keys)
+	return op.operateCompat(ioctx, oid)
 }
 
 // CleanOmap clears the omap `oid`
 func (ioctx *IOContext) CleanOmap(oid string) error {
-	c_oid := C.CString(oid)
-	defer C.free(unsafe.Pointer(c_oid))
-
-	op := C.rados_create_write_op()
-	C.rados_write_op_omap_clear(op)
-
-	ret := C.rados_write_op_operate(op, ioctx.ioctx, c_oid, nil, 0)
-	C.rados_release_write_op(op)
-
-	return getError(ret)
+	op := CreateWriteOp()
+	defer op.Release()
+	op.CleanOmap()
+	return op.operateCompat(ioctx, oid)
 }
