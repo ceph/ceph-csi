@@ -27,7 +27,6 @@ spec:
         heritage: {{ .Release.Service }}
     spec:
       serviceAccountName: {{ include "ceph-csi-rbd.serviceAccountName.nodeplugin" . }}
-      hostNetwork: true
       hostPID: true
 {{- if .Values.nodeplugin.priorityClassName }}
       priorityClassName: {{ .Values.nodeplugin.priorityClassName }}

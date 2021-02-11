@@ -16,7 +16,6 @@ spec:
   fsGroup:
     rule: RunAsAny
   privileged: true
-  hostNetwork: true
   hostPID: true
   runAsUser:
     rule: RunAsAny
