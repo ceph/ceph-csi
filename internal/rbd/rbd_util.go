@@ -493,7 +493,7 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 	}
 
 	if forceFlatten || (depth >= hardlimit) || (depth >= softlimit) {
-		args := []string{"flatten", rv.Pool + "/" + rv.RbdImageName, "--id", cr.ID, "--keyfile=" + cr.KeyFile, "-m", rv.Monitors}
+		args := []string{"flatten", rv.String(), "--id", cr.ID, "--keyfile=" + cr.KeyFile, "-m", rv.Monitors}
 		supported, err := addRbdManagerTask(ctx, rv, args)
 		if supported {
 			if err != nil {
