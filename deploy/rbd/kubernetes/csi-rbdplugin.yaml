@@ -13,7 +13,6 @@ spec:
         app: csi-rbdplugin
     spec:
       serviceAccountName: rbd-csi-nodeplugin
-      hostNetwork: true
       hostPID: true
       priorityClassName: system-node-critical
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
