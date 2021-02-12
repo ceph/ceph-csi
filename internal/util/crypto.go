@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -51,6 +52,18 @@ const (
 	defaultConfigMapToRead = "csi-kms-connection-details"
 )
 
+var (
+	// ErrDEKStoreNotFound is an error that is returned when the DEKStore
+	// has not been configured for the volumeID in the KMS instance.
+	ErrDEKStoreNotFound = errors.New("DEKStore not found")
+
+	// ErrDEKStoreNeeded is an indication that gets returned with
+	// NewVolumeEncryption when the KMS does not include support for the
+	// DEKStore interface.
+	ErrDEKStoreNeeded = errors.New("DEKStore required, use " +
+		"VolumeEncryption.SetDEKStore()")
+)
+
 type VolumeEncryption struct {
 	KMS EncryptionKMS
 }
@@ -75,6 +88,38 @@ type EncryptionKMS interface {
 	SavePassphrase(key, value string) error
 	DeletePassphrase(key string) error
 	GetID() string
+
+	// requiresDEKStore returns the DEKStoreType that is needed to be
+	// configure for the KMS. Nothing needs to be done when this function
+	// returns DEKStoreIntegrated, otherwise you will need to configure an
+	// alternative storage for the DEKs.
+	requiresDEKStore() DEKStoreType
+}
+
+// DEKStoreType describes what DEKStore needs to be configured when using a
+// particular KMS. A KMS might support different DEKStores depending on its
+// configuration.
+type DEKStoreType string
+
+const (
+	// DEKStoreIntegrated indicates that the KMS itself supports storing
+	// DEKs.
+	DEKStoreIntegrated = DEKStoreType("")
+	// DEKStoreMetadata indicates that the KMS should be configured to
+	// store the DEK in the metadata of the volume.
+	DEKStoreMetadata = DEKStoreType("metadata")
+)
+
+// DEKStore allows KMS instances to implement a modular backend for DEK
+// storage. This can be used to store the DEK in a different location, in case
+// the KMS can not store passphrases for volumes.
+type DEKStore interface {
+	// StoreDEK saves the DEK in the configured store.
+	StoreDEK(volumeID string, dek string) error
+	// FetchDEK reads the DEK from the configured store and returns it.
+	FetchDEK(volumeID string) (string, error)
+	// RemoveDEK deletes the DEK from the configured store.
+	RemoveDEK(volumeID string) error
 }
 
 // GetKMS returns an instance of Key Management System.
