@@ -52,7 +52,7 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 			}
 		}
 
-		if updatedPVC.Status.Capacity[v1.ResourceStorage] != resource.MustParse(size) {
+		if !updatedPVC.Status.Capacity[v1.ResourceStorage].Equal(resource.MustParse(size)) {
 			e2elog.Logf("current size in status %v,expected size %v", updatedPVC.Status.Capacity[v1.ResourceStorage], resource.MustParse(size))
 			return false, nil
 		}
