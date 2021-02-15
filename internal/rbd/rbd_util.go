@@ -827,7 +827,6 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		ok         bool
 		err        error
 		namePrefix string
-		encrypted  string
 	)
 
 	rbdVol := &rbdVolume{}
@@ -874,33 +873,9 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		rbdVol.Mounter = rbdDefaultMounter
 	}
 
-	// if the KMS is of type VaultToken, additional metadata is needed
-	// depending on the tenant, the KMS can be configured with other
-	// options
-	// FIXME: this works only on Kubernetes, how do other CO supply metadata?
-	rbdVol.Owner, ok = volOptions["csi.storage.k8s.io/pvc/namespace"]
-	if !ok {
-		util.DebugLog(ctx, "could not detect owner for %s", rbdVol.String())
-	}
-
-	rbdVol.Encrypted = false
-	encrypted, ok = volOptions["encrypted"]
-	if ok {
-		rbdVol.Encrypted, err = strconv.ParseBool(encrypted)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"invalid value set in 'encrypted': %s (should be \"true\" or \"false\")", encrypted)
-		}
-
-		if rbdVol.Encrypted {
-			// deliberately ignore if parsing failed as GetKMS will return default
-			// implementation of kmsID is empty
-			kmsID := volOptions["encryptionKMSID"]
-			rbdVol.KMS, err = util.GetKMS(rbdVol.Owner, kmsID, credentials)
-			if err != nil {
-				return nil, fmt.Errorf("invalid encryption kms configuration: %w", err)
-			}
-		}
+	err = rbdVol.initKMS(ctx, volOptions, credentials)
+	if err != nil {
+		return nil, err
 	}
 
 	return rbdVol, nil

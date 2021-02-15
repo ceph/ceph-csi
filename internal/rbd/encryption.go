@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -151,4 +152,44 @@ func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string)
 	}
 
 	return mapperFilePath, nil
+}
+
+func (rv *rbdVolume) initKMS(ctx context.Context, volOptions, credentials map[string]string) error {
+	var (
+		err       error
+		ok        bool
+		encrypted string
+	)
+
+	// if the KMS is of type VaultToken, additional metadata is needed
+	// depending on the tenant, the KMS can be configured with other
+	// options
+	// FIXME: this works only on Kubernetes, how do other CO supply metadata?
+	rv.Owner, ok = volOptions["csi.storage.k8s.io/pvc/namespace"]
+	if !ok {
+		util.DebugLog(ctx, "could not detect owner for %s", rv.String())
+	}
+
+	encrypted, ok = volOptions["encrypted"]
+	if !ok {
+		return nil
+	}
+
+	rv.Encrypted, err = strconv.ParseBool(encrypted)
+	if err != nil {
+		return fmt.Errorf(
+			"invalid value set in 'encrypted': %s (should be \"true\" or \"false\")", encrypted)
+	} else if !rv.Encrypted {
+		return nil
+	}
+
+	// deliberately ignore if parsing failed as GetKMS will return default
+	// implementation of kmsID is empty
+	kmsID := volOptions["encryptionKMSID"]
+	rv.KMS, err = util.GetKMS(rv.Owner, kmsID, credentials)
+	if err != nil {
+		return fmt.Errorf("invalid encryption kms configuration: %w", err)
+	}
+
+	return nil
 }
