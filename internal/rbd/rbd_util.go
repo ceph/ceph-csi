@@ -53,12 +53,6 @@ const (
 	rbdTaskRemoveCmdInvalidString1      = "no valid command found"
 	rbdTaskRemoveCmdInvalidString2      = "Error EINVAL: invalid command"
 	rbdTaskRemoveCmdAccessDeniedMessage = "Error EACCES:"
-
-	// Encryption statuses for RbdImage
-	rbdImageEncrypted          = "encrypted"
-	rbdImageRequiresEncryption = "requiresEncryption"
-	// image metadata key for encryption
-	encryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
 )
 
 // rbdVolume represents a CSI volume and its RBD image specifics.
@@ -1193,28 +1187,6 @@ func (rv *rbdVolume) SetMetadata(key, value string) error {
 	defer image.Close()
 
 	return image.SetMetadata(key, value)
-}
-
-// checkRbdImageEncrypted verifies if rbd image was encrypted when created.
-func (rv *rbdVolume) checkRbdImageEncrypted(ctx context.Context) (string, error) {
-	value, err := rv.GetMetadata(encryptionMetaKey)
-	if err != nil {
-		util.ErrorLog(ctx, "checking image %s encrypted state metadata failed: %s", rv, err)
-		return "", err
-	}
-
-	encrypted := strings.TrimSpace(value)
-	util.DebugLog(ctx, "image %s encrypted state metadata reports %q", rv, encrypted)
-	return encrypted, nil
-}
-
-func (rv *rbdVolume) ensureEncryptionMetadataSet(status string) error {
-	err := rv.SetMetadata(encryptionMetaKey, status)
-	if err != nil {
-		return fmt.Errorf("failed to save encryption status for %s: %w", rv, err)
-	}
-
-	return nil
 }
 
 func (rv *rbdVolume) listSnapshots() ([]librbd.SnapInfo, error) {

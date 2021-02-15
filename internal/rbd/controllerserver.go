@@ -1137,24 +1137,3 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		NodeExpansionRequired: nodeExpansion,
 	}, nil
 }
-
-// setupEncryption configures the metadata of the RBD image for encryption:
-// - the Data-Encryption-Key (DEK) will be generated stored for use by the KMS;
-// - the RBD image will be marked to support encryption in its metadata.
-func (rv *rbdVolume) setupEncryption(ctx context.Context) error {
-	err := util.StoreNewCryptoPassphrase(rv.VolID, rv.KMS)
-	if err != nil {
-		util.ErrorLog(ctx, "failed to save encryption passphrase for "+
-			"image %s: %s", rv.String(), err)
-		return err
-	}
-
-	err = rv.ensureEncryptionMetadataSet(rbdImageRequiresEncryption)
-	if err != nil {
-		util.ErrorLog(ctx, "failed to save encryption status, deleting "+
-			"image %s: %s", rv.String(), err)
-		return err
-	}
-
-	return nil
-}
