@@ -331,9 +331,7 @@ func (vc *vaultConnection) GetID() string {
 // data.data.passphrase structure.
 func (kms *VaultKMS) GetPassphrase(key string) (string, error) {
 	s, err := kms.secrets.GetSecret(filepath.Join(kms.vaultPassphrasePath, key), kms.keyContext)
-	if errors.Is(err, loss.ErrInvalidSecretId) {
-		return "", MissingPassphrase{err}
-	} else if err != nil {
+	if err != nil {
 		return "", err
 	}
 

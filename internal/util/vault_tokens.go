@@ -25,7 +25,6 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/vault/api"
-	loss "github.com/libopenstorage/secrets"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -351,9 +350,7 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 // data.data.passphrase structure.
 func (kms *VaultTokensKMS) GetPassphrase(key string) (string, error) {
 	s, err := kms.secrets.GetSecret(key, kms.keyContext)
-	if errors.Is(err, loss.ErrInvalidSecretId) {
-		return "", MissingPassphrase{err}
-	} else if err != nil {
+	if err != nil {
 		return "", err
 	}
 
