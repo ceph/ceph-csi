@@ -347,9 +347,9 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 	return nil
 }
 
-// GetPassphrase returns passphrase from Vault. The passphrase is stored in a
+// FetchDEK returns passphrase from Vault. The passphrase is stored in a
 // data.data.passphrase structure.
-func (kms *VaultTokensKMS) GetPassphrase(key string) (string, error) {
+func (kms *VaultTokensKMS) FetchDEK(key string) (string, error) {
 	s, err := kms.secrets.GetSecret(key, kms.keyContext)
 	if err != nil {
 		return "", err
@@ -367,8 +367,8 @@ func (kms *VaultTokensKMS) GetPassphrase(key string) (string, error) {
 	return passphrase, nil
 }
 
-// SavePassphrase saves new passphrase in Vault.
-func (kms *VaultTokensKMS) SavePassphrase(key, value string) error {
+// StoreDEK saves new passphrase in Vault.
+func (kms *VaultTokensKMS) StoreDEK(key, value string) error {
 	data := map[string]interface{}{
 		"data": map[string]string{
 			"passphrase": value,
@@ -383,8 +383,8 @@ func (kms *VaultTokensKMS) SavePassphrase(key, value string) error {
 	return nil
 }
 
-// DeletePassphrase deletes passphrase from Vault.
-func (kms *VaultTokensKMS) DeletePassphrase(key string) error {
+// RemoveDEK deletes passphrase from Vault.
+func (kms *VaultTokensKMS) RemoveDEK(key string) error {
 	err := kms.secrets.DeleteSecret(key, kms.keyContext)
 	if err != nil {
 		return fmt.Errorf("delete passphrase at %s request to vault failed: %w", key, err)
