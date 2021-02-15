@@ -95,9 +95,10 @@ func (kms SecretsKMS) GetPassphrase(key string) (string, error) {
 	return kms.passphrase, nil
 }
 
-// SavePassphrase is not implemented.
+// SavePassphrase does nothing, as there is no passphrase per key (volume), so
+// no need to store is anywhere.
 func (kms SecretsKMS) SavePassphrase(key, value string) error {
-	return fmt.Errorf("save new passphrase is not implemented for Kubernetes secrets")
+	return nil
 }
 
 // DeletePassphrase is doing nothing as no new passphrases are saved with
@@ -171,27 +172,26 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 	return nil, fmt.Errorf("unknown encryption KMS type %s", kmsType)
 }
 
+// StoreNewCryptoPassphrase generates a new passphrase and saves it in the KMS.
+func StoreNewCryptoPassphrase(volumeID string, kms EncryptionKMS) error {
+	passphrase, err := generateNewEncryptionPassphrase()
+	if err != nil {
+		return fmt.Errorf("failed to generate passphrase for %s: %w", volumeID, err)
+	}
+	err = kms.SavePassphrase(volumeID, passphrase)
+	if err != nil {
+		return fmt.Errorf("failed to save the passphrase for %s: %w", volumeID, err)
+	}
+	return nil
+}
+
 // GetCryptoPassphrase Retrieves passphrase to encrypt volume.
-func GetCryptoPassphrase(ctx context.Context, volumeID string, kms EncryptionKMS) (string, error) {
+func GetCryptoPassphrase(volumeID string, kms EncryptionKMS) (string, error) {
 	passphrase, err := kms.GetPassphrase(volumeID)
-	if err == nil {
-		return passphrase, nil
+	if err != nil {
+		return "", err
 	}
-	if _, ok := err.(MissingPassphrase); ok {
-		DebugLog(ctx, "Encryption passphrase is missing for %s. Generating a new one",
-			volumeID)
-		passphrase, err = generateNewEncryptionPassphrase()
-		if err != nil {
-			return "", fmt.Errorf("failed to generate passphrase for %s: %w", volumeID, err)
-		}
-		err = kms.SavePassphrase(volumeID, passphrase)
-		if err != nil {
-			return "", fmt.Errorf("failed to save the passphrase for %s: %w", volumeID, err)
-		}
-		return passphrase, nil
-	}
-	ErrorLog(ctx, "failed to get encryption passphrase for %s: %s", volumeID, err)
-	return "", err
+	return passphrase, nil
 }
 
 // generateNewEncryptionPassphrase generates a random passphrase for encryption.
