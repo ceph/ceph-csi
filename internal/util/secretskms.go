@@ -56,19 +56,19 @@ func (kms SecretsKMS) Destroy() {
 	// nothing to do
 }
 
-// GetPassphrase returns passphrase from Kubernetes secrets.
-func (kms SecretsKMS) GetPassphrase(key string) (string, error) {
+// FetchDEK returns passphrase from Kubernetes secrets.
+func (kms SecretsKMS) FetchDEK(key string) (string, error) {
 	return kms.passphrase, nil
 }
 
-// SavePassphrase does nothing, as there is no passphrase per key (volume), so
+// StoreDEK does nothing, as there is no passphrase per key (volume), so
 // no need to store is anywhere.
-func (kms SecretsKMS) SavePassphrase(key, value string) error {
+func (kms SecretsKMS) StoreDEK(key, value string) error {
 	return nil
 }
 
-// DeletePassphrase is doing nothing as no new passphrases are saved with
+// RemoveDEK is doing nothing as no new passphrases are saved with
 // SecretsKMS.
-func (kms SecretsKMS) DeletePassphrase(key string) error {
+func (kms SecretsKMS) RemoveDEK(key string) error {
 	return nil
 }

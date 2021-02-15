@@ -106,13 +106,20 @@ func (ve *VolumeEncryption) Destroy() {
 	ve.KMS.Destroy()
 }
 
+// RemoveDEK deletes the DEK for a particular volumeID from the DEKStore linked
+// with this VolumeEncryption instance.
+func (ve *VolumeEncryption) RemoveDEK(volumeID string) error {
+	if ve.dekStore == nil {
+		return ErrDEKStoreNotFound
+	}
+
+	return ve.dekStore.RemoveDEK(volumeID)
+}
+
 // EncryptionKMS provides external Key Management System for encryption
 // passphrases storage.
 type EncryptionKMS interface {
 	Destroy()
-	GetPassphrase(key string) (string, error)
-	SavePassphrase(key, value string) error
-	DeletePassphrase(key string) error
 	GetID() string
 
 	// requiresDEKStore returns the DEKStoreType that is needed to be
@@ -147,6 +154,13 @@ type DEKStore interface {
 	// RemoveDEK deletes the DEK from the configured store.
 	RemoveDEK(volumeID string) error
 }
+
+// integratedDEK is a DEKStore that can not be configured. Either the KMS does
+// not use a DEK, or the DEK is stored in the KMS without additional
+// configuration options.
+type integratedDEK struct{}
+
+func (i integratedDEK) requiresDEKStore() DEKStoreType { return DEKStoreIntegrated }
 
 // GetKMS returns an instance of Key Management System.
 //
@@ -209,12 +223,13 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 }
 
 // StoreNewCryptoPassphrase generates a new passphrase and saves it in the KMS.
-func StoreNewCryptoPassphrase(volumeID string, kms EncryptionKMS) error {
+func (ve *VolumeEncryption) StoreNewCryptoPassphrase(volumeID string) error {
 	passphrase, err := generateNewEncryptionPassphrase()
 	if err != nil {
 		return fmt.Errorf("failed to generate passphrase for %s: %w", volumeID, err)
 	}
-	err = kms.SavePassphrase(volumeID, passphrase)
+
+	err = ve.dekStore.StoreDEK(volumeID, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to save the passphrase for %s: %w", volumeID, err)
 	}
@@ -222,8 +237,8 @@ func StoreNewCryptoPassphrase(volumeID string, kms EncryptionKMS) error {
 }
 
 // GetCryptoPassphrase Retrieves passphrase to encrypt volume.
-func GetCryptoPassphrase(volumeID string, kms EncryptionKMS) (string, error) {
-	passphrase, err := kms.GetPassphrase(volumeID)
+func (ve *VolumeEncryption) GetCryptoPassphrase(volumeID string) (string, error) {
+	passphrase, err := ve.dekStore.FetchDEK(volumeID)
 	if err != nil {
 		return "", err
 	}

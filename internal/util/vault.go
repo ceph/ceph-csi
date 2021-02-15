@@ -328,9 +328,9 @@ func (vc *vaultConnection) GetID() string {
 	return vc.EncryptionKMSID
 }
 
-// GetPassphrase returns passphrase from Vault. The passphrase is stored in a
+// FetchDEK returns passphrase from Vault. The passphrase is stored in a
 // data.data.passphrase structure.
-func (kms *VaultKMS) GetPassphrase(key string) (string, error) {
+func (kms *VaultKMS) FetchDEK(key string) (string, error) {
 	s, err := kms.secrets.GetSecret(filepath.Join(kms.vaultPassphrasePath, key), kms.keyContext)
 	if err != nil {
 		return "", err
@@ -348,8 +348,8 @@ func (kms *VaultKMS) GetPassphrase(key string) (string, error) {
 	return passphrase, nil
 }
 
-// SavePassphrase saves new passphrase in Vault.
-func (kms *VaultKMS) SavePassphrase(key, value string) error {
+// StoreDEK saves new passphrase in Vault.
+func (kms *VaultKMS) StoreDEK(key, value string) error {
 	data := map[string]interface{}{
 		"data": map[string]string{
 			"passphrase": value,
@@ -365,8 +365,8 @@ func (kms *VaultKMS) SavePassphrase(key, value string) error {
 	return nil
 }
 
-// DeletePassphrase deletes passphrase from Vault.
-func (kms *VaultKMS) DeletePassphrase(key string) error {
+// RemoveDEK deletes passphrase from Vault.
+func (kms *VaultKMS) RemoveDEK(key string) error {
 	pathKey := filepath.Join(kms.vaultPassphrasePath, key)
 	err := kms.secrets.DeleteSecret(pathKey, kms.keyContext)
 	if err != nil {
