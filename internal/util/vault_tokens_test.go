@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -108,5 +109,52 @@ func TestInitVaultTokensKMS(t *testing.T) {
 	_, err = InitVaultTokensKMS("bob", "vault-tokens-config", config)
 	if err != nil && !strings.Contains(err.Error(), "VAULT_TOKEN") {
 		t.Errorf("unexpected error: %s", err)
+	}
+}
+
+// TestStdVaultToCSIConfig converts a JSON document with standard VAULT_*
+// environment variables to a vaultTokenConf structure.
+func TestStdVaultToCSIConfig(t *testing.T) {
+	vaultConfigMap := `{
+		"KMS_PROVIDER":"vaulttokens",
+		"VAULT_ADDR":"https://vault.example.com",
+		"VAULT_BACKEND_PATH":"/secret",
+		"VAULT_CACERT":"",
+		"VAULT_TLS_SERVER_NAME":"vault.example.com",
+		"VAULT_CLIENT_CERT":"",
+		"VAULT_CLIENT_KEY":"",
+		"VAULT_NAMESPACE":"a-department",
+		"VAULT_SKIP_VERIFY":"true"
+	}`
+
+	sv := &standardVault{}
+	err := json.Unmarshal([]byte(vaultConfigMap), sv)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+		return
+	}
+
+	v := vaultTokenConf{}
+	v.convertStdVaultToCSIConfig(sv)
+
+	switch {
+	case v.EncryptionKMSType != kmsTypeVaultTokens:
+		t.Errorf("unexpected value for EncryptionKMSType: %s", v.EncryptionKMSType)
+	case v.VaultAddress != "https://vault.example.com":
+		t.Errorf("unexpected value for VaultAddress: %s", v.VaultAddress)
+	case v.VaultBackendPath != "/secret":
+		t.Errorf("unexpected value for VaultBackendPath: %s", v.VaultBackendPath)
+	case v.VaultCAFromSecret != "":
+		t.Errorf("unexpected value for VaultCAFromSecret: %s", v.VaultCAFromSecret)
+	case v.VaultClientCertFromSecret != "":
+		t.Errorf("unexpected value for VaultClientCertFromSecret: %s", v.VaultClientCertFromSecret)
+	case v.VaultClientCertKeyFromSecret != "":
+		t.Errorf("unexpected value for VaultClientCertKeyFromSecret: %s", v.VaultClientCertKeyFromSecret)
+	case v.VaultNamespace != "a-department":
+		t.Errorf("unexpected value for VaultNamespace: %s", v.VaultNamespace)
+	case v.VaultTLSServerName != "vault.example.com":
+		t.Errorf("unexpected value for VaultTLSServerName: %s", v.VaultTLSServerName)
+	case v.VaultCAVerify != "false":
+		t.Errorf("unexpected value for VaultCAVerify: %s", v.VaultCAVerify)
 	}
 }
