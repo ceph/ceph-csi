@@ -830,7 +830,7 @@ func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rb
 }
 
 func encryptDevice(ctx context.Context, rbdVol *rbdVolume, devicePath string) error {
-	passphrase, err := util.GetCryptoPassphrase(ctx, rbdVol.VolID, rbdVol.KMS)
+	passphrase, err := util.GetCryptoPassphrase(rbdVol.VolID, rbdVol.KMS)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get crypto passphrase for %s: %v",
 			rbdVol, err)
@@ -853,7 +853,7 @@ func encryptDevice(ctx context.Context, rbdVol *rbdVolume, devicePath string) er
 }
 
 func openEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath string) (string, error) {
-	passphrase, err := util.GetCryptoPassphrase(ctx, volOptions.VolID, volOptions.KMS)
+	passphrase, err := util.GetCryptoPassphrase(volOptions.VolID, volOptions.KMS)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get passphrase for encrypted device %s: %v",
 			volOptions, err)
