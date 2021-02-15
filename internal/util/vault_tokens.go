@@ -63,7 +63,7 @@ type standardVault struct {
 	VaultClientCert    string `json:"VAULT_CLIENT_CERT"`
 	VaultClientKey     string `json:"VAULT_CLIENT_KEY"`
 	VaultNamespace     string `json:"VAULT_NAMESPACE"`
-	VaultSkipVerify    *bool  `json:"VAULT_SKIP_VERIFY"`
+	VaultSkipVerify    string `json:"VAULT_SKIP_VERIFY"`
 }
 
 type vaultTokenConf struct {
@@ -91,8 +91,9 @@ func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 	// by default the CA should get verified, only when VaultSkipVerify is
 	// set, verification should be disabled
 	v.VaultCAVerify = "true"
-	if s.VaultSkipVerify != nil {
-		v.VaultCAVerify = strconv.FormatBool(*s.VaultSkipVerify)
+	verify, err := strconv.ParseBool(s.VaultSkipVerify)
+	if err == nil {
+		v.VaultCAVerify = strconv.FormatBool(!verify)
 	}
 }
 
