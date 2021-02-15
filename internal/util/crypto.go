@@ -67,11 +67,6 @@ type EncryptionKMS interface {
 	GetID() string
 }
 
-// MissingPassphrase is an error instructing to generate new passphrase.
-type MissingPassphrase struct {
-	error
-}
-
 // SecretsKMS is default KMS implementation that means no KMS is in use.
 type SecretsKMS struct {
 	passphrase string
