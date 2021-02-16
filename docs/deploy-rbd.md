@@ -189,7 +189,8 @@ possible to encrypt them with ceph-csi by using LUKS encryption.
 
 * create volume request received
 * volume requested to be created in Ceph
-* encrypted state "requiresEncryption" is saved in image-meta in Ceph
+* new passphrase is generated and stored in selected KMS if KMS is in use
+* encrypted state "encryptionPrepared" is saved in image-meta in Ceph
 
 **Attach volume**:
 
@@ -197,8 +198,8 @@ possible to encrypt them with ceph-csi by using LUKS encryption.
 * volume is attached to provisioner container
 * on first time attachment
   (no file system on the attached device, checked with blkid)
-  * new passphrase is generated and stored in selected KMS if KMS is in use
-  * device is encrypted with LUKS using a passphrase from K8s secrets.
+  * passphrase is retrieved from selected KMS if KMS is in use
+  * device is encrypted with LUKS using a passphrase from K8s Secret or KMS
   * image-meta updated to "encrypted" in Ceph
 * passphrase is retrieved from selected KMS if KMS is in use
 * device is open and device path is changed to use a mapper device
