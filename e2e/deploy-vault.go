@@ -45,7 +45,7 @@ func deleteVault() {
 func createORDeleteVault(action string) {
 	data, err := replaceNamespaceInTemplate(vaultExamplePath + vaultServicePath)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultServicePath, err)
+		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultServicePath, err)
 	}
 
 	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
@@ -53,34 +53,34 @@ func createORDeleteVault(action string) {
 	data = strings.ReplaceAll(data, "value: default", "value: "+cephCSINamespace)
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s vault statefulset %v", action, err)
+		e2elog.Failf("failed to %s vault statefulset %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultRBACPath)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultRBACPath, err)
+		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultRBACPath, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s vault statefulset %v", action, err)
+		e2elog.Failf("failed to %s vault statefulset %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultConfigPath)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultConfigPath, err)
+		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultConfigPath, err)
 	}
 	data = strings.ReplaceAll(data, "default", cephCSINamespace)
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s vault configmap %v", action, err)
+		e2elog.Failf("failed to %s vault configmap %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultPSPPath)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", vaultExamplePath+vaultPSPPath, err)
+		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultPSPPath, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
-		e2elog.Logf("failed to %s vault psp %v", action, err)
+		e2elog.Failf("failed to %s vault psp %v", action, err)
 	}
 }
