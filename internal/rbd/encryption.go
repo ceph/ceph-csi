@@ -18,18 +18,37 @@ package rbd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
+
+	librbd "github.com/ceph/go-ceph/rbd"
 )
 
+// rbdEncryptionState describes the status of the process where the image is
+// with respect to being encrypted.
 type rbdEncryptionState string
 
 const (
-	// Encryption statuses for RbdImage
-	rbdImageEncryptionUnknown  = rbdEncryptionState("")
-	rbdImageEncrypted          = rbdEncryptionState("encrypted")
+	// rbdImageEncryptionUnknown means the image is not encrypted, or the
+	// metadata of the image can not be fetched.
+	rbdImageEncryptionUnknown = rbdEncryptionState("")
+	// rbdImageEncrypted is set in the image metadata after the image has
+	// been formatted with cryptsetup. Future usage of the image should
+	// unlock the image before mounting.
+	rbdImageEncrypted = rbdEncryptionState("encrypted")
+	// rbdImageEncryptionPrepared gets set in the image metadata once the
+	// passphrase for the image has been generated and stored in the KMS.
+	// When using the image for the first time, it needs to be encrypted
+	// with cryptsetup before updating the state to `rbdImageEncrypted`.
+	rbdImageEncryptionPrepared = rbdEncryptionState("encryptionPrepared")
+
+	// rbdImageRequiresEncryption has been deprecated, it is used only for
+	// volumes that have been created with an old provisioner, were never
+	// attached/mounted and now get staged by a new node-plugin
+	// TODO: remove this backwards compatibility support
 	rbdImageRequiresEncryption = rbdEncryptionState("requiresEncryption")
 
 	// image metadata key for encryption
@@ -39,13 +58,16 @@ const (
 // checkRbdImageEncrypted verifies if rbd image was encrypted when created.
 func (rv *rbdVolume) checkRbdImageEncrypted(ctx context.Context) (rbdEncryptionState, error) {
 	value, err := rv.GetMetadata(encryptionMetaKey)
-	if err != nil {
-		util.ErrorLog(ctx, "checking image %s encrypted state metadata failed: %s", rv, err)
+	if errors.Is(err, librbd.ErrNotFound) {
+		util.DebugLog(ctx, "image %s encrypted state not set", rv.String())
+		return rbdImageEncryptionUnknown, nil
+	} else if err != nil {
+		util.ErrorLog(ctx, "checking image %s encrypted state metadata failed: %s", rv.String(), err)
 		return rbdImageEncryptionUnknown, err
 	}
 
 	encrypted := rbdEncryptionState(strings.TrimSpace(value))
-	util.DebugLog(ctx, "image %s encrypted state metadata reports %q", rv, encrypted)
+	util.DebugLog(ctx, "image %s encrypted state metadata reports %q", rv.String(), encrypted)
 	return encrypted, nil
 }
 
@@ -69,7 +91,7 @@ func (rv *rbdVolume) setupEncryption(ctx context.Context) error {
 		return err
 	}
 
-	err = rv.ensureEncryptionMetadataSet(rbdImageRequiresEncryption)
+	err = rv.ensureEncryptionMetadataSet(rbdImageEncryptionPrepared)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to save encryption status, deleting "+
 			"image %s: %s", rv.String(), err)
