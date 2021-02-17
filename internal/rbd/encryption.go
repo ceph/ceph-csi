@@ -54,6 +54,10 @@ const (
 
 	// image metadata key for encryption
 	encryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
+
+	// metadataDEK is the key in the image metadata where the (encrypted)
+	// DEK is stored.
+	metadataDEK = ".rbd.csi.ceph.com/dek"
 )
 
 // checkRbdImageEncrypted verifies if rbd image was encrypted when created.
@@ -203,6 +207,34 @@ func (rv *rbdVolume) setKMS(kmsID string, credentials map[string]string) error {
 	}
 
 	rv.encryption = &util.VolumeEncryption{KMS: kms}
+
+	return nil
+}
+
+// StoreDEK saves the DEK in the metadata, overwrites any existing contents.
+func (rv *rbdVolume) StoreDEK(volumeID, dek string) error {
+	if rv.VolID != volumeID {
+		return fmt.Errorf("volume %q can not store DEK for %q", rv.String(), volumeID)
+	}
+
+	return rv.SetMetadata(metadataDEK, dek)
+}
+
+// FetchDEK reads the DEK from the image metadata.
+func (rv *rbdVolume) FetchDEK(volumeID string) (string, error) {
+	if rv.VolID != volumeID {
+		return "", fmt.Errorf("volume %q can not fetch DEK for %q", rv.String(), volumeID)
+	}
+
+	return rv.GetMetadata(metadataDEK)
+}
+
+// RemoveDEK does not need to remove the DEK from the metadata, the image is
+// most likely getting removed.
+func (rv *rbdVolume) RemoveDEK(volumeID string) error {
+	if rv.VolID != volumeID {
+		return fmt.Errorf("volume %q can not remove DEK for %q", rv.String(), volumeID)
+	}
 
 	return nil
 }
