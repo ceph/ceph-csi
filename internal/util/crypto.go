@@ -127,6 +127,17 @@ type EncryptionKMS interface {
 	// returns DEKStoreIntegrated, otherwise you will need to configure an
 	// alternative storage for the DEKs.
 	requiresDEKStore() DEKStoreType
+
+	// EncryptDEK provides a way for a KMS to encrypt a DEK. In case the
+	// encryption is done transparently inside the KMS service, the
+	// function can return an unencrypted value.
+	EncryptDEK(volumeID, plainDEK string) (string, error)
+
+	// DecryptDEK provides a way for a KMS to decrypt a DEK. In case the
+	// encryption is done transparently inside the KMS service, the
+	// function does not need to do anything except return the encyptedDEK
+	// as it was received.
+	DecryptDEK(volumeID, encyptedDEK string) (string, error)
 }
 
 // DEKStoreType describes what DEKStore needs to be configured when using a
@@ -160,7 +171,17 @@ type DEKStore interface {
 // configuration options.
 type integratedDEK struct{}
 
-func (i integratedDEK) requiresDEKStore() DEKStoreType { return DEKStoreIntegrated }
+func (i integratedDEK) requiresDEKStore() DEKStoreType {
+	return DEKStoreIntegrated
+}
+
+func (i integratedDEK) EncryptDEK(volumeID, plainDEK string) (string, error) {
+	return plainDEK, nil
+}
+
+func (i integratedDEK) DecryptDEK(volumeID, encyptedDEK string) (string, error) {
+	return encyptedDEK, nil
+}
 
 // GetKMS returns an instance of Key Management System.
 //
@@ -229,7 +250,12 @@ func (ve *VolumeEncryption) StoreNewCryptoPassphrase(volumeID string) error {
 		return fmt.Errorf("failed to generate passphrase for %s: %w", volumeID, err)
 	}
 
-	err = ve.dekStore.StoreDEK(volumeID, passphrase)
+	encryptedPassphrase, err := ve.KMS.EncryptDEK(volumeID, passphrase)
+	if err != nil {
+		return fmt.Errorf("failed encrypt the passphrase for %s: %w", volumeID, err)
+	}
+
+	err = ve.dekStore.StoreDEK(volumeID, encryptedPassphrase)
 	if err != nil {
 		return fmt.Errorf("failed to save the passphrase for %s: %w", volumeID, err)
 	}
@@ -242,7 +268,8 @@ func (ve *VolumeEncryption) GetCryptoPassphrase(volumeID string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	return passphrase, nil
+
+	return ve.KMS.DecryptDEK(volumeID, passphrase)
 }
 
 // generateNewEncryptionPassphrase generates a random passphrase for encryption.
