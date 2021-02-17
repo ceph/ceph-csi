@@ -94,10 +94,12 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
+
+	pvcToDelete := pvc
 	err = wait.PollImmediate(poll, timeout, func() (bool, error) {
 		// Check that the PVC is deleted.
-		e2elog.Logf("waiting for PVC %s in state %s to be deleted (%d seconds elapsed)", pvc.Name, pvc.Status.String(), int(time.Since(start).Seconds()))
-		_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
+		e2elog.Logf("waiting for PVC %s in state %s to be deleted (%d seconds elapsed)", pvcToDelete.Name, pvcToDelete.Status.String(), int(time.Since(start).Seconds()))
+		pvcToDelete, err = c.CoreV1().PersistentVolumeClaims(pvcToDelete.Namespace).Get(context.TODO(), pvcToDelete.Name, metav1.GetOptions{})
 		if err == nil {
 			return false, nil
 		}
@@ -110,12 +112,14 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 	if err != nil {
 		return err
 	}
+
 	start = time.Now()
+	pvToDelete := pv
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		// Check that the PV is deleted.
-		e2elog.Logf("waiting for PV %s in state %s to be deleted (%d seconds elapsed)", pv.Name, pv.Status.String(), int(time.Since(start).Seconds()))
+		e2elog.Logf("waiting for PV %s in state %s to be deleted (%d seconds elapsed)", pvToDelete.Name, pvToDelete.Status.String(), int(time.Since(start).Seconds()))
 
-		_, err = c.CoreV1().PersistentVolumes().Get(context.TODO(), pv.Name, metav1.GetOptions{})
+		pvToDelete, err = c.CoreV1().PersistentVolumes().Get(context.TODO(), pvToDelete.Name, metav1.GetOptions{})
 		if err == nil {
 			return false, nil
 		}
