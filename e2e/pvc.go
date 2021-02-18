@@ -101,6 +101,11 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 		e2elog.Logf("waiting for PVC %s in state %s to be deleted (%d seconds elapsed)", pvcToDelete.Name, pvcToDelete.Status.String(), int(time.Since(start).Seconds()))
 		pvcToDelete, err = c.CoreV1().PersistentVolumeClaims(pvcToDelete.Namespace).Get(context.TODO(), pvcToDelete.Name, metav1.GetOptions{})
 		if err == nil {
+			if pvcToDelete.Status.Phase == "" {
+				// this is unexpected, an empty Phase is not defined
+				// FIXME: see https://github.com/ceph/ceph-csi/issues/1874
+				e2elog.Logf("PVC %s is in a weird state: %s", pvcToDelete.Name, pvcToDelete.String())
+			}
 			return false, nil
 		}
 		if !apierrs.IsNotFound(err) {
