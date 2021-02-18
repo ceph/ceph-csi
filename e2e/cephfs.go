@@ -506,6 +506,85 @@ var _ = Describe("cephfs", func() {
 				}
 			})
 
+			By("Test snapshot retention feature", func() {
+				// Delete the PVC after creating a snapshot,
+				// this should work because of the snapshot
+				// retention feature. Restore a PVC from that
+				// snapshot.
+				// snapshot beta is only supported from v1.17+
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
+					err := createCephFSSnapshotClass(f)
+					if err != nil {
+						e2elog.Failf("failed to create CephFS snapshotclass with error %v", err)
+					}
+					pvc, err := loadPVC(pvcPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC with error %v", err)
+					}
+
+					pvc.Namespace = f.UniqueName
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC with error %v", err)
+					}
+
+					snap := getSnapshot(snapshotPath)
+					snap.Namespace = f.UniqueName
+					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+					// create snapshot
+					snap.Name = f.UniqueName
+					err = createSnapshot(&snap, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create snapshot (%s): %v", snap.Name, err)
+					}
+
+					// Delete the parent pvc before restoring
+					// another one from snapshot.
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC with error %v", err)
+					}
+
+					pvcClone, err := loadPVC(pvcClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC with error %v", err)
+					}
+
+					appClone, err := loadApp(appClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load application with error %v", err)
+					}
+
+					pvcClone.Namespace = f.UniqueName
+					appClone.Namespace = f.UniqueName
+					pvcClone.Spec.DataSource.Name = snap.Name
+
+					// create PVC from the snapshot
+					name := f.UniqueName
+					err = createPVCAndApp(name, f, pvcClone, appClone, deployTimeout)
+					if err != nil {
+						e2elog.Logf("failed to create PVC and app (%s): %v", f.UniqueName, err)
+					}
+
+					// delete clone and app
+					err = deletePVCAndApp(name, f, pvcClone, appClone)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC and app (%s): %v", f.UniqueName, err)
+					}
+
+					// delete snapshot
+					err = deleteSnapshot(&snap, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete snapshot (%s): %v", f.UniqueName, err)
+					}
+
+					err = deleteResource(cephfsExamplePath + "snapshotclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete CephFS snapshotclass with error %v", err)
+					}
+				}
+			})
+
 			By("create a PVC clone and bind it to an app", func() {
 				// snapshot beta is only supported from v1.17+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
