@@ -70,6 +70,7 @@ function set_env() {
     # downloading rook images is sometimes slow, extend timeout to 15 minutes
     export ROOK_VERSION=${ROOK_VERSION:-'v1.3.9'}
     export ROOK_DEPLOY_TIMEOUT=900
+    export ROOK_CEPH_CLUSTER_IMAGE="${ROOK_CEPH_CLUSTER_IMAGE}"
     # use podman for minikube.sh, Docker is not installed on the host
     export CONTAINER_CMD='podman'
 
