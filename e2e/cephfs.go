@@ -261,6 +261,52 @@ var _ = Describe("cephfs", func() {
 				}
 			})
 
+			By("create PVC in storageClass with volumeNamePrefix", func() {
+				volumeNamePrefix := "foo-bar-"
+				err := createCephfsStorageClass(f.ClientSet, f, false, map[string]string{"volumeNamePrefix": volumeNamePrefix})
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				// set up PVC
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC with error %v", err)
+				}
+
+				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
+				// list subvolumes and check if one of them has the same prefix
+				foundIt := false
+				subvolumes, err := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+				if err != nil {
+					e2elog.Failf("failed to list subvolumes with error %v", err)
+				}
+				for _, subVol := range subvolumes {
+					fmt.Printf("Checking prefix on %s\n", subVol)
+					if strings.HasPrefix(subVol.Name, volumeNamePrefix) {
+						foundIt = true
+						break
+					}
+				}
+				// clean up after ourselves
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to  delete PVC with error %v", err)
+				}
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				if !foundIt {
+					e2elog.Failf("could not find subvolume with prefix %s", volumeNamePrefix)
+				}
+			})
+
 			By("create a storageclass with ceph-fuse and a PVC then bind it to an app", func() {
 				params := map[string]string{
 					"mounter": "fuse",
