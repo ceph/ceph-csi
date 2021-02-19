@@ -210,6 +210,10 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 		return nil, err
 	}
 
+	if err = extractOptionalOption(&opts.NamePrefix, "volumeNamePrefix", volOptions); err != nil {
+		return nil, err
+	}
+
 	opts.RequestName = requestName
 
 	err = opts.Connect(cr)
