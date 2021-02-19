@@ -127,3 +127,20 @@ data:
 metadata:
   name: ceph-csi-encryption-kms-config
 ```
+
+### Implementation Details
+
+The main components that are used to support encrypted volumes:
+
+1. the `EncryptionKMS` interface
+  * an instance is configured per volume object (`rbdVolume.KMS`)
+  * used to authenticate with a master key or token
+  * can store the KEK (Key-Encryption-Key) for encrypting and decrypting the
+    DEKs (Data-Encryption-Key)
+1. the `DEKStore` interface
+  * saves and fetches the DEK (Data-Encryption-Key)
+  * can be provided by a KMS, or by other components (like `rbdVolume`)
+1. the `VolumeEncryption` type
+  * combines `EncryptionKMS` and `DEKStore` into a single place
+  * easy to configure from other components or subsystems
+  * provides a simple API for all KMS operations
