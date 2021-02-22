@@ -838,7 +838,7 @@ func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rb
 			imageSpec, encrypted)
 	}
 
-	devicePath, err = openEncryptedDevice(ctx, volOptions, devicePath)
+	devicePath, err = volOptions.openEncryptedDevice(ctx, devicePath)
 	if err != nil {
 		return "", err
 	}
@@ -867,35 +867,6 @@ func encryptDevice(ctx context.Context, rbdVol *rbdVolume, devicePath string) er
 	}
 
 	return nil
-}
-
-func openEncryptedDevice(ctx context.Context, volOptions *rbdVolume, devicePath string) (string, error) {
-	passphrase, err := util.GetCryptoPassphrase(volOptions.VolID, volOptions.KMS)
-	if err != nil {
-		util.ErrorLog(ctx, "failed to get passphrase for encrypted device %s: %v",
-			volOptions, err)
-		return "", status.Error(codes.Internal, err.Error())
-	}
-
-	mapperFile, mapperFilePath := util.VolumeMapper(volOptions.VolID)
-
-	isOpen, err := util.IsDeviceOpen(ctx, mapperFilePath)
-	if err != nil {
-		util.ErrorLog(ctx, "failed to check device %s encryption status: %s", devicePath, err)
-		return devicePath, err
-	}
-	if isOpen {
-		util.DebugLog(ctx, "encrypted device is already open at %s", mapperFilePath)
-	} else {
-		err = util.OpenEncryptedVolume(ctx, devicePath, mapperFile, passphrase)
-		if err != nil {
-			util.ErrorLog(ctx, "failed to open device %s: %v",
-				volOptions, err)
-			return devicePath, err
-		}
-	}
-
-	return mapperFilePath, nil
 }
 
 // xfsSupportsReflink checks if mkfs.xfs supports the "-m reflink=0|1"
