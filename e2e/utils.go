@@ -28,16 +28,6 @@ const (
 	defaultNs     = "default"
 	vaultSecretNs = "/secret/ceph-csi/"
 
-	// rook created cephfs user
-	cephfsNodePluginSecretName  = "rook-csi-cephfs-node"
-	cephfsProvisionerSecretName = "rook-csi-cephfs-provisioner"
-
-	// Secret created inside the cephCSINamespace, can be modified. The
-	// Rook secrets get reconciled and changes are undone (needed for
-	// encryption).
-	rbdNodePluginSecretName  = "csi-rbd-secret"
-	rbdProvisionerSecretName = "csi-rbd-secret"
-
 	rookTolBoxPodLabel = "app=rook-ceph-tools"
 	rbdmountOptions    = "mountOptions"
 

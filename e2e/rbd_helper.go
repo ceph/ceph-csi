@@ -118,27 +118,19 @@ func createRadosNamespace(f *framework.Framework) error {
 	return nil
 }
 
-func createRBDSecret(c kubernetes.Interface, f *framework.Framework) error {
+func createRBDSecret(f *framework.Framework, secretName, userName, userKey string) error {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "secret.yaml")
 	sc, err := getSecret(scPath)
 	if err != nil {
 		return err
 	}
-	adminKey, stdErr, err := execCommandInToolBoxPod(f, "ceph auth get-key client.admin", rookNamespace)
-	if err != nil {
-		return err
+	if secretName != "" {
+		sc.Name = secretName
 	}
-	if stdErr != "" {
-		return fmt.Errorf("error getting admin key %v", stdErr)
-	}
-	sc.StringData["userID"] = adminUser
-	sc.StringData["userKey"] = adminKey
+	sc.StringData["userID"] = userName
+	sc.StringData["userKey"] = userKey
 	sc.Namespace = cephCSINamespace
-	_, err = c.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &sc, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
+	_, err = f.ClientSet.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &sc, metav1.CreateOptions{})
 	return err
 }
 

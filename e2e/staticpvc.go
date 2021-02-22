@@ -119,7 +119,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 		opt["radosNamespace"] = radosNamespace
 	}
 
-	pv := getStaticPV(pvName, rbdImageName, size, "csi-rbd-secret", cephCSINamespace, sc, "rbd.csi.ceph.com", isBlock, opt)
+	pv := getStaticPV(pvName, rbdImageName, size, rbdNodePluginSecretName, cephCSINamespace, sc, "rbd.csi.ceph.com", isBlock, opt)
 
 	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	if err != nil {
