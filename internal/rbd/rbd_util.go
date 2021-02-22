@@ -98,11 +98,10 @@ type rbdVolume struct {
 	MonValueFromSecret  string `json:"monValueFromSecret"`
 	VolSize             int64  `json:"volSize"`
 	DisableInUseChecks  bool   `json:"disableInUseChecks"`
-	Encrypted           bool
 	readOnly            bool
 	Primary             bool
 	ThickProvision      bool
-	KMS                 util.EncryptionKMS
+	encryption          *util.VolumeEncryption
 	// Owner is the creator (tenant, Kubernetes Namespace) of the volume.
 	Owner     string
 	CreatedAt *timestamp.Timestamp
@@ -167,8 +166,8 @@ func (rv *rbdVolume) Destroy() {
 	if rv.conn != nil {
 		rv.conn.Destroy()
 	}
-	if rv.KMS != nil {
-		rv.KMS.Destroy()
+	if rv.isEncrypted() {
+		rv.encryption.Destroy()
 	}
 }
 
@@ -834,8 +833,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	rbdVol.Owner = imageAttributes.Owner
 
 	if imageAttributes.KmsID != "" {
-		rbdVol.Encrypted = true
-		rbdVol.KMS, err = util.GetKMS(rbdVol.Owner, imageAttributes.KmsID, secrets)
+		err = rbdVol.setKMS(imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdVol, err
 		}
@@ -1168,7 +1166,7 @@ func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
 		Pool:           volOptions.Pool,
 		RadosNamespace: volOptions.RadosNamespace,
 		ImageName:      volOptions.RbdImageName,
-		Encrypted:      volOptions.Encrypted,
+		Encrypted:      volOptions.isEncrypted(),
 		UnmapOptions:   volOptions.UnmapOptions,
 	}
 

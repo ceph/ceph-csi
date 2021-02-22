@@ -18,7 +18,6 @@ package util
 
 import (
 	"errors"
-	"fmt"
 )
 
 const (
@@ -27,10 +26,6 @@ const (
 
 	// Default KMS type
 	defaultKMSType = "default"
-
-	// kmsTypeSecretsMetadata is the SecretsKMS with per-volume encryption,
-	// where the DEK is stored in the metadata of the volume itself.
-	kmsTypeSecretsMetadata = "metadata"
 )
 
 // SecretsKMS is default KMS implementation that means no KMS is in use.
@@ -59,19 +54,19 @@ func (kms SecretsKMS) Destroy() {
 	// nothing to do
 }
 
-// FetchDEK returns passphrase from Kubernetes secrets.
-func (kms SecretsKMS) FetchDEK(key string) (string, error) {
+// GetPassphrase returns passphrase from Kubernetes secrets.
+func (kms SecretsKMS) GetPassphrase(key string) (string, error) {
 	return kms.passphrase, nil
 }
 
-// StoreDEK does nothing, as there is no passphrase per key (volume), so
+// SavePassphrase does nothing, as there is no passphrase per key (volume), so
 // no need to store is anywhere.
-func (kms SecretsKMS) StoreDEK(key, value string) error {
+func (kms SecretsKMS) SavePassphrase(key, value string) error {
 	return nil
 }
 
-// RemoveDEK is doing nothing as no new passphrases are saved with
+// DeletePassphrase is doing nothing as no new passphrases are saved with
 // SecretsKMS.
-func (kms SecretsKMS) RemoveDEK(key string) error {
+func (kms SecretsKMS) DeletePassphrase(key string) error {
 	return nil
 }

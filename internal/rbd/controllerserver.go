@@ -153,7 +153,7 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 }
 
 func buildCreateVolumeResponse(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume) (*csi.CreateVolumeResponse, error) {
-	if rbdVol.Encrypted {
+	if rbdVol.isEncrypted() {
 		err := rbdVol.setupEncryption(ctx)
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
@@ -516,7 +516,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 			return err
 		}
 	}
-	if rbdVol.Encrypted {
+	if rbdVol.isEncrypted() {
 		err = rbdVol.setupEncryption(ctx)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to setup encroption for image %s: %v", rbdVol, err)
@@ -690,8 +690,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if rbdVol.Encrypted {
-		if err = rbdVol.KMS.DeletePassphrase(rbdVol.VolID); err != nil {
+	if rbdVol.isEncrypted() {
+		if err = rbdVol.encryption.KMS.DeletePassphrase(rbdVol.VolID); err != nil {
 			util.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", rbdVol.VolID, err)
 		}
 	}
@@ -755,7 +755,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 
 	// TODO: re-encrypt snapshot with a new passphrase
-	if rbdVol.Encrypted {
+	if rbdVol.isEncrypted() {
 		return nil, status.Errorf(codes.Unimplemented, "source Volume %s is encrypted, "+
 			"snapshotting is not supported currently", rbdVol.VolID)
 	}
@@ -1124,7 +1124,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, err
 	}
 
-	if rbdVol.Encrypted {
+	if rbdVol.isEncrypted() {
 		return nil, status.Errorf(codes.InvalidArgument, "encrypted volumes do not support resize (%s)",
 			rbdVol)
 	}

@@ -81,11 +81,16 @@ func (rv *rbdVolume) ensureEncryptionMetadataSet(status rbdEncryptionState) erro
 	return nil
 }
 
+// isEncrypted returns `true` if the rbdVolume is (or needs to be) encrypted.
+func (rv *rbdVolume) isEncrypted() bool {
+	return rv.encryption != nil
+}
+
 // setupEncryption configures the metadata of the RBD image for encryption:
 // - the Data-Encryption-Key (DEK) will be generated stored for use by the KMS;
 // - the RBD image will be marked to support encryption in its metadata.
 func (rv *rbdVolume) setupEncryption(ctx context.Context) error {
-	err := util.StoreNewCryptoPassphrase(rv.VolID, rv.KMS)
+	err := util.StoreNewCryptoPassphrase(rv.VolID, rv.encryption.KMS)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to save encryption passphrase for "+
 			"image %s: %s", rv.String(), err)
@@ -103,7 +108,7 @@ func (rv *rbdVolume) setupEncryption(ctx context.Context) error {
 }
 
 func (rv *rbdVolume) encryptDevice(ctx context.Context, devicePath string) error {
-	passphrase, err := util.GetCryptoPassphrase(rv.VolID, rv.KMS)
+	passphrase, err := util.GetCryptoPassphrase(rv.VolID, rv.encryption.KMS)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get crypto passphrase for %s: %v",
 			rv.String(), err)
@@ -126,7 +131,7 @@ func (rv *rbdVolume) encryptDevice(ctx context.Context, devicePath string) error
 }
 
 func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string) (string, error) {
-	passphrase, err := util.GetCryptoPassphrase(rv.VolID, rv.KMS)
+	passphrase, err := util.GetCryptoPassphrase(rv.VolID, rv.encryption.KMS)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get passphrase for encrypted device %s: %v",
 			rv.String(), err)
@@ -175,21 +180,29 @@ func (rv *rbdVolume) initKMS(ctx context.Context, volOptions, credentials map[st
 		return nil
 	}
 
-	rv.Encrypted, err = strconv.ParseBool(encrypted)
+	isEncrypted, err := strconv.ParseBool(encrypted)
 	if err != nil {
 		return fmt.Errorf(
 			"invalid value set in 'encrypted': %s (should be \"true\" or \"false\")", encrypted)
-	} else if !rv.Encrypted {
+	} else if !isEncrypted {
 		return nil
 	}
 
-	// deliberately ignore if parsing failed as GetKMS will return default
-	// implementation of kmsID is empty
-	kmsID := volOptions["encryptionKMSID"]
-	rv.KMS, err = util.GetKMS(rv.Owner, kmsID, credentials)
+	err = rv.setKMS(volOptions["encryptionKMSID"], credentials)
 	if err != nil {
 		return fmt.Errorf("invalid encryption kms configuration: %w", err)
 	}
+
+	return nil
+}
+
+func (rv *rbdVolume) setKMS(kmsID string, credentials map[string]string) error {
+	kms, err := util.GetKMS(rv.Owner, kmsID, credentials)
+	if err != nil {
+		return err
+	}
+
+	rv.encryption = &util.VolumeEncryption{KMS: kms}
 
 	return nil
 }

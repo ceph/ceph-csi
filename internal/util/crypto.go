@@ -51,6 +51,22 @@ const (
 	defaultConfigMapToRead = "csi-kms-connection-details"
 )
 
+type VolumeEncryption struct {
+	KMS EncryptionKMS
+}
+
+// NewVolumeEncryption creates a new instance of VolumeEncryption.
+func NewVolumeEncryption(kms EncryptionKMS) (*VolumeEncryption, error) {
+	ve := &VolumeEncryption{KMS: kms}
+
+	return ve, nil
+}
+
+// Destroy frees any resources that the VolumeEncryption instance allocated.
+func (ve *VolumeEncryption) Destroy() {
+	ve.KMS.Destroy()
+}
+
 // EncryptionKMS provides external Key Management System for encryption
 // passphrases storage.
 type EncryptionKMS interface {
