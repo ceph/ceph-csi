@@ -117,6 +117,7 @@ func createRBDSnapshotClass(f *framework.Framework) error {
 	sc := getSnapshotClass(scPath)
 
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-name"] = rbdProvisionerSecretName
 
 	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
 	if err != nil {
@@ -139,6 +140,7 @@ func createCephFSSnapshotClass(f *framework.Framework) error {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "snapshotclass.yaml")
 	sc := getSnapshotClass(scPath)
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-name"] = cephFSProvisionerSecretName
 	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
 	if err != nil {
 		return err

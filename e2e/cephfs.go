@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -170,9 +171,23 @@ var _ = Describe("cephfs", func() {
 		if err != nil {
 			e2elog.Failf("failed to create configmap with error %v", err)
 		}
-		err = createCephfsSecret(f.ClientSet, f)
+		// create cephFS provisioner secret
+		key, err := createCephUser(f, keyringCephFSProvisionerUsername, cephFSProvisionerCaps())
 		if err != nil {
-			e2elog.Failf("failed to create secret with error %v", err)
+			e2elog.Failf("failed to create user %s with error %v", keyringCephFSProvisionerUsername, err)
+		}
+		err = createCephfsSecret(f, cephFSProvisionerSecretName, keyringCephFSProvisionerUsername, key)
+		if err != nil {
+			e2elog.Failf("failed to create provisioner secret with error %v", err)
+		}
+		// create cephFS plugin secret
+		key, err = createCephUser(f, keyringCephFSNodePluginUsername, cephFSNodePluginCaps())
+		if err != nil {
+			e2elog.Failf("failed to create user %s with error %v", keyringCephFSNodePluginUsername, err)
+		}
+		err = createCephfsSecret(f, cephFSNodePluginSecretName, keyringCephFSNodePluginUsername, key)
+		if err != nil {
+			e2elog.Failf("failed to create node secret with error %v", err)
 		}
 	})
 
@@ -195,9 +210,13 @@ var _ = Describe("cephfs", func() {
 		if err != nil {
 			e2elog.Failf("failed to delete configmap with error %v", err)
 		}
-		err = deleteResource(cephfsExamplePath + "secret.yaml")
+		err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), cephFSProvisionerSecretName, metav1.DeleteOptions{})
 		if err != nil {
-			e2elog.Failf("failed to delete secret with error %v", err)
+			e2elog.Failf("failed to delete provisioner secret with error %v", err)
+		}
+		err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), cephFSNodePluginSecretName, metav1.DeleteOptions{})
+		if err != nil {
+			e2elog.Failf("failed to delete node secret with error %v", err)
 		}
 		err = deleteResource(cephfsExamplePath + "storageclass.yaml")
 		if err != nil {
@@ -1015,6 +1034,16 @@ var _ = Describe("cephfs", func() {
 					e2elog.Failf("failed to delete PVC with error %v", err)
 				}
 			})
+			// delete cephFS provisioner secret
+			err := deleteCephUser(f, keyringCephFSProvisionerUsername)
+			if err != nil {
+				e2elog.Failf("failed to delete user %s with error %v", keyringCephFSProvisionerUsername, err)
+			}
+			// delete cephFS plugin secret
+			err = deleteCephUser(f, keyringCephFSNodePluginUsername)
+			if err != nil {
+				e2elog.Failf("failed to delete user %s with error %v", keyringCephFSNodePluginUsername, err)
+			}
 
 		})
 	})
