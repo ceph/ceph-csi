@@ -100,3 +100,32 @@ func (rv *rbdVolume) setupEncryption(ctx context.Context) error {
 
 	return nil
 }
+
+func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string) (string, error) {
+	passphrase, err := util.GetCryptoPassphrase(rv.VolID, rv.KMS)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to get passphrase for encrypted device %s: %v",
+			rv.String(), err)
+		return "", err
+	}
+
+	mapperFile, mapperFilePath := util.VolumeMapper(rv.VolID)
+
+	isOpen, err := util.IsDeviceOpen(ctx, mapperFilePath)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to check device %s encryption status: %s", devicePath, err)
+		return devicePath, err
+	}
+	if isOpen {
+		util.DebugLog(ctx, "encrypted device is already open at %s", mapperFilePath)
+	} else {
+		err = util.OpenEncryptedVolume(ctx, devicePath, mapperFile, passphrase)
+		if err != nil {
+			util.ErrorLog(ctx, "failed to open device %s: %v",
+				rv.String(), err)
+			return devicePath, err
+		}
+	}
+
+	return mapperFilePath, nil
+}
