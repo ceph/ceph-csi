@@ -101,6 +101,29 @@ func (rv *rbdVolume) setupEncryption(ctx context.Context) error {
 	return nil
 }
 
+func (rv *rbdVolume) encryptDevice(ctx context.Context, devicePath string) error {
+	passphrase, err := util.GetCryptoPassphrase(rv.VolID, rv.KMS)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to get crypto passphrase for %s: %v",
+			rv.String(), err)
+		return err
+	}
+
+	if err = util.EncryptVolume(ctx, devicePath, passphrase); err != nil {
+		err = fmt.Errorf("failed to encrypt volume %s: %w", rv.String(), err)
+		util.ErrorLog(ctx, err.Error())
+		return err
+	}
+
+	err = rv.ensureEncryptionMetadataSet(rbdImageEncrypted)
+	if err != nil {
+		util.ErrorLog(ctx, err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string) (string, error) {
 	passphrase, err := util.GetCryptoPassphrase(rv.VolID, rv.KMS)
 	if err != nil {
