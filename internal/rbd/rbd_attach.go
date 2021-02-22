@@ -270,7 +270,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 		util.WarningLog(ctx, "rbd: map error %v, rbd output: %s", err, stderr)
 		// unmap rbd image if connection timeout
 		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
-			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd, volOpt.Encrypted, volOpt.VolID, volOpt.UnmapOptions)
+			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd, volOpt.isEncrypted(), volOpt.VolID, volOpt.UnmapOptions)
 			if detErr != nil {
 				util.WarningLog(ctx, "rbd: %s unmap error %v", imagePath, detErr)
 			}

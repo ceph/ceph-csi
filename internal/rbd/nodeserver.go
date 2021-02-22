@@ -291,7 +291,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	util.DebugLog(ctx, "rbd image: %s/%s was successfully mapped at %s\n",
 		req.GetVolumeId(), volOptions.Pool, devicePath)
 
-	if volOptions.Encrypted {
+	if volOptions.isEncrypted() {
 		devicePath, err = ns.processEncryptedDevice(ctx, volOptions, devicePath)
 		if err != nil {
 			return transaction, err
