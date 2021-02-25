@@ -11,5 +11,5 @@ keywords:
   - ceph-csi
 home: https://github.com/ceph/ceph-csi
 sources:
-  - https://github.com/ceph/ceph-csi/tree/master/charts/ceph-csi-rbd
-icon: https://raw.githubusercontent.com/ceph/ceph-csi/master/assets/ceph-logo.png
+  - https://github.com/ceph/ceph-csi/tree/devel/charts/ceph-csi-rbd
+icon: https://raw.githubusercontent.com/ceph/ceph-csi/devel/assets/ceph-logo.png
