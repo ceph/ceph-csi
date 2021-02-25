@@ -83,11 +83,11 @@ to upgrade from cephcsi v3.0 to v3.1
 
 ## Upgrading from v3.1 to v3.2
 
-**Ceph-csi releases from master are expressly unsupported.** It is strongly
+**Ceph-csi releases from devel are expressly unsupported.** It is strongly
 recommended that you use [official
 releases](https://github.com/ceph/ceph-csi/releases) of Ceph-csi. Unreleased
-versions from the master branch are subject to changes and incompatibilities
-that will not be supported in the official releases. Builds from the master
+versions from the devel branch are subject to changes and incompatibilities
+that will not be supported in the official releases. Builds from the devel
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 

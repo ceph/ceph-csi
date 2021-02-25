@@ -39,7 +39,7 @@ Encryption Key (DEK) for PVC encryption:
 - the KMS configuration is available for the Ceph-CSI pods at
   `/etc/ceph-csi-encryption-kms-config/config.json`
 - [example of the
-  configuration](https://github.com/ceph/ceph-csi/blob/master/examples/kms/vault/kms-config.yaml)
+  configuration](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/kms-config.yaml)
 
 ## Dependencies
 
