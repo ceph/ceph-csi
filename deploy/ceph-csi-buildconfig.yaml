@@ -12,7 +12,7 @@ spec:
   source:
     git:
       uri: https://github.com/ceph/ceph-csi
-      ref: master
+      ref: devel
     contextDir: .
   strategy:
     dockerStrategy:
@@ -38,7 +38,7 @@ spec:
   source:
     git:
       uri: https://github.com/ceph/ceph-csi
-      ref: master
+      ref: devel
     contextDir: .
   strategy:
     dockerStrategy:
@@ -64,7 +64,7 @@ spec:
   source:
     git:
       uri: https://github.com/ceph/ceph-csi
-      ref: master
+      ref: devel
     contextDir: .
   strategy:
     dockerStrategy:

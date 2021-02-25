@@ -2,8 +2,8 @@ def cico_retries = 16
 def cico_retry_interval = 60
 def ci_git_repo = 'https://github.com/ceph/ceph-csi'
 def ci_git_branch = 'ci/centos'
-def ref = "master"
-def git_since = 'origin/master'
+def ref = "devel"
+def git_since = 'origin/devel'
 
 node('cico-workspace') {
 	stage('checkout ci repository') {

@@ -3,8 +3,8 @@ def cico_retry_interval = 60
 def ci_git_repo = 'https://github.com/ceph/ceph-csi'
 def ci_git_branch = 'ci/centos'
 def git_repo = 'https://github.com/ceph/ceph-csi'
-def ref = "master"
-def git_since = 'master'
+def ref = "devel"
+def git_since = 'devel'
 def workdir = '/opt/build/go/src/github.com/ceph/ceph-csi'
 def doc_change = 0
 // private, internal container image repository
