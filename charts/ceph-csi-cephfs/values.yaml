@@ -18,7 +18,7 @@ serviceAccounts:
     name:
 
 # Configuration for the CSI to connect to the cluster
-# Ref: https://github.com/ceph/ceph-csi/blob/master/examples/README.md
+# Ref: https://github.com/ceph/ceph-csi/blob/devel/examples/README.md
 # Example:
 # csiConfig:
 #   - clusterID: "<cluster-id>"
