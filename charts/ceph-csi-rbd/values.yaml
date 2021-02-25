@@ -18,7 +18,7 @@ serviceAccounts:
     name:
 
 # Configuration for the CSI to connect to the cluster
-# Ref: https://github.com/ceph/ceph-csi/blob/master/examples/README.md
+# Ref: https://github.com/ceph/ceph-csi/blob/devel/examples/README.md
 # Example:
 # csiConfig:
 #   - clusterID: "<cluster-id>"
@@ -28,7 +28,7 @@ serviceAccounts:
 csiConfig: []
 
 # Configuration for the encryption KMS
-# Ref: https://github.com/ceph/ceph-csi/blob/master/docs/deploy-rbd.md
+# Ref: https://github.com/ceph/ceph-csi/blob/devel/docs/deploy-rbd.md
 # Example:
 # encryptionKMSConfig:
 #   vault-unique-id-1:

@@ -9,18 +9,18 @@ push_helm_charts() {
 	CHARTDIR=$2
 	VERSION=${CSI_IMAGE_VERSION//v/} # Set version (without v prefix)
 
-	# update information in Chart.yaml if the branch is not master
-	if [ "$TRAVIS_BRANCH" != "master" ]; then
+	# update information in Chart.yaml if the branch is not devel
+	if [ "$TRAVIS_BRANCH" != "devel" ]; then
 		# Replace appVersion: canary and version: *-canary with the actual version
 		sed -i "s/\(\s.*canary\)/ $VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
 
 		if [[ "$VERSION" == *"canary"* ]]; then
-			# Replace master with the version branch
-			sed -i "s/master/$TRAVIS_BRANCH/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
+			# Replace devel with the version branch
+			sed -i "s/devel/$TRAVIS_BRANCH/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
 		else
-			# This is not a canary release, replace master with the tagged branch
-			sed -i "s/master/v$VERSION/" "charts/ceph-csi-$PACKAGE/templates/NOTES.txt"
-			sed -i "s/master/v$VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
+			# This is not a canary release, replace devel with the tagged branch
+			sed -i "s/devel/v$VERSION/" "charts/ceph-csi-$PACKAGE/templates/NOTES.txt"
+			sed -i "s/devel/v$VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
 
 		fi
 	fi
@@ -83,7 +83,7 @@ build_push_images() {
 	make push-manifest
 }
 
-if [ "${TRAVIS_BRANCH}" != 'master' ]; then
+if [ "${TRAVIS_BRANCH}" != 'devel' ]; then
 	echo "!!! Branch ${TRAVIS_BRANCH} is not a deployable branch; exiting"
 	exit 0 # Exiting 0 so that this isn't marked as failing
 fi
