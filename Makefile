@@ -78,7 +78,7 @@ endif
 
 # Pass GIT_SINCE for the range of commits to test. Used with the commitlint
 # target.
-GIT_SINCE := origin/master
+GIT_SINCE := origin/devel
 
 SELINUX := $(shell getenforce 2>/dev/null)
 ifeq ($(SELINUX),Enforcing)

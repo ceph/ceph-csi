@@ -15,7 +15,7 @@ services:
 language: go
 branches:
   only:
-    - master
+    - devel
 # Only run the deploy stage on push (not pull_request) events.
 stages:
   - name: deploy
