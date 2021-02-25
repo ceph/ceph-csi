@@ -5,8 +5,8 @@ set -e -o pipefail
 # In case no value is specified, default values will be used.
 gitrepo="https://github.com/ceph/ceph-csi"
 workdir="tip/"
-ref="master"
-base="master"
+ref="devel"
+base="devel"
 history="no"
 
 ARGUMENT_LIST=(

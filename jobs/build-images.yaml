@@ -1,7 +1,7 @@
 ---
 - job:
     name: build-images
-    description: Build container images from the master branch.
+    description: Build container images from the devel branch.
     project-type: pipeline
     concurrent: false
     properties:
@@ -13,7 +13,7 @@
     # yamllint disable rule:line-length
     dsl: |
       def GIT_REPO = 'http://github.com/ceph/ceph-csi'
-      def GIT_BRANCH = 'master'
+      def GIT_BRANCH = 'devel'
       node {
         stage('checkout repository') {
           git url: "${GIT_REPO}", branch: "${GIT_BRANCH}", changelog: false
@@ -43,7 +43,7 @@
           name: origin
           url: https://github.com/ceph/ceph-csi
           branches:
-            - master
+            - devel
     triggers:
       - pollscm:
           cron: "H/5 * * * *"

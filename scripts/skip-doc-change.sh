@@ -3,7 +3,7 @@
 
 GIT_SINCE="${1}"
 if [ -z "${GIT_SINCE}" ]; then
-	GIT_SINCE='origin/master'
+	GIT_SINCE='origin/devel'
 fi
 
 CHANGED_FILES=$(git diff --name-only "${GIT_SINCE}")

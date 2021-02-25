@@ -6,7 +6,7 @@
 # Usage: scripts/container-needs-rebuild.sh {test|devel} [git-since]
 #
 #   - flavour is either 'test' or 'devel'
-#   - the optional 'git-since' points to a git reference, 'origin/master' if
+#   - the optional 'git-since' points to a git reference, 'origin/devel' if
 #     not set
 #
 # Returns 0 in case changes do not affect the container image.
@@ -23,7 +23,7 @@ fi
 
 GIT_SINCE="${2}"
 if [ -z "${GIT_SINCE}" ]; then
-	GIT_SINCE='origin/master'
+	GIT_SINCE='origin/devel'
 fi
 
 MODIFIED_FILES=$(git diff --name-only "${GIT_SINCE}")
