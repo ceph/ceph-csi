@@ -192,7 +192,7 @@ func (rv *rbdVolume) initKMS(ctx context.Context, volOptions, credentials map[st
 		return nil
 	}
 
-	err = rv.setKMS(volOptions["encryptionKMSID"], credentials)
+	err = rv.configureEncryption(volOptions["encryptionKMSID"], credentials)
 	if err != nil {
 		return fmt.Errorf("invalid encryption kms configuration: %w", err)
 	}
@@ -200,13 +200,21 @@ func (rv *rbdVolume) initKMS(ctx context.Context, volOptions, credentials map[st
 	return nil
 }
 
-func (rv *rbdVolume) setKMS(kmsID string, credentials map[string]string) error {
+// configureEncryption sets up the VolumeEncryption for this rbdVolume. Once
+// configured, use isEncrypted() to see if the volume supports encryption.
+func (rv *rbdVolume) configureEncryption(kmsID string, credentials map[string]string) error {
 	kms, err := util.GetKMS(rv.Owner, kmsID, credentials)
 	if err != nil {
 		return err
 	}
 
-	rv.encryption = &util.VolumeEncryption{KMS: kms}
+	rv.encryption, err = util.NewVolumeEncryption(kms)
+
+	// if the KMS can not store the DEK itself, we'll store it in the
+	// metadata of the RBD image itself
+	if errors.Is(err, util.ErrDEKStoreNeeded) {
+		rv.encryption.SetDEKStore(rv)
+	}
 
 	return nil
 }

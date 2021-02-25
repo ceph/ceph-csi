@@ -833,7 +833,7 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	rbdVol.Owner = imageAttributes.Owner
 
 	if imageAttributes.KmsID != "" {
-		err = rbdVol.setKMS(imageAttributes.KmsID, secrets)
+		err = rbdVol.configureEncryption(imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdVol, err
 		}
