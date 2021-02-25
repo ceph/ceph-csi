@@ -3,7 +3,7 @@
 [![Go Report
 Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreportcard.com/report/github.com/ceph/ceph-csi)
 [![Build
-Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=master)](https://travis-ci.org/ceph/ceph-csi)
+Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=devel)](https://travis-ci.org/ceph/ceph-csi)
 
 - [Ceph CSI](#ceph-csi)
   - [Overview](#overview)
@@ -33,9 +33,9 @@ attaching them to workloads.
 Independent CSI plugins are provided to support RBD and CephFS backed volumes,
 
 - For details about configuration and deployment of RBD plugin, please refer
-  [rbd doc](https://github.com/ceph/ceph-csi/blob/master/docs/deploy-rbd.md) and
+  [rbd doc](https://github.com/ceph/ceph-csi/blob/devel/docs/deploy-rbd.md) and
   for CephFS plugin configuration and deployment please
-  refer [cephfs doc](https://github.com/ceph/ceph-csi/blob/master/docs/deploy-cephfs.md).
+  refer [cephfs doc](https://github.com/ceph/ceph-csi/blob/devel/docs/deploy-cephfs.md).
 - For example usage of RBD and CephFS CSI plugins, see examples in `examples/`.
 - Stale resource cleanup, please refer [cleanup doc](docs/resource-cleanup.md).
 
@@ -118,8 +118,8 @@ in the Kubernetes documentation.
 
 ## Contributing to this repo
 
-Please follow [development-guide](<https://github.com/ceph/ceph-csi/tree/master/docs/development-guide.md>)
-and [coding style guidelines](<https://github.com/ceph/ceph-csi/tree/master/docs/coding.md>)
+Please follow [development-guide](<https://github.com/ceph/ceph-csi/tree/devel/docs/development-guide.md>)
+and [coding style guidelines](<https://github.com/ceph/ceph-csi/tree/devel/docs/coding.md>)
 if you are interested to contribute to this repo.
 
 ## Troubleshooting
