@@ -189,7 +189,7 @@ Here is a short guide on how to work on a new patch.  In this example, we will
 work on a patch called *hellopatch*:
 
 ```console
-git checkout master
+git checkout devel
 git pull
 git checkout -b hellopatch
 ```
@@ -263,22 +263,22 @@ need to be met before it will be merged:
   community feedback.
 * The 24 working hours counts hours occurring Mon-Fri in the local timezone
   of the submitter.
-* Each PR must be fully updated to master and tests must have passed
+* Each PR must be fully updated to devel and tests must have passed
 * If the PR is having trivial changes or the reviewer is confident enough that
   PR doesn't need a second review, the reviewer can set `ready-to-merge` label
   on the PR. The bot will merge the PR if it's having one approval and the
   label `ready-to-merge`.
 
 When the criteria are met, a project maintainer can merge your changes into
-the project's master branch.
+the project's devel branch.
 
 ### Backport a Fix to a Release Branch
 
 The flow for getting a fix into a release branch is:
 
-1. Open a PR to merge the changes to master following the process outlined above.
+1. Open a PR to merge the changes to devel following the process outlined above.
 1. Add the backport label to that PR such as `backport-to-release-vX.Y.Z`
-1. After your PR is merged to master, the mergify bot will automatically open a
+1. After your PR is merged to devel, the mergify bot will automatically open a
    PR with your commits backported to the release branch
 1. If there are any conflicts you will need to resolve them by pulling the
    branch, resolving the conflicts and force push back the branch
