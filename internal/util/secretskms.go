@@ -30,6 +30,8 @@ const (
 
 // SecretsKMS is default KMS implementation that means no KMS is in use.
 type SecretsKMS struct {
+	integratedDEK
+
 	passphrase string
 }
 

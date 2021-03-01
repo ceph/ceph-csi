@@ -79,6 +79,7 @@ type vaultConnection struct {
 
 type VaultKMS struct {
 	vaultConnection
+	integratedDEK
 
 	// vaultPassphrasePath (VPP) used to be added before the "key" of the
 	// secret (like /v1/secret/data/<VPP>/key)

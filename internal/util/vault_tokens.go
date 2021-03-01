@@ -161,6 +161,7 @@ Example JSON structure in the KMS config is,
 */
 type VaultTokensKMS struct {
 	vaultConnection
+	integratedDEK
 
 	// Tenant is the name of the owner of the volume
 	Tenant string
