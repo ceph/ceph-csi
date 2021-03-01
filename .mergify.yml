@@ -5,6 +5,10 @@ defaults:
       bot_account: ceph-csi-bot
     merge:
       bot_account: ceph-csi-bot
+      method: rebase
+      rebase_fallback: merge
+      strict: smart
+      strict_method: rebase
     rebase:
       bot_account: ceph-csi-bot
 
@@ -48,11 +52,7 @@ pull_request_rules:
       - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: automatic merge PR having ready-to-merge label
@@ -79,11 +79,7 @@ pull_request_rules:
       - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release v1.2.0 branch
@@ -104,11 +100,7 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - "status-success=continuous-integration/travis-ci/pr"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v2.0 branch
@@ -129,11 +121,7 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - "status-success=continuous-integration/travis-ci/pr"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v2.1 branch
@@ -154,11 +142,7 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - "status-success=continuous-integration/travis-ci/pr"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v3.0 branch
@@ -179,11 +163,7 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - "status-success=continuous-integration/travis-ci/pr"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v3.1 branch
@@ -213,11 +193,7 @@ pull_request_rules:
       - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v3.2 branch
@@ -253,11 +229,7 @@ pull_request_rules:
       - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: remove outdated approvals on ci/centos
@@ -277,11 +249,7 @@ pull_request_rules:
       - "status-success=ci/centos/jjb-validate"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: automatic merge PR having ready-to-merge label on ci/centos
@@ -295,10 +263,6 @@ pull_request_rules:
       - "status-success=ci/centos/jjb-validate"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
