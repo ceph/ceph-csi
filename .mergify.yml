@@ -1,4 +1,13 @@
 ---
+defaults:
+  actions:
+    comment:
+      bot_account: ceph-csi-bot
+    merge:
+      bot_account: ceph-csi-bot
+    rebase:
+      bot_account: ceph-csi-bot
+
 pull_request_rules:
   - name: remove outdated approvals
     conditions:
@@ -42,7 +51,6 @@ pull_request_rules:
       merge:
         method: rebase
         rebase_fallback: merge
-        bot_account: ceph-csi-bot
         strict: smart
         strict_method: rebase
       dismiss_reviews: {}
@@ -74,7 +82,6 @@ pull_request_rules:
       merge:
         method: rebase
         rebase_fallback: merge
-        bot_account: ceph-csi-bot
         strict: smart
         strict_method: rebase
       dismiss_reviews: {}
@@ -90,7 +97,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v1.2.0
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v1.2.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -100,7 +107,6 @@ pull_request_rules:
       merge:
         method: rebase
         rebase_fallback: merge
-        bot_account: ceph-csi-bot
         strict: smart
         strict_method: rebase
       dismiss_reviews: {}
@@ -116,7 +122,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v2.0
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v2.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -126,7 +132,6 @@ pull_request_rules:
       merge:
         method: rebase
         rebase_fallback: merge
-        bot_account: ceph-csi-bot
         strict: smart
         strict_method: rebase
       dismiss_reviews: {}
@@ -142,7 +147,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v2.1
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v2.1
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -152,7 +157,6 @@ pull_request_rules:
       merge:
         method: rebase
         rebase_fallback: merge
-        bot_account: ceph-csi-bot
         strict: smart
         strict_method: rebase
       dismiss_reviews: {}
@@ -168,7 +172,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v3.0
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v3.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -178,7 +182,6 @@ pull_request_rules:
       merge:
         method: rebase
         rebase_fallback: merge
-        bot_account: ceph-csi-bot
         strict: smart
         strict_method: rebase
       dismiss_reviews: {}
@@ -194,7 +197,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v3.1
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v3.1
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -213,7 +216,6 @@ pull_request_rules:
       merge:
         method: rebase
         rebase_fallback: merge
-        bot_account: ceph-csi-bot
         strict: smart
         strict_method: rebase
       dismiss_reviews: {}
@@ -229,7 +231,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v3.2
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v3.2
       - label!=DNM
       - "#approved-reviews-by>=1"
@@ -254,7 +256,6 @@ pull_request_rules:
       merge:
         method: rebase
         rebase_fallback: merge
-        bot_account: ceph-csi-bot
         strict: smart
         strict_method: rebase
       dismiss_reviews: {}
@@ -279,7 +280,6 @@ pull_request_rules:
       merge:
         method: rebase
         rebase_fallback: merge
-        bot_account: ceph-csi-bot
         strict: smart
         strict_method: rebase
       dismiss_reviews: {}
@@ -298,7 +298,6 @@ pull_request_rules:
       merge:
         method: rebase
         rebase_fallback: merge
-        bot_account: ceph-csi-bot
         strict: smart
         strict_method: rebase
       dismiss_reviews: {}
