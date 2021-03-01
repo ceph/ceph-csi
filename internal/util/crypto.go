@@ -66,13 +66,39 @@ var (
 
 type VolumeEncryption struct {
 	KMS EncryptionKMS
+
+	// dekStore that will be used, this can be the EncryptionKMS or a
+	// different object implementing the DEKStore interface.
+	dekStore DEKStore
 }
 
-// NewVolumeEncryption creates a new instance of VolumeEncryption.
+// NewVolumeEncryption creates a new instance of VolumeEncryption and
+// configures the DEKStore. If the KMS does not provide a DEKStore interface,
+// the VolumeEncryption will be created *and* a ErrDEKStoreNeeded is returned.
+// Callers that receive a ErrDEKStoreNeeded error, should use
+// VolumeEncryption.SetDEKStore() to configure an alternative storage for the
+// DEKs.
 func NewVolumeEncryption(kms EncryptionKMS) (*VolumeEncryption, error) {
 	ve := &VolumeEncryption{KMS: kms}
 
-	return ve, nil
+	if kms.requiresDEKStore() == DEKStoreIntegrated {
+		dekStore, ok := kms.(DEKStore)
+		if !ok {
+			return nil, fmt.Errorf("KMS %T does not implement the "+
+				"DEKStore interface", kms)
+		}
+
+		ve.dekStore = dekStore
+		return ve, nil
+	}
+
+	return ve, ErrDEKStoreNeeded
+}
+
+// SetDEKStore sets the DEKStore for this VolumeEncryption instance. It will be
+// used when StoreNewCryptoPassphrase() or RemoveDEK() is called.
+func (ve *VolumeEncryption) SetDEKStore(dekStore DEKStore) {
+	ve.dekStore = dekStore
 }
 
 // Destroy frees any resources that the VolumeEncryption instance allocated.
