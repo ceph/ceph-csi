@@ -108,6 +108,8 @@ node('cico-workspace') {
 					if (rebuild_test_container == 10) {
 						// container needs rebuild, don't pull
 						use_test_image = 'USE_PULLED_IMAGE=no'
+						// build the test image
+						ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${ci_registry}/${cached_image} .test-container-id"
 						return
 					}
 
@@ -119,6 +121,8 @@ node('cico-workspace') {
 					if (rebuild_devel_container == 10) {
 						// container needs rebuild, don't pull
 						use_build_image = 'USE_PULLED_IMAGE=no'
+						// build the devel image
+						ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make CONTAINER_CMD=podman ENV_CSI_IMAGE_NAME=${ci_registry}/${cached_image} .devel-container-id"
 						return
 					}
 
