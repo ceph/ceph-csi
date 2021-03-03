@@ -142,6 +142,12 @@ then
     ./podman2minikube.sh "${BASE_IMAGE}"
 fi
 
+# Rook also uses ceph/ceph:v15 (build.env:ROOK_CEPH_CLUSTER_IMAGE), so push it into the VM
+if [ -n "${ROOK_CEPH_CLUSTER_IMAGE}" ] && podman inspect "${ROOK_CEPH_CLUSTER_IMAGE}" > /dev/null
+then
+    ./podman2minikube.sh "${ROOK_CEPH_CLUSTER_IMAGE}"
+fi
+
 deploy_rook
 
 # running e2e.test requires librados and librbd
