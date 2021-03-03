@@ -144,6 +144,17 @@ node('cico-workspace') {
 				podman_pull(ci_registry, "docker.io", "rook/ceph:${rook_version}")
 			}
 
+			def rook_ceph_cluster_image = sh(
+				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${ROOK_CEPH_CLUSTER_IMAGE}\'',
+				returnStdout: true
+			).trim()
+			def d_io_regex = ~"^docker.io/"
+
+			if (rook_ceph_cluster_image != '') {
+				// single-node-k8s.sh pushes the image into minikube
+				podman_pull(ci_registry, "docker.io", rook_ceph_cluster_image - d_io_regex)
+			}
+
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh "./single-node-k8s.sh --k8s-version=${k8s_release}"
 			}
