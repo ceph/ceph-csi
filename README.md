@@ -126,27 +126,6 @@ if you are interested to contribute to this repo.
 
 Please submit an issue at: [Issues](https://github.com/ceph/ceph-csi/issues)
 
-## Weekly Bug Triage call
-
-We conduct weekly bug triage calls at our slack channel on Tuesdays.
-More details are available [here](https://github.com/ceph/ceph-csi/issues/463)
-
-## Dev standup
-
-A regular dev standup takes place every other [Monday,Tuesday,Thursday at
-2:00 PM UTC](https://redhat.bluejeans.com/702977652). Convert to your local
-timezone by executing command `date -d 14:00 UTC` on terminal
-
-Any changes to the meeting schedule will be added to the [agenda
-doc](https://docs.google.com/document/d/1K1aerdMpraIh56-skdoEoVF9RZrO4NUcbHtjN-f3u1s).
-
-Anyone who wants to discuss the direction of the project, design and
-implementation reviews, or general questions with the broader community is
-welcome and encouraged to join.
-
-- Meeting link: <https://redhat.bluejeans.com/702977652>
-- [Current agenda](https://docs.google.com/document/d/1K1aerdMpraIh56-skdoEoVF9RZrO4NUcbHtjN-f3u1s)
-
 ## Contact
 
 Please use the following to reach members of the community:
