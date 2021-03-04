@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -34,12 +33,7 @@ const (
 	mapperFilePrefix     = "luks-rbd-"
 	mapperFilePathPrefix = "/dev/mapper"
 
-	// Encryption passphrase location in K8s secrets
-	encryptionPassphraseKey = "encryptionPassphrase"
-	kmsTypeKey              = "encryptionKMSType"
-
-	// Default KMS type
-	defaultKMSType = "default"
+	kmsTypeKey = "encryptionKMSType"
 
 	// kmsConfigPath is the location of the vault config file
 	kmsConfigPath = "/etc/ceph-csi-encryption-kms-config/config.json"
@@ -65,46 +59,6 @@ type EncryptionKMS interface {
 	SavePassphrase(key, value string) error
 	DeletePassphrase(key string) error
 	GetID() string
-}
-
-// SecretsKMS is default KMS implementation that means no KMS is in use.
-type SecretsKMS struct {
-	passphrase string
-}
-
-func initSecretsKMS(secrets map[string]string) (EncryptionKMS, error) {
-	passphraseValue, ok := secrets[encryptionPassphraseKey]
-	if !ok {
-		return nil, errors.New("missing encryption passphrase in secrets")
-	}
-	return SecretsKMS{passphrase: passphraseValue}, nil
-}
-
-// Destroy frees all used resources.
-func (kms SecretsKMS) Destroy() {
-	// nothing to do
-}
-
-// GetPassphrase returns passphrase from Kubernetes secrets.
-func (kms SecretsKMS) GetPassphrase(key string) (string, error) {
-	return kms.passphrase, nil
-}
-
-// SavePassphrase does nothing, as there is no passphrase per key (volume), so
-// no need to store is anywhere.
-func (kms SecretsKMS) SavePassphrase(key, value string) error {
-	return nil
-}
-
-// DeletePassphrase is doing nothing as no new passphrases are saved with
-// SecretsKMS.
-func (kms SecretsKMS) DeletePassphrase(key string) error {
-	return nil
-}
-
-// GetID is returning ID representing default KMS `default`.
-func (kms SecretsKMS) GetID() string {
-	return defaultKMSType
 }
 
 // GetKMS returns an instance of Key Management System.
