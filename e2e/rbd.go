@@ -438,6 +438,35 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("create a PVC and bind it to an app with encrypted RBD volume with SecretsMetadataKMS", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				scOpts := map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "secrets-metadata-test",
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, scOpts, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
+				if err != nil {
+					e2elog.Failf("failed to validate encrypted pvc with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0)
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+			})
+
 			By("create a PVC clone and bind it to an app", func() {
 				// snapshot beta is only supported from v1.17+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
