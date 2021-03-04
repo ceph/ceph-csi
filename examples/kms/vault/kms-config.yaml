@@ -30,7 +30,10 @@ data:
                   "tenantTokenName": "storage-encryption-token"
               }
           }
-       }
+      },
+      "secrets-metadata-test": {
+          "encryptionKMSType": "metadata"
+      }
     }
 metadata:
   name: ceph-csi-encryption-kms-config
