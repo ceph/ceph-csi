@@ -105,17 +105,40 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 	return nil
 }
 
-func getCommandInPodOpts(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (framework.ExecOptions, error) {
+func findPodAndContainerName(f *framework.Framework, ns, cn string, opt *metav1.ListOptions) (string, string, error) {
+	podList, err := f.PodClientNS(ns).List(context.TODO(), *opt)
+	if err != nil {
+		return "", "", err
+	}
+
+	if len(podList.Items) == 0 {
+		return "", "", errors.New("podlist is empty")
+	}
+
+	if cn != "" {
+		for i := range podList.Items {
+			for j := range podList.Items[i].Spec.Containers {
+				if podList.Items[i].Spec.Containers[j].Name == cn {
+					return podList.Items[i].Name, cn, nil
+				}
+			}
+		}
+		return "", "", errors.New("container name not found")
+	}
+	return podList.Items[0].Name, podList.Items[0].Spec.Containers[0].Name, nil
+}
+
+func getCommandInPodOpts(f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions) (framework.ExecOptions, error) {
 	cmd := []string{"/bin/sh", "-c", c}
-	pods, err := listPods(f, ns, opt)
+	pName, cName, err := findPodAndContainerName(f, ns, cn, opt)
 	if err != nil {
 		return framework.ExecOptions{}, err
 	}
 	return framework.ExecOptions{
 		Command:            cmd,
-		PodName:            pods[0].Name,
+		PodName:            pName,
 		Namespace:          ns,
-		ContainerName:      pods[0].Spec.Containers[0].Name,
+		ContainerName:      cName,
 		Stdin:              nil,
 		CaptureStdout:      true,
 		CaptureStderr:      true,
@@ -170,7 +193,19 @@ func listPods(f *framework.Framework, ns string, opt *metav1.ListOptions) ([]v1.
 }
 
 func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string, error) {
-	podOpt, err := getCommandInPodOpts(f, c, ns, opt)
+	podOpt, err := getCommandInPodOpts(f, c, ns, "", opt)
+	if err != nil {
+		return "", "", err
+	}
+	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
+	if stdErr != "" {
+		e2elog.Logf("stdErr occurred: %v", stdErr)
+	}
+	return stdOut, stdErr, err
+}
+
+func execCommandInContainer(f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions) (string, string, error) {
+	podOpt, err := getCommandInPodOpts(f, c, ns, cn, opt)
 	if err != nil {
 		return "", "", err
 	}
@@ -185,7 +220,7 @@ func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, stri
 	opt := &metav1.ListOptions{
 		LabelSelector: rookToolBoxPodLabel,
 	}
-	podOpt, err := getCommandInPodOpts(f, c, ns, opt)
+	podOpt, err := getCommandInPodOpts(f, c, ns, "", opt)
 	if err != nil {
 		return "", "", err
 	}
@@ -197,7 +232,7 @@ func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, stri
 }
 
 func execCommandInPodAndAllowFail(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string) {
-	podOpt, err := getCommandInPodOpts(f, c, ns, opt)
+	podOpt, err := getCommandInPodOpts(f, c, ns, "", opt)
 	if err != nil {
 		return "", err.Error()
 	}
