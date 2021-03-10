@@ -24,8 +24,8 @@ it is **highly** encouraged to:
 * Ceph-CSI uses the native Ceph libraries through the [go-ceph
    package](https://github.com/ceph/go-ceph). It is required to install the
    Ceph C headers in order to compile Ceph-CSI. The packages are called
-   `libcephfs-devel`, `librados-devel` and `librbd-devel` on many Linux
-   distributions. See the [go-ceph installaton
+   `librados-devel` and `librbd-devel` on many Linux distributions. See the
+   [go-ceph installaton
    instructions](https://github.com/ceph/go-ceph#installation) for more
    details.
 * Run
