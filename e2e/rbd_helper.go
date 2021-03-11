@@ -9,7 +9,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
-
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -514,6 +514,63 @@ func deletePVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeC
 	if stdErr != "" {
 		return fmt.Errorf("failed to remove %s csi.volumes.default csi.volume.%s with error %v", rbdOptions(pool), imageData.imageID, stdErr)
 	}
+
+	return nil
+}
+
+func validateThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, size string) error {
+	pvc.Namespace = f.UniqueName
+	pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(size)
+
+	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create PVC with error %w", err)
+	}
+	validateRBDImageCount(f, 1)
+
+	// nothing has been written, but the image should be allocated
+	du, err := getRbdDu(f, pvc)
+	if err != nil {
+		return fmt.Errorf("failed to get allocations of RBD image: %w", err)
+	} else if du.UsedSize == 0 || du.UsedSize != du.ProvisionedSize {
+		return fmt.Errorf("backing RBD image is not thick-provisioned (%d/%d)", du.UsedSize, du.ProvisionedSize)
+	}
+
+	// expanding the PVC should thick-allocate the expansion
+	// nolint:mnd // we want 2x the size so that extending is done
+	newSize := du.ProvisionedSize * 2
+	err = expandPVCSize(f.ClientSet, pvc, fmt.Sprintf("%d", newSize), deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to expand PVC: %w", err)
+	}
+
+	// after expansion, the updated 'du' should be larger
+	du, err = getRbdDu(f, pvc)
+	if err != nil {
+		return fmt.Errorf("failed to get allocations of RBD image: %w", err)
+	} else if du.UsedSize != newSize {
+		return fmt.Errorf("backing RBD image is not extended thick-provisioned (%d/%d)", du.UsedSize, newSize)
+	}
+
+	// thick provisioning allows for sparsifying
+	err = sparsifyBackingRBDImage(f, pvc)
+	if err != nil {
+		return fmt.Errorf("failed to sparsify RBD image: %w", err)
+	}
+
+	// after sparsifying the image should not have any allocations
+	du, err = getRbdDu(f, pvc)
+	if err != nil {
+		return fmt.Errorf("backing RBD image is not thick-provisioned: %w", err)
+	} else if du.UsedSize != 0 {
+		return fmt.Errorf("backing RBD image was not sparsified (%d bytes allocated)", du.UsedSize)
+	}
+
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete PVC with error: %w", err)
+	}
+	validateRBDImageCount(f, 0)
 
 	return nil
 }
