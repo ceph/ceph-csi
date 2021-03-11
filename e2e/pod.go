@@ -88,7 +88,7 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 	return nil
 }
 
-func getCommandInPodOpts(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (framework.ExecOptions, error) {
+func getCommandInPodOpts(f *framework.Framework, c, ns string, opt *metav1.ListOptions, containerName string) (framework.ExecOptions, error) {
 	cmd := []string{"/bin/sh", "-c", c}
 	podList, err := f.PodClientNS(ns).List(context.TODO(), *opt)
 	framework.ExpectNoError(err)
@@ -98,11 +98,14 @@ func getCommandInPodOpts(f *framework.Framework, c, ns string, opt *metav1.ListO
 	if err != nil {
 		return framework.ExecOptions{}, err
 	}
+	if containerName == "" {
+		containerName = podList.Items[0].Spec.Containers[0].Name
+	}
 	return framework.ExecOptions{
 		Command:            cmd,
 		PodName:            podList.Items[0].Name,
 		Namespace:          ns,
-		ContainerName:      podList.Items[0].Spec.Containers[0].Name,
+		ContainerName:      containerName,
 		Stdin:              nil,
 		CaptureStdout:      true,
 		CaptureStderr:      true,
@@ -111,7 +114,7 @@ func getCommandInPodOpts(f *framework.Framework, c, ns string, opt *metav1.ListO
 }
 
 func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string, error) {
-	podPot, err := getCommandInPodOpts(f, c, ns, opt)
+	podPot, err := getCommandInPodOpts(f, c, ns, opt, "")
 	if err != nil {
 		return "", "", err
 	}
@@ -126,7 +129,7 @@ func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, stri
 	opt := &metav1.ListOptions{
 		LabelSelector: rookTolBoxPodLabel,
 	}
-	podPot, err := getCommandInPodOpts(f, c, ns, opt)
+	podPot, err := getCommandInPodOpts(f, c, ns, opt, "")
 	if err != nil {
 		return "", "", err
 	}
@@ -138,7 +141,7 @@ func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, stri
 }
 
 func execCommandInPodAndAllowFail(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string) {
-	podPot, err := getCommandInPodOpts(f, c, ns, opt)
+	podPot, err := getCommandInPodOpts(f, c, ns, opt, "")
 	if err != nil {
 		return "", err.Error()
 	}
