@@ -125,6 +125,36 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 	return stdOut, stdErr, err
 }
 
+func execCommandInRbdPluginPod(f *framework.Framework, c, ns string) (string, string, error) {
+	opt := &metav1.ListOptions{
+		LabelSelector: rbdPluginPodLabel,
+	}
+	podPot, err := getCommandInPodOpts(f, c, ns, opt, rbdPluginContainerName)
+	if err != nil {
+		return "", "", err
+	}
+	stdOut, stdErr, err := f.ExecWithOptions(podPot)
+	if stdErr != "" {
+		e2elog.Logf("stdErr occurred: %v", stdErr)
+	}
+	return stdOut, stdErr, err
+}
+
+func execCommandInCephfsPluginPod(f *framework.Framework, c, ns string) (string, string, error) {
+	opt := &metav1.ListOptions{
+		LabelSelector: cephfsPluginPodLabel,
+	}
+	podPot, err := getCommandInPodOpts(f, c, ns, opt, cephfsPluginContainerName)
+	if err != nil {
+		return "", "", err
+	}
+	stdOut, stdErr, err := f.ExecWithOptions(podPot)
+	if stdErr != "" {
+		e2elog.Logf("stdErr occurred: %v", stdErr)
+	}
+	return stdOut, stdErr, err
+}
+
 func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, string, error) {
 	opt := &metav1.ListOptions{
 		LabelSelector: rookTolBoxPodLabel,
