@@ -33,7 +33,9 @@ parameters:
    # creation (thin provisioning is the default).
    thickProvision: "false"
    # (required) RBD image features, CSI creates image with image-format 2
-   # CSI RBD currently supports only `layering` feature.
+   # CSI RBD currently supports `layering`, `journaling`, `exclusive-lock`
+   # features. If `journaling` is enabled, must enable `exclusive-lock` too.
+   # imageFeatures: layering,journaling,exclusive-lock
    imageFeatures: layering
 
    # (optional) mapOptions is a comma-separated list of map options.

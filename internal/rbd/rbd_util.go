@@ -46,6 +46,7 @@ const (
 	rbdImageWatcherFactor    = 1.4
 	rbdImageWatcherSteps     = 10
 	rbdDefaultMounter        = "rbd"
+	rbdNbdMounter            = "rbd-nbd"
 
 	// Output strings returned during invocation of "ceph rbd task add remove <imagespec>" when
 	// command is not supported by ceph manager. Used to check errors and recover when the command
@@ -142,8 +143,27 @@ type rbdSnapshot struct {
 	SizeBytes      int64
 }
 
+// imageFeature represents required image features and value.
+type imageFeature struct {
+	// needRbdNbd indicates whether this image feature requires an rbd-nbd mounter
+	needRbdNbd bool
+	// dependsOn is the image features required for this imageFeature
+	dependsOn []string
+}
+
 var (
-	supportedFeatures = sets.NewString(librbd.FeatureNameLayering)
+	supportedFeatures = map[string]imageFeature{
+		librbd.FeatureNameLayering: {
+			needRbdNbd: false,
+		},
+		librbd.FeatureNameExclusiveLock: {
+			needRbdNbd: true,
+		},
+		librbd.FeatureNameJournaling: {
+			needRbdNbd: true,
+			dependsOn:  []string{librbd.FeatureNameExclusiveLock},
+		},
+	}
 )
 
 // Connect an rbdVolume to the Ceph cluster.
@@ -889,28 +909,18 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 	if err != nil {
 		return nil, err
 	}
-	// if no image features is provided, it results in empty string
-	// which disable all RBD image features as we expected
-
-	imageFeatures, found := volOptions["imageFeatures"]
-	if found {
-		arr := strings.Split(imageFeatures, ",")
-		for _, f := range arr {
-			if !supportedFeatures.Has(f) {
-				return nil, fmt.Errorf("invalid feature %q for volume csi-rbdplugin, supported"+
-					" features are: %v", f, supportedFeatures)
-			}
-		}
-		rbdVol.imageFeatureSet = librbd.FeatureSetFromNames(arr)
-	}
-
-	util.ExtendedLog(ctx, "setting disableInUseChecks on rbd volume to: %v", disableInUseChecks)
-	rbdVol.DisableInUseChecks = disableInUseChecks
-
-	rbdVol.Mounter, ok = volOptions["mounter"]
-	if !ok {
+	if rbdVol.Mounter, ok = volOptions["mounter"]; !ok {
 		rbdVol.Mounter = rbdDefaultMounter
 	}
+	// if no image features is provided, it results in empty string
+	// which disable all RBD image features as we expected
+	if err = rbdVol.validateImageFeatures(volOptions["imageFeatures"]); err != nil {
+		util.ErrorLog(ctx, "failed to validate image features %v", err)
+		return nil, err
+	}
+
+	util.ExtendedLog(ctx, "setting disableInUseChecks: %t image features: %v mounter: %s", disableInUseChecks, rbdVol.imageFeatureSet.Names(), rbdVol.Mounter)
+	rbdVol.DisableInUseChecks = disableInUseChecks
 
 	err = rbdVol.initKMS(ctx, volOptions, credentials)
 	if err != nil {
@@ -918,6 +928,29 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 	}
 
 	return rbdVol, nil
+}
+
+func (rv *rbdVolume) validateImageFeatures(imageFeatures string) error {
+	arr := strings.Split(imageFeatures, ",")
+	featureSet := sets.NewString(arr...)
+	for _, f := range arr {
+		sf, found := supportedFeatures[f]
+		if !found {
+			return fmt.Errorf("invalid feature %s", f)
+		}
+
+		for _, r := range sf.dependsOn {
+			if !featureSet.Has(r) {
+				return fmt.Errorf("feature %s requires %s to be set", f, r)
+			}
+		}
+
+		if sf.needRbdNbd && rv.Mounter != rbdNbdMounter {
+			return fmt.Errorf("feature %s requires rbd-nbd for mounter", f)
+		}
+	}
+	rv.imageFeatureSet = librbd.FeatureSetFromNames(arr)
+	return nil
 }
 
 func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[string]string) (*rbdSnapshot, error) {
