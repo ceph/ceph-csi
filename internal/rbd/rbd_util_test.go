@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	librbd "github.com/ceph/go-ceph/rbd"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHasSnapshotFeature(t *testing.T) {
@@ -40,5 +41,88 @@ func TestHasSnapshotFeature(t *testing.T) {
 		if got := rv.hasSnapshotFeature(); got != test.hasFeature {
 			t.Errorf("hasSnapshotFeature(%s) = %t, want %t", test.features, got, test.hasFeature)
 		}
+	}
+}
+
+func TestValidateImageFeatures(t *testing.T) {
+	tests := []struct {
+		imageFeatures string
+		rbdVol        *rbdVolume
+		isErr         bool
+		errMsg        string
+	}{
+		{
+			"layering",
+			&rbdVolume{
+				Mounter: rbdDefaultMounter,
+			},
+			false,
+			"",
+		},
+		{
+			"layering",
+			&rbdVolume{
+				Mounter: rbdNbdMounter,
+			},
+			false,
+			"",
+		},
+		{
+			"layering,exclusive-lock,journaling",
+			&rbdVolume{
+				Mounter: rbdNbdMounter,
+			},
+			false,
+			"",
+		},
+		{
+			"layering,journaling",
+			&rbdVolume{
+				Mounter: rbdNbdMounter,
+			},
+			true,
+			"feature journaling requires exclusive-lock to be set",
+		},
+		{
+			"layering,exclusive-lock,journaling",
+			&rbdVolume{
+				Mounter: rbdDefaultMounter,
+			},
+			true,
+			"feature exclusive-lock requires rbd-nbd for mounter",
+		},
+		{
+			"layering,exclusive-lock,journaling",
+			&rbdVolume{
+				Mounter: rbdDefaultMounter,
+			},
+			true,
+			"feature exclusive-lock requires rbd-nbd for mounter",
+		},
+		{
+			"layering,exclusive-loc,journaling",
+			&rbdVolume{
+				Mounter: rbdNbdMounter,
+			},
+			true,
+			"invalid feature exclusive-loc",
+		},
+		{
+			"ayering",
+			&rbdVolume{
+				Mounter: rbdDefaultMounter,
+			},
+			true,
+			"invalid feature ayering",
+		},
+	}
+
+	for _, test := range tests {
+		err := test.rbdVol.validateImageFeatures(test.imageFeatures)
+		if test.isErr {
+			assert.EqualError(t, err, test.errMsg)
+			continue
+		}
+		assert.Nil(t, err)
 	}
 }
