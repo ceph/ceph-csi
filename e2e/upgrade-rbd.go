@@ -67,9 +67,23 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to create storageclass with error %v", err)
 		}
-		err = createRBDSecret(f.ClientSet, f)
+		// create rbd provisioner secret
+		key, err := createCephUser(f, keyringRBDProvisionerUsername, rbdProvisionerCaps("", ""))
 		if err != nil {
-			e2elog.Failf("failed to create secret with error %v", err)
+			e2elog.Failf("failed to create user %s with error %v", keyringRBDProvisionerUsername, err)
+		}
+		err = createRBDSecret(f, rbdProvisionerSecretName, keyringRBDProvisionerUsername, key)
+		if err != nil {
+			e2elog.Failf("failed to create provisioner secret with error %v", err)
+		}
+		// create rbd plugin secret
+		key, err = createCephUser(f, keyringRBDNodePluginUsername, rbdNodePluginCaps("", ""))
+		if err != nil {
+			e2elog.Failf("failed to create user %s with error %v", keyringRBDNodePluginUsername, err)
+		}
+		err = createRBDSecret(f, rbdNodePluginSecretName, keyringRBDNodePluginUsername, key)
+		if err != nil {
+			e2elog.Failf("failed to create node secret with error %v", err)
 		}
 		err = createRBDSnapshotClass(f)
 		if err != nil {
@@ -105,9 +119,13 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to delete configmap with error %v", err)
 		}
-		err = deleteResource(rbdExamplePath + "secret.yaml")
+		err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), rbdProvisionerSecretName, metav1.DeleteOptions{})
 		if err != nil {
-			e2elog.Failf("failed to delete secret with error %v", err)
+			e2elog.Failf("failed to delete provisioner secret with error %v", err)
+		}
+		err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), rbdNodePluginSecretName, metav1.DeleteOptions{})
+		if err != nil {
+			e2elog.Failf("failed to delete node secret with error %v", err)
 		}
 		err = deleteResource(rbdExamplePath + "storageclass.yaml")
 		if err != nil {
@@ -381,6 +399,17 @@ var _ = Describe("RBD Upgrade Testing", func() {
 					e2elog.Failf("failed to delete pvc and application with error %v", err)
 				}
 			})
+			// delete RBD provisioner secret
+			err := deleteCephUser(f, keyringRBDProvisionerUsername)
+			if err != nil {
+				e2elog.Failf("failed to delete user %s with error %v", keyringRBDProvisionerUsername, err)
+			}
+			// delete RBD plugin secret
+			err = deleteCephUser(f, keyringRBDNodePluginUsername)
+			if err != nil {
+				e2elog.Failf("failed to delete user %s with error %v", keyringRBDNodePluginUsername, err)
+			}
 		})
+
 	})
 })

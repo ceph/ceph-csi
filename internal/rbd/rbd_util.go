@@ -333,15 +333,52 @@ func (rv *rbdVolume) allocate(offset uint64) error {
 		return err
 	}
 
-	// zeroBlock is the stripe-period: size of the object-size multiplied
+	// blockSize is the stripe-period: size of the object-size multiplied
 	// by the stripe-count
-	zeroBlock := make([]byte, sc*(1<<st.Order))
+	blockSize := sc * (1 << st.Order)
+	zeroBlock := make([]byte, blockSize)
 
 	// the actual size of the image as available in the pool, can be
 	// marginally different from the requested image size
-	_, err = image.WriteSame(offset, st.Size-offset, zeroBlock, rados.OpFlagNone)
+	size := st.Size - offset
 
-	return err
+	// In case the remaining space on the volume is smaller than blockSize,
+	// write a partial block with WriteAt() after this loop.
+	for size > blockSize {
+		writeSize := size
+		// write a maximum of 1GB per WriteSame() call
+		if size > helpers.GiB {
+			writeSize = helpers.GiB
+		}
+
+		// round down to the size of a zeroBlock
+		if (writeSize % blockSize) != 0 {
+			writeSize = (writeSize / blockSize) * blockSize
+		}
+
+		_, err = image.WriteSame(offset, writeSize, zeroBlock,
+			rados.OpFlagNone)
+		if err != nil {
+			return fmt.Errorf("failed to allocate %d/%d bytes at "+
+				"offset %d: %w", writeSize, blockSize, offset, err)
+		}
+
+		// write succeeded
+		size -= writeSize
+		offset += writeSize
+	}
+
+	// write the last remaining bytes, in case the image size can not be
+	// written with the optimal blockSize
+	if size != 0 {
+		_, err = image.WriteAt(zeroBlock[:size], int64(offset))
+		if err != nil {
+			return fmt.Errorf("failed to allocate %d bytes at "+
+				"offset %d: %w", size, offset, err)
+		}
+	}
+
+	return nil
 }
 
 // isInUse checks if there is a watcher on the image. It returns true if there
@@ -827,7 +864,6 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		ok         bool
 		err        error
 		namePrefix string
-		encrypted  string
 	)
 
 	rbdVol := &rbdVolume{}
@@ -874,33 +910,9 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		rbdVol.Mounter = rbdDefaultMounter
 	}
 
-	// if the KMS is of type VaultToken, additional metadata is needed
-	// depending on the tenant, the KMS can be configured with other
-	// options
-	// FIXME: this works only on Kubernetes, how do other CO supply metadata?
-	rbdVol.Owner, ok = volOptions["csi.storage.k8s.io/pvc/namespace"]
-	if !ok {
-		util.DebugLog(ctx, "could not detect owner for %s", rbdVol.String())
-	}
-
-	rbdVol.Encrypted = false
-	encrypted, ok = volOptions["encrypted"]
-	if ok {
-		rbdVol.Encrypted, err = strconv.ParseBool(encrypted)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"invalid value set in 'encrypted': %s (should be \"true\" or \"false\")", encrypted)
-		}
-
-		if rbdVol.Encrypted {
-			// deliberately ignore if parsing failed as GetKMS will return default
-			// implementation of kmsID is empty
-			kmsID := volOptions["encryptionKMSID"]
-			rbdVol.KMS, err = util.GetKMS(rbdVol.Owner, kmsID, credentials)
-			if err != nil {
-				return nil, fmt.Errorf("invalid encryption kms configuration: %w", err)
-			}
-		}
+	err = rbdVol.initKMS(ctx, volOptions, credentials)
+	if err != nil {
+		return nil, err
 	}
 
 	return rbdVol, nil

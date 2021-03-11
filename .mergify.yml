@@ -1,8 +1,21 @@
 ---
+defaults:
+  actions:
+    comment:
+      bot_account: ceph-csi-bot
+    merge:
+      bot_account: ceph-csi-bot
+      method: rebase
+      rebase_fallback: merge
+      strict: smart
+      strict_method: rebase
+    rebase:
+      bot_account: ceph-csi-bot
+
 pull_request_rules:
   - name: remove outdated approvals
     conditions:
-      - base=master
+      - base=devel
     actions:
       dismiss_reviews:
         approved: true
@@ -19,7 +32,7 @@ pull_request_rules:
   - name: automatic merge
     conditions:
       - label!=DNM
-      - base=master
+      - base=devel
       - "#approved-reviews-by>=2"
       - "#changes-requested-reviews-by=0"
       - "status-success=codespell"
@@ -39,19 +52,14 @@ pull_request_rules:
       - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        bot_account: ceph-csi-bot
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: automatic merge PR having ready-to-merge label
     conditions:
       - label!=DNM
       - label=ready-to-merge
-      - base=master
+      - base=devel
       - "#approved-reviews-by>=1"
       - "status-success=codespell"
       - "status-success=multi-arch-build"
@@ -71,17 +79,12 @@ pull_request_rules:
       - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        bot_account: ceph-csi-bot
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release v1.2.0 branch
     conditions:
-      - base=master
+      - base=devel
       - label=backport-to-release-v1.2.0
     actions:
       backport:
@@ -90,24 +93,19 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v1.2.0
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v1.2.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
       - "#approved-reviews-by>=1"
       - "status-success=continuous-integration/travis-ci/pr"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        bot_account: ceph-csi-bot
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v2.0 branch
     conditions:
-      - base=master
+      - base=devel
       - label=backport-to-release-v2.0
     actions:
       backport:
@@ -116,24 +114,19 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v2.0
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v2.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
       - "#approved-reviews-by>=1"
       - "status-success=continuous-integration/travis-ci/pr"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        bot_account: ceph-csi-bot
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v2.1 branch
     conditions:
-      - base=master
+      - base=devel
       - label=backport-to-release-v2.1
     actions:
       backport:
@@ -142,24 +135,19 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v2.1
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v2.1
       - label!=DNM
       - "#changes-requested-reviews-by=0"
       - "#approved-reviews-by>=1"
       - "status-success=continuous-integration/travis-ci/pr"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        bot_account: ceph-csi-bot
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v3.0 branch
     conditions:
-      - base=master
+      - base=devel
       - label=backport-to-release-v3.0
     actions:
       backport:
@@ -168,24 +156,19 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v3.0
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v3.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
       - "#approved-reviews-by>=1"
       - "status-success=continuous-integration/travis-ci/pr"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        bot_account: ceph-csi-bot
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v3.1 branch
     conditions:
-      - base=master
+      - base=devel
       - label=backport-to-release-v3.1
     actions:
       backport:
@@ -194,7 +177,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v3.1
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v3.1
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -210,17 +193,12 @@ pull_request_rules:
       - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        bot_account: ceph-csi-bot
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v3.2 branch
     conditions:
-      - base=master
+      - base=devel
       - label=backport-to-release-v3.2
     actions:
       backport:
@@ -229,7 +207,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v3.2
     conditions:
-      - author=mergify[bot]
+      - author=ceph-csi-bot
       - base=release-v3.2
       - label!=DNM
       - "#approved-reviews-by>=1"
@@ -251,12 +229,7 @@ pull_request_rules:
       - "status-success=ci/centos/upgrade-tests-rbd"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        bot_account: ceph-csi-bot
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: remove outdated approvals on ci/centos
@@ -276,12 +249,7 @@ pull_request_rules:
       - "status-success=ci/centos/jjb-validate"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        bot_account: ceph-csi-bot
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
   - name: automatic merge PR having ready-to-merge label on ci/centos
@@ -295,11 +263,6 @@ pull_request_rules:
       - "status-success=ci/centos/jjb-validate"
       - "status-success=DCO"
     actions:
-      merge:
-        method: rebase
-        rebase_fallback: merge
-        bot_account: ceph-csi-bot
-        strict: smart
-        strict_method: rebase
+      merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}

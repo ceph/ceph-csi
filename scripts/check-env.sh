@@ -43,9 +43,9 @@ if [ -n "$(command -v go)" ]; then
 	# based systems.
 	if ! go run -mod=vendor "${LIBCHECK}" > /dev/null; then
 		if [ -n "${RPM_CMD}" ]; then
-			echo "Packages libcephfs-devel librbd-devel librados-devel need to be installed"
+			echo "Packages librbd-devel librados-devel need to be installed"
 		elif [ -n "${DPKG_CMD}" ]; then
-			echo "Packages libcephfs-dev librbd-dev librados-dev need to be installed"
+			echo "Packages librbd-dev librados-dev need to be installed"
 		else
 			fail "error can't verify Ceph development headers"
 		fi

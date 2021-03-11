@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -96,6 +97,98 @@ func (rv *rbdVolume) setupEncryption(ctx context.Context) error {
 		util.ErrorLog(ctx, "failed to save encryption status, deleting "+
 			"image %s: %s", rv.String(), err)
 		return err
+	}
+
+	return nil
+}
+
+func (rv *rbdVolume) encryptDevice(ctx context.Context, devicePath string) error {
+	passphrase, err := util.GetCryptoPassphrase(rv.VolID, rv.KMS)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to get crypto passphrase for %s: %v",
+			rv.String(), err)
+		return err
+	}
+
+	if err = util.EncryptVolume(ctx, devicePath, passphrase); err != nil {
+		err = fmt.Errorf("failed to encrypt volume %s: %w", rv.String(), err)
+		util.ErrorLog(ctx, err.Error())
+		return err
+	}
+
+	err = rv.ensureEncryptionMetadataSet(rbdImageEncrypted)
+	if err != nil {
+		util.ErrorLog(ctx, err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string) (string, error) {
+	passphrase, err := util.GetCryptoPassphrase(rv.VolID, rv.KMS)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to get passphrase for encrypted device %s: %v",
+			rv.String(), err)
+		return "", err
+	}
+
+	mapperFile, mapperFilePath := util.VolumeMapper(rv.VolID)
+
+	isOpen, err := util.IsDeviceOpen(ctx, mapperFilePath)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to check device %s encryption status: %s", devicePath, err)
+		return devicePath, err
+	}
+	if isOpen {
+		util.DebugLog(ctx, "encrypted device is already open at %s", mapperFilePath)
+	} else {
+		err = util.OpenEncryptedVolume(ctx, devicePath, mapperFile, passphrase)
+		if err != nil {
+			util.ErrorLog(ctx, "failed to open device %s: %v",
+				rv.String(), err)
+			return devicePath, err
+		}
+	}
+
+	return mapperFilePath, nil
+}
+
+func (rv *rbdVolume) initKMS(ctx context.Context, volOptions, credentials map[string]string) error {
+	var (
+		err       error
+		ok        bool
+		encrypted string
+	)
+
+	// if the KMS is of type VaultToken, additional metadata is needed
+	// depending on the tenant, the KMS can be configured with other
+	// options
+	// FIXME: this works only on Kubernetes, how do other CO supply metadata?
+	rv.Owner, ok = volOptions["csi.storage.k8s.io/pvc/namespace"]
+	if !ok {
+		util.DebugLog(ctx, "could not detect owner for %s", rv.String())
+	}
+
+	encrypted, ok = volOptions["encrypted"]
+	if !ok {
+		return nil
+	}
+
+	rv.Encrypted, err = strconv.ParseBool(encrypted)
+	if err != nil {
+		return fmt.Errorf(
+			"invalid value set in 'encrypted': %s (should be \"true\" or \"false\")", encrypted)
+	} else if !rv.Encrypted {
+		return nil
+	}
+
+	// deliberately ignore if parsing failed as GetKMS will return default
+	// implementation of kmsID is empty
+	kmsID := volOptions["encryptionKMSID"]
+	rv.KMS, err = util.GetKMS(rv.Owner, kmsID, credentials)
+	if err != nil {
+		return fmt.Errorf("invalid encryption kms configuration: %w", err)
 	}
 
 	return nil
