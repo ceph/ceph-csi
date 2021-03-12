@@ -111,6 +111,45 @@ func (ri *rbdImage) setupEncryption(ctx context.Context) error {
 	return nil
 }
 
+// copyEncryptionConfig copies the VolumeEncryption object from the source
+// rbdImage to the passed argument. This function re-encrypts the passphrase
+// from the original, so that both encrypted passphrases (potentially, depends
+// on the DEKStore) have different contents.
+func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage) error {
+	// get the unencrypted passphrase
+	passphrase, err := ri.encryption.GetCryptoPassphrase(ri.VolID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch passphrase for %q: %w",
+			ri.String(), err)
+	}
+
+	cp.encryption, err = util.NewVolumeEncryption(ri.encryption.GetID(), ri.encryption.KMS)
+	if errors.Is(err, util.ErrDEKStoreNeeded) {
+		cp.encryption.SetDEKStore(cp)
+	}
+
+	// re-encrypt the plain passphrase for the cloned volume
+	err = cp.encryption.StoreCryptoPassphrase(cp.VolID, passphrase)
+	if err != nil {
+		return fmt.Errorf("failed to store passphrase for %q: %w",
+			cp.String(), err)
+	}
+
+	// copy encryption status for the original volume
+	status, err := ri.checkRbdImageEncrypted(context.TODO())
+	if err != nil {
+		return fmt.Errorf("failed to get encryption status for %q: %w",
+			ri.String(), err)
+	}
+	err = cp.ensureEncryptionMetadataSet(status)
+	if err != nil {
+		return fmt.Errorf("failed to store encryption status for %q: "+
+			"%w", cp.String(), err)
+	}
+
+	return nil
+}
+
 func (ri *rbdImage) encryptDevice(ctx context.Context, devicePath string) error {
 	passphrase, err := ri.encryption.GetCryptoPassphrase(ri.VolID)
 	if err != nil {
