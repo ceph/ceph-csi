@@ -58,84 +58,88 @@ const (
 	thickProvisionMetaKey = ".rbd.csi.ceph.com/thick-provisioned"
 )
 
-// rbdVolume represents a CSI volume and its RBD image specifics.
-type rbdVolume struct {
-	// RbdImageName is the name of the RBD image backing this rbdVolume. This does not have a
-	//   JSON tag as it is not stashed in JSON encoded config maps in v1.0.0
-	// VolID is the volume ID that is exchanged with CSI drivers, identifying this rbdVol
-	// RequestName is the CSI generated volume name for the rbdVolume.  This does not have a
-	//   JSON tag as it is not stashed in JSON encoded config maps in v1.0.0
-	// VolName and MonValueFromSecret are retained from older plugin versions (<= 1.0.0)
-	//   for backward compatibility reasons
-	// JournalPool is the ceph pool in which the CSI Journal is stored
-	// Pool is where the image journal and image is stored, and could be the same as `JournalPool`
-	//   (retained as Pool instead of renaming to ImagePool or such, as this is referenced in the code extensively)
-	// DataPool is where the data for images in `Pool` are stored, this is used as the `--data-pool`
-	// 	 argument when the pool is created, and is not used anywhere else
-	TopologyPools       *[]util.TopologyConstrainedPool
-	TopologyRequirement *csi.TopologyRequirement
-	Topology            map[string]string
-	RbdImageName        string
-	NamePrefix          string
-	VolID               string `json:"volID"`
-	Monitors            string `json:"monitors"`
-	JournalPool         string
-	Pool                string `json:"pool"`
-	DataPool            string
-	RadosNamespace      string
-	ImageID             string
-	ParentName          string
-	imageFeatureSet     librbd.FeatureSet
-	AdminID             string `json:"adminId"`
-	UserID              string `json:"userId"`
-	Mounter             string `json:"mounter"`
-	ClusterID           string `json:"clusterId"`
-	RequestName         string
-	ReservedID          string
-	MapOptions          string
-	UnmapOptions        string
-	VolName             string `json:"volName"`
-	MonValueFromSecret  string `json:"monValueFromSecret"`
-	VolSize             int64  `json:"volSize"`
-	DisableInUseChecks  bool   `json:"disableInUseChecks"`
-	readOnly            bool
-	Primary             bool
-	ThickProvision      bool
-	encryption          *util.VolumeEncryption
-	// Owner is the creator (tenant, Kubernetes Namespace) of the volume.
-	Owner     string
+// rbdImage contains common attributes and methods for the rbdVolume and
+// rbdSnapshot types.
+type rbdImage struct {
+	// RbdImageName is the name of the RBD image backing this rbdVolume.
+	// This does not have a JSON tag as it is not stashed in JSON encoded
+	// config maps in v1.0.0
+	RbdImageName string
+	// ImageID contains the image id of the image
+	ImageID string
+	// VolID is the volume ID that is exchanged with CSI drivers,
+	// identifying this rbd image
+	VolID string `json:"volID"`
+
+	Monitors string
+	// JournalPool is the ceph pool in which the CSI snapshot Journal is
+	// stored
+	JournalPool string
+	// Pool is where the image snapshot journal and snapshot is stored, and
+	// could be the same as `JournalPool` (retained as Pool instead of
+	// renaming to ImagePool or such, as this is referenced in the code
+	// extensively)
+	Pool           string
+	RadosNamespace string
+	ClusterID      string `json:"clusterId"`
+	// RequestName is the CSI generated volume name for the rbdVolume.
+	// This does not have a JSON tag as it is not stashed in JSON encoded
+	// config maps in v1.0.0
+	RequestName string
+	NamePrefix  string
+
+	// encryption provides access to optional VolumeEncryption functions
+	encryption *util.VolumeEncryption
+	// Owner is the creator (tenant, Kubernetes Namespace) of the volume
+	Owner string
+
 	CreatedAt *timestamp.Timestamp
+
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection
 	// an opened IOContext, call .openIoctx() before using
 	ioctx *rados.IOContext
 }
 
+// rbdVolume represents a CSI volume and its RBD image specifics.
+type rbdVolume struct {
+	rbdImage
+
+	// VolName and MonValueFromSecret are retained from older plugin versions (<= 1.0.0)
+	//   for backward compatibility reasons
+	TopologyPools       *[]util.TopologyConstrainedPool
+	TopologyRequirement *csi.TopologyRequirement
+	Topology            map[string]string
+	// DataPool is where the data for images in `Pool` are stored, this is used as the `--data-pool`
+	// 	 argument when the pool is created, and is not used anywhere else
+	DataPool           string
+	ParentName         string
+	imageFeatureSet    librbd.FeatureSet
+	AdminID            string `json:"adminId"`
+	UserID             string `json:"userId"`
+	Mounter            string `json:"mounter"`
+	ReservedID         string
+	MapOptions         string
+	UnmapOptions       string
+	VolName            string `json:"volName"`
+	MonValueFromSecret string `json:"monValueFromSecret"`
+	VolSize            int64  `json:"volSize"`
+	DisableInUseChecks bool   `json:"disableInUseChecks"`
+	readOnly           bool
+	Primary            bool
+	ThickProvision     bool
+}
+
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics.
 type rbdSnapshot struct {
+	rbdImage
+
 	// SourceVolumeID is the volume ID of RbdImageName, that is exchanged with CSI drivers
-	// RbdImageName is the name of the RBD image, that is this rbdSnapshot's source image
 	// RbdSnapName is the name of the RBD snapshot backing this rbdSnapshot
-	// VolID is the snapshot ID that is exchanged with CSI drivers, identifying this rbdSnapshot
-	// RequestName is the CSI generated snapshot name for the rbdSnapshot
-	// JournalPool is the ceph pool in which the CSI snapshot Journal is stored
-	// Pool is where the image snapshot journal and snapshot is stored, and could be the same as `JournalPool`
-	// ImageID contains the image id of cloned image
 	SourceVolumeID string
-	RbdImageName   string
 	ReservedID     string
-	NamePrefix     string
 	RbdSnapName    string
-	VolID          string
-	ImageID        string
-	Monitors       string
-	JournalPool    string
-	Pool           string
-	RadosNamespace string
-	CreatedAt      *timestamp.Timestamp
 	SizeBytes      int64
-	ClusterID      string
-	RequestName    string
 }
 
 var (
@@ -143,40 +147,40 @@ var (
 )
 
 // Connect an rbdVolume to the Ceph cluster.
-func (rv *rbdVolume) Connect(cr *util.Credentials) error {
-	if rv.conn != nil {
+func (ri *rbdImage) Connect(cr *util.Credentials) error {
+	if ri.conn != nil {
 		return nil
 	}
 
 	conn := &util.ClusterConnection{}
-	if err := conn.Connect(rv.Monitors, cr); err != nil {
+	if err := conn.Connect(ri.Monitors, cr); err != nil {
 		return err
 	}
 
-	rv.conn = conn
+	ri.conn = conn
 	return nil
 }
 
 // Destroy cleans up the rbdVolume and closes the connection to the Ceph
 // cluster in case one was setup.
-func (rv *rbdVolume) Destroy() {
-	if rv.ioctx != nil {
-		rv.ioctx.Destroy()
+func (ri *rbdImage) Destroy() {
+	if ri.ioctx != nil {
+		ri.ioctx.Destroy()
 	}
-	if rv.conn != nil {
-		rv.conn.Destroy()
+	if ri.conn != nil {
+		ri.conn.Destroy()
 	}
-	if rv.isEncrypted() {
-		rv.encryption.Destroy()
+	if ri.isEncrypted() {
+		ri.encryption.Destroy()
 	}
 }
 
 // String returns the image-spec (pool/{namespace/}image) format of the image.
-func (rv *rbdVolume) String() string {
-	if rv.RadosNamespace != "" {
-		return fmt.Sprintf("%s/%s/%s", rv.Pool, rv.RadosNamespace, rv.RbdImageName)
+func (ri *rbdImage) String() string {
+	if ri.RadosNamespace != "" {
+		return fmt.Sprintf("%s/%s/%s", ri.Pool, ri.RadosNamespace, ri.RbdImageName)
 	}
-	return fmt.Sprintf("%s/%s", rv.Pool, rv.RbdImageName)
+	return fmt.Sprintf("%s/%s", ri.Pool, ri.RbdImageName)
 }
 
 // String returns the snap-spec (pool/{namespace/}image@snap) format of the snapshot.
@@ -247,19 +251,19 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	return nil
 }
 
-func (rv *rbdVolume) openIoctx() error {
-	if rv.ioctx != nil {
+func (ri *rbdImage) openIoctx() error {
+	if ri.ioctx != nil {
 		return nil
 	}
 
-	ioctx, err := rv.conn.GetIoctx(rv.Pool)
+	ioctx, err := ri.conn.GetIoctx(ri.Pool)
 	if err != nil {
 		// GetIoctx() can return util.ErrPoolNotFound
 		return err
 	}
 
-	ioctx.SetNamespace(rv.RadosNamespace)
-	rv.ioctx = ioctx
+	ioctx.SetNamespace(ri.RadosNamespace)
+	ri.ioctx = ioctx
 
 	return nil
 }
@@ -284,17 +288,17 @@ func (rv *rbdVolume) getImageID() error {
 	return nil
 }
 
-// open the rbdVolume after it has been connected.
+// open the rbdImage after it has been connected.
 // ErrPoolNotFound or ErrImageNotFound are returned in case the pool or image
 // can not be found, other errors will contain more details about other issues
 // (permission denied, ...) and are expected to relate to configuration issues.
-func (rv *rbdVolume) open() (*librbd.Image, error) {
-	err := rv.openIoctx()
+func (ri *rbdImage) open() (*librbd.Image, error) {
+	err := ri.openIoctx()
 	if err != nil {
 		return nil, err
 	}
 
-	image, err := librbd.OpenImage(rv.ioctx, rv.RbdImageName, librbd.NoSnapshot)
+	image, err := librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
 			err = util.JoinErrors(ErrImageNotFound, err)
@@ -488,12 +492,11 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 
 func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 	var depth uint
-	vol := rbdVolume{
-		Pool:         rv.Pool,
-		Monitors:     rv.Monitors,
-		RbdImageName: rv.RbdImageName,
-		conn:         rv.conn,
-	}
+	vol := rbdVolume{}
+	vol.Pool = rv.Pool
+	vol.Monitors = rv.Monitors
+	vol.RbdImageName = rv.RbdImageName
+	vol.conn = rv.conn
 
 	err := vol.openIoctx()
 	if err != nil {
@@ -530,11 +533,11 @@ type trashSnapInfo struct {
 }
 
 func flattenClonedRbdImages(ctx context.Context, snaps []librbd.SnapInfo, pool, monitors, rbdImageName string, cr *util.Credentials) error {
-	rv := &rbdVolume{
-		Monitors:     monitors,
-		Pool:         pool,
-		RbdImageName: rbdImageName,
-	}
+	rv := &rbdVolume{}
+	rv.Monitors = monitors
+	rv.Pool = pool
+	rv.RbdImageName = rbdImageName
+
 	defer rv.Destroy()
 	err := rv.Connect(cr)
 	if err != nil {
@@ -658,13 +661,13 @@ func (rv *rbdVolume) hasFeature(feature uint64) bool {
 }
 
 func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
-	vol := rbdVolume{
-		Pool:           rv.Pool,
-		RadosNamespace: rv.RadosNamespace,
-		Monitors:       rv.Monitors,
-		RbdImageName:   rv.RbdImageName,
-		conn:           rv.conn,
-	}
+	vol := rbdVolume{}
+	vol.Pool = rv.Pool
+	vol.RadosNamespace = rv.RadosNamespace
+	vol.Monitors = rv.Monitors
+	vol.RbdImageName = rv.RbdImageName
+	vol.conn = rv.conn
+
 	err := vol.openIoctx()
 	if err != nil {
 		return false, err
@@ -765,7 +768,8 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 
 	// rbdVolume fields that are not filled up in this function are:
 	//              Mounter, MultiNodeWritable
-	rbdVol = &rbdVolume{VolID: volumeID}
+	rbdVol = &rbdVolume{}
+	rbdVol.VolID = volumeID
 
 	err = vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
@@ -1269,8 +1273,8 @@ func (rv *rbdVolume) resize(newSize int64) error {
 	return nil
 }
 
-func (rv *rbdVolume) GetMetadata(key string) (string, error) {
-	image, err := rv.open()
+func (ri *rbdImage) GetMetadata(key string) (string, error) {
+	image, err := ri.open()
 	if err != nil {
 		return "", err
 	}
@@ -1279,8 +1283,8 @@ func (rv *rbdVolume) GetMetadata(key string) (string, error) {
 	return image.GetMetadata(key)
 }
 
-func (rv *rbdVolume) SetMetadata(key, value string) error {
-	image, err := rv.open()
+func (ri *rbdImage) SetMetadata(key, value string) error {
+	image, err := ri.open()
 	if err != nil {
 		return err
 	}
