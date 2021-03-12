@@ -491,7 +491,8 @@ func RegenerateJournal(imageName, volumeID, pool, journalPool, requestName strin
 	)
 
 	options = make(map[string]string)
-	rbdVol = &rbdVolume{VolID: volumeID}
+	rbdVol = &rbdVolume{}
+	rbdVol.VolID = volumeID
 
 	err := vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
