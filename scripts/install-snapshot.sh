@@ -7,7 +7,7 @@ SCRIPT_DIR="$(dirname "${0}")"
 # shellcheck source=build.env
 source "${SCRIPT_DIR}/../build.env"
 
-SNAPSHOT_VERSION=${SNAPSHOT_VERSION:-"v3.0.1"}
+SNAPSHOT_VERSION=${SNAPSHOT_VERSION:-"v4.0.0"}
 
 TEMP_DIR="$(mktemp -d)"
 SNAPSHOTTER_URL="https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${SNAPSHOT_VERSION}"
