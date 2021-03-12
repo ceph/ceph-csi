@@ -116,7 +116,7 @@ type rbdSnapshot struct {
 	// SourceVolumeID is the volume ID of RbdImageName, that is exchanged with CSI drivers
 	// RbdImageName is the name of the RBD image, that is this rbdSnapshot's source image
 	// RbdSnapName is the name of the RBD snapshot backing this rbdSnapshot
-	// SnapID is the snapshot ID that is exchanged with CSI drivers, identifying this rbdSnapshot
+	// VolID is the snapshot ID that is exchanged with CSI drivers, identifying this rbdSnapshot
 	// RequestName is the CSI generated snapshot name for the rbdSnapshot
 	// JournalPool is the ceph pool in which the CSI snapshot Journal is stored
 	// Pool is where the image snapshot journal and snapshot is stored, and could be the same as `JournalPool`
@@ -126,7 +126,7 @@ type rbdSnapshot struct {
 	ReservedID     string
 	NamePrefix     string
 	RbdSnapName    string
-	SnapID         string
+	VolID          string
 	ImageID        string
 	Monitors       string
 	JournalPool    string
@@ -696,11 +696,11 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	)
 	options = make(map[string]string)
 
-	rbdSnap.SnapID = snapshotID
+	rbdSnap.VolID = snapshotID
 
-	err := vi.DecomposeCSIID(rbdSnap.SnapID)
+	err := vi.DecomposeCSIID(rbdSnap.VolID)
 	if err != nil {
-		util.ErrorLog(ctx, "error decoding snapshot ID (%s) (%s)", err, rbdSnap.SnapID)
+		util.ErrorLog(ctx, "error decoding snapshot ID (%s) (%s)", err, rbdSnap.VolID)
 		return err
 	}
 
