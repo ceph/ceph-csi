@@ -467,13 +467,13 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 
 	switch {
 	case rbdSnap != nil:
-		if err = cs.OperationLocks.GetRestoreLock(rbdSnap.SnapID); err != nil {
+		if err = cs.OperationLocks.GetRestoreLock(rbdSnap.VolID); err != nil {
 			util.ErrorLog(ctx, err.Error())
 			return status.Error(codes.Aborted, err.Error())
 		}
-		defer cs.OperationLocks.ReleaseRestoreLock(rbdSnap.SnapID)
+		defer cs.OperationLocks.ReleaseRestoreLock(rbdSnap.VolID)
 
-		err = cs.createVolumeFromSnapshot(ctx, cr, rbdVol, rbdSnap.SnapID)
+		err = cs.createVolumeFromSnapshot(ctx, cr, rbdVol, rbdSnap.VolID)
 		if err != nil {
 			return err
 		}
@@ -813,7 +813,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			return &csi.CreateSnapshotResponse{
 				Snapshot: &csi.Snapshot{
 					SizeBytes:      rbdSnap.SizeBytes,
-					SnapshotId:     rbdSnap.SnapID,
+					SnapshotId:     rbdSnap.VolID,
 					SourceVolumeId: rbdSnap.SourceVolumeID,
 					CreationTime:   rbdSnap.CreatedAt,
 					ReadyToUse:     false,
@@ -831,7 +831,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return &csi.CreateSnapshotResponse{
 			Snapshot: &csi.Snapshot{
 				SizeBytes:      rbdSnap.SizeBytes,
-				SnapshotId:     rbdSnap.SnapID,
+				SnapshotId:     rbdSnap.VolID,
 				SourceVolumeId: rbdSnap.SourceVolumeID,
 				CreationTime:   rbdSnap.CreatedAt,
 				ReadyToUse:     true,

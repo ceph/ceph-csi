@@ -171,7 +171,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	rbdSnap.CreatedAt = vol.CreatedAt
 	rbdSnap.SizeBytes = vol.VolSize
 	// found a snapshot already available, process and return its information
-	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, snapData.ImagePoolID, rbdSnap.Pool,
+	rbdSnap.VolID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, snapData.ImagePoolID, rbdSnap.Pool,
 		rbdSnap.ClusterID, snapUUID, volIDVersion)
 	if err != nil {
 		return false, err
@@ -208,7 +208,7 @@ func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rb
 	}
 
 	util.DebugLog(ctx, "found existing image (%s) with name (%s) for request (%s)",
-		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
+		rbdSnap.VolID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 	return true, nil
 }
 
@@ -349,14 +349,14 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 		return err
 	}
 
-	rbdSnap.SnapID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, imagePoolID, rbdSnap.Pool,
+	rbdSnap.VolID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, imagePoolID, rbdSnap.Pool,
 		rbdSnap.ClusterID, rbdSnap.ReservedID, volIDVersion)
 	if err != nil {
 		return err
 	}
 
 	util.DebugLog(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)",
-		rbdSnap.SnapID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
+		rbdSnap.VolID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return nil
 }
