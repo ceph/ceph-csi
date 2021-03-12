@@ -238,22 +238,11 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 	if err != nil {
 		return err
 	}
-	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
-	encryptedState, err := getImageMeta(rbdImageSpec, ".rbd.csi.ceph.com/encrypted", f)
-	if err != nil {
-		return err
-	}
-	if encryptedState != "encrypted" {
-		return fmt.Errorf("%v not equal to encrypted", encryptedState)
-	}
 
-	volumeMountPath := app.Spec.Containers[0].VolumeMounts[0].MountPath
-	mountType, err := getMountType(app.Name, app.Namespace, volumeMountPath, f)
+	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
+	err = validateEncryptedImage(f, rbdImageSpec, app)
 	if err != nil {
 		return err
-	}
-	if mountType != "crypt" {
-		return fmt.Errorf("%v not equal to crypt", mountType)
 	}
 
 	if kmsIsVault(kms) || kms == "vaulttokens" {
@@ -276,6 +265,41 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 			return fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
 		}
 	}
+	return nil
+}
+
+func validateEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
+
+	return validateEncryptedImage(f, rbdImageSpec, app)
+}
+
+// validateEncryptedImage verifies that the RBD image is encrypted. The
+// following checks are performed:
+// - Metadata of the image should be set with the encryption state;
+// - The pvc should be mounted by a pod, so the filesystem type can be fetched.
+func validateEncryptedImage(f *framework.Framework, rbdImageSpec string, app *v1.Pod) error {
+	encryptedState, err := getImageMeta(rbdImageSpec, ".rbd.csi.ceph.com/encrypted", f)
+	if err != nil {
+		return err
+	}
+	if encryptedState != "encrypted" {
+		return fmt.Errorf("%v not equal to encrypted", encryptedState)
+	}
+
+	volumeMountPath := app.Spec.Containers[0].VolumeMounts[0].MountPath
+	mountType, err := getMountType(app.Name, app.Namespace, volumeMountPath, f)
+	if err != nil {
+		return err
+	}
+	if mountType != "crypt" {
+		return fmt.Errorf("%v not equal to crypt", mountType)
+	}
+
 	return nil
 }
 

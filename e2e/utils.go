@@ -504,8 +504,8 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 	return checkSum, nil
 }
 
-// nolint:gocyclo // reduce complexity
-func validatePVCClone(sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string, f *framework.Framework) {
+// nolint:gocyclo,gocognit // reduce complexity
+func validatePVCClone(sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string, validateEncryption bool, f *framework.Framework) {
 	var wg sync.WaitGroup
 	totalCount := 10
 	wgErrs := make([]error, totalCount)
@@ -581,6 +581,9 @@ func validatePVCClone(sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPat
 				if checkSumClone != checkSum {
 					e2elog.Logf("checksum didn't match. checksum=%s and checksumclone=%s", checkSum, checkSumClone)
 				}
+			}
+			if wgErrs[n] == nil && validateEncryption {
+				wgErrs[n] = validateEncryptedPVC(f, &p, &a)
 			}
 			w.Done()
 		}(&wg, i, *pvcClone, *appClone)
