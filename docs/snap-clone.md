@@ -33,7 +33,7 @@
     `SNAPSHOT_VERSION` variable, for example:
 
     ```console
-    SNAPSHOT_VERSION="v3.0.1" ./scripts/install-snapshot.sh install
+    SNAPSHOT_VERSION="v4.0.0" ./scripts/install-snapshot.sh install
     ```
 
   - In the future, you can choose to cleanup by running
