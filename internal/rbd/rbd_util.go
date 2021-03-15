@@ -493,6 +493,8 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 	var depth uint
 	vol := rbdVolume{}
+	defer vol.Destroy()
+
 	vol.Pool = rv.Pool
 	vol.Monitors = rv.Monitors
 	vol.RbdImageName = rv.RbdImageName
@@ -503,9 +505,6 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 		return depth, err
 	}
 
-	defer func() {
-		vol.ioctx.Destroy()
-	}()
 	for {
 		if vol.RbdImageName == "" {
 			return depth, nil
@@ -662,6 +661,8 @@ func (rv *rbdVolume) hasFeature(feature uint64) bool {
 
 func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
 	vol := rbdVolume{}
+	defer vol.Destroy()
+
 	vol.Pool = rv.Pool
 	vol.RadosNamespace = rv.RadosNamespace
 	vol.Monitors = rv.Monitors
@@ -672,7 +673,6 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 	if err != nil {
 		return false, err
 	}
-	defer vol.ioctx.Destroy()
 
 	for {
 		if vol.RbdImageName == "" {
