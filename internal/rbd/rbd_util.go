@@ -467,15 +467,17 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 // deleteImage deletes a ceph image with provision and volume options.
 func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	image := pOpts.RbdImageName
+
+	util.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
+
 	// Support deleting the older rbd images whose imageID is not stored in omap
 	err := pOpts.getImageID()
 	if err != nil {
 		return err
 	}
 
-	util.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
-
 	if pOpts.isEncrypted() {
+		util.DebugLog(ctx, "rbd: going to remove DEK for %q", pOpts.String())
 		if err = pOpts.encryption.RemoveDEK(pOpts.VolID); err != nil {
 			util.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", pOpts.VolID, err)
 		}
