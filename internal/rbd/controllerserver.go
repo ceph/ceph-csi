@@ -559,8 +559,7 @@ func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *u
 		if volID == "" {
 			return nil, nil, status.Errorf(codes.NotFound, "volume ID cannot be empty")
 		}
-		// TODO need to support cloning for encrypted volume
-		rbdvol, err := genVolFromVolID(ctx, volID, cr, nil)
+		rbdvol, err := genVolFromVolID(ctx, volID, cr, req.GetSecrets())
 		if err != nil {
 			util.ErrorLog(ctx, "failed to get backend image for %s: %v", volID, err)
 			if !errors.Is(err, ErrImageNotFound) {
