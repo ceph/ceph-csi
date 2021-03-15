@@ -168,6 +168,22 @@ func (cp *ConnPool) Get(monitors, user, keyfile string) (*rados.Conn, error) {
 	return conn, nil
 }
 
+// Copy adds an extra reference count to the used ConnEntry and returns the
+// *rados.Conn if it was found.
+func (cp *ConnPool) Copy(conn *rados.Conn) *rados.Conn {
+	cp.lock.Lock()
+	defer cp.lock.Unlock()
+
+	for _, ce := range cp.conns {
+		if ce.conn == conn {
+			ce.get()
+			return ce.conn
+		}
+	}
+
+	return nil
+}
+
 // Put reduces the reference count of the rados.Conn object that was returned with
 // ConnPool.Get().
 func (cp *ConnPool) Put(conn *rados.Conn) {

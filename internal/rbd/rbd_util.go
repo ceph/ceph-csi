@@ -496,7 +496,7 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 	vol.Pool = rv.Pool
 	vol.Monitors = rv.Monitors
 	vol.RbdImageName = rv.RbdImageName
-	vol.conn = rv.conn
+	vol.conn = rv.conn.Copy()
 
 	err := vol.openIoctx()
 	if err != nil {
@@ -666,7 +666,7 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 	vol.RadosNamespace = rv.RadosNamespace
 	vol.Monitors = rv.Monitors
 	vol.RbdImageName = rv.RbdImageName
-	vol.conn = rv.conn
+	vol.conn = rv.conn.Copy()
 
 	err := vol.openIoctx()
 	if err != nil {
