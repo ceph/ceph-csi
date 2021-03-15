@@ -127,7 +127,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 
 func (rv *rbdVolume) generateTempClone() *rbdVolume {
 	tempClone := rbdVolume{}
-	tempClone.conn = rv.conn
+	tempClone.conn = rv.conn.Copy()
 	// The temp clone image need to have deep flatten feature
 	f := []string{librbd.FeatureNameLayering, librbd.FeatureNameDeepFlatten}
 	tempClone.imageFeatureSet = librbd.FeatureSetFromNames(f)
