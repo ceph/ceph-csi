@@ -37,6 +37,7 @@ type Driver struct {
 	ids *IdentityServer
 	ns  *NodeServer
 	cs  *ControllerServer
+	rs  *ReplicationServer
 }
 
 var (
@@ -79,6 +80,10 @@ func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
 		SnapshotLocks:           util.NewVolumeLocks(),
 		OperationLocks:          util.NewOperationLock(),
 	}
+}
+
+func NewReplicationServer(c *ControllerServer) *ReplicationServer {
+	return &ReplicationServer{ControllerServer: c}
 }
 
 // NewNodeServer initialize a node server for rbd CSI driver.
@@ -154,6 +159,7 @@ func (r *Driver) Run(conf *util.Config) {
 
 	if conf.IsControllerServer {
 		r.cs = NewControllerServer(r.cd)
+		r.rs = NewReplicationServer(r.cs)
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
@@ -172,8 +178,9 @@ func (r *Driver) Run(conf *util.Config) {
 		IS: r.ids,
 		CS: r.cs,
 		NS: r.ns,
-		// Register the replication controller to expose replication operations.
-		RS: r.cs,
+		// Register the replication controller to expose replication
+		// operations.
+		RS: r.rs,
 	}
 	s.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {
