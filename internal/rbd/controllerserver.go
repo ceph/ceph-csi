@@ -28,7 +28,6 @@ import (
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/kube-storage/spec/lib/go/replication"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -42,11 +41,6 @@ const (
 // controller server spec.
 type ControllerServer struct {
 	*csicommon.DefaultControllerServer
-	// added UnimplementedControllerServer as a member of
-	// ControllerServer. if replication spec add more RPC services in the proto
-	// file, then we don't need to add all RPC methods leading to forward
-	// compatibility.
-	*replication.UnimplementedControllerServer
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
 	VolumeLocks *util.VolumeLocks
