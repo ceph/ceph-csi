@@ -114,8 +114,10 @@ type rbdVolume struct {
 	Topology            map[string]string
 	// DataPool is where the data for images in `Pool` are stored, this is used as the `--data-pool`
 	// 	 argument when the pool is created, and is not used anywhere else
-	DataPool           string
-	ParentName         string
+	DataPool   string
+	ParentName string
+	// Parent Pool is the pool that contains the parent image.
+	ParentPool         string
 	imageFeatureSet    librbd.FeatureSet
 	AdminID            string `json:"adminId"`
 	UserID             string `json:"userId"`
@@ -1177,6 +1179,7 @@ func (rv *rbdVolume) getImageInfo() error {
 		}
 	} else {
 		rv.ParentName = parentInfo.Image.ImageName
+		rv.ParentPool = parentInfo.Image.PoolName
 	}
 	// Get image creation time
 	tm, err := image.GetCreateTimestamp()
