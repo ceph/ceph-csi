@@ -257,8 +257,9 @@ func bindMount(ctx context.Context, from, to string, readOnly bool, mntOptions [
 }
 
 func unmountVolume(ctx context.Context, mountPoint string) error {
-	if err := execCommandErr(ctx, "umount", mountPoint); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf("exit status 32: umount: %s: not mounted", mountPoint)) ||
+	if _, stderr, err := util.ExecCommand(ctx, "umount", mountPoint); err != nil {
+		err = fmt.Errorf("%w stderr: %s", err, stderr)
+		if strings.Contains(err.Error(), fmt.Sprintf("umount: %s: not mounted", mountPoint)) ||
 			strings.Contains(err.Error(), "No such file or directory") {
 			return nil
 		}
