@@ -1084,10 +1084,18 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 	return err
 }
 
-func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *rbdSnapshot) error {
-	image := rv.RbdImageName
+func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *rbdSnapshot, parentVol *rbdVolume) error {
 	var err error
 	logMsg := "rbd: clone %s %s (features: %s) using mon %s"
+
+	err = parentVol.openIoctx()
+	if err != nil {
+		return fmt.Errorf("failed to get parent IOContext: %w", err)
+	}
+	defer func() {
+		defer parentVol.ioctx.Destroy()
+		parentVol.ioctx = nil
+	}()
 
 	options := librbd.NewRbdImageOptions()
 	defer options.Destroy()
@@ -1101,7 +1109,7 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *r
 	}
 
 	util.DebugLog(ctx, logMsg,
-		pSnapOpts, image, rv.imageFeatureSet.Names(), rv.Monitors)
+		pSnapOpts.String(), rv, rv.imageFeatureSet.Names(), rv.Monitors)
 
 	if rv.imageFeatureSet != 0 {
 		err = options.SetUint64(librbd.RbdImageOptionFeatures, uint64(rv.imageFeatureSet))
@@ -1115,12 +1123,18 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *r
 		return fmt.Errorf("failed to set image features: %w", err)
 	}
 
+	// As the clone is yet to be created, open the Ioctx.
 	err = rv.openIoctx()
 	if err != nil {
 		return fmt.Errorf("failed to get IOContext: %w", err)
 	}
+	// Destroy only the ioctx, connection is needed for other operations.
+	defer func() {
+		defer rv.ioctx.Destroy()
+		rv.ioctx = nil
+	}()
 
-	err = librbd.CloneImage(rv.ioctx, pSnapOpts.RbdImageName, pSnapOpts.RbdSnapName, rv.ioctx, rv.RbdImageName, options)
+	err = librbd.CloneImage(parentVol.ioctx, pSnapOpts.RbdImageName, pSnapOpts.RbdSnapName, rv.ioctx, rv.RbdImageName, options)
 	if err != nil {
 		return fmt.Errorf("failed to create rbd clone: %w", err)
 	}
