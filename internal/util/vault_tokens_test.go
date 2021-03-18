@@ -21,6 +21,9 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseConfig(t *testing.T) {
@@ -34,7 +37,7 @@ func TestParseConfig(t *testing.T) {
 		t.Errorf("unexpected error (%T): %s", err, err)
 	}
 
-	// fill default options (normally done in InitVaultTokensKMS)
+	// fill default options (normally done in initVaultTokensKMS)
 	config["vaultAddress"] = "https://vault.default.cluster.svc"
 	config["tenantConfigName"] = vaultTokensDefaultConfigName
 	config["tenantTokenName"] = vaultTokensDefaultTokenName
@@ -65,7 +68,7 @@ func TestParseConfig(t *testing.T) {
 // TestInitVaultTokensKMS verifies that passing partial and complex
 // configurations get applied correctly.
 //
-// When vault.New() is called at the end of InitVaultTokensKMS(), errors will
+// When vault.New() is called at the end of initVaultTokensKMS(), errors will
 // mention the missing VAULT_TOKEN, and that is expected.
 func TestInitVaultTokensKMS(t *testing.T) {
 	if true {
@@ -74,39 +77,44 @@ func TestInitVaultTokensKMS(t *testing.T) {
 		return
 	}
 
-	config := make(map[string]interface{})
+	args := KMSInitializerArgs{
+		ID:      "vault-tokens-config",
+		Tenant:  "bob",
+		Config:  make(map[string]interface{}),
+		Secrets: nil,
+	}
 
 	// empty config map
-	_, err := InitVaultTokensKMS("bob", "vault-tokens-config", config)
+	_, err := initVaultTokensKMS(args)
 	if !errors.Is(err, errConfigOptionMissing) {
 		t.Errorf("unexpected error (%T): %s", err, err)
 	}
 
 	// fill required options
-	config["vaultAddress"] = "https://vault.default.cluster.svc"
+	args.Config["vaultAddress"] = "https://vault.default.cluster.svc"
 
 	// parsing with all required options
-	_, err = InitVaultTokensKMS("bob", "vault-tokens-config", config)
+	_, err = initVaultTokensKMS(args)
 	if err != nil && !strings.Contains(err.Error(), "VAULT_TOKEN") {
 		t.Errorf("unexpected error: %s", err)
 	}
 
 	// fill tenants
 	tenants := make(map[string]interface{})
-	config["tenants"] = tenants
+	args.Config["tenants"] = tenants
 
 	// empty tenants list
-	_, err = InitVaultTokensKMS("bob", "vault-tokens-config", config)
+	_, err = initVaultTokensKMS(args)
 	if err != nil && !strings.Contains(err.Error(), "VAULT_TOKEN") {
 		t.Errorf("unexpected error: %s", err)
 	}
 
 	// add tenant "bob"
 	bob := make(map[string]interface{})
-	config["tenants"].(map[string]interface{})["bob"] = bob
 	bob["vaultAddress"] = "https://vault.bob.example.org"
+	args.Config["tenants"].(map[string]interface{})["bob"] = bob
 
-	_, err = InitVaultTokensKMS("bob", "vault-tokens-config", config)
+	_, err = initVaultTokensKMS(args)
 	if err != nil && !strings.Contains(err.Error(), "VAULT_TOKEN") {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -157,4 +165,34 @@ func TestStdVaultToCSIConfig(t *testing.T) {
 	case v.VaultCAVerify != "false":
 		t.Errorf("unexpected value for VaultCAVerify: %s", v.VaultCAVerify)
 	}
+}
+
+func TestTransformConfig(t *testing.T) {
+	cm := make(map[string]interface{})
+	cm["KMS_PROVIDER"] = "vaulttokens"
+	cm["VAULT_ADDR"] = "https://vault.example.com"
+	cm["VAULT_BACKEND_PATH"] = "/secret"
+	cm["VAULT_CACERT"] = ""
+	cm["VAULT_TLS_SERVER_NAME"] = "vault.example.com"
+	cm["VAULT_CLIENT_CERT"] = ""
+	cm["VAULT_CLIENT_KEY"] = ""
+	cm["VAULT_NAMESPACE"] = "a-department"
+	cm["VAULT_SKIP_VERIFY"] = "true" // inverse of "vaultCAVerify"
+
+	config, err := transformConfig(cm)
+	require.NoError(t, err)
+	assert.Equal(t, config["encryptionKMSType"], cm["KMS_PROVIDER"])
+	assert.Equal(t, config["vaultAddress"], cm["VAULT_ADDR"])
+	assert.Equal(t, config["vaultBackendPath"], cm["VAULT_BACKEND_PATH"])
+	assert.Equal(t, config["vaultCAFromSecret"], cm["VAULT_CACERT"])
+	assert.Equal(t, config["vaultTLSServerName"], cm["VAULT_TLS_SERVER_NAME"])
+	assert.Equal(t, config["vaultClientCertFromSecret"], cm["VAULT_CLIENT_CERT"])
+	assert.Equal(t, config["vaultClientCertKeyFromSecret"], cm["VAULT_CLIENT_KEY"])
+	assert.Equal(t, config["vaultNamespace"], cm["VAULT_NAMESPACE"])
+	assert.Equal(t, config["vaultCAVerify"], "false")
+}
+
+func TestVaultTokensKMSRegistered(t *testing.T) {
+	_, ok := kmsManager.providers[kmsTypeVaultTokens]
+	assert.True(t, ok)
 }

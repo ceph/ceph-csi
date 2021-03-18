@@ -93,11 +93,16 @@ type SecretsMetadataKMS struct {
 	encryptionKMSID string
 }
 
+var _ = RegisterKMSProvider(KMSProvider{
+	UniqueID:    kmsTypeSecretsMetadata,
+	Initializer: initSecretsMetadataKMS,
+})
+
 // initSecretsMetadataKMS initializes a SecretsMetadataKMS that wraps a
 // SecretsKMS, so that the passphrase from the StorageClass secrets can be used
 // for encrypting/decrypting DEKs that are stored in a detached DEKStore.
-func initSecretsMetadataKMS(encryptionKMSID string, secrets map[string]string) (EncryptionKMS, error) {
-	eKMS, err := initSecretsKMS(secrets)
+func initSecretsMetadataKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
+	eKMS, err := initSecretsKMS(args.Secrets)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +114,7 @@ func initSecretsMetadataKMS(encryptionKMSID string, secrets map[string]string) (
 
 	smKMS := SecretsMetadataKMS{}
 	smKMS.SecretsKMS = sKMS
-	smKMS.encryptionKMSID = encryptionKMSID
+	smKMS.encryptionKMSID = args.ID
 
 	return smKMS, nil
 }
