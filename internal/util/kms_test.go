@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func noinitKMS(id, tenant string, config map[string]interface{}, secrets map[string]string) (EncryptionKMS, error) {
+func noinitKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	return nil, nil
 }
 

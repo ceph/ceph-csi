@@ -20,6 +20,8 @@ import (
 	"errors"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDetectAuthMountPath(t *testing.T) {
@@ -94,4 +96,9 @@ func TestSetConfigString(t *testing.T) {
 	case optionDefaultOverload != "non-default":
 		t.Error("optionDefaultOverload should have been updated")
 	}
+}
+
+func TestVaultKMSRegistered(t *testing.T) {
+	_, ok := kmsManager.providers[kmsTypeVault]
+	assert.True(t, ok)
 }

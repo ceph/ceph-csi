@@ -41,17 +41,22 @@ func TestGenerateCipher(t *testing.T) {
 }
 
 func TestInitSecretsMetadataKMS(t *testing.T) {
-	secrets := map[string]string{}
+	args := KMSInitializerArgs{
+		ID:      "secrets-metadata-unit-test",
+		Tenant:  "tenant",
+		Config:  nil,
+		Secrets: map[string]string{},
+	}
 
 	// passphrase it not set, init should fail
-	kms, err := initSecretsMetadataKMS("secrets-metadata-unit-test", secrets)
+	kms, err := initSecretsMetadataKMS(args)
 	assert.Error(t, err)
 	assert.Nil(t, kms)
 
 	// set a passphrase to get a working KMS
-	secrets[encryptionPassphraseKey] = "my-passphrase-from-kubernetes"
+	args.Secrets[encryptionPassphraseKey] = "my-passphrase-from-kubernetes"
 
-	kms, err = initSecretsMetadataKMS("secrets-metadata-unit-test", secrets)
+	kms, err = initSecretsMetadataKMS(args)
 	assert.NoError(t, err)
 	require.NotNil(t, kms)
 	assert.Equal(t, "secrets-metadata-unit-test", kms.GetID())
@@ -62,9 +67,15 @@ func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 	secrets := map[string]string{
 		encryptionPassphraseKey: "my-passphrase-from-kubernetes",
 	}
+	args := KMSInitializerArgs{
+		ID:      "secrets-metadata-unit-test",
+		Tenant:  "tenant",
+		Config:  nil,
+		Secrets: secrets,
+	}
 	volumeID := "csi-vol-1b00f5f8-b1c1-11e9-8421-9243c1f659f0"
 
-	kms, err := initSecretsMetadataKMS("secrets-metadata-unit-test", secrets)
+	kms, err := initSecretsMetadataKMS(args)
 	assert.NoError(t, err)
 	require.NotNil(t, kms)
 
@@ -89,4 +100,9 @@ func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, "", decryptedDEK)
 	assert.Equal(t, plainDEK, decryptedDEK)
+}
+
+func TestSecretsMetadataKMSRegistered(t *testing.T) {
+	_, ok := kmsManager.providers[kmsTypeSecretsMetadata]
+	assert.True(t, ok)
 }

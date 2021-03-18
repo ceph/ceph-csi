@@ -260,21 +260,26 @@ func (vc *vaultConnection) Destroy() {
 	}
 }
 
+var _ = RegisterKMSProvider(KMSProvider{
+	UniqueID:    kmsTypeVault,
+	Initializer: initVaultKMS,
+})
+
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.
-func InitVaultKMS(kmsID string, config map[string]interface{}, secrets map[string]string) (EncryptionKMS, error) {
+func initVaultKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	kms := &VaultKMS{}
-	err := kms.initConnection(kmsID, config)
+	err := kms.initConnection(args.ID, args.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
 	}
 
-	err = kms.initCertificates(config, secrets)
+	err = kms.initCertificates(args.Config, args.Secrets)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault certificates: %w", err)
 	}
 
 	vaultAuthPath := vaultDefaultAuthPath
-	err = setConfigString(&vaultAuthPath, config, "vaultAuthPath")
+	err = setConfigString(&vaultAuthPath, args.Config, "vaultAuthPath")
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +290,7 @@ func InitVaultKMS(kmsID string, config map[string]interface{}, secrets map[strin
 	}
 
 	vaultRole := vaultDefaultRole
-	err = setConfigString(&vaultRole, config, "vaultRole")
+	err = setConfigString(&vaultRole, args.Config, "vaultRole")
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +298,7 @@ func InitVaultKMS(kmsID string, config map[string]interface{}, secrets map[strin
 
 	// vault.VaultBackendPathKey is "secret/" by default, use vaultPassphraseRoot if configured
 	vaultPassphraseRoot := ""
-	err = setConfigString(&vaultPassphraseRoot, config, "vaultPassphraseRoot")
+	err = setConfigString(&vaultPassphraseRoot, args.Config, "vaultPassphraseRoot")
 	if err == nil {
 		// the old example did have "/v1/secret/", convert that format
 		if strings.HasPrefix(vaultPassphraseRoot, "/v1/") {
@@ -306,7 +311,7 @@ func InitVaultKMS(kmsID string, config map[string]interface{}, secrets map[strin
 	}
 
 	kms.vaultPassphrasePath = vaultDefaultPassphrasePath
-	err = setConfigString(&kms.vaultPassphrasePath, config, "vaultPassphrasePath")
+	err = setConfigString(&kms.vaultPassphrasePath, args.Config, "vaultPassphrasePath")
 	if err != nil {
 		return nil, err
 	}
