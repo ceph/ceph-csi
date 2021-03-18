@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
@@ -50,6 +51,9 @@ const (
 	// running and stopped means the image is not a target for replication from
 	// another cluster
 	upAndStopped imageMirroringState = "up+stopped"
+
+	// If the state is error means image need resync.
+	errorState imageMirroringState = "error"
 )
 
 const (
@@ -417,12 +421,6 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, "image is in primary state")
 	}
 
-	err = rbdVol.resyncImage()
-	if err != nil {
-		util.ErrorLog(ctx, err.Error())
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	// TODO: check the image state and return its ready to use or not
 	mirrorStatus, err := rbdVol.getImageMirroingStatus()
 	if err != nil {
 		// the image gets recreated after issuing resync in that case return
@@ -439,8 +437,25 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	ready := false
 	state := imageMirroringState(mirrorStatus.State)
 	if state == upAndStopped || state == upAndReplaying {
+		// Make sure the peer site image state is up and stopped
 		ready = true
+		for _, s := range mirrorStatus.PeerSites {
+			if imageMirroringState(s.State) != upAndStopped {
+				util.UsefulLog(ctx, "peer site name=%s mirroring state=%s, description=%s and lastUpdate=%s", s.SiteName, s.State, s.Description, s.LastUpdate)
+				ready = false
+			}
+		}
 	}
+
+	// resync only if the image is in error state
+	if strings.Contains(mirrorStatus.State, string(errorState)) {
+		err = rbdVol.resyncImage()
+		if err != nil {
+			util.ErrorLog(ctx, err.Error())
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	util.UsefulLog(ctx, "image mirroring state=%s, description=%s and lastUpdate=%s", mirrorStatus.State, mirrorStatus.Description, mirrorStatus.LastUpdate)
 	resp := &replication.ResyncVolumeResponse{
 		Ready: ready,
