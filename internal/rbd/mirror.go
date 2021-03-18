@@ -118,6 +118,12 @@ type imageMirrorStatus struct {
 	State       string `json:"state"` // rbd image state
 	Description string `json:"description"`
 	LastUpdate  string `json:"last_update"`
+	PeerSites   []struct {
+		SiteName    string `json:"site_name"`
+		State       string `json:"state"`
+		Description string `json:"description"`
+		LastUpdate  string `json:"last_update"`
+	} `json:"peer_sites"`
 }
 
 // FIXME: once https://github.com/ceph/go-ceph/issues/460 is fixed use go-ceph.
