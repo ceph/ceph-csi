@@ -532,23 +532,26 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 	var depth uint
 	vol := rbdVolume{}
-	defer vol.Destroy()
 
 	vol.Pool = rv.Pool
 	vol.Monitors = rv.Monitors
 	vol.RbdImageName = rv.RbdImageName
 	vol.conn = rv.conn.Copy()
 
-	err := vol.openIoctx()
-	if err != nil {
-		return depth, err
-	}
-
 	for {
 		if vol.RbdImageName == "" {
 			return depth, nil
 		}
+		err := vol.openIoctx()
+		if err != nil {
+			return depth, err
+		}
+
 		err = vol.getImageInfo()
+		// FIXME: create and destroy the vol inside the loop.
+		// see https://github.com/ceph/ceph-csi/pull/1838#discussion_r598530807
+		vol.ioctx.Destroy()
+		vol.ioctx = nil
 		if err != nil {
 			// if the parent image is moved to trash the name will be present
 			// in rbd image info but the image will be in trash, in that case
@@ -702,7 +705,6 @@ func (rv *rbdVolume) hasFeature(feature uint64) bool {
 
 func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
 	vol := rbdVolume{}
-	defer vol.Destroy()
 
 	vol.Pool = rv.Pool
 	vol.RadosNamespace = rv.RadosNamespace
@@ -710,16 +712,20 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 	vol.RbdImageName = rv.RbdImageName
 	vol.conn = rv.conn.Copy()
 
-	err := vol.openIoctx()
-	if err != nil {
-		return false, err
-	}
-
 	for {
 		if vol.RbdImageName == "" {
 			return false, nil
 		}
+		err := vol.openIoctx()
+		if err != nil {
+			return false, err
+		}
+
 		err = vol.getImageInfo()
+		// FIXME: create and destroy the vol inside the loop.
+		// see https://github.com/ceph/ceph-csi/pull/1838#discussion_r598530807
+		vol.ioctx.Destroy()
+		vol.ioctx = nil
 		if err != nil {
 			// call to getImageInfo returns the parent name even if the parent
 			// is in the trash, when we try to open the parent image to get its
