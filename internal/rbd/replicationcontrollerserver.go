@@ -405,11 +405,10 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 	mirroringInfo, err := rbdVol.getImageMirroringInfo()
 	if err != nil {
-		// TODO: check if the image is not found return valid error message
 		// in case of Resync the image will get deleted and gets recreated and
-		// it takes time for this operation
+		// it takes time for this operation.
 		util.ErrorLog(ctx, err.Error())
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Aborted, err.Error())
 	}
 
 	if mirroringInfo.State != librbd.MirrorImageEnabled {
