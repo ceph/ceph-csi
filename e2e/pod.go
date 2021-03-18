@@ -18,6 +18,23 @@ import (
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
+// getDaemonSetLabelSelector returns labels of daemonset given name and namespace dynamically,
+// needed since labels are not same for helm and non-helm deployments.
+func getDaemonSetLabelSelector(f *framework.Framework, ns, daemonSetName string) (string, error) {
+	ds, err := f.ClientSet.AppsV1().DaemonSets(ns).Get(context.TODO(), daemonSetName, metav1.GetOptions{})
+	if err != nil {
+		e2elog.Logf("Error getting daemonsets with name %s in namespace %s", daemonSetName, ns)
+		return "", err
+	}
+	s, err := metav1.LabelSelectorAsSelector(ds.Spec.Selector)
+	if err != nil {
+		e2elog.Logf("Error parsing %s daemonset selector in namespace %s", daemonSetName, ns)
+		return "", err
+	}
+	e2elog.Logf("LabelSelector for %s daemonsets in namespace %s: %s", daemonSetName, ns, s.String())
+	return s.String(), nil
+}
+
 func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
