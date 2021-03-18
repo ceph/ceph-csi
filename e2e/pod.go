@@ -111,11 +111,11 @@ func getCommandInPodOpts(f *framework.Framework, c, ns string, opt *metav1.ListO
 }
 
 func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string, error) {
-	podPot, err := getCommandInPodOpts(f, c, ns, opt)
+	podOpt, err := getCommandInPodOpts(f, c, ns, opt)
 	if err != nil {
 		return "", "", err
 	}
-	stdOut, stdErr, err := f.ExecWithOptions(podPot)
+	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
@@ -124,13 +124,13 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 
 func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, string, error) {
 	opt := &metav1.ListOptions{
-		LabelSelector: rookTolBoxPodLabel,
+		LabelSelector: rookToolBoxPodLabel,
 	}
-	podPot, err := getCommandInPodOpts(f, c, ns, opt)
+	podOpt, err := getCommandInPodOpts(f, c, ns, opt)
 	if err != nil {
 		return "", "", err
 	}
-	stdOut, stdErr, err := f.ExecWithOptions(podPot)
+	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
@@ -138,11 +138,11 @@ func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, stri
 }
 
 func execCommandInPodAndAllowFail(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string) {
-	podPot, err := getCommandInPodOpts(f, c, ns, opt)
+	podOpt, err := getCommandInPodOpts(f, c, ns, opt)
 	if err != nil {
 		return "", err.Error()
 	}
-	stdOut, stdErr, err := f.ExecWithOptions(podPot)
+	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
 	if err != nil {
 		e2elog.Logf("command %s failed: %v", c, err)
 	}

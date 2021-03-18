@@ -144,7 +144,7 @@ func getPVCAndPV(c kubernetes.Interface, pvcName, pvcNamespace string) (*v1.Pers
 	}
 	pv, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
-		return pvc, nil, fmt.Errorf("failed to delete PV with error %v", err)
+		return pvc, nil, fmt.Errorf("failed to get PV with error %v", err)
 	}
 	return pvc, pv, nil
 }
