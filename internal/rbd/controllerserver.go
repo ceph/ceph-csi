@@ -864,7 +864,9 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 	if value, ok := options["snapshotNamePrefix"]; ok && value == "" {
 		return status.Error(codes.InvalidArgument, "empty snapshot name prefix to provision snapshot from")
 	}
-
+	if value, ok := options["pool"]; ok && value == "" {
+		return status.Error(codes.InvalidArgument, "empty pool name in which rbd image will be created")
+	}
 	return nil
 }
 
