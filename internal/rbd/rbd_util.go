@@ -566,6 +566,7 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 			depth++
 		}
 		vol.RbdImageName = vol.ParentName
+		vol.Pool = vol.ParentPool
 	}
 }
 
@@ -741,6 +742,7 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 			return true, nil
 		}
 		vol.RbdImageName = vol.ParentName
+		vol.Pool = vol.ParentPool
 	}
 }
 
