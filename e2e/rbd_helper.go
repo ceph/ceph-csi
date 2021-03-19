@@ -303,11 +303,11 @@ func validateEncryptedImage(f *framework.Framework, rbdImageSpec string, app *v1
 	return nil
 }
 
-func listRBDImages(f *framework.Framework) ([]string, error) {
+func listRBDImages(f *framework.Framework, pool string) ([]string, error) {
 	var imgInfos []string
 
 	stdout, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rbd ls --format=json %s", rbdOptions(defaultRBDPool)), rookNamespace)
+		fmt.Sprintf("rbd ls --format=json %s", rbdOptions(pool)), rookNamespace)
 	if err != nil {
 		return imgInfos, err
 	}
@@ -554,7 +554,7 @@ func validateThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, siz
 	if err != nil {
 		return fmt.Errorf("failed to create PVC with error %w", err)
 	}
-	validateRBDImageCount(f, 1)
+	validateRBDImageCount(f, 1, defaultRBDPool)
 
 	// nothing has been written, but the image should be allocated
 	du, err := getRbdDu(f, pvc)
@@ -598,7 +598,7 @@ func validateThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, siz
 	if err != nil {
 		return fmt.Errorf("failed to delete PVC with error: %w", err)
 	}
-	validateRBDImageCount(f, 0)
+	validateRBDImageCount(f, 0, defaultRBDPool)
 
 	return nil
 }
