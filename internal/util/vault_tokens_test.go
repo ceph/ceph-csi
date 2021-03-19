@@ -78,7 +78,6 @@ func TestInitVaultTokensKMS(t *testing.T) {
 	}
 
 	args := KMSInitializerArgs{
-		ID:      "vault-tokens-config",
 		Tenant:  "bob",
 		Config:  make(map[string]interface{}),
 		Secrets: nil,

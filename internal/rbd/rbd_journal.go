@@ -234,7 +234,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 
 	kmsID := ""
 	if rv.isEncrypted() {
-		kmsID = rv.encryption.KMS.GetID()
+		kmsID = rv.encryption.GetID()
 	}
 
 	j, err := volJournal.Connect(rv.Monitors, rv.RadosNamespace, rv.conn.Creds)
@@ -411,7 +411,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 
 	kmsID := ""
 	if rbdVol.isEncrypted() {
-		kmsID = rbdVol.encryption.KMS.GetID()
+		kmsID = rbdVol.encryption.GetID()
 	}
 
 	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)

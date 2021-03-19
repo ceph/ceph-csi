@@ -57,6 +57,8 @@ type VolumeEncryption struct {
 	// dekStore that will be used, this can be the EncryptionKMS or a
 	// different object implementing the DEKStore interface.
 	dekStore DEKStore
+
+	id string
 }
 
 // NewVolumeEncryption creates a new instance of VolumeEncryption and
@@ -65,8 +67,18 @@ type VolumeEncryption struct {
 // Callers that receive a ErrDEKStoreNeeded error, should use
 // VolumeEncryption.SetDEKStore() to configure an alternative storage for the
 // DEKs.
-func NewVolumeEncryption(kms EncryptionKMS) (*VolumeEncryption, error) {
-	ve := &VolumeEncryption{KMS: kms}
+func NewVolumeEncryption(id string, kms EncryptionKMS) (*VolumeEncryption, error) {
+	kmsID := id
+	if kmsID == "" {
+		// if kmsID is not set, encryption is enabled, and the type is
+		// SecretsKMS
+		kmsID = defaultKMSType
+	}
+
+	ve := &VolumeEncryption{
+		id:  kmsID,
+		KMS: kms,
+	}
 
 	if kms.requiresDEKStore() == DEKStoreIntegrated {
 		dekStore, ok := kms.(DEKStore)
@@ -103,11 +115,14 @@ func (ve *VolumeEncryption) RemoveDEK(volumeID string) error {
 	return ve.dekStore.RemoveDEK(volumeID)
 }
 
+func (ve *VolumeEncryption) GetID() string {
+	return ve.id
+}
+
 // EncryptionKMS provides external Key Management System for encryption
 // passphrases storage.
 type EncryptionKMS interface {
 	Destroy()
-	GetID() string
 
 	// requiresDEKStore returns the DEKStoreType that is needed to be
 	// configure for the KMS. Nothing needs to be done when this function
