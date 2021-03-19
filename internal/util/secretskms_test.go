@@ -42,7 +42,6 @@ func TestGenerateCipher(t *testing.T) {
 
 func TestInitSecretsMetadataKMS(t *testing.T) {
 	args := KMSInitializerArgs{
-		ID:      "secrets-metadata-unit-test",
 		Tenant:  "tenant",
 		Config:  nil,
 		Secrets: map[string]string{},
@@ -59,7 +58,6 @@ func TestInitSecretsMetadataKMS(t *testing.T) {
 	kms, err = initSecretsMetadataKMS(args)
 	assert.NoError(t, err)
 	require.NotNil(t, kms)
-	assert.Equal(t, "secrets-metadata-unit-test", kms.GetID())
 	assert.Equal(t, DEKStoreMetadata, kms.requiresDEKStore())
 }
 
@@ -68,7 +66,6 @@ func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 		encryptionPassphraseKey: "my-passphrase-from-kubernetes",
 	}
 	args := KMSInitializerArgs{
-		ID:      "secrets-metadata-unit-test",
 		Tenant:  "tenant",
 		Config:  nil,
 		Secrets: secrets,

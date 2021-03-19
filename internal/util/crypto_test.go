@@ -58,11 +58,11 @@ func TestKMSWorkflow(t *testing.T) {
 	kms, err := GetKMS("tenant", defaultKMSType, secrets)
 	assert.NoError(t, err)
 	require.NotNil(t, kms)
-	assert.Equal(t, defaultKMSType, kms.GetID())
 
-	ve, err := NewVolumeEncryption(kms)
+	ve, err := NewVolumeEncryption("", kms)
 	assert.NoError(t, err)
 	require.NotNil(t, ve)
+	assert.Equal(t, defaultKMSType, ve.GetID())
 
 	volumeID := "volume-id"
 

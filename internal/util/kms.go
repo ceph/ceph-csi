@@ -76,7 +76,7 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 			"section: %s", kmsID)
 	}
 
-	return kmsManager.buildKMS(kmsID, tenant, kmsConfig, secrets)
+	return kmsManager.buildKMS(tenant, kmsConfig, secrets)
 }
 
 // getKMSConfiguration reads the configuration file from the filesystem, or if
@@ -181,9 +181,9 @@ func getKMSProvider(config map[string]interface{}) (string, error) {
 // KMSInitializerArgs get passed to KMSInitializerFunc when a new instance of a
 // KMSProvider is initialized.
 type KMSInitializerArgs struct {
-	ID, Tenant string
-	Config     map[string]interface{}
-	Secrets    map[string]string
+	Tenant  string
+	Config  map[string]interface{}
+	Secrets map[string]string
 }
 
 // KMSInitializerFunc gets called when the KMSProvider needs to be
@@ -225,7 +225,10 @@ func RegisterKMSProvider(provider KMSProvider) bool {
 	return true
 }
 
-func (kf *kmsProviderList) buildKMS(kmsID, tenant string, config map[string]interface{}, secrets map[string]string) (EncryptionKMS, error) {
+// buildKMS creates a new KMSProvider instance, based on the configuration that
+// was passed. This uses getKMSProvider() internally to identify the
+// KMSProvider to instantiate.
+func (kf *kmsProviderList) buildKMS(tenant string, config map[string]interface{}, secrets map[string]string) (EncryptionKMS, error) {
 	providerName, err := getKMSProvider(config)
 	if err != nil {
 		return nil, err
@@ -238,7 +241,6 @@ func (kf *kmsProviderList) buildKMS(kmsID, tenant string, config map[string]inte
 	}
 
 	return provider.Initializer(KMSInitializerArgs{
-		ID:      kmsID,
 		Tenant:  tenant,
 		Config:  config,
 		Secrets: secrets,

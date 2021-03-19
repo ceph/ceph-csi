@@ -199,7 +199,7 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	}
 
 	kms := &VaultTokensKMS{}
-	err = kms.initConnection(args.ID, args.Config)
+	err = kms.initConnection(args.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
 	}
@@ -263,7 +263,7 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 // secrets. This method can be called multiple times, i.e. to override
 // configuration options from tenants.
 func (kms *VaultTokensKMS) parseConfig(config map[string]interface{}) error {
-	err := kms.initConnection(kms.EncryptionKMSID, config)
+	err := kms.initConnection(config)
 	if err != nil {
 		return err
 	}

@@ -71,10 +71,9 @@ Example JSON structure in the KMS config is,
 */
 
 type vaultConnection struct {
-	EncryptionKMSID string
-	secrets         loss.Secrets
-	vaultConfig     map[string]interface{}
-	keyContext      map[string]string
+	secrets     loss.Secrets
+	vaultConfig map[string]interface{}
+	keyContext  map[string]string
 }
 
 type VaultKMS struct {
@@ -114,11 +113,9 @@ func setConfigString(option *string, config map[string]interface{}, key string) 
 // vc.connectVault().
 //
 // nolint:gocyclo // iterating through many config options, not complex at all.
-func (vc *vaultConnection) initConnection(kmsID string, config map[string]interface{}) error {
+func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 	vaultConfig := make(map[string]interface{})
 	keyContext := make(map[string]string)
-
-	vc.EncryptionKMSID = kmsID
 
 	firstInit := (vc.vaultConfig == nil)
 
@@ -268,7 +265,7 @@ var _ = RegisterKMSProvider(KMSProvider{
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.
 func initVaultKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	kms := &VaultKMS{}
-	err := kms.initConnection(args.ID, args.Config)
+	err := kms.initConnection(args.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
 	}
@@ -326,11 +323,6 @@ func initVaultKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	}
 
 	return kms, nil
-}
-
-// GetID is returning correlation ID to KMS configuration.
-func (vc *vaultConnection) GetID() string {
-	return vc.EncryptionKMSID
 }
 
 // FetchDEK returns passphrase from Vault. The passphrase is stored in a

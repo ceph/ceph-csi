@@ -208,7 +208,7 @@ func (ri *rbdImage) configureEncryption(kmsID string, credentials map[string]str
 		return err
 	}
 
-	ri.encryption, err = util.NewVolumeEncryption(kms)
+	ri.encryption, err = util.NewVolumeEncryption(kmsID, kms)
 
 	// if the KMS can not store the DEK itself, we'll store it in the
 	// metadata of the RBD image itself

@@ -58,11 +58,6 @@ func initSecretsKMS(secrets map[string]string) (EncryptionKMS, error) {
 	return SecretsKMS{passphrase: passphraseValue}, nil
 }
 
-// GetID is returning ID representing default KMS `default`.
-func (kms SecretsKMS) GetID() string {
-	return defaultKMSType
-}
-
 // Destroy frees all used resources.
 func (kms SecretsKMS) Destroy() {
 	// nothing to do
@@ -89,8 +84,6 @@ func (kms SecretsKMS) RemoveDEK(key string) error {
 // Data-Encryption-Key (DEK) in the metadata of the volume.
 type SecretsMetadataKMS struct {
 	SecretsKMS
-
-	encryptionKMSID string
 }
 
 var _ = RegisterKMSProvider(KMSProvider{
@@ -114,14 +107,8 @@ func initSecretsMetadataKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 
 	smKMS := SecretsMetadataKMS{}
 	smKMS.SecretsKMS = sKMS
-	smKMS.encryptionKMSID = args.ID
 
 	return smKMS, nil
-}
-
-// GetID is returning ID representing the SecretsMetadataKMS.
-func (kms SecretsMetadataKMS) GetID() string {
-	return kms.encryptionKMSID
 }
 
 // Destroy frees all used resources.
