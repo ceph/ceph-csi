@@ -958,7 +958,7 @@ var _ = Describe("RBD", func() {
 			By("create ROX PVC clone and mount it to multiple pods", func() {
 				// snapshot beta is only supported from v1.17+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					err := createRBDSnapshotClass(f)
+					err := createRBDSnapshotClass(f, nil)
 					if err != nil {
 						e2elog.Failf("failed to create storageclass with error %v", err)
 					}
@@ -1093,7 +1093,7 @@ var _ = Describe("RBD", func() {
 				if !k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
 					Skip("pvc restore is only supported from v1.17+")
 				}
-				err := createRBDSnapshotClass(f)
+				err := createRBDSnapshotClass(f, nil)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -1298,7 +1298,7 @@ var _ = Describe("RBD", func() {
 				// Create a PVC clone and bind it to an app within the namespace
 				// snapshot beta is only supported from v1.17+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					err = createRBDSnapshotClass(f)
+					err = createRBDSnapshotClass(f, nil)
 					if err != nil {
 						e2elog.Failf("failed to create storageclass with error %v", err)
 					}

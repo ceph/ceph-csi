@@ -112,7 +112,7 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	})
 }
 
-func createRBDSnapshotClass(f *framework.Framework) error {
+func createRBDSnapshotClass(f *framework.Framework, param map[string]string) error {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "snapshotclass.yaml")
 	sc := getSnapshotClass(scPath)
 
@@ -128,6 +128,9 @@ func createRBDSnapshotClass(f *framework.Framework) error {
 	}
 	fsID = strings.Trim(fsID, "\n")
 	sc.Parameters["clusterID"] = fsID
+	for k, v := range param {
+		sc.Parameters[k] = v
+	}
 	sclient, err := newSnapshotClient()
 	if err != nil {
 		return err

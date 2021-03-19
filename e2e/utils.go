@@ -661,7 +661,7 @@ func validatePVCSnapshot(totalCount int, pvcPath, appPath, snapshotPath, pvcClon
 	chErrs := make([]error, totalCount)
 	wg.Add(totalCount)
 
-	err := createRBDSnapshotClass(f)
+	err := createRBDSnapshotClass(f, nil)
 	if err != nil {
 		e2elog.Failf("failed to create storageclass with error %v", err)
 	}
