@@ -20,6 +20,7 @@ ENV GOPATH=/go
 
 # install dependencies
 RUN dnf -y install \
+        git \
         golang \
         make \
         librados-devel \
@@ -29,6 +30,7 @@ RUN dnf -y install \
     && true
 
 # compile and link the executable
+COPY . /go/src/github.com/ceph/ceph-csi
 RUN cd /go/src/github.com/ceph/ceph-csi && make
 
 # final container to use in deployments
