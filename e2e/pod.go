@@ -107,24 +107,29 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 
 func getCommandInPodOpts(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (framework.ExecOptions, error) {
 	cmd := []string{"/bin/sh", "-c", c}
-	podList, err := f.PodClientNS(ns).List(context.TODO(), *opt)
-	framework.ExpectNoError(err)
-	if len(podList.Items) == 0 {
-		return framework.ExecOptions{}, errors.New("podlist is empty")
-	}
+	pods, err := listPods(f, ns, opt)
 	if err != nil {
 		return framework.ExecOptions{}, err
 	}
 	return framework.ExecOptions{
 		Command:            cmd,
-		PodName:            podList.Items[0].Name,
+		PodName:            pods[0].Name,
 		Namespace:          ns,
-		ContainerName:      podList.Items[0].Spec.Containers[0].Name,
+		ContainerName:      pods[0].Spec.Containers[0].Name,
 		Stdin:              nil,
 		CaptureStdout:      true,
 		CaptureStderr:      true,
 		PreserveWhitespace: true,
 	}, nil
+}
+
+// listPods returns slice of pods matching given ListOptions and namespace.
+func listPods(f *framework.Framework, ns string, opt *metav1.ListOptions) ([]v1.Pod, error) {
+	podList, err := f.PodClientNS(ns).List(context.TODO(), *opt)
+	if len(podList.Items) == 0 {
+		return podList.Items, fmt.Errorf("podlist for label '%s' in namespace %s is empty", opt.LabelSelector, ns)
+	}
+	return podList.Items, err
 }
 
 func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string, error) {
