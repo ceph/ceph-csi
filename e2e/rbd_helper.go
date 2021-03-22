@@ -30,11 +30,14 @@ func rbdOptions(pool string) string {
 	return "--pool=" + pool
 }
 
-func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOptions, parameters map[string]string, policy v1.PersistentVolumeReclaimPolicy) error {
+func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, name string, scOptions, parameters map[string]string, policy v1.PersistentVolumeReclaimPolicy) error {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
 	if err != nil {
 		return nil
+	}
+	if name != "" {
+		sc.Name = name
 	}
 	sc.Parameters["pool"] = defaultRBDPool
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
