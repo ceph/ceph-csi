@@ -94,6 +94,8 @@ nodeplugin:
 
   affinity: {}
 
+  priorityClassName: ""
+
   # Set to true to enable Ceph Kernel clients
   # on kernel < 4.17 which support quotas
   # forcecephkernelclient: true

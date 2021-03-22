@@ -197,3 +197,6 @@ spec:
       tolerations:
 {{ toYaml .Values.nodeplugin.tolerations | indent 8 -}}
 {{- end -}}
+{{- if .Values.nodeplugin.priorityClassName }}
+      priorityClassName: {{ .Values.nodeplugin.priorityClassName }}
+{{- end -}}
