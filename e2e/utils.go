@@ -26,8 +26,8 @@ import (
 
 /* #nosec:G101, values not credententials, just a reference to the location.*/
 const (
-	defaultNs = "default"
-
+	defaultNs     = "default"
+	defaultSCName = ""
 	// vaultBackendPath is the default VAULT_BACKEND_PATH for secrets
 	vaultBackendPath = "secret/"
 	// vaultPassphrasePath is an advanced configuration option, only
@@ -975,7 +975,7 @@ func validateController(f *framework.Framework, pvcPath, appPath, scPath string)
 	expandSize := "10Gi"
 	var err error
 	// create storageclass with retain
-	err = createRBDStorageClass(f.ClientSet, f, nil, nil, retainPolicy)
+	err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, retainPolicy)
 	if err != nil {
 		return fmt.Errorf("failed to create storageclass with error %v", err)
 	}
@@ -1007,7 +1007,7 @@ func validateController(f *framework.Framework, pvcPath, appPath, scPath string)
 	if err != nil {
 		return fmt.Errorf("failed to delete storageclass with error %v", err)
 	}
-	err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+	err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 	if err != nil {
 		return fmt.Errorf("failed to create storageclass with error %v", err)
 	}
