@@ -7,6 +7,12 @@
 # that gets build not necessary compatible with the Ceph version on other
 # distributions. Hence the need to rebuild the executable on the OS that will
 # be used as deployment image.
+#
+# Ideally we use a base container that is very closely like the Red Hat Ceph
+# Storage (RHCS) product. Unfortunately those container images are not publicly
+# available, so we will use the latest Ceph version that is available. If we
+# settle on a particular Ceph version, we might be missing out on backports
+# that the RHCS product contains (and compiling might fail).
 
 FROM docker.io/ceph/daemon-base:latest AS builder
 
@@ -14,6 +20,7 @@ ENV GOPATH=/go
 
 # install dependencies
 RUN dnf -y install \
+        git \
         golang \
         make \
         librados-devel \
@@ -23,6 +30,7 @@ RUN dnf -y install \
     && true
 
 # compile and link the executable
+COPY . /go/src/github.com/ceph/ceph-csi
 RUN cd /go/src/github.com/ceph/ceph-csi && make
 
 # final container to use in deployments
