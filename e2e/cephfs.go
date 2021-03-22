@@ -24,6 +24,7 @@ var (
 	cephfsNodePluginPSP   = "csi-nodeplugin-psp.yaml"
 	cephfsDeploymentName  = "csi-cephfsplugin-provisioner"
 	cephfsDeamonSetName   = "csi-cephfsplugin"
+	cephfsContainerName   = "csi-cephfsplugin"
 	cephfsDirPath         = "../deploy/cephfs/kubernetes/"
 	cephfsExamplePath     = "../examples/cephfs/"
 	subvolumegroup        = "e2e"
@@ -424,6 +425,23 @@ var _ = Describe("cephfs", func() {
 				err := checkDataPersist(pvcPath, appPath, f)
 				if err != nil {
 					e2elog.Failf("failed to check data persist in pvc with error %v", err)
+				}
+			})
+
+			By("Create PVC, bind it to an app, unmount volume and check app deletion", func() {
+				pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC or application with error %v", err)
+				}
+
+				err = unmountCephFSVolume(f, app.Name, pvc.Name)
+				if err != nil {
+					e2elog.Failf("failed to unmount volume with error %v", err)
+				}
+
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC or application with error %v", err)
 				}
 			})
 
