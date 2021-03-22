@@ -1,0 +1,35 @@
+# This Containerfile is used by openshift-ci to build the image, and push it to
+# quay.io/ocs-dev/ceph-csi
+#
+# This image is based on the latest stable Ceph version, which uses CentOS.
+#
+# Note that other tests run on the latest Fedora release. That makes the binary
+# that gets build not necessary compatible with the Ceph version on other
+# distributions. Hence the need to rebuild the executable on the OS that will
+# be used as deployment image.
+
+FROM docker.io/ceph/daemon-base:latest AS builder
+
+ENV GOPATH=/go
+
+# install dependencies
+RUN dnf -y install \
+        golang \
+        make \
+        librados-devel \
+        librbd-devel \
+    && dnf -y update \
+    && dnf clean all \
+    && true
+
+# compile and link the executable
+RUN cd /go/src/github.com/ceph/ceph-csi && make
+
+# final container to use in deployments
+FROM docker.io/ceph/daemon-base:latest
+
+COPY --from=builder /go/src/github.com/ceph/ceph-csi/_output/cephcsi /usr/local/bin/cephcsi
+
+RUN chmod +x /usr/local/bin/cephcsi
+
+ENTRYPOINT ["/usr/local/bin/cephcsi"]
