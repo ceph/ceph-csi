@@ -123,6 +123,43 @@ func getCommandInPodOpts(f *framework.Framework, c, ns string, opt *metav1.ListO
 	}, nil
 }
 
+// execCommandInDaemonsetPod executes commands inside given container of a daemonset pod on a particular node.
+func execCommandInDaemonsetPod(f *framework.Framework, c, daemonsetName, nodeName, containerName, ns string) (string, string, error) {
+	selector, err := getDaemonSetLabelSelector(f, ns, daemonsetName)
+	if err != nil {
+		return "", "", err
+	}
+
+	opt := &metav1.ListOptions{
+		LabelSelector: selector,
+	}
+	pods, err := listPods(f, ns, opt)
+	if err != nil {
+		return "", "", err
+	}
+
+	podName := ""
+	for i := range pods {
+		if pods[i].Spec.NodeName == nodeName {
+			podName = pods[i].Name
+		}
+	}
+	if podName == "" {
+		return "", "", fmt.Errorf("%s daemonset pod on node %s in namespace %s not found", daemonsetName, nodeName, ns)
+	}
+
+	cmd := []string{"/bin/sh", "-c", c}
+	podOpt := framework.ExecOptions{
+		Command:       cmd,
+		Namespace:     ns,
+		PodName:       podName,
+		ContainerName: containerName,
+		CaptureStdout: true,
+		CaptureStderr: true,
+	}
+	return f.ExecWithOptions(podOpt)
+}
+
 // listPods returns slice of pods matching given ListOptions and namespace.
 func listPods(f *framework.Framework, ns string, opt *metav1.ListOptions) ([]v1.Pod, error) {
 	podList, err := f.PodClientNS(ns).List(context.TODO(), *opt)
