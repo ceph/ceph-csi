@@ -101,6 +101,26 @@ func createCephfsSecret(f *framework.Framework, secretName, userName, userKey st
 	return err
 }
 
+// unmountCephFSVolume unmounts a cephFS volume mounted on a pod.
+func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error {
+	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
+	if err != nil {
+		e2elog.Logf("Error occurred getting pod %s in namespace %s", appName, f.UniqueName)
+		return err
+	}
+	pvc, err := f.ClientSet.CoreV1().PersistentVolumeClaims(f.UniqueName).Get(context.TODO(), pvcName, metav1.GetOptions{})
+	if err != nil {
+		e2elog.Logf("Error occurred getting PVC %s in namespace %s", pvcName, f.UniqueName)
+		return err
+	}
+	cmd := fmt.Sprintf("umount /var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount", pod.UID, pvc.Spec.VolumeName)
+	_, stdErr, err := execCommandInDaemonsetPod(f, cmd, cephfsDeamonSetName, pod.Spec.NodeName, cephfsContainerName, cephCSINamespace)
+	if stdErr != "" {
+		e2elog.Logf("StdErr occurred: %s", stdErr)
+	}
+	return err
+}
+
 func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
