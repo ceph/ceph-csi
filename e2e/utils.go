@@ -25,8 +25,13 @@ import (
 
 /* #nosec:G101, values not credententials, just a reference to the location.*/
 const (
-	defaultNs     = "default"
-	vaultSecretNs = "/secret/ceph-csi/"
+	defaultNs = "default"
+
+	// vaultBackendPath is the default VAULT_BACKEND_PATH for secrets
+	vaultBackendPath = "secret/"
+	// vaultPassphrasePath is an advanced configuration option, only
+	// available for the VaultKMS (not VaultTokensKMS) provider.
+	vaultPassphrasePath = "ceph-csi/"
 
 	rookToolBoxPodLabel = "app=rook-ceph-tools"
 	rbdmountOptions     = "mountOptions"
@@ -207,9 +212,15 @@ func getMountType(appName, appNamespace, mountPath string, f *framework.Framewor
 //  * issue get request for particular key
 // resulting in stdOut (first entry in tuple) - output that contains the key
 // or stdErr (second entry in tuple) - error getting the key.
-func readVaultSecret(key string, f *framework.Framework) (string, string) {
+func readVaultSecret(key string, usePassphrasePath bool, f *framework.Framework) (string, string) {
+	extraPath := vaultPassphrasePath
+	if !usePassphrasePath {
+		extraPath = ""
+	}
+
 	loginCmd := fmt.Sprintf("vault login -address=%s sample_root_token_id > /dev/null", vaultAddr)
-	readSecret := fmt.Sprintf("vault kv get -address=%s -field=data %s%s", vaultAddr, vaultSecretNs, key)
+	readSecret := fmt.Sprintf("vault kv get -address=%s -field=data %s%s%s",
+		vaultAddr, vaultBackendPath, extraPath, key)
 	cmd := fmt.Sprintf("%s && %s", loginCmd, readSecret)
 	opt := metav1.ListOptions{
 		LabelSelector: "app=vault",
