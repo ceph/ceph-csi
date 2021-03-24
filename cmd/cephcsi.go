@@ -30,7 +30,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
 
-	klog "k8s.io/klog/v2"
+	"k8s.io/klog/v2"
 )
 
 const (

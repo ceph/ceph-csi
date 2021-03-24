@@ -29,7 +29,7 @@ import (
 	"github.com/kube-storage/spec/lib/go/replication"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
-	klog "k8s.io/klog/v2"
+	"k8s.io/klog/v2"
 
 	"github.com/ceph/ceph-csi/internal/util"
 )
