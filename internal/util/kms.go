@@ -204,6 +204,10 @@ type KMSInitializerArgs struct {
 	Tenant  string
 	Config  map[string]interface{}
 	Secrets map[string]string
+	// Namespace contains the Kubernetes Namespace where the Ceph-CSI Pods
+	// are running. This is an optional option, and might be unset when the
+	// KMSProvider.Initializer is called.
+	Namespace string
 }
 
 // KMSInitializerFunc gets called when the KMSProvider needs to be
@@ -260,11 +264,18 @@ func (kf *kmsProviderList) buildKMS(tenant string, config map[string]interface{}
 			providerName)
 	}
 
-	return provider.Initializer(KMSInitializerArgs{
+	kmsInitArgs := KMSInitializerArgs{
 		Tenant:  tenant,
 		Config:  config,
 		Secrets: secrets,
-		Namespace: getPodNamespace(),
-		ConfigMap: getKMSConfigMapName(),
-	})
+	}
+
+	// Namespace is an optional parameter, it may not be set and is not
+	// required for all KMSProviders
+	ns, err := getPodNamespace()
+	if err == nil {
+		kmsInitArgs.Namespace = ns
+	}
+
+	return provider.Initializer(kmsInitArgs)
 }
