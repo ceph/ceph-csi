@@ -35,5 +35,11 @@ data:
     {
       "encryptionKMSType": "metadata"
     }
+  aws-metadata-test: |-
+    {
+      "KMS_PROVIDER": "aws-metadata",
+      "KMS_SECRET_NAME": "ceph-csi-aws-credentials",
+      "AWS_REGION": "us-west-2"
+    }
 metadata:
   name: csi-kms-connection-details
