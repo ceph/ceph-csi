@@ -1,0 +1,39 @@
+#
+# csi-kms-connection-details is an alternative option to configure KMS
+# providers for encrypted volume support.
+# This ConfigMap can be located in the Kubernetes Namespace where Ceph-CSI is
+# deployed. In case the ceph-csi-encryption-kms-config which provides a
+# `config.json` is not mapped into the csi-rbdplugin container, the
+# csi-kms-connection-details ConfigMap will be used instead.
+#
+# The configuration values follow the common key/value contents. The key for
+# each KMS provider should be used as the value for `encryptionKMSID` in the
+# StorageClass.
+#
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  vault-test: |-
+    {
+      "encryptionKMSType": "vault",
+      "vaultAddress": "http://vault.default.svc.cluster.local:8200",
+      "vaultAuthPath": "/v1/auth/kubernetes/login",
+      "vaultRole": "csi-kubernetes",
+      "vaultPassphraseRoot": "/v1/secret",
+      "vaultPassphrasePath": "ceph-csi/",
+      "vaultCAVerify": "false"
+    }
+  vault-tokens-test: |-
+    {
+      "KMS_PROVIDER": "vaulttokens",
+      "VAULT_ADDR": "http://vault.default.svc.cluster.local:8200",
+      "VAULT_BACKEND_PATH": "secret",
+      "VAULT_SKIP_VERIFY": "true"
+    }
+  secrets-metadata-test: |-
+    {
+      "encryptionKMSType": "metadata"
+    }
+metadata:
+  name: csi-kms-connection-details
