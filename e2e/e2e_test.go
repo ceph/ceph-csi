@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/kubernetes/test/e2e/framework"
-	config "k8s.io/kubernetes/test/e2e/framework/config"
+	"k8s.io/kubernetes/test/e2e/framework/config"
 )
 
 func init() {
