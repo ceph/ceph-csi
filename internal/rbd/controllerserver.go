@@ -690,12 +690,6 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if rbdVol.isEncrypted() {
-		if err = rbdVol.encryption.RemoveDEK(rbdVol.VolID); err != nil {
-			util.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", rbdVol.VolID, err)
-		}
-	}
-
 	return &csi.DeleteVolumeResponse{}, nil
 }
 

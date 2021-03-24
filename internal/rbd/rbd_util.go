@@ -475,6 +475,12 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 
 	util.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
 
+	if pOpts.isEncrypted() {
+		if err = pOpts.encryption.RemoveDEK(pOpts.VolID); err != nil {
+			util.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", pOpts.VolID, err)
+		}
+	}
+
 	err = pOpts.openIoctx()
 	if err != nil {
 		return err
