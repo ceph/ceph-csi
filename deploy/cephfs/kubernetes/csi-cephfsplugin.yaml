@@ -55,6 +55,7 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=cephfs.csi.ceph.com"
+            - "--enableprofiling=false"
             # If topology based provisioning is desired, configure required
             # node labels representing the nodes topology domain
             # and pass the label names below, for CSI to consume and advertise

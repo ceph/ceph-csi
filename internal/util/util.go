@@ -88,6 +88,7 @@ type Config struct {
 	PoolTimeout       time.Duration // probe timeout in seconds
 	EnableGRPCMetrics bool          // option to enable grpc metrics
 
+	EnableProfiling    bool // flag to enable profiling
 	IsControllerServer bool // if set to true start provisoner server
 	IsNodeServer       bool // if set to true start node server
 	Version            bool // cephcsi version

@@ -136,6 +136,9 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
+{{- if .Values.provisioner.profiling.enabled }}
+            - "--enableprofiling={{ .Values.provisioner.profiling.enabled }}"
+{{- end }}
           env:
             - name: POD_IP
               valueFrom:

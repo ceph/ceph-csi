@@ -164,5 +164,12 @@ func (fs *Driver) Run(conf *util.Config) {
 		util.WarningLogMsg("EnableGRPCMetrics is deprecated")
 		go util.StartMetricsServer(conf)
 	}
+	if conf.EnableProfiling {
+		if !conf.EnableGRPCMetrics {
+			go util.StartMetricsServer(conf)
+		}
+		util.DebugLogMsg("Registering profiling handler")
+		go util.EnableProfiling()
+	}
 	server.Wait()
 }

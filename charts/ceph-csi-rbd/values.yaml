@@ -85,6 +85,10 @@ nodeplugin:
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
 
+  profiling:
+    # enable profiling to check for memory leaks
+    enabled: false
+
   registrar:
     image:
       repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
@@ -168,6 +172,10 @@ provisioner:
 
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
+
+  profiling:
+    # enable profiling to check for memory leaks
+    enabled: false
 
   provisioner:
     image:
