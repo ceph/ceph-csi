@@ -120,6 +120,7 @@ spec:
             - "--v=5"
             - "--drivername=cephfs.csi.ceph.com"
             - "--pidlimit=-1"
+            - "--enableprofiling=false"
           env:
             - name: POD_IP
               valueFrom:

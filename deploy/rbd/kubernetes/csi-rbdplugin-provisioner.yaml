@@ -125,6 +125,7 @@ spec:
             - "--pidlimit=-1"
             - "--rbdhardmaxclonedepth=8"
             - "--rbdsoftmaxclonedepth=4"
+            - "--enableprofiling=false"
           env:
             - name: POD_IP
               valueFrom:

@@ -74,6 +74,9 @@ nodeplugin:
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
 
+  profiling:
+    enabled: false
+
   registrar:
     image:
       repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
@@ -143,6 +146,9 @@ provisioner:
 
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
+
+  profiling:
+    enabled: false
 
   provisioner:
     image:
