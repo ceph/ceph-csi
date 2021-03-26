@@ -58,6 +58,23 @@ OpenShift CI (Prow) is used for testing the changes that land in this GitHub
 repository. The configuration of the jobs can be found in the [OpenShift
 Release repository][ocp-release].
 
+### Container Images
+
+Images that have been built from a PR that was merged will get automatically
+pushed into [the Qoay.io registry][quay-ceph-csi]. The configuration for the
+mirroring job is part of the [OpenShift Release
+repository][ocp-release-mirror].
+
+When a new release is planned, the mirroring will need to have the new branch
+and tags listed as well.
+
+Consumption of these images does not require any permissions, the images can be
+pulled with podman like:
+
+```
+podman pull quay.io/ocs-dev/ceph-csi:latest
+```
+
 ### Bugzilla Plugin
 
 PRs that need a Bugzilla reference are handled by the Bugzilla Plugin which
@@ -69,4 +86,6 @@ for the new branch as well.
 [upstream-ceph-csi]: https://github.com/ceph/ceph-csi
 [sync-pr]: https://github.com/openshift/ceph-csi/compare/master...ceph:devel
 [ocp-release]: https://github.com/openshift/release/tree/master/ci-operator/config/openshift/ceph-csi
+[ocp-release-mirror]: https://github.com/openshift/release/tree/master/core-services/image-mirroring/ceph-csi
+[quay-ceph-csi]: https://quay.io/repository/ocs-dev/ceph-csi?tab=tags
 [bz-config]: https://github.com/openshift/release/blob/master/core-services/prow/02_config/_plugins.yaml
