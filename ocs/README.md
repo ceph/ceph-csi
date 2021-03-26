@@ -23,6 +23,7 @@ changes required that are not suitable for the upstream Ceph-CSI project.
 1. `OWNERS` file: added with maintainers for reviewing and approving PRs
 1. `ocs/` directory: additional files (like this `README.md`)
 1. `ocs/Containerfile`: used to build the quay.io/ocs-dev/ceph-csi image
+1. `.github/PULL_REQUEST_TEMPLATE/00_ocs-*`: guidance for creating PRs
 
 ## Continious Integration
 
