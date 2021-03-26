@@ -52,11 +52,20 @@ fuse client or rbd-nbd as of now.
 This guide will walk you through the steps to upgrade the software in a cluster
 from v3.0 to v3.1
 
-### snapshot-controller and snapshot Beta CRD
+### Snapshot-controller
 
 Its kubernetes distributor responsibility to install new snapshot
-controller and snapshot beta CRD. more info can be found
+controller and snapshot CRD. more info can be found
 [here](https://github.com/kubernetes-csi/external-snapshotter/tree/master#usage)
+
+#### Snapshot API version support matrix
+
+| Snapshot API version | Kubernetes Version   | Snapshot-Controller + CRDs Version | Sidecar Version        |
+| -------------------- | -------------------- | ---------------------------------- | ---------------------- |
+| v1beta1              | v1.17 =< k8s < v1.20 | v2.x =< snapshot-controller < v4.x | sidecar >= v2.x        |
+| v1                   | k8s >= v1.20         | snapshot-controller >= v4.x        | sidecar >= v2.x        |
+
+**Note:** We recommend to use {sidecar, controller, crds} of same version
 
 ## Upgrading from v1.2 to v2.0
 

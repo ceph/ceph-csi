@@ -26,9 +26,10 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/kube-storage/spec/lib/go/replication"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
-	klog "k8s.io/klog/v2"
+	"k8s.io/klog/v2"
 
 	"github.com/ceph/ceph-csi/internal/util"
 )
@@ -36,13 +37,21 @@ import (
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces.
 type NonBlockingGRPCServer interface {
 	// Start services at the endpoint
-	Start(endpoint, hstOptions string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, metrics bool)
+	Start(endpoint, hstOptions string, srv Servers, metrics bool)
 	// Waits for the service to stop
 	Wait()
 	// Stops the service gracefully
 	Stop()
 	// Stops the service forcefully
 	ForceStop()
+}
+
+// Servers holds the list of servers.
+type Servers struct {
+	IS csi.IdentityServer
+	CS csi.ControllerServer
+	NS csi.NodeServer
+	RS replication.ControllerServer
 }
 
 // NewNonBlockingGRPCServer return non-blocking GRPC.
@@ -57,9 +66,9 @@ type nonBlockingGRPCServer struct {
 }
 
 // Start start service on endpoint.
-func (s *nonBlockingGRPCServer) Start(endpoint, hstOptions string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, metrics bool) {
+func (s *nonBlockingGRPCServer) Start(endpoint, hstOptions string, srv Servers, metrics bool) {
 	s.wg.Add(1)
-	go s.serve(endpoint, hstOptions, ids, cs, ns, metrics)
+	go s.serve(endpoint, hstOptions, srv, metrics)
 }
 
 // Wait blocks until the WaitGroup counter.
@@ -77,7 +86,7 @@ func (s *nonBlockingGRPCServer) ForceStop() {
 	s.server.Stop()
 }
 
-func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, ids csi.IdentityServer, cs csi.ControllerServer, ns csi.NodeServer, metrics bool) {
+func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, srv Servers, metrics bool) {
 	proto, addr, err := parseEndpoint(endpoint)
 	if err != nil {
 		klog.Fatal(err.Error())
@@ -106,15 +115,19 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, ids csi.Ident
 	server := grpc.NewServer(opts...)
 	s.server = server
 
-	if ids != nil {
-		csi.RegisterIdentityServer(server, ids)
+	if srv.IS != nil {
+		csi.RegisterIdentityServer(server, srv.IS)
 	}
-	if cs != nil {
-		csi.RegisterControllerServer(server, cs)
+	if srv.CS != nil {
+		csi.RegisterControllerServer(server, srv.CS)
 	}
-	if ns != nil {
-		csi.RegisterNodeServer(server, ns)
+	if srv.NS != nil {
+		csi.RegisterNodeServer(server, srv.NS)
 	}
+	if srv.RS != nil {
+		replication.RegisterControllerServer(server, srv.RS)
+	}
+
 	util.DefaultLog("Listening for connections on address: %#v", listener.Addr())
 	if metrics {
 		ho := strings.Split(hstOptions, ",")

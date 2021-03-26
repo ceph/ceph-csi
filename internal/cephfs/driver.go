@@ -152,7 +152,14 @@ func (fs *Driver) Run(conf *util.Config) {
 	}
 
 	server := csicommon.NewNonBlockingGRPCServer()
-	server.Start(conf.Endpoint, conf.HistogramOption, fs.is, fs.cs, fs.ns, conf.EnableGRPCMetrics)
+	srv := csicommon.Servers{
+		IS: fs.is,
+		CS: fs.cs,
+		NS: fs.ns,
+		// passing nil for replication server as cephFS does not support mirroring.
+		RS: nil,
+	}
+	server.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {
 		util.WarningLogMsg("EnableGRPCMetrics is deprecated")
 		go util.StartMetricsServer(conf)

@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
+	snapapi "github.com/kubernetes-csi/external-snapshotter/v2/pkg/apis/volumesnapshot/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -98,13 +101,34 @@ func createCephfsSecret(f *framework.Framework, secretName, userName, userKey st
 	return err
 }
 
+// unmountCephFSVolume unmounts a cephFS volume mounted on a pod.
+func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error {
+	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
+	if err != nil {
+		e2elog.Logf("Error occurred getting pod %s in namespace %s", appName, f.UniqueName)
+		return err
+	}
+	pvc, err := f.ClientSet.CoreV1().PersistentVolumeClaims(f.UniqueName).Get(context.TODO(), pvcName, metav1.GetOptions{})
+	if err != nil {
+		e2elog.Logf("Error occurred getting PVC %s in namespace %s", pvcName, f.UniqueName)
+		return err
+	}
+	cmd := fmt.Sprintf("umount /var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount", pod.UID, pvc.Spec.VolumeName)
+	_, stdErr, err := execCommandInDaemonsetPod(f, cmd, cephfsDeamonSetName, pod.Spec.NodeName, cephfsContainerName, cephCSINamespace)
+	if stdErr != "" {
+		e2elog.Logf("StdErr occurred: %s", stdErr)
+	}
+	return err
+}
+
 func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
 		return err
 	}
 
-	_, stdErr, err := execCommandInToolBoxPod(f, "ceph fs subvolume rm myfs "+imageData.imageName+" "+subvolumegroup, rookNamespace)
+	cmd := fmt.Sprintf("ceph fs subvolume rm %s %s %s", fileSystemName, imageData.imageName, subvolumegroup)
+	_, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if err != nil {
 		return err
 	}
@@ -146,4 +170,44 @@ func getSubvolumePath(f *framework.Framework, filesystem, subvolgrp, subvolume s
 		return "", fmt.Errorf("failed to getpath for subvolume %s with error %s", subvolume, stdErr)
 	}
 	return strings.TrimSpace(stdOut), nil
+}
+
+func getSnapName(snapNamespace, snapName string) (string, error) {
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return "", err
+	}
+	snap, err := sclient.SnapshotV1beta1().VolumeSnapshots(snapNamespace).Get(context.TODO(), snapName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	sc, err := sclient.SnapshotV1beta1().VolumeSnapshotContents().Get(context.TODO(), *snap.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	snapIDRegex := regexp.MustCompile(`(\w+\-?){5}$`)
+	snapID := snapIDRegex.FindString(*sc.Status.SnapshotHandle)
+	snapshotName := fmt.Sprintf("csi-snap-%s", snapID)
+	e2elog.Logf("snapshotName= %s", snapshotName)
+	return snapshotName, nil
+}
+
+func deleteBackingCephFSSubvolumeSnapshot(f *framework.Framework, pvc *v1.PersistentVolumeClaim, snap *snapapi.VolumeSnapshot) error {
+	snapshotName, err := getSnapName(snap.Namespace, snap.Name)
+	if err != nil {
+		return err
+	}
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+	cmd := fmt.Sprintf("ceph fs subvolume snapshot rm %s %s %s %s", fileSystemName, imageData.imageName, snapshotName, subvolumegroup)
+	_, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+	if err != nil {
+		return err
+	}
+	if stdErr != "" {
+		return fmt.Errorf("error deleting backing snapshot %s %v", snapshotName, stdErr)
+	}
+	return nil
 }

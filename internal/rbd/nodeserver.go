@@ -291,7 +291,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	util.DebugLog(ctx, "rbd image: %s/%s was successfully mapped at %s\n",
 		req.GetVolumeId(), volOptions.Pool, devicePath)
 
-	if volOptions.Encrypted {
+	if volOptions.isEncrypted() {
 		devicePath, err = ns.processEncryptedDevice(ctx, volOptions, devicePath)
 		if err != nil {
 			return transaction, err
@@ -649,6 +649,8 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 			util.ExtendedLog(ctx, "failed to unmount targetPath: %s with error: %v", stagingTargetPath, err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+		util.DebugLog(ctx, "successfully unmounted volume (%s) from staging path (%s)",
+			req.GetVolumeId(), stagingTargetPath)
 	}
 
 	if err = os.Remove(stagingTargetPath); err != nil {
@@ -687,8 +689,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	util.DebugLog(ctx, "successfully unmounted volume (%s) from staging path (%s)",
-		req.GetVolumeId(), stagingTargetPath)
+	util.DebugLog(ctx, "successfully unmapped volume (%s)", req.GetVolumeId())
 
 	if err = cleanupRBDImageMetadataStash(stagingParentPath); err != nil {
 		util.ErrorLog(ctx, "failed to cleanup image metadata stash (%v)", err)

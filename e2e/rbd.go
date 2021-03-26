@@ -438,12 +438,54 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("create a PVC and bind it to an app with encrypted RBD volume with SecretsMetadataKMS", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				scOpts := map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "secrets-metadata-test",
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, scOpts, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
+				if err != nil {
+					e2elog.Failf("failed to validate encrypted pvc with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0)
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+			})
+
+			// TODO: enable this test when we support rbd-nbd mounter in E2E.
+			// nbd module should be present on the host machine to run use the
+			// rbd-nbd mounter.
+
+			// By("create a PVC and Bind it to an app with journaling/exclusive-lock image-features and rbd-nbd mounter", func() {
+			// 	deleteResource(rbdExamplePath + "storageclass.yaml")
+			// 	createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"imageFeatures": "layering,journaling,exclusive-lock", "mounter": "rbd-nbd"})
+			// 	validatePVCAndAppBinding(pvcPath, appPath, f)
+			// 	deleteResource(rbdExamplePath + "storageclass.yaml")
+			// 	createRBDStorageClass(f.ClientSet, f, nil, make(map[string]string))
+			// })
+
 			By("create a PVC clone and bind it to an app", func() {
 				// snapshot beta is only supported from v1.17+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
 					var wg sync.WaitGroup
 					totalCount := 10
 					wgErrs := make([]error, totalCount)
+					chErrs := make([]error, totalCount)
 					wg.Add(totalCount)
 					err := createRBDSnapshotClass(f)
 					if err != nil {
@@ -453,11 +495,27 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						e2elog.Failf("failed to load PVC with error %v", err)
 					}
-
+					label := make(map[string]string)
 					pvc.Namespace = f.UniqueName
 					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to create PVC with error %v", err)
+					}
+					app, err := loadApp(appPath)
+					if err != nil {
+						e2elog.Failf("failed to load app with error %v", err)
+					}
+					// write data in PVC
+					label[appKey] = appLabel
+					app.Namespace = f.UniqueName
+					app.Labels = label
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+					}
+					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+					checkSum, err := writeDataAndCalChecksum(app, &opt, f)
+					if err != nil {
+						e2elog.Failf("failed to calculate checksum with error %v", err)
 					}
 					validateRBDImageCount(f, 1)
 					snap := getSnapshot(snapshotPath)
@@ -504,7 +562,26 @@ var _ = Describe("RBD", func() {
 					for i := 0; i < totalCount; i++ {
 						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
+							label := make(map[string]string)
+							label[appKey] = name
+							a.Labels = label
+							opt := metav1.ListOptions{
+								LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+							}
 							wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+							if wgErrs[n] == nil {
+								filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+								checkSumClone := ""
+								e2elog.Logf("calculating checksum clone for filepath %s", filePath)
+								checkSumClone, chErrs[n] = calculateSHA512sum(f, &a, filePath, &opt)
+								e2elog.Logf("checksum value for the clone is %s with pod name %s", checkSumClone, name)
+								if chErrs[n] != nil {
+									e2elog.Logf("failed to calculte checksum for clone with error %s", chErrs[n])
+								}
+								if checkSumClone != checkSum {
+									e2elog.Logf("checksum value didn't match. checksum=%s and checksumclone=%s", checkSum, checkSumClone)
+								}
+							}
 							w.Done()
 						}(&wg, i, *pvcClone, *appClone)
 					}
@@ -521,6 +598,16 @@ var _ = Describe("RBD", func() {
 						e2elog.Failf("creating PVCs and applications failed, %d errors were logged", failed)
 					}
 
+					for i, err := range chErrs {
+						if err != nil {
+							// not using Failf() as it aborts the test and does not log other errors
+							e2elog.Logf("failed to calculate checksum (%s%d): %v", f.UniqueName, i, err)
+							failed++
+						}
+					}
+					if failed != 0 {
+						e2elog.Failf("calculating checksum failed, %d errors were logged", failed)
+					}
 					// total images in cluster is 1 parent rbd image+ total
 					// snaps+ total clones
 					totalCloneCount := totalCount + totalCount + 1
@@ -642,9 +729,8 @@ var _ = Describe("RBD", func() {
 			By("create a PVC-PVC clone and bind it to an app", func() {
 				// pvc clone is only supported from v1.16+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					validatePVCClone(pvcPath, pvcSmartClonePath, appSmartClonePath, f)
+					validatePVCClone(pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, f)
 				}
-
 			})
 
 			By("create a block type PVC and bind it to an app", func() {
@@ -660,7 +746,7 @@ var _ = Describe("RBD", func() {
 				}
 				// pvc clone is only supported from v1.16+
 				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
-					validatePVCClone(rawPvcPath, pvcBlockSmartClonePath, appBlockSmartClonePath, f)
+					validatePVCClone(rawPvcPath, rawAppPath, pvcBlockSmartClonePath, appBlockSmartClonePath, f)
 				}
 			})
 			By("create/delete multiple PVCs and Apps", func() {

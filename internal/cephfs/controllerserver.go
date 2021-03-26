@@ -711,6 +711,18 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 			}
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
+		// if the error is ErrVolumeNotFound, the subvolume is already deleted
+		// from backend, Hence undo the omap entries and return success
+		if errors.Is(err, ErrVolumeNotFound) {
+			util.ErrorLog(ctx, "Volume not present")
+			err = undoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
+			if err != nil {
+				util.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
+					sid.FsSubvolName, sid.FsSnapshotName, err)
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+			return &csi.DeleteSnapshotResponse{}, nil
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer volOpt.Destroy()

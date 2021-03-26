@@ -28,6 +28,7 @@ import (
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/kube-storage/spec/lib/go/replication"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -41,6 +42,11 @@ const (
 // controller server spec.
 type ControllerServer struct {
 	*csicommon.DefaultControllerServer
+	// added UnimplementedControllerServer as a member of
+	// ControllerServer. if replication spec add more RPC services in the proto
+	// file, then we don't need to add all RPC methods leading to forward
+	// compatibility.
+	*replication.UnimplementedControllerServer
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID/volume name) return an Aborted error
 	VolumeLocks *util.VolumeLocks
@@ -153,7 +159,7 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 }
 
 func buildCreateVolumeResponse(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume) (*csi.CreateVolumeResponse, error) {
-	if rbdVol.Encrypted {
+	if rbdVol.isEncrypted() {
 		err := rbdVol.setupEncryption(ctx)
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
@@ -467,13 +473,13 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 
 	switch {
 	case rbdSnap != nil:
-		if err = cs.OperationLocks.GetRestoreLock(rbdSnap.SnapID); err != nil {
+		if err = cs.OperationLocks.GetRestoreLock(rbdSnap.VolID); err != nil {
 			util.ErrorLog(ctx, err.Error())
 			return status.Error(codes.Aborted, err.Error())
 		}
-		defer cs.OperationLocks.ReleaseRestoreLock(rbdSnap.SnapID)
+		defer cs.OperationLocks.ReleaseRestoreLock(rbdSnap.VolID)
 
-		err = cs.createVolumeFromSnapshot(ctx, cr, rbdVol, rbdSnap.SnapID)
+		err = cs.createVolumeFromSnapshot(ctx, cr, rbdVol, rbdSnap.VolID)
 		if err != nil {
 			return err
 		}
@@ -516,7 +522,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 			return err
 		}
 	}
-	if rbdVol.Encrypted {
+	if rbdVol.isEncrypted() {
 		err = rbdVol.setupEncryption(ctx)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to setup encroption for image %s: %v", rbdVol, err)
@@ -690,8 +696,8 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if rbdVol.Encrypted {
-		if err = rbdVol.KMS.DeletePassphrase(rbdVol.VolID); err != nil {
+	if rbdVol.isEncrypted() {
+		if err = rbdVol.encryption.RemoveDEK(rbdVol.VolID); err != nil {
 			util.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", rbdVol.VolID, err)
 		}
 	}
@@ -755,7 +761,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 
 	// TODO: re-encrypt snapshot with a new passphrase
-	if rbdVol.Encrypted {
+	if rbdVol.isEncrypted() {
 		return nil, status.Errorf(codes.Unimplemented, "source Volume %s is encrypted, "+
 			"snapshotting is not supported currently", rbdVol.VolID)
 	}
@@ -813,7 +819,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			return &csi.CreateSnapshotResponse{
 				Snapshot: &csi.Snapshot{
 					SizeBytes:      rbdSnap.SizeBytes,
-					SnapshotId:     rbdSnap.SnapID,
+					SnapshotId:     rbdSnap.VolID,
 					SourceVolumeId: rbdSnap.SourceVolumeID,
 					CreationTime:   rbdSnap.CreatedAt,
 					ReadyToUse:     false,
@@ -831,7 +837,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return &csi.CreateSnapshotResponse{
 			Snapshot: &csi.Snapshot{
 				SizeBytes:      rbdSnap.SizeBytes,
-				SnapshotId:     rbdSnap.SnapID,
+				SnapshotId:     rbdSnap.VolID,
 				SourceVolumeId: rbdSnap.SourceVolumeID,
 				CreationTime:   rbdSnap.CreatedAt,
 				ReadyToUse:     true,
@@ -1124,7 +1130,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, err
 	}
 
-	if rbdVol.Encrypted {
+	if rbdVol.isEncrypted() {
 		return nil, status.Errorf(codes.InvalidArgument, "encrypted volumes do not support resize (%s)",
 			rbdVol)
 	}

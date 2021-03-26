@@ -68,6 +68,22 @@ func (cc *ClusterConnection) Destroy() {
 	}
 }
 
+// Copy creates a copy of the ClusterConnection. This is needed when an other
+// object needs to use the existing connection.
+// It is required to call Destroy() once the (copied) connection is not used
+// anymore.
+func (cc *ClusterConnection) Copy() *ClusterConnection {
+	if cc.conn == nil {
+		return nil
+	}
+
+	c := ClusterConnection{}
+	c.discardOnZeroedWriteSameDisabled = cc.discardOnZeroedWriteSameDisabled
+	c.conn = connPool.Copy(cc.conn)
+
+	return &c
+}
+
 func (cc *ClusterConnection) GetIoctx(pool string) (*rados.IOContext, error) {
 	if cc.conn == nil {
 		return nil, errors.New("cluster is not connected yet")

@@ -106,7 +106,7 @@ mod-check: check-env
 	@echo 'running: go mod verify'
 	@go mod verify && [ "$(shell sha512sum go.mod)" = "`sha512sum go.mod`" ] || ( echo "ERROR: go.mod was modified by 'go mod verify'" && false )
 
-scripts/golangci.yml: scripts/golangci.yml.in
+scripts/golangci.yml: build.env scripts/golangci.yml.in
 	sed "s/@@CEPH_VERSION@@/$(CEPH_VERSION)/g" < scripts/golangci.yml.in > scripts/golangci.yml
 
 go-lint: scripts/golangci.yml

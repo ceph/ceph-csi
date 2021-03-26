@@ -24,6 +24,7 @@ var (
 	cephfsNodePluginPSP   = "csi-nodeplugin-psp.yaml"
 	cephfsDeploymentName  = "csi-cephfsplugin-provisioner"
 	cephfsDeamonSetName   = "csi-cephfsplugin"
+	cephfsContainerName   = "csi-cephfsplugin"
 	cephfsDirPath         = "../deploy/cephfs/kubernetes/"
 	cephfsExamplePath     = "../examples/cephfs/"
 	subvolumegroup        = "e2e"
@@ -427,6 +428,23 @@ var _ = Describe("cephfs", func() {
 				}
 			})
 
+			By("Create PVC, bind it to an app, unmount volume and check app deletion", func() {
+				pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC or application with error %v", err)
+				}
+
+				err = unmountCephFSVolume(f, app.Name, pvc.Name)
+				if err != nil {
+					e2elog.Failf("failed to unmount volume with error %v", err)
+				}
+
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC or application with error %v", err)
+				}
+			})
+
 			By("create PVC, delete backing subvolume and check pv deletion", func() {
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
@@ -571,6 +589,63 @@ var _ = Describe("cephfs", func() {
 				}
 			})
 
+			By("Delete snapshot after deleting subvolume and snapshot from backend", func() {
+				// snapshot beta is only supported from v1.17+
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
+					err := createCephFSSnapshotClass(f)
+					if err != nil {
+						e2elog.Failf("failed to create CephFS snapshotclass with error %v", err)
+					}
+					pvc, err := loadPVC(pvcPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC with error %v", err)
+					}
+
+					pvc.Namespace = f.UniqueName
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC with error %v", err)
+					}
+
+					snap := getSnapshot(snapshotPath)
+					snap.Namespace = f.UniqueName
+					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+					// create snapshot
+					snap.Name = f.UniqueName
+					err = createSnapshot(&snap, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create snapshot (%s): %v", snap.Name, err)
+					}
+
+					err = deleteBackingCephFSSubvolumeSnapshot(f, pvc, &snap)
+					if err != nil {
+						e2elog.Failf("failed to delete backing snapshot for snapname with error=%s", err)
+					}
+
+					err = deleteBackingCephFSVolume(f, pvc)
+					if err != nil {
+						e2elog.Failf("failed to delete backing subvolume error=%s", err)
+					}
+
+					err = deleteSnapshot(&snap, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete snapshot with error=%s", err)
+					} else {
+						e2elog.Logf("successfully deleted snapshot")
+					}
+
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC with error %v", err)
+					}
+
+					err = deleteResource(cephfsExamplePath + "snapshotclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete CephFS snapshotclass with error %v", err)
+					}
+				}
+			})
+
 			By("Test snapshot retention feature", func() {
 				// Delete the PVC after creating a snapshot,
 				// this should work because of the snapshot
@@ -682,7 +757,13 @@ var _ = Describe("cephfs", func() {
 
 					app.Namespace = f.UniqueName
 					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-					wErr := writeDataInPod(app, f)
+					label := make(map[string]string)
+					label[appKey] = appLabel
+					app.Labels = label
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+					}
+					wErr := writeDataInPod(app, &opt, f)
 					if wErr != nil {
 						e2elog.Failf("failed to  write data  with error %v", wErr)
 					}
@@ -893,7 +974,13 @@ var _ = Describe("cephfs", func() {
 					}
 					app.Namespace = f.UniqueName
 					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-					wErr := writeDataInPod(app, f)
+					label := make(map[string]string)
+					label[appKey] = appLabel
+					app.Labels = label
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+					}
+					wErr := writeDataInPod(app, &opt, f)
 					if wErr != nil {
 						e2elog.Failf("failed to write data from application %v", wErr)
 					}

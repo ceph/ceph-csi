@@ -19,11 +19,8 @@ package util
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"path"
 	"strings"
 
@@ -34,146 +31,173 @@ const (
 	mapperFilePrefix     = "luks-rbd-"
 	mapperFilePathPrefix = "/dev/mapper"
 
-	// Encryption passphrase location in K8s secrets
-	encryptionPassphraseKey = "encryptionPassphrase"
-	kmsTypeKey              = "encryptionKMSType"
-
-	// Default KMS type
-	defaultKMSType = "default"
-
 	// kmsConfigPath is the location of the vault config file
 	kmsConfigPath = "/etc/ceph-csi-encryption-kms-config/config.json"
 
 	// Passphrase size - 20 bytes is 160 bits to satisfy:
 	// https://tools.ietf.org/html/rfc6749#section-10.10
 	encryptionPassphraseSize = 20
-	// podNamespace ENV should be set in the cephcsi container
-	podNamespace = "POD_NAMESPACE"
-
-	// kmsConfigMapName env to read a ConfigMap by name
-	kmsConfigMapName = "KMS_CONFIGMAP_NAME"
-
-	// defaultConfigMapToRead default ConfigMap name to fetch kms connection details
-	defaultConfigMapToRead = "csi-kms-connection-details"
 )
+
+var (
+	// ErrDEKStoreNotFound is an error that is returned when the DEKStore
+	// has not been configured for the volumeID in the KMS instance.
+	ErrDEKStoreNotFound = errors.New("DEKStore not found")
+
+	// ErrDEKStoreNeeded is an indication that gets returned with
+	// NewVolumeEncryption when the KMS does not include support for the
+	// DEKStore interface.
+	ErrDEKStoreNeeded = errors.New("DEKStore required, use " +
+		"VolumeEncryption.SetDEKStore()")
+)
+
+type VolumeEncryption struct {
+	KMS EncryptionKMS
+
+	// dekStore that will be used, this can be the EncryptionKMS or a
+	// different object implementing the DEKStore interface.
+	dekStore DEKStore
+
+	id string
+}
+
+// NewVolumeEncryption creates a new instance of VolumeEncryption and
+// configures the DEKStore. If the KMS does not provide a DEKStore interface,
+// the VolumeEncryption will be created *and* a ErrDEKStoreNeeded is returned.
+// Callers that receive a ErrDEKStoreNeeded error, should use
+// VolumeEncryption.SetDEKStore() to configure an alternative storage for the
+// DEKs.
+func NewVolumeEncryption(id string, kms EncryptionKMS) (*VolumeEncryption, error) {
+	kmsID := id
+	if kmsID == "" {
+		// if kmsID is not set, encryption is enabled, and the type is
+		// SecretsKMS
+		kmsID = defaultKMSType
+	}
+
+	ve := &VolumeEncryption{
+		id:  kmsID,
+		KMS: kms,
+	}
+
+	if kms.requiresDEKStore() == DEKStoreIntegrated {
+		dekStore, ok := kms.(DEKStore)
+		if !ok {
+			return nil, fmt.Errorf("KMS %T does not implement the "+
+				"DEKStore interface", kms)
+		}
+
+		ve.dekStore = dekStore
+		return ve, nil
+	}
+
+	return ve, ErrDEKStoreNeeded
+}
+
+// SetDEKStore sets the DEKStore for this VolumeEncryption instance. It will be
+// used when StoreNewCryptoPassphrase() or RemoveDEK() is called.
+func (ve *VolumeEncryption) SetDEKStore(dekStore DEKStore) {
+	ve.dekStore = dekStore
+}
+
+// Destroy frees any resources that the VolumeEncryption instance allocated.
+func (ve *VolumeEncryption) Destroy() {
+	ve.KMS.Destroy()
+}
+
+// RemoveDEK deletes the DEK for a particular volumeID from the DEKStore linked
+// with this VolumeEncryption instance.
+func (ve *VolumeEncryption) RemoveDEK(volumeID string) error {
+	if ve.dekStore == nil {
+		return ErrDEKStoreNotFound
+	}
+
+	return ve.dekStore.RemoveDEK(volumeID)
+}
+
+func (ve *VolumeEncryption) GetID() string {
+	return ve.id
+}
 
 // EncryptionKMS provides external Key Management System for encryption
 // passphrases storage.
 type EncryptionKMS interface {
 	Destroy()
-	GetPassphrase(key string) (string, error)
-	SavePassphrase(key, value string) error
-	DeletePassphrase(key string) error
-	GetID() string
+
+	// requiresDEKStore returns the DEKStoreType that is needed to be
+	// configure for the KMS. Nothing needs to be done when this function
+	// returns DEKStoreIntegrated, otherwise you will need to configure an
+	// alternative storage for the DEKs.
+	requiresDEKStore() DEKStoreType
+
+	// EncryptDEK provides a way for a KMS to encrypt a DEK. In case the
+	// encryption is done transparently inside the KMS service, the
+	// function can return an unencrypted value.
+	EncryptDEK(volumeID, plainDEK string) (string, error)
+
+	// DecryptDEK provides a way for a KMS to decrypt a DEK. In case the
+	// encryption is done transparently inside the KMS service, the
+	// function does not need to do anything except return the encyptedDEK
+	// as it was received.
+	DecryptDEK(volumeID, encyptedDEK string) (string, error)
 }
 
-// SecretsKMS is default KMS implementation that means no KMS is in use.
-type SecretsKMS struct {
-	passphrase string
+// DEKStoreType describes what DEKStore needs to be configured when using a
+// particular KMS. A KMS might support different DEKStores depending on its
+// configuration.
+type DEKStoreType string
+
+const (
+	// DEKStoreIntegrated indicates that the KMS itself supports storing
+	// DEKs.
+	DEKStoreIntegrated = DEKStoreType("")
+	// DEKStoreMetadata indicates that the KMS should be configured to
+	// store the DEK in the metadata of the volume.
+	DEKStoreMetadata = DEKStoreType("metadata")
+)
+
+// DEKStore allows KMS instances to implement a modular backend for DEK
+// storage. This can be used to store the DEK in a different location, in case
+// the KMS can not store passphrases for volumes.
+type DEKStore interface {
+	// StoreDEK saves the DEK in the configured store.
+	StoreDEK(volumeID string, dek string) error
+	// FetchDEK reads the DEK from the configured store and returns it.
+	FetchDEK(volumeID string) (string, error)
+	// RemoveDEK deletes the DEK from the configured store.
+	RemoveDEK(volumeID string) error
 }
 
-func initSecretsKMS(secrets map[string]string) (EncryptionKMS, error) {
-	passphraseValue, ok := secrets[encryptionPassphraseKey]
-	if !ok {
-		return nil, errors.New("missing encryption passphrase in secrets")
-	}
-	return SecretsKMS{passphrase: passphraseValue}, nil
+// integratedDEK is a DEKStore that can not be configured. Either the KMS does
+// not use a DEK, or the DEK is stored in the KMS without additional
+// configuration options.
+type integratedDEK struct{}
+
+func (i integratedDEK) requiresDEKStore() DEKStoreType {
+	return DEKStoreIntegrated
 }
 
-// Destroy frees all used resources.
-func (kms SecretsKMS) Destroy() {
-	// nothing to do
+func (i integratedDEK) EncryptDEK(volumeID, plainDEK string) (string, error) {
+	return plainDEK, nil
 }
 
-// GetPassphrase returns passphrase from Kubernetes secrets.
-func (kms SecretsKMS) GetPassphrase(key string) (string, error) {
-	return kms.passphrase, nil
-}
-
-// SavePassphrase does nothing, as there is no passphrase per key (volume), so
-// no need to store is anywhere.
-func (kms SecretsKMS) SavePassphrase(key, value string) error {
-	return nil
-}
-
-// DeletePassphrase is doing nothing as no new passphrases are saved with
-// SecretsKMS.
-func (kms SecretsKMS) DeletePassphrase(key string) error {
-	return nil
-}
-
-// GetID is returning ID representing default KMS `default`.
-func (kms SecretsKMS) GetID() string {
-	return defaultKMSType
-}
-
-// GetKMS returns an instance of Key Management System.
-//
-// - tenant is the owner of the Volume, used to fetch the Vault Token from the
-//   Kubernetes Namespace where the PVC lives
-// - kmsID is the service name of the KMS configuration
-// - secrets contain additional details, like TLS certificates to connect to
-//   the KMS
-func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, error) {
-	if kmsID == "" || kmsID == defaultKMSType {
-		return initSecretsKMS(secrets)
-	}
-	var config map[string]interface{}
-	// #nosec
-	content, err := ioutil.ReadFile(kmsConfigPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("failed to read kms configuration from %s: %w",
-				kmsConfigPath, err)
-		}
-		// If the configmap is not mounted to the CSI pods read the configmap
-		// the kubernetes.
-		namespace := os.Getenv(podNamespace)
-		if namespace == "" {
-			return nil, fmt.Errorf("%q is not set", podNamespace)
-		}
-		name := os.Getenv(kmsConfigMapName)
-		if name == "" {
-			name = defaultConfigMapToRead
-		}
-		config, err = getVaultConfiguration(namespace, name)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read kms configuration from configmap %s in namespace %s: %w",
-				namespace, name, err)
-		}
-	} else {
-		err = json.Unmarshal(content, &config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse kms configuration: %w", err)
-		}
-	}
-
-	kmsConfig, ok := config[kmsID].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("missing encryption KMS configuration with %s", kmsID)
-	}
-
-	kmsType, ok := kmsConfig[kmsTypeKey]
-	if !ok {
-		return nil, fmt.Errorf("encryption KMS configuration for %s is missing KMS type", kmsID)
-	}
-
-	switch kmsType {
-	case kmsTypeVault:
-		return InitVaultKMS(kmsID, kmsConfig, secrets)
-	case kmsTypeVaultTokens:
-		return InitVaultTokensKMS(tenant, kmsID, kmsConfig)
-	}
-	return nil, fmt.Errorf("unknown encryption KMS type %s", kmsType)
+func (i integratedDEK) DecryptDEK(volumeID, encyptedDEK string) (string, error) {
+	return encyptedDEK, nil
 }
 
 // StoreNewCryptoPassphrase generates a new passphrase and saves it in the KMS.
-func StoreNewCryptoPassphrase(volumeID string, kms EncryptionKMS) error {
+func (ve *VolumeEncryption) StoreNewCryptoPassphrase(volumeID string) error {
 	passphrase, err := generateNewEncryptionPassphrase()
 	if err != nil {
 		return fmt.Errorf("failed to generate passphrase for %s: %w", volumeID, err)
 	}
-	err = kms.SavePassphrase(volumeID, passphrase)
+
+	encryptedPassphrase, err := ve.KMS.EncryptDEK(volumeID, passphrase)
+	if err != nil {
+		return fmt.Errorf("failed encrypt the passphrase for %s: %w", volumeID, err)
+	}
+
+	err = ve.dekStore.StoreDEK(volumeID, encryptedPassphrase)
 	if err != nil {
 		return fmt.Errorf("failed to save the passphrase for %s: %w", volumeID, err)
 	}
@@ -181,12 +205,13 @@ func StoreNewCryptoPassphrase(volumeID string, kms EncryptionKMS) error {
 }
 
 // GetCryptoPassphrase Retrieves passphrase to encrypt volume.
-func GetCryptoPassphrase(volumeID string, kms EncryptionKMS) (string, error) {
-	passphrase, err := kms.GetPassphrase(volumeID)
+func (ve *VolumeEncryption) GetCryptoPassphrase(volumeID string) (string, error) {
+	passphrase, err := ve.dekStore.FetchDEK(volumeID)
 	if err != nil {
 		return "", err
 	}
-	return passphrase, nil
+
+	return ve.KMS.DecryptDEK(volumeID, passphrase)
 }
 
 // generateNewEncryptionPassphrase generates a random passphrase for encryption.

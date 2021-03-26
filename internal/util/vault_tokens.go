@@ -96,38 +96,44 @@ func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 	}
 }
 
-// getVaultConfiguration fetches the vault configuration from the kubernetes
-// configmap and converts the standard vault configuration (see json tag of
-// standardVault structure) to the CSI vault configuration.
-func getVaultConfiguration(namespace, name string) (map[string]interface{}, error) {
-	c := NewK8sClient()
-	cm, err := c.CoreV1().ConfigMaps(namespace).Get(context.Background(), name, metav1.GetOptions{})
+// convertConfig takes the keys/values in standard Vault environment variable
+// format, and converts them to the format that is used in the configuration
+// file.
+// This uses JSON marshaling and unmarshaling to map the Vault environment
+// configuration into bytes, then in the standardVault struct, which is passed
+// through convertStdVaultToCSIConfig before converting back to a
+// map[string]interface{} configuration.
+//
+// FIXME: this can surely be simplified?!
+func transformConfig(svMap map[string]interface{}) (map[string]interface{}, error) {
+	// convert the map to JSON
+	data, err := json.Marshal(svMap)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to convert config %T to JSON: %w", svMap, err)
 	}
-	config := make(map[string]interface{})
-	// convert the standard vault configuration to CSI vault configuration and
-	// store it in the map that CSI expects
-	for k, v := range cm.Data {
-		sv := &standardVault{}
-		err = json.Unmarshal([]byte(v), sv)
-		if err != nil {
-			return nil, fmt.Errorf("failed to Unmarshal the vault configuration for %q: %w", k, err)
-		}
-		vc := vaultTokenConf{}
-		vc.convertStdVaultToCSIConfig(sv)
-		data, err := json.Marshal(vc)
-		if err != nil {
-			return nil, fmt.Errorf("failed to Marshal the CSI vault configuration for %q: %w", k, err)
-		}
-		jsonMap := make(map[string]interface{})
-		err = json.Unmarshal(data, &jsonMap)
-		if err != nil {
-			return nil, fmt.Errorf("failed to Unmarshal the CSI vault configuration for %q: %w", k, err)
-		}
-		config[k] = jsonMap
+
+	// convert the JSON back to a standardVault struct
+	sv := &standardVault{}
+	err = json.Unmarshal(data, sv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to Unmarshal the vault configuration: %w", err)
 	}
-	return config, nil
+
+	// convert the standardVault struct to a vaultTokenConf struct
+	vc := vaultTokenConf{}
+	vc.convertStdVaultToCSIConfig(sv)
+	data, err = json.Marshal(vc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to Marshal the CSI vault configuration: %w", err)
+	}
+
+	// convert the vaultTokenConf struct to a map[string]interface{}
+	jsonMap := make(map[string]interface{})
+	err = json.Unmarshal(data, &jsonMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to Unmarshal the CSI vault configuration: %w", err)
+	}
+	return jsonMap, nil
 }
 
 /*
@@ -161,6 +167,7 @@ Example JSON structure in the KMS config is,
 */
 type VaultTokensKMS struct {
 	vaultConnection
+	integratedDEK
 
 	// Tenant is the name of the owner of the volume
 	Tenant string
@@ -170,11 +177,29 @@ type VaultTokensKMS struct {
 	TokenName string
 }
 
+var _ = RegisterKMSProvider(KMSProvider{
+	UniqueID:    kmsTypeVaultTokens,
+	Initializer: initVaultTokensKMS,
+})
+
 // InitVaultTokensKMS returns an interface to HashiCorp Vault KMS.
-func InitVaultTokensKMS(tenant, kmsID string, config map[string]interface{}) (EncryptionKMS, error) {
+// InitVaultTokensKMS returns an interface to HashiCorp Vault KMS.
+func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
+	var err error
+
+	config := args.Config
+	_, ok := config[kmsProviderKey]
+	if ok {
+		// configuration comes from the ConfigMap, needs to be
+		// converted to vaultTokenConf type
+		config, err = transformConfig(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert configuration: %w", err)
+		}
+	}
+
 	kms := &VaultTokensKMS{}
-	kms.Tenant = tenant
-	err := kms.initConnection(kmsID, config)
+	err = kms.initConnection(args.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
 	}
@@ -189,14 +214,15 @@ func InitVaultTokensKMS(tenant, kmsID string, config map[string]interface{}) (En
 	}
 
 	// fetch the configuration for the tenant
-	if tenant != "" {
+	if args.Tenant != "" {
+		kms.Tenant = args.Tenant
 		tenantsMap, ok := config["tenants"]
 		if ok {
 			// tenants is a map per tenant, containing key/values
 			tenants, ok := tenantsMap.(map[string]map[string]interface{})
 			if ok {
 				// get the map for the tenant of the current operation
-				tenantConfig, ok := tenants[tenant]
+				tenantConfig, ok := tenants[args.Tenant]
 				if ok {
 					// override connection details from the tenant
 					err = kms.parseConfig(tenantConfig)
@@ -215,9 +241,9 @@ func InitVaultTokensKMS(tenant, kmsID string, config map[string]interface{}) (En
 
 	// fetch the Vault Token from the Secret (TokenName) in the Kubernetes
 	// Namespace (tenant)
-	kms.vaultConfig[api.EnvVaultToken], err = getToken(tenant, kms.TokenName)
+	kms.vaultConfig[api.EnvVaultToken], err = getToken(args.Tenant, kms.TokenName)
 	if err != nil {
-		return nil, fmt.Errorf("failed fetching token from %s/%s: %w", tenant, kms.TokenName, err)
+		return nil, fmt.Errorf("failed fetching token from %s/%s: %w", args.Tenant, kms.TokenName, err)
 	}
 
 	err = kms.initCertificates(config)
@@ -237,7 +263,7 @@ func InitVaultTokensKMS(tenant, kmsID string, config map[string]interface{}) (En
 // secrets. This method can be called multiple times, i.e. to override
 // configuration options from tenants.
 func (kms *VaultTokensKMS) parseConfig(config map[string]interface{}) error {
-	err := kms.initConnection(kms.EncryptionKMSID, config)
+	err := kms.initConnection(config)
 	if err != nil {
 		return err
 	}
@@ -346,9 +372,9 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 	return nil
 }
 
-// GetPassphrase returns passphrase from Vault. The passphrase is stored in a
+// FetchDEK returns passphrase from Vault. The passphrase is stored in a
 // data.data.passphrase structure.
-func (kms *VaultTokensKMS) GetPassphrase(key string) (string, error) {
+func (kms *VaultTokensKMS) FetchDEK(key string) (string, error) {
 	s, err := kms.secrets.GetSecret(key, kms.keyContext)
 	if err != nil {
 		return "", err
@@ -366,8 +392,8 @@ func (kms *VaultTokensKMS) GetPassphrase(key string) (string, error) {
 	return passphrase, nil
 }
 
-// SavePassphrase saves new passphrase in Vault.
-func (kms *VaultTokensKMS) SavePassphrase(key, value string) error {
+// StoreDEK saves new passphrase in Vault.
+func (kms *VaultTokensKMS) StoreDEK(key, value string) error {
 	data := map[string]interface{}{
 		"data": map[string]string{
 			"passphrase": value,
@@ -382,8 +408,8 @@ func (kms *VaultTokensKMS) SavePassphrase(key, value string) error {
 	return nil
 }
 
-// DeletePassphrase deletes passphrase from Vault.
-func (kms *VaultTokensKMS) DeletePassphrase(key string) error {
+// RemoveDEK deletes passphrase from Vault.
+func (kms *VaultTokensKMS) RemoveDEK(key string) error {
 	err := kms.secrets.DeleteSecret(key, kms.keyContext)
 	if err != nil {
 		return fmt.Errorf("delete passphrase at %s request to vault failed: %w", key, err)

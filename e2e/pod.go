@@ -18,6 +18,23 @@ import (
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
+// getDaemonSetLabelSelector returns labels of daemonset given name and namespace dynamically,
+// needed since labels are not same for helm and non-helm deployments.
+func getDaemonSetLabelSelector(f *framework.Framework, ns, daemonSetName string) (string, error) {
+	ds, err := f.ClientSet.AppsV1().DaemonSets(ns).Get(context.TODO(), daemonSetName, metav1.GetOptions{})
+	if err != nil {
+		e2elog.Logf("Error getting daemonsets with name %s in namespace %s", daemonSetName, ns)
+		return "", err
+	}
+	s, err := metav1.LabelSelectorAsSelector(ds.Spec.Selector)
+	if err != nil {
+		e2elog.Logf("Error parsing %s daemonset selector in namespace %s", daemonSetName, ns)
+		return "", err
+	}
+	e2elog.Logf("LabelSelector for %s daemonsets in namespace %s: %s", daemonSetName, ns, s.String())
+	return s.String(), nil
+}
+
 func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
@@ -90,19 +107,15 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 
 func getCommandInPodOpts(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (framework.ExecOptions, error) {
 	cmd := []string{"/bin/sh", "-c", c}
-	podList, err := f.PodClientNS(ns).List(context.TODO(), *opt)
-	framework.ExpectNoError(err)
-	if len(podList.Items) == 0 {
-		return framework.ExecOptions{}, errors.New("podlist is empty")
-	}
+	pods, err := listPods(f, ns, opt)
 	if err != nil {
 		return framework.ExecOptions{}, err
 	}
 	return framework.ExecOptions{
 		Command:            cmd,
-		PodName:            podList.Items[0].Name,
+		PodName:            pods[0].Name,
 		Namespace:          ns,
-		ContainerName:      podList.Items[0].Spec.Containers[0].Name,
+		ContainerName:      pods[0].Spec.Containers[0].Name,
 		Stdin:              nil,
 		CaptureStdout:      true,
 		CaptureStderr:      true,
@@ -110,12 +123,58 @@ func getCommandInPodOpts(f *framework.Framework, c, ns string, opt *metav1.ListO
 	}, nil
 }
 
-func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string, error) {
-	podPot, err := getCommandInPodOpts(f, c, ns, opt)
+// execCommandInDaemonsetPod executes commands inside given container of a daemonset pod on a particular node.
+func execCommandInDaemonsetPod(f *framework.Framework, c, daemonsetName, nodeName, containerName, ns string) (string, string, error) {
+	selector, err := getDaemonSetLabelSelector(f, ns, daemonsetName)
 	if err != nil {
 		return "", "", err
 	}
-	stdOut, stdErr, err := f.ExecWithOptions(podPot)
+
+	opt := &metav1.ListOptions{
+		LabelSelector: selector,
+	}
+	pods, err := listPods(f, ns, opt)
+	if err != nil {
+		return "", "", err
+	}
+
+	podName := ""
+	for i := range pods {
+		if pods[i].Spec.NodeName == nodeName {
+			podName = pods[i].Name
+		}
+	}
+	if podName == "" {
+		return "", "", fmt.Errorf("%s daemonset pod on node %s in namespace %s not found", daemonsetName, nodeName, ns)
+	}
+
+	cmd := []string{"/bin/sh", "-c", c}
+	podOpt := framework.ExecOptions{
+		Command:       cmd,
+		Namespace:     ns,
+		PodName:       podName,
+		ContainerName: containerName,
+		CaptureStdout: true,
+		CaptureStderr: true,
+	}
+	return f.ExecWithOptions(podOpt)
+}
+
+// listPods returns slice of pods matching given ListOptions and namespace.
+func listPods(f *framework.Framework, ns string, opt *metav1.ListOptions) ([]v1.Pod, error) {
+	podList, err := f.PodClientNS(ns).List(context.TODO(), *opt)
+	if len(podList.Items) == 0 {
+		return podList.Items, fmt.Errorf("podlist for label '%s' in namespace %s is empty", opt.LabelSelector, ns)
+	}
+	return podList.Items, err
+}
+
+func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string, error) {
+	podOpt, err := getCommandInPodOpts(f, c, ns, opt)
+	if err != nil {
+		return "", "", err
+	}
+	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
@@ -124,13 +183,13 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 
 func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, string, error) {
 	opt := &metav1.ListOptions{
-		LabelSelector: rookTolBoxPodLabel,
+		LabelSelector: rookToolBoxPodLabel,
 	}
-	podPot, err := getCommandInPodOpts(f, c, ns, opt)
+	podOpt, err := getCommandInPodOpts(f, c, ns, opt)
 	if err != nil {
 		return "", "", err
 	}
-	stdOut, stdErr, err := f.ExecWithOptions(podPot)
+	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
@@ -138,11 +197,11 @@ func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, stri
 }
 
 func execCommandInPodAndAllowFail(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string) {
-	podPot, err := getCommandInPodOpts(f, c, ns, opt)
+	podOpt, err := getCommandInPodOpts(f, c, ns, opt)
 	if err != nil {
 		return "", err.Error()
 	}
-	stdOut, stdErr, err := f.ExecWithOptions(podPot)
+	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
 	if err != nil {
 		e2elog.Logf("command %s failed: %v", c, err)
 	}

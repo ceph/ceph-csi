@@ -82,7 +82,7 @@ func cleanUpSnapshot(ctx context.Context, parentVol *rbdVolume, rbdSnap *rbdSnap
 func generateVolFromSnap(rbdSnap *rbdSnapshot) *rbdVolume {
 	vol := new(rbdVolume)
 	vol.ClusterID = rbdSnap.ClusterID
-	vol.VolID = rbdSnap.SnapID
+	vol.VolID = rbdSnap.VolID
 	vol.Monitors = rbdSnap.Monitors
 	vol.Pool = rbdSnap.Pool
 	vol.JournalPool = rbdSnap.JournalPool

@@ -46,10 +46,10 @@ import (
 func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) (bool, error) {
 	// generate temp cloned volume
 	tempClone := rv.generateTempClone()
-	snap := &rbdSnapshot{
-		RbdSnapName: rv.RbdImageName,
-		Pool:        rv.Pool,
-	}
+	snap := &rbdSnapshot{}
+	snap.RbdSnapName = rv.RbdImageName
+	snap.Pool = rv.Pool
+
 	// check if cloned image exists
 	err := rv.getImageInfo()
 	if err == nil {
@@ -127,7 +127,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 
 func (rv *rbdVolume) generateTempClone() *rbdVolume {
 	tempClone := rbdVolume{}
-	tempClone.conn = rv.conn
+	tempClone.conn = rv.conn.Copy()
 	// The temp clone image need to have deep flatten feature
 	f := []string{librbd.FeatureNameLayering, librbd.FeatureNameDeepFlatten}
 	tempClone.imageFeatureSet = librbd.FeatureSetFromNames(f)
@@ -145,18 +145,17 @@ func (rv *rbdVolume) generateTempClone() *rbdVolume {
 func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVolume) error {
 	// generate temp cloned volume
 	tempClone := rv.generateTempClone()
-	tempSnap := &rbdSnapshot{
-		// snapshot name is same as temporary cloned image, This helps to
-		// flatten the temporary cloned images as we cannot have more than 510
-		// snapshots on an rbd image
-		RbdSnapName: tempClone.RbdImageName,
-		Pool:        rv.Pool,
-	}
+	// snapshot name is same as temporary cloned image, This helps to
+	// flatten the temporary cloned images as we cannot have more than 510
+	// snapshots on an rbd image
+	tempSnap := &rbdSnapshot{}
+	tempSnap.RbdSnapName = tempClone.RbdImageName
+	tempSnap.Pool = rv.Pool
 
-	cloneSnap := &rbdSnapshot{
-		RbdSnapName: rv.RbdImageName,
-		Pool:        rv.Pool,
-	}
+	cloneSnap := &rbdSnapshot{}
+	cloneSnap.RbdSnapName = rv.RbdImageName
+	cloneSnap.Pool = rv.Pool
+
 	var (
 		errClone   error
 		errFlatten error
