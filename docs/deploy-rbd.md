@@ -280,6 +280,36 @@ Configure a role(s) for service accounts used for ceph-csi:
 * nodeplugin service account (`rbd-csi-nodeplugin`) requires **create** and
   **read** permissions to save new keys and retrieve existing
 
+#### Configuring Amazon KMS
+
+Amazon KMS can be used to encrypt and decrypt the passphrases that are used for
+encrypted RBD images. When a volume is created, a passphrase will be generated,
+which will be encrypted by the KMS and stored in the volumes metadata. Upon
+attaching the volume to a Pod, the worker node requests the KMS to decrypt the
+passphrase, after which it can be used to open the device with `cryptsetup` and
+provide access to it for the Pod.
+
+There are a few settings that need to be included in the [KMS configuration
+file](../examples/kms/vault/kms-config.yaml):
+
+1. `KMS_PROVIDER`: should be set to `aws-metadata`.
+1. `KMS_SECRET_NAME`: name of the Kubernetes Secret (in the Namespace where
+   Ceph-CSI is deployed) which contains the credentials for communicating with
+   AWS. This defaults to `ceph-csi-aws-credentials`.
+1. `AWS_REGION`: the region where the AWS KMS service is available.
+
+The [Secret with credentials](../examples/kms/vault/aws-credentials.yaml) for
+the AWS KMS is expected to contain:
+
+1. `AWS_ACCESS_KEY_ID`: ID of the key to use for encrypting/decrypting
+1. `AWS_SECRET_ACCESS_KEY`: secret for the key to use
+1. `AWS_SESSION_TOKEN`: *(optional)* session token, usually empty
+1. `AWS_CMK_ARN`: Custom Master Key, ARN for the key used to encrypt the
+   passphrase
+
+This Secret is expected to be created by the administrator who deployed
+Ceph-CSI.
+
 ### Encryption prerequisites
 
 In order for encryption to work you need to make sure that `dm-crypt` kernel
