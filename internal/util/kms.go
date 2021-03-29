@@ -135,9 +135,9 @@ func getKMSConfigMap() (map[string]interface{}, error) {
 
 	// convert cm.Data from map[string]interface{}
 	kmsConfig := make(map[string]interface{})
-	for kmsID, data := range cm.BinaryData {
+	for kmsID, data := range cm.Data {
 		section := make(map[string]interface{})
-		err = json.Unmarshal(data, &section)
+		err = json.Unmarshal([]byte(data), &section)
 		if err != nil {
 			return nil, fmt.Errorf("could not convert contents "+
 				"of %q to s config section", kmsID)
