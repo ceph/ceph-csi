@@ -199,7 +199,7 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	}
 
 	kms := &VaultTokensKMS{}
-	err = kms.initConnection(args.Config)
+	err = kms.initConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
 	}
