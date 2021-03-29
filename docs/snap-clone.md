@@ -4,12 +4,12 @@
 - [Create CephFS Snapshot and Clone Volume](#create-cephfs-snapshot-and-clone-volume)
   - [Create CephFS SnapshotClass](#create-cephfs-snapshotclass)
   - [Create CephFS Snapshot](#create-cephfs-snapshot)
-  - [Restore CephFS Snapshot to a new PVC](#restore-cephfs-snapshot-to-a-new-pvc)
+  - [Restore CephFS Snapshot to a new PVC](#restore-cephfs-snapshot)
   - [Clone CephFS PVC](#clone-cephfs-pvc)
 - [Create RBD Snapshot and Clone Volume](#create-rbd-snapshot-and-clone-volume)
   - [Create RBD SnapshotClass](#create-rbd-snapshotclass)
   - [Create RBD Snapshot](#create-rbd-snapshot)
-  - [Restore RBD Snapshot to a new PVC](#restore-rbd-snapshot-to-a-new-pvc)
+  - [Restore RBD Snapshot to a new PVC](#restore-rbd-snapshot)
   - [Clone RBD PVC](#clone-rbd-pvc)
 
 ## Prerequisite
@@ -48,13 +48,13 @@ on the PVC are deleted before you delete the PVC.**
 
 ## Create CephFS Snapshot and Clone Volume
 
-### Create SnapshotClass
+### Create CephFS SnapshotClass
 
 ```console
 kubectl create -f ../examples/cephfs/snapshotclass.yaml
 ```
 
-### Create Snapshot
+### Create CephFS Snapshot
 
 The snapshot is created on/for an existing PVC. You should
 have a PVC in bound state before creating snapshot from it.
@@ -94,7 +94,7 @@ NAME                                               READYTOUSE   RESTORESIZE   DE
 snapcontent-34476204-a14a-4d59-bfbc-2bbba695652c   true         1073741824    Delete           cephfs.csi.ceph.com   csi-cephfsplugin-snapclass   cephfs-pvc-snapshot   64s
 ```
 
-### Restore Snapshot to a new PVC
+### Restore CephFS Snapshot
 
 ```console
 kubectl create -f ../examples/cephfs/pvc-restore.yaml
@@ -107,7 +107,7 @@ csi-cephfs-pvc       Bound    pvc-1ea51547-a88b-4ab0-8b4a-812caeaf025d   1Gi    
 cephfs-pvc-restore   Bound    pvc-95308c75-6c93-4928-a551-6b5137192209   1Gi        RWX            csi-cephfs-sc  11m
 ```
 
-### Clone PVC
+### Clone CephFS PVC
 
 ```console
 kubectl create -f ../examples/cephfs/pvc-clone.yaml
@@ -135,7 +135,7 @@ have to edit any other file.
 
 After configuring everything you needed, deploy the snapshotclass:
 
-### Create RBD-SnapshotClass
+### Create RBD SnapshotClass
 
 ```bash
 kubectl create -f snapshotclass.yaml
@@ -149,7 +149,7 @@ NAME                      AGE
 csi-rbdplugin-snapclass   4s
 ```
 
-### Create rbd-Snapshot
+### Create RBD Snapshot
 
 ```bash
 kubectl create -f snapshot.yaml
@@ -196,7 +196,7 @@ Status:
 Events:           <none>
 ```
 
-### Restore the Snapshot
+### Restore RBD Snapshot
 
 To restore the snapshot to a new PVC, create
 [pvc-restore.yaml](../examples/rbd/pvc-restore.yaml)
@@ -207,7 +207,7 @@ kubectl create -f pvc-restore.yaml
 kubectl create -f pod-restore.yaml
 ```
 
-### Clone the PVC
+### Clone RBD PVC
 
 ```console
 $ kubectl create -f ../examples/rbd/pvc-clone.yaml

@@ -2,7 +2,7 @@
 
 - [Ceph-csi Upgrade](#ceph-csi-upgrade)
   - [Pre-upgrade considerations](#pre-upgrade-considerations)
-    - [snapshot-controller and snapshot Beta CRD](#snapshot-controller-and-snapshot-beta-crd)
+    - [snapshot-controller and snapshot CRD](#snapshot-controller-and-snapshot-crd)
   - [Upgrading from v1.2 to v2.0](#upgrading-from-v12-to-v20)
   - [Upgrading from v2.0 to v2.1](#upgrading-from-v20-to-v21)
   - [Upgrading from v2.1 to v3.0](#upgrading-from-v21-to-v30)
@@ -52,7 +52,7 @@ fuse client or rbd-nbd as of now.
 This guide will walk you through the steps to upgrade the software in a cluster
 from v3.0 to v3.1
 
-### Snapshot-controller
+### Snapshot-controller and snapshot crd
 
 Its kubernetes distributor responsibility to install new snapshot
 controller and snapshot CRD. more info can be found
