@@ -718,7 +718,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
 // TODO: make this function less complex
-// nolint:gocyclo // complexity needs to be reduced.
+// nolint:gocyclo,nestif // complexity needs to be reduced.
 func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	if err := cs.validateSnapshotReq(ctx, req); err != nil {
 		return nil, err
@@ -745,12 +745,6 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			err = status.Errorf(codes.Internal, err.Error())
 		}
 		return nil, err
-	}
-
-	// TODO: re-encrypt snapshot with a new passphrase
-	if rbdVol.isEncrypted() {
-		return nil, status.Errorf(codes.Unimplemented, "source Volume %s is encrypted, "+
-			"snapshotting is not supported currently", rbdVol.VolID)
 	}
 
 	// Check if source volume was created with required image features for snaps
@@ -800,6 +794,17 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			return nil, status.Errorf(codes.Internal, err.Error())
 		}
 		defer vol.Destroy()
+
+		if rbdVol.isEncrypted() {
+			cryptErr := rbdVol.copyEncryptionConfig(&vol.rbdImage)
+			if cryptErr != nil {
+				util.WarningLog(ctx, "failed copy encryption "+
+					"config for %q: %v", vol.String(),
+					req.GetName(), cryptErr)
+				return nil, status.Errorf(codes.Internal,
+					err.Error())
+			}
+		}
 
 		err = vol.flattenRbdImage(ctx, cr, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 		switch {
