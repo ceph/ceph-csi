@@ -467,7 +467,7 @@ func (ns *NodeServer) mountVolumeToStagePath(ctx context.Context, req *csi.NodeS
 	}
 
 	if existingFormat == "" && !staticVol && !readOnly {
-		args := []string{}
+		var args []string
 		if fsType == "ext4" {
 			args = []string{"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1", devicePath}
 		} else if fsType == "xfs" {

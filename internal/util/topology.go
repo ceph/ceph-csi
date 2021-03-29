@@ -96,7 +96,7 @@ func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map
 
 	// Ensure all labels are found
 	if found != labelCount {
-		missingLabels := []string{}
+		var missingLabels []string
 		for key, missing := range labelsIn {
 			if missing {
 				missingLabels = append(missingLabels, key)

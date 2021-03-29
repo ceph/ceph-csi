@@ -363,7 +363,7 @@ func sparsifyBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeCla
 }
 
 func deletePool(name string, cephfs bool, f *framework.Framework) error {
-	var cmds = []string{}
+	var cmds []string
 	if cephfs {
 		// ceph fs fail
 		// ceph fs rm myfs --yes-i-really-mean-it
