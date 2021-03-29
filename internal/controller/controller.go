@@ -18,7 +18,7 @@ package controller
 import (
 	"github.com/ceph/ceph-csi/internal/util"
 
-	clientConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
+	clientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
@@ -60,7 +60,7 @@ func Start(config Config) error {
 		LeaderElectionNamespace: config.Namespace,
 		LeaderElectionID:        electionID,
 	}
-	mgr, err := manager.New(clientConfig.GetConfigOrDie(), opts)
+	mgr, err := manager.New(clientconfig.GetConfigOrDie(), opts)
 	if err != nil {
 		util.ErrorLogMsg("failed to create manager %s", err)
 		return err

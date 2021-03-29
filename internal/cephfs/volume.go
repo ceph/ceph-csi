@@ -25,7 +25,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	fsAdmin "github.com/ceph/go-ceph/cephfs/admin"
+	fsadmin "github.com/ceph/go-ceph/cephfs/admin"
 	"github.com/ceph/go-ceph/rados"
 )
 
@@ -47,7 +47,7 @@ const (
 )
 
 // Subvolume holds subvolume information. This includes only the needed members
-// from fsAdmin.SubVolumeInfo.
+// from fsadmin.SubVolumeInfo.
 type Subvolume struct {
 	BytesQuota int64
 	Path       string
@@ -89,7 +89,7 @@ func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (
 			return nil, ErrVolumeNotFound
 		}
 		// In case the error is invalid command return error to the caller.
-		var invalid fsAdmin.NotImplementedError
+		var invalid fsadmin.NotImplementedError
 		if errors.As(err, &invalid) {
 			return nil, ErrInvalidCommand
 		}
@@ -102,14 +102,14 @@ func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (
 		Path:     info.Path,
 		Features: make([]string, len(info.Features)),
 	}
-	bc, ok := info.BytesQuota.(fsAdmin.ByteCount)
+	bc, ok := info.BytesQuota.(fsadmin.ByteCount)
 	if !ok {
 		// If info.BytesQuota == Infinite (in case it is not set)
 		// or nil (in case the subvolume is in snapshot-retained state),
 		// just continue without returning quota information.
 		// TODO: make use of subvolume "state" attribute once
 		// https://github.com/ceph/go-ceph/issues/453 is fixed.
-		if !(info.BytesQuota == fsAdmin.Infinite || info.BytesQuota == nil) {
+		if !(info.BytesQuota == fsadmin.Infinite || info.BytesQuota == nil) {
 			return nil, fmt.Errorf("subvolume %s has unsupported quota: %v", string(volID), info.BytesQuota)
 		}
 	} else {
@@ -154,7 +154,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 
 	// create subvolumegroup if not already created for the cluster.
 	if !clusterAdditionalInfo[volOptions.ClusterID].subVolumeGroupCreated {
-		opts := fsAdmin.SubVolumeGroupOptions{}
+		opts := fsadmin.SubVolumeGroupOptions{}
 		err = ca.CreateSubVolumeGroup(volOptions.FsName, volOptions.SubvolumeGroup, &opts)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to create subvolume group %s, for the vol %s: %s", volOptions.SubvolumeGroup, string(volID), err)
@@ -164,8 +164,8 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 		clusterAdditionalInfo[volOptions.ClusterID].subVolumeGroupCreated = true
 	}
 
-	opts := fsAdmin.SubVolumeOptions{
-		Size: fsAdmin.ByteCount(bytesQuota),
+	opts := fsadmin.SubVolumeOptions{
+		Size: fsadmin.ByteCount(bytesQuota),
 		Mode: modeAllRWX,
 	}
 	if volOptions.Pool != "" {
@@ -202,12 +202,12 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 			util.ErrorLog(ctx, "could not get FSAdmin, can not resize volume %s:", vo.FsName, err)
 			return err
 		}
-		_, err = fsa.ResizeSubVolume(vo.FsName, vo.SubvolumeGroup, string(volID), fsAdmin.ByteCount(bytesQuota), true)
+		_, err = fsa.ResizeSubVolume(vo.FsName, vo.SubvolumeGroup, string(volID), fsadmin.ByteCount(bytesQuota), true)
 		if err == nil {
 			clusterAdditionalInfo[vo.ClusterID].resizeState = supported
 			return nil
 		}
-		var invalid fsAdmin.NotImplementedError
+		var invalid fsadmin.NotImplementedError
 		// In case the error is other than invalid command return error to the caller.
 		if !errors.As(err, &invalid) {
 			util.ErrorLog(ctx, "failed to resize subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
@@ -225,7 +225,7 @@ func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, force 
 		return err
 	}
 
-	opt := fsAdmin.SubVolRmFlags{}
+	opt := fsadmin.SubVolRmFlags{}
 	opt.Force = force
 
 	if checkSubvolumeHasFeature("snapshot-retention", vo.Features) {

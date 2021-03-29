@@ -24,8 +24,8 @@ import (
 	"sync"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpcmiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpcprometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/kube-storage/spec/lib/go/replication"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
@@ -106,10 +106,10 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, srv Servers, 
 
 	middleWare := []grpc.UnaryServerInterceptor{contextIDInjector, logGRPC, panicHandler}
 	if metrics {
-		middleWare = append(middleWare, grpc_prometheus.UnaryServerInterceptor)
+		middleWare = append(middleWare, grpcprometheus.UnaryServerInterceptor)
 	}
 	opts := []grpc.ServerOption{
-		grpc_middleware.WithUnaryServerChain(middleWare...),
+		grpcmiddleware.WithUnaryServerChain(middleWare...),
 	}
 
 	server := grpc.NewServer(opts...)
@@ -148,9 +148,9 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, srv Servers, 
 			klog.Fatalf("failed to parse histogram count value: %v", e)
 		}
 		buckets := prometheus.ExponentialBuckets(start, factor, count)
-		bktOptios := grpc_prometheus.WithHistogramBuckets(buckets)
-		grpc_prometheus.EnableHandlingTimeHistogram(bktOptios)
-		grpc_prometheus.Register(server)
+		bktOptios := grpcprometheus.WithHistogramBuckets(buckets)
+		grpcprometheus.EnableHandlingTimeHistogram(bktOptios)
+		grpcprometheus.Register(server)
 	}
 	err = server.Serve(listener)
 	if err != nil {
