@@ -20,8 +20,11 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -217,6 +220,21 @@ func (cj *Config) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
 		}
 	}
 	return prefix + uid
+}
+
+const (
+	// volumeIDMapping represents the path where volumeID mapping json file
+	// exists.
+	volumeIDMapping = "/etc/ceph-csi-volumeid/mapping.json"
+)
+
+// Volume holds the information which need to be saved in the
+// configuration when we have different volumeID's in case of DR.
+type Volume struct {
+	ExistringVolumeID string `json:"existingvolumeID"`
+	NewVolumeID       string `json:"newvolumeID"`
+	PVName            string `json:"pvname"`
+	DriverName        string `json:"drivername"`
 }
 
 // ImageData contains image name and stored CSI properties.
@@ -709,26 +727,27 @@ func (conn *Connection) Destroy() {
 
 // CheckNewUUIDMapping checks is there any UUID mapping between old
 // volumeHandle and the newly generated volumeHandle.
-func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
-	journalPool, volumeHandle string) (string, error) {
-	var cj = conn.config
-
-	// check if request name is already part of the directory omap
-	fetchKeys := []string{
-		cj.csiNameKeyPrefix + volumeHandle,
-	}
-	values, err := getOMapValues(
-		ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
-		cj.commonPrefix, fetchKeys)
+func (*Connection) CheckNewUUIDMapping(volumeHandle string) (*Volume, error) {
+	data, err := ioutil.ReadFile(volumeIDMapping)
 	if err != nil {
-		if errors.Is(err, util.ErrKeyNotFound) || errors.Is(err, util.ErrPoolNotFound) {
-			// pool or omap (oid) was not present
-			// stop processing but without an error for no reservation exists
-			return "", nil
+		// skip file not found error for upgraded system
+		if os.IsNotExist(err) {
+			return nil, nil
 		}
-		return "", err
+		return nil, err
 	}
-	return values[cj.csiNameKeyPrefix+volumeHandle], nil
+	mapping := []Volume{}
+	err = json.Unmarshal(data, &mapping)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range mapping {
+		if v.ExistringVolumeID == volumeHandle {
+			return &v, nil
+		}
+	}
+	return nil, nil
 }
 
 // ReserveNewUUIDMapping creates the omap mapping between the oldVolumeHandle

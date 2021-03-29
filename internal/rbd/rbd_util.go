@@ -820,13 +820,14 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	defer j.Destroy()
 
 	// check is there any volumeID mapping exists.
-	id, err := j.CheckNewUUIDMapping(ctx, rbdVol.JournalPool, volumeID)
+	vol, err := j.CheckNewUUIDMapping(volumeID)
 	if err != nil {
 		return rbdVol, fmt.Errorf("failed to get volume id %s mapping %w",
 			volumeID, err)
 	}
-	if id != "" {
-		rbdVol.VolID = id
+	if vol != nil {
+		util.DebugLogMsg("found volumeID mapping %s %s", rbdVol.VolID, vol.NewVolumeID)
+		rbdVol.VolID = vol.NewVolumeID
 		err = vi.DecomposeCSIID(rbdVol.VolID)
 		if err != nil {
 			return rbdVol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",

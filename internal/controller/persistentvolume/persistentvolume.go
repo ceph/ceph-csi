@@ -17,11 +17,15 @@ package persistentvolume
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
+	"time"
 
 	ctrl "github.com/ceph/ceph-csi/internal/controller"
+	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
 
@@ -35,6 +39,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+)
+
+// Lock to update the configmap.
+var mapLock sync.Mutex
+
+const (
+	volumeIDMappingConfigMap = "ceph-csi-volumeid-mapping"
+	volumeIDMappingkey       = "mapping.json"
 )
 
 // ReconcilePersistentVolume reconciles a PersistentVolume object.
@@ -161,13 +173,138 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 		}
 		defer cr.DeleteCredentials()
 
-		err = rbd.RegenerateJournal(imageName, volumeHandler, pool, journalPool, requestName, cr)
+		rbdVolID, err := rbd.RegenerateJournal(imageName, volumeHandler, pool, journalPool, requestName, cr)
 		if err != nil {
 			util.ErrorLogMsg("failed to regenerate journal %s", err)
 			return err
 		}
+		if rbdVolID != volumeHandler {
+			err = r.storeVolumeIDMapping(pv.Name, volumeHandler, rbdVolID)
+			if err != nil {
+				util.ErrorLogMsg("failed to store volumeID mapping %s", err)
+				return err
+			}
+		}
+		// start cleanup goroutine
+		go r.cleanupStaleVolumeIDMapping()
 	}
 	return nil
+}
+
+// removeStaleVolumeIDMapping removes the stale volumeID mapping from the
+// Volume slice when the corresponding PV does not exists anymore.
+func (r ReconcilePersistentVolume) removeStaleVolumeIDMapping(cm *corev1.ConfigMap) (*[]journal.Volume, error) {
+	volData := []journal.Volume{}
+	err := json.Unmarshal([]byte(cm.Data[volumeIDMappingkey]), &volData)
+	if err != nil {
+		return nil, fmt.Errorf("json unmarshal failed: %w", err)
+	}
+	for i, c := range volData {
+		if c.DriverName != r.config.DriverName {
+			continue
+		}
+		pv := &corev1.PersistentVolume{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: c.PVName}, pv)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// if the PV is not found remove entry
+				if i > len(volData) {
+					copy(volData[i:], volData[i+1:])
+				}
+				volData[len(volData)-1] = journal.Volume{}
+				volData = volData[:len(volData)-1]
+			}
+		}
+	}
+	return &volData, nil
+}
+
+// cleanupStaleVolumeIDMapping starts a periodic timer to cleanup the stale
+// volumeID mapping from the configmap.
+func (r ReconcilePersistentVolume) cleanupStaleVolumeIDMapping() {
+	ticker := time.NewTicker(10 * time.Second) // nolint:gomnd // number specifies time.
+	defer ticker.Stop()
+	for {
+		select { // nolint:gosimple // currently only single case is present.
+		// TODO add code for signal handling to exit from infinite loop.
+		case <-ticker.C:
+			// Take a lock and remove stale entry from configmap
+			mapLock.Lock()
+			cm, err := r.fetchvolumeIDMappingConfigMap()
+			if err == nil {
+				volData, err := r.removeStaleVolumeIDMapping(cm)
+				if err != nil {
+					util.ErrorLogMsg("failed to remove stale volumeID mapping: %s", err)
+				}
+				err = r.updateVolumeIDMappingConfigMap(volData, cm)
+				if err != nil {
+					util.ErrorLogMsg("configmap update failed: %s", err)
+				}
+			}
+		}
+		// Release lock after updating configmap
+		mapLock.Unlock()
+	}
+}
+
+// fetchvolumeIDMappingConfigMap fetches the configmap which contains the
+// volumeID mapping.
+func (r ReconcilePersistentVolume) fetchvolumeIDMappingConfigMap() (*corev1.ConfigMap, error) {
+	nsReq := types.NamespacedName{
+		Namespace: r.config.Namespace,
+		Name:      volumeIDMappingConfigMap,
+	}
+	cm := &corev1.ConfigMap{}
+	err := r.client.Get(context.TODO(), nsReq, cm)
+	if err != nil {
+		return cm, fmt.Errorf("configmap get failed: %w", err)
+	}
+	return cm, nil
+}
+
+// updateVolumeIDMappingConfigMap updates the configmap with latest volumeID
+// mappings.
+func (r ReconcilePersistentVolume) updateVolumeIDMappingConfigMap(volData *[]journal.Volume, cm *corev1.ConfigMap) error {
+	upData, err := json.Marshal(*volData)
+	if err != nil {
+		return fmt.Errorf("json marshal failed: %w", err)
+	}
+	cm.Data[volumeIDMappingkey] = string(upData)
+	err = r.client.Update(context.TODO(), cm)
+	if err != nil {
+		return fmt.Errorf("configmap update failed: %w", err)
+	}
+	return nil
+}
+
+// storeVolumeIDMapping stores the new volumeID mapping in the configmap if it
+// does not exists.
+func (r ReconcilePersistentVolume) storeVolumeIDMapping(pvName, existingVolumeID, newVolumeID string) error {
+	// take a lock to avoid concurrent update of configmap
+	mapLock.Lock()
+	defer mapLock.Unlock()
+	vol := journal.Volume{
+		ExistringVolumeID: existingVolumeID,
+		NewVolumeID:       newVolumeID,
+		PVName:            pvName,
+		DriverName:        r.config.DriverName,
+	}
+	cm, err := r.fetchvolumeIDMappingConfigMap()
+	if err != nil {
+		return fmt.Errorf("configmap get failed: %w", err)
+	}
+	volData := []journal.Volume{}
+	err = json.Unmarshal([]byte(cm.Data[volumeIDMappingkey]), &volData)
+	if err != nil {
+		return fmt.Errorf("json unmarshal failed: %w", err)
+	}
+	for _, v := range volData {
+		if v.ExistringVolumeID == existingVolumeID {
+			return nil
+		}
+	}
+	volData = append(volData, vol)
+	return r.updateVolumeIDMappingConfigMap(&volData, cm)
 }
 
 // Reconcile reconciles the PersitentVolume object and creates a new omap entries
