@@ -50,7 +50,7 @@ rules:
     verbs: ["update"]
   - apiGroups: [""]
     resources: ["configmaps"]
-    verbs: ["get"]
+    verbs: ["get", "list", "watch", "update"]
 {{- if .Values.provisioner.resizer.enabled }}
   - apiGroups: [""]
     resources: ["persistentvolumeclaims/status"]

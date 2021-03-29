@@ -176,6 +176,8 @@ spec:
               mountPath: /etc/ceph-csi-encryption-kms-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+            - name: volumeid-mapping
+              mountPath: /etc/ceph-csi-volumeid
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- if .Values.provisioner.deployController }}
@@ -260,6 +262,9 @@ spec:
           emptyDir: {
             medium: "Memory"
           }
+        - name: volumeid-mapping
+          configMap:
+            name: ceph-csi-volumeid-mapping
 {{- if .Values.provisioner.affinity }}
       affinity:
 {{ toYaml .Values.provisioner.affinity | indent 8 -}}

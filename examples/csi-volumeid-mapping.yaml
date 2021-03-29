@@ -1,0 +1,11 @@
+---
+# This is a sample configmap that holds the information when PVC's are moved
+# from one cluster to another and the newly generated volumeID is different
+# from the original volumeID.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ceph-csi-volumeid-mapping
+data:
+  mapping.json: |-
+    []

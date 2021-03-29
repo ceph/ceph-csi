@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -23,6 +24,7 @@ var (
 	rbdNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
 	rbdNodePluginPSP   = "csi-nodeplugin-psp.yaml"
 	configMap          = "csi-config-map.yaml"
+	volumeIDMapping    = "csi-volumeid-mapping.yaml"
 	rbdDirPath         = "../deploy/rbd/kubernetes/"
 	rbdExamplePath     = "../examples/rbd/"
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
@@ -67,7 +69,20 @@ func deleteRBDPlugin() {
 }
 
 func createORDeleteRbdResouces(action string) {
-	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisioner)
+	data, err := replaceNamespaceInTemplate(rbdDirPath + volumeIDMapping)
+	// discard file not found error as createORDeleteRbdResouces is used for
+	// upgrade testing.
+	if err != nil {
+		if !os.IsNotExist(err) {
+			e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+volumeIDMapping, err)
+		}
+	} else {
+		_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+		if err != nil {
+			e2elog.Failf("failed to %s volumeId Mapping configmap with error %v", action, err)
+		}
+	}
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdProvisioner)
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdProvisioner, err)
 	}
