@@ -1,10 +1,11 @@
-{{- if not .Values.provisioner.attacher.enabled -}}
-apiVersion: storage.k8s.io/v1beta1
+{{ if semverCompare ">=1.18" .Capabilities.KubeVersion.GitVersion }}
+apiVersion: storage.k8s.io/v1
+{{ else }}
+apiVersion: storage.k8s.io/v1betav1
+{{ end }}
 kind: CSIDriver
 metadata:
   name: {{ .Values.driverName }}
-  namespace: {{ .Release.Namespace }}
 spec:
-  attachRequired: false
+  attachRequired: true
   podInfoOnMount: false
-{{- end -}}
