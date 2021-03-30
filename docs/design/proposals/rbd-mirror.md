@@ -75,12 +75,12 @@ To solve this problem, We will have a new controller(rbdplugin controller)
 running as part of provisioner pod which watches for the PV objects. When a PV
 is created it will extract the required information from the PV spec and it
 will regenerate the OMAP data and also it will generate a new VolumeHandle
-(`newclusterID-newpoolID-volumeuniqueID`) and it creates an OMAP object for
-mapping between old VolumeHandle and new VolumeHandle. Whenever Ceph-CSI gets a
-RPC request with older VolumeHandle, it will check if any new VolumeHandle
-exists for the old VolumeHandle. If yes, it uses the new VolumeHandle for
-internal operations (to get pool name, Ceph monitor details from the ClusterID
-etc).
+(`newclusterID-newpoolID-volumeuniqueID`) and it adds a PV annotation
+`csi.ceph.io/volume-handle` for mapping between old VolumeHandle and new
+VolumeHandle. Whenever Ceph-CSI gets a RPC request with older VolumeHandle, it
+will check if any new VolumeHandle exists for the old VolumeHandle. If yes, it
+uses the new VolumeHandle for internal operations (to get pool name, Ceph
+monitor details from the ClusterID etc).
 
 Currently, We are making use of watchers in node stage request to make sure
 ReadWriteOnce (RWO) PVC is mounted on a single node at a given point in time.
