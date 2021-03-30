@@ -1104,10 +1104,23 @@ var _ = Describe("RBD", func() {
 						e2elog.Failf("failed to create rados namespace with error %v", err)
 					}
 					// delete csi pods
-					err = deletePodWithLabel("app in (ceph-csi-rbd, csi-rbdplugin, csi-rbdplugin-provisioner)",
-						cephCSINamespace, false)
+					selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
 					if err != nil {
-						e2elog.Failf("failed to delete pods with labels with error %v", err)
+						e2elog.Failf("failed to get the daemonset labels with error %v", err)
+					}
+					// delete rbd nodeplugin pods
+					err = deletePodWithLabel(selector, cephCSINamespace, false)
+					if err != nil {
+						e2elog.Failf("fail to delete pod with error %v", err)
+					}
+					selector, err = getDeploymentLabelSelector(f, cephCSINamespace, rbdDeploymentName)
+					if err != nil {
+						e2elog.Failf("failed to get the deployment labels with error %v", err)
+					}
+					// delete rbd provisioner pods
+					err = deletePodWithLabel(selector, cephCSINamespace, false)
+					if err != nil {
+						e2elog.Failf("fail to delete pod with error %v", err)
 					}
 					// wait for csi pods to come up
 					err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
