@@ -351,9 +351,14 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 	}
 	defer j.Destroy()
 
+	kmsID := ""
+	if rbdVol.isEncrypted() {
+		kmsID = rbdVol.encryption.GetID()
+	}
+
 	rbdSnap.ReservedID, rbdSnap.RbdSnapName, err = j.ReserveName(
 		ctx, rbdSnap.JournalPool, journalPoolID, rbdSnap.Pool, imagePoolID,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, "", rbdSnap.ReservedID, rbdVol.Owner)
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, kmsID, rbdSnap.ReservedID, rbdVol.Owner)
 	if err != nil {
 		return err
 	}
