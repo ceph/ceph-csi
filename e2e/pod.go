@@ -35,6 +35,23 @@ func getDaemonSetLabelSelector(f *framework.Framework, ns, daemonSetName string)
 	return s.String(), nil
 }
 
+// getDeploymentLabelSelector returns labels of deployment given name and namespace dynamically,
+// needed since labels are not same for helm and non-helm deployments.
+func getDeploymentLabelSelector(f *framework.Framework, ns, deploymentName string) (string, error) {
+	dp, err := f.ClientSet.AppsV1().Deployments(ns).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+	if err != nil {
+		e2elog.Logf("Error getting deployment with name %s in namespace %s", deploymentName, ns)
+		return "", err
+	}
+	s, err := metav1.LabelSelectorAsSelector(dp.Spec.Selector)
+	if err != nil {
+		e2elog.Logf("Error parsing %s deployment selector in namespace %s", deploymentName, ns)
+		return "", err
+	}
+	e2elog.Logf("LabelSelector for %s deployment in namespace %s: %s", deploymentName, ns, s.String())
+	return s.String(), nil
+}
+
 func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
