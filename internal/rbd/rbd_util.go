@@ -35,6 +35,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
 )
@@ -777,9 +778,8 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	return err
 }
 
-// genVolFromVolID generates a rbdVolume structure from the provided identifier, updating
-// the structure with elements from on-disk image metadata as well.
-func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials, secrets map[string]string) (*rbdVolume, error) {
+// generateVolumeFromVolumeID generates a rbdVolume structure from the provided identifier.
+func generateVolumeFromVolumeID(ctx context.Context, volumeID string, cr *util.Credentials, secrets map[string]string) (*rbdVolume, error) {
 	var (
 		options map[string]string
 		vi      util.CSIIdentifier
@@ -821,20 +821,6 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	}
 	defer j.Destroy()
 
-	// check is there any volumeID mapping exists.
-	id, err := j.CheckNewUUIDMapping(ctx, rbdVol.JournalPool, volumeID)
-	if err != nil {
-		return rbdVol, fmt.Errorf("failed to get volume id %s mapping %w",
-			volumeID, err)
-	}
-	if id != "" {
-		rbdVol.VolID = id
-		err = vi.DecomposeCSIID(rbdVol.VolID)
-		if err != nil {
-			return rbdVol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
-				ErrInvalidVolID, err, rbdVol.VolID)
-		}
-	}
 	rbdVol.Pool, err = util.GetPoolName(rbdVol.Monitors, cr, vi.LocationID)
 	if err != nil {
 		return rbdVol, err
@@ -881,6 +867,38 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	}
 	err = rbdVol.getImageInfo()
 	return rbdVol, err
+}
+
+// genVolFromVolID generates a rbdVolume structure from the provided identifier, updating
+// the structure with elements from on-disk image metadata as well.
+func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials, secrets map[string]string) (*rbdVolume, error) {
+	vol, err := generateVolumeFromVolumeID(ctx, volumeID, cr, secrets)
+	if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) {
+		return vol, err
+	}
+
+	// If the volume details are not found in the OMAP it can be a mirrored RBD
+	// image and the OMAP is already generated and the volumeHandle might not
+	// be the same in the PV.Spec.CSI.VolumeHandle. Check the PV annotation for
+	// the new volumeHandle. If the new volumeHandle is found, generate the RBD
+	// volume structure from the new volumeHandle.
+	c := util.NewK8sClient()
+	listOpt := metav1.ListOptions{
+		LabelSelector: PVReplicatedLabelKey,
+	}
+	pvlist, pErr := c.CoreV1().PersistentVolumes().List(context.TODO(), listOpt)
+	if pErr != nil {
+		return vol, pErr
+	}
+	for i := range pvlist.Items {
+		if pvlist.Items[i].Spec.CSI != nil && pvlist.Items[i].Spec.CSI.VolumeHandle == volumeID {
+			if v, ok := pvlist.Items[i].Annotations[PVVolumeHandleAnnotationKey]; ok {
+				util.UsefulLog(ctx, "found new volumeID %s for existing volumeID %s", v, volumeID)
+				return generateVolumeFromVolumeID(ctx, v, cr, secrets)
+			}
+		}
+	}
+	return vol, err
 }
 
 func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[string]string, disableInUseChecks bool) (*rbdVolume, error) {

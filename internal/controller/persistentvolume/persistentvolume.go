@@ -122,6 +122,24 @@ func checkStaticVolume(pv *corev1.PersistentVolume) (bool, error) {
 	return static, nil
 }
 
+// storeVolumeIDInPV stores the new volumeID in PV object.
+func (r ReconcilePersistentVolume) storeVolumeIDInPV(pv *corev1.PersistentVolume, newVolumeID string) error {
+	if v, ok := pv.Annotations[rbd.PVVolumeHandleAnnotationKey]; ok {
+		if v == newVolumeID {
+			return nil
+		}
+	}
+	if pv.Annotations == nil {
+		pv.Annotations = make(map[string]string)
+	}
+	if pv.Labels == nil {
+		pv.Labels = make(map[string]string)
+	}
+	pv.Labels[rbd.PVReplicatedLabelKey] = rbd.PVReplicatedLabelValue
+	pv.Annotations[rbd.PVVolumeHandleAnnotationKey] = newVolumeID
+	return r.client.Update(context.TODO(), pv)
+}
+
 // reconcilePV will extract the image details from the pv spec and regenerates
 // the omap data.
 func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
@@ -163,10 +181,17 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 	}
 	defer cr.DeleteCredentials()
 
-	err = rbd.RegenerateJournal(imageName, volumeHandler, pool, journalPool, requestName, cr)
+	rbdVolID, err := rbd.RegenerateJournal(imageName, volumeHandler, pool, journalPool, requestName, cr)
 	if err != nil {
 		util.ErrorLogMsg("failed to regenerate journal %s", err)
 		return err
+	}
+	if rbdVolID != volumeHandler {
+		err = r.storeVolumeIDInPV(pv, rbdVolID)
+		if err != nil {
+			util.ErrorLogMsg("failed to store volumeID in PV %s", err)
+			return err
+		}
 	}
 	return nil
 }
