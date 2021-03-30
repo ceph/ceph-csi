@@ -214,6 +214,11 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	}
 
 	switch mirroringInfo.State {
+	// image is already in disabled state
+	case librbd.MirrorImageDisabled:
+	// image mirroring is still disabling
+	case librbd.MirrorImageDisabling:
+		return nil, status.Errorf(codes.Aborted, "%s is in disabling state", volumeID)
 	case librbd.MirrorImageEnabled:
 		if !force && !mirroringInfo.Primary {
 			return nil, status.Error(codes.InvalidArgument, "image is in non-primary state")
@@ -234,11 +239,6 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 			return nil, status.Errorf(codes.Aborted, "%s is in disabling state", volumeID)
 		}
 		return &replication.DisableVolumeReplicationResponse{}, nil
-	// image is already in disabled state
-	case librbd.MirrorImageDisabled:
-	// image mirroring is still disabling
-	case librbd.MirrorImageDisabling:
-		return nil, status.Errorf(codes.Aborted, "%s is in disabling state", volumeID)
 	default:
 		// TODO: use string instead of int for returning valid error message
 		return nil, status.Errorf(codes.InvalidArgument, "image is in %d Mode", mirroringInfo.State)
