@@ -1,0 +1,10 @@
+---
+# if Kubernetes version is less than 1.18 change
+# apiVersion to storage.k8s.io/v1betav1
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: rbd.csi.ceph.com
+spec:
+  attachRequired: true
+  podInfoOnMount: false

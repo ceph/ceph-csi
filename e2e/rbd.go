@@ -3,6 +3,8 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 
@@ -23,6 +25,7 @@ var (
 	rbdNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
 	rbdNodePluginPSP   = "csi-nodeplugin-psp.yaml"
 	configMap          = "csi-config-map.yaml"
+	csiDriverObject    = "csidriver.yaml"
 	rbdDirPath         = "../deploy/rbd/kubernetes/"
 	rbdExamplePath     = "../examples/rbd/"
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
@@ -67,6 +70,19 @@ func deleteRBDPlugin() {
 }
 
 func createORDeleteRbdResouces(action string) {
+	csiDriver, err := ioutil.ReadFile(rbdDirPath + csiDriverObject)
+	if err != nil {
+		// createORDeleteRbdResouces is used for upgrade testing as csidriverObject is
+		// newly added, discarding file not found error.
+		if !os.IsNotExist(err) {
+			e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+csiDriverObject, err)
+		}
+	} else {
+		_, err = framework.RunKubectlInput(cephCSINamespace, string(csiDriver), action, "-f", "-")
+		if err != nil {
+			e2elog.Failf("failed to %s CSIDriver object with error %v", action, err)
+		}
+	}
 	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisioner)
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdProvisioner, err)

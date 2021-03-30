@@ -3,6 +3,8 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 
@@ -61,6 +63,19 @@ func deleteCephfsPlugin() {
 }
 
 func createORDeleteCephfsResouces(action string) {
+	csiDriver, err := ioutil.ReadFile(cephfsDirPath + csiDriverObject)
+	if err != nil {
+		// createORDeleteRbdResouces is used for upgrade testing as csidriverObject is
+		// newly added, discarding file not found error.
+		if !os.IsNotExist(err) {
+			e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+csiDriverObject, err)
+		}
+	} else {
+		_, err = framework.RunKubectlInput(cephCSINamespace, string(csiDriver), action, "-f", "-")
+		if err != nil {
+			e2elog.Failf("failed to %s CSIDriver object with error %v", action, err)
+		}
+	}
 	data, err := replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisioner)
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisioner, err)
