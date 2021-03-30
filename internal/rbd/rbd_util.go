@@ -723,7 +723,7 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 
 // genSnapFromSnapID generates a rbdSnapshot structure from the provided identifier, updating
 // the structure with elements from on-disk snapshot metadata as well.
-func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID string, cr *util.Credentials) error {
+func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID string, cr *util.Credentials, secrets map[string]string) error {
 	var (
 		options map[string]string
 		vi      util.CSIIdentifier
@@ -774,12 +774,32 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	rbdSnap.RbdImageName = imageAttributes.SourceName
 	rbdSnap.RbdSnapName = imageAttributes.ImageName
 	rbdSnap.ReservedID = vi.ObjectUUID
+	rbdSnap.Owner = imageAttributes.Owner
 	// convert the journal pool ID to name, for use in DeleteSnapshot cases
 	if imageAttributes.JournalPoolID != util.InvalidPoolID {
 		rbdSnap.JournalPool, err = util.GetPoolName(rbdSnap.Monitors, cr, imageAttributes.JournalPoolID)
 		if err != nil {
 			// TODO: If pool is not found we may leak the image (as DeleteSnapshot will return success)
 			return err
+		}
+	}
+
+	err = rbdSnap.Connect(cr)
+	defer func() {
+		if err != nil {
+			rbdSnap.Destroy()
+		}
+	}()
+	if err != nil {
+		return fmt.Errorf("failed to connect to %q: %w",
+			rbdSnap.String(), err)
+	}
+
+	if imageAttributes.KmsID != "" {
+		err = rbdSnap.configureEncryption(imageAttributes.KmsID, secrets)
+		if err != nil {
+			return fmt.Errorf("failed to configure encryption for "+
+				"%q: %w", rbdSnap.String(), err)
 		}
 	}
 

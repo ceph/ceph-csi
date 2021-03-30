@@ -302,7 +302,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 	}()
 
-	err = cs.createBackingImage(ctx, cr, rbdVol, parentVol, rbdSnap)
+	err = cs.createBackingImage(ctx, cr, req.GetSecrets(), rbdVol, parentVol, rbdSnap)
 	if err != nil {
 		if errors.Is(err, ErrFlattenInProgress) {
 			return nil, status.Error(codes.Aborted, err.Error())
@@ -425,7 +425,7 @@ func checkFlatten(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) 
 	return nil
 }
 
-func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *util.Credentials, rbdVol *rbdVolume, snapshotID string) error {
+func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *util.Credentials, secrets map[string]string, rbdVol *rbdVolume, snapshotID string) error {
 	rbdSnap := &rbdSnapshot{}
 	if acquired := cs.SnapshotLocks.TryAcquire(snapshotID); !acquired {
 		util.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, snapshotID)
@@ -433,7 +433,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *ut
 	}
 	defer cs.SnapshotLocks.Release(snapshotID)
 
-	err := genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr)
+	err := genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr, secrets)
 	if err != nil {
 		if errors.Is(err, util.ErrPoolNotFound) {
 			util.ErrorLog(ctx, "failed to get backend snapshot for %s: %v", snapshotID, err)
@@ -455,7 +455,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *ut
 	return nil
 }
 
-func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Credentials, rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot) error {
+func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Credentials, secrets map[string]string, rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 	var err error
 
 	var j = &journal.Connection{}
@@ -473,7 +473,7 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 		}
 		defer cs.OperationLocks.ReleaseRestoreLock(rbdSnap.VolID)
 
-		err = cs.createVolumeFromSnapshot(ctx, cr, rbdVol, rbdSnap.VolID)
+		err = cs.createVolumeFromSnapshot(ctx, cr, secrets, rbdVol, rbdSnap.VolID)
 		if err != nil {
 			return err
 		}
@@ -542,7 +542,7 @@ func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *u
 			return nil, nil, status.Errorf(codes.NotFound, "volume Snapshot ID cannot be empty")
 		}
 		rbdSnap := &rbdSnapshot{}
-		if err := genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
+		if err := genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr, req.GetSecrets()); err != nil {
 			util.ErrorLog(ctx, "failed to get backend snapshot for %s: %v", snapshotID, err)
 			if !errors.Is(err, ErrSnapNotFound) {
 				return nil, nil, status.Error(codes.Internal, err.Error())
@@ -1000,7 +1000,7 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	defer cs.OperationLocks.ReleaseDeleteLock(snapshotID)
 
 	rbdSnap := &rbdSnapshot{}
-	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr); err != nil {
+	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr, req.GetSecrets()); err != nil {
 		// if error is ErrPoolNotFound, the pool is already deleted we dont
 		// need to worry about deleting snapshot or omap data, return success
 		if errors.Is(err, util.ErrPoolNotFound) {
