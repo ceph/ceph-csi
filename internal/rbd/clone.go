@@ -116,7 +116,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 	err = parentVol.checkSnapExists(snap)
 	if err == nil {
 		// the temp clone exists, delete it lets reserve a new ID and
-		// create new resources for clearner approach
+		// create new resources for a cleaner approach
 		err = parentVol.deleteSnapshot(ctx, snap)
 	}
 	if errors.Is(err, ErrSnapNotFound) {
