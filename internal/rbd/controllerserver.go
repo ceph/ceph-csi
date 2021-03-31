@@ -928,6 +928,16 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 		}
 	}()
 
+	if parentVol.isEncrypted() {
+		cryptErr := parentVol.copyEncryptionConfig(&cloneRbd.rbdImage)
+		if cryptErr != nil {
+			util.WarningLog(ctx, "failed copy encryption "+
+				"config for %q: %v", cloneRbd.String(), cryptErr)
+			return ready, nil, status.Errorf(codes.Internal,
+				err.Error())
+		}
+	}
+
 	err = cloneRbd.createSnapshot(ctx, rbdSnap)
 	if err != nil {
 		// update rbd image name for logging
