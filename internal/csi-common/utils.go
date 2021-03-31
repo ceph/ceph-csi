@@ -26,6 +26,8 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	rp "github.com/kube-storage/replication-lib-utils/protosanitizer"
+	"github.com/kube-storage/spec/lib/go/replication"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -82,6 +84,21 @@ func NewControllerServiceCapability(ctrlCap csi.ControllerServiceCapability_RPC_
 	}
 }
 
+// Add replication request names to the list when we implement more API's.
+func isReplicationRequest(req interface{}) bool {
+	isReplicationRequest := true
+	switch req.(type) {
+	case *replication.EnableVolumeReplicationRequest:
+	case *replication.DisableVolumeReplicationRequest:
+	case *replication.PromoteVolumeRequest:
+	case *replication.DemoteVolumeRequest:
+	case *replication.ResyncVolumeRequest:
+	default:
+		isReplicationRequest = false
+	}
+	return isReplicationRequest
+}
+
 func getReqID(req interface{}) string {
 	// if req is nil empty string will be returned
 	reqID := ""
@@ -112,6 +129,19 @@ func getReqID(req interface{}) string {
 
 	case *csi.NodeExpandVolumeRequest:
 		reqID = r.VolumeId
+
+	case *replication.EnableVolumeReplicationRequest:
+		reqID = r.VolumeId
+	case *replication.DisableVolumeReplicationRequest:
+		reqID = r.VolumeId
+
+	case *replication.PromoteVolumeRequest:
+		reqID = r.VolumeId
+	case *replication.DemoteVolumeRequest:
+		reqID = r.VolumeId
+
+	case *replication.ResyncVolumeRequest:
+		reqID = r.VolumeId
 	}
 	return reqID
 }
@@ -130,7 +160,12 @@ func contextIDInjector(ctx context.Context, req interface{}, info *grpc.UnarySer
 
 func logGRPC(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	util.ExtendedLog(ctx, "GRPC call: %s", info.FullMethod)
-	util.TraceLog(ctx, "GRPC request: %s", protosanitizer.StripSecrets(req))
+	if isReplicationRequest(req) {
+		util.TraceLog(ctx, "GRPC request: %s", rp.StripReplicationSecrets(req))
+	} else {
+		util.TraceLog(ctx, "GRPC request: %s", protosanitizer.StripSecrets(req))
+	}
+
 	resp, err := handler(ctx, req)
 	if err != nil {
 		klog.Errorf(util.Log(ctx, "GRPC error: %v"), err)
