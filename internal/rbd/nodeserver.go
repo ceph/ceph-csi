@@ -823,7 +823,7 @@ func (ns *NodeServer) processEncryptedDevice(ctx context.Context, volOptions *rb
 			if err != nil {
 				return "", fmt.Errorf("failed to encrypt rbd image %s: %w", imageSpec, err)
 			}
-		case "crypt":
+		case "crypt", "crypto_LUKS":
 			util.WarningLog(ctx, "rbd image %s is encrypted, but encryption state was not updated",
 				imageSpec)
 			err = volOptions.ensureEncryptionMetadataSet(rbdImageEncrypted)
