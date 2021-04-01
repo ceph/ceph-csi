@@ -654,7 +654,7 @@ var _ = Describe("RBD", func() {
 					// total images in cluster is 1 parent rbd image+ total
 					// snaps
 					validateRBDImageCount(f, totalCount+1)
-					// create clones from different snapshosts and bind it to an
+					// create clones from different snapshots and bind it to an
 					// app
 					wg.Add(totalCount)
 					for i := 0; i < totalCount; i++ {
