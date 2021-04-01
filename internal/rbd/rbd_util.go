@@ -251,6 +251,13 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		return fmt.Errorf("failed to create rbd image: %w", err)
 	}
 
+	if pOpts.isEncrypted() {
+		err = pOpts.setupEncryption(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to setup encroption for image %s: %v", pOpts, err)
+		}
+	}
+
 	if pOpts.ThickProvision {
 		err = pOpts.allocate(0)
 		if err != nil {

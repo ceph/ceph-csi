@@ -152,15 +152,7 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 	return rbdVol, nil
 }
 
-func buildCreateVolumeResponse(ctx context.Context, req *csi.CreateVolumeRequest, rbdVol *rbdVolume) (*csi.CreateVolumeResponse, error) {
-	if rbdVol.isEncrypted() {
-		err := rbdVol.setupEncryption(ctx)
-		if err != nil {
-			util.ErrorLog(ctx, err.Error())
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	}
-
+func buildCreateVolumeResponse(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) *csi.CreateVolumeResponse {
 	volumeContext := req.GetParameters()
 	volumeContext["pool"] = rbdVol.Pool
 	volumeContext["journalPool"] = rbdVol.JournalPool
@@ -182,7 +174,7 @@ func buildCreateVolumeResponse(ctx context.Context, req *csi.CreateVolumeRequest
 				},
 			}
 	}
-	return &csi.CreateVolumeResponse{Volume: volume}, nil
+	return &csi.CreateVolumeResponse{Volume: volume}
 }
 
 // getGRPCErrorForCreateVolume converts the returns the GRPC errors based on
@@ -226,6 +218,7 @@ func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnaps
 }
 
 // CreateVolume creates the volume in backend.
+// nolint:gocyclo // encrypted cloning/snapshots added more complexity, this needs to be addressed
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateVolumeReq(ctx, req); err != nil {
 		return nil, err
@@ -266,6 +259,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err != nil {
 		return nil, getGRPCErrorForCreateVolume(err)
 	}
+
 	if found {
 		if rbdSnap != nil {
 			// check if image depth is reached limit and requires flatten
@@ -274,7 +268,16 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 				return nil, err
 			}
 		}
-		return buildCreateVolumeResponse(ctx, req, rbdVol)
+
+		if parentVol != nil && parentVol.isEncrypted() {
+			err = parentVol.copyEncryptionConfig(&rbdVol.rbdImage)
+			if err != nil {
+				util.ErrorLog(ctx, err.Error())
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
+
+		return buildCreateVolumeResponse(req, rbdVol), nil
 	}
 
 	err = validateRequestedVolumeSize(rbdVol, parentVol, rbdSnap, cr)
@@ -514,13 +517,6 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 		if err != nil {
 			util.ErrorLog(ctx, "failed to flatten image %s: %v", rbdVol, err)
 			return err
-		}
-	}
-	if rbdVol.isEncrypted() {
-		err = rbdVol.setupEncryption(ctx)
-		if err != nil {
-			util.ErrorLog(ctx, "failed to setup encroption for image %s: %v", rbdVol, err)
-			return status.Error(codes.Internal, err.Error())
 		}
 	}
 	return nil
