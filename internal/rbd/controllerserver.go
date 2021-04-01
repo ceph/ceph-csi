@@ -447,7 +447,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *ut
 	// create clone image and delete snapshot
 	err = rbdVol.cloneRbdImageFromSnapshot(ctx, rbdSnap)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rbdSnap, err)
+		util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rbdVol, rbdSnap, err)
 		return err
 	}
 
