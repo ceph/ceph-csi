@@ -129,43 +129,44 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 	if !ok {
 		return nil
 	}
-	if pv.Spec.CSI != nil && pv.Spec.CSI.Driver == r.config.DriverName {
-		pool := pv.Spec.CSI.VolumeAttributes["pool"]
-		journalPool := pv.Spec.CSI.VolumeAttributes["journalPool"]
-		requestName := pv.Name
-		imageName := pv.Spec.CSI.VolumeAttributes["imageName"]
-		volumeHandler := pv.Spec.CSI.VolumeHandle
-		secretName := ""
-		secretNamespace := ""
-		// check static volume
-		static, err := checkStaticVolume(pv)
-		if err != nil {
-			return err
-		}
-		// if the volume is static, dont generate OMAP data
-		if static {
-			return nil
-		}
-		if pv.Spec.CSI.ControllerExpandSecretRef != nil {
-			secretName = pv.Spec.CSI.ControllerExpandSecretRef.Name
-			secretNamespace = pv.Spec.CSI.ControllerExpandSecretRef.Namespace
-		} else if pv.Spec.CSI.NodeStageSecretRef != nil {
-			secretName = pv.Spec.CSI.NodeStageSecretRef.Name
-			secretNamespace = pv.Spec.CSI.NodeStageSecretRef.Namespace
-		}
+	if pv.Spec.CSI == nil || pv.Spec.CSI.Driver != r.config.DriverName {
+		return nil
+	}
+	pool := pv.Spec.CSI.VolumeAttributes["pool"]
+	journalPool := pv.Spec.CSI.VolumeAttributes["journalPool"]
+	requestName := pv.Name
+	imageName := pv.Spec.CSI.VolumeAttributes["imageName"]
+	volumeHandler := pv.Spec.CSI.VolumeHandle
+	secretName := ""
+	secretNamespace := ""
+	// check static volume
+	static, err := checkStaticVolume(pv)
+	if err != nil {
+		return err
+	}
+	// if the volume is static, dont generate OMAP data
+	if static {
+		return nil
+	}
+	if pv.Spec.CSI.ControllerExpandSecretRef != nil {
+		secretName = pv.Spec.CSI.ControllerExpandSecretRef.Name
+		secretNamespace = pv.Spec.CSI.ControllerExpandSecretRef.Namespace
+	} else if pv.Spec.CSI.NodeStageSecretRef != nil {
+		secretName = pv.Spec.CSI.NodeStageSecretRef.Name
+		secretNamespace = pv.Spec.CSI.NodeStageSecretRef.Namespace
+	}
 
-		cr, err := r.getCredentials(secretName, secretNamespace)
-		if err != nil {
-			util.ErrorLogMsg("failed to get credentials %s", err)
-			return err
-		}
-		defer cr.DeleteCredentials()
+	cr, err := r.getCredentials(secretName, secretNamespace)
+	if err != nil {
+		util.ErrorLogMsg("failed to get credentials from secret %s", err)
+		return err
+	}
+	defer cr.DeleteCredentials()
 
-		err = rbd.RegenerateJournal(imageName, volumeHandler, pool, journalPool, requestName, cr)
-		if err != nil {
-			util.ErrorLogMsg("failed to regenerate journal %s", err)
-			return err
-		}
+	err = rbd.RegenerateJournal(imageName, volumeHandler, pool, journalPool, requestName, cr)
+	if err != nil {
+		util.ErrorLogMsg("failed to regenerate journal %s", err)
+		return err
 	}
 	return nil
 }
