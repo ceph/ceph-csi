@@ -148,14 +148,13 @@ func main() {
 		} else {
 			util.DefaultLog("Initial PID limit is set to %d", currentLimit)
 			err = util.SetPIDLimit(conf.PidLimit)
-			if err != nil {
+			switch {
+			case err != nil:
 				klog.Errorf("Failed to set new PID limit to %d: %v", conf.PidLimit, err)
-			} else {
-				s := ""
-				if conf.PidLimit == -1 {
-					s = " (max)"
-				}
-				util.DefaultLog("Reconfigured PID limit to %d%s", conf.PidLimit, s)
+			case conf.PidLimit == -1:
+				util.DefaultLog("Reconfigured PID limit to %d (max)", conf.PidLimit)
+			default:
+				util.DefaultLog("Reconfigured PID limit to %d", conf.PidLimit)
 			}
 		}
 	}
