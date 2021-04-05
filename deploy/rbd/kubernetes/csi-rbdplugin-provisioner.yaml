@@ -39,7 +39,7 @@ spec:
                     values:
                       - csi-rbdplugin-provisioner
               topologyKey: "kubernetes.io/hostname"
-      serviceAccount: rbd-csi-provisioner
+      serviceAccountName: rbd-csi-provisioner
       priorityClassName: system-cluster-critical
       containers:
         - name: csi-provisioner

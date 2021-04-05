@@ -39,7 +39,7 @@ spec:
                     values:
                       - csi-cephfsplugin-provisioner
               topologyKey: "kubernetes.io/hostname"
-      serviceAccount: cephfs-csi-provisioner
+      serviceAccountName: cephfs-csi-provisioner
       priorityClassName: system-cluster-critical
       containers:
         - name: csi-provisioner

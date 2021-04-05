@@ -195,7 +195,7 @@ spec:
       labels:
         app: csi-cephfsplugin
     spec:
-      serviceAccount: cephfs-csi-nodeplugin
+      serviceAccountName: cephfs-csi-nodeplugin
 ```
 
 in the above template we have added `updateStrategy` and its `type` to the
@@ -313,7 +313,7 @@ spec:
       labels:
         app: csi-rbdplugin
     spec:
-      serviceAccount: rbd-csi-nodeplugin
+      serviceAccountName: rbd-csi-nodeplugin
 ```
 
 in the above template we have added `updateStrategy` and its `type` to the
