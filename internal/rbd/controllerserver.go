@@ -809,7 +809,8 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		defer vol.Destroy()
 
 		err = vol.flattenRbdImage(ctx, cr, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-		if errors.Is(err, ErrFlattenInProgress) {
+		switch {
+		case errors.Is(err, ErrFlattenInProgress):
 			return &csi.CreateSnapshotResponse{
 				Snapshot: &csi.Snapshot{
 					SizeBytes:      rbdSnap.SizeBytes,
@@ -819,24 +820,23 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 					ReadyToUse:     false,
 				},
 			}, nil
-		}
-		if err != nil {
+		case err != nil:
 			uErr := undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
 			if uErr != nil {
 				util.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", req.GetName(), uErr)
 			}
 			return nil, status.Errorf(codes.Internal, err.Error())
+		default:
+			return &csi.CreateSnapshotResponse{
+				Snapshot: &csi.Snapshot{
+					SizeBytes:      rbdSnap.SizeBytes,
+					SnapshotId:     rbdSnap.VolID,
+					SourceVolumeId: rbdSnap.SourceVolumeID,
+					CreationTime:   rbdSnap.CreatedAt,
+					ReadyToUse:     true,
+				},
+			}, nil
 		}
-
-		return &csi.CreateSnapshotResponse{
-			Snapshot: &csi.Snapshot{
-				SizeBytes:      rbdSnap.SizeBytes,
-				SnapshotId:     rbdSnap.VolID,
-				SourceVolumeId: rbdSnap.SourceVolumeID,
-				CreationTime:   rbdSnap.CreatedAt,
-				ReadyToUse:     true,
-			},
-		}, nil
 	}
 
 	err = flattenTemporaryClonedImages(ctx, rbdVol, cr)

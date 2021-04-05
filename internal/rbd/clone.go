@@ -74,7 +74,8 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 
 	err = tempClone.checkSnapExists(snap)
 	if err != nil {
-		if errors.Is(err, ErrSnapNotFound) {
+		switch {
+		case errors.Is(err, ErrSnapNotFound):
 			// check temporary image needs flatten, if yes add task to flatten the
 			// temporary clone
 			err = tempClone.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
@@ -88,7 +89,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 				return false, err
 			}
 			return true, nil
-		} else if !errors.Is(err, ErrImageNotFound) {
+		case !errors.Is(err, ErrImageNotFound):
 			// any error other than image not found return error
 			return false, err
 		}

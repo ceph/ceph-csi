@@ -277,10 +277,10 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 			// Need to check cloned info here not on createvolume,
 			if parentVol != nil {
 				found, cErr := rv.checkCloneImage(ctx, parentVol)
-				if found && cErr == nil {
+				switch {
+				case found && cErr == nil:
 					return true, nil
-				}
-				if cErr != nil {
+				case cErr != nil:
 					return false, cErr
 				}
 			}
