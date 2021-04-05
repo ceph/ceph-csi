@@ -12,7 +12,7 @@ spec:
       labels:
         app: csi-cephfsplugin
     spec:
-      serviceAccount: cephfs-csi-nodeplugin
+      serviceAccountName: cephfs-csi-nodeplugin
       priorityClassName: system-node-critical
       hostNetwork: true
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is

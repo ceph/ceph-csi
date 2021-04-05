@@ -12,7 +12,7 @@ spec:
       labels:
         app: csi-rbdplugin
     spec:
-      serviceAccount: rbd-csi-nodeplugin
+      serviceAccountName: rbd-csi-nodeplugin
       hostNetwork: true
       hostPID: true
       priorityClassName: system-node-critical

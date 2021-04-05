@@ -119,7 +119,7 @@ spec:
     metadata:
       name: vault-init-job
     spec:
-      serviceAccount: rbd-csi-vault-token-review
+      serviceAccountName: rbd-csi-vault-token-review
       volumes:
         - name: init-scripts-volume
           configMap:
