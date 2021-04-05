@@ -153,6 +153,8 @@ linters-settings:
     min-complexity: 40
   dogsled:
     max-blank-identifiers: 3
+  nestif:
+    min-complexity: 7
 
 linters:
   enable-all: true
@@ -165,7 +167,5 @@ linters:
     - wsl
     - funlen
     - testpackage
-    # TODO: enable nestif, see: https://github.com/ceph/ceph-csi/issues/1229
-    - nestif
     # TODO: enable goerr113, see: https://github.com/ceph/ceph-csi/issues/1227
     - goerr113
