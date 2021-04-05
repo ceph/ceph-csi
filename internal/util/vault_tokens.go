@@ -216,20 +216,12 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	// fetch the configuration for the tenant
 	if args.Tenant != "" {
 		kms.Tenant = args.Tenant
-		tenantsMap, ok := config["tenants"]
-		if ok {
-			// tenants is a map per tenant, containing key/values
-			tenants, ok := tenantsMap.(map[string]map[string]interface{})
-			if ok {
-				// get the map for the tenant of the current operation
-				tenantConfig, ok := tenants[args.Tenant]
-				if ok {
-					// override connection details from the tenant
-					err = kms.parseConfig(tenantConfig)
-					if err != nil {
-						return nil, err
-					}
-				}
+		tenantConfig, found := fetchTenantConfig(config, args.Tenant)
+		if found {
+			// override connection details from the tenant
+			err = kms.parseConfig(tenantConfig)
+			if err != nil {
+				return nil, err
 			}
 		}
 
@@ -505,4 +497,23 @@ func (kms *VaultTokensKMS) parseTenantConfig() error {
 	}
 
 	return nil
+}
+
+// fetchTenantConfig fetches the configuration for the tenant if it exists.
+func fetchTenantConfig(config map[string]interface{}, tenant string) (map[string]interface{}, bool) {
+	tenantsMap, ok := config["tenants"]
+	if !ok {
+		return nil, false
+	}
+	// tenants is a map per tenant, containing key/values
+	tenants, ok := tenantsMap.(map[string]map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+	// get the map for the tenant of the current operation
+	tenantConfig, ok := tenants[tenant]
+	if !ok {
+		return nil, false
+	}
+	return tenantConfig, true
 }
