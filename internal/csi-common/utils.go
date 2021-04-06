@@ -26,8 +26,8 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	rp "github.com/kube-storage/replication-lib-utils/protosanitizer"
-	"github.com/kube-storage/spec/lib/go/replication"
+	rp "github.com/csi-addons/replication-lib-utils/protosanitizer"
+	"github.com/csi-addons/spec/lib/go/replication"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
