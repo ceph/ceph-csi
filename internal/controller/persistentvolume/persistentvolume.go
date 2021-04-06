@@ -41,6 +41,7 @@ import (
 type ReconcilePersistentVolume struct {
 	client client.Client
 	config ctrl.Config
+	Locks  *util.VolumeLocks
 }
 
 var _ reconcile.Reconciler = &ReconcilePersistentVolume{}
@@ -62,6 +63,7 @@ func newPVReconciler(mgr manager.Manager, config ctrl.Config) reconcile.Reconcil
 	r := &ReconcilePersistentVolume{
 		client: mgr.GetClient(),
 		config: config,
+		Locks:  util.NewVolumeLocks(),
 	}
 	return r
 }
@@ -173,6 +175,12 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 		secretName = pv.Spec.CSI.NodeStageSecretRef.Name
 		secretNamespace = pv.Spec.CSI.NodeStageSecretRef.Namespace
 	}
+
+	// Take lock to process only one volumeHandle at a time.
+	if ok := r.Locks.TryAcquire(pv.Spec.CSI.VolumeHandle); !ok {
+		return fmt.Errorf(util.VolumeOperationAlreadyExistsFmt, pv.Spec.CSI.VolumeHandle)
+	}
+	defer r.Locks.Release(pv.Spec.CSI.VolumeHandle)
 
 	cr, err := r.getCredentials(secretName, secretNamespace)
 	if err != nil {
