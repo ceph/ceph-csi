@@ -283,11 +283,6 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 		}
 		return nil, err
 	}
-	// extract the force option
-	force, err := getForceOption(ctx, req.GetParameters())
-	if err != nil {
-		return nil, err
-	}
 
 	mirroringInfo, err := rbdVol.getImageMirroringInfo()
 	if err != nil {
@@ -301,7 +296,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 
 	// promote secondary to primary
 	if !mirroringInfo.Primary {
-		err = rbdVol.promoteImage(force)
+		err = rbdVol.promoteImage(req.Force)
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
 			return nil, status.Error(codes.Internal, err.Error())
