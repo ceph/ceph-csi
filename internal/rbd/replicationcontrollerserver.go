@@ -299,6 +299,15 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 		err = rbdVol.promoteImage(req.Force)
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
+			// In case of the DR the image on the primary site cannot be
+			// demoted as the cluster is down, during failover the image need
+			// to be force promoted. RBD returns `Device or resource busy`
+			// error message if the image cannot be promoted for above reason.
+			// Return FailedPrecondition so that replication operator can send
+			// request to force promote the image.
+			if strings.Contains(err.Error(), "Device or resource busy") {
+				return nil, status.Error(codes.FailedPrecondition, err.Error())
+			}
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
