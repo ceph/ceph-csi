@@ -138,7 +138,7 @@ func isReplicationSecret(field *protobuf.FieldDescriptorProto) bool {
 }
 
 // eReplicationSecret represents the secret format at
-// https://github.com/kube-storage/spec/blob/v0.1.0/lib/go/replication/
+// https://github.com/csi-addons/spec/blob/v0.1.0/lib/go/replication/
 // replication.pb.go#L640-L649 .
 var eReplicationSecret = &proto.ExtensionDesc{
 	ExtendedType:  (*descriptorpb.FieldOptions)(nil),

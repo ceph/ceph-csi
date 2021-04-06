@@ -25,7 +25,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 
 	librbd "github.com/ceph/go-ceph/rbd"
-	"github.com/kube-storage/spec/lib/go/replication"
+	"github.com/csi-addons/spec/lib/go/replication"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
