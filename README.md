@@ -134,8 +134,8 @@ More details are available [here](https://github.com/ceph/ceph-csi/issues/463)
 ## Dev standup
 
 A regular dev standup takes place every other [Monday,Tuesday,Thursday at
-2:00 PM UTC](https://redhat.bluejeans.com/702977652). Convert to your local
-timezone by executing command `date -d "14:00 UTC"` on terminal
+12:00 PM UTC](https://redhat.bluejeans.com/702977652). Convert to your local
+timezone by executing command `date -d "12:00 UTC"` on terminal
 
 Any changes to the meeting schedule will be added to the [agenda
 doc](https://docs.google.com/document/d/1K1aerdMpraIh56-skdoEoVF9RZrO4NUcbHtjN-f3u1s).
