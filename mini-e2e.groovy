@@ -70,7 +70,9 @@ node('cico-workspace') {
 		}
 
 		sh "git clone --depth=1 --branch='${git_since}' '${git_repo}' ~/build/ceph-csi"
-		sh "cd ~/build/ceph-csi && git fetch origin ${ref} && git checkout -b ${ref} FETCH_HEAD"
+		if (ref != git_since) {
+			sh "cd ~/build/ceph-csi && git fetch origin ${ref} && git checkout -b ${ref} FETCH_HEAD"
+		}
 	}
 
 	stage('check doc-only change') {
