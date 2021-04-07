@@ -22,7 +22,8 @@
       - github-pull-request:
           status-url: ${RUN_DISPLAY_URL}
           status-context: ci/centos/containerized-tests
-          trigger-phrase: '/(re)?test ((all)|(ci/centos/containerized-tests))'
+          trigger-phrase: '/(re)?test ci/centos/containerized-tests'
+          only-trigger-phrase: true
           permit-all: true
           github-hooks: true
           black-list-target-branches:
