@@ -55,7 +55,7 @@ because, the order of omap creation and deletion are inverse of each other, and 
 request name lock, and hence any stale omaps are leftovers from incomplete transactions and are
 hence safe to garbage collect.
 */
-// nolint:gocognit:gocyclo // TODO: reduce complexity
+// nolint:gocognit,gocyclo,nestif // TODO: reduce complexity
 func checkVolExists(ctx context.Context,
 	volOptions,
 	parentVolOpt *volumeOptions,
