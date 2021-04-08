@@ -300,17 +300,9 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 		return false, err
 	}
 
-	if rv.ImageID == "" {
-		err = rv.getImageID()
-		if err != nil {
-			util.ErrorLog(ctx, "failed to get image id %s: %v", rv, err)
-			return false, err
-		}
-		err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
-		if err != nil {
-			util.ErrorLog(ctx, "failed to store volume id %s: %v", rv, err)
-			return false, err
-		}
+	err = rv.repairImageID(ctx, j)
+	if err != nil {
+		return false, err
 	}
 
 	// size checks
@@ -327,10 +319,40 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 		return false, err
 	}
 
+	if parentVol != nil && parentVol.isEncrypted() {
+		err = parentVol.copyEncryptionConfig(&rv.rbdImage)
+		if err != nil {
+			util.ErrorLog(ctx, err.Error())
+			return false, err
+		}
+	}
+
 	util.DebugLog(ctx, "found existing volume (%s) with image name (%s) for request (%s)",
 		rv.VolID, rv.RbdImageName, rv.RequestName)
 
 	return true, nil
+}
+
+// repairImageID checks if rv.ImageID is already available (if so, it was
+// fetched from the journal), in case it is missing, the imageID is obtained
+// and stored in the journal.
+func (rv *rbdVolume) repairImageID(ctx context.Context, j *journal.Connection) error {
+	if rv.ImageID != "" {
+		return nil
+	}
+
+	err := rv.getImageID()
+	if err != nil {
+		util.ErrorLog(ctx, "failed to get image id %s: %v", rv, err)
+		return err
+	}
+	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to store volume id %s: %v", rv, err)
+		return err
+	}
+
+	return nil
 }
 
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
