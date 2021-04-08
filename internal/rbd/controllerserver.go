@@ -711,10 +711,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	}, nil
 }
 
-// CreateSnapshot creates the snapshot in backend and stores metadata
-// in store
-// TODO: make this function less complex
-// nolint:gocyclo,nestif // complexity needs to be reduced.
+// CreateSnapshot creates the snapshot in backend and stores metadata in store.
 func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	if err := cs.validateSnapshotReq(ctx, req); err != nil {
 		return nil, err
@@ -780,57 +777,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	if found {
-		vol := generateVolFromSnap(rbdSnap)
-		err = vol.Connect(cr)
-		if err != nil {
-			uErr := undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
-			if uErr != nil {
-				util.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", req.GetName(), uErr)
-			}
-			return nil, status.Errorf(codes.Internal, err.Error())
-		}
-		defer vol.Destroy()
-
-		if rbdVol.isEncrypted() {
-			cryptErr := rbdVol.copyEncryptionConfig(&vol.rbdImage)
-			if cryptErr != nil {
-				util.WarningLog(ctx, "failed copy encryption "+
-					"config for %q: %v", vol.String(),
-					req.GetName(), cryptErr)
-				return nil, status.Errorf(codes.Internal,
-					err.Error())
-			}
-		}
-
-		err = vol.flattenRbdImage(ctx, cr, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-		switch {
-		case errors.Is(err, ErrFlattenInProgress):
-			return &csi.CreateSnapshotResponse{
-				Snapshot: &csi.Snapshot{
-					SizeBytes:      rbdSnap.SizeBytes,
-					SnapshotId:     rbdSnap.VolID,
-					SourceVolumeId: rbdSnap.SourceVolumeID,
-					CreationTime:   rbdSnap.CreatedAt,
-					ReadyToUse:     false,
-				},
-			}, nil
-		case err != nil:
-			uErr := undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
-			if uErr != nil {
-				util.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", req.GetName(), uErr)
-			}
-			return nil, status.Errorf(codes.Internal, err.Error())
-		default:
-			return &csi.CreateSnapshotResponse{
-				Snapshot: &csi.Snapshot{
-					SizeBytes:      rbdSnap.SizeBytes,
-					SnapshotId:     rbdSnap.VolID,
-					SourceVolumeId: rbdSnap.SourceVolumeID,
-					CreationTime:   rbdSnap.CreatedAt,
-					ReadyToUse:     true,
-				},
-			}, nil
-		}
+		return cloneFromSnapshot(ctx, rbdVol, rbdSnap, cr)
 	}
 
 	err = flattenTemporaryClonedImages(ctx, rbdVol, cr)
@@ -866,6 +813,58 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 			SourceVolumeId: req.GetSourceVolumeId(),
 			CreationTime:   vol.CreatedAt,
 			ReadyToUse:     ready,
+		},
+	}, nil
+}
+
+// cloneFromSnapshot is a helper for CreateSnapshot that continues creating an
+// RBD image from an RBD snapshot if the process was interrupted at one point.
+func cloneFromSnapshot(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) (*csi.CreateSnapshotResponse, error) {
+	vol := generateVolFromSnap(rbdSnap)
+	err := vol.Connect(cr)
+	if err != nil {
+		uErr := undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
+		if uErr != nil {
+			util.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", rbdSnap.RequestName, uErr)
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	defer vol.Destroy()
+
+	if rbdVol.isEncrypted() {
+		// FIXME: vol.VolID should be different from rbdVol.VolID
+		vol.VolID = rbdVol.VolID
+		cryptErr := rbdVol.copyEncryptionConfig(&vol.rbdImage)
+		if cryptErr != nil {
+			util.WarningLog(ctx, "failed copy encryption "+
+				"config for %q: %v", vol.String(),
+				rbdSnap.RequestName, cryptErr)
+			return nil, status.Errorf(codes.Internal,
+				err.Error())
+		}
+	}
+
+	// if flattening is not needed, the snapshot is ready for use
+	readyToUse := true
+
+	err = vol.flattenRbdImage(ctx, cr, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+	if errors.Is(err, ErrFlattenInProgress) {
+		readyToUse = false
+	} else if err != nil {
+		uErr := undoSnapshotCloning(ctx, vol, rbdSnap, vol, cr)
+		if uErr != nil {
+			util.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", rbdSnap.RequestName, uErr)
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &csi.CreateSnapshotResponse{
+		Snapshot: &csi.Snapshot{
+			SizeBytes:      rbdSnap.SizeBytes,
+			SnapshotId:     rbdSnap.VolID,
+			SourceVolumeId: rbdSnap.SourceVolumeID,
+			CreationTime:   rbdSnap.CreatedAt,
+			ReadyToUse:     readyToUse,
 		},
 	}, nil
 }
