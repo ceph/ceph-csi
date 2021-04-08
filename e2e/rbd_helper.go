@@ -541,7 +541,7 @@ func validateThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, siz
 	}
 
 	// expanding the PVC should thick-allocate the expansion
-	// nolint:mnd // we want 2x the size so that extending is done
+	// nolint:gomnd // we want 2x the size so that extending is done
 	newSize := du.ProvisionedSize * 2
 	err = expandPVCSize(f.ClientSet, pvc, fmt.Sprintf("%d", newSize), deployTimeout)
 	if err != nil {
