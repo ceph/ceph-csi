@@ -125,7 +125,7 @@ func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *u
 }
 
 // CreateVolume creates a reservation and the volume in backend, if it is not already present.
-// nolint:gocognit:gocyclo // TODO: reduce complexity
+// nolint:gocognit,gocyclo,nestif // TODO: reduce complexity
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
 		util.ErrorLog(ctx, "CreateVolumeRequest validation failed: %v", err)
@@ -193,7 +193,6 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 					// All errors other than ErrVolumeNotFound should return an error back to the caller
 					if !errors.Is(purgeErr, ErrVolumeNotFound) {
 						return nil, status.Error(codes.Internal, purgeErr.Error())
-
 					}
 				}
 				errUndo := undoVolReservation(ctx, volOptions, *vID, secret)
