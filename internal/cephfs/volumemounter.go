@@ -168,7 +168,7 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 
 	_, stderr, err := util.ExecCommand(ctx, "ceph-fuse", args[:]...)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w stderr: %s", err, stderr)
 	}
 
 	// Parse the output:
@@ -227,7 +227,11 @@ func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, v
 
 	args = append(args, "-o", optionsStr)
 
-	return execCommandErr(ctx, "mount", args[:]...)
+	_, stderr, err := util.ExecCommand(ctx, "mount", args[:]...)
+	if err != nil {
+		return fmt.Errorf("%w stderr: %s", err, stderr)
+	}
+	return err
 }
 
 func (m *kernelMounter) mount(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
