@@ -136,6 +136,17 @@ func createRBDSnapshotClass(f *framework.Framework) error {
 	return err
 }
 
+func deleteRBDSnapshotClass() error {
+	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "snapshotclass.yaml")
+	sc := getSnapshotClass(scPath)
+
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return err
+	}
+	return sclient.SnapshotV1beta1().VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+}
+
 func createCephFSSnapshotClass(f *framework.Framework) error {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "snapshotclass.yaml")
 	sc := getSnapshotClass(scPath)
