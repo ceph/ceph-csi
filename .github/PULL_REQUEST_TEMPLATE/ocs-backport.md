@@ -1,9 +1,3 @@
----
-name: Backport changes from upstream for a release
-about: Use this template when backporting changes from the master branch to a release.
-title: "Bug 000000: description of the change"
----
-
 **You must EDIT ME! The contents below is an example only.**
 
 Bug 000000 gets hit when the system is out for its birthday party. After

@@ -42,6 +42,17 @@ selected branch.
 Once the product planning enters feature freeze, only backports with related
 Bugzilla references will be allowed to get merged.
 
+To assist developers, there are several Pull Request templates available. It is
+recommended to use these links when creating a new Pull Request:
+
+- [backport][backport-pr]: `?template=ocs-backport.md`
+- [downstream-only][ds-only-pr]: `?template=ocs-downstream-only.md`
+- [sync][sync-pr]: or add `?template=ocs-sync.md`
+
+The `?template=...` appendix can be used when creating the Pull Requests
+through other means than the links above. By appending the `?template=...`
+keyword to the Pull Request URL, the template gets included automaticallty.
+
 ### Downstream-Only Changes
 
 For working with the downstream tools, like OpenShift CI, there are a few
@@ -50,7 +61,7 @@ changes required that are not suitable for the upstream Ceph-CSI project.
 1. `OWNERS` file: added with maintainers for reviewing and approving PRs
 1. `ocs/` directory: additional files (like this `README.md`)
 1. `ocs/Containerfile`: used to build the quay.io/ocs-dev/ceph-csi image
-1. `.github/PULL_REQUEST_TEMPLATE/00_ocs-*`: guidance for creating PRs
+1. `.github/PULL_REQUEST_TEMPLATE/ocs-*`: guidance for creating PRs
 
 ## Continious Integration
 
@@ -84,7 +95,9 @@ added to the GitHub repository, [the configuration][bz-config] needs adaption
 for the new branch as well.
 
 [upstream-ceph-csi]: https://github.com/ceph/ceph-csi
-[sync-pr]: https://github.com/openshift/ceph-csi/compare/master...ceph:devel
+[sync-pr]: https://github.com/openshift/ceph-csi/compare/master...ceph:devel?template=ocs-sync.md
+[backport-pr]: https://github.com/openshift/ceph-csi/compare/release-4.8...master?template=ocs-backport.md
+[ds-only-pr]: https://github.com/openshift/ceph-csi/compare/master...ceph:devel?template=ocs-downstream-only.md
 [ocp-release]: https://github.com/openshift/release/tree/master/ci-operator/config/openshift/ceph-csi
 [ocp-release-mirror]: https://github.com/openshift/release/tree/master/core-services/image-mirroring/ceph-csi
 [quay-ceph-csi]: https://quay.io/repository/ocs-dev/ceph-csi?tab=tags
