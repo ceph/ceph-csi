@@ -218,7 +218,6 @@ func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnaps
 }
 
 // CreateVolume creates the volume in backend.
-// nolint:gocyclo // encrypted cloning/snapshots added more complexity, this needs to be addressed
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateVolumeReq(ctx, req); err != nil {
 		return nil, err
@@ -305,26 +304,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	volumeContext := req.GetParameters()
-	volumeContext["pool"] = rbdVol.Pool
-	volumeContext["journalPool"] = rbdVol.JournalPool
-	volumeContext["radosNamespace"] = rbdVol.RadosNamespace
-	volumeContext["imageName"] = rbdVol.RbdImageName
-	volume := &csi.Volume{
-		VolumeId:      rbdVol.VolID,
-		CapacityBytes: rbdVol.VolSize,
-		VolumeContext: volumeContext,
-		ContentSource: req.GetVolumeContentSource(),
-	}
-	if rbdVol.Topology != nil {
-		volume.AccessibleTopology =
-			[]*csi.Topology{
-				{
-					Segments: rbdVol.Topology,
-				},
-			}
-	}
-	return &csi.CreateVolumeResponse{Volume: volume}, nil
+	return buildCreateVolumeResponse(req, rbdVol), nil
 }
 
 func flattenParentImage(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
