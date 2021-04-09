@@ -60,7 +60,9 @@ func (cs *DefaultControllerServer) GetCapacity(ctx context.Context, req *csi.Get
 // Default supports all capabilities.
 func (cs *DefaultControllerServer) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
 	util.TraceLog(ctx, "Using default ControllerGetCapabilities")
-
+	if cs.Driver == nil {
+		return nil, status.Error(codes.Unimplemented, "Controller server is not enabled")
+	}
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: cs.Driver.capabilities,
 	}, nil
