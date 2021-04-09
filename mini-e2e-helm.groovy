@@ -84,7 +84,7 @@ node('cico-workspace') {
 			returnStatus: true)
 	}
 	// if doc_change (return value of skip-doc-change.sh is 1, do not run the other stages
-	if (doc_change == 1) {
+	if (doc_change == 1 && ref != git_since) {
 		currentBuild.result = 'SUCCESS'
 		return
 	}
