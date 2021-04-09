@@ -266,6 +266,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			if err != nil {
 				return nil, err
 			}
+
+			err = rbdSnap.repairEncryptionConfig(&rbdVol.rbdImage)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		return buildCreateVolumeResponse(req, rbdVol), nil
