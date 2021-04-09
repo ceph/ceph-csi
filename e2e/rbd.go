@@ -281,6 +281,7 @@ var _ = Describe("RBD", func() {
 			appSmartClonePath := rbdExamplePath + "pod-clone.yaml"
 			appBlockSmartClonePath := rbdExamplePath + "block-pod-clone.yaml"
 			snapshotPath := rbdExamplePath + "snapshot.yaml"
+			defaultCloneCount := 10
 
 			By("checking provisioner deployment is running", func() {
 				err := waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
@@ -496,14 +497,14 @@ var _ = Describe("RBD", func() {
 			By("create a PVC clone and bind it to an app", func() {
 				// snapshot beta is only supported from v1.17+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					validatePVCSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, false, f)
+					validatePVCSnapshot(defaultCloneCount, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, false, f)
 				}
 			})
 
 			By("create a PVC-PVC clone and bind it to an app", func() {
 				// pvc clone is only supported from v1.16+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					validatePVCClone(pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, false, f)
+					validatePVCClone(defaultCloneCount, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, false, f)
 				}
 			})
 
@@ -525,7 +526,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, true, f)
+				validatePVCSnapshot(1, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, true, f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -555,7 +556,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCClone(pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, true, f)
+				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, true, f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -580,7 +581,7 @@ var _ = Describe("RBD", func() {
 				}
 				// pvc clone is only supported from v1.16+
 				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
-					validatePVCClone(rawPvcPath, rawAppPath, pvcBlockSmartClonePath, appBlockSmartClonePath, false, f)
+					validatePVCClone(defaultCloneCount, rawPvcPath, rawAppPath, pvcBlockSmartClonePath, appBlockSmartClonePath, false, f)
 				}
 			})
 			By("create/delete multiple PVCs and Apps", func() {

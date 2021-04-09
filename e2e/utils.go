@@ -506,9 +506,8 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 }
 
 // nolint:gocyclo,gocognit // reduce complexity
-func validatePVCClone(sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string, validateEncryption bool, f *framework.Framework) {
+func validatePVCClone(totalCount int, sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string, validateEncryption bool, f *framework.Framework) {
 	var wg sync.WaitGroup
-	totalCount := 10
 	wgErrs := make([]error, totalCount)
 	chErrs := make([]error, totalCount)
 	pvc, err := loadPVC(sourcePvcPath)
@@ -653,9 +652,8 @@ func validatePVCClone(sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPat
 }
 
 // nolint:gocyclo,gocognit // reduce complexity
-func validatePVCSnapshot(pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string, validateEncryption bool, f *framework.Framework) {
+func validatePVCSnapshot(totalCount int, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string, validateEncryption bool, f *framework.Framework) {
 	var wg sync.WaitGroup
-	totalCount := 10
 	wgErrs := make([]error, totalCount)
 	chErrs := make([]error, totalCount)
 	wg.Add(totalCount)
