@@ -116,6 +116,11 @@ func (ri *rbdImage) setupEncryption(ctx context.Context) error {
 // from the original, so that both encrypted passphrases (potentially, depends
 // on the DEKStore) have different contents.
 func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage) error {
+	if ri.VolID == cp.VolID {
+		return fmt.Errorf("BUG: %q and %q have the same VolID (%s) "+
+			"set!? Call stack: %s", ri, cp, ri.VolID, util.CallStack())
+	}
+
 	// get the unencrypted passphrase
 	passphrase, err := ri.encryption.GetCryptoPassphrase(ri.VolID)
 	if err != nil {
@@ -281,8 +286,12 @@ func (ri *rbdImage) configureEncryption(kmsID string, credentials map[string]str
 
 // StoreDEK saves the DEK in the metadata, overwrites any existing contents.
 func (ri *rbdImage) StoreDEK(volumeID, dek string) error {
-	if ri.VolID != volumeID {
-		return fmt.Errorf("volume %q can not store DEK for %q", ri.String(), volumeID)
+	if ri.VolID == "" {
+		return fmt.Errorf("BUG: %q does not have VolID set, call "+
+			"stack: %s", ri, util.CallStack())
+	} else if ri.VolID != volumeID {
+		return fmt.Errorf("volume %q can not store DEK for %q",
+			ri.String(), volumeID)
 	}
 
 	return ri.SetMetadata(metadataDEK, dek)
@@ -290,7 +299,10 @@ func (ri *rbdImage) StoreDEK(volumeID, dek string) error {
 
 // FetchDEK reads the DEK from the image metadata.
 func (ri *rbdImage) FetchDEK(volumeID string) (string, error) {
-	if ri.VolID != volumeID {
+	if ri.VolID == "" {
+		return "", fmt.Errorf("BUG: %q does not have VolID set, call "+
+			"stack: %s", ri, util.CallStack())
+	} else if ri.VolID != volumeID {
 		return "", fmt.Errorf("volume %q can not fetch DEK for %q", ri.String(), volumeID)
 	}
 
@@ -300,8 +312,12 @@ func (ri *rbdImage) FetchDEK(volumeID string) (string, error) {
 // RemoveDEK does not need to remove the DEK from the metadata, the image is
 // most likely getting removed.
 func (ri *rbdImage) RemoveDEK(volumeID string) error {
-	if ri.VolID != volumeID {
-		return fmt.Errorf("volume %q can not remove DEK for %q", ri.String(), volumeID)
+	if ri.VolID == "" {
+		return fmt.Errorf("BUG: %q does not have VolID set, call "+
+			"stack: %s", ri, util.CallStack())
+	} else if ri.VolID != volumeID {
+		return fmt.Errorf("volume %q can not remove DEK for %q",
+			ri.String(), volumeID)
 	}
 
 	return nil
