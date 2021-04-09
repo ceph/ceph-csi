@@ -150,6 +150,27 @@ func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage) error {
 	return nil
 }
 
+// repairEncryptionConfig checks the encryption state of the current rbdImage,
+// and makes sure that the destination rbdImage has the same configuration.
+func (ri *rbdImage) repairEncryptionConfig(dest *rbdImage) error {
+	if !ri.isEncrypted() {
+		return nil
+	}
+
+	// if ri is encrypted, copy its configuration in case it is missing
+	if !dest.isEncrypted() {
+		// dest needs to be connected to the cluster, otherwise it will
+		// not be possible to write any metadata
+		if dest.conn == nil {
+			dest.conn = ri.conn.Copy()
+		}
+
+		return ri.copyEncryptionConfig(dest)
+	}
+
+	return nil
+}
+
 func (ri *rbdImage) encryptDevice(ctx context.Context, devicePath string) error {
 	passphrase, err := ri.encryption.GetCryptoPassphrase(ri.VolID)
 	if err != nil {
