@@ -872,7 +872,6 @@ func generateVolumeFromVolumeID(ctx context.Context, volumeID string, cr *util.C
 	if err != nil {
 		return rbdVol, err
 	}
-
 	rbdVol.RequestName = imageAttributes.RequestName
 	rbdVol.RbdImageName = imageAttributes.ImageName
 	rbdVol.ReservedID = vi.ObjectUUID
@@ -908,7 +907,7 @@ func generateVolumeFromVolumeID(ctx context.Context, volumeID string, cr *util.C
 // the structure with elements from on-disk image metadata as well.
 func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials, secrets map[string]string) (*rbdVolume, error) {
 	vol, err := generateVolumeFromVolumeID(ctx, volumeID, cr, secrets)
-	if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) {
+	if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) && !errors.Is(err, ErrImageNotFound) {
 		return vol, err
 	}
 
