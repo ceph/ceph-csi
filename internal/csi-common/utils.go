@@ -59,7 +59,7 @@ func NewDefaultNodeServer(d *CSIDriver, t string, topology map[string]string) *D
 	}
 }
 
-// NewDefaultIdentityServer initializes default identity servier.
+// NewDefaultIdentityServer initializes default identity server.
 func NewDefaultIdentityServer(d *CSIDriver) *DefaultIdentityServer {
 	return &DefaultIdentityServer{
 		Driver: d,

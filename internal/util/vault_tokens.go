@@ -99,7 +99,7 @@ func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 // convertConfig takes the keys/values in standard Vault environment variable
 // format, and converts them to the format that is used in the configuration
 // file.
-// This uses JSON marshaling and unmarshaling to map the Vault environment
+// This uses JSON marshaling and unmarshalling to map the Vault environment
 // configuration into bytes, then in the standardVault struct, which is passed
 // through convertStdVaultToCSIConfig before converting back to a
 // map[string]interface{} configuration.

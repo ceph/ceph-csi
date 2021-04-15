@@ -163,8 +163,8 @@ func (kms SecretsMetadataKMS) EncryptDEK(volumeID, plainDEK string) (string, err
 	return string(emdData), nil
 }
 
-// DecryptDEK takes the JSON formatted `encryptedMetedataDEK` contents, and it
-// fetches SecretsKMS passphase to decrypt the DEK.
+// DecryptDEK takes the JSON formatted `encryptedMetadataDEK` contents, and it
+// fetches SecretsKMS passphrase to decrypt the DEK.
 func (kms SecretsMetadataKMS) DecryptDEK(volumeID, encryptedDEK string) (string, error) {
 	// use the passphrase from the SecretsKMS
 	passphrase, err := kms.SecretsKMS.FetchDEK(volumeID)
