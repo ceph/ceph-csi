@@ -1,16 +1,19 @@
 ---
 defaults:
   actions:
+    # mergify.io has removed bot_account from its free open source plan.
     comment:
-      bot_account: ceph-csi-bot
+    # bot_account: ceph-csi-bot # mergify[bot] will be commenting.
     merge:
-      bot_account: ceph-csi-bot
+      # merge_bot_account: ceph-csi-bot #mergify[bot] will be merging prs.
+      # update_bot_account: ceph-csi-bot #mergify will randomly pick and use
+      # credentials of users with write access to repo to rebase prs.
       method: rebase
       rebase_fallback: merge
       strict: smart
       strict_method: rebase
     rebase:
-      bot_account: ceph-csi-bot
+    # bot_account: ceph-csi-bot # same as update_bot_account.
 
 pull_request_rules:
   - name: remove outdated approvals
