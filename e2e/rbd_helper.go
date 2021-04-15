@@ -30,6 +30,40 @@ func rbdOptions(pool string) string {
 	return "--pool=" + pool
 }
 
+type errGettingFsid string
+type errListingRBDNs string
+type errCreatingRBDNs string
+type errMsg string
+type getOmapVal string
+type errReadPassphrase string
+type errPassphraseInVault string
+type errEncryptedState string
+
+func (e errGettingFsid) Error() string {
+	return fmt.Sprintf("error getting fsid %v", string(e))
+}
+func (e errListingRBDNs) Error() string {
+	return fmt.Sprintf("error listing rbd namespace %v", string(e))
+}
+func (e errCreatingRBDNs) Error() string {
+	return fmt.Sprintf("error creating rbd namespace %v", string(e))
+}
+func (e errMsg) Error() string {
+	return fmt.Sprintf("%v", string(e))
+}
+func (e getOmapVal) Error() string {
+	return fmt.Sprintf("failed to getomapval %v", string(e))
+}
+func (e errReadPassphrase) Error() string {
+	return fmt.Sprintf("failed to read passphrase from vault: %s", string(e))
+}
+func (e errPassphraseInVault) Error() string {
+	return fmt.Sprintf("passphrase found in vault while should be deleted: %s", string(e))
+}
+func (e errEncryptedState) Error() string {
+	return fmt.Sprintf("%v not equal to encrypted", string(e))
+}
+
 func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOptions, parameters map[string]string, policy v1.PersistentVolumeReclaimPolicy) error {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
@@ -51,7 +85,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, scOpt
 		return err
 	}
 	if stdErr != "" {
-		return fmt.Errorf("error getting fsid %v", stdErr)
+		return errGettingFsid(stdErr)
 	}
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
@@ -84,7 +118,7 @@ func createRadosNamespace(f *framework.Framework) error {
 		return err
 	}
 	if stdErr != "" {
-		return fmt.Errorf("error listing rbd namespace %v", stdErr)
+		return errListingRBDNs(stdErr)
 	}
 	if !strings.Contains(stdOut, radosNamespace) {
 		_, stdErr, err = execCommandInToolBoxPod(f,
@@ -93,7 +127,7 @@ func createRadosNamespace(f *framework.Framework) error {
 			return err
 		}
 		if stdErr != "" {
-			return fmt.Errorf("error creating rbd namespace %v", stdErr)
+			return errCreatingRBDNs(stdErr)
 		}
 	}
 	stdOut, stdErr, err = execCommandInToolBoxPod(f,
@@ -102,7 +136,7 @@ func createRadosNamespace(f *framework.Framework) error {
 		return err
 	}
 	if stdErr != "" {
-		return fmt.Errorf("error listing rbd namespace %v", stdErr)
+		return errListingRBDNs(stdErr)
 	}
 
 	if !strings.Contains(stdOut, radosNamespace) {
@@ -112,7 +146,7 @@ func createRadosNamespace(f *framework.Framework) error {
 			return err
 		}
 		if stdErr != "" {
-			return fmt.Errorf("error creating rbd namespace %v", stdErr)
+			return errCreatingRBDNs(stdErr)
 		}
 	}
 	return nil
@@ -176,7 +210,7 @@ func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string,
 		return "", err
 	}
 	if stdErr != "" {
-		return strings.TrimSpace(stdOut), fmt.Errorf(stdErr)
+		return strings.TrimSpace(stdOut), errMsg(stdErr)
 	}
 	return strings.TrimSpace(stdOut), nil
 }
@@ -209,7 +243,7 @@ func validateImageOwner(pvcPath string, f *framework.Framework) error {
 		return err
 	}
 	if stdErr != "" {
-		return fmt.Errorf("failed to getomapval %v", stdErr)
+		return getOmapVal(stdErr)
 	}
 
 	if radosNamespace != "" {
@@ -219,7 +253,7 @@ func validateImageOwner(pvcPath string, f *framework.Framework) error {
 	}
 
 	if !strings.Contains(stdOut, pvc.Namespace) {
-		return fmt.Errorf("%q does not contain %q: %s", ownerKey, pvc.Namespace, stdOut)
+		return fmt.Errorf("%q does not contain %q: %w", ownerKey, pvc.Namespace, errMsg(stdOut))
 	}
 
 	return deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
@@ -249,7 +283,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 		// check new passphrase created
 		_, stdErr := readVaultSecret(imageData.csiVolumeHandle, kmsIsVault(kms), f)
 		if stdErr != "" {
-			return fmt.Errorf("failed to read passphrase from vault: %s", stdErr)
+			return errReadPassphrase(stdErr)
 		}
 	}
 
@@ -262,7 +296,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 		// check new passphrase created
 		stdOut, _ := readVaultSecret(imageData.csiVolumeHandle, kmsIsVault(kms), f)
 		if stdOut != "" {
-			return fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
+			return errPassphraseInVault(stdOut)
 		}
 	}
 	return nil
@@ -288,7 +322,7 @@ func validateEncryptedImage(f *framework.Framework, rbdImageSpec string, app *v1
 		return err
 	}
 	if encryptedState != "encrypted" {
-		return fmt.Errorf("%v not equal to encrypted", encryptedState)
+		return errEncryptedState(encryptedState)
 	}
 
 	volumeMountPath := app.Spec.Containers[0].VolumeMounts[0].MountPath

@@ -167,5 +167,3 @@ linters:
     - wsl
     - funlen
     - testpackage
-    # TODO: enable goerr113, see: https://github.com/ceph/ceph-csi/issues/1227
-    - goerr113
