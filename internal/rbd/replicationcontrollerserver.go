@@ -52,6 +52,10 @@ const (
 	// another cluster
 	upAndStopped imageMirroringState = "up+stopped"
 
+	// If the state is up+unknown means the rbd-mirror daemon is
+	// running and the image is demoted on both the clusters.
+	upAndUnknown imageMirroringState = "up+unknown"
+
 	// If the state is error means image need resync.
 	errorState imageMirroringState = "error"
 )
@@ -375,6 +379,8 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 // ResyncVolume extracts the RBD volume information from the volumeID, If the
 // image is present, mirroring is enabled and the image is in demoted state.
 // If yes it will resync the image to correct the split-brain.
+// nolint:gocyclo // reduce complexity
+// FIXME: reduce complexity.
 func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	req *replication.ResyncVolumeRequest,
 ) (*replication.ResyncVolumeResponse, error) {
@@ -444,7 +450,20 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		ready = true
 		for _, s := range mirrorStatus.PeerSites {
 			if imageMirroringState(s.State) != upAndStopped {
-				util.UsefulLog(ctx, "peer site name=%s mirroring state=%s, description=%s and lastUpdate=%s", s.SiteName, s.State, s.Description, s.LastUpdate)
+				util.UsefulLog(ctx, "peer site name=%s, mirroring state=%s, description=%s and lastUpdate=%s", s.SiteName, s.State, s.Description, s.LastUpdate)
+				ready = false
+			}
+		}
+	}
+
+	// when the images are demoted on both clusters and user requests for the
+	// resync of the image, the image mirror state will be unknown state in
+	// both clusters.
+	if state == upAndUnknown {
+		ready = true
+		for _, s := range mirrorStatus.PeerSites {
+			if imageMirroringState(s.State) != upAndUnknown {
+				util.UsefulLog(ctx, "peer site name=%s, mirroring state=%s, description=%s and lastUpdate=%s", s.SiteName, s.State, s.Description, s.LastUpdate)
 				ready = false
 			}
 		}
