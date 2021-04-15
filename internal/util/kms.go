@@ -236,7 +236,7 @@ func RegisterKMSProvider(provider KMSProvider) bool {
 	}
 	_, ok := kmsManager.providers[provider.UniqueID]
 	if ok {
-		panic("duplicate tegistration of KMSProvider.UniqueID: " + provider.UniqueID)
+		panic("duplicate registration of KMSProvider.UniqueID: " + provider.UniqueID)
 	}
 
 	// validate the Initializer

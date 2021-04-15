@@ -7,7 +7,7 @@
 
 CSI deploys a sidecar container that is responsible for collecting metrics.
 
-Liveness metrics are intended to be collected by prometheus but can be accesesed
+Liveness metrics are intended to be collected by prometheus but can be accessed
 through a GET request to a specific pod ip.
 
 for example

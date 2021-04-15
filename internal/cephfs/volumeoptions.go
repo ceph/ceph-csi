@@ -525,7 +525,7 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}
-	// storing request name in snapshotshot Identifier
+	// storing request name in snapshot Identifier
 	sid.RequestName = imageAttributes.RequestName
 	sid.FsSnapshotName = imageAttributes.ImageName
 	sid.FsSubvolName = imageAttributes.SourceName
