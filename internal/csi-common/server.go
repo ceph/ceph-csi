@@ -148,8 +148,8 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, srv Servers, 
 			klog.Fatalf("failed to parse histogram count value: %v", e)
 		}
 		buckets := prometheus.ExponentialBuckets(start, factor, count)
-		bktOptios := grpc_prometheus.WithHistogramBuckets(buckets)
-		grpc_prometheus.EnableHandlingTimeHistogram(bktOptios)
+		bktOptions := grpc_prometheus.WithHistogramBuckets(buckets)
+		grpc_prometheus.EnableHandlingTimeHistogram(bktOptions)
 		grpc_prometheus.Register(server)
 	}
 	err = server.Serve(listener)
