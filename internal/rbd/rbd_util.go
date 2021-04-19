@@ -439,10 +439,11 @@ func (rv *rbdVolume) isInUse() (bool, error) {
 	// because we opened the image, there is at least one watcher
 	defaultWatchers := 1
 	if rv.Primary {
-		// a watcher will be added by the rbd mirror daemon if the image is primary
+		// if rbd mirror daemon is running, a watcher will be added by the rbd
+		// mirror daemon for mirrored images.
 		defaultWatchers++
 	}
-	return len(watchers) != defaultWatchers, nil
+	return len(watchers) > defaultWatchers, nil
 }
 
 // addRbdManagerTask adds a ceph manager task to execute command
