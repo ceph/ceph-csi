@@ -74,11 +74,11 @@ type rbdImage struct {
 	VolID string `json:"volID"`
 
 	Monitors string
-	// JournalPool is the ceph pool in which the CSI snapshot Journal is
+	// JournalPool is the ceph pool in which the CSI Journal/CSI snapshot Journal is
 	// stored
 	JournalPool string
-	// Pool is where the image snapshot journal and snapshot is stored, and
-	// could be the same as `JournalPool` (retained as Pool instead of
+	// Pool is where the image journal/image snapshot journal and image/snapshot
+	// is stored, and could be the same as `JournalPool` (retained as Pool instead of
 	// renaming to ImagePool or such, as this is referenced in the code
 	// extensively)
 	Pool           string
