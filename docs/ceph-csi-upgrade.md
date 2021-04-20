@@ -2,12 +2,14 @@
 
 - [Ceph-csi Upgrade](#ceph-csi-upgrade)
   - [Pre-upgrade considerations](#pre-upgrade-considerations)
-    - [snapshot-controller and snapshot CRD](#snapshot-controller-and-snapshot-crd)
+    - [Snapshot-controller and snapshot crd](#snapshot-controller-and-snapshot-crd)
+      - [Snapshot API version support matrix](#snapshot-api-version-support-matrix)
   - [Upgrading from v1.2 to v2.0](#upgrading-from-v12-to-v20)
   - [Upgrading from v2.0 to v2.1](#upgrading-from-v20-to-v21)
   - [Upgrading from v2.1 to v3.0](#upgrading-from-v21-to-v30)
   - [Upgrading from v3.0 to v3.1](#upgrading-from-v30-to-v31)
   - [Upgrading from v3.1 to v3.2](#upgrading-from-v31-to-v32)
+  - [Upgrading from v3.2 to v3.3](#upgrading-from-v32-to-v33)
     - [Upgrading CephFS](#upgrading-cephfs)
       - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
         - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -60,10 +62,10 @@ controller and snapshot CRD. more info can be found
 
 #### Snapshot API version support matrix
 
-| Snapshot API version | Kubernetes Version   | Snapshot-Controller + CRDs Version | Sidecar Version        |
-| -------------------- | -------------------- | ---------------------------------- | ---------------------- |
-| v1beta1              | v1.17 =< k8s < v1.20 | v2.x =< snapshot-controller < v4.x | sidecar >= v2.x        |
-| v1                   | k8s >= v1.20         | snapshot-controller >= v4.x        | sidecar >= v2.x        |
+| Snapshot API version | Kubernetes Version   | Snapshot-Controller + CRDs Version | Sidecar Version |
+| -------------------- | -------------------- | ---------------------------------- | --------------- |
+| v1beta1              | v1.17 =< k8s < v1.20 | v2.x =< snapshot-controller < v4.x | sidecar >= v2.x |
+| v1                   | k8s >= v1.20         | snapshot-controller >= v4.x        | sidecar >= v2.x |
 
 **Note:** We recommend to use {sidecar, controller, crds} of same version
 
@@ -92,6 +94,11 @@ to upgrade from cephcsi v3.0 to v3.1
 
 ## Upgrading from v3.1 to v3.2
 
+Refer [upgrade-from-v3.1-v3.2](https://github.com/ceph/ceph-csi/blob/v3.2.1/docs/ceph-csi-upgrade.md)
+to upgrade from cephcsi v3.1 to v3.2
+
+## Upgrading from v3.2 to v3.3
+
 **Ceph-csi releases from devel are expressly unsupported.** It is strongly
 recommended that you use [official
 releases](https://github.com/ceph/ceph-csi/releases) of Ceph-csi. Unreleased
@@ -100,12 +107,12 @@ that will not be supported in the official releases. Builds from the devel
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-git checkout v3.2.0 tag
+git checkout v3.3.0 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.2.0
+git checkout v3.3.0
 ```
 
 **Note:** While upgrading please Ignore warning messages from kubectl output
@@ -230,7 +237,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded cephfs csi from v3.0 to v3.1
+we have successfully upgraded cephfs csi from v3.2 to v3.3
 
 ### Upgrading RBD
 
@@ -348,7 +355,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded RBD csi from v3.1 to v3.2
+we have successfully upgraded RBD csi from v3.2 to v3.3
 
 ### Handling node reboot hangs due to existing network mounts
 
