@@ -464,7 +464,7 @@ func (kms *VaultTokensKMS) parseTenantConfig() error {
 		return nil
 	}
 
-	// fetch the ConfigMap from the tanants namespace
+	// fetch the ConfigMap from the tenants namespace
 	c := NewK8sClient()
 	cm, err := c.CoreV1().ConfigMaps(kms.Tenant).Get(context.TODO(),
 		kms.ConfigName, metav1.GetOptions{})
