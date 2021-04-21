@@ -233,20 +233,19 @@ stringData:
     KNSC2DVVXcCgkqcCgAwIBAgIwewrvx...
 ```
 
-Its also possible that a user can create a single secret for the certificates
-and update the configuration to fetch certificates from a secret.
+It is also possible for a user to create a single Secret that contains both
+the client authentication and update the configuration to fetch the certificate
+and key from the Secret.
 
 ```yaml
 ---
 apiVersion: v1
 kind: secret
 metadata:
-  name: vault-certificates
+  name: vault-client-auth
 stringData:
   cert: |
     MIIC2DCCAcCgAwIBAgIBATANBgkqh...
-  cert: |
-    BATANBgkqcCgAwIBAgIBATANBAwI...
   key: |
     KNSC2DVVXcCgkqcCgAwIBAgIwewrvx...
 ```
