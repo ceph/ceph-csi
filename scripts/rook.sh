@@ -4,6 +4,8 @@ ROOK_VERSION=${ROOK_VERSION:-"v1.4.9"}
 ROOK_DEPLOY_TIMEOUT=${ROOK_DEPLOY_TIMEOUT:-300}
 ROOK_URL="https://raw.githubusercontent.com/rook/rook/${ROOK_VERSION}/cluster/examples/kubernetes/ceph"
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
+ROOK_FILESYSTEM_NAME=${ROOK_FILESYSTEM_NAME:-"myfs"}
+
 KUBECTL_RETRY=5
 KUBECTL_RETRY_DELAY=10
 
@@ -169,14 +171,14 @@ function check_mds_stat() {
 		FS_NAME=$(kubectl_retry -n rook-ceph get cephfilesystems.ceph.rook.io -ojsonpath='{.items[0].metadata.name}')
 		echo "Checking MDS ($FS_NAME) stats... ${retry}s" && sleep 5
 
-		ACTIVE_COUNT=$(kubectl_retry -n rook-ceph get cephfilesystems myfs -ojsonpath='{.spec.metadataServer.activeCount}')
+		ACTIVE_COUNT=$(kubectl_retry -n rook-ceph get cephfilesystems "$ROOK_FILESYSTEM_NAME" -ojsonpath='{.spec.metadataServer.activeCount}')
 
 		ACTIVE_COUNT_NUM=$((ACTIVE_COUNT + 0))
 		echo "MDS ($FS_NAME) active_count: [$ACTIVE_COUNT_NUM]"
 		if ((ACTIVE_COUNT_NUM < 1)); then
 			continue
 		else
-			if kubectl_retry -n rook-ceph get pod -l rook_file_system=myfs | grep Running &>/dev/null; then
+			if kubectl_retry -n rook-ceph get pod -l rook_file_system="$ROOK_FILESYSTEM_NAME" | grep Running &>/dev/null; then
 				echo "Filesystem ($FS_NAME) is successfully created..."
 				break
 			fi
