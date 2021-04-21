@@ -2,10 +2,10 @@
 set -e
 
 # This script will be used by travis to run functional test
-# against different kuberentes version
+# against different Kubernetes version
 export KUBE_VERSION=$1
 shift
-# parse the kubernetes version, return the digit passed as argument
+# parse the Kubernetes version, return the digit passed as argument
 # v1.17.0 -> kube_version 1 -> 1
 # v1.17.0 -> kube_version 2 -> 17
 kube_version() {
