@@ -811,13 +811,9 @@ func cloneFromSnapshot(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnaps
 	if rbdVol.isEncrypted() {
 		// FIXME: vol.VolID should be different from rbdVol.VolID
 		vol.VolID = rbdVol.VolID
-		cryptErr := rbdVol.copyEncryptionConfig(&vol.rbdImage)
-		if cryptErr != nil {
-			util.WarningLog(ctx, "failed copy encryption "+
-				"config for %q: %v", vol.String(),
-				rbdSnap.RequestName, cryptErr)
-			return nil, status.Errorf(codes.Internal,
-				err.Error())
+		err = rbdVol.copyEncryptionConfig(&vol.rbdImage)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
 
