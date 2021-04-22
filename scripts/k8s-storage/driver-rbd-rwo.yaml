@@ -54,7 +54,7 @@ DriverInfo:
     controllerExpansion: false
 
     # Support for volume expansion in nodes
-    nodeExpansion: false
+    nodeExpansion: true
 
     # Support volume that an run on single node only (like hostpath)
     singleNodeVolume: false
