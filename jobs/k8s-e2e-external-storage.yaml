@@ -29,7 +29,7 @@
           status-context: ci/centos/k8s-e2e-external-storage
           # yamllint disable-line rule:line-length
           trigger-phrase: '/(re)?test ci/centos/k8s-e2e-external-storage'
-          only-trigger-phrase: true
+          only-trigger-phrase: false
           permit-all: true
           github-hooks: true
           black-list-target-branches:
