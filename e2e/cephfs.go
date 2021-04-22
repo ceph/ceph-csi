@@ -280,6 +280,25 @@ var _ = Describe("cephfs", func() {
 				}
 			})
 
+			// test only if ceph-csi is deployed via helm
+			if helmTest {
+				By("verify PVC and app binding on helm installation", func() {
+					err := validatePVCAndAppBinding(pvcPath, appPath, f)
+					if err != nil {
+						e2elog.Failf("failed to validate CephFS pvc and application binding with error %v", err)
+					}
+					//  Deleting the storageclass and secret created by helm
+					err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
+					}
+					err = deleteResource(cephfsExamplePath + "secret.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
+					}
+				})
+			}
+
 			By("check static PVC", func() {
 				scPath := cephfsExamplePath + "secret.yaml"
 				err := validateCephFsStaticPV(f, appPath, scPath)
