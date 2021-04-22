@@ -47,7 +47,7 @@ fi
 # set up helm
 scripts/install-helm.sh up
 # install cephcsi helm charts
-scripts/install-helm.sh install-cephcsi ${NAMESPACE}
+scripts/install-helm.sh install-cephcsi --namespace ${NAMESPACE}
 # functional tests
 make run-e2e NAMESPACE="${NAMESPACE}" E2E_ARGS="--deploy-cephfs=false --deploy-rbd=false ${*}"
 
@@ -57,7 +57,7 @@ if [[ "${KUBE_MAJOR}" -ge 1 ]] && [[ "${KUBE_MINOR}" -ge 17 ]]; then
     # delete snapshot CRD
     scripts/install-snapshot.sh cleanup
 fi
-scripts/install-helm.sh cleanup-cephcsi ${NAMESPACE}
+scripts/install-helm.sh cleanup-cephcsi --namespace ${NAMESPACE}
 scripts/install-helm.sh clean
 kubectl delete ns ${NAMESPACE}
 sudo scripts/minikube.sh clean
