@@ -91,7 +91,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v1.2.0
     conditions:
-      - author=ceph-csi-bot
+      - author=mergify[bot]
       - base=release-v1.2.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -112,7 +112,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v2.0
     conditions:
-      - author=ceph-csi-bot
+      - author=mergify[bot]
       - base=release-v2.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -133,7 +133,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v2.1
     conditions:
-      - author=ceph-csi-bot
+      - author=mergify[bot]
       - base=release-v2.1
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -154,7 +154,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v3.0
     conditions:
-      - author=ceph-csi-bot
+      - author=mergify[bot]
       - base=release-v3.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -175,7 +175,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v3.1
     conditions:
-      - author=ceph-csi-bot
+      - author=mergify[bot]
       - base=release-v3.1
       - label!=DNM
       - "#changes-requested-reviews-by=0"
@@ -204,7 +204,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v3.2
     conditions:
-      - author=ceph-csi-bot
+      - author=mergify[bot]
       - base=release-v3.2
       - label!=DNM
       - "#approved-reviews-by>=1"
@@ -239,7 +239,7 @@ pull_request_rules:
   # automerge backports if CI successfully ran
   - name: automerge backport release-v3.3
     conditions:
-      - author=ceph-csi-bot
+      - author=mergify[bot]
       - base=release-v3.3
       - label!=DNM
       - "#approved-reviews-by>=1"
