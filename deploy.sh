@@ -105,7 +105,7 @@ if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
 
 	pushd "$CSI_CHARTS_DIR" >/dev/null
 
-	curl -L https://git.io/get_helm.sh | bash
+	curl -L https://git.io/get_helm.sh | bash -s -- --version "${HELM_VERSION}"
 
 	build_step "cloning ceph/csi-charts repository"
 	git clone https://github.com/ceph/csi-charts
