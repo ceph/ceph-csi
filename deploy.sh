@@ -28,7 +28,6 @@ push_helm_charts() {
 	mkdir -p "$CHARTDIR/csi-charts/docs/$PACKAGE"
 	cp -R "./charts/ceph-csi-$PACKAGE" "$CHARTDIR/csi-charts/docs/$PACKAGE"
 	pushd "$CHARTDIR/csi-charts/docs/$PACKAGE" >/dev/null
-	helm init --client-only
 	helm package "ceph-csi-$PACKAGE"
 	popd >/dev/null
 
