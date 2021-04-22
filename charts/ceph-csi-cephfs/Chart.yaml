@@ -1,10 +1,10 @@
 ---
 apiVersion: v1
-appVersion: v3.3-canary
+appVersion: v3.3.1
 description: "Container Storage Interface (CSI) driver,
 provisioner, snapshotter and attacher for Ceph cephfs"
 name: ceph-csi-cephfs
-version: 3.3-canary
+version: 3.3.1-canary
 keywords:
   - ceph
   - cephfs
