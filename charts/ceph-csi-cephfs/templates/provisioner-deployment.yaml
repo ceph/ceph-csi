@@ -103,7 +103,7 @@ spec:
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- end }}
-{{- if semverCompare ">=1.15" .Capabilities.KubeVersion.GitVersion -}}
+{{- if semverCompare ">=1.15" .Capabilities.KubeVersion.Version -}}
 {{- if .Values.provisioner.resizer.enabled }}
         - name: csi-resizer
           image: "{{ .Values.provisioner.resizer.image.repository }}:{{ .Values.provisioner.resizer.image.tag }}"
