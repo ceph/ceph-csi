@@ -245,7 +245,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 		return err
 	}
 
-	if kmsIsVault(kms) || kms == "vaulttokens" {
+	if kmsIsVault(kms) || kms == vaultTokens {
 		// check new passphrase created
 		_, stdErr := readVaultSecret(imageData.csiVolumeHandle, kmsIsVault(kms), f)
 		if stdErr != "" {
@@ -258,7 +258,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 		return err
 	}
 
-	if kmsIsVault(kms) || kms == "vaulttokens" {
+	if kmsIsVault(kms) || kms == vaultTokens {
 		// check new passphrase created
 		stdOut, _ := readVaultSecret(imageData.csiVolumeHandle, kmsIsVault(kms), f)
 		if stdOut != "" {
