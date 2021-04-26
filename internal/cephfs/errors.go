@@ -28,10 +28,10 @@ const (
 
 var (
 	// ErrCloneInProgress is returned when snapshot clone state is `in progress`
-	ErrCloneInProgress = errors.New("in progress")
+	ErrCloneInProgress = errors.New("clone from snapshot is already in progress")
 
 	// ErrClonePending is returned when snapshot clone state is `pending`
-	ErrClonePending = errors.New("pending")
+	ErrClonePending = errors.New("clone from snapshot is pending")
 
 	// ErrInvalidVolID is returned when a CSI passed VolumeID is not conformant to any known volume ID
 	// formats.
