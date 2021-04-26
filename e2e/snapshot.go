@@ -168,3 +168,20 @@ func createCephFSSnapshotClass(f *framework.Framework) error {
 	_, err = sclient.SnapshotV1beta1().VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	return err
 }
+
+func getVolumeSnapshotContent(namespace, snapshotName string) (*snapapi.VolumeSnapshotContent, error) {
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return nil, err
+	}
+	snapshot, err := sclient.SnapshotV1beta1().VolumeSnapshots(namespace).Get(context.TODO(), snapshotName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	volumeSnapshotContent, err := sclient.SnapshotV1beta1().VolumeSnapshotContents().Get(context.TODO(), *snapshot.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return volumeSnapshotContent, nil
+}
