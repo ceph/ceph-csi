@@ -497,7 +497,7 @@ var _ = Describe("RBD", func() {
 			By("create a PVC clone and bind it to an app", func() {
 				// snapshot beta is only supported from v1.17+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					validatePVCSnapshot(defaultCloneCount, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, false, f)
+					validatePVCSnapshot(defaultCloneCount, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, "", false, f)
 				}
 			})
 
@@ -508,7 +508,7 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
-			By("create an encrypted PVC snapshot and restore it for an app", func() {
+			By("create an encrypted PVC snapshot and restore it for an app with VaultKMS", func() {
 				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
 					Skip("pvc clone is only supported from v1.16+")
 				}
@@ -519,14 +519,14 @@ var _ = Describe("RBD", func() {
 				}
 				scOpts := map[string]string{
 					"encrypted":       "true",
-					"encryptionKMSID": "secrets-metadata-test",
+					"encryptionKMSID": "vault-test",
 				}
 				err = createRBDStorageClass(f.ClientSet, f, nil, scOpts, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCSnapshot(1, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, true, f)
+				validatePVCSnapshot(1, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, "vault", true, f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {

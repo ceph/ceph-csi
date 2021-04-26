@@ -43,6 +43,9 @@ const (
 	// Default key and label for Listoptions
 	appKey   = "app"
 	appLabel = "write-data-in-pod"
+
+	// vaultTokens KMS type
+	vaultTokens = "vaulttokens"
 )
 
 var (
@@ -651,8 +654,8 @@ func validatePVCClone(totalCount int, sourcePvcPath, sourceAppPath, clonePvcPath
 	validateRBDImageCount(f, 0)
 }
 
-// nolint:gocyclo,gocognit // reduce complexity
-func validatePVCSnapshot(totalCount int, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string, validateEncryption bool, f *framework.Framework) {
+// nolint:gocyclo,gocognit,nestif // reduce complexity
+func validatePVCSnapshot(totalCount int, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, kms string, validateEncryption bool, f *framework.Framework) {
 	var wg sync.WaitGroup
 	wgErrs := make([]error, totalCount)
 	chErrs := make([]error, totalCount)
@@ -704,6 +707,20 @@ func validatePVCSnapshot(totalCount int, pvcPath, appPath, snapshotPath, pvcClon
 		go func(w *sync.WaitGroup, n int, s v1beta1.VolumeSnapshot) {
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			wgErrs[n] = createSnapshot(&s, deployTimeout)
+			if wgErrs[n] == nil && validateEncryption {
+				if kmsIsVault(kms) || kms == vaultTokens {
+					content, sErr := getVolumeSnapshotContent(s.Namespace, s.Name)
+					if sErr != nil {
+						wgErrs[n] = fmt.Errorf("failed to get snapshotcontent for %s in namespace %s with error: %w", s.Name, s.Namespace, sErr)
+					} else {
+						// check new passphrase created
+						_, stdErr := readVaultSecret(*content.Status.SnapshotHandle, kmsIsVault(kms), f)
+						if stdErr != "" {
+							wgErrs[n] = fmt.Errorf("failed to read passphrase from vault: %s", stdErr)
+						}
+					}
+				}
+			}
 			w.Done()
 		}(&wg, i, snap)
 	}
@@ -861,7 +878,28 @@ func validatePVCSnapshot(totalCount int, pvcPath, appPath, snapshotPath, pvcClon
 	for i := 0; i < totalCount; i++ {
 		go func(w *sync.WaitGroup, n int, s v1beta1.VolumeSnapshot) {
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
-			wgErrs[n] = deleteSnapshot(&s, deployTimeout)
+			content := &v1beta1.VolumeSnapshotContent{}
+			var err error
+			if validateEncryption {
+				if kmsIsVault(kms) || kms == vaultTokens {
+					content, err = getVolumeSnapshotContent(s.Namespace, s.Name)
+					if err != nil {
+						wgErrs[n] = fmt.Errorf("failed to get snapshotcontent for %s in namespace %s with error: %w", s.Name, s.Namespace, err)
+					}
+				}
+			}
+			if wgErrs[n] == nil {
+				wgErrs[n] = deleteSnapshot(&s, deployTimeout)
+				if wgErrs[n] == nil && validateEncryption {
+					if kmsIsVault(kms) || kms == vaultTokens {
+						// check passphrase deleted
+						stdOut, _ := readVaultSecret(*content.Status.SnapshotHandle, kmsIsVault(kms), f)
+						if stdOut != "" {
+							wgErrs[n] = fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
+						}
+					}
+				}
+			}
 			w.Done()
 		}(&wg, i, snap)
 	}
