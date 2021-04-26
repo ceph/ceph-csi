@@ -89,6 +89,10 @@ func generateVolFromSnap(rbdSnap *rbdSnapshot) *rbdVolume {
 	vol.RadosNamespace = rbdSnap.RadosNamespace
 	vol.RbdImageName = rbdSnap.RbdSnapName
 	vol.ImageID = rbdSnap.ImageID
+	// copyEncryptionConfig cannot be used here because the volume and the
+	// snapshot will have the same volumeID which cases the panic in
+	// copyEncryptionConfig function.
+	vol.encryption = rbdSnap.encryption
 	return vol
 }
 
