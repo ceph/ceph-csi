@@ -9,6 +9,7 @@ def skip_e2e = 0
 def doc_change = 0
 def k8s_release = 'latest'
 def namespace = 'k8s-e2e-storage-' + UUID.randomUUID().toString().split('-')[-1]
+def ci_registry = 'registry-ceph-csi.apps.ocp.ci.centos.org'
 
 def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
