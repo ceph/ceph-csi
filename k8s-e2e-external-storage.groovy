@@ -14,6 +14,19 @@ def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
 }
 
+def podman_login(registry, username, passwd) {
+	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${registry}"
+}
+
+// podman_pull pulls image from the source (CI internal) registry, and tags it
+// as unqualified image name and into the destination registry. This prevents
+// pulling from the destination registry.
+//
+// Images need to be pre-pushed into the source registry, though.
+def podman_pull(source, destination, image) {
+	ssh "podman pull --authfile=~/.podman-auth.json ${source}/${image} && podman tag ${source}/${image} ${image} ${destination}/${image}"
+}
+
 node('cico-workspace') {
 	stage('checkout ci repository') {
 		git url: "${ci_git_repo}",
@@ -97,11 +110,47 @@ node('cico-workspace') {
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh ./single-node-k8s.sh podman2minikube.sh ./run-k8s-external-storage-e2e.sh root@${CICO_NODE}:'
 			ssh "./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${git_repo} --ref=${ref}"
 		}
+		stage('pull base container images') {
+			def base_image = sh(
+				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${BASE_IMAGE}\'',
+				returnStdout: true
+			).trim()
+			def d_io_regex = ~"^docker.io/"
+
+			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
+				podman_login(ci_registry, "${CREDS_USER}", "${CREDS_PASSWD}")
+			}
+
+			// base_image is like ceph/ceph:v15 or docker.io/ceph/ceph:v15, strip "docker.io/"
+			podman_pull(ci_registry, "docker.io", "${base_image}" - d_io_regex)
+			// cephcsi:devel is used with 'make containerized-build'
+			podman_pull(ci_registry, ci_registry, "ceph-csi:devel")
+		}
 		stage('build artifacts') {
 			// build container image
 			ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make image-cephcsi GOARCH=amd64 CONTAINER_CMD=podman'
 		}
 		stage("deploy k8s-${k8s_version} and rook") {
+			def rook_version = sh(
+				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${ROOK_VERSION}\'',
+				returnStdout: true
+			).trim()
+
+			if (rook_version != '') {
+				// single-node-k8s.sh pushes the image into minikube
+				podman_pull(ci_registry, "docker.io", "rook/ceph:${rook_version}")
+			}
+
+			def rook_ceph_cluster_image = sh(
+				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${ROOK_CEPH_CLUSTER_IMAGE}\'',
+				returnStdout: true
+			).trim()
+			def d_io_regex = ~"^docker.io/"
+
+			if (rook_ceph_cluster_image != '') {
+				// single-node-k8s.sh pushes the image into minikube
+				podman_pull(ci_registry, "docker.io", rook_ceph_cluster_image - d_io_regex)
+			}
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh "./single-node-k8s.sh --k8s-version=${k8s_release}"
 			}
