@@ -43,15 +43,6 @@ const (
 type imageMirroringState string
 
 const (
-	// If the state is up+replaying, then mirroring is functioning properly.
-	// up means the rbd-mirror daemon is running, and replaying means
-	// this image is the target for replication from another storage cluster.
-	upAndReplaying imageMirroringState = "up+replaying"
-	// If the state is up+stopped means the rbd-mirror daemon is
-	// running and stopped means the image is not a target for replication from
-	// another cluster
-	upAndStopped imageMirroringState = "up+stopped"
-
 	// If the state is up+unknown means the rbd-mirror daemon is
 	// running and the image is demoted on both the clusters.
 	upAndUnknown imageMirroringState = "up+unknown"
@@ -445,20 +436,16 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	}
 	ready := false
 	state := imageMirroringState(mirrorStatus.State)
-	if state == upAndStopped || state == upAndReplaying {
-		// Make sure the peer site image state is up and stopped
-		ready = true
-		for _, s := range mirrorStatus.PeerSites {
-			if imageMirroringState(s.State) != upAndStopped {
-				util.UsefulLog(ctx, "peer site name=%s, mirroring state=%s, description=%s and lastUpdate=%s", s.SiteName, s.State, s.Description, s.LastUpdate)
-				ready = false
-			}
-		}
-	}
+	//  To recover from split brain (up+error) state the image need to be
+	//  demoted and requested for resync on site-a and then the image on site-b
+	//  should be demoted. The volume should be marked to ready=true when the
+	//  image state on both the clusters are up+unknown because during the last
+	//  snapshot syncing the data gets copied first and then image state on the
+	//  site-a changes to up+unknown.
 
-	// when the images are demoted on both clusters and user requests for the
-	// resync of the image, the image mirror state will be unknown state in
-	// both clusters.
+	// If the image state on both the sites are up+unknown consider that
+	// complete data is synced as the last snapshot
+	// gets exchanged between the clusters.
 	if state == upAndUnknown {
 		ready = true
 		for _, s := range mirrorStatus.PeerSites {
