@@ -153,13 +153,13 @@ node('cico-workspace') {
 				podman_pull(ci_registry, "docker.io", rook_ceph_cluster_image - d_io_regex)
 			}
 
-			// busy box is used in external storage testing
-			podman_pull(ci_registry, "docker.io", "library/busybox:1.29")
-			ssh "./podman2minikube.sh docker.io/library/busybox:1.29"
-
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh "./single-node-k8s.sh --k8s-version=${k8s_release}"
 			}
+
+			// busybox is used in external storage testing
+			podman_pull(ci_registry, "docker.io", "library/busybox:1.29")
+			ssh "./podman2minikube.sh docker.io/library/busybox:1.29"
 		}
 		stage('deploy ceph-csi through helm') {
 			timeout(time: 30, unit: 'MINUTES') {
