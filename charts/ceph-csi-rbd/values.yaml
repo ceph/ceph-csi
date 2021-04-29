@@ -197,7 +197,7 @@ provisioner:
   snapshotter:
     image:
       repository: k8s.gcr.io/sig-storage/csi-snapshotter
-      tag: v3.0.2
+      tag: v4.0.0
       pullPolicy: IfNotPresent
     resources: {}
 
