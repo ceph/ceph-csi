@@ -1,6 +1,16 @@
 ---
-- job:
+- project:
     name: k8s-e2e-external-storage
+    k8s_version:
+      - '1.20':
+          only_run_on_request: false
+      - '1.21':
+          only_run_on_request: true
+    jobs:
+      - 'k8s-e2e-external-storage-{k8s_version}'
+
+- job-template:
+    name: k8s-e2e-external-storage-{k8s_version}
     project-type: pipeline
     concurrent: true
     properties:
@@ -9,10 +19,11 @@
       - build-discarder:
           days-to-keep: 7
           artifact-days-to-keep: 7
+    k8s_version: '<unset>'
     parameters:
       - string:
           name: k8s_version
-          default: '1.20'
+          default: '{k8s_version}'
           description: Kubernetes version to deploy in the test cluster.
     pipeline-scm:
       scm:
@@ -25,11 +36,11 @@
       lightweight-checkout: true
     triggers:
       - github-pull-request:
-          status-url: ${RUN_DISPLAY_URL}
-          status-context: ci/centos/k8s-e2e-external-storage
+          status-url: $RUN_DISPLAY_URL
+          status-context: 'ci/centos/k8s-e2e-external-storage/{k8s_version}'
           # yamllint disable-line rule:line-length
-          trigger-phrase: '/(re)?test ci/centos/k8s-e2e-external-storage'
-          only-trigger-phrase: false
+          trigger-phrase: '/(re)?test ((all)|(ci/centos/k8s-e2e-external-storage(/{k8s_version})?))'
+          only-trigger-phrase: '{only_run_on_request}'
           permit-all: true
           github-hooks: true
           black-list-target-branches:
