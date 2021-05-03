@@ -112,7 +112,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
           # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:v3.2.2
+          image: quay.io/cephcsi/cephcsi:v3.2-canary
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=rbd"
@@ -157,7 +157,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
           # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:v3.2.2
+          image: quay.io/cephcsi/cephcsi:v3.2-canary
           args:
             - "--type=controller"
             - "--v=5"
@@ -175,7 +175,7 @@ spec:
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
         - name: liveness-prometheus
-          image: quay.io/cephcsi/cephcsi:v3.2.2
+          image: quay.io/cephcsi/cephcsi:v3.2-canary
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
