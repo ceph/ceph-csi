@@ -15,7 +15,7 @@ defaults:
 pull_request_rules:
   - name: remove outdated approvals
     conditions:
-      - base=devel
+      - base~='^(devel)|(release-.+)$'
     actions:
       dismiss_reviews:
         approved: true
@@ -32,7 +32,7 @@ pull_request_rules:
   - name: automatic merge
     conditions:
       - label!=DNM
-      - base=devel
+      - base~='^(devel)|(release-.+)$'
       - "#approved-reviews-by>=2"
       - "#changes-requested-reviews-by=0"
       - "status-success=codespell"
@@ -58,7 +58,7 @@ pull_request_rules:
     conditions:
       - label!=DNM
       - label=ready-to-merge
-      - base=devel
+      - base~='^(devel)|(release-.+)$'
       - "#approved-reviews-by>=1"
       - "status-success=codespell"
       - "status-success=multi-arch-build"
