@@ -238,6 +238,7 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 	var err error
 	var readOnly bool
 	var feature bool
+	var depth uint
 
 	var cr *util.Credentials
 	cr, err = util.NewUserCredentials(req.GetSecrets())
@@ -272,7 +273,11 @@ func (ns *NodeServer) stageTransaction(ctx context.Context, req *csi.NodeStageVo
 		if err != nil {
 			return transaction, err
 		}
-		if feature {
+		depth, err = volOptions.getCloneDepth(ctx)
+		if err != nil {
+			return transaction, err
+		}
+		if feature || depth != 0 {
 			err = volOptions.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 			if err != nil {
 				return transaction, err
