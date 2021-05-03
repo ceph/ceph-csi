@@ -727,17 +727,28 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
-			// TODO: enable this test when we support rbd-nbd mounter in E2E.
-			// nbd module should be present on the host machine to run use the
-			// rbd-nbd mounter.
-
-			// By("create a PVC and Bind it to an app with journaling/exclusive-lock image-features and rbd-nbd mounter", func() {
-			// 	deleteResource(rbdExamplePath + "storageclass.yaml")
-			// 	createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"imageFeatures": "layering,journaling,exclusive-lock", "mounter": "rbd-nbd"})
-			// 	validatePVCAndAppBinding(pvcPath, appPath, f)
-			// 	deleteResource(rbdExamplePath + "storageclass.yaml")
-			// 	createRBDStorageClass(f.ClientSet, f, nil, make(map[string]string))
-			// })
+			By("create a PVC and Bind it to an app with journaling/exclusive-lock image-features and rbd-nbd mounter", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"imageFeatures": "layering,journaling,exclusive-lock", "mounter": "rbd-nbd"}, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to validate pvc and application binding with error %v", err)
+				}
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+			})
 
 			By("create a PVC clone and bind it to an app", func() {
 				// snapshot beta is only supported from v1.17+
