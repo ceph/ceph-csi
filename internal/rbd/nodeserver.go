@@ -362,6 +362,7 @@ func (ns *NodeServer) undoStagingTransaction(ctx context.Context, req *csi.NodeS
 
 func (ns *NodeServer) createStageMountPoint(ctx context.Context, mountPath string, isBlock bool) error {
 	if isBlock {
+		// #nosec:G304, intentionally creating file mountPath, not a security issue
 		pathFile, err := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0600)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to create mountPath:%s with error: %v", mountPath, err)
