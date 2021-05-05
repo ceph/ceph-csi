@@ -297,3 +297,70 @@ pull_request_rules:
       merge: {}
       dismiss_reviews: {}
       delete_head_branch: {}
+  ##
+  ## Automatically set/remove labels
+  ##
+  - name: title contains DNM
+    conditions:
+      - title~=DNM
+    actions:
+      label:
+        add:
+          - DNM
+  - name: title contains CephFS
+    conditions:
+      - "title~=cephfs: "
+    actions:
+      label:
+        add:
+          - component/cephfs
+  - name: title contains RBD
+    conditions:
+      - "title~=rbd: "
+    actions:
+      label:
+        add:
+          - component/rbd
+  - name: title contains CI or testing
+    conditions:
+      - "title~=(ci)|(testing): "
+    actions:
+      label:
+        add:
+          - component/testing
+  - name: title contains Helm
+    conditions:
+      - title~=helm
+    actions:
+      label:
+        add:
+          - component/deployment
+  - name: title contains rebase
+    conditions:
+      - "title~=rebase: "
+    actions:
+      label:
+        add:
+          - rebase
+  - name: title indicates a bug fix
+    conditions:
+      - title~=(bug)|(fix)
+    actions:
+      label:
+        add:
+          - bug
+  - name: title contains cleanup
+    conditions:
+      - "title~=cleanup: "
+    actions:
+      label:
+        add:
+          - cleanup
+  - name: title contains doc
+    conditions:
+      - "title~=doc: "
+    actions:
+      label:
+        add:
+          - component/docs
+          - ci/skip/e2e
