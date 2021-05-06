@@ -27,8 +27,7 @@ func upgradeCSI(version string) error {
 
 // upgradeAndDeployCSI upgrades the CSI to a specific release.
 func upgradeAndDeployCSI(version, testtype string) error {
-	err := upgradeCSI(version)
-	if err != nil {
+	if err := upgradeCSI(version); err != nil {
 		return fmt.Errorf("failed to upgrade driver %w", err)
 	}
 	switch testtype {

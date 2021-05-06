@@ -64,8 +64,7 @@ func TestJoinErrors(t *testing.T) {
 	assertErrorIs(x, errFoo, false)
 	assertErrorIs(x, errBar, true)
 	s1 := "w{w{w{x}}: w{w{foo: bar}}}"
-	s2 := w1w2Xw2FooBar.Error()
-	if s1 != s2 {
+	if s2 := w1w2Xw2FooBar.Error(); s1 != s2 {
 		t.Errorf("%s != %s", s1, s2)
 	}
 }

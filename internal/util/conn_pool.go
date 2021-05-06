@@ -156,8 +156,7 @@ func (cp *ConnPool) Get(monitors, user, keyfile string) (*rados.Conn, error) {
 
 	cp.lock.Lock()
 	defer cp.lock.Unlock()
-	oldConn := cp.getConn(unique)
-	if oldConn != nil {
+	if oldConn := cp.getConn(unique); oldConn != nil {
 		// there was a race, oldConn already exists
 		ce.destroy()
 		return oldConn, nil

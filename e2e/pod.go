@@ -210,8 +210,7 @@ func execCommandInPodAndAllowFail(f *framework.Framework, c, ns string, opt *met
 
 func loadApp(path string) (*v1.Pod, error) {
 	app := v1.Pod{}
-	err := unmarshal(path, &app)
-	if err != nil {
+	if err := unmarshal(path, &app); err != nil {
 		return nil, err
 	}
 	for i := range app.Spec.Containers {
