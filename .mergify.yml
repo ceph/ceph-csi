@@ -321,9 +321,9 @@ pull_request_rules:
       label:
         add:
           - component/rbd
-  - name: title contains CI or testing
+  - name: title contains CI, testing or e2e
     conditions:
-      - "title~=(ci)|(testing): "
+      - "title~=(ci: )|(testing: )|(e2e)"
     actions:
       label:
         add:
@@ -363,4 +363,12 @@ pull_request_rules:
       label:
         add:
           - component/docs
+          - ci/skip/e2e
+  - name: title contains Mergify
+    conditions:
+      - "title~=mergify"
+    actions:
+      label:
+        add:
+          - Repo activity
           - ci/skip/e2e
