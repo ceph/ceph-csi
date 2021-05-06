@@ -47,9 +47,8 @@ func RoundOffVolSize(size int64) int64 {
 // size less than 1MiB will be round off to 1MiB.
 func RoundOffBytes(bytes int64) int64 {
 	var num int64
-	floatBytes := float64(bytes)
 	// round off the value if its in decimal
-	if floatBytes < helpers.GiB {
+	if floatBytes := float64(bytes); floatBytes < helpers.GiB {
 		num = int64(math.Ceil(floatBytes / helpers.MiB))
 		num *= helpers.MiB
 	} else {
@@ -142,8 +141,7 @@ func ValidateDriverName(driverName string) error {
 // 'utsname' structs 'release' component.
 func GetKernelVersion() (string, error) {
 	utsname := unix.Utsname{}
-	err := unix.Uname(&utsname)
-	if err != nil {
+	if err := unix.Uname(&utsname); err != nil {
 		return "", err
 	}
 	return strings.TrimRight(string(utsname.Release[:]), "\x00"), nil

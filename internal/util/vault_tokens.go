@@ -188,8 +188,7 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	var err error
 
 	config := args.Config
-	_, ok := config[kmsProviderKey]
-	if ok {
+	if _, ok := config[kmsProviderKey]; ok {
 		// configuration comes from the ConfigMap, needs to be
 		// converted to vaultTokenConf type
 		config, err = transformConfig(config)

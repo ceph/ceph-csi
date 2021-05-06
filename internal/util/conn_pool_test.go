@@ -62,8 +62,7 @@ func (cp *ConnPool) fakeGet(monitors, user, keyfile string) (*rados.Conn, string
 
 	cp.lock.Lock()
 	defer cp.lock.Unlock()
-	oldConn := cp.getConn(unique)
-	if oldConn != nil {
+	if oldConn := cp.getConn(unique); oldConn != nil {
 		// there was a race, oldConn already exists
 		ce.destroy()
 		return oldConn, unique, nil
