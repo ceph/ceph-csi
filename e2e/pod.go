@@ -204,7 +204,7 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 	return stdOut, stdErr, err
 }
 
-func execCommandInContainer(f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions) (string, string, error) {
+func execCommandInContainer(f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions) (string, string, error) { //nolint:unparam,lll // cn can be used with different inputs later
 	podOpt, err := getCommandInPodOpts(f, c, ns, cn, opt)
 	if err != nil {
 		return "", "", err
@@ -304,7 +304,7 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 	})
 }
 
-func deletePodWithLabel(label, ns string, skipNotFound bool) error {
+func deletePodWithLabel(label, ns string, skipNotFound bool) error { //nolint:unparam // skipNotFound can be used with different inputs later
 	_, err := framework.RunKubectl(ns, "delete", "po", "-l", label, fmt.Sprintf("--ignore-not-found=%t", skipNotFound))
 	if err != nil {
 		e2elog.Logf("failed to delete pod %v", err)
