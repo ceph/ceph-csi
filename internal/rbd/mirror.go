@@ -30,13 +30,13 @@ import (
 func (ri *rbdImage) enableImageMirroring(mode librbd.ImageMirrorMode) error {
 	image, err := ri.open()
 	if err != nil {
-		return fmt.Errorf("failed to open image %q with error: %w", ri.String(), err)
+		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
 	}
 	defer image.Close()
 
 	err = image.MirrorEnable(mode)
 	if err != nil {
-		return fmt.Errorf("failed to enable mirroring on %q with error: %w", ri.String(), err)
+		return fmt.Errorf("failed to enable mirroring on %q with error: %w", ri, err)
 	}
 	return nil
 }
@@ -45,13 +45,13 @@ func (ri *rbdImage) enableImageMirroring(mode librbd.ImageMirrorMode) error {
 func (ri *rbdImage) disableImageMirroring(force bool) error {
 	image, err := ri.open()
 	if err != nil {
-		return fmt.Errorf("failed to open image %q with error: %w", ri.String(), err)
+		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
 	}
 	defer image.Close()
 
 	err = image.MirrorDisable(force)
 	if err != nil {
-		return fmt.Errorf("failed to disable mirroring on %q with error: %w", ri.String(), err)
+		return fmt.Errorf("failed to disable mirroring on %q with error: %w", ri, err)
 	}
 	return nil
 }
@@ -60,13 +60,13 @@ func (ri *rbdImage) disableImageMirroring(force bool) error {
 func (ri *rbdImage) getImageMirroringInfo() (*librbd.MirrorImageInfo, error) {
 	image, err := ri.open()
 	if err != nil {
-		return nil, fmt.Errorf("failed to open image %q with error: %w", ri.String(), err)
+		return nil, fmt.Errorf("failed to open image %q with error: %w", ri, err)
 	}
 	defer image.Close()
 
 	info, err := image.GetMirrorImageInfo()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get mirroring info of %q with error: %w", ri.String(), err)
+		return nil, fmt.Errorf("failed to get mirroring info of %q with error: %w", ri, err)
 	}
 	return info, nil
 }
@@ -75,12 +75,12 @@ func (ri *rbdImage) getImageMirroringInfo() (*librbd.MirrorImageInfo, error) {
 func (ri *rbdImage) promoteImage(force bool) error {
 	image, err := ri.open()
 	if err != nil {
-		return fmt.Errorf("failed to open image %q with error: %w", ri.String(), err)
+		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
 	}
 	defer image.Close()
 	err = image.MirrorPromote(force)
 	if err != nil {
-		return fmt.Errorf("failed to promote image %q with error: %w", ri.String(), err)
+		return fmt.Errorf("failed to promote image %q with error: %w", ri, err)
 	}
 	return nil
 }
@@ -89,12 +89,12 @@ func (ri *rbdImage) promoteImage(force bool) error {
 func (ri *rbdImage) demoteImage() error {
 	image, err := ri.open()
 	if err != nil {
-		return fmt.Errorf("failed to open image %q with error: %w", ri.String(), err)
+		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
 	}
 	defer image.Close()
 	err = image.MirrorDemote()
 	if err != nil {
-		return fmt.Errorf("failed to demote image %q with error: %w", ri.String(), err)
+		return fmt.Errorf("failed to demote image %q with error: %w", ri, err)
 	}
 	return nil
 }
@@ -103,12 +103,12 @@ func (ri *rbdImage) demoteImage() error {
 func (ri *rbdImage) resyncImage() error {
 	image, err := ri.open()
 	if err != nil {
-		return fmt.Errorf("failed to open image %q with error: %w", ri.String(), err)
+		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
 	}
 	defer image.Close()
 	err = image.MirrorResync()
 	if err != nil {
-		return fmt.Errorf("failed to resync image %q with error: %w", ri.String(), err)
+		return fmt.Errorf("failed to resync image %q with error: %w", ri, err)
 	}
 	return nil
 }
