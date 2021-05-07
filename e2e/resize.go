@@ -19,10 +19,8 @@ import (
 
 func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size string, t int) error {
 	pvcName := pvc.Name
-	updatedPVC := pvc.DeepCopy()
-	var err error
 
-	updatedPVC, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
+	updatedPVC, err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("error fetching pvc %q with %w", pvcName, err)
 	}
