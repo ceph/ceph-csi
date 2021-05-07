@@ -64,15 +64,15 @@ const (
 func (ri *rbdImage) checkRbdImageEncrypted(ctx context.Context) (rbdEncryptionState, error) {
 	value, err := ri.GetMetadata(encryptionMetaKey)
 	if errors.Is(err, librbd.ErrNotFound) {
-		util.DebugLog(ctx, "image %s encrypted state not set", ri.String())
+		util.DebugLog(ctx, "image %s encrypted state not set", ri)
 		return rbdImageEncryptionUnknown, nil
 	} else if err != nil {
-		util.ErrorLog(ctx, "checking image %s encrypted state metadata failed: %s", ri.String(), err)
+		util.ErrorLog(ctx, "checking image %s encrypted state metadata failed: %s", ri, err)
 		return rbdImageEncryptionUnknown, err
 	}
 
 	encrypted := rbdEncryptionState(strings.TrimSpace(value))
-	util.DebugLog(ctx, "image %s encrypted state metadata reports %q", ri.String(), encrypted)
+	util.DebugLog(ctx, "image %s encrypted state metadata reports %q", ri, encrypted)
 	return encrypted, nil
 }
 
@@ -97,14 +97,14 @@ func (ri *rbdImage) setupEncryption(ctx context.Context) error {
 	err := ri.encryption.StoreNewCryptoPassphrase(ri.VolID)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to save encryption passphrase for "+
-			"image %s: %s", ri.String(), err)
+			"image %s: %s", ri, err)
 		return err
 	}
 
 	err = ri.ensureEncryptionMetadataSet(rbdImageEncryptionPrepared)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to save encryption status, deleting "+
-			"image %s: %s", ri.String(), err)
+			"image %s: %s", ri, err)
 		return err
 	}
 
@@ -125,7 +125,7 @@ func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage) error {
 	passphrase, err := ri.encryption.GetCryptoPassphrase(ri.VolID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch passphrase for %q: %w",
-			ri.String(), err)
+			ri, err)
 	}
 
 	cp.encryption, err = util.NewVolumeEncryption(ri.encryption.GetID(), ri.encryption.KMS)
@@ -137,19 +137,19 @@ func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage) error {
 	err = cp.encryption.StoreCryptoPassphrase(cp.VolID, passphrase)
 	if err != nil {
 		return fmt.Errorf("failed to store passphrase for %q: %w",
-			cp.String(), err)
+			cp, err)
 	}
 
 	// copy encryption status for the original volume
 	status, err := ri.checkRbdImageEncrypted(context.TODO())
 	if err != nil {
 		return fmt.Errorf("failed to get encryption status for %q: %w",
-			ri.String(), err)
+			ri, err)
 	}
 	err = cp.ensureEncryptionMetadataSet(status)
 	if err != nil {
 		return fmt.Errorf("failed to store encryption status for %q: "+
-			"%w", cp.String(), err)
+			"%w", cp, err)
 	}
 
 	return nil
@@ -180,12 +180,12 @@ func (ri *rbdImage) encryptDevice(ctx context.Context, devicePath string) error 
 	passphrase, err := ri.encryption.GetCryptoPassphrase(ri.VolID)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get crypto passphrase for %s: %v",
-			ri.String(), err)
+			ri, err)
 		return err
 	}
 
 	if err = util.EncryptVolume(ctx, devicePath, passphrase); err != nil {
-		err = fmt.Errorf("failed to encrypt volume %s: %w", ri.String(), err)
+		err = fmt.Errorf("failed to encrypt volume %s: %w", ri, err)
 		util.ErrorLog(ctx, err.Error())
 		return err
 	}
@@ -203,7 +203,7 @@ func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string)
 	passphrase, err := rv.encryption.GetCryptoPassphrase(rv.VolID)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get passphrase for encrypted device %s: %v",
-			rv.String(), err)
+			rv, err)
 		return "", err
 	}
 
@@ -220,7 +220,7 @@ func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string)
 		err = util.OpenEncryptedVolume(ctx, devicePath, mapperFile, passphrase)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to open device %s: %v",
-				rv.String(), err)
+				rv, err)
 			return devicePath, err
 		}
 	}
@@ -241,7 +241,7 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 	// FIXME: this works only on Kubernetes, how do other CO supply metadata?
 	ri.Owner, ok = volOptions["csi.storage.k8s.io/pvc/namespace"]
 	if !ok {
-		util.DebugLog(ctx, "could not detect owner for %s", ri.String())
+		util.DebugLog(ctx, "could not detect owner for %s", ri)
 	}
 
 	encrypted, ok = volOptions["encrypted"]
@@ -291,7 +291,7 @@ func (ri *rbdImage) StoreDEK(volumeID, dek string) error {
 			"stack: %s", ri, util.CallStack())
 	} else if ri.VolID != volumeID {
 		return fmt.Errorf("volume %q can not store DEK for %q",
-			ri.String(), volumeID)
+			ri, volumeID)
 	}
 
 	return ri.SetMetadata(metadataDEK, dek)
@@ -303,7 +303,7 @@ func (ri *rbdImage) FetchDEK(volumeID string) (string, error) {
 		return "", fmt.Errorf("BUG: %q does not have VolID set, call "+
 			"stack: %s", ri, util.CallStack())
 	} else if ri.VolID != volumeID {
-		return "", fmt.Errorf("volume %q can not fetch DEK for %q", ri.String(), volumeID)
+		return "", fmt.Errorf("volume %q can not fetch DEK for %q", ri, volumeID)
 	}
 
 	return ri.GetMetadata(metadataDEK)
@@ -317,7 +317,7 @@ func (ri *rbdImage) RemoveDEK(volumeID string) error {
 			"stack: %s", ri, util.CallStack())
 	} else if ri.VolID != volumeID {
 		return fmt.Errorf("volume %q can not remove DEK for %q",
-			ri.String(), volumeID)
+			ri, volumeID)
 	}
 
 	return nil

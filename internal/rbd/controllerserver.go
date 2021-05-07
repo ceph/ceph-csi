@@ -900,7 +900,7 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 		cryptErr := parentVol.copyEncryptionConfig(&cloneRbd.rbdImage)
 		if cryptErr != nil {
 			util.WarningLog(ctx, "failed copy encryption "+
-				"config for %q: %v", cloneRbd.String(), cryptErr)
+				"config for %q: %v", cloneRbd, cryptErr)
 			return ready, nil, status.Errorf(codes.Internal,
 				err.Error())
 		}

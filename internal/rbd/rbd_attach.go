@@ -256,7 +256,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 	// check if the image should stay thick-provisioned
 	isThick, err := volOpt.isThickProvisioned()
 	if err != nil {
-		util.WarningLog(ctx, "failed to detect if image %q is thick-provisioned: %v", volOpt.String(), err)
+		util.WarningLog(ctx, "failed to detect if image %q is thick-provisioned: %v", volOpt, err)
 	}
 
 	mapArgs = appendDeviceTypeAndOptions(mapArgs, isNbd, isThick, volOpt.MapOptions)

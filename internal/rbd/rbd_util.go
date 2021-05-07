@@ -485,7 +485,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	}
 
 	if pOpts.isEncrypted() {
-		util.DebugLog(ctx, "rbd: going to remove DEK for %q", pOpts.String())
+		util.DebugLog(ctx, "rbd: going to remove DEK for %q", pOpts)
 		if err = pOpts.encryption.RemoveDEK(pOpts.VolID); err != nil {
 			util.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", pOpts.VolID, err)
 		}
@@ -554,7 +554,7 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 			if errors.Is(err, ErrImageNotFound) {
 				return depth, nil
 			}
-			util.ErrorLog(ctx, "failed to check depth on image %s: %s", vol.String(), err)
+			util.ErrorLog(ctx, "failed to check depth on image %s: %s", &vol, err)
 			return depth, err
 		}
 		if vol.ParentName != "" {
@@ -807,14 +807,14 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 	}()
 	if err != nil {
 		return fmt.Errorf("failed to connect to %q: %w",
-			rbdSnap.String(), err)
+			rbdSnap, err)
 	}
 
 	if imageAttributes.KmsID != "" {
 		err = rbdSnap.configureEncryption(imageAttributes.KmsID, secrets)
 		if err != nil {
 			return fmt.Errorf("failed to configure encryption for "+
-				"%q: %w", rbdSnap.String(), err)
+				"%q: %w", rbdSnap, err)
 		}
 	}
 
@@ -1119,7 +1119,7 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *r
 		if deleteClone {
 			err = librbd.RemoveImage(rv.ioctx, rv.RbdImageName)
 			if err != nil {
-				util.ErrorLog(ctx, "failed to delete temporary image %q: %v", rv.String(), err)
+				util.ErrorLog(ctx, "failed to delete temporary image %q: %v", rv, err)
 			}
 		}
 	}()
@@ -1254,7 +1254,7 @@ func (rv *rbdVolume) checkSnapExists(rbdSnap *rbdSnapshot) error {
 		}
 	}
 
-	return fmt.Errorf("%w: snap %s not found", ErrSnapNotFound, rbdSnap.String())
+	return fmt.Errorf("%w: snap %s not found", ErrSnapNotFound, rbdSnap)
 }
 
 // rbdImageMetadataStash strongly typed JSON spec for stashed RBD image metadata.
@@ -1416,7 +1416,7 @@ func (ri *rbdImage) SetMetadata(key, value string) error {
 func (rv *rbdVolume) setThickProvisioned() error {
 	err := rv.SetMetadata(thickProvisionMetaKey, "true")
 	if err != nil {
-		return fmt.Errorf("failed to set metadata %q for %q: %w", thickProvisionMetaKey, rv.String(), err)
+		return fmt.Errorf("failed to set metadata %q for %q: %w", thickProvisionMetaKey, rv, err)
 	}
 
 	return nil
@@ -1431,7 +1431,7 @@ func (rv *rbdVolume) isThickProvisioned() (bool, error) {
 		if err == librbd.ErrNotFound {
 			return false, nil
 		}
-		return false, fmt.Errorf("failed to get metadata %q for %q: %w", thickProvisionMetaKey, rv.String(), err)
+		return false, fmt.Errorf("failed to get metadata %q for %q: %w", thickProvisionMetaKey, rv, err)
 	}
 
 	thick, err := strconv.ParseBool(value)
