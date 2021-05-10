@@ -60,9 +60,9 @@ else
 fi
 
 # parse the Golang version, return the digit passed as argument
-# 1.13.9 -> go_version 1 -> 1
-# 1.13.9 -> go_version 2 -> 13
-# 1.13.9 -> go_version 3 -> 9
+# 1.16.4 -> go_version 1 -> 1
+# 1.16.4 -> go_version 2 -> 16
+# 1.16.4 -> go_version 3 -> 4
 go_version() {
 	go version | cut -d' ' -f3 | sed 's/^go//' | cut -d'.' -f"${1}"
 }
