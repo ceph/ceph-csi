@@ -99,7 +99,9 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | devel (Branch)          | quay.io/cephcsi/cephcsi      | canary    |
+| v3.3.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.3.1    |
 | v3.3.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.3.0    |
+| v3.2.2 (Release)        | quay.io/cephcsi/cephcsi      | v3.2.2    |
 | v3.2.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.2.1    |
 | v3.2.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.2.0    |
 | v3.1.2 (Release)        | quay.io/cephcsi/cephcsi      | v3.1.2    |
