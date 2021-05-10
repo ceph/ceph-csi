@@ -33,7 +33,6 @@ func cleanupTestData() {
 }
 
 // TODO: make this function less complex
-// nolint:gocyclo // complexity needs to be reduced.
 func TestCSIConfig(t *testing.T) {
 	var err error
 	var data string
