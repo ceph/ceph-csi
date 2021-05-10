@@ -110,8 +110,7 @@ var (
 //   - Map the image (creates a device)
 //   - Create the staging file/directory under staging path
 //   - Stage the device (mount the device mapped for image)
-// TODO: make this function less complex
-// nolint:gocyclo // complexity needs to be reduced.
+// TODO: make this function less complex.
 func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
