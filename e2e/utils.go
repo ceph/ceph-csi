@@ -587,7 +587,7 @@ func validatePVCClone(totalCount int, sourcePvcPath, sourceAppPath, clonePvcPath
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 			if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem && wgErrs[n] == nil {
 				filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-				checkSumClone := ""
+				var checkSumClone string
 				e2elog.Logf("Calculating checksum clone for filepath %s", filePath)
 				checkSumClone, chErrs[n] = calculateSHA512sum(f, &a, filePath, &opt)
 				e2elog.Logf("checksum for clone is %s", checkSumClone)
@@ -779,7 +779,7 @@ func validatePVCSnapshot(totalCount int, pvcPath, appPath, snapshotPath, pvcClon
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 			if wgErrs[n] == nil {
 				filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-				checkSumClone := ""
+				var checkSumClone string
 				e2elog.Logf("calculating checksum clone for filepath %s", filePath)
 				checkSumClone, chErrs[n] = calculateSHA512sum(f, &a, filePath, &opt)
 				e2elog.Logf("checksum value for the clone is %s with pod name %s", checkSumClone, name)
