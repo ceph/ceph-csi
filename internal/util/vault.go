@@ -168,7 +168,7 @@ func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 		return err
 	}
 	if firstInit || !errors.Is(err, errConfigOptionMissing) {
-		vaultCAVerify := false
+		var vaultCAVerify bool
 		vaultCAVerify, err = strconv.ParseBool(verifyCA)
 		if err != nil {
 			return fmt.Errorf("failed to parse 'vaultCAVerify': %w", err)
