@@ -794,7 +794,7 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 	}()
 
-	ready := false
+	var ready bool
 	var vol = new(rbdVolume)
 
 	ready, vol, err = cs.doSnapshotClone(ctx, rbdVol, rbdSnap, cr)
