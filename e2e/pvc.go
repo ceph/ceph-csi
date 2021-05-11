@@ -32,7 +32,7 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	var err error
 	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create pvc: %w", err)
 	}
 	if timeout == 0 {
 		return nil
@@ -52,7 +52,7 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
-			return false, err
+			return false, fmt.Errorf("failed to get pvc: %w", err)
 		}
 
 		if pvc.Spec.VolumeName == "" {
@@ -61,7 +61,7 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 
 		pv, err = c.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to get pv: %w", err)
 		}
 		if apierrs.IsNotFound(err) {
 			return false, nil
@@ -77,20 +77,23 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 func createPVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v1.PersistentVolume) error {
 	_, err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create pvc: %w", err)
 	}
 	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create pv: %w", err)
+	}
 	return err
 }
 
 func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v1.PersistentVolume, t int) error {
 	err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete pvc: %w", err)
 	}
 	err = c.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metav1.DeleteOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete pv: %w", err)
 	}
 
 	timeout := time.Duration(t) * time.Minute
@@ -116,7 +119,7 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 		return true, nil
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to poll: %w", err)
 	}
 
 	start = time.Now()
@@ -159,11 +162,11 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 
 	pvc, err = c.CoreV1().PersistentVolumeClaims(nameSpace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get pvc: %w", err)
 	}
 	pv, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get pv: %w", err)
 	}
 
 	err = c.CoreV1().PersistentVolumeClaims(nameSpace).Delete(context.TODO(), name, metav1.DeleteOptions{})
@@ -201,12 +204,15 @@ func getBoundPV(client kubernetes.Interface, pvc *v1.PersistentVolumeClaim) (*v1
 	// Get new copy of the claim
 	claim, err := client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get pvc: %w", err)
 	}
 
 	// Get the bound PV
 	pv, err := client.CoreV1().PersistentVolumes().Get(context.TODO(), claim.Spec.VolumeName, metav1.GetOptions{})
-	return pv, err
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pv: %w", err)
+	}
+	return pv, nil
 }
 
 func checkPVSelectorValuesForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {

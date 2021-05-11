@@ -49,7 +49,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	}
 	_, err = sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Create(context.TODO(), snap, metav1.CreateOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create volumesnapshot: %w", err)
 	}
 	e2elog.Logf("snapshot with name %v created in %v namespace", snap.Name, snap.Namespace)
 
@@ -69,7 +69,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
-			return false, err
+			return false, fmt.Errorf("failed to get volumesnapshot: %w", err)
 		}
 		if snaps.Status == nil || snaps.Status.ReadyToUse == nil {
 			return false, nil
@@ -89,7 +89,7 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	}
 	err = sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Delete(context.TODO(), snap.Name, metav1.DeleteOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete volumesnapshot: %w", err)
 	}
 
 	timeout := time.Duration(t) * time.Minute
@@ -166,6 +166,9 @@ func createCephFSSnapshotClass(f *framework.Framework) error {
 		return err
 	}
 	_, err = sclient.SnapshotV1beta1().VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create volumesnapshotclass: %w", err)
+	}
 	return err
 }
 
@@ -176,12 +179,12 @@ func getVolumeSnapshotContent(namespace, snapshotName string) (*snapapi.VolumeSn
 	}
 	snapshot, err := sclient.SnapshotV1beta1().VolumeSnapshots(namespace).Get(context.TODO(), snapshotName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get volumesnapshot: %w", err)
 	}
 
 	volumeSnapshotContent, err := sclient.SnapshotV1beta1().VolumeSnapshotContents().Get(context.TODO(), *snapshot.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get volumesnapshotcontent: %w", err)
 	}
 	return volumeSnapshotContent, nil
 }

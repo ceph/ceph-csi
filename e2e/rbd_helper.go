@@ -157,12 +157,12 @@ func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (
 	c := f.ClientSet.CoreV1()
 	pvc, err := c.PersistentVolumeClaims(pvcNamespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
 	if err != nil {
-		return imageData, err
+		return imageData, fmt.Errorf("failed to get pvc: %w", err)
 	}
 
 	pv, err := c.PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
-		return imageData, err
+		return imageData, fmt.Errorf("failed to get pv: %w", err)
 	}
 
 	imageIDRegex := regexp.MustCompile(`(\w+\-?){5}$`)

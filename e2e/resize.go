@@ -40,7 +40,7 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
-			return false, err
+			return false, fmt.Errorf("failed to get pvc: %w", err)
 		}
 		pvcConditions := updatedPVC.Status.Conditions
 		if len(pvcConditions) > 0 {
@@ -92,7 +92,7 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 
 	pvc, err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get pvc: %w", err)
 	}
 	if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem {
 		err = checkDirSize(app, f, &opt, size)
