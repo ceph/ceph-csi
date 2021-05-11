@@ -30,7 +30,7 @@ log minikube status
 log minikube logs
 
 # get the status of processes in the VM
-log minikube_ssh top -b -c -n1
+log minikube_ssh top -b -c -n1 -w
 
 # get the logs from the VM
 log minikube_ssh journalctl --boot
