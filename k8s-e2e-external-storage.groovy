@@ -108,7 +108,7 @@ node('cico-workspace') {
 			if (params.ghprbPullId != null) {
 				ref = "pull/${ghprbPullId}/head"
 			}
-			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh ./single-node-k8s.sh podman2minikube.sh ./run-k8s-external-storage-e2e.sh root@${CICO_NODE}:'
+			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh ./single-node-k8s.sh podman2minikube.sh ./run-k8s-external-storage-e2e.sh ./system-status.sh root@${CICO_NODE}:'
 			ssh "./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${git_repo} --ref=${ref}"
 		}
 		stage('pull base container images') {
