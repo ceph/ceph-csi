@@ -10,6 +10,7 @@ def doc_change = 0
 def k8s_release = 'latest'
 def ci_registry = 'registry-ceph-csi.apps.ocp.ci.centos.org'
 def namespace = 'cephcsi-e2e-' + UUID.randomUUID().toString().split('-')[-1]
+def failure = null
 
 // ssh executes a given command on the reserved bare-metal machine
 // NOTE: do not pass " symbols on the command line, use ' only.
@@ -189,6 +190,8 @@ node('cico-workspace') {
 	}
 
 	catch (err) {
+		failure = err
+
 		stage('log system status') {
 			ssh './system-status.sh'
 		}
@@ -197,6 +200,10 @@ node('cico-workspace') {
 	finally {
 		stage('return bare-metal machine') {
 			sh 'cico node done ${CICO_SSID}'
+		}
+
+		if (failure) {
+			throw failure
 		}
 	}
 }

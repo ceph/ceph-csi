@@ -10,6 +10,7 @@ def doc_change = 0
 def k8s_release = 'latest'
 def namespace = 'k8s-e2e-storage-' + UUID.randomUUID().toString().split('-')[-1]
 def ci_registry = 'registry-ceph-csi.apps.ocp.ci.centos.org'
+def failure = null
 
 def ssh(cmd) {
 	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
@@ -182,6 +183,8 @@ node('cico-workspace') {
 	}
 
 	catch (err) {
+		failure = err
+
 		stage('log system status') {
 			ssh './system-status.sh'
 		}
@@ -190,6 +193,10 @@ node('cico-workspace') {
 	finally {
 		stage('return bare-metal machine') {
 			sh 'cico node done ${CICO_SSID}'
+		}
+
+		if (failure) {
+			throw failure
 		}
 	}
 }
