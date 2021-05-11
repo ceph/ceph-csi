@@ -68,14 +68,14 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	if err == nil {
 		_, updateErr := c.CoreV1().ConfigMaps(cephCSINamespace).Update(context.TODO(), &cm, metav1.UpdateOptions{})
 		if updateErr != nil {
-			return updateErr
+			return fmt.Errorf("failed to update %w", updateErr)
 		}
 	}
 	if apierrs.IsNotFound(err) {
 		_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Create(context.TODO(), &cm, metav1.CreateOptions{})
 	}
 
-	return err
+	return fmt.Errorf("%w", err)
 }
 
 // createCustomConfigMap provides multiple clusters information.

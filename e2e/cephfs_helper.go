@@ -24,7 +24,7 @@ func validateSubvolumegroup(f *framework.Framework, subvolgrp string) error {
 	cmd := fmt.Sprintf("ceph fs subvolumegroup getpath myfs %s", subvolgrp)
 	stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to exec command in toolbox %w", err)
 	}
 	if stdErr != "" {
 		return fmt.Errorf("failed to getpath for subvolumegroup %s with error %v", subvolgrp, stdErr)
@@ -179,11 +179,11 @@ func getSnapName(snapNamespace, snapName string) (string, error) {
 	}
 	snap, err := sclient.SnapshotV1beta1().VolumeSnapshots(snapNamespace).Get(context.TODO(), snapName, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get volume snapshot with error %w", err)
 	}
 	sc, err := sclient.SnapshotV1beta1().VolumeSnapshotContents().Get(context.TODO(), *snap.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get volume snapshot content with error %w", err)
 	}
 	snapIDRegex := regexp.MustCompile(`(\w+\-?){5}$`)
 	snapID := snapIDRegex.FindString(*sc.Status.SnapshotHandle)

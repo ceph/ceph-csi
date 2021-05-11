@@ -2,7 +2,11 @@ package e2e
 
 import (
 	"context"
+<<<<<<< HEAD
 	"errors"
+=======
+	"fmt"
+>>>>>>> cleanup: Modifies Wrapcheck linter
 
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +19,7 @@ func createNodeLabel(f *framework.Framework, labelKey, labelValue string) error 
 	//       the same label values, which is fine for the test
 	nodes, err := f.ClientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 	for i := range nodes.Items {
 		framework.AddOrUpdateLabelOnNode(f.ClientSet, nodes.Items[i].Name, labelKey, labelValue)
@@ -26,7 +30,7 @@ func createNodeLabel(f *framework.Framework, labelKey, labelValue string) error 
 func deleteNodeLabel(c kubernetes.Interface, labelKey string) error {
 	nodes, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 	for i := range nodes.Items {
 		framework.RemoveLabelOffNode(c, nodes.Items[i].Name, labelKey)
@@ -37,7 +41,7 @@ func deleteNodeLabel(c kubernetes.Interface, labelKey string) error {
 func checkNodeHasLabel(c kubernetes.Interface, labelKey, labelValue string) error {
 	nodes, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("%w", err)
 	}
 	for i := range nodes.Items {
 		framework.ExpectNodeHasLabel(c, nodes.Items[i].Name, labelKey, labelValue)

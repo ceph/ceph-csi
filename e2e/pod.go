@@ -257,7 +257,7 @@ func loadApp(path string) (*v1.Pod, error) {
 func createApp(c kubernetes.Interface, app *v1.Pod, timeout int) error {
 	_, err := c.CoreV1().Pods(app.Namespace).Create(context.TODO(), app, metav1.CreateOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create app %w", err)
 	}
 	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout)
 }
@@ -269,7 +269,7 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int) er
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to get pod %w", err)
 		}
 		switch pod.Status.Phase {
 		case v1.PodRunning:
@@ -286,7 +286,7 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	err := c.CoreV1().Pods(ns).Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete app %w", err)
 	}
 	start := time.Now()
 	e2elog.Logf("Waiting for pod %v to be deleted", name)

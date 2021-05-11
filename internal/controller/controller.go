@@ -16,6 +16,8 @@ limitations under the License.
 package controller
 
 import (
+	"fmt"
+
 	"github.com/ceph/ceph-csi/internal/util"
 
 	clientConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -44,7 +46,7 @@ func addToManager(mgr manager.Manager, config Config) error {
 	for _, c := range ControllerList {
 		err := c.Add(mgr, config)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to add %w", err)
 		}
 	}
 	return nil

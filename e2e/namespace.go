@@ -24,7 +24,7 @@ func createNamespace(c kubernetes.Interface, name string) error {
 	}
 	_, err := c.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
 	if err != nil && !apierrs.IsAlreadyExists(err) {
-		return err
+		return fmt.Errorf("failed to create namespace %w", err)
 	}
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
@@ -47,7 +47,7 @@ func deleteNamespace(c kubernetes.Interface, name string) error {
 	timeout := time.Duration(deployTimeout) * time.Minute
 	err := c.CoreV1().Namespaces().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil && !apierrs.IsNotFound(err) {
-		return err
+		return fmt.Errorf("failed to delete namespace %w", err)
 	}
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err = c.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
