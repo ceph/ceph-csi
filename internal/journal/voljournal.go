@@ -243,7 +243,7 @@ func (cj *Config) Connect(monitors, namespace string, cr *util.Credentials) (*Co
 	cj.namespace = namespace
 	cc := &util.ClusterConnection{}
 	if err := cc.Connect(monitors, cr); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to establish the connection: %w", err)
 	}
 	conn := &Connection{
 		config:   cj,
@@ -321,7 +321,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 
 		buf64, err = hex.DecodeString(savedImagePoolIDStr)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to decode string: %w", err)
 		}
 		savedImagePoolID = int64(binary.BigEndian.Uint64(buf64))
 
@@ -470,7 +470,7 @@ func reserveOMapName(ctx context.Context, monitors string, cr *util.Credentials,
 				continue
 			}
 
-			return "", err
+			return "", fmt.Errorf("failed to create omap object for oMapNamePrefix+iterUUID=%s: %w", oMapNamePrefix+iterUUID, err)
 		}
 
 		return iterUUID, nil
@@ -674,7 +674,7 @@ func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID
 		var buf64 []byte
 		buf64, err = hex.DecodeString(journalPoolIDStr)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to decode string: %w", err)
 		}
 		imageAttributes.JournalPoolID = int64(binary.BigEndian.Uint64(buf64))
 	}

@@ -24,7 +24,7 @@ func validateSubvolumegroup(f *framework.Framework, subvolgrp string) error {
 	cmd := fmt.Sprintf("ceph fs subvolumegroup getpath myfs %s", subvolgrp)
 	stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to exec command in toolbox: %w", err)
 	}
 	if stdErr != "" {
 		return fmt.Errorf("failed to getpath for subvolumegroup %s with error %v", subvolgrp, stdErr)
@@ -106,12 +106,12 @@ func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error 
 	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		e2elog.Logf("Error occurred getting pod %s in namespace %s", appName, f.UniqueName)
-		return err
+		return fmt.Errorf("failed to get pod: %w", err)
 	}
 	pvc, err := f.ClientSet.CoreV1().PersistentVolumeClaims(f.UniqueName).Get(context.TODO(), pvcName, metav1.GetOptions{})
 	if err != nil {
 		e2elog.Logf("Error occurred getting PVC %s in namespace %s", pvcName, f.UniqueName)
-		return err
+		return fmt.Errorf("failed to get pvc: %w", err)
 	}
 	cmd := fmt.Sprintf("umount /var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount", pod.UID, pvc.Spec.VolumeName)
 	_, stdErr, err := execCommandInDaemonsetPod(f, cmd, cephfsDeamonSetName, pod.Spec.NodeName, cephfsContainerName, cephCSINamespace)
@@ -179,11 +179,11 @@ func getSnapName(snapNamespace, snapName string) (string, error) {
 	}
 	snap, err := sclient.SnapshotV1beta1().VolumeSnapshots(snapNamespace).Get(context.TODO(), snapName, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get volumesnapshot: %w", err)
 	}
 	sc, err := sclient.SnapshotV1beta1().VolumeSnapshotContents().Get(context.TODO(), *snap.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get volumesnapshotcontent: %w", err)
 	}
 	snapIDRegex := regexp.MustCompile(`(\w+\-?){5}$`)
 	snapID := snapIDRegex.FindString(*sc.Status.SnapshotHandle)

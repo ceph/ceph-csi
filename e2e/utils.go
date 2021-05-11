@@ -78,7 +78,7 @@ func getMons(ns string, c kubernetes.Interface) ([]string, error) {
 
 	svcList, err := c.CoreV1().Services(ns).List(context.TODO(), opt)
 	if err != nil {
-		return services, err
+		return services, fmt.Errorf("failed to list services: %w", err)
 	}
 	for i := range svcList.Items {
 		s := fmt.Sprintf("%s.%s.svc.cluster.local:%d", svcList.Items[i].Name, svcList.Items[i].Namespace, svcList.Items[i].Spec.Ports[0].Port)

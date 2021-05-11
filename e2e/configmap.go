@@ -68,7 +68,7 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	if err == nil {
 		_, updateErr := c.CoreV1().ConfigMaps(cephCSINamespace).Update(context.TODO(), &cm, metav1.UpdateOptions{})
 		if updateErr != nil {
-			return updateErr
+			return fmt.Errorf("failed to update configmap: %w", updateErr)
 		}
 	}
 	if apierrs.IsNotFound(err) {
@@ -116,5 +116,8 @@ func createCustomConfigMap(c kubernetes.Interface, pluginPath string, subvolgrpI
 	cm.Namespace = cephCSINamespace
 	// since a configmap is already created, update the existing configmap
 	_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Update(context.TODO(), &cm, metav1.UpdateOptions{})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update configmap: %w", err)
+	}
+	return nil
 }

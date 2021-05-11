@@ -78,7 +78,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to PersistentVolumes
 	err = c.Watch(&source.Kind{Type: &corev1.PersistentVolume{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to watch the changes: %w", err)
 	}
 	return nil
 }
