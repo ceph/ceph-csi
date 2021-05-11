@@ -181,6 +181,12 @@ node('cico-workspace') {
 		}
 	}
 
+	catch (err) {
+		stage('log system status') {
+			ssh './system-status.sh'
+		}
+	}
+
 	finally {
 		stage('return bare-metal machine') {
 			sh 'cico node done ${CICO_SSID}'
