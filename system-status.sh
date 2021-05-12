@@ -36,5 +36,5 @@ log minikube_ssh top -b -c -n1 -w
 log minikube_ssh journalctl --boot
 
 # filesystem status for host and VM
-log df -h
-log minikube_ssh df -h
+log df -hT
+log minikube_ssh df -hT
