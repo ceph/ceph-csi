@@ -1,6 +1,6 @@
 #!/bin/bash -E
 
-ROOK_VERSION=${ROOK_VERSION:-"v1.4.9"}
+ROOK_VERSION=${ROOK_VERSION:-"v1.6.2"}
 ROOK_DEPLOY_TIMEOUT=${ROOK_DEPLOY_TIMEOUT:-300}
 ROOK_URL="https://raw.githubusercontent.com/rook/rook/${ROOK_VERSION}/cluster/examples/kubernetes/ceph"
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
@@ -34,6 +34,14 @@ rook_version() {
 
 function deploy_rook() {
         kubectl_retry create -f "${ROOK_URL}/common.yaml"
+
+        # If rook version is > 1.5 , we will apply CRDs.
+        ROOK_MAJOR=$(rook_version 1)
+        ROOK_MINOR=$(rook_version 2)
+        if  [ "${ROOK_MAJOR}" -eq 1 ] && [ "${ROOK_MINOR}" -ge 5 ];
+	  then
+	      kubectl_retry create -f "${ROOK_URL}/crds.yaml"
+	  fi
         kubectl_retry create -f "${ROOK_URL}/operator.yaml"
         # Override the ceph version which rook installs by default.
         if  [ -z "${ROOK_CEPH_CLUSTER_IMAGE}" ]
@@ -44,6 +52,7 @@ function deploy_rook() {
             TEMP_DIR="$(mktemp -d)"
             curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
             sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
+            sed -i "s/config: |/config: |\n    \[mon\]\n    mon_warn_on_insecure_global_id_reclaim_allowed = false/g" "${TEMP_DIR}"/cluster-test.yaml
             cat  "${TEMP_DIR}"/cluster-test.yaml
             kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
             rm -rf "${TEMP_DIR}"
@@ -75,6 +84,12 @@ function teardown_rook() {
 	kubectl delete -f "${ROOK_URL}/toolbox.yaml"
 	kubectl delete -f "${ROOK_URL}/cluster-test.yaml"
 	kubectl delete -f "${ROOK_URL}/operator.yaml"
+	ROOK_MAJOR=$(rook_version 1)
+      ROOK_MINOR=$(rook_version 2)
+      if  [ "${ROOK_MAJOR}" -eq 1 ] && [ "${ROOK_MINOR}" -ge 5 ];
+	then
+	      kubectl delete -f "${ROOK_URL}/crds.yaml"
+	fi
 	kubectl delete -f "${ROOK_URL}/common.yaml"
 }
 
