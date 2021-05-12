@@ -44,7 +44,11 @@ log minikube_ssh sudo tar c /var/lib/rook | tar xvO
 
 # gets status of the Rook deployment
 log kubectl -n rook-ceph get pods
-log kubectl -n rook-ceph describe pods
+for POD in $(kubectl -n rook-ceph get pod -l rook_cluster=rook-ceph -o jsonpath='{.items[0].metadata.name}')
+do
+    log kubectl -n rook-ceph describe pod "${POD}"
+    log kubectl -n rook-ceph logs "${POD}"
+done
 log kubectl -n rook-ceph describe CephCluster
 log kubectl -n rook-ceph describe CephBlockPool
 log kubectl -n rook-ceph describe CephFilesystem
