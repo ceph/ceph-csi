@@ -13,13 +13,13 @@ function minikube_ssh() {
 }
 
 function log() {
-    echo "###"
-    echo "### going to execute: ${*}"
-    echo "###"
+    echo "###" >/dev/stderr
+    echo "### going to execute: ${*}" >/dev/stderr
+    echo "###" >/dev/stderr
     "${@}"
-    echo "###"
-    echo "### execution finished: ${*}"
-    echo "###"
+    echo "###" >/dev/stderr
+    echo "### execution finished: ${*}" >/dev/stderr
+    echo "###" >/dev/stderr
 }
 
 # get the status of the VM in libvirt
@@ -38,3 +38,18 @@ log minikube_ssh journalctl --boot
 # filesystem status for host and VM
 log df -hT
 log minikube_ssh df -hT
+
+# fetch all logs from /var/lib/rook in the VM and write them to stdout
+log minikube_ssh sudo tar c /var/lib/rook | tar xvO
+
+# gets status of the Rook deployment
+log kubectl -n rook-ceph get pods
+log kubectl -n rook-ceph describe pods
+log kubectl -n rook-ceph describe CephCluster
+log kubectl -n rook-ceph describe CephBlockPool
+log kubectl -n rook-ceph describe CephFilesystem
+
+# run "ceph -s" in the toolbox
+log kubectl -n rook-ceph exec \
+    "$(kubectl -n rook-ceph get pod -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')" \
+    ceph -s
