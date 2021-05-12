@@ -80,6 +80,25 @@ kubectl_retry() {
     return ${ret}
 }
 
+# disable check for https://docs.ceph.com/en/latest/security/CVE-2021-20288/
+function update_ceph_conf() {
+    cm='
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: rook-config-override
+  namespace: rook-ceph
+data:
+  config: |
+    [global]
+    osd_pool_default_size = 1
+    mon_warn_on_pool_no_redundancy = false
+    mon_warn_on_insecure_global_id_reclaim_allowed = false
+'
+    kubectl_retry apply -f - <<< "${cm}"
+}
+
 function deploy_rook() {
         kubectl_retry create -f "${ROOK_URL}/common.yaml"
         kubectl_retry create -f "${ROOK_URL}/operator.yaml"
@@ -100,6 +119,8 @@ function deploy_rook() {
         kubectl_retry create -f "${ROOK_URL}/toolbox.yaml"
         kubectl_retry create -f "${ROOK_URL}/filesystem-test.yaml"
         kubectl_retry create -f "${ROOK_URL}/pool-test.yaml"
+
+        update_ceph_conf
 
         # Check if CephCluster is empty
         if ! kubectl_retry -n rook-ceph get cephclusters -oyaml | grep 'items: \[\]' &>/dev/null; then
