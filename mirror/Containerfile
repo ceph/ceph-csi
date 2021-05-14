@@ -1,0 +1,14 @@
+FROM centos:latest
+
+RUN true \
+ && yum -y install skopeo \
+ && yum -y clean all \
+ && true
+
+ADD images.txt /opt/mirror/
+ADD mirror-images.sh /opt/mirror/
+
+ENV HOME=/opt/mirror
+WORKDIR /opt/mirror
+
+CMD ["./mirror-images.sh"]
