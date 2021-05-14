@@ -1,0 +1,36 @@
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: mirror-images
+  labels:
+    app: mirror-images
+spec:
+  schedule: '@daily'
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: mirror-images
+        spec:
+          containers:
+            - name: mirror-images
+              image: image-registry.openshift-image-registry.svc:5000/ceph-csi/mirror-images:latest
+              env:
+                - name: DOCKER_CONFIG_JSON
+                  valueFrom:
+                    secretKeyRef:
+                      name: cephcsibot-docker-io
+                      key: .dockerconfigjson
+                - name: CI_REGISTRY_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: container-registry-auth
+                      key: username
+                - name: CI_REGISTRY_PASSWD
+                  valueFrom:
+                    secretKeyRef:
+                      name: container-registry-auth
+                      key: passwd
+          restartPolicy: OnFailure
