@@ -342,6 +342,13 @@ pull_request_rules:
       label:
         add:
           - rebase
+  - name: title contains build
+    conditions:
+      - "title~=build: "
+    actions:
+      label:
+        add:
+          - component/build
   - name: title indicates a bug fix
     conditions:
       - title~=(bug)|(fix)
