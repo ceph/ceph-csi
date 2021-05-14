@@ -1,0 +1,20 @@
+# images.txt
+#
+# These lists contain the images that need to get mirrored from public
+# registries to the local CI registry.
+#
+# format: <full-image-spec> <short-name>
+#
+
+# ceph-csi v3.4
+docker.io/ceph/ceph:v16		ceph/ceph:v16
+docker.io/rook/ceph:v1.6.2	rook/ceph:v1.6.2
+
+# ceph-csi v3.3
+docker.io/ceph/ceph:v15		ceph/ceph:v15
+docker.io/rook/ceph:v1.4.9	rook/ceph:v1.4.9
+
+# e2e testing
+docker.io/library/busybox:1.29	library/busybox:1.29
+docker.io/library/nginx:latest	library/nginx:latest
+docker.io/library/vault:latest	library/vault:latest
