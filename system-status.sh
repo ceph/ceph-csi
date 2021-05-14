@@ -43,6 +43,7 @@ log minikube_ssh df -hT
 log minikube_ssh sudo tar c /var/lib/rook | tar xvO
 
 # gets status of the Rook deployment
+log kubectl -n rook-ceph get events
 log kubectl -n rook-ceph get pods
 for POD in $(kubectl -n rook-ceph get pods -o jsonpath='{.items[0].metadata.name}')
 do
