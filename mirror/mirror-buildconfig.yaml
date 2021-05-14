@@ -1,0 +1,31 @@
+---
+apiVersion: v1
+kind: ImageStream
+metadata:
+  name: mirror-images
+  labels:
+    app: mirror-images
+spec:
+  tags:
+    - name: latest
+---
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: mirror-images
+  labels:
+    app: mirror-images
+spec:
+  runPolicy: Serial
+  source:
+    git:
+      uri: https://github.com/ceph/ceph-csi
+      ref: ci/centos
+    contextDir: mirror
+  strategy:
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: mirror-images:latest
