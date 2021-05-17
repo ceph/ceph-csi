@@ -20,6 +20,14 @@
           artifact-days-to-keep: 7
     dsl: |
       node {
+        stage('build-images') {
+          parallel jjb: {
+            sh "oc start-build --follow jjb"
+          },
+          mirror_images: {
+            sh 'oc start-build --follow mirror-images'
+          }
+        }
         stage('checkout ci repository') {
           git url: "${GIT_REPO}", branch: "${GIT_BRANCH}", changelog: false
         }
