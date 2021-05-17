@@ -251,6 +251,17 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				}
 
 				deployRBDPlugin()
+
+				err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for upgraded deployment %s with error %v", rbdDeploymentName, err)
+				}
+
+				err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for upgraded daemonset %s with error %v", rbdDaemonsetName, err)
+				}
+
 				// validate if the app gets bound to a pvc created by
 				// an earlier release.
 				app.Labels = label
