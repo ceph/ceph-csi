@@ -48,7 +48,7 @@ log kubectl -n rook-ceph get pods
 for POD in $(kubectl -n rook-ceph get pods -o jsonpath='{.items[0].metadata.name}')
 do
     log kubectl -n rook-ceph describe pod "${POD}"
-    log kubectl -n rook-ceph logs "${POD}"
+    log kubectl -n rook-ceph logs "${POD}" --all-containers
     log kubectl -n rook-ceph logs "${POD}" --all-containers --previous=true
 done
 log kubectl -n rook-ceph describe CephCluster
