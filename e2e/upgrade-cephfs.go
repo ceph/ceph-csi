@@ -234,6 +234,16 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				}
 				deployCephfsPlugin()
 
+				err = waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for upgraded deployment %s with error %v", cephfsDeploymentName, err)
+				}
+
+				err = waitForDaemonSets(cephfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for upgraded daemonset %s with error %v", cephfsDeamonSetName, err)
+				}
+
 				app.Labels = label
 				// validate if the app gets bound to a pvc created by
 				// an earlier release.
