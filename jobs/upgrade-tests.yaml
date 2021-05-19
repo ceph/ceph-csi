@@ -5,7 +5,7 @@
     test_type:
       - 'cephfs'
       - 'rbd'
-    csi_upgrade_version: 'v3.1.0'
+    csi_upgrade_version: 'v3.3.1'
     jobs:
       - 'upgrade-tests-{test_type}'
 
