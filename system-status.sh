@@ -42,14 +42,18 @@ log minikube_ssh df -hT
 # fetch all logs from /var/lib/rook in the VM and write them to stdout
 log minikube_ssh sudo tar c /var/lib/rook | tar xvO
 
-# gets status of the Rook deployment
-log kubectl -n rook-ceph get events
-log kubectl -n rook-ceph get pods
-for POD in $(kubectl -n rook-ceph get pods -o jsonpath='{.items[*].metadata.name}')
+# gets status from all namespaces
+for NAMESPACE in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}')
 do
-    log kubectl -n rook-ceph describe pod "${POD}"
-    log kubectl -n rook-ceph logs "${POD}" --all-containers
-    log kubectl -n rook-ceph logs "${POD}" --all-containers --previous=true
+    log kubectl describe namespace "${NAMESPACE}"
+    log kubectl -n "${NAMESPACE}" get events
+    log kubectl -n "${NAMESPACE}" get pods
+    for POD in $(kubectl -n "${NAMESPACE}" get pods -o jsonpath='{.items[*].metadata.name}')
+    do
+        log kubectl -n "${NAMESPACE}" describe pod "${POD}"
+        log kubectl -n "${NAMESPACE}" logs "${POD}" --all-containers
+        log kubectl -n "${NAMESPACE}" logs "${POD}" --all-containers --previous=true
+    done
 done
 log kubectl -n rook-ceph describe CephCluster
 log kubectl -n rook-ceph describe CephBlockPool
