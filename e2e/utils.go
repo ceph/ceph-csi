@@ -47,6 +47,8 @@ const (
 	// vaultTokens KMS type
 	vaultTokens = "vaulttokens"
 	noError     = ""
+
+	noKms = ""
 )
 
 var (
@@ -539,10 +541,10 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 	return checkSum, nil
 }
 
-// nolint:gocyclo,gocognit // reduce complexity
+// nolint:gocyclo,gocognit,nestif // reduce complexity
 func validatePVCClone(
 	totalCount int,
-	sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string,
+	sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath, kms string,
 	validatePVC validateFunc,
 	f *framework.Framework) {
 	var wg sync.WaitGroup
@@ -609,6 +611,28 @@ func validatePVCClone(
 				LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
 			}
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+			if wgErrs[n] == nil && kms != noKms {
+				if kmsIsVault(kms) || kms == vaultTokens {
+					imageData, sErr := getImageInfoFromPVC(p.Namespace, name, f)
+					if sErr != nil {
+						wgErrs[n] = fmt.Errorf(
+							"failed to get image info for %s namespace=%s volumehandle=%s error=%w",
+							name,
+							p.Namespace,
+							imageData.csiVolumeHandle,
+							sErr)
+					} else {
+						// check new passphrase created
+						stdOut, stdErr := readVaultSecret(imageData.csiVolumeHandle, kmsIsVault(kms), f)
+						if stdOut != "" {
+							e2elog.Logf("successfully read the passphrase from vault: %s", stdOut)
+						}
+						if stdErr != "" {
+							wgErrs[n] = fmt.Errorf("failed to read passphrase from vault: %s", stdErr)
+						}
+					}
+				}
+			}
 			if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem && wgErrs[n] == nil {
 				filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				var checkSumClone string
@@ -622,7 +646,7 @@ func validatePVCClone(
 					e2elog.Logf("checksum didn't match. checksum=%s and checksumclone=%s", checkSum, checkSumClone)
 				}
 			}
-			if wgErrs[n] == nil && validatePVC != nil {
+			if wgErrs[n] == nil && validatePVC != nil && kms != noKms {
 				wgErrs[n] = validatePVC(f, &p, &a)
 			}
 			wg.Done()
@@ -671,7 +695,33 @@ func validatePVCClone(
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
-			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
+			var imageData imageInfoFromPVC
+			var sErr error
+			if kms != noKms {
+				if kmsIsVault(kms) || kms == vaultTokens {
+					imageData, sErr = getImageInfoFromPVC(p.Namespace, name, f)
+					if sErr != nil {
+						wgErrs[n] = fmt.Errorf(
+							"failed to get image info for %s namespace=%s volumehandle=%s error=%w",
+							name,
+							p.Namespace,
+							imageData.csiVolumeHandle,
+							sErr)
+					}
+				}
+			}
+			if wgErrs[n] == nil {
+				wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
+				if wgErrs[n] == nil && kms != noKms {
+					if kmsIsVault(kms) || kms == vaultTokens {
+						// check passphrase deleted
+						stdOut, _ := readVaultSecret(imageData.csiVolumeHandle, kmsIsVault(kms), f)
+						if stdOut != "" {
+							wgErrs[n] = fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
+						}
+					}
+				}
+			}
 			wg.Done()
 		}(i, *pvcClone, *appClone)
 	}
@@ -747,7 +797,7 @@ func validatePVCSnapshot(
 		go func(n int, s snapapi.VolumeSnapshot) {
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			wgErrs[n] = createSnapshot(&s, deployTimeout)
-			if wgErrs[n] == nil && kms != "" {
+			if wgErrs[n] == nil && kms != noKms {
 				if kmsIsVault(kms) || kms == vaultTokens {
 					content, sErr := getVolumeSnapshotContent(s.Namespace, s.Name)
 					if sErr != nil {
@@ -927,7 +977,7 @@ func validatePVCSnapshot(
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			content := &snapapi.VolumeSnapshotContent{}
 			var err error
-			if kms != "" {
+			if kms != noKms {
 				if kmsIsVault(kms) || kms == vaultTokens {
 					content, err = getVolumeSnapshotContent(s.Namespace, s.Name)
 					if err != nil {
@@ -941,7 +991,7 @@ func validatePVCSnapshot(
 			}
 			if wgErrs[n] == nil {
 				wgErrs[n] = deleteSnapshot(&s, deployTimeout)
-				if wgErrs[n] == nil && kms != "" {
+				if wgErrs[n] == nil && kms != noKms {
 					if kmsIsVault(kms) || kms == vaultTokens {
 						// check passphrase deleted
 						stdOut, _ := readVaultSecret(*content.Status.SnapshotHandle, kmsIsVault(kms), f)
