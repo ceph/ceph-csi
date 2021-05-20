@@ -833,7 +833,7 @@ var _ = Describe("RBD", func() {
 						snapshotPath,
 						pvcClonePath,
 						appClonePath,
-						"",
+						noKms,
 						f)
 				}
 			})
@@ -847,6 +847,7 @@ var _ = Describe("RBD", func() {
 						appPath,
 						pvcSmartClonePath,
 						appSmartClonePath,
+						noKms,
 						noPVCValidation,
 						f)
 				}
@@ -868,7 +869,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, isThickPVC, f)
+				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, noKms, isThickPVC, f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -928,7 +929,37 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, isEncryptedPVC, f)
+				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, "secrets-metadata", isEncryptedPVC, f)
+
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+			})
+
+			By("create an encrypted PVC-PVC clone and bind it to an app with VaultKMS", func() {
+				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
+					Skip("pvc clone is only supported from v1.16+")
+				}
+
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				scOpts := map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "vault-test",
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+
+				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, "vault", isEncryptedPVC, f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -959,6 +990,7 @@ var _ = Describe("RBD", func() {
 						rawAppPath,
 						pvcBlockSmartClonePath,
 						appBlockSmartClonePath,
+						noKms,
 						noPVCValidation,
 						f)
 				}
