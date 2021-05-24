@@ -101,7 +101,8 @@ function deploy_rook() {
             curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
             sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
             sed -i "s/config: |/config: |\n    \[mon\]\n    mon_warn_on_insecure_global_id_reclaim_allowed = false/g" "${TEMP_DIR}"/cluster-test.yaml
-            cat  "${TEMP_DIR}"/cluster-test.yaml
+            sed -i "s/healthCheck:/healthCheck:\n    livenessProbe:\n      mon:\n        disabled: true\n      mgr:\n        disabled: true\n      mds:\n        disabled: true/g" "${TEMP_DIR}"/cluster-test.yaml
+			cat  "${TEMP_DIR}"/cluster-test.yaml
             kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
             rm -rf "${TEMP_DIR}"
         fi
