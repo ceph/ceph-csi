@@ -257,23 +257,8 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	found, err := rbdVol.Exists(ctx, parentVol)
 	if err != nil {
 		return nil, getGRPCErrorForCreateVolume(err)
-	}
-
-	if found {
-		if rbdSnap != nil {
-			// check if image depth is reached limit and requires flatten
-			err = checkFlatten(ctx, rbdVol, cr)
-			if err != nil {
-				return nil, err
-			}
-
-			err = rbdSnap.repairEncryptionConfig(&rbdVol.rbdImage)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		return buildCreateVolumeResponse(req, rbdVol), nil
+	} else if found {
+		return cs.repairExistingVolume(ctx, req, cr, rbdVol, rbdSnap)
 	}
 
 	err = validateRequestedVolumeSize(rbdVol, parentVol, rbdSnap, cr)
@@ -330,6 +315,27 @@ func flattenParentImage(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 		}
 	}
 	return nil
+}
+
+// repairExistingVolume checks the existing volume or snapshot and makes sure
+// that the state is corrected to what was requested. It is needed to call this
+// when the process of creating a volume was interrupted.
+func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.CreateVolumeRequest,
+	cr *util.Credentials, rbdVol *rbdVolume, rbdSnap *rbdSnapshot) (*csi.CreateVolumeResponse, error) {
+	if rbdSnap != nil {
+		// check if image depth is reached limit and requires flatten
+		err := checkFlatten(ctx, rbdVol, cr)
+		if err != nil {
+			return nil, err
+		}
+
+		err = rbdSnap.repairEncryptionConfig(&rbdVol.rbdImage)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return buildCreateVolumeResponse(req, rbdVol), nil
 }
 
 // check snapshots on the rbd image, as we have limit from krbd that an image
