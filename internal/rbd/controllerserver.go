@@ -19,7 +19,6 @@ package rbd
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
@@ -118,13 +117,7 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	tp := "thickProvision"
-	thick := req.GetParameters()[tp]
-	if thick != "" {
-		if rbdVol.ThickProvision, err = strconv.ParseBool(thick); err != nil {
-			return nil, fmt.Errorf("failed to parse %q: %w", tp, err)
-		}
-	}
+	rbdVol.ThickProvision = cs.isThickProvisionRequest(req)
 
 	rbdVol.RequestName = req.GetName()
 
@@ -322,7 +315,23 @@ func flattenParentImage(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // when the process of creating a volume was interrupted.
 func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.CreateVolumeRequest,
 	cr *util.Credentials, rbdVol *rbdVolume, rbdSnap *rbdSnapshot) (*csi.CreateVolumeResponse, error) {
-	if rbdSnap != nil {
+	vcs := req.GetVolumeContentSource()
+
+	switch {
+	// normal CreateVolume without VolumeContentSource
+	case vcs == nil:
+		// continue/restart allocating the volume in case it
+		// should be thick-provisioned
+		if cs.isThickProvisionRequest(req) {
+			err := rbdVol.RepairThickProvision()
+			if err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
+
+	// rbdVol is a restore from snapshot, rbdSnap is passed
+	case vcs.GetSnapshot() != nil:
+		// restore from snapshot imploes rbdSnap != nil
 		// check if image depth is reached limit and requires flatten
 		err := checkFlatten(ctx, rbdVol, cr)
 		if err != nil {
@@ -333,6 +342,10 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 		if err != nil {
 			return nil, err
 		}
+
+	// rbdVol is a clone from an other volume
+	case vcs.GetVolume() != nil:
+		// TODO: is there really nothing to repair on image clone?
 	}
 
 	return buildCreateVolumeResponse(req, rbdVol), nil
@@ -1128,4 +1141,22 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		CapacityBytes:         rbdVol.VolSize,
 		NodeExpansionRequired: nodeExpansion,
 	}, nil
+}
+
+// isThickProvisionRequest returns true in case the request contains the
+// `thickProvision` option set to `true`.
+func (cs *ControllerServer) isThickProvisionRequest(req *csi.CreateVolumeRequest) bool {
+	tp := "thickProvision"
+
+	thick, ok := req.GetParameters()[tp]
+	if !ok || thick == "" {
+		return false
+	}
+
+	thickBool, err := strconv.ParseBool(thick)
+	if err != nil {
+		return false
+	}
+
+	return thickBool
 }
