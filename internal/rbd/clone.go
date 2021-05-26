@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 
 	librbd "github.com/ceph/go-ceph/rbd"
@@ -147,6 +146,44 @@ func (rv *rbdVolume) generateTempClone() *rbdVolume {
 }
 
 func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVolume) error {
+	j, err := volJournal.Connect(rv.Monitors, rv.RadosNamespace, rv.conn.Creds)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+	defer j.Destroy()
+
+	err = rv.doSnapClone(ctx, parentVol)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	err = rv.getImageID()
+	if err != nil {
+		util.ErrorLog(ctx, "failed to get volume id %s: %v", rv, err)
+		return err
+	}
+
+	if parentVol.isEncrypted() {
+		err = parentVol.copyEncryptionConfig(&rv.rbdImage)
+		if err != nil {
+			return fmt.Errorf("failed to copy encryption config for %q: %w", rv, err)
+		}
+	}
+
+	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to store volume %s: %v", rv, err)
+		return err
+	}
+	return nil
+}
+
+func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) error {
+	var (
+		errClone   error
+		errFlatten error
+	)
+
 	// generate temp cloned volume
 	tempClone := rv.generateTempClone()
 	// snapshot name is same as temporary cloned image, This helps to
@@ -160,21 +197,8 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	cloneSnap.RbdSnapName = rv.RbdImageName
 	cloneSnap.Pool = rv.Pool
 
-	var (
-		errClone   error
-		errFlatten error
-		err        error
-	)
-	var j = &journal.Connection{}
-
-	j, err = volJournal.Connect(rv.Monitors, rv.RadosNamespace, rv.conn.Creds)
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-	defer j.Destroy()
-
 	// create snapshot and temporary clone and delete snapshot
-	err = createRBDClone(ctx, parentVol, tempClone, tempSnap, rv.conn.Creds)
+	err := createRBDClone(ctx, parentVol, tempClone, tempSnap, rv.conn.Creds)
 	if err != nil {
 		return err
 	}
@@ -211,23 +235,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		errFlatten = errors.New("failed to create user requested cloned image")
 		return errClone
 	}
-	err = rv.getImageID()
-	if err != nil {
-		util.ErrorLog(ctx, "failed to get volume id %s: %v", rv, err)
-		return err
-	}
 
-	if parentVol.isEncrypted() {
-		err = parentVol.copyEncryptionConfig(&rv.rbdImage)
-		if err != nil {
-			return fmt.Errorf("failed to copy encryption config for %q: %w", rv, err)
-		}
-	}
-	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
-	if err != nil {
-		util.ErrorLog(ctx, "failed to store volume %s: %v", rv, err)
-		return err
-	}
 	return nil
 }
 
