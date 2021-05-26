@@ -1441,6 +1441,43 @@ func (rv *rbdVolume) isThickProvisioned() (bool, error) {
 	return thick, nil
 }
 
+// RepairThickProvision writes zero bytes to the volume so that it will be
+// completely allocated. In case the volume is already marked as
+// thick-provisioned, nothing will be done.
+func (rv *rbdVolume) RepairThickProvision() error {
+	// if the image has the thick-provisioned metadata, it has been fully
+	// allocated
+	done, err := rv.isThickProvisioned()
+	if err != nil {
+		return fmt.Errorf("failed to repair thick-provisioning of %q: %w", rv, err)
+	} else if done {
+		return nil
+	}
+
+	// in case there are watchers, assume allocating is still happening in
+	// the background (by an other process?)
+	background, err := rv.isInUse()
+	if err != nil {
+		return fmt.Errorf("failed to get users of %q: %w", rv, err)
+	} else if background {
+		return fmt.Errorf("not going to restart thick-provisioning of in-use image %q", rv)
+	}
+
+	// TODO: can this be improved by starting at the offset where
+	// allocating was aborted/restarted?
+	err = rv.allocate(0)
+	if err != nil {
+		return fmt.Errorf("failed to continue thick-provisioning of %q: %w", rv, err)
+	}
+
+	err = rv.setThickProvisioned()
+	if err != nil {
+		return fmt.Errorf("failed to continue thick-provisioning of %q: %w", rv, err)
+	}
+
+	return nil
+}
+
 func (rv *rbdVolume) listSnapshots() ([]librbd.SnapInfo, error) {
 	image, err := rv.open()
 	if err != nil {
