@@ -1508,6 +1508,32 @@ func (rv *rbdVolume) RepairThickProvision() error {
 	return nil
 }
 
+// DeepCopy creates an independent image (dest) from the source image. This
+// process may take some time when the image is large.
+func (rv *rbdVolume) DeepCopy(dest *rbdVolume) error {
+	opts := librbd.NewRbdImageOptions()
+	defer opts.Destroy()
+
+	// when doing DeepCopy, also flatten the new image
+	err := opts.SetUint64(librbd.ImageOptionFlatten, 1)
+	if err != nil {
+		return err
+	}
+
+	err = dest.openIoctx()
+	if err != nil {
+		return err
+	}
+
+	image, err := rv.open()
+	if err != nil {
+		return err
+	}
+	defer image.Close()
+
+	return image.DeepCopy(dest.ioctx, dest.RbdImageName, opts)
+}
+
 func (rv *rbdVolume) listSnapshots() ([]librbd.SnapInfo, error) {
 	image, err := rv.open()
 	if err != nil {

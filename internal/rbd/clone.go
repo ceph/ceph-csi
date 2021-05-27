@@ -152,6 +152,8 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	}
 	defer j.Destroy()
 
+	// TODO: if rv exists, delete the image and start over?
+
 	err = rv.doSnapClone(ctx, parentVol)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
@@ -167,6 +169,19 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		err = parentVol.copyEncryptionConfig(&rv.rbdImage)
 		if err != nil {
 			return fmt.Errorf("failed to copy encryption config for %q: %w", rv, err)
+		}
+	}
+
+	// TODO: copy thick provision config
+	thick, err := parentVol.isThickProvisioned()
+	if err != nil {
+		return fmt.Errorf("failed checking thick-provisioning of %q: %w", parentVol, err)
+	}
+
+	if thick {
+		err = rv.setThickProvisioned()
+		if err != nil {
+			return fmt.Errorf("failed mark %q thick-provisioned: %w", rv, err)
 		}
 	}
 
@@ -221,19 +236,28 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 			}
 		}
 	}()
-	// flatten clone
-	errFlatten = tempClone.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-	if errFlatten != nil {
-		return errFlatten
-	}
-	// create snap of temp clone from temporary cloned image
-	// create final clone
-	// delete snap of temp clone
-	errClone = createRBDClone(ctx, tempClone, rv, cloneSnap, rv.conn.Creds)
-	if errClone != nil {
-		// set errFlatten error to cleanup temporary snapshot and temporary clone
-		errFlatten = errors.New("failed to create user requested cloned image")
-		return errClone
+
+	if rv.ThickProvision {
+		err = tempClone.DeepCopy(rv)
+		if err != nil {
+			return fmt.Errorf("failed to deep copy %q into %q: %w", parentVol, rv, err)
+		}
+	} else {
+		// flatten clone
+		errFlatten = tempClone.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+		if errFlatten != nil {
+			return errFlatten
+		}
+
+		// create snap of temp clone from temporary cloned image
+		// create final clone
+		// delete snap of temp clone
+		errClone = createRBDClone(ctx, tempClone, rv, cloneSnap, rv.conn.Creds)
+		if errClone != nil {
+			// set errFlatten error to cleanup temporary snapshot and temporary clone
+			errFlatten = errors.New("failed to create user requested cloned image")
+			return errClone
+		}
 	}
 
 	return nil
