@@ -344,5 +344,5 @@ func (ns *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVo
 		return csicommon.FilesystemNodeGetVolumeStats(ctx, targetPath)
 	}
 
-	return nil, fmt.Errorf("targetpath %q is not a directory or device", targetPath)
+	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
 }
