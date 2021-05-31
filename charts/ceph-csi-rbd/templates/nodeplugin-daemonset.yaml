@@ -65,6 +65,7 @@ spec:
           imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
           args:
             - "--nodeid=$(NODE_ID)"
+            - "--pluginpath={{ .Values.kubeletDir }}/plugins"
             - "--type=rbd"
             - "--nodeserver=true"
             - "--pidlimit=-1"
