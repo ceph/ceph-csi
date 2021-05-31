@@ -220,6 +220,7 @@ func (ns *NodeServer) NodeStageVolume(
 
 	volOptions.MapOptions = req.GetVolumeContext()["mapOptions"]
 	volOptions.UnmapOptions = req.GetVolumeContext()["unmapOptions"]
+	volOptions.Mounter = req.GetVolumeContext()["mounter"]
 
 	// Stash image details prior to mapping the image (useful during Unstage as it has no
 	// voloptions passed to the RPC as per the CSI spec)
@@ -314,6 +315,17 @@ func (ns *NodeServer) stageTransaction(
 	transaction.devicePath = devicePath
 	util.DebugLog(ctx, "rbd image: %s/%s was successfully mapped at %s\n",
 		req.GetVolumeId(), volOptions.Pool, devicePath)
+
+	// userspace mounters like nbd need the device path as a reference while
+	// restarting the userspace processes on a nodeplugin restart. For kernel
+	// mounter(krbd) we don't need it as there won't be any process running
+	// in userspace, hence we don't store the device path for krbd devices.
+	if volOptions.Mounter == rbdNbdMounter {
+		err = updateRBDImageMetadataStash(req.GetStagingTargetPath(), devicePath)
+		if err != nil {
+			return transaction, err
+		}
+	}
 
 	if volOptions.isEncrypted() {
 		devicePath, err = ns.processEncryptedDevice(ctx, volOptions, devicePath)

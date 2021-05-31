@@ -1380,6 +1380,7 @@ type rbdImageMetadataStash struct {
 	UnmapOptions   string `json:"unmapOptions"`
 	NbdAccess      bool   `json:"accessType"`
 	Encrypted      bool   `json:"encrypted"`
+	DevicePath     string `json:"device"` // holds NBD device path for now
 }
 
 // file name in which image metadata is stashed.
@@ -1445,6 +1446,32 @@ func lookupRBDImageMetadataStash(metaDataPath string) (rbdImageMetadataStash, er
 	}
 
 	return imgMeta, nil
+}
+
+// updateRBDImageMetadataStash reads and updates stashFile with the required
+// fields at the passed in path, in JSON format.
+func updateRBDImageMetadataStash(metaDataPath, device string) error {
+	if device == "" {
+		return errors.New("device is empty")
+	}
+	imgMeta, err := lookupRBDImageMetadataStash(metaDataPath)
+	if err != nil {
+		return fmt.Errorf("failed to find image metadata: %w", err)
+	}
+	imgMeta.DevicePath = device
+
+	encodedBytes, err := json.Marshal(imgMeta)
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON image metadata for spec:(%s) : %w", imgMeta.String(), err)
+	}
+
+	fPath := filepath.Join(metaDataPath, stashFileName)
+	err = ioutil.WriteFile(fPath, encodedBytes, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to stash JSON image metadata at path: (%s) for spec:(%s) : %w",
+			fPath, imgMeta.String(), err)
+	}
+	return nil
 }
 
 // cleanupRBDImageMetadataStash cleans up any stashed metadata at passed in path.
