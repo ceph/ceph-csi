@@ -96,6 +96,20 @@ var (
 	xfsHasReflink = xfsReflinkUnset
 )
 
+// isHealerContext checks if the request is been made from volumeHealer.
+func isHealerContext(parameters map[string]string) bool {
+	var err error
+	healerContext := false
+
+	val, ok := parameters["volumeHealerContext"]
+	if ok {
+		if healerContext, err = strconv.ParseBool(val); err != nil {
+			return false
+		}
+	}
+	return healerContext
+}
+
 // isStaticVolume checks if the volume is static.
 func isStaticVolume(parameters map[string]string) bool {
 	var err error
@@ -108,6 +122,26 @@ func isStaticVolume(parameters map[string]string) bool {
 		}
 	}
 	return staticVol
+}
+
+// healerStageTransaction attempts to attach the rbd Image with previously
+// updated device path at stashFile.
+func healerStageTransaction(ctx context.Context, cr *util.Credentials, volOps *rbdVolume, metaDataPath string) error {
+	imgInfo, err := lookupRBDImageMetadataStash(metaDataPath)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to find image metadata, at stagingPath: %s, err: %v", metaDataPath, err)
+		return err
+	}
+	if imgInfo.DevicePath == "" {
+		return fmt.Errorf("device is empty in image metadata, at stagingPath: %s", metaDataPath)
+	}
+	var devicePath string
+	devicePath, err = attachRBDImage(ctx, volOps, imgInfo.DevicePath, cr)
+	if err != nil {
+		return err
+	}
+	util.DebugLog(ctx, "rbd volID: %s was successfully attached to device: %s", volOps.VolID, devicePath)
+	return nil
 }
 
 // NodeStageVolume mounts the volume to a staging path on the node.
@@ -124,6 +158,7 @@ func isStaticVolume(parameters map[string]string) bool {
 //   - Create the staging file/directory under staging path
 //   - Stage the device (mount the device mapped for image)
 // TODO: make this function less complex.
+// nolint:gocyclo // reduce complexity
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
@@ -168,13 +203,17 @@ func (ns *NodeServer) NodeStageVolume(
 	stagingParentPath := req.GetStagingTargetPath()
 	stagingTargetPath := stagingParentPath + "/" + volID
 
-	// check if stagingPath is already mounted
-	isNotMnt, err := isNotMountPoint(ns.mounter, stagingTargetPath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	} else if !isNotMnt {
-		util.DebugLog(ctx, "rbd: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
-		return &csi.NodeStageVolumeResponse{}, nil
+	isHealer := isHealerContext(req.GetVolumeContext())
+	if !isHealer {
+		var isNotMnt bool
+		// check if stagingPath is already mounted
+		isNotMnt, err = isNotMountPoint(ns.mounter, stagingTargetPath)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		} else if !isNotMnt {
+			util.DebugLog(ctx, "rbd: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
+			return &csi.NodeStageVolumeResponse{}, nil
+		}
 	}
 
 	isStaticVol := isStaticVolume(req.GetVolumeContext())
@@ -222,12 +261,26 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 
 	volOptions.VolID = volID
-	transaction := stageTransaction{}
-
 	volOptions.MapOptions = req.GetVolumeContext()["mapOptions"]
 	volOptions.UnmapOptions = req.GetVolumeContext()["unmapOptions"]
 	volOptions.Mounter = req.GetVolumeContext()["mounter"]
 
+	err = volOptions.Connect(cr)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to connect to volume %s: %v", volOptions, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer volOptions.Destroy()
+
+	if isHealer {
+		err = healerStageTransaction(ctx, cr, volOptions, stagingParentPath)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return &csi.NodeStageVolumeResponse{}, nil
+	}
+
+	transaction := stageTransaction{}
 	// Stash image details prior to mapping the image (useful during Unstage as it has no
 	// voloptions passed to the RPC as per the CSI spec)
 	err = stashRBDImageMetadata(volOptions, stagingParentPath)
@@ -250,7 +303,7 @@ func (ns *NodeServer) NodeStageVolume(
 	util.DebugLog(
 		ctx,
 		"rbd: successfully mounted volume %s to stagingTargetPath %s",
-		req.GetVolumeId(),
+		volID,
 		stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
@@ -274,13 +327,6 @@ func (ns *NodeServer) stageTransaction(
 		return transaction, err
 	}
 	defer cr.DeleteCredentials()
-
-	err = volOptions.Connect(cr)
-	if err != nil {
-		util.ErrorLog(ctx, "failed to connect to volume %v: %v", volOptions.RbdImageName, err)
-		return transaction, err
-	}
-	defer volOptions.Destroy()
 
 	// Allow image to be mounted on multiple nodes if it is ROX
 	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY {
@@ -314,11 +360,12 @@ func (ns *NodeServer) stageTransaction(
 	}
 	// Mapping RBD image
 	var devicePath string
-	devicePath, err = attachRBDImage(ctx, volOptions, cr)
+	devicePath, err = attachRBDImage(ctx, volOptions, devicePath, cr)
 	if err != nil {
 		return transaction, err
 	}
 	transaction.devicePath = devicePath
+
 	util.DebugLog(ctx, "rbd image: %s/%s was successfully mapped at %s\n",
 		req.GetVolumeId(), volOptions.Pool, devicePath)
 
