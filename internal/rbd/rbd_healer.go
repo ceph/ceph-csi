@@ -1,0 +1,176 @@
+/*
+Copyright 2021 The Ceph-CSI Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package rbd
+
+import (
+	"context"
+
+	"github.com/ceph/ceph-csi/internal/util"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8s "k8s.io/client-go/kubernetes"
+)
+
+const (
+	fsTypeBlockName = "block"
+)
+
+// accessModeStrToInt convert access mode type string to int32.
+// Makesure to update this function as and when there are new modes introduced.
+func accessModeStrToInt(mode v1.PersistentVolumeAccessMode) csi.VolumeCapability_AccessMode_Mode {
+	switch mode {
+	case v1.ReadWriteOnce:
+		return csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER
+	case v1.ReadOnlyMany:
+		return csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY
+	case v1.ReadWriteMany:
+		return csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER
+	}
+	return csi.VolumeCapability_AccessMode_UNKNOWN
+}
+
+// getSecret get the secret details by name.
+func getSecret(c *k8s.Clientset, ns, name string) (map[string]string, error) {
+	deviceSecret := make(map[string]string)
+
+	secret, err := c.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		util.ErrorLogMsg("get secret failed, err: %v", err)
+		return nil, err
+	}
+
+	for k, v := range secret.Data {
+		deviceSecret[k] = string(v)
+	}
+
+	return deviceSecret, nil
+}
+
+func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolume, stagingPath string) error {
+	publishContext := make(map[string]string)
+
+	volID := pv.Spec.PersistentVolumeSource.CSI.VolumeHandle
+	stagingParentPath := stagingPath + pv.Name + "/globalmount"
+
+	util.DefaultLog("sending nodeStageVolume for volID: %s, stagingPath: %s",
+		volID, stagingParentPath)
+
+	deviceSecret, err := getSecret(c,
+		pv.Spec.PersistentVolumeSource.CSI.NodeStageSecretRef.Namespace,
+		pv.Spec.PersistentVolumeSource.CSI.NodeStageSecretRef.Name)
+	if err != nil {
+		util.ErrorLogMsg("getSecret failed for volID: %s, err: %v", volID, err)
+		return err
+	}
+
+	volumeContext := pv.Spec.PersistentVolumeSource.CSI.VolumeAttributes
+	volumeContext["volumeHealerContext"] = "true"
+
+	req := &csi.NodeStageVolumeRequest{
+		VolumeId:          volID,
+		PublishContext:    publishContext,
+		StagingTargetPath: stagingParentPath,
+		VolumeCapability: &csi.VolumeCapability{
+			AccessMode: &csi.VolumeCapability_AccessMode{
+				Mode: accessModeStrToInt(pv.Spec.AccessModes[0]),
+			},
+		},
+		Secrets:       deviceSecret,
+		VolumeContext: volumeContext,
+	}
+	if pv.Spec.PersistentVolumeSource.CSI.FSType == fsTypeBlockName {
+		req.VolumeCapability.AccessType = &csi.VolumeCapability_Block{
+			Block: &csi.VolumeCapability_BlockVolume{},
+		}
+	} else {
+		req.VolumeCapability.AccessType = &csi.VolumeCapability_Mount{
+			Mount: &csi.VolumeCapability_MountVolume{
+				FsType:     pv.Spec.PersistentVolumeSource.CSI.FSType,
+				MountFlags: pv.Spec.MountOptions,
+			},
+		}
+	}
+
+	_, err = ns.NodeStageVolume(context.TODO(), req)
+	if err != nil {
+		util.ErrorLogMsg("nodeStageVolume request failed, volID: %s, stagingPath: %s, err: %v",
+			volID, stagingParentPath, err)
+		return err
+	}
+
+	return nil
+}
+
+// runVolumeHealer heal the volumes attached on a node.
+func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
+	c := util.NewK8sClient()
+	val, err := c.StorageV1().VolumeAttachments().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		util.ErrorLogMsg("list volumeAttachments failed, err: %v", err)
+		return err
+	}
+
+	for i := range val.Items {
+		// skip if the volumeattachments doesn't belong to current node or driver
+		if val.Items[i].Spec.NodeName != conf.NodeID || val.Items[i].Spec.Attacher != conf.DriverName {
+			continue
+		}
+		pvName := *val.Items[i].Spec.Source.PersistentVolumeName
+		pv, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pvName, metav1.GetOptions{})
+		if err != nil {
+			// skip if volume doesn't exist
+			if !apierrors.IsNotFound(err) {
+				util.ErrorLogMsg("get persistentVolumes failed for pv: %s, err: %v", pvName, err)
+			}
+			continue
+		}
+		// TODO: check with pv delete annotations, for eg: what happens when the pv is marked for delete
+		// skip this volumeattachment if its pv is not bound
+		if pv.Status.Phase != v1.VolumeBound {
+			continue
+		}
+		// skip if mounter is not rbd-nbd
+		if pv.Spec.PersistentVolumeSource.CSI.VolumeAttributes["mounter"] != "rbd-nbd" {
+			continue
+		}
+
+		// ensure that the volume is still in attached state
+		va, err := c.StorageV1().VolumeAttachments().Get(context.TODO(), val.Items[i].Name, metav1.GetOptions{})
+		if err != nil {
+			// skip if volume attachment doesn't exist
+			if !apierrors.IsNotFound(err) {
+				util.ErrorLogMsg("get volumeAttachments failed for volumeAttachment: %s, volID: %s, err: %v",
+					val.Items[i].Name, pv.Spec.PersistentVolumeSource.CSI.VolumeHandle, err)
+			}
+			continue
+		}
+		if !va.Status.Attached {
+			continue
+		}
+
+		err = callNodeStageVolume(ns, c, pv, conf.StagingPath)
+		if err != nil {
+			util.ErrorLogMsg("callNodeStageVolume failed for VolID: %s, err: %v",
+				pv.Spec.PersistentVolumeSource.CSI.VolumeHandle, err)
+		}
+	}
+
+	return nil
+}

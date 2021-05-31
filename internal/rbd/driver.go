@@ -199,5 +199,14 @@ func (r *Driver) Run(conf *util.Config) {
 		util.DebugLogMsg("Registering profiling handler")
 		go util.EnableProfiling()
 	}
+	if conf.IsNodeServer {
+		go func() {
+			// TODO: move the healer to csi-addons
+			err := runVolumeHealer(r.ns, conf)
+			if err != nil {
+				util.ErrorLogMsg("healer had failures, err %v\n", err)
+			}
+		}()
+	}
 	s.Wait()
 }

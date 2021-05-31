@@ -47,6 +47,11 @@ const (
 	rbdUnmapCmdkRbdMissingMap = "rbd: %s: not a mapped image or snapshot"
 	rbdUnmapCmdNbdMissingMap  = "rbd-nbd: %s is not mapped"
 	rbdMapConnectionTimeout   = "Connection timed out"
+
+	defaultNbdReAttachTimeout = 300
+
+	useNbdNetlink  = "try-netlink"
+	setNbdReattach = "reattach-timeout"
 )
 
 var hasNBD = false
@@ -183,7 +188,7 @@ func checkRbdNbdTools() bool {
 	return true
 }
 
-func attachRBDImage(ctx context.Context, volOptions *rbdVolume, cr *util.Credentials) (string, error) {
+func attachRBDImage(ctx context.Context, volOptions *rbdVolume, device string, cr *util.Credentials) (string, error) {
 	var err error
 
 	image := volOptions.RbdImageName
@@ -205,7 +210,7 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, cr *util.Credent
 		if err != nil {
 			return "", err
 		}
-		devicePath, err = createPath(ctx, volOptions, cr)
+		devicePath, err = createPath(ctx, volOptions, device, cr)
 	}
 
 	return devicePath, err
@@ -223,6 +228,13 @@ func appendDeviceTypeAndOptions(cmdArgs []string, isNbd, isThick bool, userOptio
 		// namespace (e.g. for Multus CNI).  The network namespace must be
 		// owned by the initial user namespace.
 		cmdArgs = append(cmdArgs, "--options", "noudev")
+	} else {
+		if !strings.Contains(userOptions, useNbdNetlink) {
+			cmdArgs = append(cmdArgs, "--options", useNbdNetlink)
+		}
+		if !strings.Contains(userOptions, setNbdReattach) {
+			cmdArgs = append(cmdArgs, "--options", fmt.Sprintf("%s=%d", setNbdReattach, defaultNbdReAttachTimeout))
+		}
 	}
 	if isThick {
 		// When an image is thick-provisioned, any discard/unmap/trim
@@ -238,7 +250,26 @@ func appendDeviceTypeAndOptions(cmdArgs []string, isNbd, isThick bool, userOptio
 	return cmdArgs
 }
 
-func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (string, error) {
+// appendRbdNbdCliOptions append mandatory options and convert list of useroptions
+// provided for rbd integrated cli to rbd-nbd cli format specific.
+func appendRbdNbdCliOptions(cmdArgs []string, userOptions string) []string {
+	if !strings.Contains(userOptions, useNbdNetlink) {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s", useNbdNetlink))
+	}
+	if !strings.Contains(userOptions, setNbdReattach) {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%d", setNbdReattach, defaultNbdReAttachTimeout))
+	}
+	if userOptions != "" {
+		options := strings.Split(userOptions, ",")
+		for _, opt := range options {
+			cmdArgs = append(cmdArgs, fmt.Sprintf("--%s", opt))
+		}
+	}
+
+	return cmdArgs
+}
+
+func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.Credentials) (string, error) {
 	isNbd := false
 	imagePath := volOpt.String()
 
@@ -248,7 +279,6 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 		"--id", cr.ID,
 		"-m", volOpt.Monitors,
 		"--keyfile=" + cr.KeyFile,
-		"map", imagePath,
 	}
 
 	// Choose access protocol
@@ -262,13 +292,23 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 		util.WarningLog(ctx, "failed to detect if image %q is thick-provisioned: %v", volOpt, err)
 	}
 
-	mapArgs = appendDeviceTypeAndOptions(mapArgs, isNbd, isThick, volOpt.MapOptions)
+	cli := rbd
+	if device != "" {
+		// TODO: use rbd cli for attach/detach in the future
+		cli = rbdNbdMounter
+		mapArgs = append(mapArgs, "attach", imagePath, "--device", device)
+		mapArgs = appendRbdNbdCliOptions(mapArgs, volOpt.MapOptions)
+	} else {
+		mapArgs = append(mapArgs, "map", imagePath)
+		mapArgs = appendDeviceTypeAndOptions(mapArgs, isNbd, isThick, volOpt.MapOptions)
+	}
+
 	if volOpt.readOnly {
 		mapArgs = append(mapArgs, "--read-only")
 	}
 
 	// Execute map
-	stdout, stderr, err := util.ExecCommand(ctx, rbd, mapArgs...)
+	stdout, stderr, err := util.ExecCommand(ctx, cli, mapArgs...)
 	if err != nil {
 		util.WarningLog(ctx, "rbd: map error %v, rbd output: %s", err, stderr)
 		// unmap rbd image if connection timeout
