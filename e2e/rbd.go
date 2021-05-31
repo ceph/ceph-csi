@@ -2,15 +2,17 @@ package e2e
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"regexp"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo" // nolint
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -425,7 +427,7 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
-			By("perform IO on rbd-nbd volume after nodeplugin restart and expect a failure", func() {
+			By("perform IO on rbd-nbd volume after nodeplugin restart", func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
@@ -483,91 +485,8 @@ var _ = Describe("RBD", func() {
 				}
 
 				opt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", app.Name),
-				}
-
-				// FIXME: Fix this behavior, i.e. when the nodeplugin is
-				// restarted, the rbd-nbd processes should be back to life
-				// as rbd-nbd processes are responsible for IO
-
-				// For now to prove this isn't working, write something to
-				// mountpoint and expect a failure as the processes are terminated.
-				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-				_, stdErr := execCommandInPodAndAllowFail(
-					f,
-					fmt.Sprintf("echo 'Hello World' > %s", filePath),
-					app.Namespace,
-					&opt)
-				IOErr := fmt.Sprintf("cannot create %s: Input/output error", filePath)
-				if !strings.Contains(stdErr, IOErr) {
-					e2elog.Failf(stdErr)
-				} else {
-					e2elog.Logf("failed IO as expected: %v", stdErr)
-				}
-
-				err = deletePVCAndApp("", f, pvc, app)
-				if err != nil {
-					e2elog.Failf("failed to delete PVC and application with error %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass with error %v", err)
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass with error %v", err)
-				}
-			})
-
-			By("restart rbd-nbd process on nodeplugin and continue IO after nodeplugin restart", func() {
-				err := deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass with error %v", err)
-				}
-				// Tweak Storageclass to add netlink,reattach rbd-nbd mounter options
-				scOpts := map[string]string{
-					"mounter":    "rbd-nbd",
-					"mapOptions": "try-netlink,reattach-timeout=180",
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass with error %v", err)
-				}
-
-				pvc, err := loadPVC(pvcPath)
-				if err != nil {
-					e2elog.Failf("failed to load PVC with error %v", err)
-				}
-				pvc.Namespace = f.UniqueName
-
-				app, err := loadApp(appPath)
-				if err != nil {
-					e2elog.Failf("failed to load application with error %v", err)
-				}
-				app.Namespace = f.UniqueName
-				label := map[string]string{
-					"app": app.Name,
-				}
-				app.Labels = label
-				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-				err = createPVCAndApp("", f, pvc, app, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create PVC and application with error %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 1, defaultRBDPool)
-
-				selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
-				if err != nil {
-					e2elog.Failf("failed to get the labels with error %v", err)
-				}
-
-				opt := metav1.ListOptions{
 					LabelSelector: selector,
 				}
-
 				uname, stdErr, err := execCommandInContainer(f, "uname -a", cephCSINamespace, "csi-rbdplugin", &opt)
 				if err != nil || stdErr != "" {
 					e2elog.Failf("failed to run uname cmd : %v, stdErr: %v ", err, stdErr)
@@ -584,78 +503,41 @@ var _ = Describe("RBD", func() {
 				}
 				e2elog.Logf("rbd-nbd package version: %v", rpmv)
 
-				// Get details of rbd-nbd process
-				// # ps -eo 'cmd' | grep [r]bd-nbd
-				// /usr/bin/rbd-nbd --id cephcsi-rbd-node -m svc-name:6789 --keyfile=/tmp/csi/keys/keyfile attach \
-				// --device /dev/nbd0 pool-name/image-name --try-netlink --reattach-timeout=180
-				mapCmd, stdErr, err := execCommandInContainer(
-					f,
-					"ps -eo 'cmd' | grep [r]bd-nbd",
-					cephCSINamespace,
-					"csi-rbdplugin",
-					&opt)
-				if err != nil || stdErr != "" {
-					e2elog.Failf("failed to run ps cmd : %v, stdErr: %v ", err, stdErr)
-				}
-				e2elog.Logf("map command running before restart, mapCmd: %v", mapCmd)
+				timeout := time.Duration(deployTimeout) * time.Minute
+				var reason string
+				err = wait.PollImmediate(poll, timeout, func() (bool, error) {
+					var runningAttachCmd string
+					runningAttachCmd, stdErr, err = execCommandInContainer(
+						f,
+						"ps -eo 'cmd' | grep [r]bd-nbd",
+						cephCSINamespace,
+						"csi-rbdplugin",
+						&opt)
+					// if the rbd-nbd process is not running the ps | grep command
+					// will return with exit code 1
+					if err != nil {
+						if strings.Contains(err.Error(), "command terminated with exit code 1") {
+							reason = fmt.Sprintf("rbd-nbd process is not running yet: %v", err)
+						} else if stdErr != "" {
+							reason = fmt.Sprintf("failed to run ps cmd : %v, stdErr: %v", err, stdErr)
+						}
+						e2elog.Logf("%s", reason)
+						return false, nil
+					}
+					e2elog.Logf("attach command running after restart, runningAttachCmd: %v", runningAttachCmd)
+					return true, nil
+				})
 
-				rbdNodeKey, stdErr, err := execCommandInToolBoxPod(
-					f,
-					"ceph auth get-key client.cephcsi-rbd-node",
-					rookNamespace)
-				if err != nil || stdErr != "" {
-					e2elog.Failf("error getting cephcsi-rbd-node key, err: %v, stdErr: %v ", err, stdErr)
+				if errors.Is(err, wait.ErrWaitTimeout) {
+					e2elog.Failf("timed out waiting for the rbd-nbd process: %s", reason)
 				}
-
-				// restart the rbd node plugin
-				err = deletePodWithLabel(selector, cephCSINamespace, false)
 				if err != nil {
-					e2elog.Failf("fail to delete pod with error %v", err)
+					e2elog.Failf("failed to poll: %v", err)
 				}
-
-				// wait for nodeplugin pods to come up
-				err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
-				if err != nil {
-					e2elog.Failf("timeout waiting for daemonset pods with error %v", err)
-				}
-
-				// Prepare the rbd-nbd with command args
-				attachCmd := strings.ReplaceAll(mapCmd, "map", "attach --device /dev/nbd0")
-				m1 := regexp.MustCompile(`/keyfile-\d* `)
-				attachCmd = m1.ReplaceAllString(attachCmd, "/keyfile-test ")
-				e2elog.Logf("attach command to run after restart, attachCmd: %v", attachCmd)
-
-				// create the keyfile
-				_, stdErr, err = execCommandInContainer(
-					f,
-					fmt.Sprintf("echo %s > /tmp/csi/keys/keyfile-test", rbdNodeKey),
-					cephCSINamespace,
-					"csi-rbdplugin",
-					&opt)
-				if err != nil || stdErr != "" {
-					e2elog.Failf("failed to write key to a file,  err: %v, stdErr: %v ", err, stdErr)
-				}
-
-				_, stdErr, err = execCommandInContainer(f, attachCmd, cephCSINamespace, "csi-rbdplugin", &opt)
-				if err != nil || stdErr != "" {
-					e2elog.Failf("failed to run attach cmd err: %v, stdErr: %v ", err, stdErr)
-				}
-
-				runningAttachCmd, stdErr, err := execCommandInContainer(
-					f,
-					"ps -eo 'cmd' | grep [r]bd-nbd",
-					cephCSINamespace,
-					"csi-rbdplugin",
-					&opt)
-				if err != nil || stdErr != "" {
-					e2elog.Failf("failed to run ps cmd : %v, stdErr: %v ", err, stdErr)
-				}
-				e2elog.Logf("attach command running after restart, runningAttachCmd: %v", runningAttachCmd)
 
 				appOpt := metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("app=%s", app.Name),
 				}
-				// Write something to mountpoint and expect it to happen
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				_, stdErr, err = execCommandInPod(
 					f,
