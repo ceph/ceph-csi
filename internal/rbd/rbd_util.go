@@ -254,7 +254,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	if pOpts.isEncrypted() {
 		err = pOpts.setupEncryption(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to setup encroption for image %s: %v", pOpts, err)
+			return fmt.Errorf("failed to setup encryption for image %s: %v", pOpts, err)
 		}
 	}
 
