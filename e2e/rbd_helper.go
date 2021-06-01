@@ -204,7 +204,7 @@ func validateImageOwner(pvcPath string, f *framework.Framework) error {
 	}
 
 	stdOut, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rados %s getomapval csi.volume.%s %s", rbdOptions(defaultRBDPool), imageData.imageID, ownerKey), rookNamespace)
+		fmt.Sprintf("rados %s get omapval csi.volume.%s %s", rbdOptions(defaultRBDPool), imageData.imageID, ownerKey), rookNamespace)
 	if err != nil {
 		return err
 	}
@@ -493,7 +493,7 @@ func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeCl
 	}
 
 	_, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rados getomapval %s csi.volumes.default csi.volume.%s", rbdOptions(pool), imageData.pvName), rookNamespace)
+		fmt.Sprintf("rados get omapval %s csi.volumes.default csi.volume.%s", rbdOptions(pool), imageData.pvName), rookNamespace)
 	if err != nil {
 		return err
 	}
@@ -535,7 +535,7 @@ func deletePVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeC
 	}
 
 	_, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rados rmomapkey %s csi.volumes.default csi.volume.%s", rbdOptions(pool), imageData.pvName), rookNamespace)
+		fmt.Sprintf("rados rm omapkey %s csi.volumes.default csi.volume.%s", rbdOptions(pool), imageData.pvName), rookNamespace)
 	if err != nil {
 		return err
 	}
