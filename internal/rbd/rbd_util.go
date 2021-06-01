@@ -1528,3 +1528,15 @@ func (rv *rbdVolume) getOrigSnapName(snapID uint64) (string, error) {
 
 	return origSnapName, nil
 }
+
+func (ri *rbdImage) isCompatibleEncryption(dst *rbdImage) error {
+	switch {
+	case ri.isEncrypted() && !dst.isEncrypted():
+		return fmt.Errorf("encrypted volume %q does not match unencrypted volume %q", ri, dst)
+
+	case !ri.isEncrypted() && dst.isEncrypted():
+		return fmt.Errorf("unencrypted volume %q does not match encrypted volume %q", ri, dst)
+	}
+
+	return nil
+}
