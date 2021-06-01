@@ -210,6 +210,27 @@ func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnaps
 	return nil
 }
 
+func checkValidCreateVolumeRequest(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+	err := validateRequestedVolumeSize(rbdVol, parentVol, rbdSnap, cr)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case rbdSnap != nil:
+		err = rbdSnap.isCompatibleEncryption(&rbdVol.rbdImage)
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "cannot restore from snapshot %s: %s", rbdSnap, err.Error())
+		}
+	case parentVol != nil:
+		err = parentVol.isCompatibleEncryption(&rbdVol.rbdImage)
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "cannot clone from volume %s: %s", parentVol, err.Error())
+		}
+	}
+	return nil
+}
+
 // CreateVolume creates the volume in backend.
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateVolumeReq(ctx, req); err != nil {
@@ -254,7 +275,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return cs.repairExistingVolume(ctx, req, cr, rbdVol, rbdSnap)
 	}
 
-	err = validateRequestedVolumeSize(rbdVol, parentVol, rbdSnap, cr)
+	err = checkValidCreateVolumeRequest(rbdVol, parentVol, rbdSnap, cr)
 	if err != nil {
 		return nil, err
 	}
