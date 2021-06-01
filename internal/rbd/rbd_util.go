@@ -293,7 +293,14 @@ func (ri *rbdImage) openIoctx() error {
 	ioctx.SetNamespace(ri.RadosNamespace)
 	ri.ioctx = ioctx
 
-	return nil
+	err = ri.ioctx.SetPoolFullTry()
+	if err != nil {
+		err = fmt.Errorf("failed to set  SetPoolFullTry IOContext for pool %s: %w", ri.Pool, err)
+	} else {
+		fmt.Println("successfully set the setpoolfulltry option")
+	}
+
+	return err
 }
 
 // getImageID queries rbd about the given image and stores its id, returns
