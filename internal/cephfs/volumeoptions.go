@@ -455,6 +455,18 @@ func newVolumeOptionsFromStaticVolume(volID string, options map[string]string) (
 		return nil, nil, err
 	}
 
+	if err = extractOptionalOption(&opts.KernelMountOptions, "kernelMountOptions", options); err != nil {
+		return nil, nil, err
+	}
+
+	if err = extractOptionalOption(&opts.FuseMountOptions, "fuseMountOptions", options); err != nil {
+		return nil, nil, err
+	}
+
+	if err = extractOptionalOption(&opts.SubvolumeGroup, "subvolumeGroup", options); err != nil {
+		return nil, nil, err
+	}
+
 	if err = extractMounter(&opts.Mounter, options); err != nil {
 		return nil, nil, err
 	}
