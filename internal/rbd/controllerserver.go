@@ -1172,6 +1172,18 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	// always round up the request size in bytes to the nearest MiB/GiB
 	volSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
 
+	thick, err := rbdVol.isThickProvisioned()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to detect if image %q is thick-provisioned: %v", rbdVol, err)
+	}
+
+	// check are we over committing before resizing the volume.
+	if thick {
+		err = cs.validateThickOverProvisioning(rbdVol)
+		if err != nil {
+			return nil, err
+		}
+	}
 	// resize volume if required
 	if rbdVol.VolSize < volSize {
 		util.DebugLog(ctx, "rbd volume %s size is %v,resizing to %v", rbdVol, rbdVol.VolSize, volSize)
