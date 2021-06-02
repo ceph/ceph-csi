@@ -23,6 +23,7 @@ import (
 )
 
 func TestAWSMetadataKMSRegistered(t *testing.T) {
+	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeAWSMetadata]
 	assert.True(t, ok)
 }

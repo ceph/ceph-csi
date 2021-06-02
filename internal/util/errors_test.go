@@ -32,6 +32,7 @@ func wrapError(e error) error {
 }
 
 func TestJoinErrors(t *testing.T) {
+	t.Parallel()
 	assertErrorIs := func(e1, e2 error, ok bool) {
 		if errors.Is(e1, e2) != ok {
 			t.Errorf("errors.Is(e1, e2) != %v - e1: %#v - e2: %#v", ok, e1, e2)

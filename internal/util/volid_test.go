@@ -47,6 +47,7 @@ var testData = []testTuple{
 }
 
 func TestComposeDecomposeID(t *testing.T) {
+	t.Parallel()
 	var (
 		err           error
 		viDecompose   CSIIdentifier
