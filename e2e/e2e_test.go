@@ -45,6 +45,7 @@ func setDefaultKubeconfig() {
 }
 
 func TestE2E(t *testing.T) {
+	t.Parallel()
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "E2e Suite")
 }

@@ -25,6 +25,7 @@ import (
 )
 
 func TestInitSecretsKMS(t *testing.T) {
+	t.Parallel()
 	secrets := map[string]string{}
 
 	// no passphrase in the secrets, should fail
@@ -40,6 +41,7 @@ func TestInitSecretsKMS(t *testing.T) {
 }
 
 func TestGenerateNewEncryptionPassphrase(t *testing.T) {
+	t.Parallel()
 	b64Passphrase, err := generateNewEncryptionPassphrase()
 	require.NoError(t, err)
 
@@ -51,6 +53,7 @@ func TestGenerateNewEncryptionPassphrase(t *testing.T) {
 }
 
 func TestKMSWorkflow(t *testing.T) {
+	t.Parallel()
 	secrets := map[string]string{
 		encryptionPassphraseKey: "workflow test",
 	}

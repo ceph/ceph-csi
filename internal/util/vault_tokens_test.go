@@ -27,6 +27,7 @@ import (
 )
 
 func TestParseConfig(t *testing.T) {
+	t.Parallel()
 	kms := VaultTokensKMS{}
 
 	config := make(map[string]interface{})
@@ -71,6 +72,7 @@ func TestParseConfig(t *testing.T) {
 // When vault.New() is called at the end of initVaultTokensKMS(), errors will
 // mention the missing VAULT_TOKEN, and that is expected.
 func TestInitVaultTokensKMS(t *testing.T) {
+	t.Parallel()
 	if true {
 		// FIXME: testing only works when KUBE_CONFIG is set to a
 		// cluster that has a working Vault deployment
@@ -122,6 +124,7 @@ func TestInitVaultTokensKMS(t *testing.T) {
 // TestStdVaultToCSIConfig converts a JSON document with standard VAULT_*
 // environment variables to a vaultTokenConf structure.
 func TestStdVaultToCSIConfig(t *testing.T) {
+	t.Parallel()
 	vaultConfigMap := `{
 		"KMS_PROVIDER":"vaulttokens",
 		"VAULT_ADDR":"https://vault.example.com",
@@ -167,6 +170,7 @@ func TestStdVaultToCSIConfig(t *testing.T) {
 }
 
 func TestTransformConfig(t *testing.T) {
+	t.Parallel()
 	cm := make(map[string]interface{})
 	cm["KMS_PROVIDER"] = "vaulttokens"
 	cm["VAULT_ADDR"] = "https://vault.example.com"
@@ -192,6 +196,7 @@ func TestTransformConfig(t *testing.T) {
 }
 
 func TestVaultTokensKMSRegistered(t *testing.T) {
+	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeVaultTokens]
 	assert.True(t, ok)
 }

@@ -34,6 +34,7 @@ func cleanupTestData() {
 
 // TODO: make this function less complex.
 func TestCSIConfig(t *testing.T) {
+	t.Parallel()
 	var err error
 	var data string
 	var content string

@@ -24,6 +24,7 @@ import (
 )
 
 func TestGenerateNonce(t *testing.T) {
+	t.Parallel()
 	size := 64
 	nonce, err := generateNonce(size)
 	assert.Equal(t, size, len(nonce))
@@ -31,6 +32,7 @@ func TestGenerateNonce(t *testing.T) {
 }
 
 func TestGenerateCipher(t *testing.T) {
+	t.Parallel()
 	// nolint:gosec // this passphrase is intentionally hardcoded
 	passphrase := "my-cool-luks-passphrase"
 	salt := "unique-id-for-the-volume"
@@ -41,6 +43,7 @@ func TestGenerateCipher(t *testing.T) {
 }
 
 func TestInitSecretsMetadataKMS(t *testing.T) {
+	t.Parallel()
 	args := KMSInitializerArgs{
 		Tenant:  "tenant",
 		Config:  nil,
@@ -62,6 +65,7 @@ func TestInitSecretsMetadataKMS(t *testing.T) {
 }
 
 func TestWorkflowSecretsMetadataKMS(t *testing.T) {
+	t.Parallel()
 	secrets := map[string]string{
 		encryptionPassphraseKey: "my-passphrase-from-kubernetes",
 	}
@@ -100,6 +104,7 @@ func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 }
 
 func TestSecretsMetadataKMSRegistered(t *testing.T) {
+	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeSecretsMetadata]
 	assert.True(t, ok)
 }

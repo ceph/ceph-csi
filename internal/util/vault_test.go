@@ -25,6 +25,7 @@ import (
 )
 
 func TestDetectAuthMountPath(t *testing.T) {
+	t.Parallel()
 	authMountPath, err := detectAuthMountPath(vaultDefaultAuthPath)
 	if err != nil {
 		t.Errorf("detectAuthMountPath() failed: %s", err)
@@ -43,6 +44,7 @@ func TestDetectAuthMountPath(t *testing.T) {
 }
 
 func TestCreateTempFile(t *testing.T) {
+	t.Parallel()
 	data := []byte("Hello World!")
 	tmpfile, err := createTempFile("my-file", data)
 	if err != nil {
@@ -59,6 +61,7 @@ func TestCreateTempFile(t *testing.T) {
 }
 
 func TestSetConfigString(t *testing.T) {
+	t.Parallel()
 	const defaultValue = "default-value"
 	options := make(map[string]interface{})
 
@@ -99,6 +102,7 @@ func TestSetConfigString(t *testing.T) {
 }
 
 func TestVaultKMSRegistered(t *testing.T) {
+	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeVault]
 	assert.True(t, ok)
 }
