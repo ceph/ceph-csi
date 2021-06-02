@@ -26,6 +26,9 @@ const (
 
 	// SnapshotOperationAlreadyExistsFmt string format to return for concurrent operation
 	SnapshotOperationAlreadyExistsFmt = "an operation with the given Snapshot ID %s already exists"
+
+	// PoolOperationAlreadyExistsFmt string format to return for concurrent operation
+	PoolOperationAlreadyExistsFmt = "checking pool %s available size to provision another thick volume"
 )
 
 // VolumeLocks implements a map with atomic operations. It stores a set of all volume IDs

@@ -1528,3 +1528,41 @@ func (rv *rbdVolume) getOrigSnapName(snapID uint64) (string, error) {
 
 	return origSnapName, nil
 }
+
+type cephStorageStats struct {
+	Pools []struct {
+		Name  string `json:"name"`
+		ID    int    `json:"id"`
+		Stats struct {
+			MaxAvail int64 `json:"max_avail"`
+		} `json:"stats"`
+	} `json:"pools"`
+}
+
+// FIXME replace this with go-ceph api
+// getCephStats fetches the storage size information.
+func getCephStats(monitor string, cred util.Credentials) (*cephStorageStats, error) {
+	// ceph df --format=json
+	var cephStats cephStorageStats
+
+	stdout, _, err := util.ExecCommand(
+		context.TODO(),
+		"ceph",
+		"-m", monitor,
+		"--id", cred.ID,
+		"--keyfile="+cred.KeyFile,
+		"-c", util.CephConfigPath,
+		"--format="+"json",
+		"df")
+	if err != nil {
+		return nil, err
+	}
+
+	if stdout != "" {
+		err = json.Unmarshal([]byte(stdout), &cephStats)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal failed (%w), raw buffer response: %s", err, stdout)
+		}
+	}
+	return &cephStats, nil
+}

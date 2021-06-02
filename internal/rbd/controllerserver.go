@@ -91,6 +91,43 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	return nil
 }
 
+func getpercent(percent, size int64) int64 {
+	return ((size * percent) / 100)
+}
+
+func (cs *ControllerServer) validateThickOverProvisioning(vol *rbdVolume) error {
+	// LockName taken to validate the ceph pool size
+	poolSizeLock := "poolSizeLock"
+	if acquired := cs.VolumeLocks.TryAcquire(poolSizeLock); !acquired {
+		return status.Errorf(codes.Aborted, util.PoolOperationAlreadyExistsFmt, vol.Pool)
+	}
+	defer cs.VolumeLocks.Release(poolSizeLock)
+
+	imagePool := vol.Pool
+	if vol.DataPool != "" {
+		// use data pool if its set
+		imagePool = vol.DataPool
+	}
+
+	cStats, err := getCephStats(vol.Monitors, *vol.conn.Creds)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	for _, p := range cStats.Pools {
+		if p.Name == imagePool {
+			// Checking 80% of the total available size in the pool so that we
+			// dont over provision in case of thick provisioning.
+			// nolint:gomnd // calculating 80 % of maximum available size in pool.
+			availAllocSize := getpercent(80, p.Stats.MaxAvail)
+			if vol.VolSize > availAllocSize {
+				return status.Errorf(codes.ResourceExhausted, "cannot create volume %s. Requested size %d is greater than available size %d", vol.RequestName, vol.VolSize, availAllocSize)
+			}
+		}
+	}
+	return nil
+}
+
 func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
@@ -185,7 +222,7 @@ func getGRPCErrorForCreateVolume(err error) error {
 
 // validateRequestedVolumeSize validates the request volume size with the
 // source snapshot or volume size, if there is a size mismatches it returns an error.
-func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
+func (cs *ControllerServer) validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
 	if rbdSnap != nil {
 		vol := generateVolFromSnap(rbdSnap)
 		err := vol.Connect(cr)
@@ -207,6 +244,14 @@ func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnaps
 			return status.Errorf(codes.InvalidArgument, "size mismatches, requested volume size %d and source volume size %d", rbdVol.VolSize, parentVol.VolSize)
 		}
 	}
+
+	if rbdVol.ThickProvision {
+		err := cs.validateThickOverProvisioning(rbdVol)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -254,7 +299,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return cs.repairExistingVolume(ctx, req, cr, rbdVol, rbdSnap)
 	}
 
-	err = validateRequestedVolumeSize(rbdVol, parentVol, rbdSnap, cr)
+	err = cs.validateRequestedVolumeSize(rbdVol, parentVol, rbdSnap, cr)
 	if err != nil {
 		return nil, err
 	}
