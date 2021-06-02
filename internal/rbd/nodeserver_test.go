@@ -23,6 +23,7 @@ import (
 )
 
 func TestGetStagingPath(t *testing.T) {
+	t.Parallel()
 	var stagingPath string
 	// test with nodestagevolumerequest
 	nsvr := &csi.NodeStageVolumeRequest{

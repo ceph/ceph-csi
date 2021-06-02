@@ -25,6 +25,7 @@ import (
 var fakeID = "fake-id"
 
 func TestGetReqID(t *testing.T) {
+	t.Parallel()
 	req := []interface{}{
 		&csi.CreateVolumeRequest{
 			Name: fakeID,

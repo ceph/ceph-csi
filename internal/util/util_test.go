@@ -21,6 +21,7 @@ import (
 )
 
 func TestRoundOffBytes(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		bytes int64
 	}
@@ -75,6 +76,7 @@ func TestRoundOffBytes(t *testing.T) {
 	for _, tt := range tests {
 		ts := tt
 		t.Run(ts.name, func(t *testing.T) {
+			t.Parallel()
 			if got := RoundOffBytes(ts.args.bytes); got != ts.want {
 				t.Errorf("RoundOffBytes() = %v, want %v", got, ts.want)
 			}
@@ -83,6 +85,7 @@ func TestRoundOffBytes(t *testing.T) {
 }
 
 func TestRoundOffVolSize(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		size int64
 	}
@@ -137,6 +140,7 @@ func TestRoundOffVolSize(t *testing.T) {
 	for _, tt := range tests {
 		ts := tt
 		t.Run(ts.name, func(t *testing.T) {
+			t.Parallel()
 			if got := RoundOffVolSize(ts.args.size); got != ts.want {
 				t.Errorf("RoundOffVolSize() = %v, want %v", got, ts.want)
 			}
@@ -145,6 +149,7 @@ func TestRoundOffVolSize(t *testing.T) {
 }
 
 func TestGetKernelVersion(t *testing.T) {
+	t.Parallel()
 	version, err := GetKernelVersion()
 	if err != nil {
 		t.Errorf("failed to get kernel version: %s", err)
@@ -158,6 +163,7 @@ func TestGetKernelVersion(t *testing.T) {
 }
 
 func TestMountOptionsAdd(t *testing.T) {
+	t.Parallel()
 	moaTests := []struct {
 		name         string
 		mountOptions string
@@ -228,7 +234,9 @@ func TestMountOptionsAdd(t *testing.T) {
 
 	for _, moaTest := range moaTests {
 		mt := moaTest
+		moaTest := moaTest
 		t.Run(moaTest.name, func(t *testing.T) {
+			t.Parallel()
 			result := MountOptionsAdd(mt.mountOptions, mt.option...)
 			if result != mt.result {
 				t.Errorf("MountOptionsAdd(): %v, want %v", result, mt.result)
@@ -237,6 +245,7 @@ func TestMountOptionsAdd(t *testing.T) {
 	}
 }
 func TestCheckKernelSupport(t *testing.T) {
+	t.Parallel()
 	supportsQuota := []string{
 		"4.17.0",
 		"5.0.0",

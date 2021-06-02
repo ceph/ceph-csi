@@ -179,7 +179,7 @@ func getSnapName(snapNamespace, snapName string) (string, error) {
 	}
 	snap, err := sclient.SnapshotV1beta1().VolumeSnapshots(snapNamespace).Get(context.TODO(), snapName, metav1.GetOptions{})
 	if err != nil {
-		return "", fmt.Errorf("failed to get volume snapshot with error %w", err)
+		return "", fmt.Errorf("failed to get volumesnapshot with error %w", err)
 	}
 	sc, err := sclient.SnapshotV1beta1().VolumeSnapshotContents().Get(context.TODO(), *snap.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
 	if err != nil {

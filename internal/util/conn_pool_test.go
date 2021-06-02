@@ -74,6 +74,7 @@ func (cp *ConnPool) fakeGet(monitors, user, keyfile string) (*rados.Conn, string
 }
 
 func TestConnPool(t *testing.T) {
+	t.Parallel()
 	cp := NewConnPool(interval, expiry)
 	defer cp.Destroy()
 
@@ -90,6 +91,7 @@ func TestConnPool(t *testing.T) {
 	var unique string
 
 	t.Run("fakeGet", func(t *testing.T) {
+		t.Parallel()
 		conn, unique, err = cp.fakeGet("monitors", "user", keyfile)
 		if err != nil {
 			t.Errorf("failed to get connection: %v", err)
@@ -113,6 +115,7 @@ func TestConnPool(t *testing.T) {
 	})
 
 	t.Run("doubleFakeGet", func(t *testing.T) {
+		t.Parallel()
 		// after a 2nd get, there should still be a single conn in cp.conns
 		_, _, err = cp.fakeGet("monitors", "user", keyfile)
 		if err != nil {
@@ -147,6 +150,7 @@ func TestConnPool(t *testing.T) {
 
 	// there is still one conn in cp.conns after "doubleFakeGet"
 	t.Run("garbageCollection", func(t *testing.T) {
+		t.Parallel()
 		// timeout has not occurred yet, so number of conns in the list should stay the same
 		cp.gc()
 		if len(cp.conns) != 1 {

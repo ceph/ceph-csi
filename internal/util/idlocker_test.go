@@ -22,6 +22,7 @@ import (
 
 // very basic tests for the moment.
 func TestIDLocker(t *testing.T) {
+	t.Parallel()
 	fakeID := "fake-id"
 	locks := NewVolumeLocks()
 	// acquire lock for fake-id
@@ -52,6 +53,7 @@ func TestIDLocker(t *testing.T) {
 }
 
 func TestOperationLocks(t *testing.T) {
+	t.Parallel()
 	volumeID := "test-vol"
 	lock := NewOperationLock()
 	err := lock.GetCloneLock(volumeID)

@@ -27,6 +27,7 @@ func noinitKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 }
 
 func TestRegisterKMSProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		provider KMSProvider
 		panics   bool

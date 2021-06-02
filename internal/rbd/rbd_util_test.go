@@ -25,6 +25,7 @@ import (
 )
 
 func TestHasSnapshotFeature(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		features   string
 		hasFeature bool
@@ -45,6 +46,7 @@ func TestHasSnapshotFeature(t *testing.T) {
 }
 
 func TestValidateImageFeatures(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		imageFeatures string
 		rbdVol        *rbdVolume

@@ -24,6 +24,7 @@ import (
 // minimal test to check if GetPIDLimit() returns an int
 // changing the limit require root permissions, not tested.
 func TestGetPIDLimit(t *testing.T) {
+	t.Parallel()
 	runTest := os.Getenv("CEPH_CSI_RUN_ALL_TESTS")
 	if runTest == "" {
 		t.Skip("not running test that requires root permissions and cgroup support")
