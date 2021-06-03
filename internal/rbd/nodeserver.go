@@ -96,6 +96,20 @@ var (
 	xfsHasReflink = xfsReflinkUnset
 )
 
+// isStaticVolume checks if the volume is static.
+func isStaticVolume(parameters map[string]string) bool {
+	var err error
+	staticVol := false
+
+	val, ok := parameters["staticVolume"]
+	if ok {
+		if staticVol, err = strconv.ParseBool(val); err != nil {
+			return false
+		}
+	}
+	return staticVol
+}
+
 // NodeStageVolume mounts the volume to a staging path on the node.
 // Implementation notes:
 // - stagingTargetPath is the directory passed in the request where the volume needs to be staged
@@ -154,15 +168,6 @@ func (ns *NodeServer) NodeStageVolume(
 	stagingParentPath := req.GetStagingTargetPath()
 	stagingTargetPath := stagingParentPath + "/" + volID
 
-	// check is it a static volume
-	staticVol := false
-	val, ok := req.GetVolumeContext()["staticVolume"]
-	if ok {
-		if staticVol, err = strconv.ParseBool(val); err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-	}
-
 	// check if stagingPath is already mounted
 	isNotMnt, err := isNotMountPoint(ns.mounter, stagingTargetPath)
 	if err != nil {
@@ -172,9 +177,11 @@ func (ns *NodeServer) NodeStageVolume(
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
+	isStaticVol := isStaticVolume(req.GetVolumeContext())
+
 	// throw error when imageFeatures parameter is missing or empty
 	// for backward compatibility, ignore error for non-static volumes from older cephcsi version
-	if imageFeatures, ok := req.GetVolumeContext()["imageFeatures"]; checkImageFeatures(imageFeatures, ok, staticVol) {
+	if imageFeatures, ok := req.GetVolumeContext()["imageFeatures"]; checkImageFeatures(imageFeatures, ok, isStaticVol) {
 		return nil, status.Error(codes.InvalidArgument, "missing required parameter imageFeatures")
 	}
 
@@ -187,10 +194,9 @@ func (ns *NodeServer) NodeStageVolume(
 
 	// get rbd image name from the volume journal
 	// for static volumes, the image name is actually the volume ID itself
-	switch {
-	case staticVol:
+	if isStaticVol {
 		volOptions.RbdImageName = volID
-	default:
+	} else {
 		var vi util.CSIIdentifier
 		var imageAttributes *journal.ImageAttributes
 		err = vi.DecomposeCSIID(volID)
@@ -236,7 +242,7 @@ func (ns *NodeServer) NodeStageVolume(
 
 	// perform the actual staging and if this fails, have undoStagingTransaction
 	// cleans up for us
-	transaction, err = ns.stageTransaction(ctx, req, volOptions, staticVol)
+	transaction, err = ns.stageTransaction(ctx, req, volOptions, isStaticVol)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
