@@ -23,6 +23,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
+	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/grpc v1.36.1
 	k8s.io/api v0.20.6
 	k8s.io/apimachinery v0.20.6
@@ -41,6 +42,7 @@ replace (
 	github.com/hashicorp/vault/sdk => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
 	github.com/kubernetes-csi/external-snapshotter/v2 => github.com/kubernetes-csi/external-snapshotter/v2 v2.1.1-0.20200504125226-859696c419ff
 	github.com/kubernetes-incubator/external-storage => github.com/kubernetes-incubator/external-storage v5.5.0+incompatible
+	golang.org/x/text => golang.org/x/text v0.3.6
 	google.golang.org/grpc => google.golang.org/grpc v1.35.0
 	k8s.io/api => k8s.io/api v0.20.6
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.20.6
