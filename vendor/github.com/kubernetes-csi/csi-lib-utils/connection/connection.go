@@ -27,7 +27,7 @@ import (
 	"github.com/kubernetes-csi/csi-lib-utils/metrics"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -109,7 +109,7 @@ func connect(
 		grpc.WithBlock(),                      // Block until connection succeeds.
 		grpc.WithChainUnaryInterceptor(
 			LogGRPC, // Log all messages.
-			extendedCSIMetricsManager{metricsManager}.recordMetricsInterceptor, // Record metrics for each gRPC call.
+			ExtendedCSIMetricsManager{metricsManager}.RecordMetricsClientInterceptor, // Record metrics for each gRPC call.
 		),
 	)
 	unixPrefix := "unix://"
@@ -140,7 +140,7 @@ func connect(
 			}
 			conn, err := net.DialTimeout("unix", address[len(unixPrefix):], timeout)
 			if err == nil {
-				// Connection restablished.
+				// Connection reestablished.
 				haveConnected = true
 				lostConnection = false
 			}
@@ -150,7 +150,7 @@ func connect(
 		return nil, errors.New("OnConnectionLoss callback only supported for unix:// addresses")
 	}
 
-	klog.Infof("Connecting to %s", address)
+	klog.V(5).Infof("Connecting to %s", address)
 
 	// Connect in background.
 	var conn *grpc.ClientConn
@@ -187,12 +187,20 @@ func LogGRPC(ctx context.Context, method string, req, reply interface{}, cc *grp
 	return err
 }
 
-type extendedCSIMetricsManager struct {
+type ExtendedCSIMetricsManager struct {
 	metrics.CSIMetricsManager
 }
 
-// recordMetricsInterceptor is a gPRC unary interceptor for recording metrics for CSI operations.
-func (cmm extendedCSIMetricsManager) recordMetricsInterceptor(
+type AdditionalInfo struct {
+	Migrated string
+}
+type AdditionalInfoKeyType struct{}
+
+var AdditionalInfoKey AdditionalInfoKeyType
+
+// RecordMetricsClientInterceptor is a gPRC unary interceptor for recording metrics for CSI operations
+// in a gRPC client.
+func (cmm ExtendedCSIMetricsManager) RecordMetricsClientInterceptor(
 	ctx context.Context,
 	method string,
 	req, reply interface{},
@@ -202,10 +210,48 @@ func (cmm extendedCSIMetricsManager) recordMetricsInterceptor(
 	start := time.Now()
 	err := invoker(ctx, method, req, reply, cc, opts...)
 	duration := time.Since(start)
-	cmm.RecordMetrics(
+
+	var cmmBase metrics.CSIMetricsManager
+	cmmBase = cmm
+	if cmm.HaveAdditionalLabel(metrics.LabelMigrated) {
+		// record migration status
+		additionalInfo := ctx.Value(AdditionalInfoKey)
+		migrated := "false"
+		if additionalInfo != nil {
+			additionalInfoVal, ok := additionalInfo.(AdditionalInfo)
+			if !ok {
+				klog.Errorf("Failed to record migrated status, cannot convert additional info %v", additionalInfo)
+				return err
+			}
+			migrated = additionalInfoVal.Migrated
+		}
+		cmmv, metricsErr := cmm.WithLabelValues(map[string]string{metrics.LabelMigrated: migrated})
+		if metricsErr != nil {
+			klog.Errorf("Failed to record migrated status, error: %v", metricsErr)
+		} else {
+			cmmBase = cmmv
+		}
+	}
+	// Record the default metric
+	cmmBase.RecordMetrics(
 		method,   /* operationName */
 		err,      /* operationErr */
 		duration, /* operationDuration */
 	)
+
 	return err
+}
+
+// RecordMetricsServerInterceptor is a gPRC unary interceptor for recording metrics for CSI operations
+// in a gRCP server.
+func (cmm ExtendedCSIMetricsManager) RecordMetricsServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	start := time.Now()
+	resp, err := handler(ctx, req)
+	duration := time.Since(start)
+	cmm.RecordMetrics(
+		info.FullMethod, /* operationName */
+		err,             /* operationErr */
+		duration,        /* operationDuration */
+	)
+	return resp, err
 }
