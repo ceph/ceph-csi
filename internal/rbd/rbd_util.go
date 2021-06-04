@@ -1395,7 +1395,7 @@ func (ri *rbdImageMetadataStash) String() string {
 
 // stashRBDImageMetadata stashes required fields into the stashFileName at the passed in path, in
 // JSON format.
-func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
+func stashRBDImageMetadata(volOptions *rbdVolume, metaDataPath string) error {
 	imgMeta := rbdImageMetadataStash{
 		// there are no checks for this at present
 		Version:        3, // nolint:gomnd // number specifies version.
@@ -1416,7 +1416,7 @@ func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
 		return fmt.Errorf("failed to marshall JSON image metadata for image (%s): %w", volOptions, err)
 	}
 
-	fPath := filepath.Join(path, stashFileName)
+	fPath := filepath.Join(metaDataPath, stashFileName)
 	err = ioutil.WriteFile(fPath, encodedBytes, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to stash JSON image metadata for image (%s) at path (%s): %w", volOptions, fPath, err)
@@ -1426,10 +1426,10 @@ func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
 }
 
 // lookupRBDImageMetadataStash reads and returns stashed image metadata at passed in path.
-func lookupRBDImageMetadataStash(path string) (rbdImageMetadataStash, error) {
+func lookupRBDImageMetadataStash(metaDataPath string) (rbdImageMetadataStash, error) {
 	var imgMeta rbdImageMetadataStash
 
-	fPath := filepath.Join(path, stashFileName)
+	fPath := filepath.Join(metaDataPath, stashFileName)
 	encodedBytes, err := ioutil.ReadFile(fPath) // #nosec - intended reading from fPath
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -1448,8 +1448,8 @@ func lookupRBDImageMetadataStash(path string) (rbdImageMetadataStash, error) {
 }
 
 // cleanupRBDImageMetadataStash cleans up any stashed metadata at passed in path.
-func cleanupRBDImageMetadataStash(path string) error {
-	fPath := filepath.Join(path, stashFileName)
+func cleanupRBDImageMetadataStash(metaDataPath string) error {
+	fPath := filepath.Join(metaDataPath, stashFileName)
 	if err := os.Remove(fPath); err != nil {
 		return fmt.Errorf("failed to cleanup stashed JSON data (%s): %w", fPath, err)
 	}
