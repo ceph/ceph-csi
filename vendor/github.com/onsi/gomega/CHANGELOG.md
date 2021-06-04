@@ -1,3 +1,73 @@
+## 1.13.0
+
+### Features
+- gmeasure provides BETA support for benchmarking (#447) [8f2dfbf]
+- Set consistently and eventually defaults on init (#443) [12eb778]
+
+## 1.12.0
+
+### Features
+- Add Satisfy() matcher (#437) [c548f31]
+- tweak truncation message [3360b8c]
+- Add format.GomegaStringer (#427) [cc80b6f]
+- Add Clear() method to gbytes.Buffer [c3c0920]
+
+### Fixes
+- Fix error message in BeNumericallyMatcher (#432) [09c074a]
+- Bump github.com/onsi/ginkgo from 1.12.1 to 1.16.2 (#442) [e5f6ea0]
+- Bump github.com/golang/protobuf from 1.4.3 to 1.5.2 (#431) [adae3bf]
+- Bump golang.org/x/net (#441) [3275b35]
+
+## 1.11.0
+
+### Features
+- feature: add index to gstruct element func (#419) [334e00d]
+- feat(gexec) Add CompileTest functions. Close #410 (#411) [47c613f]
+
+### Fixes
+- Check more carefully for nils in WithTransform (#423) [3c60a15]
+- fix: typo in Makefile [b82522a]
+- Allow WithTransform function to accept a nil value (#422) [b75d2f2]
+- fix: print value type for interface{} containers (#409) [f08e2dc]
+- fix(BeElementOf): consistently flatten expected values [1fa9468]
+
+## 1.10.5
+
+### Fixes
+- fix: collections matchers should display type of expectation (#408) [6b4eb5a]
+- fix(ContainElements): consistently flatten expected values [073b880]
+- fix(ConsistOf): consistently flatten expected values [7266efe]
+
+## 1.10.4
+
+### Fixes
+- update golang net library to more recent version without vulnerability (#406) [817a8b9]
+- Correct spelling: alloted -> allotted (#403) [0bae715]
+- fix a panic in MessageWithDiff with long message (#402) [ea06b9b]
+
+## 1.10.3
+
+### Fixes
+- updates golang/x/net to fix vulnerability detected by snyk (#394) [c479356]
+
+## 1.10.2
+
+### Fixes
+- Add ExpectWithOffset, EventuallyWithOffset and ConsistentlyWithOffset to WithT (#391) [990941a]
+
+## 1.10.1
+
+### Fixes
+- Update dependencies (#389) [9f5eecd]
+
+## 1.10.0
+
+### Features
+- Add HaveHTTPStatusMatcher (#378) [f335c94]
+- Changed matcher for content-type in VerifyJSONRepresenting (#377) [6024f5b]
+- Make ghttp usable with x-unit style tests (#376) [c0be499]
+- Implement PanicWith matcher (#381) [f8032b4]
+
 ## 1.9.0
 
 ### Features
