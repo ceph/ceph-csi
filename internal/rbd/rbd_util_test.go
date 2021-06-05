@@ -52,6 +52,14 @@ func TestValidateImageFeatures(t *testing.T) {
 		errMsg        string
 	}{
 		{
+			"",
+			&rbdVolume{
+				Mounter: rbdDefaultMounter,
+			},
+			false,
+			"",
+		},
+		{
 			"layering",
 			&rbdVolume{
 				Mounter: rbdDefaultMounter,
