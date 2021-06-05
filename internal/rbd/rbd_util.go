@@ -993,6 +993,13 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 }
 
 func (rv *rbdVolume) validateImageFeatures(imageFeatures string) error {
+	// It is possible for image features to be an empty string which
+	// the Go split function would return a single item array with
+	// an empty string, causing a failure when trying to validate
+	// the features.
+	if strings.TrimSpace(imageFeatures) == "" {
+		return nil
+	}
 	arr := strings.Split(imageFeatures, ",")
 	featureSet := sets.NewString(arr...)
 	for _, f := range arr {
