@@ -28,8 +28,6 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cloud-provider/volume/helpers"
 	"k8s.io/utils/mount"
@@ -276,7 +274,7 @@ func IsMountPoint(p string) (bool, error) {
 	dummyMount := mount.New("")
 	notMnt, err := dummyMount.IsLikelyNotMountPoint(p)
 	if err != nil {
-		return false, status.Error(codes.Internal, err.Error())
+		return false, err
 	}
 
 	return !notMnt, nil
