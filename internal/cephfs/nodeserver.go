@@ -271,7 +271,7 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 			util.DebugLog(ctx, "targetPath: %s has already been deleted", targetPath)
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
-		return nil, status.Error(codes.NotFound, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if !isMnt {
 		if err = os.RemoveAll(targetPath); err != nil {
@@ -318,7 +318,7 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 			util.DebugLog(ctx, "targetPath: %s has already been deleted", stagingTargetPath)
 			return &csi.NodeUnstageVolumeResponse{}, nil
 		}
-		return nil, status.Error(codes.NotFound, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if !isMnt {
 		return &csi.NodeUnstageVolumeResponse{}, nil
