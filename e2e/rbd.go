@@ -753,7 +753,7 @@ var _ = Describe("RBD", func() {
 			By("create a PVC clone and bind it to an app", func() {
 				// snapshot beta is only supported from v1.17+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					validatePVCSnapshot(defaultCloneCount, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, "", false, f)
+					validatePVCSnapshot(defaultCloneCount, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, "", f)
 				}
 			})
 
@@ -782,7 +782,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCSnapshot(1, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, "vault", true, f)
+				validatePVCSnapshot(1, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, "vault", f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
