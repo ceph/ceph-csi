@@ -509,7 +509,7 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 }
 
 // nolint:gocyclo,gocognit // reduce complexity
-func validatePVCClone(totalCount int, sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string, validateEncryption bool, f *framework.Framework) {
+func validatePVCClone(totalCount int, sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string, validatePVC validateFunc, f *framework.Framework) {
 	var wg sync.WaitGroup
 	wgErrs := make([]error, totalCount)
 	chErrs := make([]error, totalCount)
@@ -585,8 +585,8 @@ func validatePVCClone(totalCount int, sourcePvcPath, sourceAppPath, clonePvcPath
 					e2elog.Logf("checksum didn't match. checksum=%s and checksumclone=%s", checkSum, checkSumClone)
 				}
 			}
-			if wgErrs[n] == nil && validateEncryption {
-				wgErrs[n] = validateEncryptedPVC(f, &p, &a)
+			if wgErrs[n] == nil && validatePVC != nil {
+				wgErrs[n] = validatePVC(f, &p, &a)
 			}
 			w.Done()
 		}(&wg, i, *pvcClone, *appClone)
@@ -778,7 +778,7 @@ func validatePVCSnapshot(totalCount int, pvcPath, appPath, snapshotPath, pvcClon
 				}
 			}
 			if wgErrs[n] == nil && validateEncryption {
-				wgErrs[n] = validateEncryptedPVC(f, &p, &a)
+				wgErrs[n] = isEncryptedPVC(f, &p, &a)
 			}
 			w.Done()
 		}(&wg, i, *pvcClone, *appClone)

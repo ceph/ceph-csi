@@ -268,7 +268,13 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 	return nil
 }
 
-func validateEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+type validateFunc func(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error
+
+// noPVCValidation can be used to pass to validatePVCClone when no extra
+// validation of the PVC is needed.
+var noPVCValidation validateFunc = nil
+
+func isEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
 		return err
@@ -276,6 +282,16 @@ func validateEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim,
 	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
 
 	return validateEncryptedImage(f, rbdImageSpec, app)
+}
+
+func isThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+	du, err := getRbdDu(f, pvc)
+	if err != nil {
+		return fmt.Errorf("failed to get allocations of RBD image: %w", err)
+	} else if du.UsedSize == 0 || du.UsedSize != du.ProvisionedSize {
+		return fmt.Errorf("backing RBD image is not thick-provisioned (%d/%d)", du.UsedSize, du.ProvisionedSize)
+	}
+	return nil
 }
 
 // validateEncryptedImage verifies that the RBD image is encrypted. The
