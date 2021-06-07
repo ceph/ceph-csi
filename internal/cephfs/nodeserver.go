@@ -264,6 +264,22 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	}
 	defer ns.VolumeLocks.Release(volID)
 
+	isMnt, err := util.IsMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// targetPath has already been deleted
+			util.DebugLog(ctx, "targetPath: %s has already been deleted", targetPath)
+			return &csi.NodeUnpublishVolumeResponse{}, nil
+		}
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+	if !isMnt {
+		if err = os.RemoveAll(targetPath); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return &csi.NodeUnpublishVolumeResponse{}, nil
+	}
+
 	// Unmount the bind-mount
 	if err = unmountVolume(ctx, targetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -294,6 +310,19 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	defer ns.VolumeLocks.Release(volID)
 
 	stagingTargetPath := req.GetStagingTargetPath()
+
+	isMnt, err := util.IsMountPoint(stagingTargetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// targetPath has already been deleted
+			util.DebugLog(ctx, "targetPath: %s has already been deleted", stagingTargetPath)
+			return &csi.NodeUnstageVolumeResponse{}, nil
+		}
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+	if !isMnt {
+		return &csi.NodeUnstageVolumeResponse{}, nil
+	}
 	// Unmount the volume
 	if err = unmountVolume(ctx, stagingTargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
