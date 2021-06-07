@@ -198,7 +198,7 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.
 		if os.IsNotExist(err) {
 			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s does not exist", targetPath)
 		}
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if !isMnt {
 		return nil, status.Errorf(codes.InvalidArgument, "targetpath %s is not mounted", targetPath)
