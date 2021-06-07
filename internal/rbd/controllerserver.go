@@ -111,6 +111,10 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 		return nil, status.Error(codes.InvalidArgument, "multi node access modes are only supported on rbd `block` type volumes")
 	}
 
+	if imageFeatures, ok := req.GetParameters()["imageFeatures"]; checkImageFeatures(imageFeatures, ok, true) {
+		return nil, status.Error(codes.InvalidArgument, "missing required parameter imageFeatures")
+	}
+
 	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
 	rbdVol, err := genVolFromVolumeOptions(ctx, req.GetParameters(), req.GetSecrets(), (isMultiNode && isBlock))
 	if err != nil {

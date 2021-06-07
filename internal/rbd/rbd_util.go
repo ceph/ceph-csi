@@ -448,6 +448,13 @@ func (rv *rbdVolume) isInUse() (bool, error) {
 	return len(watchers) > defaultWatchers, nil
 }
 
+// checkImageFeatures check presence of imageFeatures parameter. It returns true when
+// there imageFeatures is missing or empty, skips missing parameter for non-static volumes
+// for backward compatibility.
+func checkImageFeatures(imageFeatures string, ok, static bool) bool {
+	return static && (!ok || imageFeatures == "")
+}
+
 // addRbdManagerTask adds a ceph manager task to execute command
 // asynchronously. If command is not found returns a bool set to false
 // example arg ["trash", "remove","pool/image"].
