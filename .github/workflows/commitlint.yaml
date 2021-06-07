@@ -11,5 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: commitlint
-        run: CONTAINER_CMD=docker make containerized-test TARGET=commitlint
+        # yamllint disable-line rule:line-length
+        run: make containerized-test CONTAINER_CMD=docker TARGET=commitlint GIT_SINCE="origin/${GITHUB_BASE_REF}"
