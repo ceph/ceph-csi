@@ -234,7 +234,18 @@ func kmsIsVault(kms string) bool {
 	return kms == "vault"
 }
 
-// nolint:gocyclo // reduce complexity
+func logErrors(f *framework.Framework, msg string, wgErrs []error) int {
+	failures := 0
+	for i, err := range wgErrs {
+		if err != nil {
+			// not using Failf() as it aborts the test and does not log other errors
+			e2elog.Logf("%s (%s%d): %v", msg, f.UniqueName, i, err)
+			failures++
+		}
+	}
+	return failures
+}
+
 func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc, destImagePool string) error {
 	var wg sync.WaitGroup
 	totalCount := 10
@@ -264,15 +275,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	}
 	wg.Wait()
 
-	failed := 0
-	for i, err := range wgErrs {
-		if err != nil {
-			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to create snapshot (%s%d): %v", f.UniqueName, i, err)
-			failed++
-		}
-	}
-	if failed != 0 {
+	if failed := logErrors(f, "failed to create snapshot", wgErrs); failed != 0 {
 		return fmt.Errorf("creating snapshots failed, %d errors were logged", failed)
 	}
 
@@ -311,14 +314,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	}
 	wg.Wait()
 
-	for i, err := range wgErrs {
-		if err != nil {
-			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to create PVC and application (%s%d): %v", f.UniqueName, i, err)
-			failed++
-		}
-	}
-	if failed != 0 {
+	if failed := logErrors(f, "failed to create PVC and application", wgErrs); failed != 0 {
 		return fmt.Errorf("creating PVCs and applications failed, %d errors were logged", failed)
 	}
 
@@ -343,14 +339,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	}
 	wg.Wait()
 
-	for i, err := range wgErrs {
-		if err != nil {
-			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
-			failed++
-		}
-	}
-	if failed != 0 {
+	if failed := logErrors(f, "failed to delete PVC and application", wgErrs); failed != 0 {
 		return fmt.Errorf("deleting PVCs and applications failed, %d errors were logged", failed)
 	}
 
@@ -373,14 +362,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	}
 	wg.Wait()
 
-	for i, err := range wgErrs {
-		if err != nil {
-			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to delete snapshot (%s%d): %v", f.UniqueName, i, err)
-			failed++
-		}
-	}
-	if failed != 0 {
+	if failed := logErrors(f, "failed to delete snapshot", wgErrs); failed != 0 {
 		return fmt.Errorf("deleting snapshots failed, %d errors were logged", failed)
 	}
 	// validate all pools are empty
