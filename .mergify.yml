@@ -96,7 +96,6 @@ pull_request_rules:
       - label!=DNM
       - "#changes-requested-reviews-by=0"
       - "#approved-reviews-by>=1"
-      - "status-success=continuous-integration/travis-ci/pr"
     actions:
       merge: {}
       dismiss_reviews: {}
@@ -117,7 +116,6 @@ pull_request_rules:
       - label!=DNM
       - "#changes-requested-reviews-by=0"
       - "#approved-reviews-by>=1"
-      - "status-success=continuous-integration/travis-ci/pr"
     actions:
       merge: {}
       dismiss_reviews: {}
@@ -138,7 +136,6 @@ pull_request_rules:
       - label!=DNM
       - "#changes-requested-reviews-by=0"
       - "#approved-reviews-by>=1"
-      - "status-success=continuous-integration/travis-ci/pr"
     actions:
       merge: {}
       dismiss_reviews: {}
@@ -159,7 +156,6 @@ pull_request_rules:
       - label!=DNM
       - "#changes-requested-reviews-by=0"
       - "#approved-reviews-by>=1"
-      - "status-success=continuous-integration/travis-ci/pr"
     actions:
       merge: {}
       dismiss_reviews: {}
@@ -181,7 +177,6 @@ pull_request_rules:
       - "#changes-requested-reviews-by=0"
       - "#approved-reviews-by>=1"
       - "status-success=multi-arch-build"
-      - "status-success=continuous-integration/travis-ci/pr"
       - "status-success=ci/centos/mini-e2e-helm/k8s-1.19"
       - "status-success=ci/centos/mini-e2e-helm/k8s-1.20"
       - "status-success=ci/centos/mini-e2e/k8s-1.19"
