@@ -4,7 +4,7 @@
   - [Introduction](#introduction)
   - [Versioning](#versioning)
   - [Tagging repositories](#tagging-repositories)
-  - [Release process](#release-process-tbd)
+  - [Release process [TBD]](#release-process-tbd)
 
 ## Introduction
 
@@ -47,8 +47,8 @@ and it must be backward compatible.
 
 The tag name must begin with "v" followed by the version number, conforming to
 the [versioning](#versioning) requirements (e.g. a tag of `v1.0.0-rc2` for
-version `1.0.0-rc2`). This tag format is used by the Travis CI infrastructure to
-properly upload and tag releases to Quay and Docker Hub.
+version `1.0.0-rc2`). This tag format is used by the GitHub action
+infrastructure to properly upload and tag releases to Quay.
 
 ## Release process [TBD]
 
@@ -74,4 +74,3 @@ of each release:
   2.1.0) can be linked to issues and PRs for better tracking release items.
 
 - Once all steps are complete, close the issue and the milestone.
-

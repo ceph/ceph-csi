@@ -1,43 +1,15 @@
 #!/bin/bash
 
+set -e
+
 # shellcheck source=scripts/build_step.inc.sh
 source "$(dirname "${0}")/scripts/build_step.inc.sh"
 source "$(dirname "${0}")/build.env"
 
-push_helm_charts() {
-	PACKAGE=$1
-	CHARTDIR=$2
-	VERSION=${CSI_IMAGE_VERSION//v/} # Set version (without v prefix)
-
-	# update information in Chart.yaml if the branch is not devel
-	if [ "$TRAVIS_BRANCH" != "devel" ]; then
-		# Replace appVersion: canary and version: *-canary with the actual version
-		sed -i "s/\(\s.*canary\)/ $VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
-
-		if [[ "$VERSION" == *"canary"* ]]; then
-			# Replace devel with the version branch
-			sed -i "s/devel/$TRAVIS_BRANCH/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
-		else
-			# This is not a canary release, replace devel with the tagged branch
-			sed -i "s/devel/v$VERSION/" "charts/ceph-csi-$PACKAGE/templates/NOTES.txt"
-			sed -i "s/devel/v$VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
-
-		fi
-	fi
-
-	mkdir -p "$CHARTDIR/csi-charts/docs/$PACKAGE"
-	cp -R "./charts/ceph-csi-$PACKAGE" "$CHARTDIR/csi-charts/docs/$PACKAGE"
-	pushd "$CHARTDIR/csi-charts/docs/$PACKAGE" >/dev/null
-	helm package "ceph-csi-$PACKAGE"
-	popd >/dev/null
-
-	pushd "$CHARTDIR/csi-charts/docs" >/dev/null
-	helm repo index .
-	git add --all :/ && git commit -m "Update for helm charts $PACKAGE-$VERSION"
-	git push https://"$GITHUB_TOKEN"@github.com/ceph/csi-charts
-	popd >/dev/null
-
-}
+BRANCH_NAME=${BRANCH_NAME:-""}
+GITHUB_TOKEN=${GITHUB_TOKEN:-""}
+GITHUB_USER=${GITHUB_USER:-"autobuild-bot"}
+GITHUB_EMAIL=${GITHUB_EMAIL:-"ceph-csi-bot@users.noreply.github.com"}
 
 # Build and push images. Steps as below:
 # 1. get base image from ./build.env (BASE_IMAGE=ceph/ceph:v14.2)
@@ -82,41 +54,66 @@ build_push_images() {
 	make push-manifest
 }
 
-if [ "${TRAVIS_BRANCH}" != 'release-v3.3' ]; then
-	echo "!!! Branch ${TRAVIS_BRANCH} is not a deployable branch; exiting"
-	exit 0 # Exiting 0 so that this isn't marked as failing
-fi
+push_helm_charts() {
+	PACKAGE=$1
+	CHARTDIR=$2
+	VERSION=${CSI_IMAGE_VERSION//v/} # Set version (without v prefix)
 
-if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
-	build_step "log in to quay.io as user ${QUAY_IO_USERNAME}"
-	# This is a workaround to fix docker permission denied issue during manifest create in Travis CI.
-	# `docker manifest create` fails due to permission denied on `/etc/docker/certs.d/quay.io`
-	# (https://github.com/docker/for-linux/issues/396).
-	sudo chmod o+x /etc/docker
+	# update information in Chart.yaml if the branch is not devel
+	if [ "${BRANCH_NAME}" != "devel" ]; then
+		# Replace appVersion: canary and version: *-canary with the actual version
+		sed -i "s/\(\s.*canary\)/ ${VERSION}/" "charts/ceph-csi-${PACKAGE}/Chart.yaml"
 
-	"${CONTAINER_CMD:-docker}" login -u "${QUAY_IO_USERNAME}" -p "${QUAY_IO_PASSWORD}" quay.io
+		if [[ "${VERSION}" == *"canary"* ]]; then
+			# Replace devel with the version branch
+			sed -i "s/devel/${BRANCH_NAME}/" "charts/ceph-csi-${PACKAGE}/Chart.yaml"
+		else
+			# This is not a canary release, replace devel with the tagged branch
+			sed -i "s/devel/v${VERSION}/" "charts/ceph-csi-${PACKAGE}/templates/NOTES.txt"
+			sed -i "s/devel/v${VERSION}/" "charts/ceph-csi-${PACKAGE}/Chart.yaml"
 
-	set -xe
+		fi
+	fi
 
-	build_push_images
-
-	CSI_CHARTS_DIR=$(mktemp -d)
-
-	pushd "$CSI_CHARTS_DIR" >/dev/null
-
-	curl -L https://git.io/get_helm.sh | bash -s -- --version "${HELM_VERSION}"
-
-	build_step "cloning ceph/csi-charts repository"
-	git clone https://github.com/ceph/csi-charts
-
-	mkdir -p csi-charts/docs
+	mkdir -p "${CHARTDIR}/csi-charts/docs/${PACKAGE}"
+	cp -R "./charts/ceph-csi-${PACKAGE}" "${CHARTDIR}/csi-charts/docs/${PACKAGE}"
+	pushd "${CHARTDIR}/csi-charts/docs/${PACKAGE}" >/dev/null
+	helm package "ceph-csi-${PACKAGE}"
 	popd >/dev/null
 
-	build_step "pushing RBD helm charts"
-	push_helm_charts rbd "$CSI_CHARTS_DIR"
-	build_step "pushing CephFS helm charts"
-	push_helm_charts cephfs "$CSI_CHARTS_DIR"
-	build_step_log "finished deployment!"
+	pushd "${CHARTDIR}/csi-charts/docs" >/dev/null
+	helm repo index .
+	git config user.name "${GITHUB_USER}"
+	git config user.email "${GITHUB_EMAIL}"
+	git add --all :/ && git commit -m "Update for helm charts ${PACKAGE}-${VERSION}"
+	git push https://"${GITHUB_TOKEN}"@github.com/ceph/csi-charts
+	popd >/dev/null
 
-	[ -n "${CSI_CHARTS_DIR}" ] && rm -rf "${CSI_CHARTS_DIR}"
+}
+
+if [[ -z "${GITHUB_TOKEN}" ]]; then
+	echo "GITHUB_TOKEN is unset or set to the empty string"
+	exit 1
 fi
+
+build_push_images
+
+CSI_CHARTS_DIR=$(mktemp -d)
+
+pushd "${CSI_CHARTS_DIR}" >/dev/null
+
+curl -L https://git.io/get_helm.sh | bash -s -- --version "${HELM_VERSION}"
+
+build_step "cloning ceph/csi-charts repository"
+git clone https://github.com/ceph/csi-charts
+
+mkdir -p csi-charts/docs
+popd >/dev/null
+
+build_step "pushing RBD helm charts"
+push_helm_charts rbd "${CSI_CHARTS_DIR}"
+build_step "pushing CephFS helm charts"
+push_helm_charts cephfs "${CSI_CHARTS_DIR}"
+build_step_log "finished deployment!"
+
+[ -n "${CSI_CHARTS_DIR}" ] && rm -rf "${CSI_CHARTS_DIR}"
