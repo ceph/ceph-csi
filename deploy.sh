@@ -4,6 +4,7 @@ set -e
 
 # shellcheck source=scripts/build_step.inc.sh
 source "$(dirname "${0}")/scripts/build_step.inc.sh"
+# shellcheck source=build.env
 source "$(dirname "${0}")/build.env"
 
 BRANCH_NAME=${BRANCH_NAME:-""}
