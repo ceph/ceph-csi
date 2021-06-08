@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# This script will be used by travis to run functional test
+# This script will be used by centos CI to run functional test
 # against different Kubernetes version
 export KUBE_VERSION=$1
 shift
@@ -15,7 +15,7 @@ kube_version() {
 # configure global environment variables
 # shellcheck source=build.env
 source "$(dirname "${0}")/../build.env"
-cat << EOF | sudo tee -a /etc/environment
+cat <<EOF | sudo tee -a /etc/environment
 HELM_VERSION=${HELM_VERSION}
 MINIKUBE_VERSION=${MINIKUBE_VERSION}
 VM_DRIVER=${VM_DRIVER}
@@ -31,7 +31,6 @@ sudo scripts/minikube.sh create-block-pool
 # pull docker images to speed up e2e
 sudo scripts/minikube.sh cephcsi
 sudo scripts/minikube.sh k8s-sidecar
-sudo chown -R travis: "$HOME"/.minikube /usr/local/bin/kubectl
 
 NAMESPACE=cephcsi-e2e-$RANDOM
 # create ns for e2e

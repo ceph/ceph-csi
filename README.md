@@ -2,8 +2,6 @@
 
 [![Go Report
 Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreportcard.com/report/github.com/ceph/ceph-csi)
-[![Build
-Status](https://travis-ci.org/ceph/ceph-csi.svg?branch=devel)](https://travis-ci.org/ceph/ceph-csi)
 
 - [Ceph CSI](#ceph-csi)
   - [Overview](#overview)
