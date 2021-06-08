@@ -61,29 +61,29 @@ push_helm_charts() {
 	# update information in Chart.yaml if the branch is not devel
 	if [ "${BRANCH_NAME}" != "devel" ]; then
 		# Replace appVersion: canary and version: *-canary with the actual version
-		sed -i "s/\(\s.*canary\)/ $VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
+		sed -i "s/\(\s.*canary\)/ ${VERSION}/" "charts/ceph-csi-${PACKAGE}/Chart.yaml"
 
-		if [[ "$VERSION" == *"canary"* ]]; then
+		if [[ "${VERSION}" == *"canary"* ]]; then
 			# Replace devel with the version branch
-			sed -i "s/devel/$BRANCH_NAME/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
+			sed -i "s/devel/${BRANCH_NAME}/" "charts/ceph-csi-${PACKAGE}/Chart.yaml"
 		else
 			# This is not a canary release, replace devel with the tagged branch
-			sed -i "s/devel/v$VERSION/" "charts/ceph-csi-$PACKAGE/templates/NOTES.txt"
-			sed -i "s/devel/v$VERSION/" "charts/ceph-csi-$PACKAGE/Chart.yaml"
+			sed -i "s/devel/v${VERSION}/" "charts/ceph-csi-${PACKAGE}/templates/NOTES.txt"
+			sed -i "s/devel/v${VERSION}/" "charts/ceph-csi-${PACKAGE}/Chart.yaml"
 
 		fi
 	fi
 
-	mkdir -p "$CHARTDIR/csi-charts/docs/$PACKAGE"
-	cp -R "./charts/ceph-csi-$PACKAGE" "$CHARTDIR/csi-charts/docs/$PACKAGE"
-	pushd "$CHARTDIR/csi-charts/docs/$PACKAGE" >/dev/null
-	helm package "ceph-csi-$PACKAGE"
+	mkdir -p "${CHARTDIR}/csi-charts/docs/${PACKAGE}"
+	cp -R "./charts/ceph-csi-${PACKAGE}" "${CHARTDIR}/csi-charts/docs/${PACKAGE}"
+	pushd "${CHARTDIR}/csi-charts/docs/${PACKAGE}" >/dev/null
+	helm package "ceph-csi-${PACKAGE}"
 	popd >/dev/null
 
-	pushd "$CHARTDIR/csi-charts/docs" >/dev/null
+	pushd "${CHARTDIR}/csi-charts/docs" >/dev/null
 	helm repo index .
-	git add --all :/ && git commit -m "Update for helm charts $PACKAGE-$VERSION"
-	git push https://"$GITHUB_TOKEN"@github.com/ceph/csi-charts
+	git add --all :/ && git commit -m "Update for helm charts ${PACKAGE}-${VERSION}"
+	git push https://"${GITHUB_TOKEN}"@github.com/ceph/csi-charts
 	popd >/dev/null
 
 }
@@ -97,7 +97,7 @@ build_push_images
 
 CSI_CHARTS_DIR=$(mktemp -d)
 
-pushd "$CSI_CHARTS_DIR" >/dev/null
+pushd "${CSI_CHARTS_DIR}" >/dev/null
 
 curl -L https://git.io/get_helm.sh | bash -s -- --version "${HELM_VERSION}"
 
@@ -108,9 +108,9 @@ mkdir -p csi-charts/docs
 popd >/dev/null
 
 build_step "pushing RBD helm charts"
-push_helm_charts rbd "$CSI_CHARTS_DIR"
+push_helm_charts rbd "${CSI_CHARTS_DIR}"
 build_step "pushing CephFS helm charts"
-push_helm_charts cephfs "$CSI_CHARTS_DIR"
+push_helm_charts cephfs "${CSI_CHARTS_DIR}"
 build_step_log "finished deployment!"
 
 [ -n "${CSI_CHARTS_DIR}" ] && rm -rf "${CSI_CHARTS_DIR}"
