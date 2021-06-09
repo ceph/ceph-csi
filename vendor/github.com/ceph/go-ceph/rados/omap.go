@@ -4,20 +4,14 @@ package rados
 #cgo LDFLAGS: -lrados
 #include <stdlib.h>
 #include <rados/librados.h>
-
-typedef void* voidptr;
-
 */
 import "C"
 
 import (
 	"runtime"
 	"unsafe"
-)
 
-const (
-	ptrSize   = C.sizeof_voidptr
-	sizeTSize = C.sizeof_size_t
+	"github.com/ceph/go-ceph/internal/cutil"
 )
 
 // setOmapStep is a write op step. It holds C memory used in the operation.
@@ -26,50 +20,44 @@ type setOmapStep struct {
 	withoutUpdate
 
 	// C arguments
-	cKeys    **C.char
-	cValues  **C.char
-	cLengths *C.size_t
+	cKeys    cutil.CPtrCSlice
+	cValues  cutil.CPtrCSlice
+	cLengths cutil.SizeTCSlice
 	cNum     C.size_t
 }
 
 func newSetOmapStep(pairs map[string][]byte) *setOmapStep {
 
-	maplen := C.size_t(len(pairs))
-	cKeys := C.malloc(maplen * ptrSize)
-	cValues := C.malloc(maplen * ptrSize)
-	cLengths := C.malloc(maplen * sizeTSize)
+	maplen := len(pairs)
+	cKeys := cutil.NewCPtrCSlice(maplen)
+	cValues := cutil.NewCPtrCSlice(maplen)
+	cLengths := cutil.NewSizeTCSlice(maplen)
 
 	sos := &setOmapStep{
-		cKeys:    (**C.char)(cKeys),
-		cValues:  (**C.char)(cValues),
-		cLengths: (*C.size_t)(cLengths),
-		cNum:     C.size_t(len(pairs)),
+		cKeys:    cKeys,
+		cValues:  cValues,
+		cLengths: cLengths,
+		cNum:     C.size_t(maplen),
 	}
-	sos.add(cKeys)
-	sos.add(cValues)
-	sos.add(cLengths)
 
 	var i uintptr
 	for key, value := range pairs {
 		// key
 		ck := C.CString(key)
 		sos.add(unsafe.Pointer(ck))
-		ckp := (**C.char)(unsafe.Pointer(uintptr(cKeys) + i*ptrSize))
-		*ckp = ck
+		cKeys[i] = cutil.CPtr(ck)
 
 		// value and its length
-		cvp := (**C.char)(unsafe.Pointer(uintptr(cValues) + i*ptrSize))
-		vlen := C.size_t(len(value))
+		vlen := cutil.SizeT(len(value))
 		if vlen > 0 {
 			cv := C.CBytes(value)
 			sos.add(cv)
-			*cvp = (*C.char)(cv)
+			cValues[i] = cutil.CPtr(cv)
 		} else {
-			*cvp = nil
+			cValues[i] = nil
 		}
 
-		clp := (*C.size_t)(unsafe.Pointer(uintptr(cLengths) + i*ptrSize))
-		*clp = vlen
+		cLengths[i] = vlen
 
 		i++
 	}
@@ -79,9 +67,9 @@ func newSetOmapStep(pairs map[string][]byte) *setOmapStep {
 }
 
 func (sos *setOmapStep) free() {
-	sos.cKeys = nil
-	sos.cValues = nil
-	sos.cLengths = nil
+	sos.cKeys.Free()
+	sos.cValues.Free()
+	sos.cLengths.Free()
 	sos.withRefs.free()
 }
 
@@ -190,23 +178,21 @@ type removeOmapKeysStep struct {
 	withoutUpdate
 
 	// arguments:
-	cKeys **C.char
+	cKeys cutil.CPtrCSlice
 	cNum  C.size_t
 }
 
 func newRemoveOmapKeysStep(keys []string) *removeOmapKeysStep {
-	cKeys := C.malloc(C.size_t(len(keys)) * ptrSize)
+	cKeys := cutil.NewCPtrCSlice(len(keys))
 	roks := &removeOmapKeysStep{
-		cKeys: (**C.char)(cKeys),
+		cKeys: cKeys,
 		cNum:  C.size_t(len(keys)),
 	}
-	roks.add(cKeys)
 
 	i := 0
 	for _, key := range keys {
-		ckp := (**C.char)(unsafe.Pointer(uintptr(cKeys) + uintptr(i)*ptrSize))
-		*ckp = C.CString(key)
-		roks.add(unsafe.Pointer(*ckp))
+		cKeys[i] = cutil.CPtr(C.CString(key))
+		roks.add(unsafe.Pointer(cKeys[i]))
 		i++
 	}
 
@@ -215,7 +201,7 @@ func newRemoveOmapKeysStep(keys []string) *removeOmapKeysStep {
 }
 
 func (roks *removeOmapKeysStep) free() {
-	roks.cKeys = nil
+	roks.cKeys.Free()
 	roks.withRefs.free()
 }
 
