@@ -8,12 +8,13 @@ typedef void* voidptr;
 import "C"
 
 import (
+	"math"
 	"unsafe"
 )
 
 const (
 	// MaxIdx is the maximum index on 32 bit systems
-	MaxIdx = 1<<31 - 1 // 2GB, max int32 value, should be safe
+	MaxIdx = math.MaxInt32 // 2GB, max int32 value, should be safe
 
 	// PtrSize is the size of a pointer
 	PtrSize = C.sizeof_voidptr

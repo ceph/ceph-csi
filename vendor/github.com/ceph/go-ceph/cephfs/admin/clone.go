@@ -53,10 +53,10 @@ func (fsa *FSAdmin) CloneSubVolumeSnapshot(volume, group, subvolume, snapshot, n
 }
 
 func checkCloneResponse(res response) error {
-	if strings.HasSuffix(res.status, notProtectedSuffix) {
+	if strings.HasSuffix(res.Status(), notProtectedSuffix) {
 		return NotProtectedError{response: res}
 	}
-	return res.noData().End()
+	return res.NoData().End()
 }
 
 // CloneState is used to define constant values used to determine the state of
@@ -94,7 +94,7 @@ type cloneStatusWrapper struct {
 
 func parseCloneStatus(res response) (*CloneStatus, error) {
 	var status cloneStatusWrapper
-	if err := res.noStatus().unmarshal(&status).End(); err != nil {
+	if err := res.NoStatus().Unmarshal(&status).End(); err != nil {
 		return nil, err
 	}
 	return &status.Status, nil
@@ -132,5 +132,5 @@ func (fsa *FSAdmin) CancelClone(volume, group, clone string) error {
 	if group != NoGroup {
 		m["group_name"] = group
 	}
-	return fsa.marshalMgrCommand(m).noData().End()
+	return fsa.marshalMgrCommand(m).NoData().End()
 }

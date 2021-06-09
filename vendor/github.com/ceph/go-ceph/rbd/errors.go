@@ -71,6 +71,12 @@ var (
 	// revive:enable:exported
 )
 
+// Public general error
+const (
+	// ErrNotExist indicates a non-specific missing resource.
+	ErrNotExist = rbdError(-C.ENOENT)
+)
+
 // Private errors:
 
 const (

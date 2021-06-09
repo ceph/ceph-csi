@@ -57,6 +57,17 @@ func (v *PtrGuard) Release() {
 	}
 }
 
+// The uintptrPtr() helper function below assumes that uintptr has the same size
+// as a pointer, although in theory it could be larger.  Therefore we use this
+// constant expression to assert size equality as a safeguard at compile time.
+// How it works: the difference of both sizes is converted into an 8 bit value
+// and left-bit-shifted by 8.  This always creates an overflow error at compile
+// time, if the difference of the sizes is not 0.
+const _ = uint8(unsafe.Sizeof(uintptr(0))-PtrSize) << 8 // size assert
+func uintptrPtr(p *CPtr) *uintptr {
+	return (*uintptr)(unsafe.Pointer(p))
+}
+
 //go:uintptrescapes
 
 // From https://golang.org/src/cmd/compile/internal/gc/lex.go:
@@ -69,7 +80,7 @@ func (v *PtrGuard) Release() {
 // Also see https://golang.org/cmd/compile/#hdr-Compiler_Directives
 
 func storeUntilRelease(v *PtrGuard, cPtr *CPtr, goPtr uintptr) {
-	uip := (*uintptr)(unsafe.Pointer(cPtr))
+	uip := uintptrPtr(cPtr)
 	*uip = goPtr      // store Go pointer in C memory at c_ptr
 	v.stored.Unlock() // send "stored" signal to main thread -->(1)
 	v.release.Lock()  // wait for "release" signal from main thread when

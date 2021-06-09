@@ -90,15 +90,15 @@ func (w *WriteOp) Create(exclusive CreateOption) {
 	C.rados_write_op_create(w.op, C.int(exclusive), nil)
 }
 
-//  SetOmap appends the map `pairs` to the omap `oid`.
+// SetOmap appends the map `pairs` to the omap `oid`.
 func (w *WriteOp) SetOmap(pairs map[string][]byte) {
 	sos := newSetOmapStep(pairs)
 	w.steps = append(w.steps, sos)
 	C.rados_write_op_omap_set(
 		w.op,
-		sos.cKeys,
-		sos.cValues,
-		sos.cLengths,
+		(**C.char)(sos.cKeys.Ptr()),
+		(**C.char)(sos.cValues.Ptr()),
+		(*C.size_t)(sos.cLengths.Ptr()),
 		sos.cNum)
 }
 
@@ -108,7 +108,7 @@ func (w *WriteOp) RmOmapKeys(keys []string) {
 	w.steps = append(w.steps, roks)
 	C.rados_write_op_omap_rm_keys(
 		w.op,
-		roks.cKeys,
+		(**C.char)(roks.cKeys.Ptr()),
 		roks.cNum)
 }
 
