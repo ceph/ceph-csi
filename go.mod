@@ -3,8 +3,13 @@ module github.com/ceph/ceph-csi
 go 1.13
 
 require (
+<<<<<<< HEAD
 	github.com/aws/aws-sdk-go v1.38.8
 	github.com/ceph/go-ceph v0.8.0
+=======
+	github.com/aws/aws-sdk-go v1.38.54
+	github.com/ceph/go-ceph v0.10.0
+>>>>>>> 5b7b5f1e (rebase: update go-ceph to v0.10.0)
 	github.com/container-storage-interface/spec v1.3.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
 	github.com/csi-addons/spec v0.1.0

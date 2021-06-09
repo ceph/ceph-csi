@@ -61,7 +61,7 @@ func (fsa *FSAdmin) CreateSubVolume(volume, group, name string, o *SubVolumeOpti
 		o = &SubVolumeOptions{}
 	}
 	f := o.toFields(volume, group, name)
-	return fsa.marshalMgrCommand(f).noData().End()
+	return fsa.marshalMgrCommand(f).NoData().End()
 }
 
 // ListSubVolumes returns a list of subvolumes belonging to the volume and
@@ -117,7 +117,7 @@ func (fsa *FSAdmin) RemoveSubVolumeWithFlags(volume, group, name string, o SubVo
 	if group != NoGroup {
 		m["group_name"] = group
 	}
-	return fsa.marshalMgrCommand(mergeFlags(m, o)).noData().End()
+	return fsa.marshalMgrCommand(mergeFlags(m, o)).NoData().End()
 }
 
 type subVolumeResizeFields struct {
@@ -159,7 +159,7 @@ func (fsa *FSAdmin) ResizeSubVolume(
 	}
 	var result []*SubVolumeResizeResult
 	res := fsa.marshalMgrCommand(f)
-	if err := res.noStatus().unmarshal(&result).End(); err != nil {
+	if err := res.NoStatus().Unmarshal(&result).End(); err != nil {
 		return nil, err
 	}
 	return result[0], nil
@@ -248,7 +248,7 @@ type subVolumeInfoWrapper struct {
 
 func parseSubVolumeInfo(res response) (*SubVolumeInfo, error) {
 	var info subVolumeInfoWrapper
-	if err := res.noStatus().unmarshal(&info).End(); err != nil {
+	if err := res.NoStatus().Unmarshal(&info).End(); err != nil {
 		return nil, err
 	}
 	if info.VBytesQuota != nil {
@@ -289,7 +289,7 @@ func (fsa *FSAdmin) CreateSubVolumeSnapshot(volume, group, source, name string) 
 	if group != NoGroup {
 		m["group_name"] = group
 	}
-	return fsa.marshalMgrCommand(m).noData().End()
+	return fsa.marshalMgrCommand(m).NoData().End()
 }
 
 // RemoveSubVolumeSnapshot removes the specified snapshot from the subvolume.
@@ -320,7 +320,7 @@ func (fsa *FSAdmin) rmSubVolumeSnapshot(volume, group, subvolume, name string, o
 	if group != NoGroup {
 		m["group_name"] = group
 	}
-	return fsa.marshalMgrCommand(mergeFlags(m, o)).noData().End()
+	return fsa.marshalMgrCommand(mergeFlags(m, o)).NoData().End()
 }
 
 // ListSubVolumeSnapshots returns a listing of snapshots for a given subvolume.
@@ -351,7 +351,7 @@ type SubVolumeSnapshotInfo struct {
 
 func parseSubVolumeSnapshotInfo(res response) (*SubVolumeSnapshotInfo, error) {
 	var info SubVolumeSnapshotInfo
-	if err := res.noStatus().unmarshal(&info).End(); err != nil {
+	if err := res.NoStatus().Unmarshal(&info).End(); err != nil {
 		return nil, err
 	}
 	return &info, nil
@@ -390,7 +390,7 @@ func (fsa *FSAdmin) ProtectSubVolumeSnapshot(volume, group, subvolume, name stri
 	if group != NoGroup {
 		m["group_name"] = group
 	}
-	return fsa.marshalMgrCommand(m).filterDeprecated().noData().End()
+	return fsa.marshalMgrCommand(m).FilterDeprecated().NoData().End()
 }
 
 // UnprotectSubVolumeSnapshot removes protection from the specified snapshot.
@@ -408,5 +408,5 @@ func (fsa *FSAdmin) UnprotectSubVolumeSnapshot(volume, group, subvolume, name st
 	if group != NoGroup {
 		m["group_name"] = group
 	}
-	return fsa.marshalMgrCommand(m).filterDeprecated().noData().End()
+	return fsa.marshalMgrCommand(m).FilterDeprecated().NoData().End()
 }

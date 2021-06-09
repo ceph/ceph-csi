@@ -48,7 +48,7 @@ func (fsa *FSAdmin) CreateSubVolumeGroup(volume, name string, o *SubVolumeGroupO
 		o = &SubVolumeGroupOptions{}
 	}
 	res := fsa.marshalMgrCommand(o.toFields(volume, name))
-	return res.noData().End()
+	return res.NoData().End()
 }
 
 // ListSubVolumeGroups returns a list of subvolume groups belonging to the
@@ -86,7 +86,7 @@ func (fsa *FSAdmin) rmSubVolumeGroup(volume, name string, o commonRmFlags) error
 		"group_name": name,
 		"format":     "json",
 	}, o))
-	return res.noData().End()
+	return res.NoData().End()
 }
 
 // SubVolumeGroupPath returns the path to the subvolume from the root of the

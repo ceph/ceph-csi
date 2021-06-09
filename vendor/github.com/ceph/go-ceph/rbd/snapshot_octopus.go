@@ -1,4 +1,4 @@
-// +build octopus
+// +build !nautilus
 
 package rbd
 
