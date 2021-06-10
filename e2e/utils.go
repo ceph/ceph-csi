@@ -24,7 +24,7 @@ import (
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
-/* #nosec:G101, values not credententials, just a reference to the location.*/
+/* #nosec:G101, values not credentials, just a reference to the location.*/
 const (
 	defaultNs = "default"
 
