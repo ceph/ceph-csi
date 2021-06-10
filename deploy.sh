@@ -9,6 +9,8 @@ source "$(dirname "${0}")/build.env"
 
 BRANCH_NAME=${BRANCH_NAME:-""}
 GITHUB_TOKEN=${GITHUB_TOKEN:-""}
+GITHUB_USER=${GITHUB_USER:-"autobuild-bot"}
+GITHUB_EMAIL=${GITHUB_EMAIL:-"ceph-csi-bot@users.noreply.github.com"}
 
 # Build and push images. Steps as below:
 # 1. get base image from ./build.env (BASE_IMAGE=ceph/ceph:v14.2)
@@ -82,6 +84,8 @@ push_helm_charts() {
 
 	pushd "${CHARTDIR}/csi-charts/docs" >/dev/null
 	helm repo index .
+	git config user.name "${GITHUB_USER}"
+	git config user.email "${GITHUB_EMAIL}"
 	git add --all :/ && git commit -m "Update for helm charts ${PACKAGE}-${VERSION}"
 	git push https://"${GITHUB_TOKEN}"@github.com/ceph/csi-charts
 	popd >/dev/null
