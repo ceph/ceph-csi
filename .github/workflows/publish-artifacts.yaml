@@ -32,4 +32,4 @@ jobs:
         # https://github.com/containers/buildah/issues/1407
         # use docker to build images
         # yamllint disable-line rule:line-length
-        run: GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} CONTAINER_CMD=docker ./deploy.sh
+        run: GITHUB_TOKEN=${{ secrets.CEPH_CSI_BOT_TOKEN }} CONTAINER_CMD=docker ./deploy.sh
