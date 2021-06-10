@@ -73,7 +73,7 @@ func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, name 
 	}
 
 	// comma separated mount options
-	if opt, ok := scOptions[rbdmountOptions]; ok {
+	if opt, ok := scOptions[rbdMountOptions]; ok {
 		mOpt := strings.Split(opt, ",")
 		sc.MountOptions = append(sc.MountOptions, mOpt...)
 	}
