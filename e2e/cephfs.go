@@ -55,17 +55,17 @@ func deployCephfsPlugin() {
 		e2elog.Failf("failed to delete nodeplugin rbac %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
 	}
 
-	createORDeleteCephfsResouces("create")
+	createORDeleteCephfsResources("create")
 }
 
 func deleteCephfsPlugin() {
-	createORDeleteCephfsResouces("delete")
+	createORDeleteCephfsResources("delete")
 }
 
-func createORDeleteCephfsResouces(action string) {
+func createORDeleteCephfsResources(action string) {
 	csiDriver, err := ioutil.ReadFile(cephfsDirPath + csiDriverObject)
 	if err != nil {
-		// createORDeleteRbdResouces is used for upgrade testing as csidriverObject is
+		// createORDeleteRbdResources is used for upgrade testing as csidriverObject is
 		// newly added, discarding file not found error.
 		if !os.IsNotExist(err) {
 			e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+csiDriverObject, err)
@@ -214,7 +214,7 @@ var _ = Describe("cephfs", func() {
 		if CurrentGinkgoTestDescription().Failed {
 			// log pods created by helm chart
 			logsCSIPods("app=ceph-csi-cephfs", c)
-			// log provisoner
+			// log provisioner
 			logsCSIPods("app=csi-cephfsplugin-provisioner", c)
 			// log node plugin
 			logsCSIPods("app=csi-cephfsplugin", c)
@@ -512,7 +512,7 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				// verify subvolumegroup creation.
+				// verify subvolume group creation.
 				err = validateSubvolumegroup(f, "subvolgrp1")
 				if err != nil {
 					e2elog.Failf("failed to validate subvolume group with error %v", err)
@@ -876,7 +876,7 @@ var _ = Describe("cephfs", func() {
 
 					parentPVCCount := totalSubvolumes - totalCount
 					validateSubvolumeCount(f, parentPVCCount, fileSystemName, subvolumegroup)
-					// create clones from different snapshosts and bind it to an
+					// create clones from different snapshots and bind it to an
 					// app
 					wg.Add(totalCount)
 					for i := 0; i < totalCount; i++ {
