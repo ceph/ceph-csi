@@ -75,17 +75,17 @@ func deployRBDPlugin() {
 		e2elog.Failf("failed to delete nodeplugin rbac %s with error %v", rbdDirPath+rbdNodePluginRBAC, err)
 	}
 
-	createORDeleteRbdResouces("create")
+	createORDeleteRbdResources("create")
 }
 
 func deleteRBDPlugin() {
-	createORDeleteRbdResouces("delete")
+	createORDeleteRbdResources("delete")
 }
 
-func createORDeleteRbdResouces(action string) {
+func createORDeleteRbdResources(action string) {
 	csiDriver, err := ioutil.ReadFile(rbdDirPath + csiDriverObject)
 	if err != nil {
-		// createORDeleteRbdResouces is used for upgrade testing as csidriverObject is
+		// createORDeleteRbdResources is used for upgrade testing as csidriverObject is
 		// newly added, discarding file not found error.
 		if !os.IsNotExist(err) {
 			e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+csiDriverObject, err)
@@ -228,7 +228,7 @@ var _ = Describe("RBD", func() {
 		if CurrentGinkgoTestDescription().Failed {
 			// log pods created by helm chart
 			logsCSIPods("app=ceph-csi-rbd", c)
-			// log provisoner
+			// log provisioner
 			logsCSIPods("app=csi-rbdplugin-provisioner", c)
 			// log node plugin
 			logsCSIPods("app=csi-rbdplugin", c)
