@@ -35,7 +35,7 @@ const (
 	vaultPassphrasePath = "ceph-csi/"
 
 	rookToolBoxPodLabel = "app=rook-ceph-tools"
-	rbdmountOptions     = "mountOptions"
+	rbdMountOptions     = "mountOptions"
 
 	retainPolicy = v1.PersistentVolumeReclaimRetain
 	// deletePolicy is the default policy in E2E.

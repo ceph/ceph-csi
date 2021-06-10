@@ -1168,7 +1168,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, map[string]string{rbdmountOptions: "debug,invalidOption"}, nil, deletePolicy)
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, map[string]string{rbdMountOptions: "debug,invalidOption"}, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
