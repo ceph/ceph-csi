@@ -28,12 +28,12 @@ import (
 
 func TestParseConfig(t *testing.T) {
 	t.Parallel()
-	kms := VaultTokensKMS{}
+	vtc := vaultTenantConnection{}
 
 	config := make(map[string]interface{})
 
 	// empty config map
-	err := kms.parseConfig(config)
+	err := vtc.parseConfig(config)
 	if !errors.Is(err, errConfigOptionMissing) {
 		t.Errorf("unexpected error (%T): %s", err, err)
 	}
@@ -41,28 +41,25 @@ func TestParseConfig(t *testing.T) {
 	// fill default options (normally done in initVaultTokensKMS)
 	config["vaultAddress"] = "https://vault.default.cluster.svc"
 	config["tenantConfigName"] = vaultTokensDefaultConfigName
-	config["tenantTokenName"] = vaultTokensDefaultTokenName
 
 	// parsing with all required options
-	err = kms.parseConfig(config)
+	err = vtc.parseConfig(config)
 	switch {
 	case err != nil:
 		t.Errorf("unexpected error: %s", err)
-	case kms.ConfigName != vaultTokensDefaultConfigName:
-		t.Errorf("ConfigName contains unexpected value: %s", kms.ConfigName)
-	case kms.TokenName != vaultTokensDefaultTokenName:
-		t.Errorf("TokenName contains unexpected value: %s", kms.TokenName)
+	case vtc.ConfigName != vaultTokensDefaultConfigName:
+		t.Errorf("ConfigName contains unexpected value: %s", vtc.ConfigName)
 	}
 
 	// tenant "bob" uses a different kms.ConfigName
 	bob := make(map[string]interface{})
 	bob["tenantConfigName"] = "the-config-from-bob"
-	err = kms.parseConfig(bob)
+	err = vtc.parseConfig(bob)
 	switch {
 	case err != nil:
 		t.Errorf("unexpected error: %s", err)
-	case kms.ConfigName != "the-config-from-bob":
-		t.Errorf("ConfigName contains unexpected value: %s", kms.ConfigName)
+	case vtc.ConfigName != "the-config-from-bob":
+		t.Errorf("ConfigName contains unexpected value: %s", vtc.ConfigName)
 	}
 }
 
