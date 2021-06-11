@@ -93,7 +93,7 @@ func initAWSMetadataKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 		return nil, err
 	}
 
-	// read the Kubenetes Secret with credentials
+	// read the Kubernetes Secret with credentials
 	secrets, err := kms.getSecrets()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secrets for %T: %w", kms,
