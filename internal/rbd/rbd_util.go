@@ -108,12 +108,12 @@ type rbdVolume struct {
 	rbdImage
 
 	// VolName and MonValueFromSecret are retained from older plugin versions (<= 1.0.0)
-	//   for backward compatibility reasons
+	// for backward compatibility reasons
 	TopologyPools       *[]util.TopologyConstrainedPool
 	TopologyRequirement *csi.TopologyRequirement
 	Topology            map[string]string
 	// DataPool is where the data for images in `Pool` are stored, this is used as the `--data-pool`
-	// 	 argument when the pool is created, and is not used anywhere else
+	// argument when the pool is created, and is not used anywhere else
 	DataPool   string
 	ParentName string
 	// Parent Pool is the pool that contains the parent image.
