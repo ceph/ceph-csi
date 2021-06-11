@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/vault/api"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -165,14 +166,21 @@ Example JSON structure in the KMS config is,
 	...
 }.
 */
-type VaultTokensKMS struct {
+type vaultTenantConnection struct {
 	vaultConnection
 	integratedDEK
+
+	client *kubernetes.Clientset
 
 	// Tenant is the name of the owner of the volume
 	Tenant string
 	// ConfigName is the name of the ConfigMap in the Tenants Kubernetes Namespace
 	ConfigName string
+}
+
+type VaultTokensKMS struct {
+	vaultTenantConnection
+
 	// TokenName is the name of the Secret in the Tenants Kubernetes Namespace
 	TokenName string
 }
@@ -182,7 +190,6 @@ var _ = RegisterKMSProvider(KMSProvider{
 	Initializer: initVaultTokensKMS,
 })
 
-// InitVaultTokensKMS returns an interface to HashiCorp Vault KMS.
 // InitVaultTokensKMS returns an interface to HashiCorp Vault KMS.
 func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	var err error
@@ -212,6 +219,12 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 		return nil, err
 	}
 
+	err = kms.setTokenName(config)
+	if err != nil && !errors.Is(err, errConfigOptionMissing) {
+		return nil, fmt.Errorf("failed to set the TokenName from global config %q: %w",
+			kms.ConfigName, err)
+	}
+
 	// fetch the configuration for the tenant
 	if args.Tenant != "" {
 		kms.Tenant = args.Tenant
@@ -228,11 +241,17 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse config for tenant: %w", err)
 		}
+
+		err = kms.setTokenName(tenantConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set the TokenName from %s for tenant (%s): %w",
+				kms.ConfigName, kms.Tenant, err)
+		}
 	}
 
 	// fetch the Vault Token from the Secret (TokenName) in the Kubernetes
 	// Namespace (tenant)
-	kms.vaultConfig[api.EnvVaultToken], err = getToken(args.Tenant, kms.TokenName)
+	kms.vaultConfig[api.EnvVaultToken], err = kms.getToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed fetching token from %s/%s: %w", args.Tenant, kms.TokenName, err)
 	}
@@ -253,18 +272,25 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 // parseConfig updates the kms.vaultConfig with the options from config and
 // secrets. This method can be called multiple times, i.e. to override
 // configuration options from tenants.
-func (kms *VaultTokensKMS) parseConfig(config map[string]interface{}) error {
-	err := kms.initConnection(config)
+func (vtc *vaultTenantConnection) parseConfig(config map[string]interface{}) error {
+	err := vtc.initConnection(config)
 	if err != nil {
 		return err
 	}
 
-	err = setConfigString(&kms.ConfigName, config, "tenantConfigName")
+	err = setConfigString(&vtc.ConfigName, config, "tenantConfigName")
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err
 	}
 
-	err = setConfigString(&kms.TokenName, config, "tenantTokenName")
+	return nil
+}
+
+// setTokenName updates the kms.TokenName with the options from config. This
+// method can be called multiple times, i.e. to override configuration options
+// from tenants.
+func (kms *VaultTokensKMS) setTokenName(config map[string]interface{}) error {
+	err := setConfigString(&kms.TokenName, config, "tenantTokenName")
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err
 	}
@@ -276,7 +302,7 @@ func (kms *VaultTokensKMS) parseConfig(config map[string]interface{}) error {
 // it calls the kubernetes secrets and get the required data.
 
 // nolint:gocyclo // iterating through many config options, not complex at all.
-func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error {
+func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}) error {
 	vaultConfig := make(map[string]interface{})
 
 	csiNamespace := os.Getenv("POD_NAMESPACE")
@@ -287,14 +313,14 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 	}
 	// ignore errConfigOptionMissing, no default was set
 	if vaultCAFromSecret != "" {
-		cert, cErr := getCertificate(kms.Tenant, vaultCAFromSecret, "cert")
+		cert, cErr := vtc.getCertificate(vtc.Tenant, vaultCAFromSecret, "cert")
 		if cErr != nil && !apierrs.IsNotFound(cErr) {
 			return fmt.Errorf("failed to get CA certificate from secret %s: %w", vaultCAFromSecret, cErr)
 		}
 		// if the certificate is not present in tenant namespace get it from
 		// cephcsi pod namespace
 		if apierrs.IsNotFound(cErr) {
-			cert, cErr = getCertificate(csiNamespace, vaultCAFromSecret, "cert")
+			cert, cErr = vtc.getCertificate(csiNamespace, vaultCAFromSecret, "cert")
 			if cErr != nil {
 				return fmt.Errorf("failed to get CA certificate from secret %s: %w", vaultCAFromSecret, cErr)
 			}
@@ -312,14 +338,14 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 	}
 	// ignore errConfigOptionMissing, no default was set
 	if vaultClientCertFromSecret != "" {
-		cert, cErr := getCertificate(kms.Tenant, vaultClientCertFromSecret, "cert")
+		cert, cErr := vtc.getCertificate(vtc.Tenant, vaultClientCertFromSecret, "cert")
 		if cErr != nil && !apierrs.IsNotFound(cErr) {
 			return fmt.Errorf("failed to get client certificate from secret %s: %w", vaultClientCertFromSecret, cErr)
 		}
 		// if the certificate is not present in tenant namespace get it from
 		// cephcsi pod namespace
 		if apierrs.IsNotFound(cErr) {
-			cert, cErr = getCertificate(csiNamespace, vaultClientCertFromSecret, "cert")
+			cert, cErr = vtc.getCertificate(csiNamespace, vaultClientCertFromSecret, "cert")
 			if cErr != nil {
 				return fmt.Errorf("failed to get client certificate from secret %s: %w", vaultCAFromSecret, cErr)
 			}
@@ -338,7 +364,7 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 
 	// ignore errConfigOptionMissing, no default was set
 	if vaultClientCertKeyFromSecret != "" {
-		certKey, err := getCertificate(kms.Tenant, vaultClientCertKeyFromSecret, "key")
+		certKey, err := vtc.getCertificate(vtc.Tenant, vaultClientCertKeyFromSecret, "key")
 		if err != nil && !apierrs.IsNotFound(err) {
 			return fmt.Errorf(
 				"failed to get client certificate key from secret %s: %w",
@@ -348,7 +374,7 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 		// if the certificate is not present in tenant namespace get it from
 		// cephcsi pod namespace
 		if apierrs.IsNotFound(err) {
-			certKey, err = getCertificate(csiNamespace, vaultClientCertKeyFromSecret, "key")
+			certKey, err = vtc.getCertificate(csiNamespace, vaultClientCertKeyFromSecret, "key")
 			if err != nil {
 				return fmt.Errorf("failed to get client certificate key from secret %s: %w", vaultCAFromSecret, err)
 			}
@@ -360,16 +386,24 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 	}
 
 	for key, value := range vaultConfig {
-		kms.vaultConfig[key] = value
+		vtc.vaultConfig[key] = value
 	}
 
 	return nil
 }
 
+func (vtc *vaultTenantConnection) getK8sClient() *kubernetes.Clientset {
+	if vtc.client == nil {
+		vtc.client = NewK8sClient()
+	}
+
+	return vtc.client
+}
+
 // FetchDEK returns passphrase from Vault. The passphrase is stored in a
 // data.data.passphrase structure.
-func (kms *VaultTokensKMS) FetchDEK(key string) (string, error) {
-	s, err := kms.secrets.GetSecret(key, kms.keyContext)
+func (vtc *vaultTenantConnection) FetchDEK(key string) (string, error) {
+	s, err := vtc.secrets.GetSecret(key, vtc.keyContext)
 	if err != nil {
 		return "", err
 	}
@@ -387,14 +421,14 @@ func (kms *VaultTokensKMS) FetchDEK(key string) (string, error) {
 }
 
 // StoreDEK saves new passphrase in Vault.
-func (kms *VaultTokensKMS) StoreDEK(key, value string) error {
+func (vtc *vaultTenantConnection) StoreDEK(key, value string) error {
 	data := map[string]interface{}{
 		"data": map[string]string{
 			"passphrase": value,
 		},
 	}
 
-	err := kms.secrets.PutSecret(key, data, kms.keyContext)
+	err := vtc.secrets.PutSecret(key, data, vtc.keyContext)
 	if err != nil {
 		return fmt.Errorf("saving passphrase at %s request to vault failed: %w", key, err)
 	}
@@ -403,8 +437,8 @@ func (kms *VaultTokensKMS) StoreDEK(key, value string) error {
 }
 
 // RemoveDEK deletes passphrase from Vault.
-func (kms *VaultTokensKMS) RemoveDEK(key string) error {
-	err := kms.secrets.DeleteSecret(key, kms.keyContext)
+func (vtc *vaultTenantConnection) RemoveDEK(key string) error {
+	err := vtc.secrets.DeleteSecret(key, vtc.keyContext)
 	if err != nil {
 		return fmt.Errorf("delete passphrase at %s request to vault failed: %w", key, err)
 	}
@@ -412,9 +446,9 @@ func (kms *VaultTokensKMS) RemoveDEK(key string) error {
 	return nil
 }
 
-func getToken(tenant, tokenName string) (string, error) {
-	c := NewK8sClient()
-	secret, err := c.CoreV1().Secrets(tenant).Get(context.TODO(), tokenName, metav1.GetOptions{})
+func (kms *VaultTokensKMS) getToken() (string, error) {
+	c := kms.getK8sClient()
+	secret, err := c.CoreV1().Secrets(kms.Tenant).Get(context.TODO(), kms.TokenName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -427,8 +461,8 @@ func getToken(tenant, tokenName string) (string, error) {
 	return string(token), nil
 }
 
-func getCertificate(tenant, secretName, key string) (string, error) {
-	c := NewK8sClient()
+func (vtc *vaultTenantConnection) getCertificate(tenant, secretName, key string) (string, error) {
+	c := vtc.getK8sClient()
 	secret, err := c.CoreV1().Secrets(tenant).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -461,21 +495,21 @@ func isTenantConfigOption(opt string) bool {
 // parseTenantConfig gets the optional ConfigMap from the Tenants namespace,
 // and applies the allowable options (see isTenantConfigOption) to the KMS
 // configuration.
-func (kms *VaultTokensKMS) parseTenantConfig() error {
-	if kms.Tenant == "" || kms.ConfigName == "" {
+func (vtc *vaultTenantConnection) parseTenantConfig() error {
+	if vtc.Tenant == "" || vtc.ConfigName == "" {
 		return nil
 	}
 
 	// fetch the ConfigMap from the tenants namespace
-	c := NewK8sClient()
-	cm, err := c.CoreV1().ConfigMaps(kms.Tenant).Get(context.TODO(),
-		kms.ConfigName, metav1.GetOptions{})
+	c := vtc.getK8sClient()
+	cm, err := c.CoreV1().ConfigMaps(vtc.Tenant).Get(context.TODO(),
+		vtc.ConfigName, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
 		// the tenant did not (re)configure any options
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to get config (%s) for tenant (%s): %w",
-			kms.ConfigName, kms.Tenant, err)
+			vtc.ConfigName, vtc.Tenant, err)
 	}
 
 	// create a new map with config options, but only include the options
@@ -492,10 +526,10 @@ func (kms *VaultTokensKMS) parseTenantConfig() error {
 	}
 
 	// apply the configuration options from the tenant
-	err = kms.parseConfig(config)
+	err = vtc.parseConfig(config)
 	if err != nil {
 		return fmt.Errorf("failed to parse config (%s) for tenant (%s): %w",
-			kms.ConfigName, kms.Tenant, err)
+			vtc.ConfigName, vtc.Tenant, err)
 	}
 
 	return nil
