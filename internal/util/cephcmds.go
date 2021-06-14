@@ -92,9 +92,11 @@ func GetPoolName(monitors string, cr *Credentials, poolID int64) (string, error)
 	defer connPool.Put(conn)
 
 	name, err := conn.GetPoolByID(poolID)
-	if err != nil {
-		return "", fmt.Errorf("%w: pool ID (%d) not found in Ceph cluster",
+	if errors.Is(err, rados.ErrNotFound) {
+		return "", fmt.Errorf("%w: pool ID(%d) not found in Ceph cluster",
 			ErrPoolNotFound, poolID)
+	} else if err != nil {
+		return "", fmt.Errorf("failed to get pool ID %d: %w", poolID, err)
 	}
 	return name, nil
 }
