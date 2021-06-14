@@ -144,6 +144,19 @@ kubectl create -f csi-rbdplugin.yaml
 Deploys a daemon set with two containers: CSI node-driver-registrar and the CSI
 RBD driver.
 
+**NOTE:**
+In case you want to use a different release version, replace canary with the
+release version in the
+[provisioner](../deploy/rbd/kubernetes/csi-rbdplugin-provisioner.yaml)
+and [nodeplugin](../deploy/rbd/kubernetes/csi-rbdplugin.yaml) YAMLs.
+
+```yaml
+# for stable functionality replace canary with latest release version
+    image: quay.io/cephcsi/cephcsi:canary
+```
+
+Check the release version [here.](../README.md#ceph-csi-container-images-and-release-compatibility)
+
 ## Verifying the deployment in Kubernetes
 
 After successfully completing the steps above, you should see output similar to this:
