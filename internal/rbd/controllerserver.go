@@ -117,7 +117,7 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	rbdVol.ThickProvision = cs.isThickProvisionRequest(req)
+	rbdVol.ThickProvision = isThickProvisionRequest(req.GetParameters())
 
 	rbdVol.RequestName = req.GetName()
 
@@ -343,7 +343,7 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 	case vcs == nil:
 		// continue/restart allocating the volume in case it
 		// should be thick-provisioned
-		if cs.isThickProvisionRequest(req) {
+		if isThickProvisionRequest(req.GetParameters()) {
 			err := rbdVol.RepairThickProvision()
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
@@ -379,6 +379,11 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 // are more than the `minSnapshotOnImage` Add a task to flatten all the
 // temporary cloned images.
 func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) error {
+	if rbdVol.ThickProvision {
+		// thick-provisioned images do not need flattening
+		return nil
+	}
+
 	snaps, err := rbdVol.listSnapshots()
 	if err != nil {
 		if errors.Is(err, ErrImageNotFound) {
@@ -1171,10 +1176,10 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 // isThickProvisionRequest returns true in case the request contains the
 // `thickProvision` option set to `true`.
-func (cs *ControllerServer) isThickProvisionRequest(req *csi.CreateVolumeRequest) bool {
+func isThickProvisionRequest(parameters map[string]string) bool {
 	tp := "thickProvision"
 
-	thick, ok := req.GetParameters()[tp]
+	thick, ok := parameters[tp]
 	if !ok || thick == "" {
 		return false
 	}
