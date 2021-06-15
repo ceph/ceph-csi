@@ -46,6 +46,7 @@ const (
 
 	// vaultTokens KMS type
 	vaultTokens = "vaulttokens"
+	noError     = ""
 )
 
 var (

@@ -384,7 +384,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 						e2elog.Failf("failed to expand pvc with error %v", err)
 					}
 					// wait for application pod to come up after resize
-					err = waitForPodInRunningState(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+					err = waitForPodInRunningState(app.Name, app.Namespace, f.ClientSet, deployTimeout, noError)
 					if err != nil {
 						e2elog.Failf("timeout waiting for pod to be in running state with error %v", err)
 					}

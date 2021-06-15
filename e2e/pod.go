@@ -259,10 +259,18 @@ func createApp(c kubernetes.Interface, app *v1.Pod, timeout int) error {
 	if err != nil {
 		return fmt.Errorf("failed to create app: %w", err)
 	}
-	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout)
+	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout, noError)
 }
 
-func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int) error {
+func createAppErr(c kubernetes.Interface, app *v1.Pod, timeout int, errString string) error {
+	_, err := c.CoreV1().Pods(app.Namespace).Create(context.TODO(), app, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout, errString)
+}
+
+func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, expectedError string) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
 	e2elog.Logf("Waiting up to %v to be in Running state", name)
@@ -276,6 +284,19 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int) er
 			return true, nil
 		case v1.PodFailed, v1.PodSucceeded:
 			return false, conditions.ErrPodCompleted
+		case v1.PodPending:
+			if expectedError != "" {
+				events, err := c.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
+					FieldSelector: fmt.Sprintf("involvedObject.name=%s", name),
+				})
+				if err != nil {
+					return false, err
+				}
+				if strings.Contains(events.String(), expectedError) {
+					e2elog.Logf("Expected Error %q found successfully", expectedError)
+					return true, err
+				}
+			}
 		}
 		e2elog.Logf("%s app  is in %s phase expected to be in Running  state (%d seconds elapsed)", name, pod.Status.Phase, int(time.Since(start).Seconds()))
 		return false, nil

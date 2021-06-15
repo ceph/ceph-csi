@@ -34,7 +34,7 @@ func deployVault(c kubernetes.Interface, deployTimeout int) {
 	Expect(err).Should(BeNil())
 	Expect(len(pods.Items)).Should(Equal(1))
 	name := pods.Items[0].Name
-	err = waitForPodInRunningState(name, cephCSINamespace, c, deployTimeout)
+	err = waitForPodInRunningState(name, cephCSINamespace, c, deployTimeout, noError)
 	Expect(err).Should(BeNil())
 }
 
