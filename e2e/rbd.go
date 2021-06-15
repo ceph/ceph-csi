@@ -1051,7 +1051,7 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("validate RBD static FileSystem PVC", func() {
-				err := validateRBDStaticPV(f, appPath, false)
+				err := validateRBDStaticPV(f, appPath, false, false)
 				if err != nil {
 					e2elog.Failf("failed to validate rbd static pv with error %v", err)
 				}
@@ -1060,9 +1060,18 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("validate RBD static Block PVC", func() {
-				err := validateRBDStaticPV(f, rawAppPath, true)
+				err := validateRBDStaticPV(f, rawAppPath, true, false)
 				if err != nil {
 					e2elog.Failf("failed to validate rbd block pv with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+			})
+
+			By("validate failure of RBD static PVC without imageFeatures parameter", func() {
+				err := validateRBDStaticPV(f, rawAppPath, true, true)
+				if err != nil {
+					e2elog.Failf("Validation of static PVC without imageFeatures parameter failed with err %v", err)
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)

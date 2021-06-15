@@ -113,7 +113,7 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 		return err
 	}
 	// wait for application pod to come up after resize
-	err = waitForPodInRunningState(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	err = waitForPodInRunningState(app.Name, app.Namespace, f.ClientSet, deployTimeout, noError)
 	if err != nil {
 		return err
 	}

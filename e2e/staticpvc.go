@@ -77,7 +77,7 @@ func getStaticPVC(name, pvName, size, ns, sc string, blockPVC bool) *v1.Persiste
 	return pvc
 }
 
-func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) error {
+func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkImgFeat bool) error {
 	opt := make(map[string]string)
 	var (
 		rbdImageName = "test-static-pv"
@@ -112,7 +112,9 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 		return fmt.Errorf("failed to create rbd image %s", e)
 	}
 	opt["clusterID"] = fsID
-	opt["imageFeatures"] = "layering"
+	if !checkImgFeat {
+		opt["imageFeatures"] = "layering"
+	}
 	opt["pool"] = defaultRBDPool
 	opt["staticVolume"] = "true"
 	if radosNamespace != "" {
@@ -140,7 +142,11 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock bool) e
 
 	app.Namespace = namespace
 	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
-	err = createApp(f.ClientSet, app, deployTimeout)
+	if checkImgFeat {
+		err = createAppErr(f.ClientSet, app, deployTimeout, "missing required parameter imageFeatures")
+	} else {
+		err = createApp(f.ClientSet, app, deployTimeout)
+	}
 	if err != nil {
 		return err
 	}
