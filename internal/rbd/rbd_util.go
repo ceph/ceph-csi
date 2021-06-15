@@ -38,6 +38,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
+	mount "k8s.io/mount-utils"
 )
 
 const (
@@ -453,6 +454,16 @@ func (rv *rbdVolume) isInUse() (bool, error) {
 // for backward compatibility.
 func checkImageFeatures(imageFeatures string, ok, static bool) bool {
 	return static && (!ok || imageFeatures == "")
+}
+
+// isNotMountPoint checks whether MountPoint does not exists and
+// also discards error indicating mountPoint exists.
+func isNotMountPoint(mounter mount.Interface, stagingTargetPath string) (bool, error) {
+	isNotMnt, err := mount.IsNotMountPoint(mounter, stagingTargetPath)
+	if os.IsNotExist(err) {
+		err = nil
+	}
+	return isNotMnt, err
 }
 
 // addRbdManagerTask adds a ceph manager task to execute command

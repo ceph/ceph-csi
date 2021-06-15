@@ -154,14 +154,11 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		}
 	}
 
-	var isNotMnt bool
 	// check if stagingPath is already mounted
-	isNotMnt, err = mount.IsNotMountPoint(ns.mounter, stagingTargetPath)
-	if err != nil && !os.IsNotExist(err) {
+	isNotMnt, err := isNotMountPoint(ns.mounter, stagingTargetPath)
+	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	if !isNotMnt {
+	} else if !isNotMnt {
 		util.DebugLog(ctx, "rbd: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
