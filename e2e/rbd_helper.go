@@ -3,14 +3,21 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
+<<<<<<< HEAD
+=======
+	"sync"
+	"time"
+>>>>>>> c6bc84d8 (e2e: validate images in trash)
 
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -601,4 +608,51 @@ func validateThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, siz
 	validateRBDImageCount(f, 0)
 
 	return nil
+}
+
+// trashInfo contains the image details in trash.
+type trashInfo struct {
+	Name string `json:"name"`
+}
+
+// listRBDImagesInTrash lists images in the trash.
+func listRBDImagesInTrash(f *framework.Framework, poolName string) ([]trashInfo, error) {
+	var trashInfos []trashInfo
+
+	stdout, stdErr, err := execCommandInToolBoxPod(f,
+		fmt.Sprintf("rbd trash ls --format=json %s", poolName), rookNamespace)
+	if err != nil {
+		return trashInfos, err
+	}
+	if stdErr != "" {
+		return trashInfos, fmt.Errorf("failed to list images in trash %v", stdErr)
+	}
+
+	err = json.Unmarshal([]byte(stdout), &trashInfos)
+	if err != nil {
+		return trashInfos, err
+	}
+	return trashInfos, nil
+}
+
+func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int) error {
+	var errReason error
+	timeout := time.Duration(t) * time.Minute
+	err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		imagesInTrash, err := listRBDImagesInTrash(f, poolName)
+		if err != nil {
+			return false, err
+		}
+		if len(imagesInTrash) == 0 {
+			return true, nil
+		}
+		errReason = fmt.Errorf("found %d images found in trash. Image details %v", len(imagesInTrash), imagesInTrash)
+		e2elog.Logf(errReason.Error())
+		return false, nil
+	})
+
+	if errors.Is(err, wait.ErrWaitTimeout) {
+		err = errReason
+	}
+	return err
 }

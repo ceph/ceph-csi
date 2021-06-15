@@ -955,6 +955,64 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+<<<<<<< HEAD
+=======
+			By("create rbd clones in different pool", func() {
+				// snapshot beta is only supported from v1.17+
+				if !k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
+					Skip("pvc restore is only supported from v1.17+")
+				}
+				clonePool := "clone-test"
+				// create pool for clones
+				err := createPool(f, clonePool)
+				if err != nil {
+					e2elog.Failf("failed to create pool %s with error %v", clonePool, err)
+				}
+				err = createRBDSnapshotClass(f)
+				if err != nil {
+					e2elog.Failf("failed to create snapshotclass with error %v", err)
+				}
+				cloneSC := "clone-storageclass"
+				param := map[string]string{
+					"pool": clonePool,
+				}
+				// create new storageclass with new pool
+				err = createRBDStorageClass(f.ClientSet, f, cloneSC, nil, param, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				err = validateCloneInDifferentPool(f, defaultRBDPool, cloneSC, clonePool)
+				if err != nil {
+					e2elog.Failf("failed to validate clones in different pool with error %v", err)
+				}
+
+				_, err = framework.RunKubectl(cephCSINamespace, "delete", "sc", cloneSC, "--ignore-not-found=true")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass %s with error %v", cloneSC, err)
+				}
+
+				err = deleteResource(rbdExamplePath + "snapshotclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete snapshotclass with error %v", err)
+				}
+				// validate images in trash
+				err = waitToRemoveImagesFromTrash(f, clonePool, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd images in pool %s trash with error %v", clonePool, err)
+				}
+				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd images in pool %s trash with error %v", defaultRBDPool, err)
+				}
+
+				err = deletePool(clonePool, false, f)
+				if err != nil {
+					e2elog.Failf("failed to delete pool %s with error %v", clonePool, err)
+				}
+
+			})
+
+>>>>>>> c6bc84d8 (e2e: validate images in trash)
 			By("create ROX PVC clone and mount it to multiple pods", func() {
 				// snapshot beta is only supported from v1.17+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
@@ -1509,6 +1567,14 @@ var _ = Describe("RBD", func() {
 				}
 
 			})
+
+			By("validate stale images in trash", func() {
+				err := waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd images in pool %s trash with error %v", defaultRBDPool, err)
+				}
+			})
+
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and delete PVC when backend pool deleted", func() {
