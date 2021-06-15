@@ -1017,7 +1017,7 @@ func (rv *rbdVolume) validateImageFeatures(imageFeatures string) error {
 	// the Go split function would return a single item array with
 	// an empty string, causing a failure when trying to validate
 	// the features.
-	if strings.TrimSpace(imageFeatures) == "" {
+	if imageFeatures == "" {
 		return nil
 	}
 	arr := strings.Split(imageFeatures, ",")
