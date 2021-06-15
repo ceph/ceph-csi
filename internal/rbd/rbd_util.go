@@ -471,6 +471,9 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 			util.WarningLog(ctx, "uncaught error while scheduling a task (%v): %s", err, stderr)
 		}
 	}
+	if err != nil {
+		err = fmt.Errorf("%w. stdError:%s", err, stderr)
+	}
 	return supported, err
 }
 
