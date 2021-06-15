@@ -1250,6 +1250,15 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete snapshotclass with error %v", err)
 				}
+				// validate images in trash
+				err = waitToRemoveImagesFromTrash(f, clonePool, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd images in pool %s trash with error %v", clonePool, err)
+				}
+				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd images in pool %s trash with error %v", defaultRBDPool, err)
+				}
 
 				err = deletePool(clonePool, false, f)
 				if err != nil {
@@ -1812,6 +1821,14 @@ var _ = Describe("RBD", func() {
 				}
 
 			})
+
+			By("validate stale images in trash", func() {
+				err := waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd images in pool %s trash with error %v", defaultRBDPool, err)
+				}
+			})
+
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and delete PVC when backend pool deleted", func() {
