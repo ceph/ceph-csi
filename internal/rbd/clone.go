@@ -264,6 +264,11 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 }
 
 func (rv *rbdVolume) flattenCloneImage(ctx context.Context) error {
+	if rv.ThickProvision {
+		// thick-provisioned images do not need flattening
+		return nil
+	}
+
 	tempClone := rv.generateTempClone()
 	// reducing the limit for cloned images to make sure the limit is in range,
 	// If the intermediate clone reaches the depth we may need to return ABORT

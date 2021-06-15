@@ -23,7 +23,6 @@ import (
 )
 
 func TestIsThickProvisionRequest(t *testing.T) {
-	cs := &ControllerServer{}
 	req := &csi.CreateVolumeRequest{
 		Name: "fake",
 		Parameters: map[string]string{
@@ -32,38 +31,38 @@ func TestIsThickProvisionRequest(t *testing.T) {
 	}
 
 	// pass disabled/invalid values for "thickProvision" option
-	if cs.isThickProvisionRequest(req) {
+	if isThickProvisionRequest(req.GetParameters()) {
 		t.Error("request is not for thick-provisioning")
 	}
 
 	req.Parameters["thickProvision"] = ""
-	if cs.isThickProvisionRequest(req) {
+	if isThickProvisionRequest(req.GetParameters()) {
 		t.Errorf("request is not for thick-provisioning: %s", req.Parameters["thickProvision"])
 	}
 
 	req.Parameters["thickProvision"] = "false"
-	if cs.isThickProvisionRequest(req) {
+	if isThickProvisionRequest(req.GetParameters()) {
 		t.Errorf("request is not for thick-provisioning: %s", req.Parameters["thickProvision"])
 	}
 
 	req.Parameters["thickProvision"] = "off"
-	if cs.isThickProvisionRequest(req) {
+	if isThickProvisionRequest(req.GetParameters()) {
 		t.Errorf("request is not for thick-provisioning: %s", req.Parameters["thickProvision"])
 	}
 
 	req.Parameters["thickProvision"] = "no"
-	if cs.isThickProvisionRequest(req) {
+	if isThickProvisionRequest(req.GetParameters()) {
 		t.Errorf("request is not for thick-provisioning: %s", req.Parameters["thickProvision"])
 	}
 
 	req.Parameters["thickProvision"] = "**true**"
-	if cs.isThickProvisionRequest(req) {
+	if isThickProvisionRequest(req.GetParameters()) {
 		t.Errorf("request is not for thick-provisioning: %s", req.Parameters["thickProvision"])
 	}
 
 	// only "true" should enable thick provisioning
 	req.Parameters["thickProvision"] = "true"
-	if !cs.isThickProvisionRequest(req) {
+	if !isThickProvisionRequest(req.GetParameters()) {
 		t.Errorf("request should be for thick-provisioning: %s", req.Parameters["thickProvision"])
 	}
 }

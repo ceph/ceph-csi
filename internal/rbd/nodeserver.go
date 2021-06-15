@@ -172,6 +172,8 @@ func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	volOptions.ThickProvision = isThickProvisionRequest(req.GetVolumeContext())
+
 	// get rbd image name from the volume journal
 	// for static volumes, the image name is actually the volume ID itself
 	switch {
