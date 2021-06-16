@@ -65,6 +65,7 @@ spec:
       "clusterID": "ba68226a-672f-4ba5-97bc-22840318b2ec"
       "pool": "replicapool"
       "staticVolume": "true"
+      "imageFeatures": "layering"
       #mounter: rbd-nbd
     # volumeHandle should be same as rbd image name
     volumeHandle: static-image
@@ -78,12 +79,13 @@ spec:
 Below table explains the list of volume attributes can be set when creating a
 static RBD PV
 
-|  Attributes  |                                                                     Description                                                                      | Required |
-| :----------: | :--------------------------------------------------------------------------------------------------------------------------------------------------: | :------: |
-|  clusterID   | The clusterID is used by the CSI plugin to uniquely identify and use a Ceph cluster (this is the key in configmap created duing ceph-csi deployment) |   Yes    |
-|     pool     |                                                     The pool name in which rbd image is created                                                      |   Yes    |
-| staticVolume |                                           Value must be set to `true` to mount and unmount static rbd PVC                                            |   yes    |
-|   mounter    |                      If set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images                      |    No    |
+|  Attributes   |                                                                     Description                                                                      | Required |
+| :-----------: | :--------------------------------------------------------------------------------------------------------------------------------------------------: | :------: |
+|   clusterID   | The clusterID is used by the CSI plugin to uniquely identify and use a Ceph cluster (this is the key in configmap created duing ceph-csi deployment) |   Yes    |
+|     pool      |                                                     The pool name in which rbd image is created                                                      |   Yes    |
+| staticVolume  |                                           Value must be set to `true` to mount and unmount static rbd PVC                                            |   Yes    |
+| imageFeatures |       CSI RBD currently supports `layering, journaling, exclusive-lock` features. If `journaling` is enabled, must enable `exclusive-lock` too       |   Yes    |
+|    mounter    |                      If set to `rbd-nbd`, use `rbd-nbd` on nodes that have `rbd-nbd` and `nbd` kernel modules to map rbd images                      |    No    |
 
 **Note** ceph-csi does not supports rbd image deletion for static PV.
 `persistentVolumeReclaimPolicy` in PV spec must be set to `Retain` to avoid PV
