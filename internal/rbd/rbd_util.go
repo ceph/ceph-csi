@@ -1511,7 +1511,24 @@ func (rv *rbdVolume) DeepCopy(dest *rbdVolume) error {
 	}
 	defer image.Close()
 
-	return image.DeepCopy(dest.ioctx, dest.RbdImageName, opts)
+	err = image.DeepCopy(dest.ioctx, dest.RbdImageName, opts)
+	if err != nil {
+		return err
+	}
+
+	// deep-flatten is not supported by all clients, so disable it
+	return dest.DisableDeepFlatten()
+}
+
+// DisableDeepFlatten removed the deep-flatten feature from the image.
+func (rv *rbdVolume) DisableDeepFlatten() error {
+	image, err := rv.open()
+	if err != nil {
+		return err
+	}
+	defer image.Close()
+
+	return image.UpdateFeatures(librbd.FeatureDeepFlatten, false)
 }
 
 func (rv *rbdVolume) listSnapshots() ([]librbd.SnapInfo, error) {
