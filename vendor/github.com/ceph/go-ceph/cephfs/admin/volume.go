@@ -43,7 +43,7 @@ func (fsa *FSAdmin) ListFileSystems() ([]FSPoolInfo, error) {
 
 func parseFsList(res response) ([]FSPoolInfo, error) {
 	var listing []FSPoolInfo
-	if err := res.noStatus().unmarshal(&listing).End(); err != nil {
+	if err := res.NoStatus().Unmarshal(&listing).End(); err != nil {
 		return nil, err
 	}
 	return listing, nil
@@ -78,13 +78,8 @@ func parseDumpToIdents(res response) ([]VolumeIdent, error) {
 	if !res.Ok() {
 		return nil, res.End()
 	}
-	if len(res.status) >= dumpOkLen && res.status[:dumpOkLen] == dumpOkPrefix {
-		// Unhelpfully, ceph drops a status string on success responses for this
-		// call. this hacks around that by ignoring its typical prefix
-		res.status = ""
-	}
 	var dump fsDump
-	if err := res.noStatus().unmarshal(&dump).End(); err != nil {
+	if err := res.FilterPrefix(dumpOkPrefix).NoStatus().Unmarshal(&dump).End(); err != nil {
 		return nil, err
 	}
 	// copy the dump json into the simpler enumeration list
@@ -123,15 +118,16 @@ type VolumeStatus struct {
 
 func parseVolumeStatus(res response) (*VolumeStatus, error) {
 	var vs VolumeStatus
-	res = res.noStatus()
+	res = res.NoStatus()
 	if !res.Ok() {
 		return nil, res.End()
 	}
-	res = res.unmarshal(&vs)
+	res = res.Unmarshal(&vs)
 	if !res.Ok() {
-		if bytes.HasPrefix(res.body, []byte("ceph")) {
-			res.status = invalidTextualResponse
-			return nil, NotImplementedError{response: res}
+		if bytes.HasPrefix(res.Body(), []byte("ceph")) {
+			return nil, NotImplementedError{
+				Response: newResponse(res.Body(), invalidTextualResponse, res.Unwrap()),
+			}
 		}
 		return nil, res.End()
 	}
