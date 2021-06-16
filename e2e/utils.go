@@ -65,7 +65,7 @@ var (
 	poll             = 2 * time.Second
 )
 
-func initResouces() {
+func initResources() {
 	ns = fmt.Sprintf("--namespace=%v", cephCSINamespace)
 	vaultAddr = fmt.Sprintf("http://vault.%s.svc.cluster.local:8200", cephCSINamespace)
 }
