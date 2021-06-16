@@ -46,9 +46,11 @@ github.com/aws/aws-sdk-go/service/sts/stsiface
 github.com/beorn7/perks/quantile
 # github.com/blang/semver v3.5.1+incompatible
 github.com/blang/semver
-# github.com/ceph/go-ceph v0.8.0
+# github.com/ceph/go-ceph v0.10.0
 github.com/ceph/go-ceph/cephfs/admin
+github.com/ceph/go-ceph/common/commands
 github.com/ceph/go-ceph/internal/callbacks
+github.com/ceph/go-ceph/internal/commands
 github.com/ceph/go-ceph/internal/cutil
 github.com/ceph/go-ceph/internal/errutil
 github.com/ceph/go-ceph/internal/retry

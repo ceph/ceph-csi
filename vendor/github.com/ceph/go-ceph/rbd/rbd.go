@@ -531,6 +531,33 @@ func (image *Image) Copy2(dest *Image) error {
 	return getError(C.rbd_copy2(image.image, dest.image))
 }
 
+// DeepCopy an rbd image to a new image with specific options.
+//
+// Implements:
+//  int rbd_deep_copy(rbd_image_t src, rados_ioctx_t dest_io_ctx,
+//          const char *destname, rbd_image_options_t dest_opts);
+func (image *Image) DeepCopy(ioctx *rados.IOContext, destname string, rio *ImageOptions) error {
+	if err := image.validate(imageIsOpen); err != nil {
+		return err
+	}
+	if ioctx == nil {
+		return ErrNoIOContext
+	}
+	if destname == "" {
+		return ErrNoName
+	}
+	if rio == nil {
+		return rbdError(C.EINVAL)
+	}
+
+	cDestname := C.CString(destname)
+	defer C.free(unsafe.Pointer(cDestname))
+
+	ret := C.rbd_deep_copy(image.image, cephIoctx(ioctx), cDestname,
+		C.rbd_image_options_t(rio.options))
+	return getError(ret)
+}
+
 // Flatten removes snapshot references from the image.
 //
 // Implements:
@@ -831,7 +858,7 @@ func (image *Image) WriteSame(ofs, n uint64, data []byte, flags rados.OpFlags) (
 
 	ret := C.rbd_writesame(image.image,
 		C.uint64_t(ofs),
-		C.uint64_t(n),
+		C.size_t(n),
 		(*C.char)(unsafe.Pointer(&data[0])),
 		C.size_t(len(data)),
 		C.int(flags))
@@ -914,6 +941,22 @@ func (image *Image) GetId() (string, error) {
 	id := C.GoString((*C.char)(unsafe.Pointer(&buf[0])))
 	return id, nil
 
+}
+
+// SetSnapshot updates the rbd image (not the Snapshot) such that the snapshot
+// is the source of readable data.
+//
+// Implements:
+//  int rbd_snap_set(rbd_image_t image, const char *snapname);
+func (image *Image) SetSnapshot(snapname string) error {
+	if err := image.validate(imageIsOpen); err != nil {
+		return err
+	}
+
+	c_snapname := C.CString(snapname)
+	defer C.free(unsafe.Pointer(c_snapname))
+
+	return getError(C.rbd_snap_set(image.image, c_snapname))
 }
 
 // GetTrashList returns a slice of TrashInfo structs, containing information about all RBD images
