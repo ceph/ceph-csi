@@ -379,22 +379,22 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 		// When cloning into a thick-provisioned volume was happening,
 		// the image should be marked as thick-provisioned, unless it
 		// was aborted in flight. In order to restart the
-		// thick-cloning, delete the volume and let the caller retry
-		// from the start.
+		// thick-cloning, delete the volume and undo the reservation in
+		// the journal to let the caller retry from the start.
 		if isThickProvisionRequest(req.GetParameters()) {
 			thick, err := rbdVol.isThickProvisioned()
 			if err != nil {
-				return nil, status.Errorf(codes.Aborted, "failed to verify thick-provisioned volume %q: %s", rbdVol, err)
+				return nil, status.Errorf(codes.Internal, "failed to verify thick-provisioned volume %q: %s", rbdVol, err)
 			} else if !thick {
 				err = cleanUpSnapshot(ctx, parentVol, rbdSnap, rbdVol, cr)
 				if err != nil {
-					return nil, status.Errorf(codes.Aborted, "failed to remove partially cloned volume %q: %s", rbdVol, err)
+					return nil, status.Errorf(codes.Internal, "failed to remove partially cloned volume %q: %s", rbdVol, err)
 				}
 				err = undoVolReservation(ctx, rbdVol, cr)
 				if err != nil {
-					return nil, status.Errorf(codes.Aborted, "failed to remove volume %q from journal: %s", rbdVol, err)
+					return nil, status.Errorf(codes.Internal, "failed to remove volume %q from journal: %s", rbdVol, err)
 				}
-				return nil, status.Errorf(codes.Aborted, "cloning thick-provisioned volume %q has been interrupted, please retry", rbdVol)
+				return nil, status.Errorf(codes.Internal, "cloning thick-provisioned volume %q has been interrupted, please retry", rbdVol)
 			}
 		}
 	}
@@ -503,11 +503,22 @@ func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *ut
 	// as we are operating on single cluster reuse the connection
 	parentVol.conn = rbdVol.conn.Copy()
 
-	// create clone image and delete snapshot
-	err = rbdVol.cloneRbdImageFromSnapshot(ctx, rbdSnap, parentVol)
-	if err != nil {
-		util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rbdVol, rbdSnap, err)
-		return err
+	if rbdVol.ThickProvision {
+		err = parentVol.DeepCopy(rbdVol)
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to deep copy %q into %q: %v", parentVol, rbdVol, err)
+		}
+		err = rbdVol.setThickProvisioned()
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to mark %q thick-provisioned: %s", rbdVol, err)
+		}
+	} else {
+		// create clone image and delete snapshot
+		err = rbdVol.cloneRbdImageFromSnapshot(ctx, rbdSnap, parentVol)
+		if err != nil {
+			util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rbdVol, rbdSnap, err)
+			return err
+		}
 	}
 
 	util.DebugLog(ctx, "create volume %s from snapshot %s", rbdVol.RequestName, rbdSnap.RbdSnapName)
