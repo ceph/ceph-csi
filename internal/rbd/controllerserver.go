@@ -376,7 +376,31 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 
 	// rbdVol is a clone from an other volume
 	case vcs.GetVolume() != nil:
+<<<<<<< HEAD
 		// TODO: is there really nothing to repair on image clone?
+=======
+		// When cloning into a thick-provisioned volume was happening,
+		// the image should be marked as thick-provisioned, unless it
+		// was aborted in flight. In order to restart the
+		// thick-cloning, delete the volume and undo the reservation in
+		// the journal to let the caller retry from the start.
+		if isThickProvisionRequest(req.GetParameters()) {
+			thick, err := rbdVol.isThickProvisioned()
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to verify thick-provisioned volume %q: %s", rbdVol, err)
+			} else if !thick {
+				err = cleanUpSnapshot(ctx, parentVol, rbdSnap, rbdVol, cr)
+				if err != nil {
+					return nil, status.Errorf(codes.Internal, "failed to remove partially cloned volume %q: %s", rbdVol, err)
+				}
+				err = undoVolReservation(ctx, rbdVol, cr)
+				if err != nil {
+					return nil, status.Errorf(codes.Internal, "failed to remove volume %q from journal: %s", rbdVol, err)
+				}
+				return nil, status.Errorf(codes.Internal, "cloning thick-provisioned volume %q has been interrupted, please retry", rbdVol)
+			}
+		}
+>>>>>>> 7f1bdb49 (rbd: use DeepCopy() when restoring a thick-snapshot)
 	}
 
 	return buildCreateVolumeResponse(req, rbdVol), nil
@@ -474,11 +498,34 @@ func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *ut
 
 	// update parent name(rbd image name in snapshot)
 	rbdSnap.RbdImageName = rbdSnap.RbdSnapName
+<<<<<<< HEAD
 	// create clone image and delete snapshot
 	err = rbdVol.cloneRbdImageFromSnapshot(ctx, rbdSnap)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rbdVol, rbdSnap, err)
 		return err
+=======
+	parentVol := generateVolFromSnap(rbdSnap)
+	// as we are operating on single cluster reuse the connection
+	parentVol.conn = rbdVol.conn.Copy()
+
+	if rbdVol.ThickProvision {
+		err = parentVol.DeepCopy(rbdVol)
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to deep copy %q into %q: %v", parentVol, rbdVol, err)
+		}
+		err = rbdVol.setThickProvisioned()
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to mark %q thick-provisioned: %s", rbdVol, err)
+		}
+	} else {
+		// create clone image and delete snapshot
+		err = rbdVol.cloneRbdImageFromSnapshot(ctx, rbdSnap, parentVol)
+		if err != nil {
+			util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rbdVol, rbdSnap, err)
+			return err
+		}
+>>>>>>> 7f1bdb49 (rbd: use DeepCopy() when restoring a thick-snapshot)
 	}
 
 	util.DebugLog(ctx, "create volume %s from snapshot %s", rbdVol.RequestName, rbdSnap.RbdSnapName)
