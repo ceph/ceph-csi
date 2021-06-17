@@ -1613,3 +1613,19 @@ func (ri *rbdImage) isCompatibleEncryption(dst *rbdImage) error {
 
 	return nil
 }
+
+func (ri *rbdImage) isCompatibleThickProvision(dst *rbdVolume) error {
+	thick, err := ri.isThickProvisioned()
+	if err != nil {
+		return err
+	}
+	switch {
+	case thick && !dst.ThickProvision:
+		return fmt.Errorf("cannot create thin volume from thick volume %q", ri)
+
+	case !thick && dst.ThickProvision:
+		return fmt.Errorf("cannot create thick volume from thin volume %q", ri)
+	}
+
+	return nil
+}
