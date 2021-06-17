@@ -152,8 +152,6 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	}
 	defer j.Destroy()
 
-	// TODO: if rv exists, delete the image and start over?
-
 	err = rv.doSnapClone(ctx, parentVol)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
