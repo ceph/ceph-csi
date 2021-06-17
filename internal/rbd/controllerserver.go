@@ -272,7 +272,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err != nil {
 		return nil, getGRPCErrorForCreateVolume(err)
 	} else if found {
-		return cs.repairExistingVolume(ctx, req, cr, rbdVol, rbdSnap)
+		return cs.repairExistingVolume(ctx, req, cr, rbdVol, parentVol, rbdSnap)
 	}
 
 	err = checkValidCreateVolumeRequest(rbdVol, parentVol, rbdSnap, cr)
@@ -335,7 +335,7 @@ func flattenParentImage(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // that the state is corrected to what was requested. It is needed to call this
 // when the process of creating a volume was interrupted.
 func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.CreateVolumeRequest,
-	cr *util.Credentials, rbdVol *rbdVolume, rbdSnap *rbdSnapshot) (*csi.CreateVolumeResponse, error) {
+	cr *util.Credentials, rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot) (*csi.CreateVolumeResponse, error) {
 	vcs := req.GetVolumeContentSource()
 
 	switch {
@@ -364,9 +364,29 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 			return nil, err
 		}
 
-	// rbdVol is a clone from an other volume
+	// rbdVol is a clone from parentVol
 	case vcs.GetVolume() != nil:
-		// TODO: is there really nothing to repair on image clone?
+		// When cloning into a thick-provisioned volume was happening,
+		// the image should be marked as thick-provisioned, unless it
+		// was aborted in flight. In order to restart the
+		// thick-cloning, delete the volume and let the caller retry
+		// from the start.
+		if isThickProvisionRequest(req.GetParameters()) {
+			thick, err := rbdVol.isThickProvisioned()
+			if err != nil {
+				return nil, status.Errorf(codes.Aborted, "failed to verify thick-provisioned volume %q: %s", rbdVol, err)
+			} else if !thick {
+				err = cleanUpSnapshot(ctx, parentVol, rbdSnap, rbdVol, cr)
+				if err != nil {
+					return nil, status.Errorf(codes.Aborted, "failed to remove partially cloned volume %q: %s", rbdVol, err)
+				}
+				err = undoVolReservation(ctx, rbdVol, cr)
+				if err != nil {
+					return nil, status.Errorf(codes.Aborted, "failed to remove volume %q from journal: %s", rbdVol, err)
+				}
+				return nil, status.Errorf(codes.Aborted, "cloning thick-provisioned volume %q has been interrupted, please retry", rbdVol)
+			}
+		}
 	}
 
 	return buildCreateVolumeResponse(req, rbdVol), nil
