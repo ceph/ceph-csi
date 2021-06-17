@@ -13,6 +13,7 @@ jobs:
   push:
     name: Publish artifacts
     runs-on: ubuntu-latest
+    if: github.repository == 'ceph/ceph-csi'
     steps:
       - uses: actions/checkout@v2
 
