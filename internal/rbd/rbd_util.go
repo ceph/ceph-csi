@@ -1435,13 +1435,13 @@ func (rv *rbdVolume) setThickProvisioned() error {
 // isThickProvisioned checks in the image metadata if the image has been marked
 // as thick-provisioned. This can be used while expanding the image, so that
 // the expansion can be allocated too.
-func (rv *rbdVolume) isThickProvisioned() (bool, error) {
-	value, err := rv.GetMetadata(thickProvisionMetaKey)
+func (ri *rbdImage) isThickProvisioned() (bool, error) {
+	value, err := ri.GetMetadata(thickProvisionMetaKey)
 	if err != nil {
 		if err == librbd.ErrNotFound {
 			return false, nil
 		}
-		return false, fmt.Errorf("failed to get metadata %q for %q: %w", thickProvisionMetaKey, rv.String(), err)
+		return false, fmt.Errorf("failed to get metadata %q for %q: %w", thickProvisionMetaKey, ri, err)
 	}
 
 	thick, err := strconv.ParseBool(value)
