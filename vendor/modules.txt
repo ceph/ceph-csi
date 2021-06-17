@@ -354,7 +354,7 @@ google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
 # google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.36.1 => google.golang.org/grpc v1.35.0
+# google.golang.org/grpc v1.38.0
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -921,7 +921,6 @@ sigs.k8s.io/yaml
 # github.com/hashicorp/vault/api => github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 # github.com/hashicorp/vault/sdk => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
 # github.com/kubernetes-csi/external-snapshotter/v2 => github.com/kubernetes-csi/external-snapshotter/v2 v2.1.1-0.20200504125226-859696c419ff
-# google.golang.org/grpc => google.golang.org/grpc v1.35.0
 # k8s.io/api => k8s.io/api v0.20.6
 # k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.20.6
 # k8s.io/apimachinery => k8s.io/apimachinery v0.20.6
