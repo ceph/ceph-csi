@@ -1629,3 +1629,31 @@ func (ri *rbdImage) isCompatibleThickProvision(dst *rbdVolume) error {
 
 	return nil
 }
+
+// FIXME: merge isCompatibleThickProvision of rbdSnapshot and rbdImage to a single
+// function.
+func (rs *rbdSnapshot) isCompatibleThickProvision(dst *rbdVolume) error {
+	// During CreateSnapshot the rbd image will be created with the
+	// snapshot name. Replacing RbdImageName with RbdSnapName so that we
+	// can check if the image is thick provisioned
+	vol := generateVolFromSnap(rs)
+	err := vol.Connect(rs.conn.Creds)
+	if err != nil {
+		return err
+	}
+	defer vol.Destroy()
+
+	thick, err := vol.isThickProvisioned()
+	if err != nil {
+		return err
+	}
+	switch {
+	case thick && !dst.ThickProvision:
+		return fmt.Errorf("cannot create thin volume from thick volume %q", vol)
+
+	case !thick && dst.ThickProvision:
+		return fmt.Errorf("cannot create thick volume from thin volume %q", vol)
+	}
+
+	return nil
+}
