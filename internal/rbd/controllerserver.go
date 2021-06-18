@@ -867,6 +867,30 @@ func cloneFromSnapshot(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnaps
 		}
 	}
 
+	// The clone image created during CreateSnapshot has to be marked as thick.
+	// As snapshot and volume both are independent we cannot depend on the
+	// parent volume of the clone to check thick provision during CreateVolume
+	// from snapshot operation because the parent volume can be deleted anytime
+	// after snapshot is created.
+	// TODO: copy thick provision config
+	thick, err := rbdVol.isThickProvisioned()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed checking thick-provisioning of %q: %s", rbdVol, err)
+	}
+
+	if thick {
+		// check the thick metadata is already set on the clone image.
+		thick, err = vol.isThickProvisioned()
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed checking thick-provisioning of %q: %s", vol, err)
+		}
+		if !thick {
+			err = vol.setThickProvisioned()
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed mark %q thick-provisioned: %s", vol, err)
+			}
+		}
+	}
 	// if flattening is not needed, the snapshot is ready for use
 	readyToUse := true
 
@@ -953,6 +977,24 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 				"config for %q: %v", cloneRbd.String(), cryptErr)
 			return ready, nil, status.Errorf(codes.Internal,
 				err.Error())
+		}
+	}
+
+	// The clone image created during CreateSnapshot has to be marked as thick.
+	// As snapshot and volume both are independent we cannot depend on the
+	// parent volume of the clone to check thick provision during CreateVolume
+	// from snapshot operation because the parent volume can be deleted anytime
+	// after snapshot is created.
+	// TODO: copy thick provision config
+	thick, err := parentVol.isThickProvisioned()
+	if err != nil {
+		return ready, nil, status.Errorf(codes.Internal, "failed checking thick-provisioning of %q: %s", parentVol, err)
+	}
+
+	if thick {
+		err = cloneRbd.setThickProvisioned()
+		if err != nil {
+			return ready, nil, status.Errorf(codes.Internal, "failed mark %q thick-provisioned: %s", cloneRbd, err)
 		}
 	}
 
