@@ -1047,7 +1047,6 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 	// parent volume of the clone to check thick provision during CreateVolume
 	// from snapshot operation because the parent volume can be deleted anytime
 	// after snapshot is created.
-	// TODO: copy thick provision config
 	thick, err := parentVol.isThickProvisioned()
 	if err != nil {
 		return ready, nil, status.Errorf(codes.Internal, "failed checking thick-provisioning of %q: %s", parentVol, err)
@@ -1058,14 +1057,14 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 		if err != nil {
 			return ready, nil, status.Errorf(codes.Internal, "failed mark %q thick-provisioned: %s", cloneRbd, err)
 		}
-	}
-
-	err = cloneRbd.createSnapshot(ctx, rbdSnap)
-	if err != nil {
-		// update rbd image name for logging
-		rbdSnap.RbdImageName = cloneRbd.RbdImageName
-		util.ErrorLog(ctx, "failed to create snapshot %s: %v", rbdSnap, err)
-		return ready, cloneRbd, err
+	} else {
+		err = cloneRbd.createSnapshot(ctx, rbdSnap)
+		if err != nil {
+			// update rbd image name for logging
+			rbdSnap.RbdImageName = cloneRbd.RbdImageName
+			util.ErrorLog(ctx, "failed to create snapshot %s: %v", rbdSnap, err)
+			return ready, cloneRbd, err
+		}
 	}
 
 	err = cloneRbd.getImageID()
