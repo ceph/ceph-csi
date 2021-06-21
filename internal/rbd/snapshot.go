@@ -61,21 +61,29 @@ func createRBDClone(ctx context.Context, parentVol, cloneRbdVol *rbdVolume, snap
 	return nil
 }
 
+// cleanUpSnapshot removes the RBD-snapshot (rbdSnap) from the RBD-image
+// (parentVol) and deletes the RBD-image rbdVol.
 func cleanUpSnapshot(ctx context.Context, parentVol *rbdVolume, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) error {
-	err := parentVol.deleteSnapshot(ctx, rbdSnap)
-	if err != nil {
-		if !errors.Is(err, ErrSnapNotFound) {
-			util.ErrorLog(ctx, "failed to delete snapshot: %v", err)
-			return err
+	if parentVol != nil && rbdSnap != nil {
+		err := parentVol.deleteSnapshot(ctx, rbdSnap)
+		if err != nil {
+			if !errors.Is(err, ErrSnapNotFound) {
+				util.ErrorLog(ctx, "failed to delete snapshot %q: %v", rbdSnap, err)
+				return err
+			}
 		}
 	}
-	err = deleteImage(ctx, rbdVol, cr)
-	if err != nil {
-		if !errors.Is(err, ErrImageNotFound) {
-			util.ErrorLog(ctx, "failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
-			return err
+
+	if rbdVol != nil {
+		err := deleteImage(ctx, rbdVol, cr)
+		if err != nil {
+			if !errors.Is(err, ErrImageNotFound) {
+				util.ErrorLog(ctx, "failed to delete rbd image %q with error: %v", rbdVol, err)
+				return err
+			}
 		}
 	}
+
 	return nil
 }
 
