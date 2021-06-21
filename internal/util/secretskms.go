@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -26,6 +27,7 @@ import (
 	"io"
 
 	"golang.org/x/crypto/scrypt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -38,6 +40,13 @@ const (
 	// kmsTypeSecretsMetadata is the SecretsKMS with per-volume encryption,
 	// where the DEK is stored in the metadata of the volume itself.
 	kmsTypeSecretsMetadata = "metadata"
+
+	// metadataSecretNameKey contains the key which corresponds to the
+	// kubernetes secret name from where encryptionPassphrase is feteched
+	metadataSecretNameKey = "secretName"
+	// metadataSecretNamespaceKey contains the key which corresponds to the
+	// kubernetes secret namespace from where encryptionPassphrase is feteched
+	metadataSecretNamespaceKey = "secretNamespace"
 )
 
 // SecretsKMS is default KMS implementation that means no KMS is in use.
@@ -91,24 +100,75 @@ var _ = RegisterKMSProvider(KMSProvider{
 	Initializer: initSecretsMetadataKMS,
 })
 
-// initSecretsMetadataKMS initializes a SecretsMetadataKMS that wraps a
-// SecretsKMS, so that the passphrase from the StorageClass secrets can be used
+// initSecretsMetadataKMS initializes a SecretsMetadataKMS that wraps a SecretsKMS,
+// so that the passphrase from the user provided or StorageClass secrets can be used
 // for encrypting/decrypting DEKs that are stored in a detached DEKStore.
 func initSecretsMetadataKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
-	eKMS, err := initSecretsKMS(args.Secrets)
+	var (
+		smKMS                SecretsMetadataKMS
+		encryptionPassphrase string
+		ok                   bool
+		err                  error
+	)
+
+	encryptionPassphrase, err = smKMS.fetchEncryptionPassphrase(
+		args.Config, args.Tenant)
 	if err != nil {
-		return nil, err
+		if !errors.Is(err, errConfigOptionMissing) {
+			return nil, err
+		}
+		// if 'userSecret' option is not specified, fetch encryptionPassphrase
+		// from storageclass secrets.
+		encryptionPassphrase, ok = args.Secrets[encryptionPassphraseKey]
+		if !ok {
+			return nil, fmt.Errorf(
+				"missing %q in storageclass secret", encryptionPassphraseKey)
+		}
 	}
-
-	sKMS, ok := eKMS.(SecretsKMS)
-	if !ok {
-		return nil, fmt.Errorf("failed to convert %T to SecretsKMS", eKMS)
-	}
-
-	smKMS := SecretsMetadataKMS{}
-	smKMS.SecretsKMS = sKMS
+	smKMS.SecretsKMS = SecretsKMS{passphrase: encryptionPassphrase}
 
 	return smKMS, nil
+}
+
+// fetchEncryptionPassphrase fetches encryptionPassphrase from user provided secret.
+func (kms SecretsMetadataKMS) fetchEncryptionPassphrase(
+	config map[string]interface{},
+	defaultNamespace string) (string, error) {
+	var (
+		secretName      string
+		secretNamespace string
+	)
+
+	err := setConfigString(&secretName, config, metadataSecretNameKey)
+	if err != nil {
+		return "", err
+	}
+
+	err = setConfigString(&secretNamespace, config, metadataSecretNamespaceKey)
+	if err != nil {
+		if !errors.Is(err, errConfigOptionMissing) {
+			return "", err
+		}
+		// if 'secretNamespace' option is not specified, defaults to namespace in
+		// which PVC was created
+		secretNamespace = defaultNamespace
+	}
+
+	c := NewK8sClient()
+	secret, err := c.CoreV1().Secrets(secretNamespace).Get(context.TODO(),
+		secretName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to get Secret %s/%s: %w",
+			secretNamespace, secretName, err)
+	}
+
+	passphraseValue, ok := secret.Data[encryptionPassphraseKey]
+	if !ok {
+		return "", fmt.Errorf("missing %q in Secret %s/%s",
+			encryptionPassphraseKey, secretNamespace, secretName)
+	}
+
+	return string(passphraseValue), nil
 }
 
 // Destroy frees all used resources.
