@@ -42,7 +42,7 @@ usage() {
     echo " " >&2
 }
 
-function check_deployment_status() {
+check_deployment_status() {
     LABEL=$1
     NAMESPACE=$2
     echo "Checking Deployment status for label $LABEL in Namespace $NAMESPACE"
@@ -66,7 +66,7 @@ function check_deployment_status() {
     fi
 }
 
-function check_daemonset_status() {
+check_daemonset_status() {
     LABEL=$1
     NAMESPACE=$2
     echo "Checking Daemonset status for label $LABEL in Namespace $NAMESPACE"
