@@ -21,6 +21,27 @@ NODE_LABEL_ZONE="test.failure-domain/zone"
 REGION_VALUE="testregion"
 ZONE_VALUE="testzone"
 
+example() {
+    echo "examples:" >&2
+    echo "To install cephcsi helm charts in a namespace, use one of the following approaches:" >&2
+    echo " " >&2
+    echo "1) ./scripts/install-helm install-cephcsi" >&2
+    echo "2) ./scripts/install-helm install-cephcsi <NAMESPACE>" >&2
+    echo "3) ./scripts/install-helm install-cephcsi --namespace <NAMESPACE>" >&2
+    echo " " >&2
+    echo "Note: Namespace is an optional parameter, which if not provided, defaults to 'default'" >&2
+    echo " " >&2
+}
+
+usage() {
+    echo "usage:" >&2
+    echo "  ./scripts/install-helm up" >&2
+    echo "  ./scripts/install-helm clean" >&2
+    echo "  ./scripts/install-helm install-cephcsi --namespace <NAMESPACE>" >&2
+    echo "  ./scripts/install-helm cleanup-cephcsi --namespace <NAMESPACE>" >&2
+    echo " " >&2
+}
+
 function check_deployment_status() {
     LABEL=$1
     NAMESPACE=$2
@@ -163,7 +184,57 @@ if ! helm_loc="$(type -p "helm")" || [[ -z ${helm_loc} ]]; then
     HELM="${TEMP}/${dist}-${arch}/helm"
 fi
 
-case "${1:-}" in
+if [ "$#" -le 2 ]
+then
+    ACTION=$1
+    NAMESPACE=$2
+    SKIP_PARSE="true"
+fi
+
+if [ ${#SKIP_PARSE} -eq 0 ]; then
+    while [ "$1" != "" ]
+    do
+        case $1 in
+        up)
+            shift
+            ACTION="up"
+            ;;
+        clean)
+            shift
+            ACTION="clean"
+            ;;
+        install-cephcsi)
+            shift
+            ACTION="install-cephcsi"
+            ;;
+        cleanup-cephcsi)
+            shift
+            ACTION="cleanup-cephcsi"
+            ;;
+        --namespace)
+            shift
+            NAMESPACE=$1
+            # validate if namespace is not empty
+            if [ ${#NAMESPACE} -eq 0 ]; then
+                echo "Provided namespace is empty: ${NAMESPACE}" >&2
+                usage
+                example
+                exit 1
+            fi
+            shift
+            ;;
+        *)
+            echo "illegal option $1"
+            echo "$#"
+            usage
+            example
+            exit 1
+            ;;
+        esac
+    done
+fi
+
+case "${ACTION}" in
 up)
     install
     ;;
@@ -171,16 +242,14 @@ clean)
     helm_reset
     ;;
 install-cephcsi)
-    install_cephcsi_helm_charts "$2"
+    install_cephcsi_helm_charts "${NAMESPACE}"
     ;;
 cleanup-cephcsi)
-    cleanup_cephcsi_helm_charts "$2"
+    cleanup_cephcsi_helm_charts "${NAMESPACE}"
     ;;
 *)
-    echo "usage:" >&2
-    echo "  $0 up" >&2
-    echo "  $0 clean" >&2
-    echo "  $0 install-cephcsi" >&2
-    echo "  $0 cleanup-cephcsi" >&2
+    usage
+    example
+    exit 1
     ;;
 esac
