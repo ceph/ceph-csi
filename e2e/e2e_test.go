@@ -43,14 +43,6 @@ func setDefaultKubeconfig() {
 	}
 }
 
-var _ = BeforeSuite(func() {
-
-})
-
-var _ = AfterSuite(func() {
-
-})
-
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "E2e Suite")
