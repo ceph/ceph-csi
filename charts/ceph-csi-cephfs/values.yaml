@@ -153,7 +153,7 @@ provisioner:
   provisioner:
     image:
       repository: k8s.gcr.io/sig-storage/csi-provisioner
-      tag: v2.0.4
+      tag: v2.2.2
       pullPolicy: IfNotPresent
     resources: {}
 
