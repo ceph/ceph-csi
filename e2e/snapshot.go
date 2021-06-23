@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	snapapi "github.com/kubernetes-csi/external-snapshotter/v2/pkg/apis/volumesnapshot/v1beta1"
-	snapclient "github.com/kubernetes-csi/external-snapshotter/v2/pkg/client/clientset/versioned"
+	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
+	snapclient "github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned/typed/volumesnapshot/v1"
 	. "github.com/onsi/gomega" // nolint
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +30,7 @@ func getSnapshot(path string) snapapi.VolumeSnapshot {
 	return sc
 }
 
-func newSnapshotClient() (*snapclient.Clientset, error) {
+func newSnapshotClient() (*snapclient.SnapshotV1Client, error) {
 	config, err := framework.LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("error creating client: %v", err.Error())
@@ -47,7 +47,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	if err != nil {
 		return err
 	}
-	_, err = sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Create(context.TODO(), snap, metav1.CreateOptions{})
+	_, err = sclient.VolumeSnapshots(snap.Namespace).Create(context.TODO(), snap, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create volumesnapshot: %w", err)
 	}
@@ -60,7 +60,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		e2elog.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
-		snaps, err := sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		snaps, err := sclient.VolumeSnapshots(snap.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			e2elog.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
 			if isRetryableAPIError(err) {
@@ -87,7 +87,7 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	if err != nil {
 		return err
 	}
-	err = sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Delete(context.TODO(), snap.Name, metav1.DeleteOptions{})
+	err = sclient.VolumeSnapshots(snap.Namespace).Delete(context.TODO(), snap.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to delete volumesnapshot: %w", err)
 	}
@@ -99,7 +99,7 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		e2elog.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
-		_, err := sclient.SnapshotV1beta1().VolumeSnapshots(snap.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		_, err := sclient.VolumeSnapshots(snap.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err == nil {
 			return false, nil
 		}
@@ -132,7 +132,7 @@ func createRBDSnapshotClass(f *framework.Framework) error {
 	if err != nil {
 		return err
 	}
-	_, err = sclient.SnapshotV1beta1().VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+	_, err = sclient.VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	return err
 }
 
@@ -144,7 +144,7 @@ func deleteRBDSnapshotClass() error {
 	if err != nil {
 		return err
 	}
-	return sclient.SnapshotV1beta1().VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+	return sclient.VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
 }
 
 func createCephFSSnapshotClass(f *framework.Framework) error {
@@ -165,7 +165,7 @@ func createCephFSSnapshotClass(f *framework.Framework) error {
 	if err != nil {
 		return err
 	}
-	_, err = sclient.SnapshotV1beta1().VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+	_, err = sclient.VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create volumesnapshotclass: %w", err)
 	}
@@ -177,12 +177,12 @@ func getVolumeSnapshotContent(namespace, snapshotName string) (*snapapi.VolumeSn
 	if err != nil {
 		return nil, err
 	}
-	snapshot, err := sclient.SnapshotV1beta1().VolumeSnapshots(namespace).Get(context.TODO(), snapshotName, metav1.GetOptions{})
+	snapshot, err := sclient.VolumeSnapshots(namespace).Get(context.TODO(), snapshotName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get volumesnapshot: %w", err)
 	}
 
-	volumeSnapshotContent, err := sclient.SnapshotV1beta1().VolumeSnapshotContents().Get(context.TODO(), *snapshot.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
+	volumeSnapshotContent, err := sclient.VolumeSnapshotContents().Get(context.TODO(), *snapshot.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get volumesnapshotcontent: %w", err)
 	}
