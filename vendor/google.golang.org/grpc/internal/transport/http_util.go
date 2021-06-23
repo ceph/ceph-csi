@@ -111,7 +111,6 @@ type parsedHeaderData struct {
 	timeoutSet bool
 	timeout    time.Duration
 	method     string
-	httpMethod string
 	// key-value metadata map from the peer.
 	mdata          map[string][]string
 	statsTags      []byte
@@ -364,8 +363,6 @@ func (d *decodeState) processHeaderField(f hpack.HeaderField) {
 		}
 		d.data.statsTrace = v
 		d.addMetadata(f.Name, string(v))
-	case ":method":
-		d.data.httpMethod = f.Value
 	default:
 		if isReservedHeader(f.Name) && !isWhitelistedHeader(f.Name) {
 			break

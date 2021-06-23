@@ -30,7 +30,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/attributes"
-	icredentials "google.golang.org/grpc/internal/credentials"
+	"google.golang.org/grpc/internal"
 )
 
 // PerRPCCredentials defines the common interface for the credentials which need to
@@ -188,12 +188,15 @@ type RequestInfo struct {
 	AuthInfo AuthInfo
 }
 
+// requestInfoKey is a struct to be used as the key when attaching a RequestInfo to a context object.
+type requestInfoKey struct{}
+
 // RequestInfoFromContext extracts the RequestInfo from the context if it exists.
 //
 // This API is experimental.
 func RequestInfoFromContext(ctx context.Context) (ri RequestInfo, ok bool) {
-	ri, ok = icredentials.RequestInfoFromContext(ctx).(RequestInfo)
-	return ri, ok
+	ri, ok = ctx.Value(requestInfoKey{}).(RequestInfo)
+	return
 }
 
 // ClientHandshakeInfo holds data to be passed to ClientHandshake. This makes
@@ -208,12 +211,16 @@ type ClientHandshakeInfo struct {
 	Attributes *attributes.Attributes
 }
 
+// clientHandshakeInfoKey is a struct used as the key to store
+// ClientHandshakeInfo in a context.
+type clientHandshakeInfoKey struct{}
+
 // ClientHandshakeInfoFromContext returns the ClientHandshakeInfo struct stored
 // in ctx.
 //
 // This API is experimental.
 func ClientHandshakeInfoFromContext(ctx context.Context) ClientHandshakeInfo {
-	chi, _ := icredentials.ClientHandshakeInfoFromContext(ctx).(ClientHandshakeInfo)
+	chi, _ := ctx.Value(clientHandshakeInfoKey{}).(ClientHandshakeInfo)
 	return chi
 }
 
@@ -240,6 +247,15 @@ func CheckSecurityLevel(ai AuthInfo, level SecurityLevel) error {
 	}
 	// The condition is satisfied or AuthInfo struct does not implement GetCommonAuthInfo() method.
 	return nil
+}
+
+func init() {
+	internal.NewRequestInfoContext = func(ctx context.Context, ri RequestInfo) context.Context {
+		return context.WithValue(ctx, requestInfoKey{}, ri)
+	}
+	internal.NewClientHandshakeInfoContext = func(ctx context.Context, chi ClientHandshakeInfo) context.Context {
+		return context.WithValue(ctx, clientHandshakeInfoKey{}, chi)
+	}
 }
 
 // ChannelzSecurityInfo defines the interface that security protocols should implement
