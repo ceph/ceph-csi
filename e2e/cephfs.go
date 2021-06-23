@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	vs "github.com/kubernetes-csi/external-snapshotter/v2/pkg/apis/volumesnapshot/v1beta1"
+	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	. "github.com/onsi/ginkgo" // nolint
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -788,7 +788,7 @@ var _ = Describe("cephfs", func() {
 					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 					// create snapshot
 					for i := 0; i < totalCount; i++ {
-						go func(w *sync.WaitGroup, n int, s vs.VolumeSnapshot) {
+						go func(w *sync.WaitGroup, n int, s snapapi.VolumeSnapshot) {
 							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 							wgErrs[n] = createSnapshot(&s, deployTimeout)
 							w.Done()
@@ -911,7 +911,7 @@ var _ = Describe("cephfs", func() {
 					wg.Add(totalCount)
 					// delete snapshot
 					for i := 0; i < totalCount; i++ {
-						go func(w *sync.WaitGroup, n int, s vs.VolumeSnapshot) {
+						go func(w *sync.WaitGroup, n int, s snapapi.VolumeSnapshot) {
 							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 							wgErrs[n] = deleteSnapshot(&s, deployTimeout)
 							w.Done()
