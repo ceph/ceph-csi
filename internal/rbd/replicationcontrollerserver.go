@@ -19,6 +19,7 @@ package rbd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -45,9 +46,9 @@ const (
 type imageMirroringState string
 
 const (
-	// If the state is up+unknown means the rbd-mirror daemon is
+	// If the state is unknown means the rbd-mirror daemon is
 	// running and the image is demoted on both the clusters.
-	upAndUnknown imageMirroringState = "up+unknown"
+	unknown imageMirroringState = "unknown"
 
 	// If the state is error means image need resync.
 	errorState imageMirroringState = "error"
@@ -487,6 +488,29 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	return &replication.DemoteVolumeResponse{}, nil
 }
 
+// checkRemoteSiteStatus checks the state of the remote cluster.
+// It returns true if the state of the remote cluster is up and unknown.
+func checkRemoteSiteStatus(ctx context.Context, mirrorStatus *librbd.GlobalMirrorImageStatus) bool {
+	ready := true
+	for _, s := range mirrorStatus.SiteStatuses {
+		if s.MirrorUUID != "" {
+			if imageMirroringState(s.State.String()) != unknown && !s.Up {
+				util.UsefulLog(
+					ctx,
+					"peer site mirrorUUID=%s, mirroring state=%s, description=%s and lastUpdate=%s",
+					s.MirrorUUID,
+					s.State.String(),
+					s.Description,
+					s.LastUpdate)
+
+				ready = false
+			}
+		}
+	}
+
+	return ready
+}
+
 // ResyncVolume extracts the RBD volume information from the volumeID, If the
 // image is present, mirroring is enabled and the image is in demoted state.
 // If yes it will resync the image to correct the split-brain.
@@ -559,7 +583,14 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	ready := false
-	state := imageMirroringState(mirrorStatus.State)
+
+	localStatus, err := mirrorStatus.LocalStatus()
+	if err != nil {
+		util.ErrorLog(ctx, err.Error())
+
+		return nil, fmt.Errorf("failed to get local status: %w", err)
+	}
+	state := imageMirroringState(localStatus.State.String())
 	//  To recover from split brain (up+error) state the image need to be
 	//  demoted and requested for resync on site-a and then the image on site-b
 	//  should be demoted. The volume should be marked to ready=true when the
@@ -570,24 +601,12 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	// If the image state on both the sites are up+unknown consider that
 	// complete data is synced as the last snapshot
 	// gets exchanged between the clusters.
-	if state == upAndUnknown {
-		ready = true
-		for _, s := range mirrorStatus.PeerSites {
-			if imageMirroringState(s.State) != upAndUnknown {
-				util.UsefulLog(
-					ctx,
-					"peer site name=%s, mirroring state=%s, description=%s and lastUpdate=%s",
-					s.SiteName,
-					s.State,
-					s.Description,
-					s.LastUpdate)
-				ready = false
-			}
-		}
+	if state == unknown && localStatus.Up {
+		ready = checkRemoteSiteStatus(ctx, mirrorStatus)
 	}
 
 	// resync only if the image is in error state
-	if strings.Contains(mirrorStatus.State, string(errorState)) {
+	if strings.Contains(localStatus.State.String(), string(errorState)) {
 		err = rbdVol.resyncImage()
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
@@ -599,9 +618,9 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	util.UsefulLog(
 		ctx,
 		"image mirroring state=%s, description=%s and lastUpdate=%s",
-		mirrorStatus.State,
-		mirrorStatus.Description,
-		mirrorStatus.LastUpdate)
+		localStatus.State.String(),
+		localStatus.Description,
+		localStatus.LastUpdate)
 	resp := &replication.ResyncVolumeResponse{
 		Ready: ready,
 	}
