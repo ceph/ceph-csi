@@ -21,8 +21,6 @@
 package proto
 
 import (
-	"fmt"
-
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/encoding"
 )
@@ -38,19 +36,11 @@ func init() {
 type codec struct{}
 
 func (codec) Marshal(v interface{}) ([]byte, error) {
-	vv, ok := v.(proto.Message)
-	if !ok {
-		return nil, fmt.Errorf("failed to marshal, message is %T, want proto.Message", v)
-	}
-	return proto.Marshal(vv)
+	return proto.Marshal(v.(proto.Message))
 }
 
 func (codec) Unmarshal(data []byte, v interface{}) error {
-	vv, ok := v.(proto.Message)
-	if !ok {
-		return fmt.Errorf("failed to unmarshal, message is %T, want proto.Message", v)
-	}
-	return proto.Unmarshal(data, vv)
+	return proto.Unmarshal(data, v.(proto.Message))
 }
 
 func (codec) Name() string {
