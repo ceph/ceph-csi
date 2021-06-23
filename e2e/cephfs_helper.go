@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	snapapi "github.com/kubernetes-csi/external-snapshotter/v2/pkg/apis/volumesnapshot/v1beta1"
+	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -177,11 +177,11 @@ func getSnapName(snapNamespace, snapName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	snap, err := sclient.SnapshotV1beta1().VolumeSnapshots(snapNamespace).Get(context.TODO(), snapName, metav1.GetOptions{})
+	snap, err := sclient.VolumeSnapshots(snapNamespace).Get(context.TODO(), snapName, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to get volumesnapshot: %w", err)
 	}
-	sc, err := sclient.SnapshotV1beta1().VolumeSnapshotContents().Get(context.TODO(), *snap.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
+	sc, err := sclient.VolumeSnapshotContents().Get(context.TODO(), *snap.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to get volumesnapshotcontent: %w", err)
 	}
