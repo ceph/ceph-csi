@@ -100,6 +100,13 @@ items:
             bound_service_account_names="${SERVICE_ACCOUNTS}" \
             bound_service_account_namespaces="${SERVICE_ACCOUNTS_NAMESPACE}" \
             policies="${CLUSTER_IDENTIFIER}"
+
+        # disable iss validation
+        # from: external-secrets/kubernetes-external-secrets#721
+        vault write auth/${CLUSTER_IDENTIFIER}/config \
+          token_reviewer_jwt=@${SERVICE_ACCOUNT_TOKEN_PATH}/token \
+          kubernetes_host="${K8S_HOST}" \
+          disable_iss_validation=true
     kind: ConfigMap
     metadata:
       creationTimestamp: null
