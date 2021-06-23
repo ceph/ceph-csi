@@ -16,12 +16,7 @@ limitations under the License.
 package rbd
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
-
-	"github.com/ceph/ceph-csi/internal/util"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 )
@@ -119,51 +114,17 @@ func (ri *rbdImage) resyncImage() error {
 	return nil
 }
 
-type imageMirrorStatus struct {
-	Name        string `json:"name"`  // name of the rbd image
-	State       string `json:"state"` // rbd image state
-	Description string `json:"description"`
-	LastUpdate  string `json:"last_update"`
-	PeerSites   []struct {
-		SiteName    string `json:"site_name"`
-		State       string `json:"state"`
-		Description string `json:"description"`
-		LastUpdate  string `json:"last_update"`
-	} `json:"peer_sites"`
-}
-
-// FIXME: once https://github.com/ceph/go-ceph/issues/460 is fixed use go-ceph.
-// getImageMirroringStatus get the mirroring status of an image.
-func (ri *rbdImage) getImageMirroringStatus() (*imageMirrorStatus, error) {
-	// rbd mirror image status --format=json info [image-spec | snap-spec]
-	var imgStatus imageMirrorStatus
-	stdout, stderr, err := util.ExecCommand(
-		context.TODO(),
-		"rbd",
-		"-m", ri.Monitors,
-		"--id", ri.conn.Creds.ID,
-		"--keyfile="+ri.conn.Creds.KeyFile,
-		"-c", util.CephConfigPath,
-		"--format="+"json",
-		"mirror",
-		"image",
-		"status",
-		ri.String())
+// getImageMirroingStatus get the mirroring status of an image.
+func (ri *rbdImage) getImageMirroringStatus() (*librbd.GlobalMirrorImageStatus, error) {
+	image, err := ri.open()
 	if err != nil {
-		if strings.Contains(stderr, "rbd: error opening image "+ri.RbdImageName+
-			": (2) No such file or directory") {
-			return nil, util.JoinErrors(ErrImageNotFound, err)
-		}
-
-		return nil, err
+		return nil, fmt.Errorf("failed to open image %q with error: %w", ri, err)
+	}
+	defer image.Close()
+	statusInfo, err := image.GetGlobalMirrorStatus()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get image mirroring status %q with error: %w", ri, err)
 	}
 
-	if stdout != "" {
-		err = json.Unmarshal([]byte(stdout), &imgStatus)
-		if err != nil {
-			return nil, fmt.Errorf("unmarshal failed (%w), raw buffer response: %s", err, stdout)
-		}
-	}
-
-	return &imgStatus, nil
+	return &statusInfo, nil
 }
