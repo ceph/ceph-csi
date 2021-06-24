@@ -22,4 +22,7 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get"]
 {{- end -}}

@@ -55,6 +55,9 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
