@@ -199,9 +199,13 @@ var _ = Describe("RBD", func() {
 		if err != nil {
 			e2elog.Failf("failed to create configmap with error %v", err)
 		}
-		err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-		if err != nil {
-			e2elog.Failf("failed to create storageclass with error %v", err)
+		// Since helm deploys storageclass, skip storageclass creation if
+		// ceph-csi is deployed via helm.
+		if !helmTest {
+			err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+			if err != nil {
+				e2elog.Failf("failed to create storageclass with error %v", err)
+			}
 		}
 		// create rbd provisioner secret
 		key, err := createCephUser(f, keyringRBDProvisionerUsername, rbdProvisionerCaps("", ""))
@@ -305,6 +309,32 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("timeout waiting for daemonset %s with error %v", rbdDaemonsetName, err)
 				}
 			})
+
+			// test only if ceph-csi is deployed via helm
+			if helmTest {
+				By("verify PVC and app binding on helm installation", func() {
+					err := validatePVCAndAppBinding(pvcPath, appPath, f)
+					if err != nil {
+						e2elog.Failf("failed to validate CephFS pvc and application binding with error %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+					//  Deleting the storageclass and secret created by helm
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass with error %v", err)
+					}
+					err = deleteResource(rbdExamplePath + "secret.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete secret with error %v", err)
+					}
+					// Re-create the RBD storageclass
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass with error %v", err)
+					}
+				})
+			}
 
 			By("create a PVC and validate owner", func() {
 				err := validateImageOwner(pvcPath, f)
