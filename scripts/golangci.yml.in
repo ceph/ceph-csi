@@ -109,8 +109,7 @@ linters-settings:
     # max line length, lines longer will be reported. Default is 120.
     # '\t' is counted as 1 character by default, and can be changed with the
     # tab-width option
-    # TODO make line length to 120 char
-    line-length: 180
+    line-length: 120
     # tab width in spaces. Default to 1.
     tab-width: 1
   gocritic:
