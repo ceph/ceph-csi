@@ -14,6 +14,8 @@ arch="${ARCH:-}"
 CEPHFS_CHART_NAME="ceph-csi-cephfs"
 RBD_CHART_NAME="ceph-csi-rbd"
 DEPLOY_TIMEOUT=600
+DEPLOY_SC=0
+DEPLOY_SECRET=0
 
 # ceph-csi specific variables
 NODE_LABEL_REGION="test.failure-domain/region"
@@ -28,6 +30,11 @@ example() {
     echo "1) ./scripts/install-helm install-cephcsi" >&2
     echo "2) ./scripts/install-helm install-cephcsi <NAMESPACE>" >&2
     echo "3) ./scripts/install-helm install-cephcsi --namespace <NAMESPACE>" >&2
+    echo " " >&2
+    echo "To deploy storageclass or secret (both optional), use --deploy-sc or --deploy-secret" >&2
+    echo " " >&2
+    echo "1) ./scripts/install-helm install-cephcsi --namespace <NAMESPACE> --deploy-sc" >&2
+    echo "2) ./scripts/install-helm install-cephcsi --namespace <NAMESPACE> --deploy-sc --deploy-secret" >&2
     echo " " >&2
     echo "Note: Namespace is an optional parameter, which if not provided, defaults to 'default'" >&2
     echo " " >&2
@@ -111,6 +118,14 @@ detectArch() {
     esac
 }
 
+fetch_template_values() {
+    TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o=jsonpath='{.items[0].metadata.name}')
+    # fetch fsid to populate the clusterID in storageclass
+    FS_ID=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" -- ceph fsid)
+    # fetch the admin key corresponding to the adminID
+    ADMIN_KEY=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" -- ceph auth get-key client.admin)
+}
+
 install() {
     if ! helm_loc="$(type -p "helm")" || [[ -z ${helm_loc} ]]; then
         # Download and unpack helm
@@ -137,16 +152,28 @@ install_cephcsi_helm_charts() {
         kubectl label node/"${node}" ${NODE_LABEL_ZONE}=${ZONE_VALUE}
     done
 
+    # deploy storageclass if DEPLOY_SC flag is set
+    if [ "${DEPLOY_SC}" -eq 1 ]; then
+        fetch_template_values
+        SET_SC_TEMPLATE_VALUES="--set storageClass.create=true --set storageClass.clusterID=${FS_ID}"
+    fi
+    # deploy secret if DEPLOY_SECRET flag is set
+    if [ "${DEPLOY_SECRET}" -eq 1 ]; then
+        fetch_template_values
+        RBD_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.userID=admin --set secret.userKey=${ADMIN_KEY}"
+        CEPHFS_SECRET_TEMPLATE_VALUES="--set secret.create=true --set secret.adminID=admin --set secret.adminKey=${ADMIN_KEY}"
+    fi
     # install ceph-csi-cephfs and ceph-csi-rbd charts
-    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true --set provisioner.replicaCount=1 ${CEPHFS_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs
-
+    # shellcheck disable=SC2086
+    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true --set provisioner.replicaCount=1 ${SET_SC_TEMPLATE_VALUES} ${CEPHFS_SECRET_TEMPLATE_VALUES} ${CEPHFS_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs
     check_deployment_status app=ceph-csi-cephfs ${NAMESPACE}
     check_daemonset_status app=ceph-csi-cephfs ${NAMESPACE}
 
     # deleting configmap as a workaround to avoid configmap already present
     # issue when installing ceph-csi-rbd
     kubectl delete cm ceph-csi-config --namespace ${NAMESPACE}
-    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true --set provisioner.replicaCount=1 ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2
+    # shellcheck disable=SC2086
+    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true --set provisioner.replicaCount=1 ${SET_SC_TEMPLATE_VALUES} ${RBD_SECRET_TEMPLATE_VALUES} ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2
 
     check_deployment_status app=ceph-csi-rbd ${NAMESPACE}
     check_daemonset_status app=ceph-csi-rbd ${NAMESPACE}
@@ -222,6 +249,14 @@ if [ ${#SKIP_PARSE} -eq 0 ]; then
                 exit 1
             fi
             shift
+            ;;
+        --deploy-sc)
+            shift
+            DEPLOY_SC=1
+            ;;
+        --deploy-secret)
+            shift
+            DEPLOY_SECRET=1
             ;;
         *)
             echo "illegal option $1"
