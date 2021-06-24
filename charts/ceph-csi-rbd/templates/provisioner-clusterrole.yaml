@@ -51,6 +51,9 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get"]
 {{- if .Values.provisioner.resizer.enabled }}
   - apiGroups: [""]
     resources: ["persistentvolumeclaims/status"]
