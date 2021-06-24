@@ -55,6 +55,7 @@ var (
 	deployRBD        bool
 	testCephFS       bool
 	testRBD          bool
+	helmTest         bool
 	upgradeTesting   bool
 	upgradeVersion   string
 	cephCSINamespace string
