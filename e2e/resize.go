@@ -20,21 +20,27 @@ import (
 func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size string, t int) error {
 	pvcName := pvc.Name
 
-	updatedPVC, err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
+	updatedPVC, err := c.CoreV1().
+		PersistentVolumeClaims(pvc.Namespace).
+		Get(context.TODO(), pvcName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("error fetching pvc %q with %w", pvcName, err)
 	}
 	timeout := time.Duration(t) * time.Minute
 
 	updatedPVC.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(size)
-	_, err = c.CoreV1().PersistentVolumeClaims(updatedPVC.Namespace).Update(context.TODO(), updatedPVC, metav1.UpdateOptions{})
+	_, err = c.CoreV1().
+		PersistentVolumeClaims(updatedPVC.Namespace).
+		Update(context.TODO(), updatedPVC, metav1.UpdateOptions{})
 	Expect(err).Should(BeNil())
 
 	start := time.Now()
 	e2elog.Logf("Waiting up to %v to be in Resized state", pvc)
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		e2elog.Logf("waiting for PVC %s (%d seconds elapsed)", updatedPVC.Name, int(time.Since(start).Seconds()))
-		updatedPVC, err = c.CoreV1().PersistentVolumeClaims(updatedPVC.Namespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
+		updatedPVC, err = c.CoreV1().
+			PersistentVolumeClaims(updatedPVC.Namespace).
+			Get(context.TODO(), pvcName, metav1.GetOptions{})
 		if err != nil {
 			e2elog.Logf("Error getting pvc in namespace: '%s': %v", updatedPVC.Namespace, err)
 			if isRetryableAPIError(err) {
@@ -45,13 +51,17 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 		pvcConditions := updatedPVC.Status.Conditions
 		if len(pvcConditions) > 0 {
 			e2elog.Logf("pvc state %v", pvcConditions[0].Type)
-			if pvcConditions[0].Type == v1.PersistentVolumeClaimResizing || pvcConditions[0].Type == v1.PersistentVolumeClaimFileSystemResizePending {
+			if pvcConditions[0].Type == v1.PersistentVolumeClaimResizing ||
+				pvcConditions[0].Type == v1.PersistentVolumeClaimFileSystemResizePending {
 				return false, nil
 			}
 		}
 
 		if !updatedPVC.Status.Capacity[v1.ResourceStorage].Equal(resource.MustParse(size)) {
-			e2elog.Logf("current size in status %v,expected size %v", updatedPVC.Status.Capacity[v1.ResourceStorage], resource.MustParse(size))
+			e2elog.Logf(
+				"current size in status %v,expected size %v",
+				updatedPVC.Status.Capacity[v1.ResourceStorage],
+				resource.MustParse(size))
 			return false, nil
 		}
 		return true, nil
@@ -90,7 +100,9 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 		LabelSelector: "app=resize-pvc",
 	}
 
-	pvc, err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
+	pvc, err = f.ClientSet.CoreV1().
+		PersistentVolumeClaims(pvc.Namespace).
+		Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get pvc: %w", err)
 	}
