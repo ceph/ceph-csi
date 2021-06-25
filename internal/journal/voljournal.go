@@ -419,7 +419,13 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 			return fmt.Errorf("failed parsing UUID in %s", volName)
 		}
 
-		err := util.RemoveObject(ctx, conn.monitors, conn.cr, volJournalPool, cj.namespace, cj.cephUUIDDirectoryPrefix+imageUUID)
+		err := util.RemoveObject(
+			ctx,
+			conn.monitors,
+			conn.cr,
+			volJournalPool,
+			cj.namespace,
+			cj.cephUUIDDirectoryPrefix+imageUUID)
 		if err != nil {
 			if !errors.Is(err, util.ErrObjectNotFound) {
 				util.ErrorLog(ctx, "failed removing oMap %s (%s)", cj.cephUUIDDirectoryPrefix+imageUUID, err)
@@ -445,7 +451,11 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 // already exists.if the passed volUUID is empty It ensures generated omap name
 // does not already exist and if conflicts are detected, a set number of
 // retires with newer uuids are attempted before returning an error.
-func reserveOMapName(ctx context.Context, monitors string, cr *util.Credentials, pool, namespace, oMapNamePrefix, volUUID string) (string, error) {
+func reserveOMapName(
+	ctx context.Context,
+	monitors string,
+	cr *util.Credentials,
+	pool, namespace, oMapNamePrefix, volUUID string) (string, error) {
 	var iterUUID string
 
 	maxAttempts := 5
@@ -470,7 +480,10 @@ func reserveOMapName(ctx context.Context, monitors string, cr *util.Credentials,
 				continue
 			}
 
-			return "", fmt.Errorf("failed to create omap object for oMapNamePrefix+iterUUID=%s: %w", oMapNamePrefix+iterUUID, err)
+			return "", fmt.Errorf(
+				"failed to create omap object for oMapNamePrefix+iterUUID=%s: %w",
+				oMapNamePrefix+iterUUID,
+				err)
 		}
 
 		return iterUUID, nil
@@ -530,7 +543,14 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	// NOTE: If any service loss occurs post creation of the UUID directory, and before
 	// setting the request name key (csiNameKey) to point back to the UUID directory, the
 	// UUID directory key will be leaked
-	volUUID, err = reserveOMapName(ctx, conn.monitors, conn.cr, imagePool, cj.namespace, cj.cephUUIDDirectoryPrefix, volUUID)
+	volUUID, err = reserveOMapName(
+		ctx,
+		conn.monitors,
+		conn.cr,
+		imagePool,
+		cj.namespace,
+		cj.cephUUIDDirectoryPrefix,
+		volUUID)
 	if err != nil {
 		return "", "", err
 	}
@@ -618,7 +638,10 @@ type ImageAttributes struct {
 }
 
 // GetImageAttributes fetches all keys and their values, from a UUID directory, returning ImageAttributes structure.
-func (conn *Connection) GetImageAttributes(ctx context.Context, pool, objectUUID string, snapSource bool) (*ImageAttributes, error) {
+func (conn *Connection) GetImageAttributes(
+	ctx context.Context,
+	pool, objectUUID string,
+	snapSource bool) (*ImageAttributes, error) {
 	var (
 		err             error
 		imageAttributes *ImageAttributes = &ImageAttributes{}
