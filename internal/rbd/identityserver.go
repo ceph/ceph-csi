@@ -31,7 +31,9 @@ type IdentityServer struct {
 }
 
 // GetPluginCapabilities returns available capabilities of the rbd driver.
-func (is *IdentityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
+func (is *IdentityServer) GetPluginCapabilities(
+	ctx context.Context,
+	req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
 			{
