@@ -44,7 +44,7 @@ func createRBDStorageClass(
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
 	if err != nil {
-		return nil
+		return fmt.Errorf("failed to get sc: %w", err)
 	}
 	if name != "" {
 		sc.Name = name
