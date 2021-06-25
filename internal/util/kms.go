@@ -252,7 +252,10 @@ func RegisterKMSProvider(provider KMSProvider) bool {
 // buildKMS creates a new KMSProvider instance, based on the configuration that
 // was passed. This uses getKMSProvider() internally to identify the
 // KMSProvider to instantiate.
-func (kf *kmsProviderList) buildKMS(tenant string, config map[string]interface{}, secrets map[string]string) (EncryptionKMS, error) {
+func (kf *kmsProviderList) buildKMS(
+	tenant string,
+	config map[string]interface{},
+	secrets map[string]string) (EncryptionKMS, error) {
 	providerName, err := getKMSProvider(config)
 	if err != nil {
 		return nil, err

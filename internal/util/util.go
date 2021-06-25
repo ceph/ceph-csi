@@ -76,8 +76,9 @@ type Config struct {
 	DomainLabels    string // list of domain labels to read from the node
 
 	// metrics related flags
-	MetricsPath       string        // path of prometheus endpoint where metrics will be available
-	HistogramOption   string        // Histogram option for grpc metrics, should be comma separated value, ex:= "0.5,2,6" where start=0.5 factor=2, count=6
+	MetricsPath     string // path of prometheus endpoint where metrics will be available
+	HistogramOption string // Histogram option for grpc metrics, should be comma separated value,
+	// ex:= "0.5,2,6" where start=0.5 factor=2, count=6
 	MetricsIP         string        // TCP port for liveness/ metrics requests
 	PidLimit          int           // PID limit to configure through cgroups")
 	MetricsPort       int           // TCP port for liveness/grpc metrics requests
@@ -97,10 +98,12 @@ type Config struct {
 	// cephfs related flags
 	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
 
-	// RbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten occurs
+	// RbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten
+	// occurs
 	RbdHardMaxCloneDepth uint
 
-	// RbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before a flatten occurs
+	// RbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before a flatten
+	// occurs
 	RbdSoftMaxCloneDepth uint
 
 	// MaxSnapshotsOnImage represents the maximum number of snapshots allowed
@@ -233,7 +236,13 @@ func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool 
 
 // GenerateVolID generates a volume ID based on passed in parameters and version, to be returned
 // to the CO system.
-func GenerateVolID(ctx context.Context, monitors string, cr *Credentials, locationID int64, pool, clusterID, objUUID string, volIDVersion uint16) (string, error) {
+func GenerateVolID(
+	ctx context.Context,
+	monitors string,
+	cr *Credentials,
+	locationID int64,
+	pool, clusterID, objUUID string,
+	volIDVersion uint16) (string, error) {
 	var err error
 
 	if locationID == InvalidPoolID {

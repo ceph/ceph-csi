@@ -27,7 +27,10 @@ func ValidateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 	// validate stagingpath exists
 	ok := checkDirExists(req.GetStagingTargetPath())
 	if !ok {
-		return status.Errorf(codes.InvalidArgument, "staging path %s does not exist on node", req.GetStagingTargetPath())
+		return status.Errorf(
+			codes.InvalidArgument,
+			"staging path %s does not exist on node",
+			req.GetStagingTargetPath())
 	}
 	return nil
 }
@@ -83,7 +86,8 @@ func ValidateNodeUnpublishVolumeRequest(req *csi.NodeUnpublishVolumeRequest) err
 // volume is from source as empty ReadOnlyMany is not supported.
 func CheckReadOnlyManyIsSupported(req *csi.CreateVolumeRequest) error {
 	for _, capability := range req.GetVolumeCapabilities() {
-		if m := capability.GetAccessMode().Mode; m == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY || m == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
+		if m := capability.GetAccessMode().Mode; m == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
+			m == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
 			if req.GetVolumeContentSource() == nil {
 				return status.Error(codes.InvalidArgument, "readOnly accessMode is supported only with content source")
 			}

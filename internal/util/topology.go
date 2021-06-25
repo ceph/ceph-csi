@@ -131,7 +131,8 @@ type TopologyConstrainedPool struct {
 
 // GetTopologyFromRequest extracts TopologyConstrainedPools and passed in accessibility constraints
 // from a CSI CreateVolume request.
-func GetTopologyFromRequest(req *csi.CreateVolumeRequest) (*[]TopologyConstrainedPool, *csi.TopologyRequirement, error) {
+func GetTopologyFromRequest(
+	req *csi.CreateVolumeRequest) (*[]TopologyConstrainedPool, *csi.TopologyRequirement, error) {
 	var (
 		topologyPools []TopologyConstrainedPool
 	)
@@ -151,7 +152,10 @@ func GetTopologyFromRequest(req *csi.CreateVolumeRequest) (*[]TopologyConstraine
 	// extract topology based pools configuration
 	err := json.Unmarshal([]byte(strings.Replace(topologyPoolsStr, "\n", " ", -1)), &topologyPools)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse JSON encoded topology constrained pools parameter (%s): %v", topologyPoolsStr, err)
+		return nil, nil, fmt.Errorf(
+			"failed to parse JSON encoded topology constrained pools parameter (%s): %v",
+			topologyPoolsStr,
+			err)
 	}
 
 	return &topologyPools, accessibilityRequirements, nil
