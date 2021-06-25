@@ -340,7 +340,10 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 	if vaultClientCertKeyFromSecret != "" {
 		certKey, err := getCertificate(kms.Tenant, vaultClientCertKeyFromSecret, "key")
 		if err != nil && !apierrs.IsNotFound(err) {
-			return fmt.Errorf("failed to get client certificate key from secret %s: %w", vaultClientCertKeyFromSecret, err)
+			return fmt.Errorf(
+				"failed to get client certificate key from secret %s: %w",
+				vaultClientCertKeyFromSecret,
+				err)
 		}
 		// if the certificate is not present in tenant namespace get it from
 		// cephcsi pod namespace
