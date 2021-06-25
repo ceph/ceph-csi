@@ -66,26 +66,58 @@ func init() {
 	flag.IntVar(&conf.PidLimit, "pidlimit", 0, "the PID limit to configure through cgroups")
 	flag.BoolVar(&conf.IsControllerServer, "controllerserver", false, "start cephcsi controller server")
 	flag.BoolVar(&conf.IsNodeServer, "nodeserver", false, "start cephcsi node server")
-	flag.StringVar(&conf.DomainLabels, "domainlabels", "", "list of kubernetes node labels, that determines the topology"+
-		" domain the node belongs to, separated by ','")
+	flag.StringVar(
+		&conf.DomainLabels,
+		"domainlabels",
+		"",
+		"list of kubernetes node labels, that determines the topology"+
+			" domain the node belongs to, separated by ','")
 
 	// cephfs related flags
-	flag.BoolVar(&conf.ForceKernelCephFS, "forcecephkernelclient", false, "enable Ceph Kernel clients on kernel < 4.17 which support quotas")
+	flag.BoolVar(
+		&conf.ForceKernelCephFS,
+		"forcecephkernelclient",
+		false,
+		"enable Ceph Kernel clients on kernel < 4.17 which support quotas")
 
 	// liveness/grpc metrics related flags
 	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/grpc metrics requests")
-	flag.StringVar(&conf.MetricsPath, "metricspath", "/metrics", "path of prometheus endpoint where metrics will be available")
+	flag.StringVar(
+		&conf.MetricsPath,
+		"metricspath",
+		"/metrics",
+		"path of prometheus endpoint where metrics will be available")
 	flag.DurationVar(&conf.PollTime, "polltime", time.Second*pollTime, "time interval in seconds between each poll")
 	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*probeTimeout, "probe timeout in seconds")
 
 	flag.BoolVar(&conf.EnableGRPCMetrics, "enablegrpcmetrics", false, "[DEPRECATED] enable grpc metrics")
-	flag.StringVar(&conf.HistogramOption, "histogramoption", "0.5,2,6",
-		"[DEPRECATED] Histogram option for grpc metrics, should be comma separated value, ex:= 0.5,2,6 where start=0.5 factor=2, count=6")
+	flag.StringVar(
+		&conf.HistogramOption,
+		"histogramoption",
+		"0.5,2,6",
+		"[DEPRECATED] Histogram option for grpc metrics, should be comma separated value, "+
+			"ex:= 0.5,2,6 where start=0.5 factor=2, count=6")
 
-	flag.UintVar(&conf.RbdHardMaxCloneDepth, "rbdhardmaxclonedepth", 8, "Hard limit for maximum number of nested volume clones that are taken before a flatten occurs")
-	flag.UintVar(&conf.RbdSoftMaxCloneDepth, "rbdsoftmaxclonedepth", 4, "Soft limit for maximum number of nested volume clones that are taken before a flatten occurs")
-	flag.UintVar(&conf.MaxSnapshotsOnImage, "maxsnapshotsonimage", 450, "Maximum number of snapshots allowed on rbd image without flattening")
-	flag.UintVar(&conf.MinSnapshotsOnImage, "minsnapshotsonimage", 250, "Minimum number of snapshots required on rbd image to start flattening")
+	flag.UintVar(
+		&conf.RbdHardMaxCloneDepth,
+		"rbdhardmaxclonedepth",
+		8,
+		"Hard limit for maximum number of nested volume clones that are taken before a flatten occurs")
+	flag.UintVar(
+		&conf.RbdSoftMaxCloneDepth,
+		"rbdsoftmaxclonedepth",
+		4,
+		"Soft limit for maximum number of nested volume clones that are taken before a flatten occurs")
+	flag.UintVar(
+		&conf.MaxSnapshotsOnImage,
+		"maxsnapshotsonimage",
+		450,
+		"Maximum number of snapshots allowed on rbd image without flattening")
+	flag.UintVar(
+		&conf.MinSnapshotsOnImage,
+		"minsnapshotsonimage",
+		250,
+		"Minimum number of snapshots required on rbd image to start flattening")
 	flag.BoolVar(&conf.SkipForceFlatten, "skipforceflatten", false,
 		"skip image flattening if kernel support mapping of rbd images which has the deep-flatten feature")
 
