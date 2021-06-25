@@ -157,7 +157,12 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 		opts := fsAdmin.SubVolumeGroupOptions{}
 		err = ca.CreateSubVolumeGroup(volOptions.FsName, volOptions.SubvolumeGroup, &opts)
 		if err != nil {
-			util.ErrorLog(ctx, "failed to create subvolume group %s, for the vol %s: %s", volOptions.SubvolumeGroup, string(volID), err)
+			util.ErrorLog(
+				ctx,
+				"failed to create subvolume group %s, for the vol %s: %s",
+				volOptions.SubvolumeGroup,
+				string(volID),
+				err)
 			return err
 		}
 		util.DebugLog(ctx, "cephfs: created subvolume group %s", volOptions.SubvolumeGroup)
