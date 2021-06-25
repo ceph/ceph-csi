@@ -37,7 +37,11 @@ func validateSubvolumegroup(f *framework.Framework, subvolgrp string) error {
 	return nil
 }
 
-func createCephfsStorageClass(c kubernetes.Interface, f *framework.Framework, enablePool bool, params map[string]string) error {
+func createCephfsStorageClass(
+	c kubernetes.Interface,
+	f *framework.Framework,
+	enablePool bool,
+	params map[string]string) error {
 	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
 	if err != nil {
@@ -108,13 +112,24 @@ func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error 
 		e2elog.Logf("Error occurred getting pod %s in namespace %s", appName, f.UniqueName)
 		return fmt.Errorf("failed to get pod: %w", err)
 	}
-	pvc, err := f.ClientSet.CoreV1().PersistentVolumeClaims(f.UniqueName).Get(context.TODO(), pvcName, metav1.GetOptions{})
+	pvc, err := f.ClientSet.CoreV1().
+		PersistentVolumeClaims(f.UniqueName).
+		Get(context.TODO(), pvcName, metav1.GetOptions{})
 	if err != nil {
 		e2elog.Logf("Error occurred getting PVC %s in namespace %s", pvcName, f.UniqueName)
 		return fmt.Errorf("failed to get pvc: %w", err)
 	}
-	cmd := fmt.Sprintf("umount /var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount", pod.UID, pvc.Spec.VolumeName)
-	_, stdErr, err := execCommandInDaemonsetPod(f, cmd, cephfsDeamonSetName, pod.Spec.NodeName, cephfsContainerName, cephCSINamespace)
+	cmd := fmt.Sprintf(
+		"umount /var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount",
+		pod.UID,
+		pvc.Spec.VolumeName)
+	_, stdErr, err := execCommandInDaemonsetPod(
+		f,
+		cmd,
+		cephfsDeamonSetName,
+		pod.Spec.NodeName,
+		cephfsContainerName,
+		cephCSINamespace)
 	if stdErr != "" {
 		e2elog.Logf("StdErr occurred: %s", stdErr)
 	}
@@ -144,7 +159,10 @@ type cephfsSubVolume struct {
 
 func listCephFSSubVolumes(f *framework.Framework, filesystem, groupname string) ([]cephfsSubVolume, error) {
 	var subVols []cephfsSubVolume
-	stdout, stdErr, err := execCommandInToolBoxPod(f, fmt.Sprintf("ceph fs subvolume ls %s --group_name=%s --format=json", filesystem, groupname), rookNamespace)
+	stdout, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf("ceph fs subvolume ls %s --group_name=%s --format=json", filesystem, groupname),
+		rookNamespace)
 	if err != nil {
 		return subVols, err
 	}
@@ -177,11 +195,15 @@ func getSnapName(snapNamespace, snapName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	snap, err := sclient.VolumeSnapshots(snapNamespace).Get(context.TODO(), snapName, metav1.GetOptions{})
+	snap, err := sclient.
+		VolumeSnapshots(snapNamespace).
+		Get(context.TODO(), snapName, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to get volumesnapshot: %w", err)
 	}
-	sc, err := sclient.VolumeSnapshotContents().Get(context.TODO(), *snap.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
+	sc, err := sclient.
+		VolumeSnapshotContents().
+		Get(context.TODO(), *snap.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to get volumesnapshotcontent: %w", err)
 	}
@@ -192,7 +214,10 @@ func getSnapName(snapNamespace, snapName string) (string, error) {
 	return snapshotName, nil
 }
 
-func deleteBackingCephFSSubvolumeSnapshot(f *framework.Framework, pvc *v1.PersistentVolumeClaim, snap *snapapi.VolumeSnapshot) error {
+func deleteBackingCephFSSubvolumeSnapshot(
+	f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	snap *snapapi.VolumeSnapshot) error {
 	snapshotName, err := getSnapName(snap.Namespace, snap.Name)
 	if err != nil {
 		return err
@@ -201,7 +226,12 @@ func deleteBackingCephFSSubvolumeSnapshot(f *framework.Framework, pvc *v1.Persis
 	if err != nil {
 		return err
 	}
-	cmd := fmt.Sprintf("ceph fs subvolume snapshot rm %s %s %s %s", fileSystemName, imageData.imageName, snapshotName, subvolumegroup)
+	cmd := fmt.Sprintf(
+		"ceph fs subvolume snapshot rm %s %s %s %s",
+		fileSystemName,
+		imageData.imageName,
+		snapshotName,
+		subvolumegroup)
 	_, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if err != nil {
 		return err

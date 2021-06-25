@@ -160,7 +160,10 @@ func validateSubvolumePath(f *framework.Framework, pvcName, pvcNamespace, fileSy
 		return err
 	}
 	if subVolumePath != subVolumePathInPV {
-		return fmt.Errorf("subvolumePath %s is not matching the subvolumePath %s in PV", subVolumePath, subVolumePathInPV)
+		return fmt.Errorf(
+			"subvolumePath %s is not matching the subvolumePath %s in PV",
+			subVolumePath,
+			subVolumePathInPV)
 	}
 	return nil
 }
@@ -226,11 +229,15 @@ var _ = Describe("cephfs", func() {
 		if err != nil {
 			e2elog.Failf("failed to delete configmap with error %v", err)
 		}
-		err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), cephFSProvisionerSecretName, metav1.DeleteOptions{})
+		err = c.CoreV1().
+			Secrets(cephCSINamespace).
+			Delete(context.TODO(), cephFSProvisionerSecretName, metav1.DeleteOptions{})
 		if err != nil {
 			e2elog.Failf("failed to delete provisioner secret with error %v", err)
 		}
-		err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), cephFSNodePluginSecretName, metav1.DeleteOptions{})
+		err = c.CoreV1().
+			Secrets(cephCSINamespace).
+			Delete(context.TODO(), cephFSNodePluginSecretName, metav1.DeleteOptions{})
 		if err != nil {
 			e2elog.Failf("failed to delete node secret with error %v", err)
 		}
@@ -298,7 +305,11 @@ var _ = Describe("cephfs", func() {
 
 			By("create PVC in storageClass with volumeNamePrefix", func() {
 				volumeNamePrefix := "foo-bar-"
-				err := createCephfsStorageClass(f.ClientSet, f, false, map[string]string{"volumeNamePrefix": volumeNamePrefix})
+				err := createCephfsStorageClass(
+					f.ClientSet,
+					f,
+					false,
+					map[string]string{"volumeNamePrefix": volumeNamePrefix})
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -591,7 +602,11 @@ var _ = Describe("cephfs", func() {
 				}
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-				_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), app.Namespace, &opt)
+				_, stdErr := execCommandInPodAndAllowFail(
+					f,
+					fmt.Sprintf("echo 'Hello World' > %s", filePath),
+					app.Namespace,
+					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
 					e2elog.Failf(stdErr)
@@ -1110,7 +1125,11 @@ var _ = Describe("cephfs", func() {
 				}
 
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-				_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo 'Hello World' > %s", filePath), app.Namespace, &opt)
+				_, stdErr := execCommandInPodAndAllowFail(
+					f,
+					fmt.Sprintf("echo 'Hello World' > %s", filePath),
+					app.Namespace,
+					&opt)
 				readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
 				if !strings.Contains(stdErr, readOnlyErr) {
 					e2elog.Failf(stdErr)
