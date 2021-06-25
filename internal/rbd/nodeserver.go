@@ -32,7 +32,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/kubernetes/pkg/util/resizefs"
 	mount "k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 )
@@ -791,10 +790,9 @@ func (ns *NodeServer) NodeExpandVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
 	// TODO check size and return success or error
 	volumePath += "/" + volumeID
-	resizer := resizefs.NewResizeFs(diskMounter)
+	resizer := mount.NewResizeFs(utilexec.New())
 	ok, err := resizer.Resize(devicePath, volumePath)
 	if !ok {
 		return nil, status.Errorf(codes.Internal, "rbd: resize failed on path %s, error: %v", req.GetVolumePath(), err)
