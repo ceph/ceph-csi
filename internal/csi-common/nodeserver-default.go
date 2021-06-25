@@ -33,22 +33,30 @@ type DefaultNodeServer struct {
 }
 
 // NodeStageVolume returns unimplemented response.
-func (ns *DefaultNodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+func (ns *DefaultNodeServer) NodeStageVolume(
+	ctx context.Context,
+	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // NodeUnstageVolume returns unimplemented response.
-func (ns *DefaultNodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+func (ns *DefaultNodeServer) NodeUnstageVolume(
+	ctx context.Context,
+	req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // NodeExpandVolume returns unimplemented response.
-func (ns *DefaultNodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+func (ns *DefaultNodeServer) NodeExpandVolume(
+	ctx context.Context,
+	req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // NodeGetInfo returns node ID.
-func (ns *DefaultNodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+func (ns *DefaultNodeServer) NodeGetInfo(
+	ctx context.Context,
+	req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	util.TraceLog(ctx, "Using default NodeGetInfo")
 
 	csiTopology := &csi.Topology{
@@ -62,7 +70,9 @@ func (ns *DefaultNodeServer) NodeGetInfo(ctx context.Context, req *csi.NodeGetIn
 }
 
 // NodeGetCapabilities returns RPC unknown capability.
-func (ns *DefaultNodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+func (ns *DefaultNodeServer) NodeGetCapabilities(
+	ctx context.Context,
+	req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	util.TraceLog(ctx, "Using default NodeGetCapabilities")
 
 	return &csi.NodeGetCapabilitiesResponse{
@@ -79,7 +89,9 @@ func (ns *DefaultNodeServer) NodeGetCapabilities(ctx context.Context, req *csi.N
 }
 
 // NodeGetVolumeStats returns volume stats.
-func (ns *DefaultNodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+func (ns *DefaultNodeServer) NodeGetVolumeStats(
+	ctx context.Context,
+	req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 

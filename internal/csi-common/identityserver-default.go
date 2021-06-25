@@ -32,7 +32,9 @@ type DefaultIdentityServer struct {
 }
 
 // GetPluginInfo returns plugin information.
-func (ids *DefaultIdentityServer) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
+func (ids *DefaultIdentityServer) GetPluginInfo(
+	ctx context.Context,
+	req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
 	util.TraceLog(ctx, "Using default GetPluginInfo")
 
 	if ids.Driver.name == "" {
@@ -55,7 +57,9 @@ func (ids *DefaultIdentityServer) Probe(ctx context.Context, req *csi.ProbeReque
 }
 
 // GetPluginCapabilities returns plugin capabilities.
-func (ids *DefaultIdentityServer) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
+func (ids *DefaultIdentityServer) GetPluginCapabilities(
+	ctx context.Context,
+	req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	util.TraceLog(ctx, "Using default capabilities")
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
