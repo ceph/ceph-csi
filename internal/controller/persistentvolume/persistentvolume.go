@@ -70,7 +70,10 @@ func newPVReconciler(mgr manager.Manager, config ctrl.Config) reconcile.Reconcil
 
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("persistentvolume-controller", mgr, controller.Options{MaxConcurrentReconciles: 1, Reconciler: r})
+	c, err := controller.New(
+		"persistentvolume-controller",
+		mgr,
+		controller.Options{MaxConcurrentReconciles: 1, Reconciler: r})
 	if err != nil {
 		return err
 	}
