@@ -50,10 +50,12 @@ var (
 	// VolumeName to backing RBD images
 	volJournal  *journal.Config
 	snapJournal *journal.Config
-	// rbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten occurs
+	// rbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten
+	// occurs
 	rbdHardMaxCloneDepth uint
 
-	// rbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before a flatten occurs
+	// rbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before a flatten
+	// occurs
 	rbdSoftMaxCloneDepth              uint
 	maxSnapshotsOnImage               uint
 	minSnapshotsOnImageToStartFlatten uint
@@ -134,7 +136,8 @@ func (r *Driver) Run(conf *util.Config) {
 			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 		})
-		// We only support the multi-writer option when using block, but it's a supported capability for the plugin in general
+		// We only support the multi-writer option when using block, but it's a supported capability for the plugin in
+		// general
 		// In addition, we want to add the remaining modes like MULTI_NODE_READER_ONLY,
 		// MULTI_NODE_SINGLE_WRITER etc, but need to do some verification of RO modes first
 		// will work those as follow up features

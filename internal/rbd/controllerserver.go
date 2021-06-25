@@ -53,7 +53,8 @@ type ControllerServer struct {
 }
 
 func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.CreateVolumeRequest) error {
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		util.ErrorLog(ctx, "invalid create volume req: %v", protosanitizer.StripSecrets(req))
 		return err
 	}
@@ -91,7 +92,9 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	return nil
 }
 
-func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.CreateVolumeRequest) (*rbdVolume, error) {
+func (cs *ControllerServer) parseVolCreateRequest(
+	ctx context.Context,
+	req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
 	isMultiNode := false
@@ -108,7 +111,9 @@ func (cs *ControllerServer) parseVolCreateRequest(ctx context.Context, req *csi.
 
 	// We want to fail early if the user is trying to create a RWX on a non-block type device
 	if isMultiNode && !isBlock {
-		return nil, status.Error(codes.InvalidArgument, "multi node access modes are only supported on rbd `block` type volumes")
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"multi node access modes are only supported on rbd `block` type volumes")
 	}
 
 	if imageFeatures, ok := req.GetParameters()["imageFeatures"]; checkImageFeatures(imageFeatures, ok, true) {
@@ -203,12 +208,20 @@ func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnaps
 			return status.Error(codes.Internal, err.Error())
 		}
 		if rbdVol.VolSize != vol.VolSize {
-			return status.Errorf(codes.InvalidArgument, "size mismatches, requested volume size %d and source snapshot size %d", rbdVol.VolSize, vol.VolSize)
+			return status.Errorf(
+				codes.InvalidArgument,
+				"size mismatches, requested volume size %d and source snapshot size %d",
+				rbdVol.VolSize,
+				vol.VolSize)
 		}
 	}
 	if parentVol != nil {
 		if rbdVol.VolSize != parentVol.VolSize {
-			return status.Errorf(codes.InvalidArgument, "size mismatches, requested volume size %d and source volume size %d", rbdVol.VolSize, parentVol.VolSize)
+			return status.Errorf(
+				codes.InvalidArgument,
+				"size mismatches, requested volume size %d and source volume size %d",
+				rbdVol.VolSize,
+				parentVol.VolSize)
 		}
 	}
 	return nil
@@ -246,7 +259,9 @@ func checkValidCreateVolumeRequest(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSna
 }
 
 // CreateVolume creates the volume in backend.
-func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+func (cs *ControllerServer) CreateVolume(
+	ctx context.Context,
+	req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateVolumeReq(ctx, req); err != nil {
 		return nil, err
 	}
@@ -374,7 +389,11 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 		if isThickProvisionRequest(req.GetParameters()) {
 			thick, err := rbdVol.isThickProvisioned()
 			if err != nil {
-				return nil, status.Errorf(codes.Aborted, "failed to verify thick-provisioned volume %q: %s", rbdVol, err)
+				return nil, status.Errorf(
+					codes.Aborted,
+					"failed to verify thick-provisioned volume %q: %s",
+					rbdVol,
+					err)
 			} else if !thick {
 				err = deleteImage(ctx, rbdVol, cr)
 				if err != nil {
@@ -384,7 +403,9 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 				if err != nil {
 					return nil, status.Errorf(codes.Aborted, "failed to remove volume %q from journal: %s", rbdVol, err)
 				}
-				return nil, status.Errorf(codes.Aborted, "restoring thick-provisioned volume %q has been interrupted, please retry", rbdVol)
+				return nil, status.Errorf(
+					codes.Aborted,
+					"restoring thick-provisioned volume %q has been interrupted, please retry", rbdVol)
 			}
 		}
 		// restore from snapshot imploes rbdSnap != nil
@@ -409,7 +430,11 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 		if isThickProvisionRequest(req.GetParameters()) {
 			thick, err := rbdVol.isThickProvisioned()
 			if err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to verify thick-provisioned volume %q: %s", rbdVol, err)
+				return nil, status.Errorf(
+					codes.Internal,
+					"failed to verify thick-provisioned volume %q: %s",
+					rbdVol,
+					err)
 			} else if !thick {
 				err = cleanUpSnapshot(ctx, parentVol, rbdSnap, rbdVol, cr)
 				if err != nil {
@@ -419,7 +444,9 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 				if err != nil {
 					return nil, status.Errorf(codes.Internal, "failed to remove volume %q from journal: %s", rbdVol, err)
 				}
-				return nil, status.Errorf(codes.Internal, "cloning thick-provisioned volume %q has been interrupted, please retry", rbdVol)
+				return nil, status.Errorf(
+					codes.Internal,
+					"cloning thick-provisioned volume %q has been interrupted, please retry", rbdVol)
 			}
 		}
 	}
@@ -448,7 +475,12 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 	}
 
 	if len(snaps) > int(maxSnapshotsOnImage) {
-		util.DebugLog(ctx, "snapshots count %d on image: %s reached configured hard limit %d", len(snaps), rbdVol, maxSnapshotsOnImage)
+		util.DebugLog(
+			ctx,
+			"snapshots count %d on image: %s reached configured hard limit %d",
+			len(snaps),
+			rbdVol,
+			maxSnapshotsOnImage)
 		err = flattenClonedRbdImages(
 			ctx,
 			snaps,
@@ -463,7 +495,12 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 	}
 
 	if len(snaps) > int(minSnapshotsOnImageToStartFlatten) {
-		util.DebugLog(ctx, "snapshots count %d on image: %s reached configured soft limit %d", len(snaps), rbdVol, minSnapshotsOnImageToStartFlatten)
+		util.DebugLog(
+			ctx,
+			"snapshots count %d on image: %s reached configured soft limit %d",
+			len(snaps),
+			rbdVol,
+			minSnapshotsOnImageToStartFlatten)
 		// If we start flattening all the snapshots at one shot the volume
 		// creation time will be affected,so we will flatten only the extra
 		// snapshots.
@@ -505,7 +542,12 @@ func checkFlatten(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials) 
 	return nil
 }
 
-func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *util.Credentials, secrets map[string]string, rbdVol *rbdVolume, snapshotID string) error {
+func (cs *ControllerServer) createVolumeFromSnapshot(
+	ctx context.Context,
+	cr *util.Credentials,
+	secrets map[string]string,
+	rbdVol *rbdVolume,
+	snapshotID string) error {
 	rbdSnap := &rbdSnapshot{}
 	if acquired := cs.SnapshotLocks.TryAcquire(snapshotID); !acquired {
 		util.ErrorLog(ctx, util.SnapshotOperationAlreadyExistsFmt, snapshotID)
@@ -550,7 +592,12 @@ func (cs *ControllerServer) createVolumeFromSnapshot(ctx context.Context, cr *ut
 	return nil
 }
 
-func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Credentials, secrets map[string]string, rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot) error {
+func (cs *ControllerServer) createBackingImage(
+	ctx context.Context,
+	cr *util.Credentials,
+	secrets map[string]string,
+	rbdVol, parentVol *rbdVolume,
+	rbdSnap *rbdSnapshot) error {
 	var err error
 
 	var j = &journal.Connection{}
@@ -614,7 +661,10 @@ func (cs *ControllerServer) createBackingImage(ctx context.Context, cr *util.Cre
 	return nil
 }
 
-func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *util.Credentials) (*rbdVolume, *rbdSnapshot, error) {
+func checkContentSource(
+	ctx context.Context,
+	req *csi.CreateVolumeRequest,
+	cr *util.Credentials) (*rbdVolume, *rbdSnapshot, error) {
 	if req.VolumeContentSource == nil {
 		return nil, nil, nil
 	}
@@ -663,8 +713,11 @@ func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *u
 // DeleteVolume deletes the volume in backend and removes the volume metadata
 // from store
 // TODO: make this function less complex.
-func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+func (cs *ControllerServer) DeleteVolume(
+	ctx context.Context,
+	req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		util.ErrorLog(ctx, "invalid delete volume req: %v", protosanitizer.StripSecrets(req))
 		return nil, err
 	}
@@ -781,7 +834,9 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 // ValidateVolumeCapabilities checks whether the volume capabilities requested
 // are supported.
-func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+func (cs *ControllerServer) ValidateVolumeCapabilities(
+	ctx context.Context,
+	req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	if req.GetVolumeId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
@@ -803,7 +858,9 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 }
 
 // CreateSnapshot creates the snapshot in backend and stores metadata in store.
-func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
+func (cs *ControllerServer) CreateSnapshot(
+	ctx context.Context,
+	req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	if err := cs.validateSnapshotReq(ctx, req); err != nil {
 		return nil, err
 	}
@@ -833,7 +890,10 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// Check if source volume was created with required image features for snaps
 	if !rbdVol.hasSnapshotFeature() {
-		return nil, status.Errorf(codes.InvalidArgument, "volume(%s) has not snapshot feature(layering)", req.GetSourceVolumeId())
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			"volume(%s) has not snapshot feature(layering)",
+			req.GetSourceVolumeId())
 	}
 
 	rbdSnap, err := genSnapFromOptions(ctx, rbdVol, req.GetParameters())
@@ -910,7 +970,11 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 // cloneFromSnapshot is a helper for CreateSnapshot that continues creating an
 // RBD image from an RBD snapshot if the process was interrupted at one point.
-func cloneFromSnapshot(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) (*csi.CreateSnapshotResponse, error) {
+func cloneFromSnapshot(
+	ctx context.Context,
+	rbdVol *rbdVolume,
+	rbdSnap *rbdSnapshot,
+	cr *util.Credentials) (*csi.CreateSnapshotResponse, error) {
 	vol := generateVolFromSnap(rbdSnap)
 	err := vol.Connect(cr)
 	if err != nil {
@@ -981,7 +1045,8 @@ func cloneFromSnapshot(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnaps
 }
 
 func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.CreateSnapshotRequest) error {
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		util.ErrorLog(ctx, "invalid create snapshot req: %v", protosanitizer.StripSecrets(req))
 		return err
 	}
@@ -1004,7 +1069,11 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 	return nil
 }
 
-func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, *rbdVolume, error) {
+func (cs *ControllerServer) doSnapshotClone(
+	ctx context.Context,
+	parentVol *rbdVolume,
+	rbdSnap *rbdSnapshot,
+	cr *util.Credentials) (bool, *rbdVolume, error) {
 	// generate cloned volume details from snapshot
 	cloneRbd := generateVolFromSnap(rbdSnap)
 	defer cloneRbd.Destroy()
@@ -1104,8 +1173,11 @@ func (cs *ControllerServer) doSnapshotClone(ctx context.Context, parentVol *rbdV
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
 // snapshot metadata from store.
-func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
+func (cs *ControllerServer) DeleteSnapshot(
+	ctx context.Context,
+	req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		util.ErrorLog(ctx, "invalid delete snapshot req: %v", protosanitizer.StripSecrets(req))
 		return nil, err
 	}
@@ -1199,7 +1271,9 @@ func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 }
 
 // ControllerExpandVolume expand RBD Volumes on demand based on resizer request.
-func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+func (cs *ControllerServer) ControllerExpandVolume(
+	ctx context.Context,
+	req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
 		util.ErrorLog(ctx, "invalid expand volume req: %v", protosanitizer.StripSecrets(req))
 		return nil, err
