@@ -11,7 +11,10 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
-func getStaticPV(name, volName, size, secretName, secretNS, sc, driverName string, blockPV bool, options map[string]string) *v1.PersistentVolume {
+func getStaticPV(
+	name, volName, size, secretName, secretNS, sc, driverName string,
+	blockPV bool,
+	options map[string]string) *v1.PersistentVolume {
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -102,7 +105,11 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 	fsID = strings.Trim(fsID, "\n")
 	size := "4Gi"
 	// create rbd image
-	cmd := fmt.Sprintf("rbd create %s --size=%d --image-feature=layering %s", rbdImageName, 4096, rbdOptions(defaultRBDPool))
+	cmd := fmt.Sprintf(
+		"rbd create %s --size=%d --image-feature=layering %s",
+		rbdImageName,
+		4096,
+		rbdOptions(defaultRBDPool))
 
 	_, e, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if err != nil {
@@ -121,7 +128,16 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 		opt["radosNamespace"] = radosNamespace
 	}
 
-	pv := getStaticPV(pvName, rbdImageName, size, rbdNodePluginSecretName, cephCSINamespace, sc, "rbd.csi.ceph.com", isBlock, opt)
+	pv := getStaticPV(
+		pvName,
+		rbdImageName,
+		size,
+		rbdNodePluginSecretName,
+		cephCSINamespace,
+		sc,
+		"rbd.csi.ceph.com",
+		isBlock,
+		opt)
 
 	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	if err != nil {
