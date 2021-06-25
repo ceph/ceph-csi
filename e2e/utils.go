@@ -311,7 +311,7 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 	}
 	_, stdErr, err := execCommandInPod(f, "echo testing > /target/testing", app.Namespace, &opt)
 	if err != nil {
-		return nil
+		return fmt.Errorf("failed to exec command in pod: %w", err)
 	}
 	if stdErr != "" {
 		return fmt.Errorf("failed to touch a file as non-root user %v", stdErr)
@@ -395,7 +395,7 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 
 	_, stdErr, err := execCommandInPod(f, fmt.Sprintf("echo %s > %s", data, filePath), app.Namespace, &opt)
 	if err != nil {
-		return nil
+		return fmt.Errorf("failed to exec command in pod: %w", err)
 	}
 	if stdErr != "" {
 		return fmt.Errorf("failed to write data to a file %v", stdErr)
