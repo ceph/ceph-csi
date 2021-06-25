@@ -54,7 +54,13 @@ func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 		}
 		dNum := ds.Status.DesiredNumberScheduled
 		ready := ds.Status.NumberReady
-		e2elog.Logf("%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)", ready, dNum, ns, ds.ObjectMeta.Name, int(time.Since(start).Seconds()))
+		e2elog.Logf(
+			"%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)",
+			ready,
+			dNum,
+			ns,
+			ds.ObjectMeta.Name,
+			int(time.Since(start).Seconds()))
 		if ready != dNum {
 			return false, nil
 		}
@@ -91,7 +97,10 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 		if deployment.Status.Replicas == deployment.Status.ReadyReplicas {
 			return true, nil
 		}
-		e2elog.Logf("deployment status: expected replica count %d running replica count %d", deployment.Status.Replicas, deployment.Status.ReadyReplicas)
+		e2elog.Logf(
+			"deployment status: expected replica count %d running replica count %d",
+			deployment.Status.Replicas,
+			deployment.Status.ReadyReplicas)
 		reason = fmt.Sprintf("deployment status: %#v", deployment.Status.String())
 		return false, nil
 	})
@@ -128,7 +137,10 @@ func findPodAndContainerName(f *framework.Framework, ns, cn string, opt *metav1.
 	return podList.Items[0].Name, podList.Items[0].Spec.Containers[0].Name, nil
 }
 
-func getCommandInPodOpts(f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions) (framework.ExecOptions, error) {
+func getCommandInPodOpts(
+	f *framework.Framework,
+	c, ns, cn string,
+	opt *metav1.ListOptions) (framework.ExecOptions, error) {
 	cmd := []string{"/bin/sh", "-c", c}
 	pName, cName, err := findPodAndContainerName(f, ns, cn, opt)
 	if err != nil {
@@ -147,7 +159,9 @@ func getCommandInPodOpts(f *framework.Framework, c, ns, cn string, opt *metav1.L
 }
 
 // execCommandInDaemonsetPod executes commands inside given container of a daemonset pod on a particular node.
-func execCommandInDaemonsetPod(f *framework.Framework, c, daemonsetName, nodeName, containerName, ns string) (string, string, error) {
+func execCommandInDaemonsetPod(
+	f *framework.Framework,
+	c, daemonsetName, nodeName, containerName, ns string) (string, string, error) {
 	selector, err := getDaemonSetLabelSelector(f, ns, daemonsetName)
 	if err != nil {
 		return "", "", err
@@ -204,7 +218,9 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 	return stdOut, stdErr, err
 }
 
-func execCommandInContainer(f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions) (string, string, error) { //nolint:unparam,lll // cn can be used with different inputs later
+//nolint:unparam // cn can be used with different inputs later
+func execCommandInContainer(
+	f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions) (string, string, error) {
 	podOpt, err := getCommandInPodOpts(f, c, ns, cn, opt)
 	if err != nil {
 		return "", "", err
@@ -298,7 +314,11 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 				}
 			}
 		}
-		e2elog.Logf("%s app  is in %s phase expected to be in Running  state (%d seconds elapsed)", name, pod.Status.Phase, int(time.Since(start).Seconds()))
+		e2elog.Logf(
+			"%s app  is in %s phase expected to be in Running  state (%d seconds elapsed)",
+			name,
+			pod.Status.Phase,
+			int(time.Since(start).Seconds()))
 		return false, nil
 	})
 }
@@ -325,7 +345,8 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 	})
 }
 
-func deletePodWithLabel(label, ns string, skipNotFound bool) error { //nolint:unparam // skipNotFound can be used with different inputs later
+//nolint:unparam // skipNotFound arg can be used with different inputs later
+func deletePodWithLabel(label, ns string, skipNotFound bool) error {
 	_, err := framework.RunKubectl(ns, "delete", "po", "-l", label, fmt.Sprintf("--ignore-not-found=%t", skipNotFound))
 	if err != nil {
 		e2elog.Logf("failed to delete pod %v", err)
