@@ -134,7 +134,10 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 	return nil
 }
 
-func cleanupCloneFromSubvolumeSnapshot(ctx context.Context, volID, cloneID volumeID, parentVolOpt *volumeOptions) error {
+func cleanupCloneFromSubvolumeSnapshot(
+	ctx context.Context,
+	volID, cloneID volumeID,
+	parentVolOpt *volumeOptions) error {
 	// snapshot name is same as clone name as we need a name which can be
 	// identified during PVC-PVC cloning.
 	snapShotID := cloneID
@@ -167,7 +170,11 @@ func isCloneRetryError(err error) bool {
 	return errors.Is(err, ErrCloneInProgress) || errors.Is(err, ErrClonePending)
 }
 
-func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volumeOptions, vID *volumeIdentifier, sID *snapshotIdentifier) error {
+func createCloneFromSnapshot(
+	ctx context.Context,
+	parentVolOpt, volOptions *volumeOptions,
+	vID *volumeIdentifier,
+	sID *snapshotIdentifier) error {
 	snapID := volumeID(sID.FsSnapshotName)
 	err := parentVolOpt.cloneSnapshot(ctx, volumeID(sID.FsSubvolName), snapID, volumeID(vID.FsSubvolName), volOptions)
 	if err != nil {
@@ -211,7 +218,12 @@ func createCloneFromSnapshot(ctx context.Context, parentVolOpt, volOptions *volu
 func (vo *volumeOptions) getCloneState(ctx context.Context, volID volumeID) (cephFSCloneState, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
-		util.ErrorLog(ctx, "could not get FSAdmin, can get clone status for volume %s with ID %s: %v", vo.FsName, string(volID), err)
+		util.ErrorLog(
+			ctx,
+			"could not get FSAdmin, can get clone status for volume %s with ID %s: %v",
+			vo.FsName,
+			string(volID),
+			err)
 		return cephFSCloneError, err
 	}
 

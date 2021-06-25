@@ -251,7 +251,10 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 
 // newVolumeOptionsFromVolID generates a new instance of volumeOptions and volumeIdentifier
 // from the provided CSI VolumeID.
-func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
+func newVolumeOptionsFromVolID(
+	ctx context.Context,
+	volID string,
+	volOpt, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
 	var (
 		vi         util.CSIIdentifier
 		volOptions volumeOptions
@@ -359,7 +362,9 @@ func newVolumeOptionsFromVolID(ctx context.Context, volID string, volOpt, secret
 
 // newVolumeOptionsFromMonitorList generates a new instance of volumeOptions and
 // volumeIdentifier from the provided CSI volume context.
-func newVolumeOptionsFromMonitorList(volID string, options, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
+func newVolumeOptionsFromMonitorList(
+	volID string,
+	options, secrets map[string]string) (*volumeOptions, *volumeIdentifier, error) {
 	var (
 		opts                volumeOptions
 		vid                 volumeIdentifier
@@ -412,7 +417,9 @@ func newVolumeOptionsFromMonitorList(volID string, options, secrets map[string]s
 // newVolumeOptionsFromStaticVolume generates a new instance of volumeOptions and
 // volumeIdentifier from the provided CSI volume context, if the provided context is
 // detected to be a statically provisioned volume.
-func newVolumeOptionsFromStaticVolume(volID string, options map[string]string) (*volumeOptions, *volumeIdentifier, error) {
+func newVolumeOptionsFromStaticVolume(
+	volID string,
+	options map[string]string) (*volumeOptions, *volumeIdentifier, error) {
 	var (
 		opts      volumeOptions
 		vid       volumeIdentifier
@@ -479,7 +486,10 @@ func newVolumeOptionsFromStaticVolume(volID string, options map[string]string) (
 
 // newSnapshotOptionsFromID generates a new instance of volumeOptions and snapshotIdentifier
 // from the provided CSI VolumeID.
-func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Credentials) (*volumeOptions, *snapshotInfo, *snapshotIdentifier, error) {
+func newSnapshotOptionsFromID(
+	ctx context.Context,
+	snapID string,
+	cr *util.Credentials) (*volumeOptions, *snapshotInfo, *snapshotIdentifier, error) {
 	var (
 		vi         util.CSIIdentifier
 		volOptions volumeOptions
@@ -495,11 +505,17 @@ func newSnapshotOptionsFromID(ctx context.Context, snapID string, cr *util.Crede
 	volOptions.FscID = vi.LocationID
 
 	if volOptions.Monitors, err = util.Mons(util.CsiConfigFile, vi.ClusterID); err != nil {
-		return &volOptions, nil, &sid, fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", vi.ClusterID, err)
+		return &volOptions, nil, &sid, fmt.Errorf(
+			"failed to fetch monitor list using clusterID (%s): %w",
+			vi.ClusterID,
+			err)
 	}
 
 	if volOptions.SubvolumeGroup, err = util.CephFSSubvolumeGroup(util.CsiConfigFile, vi.ClusterID); err != nil {
-		return &volOptions, nil, &sid, fmt.Errorf("failed to fetch subvolumegroup list using clusterID (%s): %w", vi.ClusterID, err)
+		return &volOptions, nil, &sid, fmt.Errorf(
+			"failed to fetch subvolumegroup list using clusterID (%s): %w",
+			vi.ClusterID,
+			err)
 	}
 
 	err = volOptions.Connect(cr)

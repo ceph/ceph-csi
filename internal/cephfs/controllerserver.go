@@ -77,7 +77,12 @@ func (cs *ControllerServer) createBackingVolume(
 			return status.Error(codes.Aborted, err.Error())
 		}
 		defer cs.OperationLocks.ReleaseCloneLock(pvID.VolumeID)
-		err = createCloneFromSubvolume(ctx, volumeID(pvID.FsSubvolName), volumeID(vID.FsSubvolName), volOptions, parentVolOpt)
+		err = createCloneFromSubvolume(
+			ctx,
+			volumeID(pvID.FsSubvolName),
+			volumeID(vID.FsSubvolName),
+			volOptions,
+			parentVolOpt)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to create clone from subvolume %s: %v", volumeID(pvID.FsSubvolName), err)
 			return err
@@ -92,7 +97,10 @@ func (cs *ControllerServer) createBackingVolume(
 	return nil
 }
 
-func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *util.Credentials) (*volumeOptions, *volumeIdentifier, *snapshotIdentifier, error) {
+func checkContentSource(
+	ctx context.Context,
+	req *csi.CreateVolumeRequest,
+	cr *util.Credentials) (*volumeOptions, *volumeIdentifier, *snapshotIdentifier, error) {
 	if req.VolumeContentSource == nil {
 		return nil, nil, nil, nil
 	}
@@ -126,7 +134,9 @@ func checkContentSource(ctx context.Context, req *csi.CreateVolumeRequest, cr *u
 
 // CreateVolume creates a reservation and the volume in backend, if it is not already present.
 // nolint:gocognit,gocyclo,nestif // TODO: reduce complexity
-func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+func (cs *ControllerServer) CreateVolume(
+	ctx context.Context,
+	req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
 		util.ErrorLog(ctx, "CreateVolumeRequest validation failed: %v", err)
 		return nil, err
@@ -293,7 +303,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 }
 
 // DeleteVolume deletes the volume in backend and its reservation.
-func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+func (cs *ControllerServer) DeleteVolume(
+	ctx context.Context,
+	req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(); err != nil {
 		util.ErrorLog(ctx, "DeleteVolumeRequest validation failed: %v", err)
 		return nil, err
@@ -408,7 +420,9 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 }
 
 // ControllerExpandVolume expands CephFS Volumes on demand based on resizer request.
-func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+func (cs *ControllerServer) ControllerExpandVolume(
+	ctx context.Context,
+	req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	if err := cs.validateExpandVolumeRequest(req); err != nil {
 		util.ErrorLog(ctx, "ControllerExpandVolumeRequest validation failed: %v", err)
 		return nil, err
@@ -460,7 +474,9 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
 // nolint:gocyclo // golangci-lint did not catch this earlier, needs to get fixed late
-func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
+func (cs *ControllerServer) CreateSnapshot(
+	ctx context.Context,
+	req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	if err := cs.validateSnapshotReq(ctx, req); err != nil {
 		return nil, err
 	}
@@ -507,7 +523,11 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	defer parentVolOptions.Destroy()
 
 	if clusterData.ClusterID != parentVolOptions.ClusterID {
-		return nil, status.Errorf(codes.InvalidArgument, "requested cluster id %s not matching subvolume cluster id %s", clusterData.ClusterID, parentVolOptions.ClusterID)
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			"requested cluster id %s not matching subvolume cluster id %s",
+			clusterData.ClusterID,
+			parentVolOptions.ClusterID)
 	}
 
 	cephfsSnap, genSnapErr := genSnapFromOptions(ctx, req)
@@ -538,7 +558,9 @@ func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		// support it or not, its safe to evaluat as the filtering
 		// is already done from getSubVolumeInfo() and send out the error here.
 		if errors.Is(err, ErrInvalidCommand) {
-			return nil, status.Error(codes.FailedPrecondition, "subvolume info command not supported in current ceph cluster")
+			return nil, status.Error(
+				codes.FailedPrecondition,
+				"subvolume info command not supported in current ceph cluster")
 		}
 		if sid != nil {
 			errDefer := undoSnapReservation(ctx, parentVolOptions, *sid, snapName, cr)
@@ -639,7 +661,8 @@ func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snaps
 }
 
 func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.CreateSnapshotRequest) error {
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		util.ErrorLog(ctx, "invalid create snapshot req: %v", protosanitizer.StripSecrets(req))
 		return err
 	}
@@ -657,8 +680,11 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
 // snapshot metadata from store.
-func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
+func (cs *ControllerServer) DeleteSnapshot(
+	ctx context.Context,
+	req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		util.ErrorLog(ctx, "invalid delete snapshot req: %v", protosanitizer.StripSecrets(req))
 		return nil, err
 	}

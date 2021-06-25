@@ -39,7 +39,8 @@ func execCommandErr(ctx context.Context, program string, args ...string) error {
 
 // Controller service request validation.
 func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid CreateVolumeRequest: %w", err)
 	}
 
@@ -94,7 +95,8 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 }
 
 func (cs *ControllerServer) validateDeleteVolumeRequest() error {
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
+	if err := cs.Driver.ValidateControllerServiceRequest(
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		return fmt.Errorf("invalid DeleteVolumeRequest: %w", err)
 	}
 

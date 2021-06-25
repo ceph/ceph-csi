@@ -100,7 +100,13 @@ func (vo *volumeOptions) getSnapshotInfo(ctx context.Context, snapID, volID volu
 		if errors.Is(err, rados.ErrNotFound) {
 			return snap, ErrSnapNotFound
 		}
-		util.ErrorLog(ctx, "failed to get subvolume snapshot info %s %s in fs %s with error %s", string(volID), string(snapID), vo.FsName, err)
+		util.ErrorLog(
+			ctx,
+			"failed to get subvolume snapshot info %s %s in fs %s with error %s",
+			string(volID),
+			string(snapID),
+			vo.FsName,
+			err)
 		return snap, err
 	}
 	snap.CreatedAt = info.CreatedAt.Time
@@ -127,7 +133,13 @@ func (vo *volumeOptions) protectSnapshot(ctx context.Context, snapID, volID volu
 		if errors.Is(err, rados.ErrObjectExists) {
 			return nil
 		}
-		util.ErrorLog(ctx, "failed to protect subvolume snapshot %s %s in fs %s with error: %s", string(volID), string(snapID), vo.FsName, err)
+		util.ErrorLog(
+			ctx,
+			"failed to protect subvolume snapshot %s %s in fs %s with error: %s",
+			string(volID),
+			string(snapID),
+			vo.FsName,
+			err)
 		return err
 	}
 	return nil
@@ -153,13 +165,23 @@ func (vo *volumeOptions) unprotectSnapshot(ctx context.Context, snapID, volID vo
 		if errors.Is(err, rados.ErrObjectExists) {
 			return nil
 		}
-		util.ErrorLog(ctx, "failed to unprotect subvolume snapshot %s %s in fs %s with error: %s", string(volID), string(snapID), vo.FsName, err)
+		util.ErrorLog(
+			ctx,
+			"failed to unprotect subvolume snapshot %s %s in fs %s with error: %s",
+			string(volID),
+			string(snapID),
+			vo.FsName,
+			err)
 		return err
 	}
 	return nil
 }
 
-func (vo *volumeOptions) cloneSnapshot(ctx context.Context, volID, snapID, cloneID volumeID, cloneVolOptions *volumeOptions) error {
+func (vo *volumeOptions) cloneSnapshot(
+	ctx context.Context,
+	volID, snapID, cloneID volumeID,
+	cloneVolOptions *volumeOptions,
+) error {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
@@ -174,7 +196,14 @@ func (vo *volumeOptions) cloneSnapshot(ctx context.Context, volID, snapID, clone
 
 	err = fsa.CloneSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID), string(cloneID), co)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to clone subvolume snapshot %s %s in fs %s with error: %s", string(volID), string(snapID), string(cloneID), vo.FsName, err)
+		util.ErrorLog(
+			ctx,
+			"failed to clone subvolume snapshot %s %s in fs %s with error: %s",
+			string(volID),
+			string(snapID),
+			string(cloneID),
+			vo.FsName,
+			err)
 		if errors.Is(err, rados.ErrNotFound) {
 			return ErrVolumeNotFound
 		}

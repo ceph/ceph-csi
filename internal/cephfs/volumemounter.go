@@ -195,7 +195,11 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 	return nil
 }
 
-func (m *fuseMounter) mount(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
+func (m *fuseMounter) mount(
+	ctx context.Context,
+	mountPoint string,
+	cr *util.Credentials,
+	volOptions *volumeOptions) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}
@@ -234,7 +238,11 @@ func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, v
 	return err
 }
 
-func (m *kernelMounter) mount(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
+func (m *kernelMounter) mount(
+	ctx context.Context,
+	mountPoint string,
+	cr *util.Credentials,
+	volOptions *volumeOptions) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}

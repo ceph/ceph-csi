@@ -67,7 +67,9 @@ func getCredentialsForVolume(volOptions *volumeOptions, req *csi.NodeStageVolume
 }
 
 // NodeStageVolume mounts the volume to a staging path on the node.
-func (ns *NodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+func (ns *NodeServer) NodeStageVolume(
+	ctx context.Context,
+	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	var (
 		volOptions *volumeOptions
 	)
@@ -179,14 +181,25 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 			err)
 		return status.Error(codes.Internal, err.Error())
 	}
-	if !csicommon.MountOptionContains(kernelMountOptions, readOnly) && !csicommon.MountOptionContains(fuseMountOptions, readOnly) {
+	if !csicommon.MountOptionContains(kernelMountOptions, readOnly) &&
+		!csicommon.MountOptionContains(fuseMountOptions, readOnly) {
 		// #nosec - allow anyone to write inside the stagingtarget path
 		err = os.Chmod(stagingTargetPath, 0777)
 		if err != nil {
-			util.ErrorLog(ctx, "failed to change stagingtarget path %s permission for volume %s: %v", stagingTargetPath, volID, err)
+			util.ErrorLog(
+				ctx,
+				"failed to change stagingtarget path %s permission for volume %s: %v",
+				stagingTargetPath,
+				volID,
+				err)
 			uErr := unmountVolume(ctx, stagingTargetPath)
 			if uErr != nil {
-				util.ErrorLog(ctx, "failed to umount stagingtarget path %s for volume %s: %v", stagingTargetPath, volID, uErr)
+				util.ErrorLog(
+					ctx,
+					"failed to umount stagingtarget path %s for volume %s: %v",
+					stagingTargetPath,
+					volID,
+					uErr)
 			}
 			return status.Error(codes.Internal, err.Error())
 		}
@@ -196,7 +209,9 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 
 // NodePublishVolume mounts the volume mounted to the staging path to the target
 // path.
-func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+func (ns *NodeServer) NodePublishVolume(
+	ctx context.Context,
+	req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	mountOptions := []string{"bind", "_netdev"}
 	if err := util.ValidateNodePublishVolumeRequest(req); err != nil {
 		return nil, err
@@ -249,7 +264,9 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 }
 
 // NodeUnpublishVolume unmounts the volume from the target path.
-func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+func (ns *NodeServer) NodeUnpublishVolume(
+	ctx context.Context,
+	req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeUnpublishVolumeRequest(req); err != nil {
 		return nil, err
@@ -296,7 +313,9 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 }
 
 // NodeUnstageVolume unstages the volume from the staging path.
-func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+func (ns *NodeServer) NodeUnstageVolume(
+	ctx context.Context,
+	req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeUnstageVolumeRequest(req); err != nil {
 		return nil, err
@@ -334,7 +353,9 @@ func (ns *NodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server.
-func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+func (ns *NodeServer) NodeGetCapabilities(
+	ctx context.Context,
+	req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
 			{
@@ -356,7 +377,9 @@ func (ns *NodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 }
 
 // NodeGetVolumeStats returns volume stats.
-func (ns *NodeServer) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+func (ns *NodeServer) NodeGetVolumeStats(
+	ctx context.Context,
+	req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
 	var err error
 	targetPath := req.GetVolumePath()
 	if targetPath == "" {

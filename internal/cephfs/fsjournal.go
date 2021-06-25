@@ -136,7 +136,11 @@ func checkVolExists(ctx context.Context,
 			// If the subvolume is not present, cleanup the stale snapshot
 			// created for clone.
 			if parentVolOpt != nil && pvID != nil {
-				err = cleanupCloneFromSubvolumeSnapshot(ctx, volumeID(pvID.FsSubvolName), volumeID(vid.FsSubvolName), parentVolOpt)
+				err = cleanupCloneFromSubvolumeSnapshot(
+					ctx,
+					volumeID(pvID.FsSubvolName),
+					volumeID(vid.FsSubvolName),
+					parentVolOpt)
 				if err != nil {
 					return nil, err
 				}
@@ -165,7 +169,11 @@ func checkVolExists(ctx context.Context,
 		vid.VolumeID, vid.FsSubvolName, volOptions.RequestName)
 
 	if parentVolOpt != nil && pvID != nil {
-		err = cleanupCloneFromSubvolumeSnapshot(ctx, volumeID(pvID.FsSubvolName), volumeID(vid.FsSubvolName), parentVolOpt)
+		err = cleanupCloneFromSubvolumeSnapshot(
+			ctx,
+			volumeID(pvID.FsSubvolName),
+			volumeID(vid.FsSubvolName),
+			parentVolOpt)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +183,11 @@ func checkVolExists(ctx context.Context,
 }
 
 // undoVolReservation is a helper routine to undo a name reservation for a CSI VolumeName.
-func undoVolReservation(ctx context.Context, volOptions *volumeOptions, vid volumeIdentifier, secret map[string]string) error {
+func undoVolReservation(
+	ctx context.Context,
+	volOptions *volumeOptions,
+	vid volumeIdentifier,
+	secret map[string]string) error {
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
 		return err
@@ -259,7 +271,12 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 
 // reserveSnap is a helper routine to request a UUID reservation for the CSI SnapName and,
 // to generate the snapshot identifier for the reserved UUID.
-func reserveSnap(ctx context.Context, volOptions *volumeOptions, parentSubVolName string, snap *cephfsSnapshot, cr *util.Credentials) (*snapshotIdentifier, error) {
+func reserveSnap(
+	ctx context.Context,
+	volOptions *volumeOptions,
+	parentSubVolName string,
+	snap *cephfsSnapshot,
+	cr *util.Credentials) (*snapshotIdentifier, error) {
 	var (
 		vid       snapshotIdentifier
 		imageUUID string
@@ -295,7 +312,12 @@ func reserveSnap(ctx context.Context, volOptions *volumeOptions, parentSubVolNam
 }
 
 // undoSnapReservation is a helper routine to undo a name reservation for a CSI SnapshotName.
-func undoSnapReservation(ctx context.Context, volOptions *volumeOptions, vid snapshotIdentifier, snapName string, cr *util.Credentials) error {
+func undoSnapReservation(
+	ctx context.Context,
+	volOptions *volumeOptions,
+	vid snapshotIdentifier,
+	snapName string,
+	cr *util.Credentials) error {
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
