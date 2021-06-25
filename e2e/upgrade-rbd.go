@@ -119,11 +119,15 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to delete configmap with error %v", err)
 		}
-		err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), rbdProvisionerSecretName, metav1.DeleteOptions{})
+		err = c.CoreV1().
+			Secrets(cephCSINamespace).
+			Delete(context.TODO(), rbdProvisionerSecretName, metav1.DeleteOptions{})
 		if err != nil {
 			e2elog.Failf("failed to delete provisioner secret with error %v", err)
 		}
-		err = c.CoreV1().Secrets(cephCSINamespace).Delete(context.TODO(), rbdNodePluginSecretName, metav1.DeleteOptions{})
+		err = c.CoreV1().
+			Secrets(cephCSINamespace).
+			Delete(context.TODO(), rbdNodePluginSecretName, metav1.DeleteOptions{})
 		if err != nil {
 			e2elog.Failf("failed to delete node secret with error %v", err)
 		}
@@ -206,7 +210,11 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				filePath := filepath.Join(mountPath, "testClone")
 
 				// create a test file at the mountPath.
-				_, stdErr := execCommandInPodAndAllowFail(f, fmt.Sprintf("echo %s > %s", data, filePath), app.Namespace, &opt)
+				_, stdErr := execCommandInPodAndAllowFail(
+					f,
+					fmt.Sprintf("echo %s > %s", data, filePath),
+					app.Namespace,
+					&opt)
 				if stdErr != "" {
 					e2elog.Failf("failed to write data to a file %s", stdErr)
 				}
@@ -307,7 +315,10 @@ var _ = Describe("RBD Upgrade Testing", func() {
 						e2elog.Failf("failed to calculate checksum with error %v", err)
 					}
 					if strings.Compare(newCheckSum, checkSum) != 0 {
-						e2elog.Failf("The checksum of files did not match, expected %s received %s  ", checkSum, newCheckSum)
+						e2elog.Failf(
+							"The checksum of files did not match, expected %s received %s",
+							checkSum,
+							newCheckSum)
 					}
 					e2elog.Logf("The checksum of files matched")
 
@@ -356,7 +367,10 @@ var _ = Describe("RBD Upgrade Testing", func() {
 						e2elog.Failf("failed to calculate checksum with error %v", err)
 					}
 					if strings.Compare(newCheckSum, checkSum) != 0 {
-						e2elog.Failf("The checksum of files did not match, expected %s received %s  ", checkSum, newCheckSum)
+						e2elog.Failf(
+							"The checksum of files did not match, expected %s received %s",
+							checkSum,
+							newCheckSum)
 					}
 					e2elog.Logf("The checksum of files matched")
 
@@ -380,7 +394,9 @@ var _ = Describe("RBD Upgrade Testing", func() {
 						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
 					}
 					var err error
-					pvc, err = f.ClientSet.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
+					pvc, err = f.ClientSet.CoreV1().
+						PersistentVolumeClaims(pvc.Namespace).
+						Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 					if err != nil {
 						e2elog.Failf("failed to get pvc with error %v", err)
 					}
