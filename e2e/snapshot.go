@@ -33,11 +33,11 @@ func getSnapshot(path string) snapapi.VolumeSnapshot {
 func newSnapshotClient() (*snapclient.SnapshotV1Client, error) {
 	config, err := framework.LoadConfig()
 	if err != nil {
-		return nil, fmt.Errorf("error creating client: %v", err.Error())
+		return nil, fmt.Errorf("error creating client: %w", err)
 	}
 	c, err := snapclient.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("error creating snapshot client: %v", err.Error())
+		return nil, fmt.Errorf("error creating snapshot client: %w", err)
 	}
 	return c, err
 }

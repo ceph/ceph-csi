@@ -159,11 +159,11 @@ func getPVCAndPV(
 	pvcName, pvcNamespace string) (*v1.PersistentVolumeClaim, *v1.PersistentVolume, error) {
 	pvc, err := c.CoreV1().PersistentVolumeClaims(pvcNamespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get PVC with error %v", err)
+		return nil, nil, fmt.Errorf("failed to get PVC: %w", err)
 	}
 	pv, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
-		return pvc, nil, fmt.Errorf("failed to get PV with error %v", err)
+		return pvc, nil, fmt.Errorf("failed to get PV: %w", err)
 	}
 	return pvc, pv, nil
 }
