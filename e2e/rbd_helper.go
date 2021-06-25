@@ -35,7 +35,12 @@ func rbdOptions(pool string) string {
 	return "--pool=" + pool
 }
 
-func createRBDStorageClass(c kubernetes.Interface, f *framework.Framework, name string, scOptions, parameters map[string]string, policy v1.PersistentVolumeReclaimPolicy) error {
+func createRBDStorageClass(
+	c kubernetes.Interface,
+	f *framework.Framework,
+	name string,
+	scOptions, parameters map[string]string,
+	policy v1.PersistentVolumeReclaimPolicy) error {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
 	if err != nil {
@@ -211,8 +216,14 @@ func validateImageOwner(pvcPath string, f *framework.Framework) error {
 		return err
 	}
 
-	stdOut, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rados %s getomapval csi.volume.%s %s", rbdOptions(defaultRBDPool), imageData.imageID, ownerKey), rookNamespace)
+	stdOut, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf(
+			"rados %s getomapval csi.volume.%s %s",
+			rbdOptions(defaultRBDPool),
+			imageData.imageID,
+			ownerKey),
+		rookNamespace)
 	if err != nil {
 		return err
 	}
@@ -221,7 +232,11 @@ func validateImageOwner(pvcPath string, f *framework.Framework) error {
 	}
 
 	if radosNamespace != "" {
-		e2elog.Logf("found image journal %s in pool %s namespace %s", "csi.volume."+imageData.imageID, defaultRBDPool, radosNamespace)
+		e2elog.Logf(
+			"found image journal %s in pool %s namespace %s",
+			"csi.volume."+imageData.imageID,
+			defaultRBDPool,
+			radosNamespace)
 	} else {
 		e2elog.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, defaultRBDPool)
 	}
@@ -628,7 +643,10 @@ func checkPVCImageInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, 
 	return err
 }
 
-func checkPVCDataPoolForImageInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool, dataPool string) error {
+func checkPVCDataPoolForImageInPool(
+	f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	pool, dataPool string) error {
 	stdOut, err := getPVCImageInfoInPool(f, pvc, pool)
 	if err != nil {
 		return err
@@ -657,7 +675,11 @@ func checkPVCImageJournalInPool(f *framework.Framework, pvc *v1.PersistentVolume
 	}
 
 	if radosNamespace != "" {
-		e2elog.Logf("found image journal %s in pool %s namespace %s", "csi.volume."+imageData.imageID, pool, radosNamespace)
+		e2elog.Logf(
+			"found image journal %s in pool %s namespace %s",
+			"csi.volume."+imageData.imageID,
+			pool,
+			radosNamespace)
 	} else {
 		e2elog.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, pool)
 	}
@@ -671,8 +693,15 @@ func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeCl
 		return err
 	}
 
-	_, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rados getomapval %s csi.volumes.default csi.volume.%s", rbdOptions(pool), imageData.pvName), rookNamespace)
+	_, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf(
+			"rados getomapval %s csi.volumes.default csi.volume.%s",
+			rbdOptions(pool),
+			imageData.pvName,
+		),
+		rookNamespace,
+	)
 	if err != nil {
 		return err
 	}
@@ -681,7 +710,11 @@ func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeCl
 	}
 
 	if radosNamespace != "" {
-		e2elog.Logf("found CSI journal entry %s in pool %s namespace %s", "csi.volume."+imageData.pvName, pool, radosNamespace)
+		e2elog.Logf(
+			"found CSI journal entry %s in pool %s namespace %s",
+			"csi.volume."+imageData.pvName,
+			pool,
+			radosNamespace)
 	} else {
 		e2elog.Logf("found CSI journal entry %s in pool %s", "csi.volume."+imageData.pvName, pool)
 	}
@@ -701,7 +734,11 @@ func deletePVCImageJournalInPool(f *framework.Framework, pvc *v1.PersistentVolum
 		return err
 	}
 	if stdErr != "" {
-		return fmt.Errorf("failed to remove omap %s csi.volume.%s with error %v", rbdOptions(pool), imageData.imageID, stdErr)
+		return fmt.Errorf(
+			"failed to remove omap %s csi.volume.%s with error %v",
+			rbdOptions(pool),
+			imageData.imageID,
+			stdErr)
 	}
 
 	return nil
@@ -713,13 +750,22 @@ func deletePVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeC
 		return err
 	}
 
-	_, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rados rmomapkey %s csi.volumes.default csi.volume.%s", rbdOptions(pool), imageData.pvName), rookNamespace)
+	_, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf(
+			"rados rmomapkey %s csi.volumes.default csi.volume.%s",
+			rbdOptions(pool),
+			imageData.pvName),
+		rookNamespace)
 	if err != nil {
 		return err
 	}
 	if stdErr != "" {
-		return fmt.Errorf("failed to remove %s csi.volumes.default csi.volume.%s with error %v", rbdOptions(pool), imageData.imageID, stdErr)
+		return fmt.Errorf(
+			"failed to remove %s csi.volumes.default csi.volume.%s with error %v",
+			rbdOptions(pool),
+			imageData.imageID,
+			stdErr)
 	}
 
 	return nil
