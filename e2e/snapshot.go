@@ -47,7 +47,10 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	if err != nil {
 		return err
 	}
-	_, err = sclient.VolumeSnapshots(snap.Namespace).Create(context.TODO(), snap, metav1.CreateOptions{})
+
+	_, err = sclient.
+		VolumeSnapshots(snap.Namespace).
+		Create(context.TODO(), snap, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create volumesnapshot: %w", err)
 	}
@@ -60,7 +63,9 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		e2elog.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
-		snaps, err := sclient.VolumeSnapshots(snap.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		snaps, err := sclient.
+			VolumeSnapshots(snap.Namespace).
+			Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			e2elog.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
 			if isRetryableAPIError(err) {
@@ -87,7 +92,10 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	if err != nil {
 		return err
 	}
-	err = sclient.VolumeSnapshots(snap.Namespace).Delete(context.TODO(), snap.Name, metav1.DeleteOptions{})
+
+	err = sclient.
+		VolumeSnapshots(snap.Namespace).
+		Delete(context.TODO(), snap.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to delete volumesnapshot: %w", err)
 	}
@@ -99,13 +107,18 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		e2elog.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
-		_, err := sclient.VolumeSnapshots(snap.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		_, err := sclient.
+			VolumeSnapshots(snap.Namespace).
+			Get(context.TODO(), name, metav1.GetOptions{})
 		if err == nil {
 			return false, nil
 		}
 
 		if !apierrs.IsNotFound(err) {
-			return false, fmt.Errorf("get on deleted snapshot %v failed with error other than \"not found\": %v", name, err)
+			return false, fmt.Errorf(
+				"get on deleted snapshot %v failed with error other than \"not found\": %v",
+				name,
+				err)
 		}
 
 		return true, nil
@@ -177,12 +190,17 @@ func getVolumeSnapshotContent(namespace, snapshotName string) (*snapapi.VolumeSn
 	if err != nil {
 		return nil, err
 	}
-	snapshot, err := sclient.VolumeSnapshots(namespace).Get(context.TODO(), snapshotName, metav1.GetOptions{})
+
+	snapshot, err := sclient.
+		VolumeSnapshots(namespace).
+		Get(context.TODO(), snapshotName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get volumesnapshot: %w", err)
 	}
 
-	volumeSnapshotContent, err := sclient.VolumeSnapshotContents().Get(context.TODO(), *snapshot.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
+	volumeSnapshotContent, err := sclient.
+		VolumeSnapshotContents().
+		Get(context.TODO(), *snapshot.Status.BoundVolumeSnapshotContentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get volumesnapshotcontent: %w", err)
 	}
