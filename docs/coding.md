@@ -69,6 +69,33 @@ import (
 * Use log level `ERROR` when something occurs which is fatal to the operation,
   but not to the service or application.
 
+### Wrap long lines
+
+At present, we restrict the number of chars in a line to `120` which is the
+default value for the `lll` linter check we have in CI. If your source code line
+or comment goes beyond this limit please try to organize it in such a way it
+is within the line length limit and help on code reading.
+
+Example:
+
+```
+_, err := framework.RunKubectl(cephCSINamespace, "delete", "cm", "ceph-csi-encryption-kms-config", "--namespace", cephCSINamespace, "--ignore-not-found=true")
+```
+
+Instead of above long function signature, we can organize it to something like below
+which is clear and help on easy code reading.
+
+```
+_, err := framework.RunKubectl(
+            cephCSINamespace,
+            "delete",
+            "cm",
+            "ceph-csi-encryption-kms-config",
+            "--namespace",
+            cephCSINamespace,
+            "--ignore-not-found=true")
+```
+
 ### Mark Down Rules
 
 * MD014 - Dollar signs used before commands without showing output
