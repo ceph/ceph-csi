@@ -86,7 +86,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-func (r *ReconcilePersistentVolume) getCredentials(name, namespace string) (*util.Credentials, error) {
+func (r *ReconcilePersistentVolume) getCredentials(
+	ctx context.Context,
+	name,
+	namespace string) (*util.Credentials, error) {
 	var cr *util.Credentials
 
 	if name == "" || namespace == "" {
@@ -95,7 +98,9 @@ func (r *ReconcilePersistentVolume) getCredentials(name, namespace string) (*uti
 		return nil, errors.New(errStr)
 	}
 	secret := &corev1.Secret{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, secret)
+	err := r.client.Get(ctx,
+		types.NamespacedName{Name: name, Namespace: namespace},
+		secret)
 	if err != nil {
 		return nil, fmt.Errorf("error getting secret %s in namespace %s: %w", name, namespace, err)
 	}
@@ -128,7 +133,10 @@ func checkStaticVolume(pv *corev1.PersistentVolume) (bool, error) {
 }
 
 // storeVolumeIDInPV stores the new volumeID in PV object.
-func (r ReconcilePersistentVolume) storeVolumeIDInPV(pv *corev1.PersistentVolume, newVolumeID string) error {
+func (r ReconcilePersistentVolume) storeVolumeIDInPV(
+	ctx context.Context,
+	pv *corev1.PersistentVolume,
+	newVolumeID string) error {
 	if v, ok := pv.Annotations[rbd.PVVolumeHandleAnnotationKey]; ok {
 		if v == newVolumeID {
 			return nil
@@ -142,12 +150,12 @@ func (r ReconcilePersistentVolume) storeVolumeIDInPV(pv *corev1.PersistentVolume
 	}
 	pv.Labels[rbd.PVReplicatedLabelKey] = rbd.PVReplicatedLabelValue
 	pv.Annotations[rbd.PVVolumeHandleAnnotationKey] = newVolumeID
-	return r.client.Update(context.TODO(), pv)
+	return r.client.Update(ctx, pv)
 }
 
 // reconcilePV will extract the image details from the pv spec and regenerates
 // the omap data.
-func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
+func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.Object) error {
 	pv, ok := obj.(*corev1.PersistentVolume)
 	if !ok {
 		return nil
@@ -185,7 +193,7 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 	}
 	defer r.Locks.Release(pv.Spec.CSI.VolumeHandle)
 
-	cr, err := r.getCredentials(secretName, secretNamespace)
+	cr, err := r.getCredentials(ctx, secretName, secretNamespace)
 	if err != nil {
 		util.ErrorLogMsg("failed to get credentials from secret %s", err)
 		return err
@@ -198,7 +206,7 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 		return err
 	}
 	if rbdVolID != volumeHandler {
-		err = r.storeVolumeIDInPV(pv, rbdVolID)
+		err = r.storeVolumeIDInPV(ctx, pv, rbdVolID)
 		if err != nil {
 			util.ErrorLogMsg("failed to store volumeID in PV %s", err)
 			return err
@@ -209,9 +217,10 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 
 // Reconcile reconciles the PersistentVolume object and creates a new omap entries
 // for the volume.
-func (r *ReconcilePersistentVolume) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcilePersistentVolume) Reconcile(ctx context.Context,
+	request reconcile.Request) (reconcile.Result, error) {
 	pv := &corev1.PersistentVolume{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, pv)
+	err := r.client.Get(ctx, request.NamespacedName, pv)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
@@ -223,7 +232,7 @@ func (r *ReconcilePersistentVolume) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, nil
 	}
 
-	err = r.reconcilePV(pv)
+	err = r.reconcilePV(ctx, pv)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
