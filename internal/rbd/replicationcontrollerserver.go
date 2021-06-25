@@ -90,7 +90,11 @@ func getForceOption(ctx context.Context, parameters map[string]string) (bool, er
 func getMirroringMode(ctx context.Context, parameters map[string]string) (librbd.ImageMirrorMode, error) {
 	val, ok := parameters[imageMirroringKey]
 	if !ok {
-		util.WarningLog(ctx, "%s is not set in parameters, setting to mirroringMode to default (%s)", imageMirroringKey, imageMirrorModeSnapshot)
+		util.WarningLog(
+			ctx,
+			"%s is not set in parameters, setting to mirroringMode to default (%s)",
+			imageMirroringKey,
+			imageMirrorModeSnapshot)
 		return librbd.ImageMirrorModeSnapshot, nil
 	}
 
@@ -286,7 +290,11 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	}
 
 	if mirroringInfo.State != librbd.MirrorImageEnabled {
-		return nil, status.Errorf(codes.InvalidArgument, "mirroring is not enabled on %s, image is in %d Mode", rbdVol.VolID, mirroringInfo.State)
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			"mirroring is not enabled on %s, image is in %d Mode",
+			rbdVol.VolID,
+			mirroringInfo.State)
 	}
 
 	// promote secondary to primary
@@ -353,7 +361,11 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	}
 
 	if mirroringInfo.State != librbd.MirrorImageEnabled {
-		return nil, status.Errorf(codes.InvalidArgument, "mirroring is not enabled on %s, image is in %d Mode", rbdVol.VolID, mirroringInfo.State)
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			"mirroring is not enabled on %s, image is in %d Mode",
+			rbdVol.VolID,
+			mirroringInfo.State)
 	}
 
 	// demote image to secondary
@@ -449,7 +461,13 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		ready = true
 		for _, s := range mirrorStatus.PeerSites {
 			if imageMirroringState(s.State) != upAndUnknown {
-				util.UsefulLog(ctx, "peer site name=%s, mirroring state=%s, description=%s and lastUpdate=%s", s.SiteName, s.State, s.Description, s.LastUpdate)
+				util.UsefulLog(
+					ctx,
+					"peer site name=%s, mirroring state=%s, description=%s and lastUpdate=%s",
+					s.SiteName,
+					s.State,
+					s.Description,
+					s.LastUpdate)
 				ready = false
 			}
 		}
@@ -464,7 +482,12 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		}
 	}
 
-	util.UsefulLog(ctx, "image mirroring state=%s, description=%s and lastUpdate=%s", mirrorStatus.State, mirrorStatus.Description, mirrorStatus.LastUpdate)
+	util.UsefulLog(
+		ctx,
+		"image mirroring state=%s, description=%s and lastUpdate=%s",
+		mirrorStatus.State,
+		mirrorStatus.Description,
+		mirrorStatus.LastUpdate)
 	resp := &replication.ResyncVolumeResponse{
 		Ready: ready,
 	}

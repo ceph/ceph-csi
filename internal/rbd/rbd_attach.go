@@ -96,7 +96,10 @@ func rbdGetDeviceList(ctx context.Context, accessType string) ([]rbdDeviceInfo, 
 		err = json.Unmarshal([]byte(stdout), &nbdDeviceList)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error to parse JSON output of device list for devices of type (%s): %w", accessType, err)
+		return nil, fmt.Errorf(
+			"error to parse JSON output of device list for devices of type (%s): %w",
+			accessType,
+			err)
 	}
 
 	// convert output to a rbdDeviceInfo list for consumers
@@ -270,7 +273,14 @@ func createPath(ctx context.Context, volOpt *rbdVolume, cr *util.Credentials) (s
 		util.WarningLog(ctx, "rbd: map error %v, rbd output: %s", err, stderr)
 		// unmap rbd image if connection timeout
 		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
-			detErr := detachRBDImageOrDeviceSpec(ctx, imagePath, true, isNbd, volOpt.isEncrypted(), volOpt.VolID, volOpt.UnmapOptions)
+			detErr := detachRBDImageOrDeviceSpec(
+				ctx,
+				imagePath,
+				true,
+				isNbd,
+				volOpt.isEncrypted(),
+				volOpt.VolID,
+				volOpt.UnmapOptions)
 			if detErr != nil {
 				util.WarningLog(ctx, "rbd: %s unmap error %v", imagePath, detErr)
 			}
@@ -315,7 +325,11 @@ func detachRBDDevice(ctx context.Context, devicePath, volumeID, unmapOptions str
 
 // detachRBDImageOrDeviceSpec detaches an rbd imageSpec or devicePath, with additional checking
 // when imageSpec is used to decide if image is already unmapped.
-func detachRBDImageOrDeviceSpec(ctx context.Context, imageOrDeviceSpec string, isImageSpec, isNbd, encrypted bool, volumeID, unmapOptions string) error {
+func detachRBDImageOrDeviceSpec(
+	ctx context.Context,
+	imageOrDeviceSpec string,
+	isImageSpec, isNbd, encrypted bool,
+	volumeID, unmapOptions string) error {
 	if encrypted {
 		mapperFile, mapperPath := util.VolumeMapper(volumeID)
 		mappedDevice, mapper, err := util.DeviceEncryptionStatus(ctx, mapperPath)
