@@ -472,7 +472,13 @@ func isNotMountPoint(mounter mount.Interface, stagingTargetPath string) (bool, e
 func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (bool, error) {
 	args := []string{"rbd", "task", "add"}
 	args = append(args, arg...)
-	util.DebugLog(ctx, "executing %v for image (%s) using mon %s, pool %s", args, pOpts.RbdImageName, pOpts.Monitors, pOpts.Pool)
+	util.DebugLog(
+		ctx,
+		"executing %v for image (%s) using mon %s, pool %s",
+		args,
+		pOpts.RbdImageName,
+		pOpts.Monitors,
+		pOpts.Pool)
 	supported := true
 	_, stderr, err := util.ExecCommand(ctx, "ceph", args...)
 
@@ -480,7 +486,11 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 		switch {
 		case strings.Contains(stderr, rbdTaskRemoveCmdInvalidString1) &&
 			strings.Contains(stderr, rbdTaskRemoveCmdInvalidString2):
-			util.WarningLog(ctx, "cluster with cluster ID (%s) does not support Ceph manager based rbd commands (minimum ceph version required is v14.2.3)", pOpts.ClusterID)
+			util.WarningLog(
+				ctx,
+				"cluster with cluster ID (%s) does not support Ceph manager based rbd commands"+
+					"(minimum ceph version required is v14.2.3)",
+				pOpts.ClusterID)
 			supported = false
 		case strings.HasPrefix(stderr, rbdTaskRemoveCmdAccessDeniedMessage):
 			util.WarningLog(ctx, "access denied to Ceph MGR-based rbd commands on cluster ID (%s)", pOpts.ClusterID)
@@ -595,7 +605,11 @@ type trashSnapInfo struct {
 	origSnapName string
 }
 
-func flattenClonedRbdImages(ctx context.Context, snaps []librbd.SnapInfo, pool, monitors, rbdImageName string, cr *util.Credentials) error {
+func flattenClonedRbdImages(
+	ctx context.Context,
+	snaps []librbd.SnapInfo,
+	pool, monitors, rbdImageName string,
+	cr *util.Credentials) error {
 	rv := &rbdVolume{}
 	rv.Monitors = monitors
 	rv.Pool = pool
@@ -636,7 +650,11 @@ func flattenClonedRbdImages(ctx context.Context, snaps []librbd.SnapInfo, pool, 
 	return nil
 }
 
-func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, forceFlatten bool, hardlimit, softlimit uint) error {
+func (rv *rbdVolume) flattenRbdImage(
+	ctx context.Context,
+	cr *util.Credentials,
+	forceFlatten bool,
+	hardlimit, softlimit uint) error {
 	var depth uint
 	var err error
 
@@ -646,7 +664,13 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 		if err != nil {
 			return err
 		}
-		util.ExtendedLog(ctx, "clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s", depth, softlimit, hardlimit, rv)
+		util.ExtendedLog(
+			ctx,
+			"clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s",
+			depth,
+			softlimit,
+			hardlimit,
+			rv)
 	}
 
 	if !forceFlatten && (depth < hardlimit) && (depth < softlimit) {
@@ -669,7 +693,10 @@ func (rv *rbdVolume) flattenRbdImage(ctx context.Context, cr *util.Credentials, 
 		}
 	}
 	if !supported {
-		util.ErrorLog(ctx, "task manager does not support flatten,image will be flattened once hardlimit is reached: %v", err)
+		util.ErrorLog(
+			ctx,
+			"task manager does not support flatten,image will be flattened once hardlimit is reached: %v",
+			err)
 		if forceFlatten || depth >= hardlimit {
 			err = rv.Connect(cr)
 			if err != nil {
@@ -769,7 +796,12 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 
 // genSnapFromSnapID generates a rbdSnapshot structure from the provided identifier, updating
 // the structure with elements from on-disk snapshot metadata as well.
-func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID string, cr *util.Credentials, secrets map[string]string) error {
+func genSnapFromSnapID(
+	ctx context.Context,
+	rbdSnap *rbdSnapshot,
+	snapshotID string,
+	cr *util.Credentials,
+	secrets map[string]string) error {
 	var (
 		options map[string]string
 		vi      util.CSIIdentifier
@@ -853,7 +885,11 @@ func genSnapFromSnapID(ctx context.Context, rbdSnap *rbdSnapshot, snapshotID str
 }
 
 // generateVolumeFromVolumeID generates a rbdVolume structure from the provided identifier.
-func generateVolumeFromVolumeID(ctx context.Context, volumeID string, cr *util.Credentials, secrets map[string]string) (*rbdVolume, error) {
+func generateVolumeFromVolumeID(
+	ctx context.Context,
+	volumeID string,
+	cr *util.Credentials,
+	secrets map[string]string) (*rbdVolume, error) {
 	var (
 		options map[string]string
 		vi      util.CSIIdentifier
@@ -944,9 +980,14 @@ func generateVolumeFromVolumeID(ctx context.Context, volumeID string, cr *util.C
 
 // genVolFromVolID generates a rbdVolume structure from the provided identifier, updating
 // the structure with elements from on-disk image metadata as well.
-func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials, secrets map[string]string) (*rbdVolume, error) {
+func genVolFromVolID(
+	ctx context.Context,
+	volumeID string,
+	cr *util.Credentials,
+	secrets map[string]string) (*rbdVolume, error) {
 	vol, err := generateVolumeFromVolumeID(ctx, volumeID, cr, secrets)
-	if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) && !errors.Is(err, ErrImageNotFound) {
+	if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) &&
+		!errors.Is(err, ErrImageNotFound) {
 		return vol, err
 	}
 
@@ -974,7 +1015,10 @@ func genVolFromVolID(ctx context.Context, volumeID string, cr *util.Credentials,
 	return vol, err
 }
 
-func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[string]string, disableInUseChecks bool) (*rbdVolume, error) {
+func genVolFromVolumeOptions(
+	ctx context.Context,
+	volOptions, credentials map[string]string,
+	disableInUseChecks bool) (*rbdVolume, error) {
 	var (
 		ok         bool
 		err        error
@@ -1012,7 +1056,12 @@ func genVolFromVolumeOptions(ctx context.Context, volOptions, credentials map[st
 		return nil, err
 	}
 
-	util.ExtendedLog(ctx, "setting disableInUseChecks: %t image features: %v mounter: %s", disableInUseChecks, rbdVol.imageFeatureSet.Names(), rbdVol.Mounter)
+	util.ExtendedLog(
+		ctx,
+		"setting disableInUseChecks: %t image features: %v mounter: %s",
+		disableInUseChecks,
+		rbdVol.imageFeatureSet.Names(),
+		rbdVol.Mounter)
 	rbdVol.DisableInUseChecks = disableInUseChecks
 
 	err = rbdVol.initKMS(ctx, volOptions, credentials)
@@ -1110,7 +1159,10 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 	return err
 }
 
-func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *rbdSnapshot, parentVol *rbdVolume) error {
+func (rv *rbdVolume) cloneRbdImageFromSnapshot(
+	ctx context.Context,
+	pSnapOpts *rbdSnapshot,
+	parentVol *rbdVolume) error {
 	var err error
 	logMsg := "rbd: clone %s %s (features: %s) using mon %s"
 
@@ -1155,7 +1207,13 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(ctx context.Context, pSnapOpts *r
 		return fmt.Errorf("failed to get IOContext: %w", err)
 	}
 
-	err = librbd.CloneImage(parentVol.ioctx, pSnapOpts.RbdImageName, pSnapOpts.RbdSnapName, rv.ioctx, rv.RbdImageName, options)
+	err = librbd.CloneImage(
+		parentVol.ioctx,
+		pSnapOpts.RbdImageName,
+		pSnapOpts.RbdSnapName,
+		rv.ioctx,
+		rv.RbdImageName,
+		options)
 	if err != nil {
 		return fmt.Errorf("failed to create rbd clone: %w", err)
 	}

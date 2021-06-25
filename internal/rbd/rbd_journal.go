@@ -119,7 +119,11 @@ deletion are inverse of each other, and protected by the request name lock, and
 hence any stale omaps are leftovers from incomplete transactions and are hence
 safe to garbage collect.
 */
-func checkSnapCloneExists(ctx context.Context, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) (bool, error) {
+func checkSnapCloneExists(
+	ctx context.Context,
+	parentVol *rbdVolume,
+	rbdSnap *rbdSnapshot,
+	cr *util.Credentials) (bool, error) {
 	err := validateRbdSnap(rbdSnap)
 	if err != nil {
 		return false, err
@@ -517,7 +521,9 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // Generate new volume Handler
 // The volume handler won't remain same as its contains poolID,clusterID etc
 // which are not same across clusters.
-func RegenerateJournal(imageName, volumeID, pool, journalPool, requestName string, cr *util.Credentials) (string, error) {
+func RegenerateJournal(
+	imageName, volumeID, pool, journalPool, requestName string,
+	cr *util.Credentials) (string, error) {
 	ctx := context.Background()
 	var (
 		options map[string]string
