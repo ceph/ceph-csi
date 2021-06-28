@@ -554,7 +554,7 @@ func RegenerateJournal(imageName, volumeID, pool, journalPool, requestName strin
 	if rbdVol.JournalPool == "" {
 		rbdVol.JournalPool = rbdVol.Pool
 	}
-	volJournal = journal.NewCSIVolumeJournal("default")
+	volJournal = journal.NewCSIVolumeJournal(CSIInstanceID)
 	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
 	if err != nil {
 		return "", err
