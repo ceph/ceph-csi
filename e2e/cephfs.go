@@ -803,11 +803,11 @@ var _ = Describe("cephfs", func() {
 					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 					// create snapshot
 					for i := 0; i < totalCount; i++ {
-						go func(w *sync.WaitGroup, n int, s snapapi.VolumeSnapshot) {
+						go func(n int, s snapapi.VolumeSnapshot) {
 							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 							wgErrs[n] = createSnapshot(&s, deployTimeout)
-							w.Done()
-						}(&wg, i, snap)
+							wg.Done()
+						}(i, snap)
 					}
 					wg.Wait()
 
@@ -839,7 +839,7 @@ var _ = Describe("cephfs", func() {
 					wg.Add(totalCount)
 					for i := 0; i < totalCount; i++ {
 
-						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 							if wgErrs[n] == nil {
@@ -848,8 +848,8 @@ var _ = Describe("cephfs", func() {
 									wgErrs[n] = err
 								}
 							}
-							w.Done()
-						}(&wg, i, *pvcClone, *appClone)
+							wg.Done()
+						}(i, *pvcClone, *appClone)
 					}
 					wg.Wait()
 
@@ -869,12 +869,12 @@ var _ = Describe("cephfs", func() {
 					wg.Add(totalCount)
 					// delete clone and app
 					for i := 0; i < totalCount; i++ {
-						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
 							wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
-							w.Done()
-						}(&wg, i, *pvcClone, *appClone)
+							wg.Done()
+						}(i, *pvcClone, *appClone)
 					}
 					wg.Wait()
 
@@ -895,7 +895,7 @@ var _ = Describe("cephfs", func() {
 					// app
 					wg.Add(totalCount)
 					for i := 0; i < totalCount; i++ {
-						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
 							wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
@@ -905,8 +905,8 @@ var _ = Describe("cephfs", func() {
 									wgErrs[n] = err
 								}
 							}
-							w.Done()
-						}(&wg, i, *pvcClone, *appClone)
+							wg.Done()
+						}(i, *pvcClone, *appClone)
 					}
 					wg.Wait()
 
@@ -926,11 +926,11 @@ var _ = Describe("cephfs", func() {
 					wg.Add(totalCount)
 					// delete snapshot
 					for i := 0; i < totalCount; i++ {
-						go func(w *sync.WaitGroup, n int, s snapapi.VolumeSnapshot) {
+						go func(n int, s snapapi.VolumeSnapshot) {
 							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 							wgErrs[n] = deleteSnapshot(&s, deployTimeout)
-							w.Done()
-						}(&wg, i, snap)
+							wg.Done()
+						}(i, snap)
 					}
 					wg.Wait()
 
@@ -948,12 +948,12 @@ var _ = Describe("cephfs", func() {
 					wg.Add(totalCount)
 					// delete clone and app
 					for i := 0; i < totalCount; i++ {
-						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
 							wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
-							w.Done()
-						}(&wg, i, *pvcClone, *appClone)
+							wg.Done()
+						}(i, *pvcClone, *appClone)
 					}
 					wg.Wait()
 
@@ -1029,11 +1029,11 @@ var _ = Describe("cephfs", func() {
 					wg.Add(totalCount)
 					// create clone and bind it to an app
 					for i := 0; i < totalCount; i++ {
-						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
-							w.Done()
-						}(&wg, i, *pvcClone, *appClone)
+							wg.Done()
+						}(i, *pvcClone, *appClone)
 					}
 					wg.Wait()
 
@@ -1060,12 +1060,12 @@ var _ = Describe("cephfs", func() {
 					wg.Add(totalCount)
 					// delete clone and app
 					for i := 0; i < totalCount; i++ {
-						go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							p.Spec.DataSource.Name = name
 							wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
-							w.Done()
-						}(&wg, i, *pvcClone, *appClone)
+							wg.Done()
+						}(i, *pvcClone, *appClone)
 					}
 					wg.Wait()
 
