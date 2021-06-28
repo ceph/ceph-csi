@@ -8,7 +8,7 @@ driver configuration refers to a StorageClass that is used while testing.
 The StorageClasses are created with the `create-storageclass.sh` script and the
 `sc-*.yaml.in` templates.
 
-The Ceph-CSI Configuration from the `ceph-csiconfig` ConfigMap is created with
+The Ceph-CSI Configuration from the `ceph-csi-config` ConfigMap is created with
 `create-configmap.sh` after the deployment is finished. The ConfigMap is
 referenced in the StorageClasses and contains the connection details for the
 Ceph cluster.
