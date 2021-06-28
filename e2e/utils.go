@@ -600,7 +600,7 @@ func validatePVCClone(
 	wg.Add(totalCount)
 	// create clone and bind it to an app
 	for i := 0; i < totalCount; i++ {
-		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			label := make(map[string]string)
 			label[appKey] = name
@@ -625,8 +625,8 @@ func validatePVCClone(
 			if wgErrs[n] == nil && validatePVC != nil {
 				wgErrs[n] = validatePVC(f, &p, &a)
 			}
-			w.Done()
-		}(&wg, i, *pvcClone, *appClone)
+			wg.Done()
+		}(i, *pvcClone, *appClone)
 	}
 	wg.Wait()
 
@@ -668,12 +668,12 @@ func validatePVCClone(
 	wg.Add(totalCount)
 	// delete clone and app
 	for i := 0; i < totalCount; i++ {
-		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
-			w.Done()
-		}(&wg, i, *pvcClone, *appClone)
+			wg.Done()
+		}(i, *pvcClone, *appClone)
 	}
 	wg.Wait()
 
@@ -699,8 +699,6 @@ func validatePVCSnapshot(
 	var wg sync.WaitGroup
 	wgErrs := make([]error, totalCount)
 	chErrs := make([]error, totalCount)
-	wg.Add(totalCount)
-
 	err := createRBDSnapshotClass(f)
 	if err != nil {
 		e2elog.Failf("failed to create storageclass with error %v", err)
@@ -742,9 +740,11 @@ func validatePVCSnapshot(
 	snap := getSnapshot(snapshotPath)
 	snap.Namespace = f.UniqueName
 	snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+
+	wg.Add(totalCount)
 	// create snapshot
 	for i := 0; i < totalCount; i++ {
-		go func(w *sync.WaitGroup, n int, s snapapi.VolumeSnapshot) {
+		go func(n int, s snapapi.VolumeSnapshot) {
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			wgErrs[n] = createSnapshot(&s, deployTimeout)
 			if wgErrs[n] == nil && kms != "" {
@@ -765,8 +765,8 @@ func validatePVCSnapshot(
 					}
 				}
 			}
-			w.Done()
-		}(&wg, i, snap)
+			wg.Done()
+		}(i, snap)
 	}
 	wg.Wait()
 
@@ -799,7 +799,7 @@ func validatePVCSnapshot(
 	// create multiple PVC from same snapshot
 	wg.Add(totalCount)
 	for i := 0; i < totalCount; i++ {
-		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			label := make(map[string]string)
 			label[appKey] = name
@@ -827,8 +827,8 @@ func validatePVCSnapshot(
 			if wgErrs[n] == nil && kms != "" {
 				wgErrs[n] = isEncryptedPVC(f, &p, &a)
 			}
-			w.Done()
-		}(&wg, i, *pvcClone, *appClone)
+			wg.Done()
+		}(i, *pvcClone, *appClone)
 	}
 	wg.Wait()
 
@@ -860,12 +860,12 @@ func validatePVCSnapshot(
 	wg.Add(totalCount)
 	// delete clone and app
 	for i := 0; i < totalCount; i++ {
-		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
-			w.Done()
-		}(&wg, i, *pvcClone, *appClone)
+			wg.Done()
+		}(i, *pvcClone, *appClone)
 	}
 	wg.Wait()
 
@@ -887,12 +887,12 @@ func validatePVCSnapshot(
 	// app
 	wg.Add(totalCount)
 	for i := 0; i < totalCount; i++ {
-		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
-			w.Done()
-		}(&wg, i, *pvcClone, *appClone)
+			wg.Done()
+		}(i, *pvcClone, *appClone)
 	}
 	wg.Wait()
 
@@ -923,7 +923,7 @@ func validatePVCSnapshot(
 	wg.Add(totalCount)
 	// delete snapshot
 	for i := 0; i < totalCount; i++ {
-		go func(w *sync.WaitGroup, n int, s snapapi.VolumeSnapshot) {
+		go func(n int, s snapapi.VolumeSnapshot) {
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			content := &snapapi.VolumeSnapshotContent{}
 			var err error
@@ -951,8 +951,8 @@ func validatePVCSnapshot(
 					}
 				}
 			}
-			w.Done()
-		}(&wg, i, snap)
+			wg.Done()
+		}(i, snap)
 	}
 	wg.Wait()
 
@@ -971,12 +971,12 @@ func validatePVCSnapshot(
 	wg.Add(totalCount)
 	// delete clone and app
 	for i := 0; i < totalCount; i++ {
-		go func(w *sync.WaitGroup, n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
-			w.Done()
-		}(&wg, i, *pvcClone, *appClone)
+			wg.Done()
+		}(i, *pvcClone, *appClone)
 	}
 	wg.Wait()
 
