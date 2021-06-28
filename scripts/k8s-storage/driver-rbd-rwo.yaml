@@ -31,11 +31,11 @@ DriverInfo:
     rw: {}
 
   # Optional list of access modes required for provisioning. Default is RWO
-  # RequiredAcccessModes:
+  # RequiredAccessModes:
 
   # Map that represents the capabilities the driver supports
   Capabilities:
-    # Data is persistest across pod restarts
+    # Data is persisted across pod restarts
     persistence: true
 
     # Volume ownership via fsGroup
@@ -56,7 +56,7 @@ DriverInfo:
     # Support for volume expansion in nodes
     nodeExpansion: true
 
-    # Support volume that an run on single node only (like hostpath)
+    # Support volume that can run on single node only (like hostpath)
     singleNodeVolume: false
 
     # Support ReadWriteMany access modes
