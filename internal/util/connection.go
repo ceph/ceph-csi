@@ -23,6 +23,7 @@ import (
 
 	ca "github.com/ceph/go-ceph/cephfs/admin"
 	"github.com/ceph/go-ceph/rados"
+	ra "github.com/ceph/go-ceph/rbd/admin"
 )
 
 type ClusterConnection struct {
@@ -109,6 +110,15 @@ func (cc *ClusterConnection) GetFSAdmin() (*ca.FSAdmin, error) {
 	}
 
 	return ca.NewFromConn(cc.conn), nil
+}
+
+// GetRBDAdmin get RBDAdmin to administrate rbd volumes.
+func (cc *ClusterConnection) GetRBDAdmin() (*ra.RBDAdmin, error) {
+	if cc.conn == nil {
+		return nil, errors.New("cluster is not connected yet")
+	}
+
+	return ra.NewFromConn(cc.conn), nil
 }
 
 // DisableDiscardOnZeroedWriteSame enables the
