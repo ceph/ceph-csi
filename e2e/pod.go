@@ -216,7 +216,6 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 	return stdOut, stdErr, err
 }
 
-//nolint:unparam // cn can be used with different inputs later
 func execCommandInContainer(
 	f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions) (string, string, error) {
 	podOpt, err := getCommandInPodOpts(f, c, ns, cn, opt)
@@ -349,7 +348,6 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 	})
 }
 
-//nolint:unparam // skipNotFound arg can be used with different inputs later
 func deletePodWithLabel(label, ns string, skipNotFound bool) error {
 	_, err := framework.RunKubectl(ns, "delete", "po", "-l", label, fmt.Sprintf("--ignore-not-found=%t", skipNotFound))
 	if err != nil {
