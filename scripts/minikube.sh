@@ -162,6 +162,12 @@ if [[ "${VM_DRIVER}" == "kvm2" ]]; then
     # use vda1 instead of sda1 when running with the libvirt driver
     DISK="vda1"
 fi
+#configure csi sidecar version
+CSI_ATTACHER_VERSION=${CSI_ATTACHER_VERSION:-"v3.2.1"}
+CSI_SNAPSHOTTER_VERSION=${CSI_SNAPSHOTTER_VERSION:-"v4.1.1"}
+CSI_PROVISIONER_VERSION=${CSI_PROVISIONER_VERSION:-"v2.2.2"}
+CSI_RESIZER_VERSION=${CSI_RESIZER_VERSION:-"v1.2.0"}
+CSI_NODE_DRIVER_REGISTRAR_VERSION=${CSI_NODE_DRIVER_REGISTRAR_VERSION:-"v2.2.0"}
 
 #feature-gates for kube
 K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-"ExpandCSIVolumes=true"}
@@ -278,11 +284,11 @@ cephcsi)
     ;;
 k8s-sidecar)
     echo "copying the kubernetes sidecar images"
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-attacher:v3.0.2 "${K8S_IMAGE_REPO}"/csi-attacher:v3.0.2
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-snapshotter:v3.0.2 $"${K8S_IMAGE_REPO}"/csi-snapshotter:v3.0.2
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-provisioner:v2.0.4 "${K8S_IMAGE_REPO}"/csi-provisioner:v2.0.4
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v2.0.1 "${K8S_IMAGE_REPO}"/csi-node-driver-registrar:v2.0.1
-    copy_image_to_cluster "${K8S_IMAGE_REPO}"/csi-resizer:v1.0.1 "${K8S_IMAGE_REPO}"/csi-resizer:v1.0.1
+    copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-attacher:${CSI_ATTACHER_VERSION}" "${K8S_IMAGE_REPO}/csi-attacher:${CSI_ATTACHER_VERSION}"
+    copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-snapshotter:${CSI_SNAPSHOTTER_VERSION}" "${K8S_IMAGE_REPO}/csi-snapshotter:${CSI_SNAPSHOTTER_VERSION}"
+    copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-provisioner:${CSI_PROVISIONER_VERSION}" "${K8S_IMAGE_REPO}/csi-provisioner:${CSI_PROVISIONER_VERSION}"
+    copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-node-driver-registrar:${CSI_NODE_DRIVER_REGISTRAR_VERSION}" "${K8S_IMAGE_REPO}/csi-node-driver-registrar:${CSI_NODE_DRIVER_REGISTRAR_VERSION}"
+    copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-resizer:${CSI_RESIZER_VERSION}" "${K8S_IMAGE_REPO}/csi-resizer:${CSI_RESIZER_VERSION}"
     ;;
 clean)
     ${minikube} delete
