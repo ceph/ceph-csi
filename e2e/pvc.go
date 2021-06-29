@@ -63,6 +63,9 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		if err != nil {
 			return false, fmt.Errorf("failed to get pv: %w", err)
 		}
+		if isRetryableAPIError(err) {
+			return false, nil
+		}
 		if apierrs.IsNotFound(err) {
 			return false, nil
 		}
@@ -118,6 +121,9 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 			}
 			return false, nil
 		}
+		if isRetryableAPIError(err) {
+			return false, nil
+		}
 		if !apierrs.IsNotFound(err) {
 			return false, fmt.Errorf(
 				"get on deleted PVC %v failed with error other than \"not found\": %w",
@@ -145,7 +151,9 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 		if err == nil {
 			return false, nil
 		}
-
+		if isRetryableAPIError(err) {
+			return false, nil
+		}
 		if !apierrs.IsNotFound(err) {
 			return false, fmt.Errorf("delete PV %v failed with error other than \"not found\": %w", pv.Name, err)
 		}
@@ -200,6 +208,9 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		if err == nil {
 			return false, nil
 		}
+		if isRetryableAPIError(err) {
+			return false, nil
+		}
 		if !apierrs.IsNotFound(err) {
 			return false, fmt.Errorf("get on deleted PVC %v failed with error other than \"not found\": %w", name, err)
 		}
@@ -209,7 +220,9 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		if err == nil {
 			return false, nil
 		}
-
+		if isRetryableAPIError(err) {
+			return false, nil
+		}
 		if !apierrs.IsNotFound(err) {
 			return false, fmt.Errorf("delete PV %v failed with error other than \"not found\": %w", pv.Name, err)
 		}

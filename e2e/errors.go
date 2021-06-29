@@ -27,6 +27,7 @@ func isRetryableAPIError(err error) bool {
 		apierrors.IsTooManyRequests(err) || utilnet.IsProbableEOF(err) || utilnet.IsConnectionReset(err) {
 		return true
 	}
+
 	// If the error sends the Retry-After header, we respect it as an explicit confirmation we should retry.
 	if _, shouldRetry := apierrors.SuggestsClientDelay(err); shouldRetry {
 		return true

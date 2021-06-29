@@ -81,12 +81,10 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 	err = wait.PollImmediate(poll, timeout, func() (bool, error) {
 		deployment, err = c.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
-			// a StatusError is not marked as 'retryable', but we want to retry anyway
-			if isRetryableAPIError(err) || strings.Contains(err.Error(), "etcdserver: request timed out") {
-				// hide API-server timeouts, so that PollImmediate() retries
-				e2elog.Logf("deployment error: %v", err)
+			if isRetryableAPIError(err) {
 				return false, nil
 			}
+			e2elog.Logf("deployment error: %v", err)
 			return false, err
 		}
 
@@ -293,6 +291,9 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
 			return false, fmt.Errorf("failed to get app: %w", err)
 		}
 		switch pod.Status.Phase {
@@ -333,12 +334,14 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 	e2elog.Logf("Waiting for pod %v to be deleted", name)
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err := c.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{})
-
-		if apierrs.IsNotFound(err) {
-			return true, nil
-		}
-		e2elog.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			if apierrs.IsNotFound(err) {
+				return true, nil
+			}
+			e2elog.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 			return false, fmt.Errorf("failed to get app: %w", err)
 		}
 		return false, nil
