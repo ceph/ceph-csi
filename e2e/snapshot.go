@@ -114,6 +114,9 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 			return false, nil
 		}
 
+		if isRetryableAPIError(err) {
+			return false, nil
+		}
 		if !apierrs.IsNotFound(err) {
 			return false, fmt.Errorf(
 				"get on deleted snapshot %v failed with error other than \"not found\": %v",
