@@ -60,60 +60,54 @@ spec:
               name: vault-api
 ---
 apiVersion: v1
-items:
-  - apiVersion: v1
-    data:
-      init-vault.sh: |
-        set -x -e
+kind: ConfigMap
+metadata:
+  name: init-scripts
+data:
+  init-vault.sh: |
+    set -x -e
 
-        timeout 300 sh -c 'until vault status; do sleep 5; done'
+    timeout 300 sh -c 'until vault status; do sleep 5; done'
 
-        # login into vault to retrieve token
-        vault login ${VAULT_DEV_ROOT_TOKEN_ID}
+    # login into vault to retrieve token
+    vault login ${VAULT_DEV_ROOT_TOKEN_ID}
 
-        # enable kubernetes auth method under specific path:
-        vault auth enable -path="/${CLUSTER_IDENTIFIER}" kubernetes
+    # enable kubernetes auth method under specific path:
+    vault auth enable -path="/${CLUSTER_IDENTIFIER}" kubernetes
 
-        # write configuration to use your cluster
-        vault write auth/${CLUSTER_IDENTIFIER}/config \
-          token_reviewer_jwt=@${SERVICE_ACCOUNT_TOKEN_PATH}/token \
-          kubernetes_host="${K8S_HOST}" \
-          kubernetes_ca_cert=@${SERVICE_ACCOUNT_TOKEN_PATH}/ca.crt
+    # write configuration to use your cluster
+    vault write auth/${CLUSTER_IDENTIFIER}/config \
+      token_reviewer_jwt=@${SERVICE_ACCOUNT_TOKEN_PATH}/token \
+      kubernetes_host="${K8S_HOST}" \
+      kubernetes_ca_cert=@${SERVICE_ACCOUNT_TOKEN_PATH}/ca.crt
 
-        # create policy to use keys related to the cluster
-        vault policy write "${CLUSTER_IDENTIFIER}" - << EOS
-        path "secret/data/ceph-csi/*" {
-          capabilities = ["create", "update", "delete", "read", "list"]
-        }
+    # create policy to use keys related to the cluster
+    vault policy write "${CLUSTER_IDENTIFIER}" - << EOS
+    path "secret/data/ceph-csi/*" {
+      capabilities = ["create", "update", "delete", "read", "list"]
+    }
 
-        path "secret/metadata/ceph-csi/*" {
-          capabilities = ["read", "delete", "list"]
-        }
+    path "secret/metadata/ceph-csi/*" {
+      capabilities = ["read", "delete", "list"]
+    }
 
-        path "sys/mounts" {
-          capabilities = ["read"]
-        }
-        EOS
+    path "sys/mounts" {
+      capabilities = ["read"]
+    }
+    EOS
 
-        # create a role
-        vault write "auth/${CLUSTER_IDENTIFIER}/role/${PLUGIN_ROLE}" \
-            bound_service_account_names="${SERVICE_ACCOUNTS}" \
-            bound_service_account_namespaces="${SERVICE_ACCOUNTS_NAMESPACE}" \
-            policies="${CLUSTER_IDENTIFIER}"
+    # create a role
+    vault write "auth/${CLUSTER_IDENTIFIER}/role/${PLUGIN_ROLE}" \
+        bound_service_account_names="${SERVICE_ACCOUNTS}" \
+        bound_service_account_namespaces="${SERVICE_ACCOUNTS_NAMESPACE}" \
+        policies="${CLUSTER_IDENTIFIER}"
 
-        # disable iss validation
-        # from: external-secrets/kubernetes-external-secrets#721
-        vault write auth/${CLUSTER_IDENTIFIER}/config \
-          token_reviewer_jwt=@${SERVICE_ACCOUNT_TOKEN_PATH}/token \
-          kubernetes_host="${K8S_HOST}" \
-          disable_iss_validation=true
-    kind: ConfigMap
-    metadata:
-      creationTimestamp: null
-      name: init-scripts
-kind: List
-metadata: {}
-
+    # disable iss validation
+    # from: external-secrets/kubernetes-external-secrets#721
+    vault write auth/${CLUSTER_IDENTIFIER}/config \
+      token_reviewer_jwt=@${SERVICE_ACCOUNT_TOKEN_PATH}/token \
+      kubernetes_host="${K8S_HOST}" \
+      disable_iss_validation=true
 ---
 apiVersion: batch/v1
 kind: Job
