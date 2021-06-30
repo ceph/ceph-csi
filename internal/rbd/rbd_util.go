@@ -58,8 +58,12 @@ const (
 	rbdTaskRemoveCmdInvalidString2      = "Error EINVAL: invalid command"
 	rbdTaskRemoveCmdAccessDeniedMessage = "Error EACCES:"
 
-	// image metadata key for thick-provisioning
-	thickProvisionMetaKey = ".rbd.csi.ceph.com/thick-provisioned"
+	// image metadata key for thick-provisioning.
+	// As image metadata key starting with '.rbd' will not be copied when we do
+	// clone or mirroring, deprecating the old key for the same reason use
+	// 'thickProvisionMetaKey' to set image metadata.
+	deprecatedthickProvisionMetaKey = ".rbd.csi.ceph.com/thick-provisioned"
+	thickProvisionMetaKey           = "rbd.csi.ceph.com/thick-provisioned"
 )
 
 // rbdImage contains common attributes and methods for the rbdVolume and
@@ -1534,10 +1538,14 @@ func (rv *rbdVolume) setThickProvisioned() error {
 // the expansion can be allocated too.
 func (ri *rbdImage) isThickProvisioned() (bool, error) {
 	value, err := ri.GetMetadata(thickProvisionMetaKey)
-	if err != nil {
+	if err == librbd.ErrNotFound {
+		// check if the image is having deprecated metadata key.
+		value, err = ri.GetMetadata(deprecatedthickProvisionMetaKey)
 		if err == librbd.ErrNotFound {
 			return false, nil
 		}
+	}
+	if err != nil {
 		return false, fmt.Errorf("failed to get metadata %q for %q: %w", thickProvisionMetaKey, ri, err)
 	}
 
