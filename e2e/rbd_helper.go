@@ -21,6 +21,11 @@ import (
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
+const (
+	// image metadata key for thick-provisioning.
+	thickProvisionMetaKey = "rbd.csi.ceph.com/thick-provisioned"
+)
+
 func imageSpec(pool, image string) string {
 	if radosNamespace != "" {
 		return pool + "/" + radosNamespace + "/" + image
@@ -452,6 +457,27 @@ func isThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.P
 	} else if du.UsedSize == 0 || du.UsedSize != du.ProvisionedSize {
 		return fmt.Errorf("backing RBD image is not thick-provisioned (%d/%d)", du.UsedSize, du.ProvisionedSize)
 	}
+	err = validateThickImageMetadata(f, pvc, thickProvisionMetaKey)
+	if err != nil {
+		return fmt.Errorf("failed to validate thick image: %w", err)
+	}
+	return nil
+}
+
+// validateThickImage check thick metadata is set on the the image.
+func validateThickImageMetadata(f *framework.Framework, pvc *v1.PersistentVolumeClaim, key string) error {
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
+	thickState, err := getImageMeta(rbdImageSpec, key, f)
+	if err != nil {
+		return err
+	}
+	if thickState == "" {
+		return fmt.Errorf("image metadata is set for %s", rbdImageSpec)
+	}
 	return nil
 }
 
@@ -781,6 +807,10 @@ func validateThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, siz
 	}
 	validateRBDImageCount(f, 1, defaultRBDPool)
 
+	err = validateThickImageMetadata(f, pvc, thickProvisionMetaKey)
+	if err != nil {
+		return fmt.Errorf("failed to validate thick image: %w", err)
+	}
 	// nothing has been written, but the image should be allocated
 	du, err := getRbdDu(f, pvc)
 	if err != nil {
