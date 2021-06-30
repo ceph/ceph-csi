@@ -23,7 +23,7 @@ for driver in /opt/build/go/src/github.com/ceph/ceph-csi/scripts/k8s-storage/dri
 do
 	kubernetes/test/bin/ginkgo \
 		-focus="External.Storage.*.csi.ceph.com" \
-		-skip='\[Feature:|\[Disruptive\]' \
+		-skip='\[Feature:|\[Disruptive\]|Generic Ephemeral-volume' \
 		kubernetes/test/bin/e2e.test \
 		-- \
 		-storage.testdriver="${driver}"
