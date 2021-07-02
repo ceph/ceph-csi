@@ -33,102 +33,87 @@ var (
 	fileSystemName        = "myfs"
 )
 
+type cephfsDeploy struct {
+	deployer
+	templates []string
+}
+
+// Keep the deployment templates in deployment order.
+var cephfsTemplates = []string{
+	cephfsDirPath + csiDriverObject,
+	cephfsDirPath + cephfsProvisioner,
+	cephfsDirPath + cephfsProvisionerRBAC,
+	cephfsDirPath + cephfsProvisionerPSP,
+	cephfsDirPath + cephfsNodePlugin,
+	cephfsDirPath + cephfsNodePluginRBAC,
+	cephfsDirPath + cephfsNodePluginPSP,
+}
+
 func deployCephfsPlugin() {
+	// create a cephfs deployer
+	cd := cephfsDeploy{deployer: deploy{}, templates: cephfsTemplates}
+
 	// delete objects deployed by rook
-
-	data, err := replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisionerRBAC)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerRBAC, err)
-	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, "--ignore-not-found=true", ns, "delete", "-f", "-")
-	if err != nil {
-		e2elog.Failf("failed to delete provisioner rbac %s with error %v", cephfsDirPath+cephfsProvisionerRBAC, err)
+	deleteRookTemplates := []string{cephfsDirPath + cephfsProvisionerRBAC, cephfsDirPath + cephfsNodePluginRBAC}
+	for _, template := range deleteRookTemplates {
+		err := cd.runAction(template, "delete", ns)
+		if err != nil {
+			e2elog.Failf("failed to delete rook template with error %v", err)
+		}
 	}
 
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePluginRBAC)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
+	// Provision cephfs from the CSI templates
+	for _, template := range cephfsTemplates {
+		err := cd.changeTemplateAndRunAction(template, "create")
+		if err != nil {
+			e2elog.Failf("failed to create template with error %v", err)
+		}
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, "delete", "--ignore-not-found=true", ns, "-f", "-")
+}
 
-	if err != nil {
-		e2elog.Failf("failed to delete nodeplugin rbac %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
+func (d cephfsDeploy) changeTemplateAndRunAction(template, action string) error {
+	switch template {
+	case cephfsDirPath + csiDriverObject:
+		csiDriver, err := ioutil.ReadFile(template)
+		if err != nil {
+			// changeTemplateAndRunAction is used for upgrade testing as csidriverObject is
+			// newly added, discarding file not found error.
+			if !os.IsNotExist(err) {
+				return fmt.Errorf("failed to read content from (%s) with error %w", template, err)
+			}
+		} else {
+			_, err = framework.RunKubectlInput(cephCSINamespace, string(csiDriver), action, "-f", "-")
+			if err != nil {
+				return fmt.Errorf("failed to %s CSIDriver object (%s) with error %w", action, template, err)
+			}
+		}
+	case cephfsDirPath + cephfsProvisioner:
+		data, err := d.replaceNamespaceInTemplate(template)
+		if err != nil {
+			return fmt.Errorf("failed to read content from %s with error %w", template, err)
+		}
+		data = oneReplicaDeployYaml(data)
+		_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+		if err != nil {
+			return fmt.Errorf("failed to %s CephFS provisioner with error %w", action, err)
+		}
+	default:
+		err := d.runAction(template, action, ns)
+		if err != nil {
+			return fmt.Errorf("failed to deploy template with error %w", err)
+		}
 	}
-
-	createORDeleteCephfsResources("create")
+	return nil
 }
 
 func deleteCephfsPlugin() {
-	createORDeleteCephfsResources("delete")
-}
-
-func createORDeleteCephfsResources(action string) {
-	csiDriver, err := ioutil.ReadFile(cephfsDirPath + csiDriverObject)
-	if err != nil {
-		// createORDeleteRbdResources is used for upgrade testing as csidriverObject is
-		// newly added, discarding file not found error.
-		if !os.IsNotExist(err) {
-			e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+csiDriverObject, err)
-		}
-	} else {
-		_, err = framework.RunKubectlInput(cephCSINamespace, string(csiDriver), action, "-f", "-")
+	// delete Cephfs CSI templates
+	cd := cephfsDeploy{deployer: deploy{}, templates: cephfsTemplates}
+	for _, template := range cd.templates {
+		err := cd.changeTemplateAndRunAction(template, "delete")
 		if err != nil {
-			e2elog.Failf("failed to %s CSIDriver object with error %v", action, err)
+			e2elog.Failf("failed to delete template with error %v", err)
 		}
-	}
-	data, err := replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisioner)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisioner, err)
-	}
-	data = oneReplicaDeployYaml(data)
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
-	if err != nil {
-		e2elog.Failf("failed to %s CephFS provisioner with error %v", action, err)
-	}
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisionerRBAC)
-
-	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerRBAC, err)
-	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
-	if err != nil {
-		e2elog.Failf("failed to %s CephFS provisioner rbac with error %v", action, err)
-	}
-
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisionerPSP)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerPSP, err)
-	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
-	if err != nil {
-		e2elog.Failf("failed to %s CephFS provisioner psp with error %v", action, err)
-	}
-
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePlugin)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePlugin, err)
-	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
-	if err != nil {
-		e2elog.Failf("failed to %s CephFS nodeplugin with error %v", action, err)
-	}
-
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePluginRBAC)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
-	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
-	if err != nil {
-		e2elog.Failf("failed to %s CephFS nodeplugin rbac with error %v", action, err)
-	}
-
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePluginPSP)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginPSP, err)
-	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
-	if err != nil {
-		e2elog.Failf("failed to %s CephFS nodeplugin psp with error %v", action, err)
 	}
 }
 
