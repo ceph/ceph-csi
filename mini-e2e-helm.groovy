@@ -172,7 +172,7 @@ node('cico-workspace') {
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh up'
 				ssh "kubectl create namespace '${namespace}'"
-				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi --namespace '${namespace}'"
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi --namespace '${namespace}' --deploy-sc --deploy-secret"
 			}
 		}
 		stage('run e2e') {
