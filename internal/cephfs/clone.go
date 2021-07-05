@@ -19,7 +19,6 @@ package cephfs
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
 )
@@ -42,6 +41,23 @@ const (
 	// snapshotIsProtected string indicates that the snapshot is currently protected.
 	snapshotIsProtected = "yes"
 )
+
+// toError checks the state of the clone if it's not cephFSCloneComplete.
+func (cs cephFSCloneState) toError() error {
+	switch cs {
+	case cephFSCloneComplete:
+		return nil
+	case cephFSCloneError:
+		return ErrInvalidClone
+	case cephFSCloneInprogress:
+		return ErrCloneInProgress
+	case cephFSClonePending:
+		return ErrClonePending
+	case cephFSCloneFailed:
+		return ErrCloneFailed
+	}
+	return nil
+}
 
 func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volOpt, parentvolOpt *volumeOptions) error {
 	snapshotID := cloneID
@@ -95,41 +111,33 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 
 	cloneState, cloneErr := volOpt.getCloneState(ctx, cloneID)
 	if cloneErr != nil {
+		util.ErrorLog(ctx, "failed to get clone state: %v", cloneErr)
 		return cloneErr
 	}
 
-	switch cloneState {
-	case cephFSCloneInprogress:
-		util.ErrorLog(ctx, "clone is in progress for %v", cloneID)
-		return ErrCloneInProgress
-	case cephFSClonePending:
-		util.ErrorLog(ctx, "clone is pending for %v", cloneID)
-		return ErrClonePending
-	case cephFSCloneFailed:
-		util.ErrorLog(ctx, "clone failed for %v", cloneID)
-		cloneFailedErr := fmt.Errorf("clone %s is in %s state", cloneID, cloneState)
-		return cloneFailedErr
-	case cephFSCloneComplete:
-		// This is a work around to fix sizing issue for cloned images
-		err = volOpt.resizeVolume(ctx, cloneID, volOpt.Size)
-		if err != nil {
-			util.ErrorLog(ctx, "failed to expand volume %s: %v", cloneID, err)
+	if cloneState != cephFSCloneComplete {
+		util.ErrorLog(ctx, "clone %s did not complete: %v", cloneID, cloneState.toError())
+		return cloneState.toError()
+	}
+	// This is a work around to fix sizing issue for cloned images
+	err = volOpt.resizeVolume(ctx, cloneID, volOpt.Size)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to expand volume %s: %v", cloneID, err)
+		return err
+	}
+	// As we completed clone, remove the intermediate snap
+	if err = parentvolOpt.unprotectSnapshot(ctx, snapshotID, volID); err != nil {
+		// In case the snap is already unprotected we get ErrSnapProtectionExist error code
+		// in that case we are safe and we could discard this error and we are good to go
+		// ahead with deletion
+		if !errors.Is(err, ErrSnapProtectionExist) {
+			util.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapshotID, err)
 			return err
 		}
-		// As we completed clone, remove the intermediate snap
-		if err = parentvolOpt.unprotectSnapshot(ctx, snapshotID, volID); err != nil {
-			// In case the snap is already unprotected we get ErrSnapProtectionExist error code
-			// in that case we are safe and we could discard this error and we are good to go
-			// ahead with deletion
-			if !errors.Is(err, ErrSnapProtectionExist) {
-				util.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapshotID, err)
-				return err
-			}
-		}
-		if err = parentvolOpt.deleteSnapshot(ctx, snapshotID, volID); err != nil {
-			util.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
-			return err
-		}
+	}
+	if err = parentvolOpt.deleteSnapshot(ctx, snapshotID, volID); err != nil {
+		util.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
+		return err
 	}
 	return nil
 }
@@ -192,25 +200,20 @@ func createCloneFromSnapshot(
 
 	cloneState, err := volOptions.getCloneState(ctx, volumeID(vID.FsSubvolName))
 	if err != nil {
+		util.ErrorLog(ctx, "failed to get clone state: %v", err)
 		return err
 	}
 
-	switch cloneState {
-	case cephFSCloneInprogress:
-		return ErrCloneInProgress
-	case cephFSClonePending:
-		return ErrClonePending
-	case cephFSCloneFailed:
-		return fmt.Errorf("clone %s is in %s state", vID.FsSubvolName, cloneState)
-	case cephFSCloneComplete:
-		// The clonedvolume currently does not reflect the proper size due to an issue in cephfs
-		// however this is getting addressed in cephfs and the parentvolume size will be reflected
-		// in the new cloned volume too. Till then we are explicitly making the size set
-		err = volOptions.resizeVolume(ctx, volumeID(vID.FsSubvolName), volOptions.Size)
-		if err != nil {
-			util.ErrorLog(ctx, "failed to expand volume %s with error: %v", vID.FsSubvolName, err)
-			return err
-		}
+	if cloneState != cephFSCloneComplete {
+		return cloneState.toError()
+	}
+	// The clonedvolume currently does not reflect the proper size due to an issue in cephfs
+	// however this is getting addressed in cephfs and the parentvolume size will be reflected
+	// in the new cloned volume too. Till then we are explicitly making the size set
+	err = volOptions.resizeVolume(ctx, volumeID(vID.FsSubvolName), volOptions.Size)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to expand volume %s with error: %v", vID.FsSubvolName, err)
+		return err
 	}
 	return nil
 }
