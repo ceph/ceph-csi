@@ -53,6 +53,9 @@ var (
 	appBlockSmartClonePath = rbdExamplePath + "block-pod-clone.yaml"
 	snapshotPath           = rbdExamplePath + "snapshot.yaml"
 	defaultCloneCount      = 10
+
+	// initial number of images when the test run starts
+	initialRBDImageCount = 0
 )
 
 func deployRBDPlugin() {
@@ -157,15 +160,25 @@ func createORDeleteRbdResources(action string) {
 	}
 }
 
-func validateRBDImageCount(f *framework.Framework, count int, pool string) {
+func countRBDImages(f *framework.Framework, pool string) (int, error) {
 	imageList, err := listRBDImages(f, pool)
 	if err != nil {
-		e2elog.Failf("failed to list rbd images with error %v", err)
+		return 0, err
 	}
-	if len(imageList) != count {
+
+	return len(imageList), nil
+}
+
+func validateRBDImageCount(f *framework.Framework, count int, pool string) {
+	images, err := countRBDImages(f, pool)
+	if err != nil {
+		e2elog.Failf("failed to count images in pool %q %v", pool, err)
+	}
+
+	if (images - initialRBDImageCount) != count {
 		e2elog.Failf(
 			"backend images not matching kubernetes resource count,image count %d kubernetes resource count %d",
-			len(imageList),
+			(images - initialRBDImageCount),
 			count)
 	}
 }
@@ -223,6 +236,11 @@ var _ = Describe("RBD", func() {
 			e2elog.Failf("failed to create node secret with error %v", err)
 		}
 		deployVault(f.ClientSet, deployTimeout)
+
+		initialRBDImageCount, err = countRBDImages(f, defaultRBDPool)
+		if err != nil {
+			e2elog.Failf("failed to count RBD images in pool %q: %v", defaultRBDPool, err)
+		}
 	})
 
 	AfterEach(func() {
