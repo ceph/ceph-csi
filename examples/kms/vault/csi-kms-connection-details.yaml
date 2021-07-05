@@ -35,6 +35,17 @@ data:
     {
       "encryptionKMSType": "metadata"
     }
+  user-ns-secrets-metadata-test: |-
+    {
+      "encryptionKMSType": "metadata",
+      "secretName": "storage-encryption-secret",
+      "secretNamespace": "default"
+    }
+  user-secrets-metadata-test: |-
+    {
+      "encryptionKMSType": "metadata",
+      "secretName": "storage-encryption-secret"
+    }
   aws-metadata-test: |-
     {
       "KMS_PROVIDER": "aws-metadata",

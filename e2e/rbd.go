@@ -821,6 +821,108 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("test RBD volume encryption with user secrets based SecretsMetadataKMS", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+				scOpts := map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "user-ns-secrets-metadata-test",
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+
+				// user provided namespace where secret will be created
+				namespace := cephCSINamespace
+
+				// create user Secret
+				secret, err := getSecret(vaultExamplePath + "user-secret.yaml")
+				if err != nil {
+					e2elog.Failf("failed to load user Secret: %v", err)
+				}
+				_, err = c.CoreV1().Secrets(namespace).Create(context.TODO(), &secret, metav1.CreateOptions{})
+				if err != nil {
+					e2elog.Failf("failed to create user Secret: %v", err)
+				}
+
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
+				if err != nil {
+					e2elog.Failf("failed to validate encrypted pvc: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				// delete user secret
+				err = c.CoreV1().Secrets(namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
+				if err != nil {
+					e2elog.Failf("failed to delete user Secret: %v", err)
+				}
+
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+			})
+
+			By(
+				"test RBD volume encryption with user secrets based SecretsMetadataKMS with tenant namespace",
+				func() {
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					scOpts := map[string]string{
+						"encrypted":       "true",
+						"encryptionKMSID": "user-secrets-metadata-test",
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+
+					// PVC creation namespace where secret will be created
+					namespace := f.UniqueName
+
+					// create user Secret
+					secret, err := getSecret(vaultExamplePath + "user-secret.yaml")
+					if err != nil {
+						e2elog.Failf("failed to load user Secret: %v", err)
+					}
+					_, err = c.CoreV1().Secrets(namespace).Create(context.TODO(), &secret, metav1.CreateOptions{})
+					if err != nil {
+						e2elog.Failf("failed to create user Secret: %v", err)
+					}
+
+					err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
+					if err != nil {
+						e2elog.Failf("failed to validate encrypted pvc: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+
+					// delete user secret
+					err = c.CoreV1().Secrets(namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
+					if err != nil {
+						e2elog.Failf("failed to delete user Secret: %v", err)
+					}
+
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+				})
+
 			By(
 				"create a PVC and Bind it to an app with journaling/exclusive-lock image-features and rbd-nbd mounter",
 				func() {
