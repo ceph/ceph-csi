@@ -33,6 +33,12 @@ var (
 	// ErrClonePending is returned when snapshot clone state is `pending`
 	ErrClonePending = errors.New("clone from snapshot is pending")
 
+	// ErrInvalidClone is returned when the clone state is invalid
+	ErrInvalidClone = errors.New("invalid clone state")
+
+	// ErrCloneFailed is returned when the clone state is failed.
+	ErrCloneFailed = errors.New("clone from snapshot failed")
+
 	// ErrInvalidVolID is returned when a CSI passed VolumeID is not conformant to any known volume ID
 	// formats.
 	ErrInvalidVolID = errors.New("invalid VolumeID")
