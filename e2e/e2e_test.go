@@ -28,6 +28,7 @@ func init() {
 	flag.StringVar(&cephCSINamespace, "cephcsi-namespace", defaultNs, "namespace in which cephcsi deployed")
 	flag.StringVar(&rookNamespace, "rook-namespace", "rook-ceph", "namespace in which rook is deployed")
 	flag.StringVar(&defaultFSID, "fsid", noFSID, "Ceph cluster ID")
+	flag.BoolVar(&testMetricsForPVC, "test-metrics", true, "test Kubelet metrics for PVC")
 	setDefaultKubeconfig()
 
 	// Register framework flags, then handle flags

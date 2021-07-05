@@ -71,6 +71,10 @@ var (
 
 	// defaultFSID should be set to noFSID for auto detection
 	defaultFSID = noFSID
+
+	// testMetricsForPVC can be used to disable verification of the PVC
+	// metrics provided by Kubelet
+	testMetricsForPVC = true
 )
 
 func initResources() {
@@ -328,7 +332,7 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 	if pvc.Spec.VolumeMode != nil {
 		isBlockMode = (*pvc.Spec.VolumeMode == v1.PersistentVolumeBlock)
 	}
-	if !isBlockMode || k8sVersionGreaterEquals(f.ClientSet, 1, 22) {
+	if testMetricsForPVC && !isBlockMode || k8sVersionGreaterEquals(f.ClientSet, 1, 22) {
 		err = getMetricsForPVC(f, pvc, deployTimeout)
 		if err != nil {
 			return err
