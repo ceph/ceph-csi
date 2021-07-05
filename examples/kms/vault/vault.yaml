@@ -41,13 +41,13 @@ spec:
         - name: vault
           image: docker.io/library/vault:latest
           imagePullPolicy: "IfNotPresent"
-          securityContext:
-            runAsUser: 100
           env:
             - name: VAULT_DEV_ROOT_TOKEN_ID
               value: sample_root_token_id
             - name: SKIP_SETCAP
               value: any
+            - name: HOME
+              value: /tmp
           livenessProbe:
             exec:
               command:
