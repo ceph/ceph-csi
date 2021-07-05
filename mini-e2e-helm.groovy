@@ -170,9 +170,13 @@ node('cico-workspace') {
 		}
 		stage('deploy ceph-csi through helm') {
 			timeout(time: 30, unit: 'MINUTES') {
+				def deploy_param = ""
+				if (git_since != 'release-v3.3') {
+					deploy_param = '--deploy-sc --deploy-secret'
+				}
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh up'
 				ssh "kubectl create namespace '${namespace}'"
-				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi --namespace '${namespace}' --deploy-sc --deploy-secret"
+				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi --namespace '${namespace}' '${deploy_param}'"
 			}
 		}
 		stage('run e2e') {
