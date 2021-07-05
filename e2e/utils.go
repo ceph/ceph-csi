@@ -48,7 +48,8 @@ const (
 	vaultTokens = "vaulttokens"
 	noError     = ""
 
-	noKms = ""
+	noKms  = ""
+	noFSID = ""
 )
 
 var (
@@ -67,6 +68,9 @@ var (
 	ns               string
 	vaultAddr        string
 	poll             = 2 * time.Second
+
+	// defaultFSID should be set to noFSID for auto detection
+	defaultFSID = noFSID
 )
 
 func initResources() {

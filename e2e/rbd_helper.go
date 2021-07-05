@@ -59,15 +59,19 @@ func createRBDStorageClass(
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = rbdNodePluginSecretName
 
-	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
-	if err != nil {
-		return err
+	fsID := defaultFSID
+	if fsID == noFSID {
+		var stdErr string
+		fsID, stdErr, err = execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+		if err != nil {
+			return err
+		}
+		if stdErr != "" {
+			return fmt.Errorf("error getting fsid %v", stdErr)
+		}
+		// remove new line present in fsID
+		fsID = strings.Trim(fsID, "\n")
 	}
-	if stdErr != "" {
-		return fmt.Errorf("error getting fsid %v", stdErr)
-	}
-	// remove new line present in fsID
-	fsID = strings.Trim(fsID, "\n")
 
 	sc.Parameters["clusterID"] = fsID
 	for k, v := range parameters {

@@ -27,6 +27,7 @@ func init() {
 	flag.StringVar(&upgradeVersion, "upgrade-version", "v3.3.1", "target version for upgrade testing")
 	flag.StringVar(&cephCSINamespace, "cephcsi-namespace", defaultNs, "namespace in which cephcsi deployed")
 	flag.StringVar(&rookNamespace, "rook-namespace", "rook-ceph", "namespace in which rook is deployed")
+	flag.StringVar(&defaultFSID, "fsid", noFSID, "Ceph cluster ID")
 	setDefaultKubeconfig()
 
 	// Register framework flags, then handle flags
