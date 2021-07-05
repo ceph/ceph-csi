@@ -96,18 +96,8 @@ func createORDeleteRbdResources(action string) {
 			e2elog.Failf("failed to %s CSIDriver object with error %v", action, err)
 		}
 	}
-	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisioner)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdProvisioner, err)
-	}
-	data = oneReplicaDeployYaml(data)
-	data = enableTopologyInTemplate(data)
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
-	if err != nil {
-		e2elog.Failf("failed to %s rbd provisioner with error %v", action, err)
-	}
 
-	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdProvisionerRBAC)
+	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisionerRBAC)
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdProvisionerRBAC, err)
 	}
@@ -123,18 +113,6 @@ func createORDeleteRbdResources(action string) {
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, "-f", "-")
 	if err != nil {
 		e2elog.Failf("failed to %s provisioner psp with error %v", action, err)
-	}
-
-	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePlugin)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdNodePlugin, err)
-	}
-
-	domainLabel := nodeRegionLabel + "," + nodeZoneLabel
-	data = addTopologyDomainsToDSYaml(data, domainLabel)
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
-	if err != nil {
-		e2elog.Failf("failed to %s nodeplugin with error %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePluginRBAC)
@@ -153,6 +131,29 @@ func createORDeleteRbdResources(action string) {
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Failf("failed to %s nodeplugin psp with error %v", action, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdProvisioner)
+	if err != nil {
+		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdProvisioner, err)
+	}
+	data = oneReplicaDeployYaml(data)
+	data = enableTopologyInTemplate(data)
+
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Failf("failed to %s rbd provisioner with error %v", action, err)
+	}
+	data, err = replaceNamespaceInTemplate(rbdDirPath + rbdNodePlugin)
+	if err != nil {
+		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdNodePlugin, err)
+	}
+
+	domainLabel := nodeRegionLabel + "," + nodeZoneLabel
+	data = addTopologyDomainsToDSYaml(data, domainLabel)
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Failf("failed to %s nodeplugin with error %v", action, err)
 	}
 }
 
