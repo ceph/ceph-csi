@@ -239,6 +239,30 @@ to a different K8s secrets `csi.storage.k8s.io/node-stage-secret-name`
 and `csi.storage.k8s.io/provisioner-secret-name` which carry new passphrase value
 for `encryptionPassphrase` key in these secrets.
 
+### Encryption `metadata` configuration
+
+CephCSI can generate unique passphrase (DEK Data-Encryption-Key) for each volume
+to be used to encrypt/decrypt data. The passphrase (DEK) is encrypted by
+`encryptionPassphrase` (KEK Key-Encryption-Key) and stored in the image metadata
+of the volume.
+
+To encrypt rbd volumes with `metadata` encryption, users need to set
+`encrypted: "true"` and `encryptionKMSID` to a unique identifier in storageclass.
+This unique identifier should be similar to the
+[examples](../examples/kms/vault/csi-kms-connection-details.yaml).
+The configuration must include `"encryptionKMSType": "metadata"`. The
+`encryptionPassphrase` is fetched based on the following conditions:
+
+* if `"secretName"` key is specified, `encryptionPassphrase` is fetched from this
+  secret and `"secretNamespace"` value is used for namespace if specified else
+  Tenant/Kubernetes namespace (i.e., namespace where the PVC was created) is used.
+* if `"secretName"` key is not specified, `encryptionPassphrase` is fetched from
+  storageclass secrets `csi.storage.k8s.io/provisioner-secret-namespace` /
+  `csi.storage.k8s.io/provisioner-secret-name` and
+  `csi.storage.k8s.io/node-stage-secret-namespace` /
+  `csi.storage.k8s.io/node-stage-secret-name`
+  similar to the previous [Encryption Configuration](#encryption-configuration).
+
 ### Encryption KMS configuration
 
 To further improve security robustness it is possible to use unique passphrases
