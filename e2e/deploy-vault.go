@@ -50,20 +50,7 @@ func deleteVault() {
 }
 
 func createORDeleteVault(action string) {
-	data, err := replaceNamespaceInTemplate(vaultExamplePath + vaultServicePath)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultServicePath, err)
-	}
-
-	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
-
-	data = strings.ReplaceAll(data, "value: default", "value: "+cephCSINamespace)
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
-	if err != nil {
-		e2elog.Failf("failed to %s vault statefulset %v", action, err)
-	}
-
-	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultRBACPath)
+	data, err := replaceNamespaceInTemplate(vaultExamplePath + vaultRBACPath)
 	if err != nil {
 		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultRBACPath, err)
 	}
@@ -89,5 +76,18 @@ func createORDeleteVault(action string) {
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
 	if err != nil {
 		e2elog.Failf("failed to %s vault psp %v", action, err)
+	}
+
+	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultServicePath)
+	if err != nil {
+		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultServicePath, err)
+	}
+
+	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
+
+	data = strings.ReplaceAll(data, "value: default", "value: "+cephCSINamespace)
+	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	if err != nil {
+		e2elog.Failf("failed to %s vault statefulset %v", action, err)
 	}
 }
