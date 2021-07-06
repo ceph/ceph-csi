@@ -244,6 +244,36 @@ func TestMountOptionsAdd(t *testing.T) {
 		})
 	}
 }
+
+func TestParseKernelRelease(t *testing.T) {
+	t.Parallel()
+
+	badReleases := []string{"x", "5", "5.", "5.4.", "5.x-2-oops", "4.1.x-7-oh", "5.12.x"}
+	for _, release := range badReleases {
+		_, _, _, _, err := parseKernelRelease(release)
+		if err == nil {
+			t.Errorf("release %q must not be parsed successfully", release)
+		}
+	}
+
+	goodReleases := []string{"5.12", "5.12xlinux", "5.1-2-yam", "3.1-5-x", "5.12.14", "5.12.14xlinux",
+		"5.12.14-xlinux", "5.12.14-99-x", "3.3x-3"}
+	goodVersions := [][]int{{5, 12, 0, 0}, {5, 12, 0, 0}, {5, 1, 0, 2}, {3, 1, 0, 5},
+		{5, 12, 14, 0}, {5, 12, 14, 0}, {5, 12, 14, 0}, {5, 12, 14, 99}, {3, 3, 0, 0}}
+	for i, release := range goodReleases {
+		version, patchlevel, sublevel, extraversion, err := parseKernelRelease(release)
+		if err != nil {
+			t.Errorf("parsing error for release %q: %w", release, err)
+		}
+		good := goodVersions[i]
+		if version != good[0] || patchlevel != good[1] || sublevel != good[2] || extraversion != good[3] {
+			t.Errorf("release %q parsed incorrectly: expected (%d.%d.%d-%d), actual (%d.%d.%d-%d)",
+				release, good[0], good[1], good[2], good[3],
+				version, patchlevel, sublevel, extraversion)
+		}
+	}
+}
+
 func TestCheckKernelSupport(t *testing.T) {
 	t.Parallel()
 	supportsQuota := []string{
