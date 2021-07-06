@@ -294,7 +294,8 @@ func DeviceEncryptionStatus(ctx context.Context, devicePath string) (mappedDevic
 	if len(lines) < 1 {
 		return "", "", fmt.Errorf("device encryption status returned no stdout for %s", devicePath)
 	}
-	if !strings.HasSuffix(lines[0], " is active.") {
+	// The line will look like: "/dev/mapper/xxx is active and is in use."
+	if !strings.Contains(lines[0], " is active") {
 		// Implies this is not a LUKS device
 		return devicePath, "", nil
 	}
