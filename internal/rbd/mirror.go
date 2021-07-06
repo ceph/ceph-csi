@@ -127,8 +127,8 @@ type imageMirrorStatus struct {
 }
 
 // FIXME: once https://github.com/ceph/go-ceph/issues/460 is fixed use go-ceph.
-// getImageMirroingStatus get the mirroring status of an image.
-func (ri *rbdImage) getImageMirroingStatus() (*imageMirrorStatus, error) {
+// getImageMirroringStatus get the mirroring status of an image.
+func (ri *rbdImage) getImageMirroringStatus() (*imageMirrorStatus, error) {
 	// rbd mirror image status --format=json info [image-spec | snap-spec]
 	var imgStatus imageMirrorStatus
 	stdout, stderr, err := util.ExecCommand(
