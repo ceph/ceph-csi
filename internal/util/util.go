@@ -23,7 +23,6 @@ import (
 	"math"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -158,6 +157,39 @@ type KernelVersion struct {
 	Backport     bool   // backports have a fixed version/patchlevel/sublevel
 }
 
+// parseKernelRelease parses a kernel release version string into:
+// version, patch version, sub version and extra version.
+func parseKernelRelease(release string) (int, int, int, int, error) {
+	version := 0
+	patchlevel := 0
+	minVersions := 2
+
+	extra := ""
+	n, err := fmt.Sscanf(release, "%d.%d%s", &version, &patchlevel, &extra)
+	if n < minVersions && err != nil {
+		return 0, 0, 0, 0, fmt.Errorf("failed to parse version and patchlevel from %s: %w", release, err)
+	}
+
+	sublevel := 0
+	extraversion := 0
+	if n > minVersions {
+		n, err = fmt.Sscanf(extra, ".%d%s", &sublevel, &extra)
+		if err != nil && n == 0 && len(extra) > 0 && extra[0] != '-' && extra[0] == '.' {
+			return 0, 0, 0, 0, fmt.Errorf("failed to parse subversion from %s: %w", release, err)
+		}
+
+		extra = strings.TrimPrefix(extra, "-")
+		// ignore errors, 1st component of extraversion does not need to be an int
+		_, err = fmt.Sscanf(extra, "%d", &extraversion)
+		if err != nil {
+			// "go lint" wants err to be checked...
+			extraversion = 0
+		}
+	}
+
+	return version, patchlevel, sublevel, extraversion, nil
+}
+
 // CheckKernelSupport checks the running kernel and comparing it to known
 // versions that have support for required features . Distributors of
 // enterprise Linux have backported quota support to previous versions. This
@@ -177,36 +209,10 @@ type KernelVersion struct {
 // In case the backport bool is false, a simple check for higher versions than
 // version+patchlevel+sublevel is done.
 func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool {
-	vers := strings.Split(strings.SplitN(release, "-", 2)[0], ".")
-	version, err := strconv.Atoi(vers[0])
+	version, patchlevel, sublevel, extraversion, err := parseKernelRelease(release)
 	if err != nil {
-		ErrorLogMsg("failed to parse version from %s: %v", release, err)
+		ErrorLogMsg("%v", err)
 		return false
-	}
-	patchlevel, err := strconv.Atoi(vers[1])
-	if err != nil {
-		ErrorLogMsg("failed to parse patchlevel from %s: %v", release, err)
-		return false
-	}
-	sublevel := 0
-	const minLenForSublvl = 3
-	if len(vers) >= minLenForSublvl {
-		sublevel, err = strconv.Atoi(vers[2])
-		if err != nil {
-			ErrorLogMsg("failed to parse sublevel from %s: %v", release, err)
-			return false
-		}
-	}
-	extra := strings.SplitN(release, "-", 2)
-	extraversion := 0
-	const expectedExtraLen = 2
-	if len(extra) == expectedExtraLen {
-		// ignore errors, 1st component of extraversion does not need to be an int
-		extraversion, err = strconv.Atoi(strings.Split(extra[1], ".")[0])
-		if err != nil {
-			// "go lint" wants err to be checked...
-			extraversion = 0
-		}
 	}
 
 	// compare running kernel against known versions
