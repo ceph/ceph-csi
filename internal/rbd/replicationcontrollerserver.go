@@ -515,7 +515,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, "image is in primary state")
 	}
 
-	mirrorStatus, err := rbdVol.getImageMirroingStatus()
+	mirrorStatus, err := rbdVol.getImageMirroringStatus()
 	if err != nil {
 		// the image gets recreated after issuing resync in that case return
 		// volume as not ready.
