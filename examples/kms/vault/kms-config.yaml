@@ -31,6 +31,24 @@ data:
               }
           }
       },
+      "vault-tenant-sa-test": {
+          "encryptionKMSType": "vaulttenantsa",
+          "vaultAddress": "http://vault.default.svc.cluster.local:8200",
+          "vaultBackendPath": "shared-secrets",
+          "vaultTLSServerName": "vault.default.svc.cluster.local",
+          "vaultCAVerify": "false",
+          "tenantConfigName": "ceph-csi-kms-config",
+          "tenantSAName": "ceph-csi-vault-sa",
+          "tenants": {
+              "my-app": {
+                  "vaultAddress": "https://vault.example.com",
+                  "vaultCAVerify": "true"
+              },
+              "an-other-app": {
+                  "tenantSAName": "storage-encryption-sa"
+              }
+          }
+      },
       "secrets-metadata-test": {
           "encryptionKMSType": "metadata"
       },
