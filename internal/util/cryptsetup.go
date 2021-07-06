@@ -43,6 +43,11 @@ func LuksOpen(devicePath, mapperFile, passphrase string) (stdout, stderr []byte,
 	return execCryptsetupCommand(&passphrase, "luksOpen", devicePath, mapperFile, "-d", "/dev/stdin")
 }
 
+// LuksResize resizes LUKS encrypted partition.
+func LuksResize(mapperFile string) (stdout, stderr []byte, err error) {
+	return execCryptsetupCommand(nil, "resize", mapperFile)
+}
+
 // LuksClose removes existing mapping.
 func LuksClose(mapperFile string) (stdout, stderr []byte, err error) {
 	return execCryptsetupCommand(nil, "luksClose", mapperFile)
