@@ -621,7 +621,7 @@ var _ = Describe("RBD", func() {
 
 				// Prepare the rbd-nbd with command args
 				attachCmd := strings.ReplaceAll(mapCmd, "map", "attach --device /dev/nbd0")
-				m1 := regexp.MustCompile(`/keyfile-[0-9]* `)
+				m1 := regexp.MustCompile(`/keyfile-\d* `)
 				attachCmd = m1.ReplaceAllString(attachCmd, "/keyfile-test ")
 				e2elog.Logf("attach command to run after restart, attachCmd: %v", attachCmd)
 

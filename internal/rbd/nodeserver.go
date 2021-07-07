@@ -575,7 +575,7 @@ func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath strin
 	// Check if that mount path exists properly
 	notMnt, err := mount.IsNotMountPoint(ns.mounter, mountPath)
 	if err == nil {
-		return notMnt, err
+		return notMnt, nil
 	}
 	if !os.IsNotExist(err) {
 		return false, status.Error(codes.Internal, err.Error())
