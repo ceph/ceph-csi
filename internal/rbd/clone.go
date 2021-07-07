@@ -170,13 +170,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		}
 	}
 
-	// TODO: copy thick provision config
-	thick, err := parentVol.isThickProvisioned()
-	if err != nil {
-		return fmt.Errorf("failed checking thick-provisioning of %q: %w", parentVol, err)
-	}
-
-	if thick {
+	if rv.ThickProvision {
 		err = rv.setThickProvisioned()
 		if err != nil {
 			return fmt.Errorf("failed mark %q thick-provisioned: %w", rv, err)
