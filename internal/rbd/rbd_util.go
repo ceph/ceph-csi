@@ -64,6 +64,11 @@ const (
 	// 'thickProvisionMetaKey' to set image metadata.
 	deprecatedthickProvisionMetaKey = ".rbd.csi.ceph.com/thick-provisioned"
 	thickProvisionMetaKey           = "rbd.csi.ceph.com/thick-provisioned"
+
+	// these are the metadata set on the image to identify the image is
+	// thick provisioned or thin provisioned.
+	thickProvisionMetaData = "true"
+	thinProvisionMetaData  = "false"
 )
 
 // rbdImage contains common attributes and methods for the rbdVolume and
@@ -1525,9 +1530,20 @@ func (ri *rbdImage) SetMetadata(key, value string) error {
 // setThickProvisioned records in the image metadata that it has been
 // thick-provisioned.
 func (ri *rbdImage) setThickProvisioned() error {
-	err := ri.SetMetadata(thickProvisionMetaKey, "true")
+	err := ri.SetMetadata(thickProvisionMetaKey, thickProvisionMetaData)
 	if err != nil {
 		return fmt.Errorf("failed to set metadata %q for %q: %w", thickProvisionMetaKey, ri, err)
+	}
+
+	return nil
+}
+
+// setThinProvisioned records in the image metadata that it has been
+// thin-provisioned.
+func (ri *rbdImage) setThinProvisioned() error {
+	err := ri.SetMetadata(thickProvisionMetaKey, thinProvisionMetaData)
+	if err != nil {
+		return fmt.Errorf("failed to set metadata %q for %q: %w", thinProvisionMetaData, ri, err)
 	}
 
 	return nil
@@ -1543,6 +1559,17 @@ func (ri *rbdImage) isThickProvisioned() (bool, error) {
 		value, err = ri.GetMetadata(deprecatedthickProvisionMetaKey)
 		if err == librbd.ErrNotFound {
 			return false, nil
+		}
+		// If we reach here means the image has deprecated metakey set. Set the
+		// new metakey so that we dont need to check for deprecated key again.
+		if value == thickProvisionMetaData {
+			err = ri.setThickProvisioned()
+		} else {
+			value = thinProvisionMetaData
+			// If we reach here means the image is thin provisioned. Set thin
+			// provisioned metadata on the image so that we dont need to check
+			// for thick metakey or deprecated thick metakey.
+			err = ri.setThinProvisioned()
 		}
 	}
 	if err != nil {
