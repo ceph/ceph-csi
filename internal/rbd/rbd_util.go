@@ -1524,10 +1524,10 @@ func (ri *rbdImage) SetMetadata(key, value string) error {
 
 // setThickProvisioned records in the image metadata that it has been
 // thick-provisioned.
-func (rv *rbdVolume) setThickProvisioned() error {
-	err := rv.SetMetadata(thickProvisionMetaKey, "true")
+func (ri *rbdImage) setThickProvisioned() error {
+	err := ri.SetMetadata(thickProvisionMetaKey, "true")
 	if err != nil {
-		return fmt.Errorf("failed to set metadata %q for %q: %w", thickProvisionMetaKey, rv, err)
+		return fmt.Errorf("failed to set metadata %q for %q: %w", thickProvisionMetaKey, ri, err)
 	}
 
 	return nil
