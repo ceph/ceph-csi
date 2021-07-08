@@ -801,28 +801,13 @@ var _ = Describe("cephfs", func() {
 					snap := getSnapshot(snapshotPath)
 					snap.Namespace = f.UniqueName
 					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
-					// create snapshot
-					for i := 0; i < totalCount; i++ {
-						go func(n int, s snapapi.VolumeSnapshot) {
-							s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
-							wgErrs[n] = createSnapshot(&s, deployTimeout)
-							wg.Done()
-						}(i, snap)
+					req := getRoutines(totalCount)
+					processes := dispatch(f, &objects{snap: &snap}, "createsnap", req, totalCount)
+					fCount, err := waitForAll(totalCount, processes, "createsnapshot")
+					if err != nil {
+						e2elog.Failf("creating snapshots failed, %d errors were logged", fCount)
 					}
-					wg.Wait()
-
 					failed := 0
-					for i, err := range wgErrs {
-						if err != nil {
-							// not using Failf() as it aborts the test and does not log other errors
-							e2elog.Logf("failed to create snapshot (%s%d): %v", f.UniqueName, i, err)
-							failed++
-						}
-					}
-					if failed != 0 {
-						e2elog.Failf("creating snapshots failed, %d errors were logged", failed)
-					}
-
 					pvcClone, err := loadPVC(pvcClonePath)
 					if err != nil {
 						e2elog.Failf("failed to load PVC with error %v", err)

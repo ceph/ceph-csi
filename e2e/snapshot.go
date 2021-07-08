@@ -80,6 +80,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 			return false, nil
 		}
 		if *snaps.Status.ReadyToUse {
+			e2elog.Logf("snap details: %#v", *snap)
 			return true, nil
 		}
 		e2elog.Logf("snapshot %s in %v state", snap.Name, *snaps.Status.ReadyToUse)
