@@ -56,6 +56,12 @@ var (
 		},
 		backendPath: defaultVaultBackendPath,
 	}
+	vaultTenantSAKMS = &vaultConfig{
+		simpleKMS: &simpleKMS{
+			provider: "vaulttenantsa",
+		},
+		backendPath: "tenant/",
+	}
 )
 
 func (sk *simpleKMS) String() string {

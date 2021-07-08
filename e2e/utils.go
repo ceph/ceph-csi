@@ -13,11 +13,13 @@ import (
 	"time"
 
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
+	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/wait"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -1153,4 +1155,33 @@ func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
 	min := fmt.Sprintf("%d", minor)
 
 	return (v.Major > maj) || (v.Major == maj && v.Minor >= min)
+}
+
+// waitForJobCompletion polls the status of the given job and waits until the
+// jobs has succeeded or until the timeout is hit.
+func waitForJobCompletion(c kubernetes.Interface, ns, job string, timeout int) error {
+	t := time.Duration(timeout) * time.Minute
+	start := time.Now()
+
+	e2elog.Logf("waiting for Job %s/%s to be in state %q", ns, job, batch.JobComplete)
+
+	return wait.PollImmediate(poll, t, func() (bool, error) {
+		j, err := c.BatchV1().Jobs(ns).Get(context.TODO(), job, metav1.GetOptions{})
+		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			return false, fmt.Errorf("failed to get Job: %w", err)
+		}
+
+		if j.Status.CompletionTime != nil {
+			// Job has successfully completed
+			return true, nil
+		}
+
+		e2elog.Logf(
+			"Job %s/%s has not completed yet (%d seconds elapsed)",
+			ns, job, int(time.Since(start).Seconds()))
+		return false, nil
+	})
 }
