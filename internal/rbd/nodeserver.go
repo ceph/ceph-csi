@@ -875,38 +875,49 @@ func (ns *NodeServer) NodeExpandVolume(
 	}
 	defer ns.VolumeLocks.Release(volumeID)
 
-	devicePath, err := getDevicePath(ctx, volumePath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	// TODO check size and return success or error
-	volumePath += "/" + volumeID
-	resizer := mount.NewResizeFs(utilexec.New())
-	ok, err := resizer.Resize(devicePath, volumePath)
-	if !ok {
-		return nil, status.Errorf(codes.Internal, "rbd: resize failed on path %s, error: %v", req.GetVolumePath(), err)
-	}
-
-	return &csi.NodeExpandVolumeResponse{}, nil
-}
-
-func getDevicePath(ctx context.Context, volumePath string) (string, error) {
 	imgInfo, err := lookupRBDImageMetadataStash(volumePath)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to find image metadata: %v", err)
 	}
-	device, found := findDeviceMappingImage(
+	devicePath, found := findDeviceMappingImage(
 		ctx,
 		imgInfo.Pool,
 		imgInfo.RadosNamespace,
 		imgInfo.ImageName,
 		imgInfo.NbdAccess)
-	if found {
-		return device, nil
+	if !found {
+		return nil, status.Errorf(codes.Internal,
+			"failed to get device for stagingtarget path %v", volumePath)
 	}
 
-	return "", fmt.Errorf("failed to get device for stagingtarget path %v", volumePath)
+	mapperFile, mapperPath := util.VolumeMapper(volumeID)
+	if imgInfo.Encrypted {
+		// The volume is encrypted, resize an active mapping
+		err = util.ResizeEncryptedVolume(ctx, mapperFile)
+		if err != nil {
+			util.ErrorLog(ctx, "failed to resize device %s, mapper %s: %w",
+				devicePath, mapperFile, err)
+
+			return nil, status.Errorf(codes.Internal,
+				"failed to resize device %s, mapper %s: %v", devicePath, mapperFile, err)
+		}
+		// Use mapper device path for fs resize
+		devicePath = mapperPath
+	}
+
+	if req.GetVolumeCapability().GetBlock() == nil {
+		// TODO check size and return success or error
+		volumePath += "/" + volumeID
+		resizer := mount.NewResizeFs(utilexec.New())
+		var ok bool
+		ok, err = resizer.Resize(devicePath, volumePath)
+		if !ok {
+			return nil, status.Errorf(codes.Internal,
+				"rbd: resize failed on path %s, error: %v", req.GetVolumePath(), err)
+		}
+	}
+
+	return &csi.NodeExpandVolumeResponse{}, nil
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server.
