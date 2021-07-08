@@ -40,7 +40,9 @@ func LuksFormat(devicePath, passphrase string) (stdout, stderr []byte, err error
 
 // LuksOpen opens LUKS encrypted partition and sets up a mapping.
 func LuksOpen(devicePath, mapperFile, passphrase string) (stdout, stderr []byte, err error) {
-	return execCryptsetupCommand(&passphrase, "luksOpen", devicePath, mapperFile, "-d", "/dev/stdin")
+	// cryptsetup option --disable-keyring (introduced with cryptsetup v2.0.0)
+	// will be ignored with luks1
+	return execCryptsetupCommand(&passphrase, "luksOpen", devicePath, mapperFile, "--disable-keyring", "-d", "/dev/stdin")
 }
 
 // LuksResize resizes LUKS encrypted partition.

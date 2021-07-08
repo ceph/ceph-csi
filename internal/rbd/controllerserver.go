@@ -1355,12 +1355,6 @@ func (cs *ControllerServer) ControllerExpandVolume(
 		return nil, status.Error(codes.InvalidArgument, "capacityRange cannot be empty")
 	}
 
-	nodeExpansion := false
-	// Get the nodeexpansion flag set based on the volume mode
-	if req.GetVolumeCapability().GetBlock() == nil {
-		nodeExpansion = true
-	}
-
 	// lock out parallel requests against the same volume ID
 	if acquired := cs.VolumeLocks.TryAcquire(volID); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
@@ -1368,14 +1362,6 @@ func (cs *ControllerServer) ControllerExpandVolume(
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer cs.VolumeLocks.Release(volID)
-
-	// lock out volumeID for clone and delete operation
-	if err := cs.OperationLocks.GetExpandLock(volID); err != nil {
-		util.ErrorLog(ctx, err.Error())
-
-		return nil, status.Error(codes.Aborted, err.Error())
-	}
-	defer cs.OperationLocks.ReleaseExpandLock(volID)
 
 	cr, err := util.NewUserCredentials(req.GetSecrets())
 	if err != nil {
@@ -1399,10 +1385,22 @@ func (cs *ControllerServer) ControllerExpandVolume(
 		return nil, err
 	}
 
-	if rbdVol.isEncrypted() {
-		return nil, status.Errorf(codes.InvalidArgument, "encrypted volumes do not support resize (%s)",
-			rbdVol)
+	// NodeExpansion is needed for PersistentVolumes with,
+	// 1. Filesystem VolumeMode with & without Encryption and
+	// 2. Block VolumeMode with Encryption
+	// Hence set nodeExpansion flag based on VolumeMode and Encryption status
+	nodeExpansion := true
+	if req.GetVolumeCapability().GetBlock() != nil && !rbdVol.isEncrypted() {
+		nodeExpansion = false
 	}
+
+	// lock out volumeID for clone and delete operation
+	if err = cs.OperationLocks.GetExpandLock(volID); err != nil {
+		util.ErrorLog(ctx, err.Error())
+
+		return nil, status.Error(codes.Aborted, err.Error())
+	}
+	defer cs.OperationLocks.ReleaseExpandLock(volID)
 
 	// always round up the request size in bytes to the nearest MiB/GiB
 	volSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
