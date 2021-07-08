@@ -25,10 +25,10 @@ import (
 )
 
 const (
-	// volIDVersion is the version number of volume ID encoding scheme
+	// volIDVersion is the version number of volume ID encoding scheme.
 	volIDVersion uint16 = 1
 
-	// RADOS namespace to store CSI specific objects and keys
+	// RADOS namespace to store CSI specific objects and keys.
 	radosNamespace = "csi"
 )
 
@@ -43,15 +43,15 @@ type Driver struct {
 
 var (
 	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
-	// ceph clusters across CSI instances, to differentiate omap names per CSI instance
+	// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
 	CSIInstanceID = "default"
 
 	// volJournal is used to maintain RADOS based journals for CO generated
-	// VolumeName to backing CephFS subvolumes
+	// VolumeName to backing CephFS subvolumes.
 	volJournal *journal.Config
 
 	// snapJournal is used to maintain RADOS based journals for CO generated
-	// SnapshotName to backing CephFS subvolumes
+	// SnapshotName to backing CephFS subvolumes.
 	snapJournal *journal.Config
 )
 

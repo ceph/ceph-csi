@@ -29,7 +29,7 @@ const (
 	// This was hardcoded once and defaults to the old value to keep backward compatibility.
 	defaultCsiSubvolumeGroup = "csi"
 
-	// CsiConfigFile is the location of the CSI config file
+	// CsiConfigFile is the location of the CSI config file.
 	CsiConfigFile = "/etc/ceph-csi-config/config.json"
 )
 

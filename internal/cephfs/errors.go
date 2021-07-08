@@ -27,13 +27,13 @@ const (
 )
 
 var (
-	// ErrCloneInProgress is returned when snapshot clone state is `in progress`
+	// ErrCloneInProgress is returned when snapshot clone state is `in progress`.
 	ErrCloneInProgress = errors.New("clone from snapshot is already in progress")
 
-	// ErrClonePending is returned when snapshot clone state is `pending`
+	// ErrClonePending is returned when snapshot clone state is `pending`.
 	ErrClonePending = errors.New("clone from snapshot is pending")
 
-	// ErrInvalidClone is returned when the clone state is invalid
+	// ErrInvalidClone is returned when the clone state is invalid.
 	ErrInvalidClone = errors.New("invalid clone state")
 
 	// ErrCloneFailed is returned when the clone state is failed.
@@ -46,7 +46,7 @@ var (
 	// statically provisioned.
 	ErrNonStaticVolume = errors.New("volume not static")
 
-	// ErrSnapProtectionExist is returned when the snapshot is already protected
+	// ErrSnapProtectionExist is returned when the snapshot is already protected.
 	ErrSnapProtectionExist = errors.New("snapshot  protection already exists")
 
 	// ErrSnapNotFound is returned when snap name passed is not found in the list
@@ -56,7 +56,7 @@ var (
 	// ErrVolumeNotFound is returned when a subvolume is not found in CephFS.
 	ErrVolumeNotFound = errors.New("volume not found")
 
-	// ErrInvalidCommand is returned when a command is not known to the cluster
+	// ErrInvalidCommand is returned when a command is not known to the cluster.
 	ErrInvalidCommand = errors.New("invalid command")
 
 	// ErrVolumeHasSnapshots is returned when a subvolume has snapshots.

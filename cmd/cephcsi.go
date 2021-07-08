@@ -46,7 +46,7 @@ const (
 	pollTime     = 60 // seconds
 	probeTimeout = 3  // seconds
 
-	// use default namespace if namespace is not set
+	// use default namespace if namespace is not set.
 	defaultNS = "default"
 )
 

@@ -51,9 +51,9 @@ const (
 	//
 	// #nosec:G101, no hardcoded secrets, only configuration keys.
 	awsAccessKey = "AWS_ACCESS_KEY_ID"
-	// #nosec:G101
+	// #nosec:G101.
 	awsSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
-	// #nosec:G101
+	// #nosec:G101.
 	awsSessionToken = "AWS_SESSION_TOKEN"
 	awsCMK          = "AWS_CMK_ARN"
 )

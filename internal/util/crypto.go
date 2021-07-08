@@ -31,7 +31,7 @@ const (
 	mapperFilePrefix     = "luks-rbd-"
 	mapperFilePathPrefix = "/dev/mapper"
 
-	// kmsConfigPath is the location of the vault config file
+	// kmsConfigPath is the location of the vault config file.
 	kmsConfigPath = "/etc/ceph-csi-encryption-kms-config/config.json"
 
 	// Passphrase size - 20 bytes is 160 bits to satisfy:

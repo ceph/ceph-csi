@@ -35,7 +35,7 @@ const (
 	retainPolicy = v1.PersistentVolumeReclaimRetain
 	// deletePolicy is the default policy in E2E.
 	deletePolicy = v1.PersistentVolumeReclaimDelete
-	// Default key and label for Listoptions
+	// Default key and label for Listoptions.
 	appKey   = "app"
 	appLabel = "write-data-in-pod"
 
@@ -43,7 +43,7 @@ const (
 )
 
 var (
-	// cli flags
+	// cli flags.
 	deployTimeout    int
 	deployCephFS     bool
 	deployRBD        bool

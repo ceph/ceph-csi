@@ -9,14 +9,14 @@ import (
 
 // #nosec because of the word `Secret`
 const (
-	// ceph user names
+	// ceph user names.
 	keyringRBDProvisionerUsername          = "cephcsi-rbd-provisioner"
 	keyringRBDNodePluginUsername           = "cephcsi-rbd-node"
 	keyringRBDNamespaceProvisionerUsername = "cephcsi-rbd-ns-provisioner"
 	keyringRBDNamespaceNodePluginUsername  = "cephcsi-rbd-ns-node"
 	keyringCephFSProvisionerUsername       = "cephcsi-cephfs-provisioner"
 	keyringCephFSNodePluginUsername        = "cephcsi-cephfs-node"
-	// secret names
+	// secret names.
 	rbdNodePluginSecretName           = "cephcsi-rbd-node"
 	rbdProvisionerSecretName          = "cephcsi-rbd-provisioner"
 	rbdNamespaceNodePluginSecretName  = "cephcsi-rbd-ns-node"

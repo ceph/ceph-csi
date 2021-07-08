@@ -30,7 +30,7 @@ var (
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
 	defaultRBDPool     = "replicapool"
-	// Topology related variables
+	// Topology related variables.
 	nodeRegionLabel     = "test.failure-domain/region"
 	regionValue         = "testregion"
 	nodeZoneLabel       = "test.failure-domain/zone"
@@ -40,7 +40,7 @@ var (
 	rbdTopologyPool     = "newrbdpool"
 	rbdTopologyDataPool = "replicapool" // NOTE: should be different than rbdTopologyPool for test to be effective
 
-	// yaml files required for deployment
+	// yaml files required for deployment.
 	pvcPath                = rbdExamplePath + "pvc.yaml"
 	appPath                = rbdExamplePath + "pod.yaml"
 	rawPvcPath             = rbdExamplePath + "raw-block-pvc.yaml"
