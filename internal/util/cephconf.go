@@ -37,7 +37,7 @@ fuse_big_writes = true
 
 const (
 	cephConfigRoot = "/etc/ceph"
-	// CephConfigPath ceph configuration file
+	// CephConfigPath ceph configuration file.
 	CephConfigPath = "/etc/ceph/ceph.conf"
 
 	keyRing = "/etc/ceph/keyring"

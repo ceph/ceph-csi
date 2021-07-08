@@ -35,14 +35,14 @@ const (
 	// options.
 	kmsTypeKey = "encryptionKMSType"
 
-	// podNamespaceEnv ENV should be set in the cephcsi container
+	// podNamespaceEnv ENV should be set in the cephcsi container.
 	podNamespaceEnv = "POD_NAMESPACE"
 
-	// kmsConfigMapEnv env to read a ConfigMap by name
+	// kmsConfigMapEnv env to read a ConfigMap by name.
 	kmsConfigMapEnv = "KMS_CONFIGMAP_NAME"
 
 	// defaultKMSConfigMapName default ConfigMap name to fetch kms
-	// connection details
+	// connection details.
 	defaultKMSConfigMapName = "csi-kms-connection-details"
 )
 

@@ -37,7 +37,7 @@ const (
 	// #nosec
 	serviceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
-	// vault configuration defaults
+	// vault configuration defaults.
 	vaultDefaultAuthPath       = "/v1/auth/kubernetes/login"
 	vaultDefaultRole           = "csi-kubernetes"
 	vaultDefaultNamespace      = ""

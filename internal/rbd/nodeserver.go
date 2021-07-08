@@ -61,7 +61,7 @@ type stageTransaction struct {
 }
 
 const (
-	// values for xfsHasReflink
+	// values for xfsHasReflink.
 	xfsReflinkUnset int = iota
 	xfsReflinkNoSupport
 	xfsReflinkSupport
@@ -92,7 +92,7 @@ var (
 	}
 
 	// xfsHasReflink is set by xfsSupportsReflink(), use the function when
-	// checking the support for reflink
+	// checking the support for reflink.
 	xfsHasReflink = xfsReflinkUnset
 )
 

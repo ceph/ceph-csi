@@ -49,10 +49,10 @@ const (
 	// rbdImageRequiresEncryption has been deprecated, it is used only for
 	// volumes that have been created with an old provisioner, were never
 	// attached/mounted and now get staged by a new node-plugin
-	// TODO: remove this backwards compatibility support
+	// TODO: remove this backwards compatibility support.
 	rbdImageRequiresEncryption = rbdEncryptionState("requiresEncryption")
 
-	// image metadata key for encryption
+	// image metadata key for encryption.
 	encryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
 
 	// metadataDEK is the key in the image metadata where the (encrypted)

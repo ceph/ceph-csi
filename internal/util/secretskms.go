@@ -31,10 +31,10 @@ import (
 )
 
 const (
-	// Encryption passphrase location in K8s secrets
+	// Encryption passphrase location in K8s secrets.
 	encryptionPassphraseKey = "encryptionPassphrase"
 
-	// Default KMS type
+	// Default KMS type.
 	defaultKMSType = "default"
 
 	// kmsTypeSecretsMetadata is the SecretsKMS with per-volume encryption,
