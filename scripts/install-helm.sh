@@ -173,7 +173,7 @@ install_cephcsi_helm_charts() {
     # issue when installing ceph-csi-rbd
     kubectl delete cm ceph-csi-config --namespace ${NAMESPACE}
     # shellcheck disable=SC2086
-    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true --set provisioner.replicaCount=1 ${SET_SC_TEMPLATE_VALUES} ${RBD_SECRET_TEMPLATE_VALUES} ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2
+    "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true --set provisioner.replicaCount=1 ${SET_SC_TEMPLATE_VALUES} ${RBD_SECRET_TEMPLATE_VALUES} ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2 --set provisioner.softMaxCloneDepth=0 --set provisioner.hardMaxCloneDepth=1
 
     check_deployment_status app=ceph-csi-rbd ${NAMESPACE}
     check_daemonset_status app=ceph-csi-rbd ${NAMESPACE}
