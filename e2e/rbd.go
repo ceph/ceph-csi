@@ -697,7 +697,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
-				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, noKMS, f)
 				if err != nil {
 					e2elog.Failf("failed to validate encrypted pvc with error %v", err)
 				}
@@ -726,7 +726,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
-				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "vault", f)
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, vaultKMS, f)
 				if err != nil {
 					e2elog.Failf("failed to validate encrypted pvc with error %v", err)
 				}
@@ -769,7 +769,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create Secret with tenant token: %v", err)
 				}
 
-				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "vaulttokens", f)
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, vaultTokensKMS, f)
 				if err != nil {
 					e2elog.Failf("failed to validate encrypted pvc with error %v", err)
 				}
@@ -805,7 +805,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
-				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, noKMS, f)
 				if err != nil {
 					e2elog.Failf("failed to validate encrypted pvc with error %v", err)
 				}
@@ -848,7 +848,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create user Secret: %v", err)
 				}
 
-				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, noKMS, f)
 				if err != nil {
 					e2elog.Failf("failed to validate encrypted pvc: %v", err)
 				}
@@ -900,7 +900,7 @@ var _ = Describe("RBD", func() {
 						e2elog.Failf("failed to create user Secret: %v", err)
 					}
 
-					err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, "", f)
+					err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, noKMS, f)
 					if err != nil {
 						e2elog.Failf("failed to validate encrypted pvc: %v", err)
 					}
@@ -965,7 +965,7 @@ var _ = Describe("RBD", func() {
 						snapshotPath,
 						pvcClonePath,
 						appClonePath,
-						noKms,
+						noKMS,
 						f)
 				}
 			})
@@ -979,7 +979,7 @@ var _ = Describe("RBD", func() {
 						appPath,
 						pvcSmartClonePath,
 						appSmartClonePath,
-						noKms,
+						noKMS,
 						noPVCValidation,
 						f)
 				}
@@ -1001,7 +1001,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, noKms, isThickPVC, f)
+				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, noKMS, isThickPVC, f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -1031,7 +1031,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCSnapshot(1, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, "vault", f)
+				validatePVCSnapshot(1, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, vaultKMS, f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -1061,7 +1061,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, "secrets-metadata", isEncryptedPVC, f)
+				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, secretsMetadataKMS, isEncryptedPVC, f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -1091,7 +1091,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, "vault", isEncryptedPVC, f)
+				validatePVCClone(1, pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, vaultKMS, isEncryptedPVC, f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -1122,7 +1122,7 @@ var _ = Describe("RBD", func() {
 						rawAppPath,
 						pvcBlockSmartClonePath,
 						appBlockSmartClonePath,
-						noKms,
+						noKMS,
 						noPVCValidation,
 						f)
 				}

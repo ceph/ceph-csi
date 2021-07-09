@@ -253,10 +253,6 @@ func validateImageOwner(pvcPath string, f *framework.Framework) error {
 	return deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 }
 
-func kmsIsVault(kms string) bool {
-	return kms == "vault"
-}
-
 func logErrors(f *framework.Framework, msg string, wgErrs []error) int {
 	failures := 0
 	for i, err := range wgErrs {
@@ -395,7 +391,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	return nil
 }
 
-func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framework.Framework) error {
+func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, kms kmsConfig, f *framework.Framework) error {
 	pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
 	if err != nil {
 		return err
@@ -411,9 +407,9 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 		return err
 	}
 
-	if kmsIsVault(kms) || kms == vaultTokens {
+	if kms != noKMS && kms.canGetPassphrase() {
 		// check new passphrase created
-		_, stdErr := readVaultSecret(imageData.csiVolumeHandle, kmsIsVault(kms), f)
+		_, stdErr := kms.getPassphrase(f, imageData.csiVolumeHandle)
 		if stdErr != "" {
 			return fmt.Errorf("failed to read passphrase from vault: %s", stdErr)
 		}
@@ -424,9 +420,9 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath, kms string, f *framewor
 		return err
 	}
 
-	if kmsIsVault(kms) || kms == vaultTokens {
+	if kms != noKMS && kms.canGetPassphrase() {
 		// check new passphrase created
-		stdOut, _ := readVaultSecret(imageData.csiVolumeHandle, kmsIsVault(kms), f)
+		stdOut, _ := kms.getPassphrase(f, imageData.csiVolumeHandle)
 		if stdOut != "" {
 			return fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
 		}
