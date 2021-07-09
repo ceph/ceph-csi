@@ -28,11 +28,6 @@ import (
 const (
 	defaultNs     = "default"
 	defaultSCName = ""
-	// vaultBackendPath is the default VAULT_BACKEND_PATH for secrets
-	vaultBackendPath = "secret/"
-	// vaultPassphrasePath is an advanced configuration option, only
-	// available for the VaultKMS (not VaultTokensKMS) provider.
-	vaultPassphrasePath = "ceph-csi/"
 
 	rookToolBoxPodLabel = "app=rook-ceph-tools"
 	rbdMountOptions     = "mountOptions"
@@ -44,11 +39,7 @@ const (
 	appKey   = "app"
 	appLabel = "write-data-in-pod"
 
-	// vaultTokens KMS type
-	vaultTokens = "vaulttokens"
-	noError     = ""
-
-	noKms = ""
+	noError = ""
 )
 
 var (
@@ -65,13 +56,11 @@ var (
 	rookNamespace    string
 	radosNamespace   string
 	ns               string
-	vaultAddr        string
 	poll             = 2 * time.Second
 )
 
 func initResources() {
 	ns = fmt.Sprintf("--namespace=%v", cephCSINamespace)
-	vaultAddr = fmt.Sprintf("http://vault.%s.svc.cluster.local:8200", cephCSINamespace)
 }
 
 func getMons(ns string, c kubernetes.Interface) ([]string, error) {
@@ -224,29 +213,6 @@ func getMountType(appName, appNamespace, mountPath string, f *framework.Framewor
 		return strings.TrimSpace(stdOut), fmt.Errorf(stdErr)
 	}
 	return strings.TrimSpace(stdOut), nil
-}
-
-// readVaultSecret method will execute few commands to try read the secret for
-// specified key from inside the vault container:
-//  * authenticate with vault and ignore any stdout (we do not need output)
-//  * issue get request for particular key
-// resulting in stdOut (first entry in tuple) - output that contains the key
-// or stdErr (second entry in tuple) - error getting the key.
-func readVaultSecret(key string, usePassphrasePath bool, f *framework.Framework) (string, string) {
-	extraPath := vaultPassphrasePath
-	if !usePassphrasePath {
-		extraPath = ""
-	}
-
-	loginCmd := fmt.Sprintf("vault login -address=%s sample_root_token_id > /dev/null", vaultAddr)
-	readSecret := fmt.Sprintf("vault kv get -address=%s -field=data %s%s%s",
-		vaultAddr, vaultBackendPath, extraPath, key)
-	cmd := fmt.Sprintf("%s && %s", loginCmd, readSecret)
-	opt := metav1.ListOptions{
-		LabelSelector: "app=vault",
-	}
-	stdOut, stdErr := execCommandInPodAndAllowFail(f, cmd, cephCSINamespace, &opt)
-	return strings.TrimSpace(stdOut), strings.TrimSpace(stdErr)
 }
 
 func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
@@ -544,7 +510,8 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 // nolint:gocyclo,gocognit,nestif // reduce complexity
 func validatePVCClone(
 	totalCount int,
-	sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath, kms string,
+	sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string,
+	kms kmsConfig,
 	validatePVC validateFunc,
 	f *framework.Framework) {
 	var wg sync.WaitGroup
@@ -611,8 +578,8 @@ func validatePVCClone(
 				LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
 			}
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
-			if wgErrs[n] == nil && kms != noKms {
-				if kmsIsVault(kms) || kms == vaultTokens {
+			if wgErrs[n] == nil && kms != noKMS {
+				if kms.canGetPassphrase() {
 					imageData, sErr := getImageInfoFromPVC(p.Namespace, name, f)
 					if sErr != nil {
 						wgErrs[n] = fmt.Errorf(
@@ -623,7 +590,7 @@ func validatePVCClone(
 							sErr)
 					} else {
 						// check new passphrase created
-						stdOut, stdErr := readVaultSecret(imageData.csiVolumeHandle, kmsIsVault(kms), f)
+						stdOut, stdErr := kms.getPassphrase(f, imageData.csiVolumeHandle)
 						if stdOut != "" {
 							e2elog.Logf("successfully read the passphrase from vault: %s", stdOut)
 						}
@@ -646,7 +613,7 @@ func validatePVCClone(
 					e2elog.Logf("checksum didn't match. checksum=%s and checksumclone=%s", checkSum, checkSumClone)
 				}
 			}
-			if wgErrs[n] == nil && validatePVC != nil && kms != noKms {
+			if wgErrs[n] == nil && validatePVC != nil && kms != noKMS {
 				wgErrs[n] = validatePVC(f, &p, &a)
 			}
 			wg.Done()
@@ -697,8 +664,8 @@ func validatePVCClone(
 			p.Spec.DataSource.Name = name
 			var imageData imageInfoFromPVC
 			var sErr error
-			if kms != noKms {
-				if kmsIsVault(kms) || kms == vaultTokens {
+			if kms != noKMS {
+				if kms.canGetPassphrase() {
 					imageData, sErr = getImageInfoFromPVC(p.Namespace, name, f)
 					if sErr != nil {
 						wgErrs[n] = fmt.Errorf(
@@ -712,10 +679,10 @@ func validatePVCClone(
 			}
 			if wgErrs[n] == nil {
 				wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
-				if wgErrs[n] == nil && kms != noKms {
-					if kmsIsVault(kms) || kms == vaultTokens {
+				if wgErrs[n] == nil && kms != noKMS {
+					if kms.canGetPassphrase() {
 						// check passphrase deleted
-						stdOut, _ := readVaultSecret(imageData.csiVolumeHandle, kmsIsVault(kms), f)
+						stdOut, _ := kms.getPassphrase(f, imageData.csiVolumeHandle)
 						if stdOut != "" {
 							wgErrs[n] = fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
 						}
@@ -744,7 +711,8 @@ func validatePVCClone(
 // nolint:gocyclo,gocognit,nestif // reduce complexity
 func validatePVCSnapshot(
 	totalCount int,
-	pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, kms string,
+	pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string,
+	kms kmsConfig,
 	f *framework.Framework) {
 	var wg sync.WaitGroup
 	wgErrs := make([]error, totalCount)
@@ -797,8 +765,8 @@ func validatePVCSnapshot(
 		go func(n int, s snapapi.VolumeSnapshot) {
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			wgErrs[n] = createSnapshot(&s, deployTimeout)
-			if wgErrs[n] == nil && kms != noKms {
-				if kmsIsVault(kms) || kms == vaultTokens {
+			if wgErrs[n] == nil && kms != noKMS {
+				if kms.canGetPassphrase() {
 					content, sErr := getVolumeSnapshotContent(s.Namespace, s.Name)
 					if sErr != nil {
 						wgErrs[n] = fmt.Errorf(
@@ -808,7 +776,7 @@ func validatePVCSnapshot(
 							sErr)
 					} else {
 						// check new passphrase created
-						_, stdErr := readVaultSecret(*content.Status.SnapshotHandle, kmsIsVault(kms), f)
+						_, stdErr := kms.getPassphrase(f, *content.Status.SnapshotHandle)
 						if stdErr != "" {
 							wgErrs[n] = fmt.Errorf("failed to read passphrase from vault: %s", stdErr)
 						}
@@ -874,7 +842,7 @@ func validatePVCSnapshot(
 						checkSumClone)
 				}
 			}
-			if wgErrs[n] == nil && kms != "" {
+			if wgErrs[n] == nil && kms != noKMS {
 				wgErrs[n] = isEncryptedPVC(f, &p, &a)
 			}
 			wg.Done()
@@ -977,8 +945,8 @@ func validatePVCSnapshot(
 			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
 			content := &snapapi.VolumeSnapshotContent{}
 			var err error
-			if kms != noKms {
-				if kmsIsVault(kms) || kms == vaultTokens {
+			if kms != noKMS {
+				if kms.canGetPassphrase() {
 					content, err = getVolumeSnapshotContent(s.Namespace, s.Name)
 					if err != nil {
 						wgErrs[n] = fmt.Errorf(
@@ -991,10 +959,10 @@ func validatePVCSnapshot(
 			}
 			if wgErrs[n] == nil {
 				wgErrs[n] = deleteSnapshot(&s, deployTimeout)
-				if wgErrs[n] == nil && kms != noKms {
-					if kmsIsVault(kms) || kms == vaultTokens {
+				if wgErrs[n] == nil && kms != noKMS {
+					if kms.canGetPassphrase() {
 						// check passphrase deleted
-						stdOut, _ := readVaultSecret(*content.Status.SnapshotHandle, kmsIsVault(kms), f)
+						stdOut, _ := kms.getPassphrase(f, *content.Status.SnapshotHandle)
 						if stdOut != "" {
 							wgErrs[n] = fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
 						}
