@@ -108,13 +108,10 @@ func (ol *OperationLock) tryAcquire(op operation, volumeID string) error {
 	defer ol.mux.Unlock()
 	switch op {
 	case createOp:
-		// During snapshot create operation there should not be any delete
-		// operation going on for the volume.
-
-		// check any delete operation is going on for given volume ID
-		if _, ok := ol.locks[deleteOp][volumeID]; ok {
-			return fmt.Errorf("a Delete operation with given id %s already exists", volumeID)
-		}
+		// snapshot controller make sure the pvc which is the source for the
+		// snapshot request won't get deleted while snapshot is getting created,
+		// so we dont need to check for any ongoing delete operation here on the
+		// volume.
 		// increment the counter for snapshot create operation
 		val := ol.locks[createOp][volumeID]
 		ol.locks[createOp][volumeID] = val + 1
