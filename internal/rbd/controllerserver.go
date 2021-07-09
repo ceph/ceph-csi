@@ -1034,8 +1034,6 @@ func cloneFromSnapshot(
 	defer vol.Destroy()
 
 	if rbdVol.isEncrypted() {
-		// FIXME: vol.VolID should be different from rbdVol.VolID
-		vol.VolID = rbdVol.VolID
 		err = rbdVol.copyEncryptionConfig(&vol.rbdImage)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
