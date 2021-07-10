@@ -51,6 +51,8 @@ output:
 
 # all available settings of specific linters
 linters-settings:
+  cyclop:
+    max-complexity: 20
   errcheck:
     # report about not checking of errors in type assetions:
     #  `a := b.(MyStruct)`;
