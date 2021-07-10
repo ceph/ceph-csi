@@ -119,7 +119,7 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 		}
 		if !apierrs.IsNotFound(err) {
 			return false, fmt.Errorf(
-				"get on deleted snapshot %v failed with error other than \"not found\": %v",
+				"get on deleted snapshot %v failed with error other than \"not found\": %w",
 				name,
 				err)
 		}

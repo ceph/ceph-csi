@@ -226,7 +226,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 
 	checkOutput := func(err error, poolName string, topoSegment map[string]string) error {
 		if err != nil {
-			return fmt.Errorf("expected success, got err (%v)", err)
+			return fmt.Errorf("expected success, got err (%w)", err)
 		}
 		if poolName != pool1 || !(len(topoSegment) == 2) &&
 			topoSegment[topologyPrefix+"/"+label1] == l1Value1 &&

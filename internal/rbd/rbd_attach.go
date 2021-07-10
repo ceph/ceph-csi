@@ -325,7 +325,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 				util.WarningLog(ctx, "rbd: %s unmap error %v", imagePath, detErr)
 			}
 		}
-		return "", fmt.Errorf("rbd: map failed with error %v, rbd error output: %s", err, stderr)
+		return "", fmt.Errorf("rbd: map failed with error %w, rbd error output: %s", err, stderr)
 	}
 	devicePath := strings.TrimSuffix(stdout, "\n")
 

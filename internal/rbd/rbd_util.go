@@ -265,7 +265,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	if pOpts.isEncrypted() {
 		err = pOpts.setupEncryption(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to setup encryption for image %s: %v", pOpts, err)
+			return fmt.Errorf("failed to setup encryption for image %s: %w", pOpts, err)
 		}
 	}
 
@@ -1579,10 +1579,10 @@ func (ri *rbdImage) setThinProvisioned() error {
 // the expansion can be allocated too.
 func (ri *rbdImage) isThickProvisioned() (bool, error) {
 	value, err := ri.GetMetadata(thickProvisionMetaKey)
-	if err == librbd.ErrNotFound {
+	if errors.Is(err, librbd.ErrNotFound) {
 		// check if the image is having deprecated metadata key.
 		value, err = ri.GetMetadata(deprecatedthickProvisionMetaKey)
-		if err == librbd.ErrNotFound {
+		if errors.Is(err, librbd.ErrNotFound) {
 			return false, nil
 		}
 		// If we reach here means the image has deprecated metakey set. Set the
