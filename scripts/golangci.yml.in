@@ -169,3 +169,4 @@ linters:
     - exhaustivestruct
     # TODO: enable goerr113, see: https://github.com/ceph/ceph-csi/issues/1227
     - goerr113
+    - forbidigo
