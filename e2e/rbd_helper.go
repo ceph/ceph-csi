@@ -271,13 +271,13 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	wgErrs := make([]error, totalCount)
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
-		return fmt.Errorf("failed to load PVC with error %v", err)
+		return fmt.Errorf("failed to load PVC with error %w", err)
 	}
 
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to create PVC with error %v", err)
+		return fmt.Errorf("failed to create PVC with error %w", err)
 	}
 	validateRBDImageCount(f, 1, defaultRBDPool)
 	snap := getSnapshot(snapshotPath)
@@ -301,7 +301,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	// delete parent pvc
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to delete PVC with error %v", err)
+		return fmt.Errorf("failed to delete PVC with error %w", err)
 	}
 
 	// validate the rbd images created for snapshots
@@ -309,11 +309,11 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 
 	pvcClone, err := loadPVC(pvcClonePath)
 	if err != nil {
-		return fmt.Errorf("failed to load PVC with error %v", err)
+		return fmt.Errorf("failed to load PVC with error %w", err)
 	}
 	appClone, err := loadApp(appClonePath)
 	if err != nil {
-		return fmt.Errorf("failed to load application with error %v", err)
+		return fmt.Errorf("failed to load application with error %w", err)
 	}
 	pvcClone.Namespace = f.UniqueName
 	// if request is to create clone with different storage class

@@ -151,7 +151,7 @@ func GetTopologyFromRequest(
 	err := json.Unmarshal([]byte(strings.Replace(topologyPoolsStr, "\n", " ", -1)), &topologyPools)
 	if err != nil {
 		return nil, nil, fmt.Errorf(
-			"failed to parse JSON encoded topology constrained pools parameter (%s): %v",
+			"failed to parse JSON encoded topology constrained pools parameter (%s): %w",
 			topologyPoolsStr,
 			err)
 	}

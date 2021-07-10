@@ -18,6 +18,7 @@ package util
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -78,7 +79,7 @@ func GetPIDLimit() (int, error) {
 	defer f.Close() // #nosec: error on close is not critical here
 
 	maxPidsStr, err := bufio.NewReader(f).ReadString('\n')
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return 0, err
 	}
 	maxPidsStr = strings.TrimRight(maxPidsStr, "\n")

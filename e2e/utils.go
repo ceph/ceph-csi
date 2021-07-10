@@ -1035,17 +1035,17 @@ func validateController(f *framework.Framework, pvcPath, appPath, scPath string)
 	// create storageclass with retain
 	err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, retainPolicy)
 	if err != nil {
-		return fmt.Errorf("failed to create storageclass with error %v", err)
+		return fmt.Errorf("failed to create storageclass: %w", err)
 	}
 
 	// create pvc
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
-		return fmt.Errorf("failed to load PVC with error %v", err)
+		return fmt.Errorf("failed to load PVC: %w", err)
 	}
 	resizePvc, err := loadPVC(pvcPath)
 	if err != nil {
-		return fmt.Errorf("failed to load PVC with error %v", err)
+		return fmt.Errorf("failed to load PVC: %w", err)
 	}
 	resizePvc.Namespace = f.UniqueName
 
@@ -1053,21 +1053,21 @@ func validateController(f *framework.Framework, pvcPath, appPath, scPath string)
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to create PVC with error %v", err)
+		return fmt.Errorf("failed to create PVC: %w", err)
 	}
 	// get pvc and pv object
 	pvc, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
 	if err != nil {
-		return fmt.Errorf("failed to get PVC with error %v", err)
+		return fmt.Errorf("failed to get PVC: %w", err)
 	}
 	// Recreate storageclass with delete policy
 	err = deleteResource(scPath)
 	if err != nil {
-		return fmt.Errorf("failed to delete storageclass with error %v", err)
+		return fmt.Errorf("failed to delete storageclass: %w", err)
 	}
 	err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 	if err != nil {
-		return fmt.Errorf("failed to create storageclass with error %v", err)
+		return fmt.Errorf("failed to create storageclass: %w", err)
 	}
 	// delete omap data
 	err = deletePVCImageJournalInPool(f, pvc, poolName)
@@ -1081,7 +1081,7 @@ func validateController(f *framework.Framework, pvcPath, appPath, scPath string)
 	// delete pvc and pv
 	err = deletePVCAndPV(f.ClientSet, pvc, pv, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to delete PVC or PV with error %v", err)
+		return fmt.Errorf("failed to delete PVC or PV: %w", err)
 	}
 	// create pvc and pv with application
 	pv.Spec.ClaimRef = nil
@@ -1091,7 +1091,7 @@ func validateController(f *framework.Framework, pvcPath, appPath, scPath string)
 	pv.ResourceVersion = ""
 	err = createPVCAndPV(f.ClientSet, pvc, pv)
 	if err != nil {
-		e2elog.Failf("failed to create PVC or PV with error %v", err)
+		e2elog.Failf("failed to create PVC or PV: %v", err)
 	}
 	// bind PVC to application
 	app, err := loadApp(appPath)
