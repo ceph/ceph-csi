@@ -84,7 +84,7 @@ func createCephfsStorageClass(
 	}
 	sc.Namespace = cephCSINamespace
 	_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
-	return err
+	return fmt.Errorf("failed to create storageclass: %w", err)
 }
 
 func createCephfsSecret(f *framework.Framework, secretName, userName, userKey string) error {
@@ -102,7 +102,7 @@ func createCephfsSecret(f *framework.Framework, secretName, userName, userKey st
 	delete(sc.StringData, "userKey")
 	sc.Namespace = cephCSINamespace
 	_, err = f.ClientSet.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &sc, metav1.CreateOptions{})
-	return err
+	return fmt.Errorf("failed to create secret: %w", err)
 }
 
 // unmountCephFSVolume unmounts a cephFS volume mounted on a pod.
@@ -172,7 +172,7 @@ func listCephFSSubVolumes(f *framework.Framework, filesystem, groupname string) 
 
 	err = json.Unmarshal([]byte(stdout), &subVols)
 	if err != nil {
-		return subVols, err
+		return subVols, fmt.Errorf("failed to parse subvolumes: %w", err)
 	}
 	return subVols, nil
 }

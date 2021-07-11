@@ -525,7 +525,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 			cmdOut, cmdErr := diskMounter.Exec.Command("mkfs."+fsType, args...).CombinedOutput()
 			if cmdErr != nil {
 				util.ErrorLog(ctx, "failed to run mkfs error: %v, output: %v", cmdErr, string(cmdOut))
-				return readOnly, cmdErr
+				return readOnly, fmt.Errorf("failed to run mkfs: %w", cmdErr)
 			}
 		}
 	}

@@ -289,7 +289,7 @@ func IsMountPoint(p string) (bool, error) {
 	dummyMount := mount.New("")
 	notMnt, err := dummyMount.IsLikelyNotMountPoint(p)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error checking mount point: %w", err)
 	}
 
 	return !notMnt, nil
@@ -298,7 +298,11 @@ func IsMountPoint(p string) (bool, error) {
 // Mount mounts the source to target path.
 func Mount(source, target, fstype string, options []string) error {
 	dummyMount := mount.New("")
-	return dummyMount.Mount(source, target, fstype, options)
+	err := dummyMount.Mount(source, target, fstype, options)
+	if err != nil {
+		return fmt.Errorf("failed to mount: %w", err)
+	}
+	return nil
 }
 
 // MountOptionsAdd adds the `add` mount options to the `options` and returns a

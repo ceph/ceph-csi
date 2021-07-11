@@ -74,7 +74,7 @@ func (ns *NodeServer) NodeStageVolume(
 		volOptions *volumeOptions
 	)
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate node stage volume request: %w", err)
 	}
 
 	// Configuration
@@ -84,28 +84,32 @@ func (ns *NodeServer) NodeStageVolume(
 
 	if acquired := ns.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
+		return nil, fmt.Errorf("failed to acquire lock: %w",
+			status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId()))
 	}
 	defer ns.VolumeLocks.Release(req.GetVolumeId())
 
 	volOptions, _, err := newVolumeOptionsFromVolID(ctx, string(volID), req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
 		if !errors.Is(err, ErrInvalidVolID) {
-			return nil, status.Error(codes.Internal, err.Error())
+			return nil, fmt.Errorf("failed to generate new instance of volumeoptions: %w",
+				status.Error(codes.Internal, err.Error()))
 		}
 
 		// gets mon IPs from the supplied cluster info
 		volOptions, _, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
 		if err != nil {
 			if !errors.Is(err, ErrNonStaticVolume) {
-				return nil, status.Error(codes.Internal, err.Error())
+				return nil, fmt.Errorf("failed to generate new instance of volumeoptions: %w",
+					status.Error(codes.Internal, err.Error()))
 			}
 
 			// get mon IPs from the volume context
 			volOptions, _, err = newVolumeOptionsFromMonitorList(string(volID), req.GetVolumeContext(),
 				req.GetSecrets())
 			if err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
+				return nil, fmt.Errorf("failed to generate new instance of volumeoptions: %w",
+					status.Error(codes.Internal, err.Error()))
 			}
 		}
 	}
@@ -117,7 +121,7 @@ func (ns *NodeServer) NodeStageVolume(
 
 	if err != nil {
 		util.ErrorLog(ctx, "stat failed: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, fmt.Errorf("sat failed: %w", status.Error(codes.Internal, err.Error()))
 	}
 
 	if isMnt {
@@ -142,14 +146,16 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 	cr, err := getCredentialsForVolume(volOptions, req)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get ceph credentials for volume %s: %v", volID, err)
-		return status.Error(codes.Internal, err.Error())
+		return fmt.Errorf("failed to get ceph credentials for volume: %w",
+			status.Error(codes.Internal, err.Error()))
 	}
 	defer cr.DeleteCredentials()
 
 	m, err := newMounter(volOptions)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create mounter for volume %s: %v", volID, err)
-		return status.Error(codes.Internal, err.Error())
+		return fmt.Errorf("failed to create mounter for volume: %w",
+			status.Error(codes.Internal, err.Error()))
 	}
 
 	util.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, m.name())
@@ -179,7 +185,8 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 			"failed to mount volume %s: %v Check dmesg logs if required.",
 			volID,
 			err)
-		return status.Error(codes.Internal, err.Error())
+		return fmt.Errorf("failed to mount volume: %w",
+			status.Error(codes.Internal, err.Error()))
 	}
 	if !csicommon.MountOptionContains(kernelMountOptions, readOnly) &&
 		!csicommon.MountOptionContains(fuseMountOptions, readOnly) {
@@ -201,7 +208,8 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 					volID,
 					uErr)
 			}
-			return status.Error(codes.Internal, err.Error())
+			return fmt.Errorf("failed to check mount options: %w",
+				status.Error(codes.Internal, err.Error()))
 		}
 	}
 	return nil
@@ -214,7 +222,7 @@ func (ns *NodeServer) NodePublishVolume(
 	req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	mountOptions := []string{"bind", "_netdev"}
 	if err := util.ValidateNodePublishVolumeRequest(req); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate node publish volume request: %w", err)
 	}
 
 	targetPath := req.GetTargetPath()
@@ -222,13 +230,15 @@ func (ns *NodeServer) NodePublishVolume(
 
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+		return nil, fmt.Errorf("failed to acquire lock: %w",
+			status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID))
 	}
 	defer ns.VolumeLocks.Release(volID)
 
 	if err := util.CreateMountPoint(targetPath); err != nil {
 		util.ErrorLog(ctx, "failed to create mount point at %s: %v", targetPath, err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, fmt.Errorf("failed to create mount point: %w",
+			status.Error(codes.Internal, err.Error()))
 	}
 
 	if req.GetReadonly() {
@@ -243,7 +253,7 @@ func (ns *NodeServer) NodePublishVolume(
 
 	if err != nil {
 		util.ErrorLog(ctx, "stat failed: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, fmt.Errorf("stat failed: %w", status.Error(codes.Internal, err.Error()))
 	}
 
 	if isMnt {
@@ -255,7 +265,7 @@ func (ns *NodeServer) NodePublishVolume(
 
 	if err = bindMount(ctx, req.GetStagingTargetPath(), req.GetTargetPath(), req.GetReadonly(), mountOptions); err != nil {
 		util.ErrorLog(ctx, "failed to bind-mount volume %s: %v", volID, err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, fmt.Errorf("failed to bind-mount volume: %w", status.Error(codes.Internal, err.Error()))
 	}
 
 	util.DebugLog(ctx, "cephfs: successfully bind-mounted volume %s to %s", volID, targetPath)
@@ -269,7 +279,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeUnpublishVolumeRequest(req); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate node unpublish volume request: %w", err)
 	}
 
 	volID := req.GetVolumeId()
@@ -277,7 +287,8 @@ func (ns *NodeServer) NodeUnpublishVolume(
 
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+		return nil, fmt.Errorf("failed to acquire lock: %w",
+			status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID))
 	}
 	defer ns.VolumeLocks.Release(volID)
 
@@ -288,23 +299,27 @@ func (ns *NodeServer) NodeUnpublishVolume(
 			util.DebugLog(ctx, "targetPath: %s has already been deleted", targetPath)
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, fmt.Errorf("failed to check mount point: %w",
+			status.Error(codes.Internal, err.Error()))
 	}
 	if !isMnt {
 		if err = os.RemoveAll(targetPath); err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+			return nil, fmt.Errorf("failed to remove path: %w",
+				status.Error(codes.Internal, err.Error()))
 		}
 		return &csi.NodeUnpublishVolumeResponse{}, nil
 	}
 
 	// Unmount the bind-mount
 	if err = unmountVolume(ctx, targetPath); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, fmt.Errorf("failed to unmount volume: %w",
+			status.Error(codes.Internal, err.Error()))
 	}
 
 	err = os.Remove(targetPath)
 	if err != nil && !os.IsNotExist(err) {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, fmt.Errorf("failed to remove file: %w",
+			status.Error(codes.Internal, err.Error()))
 	}
 
 	util.DebugLog(ctx, "cephfs: successfully unbinded volume %s from %s", req.GetVolumeId(), targetPath)
@@ -318,13 +333,14 @@ func (ns *NodeServer) NodeUnstageVolume(
 	req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeUnstageVolumeRequest(req); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate node unstage volume request: %w", err)
 	}
 
 	volID := req.GetVolumeId()
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
+		return nil, fmt.Errorf("failed to acquire lock: %w",
+			status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID))
 	}
 	defer ns.VolumeLocks.Release(volID)
 
@@ -337,14 +353,16 @@ func (ns *NodeServer) NodeUnstageVolume(
 			util.DebugLog(ctx, "targetPath: %s has already been deleted", stagingTargetPath)
 			return &csi.NodeUnstageVolumeResponse{}, nil
 		}
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, fmt.Errorf("failed to check mount point: %w",
+			status.Error(codes.Internal, err.Error()))
 	}
 	if !isMnt {
 		return &csi.NodeUnstageVolumeResponse{}, nil
 	}
 	// Unmount the volume
 	if err = unmountVolume(ctx, stagingTargetPath); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, fmt.Errorf("failed to unmount volume: %w",
+			status.Error(codes.Internal, err.Error()))
 	}
 
 	util.DebugLog(ctx, "cephfs: successfully unmounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
@@ -384,17 +402,24 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	targetPath := req.GetVolumePath()
 	if targetPath == "" {
 		err = fmt.Errorf("targetpath %v is empty", targetPath)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, fmt.Errorf("targetpath is empty: %w",
+			status.Error(codes.InvalidArgument, err.Error()))
 	}
 
 	stat, err := os.Stat(targetPath)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to get stat for targetpath %q: %v", targetPath, err)
+		return nil, fmt.Errorf("failed to get stats: %w",
+			status.Errorf(codes.InvalidArgument, "failed to get stat for targetpath %q: %v", targetPath, err))
 	}
 
 	if stat.Mode().IsDir() {
-		return csicommon.FilesystemNodeGetVolumeStats(ctx, targetPath)
+		volStat, err := csicommon.FilesystemNodeGetVolumeStats(ctx, targetPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get metrics: %w", err)
+		}
+		return volStat, nil
 	}
 
-	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
+	return nil, fmt.Errorf("target path is not a directory: %w",
+		status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath))
 }

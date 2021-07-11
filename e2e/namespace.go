@@ -37,7 +37,7 @@ func createNamespace(c kubernetes.Interface, name string) error {
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
-			return false, err
+			return false, fmt.Errorf("failed to get namespace: %w", err)
 		}
 		return true, nil
 	})
@@ -59,7 +59,7 @@ func deleteNamespace(c kubernetes.Interface, name string) error {
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
-			return false, err
+			return false, fmt.Errorf("failed to get namespace: %w", err)
 		}
 		return false, nil
 	})

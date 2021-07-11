@@ -19,7 +19,7 @@ func deleteConfigMap(pluginPath string) error {
 	path := pluginPath + configMap
 	_, err := framework.RunKubectl(cephCSINamespace, "delete", "-f", path, ns)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete configmap: %w", err)
 	}
 	return nil
 }
@@ -57,7 +57,7 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	conmap[0].CephFS.SubvolumeGroup = subvolumegroup
 	data, err := json.Marshal(conmap)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal subvolume: %w", err)
 	}
 	cm.Data["config.json"] = string(data)
 	cm.Namespace = cephCSINamespace
@@ -73,9 +73,12 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 	}
 	if apierrs.IsNotFound(err) {
 		_, err = c.CoreV1().ConfigMaps(cephCSINamespace).Create(context.TODO(), &cm, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to create configmap: %w", err)
+		}
 	}
 
-	return err
+	return nil
 }
 
 // createCustomConfigMap provides multiple clusters information.
@@ -110,7 +113,7 @@ func createCustomConfigMap(c kubernetes.Interface, pluginPath string, subvolgrpI
 	}
 	data, err := json.Marshal(conmap)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal cluster info: %w", err)
 	}
 	cm.Data["config.json"] = string(data)
 	cm.Namespace = cephCSINamespace

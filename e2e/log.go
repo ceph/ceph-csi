@@ -67,7 +67,7 @@ func getPreviousPodLogs(c clientset.Interface, namespace, podName, containerName
 		Do(context.TODO()).
 		Raw()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get logs: %w", err)
 	}
 	if strings.Contains(string(logs), "Internal Error") {
 		return "", fmt.Errorf("fetched log contains \"Internal Error\": %q", string(logs))

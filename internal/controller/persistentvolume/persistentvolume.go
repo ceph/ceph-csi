@@ -75,7 +75,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		mgr,
 		controller.Options{MaxConcurrentReconciles: 1, Reconciler: r})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create controller: %w", err)
 	}
 
 	// Watch for changes to PersistentVolumes
@@ -113,7 +113,7 @@ func (r *ReconcilePersistentVolume) getCredentials(
 	cr, err = util.NewUserCredentials(credentials)
 	if err != nil {
 		util.ErrorLogMsg("failed to get user credentials %s", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get user credentials: %w", err)
 	}
 	return cr, nil
 }
@@ -150,7 +150,7 @@ func (r ReconcilePersistentVolume) storeVolumeIDInPV(
 	}
 	pv.Labels[rbd.PVReplicatedLabelKey] = rbd.PVReplicatedLabelValue
 	pv.Annotations[rbd.PVVolumeHandleAnnotationKey] = newVolumeID
-	return r.client.Update(ctx, pv)
+	return fmt.Errorf("failed to update volume: %w", r.client.Update(ctx, pv))
 }
 
 // reconcilePV will extract the image details from the pv spec and regenerates
@@ -203,7 +203,7 @@ func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.
 	rbdVolID, err := rbd.RegenerateJournal(imageName, volumeHandler, pool, journalPool, requestName, cr)
 	if err != nil {
 		util.ErrorLogMsg("failed to regenerate journal %s", err)
-		return err
+		return fmt.Errorf("failed to regenerate journal: %w", err)
 	}
 	if rbdVolID != volumeHandler {
 		err = r.storeVolumeIDInPV(ctx, pv, rbdVolID)
@@ -225,7 +225,7 @@ func (r *ReconcilePersistentVolume) Reconcile(ctx context.Context,
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
 		}
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("failed to get pv: %w", err)
 	}
 	// Check if the object is under deletion
 	if !pv.GetDeletionTimestamp().IsZero() {

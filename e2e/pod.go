@@ -24,7 +24,7 @@ func getDaemonSetLabelSelector(f *framework.Framework, ns, daemonSetName string)
 	ds, err := f.ClientSet.AppsV1().DaemonSets(ns).Get(context.TODO(), daemonSetName, metav1.GetOptions{})
 	if err != nil {
 		e2elog.Logf("Error getting daemonsets with name %s in namespace %s", daemonSetName, ns)
-		return "", err
+		return "", fmt.Errorf("failed to get daemonset: %w", err)
 	}
 	s, err := metav1.LabelSelectorAsSelector(ds.Spec.Selector)
 	if err != nil {
@@ -50,7 +50,7 @@ func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
-			return false, err
+			return false, fmt.Errorf("failed to get daemonset: %w", err)
 		}
 		dNum := ds.Status.DesiredNumberScheduled
 		ready := ds.Status.NumberReady
@@ -85,7 +85,7 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 				return false, nil
 			}
 			e2elog.Logf("deployment error: %v", err)
-			return false, err
+			return false, fmt.Errorf("failed to get deployment: %w", err)
 		}
 
 		// TODO need to check rolling update
@@ -279,7 +279,7 @@ func createApp(c kubernetes.Interface, app *v1.Pod, timeout int) error {
 func createAppErr(c kubernetes.Interface, app *v1.Pod, timeout int, errString string) error {
 	_, err := c.CoreV1().Pods(app.Namespace).Create(context.TODO(), app, metav1.CreateOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create app: %w", err)
 	}
 	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout, errString)
 }
@@ -307,11 +307,11 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 					FieldSelector: fmt.Sprintf("involvedObject.name=%s", name),
 				})
 				if err != nil {
-					return false, err
+					return false, fmt.Errorf("failed to list events: %w", err)
 				}
 				if strings.Contains(events.String(), expectedError) {
 					e2elog.Logf("Expected Error %q found successfully", expectedError)
-					return true, err
+					return true, fmt.Errorf("expected error found: %w", err)
 				}
 			}
 		case v1.PodUnknown:

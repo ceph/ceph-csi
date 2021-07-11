@@ -150,7 +150,7 @@ func getKMSConfigMap() (map[string]interface{}, error) {
 	cm, err := c.CoreV1().ConfigMaps(ns).Get(context.Background(),
 		cmName, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get config map: %w", err)
 	}
 
 	// convert cm.Data from map[string]interface{}

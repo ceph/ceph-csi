@@ -429,7 +429,7 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 		if err != nil {
 			if !errors.Is(err, util.ErrObjectNotFound) {
 				util.ErrorLog(ctx, "failed removing oMap %s (%s)", cj.cephUUIDDirectoryPrefix+imageUUID, err)
-				return err
+				return fmt.Errorf("failed to remove omap: %w", err)
 			}
 		}
 	}

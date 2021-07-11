@@ -65,16 +65,16 @@ func Start(config Config) error {
 	mgr, err := manager.New(clientConfig.GetConfigOrDie(), opts)
 	if err != nil {
 		util.ErrorLogMsg("failed to create manager %s", err)
-		return err
+		return fmt.Errorf("failed to create manager: %w", err)
 	}
 	err = addToManager(mgr, config)
 	if err != nil {
 		util.ErrorLogMsg("failed to add manager %s", err)
-		return err
+		return fmt.Errorf("failed to add manager: %w", err)
 	}
 	err = mgr.Start(signals.SetupSignalHandler())
 	if err != nil {
 		util.ErrorLogMsg("failed to start manager %s", err)
 	}
-	return err
+	return fmt.Errorf("failed to start manager: %w", err)
 }

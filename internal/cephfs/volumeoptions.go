@@ -63,7 +63,7 @@ func (vo *volumeOptions) Connect(cr *util.Credentials) error {
 
 	conn := &util.ClusterConnection{}
 	if err := conn.Connect(vo.Monitors, cr); err != nil {
-		return err
+		return fmt.Errorf("failed to connect to ceph cluster: %w", err)
 	}
 
 	vo.conn = conn
@@ -234,7 +234,7 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 	// store topology information from the request
 	opts.TopologyPools, opts.TopologyRequirement, err = util.GetTopologyFromRequest(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get topology: %w", err)
 	}
 
 	// TODO: we need an API to fetch subvolume attributes (size/datapool and others), based
@@ -266,7 +266,8 @@ func newVolumeOptionsFromVolID(
 	err := vi.DecomposeCSIID(volID)
 	if err != nil {
 		err = fmt.Errorf("error decoding volume ID (%s): %w", volID, err)
-		return nil, nil, util.JoinErrors(ErrInvalidVolID, err)
+		return nil, nil, fmt.Errorf("error decoding volume ID: %w",
+			util.JoinErrors(ErrInvalidVolID, err))
 	}
 	volOptions.ClusterID = vi.ClusterID
 	vid.VolumeID = volID
@@ -282,7 +283,7 @@ func newVolumeOptionsFromVolID(
 
 	cr, err := util.NewAdminCredentials(secrets)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to create admin credentials: %w", err)
 	}
 	defer cr.DeleteCredentials()
 
@@ -311,14 +312,14 @@ func newVolumeOptionsFromVolID(
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to connect to ceph cluster: %w", err)
 	}
 	defer j.Destroy()
 
 	imageAttributes, err := j.GetImageAttributes(
 		ctx, volOptions.MetadataPool, vi.ObjectUUID, false)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get imageAttributes: %w", err)
 	}
 	volOptions.RequestName = imageAttributes.RequestName
 	vid.FsSubvolName = imageAttributes.ImageName
@@ -544,14 +545,14 @@ func newSnapshotOptionsFromID(
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
-		return &volOptions, nil, &sid, err
+		return &volOptions, nil, &sid, fmt.Errorf("failed to connect to ceph cluster: %w", err)
 	}
 	defer j.Destroy()
 
 	imageAttributes, err := j.GetImageAttributes(
 		ctx, volOptions.MetadataPool, vi.ObjectUUID, true)
 	if err != nil {
-		return &volOptions, nil, &sid, err
+		return &volOptions, nil, &sid, fmt.Errorf("failed to get ImageAttributes: %w", err)
 	}
 	// storing request name in snapshot Identifier
 	sid.RequestName = imageAttributes.RequestName

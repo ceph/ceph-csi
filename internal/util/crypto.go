@@ -111,8 +111,11 @@ func (ve *VolumeEncryption) RemoveDEK(volumeID string) error {
 	if ve.dekStore == nil {
 		return ErrDEKStoreNotFound
 	}
-
-	return ve.dekStore.RemoveDEK(volumeID)
+	err := ve.dekStore.RemoveDEK(volumeID)
+	if err != nil {
+		return fmt.Errorf("failed to remove DEK: %w", err)
+	}
+	return nil
 }
 
 func (ve *VolumeEncryption) GetID() string {
@@ -214,10 +217,13 @@ func (ve *VolumeEncryption) StoreNewCryptoPassphrase(volumeID string) error {
 func (ve *VolumeEncryption) GetCryptoPassphrase(volumeID string) (string, error) {
 	passphrase, err := ve.dekStore.FetchDEK(volumeID)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read DEK: %w", err)
 	}
-
-	return ve.KMS.DecryptDEK(volumeID, passphrase)
+	decryptedDEK, err := ve.KMS.DecryptDEK(volumeID, passphrase)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt DEK: %w", err)
+	}
+	return decryptedDEK, nil
 }
 
 // generateNewEncryptionPassphrase generates a random passphrase for encryption.

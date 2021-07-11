@@ -80,7 +80,7 @@ func loadAvailableMounters(conf *util.Config) error {
 		// fetch the current running kernel info
 		release, kvErr := util.GetKernelVersion()
 		if kvErr != nil {
-			return kvErr
+			return fmt.Errorf("failed to get kernel version: %w", kvErr)
 		}
 
 		if conf.ForceKernelCephFS || util.CheckKernelSupport(release, quotaSupport) {
@@ -201,7 +201,7 @@ func (m *fuseMounter) mount(
 	cr *util.Credentials,
 	volOptions *volumeOptions) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
-		return err
+		return fmt.Errorf("failed to create mount point: %w", err)
 	}
 
 	return mountFuse(ctx, mountPoint, cr, volOptions)
@@ -235,7 +235,7 @@ func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, v
 	if err != nil {
 		return fmt.Errorf("%w stderr: %s", err, stderr)
 	}
-	return err
+	return nil
 }
 
 func (m *kernelMounter) mount(
@@ -244,7 +244,7 @@ func (m *kernelMounter) mount(
 	cr *util.Credentials,
 	volOptions *volumeOptions) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
-		return err
+		return fmt.Errorf("failed to create mount point: %w", err)
 	}
 
 	return mountKernel(ctx, mountPoint, cr, volOptions)

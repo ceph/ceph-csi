@@ -19,6 +19,7 @@ package cephfs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -52,14 +53,14 @@ func (vo *volumeOptions) createSnapshot(ctx context.Context, snapID, volID volum
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
-		return err
+		return fmt.Errorf("failed to get FSAdmin: %w", err)
 	}
 
 	err = fsa.CreateSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create subvolume snapshot %s %s in fs %s: %s",
 			string(snapID), string(volID), vo.FsName, err)
-		return err
+		return fmt.Errorf("failed to create subvolume snapshot: %w", err)
 	}
 	return nil
 }
@@ -68,14 +69,14 @@ func (vo *volumeOptions) deleteSnapshot(ctx context.Context, snapID, volID volum
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
-		return err
+		return fmt.Errorf("failed to get FSAdmin: %w", err)
 	}
 
 	err = fsa.ForceRemoveSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
 	if err != nil {
 		util.ErrorLog(ctx, "failed to delete subvolume snapshot %s %s in fs %s: %s",
 			string(snapID), string(volID), vo.FsName, err)
-		return err
+		return fmt.Errorf("failed to delete subvolume snapshot: %w", err)
 	}
 	return nil
 }
@@ -92,7 +93,7 @@ func (vo *volumeOptions) getSnapshotInfo(ctx context.Context, snapID, volID volu
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
-		return snap, err
+		return snap, fmt.Errorf("failed to get FSAdmin: %w", err)
 	}
 
 	info, err := fsa.SubVolumeSnapshotInfo(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
@@ -107,7 +108,7 @@ func (vo *volumeOptions) getSnapshotInfo(ctx context.Context, snapID, volID volu
 			string(snapID),
 			vo.FsName,
 			err)
-		return snap, err
+		return snap, fmt.Errorf("failed to get subvolume snapshot info: %w", err)
 	}
 	snap.CreatedAt = info.CreatedAt.Time
 	snap.HasPendingClones = info.HasPendingClones
@@ -124,7 +125,7 @@ func (vo *volumeOptions) protectSnapshot(ctx context.Context, snapID, volID volu
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
-		return err
+		return fmt.Errorf("failed to get FSAdmin: %w", err)
 	}
 
 	err = fsa.ProtectSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID),
@@ -140,7 +141,7 @@ func (vo *volumeOptions) protectSnapshot(ctx context.Context, snapID, volID volu
 			string(snapID),
 			vo.FsName,
 			err)
-		return err
+		return fmt.Errorf("failed to protect subvolume snapshot: %w", err)
 	}
 	return nil
 }
@@ -154,7 +155,7 @@ func (vo *volumeOptions) unprotectSnapshot(ctx context.Context, snapID, volID vo
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
-		return err
+		return fmt.Errorf("failed to get FSAdmin: %w", err)
 	}
 
 	err = fsa.UnprotectSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID),
@@ -172,7 +173,7 @@ func (vo *volumeOptions) unprotectSnapshot(ctx context.Context, snapID, volID vo
 			string(snapID),
 			vo.FsName,
 			err)
-		return err
+		return fmt.Errorf("failed to unprotect subvolume snapshot: %w", err)
 	}
 	return nil
 }
@@ -185,7 +186,7 @@ func (vo *volumeOptions) cloneSnapshot(
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
-		return err
+		return fmt.Errorf("failed to get FSAdmin: %w", err)
 	}
 	co := &admin.CloneOptions{
 		TargetGroup: cloneVolOptions.SubvolumeGroup,
@@ -207,7 +208,7 @@ func (vo *volumeOptions) cloneSnapshot(
 		if errors.Is(err, rados.ErrNotFound) {
 			return ErrVolumeNotFound
 		}
-		return err
+		return fmt.Errorf("failed to clone subvolume snapshot: %w", err)
 	}
 	return nil
 }

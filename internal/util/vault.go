@@ -330,7 +330,7 @@ func initVaultKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 func (kms *VaultKMS) FetchDEK(key string) (string, error) {
 	s, err := kms.secrets.GetSecret(filepath.Join(kms.vaultPassphrasePath, key), kms.keyContext)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get secret: %w", err)
 	}
 
 	data, ok := s["data"].(map[string]interface{})

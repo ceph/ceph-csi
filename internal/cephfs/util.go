@@ -34,7 +34,7 @@ type volumeID string
 
 func execCommandErr(ctx context.Context, program string, args ...string) error {
 	_, _, err := util.ExecCommand(ctx, program, args...)
-	return err
+	return fmt.Errorf("failed to execute command: %w", err)
 }
 
 // Controller service request validation.
@@ -45,24 +45,27 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 	}
 
 	if req.GetName() == "" {
-		return status.Error(codes.InvalidArgument, "volume Name cannot be empty")
+		return fmt.Errorf("empty volume name: %w",
+			status.Error(codes.InvalidArgument, "volume Name cannot be empty"))
 	}
 
 	reqCaps := req.GetVolumeCapabilities()
 	if reqCaps == nil {
-		return status.Error(codes.InvalidArgument, "volume Capabilities cannot be empty")
+		return fmt.Errorf("empty volume capabilities: %w",
+			status.Error(codes.InvalidArgument, "volume Capabilities cannot be empty"))
 	}
 
 	for _, capability := range reqCaps {
 		if capability.GetBlock() != nil {
-			return status.Error(codes.Unimplemented, "block volume not supported")
+			return fmt.Errorf("unsupported block volume: %w",
+				status.Error(codes.Unimplemented, "block volume not supported"))
 		}
 	}
 
 	// Allow readonly access mode for volume with content source
 	err := util.CheckReadOnlyManyIsSupported(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to check readOnlyMany volume is supported or not: %w", err)
 	}
 
 	if req.VolumeContentSource != nil {
@@ -72,23 +75,28 @@ func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeReq
 			snapshot := req.VolumeContentSource.GetSnapshot()
 			// CSI spec requires returning NOT_FOUND when the volumeSource is missing/incorrect.
 			if snapshot == nil {
-				return status.Error(codes.NotFound, "volume Snapshot cannot be empty")
+				return fmt.Errorf("empty volume snapshot: %w",
+					status.Error(codes.NotFound, "volume Snapshot cannot be empty"))
 			}
 			if snapshot.GetSnapshotId() == "" {
-				return status.Error(codes.NotFound, "volume Snapshot ID cannot be empty")
+				return fmt.Errorf("empty volume snapshot ID: %w",
+					status.Error(codes.NotFound, "volume Snapshot ID cannot be empty"))
 			}
 		case *csi.VolumeContentSource_Volume:
 			// CSI spec requires returning NOT_FOUND when the volumeSource is missing/incorrect.
 			vol := req.VolumeContentSource.GetVolume()
 			if vol == nil {
-				return status.Error(codes.NotFound, "volume cannot be empty")
+				return fmt.Errorf("empty volume: %w",
+					status.Error(codes.NotFound, "volume cannot be empty"))
 			}
 			if vol.GetVolumeId() == "" {
-				return status.Error(codes.NotFound, "volume ID cannot be empty")
+				return fmt.Errorf("empty volume volume ID: %w",
+					status.Error(codes.NotFound, "volume ID cannot be empty"))
 			}
 
 		default:
-			return status.Error(codes.InvalidArgument, "unsupported volume data source")
+			return fmt.Errorf("unsupported volume data source: %w",
+				status.Error(codes.InvalidArgument, "unsupported volume data source"))
 		}
 	}
 	return nil
@@ -110,12 +118,14 @@ func (cs *ControllerServer) validateExpandVolumeRequest(req *csi.ControllerExpan
 	}
 
 	if req.GetVolumeId() == "" {
-		return status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
+		return fmt.Errorf("empty volume volume ID: %w",
+			status.Error(codes.NotFound, "volume ID cannot be empty"))
 	}
 
 	capRange := req.GetCapacityRange()
 	if capRange == nil {
-		return status.Error(codes.InvalidArgument, "CapacityRange cannot be empty")
+		return fmt.Errorf("empty capacity range: %w",
+			status.Error(codes.InvalidArgument, "CapacityRange cannot be empty"))
 	}
 
 	return nil
@@ -129,7 +139,7 @@ func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (sn
 	cephfsSnap.Monitors, cephfsSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
 	if err != nil {
 		util.ErrorLog(ctx, "failed getting mons (%s)", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get mons: %w", err)
 	}
 	if namePrefix, ok := snapOptions["snapshotNamePrefix"]; ok {
 		cephfsSnap.NamePrefix = namePrefix
@@ -141,7 +151,7 @@ func parseTime(ctx context.Context, createTime time.Time) (*timestamp.Timestamp,
 	tm, err := ptypes.TimestampProto(createTime)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to convert time %s %v", createTime, err)
-		return tm, err
+		return tm, fmt.Errorf("failed to convert time: %w", err)
 	}
 	return tm, nil
 }

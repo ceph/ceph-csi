@@ -149,7 +149,7 @@ func createRBDSnapshotClass(f *framework.Framework) error {
 		return err
 	}
 	_, err = sclient.VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
-	return err
+	return fmt.Errorf("failed to create volume snapshotclass: %w", err)
 }
 
 func deleteRBDSnapshotClass() error {
@@ -160,7 +160,11 @@ func deleteRBDSnapshotClass() error {
 	if err != nil {
 		return err
 	}
-	return sclient.VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+	err = sclient.VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete volume snapshotclass: %w", err)
+	}
+	return nil
 }
 
 func createCephFSSnapshotClass(f *framework.Framework) error {
@@ -185,7 +189,7 @@ func createCephFSSnapshotClass(f *framework.Framework) error {
 	if err != nil {
 		return fmt.Errorf("failed to create volumesnapshotclass: %w", err)
 	}
-	return err
+	return nil
 }
 
 func getVolumeSnapshotContent(namespace, snapshotName string) (*snapapi.VolumeSnapshotContent, error) {

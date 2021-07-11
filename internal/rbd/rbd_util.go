@@ -1012,7 +1012,7 @@ func genVolFromVolID(
 	}
 	pvlist, pErr := c.CoreV1().PersistentVolumes().List(context.TODO(), listOpt)
 	if pErr != nil {
-		return vol, pErr
+		return vol, fmt.Errorf("failed to list volumes: %w", pErr)
 	}
 	for i := range pvlist.Items {
 		if pvlist.Items[i].Spec.CSI != nil && pvlist.Items[i].Spec.CSI.VolumeHandle == volumeID {

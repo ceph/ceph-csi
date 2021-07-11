@@ -67,14 +67,14 @@ func checkVolExists(ctx context.Context,
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to establish connection: %w", err)
 	}
 	defer j.Destroy()
 
 	imageData, err := j.CheckReservation(
 		ctx, volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to check reservation: %w", err)
 	}
 	if imageData == nil {
 		return nil, nil
@@ -97,9 +97,9 @@ func checkVolExists(ctx context.Context,
 				}
 				err = j.UndoReservation(ctx, volOptions.MetadataPool,
 					volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
-				return nil, err
+				return nil, fmt.Errorf("failed to undo reservation: %w", err)
 			}
-			return nil, err
+			return nil, fmt.Errorf("failed to get cloneState: %w", cloneStateErr)
 		}
 		if cloneState == cephFSCloneInprogress {
 			return nil, ErrCloneInProgress
@@ -124,7 +124,7 @@ func checkVolExists(ctx context.Context,
 			}
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
-			return nil, err
+			return nil, fmt.Errorf("failed to undo reservation: %w", err)
 		}
 		if cloneState != cephFSCloneComplete {
 			return nil, fmt.Errorf("clone is not in complete state for %s", vid.FsSubvolName)
@@ -147,9 +147,9 @@ func checkVolExists(ctx context.Context,
 			}
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
-			return nil, err
+			return nil, fmt.Errorf("failed to undo reservation: %w", err)
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to get volume rootPath: %w", err)
 	}
 
 	// check if topology constraints match what is found
@@ -162,7 +162,7 @@ func checkVolExists(ctx context.Context,
 	vid.VolumeID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
 		"", volOptions.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate volume ID: %w", err)
 	}
 
 	util.DebugLog(ctx, "Found existing volume (%s) with subvolume name (%s) for request (%s)",
@@ -190,28 +190,28 @@ func undoVolReservation(
 	secret map[string]string) error {
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create admin credentials: %w", err)
 	}
 	defer cr.DeleteCredentials()
 
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to establish connection: %w", err)
 	}
 	defer j.Destroy()
 
 	err = j.UndoReservation(ctx, volOptions.MetadataPool,
 		volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
 
-	return err
+	return fmt.Errorf("failed to undo reservation: %w", err)
 }
 
 func updateTopologyConstraints(volOpts *volumeOptions) error {
 	// update request based on topology constrained parameters (if present)
 	poolName, _, topology, err := util.FindPoolAndTopology(volOpts.TopologyPools, volOpts.TopologyRequirement)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to find pool and topology: %w", err)
 	}
 	if poolName != "" {
 		volOpts.Pool = poolName
@@ -232,7 +232,7 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create admin credentials: %w", err)
 	}
 	defer cr.DeleteCredentials()
 
@@ -244,7 +244,7 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to establish connection: %w", err)
 	}
 	defer j.Destroy()
 
@@ -253,14 +253,14 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 		volOptions.MetadataPool, util.InvalidPoolID, volOptions.RequestName,
 		volOptions.NamePrefix, "", "", volOptions.ReservedID, "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to reserve name: %w", err)
 	}
 
 	// generate the volume ID to return to the CO system
 	vid.VolumeID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
 		"", volOptions.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate volume ID: %w", err)
 	}
 
 	util.DebugLog(ctx, "Generated Volume ID (%s) and subvolume name (%s) for request name (%s)",
@@ -286,7 +286,7 @@ func reserveSnap(
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to establish connection: %w", err)
 	}
 	defer j.Destroy()
 
@@ -295,14 +295,14 @@ func reserveSnap(
 		volOptions.MetadataPool, util.InvalidPoolID, snap.RequestName,
 		snap.NamePrefix, parentSubVolName, "", snap.ReservedID, "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to reserve name: %w", err)
 	}
 
 	// generate the snapshot ID to return to the CO system
 	vid.SnapshotID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
 		"", volOptions.ClusterID, imageUUID, volIDVersion)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate volume ID: %w", err)
 	}
 
 	util.DebugLog(ctx, "Generated Snapshot ID (%s) for request name (%s)",
@@ -321,13 +321,13 @@ func undoSnapReservation(
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to establish connection: %w", err)
 	}
 	defer j.Destroy()
 
 	err = j.UndoReservation(ctx, volOptions.MetadataPool,
 		volOptions.MetadataPool, vid.FsSnapshotName, snapName)
-	return err
+	return fmt.Errorf("failed to undo reservation: %w", err)
 }
 
 /*
@@ -353,14 +353,14 @@ func checkSnapExists(
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to establish connection: %w", err)
 	}
 	defer j.Destroy()
 
 	snapData, err := j.CheckReservation(
 		ctx, volOptions.MetadataPool, snap.RequestName, snap.NamePrefix, parentSubVolName, "")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to check reservation: %w", err)
 	}
 	if snapData == nil {
 		return nil, nil, nil
@@ -374,9 +374,9 @@ func checkSnapExists(
 		if errors.Is(err, ErrSnapNotFound) {
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, snapID, snap.RequestName)
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("failed to undo reservation: %w", err)
 		}
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to generate snapshot info: %w", err)
 	}
 
 	defer func() {
@@ -403,7 +403,7 @@ func checkSnapExists(
 	sid.SnapshotID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
 		"", volOptions.ClusterID, snapUUID, volIDVersion)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to generate volume ID: %w", err)
 	}
 	util.DebugLog(ctx, "Found existing snapshot (%s) with subvolume name (%s) for request (%s)",
 		snapData.ImageAttributes.RequestName, parentSubVolName, sid.FsSnapshotName)

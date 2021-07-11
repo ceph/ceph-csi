@@ -91,7 +91,7 @@ func createPVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 	if err != nil {
 		return fmt.Errorf("failed to create pv: %w", err)
 	}
-	return err
+	return nil
 }
 
 func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v1.PersistentVolume, t int) error {

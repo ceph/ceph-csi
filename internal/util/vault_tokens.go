@@ -371,7 +371,7 @@ func (kms *VaultTokensKMS) initCertificates(config map[string]interface{}) error
 func (kms *VaultTokensKMS) FetchDEK(key string) (string, error) {
 	s, err := kms.secrets.GetSecret(key, kms.keyContext)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get secret: %w", err)
 	}
 
 	data, ok := s["data"].(map[string]interface{})
@@ -416,7 +416,7 @@ func getToken(tenant, tokenName string) (string, error) {
 	c := NewK8sClient()
 	secret, err := c.CoreV1().Secrets(tenant).Get(context.TODO(), tokenName, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get secret: %w", err)
 	}
 
 	token, ok := secret.Data[vaultTokenSecretKey]
@@ -431,7 +431,7 @@ func getCertificate(tenant, secretName, key string) (string, error) {
 	c := NewK8sClient()
 	secret, err := c.CoreV1().Secrets(tenant).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get secret: %w", err)
 	}
 
 	cert, ok := secret.Data[key]

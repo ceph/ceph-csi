@@ -19,6 +19,7 @@ package journal
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
@@ -76,9 +77,9 @@ func getOMapValues(
 		if errors.Is(err, rados.ErrNotFound) {
 			util.ErrorLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
-			return nil, util.JoinErrors(util.ErrKeyNotFound, err)
+			return nil, fmt.Errorf("omap not found: %w", util.JoinErrors(util.ErrKeyNotFound, err))
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to list omap values: %w", err)
 	}
 
 	util.DebugLog(ctx, "got omap values: (pool=%q, namespace=%q, name=%q): %+v",
@@ -112,7 +113,7 @@ func removeMapKeys(
 		} else {
 			util.ErrorLog(ctx, "failed removing omap keys (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
-			return err
+			return fmt.Errorf("failed to remove omap keys: %w", err)
 		}
 	}
 	util.DebugLog(ctx, "removed omap keys (pool=%q, namespace=%q, name=%q): %+v",
@@ -143,7 +144,7 @@ func setOMapKeys(
 	if err != nil {
 		util.ErrorLog(ctx, "failed setting omap keys (pool=%q, namespace=%q, name=%q, pairs=%+v): %v",
 			poolName, namespace, oid, pairs, err)
-		return err
+		return fmt.Errorf("failed to set omap keys: %w", err)
 	}
 	util.DebugLog(ctx, "set omap keys (pool=%q, namespace=%q, name=%q): %+v)",
 		poolName, namespace, oid, pairs)
@@ -152,7 +153,7 @@ func setOMapKeys(
 
 func omapPoolError(err error) error {
 	if errors.Is(err, rados.ErrNotFound) {
-		return util.JoinErrors(util.ErrPoolNotFound, err)
+		return fmt.Errorf("omap pool error: %w", util.JoinErrors(util.ErrPoolNotFound, err))
 	}
 	return err
 }

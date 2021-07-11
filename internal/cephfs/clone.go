@@ -19,6 +19,7 @@ package cephfs
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
 )
@@ -227,13 +228,13 @@ func (vo *volumeOptions) getCloneState(ctx context.Context, volID volumeID) (cep
 			vo.FsName,
 			string(volID),
 			err)
-		return cephFSCloneError, err
+		return cephFSCloneError, fmt.Errorf("failed to get FSAdmin: %w", err)
 	}
 
 	cs, err := fsa.CloneStatus(vo.FsName, vo.SubvolumeGroup, string(volID))
 	if err != nil {
 		util.ErrorLog(ctx, "could not get clone state for volume %s with ID %s: %v", vo.FsName, string(volID), err)
-		return cephFSCloneError, err
+		return cephFSCloneError, fmt.Errorf("failed to get CloneState: %w", err)
 	}
 
 	return cephFSCloneState(cs.State), nil

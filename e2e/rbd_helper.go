@@ -92,7 +92,7 @@ func createRBDStorageClass(
 	}
 	sc.ReclaimPolicy = &policy
 	_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
-	return err
+	return fmt.Errorf("failed to create storageclass: %w", err)
 }
 
 func createRadosNamespace(f *framework.Framework) error {
@@ -149,7 +149,7 @@ func createRBDSecret(f *framework.Framework, secretName, userName, userKey strin
 	sc.StringData["userKey"] = userKey
 	sc.Namespace = cephCSINamespace
 	_, err = f.ClientSet.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &sc, metav1.CreateOptions{})
-	return err
+	return fmt.Errorf("failed to create secret: %w", err)
 }
 
 type imageInfoFromPVC struct {
