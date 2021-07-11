@@ -24,12 +24,14 @@ import (
 )
 
 func checkError(t *testing.T, msg string, err error) {
+	t.Helper()
 	if err == nil {
 		t.Errorf(msg)
 	}
 }
 
 func checkAndReportError(t *testing.T, msg string, err error) {
+	t.Helper()
 	if err != nil {
 		t.Errorf("%s (%v)", msg, err)
 	}
