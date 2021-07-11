@@ -63,21 +63,23 @@ func TestValidateSchedulingInterval(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		st := tt
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := validateSchedulingInterval(st.interval)
-			if (err != nil) != st.wantErr {
-				t.Errorf("validateSchedulingInterval() error = %v, wantErr %v", err, st.wantErr)
+			t.Parallel()
+			got, err := validateSchedulingInterval(tt.interval)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateSchedulingInterval() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, st.want) {
-				t.Errorf("validateSchedulingInterval() = %v, want %v", got, st.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("validateSchedulingInterval() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestGetSchedulingDetails(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		parameters    map[string]string
@@ -137,18 +139,19 @@ func TestGetSchedulingDetails(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		st := tt
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			interval, startTime, err := getSchedulingDetails(st.parameters)
-			if (err != nil) != st.wantErr {
-				t.Errorf("getSchedulingDetails() error = %v, wantErr %v", err, st.wantErr)
+			t.Parallel()
+			interval, startTime, err := getSchedulingDetails(tt.parameters)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getSchedulingDetails() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(interval, st.wantInterval) {
-				t.Errorf("getSchedulingDetails() interval = %v, want %v", interval, st.wantInterval)
+			if !reflect.DeepEqual(interval, tt.wantInterval) {
+				t.Errorf("getSchedulingDetails() interval = %v, want %v", interval, tt.wantInterval)
 			}
-			if !reflect.DeepEqual(startTime, st.wantStartTime) {
-				t.Errorf("getSchedulingDetails() startTime = %v, want %v", startTime, st.wantStartTime)
+			if !reflect.DeepEqual(startTime, tt.wantStartTime) {
+				t.Errorf("getSchedulingDetails() startTime = %v, want %v", startTime, tt.wantStartTime)
 			}
 		})
 	}

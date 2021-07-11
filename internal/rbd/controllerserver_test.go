@@ -23,6 +23,7 @@ import (
 )
 
 func TestIsThickProvisionRequest(t *testing.T) {
+	t.Parallel()
 	req := &csi.CreateVolumeRequest{
 		Name: "fake",
 		Parameters: map[string]string{
