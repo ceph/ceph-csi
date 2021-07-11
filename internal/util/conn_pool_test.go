@@ -73,8 +73,8 @@ func (cp *ConnPool) fakeGet(monitors, user, keyfile string) (*rados.Conn, string
 	return conn, unique, nil
 }
 
+// nolint:paralleltest,tparallel
 func TestConnPool(t *testing.T) {
-	t.Parallel()
 	cp := NewConnPool(interval, expiry)
 	defer cp.Destroy()
 
