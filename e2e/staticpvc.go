@@ -188,7 +188,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 	return err
 }
 
-// nolint:gocyclo // reduce complexity
+// nolint:gocyclo,cyclop // reduce complexity
 func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) error {
 	opt := make(map[string]string)
 	var (

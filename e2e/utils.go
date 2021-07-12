@@ -527,7 +527,7 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 	return checkSum, nil
 }
 
-// nolint:gocyclo,gocognit,nestif // reduce complexity
+// nolint:gocyclo,gocognit,nestif,cyclop // reduce complexity
 func validatePVCClone(
 	totalCount int,
 	sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string,
@@ -728,7 +728,7 @@ func validatePVCClone(
 	validateRBDImageCount(f, 0, defaultRBDPool)
 }
 
-// nolint:gocyclo,gocognit,nestif // reduce complexity
+// nolint:gocyclo,gocognit,nestif,cyclop // reduce complexity
 func validatePVCSnapshot(
 	totalCount int,
 	pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string,

@@ -339,7 +339,7 @@ func (kms *VaultTokensKMS) setTokenName(config map[string]interface{}) error {
 // initCertificates updates the kms.vaultConfig with the options from config
 // it calls the kubernetes secrets and get the required data.
 
-// nolint:gocyclo // iterating through many config options, not complex at all.
+// nolint:gocyclo,cyclop // iterating through many config options, not complex at all.
 func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}) error {
 	vaultConfig := make(map[string]interface{})
 

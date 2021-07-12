@@ -145,7 +145,7 @@ func checkContentSource(
 }
 
 // CreateVolume creates a reservation and the volume in backend, if it is not already present.
-// nolint:gocognit,gocyclo,nestif // TODO: reduce complexity
+// nolint:gocognit,gocyclo,nestif,cyclop // TODO: reduce complexity
 func (cs *ControllerServer) CreateVolume(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
@@ -508,7 +508,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
-// nolint:gocyclo // golangci-lint did not catch this earlier, needs to get fixed late
+// nolint:gocyclo,cyclop // golangci-lint did not catch this earlier, needs to get fixed late
 func (cs *ControllerServer) CreateSnapshot(
 	ctx context.Context,
 	req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
