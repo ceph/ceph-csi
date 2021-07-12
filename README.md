@@ -59,6 +59,9 @@ NOTE:
 
 ### Ceph-CSI features and available versions
 
+Please refer [rbd nbd mounter](./docs/rbd-nbd.md#support-matrix)
+for its support details.
+
 | Plugin | Features                                                  | Feature Status | CSI Driver Version | CSI Spec Version | Ceph Cluster Version | Kubernetes Version |
 | ------ | --------------------------------------------------------- | -------------- | ------------------ | ---------------- | -------------------- | ------------------ |
 | RBD    | Dynamically provision, de-provision Block mode RWO volume | GA             | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.14.0         |
