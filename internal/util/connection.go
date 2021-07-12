@@ -81,6 +81,7 @@ func (cc *ClusterConnection) Copy() *ClusterConnection {
 	c := ClusterConnection{}
 	c.discardOnZeroedWriteSameDisabled = cc.discardOnZeroedWriteSameDisabled
 	c.conn = connPool.Copy(cc.conn)
+	c.Creds = cc.Creds
 
 	return &c
 }
