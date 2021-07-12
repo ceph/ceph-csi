@@ -174,7 +174,7 @@ func (poolstats *poolStats) addPoolStatOption(option PoolStatOption, val *uint64
 // Implements:
 //  int rbd_pool_stats_get(rados_ioctx_t io, rbd_pool_stats_t stats);
 func GetAllPoolStats(ioctx *rados.IOContext) (map[PoolStatOption]uint64, error) {
-	var omap = make(map[PoolStatOption]uint64)
+	omap := make(map[PoolStatOption]uint64)
 	if ioctx == nil {
 		return omap, ErrNoIOContext
 	}

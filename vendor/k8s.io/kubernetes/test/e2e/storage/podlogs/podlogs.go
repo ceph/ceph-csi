@@ -157,7 +157,7 @@ func CopyAllLogs(ctx context.Context, cs clientset.Interface, ns string, to LogO
 					} else {
 						var err error
 						filename := to.LogPathPrefix + pod.ObjectMeta.Name + "-" + c.Name + ".log"
-						err = os.MkdirAll(path.Dir(filename), 0755)
+						err = os.MkdirAll(path.Dir(filename), 0o755)
 						if err != nil {
 							if to.StatusWriter != nil {
 								fmt.Fprintf(to.StatusWriter, "ERROR: pod log: create directory for %s: %s\n", filename, err)
@@ -166,7 +166,7 @@ func CopyAllLogs(ctx context.Context, cs clientset.Interface, ns string, to LogO
 						}
 						// The test suite might run the same test multiple times,
 						// so we have to append here.
-						file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+						file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 						if err != nil {
 							if to.StatusWriter != nil {
 								fmt.Fprintf(to.StatusWriter, "ERROR: pod log: create file %s: %s\n", filename, err)

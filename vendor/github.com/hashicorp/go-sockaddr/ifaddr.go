@@ -3,8 +3,10 @@ package sockaddr
 import "strings"
 
 // ifAddrAttrMap is a map of the IfAddr type-specific attributes.
-var ifAddrAttrMap map[AttrName]func(IfAddr) string
-var ifAddrAttrs []AttrName
+var (
+	ifAddrAttrMap map[AttrName]func(IfAddr) string
+	ifAddrAttrs   []AttrName
+)
 
 func init() {
 	ifAddrAttrInit()

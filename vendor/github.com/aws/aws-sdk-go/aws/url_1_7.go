@@ -12,7 +12,6 @@ import (
 // Copy of Go 1.8's net/url#URL.Hostname functionality.
 func URLHostname(url *url.URL) string {
 	return stripPort(url.Host)
-
 }
 
 // stripPort is copy of Go 1.8 url#URL.Hostname functionality.

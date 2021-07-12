@@ -40,10 +40,12 @@ const (
 	consoleTextmodeBuffer = 0x1
 )
 
-type wchar uint16
-type short int16
-type dword uint32
-type word uint16
+type (
+	wchar uint16
+	short int16
+	dword uint32
+	word  uint16
+)
 
 type coord struct {
 	x short
@@ -998,8 +1000,10 @@ func minmax3f(a, b, c float32) (min, max float32) {
 	}
 }
 
-var n256foreAttr []word
-var n256backAttr []word
+var (
+	n256foreAttr []word
+	n256backAttr []word
+)
 
 func n256setup() {
 	n256foreAttr = make([]word, 256)

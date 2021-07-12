@@ -29,10 +29,8 @@ import (
 	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
-var (
-	// BusyBoxImage is the image URI of BusyBox.
-	BusyBoxImage = imageutils.GetE2EImage(imageutils.BusyBox)
-)
+// BusyBoxImage is the image URI of BusyBox.
+var BusyBoxImage = imageutils.GetE2EImage(imageutils.BusyBox)
 
 // Config is a struct containing all arguments for creating a pod.
 // SELinux testing requires to pass HostIPC and HostPID as boolean arguments.
@@ -154,8 +152,8 @@ func MakePod(ns string, nodeSelector map[string]string, pvclaims []*v1.Persisten
 			RestartPolicy: v1.RestartPolicyOnFailure,
 		},
 	}
-	var volumeMounts = make([]v1.VolumeMount, len(pvclaims))
-	var volumes = make([]v1.Volume, len(pvclaims))
+	volumeMounts := make([]v1.VolumeMount, len(pvclaims))
+	volumes := make([]v1.Volume, len(pvclaims))
 	for index, pvclaim := range pvclaims {
 		volumename := fmt.Sprintf("volume%v", index+1)
 		volumeMounts[index] = v1.VolumeMount{Name: volumename, MountPath: "/mnt/" + volumename}
@@ -223,9 +221,9 @@ func MakePodSpec(podConfig *Config) *v1.PodSpec {
 		podSpec.SecurityContext.FSGroupChangePolicy = podConfig.PodFSGroupChangePolicy
 	}
 
-	var volumeMounts = make([]v1.VolumeMount, 0)
-	var volumeDevices = make([]v1.VolumeDevice, 0)
-	var volumes = make([]v1.Volume, len(podConfig.PVCs)+len(podConfig.InlineVolumeSources))
+	volumeMounts := make([]v1.VolumeMount, 0)
+	volumeDevices := make([]v1.VolumeDevice, 0)
+	volumes := make([]v1.Volume, len(podConfig.PVCs)+len(podConfig.InlineVolumeSources))
 	volumeIndex := 0
 	for _, pvclaim := range podConfig.PVCs {
 		volumename := fmt.Sprintf("volume%v", volumeIndex+1)

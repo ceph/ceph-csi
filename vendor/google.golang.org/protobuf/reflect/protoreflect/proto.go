@@ -468,9 +468,11 @@ func consumeIdent(s string) (i int) {
 	}
 	return i
 }
+
 func isLetter(c byte) bool {
 	return c == '_' || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
 }
+
 func isLetterDigit(c byte) bool {
 	return isLetter(c) || ('0' <= c && c <= '9')
 }

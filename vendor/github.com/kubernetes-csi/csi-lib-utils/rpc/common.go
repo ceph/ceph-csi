@@ -146,7 +146,6 @@ func Probe(ctx context.Context, conn *grpc.ClientConn) (ready bool, err error) {
 
 	req := csi.ProbeRequest{}
 	rsp, err := client.Probe(ctx, &req)
-
 	if err != nil {
 		return false, err
 	}

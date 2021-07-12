@@ -32,8 +32,10 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
-var admissionScheme = runtime.NewScheme()
-var admissionCodecs = serializer.NewCodecFactory(admissionScheme)
+var (
+	admissionScheme = runtime.NewScheme()
+	admissionCodecs = serializer.NewCodecFactory(admissionScheme)
+)
 
 func init() {
 	utilruntime.Must(v1.AddToScheme(admissionScheme))

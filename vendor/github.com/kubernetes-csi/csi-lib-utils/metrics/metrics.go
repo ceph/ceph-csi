@@ -55,9 +55,7 @@ const (
 	operationsLatencyHelp       = "Container Storage Interface operation duration with gRPC error code status total"
 )
 
-var (
-	operationsLatencyBuckets = []float64{.1, .25, .5, 1, 2.5, 5, 10, 15, 25, 50, 120, 300, 600}
-)
+var operationsLatencyBuckets = []float64{.1, .25, .5, 1, 2.5, 5, 10, 15, 25, 50, 120, 300, 600}
 
 // CSIMetricsManager exposes functions for recording metrics for CSI operations.
 type CSIMetricsManager interface {
@@ -375,7 +373,8 @@ func (cmm *csiMetricsManager) RegisterToServer(s Server, metricsPath string) {
 	s.Handle(metricsPath, metrics.HandlerFor(
 		cmm.GetRegistry(),
 		metrics.HandlerOpts{
-			ErrorHandling: metrics.ContinueOnError}))
+			ErrorHandling: metrics.ContinueOnError,
+		}))
 }
 
 // VerifyMetricsMatch is a helper function that verifies that the expected and

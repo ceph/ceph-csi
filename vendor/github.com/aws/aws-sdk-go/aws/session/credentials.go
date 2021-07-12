@@ -285,6 +285,7 @@ type credProviderError struct {
 func (c credProviderError) Retrieve() (credentials.Value, error) {
 	return credentials.Value{}, c.Err
 }
+
 func (c credProviderError) IsExpired() bool {
 	return true
 }

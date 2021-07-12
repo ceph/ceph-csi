@@ -105,18 +105,16 @@ const (
 // FeatureSet is a combination of the bit value for multiple features.
 type FeatureSet uint64
 
-var (
-	featureNameToBit = map[string]uint64{
-		FeatureNameLayering:      FeatureLayering,
-		FeatureNameStripingV2:    FeatureStripingV2,
-		FeatureNameExclusiveLock: FeatureExclusiveLock,
-		FeatureNameObjectMap:     FeatureObjectMap,
-		FeatureNameFastDiff:      FeatureFastDiff,
-		FeatureNameDeepFlatten:   FeatureDeepFlatten,
-		FeatureNameJournaling:    FeatureJournaling,
-		FeatureNameDataPool:      FeatureDataPool,
-	}
-)
+var featureNameToBit = map[string]uint64{
+	FeatureNameLayering:      FeatureLayering,
+	FeatureNameStripingV2:    FeatureStripingV2,
+	FeatureNameExclusiveLock: FeatureExclusiveLock,
+	FeatureNameObjectMap:     FeatureObjectMap,
+	FeatureNameFastDiff:      FeatureFastDiff,
+	FeatureNameDeepFlatten:   FeatureDeepFlatten,
+	FeatureNameJournaling:    FeatureJournaling,
+	FeatureNameDataPool:      FeatureDataPool,
+}
 
 // FeatureSetFromNames returns a FeatureSet built from flag bits corresponding
 // to the provided feature names.

@@ -857,7 +857,6 @@ var _ = Describe("cephfs", func() {
 					// create multiple PVC from same snapshot
 					wg.Add(totalCount)
 					for i := 0; i < totalCount; i++ {
-
 						go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
 							name := fmt.Sprintf("%s%d", f.UniqueName, n)
 							wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
@@ -1184,8 +1183,6 @@ var _ = Describe("cephfs", func() {
 			if err != nil {
 				e2elog.Failf("failed to delete user %s with error %v", keyringCephFSNodePluginUsername, err)
 			}
-
 		})
 	})
-
 })

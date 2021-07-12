@@ -43,12 +43,14 @@ type Predicate interface {
 	Generic(event.GenericEvent) bool
 }
 
-var _ Predicate = Funcs{}
-var _ Predicate = ResourceVersionChangedPredicate{}
-var _ Predicate = GenerationChangedPredicate{}
-var _ Predicate = AnnotationChangedPredicate{}
-var _ Predicate = or{}
-var _ Predicate = and{}
+var (
+	_ Predicate = Funcs{}
+	_ Predicate = ResourceVersionChangedPredicate{}
+	_ Predicate = GenerationChangedPredicate{}
+	_ Predicate = AnnotationChangedPredicate{}
+	_ Predicate = or{}
+	_ Predicate = and{}
+)
 
 // Funcs is a function that implements Predicate.
 type Funcs struct {

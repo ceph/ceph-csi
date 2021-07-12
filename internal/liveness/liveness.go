@@ -29,13 +29,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	liveness = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "csi",
-		Name:      "liveness",
-		Help:      "Liveness Probe",
-	})
-)
+var liveness = prometheus.NewGauge(prometheus.GaugeOpts{
+	Namespace: "csi",
+	Name:      "liveness",
+	Help:      "Liveness Probe",
+})
 
 func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)

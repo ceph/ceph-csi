@@ -42,11 +42,12 @@
 package descriptorpb
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoiface "google.golang.org/protobuf/runtime/protoiface"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 type FieldDescriptorProto_Type int32
@@ -3580,43 +3581,46 @@ func file_google_protobuf_descriptor_proto_rawDescGZIP() []byte {
 	return file_google_protobuf_descriptor_proto_rawDescData
 }
 
-var file_google_protobuf_descriptor_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_google_protobuf_descriptor_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
-var file_google_protobuf_descriptor_proto_goTypes = []interface{}{
-	(FieldDescriptorProto_Type)(0),                // 0: google.protobuf.FieldDescriptorProto.Type
-	(FieldDescriptorProto_Label)(0),               // 1: google.protobuf.FieldDescriptorProto.Label
-	(FileOptions_OptimizeMode)(0),                 // 2: google.protobuf.FileOptions.OptimizeMode
-	(FieldOptions_CType)(0),                       // 3: google.protobuf.FieldOptions.CType
-	(FieldOptions_JSType)(0),                      // 4: google.protobuf.FieldOptions.JSType
-	(MethodOptions_IdempotencyLevel)(0),           // 5: google.protobuf.MethodOptions.IdempotencyLevel
-	(*FileDescriptorSet)(nil),                     // 6: google.protobuf.FileDescriptorSet
-	(*FileDescriptorProto)(nil),                   // 7: google.protobuf.FileDescriptorProto
-	(*DescriptorProto)(nil),                       // 8: google.protobuf.DescriptorProto
-	(*ExtensionRangeOptions)(nil),                 // 9: google.protobuf.ExtensionRangeOptions
-	(*FieldDescriptorProto)(nil),                  // 10: google.protobuf.FieldDescriptorProto
-	(*OneofDescriptorProto)(nil),                  // 11: google.protobuf.OneofDescriptorProto
-	(*EnumDescriptorProto)(nil),                   // 12: google.protobuf.EnumDescriptorProto
-	(*EnumValueDescriptorProto)(nil),              // 13: google.protobuf.EnumValueDescriptorProto
-	(*ServiceDescriptorProto)(nil),                // 14: google.protobuf.ServiceDescriptorProto
-	(*MethodDescriptorProto)(nil),                 // 15: google.protobuf.MethodDescriptorProto
-	(*FileOptions)(nil),                           // 16: google.protobuf.FileOptions
-	(*MessageOptions)(nil),                        // 17: google.protobuf.MessageOptions
-	(*FieldOptions)(nil),                          // 18: google.protobuf.FieldOptions
-	(*OneofOptions)(nil),                          // 19: google.protobuf.OneofOptions
-	(*EnumOptions)(nil),                           // 20: google.protobuf.EnumOptions
-	(*EnumValueOptions)(nil),                      // 21: google.protobuf.EnumValueOptions
-	(*ServiceOptions)(nil),                        // 22: google.protobuf.ServiceOptions
-	(*MethodOptions)(nil),                         // 23: google.protobuf.MethodOptions
-	(*UninterpretedOption)(nil),                   // 24: google.protobuf.UninterpretedOption
-	(*SourceCodeInfo)(nil),                        // 25: google.protobuf.SourceCodeInfo
-	(*GeneratedCodeInfo)(nil),                     // 26: google.protobuf.GeneratedCodeInfo
-	(*DescriptorProto_ExtensionRange)(nil),        // 27: google.protobuf.DescriptorProto.ExtensionRange
-	(*DescriptorProto_ReservedRange)(nil),         // 28: google.protobuf.DescriptorProto.ReservedRange
-	(*EnumDescriptorProto_EnumReservedRange)(nil), // 29: google.protobuf.EnumDescriptorProto.EnumReservedRange
-	(*UninterpretedOption_NamePart)(nil),          // 30: google.protobuf.UninterpretedOption.NamePart
-	(*SourceCodeInfo_Location)(nil),               // 31: google.protobuf.SourceCodeInfo.Location
-	(*GeneratedCodeInfo_Annotation)(nil),          // 32: google.protobuf.GeneratedCodeInfo.Annotation
-}
+var (
+	file_google_protobuf_descriptor_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+	file_google_protobuf_descriptor_proto_msgTypes  = make([]protoimpl.MessageInfo, 27)
+	file_google_protobuf_descriptor_proto_goTypes   = []interface{}{
+		(FieldDescriptorProto_Type)(0),                // 0: google.protobuf.FieldDescriptorProto.Type
+		(FieldDescriptorProto_Label)(0),               // 1: google.protobuf.FieldDescriptorProto.Label
+		(FileOptions_OptimizeMode)(0),                 // 2: google.protobuf.FileOptions.OptimizeMode
+		(FieldOptions_CType)(0),                       // 3: google.protobuf.FieldOptions.CType
+		(FieldOptions_JSType)(0),                      // 4: google.protobuf.FieldOptions.JSType
+		(MethodOptions_IdempotencyLevel)(0),           // 5: google.protobuf.MethodOptions.IdempotencyLevel
+		(*FileDescriptorSet)(nil),                     // 6: google.protobuf.FileDescriptorSet
+		(*FileDescriptorProto)(nil),                   // 7: google.protobuf.FileDescriptorProto
+		(*DescriptorProto)(nil),                       // 8: google.protobuf.DescriptorProto
+		(*ExtensionRangeOptions)(nil),                 // 9: google.protobuf.ExtensionRangeOptions
+		(*FieldDescriptorProto)(nil),                  // 10: google.protobuf.FieldDescriptorProto
+		(*OneofDescriptorProto)(nil),                  // 11: google.protobuf.OneofDescriptorProto
+		(*EnumDescriptorProto)(nil),                   // 12: google.protobuf.EnumDescriptorProto
+		(*EnumValueDescriptorProto)(nil),              // 13: google.protobuf.EnumValueDescriptorProto
+		(*ServiceDescriptorProto)(nil),                // 14: google.protobuf.ServiceDescriptorProto
+		(*MethodDescriptorProto)(nil),                 // 15: google.protobuf.MethodDescriptorProto
+		(*FileOptions)(nil),                           // 16: google.protobuf.FileOptions
+		(*MessageOptions)(nil),                        // 17: google.protobuf.MessageOptions
+		(*FieldOptions)(nil),                          // 18: google.protobuf.FieldOptions
+		(*OneofOptions)(nil),                          // 19: google.protobuf.OneofOptions
+		(*EnumOptions)(nil),                           // 20: google.protobuf.EnumOptions
+		(*EnumValueOptions)(nil),                      // 21: google.protobuf.EnumValueOptions
+		(*ServiceOptions)(nil),                        // 22: google.protobuf.ServiceOptions
+		(*MethodOptions)(nil),                         // 23: google.protobuf.MethodOptions
+		(*UninterpretedOption)(nil),                   // 24: google.protobuf.UninterpretedOption
+		(*SourceCodeInfo)(nil),                        // 25: google.protobuf.SourceCodeInfo
+		(*GeneratedCodeInfo)(nil),                     // 26: google.protobuf.GeneratedCodeInfo
+		(*DescriptorProto_ExtensionRange)(nil),        // 27: google.protobuf.DescriptorProto.ExtensionRange
+		(*DescriptorProto_ReservedRange)(nil),         // 28: google.protobuf.DescriptorProto.ReservedRange
+		(*EnumDescriptorProto_EnumReservedRange)(nil), // 29: google.protobuf.EnumDescriptorProto.EnumReservedRange
+		(*UninterpretedOption_NamePart)(nil),          // 30: google.protobuf.UninterpretedOption.NamePart
+		(*SourceCodeInfo_Location)(nil),               // 31: google.protobuf.SourceCodeInfo.Location
+		(*GeneratedCodeInfo_Annotation)(nil),          // 32: google.protobuf.GeneratedCodeInfo.Annotation
+	}
+)
+
 var file_google_protobuf_descriptor_proto_depIdxs = []int32{
 	7,  // 0: google.protobuf.FileDescriptorSet.file:type_name -> google.protobuf.FileDescriptorProto
 	8,  // 1: google.protobuf.FileDescriptorProto.message_type:type_name -> google.protobuf.DescriptorProto

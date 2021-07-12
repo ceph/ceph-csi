@@ -30,14 +30,12 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var (
-	validRequirementOperators = []string{
-		string(selection.In), string(selection.NotIn),
-		string(selection.Equals), string(selection.DoubleEquals), string(selection.NotEquals),
-		string(selection.Exists), string(selection.DoesNotExist),
-		string(selection.GreaterThan), string(selection.LessThan),
-	}
-)
+var validRequirementOperators = []string{
+	string(selection.In), string(selection.NotIn),
+	string(selection.Equals), string(selection.DoubleEquals), string(selection.NotEquals),
+	string(selection.Exists), string(selection.DoesNotExist),
+	string(selection.GreaterThan), string(selection.LessThan),
+}
 
 // Requirements is AND of all requirements.
 type Requirements []Requirement
@@ -704,7 +702,6 @@ func (p *Parser) parseRequirement() (*Requirement, error) {
 		return nil, err
 	}
 	return NewRequirement(key, operator, values.List(), field.WithPath(p.path))
-
 }
 
 // parseKeyAndInferOperator parses literals.

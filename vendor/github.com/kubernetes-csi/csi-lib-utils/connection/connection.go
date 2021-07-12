@@ -81,7 +81,7 @@ func OnConnectionLoss(reconnect func() bool) Option {
 func ExitOnConnectionLoss() func() bool {
 	return func() bool {
 		terminationMsg := "Lost connection to CSI driver, exiting"
-		if err := ioutil.WriteFile(terminationLogPath, []byte(terminationMsg), 0644); err != nil {
+		if err := ioutil.WriteFile(terminationLogPath, []byte(terminationMsg), 0o644); err != nil {
 			klog.Errorf("%s: %s", terminationLogPath, err)
 		}
 		klog.Fatalf(terminationMsg)

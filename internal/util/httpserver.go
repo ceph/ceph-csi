@@ -26,6 +26,7 @@ func StartMetricsServer(c *Config) {
 		FatalLogMsg("failed to listen on address %v: %s", addr, err)
 	}
 }
+
 func addPath(name string, handler http.Handler) {
 	http.Handle(name, handler)
 	DebugLogMsg("DEBUG: registered profiling handler on /debug/pprof/%s\n", name)

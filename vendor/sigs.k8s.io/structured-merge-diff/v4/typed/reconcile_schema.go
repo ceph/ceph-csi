@@ -253,7 +253,6 @@ func (v *reconcileWithSchemaWalker) doMap(t *schema.Map) (errs ValidationErrors)
 }
 
 func buildGranularFieldSet(path fieldpath.Path, value *TypedValue) (*fieldpath.Set, ValidationErrors) {
-
 	valueFieldSet, err := value.ToFieldSet()
 	if err != nil {
 		return nil, errorf("toFieldSet: %v", err)

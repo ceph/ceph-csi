@@ -241,7 +241,7 @@ func yaml_emitter_increase_indent(emitter *yaml_emitter_t, flow, indentless bool
 			emitter.indent += 2
 		} else {
 			// Everything else aligns to the chosen indentation.
-			emitter.indent = emitter.best_indent*((emitter.indent+emitter.best_indent)/emitter.best_indent)
+			emitter.indent = emitter.best_indent * ((emitter.indent + emitter.best_indent) / emitter.best_indent)
 		}
 	}
 	return true
@@ -357,7 +357,6 @@ func yaml_emitter_emit_stream_start(emitter *yaml_emitter_t, event *yaml_event_t
 
 // Expect DOCUMENT-START or STREAM-END.
 func yaml_emitter_emit_document_start(emitter *yaml_emitter_t, event *yaml_event_t, first bool) bool {
-
 	if event.typ == yaml_DOCUMENT_START_EVENT {
 
 		if event.version_directive != nil {
@@ -1002,7 +1001,6 @@ func yaml_emitter_check_simple_key(emitter *yaml_emitter_t) bool {
 
 // Determine an acceptable scalar style.
 func yaml_emitter_select_scalar_style(emitter *yaml_emitter_t, event *yaml_event_t) bool {
-
 	no_tag := len(emitter.tag_data.handle) == 0 && len(emitter.tag_data.suffix) == 0
 	if no_tag && !event.implicit && !event.quoted_implicit {
 		return yaml_emitter_set_emitter_error(emitter, "neither tag nor implicit flags are specified")
@@ -1407,7 +1405,6 @@ func yaml_emitter_analyze_scalar(emitter *yaml_emitter_t, value []byte) bool {
 
 // Check if the event data is valid.
 func yaml_emitter_analyze_event(emitter *yaml_emitter_t, event *yaml_event_t) bool {
-
 	emitter.anchor_data.anchor = nil
 	emitter.tag_data.handle = nil
 	emitter.tag_data.suffix = nil
@@ -1508,7 +1505,7 @@ func yaml_emitter_write_indent(emitter *yaml_emitter_t) bool {
 		}
 	}
 	emitter.whitespace = true
-	//emitter.indention = true
+	// emitter.indention = true
 	emitter.space_above = false
 	emitter.foot_indent = -1
 	return true
@@ -1637,7 +1634,7 @@ func yaml_emitter_write_plain_scalar(emitter *yaml_emitter_t, value []byte, allo
 			if !write_break(emitter, value, &i) {
 				return false
 			}
-			//emitter.indention = true
+			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -1666,7 +1663,6 @@ func yaml_emitter_write_plain_scalar(emitter *yaml_emitter_t, value []byte, allo
 }
 
 func yaml_emitter_write_single_quoted_scalar(emitter *yaml_emitter_t, value []byte, allow_breaks bool) bool {
-
 	if !yaml_emitter_write_indicator(emitter, []byte{'\''}, true, false, false) {
 		return false
 	}
@@ -1695,7 +1691,7 @@ func yaml_emitter_write_single_quoted_scalar(emitter *yaml_emitter_t, value []by
 			if !write_break(emitter, value, &i) {
 				return false
 			}
-			//emitter.indention = true
+			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -1897,7 +1893,7 @@ func yaml_emitter_write_literal_scalar(emitter *yaml_emitter_t, value []byte) bo
 	if !yaml_emitter_process_line_comment(emitter) {
 		return false
 	}
-	//emitter.indention = true
+	// emitter.indention = true
 	emitter.whitespace = true
 	breaks := true
 	for i := 0; i < len(value); {
@@ -1905,7 +1901,7 @@ func yaml_emitter_write_literal_scalar(emitter *yaml_emitter_t, value []byte) bo
 			if !write_break(emitter, value, &i) {
 				return false
 			}
-			//emitter.indention = true
+			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -1935,7 +1931,7 @@ func yaml_emitter_write_folded_scalar(emitter *yaml_emitter_t, value []byte) boo
 		return false
 	}
 
-	//emitter.indention = true
+	// emitter.indention = true
 	emitter.whitespace = true
 
 	breaks := true
@@ -1956,7 +1952,7 @@ func yaml_emitter_write_folded_scalar(emitter *yaml_emitter_t, value []byte) boo
 			if !write_break(emitter, value, &i) {
 				return false
 			}
-			//emitter.indention = true
+			// emitter.indention = true
 			breaks = true
 		} else {
 			if breaks {
@@ -1990,7 +1986,7 @@ func yaml_emitter_write_comment(emitter *yaml_emitter_t, comment []byte) bool {
 			if !write_break(emitter, comment, &i) {
 				return false
 			}
-			//emitter.indention = true
+			// emitter.indention = true
 			breaks = true
 			pound = false
 		} else {
@@ -2015,6 +2011,6 @@ func yaml_emitter_write_comment(emitter *yaml_emitter_t, comment []byte) bool {
 	}
 
 	emitter.whitespace = true
-	//emitter.indention = true
+	// emitter.indention = true
 	return true
 }

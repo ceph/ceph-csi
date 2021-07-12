@@ -3,14 +3,18 @@
 
 package datastore
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	proto "github.com/golang/protobuf/proto"
+	fmt "fmt"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
+var (
+	_ = proto.Marshal
+	_ = fmt.Errorf
+	_ = math.Inf
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
@@ -65,6 +69,7 @@ var Property_Meaning_name = map[int32]string{
 	19: "ENTITY_PROTO",
 	18: "INDEX_VALUE",
 }
+
 var Property_Meaning_value = map[string]int32{
 	"NO_MEANING":       0,
 	"BLOB":             14,
@@ -93,9 +98,11 @@ func (x Property_Meaning) Enum() *Property_Meaning {
 	*p = x
 	return p
 }
+
 func (x Property_Meaning) String() string {
 	return proto.EnumName(Property_Meaning_name, int32(x))
 }
+
 func (x *Property_Meaning) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Property_Meaning_value, data, "Property_Meaning")
 	if err != nil {
@@ -104,6 +111,7 @@ func (x *Property_Meaning) UnmarshalJSON(data []byte) error {
 	*x = Property_Meaning(value)
 	return nil
 }
+
 func (Property_Meaning) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{2, 0}
 }
@@ -119,6 +127,7 @@ var Property_FtsTokenizationOption_name = map[int32]string{
 	1: "HTML",
 	2: "ATOM",
 }
+
 var Property_FtsTokenizationOption_value = map[string]int32{
 	"HTML": 1,
 	"ATOM": 2,
@@ -129,9 +138,11 @@ func (x Property_FtsTokenizationOption) Enum() *Property_FtsTokenizationOption {
 	*p = x
 	return p
 }
+
 func (x Property_FtsTokenizationOption) String() string {
 	return proto.EnumName(Property_FtsTokenizationOption_name, int32(x))
 }
+
 func (x *Property_FtsTokenizationOption) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Property_FtsTokenizationOption_value, data, "Property_FtsTokenizationOption")
 	if err != nil {
@@ -140,6 +151,7 @@ func (x *Property_FtsTokenizationOption) UnmarshalJSON(data []byte) error {
 	*x = Property_FtsTokenizationOption(value)
 	return nil
 }
+
 func (Property_FtsTokenizationOption) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{2, 1}
 }
@@ -157,6 +169,7 @@ var EntityProto_Kind_name = map[int32]string{
 	2: "GD_EVENT",
 	3: "GD_MESSAGE",
 }
+
 var EntityProto_Kind_value = map[string]int32{
 	"GD_CONTACT": 1,
 	"GD_EVENT":   2,
@@ -168,9 +181,11 @@ func (x EntityProto_Kind) Enum() *EntityProto_Kind {
 	*p = x
 	return p
 }
+
 func (x EntityProto_Kind) String() string {
 	return proto.EnumName(EntityProto_Kind_name, int32(x))
 }
+
 func (x *EntityProto_Kind) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(EntityProto_Kind_value, data, "EntityProto_Kind")
 	if err != nil {
@@ -179,6 +194,7 @@ func (x *EntityProto_Kind) UnmarshalJSON(data []byte) error {
 	*x = EntityProto_Kind(value)
 	return nil
 }
+
 func (EntityProto_Kind) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{6, 0}
 }
@@ -194,6 +210,7 @@ var Index_Property_Direction_name = map[int32]string{
 	1: "ASCENDING",
 	2: "DESCENDING",
 }
+
 var Index_Property_Direction_value = map[string]int32{
 	"ASCENDING":  1,
 	"DESCENDING": 2,
@@ -204,9 +221,11 @@ func (x Index_Property_Direction) Enum() *Index_Property_Direction {
 	*p = x
 	return p
 }
+
 func (x Index_Property_Direction) String() string {
 	return proto.EnumName(Index_Property_Direction_name, int32(x))
 }
+
 func (x *Index_Property_Direction) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Index_Property_Direction_value, data, "Index_Property_Direction")
 	if err != nil {
@@ -215,6 +234,7 @@ func (x *Index_Property_Direction) UnmarshalJSON(data []byte) error {
 	*x = Index_Property_Direction(value)
 	return nil
 }
+
 func (Index_Property_Direction) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{8, 0, 0}
 }
@@ -234,6 +254,7 @@ var CompositeIndex_State_name = map[int32]string{
 	3: "DELETED",
 	4: "ERROR",
 }
+
 var CompositeIndex_State_value = map[string]int32{
 	"WRITE_ONLY": 1,
 	"READ_WRITE": 2,
@@ -246,9 +267,11 @@ func (x CompositeIndex_State) Enum() *CompositeIndex_State {
 	*p = x
 	return p
 }
+
 func (x CompositeIndex_State) String() string {
 	return proto.EnumName(CompositeIndex_State_name, int32(x))
 }
+
 func (x *CompositeIndex_State) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(CompositeIndex_State_value, data, "CompositeIndex_State")
 	if err != nil {
@@ -257,6 +280,7 @@ func (x *CompositeIndex_State) UnmarshalJSON(data []byte) error {
 	*x = CompositeIndex_State(value)
 	return nil
 }
+
 func (CompositeIndex_State) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{9, 0}
 }
@@ -272,6 +296,7 @@ var Snapshot_Status_name = map[int32]string{
 	0: "INACTIVE",
 	1: "ACTIVE",
 }
+
 var Snapshot_Status_value = map[string]int32{
 	"INACTIVE": 0,
 	"ACTIVE":   1,
@@ -282,9 +307,11 @@ func (x Snapshot_Status) Enum() *Snapshot_Status {
 	*p = x
 	return p
 }
+
 func (x Snapshot_Status) String() string {
 	return proto.EnumName(Snapshot_Status_name, int32(x))
 }
+
 func (x *Snapshot_Status) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Snapshot_Status_value, data, "Snapshot_Status")
 	if err != nil {
@@ -293,6 +320,7 @@ func (x *Snapshot_Status) UnmarshalJSON(data []byte) error {
 	*x = Snapshot_Status(value)
 	return nil
 }
+
 func (Snapshot_Status) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{12, 0}
 }
@@ -310,6 +338,7 @@ var Query_Hint_name = map[int32]string{
 	2: "ANCESTOR_FIRST",
 	3: "FILTER_FIRST",
 }
+
 var Query_Hint_value = map[string]int32{
 	"ORDER_FIRST":    1,
 	"ANCESTOR_FIRST": 2,
@@ -321,9 +350,11 @@ func (x Query_Hint) Enum() *Query_Hint {
 	*p = x
 	return p
 }
+
 func (x Query_Hint) String() string {
 	return proto.EnumName(Query_Hint_name, int32(x))
 }
+
 func (x *Query_Hint) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Query_Hint_value, data, "Query_Hint")
 	if err != nil {
@@ -332,6 +363,7 @@ func (x *Query_Hint) UnmarshalJSON(data []byte) error {
 	*x = Query_Hint(value)
 	return nil
 }
+
 func (Query_Hint) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{15, 0}
 }
@@ -357,6 +389,7 @@ var Query_Filter_Operator_name = map[int32]string{
 	6: "IN",
 	7: "EXISTS",
 }
+
 var Query_Filter_Operator_value = map[string]int32{
 	"LESS_THAN":             1,
 	"LESS_THAN_OR_EQUAL":    2,
@@ -372,9 +405,11 @@ func (x Query_Filter_Operator) Enum() *Query_Filter_Operator {
 	*p = x
 	return p
 }
+
 func (x Query_Filter_Operator) String() string {
 	return proto.EnumName(Query_Filter_Operator_name, int32(x))
 }
+
 func (x *Query_Filter_Operator) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Query_Filter_Operator_value, data, "Query_Filter_Operator")
 	if err != nil {
@@ -383,6 +418,7 @@ func (x *Query_Filter_Operator) UnmarshalJSON(data []byte) error {
 	*x = Query_Filter_Operator(value)
 	return nil
 }
+
 func (Query_Filter_Operator) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{15, 0, 0}
 }
@@ -398,6 +434,7 @@ var Query_Order_Direction_name = map[int32]string{
 	1: "ASCENDING",
 	2: "DESCENDING",
 }
+
 var Query_Order_Direction_value = map[string]int32{
 	"ASCENDING":  1,
 	"DESCENDING": 2,
@@ -408,9 +445,11 @@ func (x Query_Order_Direction) Enum() *Query_Order_Direction {
 	*p = x
 	return p
 }
+
 func (x Query_Order_Direction) String() string {
 	return proto.EnumName(Query_Order_Direction_name, int32(x))
 }
+
 func (x *Query_Order_Direction) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Query_Order_Direction_value, data, "Query_Order_Direction")
 	if err != nil {
@@ -419,6 +458,7 @@ func (x *Query_Order_Direction) UnmarshalJSON(data []byte) error {
 	*x = Query_Order_Direction(value)
 	return nil
 }
+
 func (Query_Order_Direction) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{15, 1, 0}
 }
@@ -452,6 +492,7 @@ var Error_ErrorCode_name = map[int32]string{
 	10: "TRY_ALTERNATE_BACKEND",
 	11: "SAFE_TIME_TOO_OLD",
 }
+
 var Error_ErrorCode_value = map[string]int32{
 	"BAD_REQUEST":                  1,
 	"CONCURRENT_TRANSACTION":       2,
@@ -471,9 +512,11 @@ func (x Error_ErrorCode) Enum() *Error_ErrorCode {
 	*p = x
 	return p
 }
+
 func (x Error_ErrorCode) String() string {
 	return proto.EnumName(Error_ErrorCode_name, int32(x))
 }
+
 func (x *Error_ErrorCode) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Error_ErrorCode_value, data, "Error_ErrorCode")
 	if err != nil {
@@ -482,6 +525,7 @@ func (x *Error_ErrorCode) UnmarshalJSON(data []byte) error {
 	*x = Error_ErrorCode(value)
 	return nil
 }
+
 func (Error_ErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{19, 0}
 }
@@ -497,6 +541,7 @@ var PutRequest_AutoIdPolicy_name = map[int32]string{
 	0: "CURRENT",
 	1: "SEQUENTIAL",
 }
+
 var PutRequest_AutoIdPolicy_value = map[string]int32{
 	"CURRENT":    0,
 	"SEQUENTIAL": 1,
@@ -507,9 +552,11 @@ func (x PutRequest_AutoIdPolicy) Enum() *PutRequest_AutoIdPolicy {
 	*p = x
 	return p
 }
+
 func (x PutRequest_AutoIdPolicy) String() string {
 	return proto.EnumName(PutRequest_AutoIdPolicy_name, int32(x))
 }
+
 func (x *PutRequest_AutoIdPolicy) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(PutRequest_AutoIdPolicy_value, data, "PutRequest_AutoIdPolicy")
 	if err != nil {
@@ -518,6 +565,7 @@ func (x *PutRequest_AutoIdPolicy) UnmarshalJSON(data []byte) error {
 	*x = PutRequest_AutoIdPolicy(value)
 	return nil
 }
+
 func (PutRequest_AutoIdPolicy) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{23, 0}
 }
@@ -535,6 +583,7 @@ var BeginTransactionRequest_TransactionMode_name = map[int32]string{
 	1: "READ_ONLY",
 	2: "READ_WRITE",
 }
+
 var BeginTransactionRequest_TransactionMode_value = map[string]int32{
 	"UNKNOWN":    0,
 	"READ_ONLY":  1,
@@ -546,9 +595,11 @@ func (x BeginTransactionRequest_TransactionMode) Enum() *BeginTransactionRequest
 	*p = x
 	return p
 }
+
 func (x BeginTransactionRequest_TransactionMode) String() string {
 	return proto.EnumName(BeginTransactionRequest_TransactionMode_name, int32(x))
 }
+
 func (x *BeginTransactionRequest_TransactionMode) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(BeginTransactionRequest_TransactionMode_value, data, "BeginTransactionRequest_TransactionMode")
 	if err != nil {
@@ -557,6 +608,7 @@ func (x *BeginTransactionRequest_TransactionMode) UnmarshalJSON(data []byte) err
 	*x = BeginTransactionRequest_TransactionMode(value)
 	return nil
 }
+
 func (BeginTransactionRequest_TransactionMode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{36, 0}
 }
@@ -573,18 +625,23 @@ func (*Action) ProtoMessage()    {}
 func (*Action) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{0}
 }
+
 func (m *Action) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Action.Unmarshal(m, b)
 }
+
 func (m *Action) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Action.Marshal(b, m, deterministic)
 }
+
 func (dst *Action) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Action.Merge(dst, src)
 }
+
 func (m *Action) XXX_Size() int {
 	return xxx_messageInfo_Action.Size(m)
 }
+
 func (m *Action) XXX_DiscardUnknown() {
 	xxx_messageInfo_Action.DiscardUnknown(m)
 }
@@ -610,18 +667,23 @@ func (*PropertyValue) ProtoMessage()    {}
 func (*PropertyValue) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{1}
 }
+
 func (m *PropertyValue) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PropertyValue.Unmarshal(m, b)
 }
+
 func (m *PropertyValue) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PropertyValue.Marshal(b, m, deterministic)
 }
+
 func (dst *PropertyValue) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_PropertyValue.Merge(dst, src)
 }
+
 func (m *PropertyValue) XXX_Size() int {
 	return xxx_messageInfo_PropertyValue.Size(m)
 }
+
 func (m *PropertyValue) XXX_DiscardUnknown() {
 	xxx_messageInfo_PropertyValue.DiscardUnknown(m)
 }
@@ -691,18 +753,23 @@ func (*PropertyValue_PointValue) ProtoMessage()    {}
 func (*PropertyValue_PointValue) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{1, 0}
 }
+
 func (m *PropertyValue_PointValue) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PropertyValue_PointValue.Unmarshal(m, b)
 }
+
 func (m *PropertyValue_PointValue) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PropertyValue_PointValue.Marshal(b, m, deterministic)
 }
+
 func (dst *PropertyValue_PointValue) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_PropertyValue_PointValue.Merge(dst, src)
 }
+
 func (m *PropertyValue_PointValue) XXX_Size() int {
 	return xxx_messageInfo_PropertyValue_PointValue.Size(m)
 }
+
 func (m *PropertyValue_PointValue) XXX_DiscardUnknown() {
 	xxx_messageInfo_PropertyValue_PointValue.DiscardUnknown(m)
 }
@@ -740,18 +807,23 @@ func (*PropertyValue_UserValue) ProtoMessage()    {}
 func (*PropertyValue_UserValue) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{1, 1}
 }
+
 func (m *PropertyValue_UserValue) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PropertyValue_UserValue.Unmarshal(m, b)
 }
+
 func (m *PropertyValue_UserValue) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PropertyValue_UserValue.Marshal(b, m, deterministic)
 }
+
 func (dst *PropertyValue_UserValue) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_PropertyValue_UserValue.Merge(dst, src)
 }
+
 func (m *PropertyValue_UserValue) XXX_Size() int {
 	return xxx_messageInfo_PropertyValue_UserValue.Size(m)
 }
+
 func (m *PropertyValue_UserValue) XXX_DiscardUnknown() {
 	xxx_messageInfo_PropertyValue_UserValue.DiscardUnknown(m)
 }
@@ -808,18 +880,23 @@ func (*PropertyValue_ReferenceValue) ProtoMessage()    {}
 func (*PropertyValue_ReferenceValue) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{1, 2}
 }
+
 func (m *PropertyValue_ReferenceValue) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PropertyValue_ReferenceValue.Unmarshal(m, b)
 }
+
 func (m *PropertyValue_ReferenceValue) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PropertyValue_ReferenceValue.Marshal(b, m, deterministic)
 }
+
 func (dst *PropertyValue_ReferenceValue) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_PropertyValue_ReferenceValue.Merge(dst, src)
 }
+
 func (m *PropertyValue_ReferenceValue) XXX_Size() int {
 	return xxx_messageInfo_PropertyValue_ReferenceValue.Size(m)
 }
+
 func (m *PropertyValue_ReferenceValue) XXX_DiscardUnknown() {
 	xxx_messageInfo_PropertyValue_ReferenceValue.DiscardUnknown(m)
 }
@@ -864,18 +941,23 @@ func (*PropertyValue_ReferenceValue_PathElement) ProtoMessage()    {}
 func (*PropertyValue_ReferenceValue_PathElement) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{1, 2, 0}
 }
+
 func (m *PropertyValue_ReferenceValue_PathElement) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PropertyValue_ReferenceValue_PathElement.Unmarshal(m, b)
 }
+
 func (m *PropertyValue_ReferenceValue_PathElement) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PropertyValue_ReferenceValue_PathElement.Marshal(b, m, deterministic)
 }
+
 func (dst *PropertyValue_ReferenceValue_PathElement) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_PropertyValue_ReferenceValue_PathElement.Merge(dst, src)
 }
+
 func (m *PropertyValue_ReferenceValue_PathElement) XXX_Size() int {
 	return xxx_messageInfo_PropertyValue_ReferenceValue_PathElement.Size(m)
 }
+
 func (m *PropertyValue_ReferenceValue_PathElement) XXX_DiscardUnknown() {
 	xxx_messageInfo_PropertyValue_ReferenceValue_PathElement.DiscardUnknown(m)
 }
@@ -923,27 +1005,34 @@ func (*Property) ProtoMessage()    {}
 func (*Property) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{2}
 }
+
 func (m *Property) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Property.Unmarshal(m, b)
 }
+
 func (m *Property) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Property.Marshal(b, m, deterministic)
 }
+
 func (dst *Property) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Property.Merge(dst, src)
 }
+
 func (m *Property) XXX_Size() int {
 	return xxx_messageInfo_Property.Size(m)
 }
+
 func (m *Property) XXX_DiscardUnknown() {
 	xxx_messageInfo_Property.DiscardUnknown(m)
 }
 
 var xxx_messageInfo_Property proto.InternalMessageInfo
 
-const Default_Property_Meaning Property_Meaning = Property_NO_MEANING
-const Default_Property_Searchable bool = false
-const Default_Property_Locale string = "en"
+const (
+	Default_Property_Meaning    Property_Meaning = Property_NO_MEANING
+	Default_Property_Searchable bool             = false
+	Default_Property_Locale     string           = "en"
+)
 
 func (m *Property) GetMeaning() Property_Meaning {
 	if m != nil && m.Meaning != nil {
@@ -1014,18 +1103,23 @@ func (*Path) ProtoMessage()    {}
 func (*Path) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{3}
 }
+
 func (m *Path) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Path.Unmarshal(m, b)
 }
+
 func (m *Path) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Path.Marshal(b, m, deterministic)
 }
+
 func (dst *Path) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Path.Merge(dst, src)
 }
+
 func (m *Path) XXX_Size() int {
 	return xxx_messageInfo_Path.Size(m)
 }
+
 func (m *Path) XXX_DiscardUnknown() {
 	xxx_messageInfo_Path.DiscardUnknown(m)
 }
@@ -1054,18 +1148,23 @@ func (*Path_Element) ProtoMessage()    {}
 func (*Path_Element) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{3, 0}
 }
+
 func (m *Path_Element) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Path_Element.Unmarshal(m, b)
 }
+
 func (m *Path_Element) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Path_Element.Marshal(b, m, deterministic)
 }
+
 func (dst *Path_Element) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Path_Element.Merge(dst, src)
 }
+
 func (m *Path_Element) XXX_Size() int {
 	return xxx_messageInfo_Path_Element.Size(m)
 }
+
 func (m *Path_Element) XXX_DiscardUnknown() {
 	xxx_messageInfo_Path_Element.DiscardUnknown(m)
 }
@@ -1108,18 +1207,23 @@ func (*Reference) ProtoMessage()    {}
 func (*Reference) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{4}
 }
+
 func (m *Reference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Reference.Unmarshal(m, b)
 }
+
 func (m *Reference) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Reference.Marshal(b, m, deterministic)
 }
+
 func (dst *Reference) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Reference.Merge(dst, src)
 }
+
 func (m *Reference) XXX_Size() int {
 	return xxx_messageInfo_Reference.Size(m)
 }
+
 func (m *Reference) XXX_DiscardUnknown() {
 	xxx_messageInfo_Reference.DiscardUnknown(m)
 }
@@ -1164,18 +1268,23 @@ func (*User) ProtoMessage()    {}
 func (*User) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{5}
 }
+
 func (m *User) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_User.Unmarshal(m, b)
 }
+
 func (m *User) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_User.Marshal(b, m, deterministic)
 }
+
 func (dst *User) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_User.Merge(dst, src)
 }
+
 func (m *User) XXX_Size() int {
 	return xxx_messageInfo_User.Size(m)
 }
+
 func (m *User) XXX_DiscardUnknown() {
 	xxx_messageInfo_User.DiscardUnknown(m)
 }
@@ -1237,18 +1346,23 @@ func (*EntityProto) ProtoMessage()    {}
 func (*EntityProto) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{6}
 }
+
 func (m *EntityProto) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EntityProto.Unmarshal(m, b)
 }
+
 func (m *EntityProto) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_EntityProto.Marshal(b, m, deterministic)
 }
+
 func (dst *EntityProto) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_EntityProto.Merge(dst, src)
 }
+
 func (m *EntityProto) XXX_Size() int {
 	return xxx_messageInfo_EntityProto.Size(m)
 }
+
 func (m *EntityProto) XXX_DiscardUnknown() {
 	xxx_messageInfo_EntityProto.DiscardUnknown(m)
 }
@@ -1325,18 +1439,23 @@ func (*CompositeProperty) ProtoMessage()    {}
 func (*CompositeProperty) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{7}
 }
+
 func (m *CompositeProperty) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompositeProperty.Unmarshal(m, b)
 }
+
 func (m *CompositeProperty) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompositeProperty.Marshal(b, m, deterministic)
 }
+
 func (dst *CompositeProperty) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CompositeProperty.Merge(dst, src)
 }
+
 func (m *CompositeProperty) XXX_Size() int {
 	return xxx_messageInfo_CompositeProperty.Size(m)
 }
+
 func (m *CompositeProperty) XXX_DiscardUnknown() {
 	xxx_messageInfo_CompositeProperty.DiscardUnknown(m)
 }
@@ -1372,18 +1491,23 @@ func (*Index) ProtoMessage()    {}
 func (*Index) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{8}
 }
+
 func (m *Index) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Index.Unmarshal(m, b)
 }
+
 func (m *Index) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Index.Marshal(b, m, deterministic)
 }
+
 func (dst *Index) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Index.Merge(dst, src)
 }
+
 func (m *Index) XXX_Size() int {
 	return xxx_messageInfo_Index.Size(m)
 }
+
 func (m *Index) XXX_DiscardUnknown() {
 	xxx_messageInfo_Index.DiscardUnknown(m)
 }
@@ -1425,18 +1549,23 @@ func (*Index_Property) ProtoMessage()    {}
 func (*Index_Property) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{8, 0}
 }
+
 func (m *Index_Property) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Index_Property.Unmarshal(m, b)
 }
+
 func (m *Index_Property) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Index_Property.Marshal(b, m, deterministic)
 }
+
 func (dst *Index_Property) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Index_Property.Merge(dst, src)
 }
+
 func (m *Index_Property) XXX_Size() int {
 	return xxx_messageInfo_Index_Property.Size(m)
 }
+
 func (m *Index_Property) XXX_DiscardUnknown() {
 	xxx_messageInfo_Index_Property.DiscardUnknown(m)
 }
@@ -1476,18 +1605,23 @@ func (*CompositeIndex) ProtoMessage()    {}
 func (*CompositeIndex) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{9}
 }
+
 func (m *CompositeIndex) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompositeIndex.Unmarshal(m, b)
 }
+
 func (m *CompositeIndex) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompositeIndex.Marshal(b, m, deterministic)
 }
+
 func (dst *CompositeIndex) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CompositeIndex.Merge(dst, src)
 }
+
 func (m *CompositeIndex) XXX_Size() int {
 	return xxx_messageInfo_CompositeIndex.Size(m)
 }
+
 func (m *CompositeIndex) XXX_DiscardUnknown() {
 	xxx_messageInfo_CompositeIndex.DiscardUnknown(m)
 }
@@ -1546,18 +1680,23 @@ func (*IndexPostfix) ProtoMessage()    {}
 func (*IndexPostfix) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{10}
 }
+
 func (m *IndexPostfix) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexPostfix.Unmarshal(m, b)
 }
+
 func (m *IndexPostfix) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_IndexPostfix.Marshal(b, m, deterministic)
 }
+
 func (dst *IndexPostfix) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_IndexPostfix.Merge(dst, src)
 }
+
 func (m *IndexPostfix) XXX_Size() int {
 	return xxx_messageInfo_IndexPostfix.Size(m)
 }
+
 func (m *IndexPostfix) XXX_DiscardUnknown() {
 	xxx_messageInfo_IndexPostfix.DiscardUnknown(m)
 }
@@ -1601,18 +1740,23 @@ func (*IndexPostfix_IndexValue) ProtoMessage()    {}
 func (*IndexPostfix_IndexValue) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{10, 0}
 }
+
 func (m *IndexPostfix_IndexValue) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexPostfix_IndexValue.Unmarshal(m, b)
 }
+
 func (m *IndexPostfix_IndexValue) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_IndexPostfix_IndexValue.Marshal(b, m, deterministic)
 }
+
 func (dst *IndexPostfix_IndexValue) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_IndexPostfix_IndexValue.Merge(dst, src)
 }
+
 func (m *IndexPostfix_IndexValue) XXX_Size() int {
 	return xxx_messageInfo_IndexPostfix_IndexValue.Size(m)
 }
+
 func (m *IndexPostfix_IndexValue) XXX_DiscardUnknown() {
 	xxx_messageInfo_IndexPostfix_IndexValue.DiscardUnknown(m)
 }
@@ -1647,18 +1791,23 @@ func (*IndexPosition) ProtoMessage()    {}
 func (*IndexPosition) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{11}
 }
+
 func (m *IndexPosition) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexPosition.Unmarshal(m, b)
 }
+
 func (m *IndexPosition) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_IndexPosition.Marshal(b, m, deterministic)
 }
+
 func (dst *IndexPosition) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_IndexPosition.Merge(dst, src)
 }
+
 func (m *IndexPosition) XXX_Size() int {
 	return xxx_messageInfo_IndexPosition.Size(m)
 }
+
 func (m *IndexPosition) XXX_DiscardUnknown() {
 	xxx_messageInfo_IndexPosition.DiscardUnknown(m)
 }
@@ -1694,18 +1843,23 @@ func (*Snapshot) ProtoMessage()    {}
 func (*Snapshot) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{12}
 }
+
 func (m *Snapshot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Snapshot.Unmarshal(m, b)
 }
+
 func (m *Snapshot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Snapshot.Marshal(b, m, deterministic)
 }
+
 func (dst *Snapshot) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Snapshot.Merge(dst, src)
 }
+
 func (m *Snapshot) XXX_Size() int {
 	return xxx_messageInfo_Snapshot.Size(m)
 }
+
 func (m *Snapshot) XXX_DiscardUnknown() {
 	xxx_messageInfo_Snapshot.DiscardUnknown(m)
 }
@@ -1732,18 +1886,23 @@ func (*InternalHeader) ProtoMessage()    {}
 func (*InternalHeader) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{13}
 }
+
 func (m *InternalHeader) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InternalHeader.Unmarshal(m, b)
 }
+
 func (m *InternalHeader) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_InternalHeader.Marshal(b, m, deterministic)
 }
+
 func (dst *InternalHeader) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_InternalHeader.Merge(dst, src)
 }
+
 func (m *InternalHeader) XXX_Size() int {
 	return xxx_messageInfo_InternalHeader.Size(m)
 }
+
 func (m *InternalHeader) XXX_DiscardUnknown() {
 	xxx_messageInfo_InternalHeader.DiscardUnknown(m)
 }
@@ -1773,18 +1932,23 @@ func (*Transaction) ProtoMessage()    {}
 func (*Transaction) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{14}
 }
+
 func (m *Transaction) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Transaction.Unmarshal(m, b)
 }
+
 func (m *Transaction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Transaction.Marshal(b, m, deterministic)
 }
+
 func (dst *Transaction) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Transaction.Merge(dst, src)
 }
+
 func (m *Transaction) XXX_Size() int {
 	return xxx_messageInfo_Transaction.Size(m)
 }
+
 func (m *Transaction) XXX_DiscardUnknown() {
 	xxx_messageInfo_Transaction.DiscardUnknown(m)
 }
@@ -1860,29 +2024,36 @@ func (*Query) ProtoMessage()    {}
 func (*Query) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{15}
 }
+
 func (m *Query) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Query.Unmarshal(m, b)
 }
+
 func (m *Query) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Query.Marshal(b, m, deterministic)
 }
+
 func (dst *Query) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Query.Merge(dst, src)
 }
+
 func (m *Query) XXX_Size() int {
 	return xxx_messageInfo_Query.Size(m)
 }
+
 func (m *Query) XXX_DiscardUnknown() {
 	xxx_messageInfo_Query.DiscardUnknown(m)
 }
 
 var xxx_messageInfo_Query proto.InternalMessageInfo
 
-const Default_Query_Offset int32 = 0
-const Default_Query_RequirePerfectPlan bool = false
-const Default_Query_KeysOnly bool = false
-const Default_Query_Compile bool = false
-const Default_Query_PersistOffset bool = false
+const (
+	Default_Query_Offset             int32 = 0
+	Default_Query_RequirePerfectPlan bool  = false
+	Default_Query_KeysOnly           bool  = false
+	Default_Query_Compile            bool  = false
+	Default_Query_PersistOffset      bool  = false
+)
 
 func (m *Query) GetHeader() *InternalHeader {
 	if m != nil {
@@ -2087,18 +2258,23 @@ func (*Query_Filter) ProtoMessage()    {}
 func (*Query_Filter) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{15, 0}
 }
+
 func (m *Query_Filter) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Query_Filter.Unmarshal(m, b)
 }
+
 func (m *Query_Filter) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Query_Filter.Marshal(b, m, deterministic)
 }
+
 func (dst *Query_Filter) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Query_Filter.Merge(dst, src)
 }
+
 func (m *Query_Filter) XXX_Size() int {
 	return xxx_messageInfo_Query_Filter.Size(m)
 }
+
 func (m *Query_Filter) XXX_DiscardUnknown() {
 	xxx_messageInfo_Query_Filter.DiscardUnknown(m)
 }
@@ -2133,18 +2309,23 @@ func (*Query_Order) ProtoMessage()    {}
 func (*Query_Order) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{15, 1}
 }
+
 func (m *Query_Order) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Query_Order.Unmarshal(m, b)
 }
+
 func (m *Query_Order) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Query_Order.Marshal(b, m, deterministic)
 }
+
 func (dst *Query_Order) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Query_Order.Merge(dst, src)
 }
+
 func (m *Query_Order) XXX_Size() int {
 	return xxx_messageInfo_Query_Order.Size(m)
 }
+
 func (m *Query_Order) XXX_DiscardUnknown() {
 	xxx_messageInfo_Query_Order.DiscardUnknown(m)
 }
@@ -2188,18 +2369,23 @@ func (*CompiledQuery) ProtoMessage()    {}
 func (*CompiledQuery) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{16}
 }
+
 func (m *CompiledQuery) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompiledQuery.Unmarshal(m, b)
 }
+
 func (m *CompiledQuery) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompiledQuery.Marshal(b, m, deterministic)
 }
+
 func (dst *CompiledQuery) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CompiledQuery.Merge(dst, src)
 }
+
 func (m *CompiledQuery) XXX_Size() int {
 	return xxx_messageInfo_CompiledQuery.Size(m)
 }
+
 func (m *CompiledQuery) XXX_DiscardUnknown() {
 	xxx_messageInfo_CompiledQuery.DiscardUnknown(m)
 }
@@ -2291,18 +2477,23 @@ func (*CompiledQuery_PrimaryScan) ProtoMessage()    {}
 func (*CompiledQuery_PrimaryScan) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{16, 0}
 }
+
 func (m *CompiledQuery_PrimaryScan) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompiledQuery_PrimaryScan.Unmarshal(m, b)
 }
+
 func (m *CompiledQuery_PrimaryScan) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompiledQuery_PrimaryScan.Marshal(b, m, deterministic)
 }
+
 func (dst *CompiledQuery_PrimaryScan) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CompiledQuery_PrimaryScan.Merge(dst, src)
 }
+
 func (m *CompiledQuery_PrimaryScan) XXX_Size() int {
 	return xxx_messageInfo_CompiledQuery_PrimaryScan.Size(m)
 }
+
 func (m *CompiledQuery_PrimaryScan) XXX_DiscardUnknown() {
 	xxx_messageInfo_CompiledQuery_PrimaryScan.DiscardUnknown(m)
 }
@@ -2380,18 +2571,23 @@ func (*CompiledQuery_MergeJoinScan) ProtoMessage()    {}
 func (*CompiledQuery_MergeJoinScan) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{16, 1}
 }
+
 func (m *CompiledQuery_MergeJoinScan) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompiledQuery_MergeJoinScan.Unmarshal(m, b)
 }
+
 func (m *CompiledQuery_MergeJoinScan) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompiledQuery_MergeJoinScan.Marshal(b, m, deterministic)
 }
+
 func (dst *CompiledQuery_MergeJoinScan) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CompiledQuery_MergeJoinScan.Merge(dst, src)
 }
+
 func (m *CompiledQuery_MergeJoinScan) XXX_Size() int {
 	return xxx_messageInfo_CompiledQuery_MergeJoinScan.Size(m)
 }
+
 func (m *CompiledQuery_MergeJoinScan) XXX_DiscardUnknown() {
 	xxx_messageInfo_CompiledQuery_MergeJoinScan.DiscardUnknown(m)
 }
@@ -2436,18 +2632,23 @@ func (*CompiledQuery_EntityFilter) ProtoMessage()    {}
 func (*CompiledQuery_EntityFilter) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{16, 2}
 }
+
 func (m *CompiledQuery_EntityFilter) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompiledQuery_EntityFilter.Unmarshal(m, b)
 }
+
 func (m *CompiledQuery_EntityFilter) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompiledQuery_EntityFilter.Marshal(b, m, deterministic)
 }
+
 func (dst *CompiledQuery_EntityFilter) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CompiledQuery_EntityFilter.Merge(dst, src)
 }
+
 func (m *CompiledQuery_EntityFilter) XXX_Size() int {
 	return xxx_messageInfo_CompiledQuery_EntityFilter.Size(m)
 }
+
 func (m *CompiledQuery_EntityFilter) XXX_DiscardUnknown() {
 	xxx_messageInfo_CompiledQuery_EntityFilter.DiscardUnknown(m)
 }
@@ -2490,18 +2691,23 @@ func (*CompiledCursor) ProtoMessage()    {}
 func (*CompiledCursor) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{17}
 }
+
 func (m *CompiledCursor) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompiledCursor.Unmarshal(m, b)
 }
+
 func (m *CompiledCursor) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompiledCursor.Marshal(b, m, deterministic)
 }
+
 func (dst *CompiledCursor) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CompiledCursor.Merge(dst, src)
 }
+
 func (m *CompiledCursor) XXX_Size() int {
 	return xxx_messageInfo_CompiledCursor.Size(m)
 }
+
 func (m *CompiledCursor) XXX_DiscardUnknown() {
 	xxx_messageInfo_CompiledCursor.DiscardUnknown(m)
 }
@@ -2531,18 +2737,23 @@ func (*CompiledCursor_Position) ProtoMessage()    {}
 func (*CompiledCursor_Position) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{17, 0}
 }
+
 func (m *CompiledCursor_Position) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompiledCursor_Position.Unmarshal(m, b)
 }
+
 func (m *CompiledCursor_Position) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompiledCursor_Position.Marshal(b, m, deterministic)
 }
+
 func (dst *CompiledCursor_Position) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CompiledCursor_Position.Merge(dst, src)
 }
+
 func (m *CompiledCursor_Position) XXX_Size() int {
 	return xxx_messageInfo_CompiledCursor_Position.Size(m)
 }
+
 func (m *CompiledCursor_Position) XXX_DiscardUnknown() {
 	xxx_messageInfo_CompiledCursor_Position.DiscardUnknown(m)
 }
@@ -2593,18 +2804,23 @@ func (*CompiledCursor_Position_IndexValue) ProtoMessage()    {}
 func (*CompiledCursor_Position_IndexValue) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{17, 0, 0}
 }
+
 func (m *CompiledCursor_Position_IndexValue) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompiledCursor_Position_IndexValue.Unmarshal(m, b)
 }
+
 func (m *CompiledCursor_Position_IndexValue) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompiledCursor_Position_IndexValue.Marshal(b, m, deterministic)
 }
+
 func (dst *CompiledCursor_Position_IndexValue) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CompiledCursor_Position_IndexValue.Merge(dst, src)
 }
+
 func (m *CompiledCursor_Position_IndexValue) XXX_Size() int {
 	return xxx_messageInfo_CompiledCursor_Position_IndexValue.Size(m)
 }
+
 func (m *CompiledCursor_Position_IndexValue) XXX_DiscardUnknown() {
 	xxx_messageInfo_CompiledCursor_Position_IndexValue.DiscardUnknown(m)
 }
@@ -2639,18 +2855,23 @@ func (*Cursor) ProtoMessage()    {}
 func (*Cursor) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{18}
 }
+
 func (m *Cursor) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Cursor.Unmarshal(m, b)
 }
+
 func (m *Cursor) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Cursor.Marshal(b, m, deterministic)
 }
+
 func (dst *Cursor) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Cursor.Merge(dst, src)
 }
+
 func (m *Cursor) XXX_Size() int {
 	return xxx_messageInfo_Cursor.Size(m)
 }
+
 func (m *Cursor) XXX_DiscardUnknown() {
 	xxx_messageInfo_Cursor.DiscardUnknown(m)
 }
@@ -2683,18 +2904,23 @@ func (*Error) ProtoMessage()    {}
 func (*Error) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{19}
 }
+
 func (m *Error) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Error.Unmarshal(m, b)
 }
+
 func (m *Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Error.Marshal(b, m, deterministic)
 }
+
 func (dst *Error) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Error.Merge(dst, src)
 }
+
 func (m *Error) XXX_Size() int {
 	return xxx_messageInfo_Error.Size(m)
 }
+
 func (m *Error) XXX_DiscardUnknown() {
 	xxx_messageInfo_Error.DiscardUnknown(m)
 }
@@ -2720,18 +2946,23 @@ func (*Cost) ProtoMessage()    {}
 func (*Cost) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{20}
 }
+
 func (m *Cost) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Cost.Unmarshal(m, b)
 }
+
 func (m *Cost) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Cost.Marshal(b, m, deterministic)
 }
+
 func (dst *Cost) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Cost.Merge(dst, src)
 }
+
 func (m *Cost) XXX_Size() int {
 	return xxx_messageInfo_Cost.Size(m)
 }
+
 func (m *Cost) XXX_DiscardUnknown() {
 	xxx_messageInfo_Cost.DiscardUnknown(m)
 }
@@ -2801,18 +3032,23 @@ func (*Cost_CommitCost) ProtoMessage()    {}
 func (*Cost_CommitCost) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{20, 0}
 }
+
 func (m *Cost_CommitCost) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Cost_CommitCost.Unmarshal(m, b)
 }
+
 func (m *Cost_CommitCost) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Cost_CommitCost.Marshal(b, m, deterministic)
 }
+
 func (dst *Cost_CommitCost) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Cost_CommitCost.Merge(dst, src)
 }
+
 func (m *Cost_CommitCost) XXX_Size() int {
 	return xxx_messageInfo_Cost_CommitCost.Size(m)
 }
+
 func (m *Cost_CommitCost) XXX_DiscardUnknown() {
 	xxx_messageInfo_Cost_CommitCost.DiscardUnknown(m)
 }
@@ -2851,18 +3087,23 @@ func (*GetRequest) ProtoMessage()    {}
 func (*GetRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{21}
 }
+
 func (m *GetRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetRequest.Unmarshal(m, b)
 }
+
 func (m *GetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_GetRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *GetRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_GetRequest.Merge(dst, src)
 }
+
 func (m *GetRequest) XXX_Size() int {
 	return xxx_messageInfo_GetRequest.Size(m)
 }
+
 func (m *GetRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_GetRequest.DiscardUnknown(m)
 }
@@ -2928,18 +3169,23 @@ func (*GetResponse) ProtoMessage()    {}
 func (*GetResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{22}
 }
+
 func (m *GetResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetResponse.Unmarshal(m, b)
 }
+
 func (m *GetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_GetResponse.Marshal(b, m, deterministic)
 }
+
 func (dst *GetResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_GetResponse.Merge(dst, src)
 }
+
 func (m *GetResponse) XXX_Size() int {
 	return xxx_messageInfo_GetResponse.Size(m)
 }
+
 func (m *GetResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_GetResponse.DiscardUnknown(m)
 }
@@ -2984,18 +3230,23 @@ func (*GetResponse_Entity) ProtoMessage()    {}
 func (*GetResponse_Entity) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{22, 0}
 }
+
 func (m *GetResponse_Entity) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetResponse_Entity.Unmarshal(m, b)
 }
+
 func (m *GetResponse_Entity) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_GetResponse_Entity.Marshal(b, m, deterministic)
 }
+
 func (dst *GetResponse_Entity) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_GetResponse_Entity.Merge(dst, src)
 }
+
 func (m *GetResponse_Entity) XXX_Size() int {
 	return xxx_messageInfo_GetResponse_Entity.Size(m)
 }
+
 func (m *GetResponse_Entity) XXX_DiscardUnknown() {
 	xxx_messageInfo_GetResponse_Entity.DiscardUnknown(m)
 }
@@ -3044,28 +3295,35 @@ func (*PutRequest) ProtoMessage()    {}
 func (*PutRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{23}
 }
+
 func (m *PutRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PutRequest.Unmarshal(m, b)
 }
+
 func (m *PutRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PutRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *PutRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_PutRequest.Merge(dst, src)
 }
+
 func (m *PutRequest) XXX_Size() int {
 	return xxx_messageInfo_PutRequest.Size(m)
 }
+
 func (m *PutRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_PutRequest.DiscardUnknown(m)
 }
 
 var xxx_messageInfo_PutRequest proto.InternalMessageInfo
 
-const Default_PutRequest_Trusted bool = false
-const Default_PutRequest_Force bool = false
-const Default_PutRequest_MarkChanges bool = false
-const Default_PutRequest_AutoIdPolicy PutRequest_AutoIdPolicy = PutRequest_CURRENT
+const (
+	Default_PutRequest_Trusted      bool                    = false
+	Default_PutRequest_Force        bool                    = false
+	Default_PutRequest_MarkChanges  bool                    = false
+	Default_PutRequest_AutoIdPolicy PutRequest_AutoIdPolicy = PutRequest_CURRENT
+)
 
 func (m *PutRequest) GetHeader() *InternalHeader {
 	if m != nil {
@@ -3145,18 +3403,23 @@ func (*PutResponse) ProtoMessage()    {}
 func (*PutResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{24}
 }
+
 func (m *PutResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PutResponse.Unmarshal(m, b)
 }
+
 func (m *PutResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PutResponse.Marshal(b, m, deterministic)
 }
+
 func (dst *PutResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_PutResponse.Merge(dst, src)
 }
+
 func (m *PutResponse) XXX_Size() int {
 	return xxx_messageInfo_PutResponse.Size(m)
 }
+
 func (m *PutResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_PutResponse.DiscardUnknown(m)
 }
@@ -3201,18 +3464,23 @@ func (*TouchRequest) ProtoMessage()    {}
 func (*TouchRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{25}
 }
+
 func (m *TouchRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TouchRequest.Unmarshal(m, b)
 }
+
 func (m *TouchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_TouchRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *TouchRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_TouchRequest.Merge(dst, src)
 }
+
 func (m *TouchRequest) XXX_Size() int {
 	return xxx_messageInfo_TouchRequest.Size(m)
 }
+
 func (m *TouchRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_TouchRequest.DiscardUnknown(m)
 }
@@ -3269,18 +3537,23 @@ func (*TouchResponse) ProtoMessage()    {}
 func (*TouchResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{26}
 }
+
 func (m *TouchResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TouchResponse.Unmarshal(m, b)
 }
+
 func (m *TouchResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_TouchResponse.Marshal(b, m, deterministic)
 }
+
 func (dst *TouchResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_TouchResponse.Merge(dst, src)
 }
+
 func (m *TouchResponse) XXX_Size() int {
 	return xxx_messageInfo_TouchResponse.Size(m)
 }
+
 func (m *TouchResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_TouchResponse.DiscardUnknown(m)
 }
@@ -3313,27 +3586,34 @@ func (*DeleteRequest) ProtoMessage()    {}
 func (*DeleteRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{27}
 }
+
 func (m *DeleteRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteRequest.Unmarshal(m, b)
 }
+
 func (m *DeleteRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_DeleteRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *DeleteRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_DeleteRequest.Merge(dst, src)
 }
+
 func (m *DeleteRequest) XXX_Size() int {
 	return xxx_messageInfo_DeleteRequest.Size(m)
 }
+
 func (m *DeleteRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_DeleteRequest.DiscardUnknown(m)
 }
 
 var xxx_messageInfo_DeleteRequest proto.InternalMessageInfo
 
-const Default_DeleteRequest_Trusted bool = false
-const Default_DeleteRequest_Force bool = false
-const Default_DeleteRequest_MarkChanges bool = false
+const (
+	Default_DeleteRequest_Trusted     bool = false
+	Default_DeleteRequest_Force       bool = false
+	Default_DeleteRequest_MarkChanges bool = false
+)
 
 func (m *DeleteRequest) GetHeader() *InternalHeader {
 	if m != nil {
@@ -3398,18 +3678,23 @@ func (*DeleteResponse) ProtoMessage()    {}
 func (*DeleteResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{28}
 }
+
 func (m *DeleteResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteResponse.Unmarshal(m, b)
 }
+
 func (m *DeleteResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_DeleteResponse.Marshal(b, m, deterministic)
 }
+
 func (dst *DeleteResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_DeleteResponse.Merge(dst, src)
 }
+
 func (m *DeleteResponse) XXX_Size() int {
 	return xxx_messageInfo_DeleteResponse.Size(m)
 }
+
 func (m *DeleteResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_DeleteResponse.DiscardUnknown(m)
 }
@@ -3447,26 +3732,33 @@ func (*NextRequest) ProtoMessage()    {}
 func (*NextRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{29}
 }
+
 func (m *NextRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NextRequest.Unmarshal(m, b)
 }
+
 func (m *NextRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_NextRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *NextRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_NextRequest.Merge(dst, src)
 }
+
 func (m *NextRequest) XXX_Size() int {
 	return xxx_messageInfo_NextRequest.Size(m)
 }
+
 func (m *NextRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_NextRequest.DiscardUnknown(m)
 }
 
 var xxx_messageInfo_NextRequest proto.InternalMessageInfo
 
-const Default_NextRequest_Offset int32 = 0
-const Default_NextRequest_Compile bool = false
+const (
+	Default_NextRequest_Offset  int32 = 0
+	Default_NextRequest_Compile bool  = false
+)
 
 func (m *NextRequest) GetHeader() *InternalHeader {
 	if m != nil {
@@ -3526,18 +3818,23 @@ func (*QueryResult) ProtoMessage()    {}
 func (*QueryResult) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{30}
 }
+
 func (m *QueryResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryResult.Unmarshal(m, b)
 }
+
 func (m *QueryResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_QueryResult.Marshal(b, m, deterministic)
 }
+
 func (dst *QueryResult) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_QueryResult.Merge(dst, src)
 }
+
 func (m *QueryResult) XXX_Size() int {
 	return xxx_messageInfo_QueryResult.Size(m)
 }
+
 func (m *QueryResult) XXX_DiscardUnknown() {
 	xxx_messageInfo_QueryResult.DiscardUnknown(m)
 }
@@ -3638,18 +3935,23 @@ func (*AllocateIdsRequest) ProtoMessage()    {}
 func (*AllocateIdsRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{31}
 }
+
 func (m *AllocateIdsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AllocateIdsRequest.Unmarshal(m, b)
 }
+
 func (m *AllocateIdsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AllocateIdsRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *AllocateIdsRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_AllocateIdsRequest.Merge(dst, src)
 }
+
 func (m *AllocateIdsRequest) XXX_Size() int {
 	return xxx_messageInfo_AllocateIdsRequest.Size(m)
 }
+
 func (m *AllocateIdsRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_AllocateIdsRequest.DiscardUnknown(m)
 }
@@ -3706,18 +4008,23 @@ func (*AllocateIdsResponse) ProtoMessage()    {}
 func (*AllocateIdsResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{32}
 }
+
 func (m *AllocateIdsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AllocateIdsResponse.Unmarshal(m, b)
 }
+
 func (m *AllocateIdsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AllocateIdsResponse.Marshal(b, m, deterministic)
 }
+
 func (dst *AllocateIdsResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_AllocateIdsResponse.Merge(dst, src)
 }
+
 func (m *AllocateIdsResponse) XXX_Size() int {
 	return xxx_messageInfo_AllocateIdsResponse.Size(m)
 }
+
 func (m *AllocateIdsResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_AllocateIdsResponse.DiscardUnknown(m)
 }
@@ -3758,18 +4065,23 @@ func (*CompositeIndices) ProtoMessage()    {}
 func (*CompositeIndices) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{33}
 }
+
 func (m *CompositeIndices) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompositeIndices.Unmarshal(m, b)
 }
+
 func (m *CompositeIndices) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompositeIndices.Marshal(b, m, deterministic)
 }
+
 func (dst *CompositeIndices) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CompositeIndices.Merge(dst, src)
 }
+
 func (m *CompositeIndices) XXX_Size() int {
 	return xxx_messageInfo_CompositeIndices.Size(m)
 }
+
 func (m *CompositeIndices) XXX_DiscardUnknown() {
 	xxx_messageInfo_CompositeIndices.DiscardUnknown(m)
 }
@@ -3798,18 +4110,23 @@ func (*AddActionsRequest) ProtoMessage()    {}
 func (*AddActionsRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{34}
 }
+
 func (m *AddActionsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddActionsRequest.Unmarshal(m, b)
 }
+
 func (m *AddActionsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AddActionsRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *AddActionsRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_AddActionsRequest.Merge(dst, src)
 }
+
 func (m *AddActionsRequest) XXX_Size() int {
 	return xxx_messageInfo_AddActionsRequest.Size(m)
 }
+
 func (m *AddActionsRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_AddActionsRequest.DiscardUnknown(m)
 }
@@ -3849,18 +4166,23 @@ func (*AddActionsResponse) ProtoMessage()    {}
 func (*AddActionsResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{35}
 }
+
 func (m *AddActionsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddActionsResponse.Unmarshal(m, b)
 }
+
 func (m *AddActionsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AddActionsResponse.Marshal(b, m, deterministic)
 }
+
 func (dst *AddActionsResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_AddActionsResponse.Merge(dst, src)
 }
+
 func (m *AddActionsResponse) XXX_Size() int {
 	return xxx_messageInfo_AddActionsResponse.Size(m)
 }
+
 func (m *AddActionsResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_AddActionsResponse.DiscardUnknown(m)
 }
@@ -3885,26 +4207,33 @@ func (*BeginTransactionRequest) ProtoMessage()    {}
 func (*BeginTransactionRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{36}
 }
+
 func (m *BeginTransactionRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BeginTransactionRequest.Unmarshal(m, b)
 }
+
 func (m *BeginTransactionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_BeginTransactionRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *BeginTransactionRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_BeginTransactionRequest.Merge(dst, src)
 }
+
 func (m *BeginTransactionRequest) XXX_Size() int {
 	return xxx_messageInfo_BeginTransactionRequest.Size(m)
 }
+
 func (m *BeginTransactionRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_BeginTransactionRequest.DiscardUnknown(m)
 }
 
 var xxx_messageInfo_BeginTransactionRequest proto.InternalMessageInfo
 
-const Default_BeginTransactionRequest_AllowMultipleEg bool = false
-const Default_BeginTransactionRequest_Mode BeginTransactionRequest_TransactionMode = BeginTransactionRequest_UNKNOWN
+const (
+	Default_BeginTransactionRequest_AllowMultipleEg bool                                    = false
+	Default_BeginTransactionRequest_Mode            BeginTransactionRequest_TransactionMode = BeginTransactionRequest_UNKNOWN
+)
 
 func (m *BeginTransactionRequest) GetHeader() *InternalHeader {
 	if m != nil {
@@ -3962,18 +4291,23 @@ func (*CommitResponse) ProtoMessage()    {}
 func (*CommitResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{37}
 }
+
 func (m *CommitResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CommitResponse.Unmarshal(m, b)
 }
+
 func (m *CommitResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CommitResponse.Marshal(b, m, deterministic)
 }
+
 func (dst *CommitResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CommitResponse.Merge(dst, src)
 }
+
 func (m *CommitResponse) XXX_Size() int {
 	return xxx_messageInfo_CommitResponse.Size(m)
 }
+
 func (m *CommitResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_CommitResponse.DiscardUnknown(m)
 }
@@ -4008,18 +4342,23 @@ func (*CommitResponse_Version) ProtoMessage()    {}
 func (*CommitResponse_Version) Descriptor() ([]byte, []int) {
 	return fileDescriptor_datastore_v3_83b17b80c34f6179, []int{37, 0}
 }
+
 func (m *CommitResponse_Version) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CommitResponse_Version.Unmarshal(m, b)
 }
+
 func (m *CommitResponse_Version) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CommitResponse_Version.Marshal(b, m, deterministic)
 }
+
 func (dst *CommitResponse_Version) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CommitResponse_Version.Merge(dst, src)
 }
+
 func (m *CommitResponse_Version) XXX_Size() int {
 	return xxx_messageInfo_CommitResponse_Version.Size(m)
 }
+
 func (m *CommitResponse_Version) XXX_DiscardUnknown() {
 	xxx_messageInfo_CommitResponse_Version.DiscardUnknown(m)
 }

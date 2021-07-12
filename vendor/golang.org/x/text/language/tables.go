@@ -18,6 +18,7 @@ const (
 	_mul = 806
 	_und = 0
 )
+
 const (
 	_001 = 1
 	_419 = 31
@@ -34,6 +35,7 @@ const (
 	_XC  = 325
 	_XK  = 333
 )
+
 const (
 	_Latn = 90
 	_Hani = 57
@@ -102,9 +104,9 @@ var regionToGroups = []uint8{ // 358 elements
 } // Size: 382 bytes
 
 var paradigmLocales = [][3]uint16{ // 3 elements
-	0: [3]uint16{0x139, 0x0, 0x7b},
-	1: [3]uint16{0x13e, 0x0, 0x1f},
-	2: [3]uint16{0x3c0, 0x41, 0xee},
+	0: {0x139, 0x0, 0x7b},
+	1: {0x13e, 0x0, 0x1f},
+	2: {0x3c0, 0x41, 0xee},
 } // Size: 42 bytes
 
 type mutualIntelligibility struct {
@@ -113,6 +115,7 @@ type mutualIntelligibility struct {
 	distance uint8
 	oneway   bool
 }
+
 type scriptIntelligibility struct {
 	wantLang   uint16
 	haveLang   uint16
@@ -120,6 +123,7 @@ type scriptIntelligibility struct {
 	haveScript uint8
 	distance   uint8
 }
+
 type regionIntelligibility struct {
 	lang     uint16
 	script   uint8

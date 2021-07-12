@@ -27,10 +27,8 @@ import (
 	"gopkg.in/tomb.v1"
 )
 
-var (
-	// ErrStop is returned when the tail of a file has been marked to be stopped.
-	ErrStop = errors.New("tail should now stop")
-)
+// ErrStop is returned when the tail of a file has been marked to be stopped.
+var ErrStop = errors.New("tail should now stop")
 
 type Line struct {
 	Text     string    // The contents of the file

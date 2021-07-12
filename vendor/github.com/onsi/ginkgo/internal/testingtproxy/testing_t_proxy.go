@@ -5,10 +5,12 @@ import (
 	"io"
 )
 
-type failFunc func(message string, callerSkip ...int)
-type skipFunc func(message string, callerSkip ...int)
-type failedFunc func() bool
-type nameFunc func() string
+type (
+	failFunc   func(message string, callerSkip ...int)
+	skipFunc   func(message string, callerSkip ...int)
+	failedFunc func() bool
+	nameFunc   func() string
+)
 
 func New(writer io.Writer, fail failFunc, skip skipFunc, failed failedFunc, name nameFunc, offset int) *ginkgoTestingTProxy {
 	return &ginkgoTestingTProxy{

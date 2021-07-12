@@ -22,9 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var _ Reader = &typedClient{}
-var _ Writer = &typedClient{}
-var _ StatusWriter = &typedClient{}
+var (
+	_ Reader       = &typedClient{}
+	_ Writer       = &typedClient{}
+	_ StatusWriter = &typedClient{}
+)
 
 // client is a client.Client that reads and writes directly from/to an API server.  It lazily initializes
 // new clients at the time they are used, and caches the client.

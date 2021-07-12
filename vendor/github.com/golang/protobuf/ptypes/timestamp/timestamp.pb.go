@@ -4,10 +4,11 @@
 package timestamp
 
 import (
+	reflect "reflect"
+
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-	reflect "reflect"
 )
 
 // Symbols defined in public import of google/protobuf/timestamp.proto.
@@ -30,14 +31,16 @@ var file_github_com_golang_protobuf_ptypes_timestamp_timestamp_proto_rawDesc = [
 	0x33,
 }
 
-var file_github_com_golang_protobuf_ptypes_timestamp_timestamp_proto_goTypes = []interface{}{}
-var file_github_com_golang_protobuf_ptypes_timestamp_timestamp_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
-}
+var (
+	file_github_com_golang_protobuf_ptypes_timestamp_timestamp_proto_goTypes = []interface{}{}
+	file_github_com_golang_protobuf_ptypes_timestamp_timestamp_proto_depIdxs = []int32{
+		0, // [0:0] is the sub-list for method output_type
+		0, // [0:0] is the sub-list for method input_type
+		0, // [0:0] is the sub-list for extension type_name
+		0, // [0:0] is the sub-list for extension extendee
+		0, // [0:0] is the sub-list for field type_name
+	}
+)
 
 func init() { file_github_com_golang_protobuf_ptypes_timestamp_timestamp_proto_init() }
 func file_github_com_golang_protobuf_ptypes_timestamp_timestamp_proto_init() {

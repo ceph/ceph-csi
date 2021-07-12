@@ -21,11 +21,12 @@
 package gnostic_extension_v1
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	anypb "google.golang.org/protobuf/types/known/anypb"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -366,14 +367,17 @@ func file_extensions_extension_proto_rawDescGZIP() []byte {
 	return file_extensions_extension_proto_rawDescData
 }
 
-var file_extensions_extension_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-var file_extensions_extension_proto_goTypes = []interface{}{
-	(*Version)(nil),                  // 0: gnostic.extension.v1.Version
-	(*ExtensionHandlerRequest)(nil),  // 1: gnostic.extension.v1.ExtensionHandlerRequest
-	(*ExtensionHandlerResponse)(nil), // 2: gnostic.extension.v1.ExtensionHandlerResponse
-	(*Wrapper)(nil),                  // 3: gnostic.extension.v1.Wrapper
-	(*anypb.Any)(nil),                // 4: google.protobuf.Any
-}
+var (
+	file_extensions_extension_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+	file_extensions_extension_proto_goTypes  = []interface{}{
+		(*Version)(nil),                  // 0: gnostic.extension.v1.Version
+		(*ExtensionHandlerRequest)(nil),  // 1: gnostic.extension.v1.ExtensionHandlerRequest
+		(*ExtensionHandlerResponse)(nil), // 2: gnostic.extension.v1.ExtensionHandlerResponse
+		(*Wrapper)(nil),                  // 3: gnostic.extension.v1.Wrapper
+		(*anypb.Any)(nil),                // 4: google.protobuf.Any
+	}
+)
+
 var file_extensions_extension_proto_depIdxs = []int32{
 	3, // 0: gnostic.extension.v1.ExtensionHandlerRequest.wrapper:type_name -> gnostic.extension.v1.Wrapper
 	0, // 1: gnostic.extension.v1.ExtensionHandlerRequest.compiler_version:type_name -> gnostic.extension.v1.Version

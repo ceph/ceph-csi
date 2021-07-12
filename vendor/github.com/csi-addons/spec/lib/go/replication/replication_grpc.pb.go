@@ -4,6 +4,7 @@ package replication
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -101,21 +102,24 @@ type ControllerServer interface {
 }
 
 // UnimplementedControllerServer must be embedded to have forward compatible implementations.
-type UnimplementedControllerServer struct {
-}
+type UnimplementedControllerServer struct{}
 
 func (UnimplementedControllerServer) EnableVolumeReplication(context.Context, *EnableVolumeReplicationRequest) (*EnableVolumeReplicationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EnableVolumeReplication not implemented")
 }
+
 func (UnimplementedControllerServer) DisableVolumeReplication(context.Context, *DisableVolumeReplicationRequest) (*DisableVolumeReplicationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DisableVolumeReplication not implemented")
 }
+
 func (UnimplementedControllerServer) PromoteVolume(context.Context, *PromoteVolumeRequest) (*PromoteVolumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PromoteVolume not implemented")
 }
+
 func (UnimplementedControllerServer) DemoteVolume(context.Context, *DemoteVolumeRequest) (*DemoteVolumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DemoteVolume not implemented")
 }
+
 func (UnimplementedControllerServer) ResyncVolume(context.Context, *ResyncVolumeRequest) (*ResyncVolumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResyncVolume not implemented")
 }

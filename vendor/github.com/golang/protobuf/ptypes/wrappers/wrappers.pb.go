@@ -4,23 +4,26 @@
 package wrappers
 
 import (
+	reflect "reflect"
+
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
-	reflect "reflect"
 )
 
 // Symbols defined in public import of google/protobuf/wrappers.proto.
 
-type DoubleValue = wrapperspb.DoubleValue
-type FloatValue = wrapperspb.FloatValue
-type Int64Value = wrapperspb.Int64Value
-type UInt64Value = wrapperspb.UInt64Value
-type Int32Value = wrapperspb.Int32Value
-type UInt32Value = wrapperspb.UInt32Value
-type BoolValue = wrapperspb.BoolValue
-type StringValue = wrapperspb.StringValue
-type BytesValue = wrapperspb.BytesValue
+type (
+	DoubleValue = wrapperspb.DoubleValue
+	FloatValue  = wrapperspb.FloatValue
+	Int64Value  = wrapperspb.Int64Value
+	UInt64Value = wrapperspb.UInt64Value
+	Int32Value  = wrapperspb.Int32Value
+	UInt32Value = wrapperspb.UInt32Value
+	BoolValue   = wrapperspb.BoolValue
+	StringValue = wrapperspb.StringValue
+	BytesValue  = wrapperspb.BytesValue
+)
 
 var File_github_com_golang_protobuf_ptypes_wrappers_wrappers_proto protoreflect.FileDescriptor
 
@@ -37,14 +40,16 @@ var file_github_com_golang_protobuf_ptypes_wrappers_wrappers_proto_rawDesc = []b
 	0x72, 0x73, 0x50, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
-var file_github_com_golang_protobuf_ptypes_wrappers_wrappers_proto_goTypes = []interface{}{}
-var file_github_com_golang_protobuf_ptypes_wrappers_wrappers_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
-}
+var (
+	file_github_com_golang_protobuf_ptypes_wrappers_wrappers_proto_goTypes = []interface{}{}
+	file_github_com_golang_protobuf_ptypes_wrappers_wrappers_proto_depIdxs = []int32{
+		0, // [0:0] is the sub-list for method output_type
+		0, // [0:0] is the sub-list for method input_type
+		0, // [0:0] is the sub-list for extension type_name
+		0, // [0:0] is the sub-list for extension extendee
+		0, // [0:0] is the sub-list for field type_name
+	}
+)
 
 func init() { file_github_com_golang_protobuf_ptypes_wrappers_wrappers_proto_init() }
 func file_github_com_golang_protobuf_ptypes_wrappers_wrappers_proto_init() {

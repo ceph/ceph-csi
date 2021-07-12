@@ -34,9 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics"
 )
 
-var (
-	errUnableToEncodeResponse = errors.New("unable to encode response")
-)
+var errUnableToEncodeResponse = errors.New("unable to encode response")
 
 // Request defines the input for an admission handler.
 // It contains information to identify the object in

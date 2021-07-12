@@ -49,15 +49,13 @@ const (
 	blockSize4M
 )
 
-var (
-	// Keep a pool of buffers for each valid block sizes.
-	bsMapValue = [...]*sync.Pool{
-		newBufferPool(2 * blockSize64K),
-		newBufferPool(2 * blockSize256K),
-		newBufferPool(2 * blockSize1M),
-		newBufferPool(2 * blockSize4M),
-	}
-)
+// Keep a pool of buffers for each valid block sizes.
+var bsMapValue = [...]*sync.Pool{
+	newBufferPool(2 * blockSize64K),
+	newBufferPool(2 * blockSize256K),
+	newBufferPool(2 * blockSize1M),
+	newBufferPool(2 * blockSize4M),
+}
 
 // newBufferPool returns a pool for buffers of the given size.
 func newBufferPool(size int) *sync.Pool {
@@ -81,14 +79,17 @@ func putBuffer(size int, buf []byte) {
 		bsMapValue[idx].Put(buf[:cap(buf)])
 	}
 }
+
 func blockSizeIndexToValue(i byte) int {
 	return 1 << (16 + 2*uint(i))
 }
+
 func isValidBlockSize(size int) bool {
 	const blockSizeMask = blockSize64K | blockSize256K | blockSize1M | blockSize4M
 
 	return size&blockSizeMask > 0 && bits.OnesCount(uint(size)) == 1
 }
+
 func blockSizeValueToIndex(size int) byte {
 	return 4 + byte(bits.TrailingZeros(uint(size)>>16)/2)
 }

@@ -22,10 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var (
-	// RuntimeLog is a base parent logger for use inside controller-runtime.
-	RuntimeLog logr.Logger
-)
+// RuntimeLog is a base parent logger for use inside controller-runtime.
+var RuntimeLog logr.Logger
 
 func init() {
 	RuntimeLog = log.Log.WithName("controller-runtime")

@@ -7,12 +7,13 @@
 package replication
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	proto "github.com/golang/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -842,30 +843,33 @@ func file_replication_proto_rawDescGZIP() []byte {
 	return file_replication_proto_rawDescData
 }
 
-var file_replication_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
-var file_replication_proto_goTypes = []interface{}{
-	(*EnableVolumeReplicationRequest)(nil),   // 0: replication.EnableVolumeReplicationRequest
-	(*EnableVolumeReplicationResponse)(nil),  // 1: replication.EnableVolumeReplicationResponse
-	(*DisableVolumeReplicationRequest)(nil),  // 2: replication.DisableVolumeReplicationRequest
-	(*DisableVolumeReplicationResponse)(nil), // 3: replication.DisableVolumeReplicationResponse
-	(*PromoteVolumeRequest)(nil),             // 4: replication.PromoteVolumeRequest
-	(*PromoteVolumeResponse)(nil),            // 5: replication.PromoteVolumeResponse
-	(*DemoteVolumeRequest)(nil),              // 6: replication.DemoteVolumeRequest
-	(*DemoteVolumeResponse)(nil),             // 7: replication.DemoteVolumeResponse
-	(*ResyncVolumeRequest)(nil),              // 8: replication.ResyncVolumeRequest
-	(*ResyncVolumeResponse)(nil),             // 9: replication.ResyncVolumeResponse
-	nil,                                      // 10: replication.EnableVolumeReplicationRequest.ParametersEntry
-	nil,                                      // 11: replication.EnableVolumeReplicationRequest.SecretsEntry
-	nil,                                      // 12: replication.DisableVolumeReplicationRequest.ParametersEntry
-	nil,                                      // 13: replication.DisableVolumeReplicationRequest.SecretsEntry
-	nil,                                      // 14: replication.PromoteVolumeRequest.ParametersEntry
-	nil,                                      // 15: replication.PromoteVolumeRequest.SecretsEntry
-	nil,                                      // 16: replication.DemoteVolumeRequest.ParametersEntry
-	nil,                                      // 17: replication.DemoteVolumeRequest.SecretsEntry
-	nil,                                      // 18: replication.ResyncVolumeRequest.ParametersEntry
-	nil,                                      // 19: replication.ResyncVolumeRequest.SecretsEntry
-	(*descriptorpb.FieldOptions)(nil),        // 20: google.protobuf.FieldOptions
-}
+var (
+	file_replication_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+	file_replication_proto_goTypes  = []interface{}{
+		(*EnableVolumeReplicationRequest)(nil),   // 0: replication.EnableVolumeReplicationRequest
+		(*EnableVolumeReplicationResponse)(nil),  // 1: replication.EnableVolumeReplicationResponse
+		(*DisableVolumeReplicationRequest)(nil),  // 2: replication.DisableVolumeReplicationRequest
+		(*DisableVolumeReplicationResponse)(nil), // 3: replication.DisableVolumeReplicationResponse
+		(*PromoteVolumeRequest)(nil),             // 4: replication.PromoteVolumeRequest
+		(*PromoteVolumeResponse)(nil),            // 5: replication.PromoteVolumeResponse
+		(*DemoteVolumeRequest)(nil),              // 6: replication.DemoteVolumeRequest
+		(*DemoteVolumeResponse)(nil),             // 7: replication.DemoteVolumeResponse
+		(*ResyncVolumeRequest)(nil),              // 8: replication.ResyncVolumeRequest
+		(*ResyncVolumeResponse)(nil),             // 9: replication.ResyncVolumeResponse
+		nil,                                      // 10: replication.EnableVolumeReplicationRequest.ParametersEntry
+		nil,                                      // 11: replication.EnableVolumeReplicationRequest.SecretsEntry
+		nil,                                      // 12: replication.DisableVolumeReplicationRequest.ParametersEntry
+		nil,                                      // 13: replication.DisableVolumeReplicationRequest.SecretsEntry
+		nil,                                      // 14: replication.PromoteVolumeRequest.ParametersEntry
+		nil,                                      // 15: replication.PromoteVolumeRequest.SecretsEntry
+		nil,                                      // 16: replication.DemoteVolumeRequest.ParametersEntry
+		nil,                                      // 17: replication.DemoteVolumeRequest.SecretsEntry
+		nil,                                      // 18: replication.ResyncVolumeRequest.ParametersEntry
+		nil,                                      // 19: replication.ResyncVolumeRequest.SecretsEntry
+		(*descriptorpb.FieldOptions)(nil),        // 20: google.protobuf.FieldOptions
+	}
+)
+
 var file_replication_proto_depIdxs = []int32{
 	10, // 0: replication.EnableVolumeReplicationRequest.parameters:type_name -> replication.EnableVolumeReplicationRequest.ParametersEntry
 	11, // 1: replication.EnableVolumeReplicationRequest.secrets:type_name -> replication.EnableVolumeReplicationRequest.SecretsEntry

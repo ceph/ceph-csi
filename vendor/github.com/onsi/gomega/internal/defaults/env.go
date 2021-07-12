@@ -13,7 +13,6 @@ func SetDurationFromEnv(getDurationFromEnv func(string) string, varSetter func(t
 	}
 
 	duration, err := time.ParseDuration(durationFromEnv)
-
 	if err != nil {
 		panic(fmt.Sprintf("Expected a duration when using %s!  Parse error %v", name, err))
 	}

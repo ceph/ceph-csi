@@ -25,9 +25,11 @@ type (
 const IPv4HostMask = IPv4Mask(0xffffffff)
 
 // ipv4AddrAttrMap is a map of the IPv4Addr type-specific attributes.
-var ipv4AddrAttrMap map[AttrName]func(IPv4Addr) string
-var ipv4AddrAttrs []AttrName
-var trailingHexNetmaskRE *regexp.Regexp
+var (
+	ipv4AddrAttrMap      map[AttrName]func(IPv4Addr) string
+	ipv4AddrAttrs        []AttrName
+	trailingHexNetmaskRE *regexp.Regexp
+)
 
 // IPv4Addr implements a convenience wrapper around the union of Go's
 // built-in net.IP and net.IPNet types.  In UNIX-speak, IPv4Addr implements

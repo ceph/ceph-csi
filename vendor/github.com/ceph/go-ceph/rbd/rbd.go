@@ -410,7 +410,8 @@ func (image *Image) Stat() (info *ImageInfo, err error) {
 		Obj_size:          uint64(c_stat.obj_size),
 		Num_objs:          uint64(c_stat.num_objs),
 		Order:             int(c_stat.order),
-		Block_name_prefix: C.GoString((*C.char)(&c_stat.block_name_prefix[0]))}, nil
+		Block_name_prefix: C.GoString((*C.char)(&c_stat.block_name_prefix[0])),
+	}, nil
 }
 
 // IsOldFormat returns true if the rbd image uses the old format.
@@ -626,9 +627,11 @@ func (image *Image) ListLockers() (tag string, lockers []Locker, err error) {
 
 	lockers = make([]Locker, c_locker_cnt)
 	for i := 0; i < int(c_locker_cnt); i++ {
-		lockers[i] = Locker{Client: clients[i],
+		lockers[i] = Locker{
+			Client: clients[i],
 			Cookie: cookies[i],
-			Addr:   addrs[i]}
+			Addr:   addrs[i],
+		}
 	}
 
 	return string(tag_buf), lockers, nil
@@ -905,9 +908,11 @@ func (image *Image) GetSnapshotNames() (snaps []SnapInfo, err error) {
 	}
 
 	for i, s := range c_snaps {
-		snaps[i] = SnapInfo{Id: uint64(s.id),
+		snaps[i] = SnapInfo{
+			Id:   uint64(s.id),
 			Size: uint64(s.size),
-			Name: C.GoString(s.name)}
+			Name: C.GoString(s.name),
+		}
 	}
 
 	C.rbd_snap_list_end(&c_snaps[0])
@@ -940,7 +945,6 @@ func (image *Image) GetId() (string, error) {
 	}
 	id := C.GoString((*C.char)(unsafe.Pointer(&buf[0])))
 	return id, nil
-
 }
 
 // SetSnapshot updates the rbd image (not the Snapshot) such that the snapshot

@@ -27,7 +27,6 @@ type setOmapStep struct {
 }
 
 func newSetOmapStep(pairs map[string][]byte) *setOmapStep {
-
 	maplen := len(pairs)
 	cKeys := cutil.NewCPtrCSlice(maplen)
 	cValues := cutil.NewCPtrCSlice(maplen)
@@ -225,7 +224,6 @@ type OmapListFunc func(key string, value []byte)
 // `maxReturn`: iterate no more than `maxReturn` key/value pairs
 // `listFn`: the function called at each iteration
 func (ioctx *IOContext) ListOmapValues(oid string, startAfter string, filterPrefix string, maxReturn int64, listFn OmapListFunc) error {
-
 	op := CreateReadOp()
 	defer op.Release()
 	gos := op.GetOmapValues(startAfter, filterPrefix, uint64(maxReturn))
@@ -280,7 +278,6 @@ func (ioctx *IOContext) GetAllOmapValues(oid string, startAfter string, filterPr
 				startAfter = key
 			},
 		)
-
 		if err != nil {
 			return omap, err
 		}

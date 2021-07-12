@@ -104,7 +104,8 @@ func createCustomConfigMap(c kubernetes.Interface, pluginPath string, subvolgrpI
 		{
 			ClusterID: clusterID[1],
 			Monitors:  mons,
-		}}
+		},
+	}
 	for i := 0; i < len(subvolgrpInfo); i++ {
 		conmap[i].CephFS.SubvolumeGroup = subvolgrpInfo[clusterID[i]]
 	}

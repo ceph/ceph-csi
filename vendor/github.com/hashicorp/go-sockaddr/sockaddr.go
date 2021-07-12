@@ -6,8 +6,10 @@ import (
 	"strings"
 )
 
-type SockAddrType int
-type AttrName string
+type (
+	SockAddrType int
+	AttrName     string
+)
 
 const (
 	TypeUnknown SockAddrType = 0x0
@@ -45,8 +47,10 @@ type SockAddr interface {
 }
 
 // sockAddrAttrMap is a map of the SockAddr type-specific attributes.
-var sockAddrAttrMap map[AttrName]func(SockAddr) string
-var sockAddrAttrs []AttrName
+var (
+	sockAddrAttrMap map[AttrName]func(SockAddr) string
+	sockAddrAttrs   []AttrName
+)
 
 func init() {
 	sockAddrInit()

@@ -16,8 +16,10 @@ import (
 // by default.
 var DisableCache bool
 
-var homedirCache string
-var cacheLock sync.RWMutex
+var (
+	homedirCache string
+	cacheLock    sync.RWMutex
+)
 
 // Dir returns the home directory for the executing user.
 //

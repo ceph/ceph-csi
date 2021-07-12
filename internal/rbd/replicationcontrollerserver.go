@@ -165,7 +165,7 @@ func getSchedulingDetails(parameters map[string]string) (admin.Interval, admin.S
 // validateSchedulingInterval return the interval as it is if its ending with
 // `m|h|d` or else it will return error.
 func validateSchedulingInterval(interval string) (admin.Interval, error) {
-	var re = regexp.MustCompile(`^\d+[mhd]$`)
+	re := regexp.MustCompile(`^\d+[mhd]$`)
 	if re.MatchString(interval) {
 		return admin.Interval(interval), nil
 	}

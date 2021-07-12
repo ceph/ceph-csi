@@ -10,6 +10,7 @@ const CLDRVersion = "32"
 // NumCompactTags is the number of common tags. The maximum tag is
 // NumCompactTags-1.
 const NumCompactTags = 775
+
 const (
 	undIndex          ID = 0
 	afIndex           ID = 1

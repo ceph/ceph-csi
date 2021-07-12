@@ -25,9 +25,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var _ Reader = &unstructuredClient{}
-var _ Writer = &unstructuredClient{}
-var _ StatusWriter = &unstructuredClient{}
+var (
+	_ Reader       = &unstructuredClient{}
+	_ Writer       = &unstructuredClient{}
+	_ StatusWriter = &unstructuredClient{}
+)
 
 // client is a client.Client that reads and writes directly from/to an API server.  It lazily initializes
 // new clients at the time they are used, and caches the client.

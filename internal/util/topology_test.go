@@ -41,17 +41,17 @@ func checkAndReportError(t *testing.T, msg string, err error) {
 func TestFindPoolAndTopology(t *testing.T) {
 	t.Parallel()
 	var err error
-	var label1 = "region"
-	var label2 = "zone"
-	var l1Value1 = "R1"
-	var l1Value2 = "R2"
-	var l2Value1 = "Z1"
-	var l2Value2 = "Z2"
-	var pool1 = "PoolA"
-	var pool2 = "PoolB"
-	var topologyPrefix = "prefix"
-	var emptyTopoPools = []TopologyConstrainedPool{}
-	var emptyPoolNameTopoPools = []TopologyConstrainedPool{
+	label1 := "region"
+	label2 := "zone"
+	l1Value1 := "R1"
+	l1Value2 := "R2"
+	l2Value1 := "Z1"
+	l2Value2 := "Z2"
+	pool1 := "PoolA"
+	pool2 := "PoolB"
+	topologyPrefix := "prefix"
+	emptyTopoPools := []TopologyConstrainedPool{}
+	emptyPoolNameTopoPools := []TopologyConstrainedPool{
 		{
 			DomainSegments: []topologySegment{
 				{
@@ -65,12 +65,12 @@ func TestFindPoolAndTopology(t *testing.T) {
 			},
 		},
 	}
-	var emptyDomainsInTopoPools = []TopologyConstrainedPool{
+	emptyDomainsInTopoPools := []TopologyConstrainedPool{
 		{
 			PoolName: pool1,
 		},
 	}
-	var partialDomainsInTopoPools = []TopologyConstrainedPool{
+	partialDomainsInTopoPools := []TopologyConstrainedPool{
 		{
 			PoolName: pool1,
 			DomainSegments: []topologySegment{
@@ -81,7 +81,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 			},
 		},
 	}
-	var differentDomainsInTopoPools = []TopologyConstrainedPool{
+	differentDomainsInTopoPools := []TopologyConstrainedPool{
 		{
 			PoolName: pool1,
 			DomainSegments: []topologySegment{
@@ -109,7 +109,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 			},
 		},
 	}
-	var validSingletonTopoPools = []TopologyConstrainedPool{
+	validSingletonTopoPools := []TopologyConstrainedPool{
 		{
 			PoolName: pool1,
 			DomainSegments: []topologySegment{
@@ -124,7 +124,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 			},
 		},
 	}
-	var validMultipleTopoPools = []TopologyConstrainedPool{
+	validMultipleTopoPools := []TopologyConstrainedPool{
 		{
 			PoolName: pool1,
 			DomainSegments: []topologySegment{
@@ -152,14 +152,14 @@ func TestFindPoolAndTopology(t *testing.T) {
 			},
 		},
 	}
-	var emptyAccReq = csi.TopologyRequirement{}
-	var emptySegmentAccReq = csi.TopologyRequirement{
+	emptyAccReq := csi.TopologyRequirement{}
+	emptySegmentAccReq := csi.TopologyRequirement{
 		Requisite: []*csi.Topology{
 			{},
 			{},
 		},
 	}
-	var partialHigherSegmentAccReq = csi.TopologyRequirement{
+	partialHigherSegmentAccReq := csi.TopologyRequirement{
 		Preferred: []*csi.Topology{
 			{
 				Segments: map[string]string{
@@ -168,7 +168,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 			},
 		},
 	}
-	var partialLowerSegmentAccReq = csi.TopologyRequirement{
+	partialLowerSegmentAccReq := csi.TopologyRequirement{
 		Preferred: []*csi.Topology{
 			{
 				Segments: map[string]string{
@@ -177,7 +177,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 			},
 		},
 	}
-	var differentSegmentAccReq = csi.TopologyRequirement{
+	differentSegmentAccReq := csi.TopologyRequirement{
 		Requisite: []*csi.Topology{
 			{
 				Segments: map[string]string{
@@ -193,7 +193,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 			},
 		},
 	}
-	var validAccReq = csi.TopologyRequirement{
+	validAccReq := csi.TopologyRequirement{
 		Requisite: []*csi.Topology{
 			{
 				Segments: map[string]string{

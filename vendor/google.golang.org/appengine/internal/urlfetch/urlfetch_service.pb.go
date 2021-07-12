@@ -3,14 +3,18 @@
 
 package urlfetch
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	proto "github.com/golang/protobuf/proto"
+	fmt "fmt"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
+var (
+	_ = proto.Marshal
+	_ = fmt.Errorf
+	_ = math.Inf
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
@@ -51,6 +55,7 @@ var URLFetchServiceError_ErrorCode_name = map[int32]string{
 	11: "MALFORMED_REPLY",
 	12: "CONNECTION_ERROR",
 }
+
 var URLFetchServiceError_ErrorCode_value = map[string]int32{
 	"OK":                       0,
 	"INVALID_URL":              1,
@@ -72,9 +77,11 @@ func (x URLFetchServiceError_ErrorCode) Enum() *URLFetchServiceError_ErrorCode {
 	*p = x
 	return p
 }
+
 func (x URLFetchServiceError_ErrorCode) String() string {
 	return proto.EnumName(URLFetchServiceError_ErrorCode_name, int32(x))
 }
+
 func (x *URLFetchServiceError_ErrorCode) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(URLFetchServiceError_ErrorCode_value, data, "URLFetchServiceError_ErrorCode")
 	if err != nil {
@@ -83,6 +90,7 @@ func (x *URLFetchServiceError_ErrorCode) UnmarshalJSON(data []byte) error {
 	*x = URLFetchServiceError_ErrorCode(value)
 	return nil
 }
+
 func (URLFetchServiceError_ErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_urlfetch_service_b245a7065f33bced, []int{0, 0}
 }
@@ -106,6 +114,7 @@ var URLFetchRequest_RequestMethod_name = map[int32]string{
 	5: "DELETE",
 	6: "PATCH",
 }
+
 var URLFetchRequest_RequestMethod_value = map[string]int32{
 	"GET":    1,
 	"POST":   2,
@@ -120,9 +129,11 @@ func (x URLFetchRequest_RequestMethod) Enum() *URLFetchRequest_RequestMethod {
 	*p = x
 	return p
 }
+
 func (x URLFetchRequest_RequestMethod) String() string {
 	return proto.EnumName(URLFetchRequest_RequestMethod_name, int32(x))
 }
+
 func (x *URLFetchRequest_RequestMethod) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(URLFetchRequest_RequestMethod_value, data, "URLFetchRequest_RequestMethod")
 	if err != nil {
@@ -131,6 +142,7 @@ func (x *URLFetchRequest_RequestMethod) UnmarshalJSON(data []byte) error {
 	*x = URLFetchRequest_RequestMethod(value)
 	return nil
 }
+
 func (URLFetchRequest_RequestMethod) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_urlfetch_service_b245a7065f33bced, []int{1, 0}
 }
@@ -147,18 +159,23 @@ func (*URLFetchServiceError) ProtoMessage()    {}
 func (*URLFetchServiceError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_urlfetch_service_b245a7065f33bced, []int{0}
 }
+
 func (m *URLFetchServiceError) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_URLFetchServiceError.Unmarshal(m, b)
 }
+
 func (m *URLFetchServiceError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_URLFetchServiceError.Marshal(b, m, deterministic)
 }
+
 func (dst *URLFetchServiceError) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_URLFetchServiceError.Merge(dst, src)
 }
+
 func (m *URLFetchServiceError) XXX_Size() int {
 	return xxx_messageInfo_URLFetchServiceError.Size(m)
 }
+
 func (m *URLFetchServiceError) XXX_DiscardUnknown() {
 	xxx_messageInfo_URLFetchServiceError.DiscardUnknown(m)
 }
@@ -184,26 +201,33 @@ func (*URLFetchRequest) ProtoMessage()    {}
 func (*URLFetchRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_urlfetch_service_b245a7065f33bced, []int{1}
 }
+
 func (m *URLFetchRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_URLFetchRequest.Unmarshal(m, b)
 }
+
 func (m *URLFetchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_URLFetchRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *URLFetchRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_URLFetchRequest.Merge(dst, src)
 }
+
 func (m *URLFetchRequest) XXX_Size() int {
 	return xxx_messageInfo_URLFetchRequest.Size(m)
 }
+
 func (m *URLFetchRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_URLFetchRequest.DiscardUnknown(m)
 }
 
 var xxx_messageInfo_URLFetchRequest proto.InternalMessageInfo
 
-const Default_URLFetchRequest_FollowRedirects bool = true
-const Default_URLFetchRequest_MustValidateServerCertificate bool = true
+const (
+	Default_URLFetchRequest_FollowRedirects               bool = true
+	Default_URLFetchRequest_MustValidateServerCertificate bool = true
+)
 
 func (m *URLFetchRequest) GetMethod() URLFetchRequest_RequestMethod {
 	if m != nil && m.Method != nil {
@@ -268,18 +292,23 @@ func (*URLFetchRequest_Header) ProtoMessage()    {}
 func (*URLFetchRequest_Header) Descriptor() ([]byte, []int) {
 	return fileDescriptor_urlfetch_service_b245a7065f33bced, []int{1, 0}
 }
+
 func (m *URLFetchRequest_Header) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_URLFetchRequest_Header.Unmarshal(m, b)
 }
+
 func (m *URLFetchRequest_Header) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_URLFetchRequest_Header.Marshal(b, m, deterministic)
 }
+
 func (dst *URLFetchRequest_Header) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_URLFetchRequest_Header.Merge(dst, src)
 }
+
 func (m *URLFetchRequest_Header) XXX_Size() int {
 	return xxx_messageInfo_URLFetchRequest_Header.Size(m)
 }
+
 func (m *URLFetchRequest_Header) XXX_DiscardUnknown() {
 	xxx_messageInfo_URLFetchRequest_Header.DiscardUnknown(m)
 }
@@ -322,28 +351,35 @@ func (*URLFetchResponse) ProtoMessage()    {}
 func (*URLFetchResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_urlfetch_service_b245a7065f33bced, []int{2}
 }
+
 func (m *URLFetchResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_URLFetchResponse.Unmarshal(m, b)
 }
+
 func (m *URLFetchResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_URLFetchResponse.Marshal(b, m, deterministic)
 }
+
 func (dst *URLFetchResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_URLFetchResponse.Merge(dst, src)
 }
+
 func (m *URLFetchResponse) XXX_Size() int {
 	return xxx_messageInfo_URLFetchResponse.Size(m)
 }
+
 func (m *URLFetchResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_URLFetchResponse.DiscardUnknown(m)
 }
 
 var xxx_messageInfo_URLFetchResponse proto.InternalMessageInfo
 
-const Default_URLFetchResponse_ContentWasTruncated bool = false
-const Default_URLFetchResponse_ApiCpuMilliseconds int64 = 0
-const Default_URLFetchResponse_ApiBytesSent int64 = 0
-const Default_URLFetchResponse_ApiBytesReceived int64 = 0
+const (
+	Default_URLFetchResponse_ContentWasTruncated bool  = false
+	Default_URLFetchResponse_ApiCpuMilliseconds  int64 = 0
+	Default_URLFetchResponse_ApiBytesSent        int64 = 0
+	Default_URLFetchResponse_ApiBytesReceived    int64 = 0
+)
 
 func (m *URLFetchResponse) GetContent() []byte {
 	if m != nil {
@@ -429,18 +465,23 @@ func (*URLFetchResponse_Header) ProtoMessage()    {}
 func (*URLFetchResponse_Header) Descriptor() ([]byte, []int) {
 	return fileDescriptor_urlfetch_service_b245a7065f33bced, []int{2, 0}
 }
+
 func (m *URLFetchResponse_Header) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_URLFetchResponse_Header.Unmarshal(m, b)
 }
+
 func (m *URLFetchResponse_Header) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_URLFetchResponse_Header.Marshal(b, m, deterministic)
 }
+
 func (dst *URLFetchResponse_Header) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_URLFetchResponse_Header.Merge(dst, src)
 }
+
 func (m *URLFetchResponse_Header) XXX_Size() int {
 	return xxx_messageInfo_URLFetchResponse_Header.Size(m)
 }
+
 func (m *URLFetchResponse_Header) XXX_DiscardUnknown() {
 	xxx_messageInfo_URLFetchResponse_Header.DiscardUnknown(m)
 }

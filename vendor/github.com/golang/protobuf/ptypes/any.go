@@ -23,6 +23,7 @@ func AnyMessageName(any *anypb.Any) (string, error) {
 	name, err := anyMessageName(any)
 	return string(name), err
 }
+
 func anyMessageName(any *anypb.Any) (protoreflect.FullName, error) {
 	if any == nil {
 		return "", fmt.Errorf("message is nil")
@@ -127,15 +128,18 @@ func (m DynamicAny) String() string {
 	}
 	return m.Message.String()
 }
+
 func (m DynamicAny) Reset() {
 	if m.Message == nil {
 		return
 	}
 	m.Message.Reset()
 }
+
 func (m DynamicAny) ProtoMessage() {
 	return
 }
+
 func (m DynamicAny) ProtoReflect() protoreflect.Message {
 	if m.Message == nil {
 		return nil
@@ -148,9 +152,11 @@ type dynamicAny struct{ protoreflect.Message }
 func (m dynamicAny) Type() protoreflect.MessageType {
 	return dynamicAnyType{m.Message.Type()}
 }
+
 func (m dynamicAny) New() protoreflect.Message {
 	return dynamicAnyType{m.Message.Type()}.New()
 }
+
 func (m dynamicAny) Interface() protoreflect.ProtoMessage {
 	return DynamicAny{proto.MessageV1(m.Message.Interface())}
 }
@@ -160,6 +166,7 @@ type dynamicAnyType struct{ protoreflect.MessageType }
 func (t dynamicAnyType) New() protoreflect.Message {
 	return dynamicAny{t.MessageType.New()}
 }
+
 func (t dynamicAnyType) Zero() protoreflect.Message {
 	return dynamicAny{t.MessageType.Zero()}
 }

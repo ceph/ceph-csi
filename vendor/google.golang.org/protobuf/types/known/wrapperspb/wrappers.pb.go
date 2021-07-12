@@ -44,10 +44,11 @@
 package wrapperspb
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 // Wrapper message for `double`.
@@ -604,18 +605,21 @@ func file_google_protobuf_wrappers_proto_rawDescGZIP() []byte {
 	return file_google_protobuf_wrappers_proto_rawDescData
 }
 
-var file_google_protobuf_wrappers_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
-var file_google_protobuf_wrappers_proto_goTypes = []interface{}{
-	(*DoubleValue)(nil), // 0: google.protobuf.DoubleValue
-	(*FloatValue)(nil),  // 1: google.protobuf.FloatValue
-	(*Int64Value)(nil),  // 2: google.protobuf.Int64Value
-	(*UInt64Value)(nil), // 3: google.protobuf.UInt64Value
-	(*Int32Value)(nil),  // 4: google.protobuf.Int32Value
-	(*UInt32Value)(nil), // 5: google.protobuf.UInt32Value
-	(*BoolValue)(nil),   // 6: google.protobuf.BoolValue
-	(*StringValue)(nil), // 7: google.protobuf.StringValue
-	(*BytesValue)(nil),  // 8: google.protobuf.BytesValue
-}
+var (
+	file_google_protobuf_wrappers_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+	file_google_protobuf_wrappers_proto_goTypes  = []interface{}{
+		(*DoubleValue)(nil), // 0: google.protobuf.DoubleValue
+		(*FloatValue)(nil),  // 1: google.protobuf.FloatValue
+		(*Int64Value)(nil),  // 2: google.protobuf.Int64Value
+		(*UInt64Value)(nil), // 3: google.protobuf.UInt64Value
+		(*Int32Value)(nil),  // 4: google.protobuf.Int32Value
+		(*UInt32Value)(nil), // 5: google.protobuf.UInt32Value
+		(*BoolValue)(nil),   // 6: google.protobuf.BoolValue
+		(*StringValue)(nil), // 7: google.protobuf.StringValue
+		(*BytesValue)(nil),  // 8: google.protobuf.BytesValue
+	}
+)
+
 var file_google_protobuf_wrappers_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type

@@ -16,10 +16,8 @@ import (
 // This is the tag to use with structures to have settings for HCL
 const tagName = "hcl"
 
-var (
-	// nodeType holds a reference to the type of ast.Node
-	nodeType reflect.Type = findNodeType()
-)
+// nodeType holds a reference to the type of ast.Node
+var nodeType reflect.Type = findNodeType()
 
 // Unmarshal accepts a byte slice as input and writes the
 // data to the value pointed to by v.
@@ -483,12 +481,12 @@ func expandObject(node ast.Node, result reflect.Value) ast.Node {
 	case reflect.Ptr:
 		switch elemType.Elem().Kind() {
 		case reflect.Struct:
-			//OK
+			// OK
 		default:
 			return node
 		}
 	case reflect.Struct:
-		//OK
+		// OK
 	default:
 		return node
 	}
@@ -505,7 +503,7 @@ func expandObject(node ast.Node, result reflect.Value) ast.Node {
 	// we need to un-flatten the ast enough to decode
 	newNode := &ast.ObjectItem{
 		Keys: []*ast.ObjectKey{
-			&ast.ObjectKey{
+			{
 				Token: keyToken,
 			},
 		},

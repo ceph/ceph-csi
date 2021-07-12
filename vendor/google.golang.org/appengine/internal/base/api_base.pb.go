@@ -3,14 +3,18 @@
 
 package base
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	proto "github.com/golang/protobuf/proto"
+	fmt "fmt"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
+var (
+	_ = proto.Marshal
+	_ = fmt.Errorf
+	_ = math.Inf
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
@@ -31,18 +35,23 @@ func (*StringProto) ProtoMessage()    {}
 func (*StringProto) Descriptor() ([]byte, []int) {
 	return fileDescriptor_api_base_9d49f8792e0c1140, []int{0}
 }
+
 func (m *StringProto) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StringProto.Unmarshal(m, b)
 }
+
 func (m *StringProto) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_StringProto.Marshal(b, m, deterministic)
 }
+
 func (dst *StringProto) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_StringProto.Merge(dst, src)
 }
+
 func (m *StringProto) XXX_Size() int {
 	return xxx_messageInfo_StringProto.Size(m)
 }
+
 func (m *StringProto) XXX_DiscardUnknown() {
 	xxx_messageInfo_StringProto.DiscardUnknown(m)
 }
@@ -69,18 +78,23 @@ func (*Integer32Proto) ProtoMessage()    {}
 func (*Integer32Proto) Descriptor() ([]byte, []int) {
 	return fileDescriptor_api_base_9d49f8792e0c1140, []int{1}
 }
+
 func (m *Integer32Proto) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Integer32Proto.Unmarshal(m, b)
 }
+
 func (m *Integer32Proto) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Integer32Proto.Marshal(b, m, deterministic)
 }
+
 func (dst *Integer32Proto) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Integer32Proto.Merge(dst, src)
 }
+
 func (m *Integer32Proto) XXX_Size() int {
 	return xxx_messageInfo_Integer32Proto.Size(m)
 }
+
 func (m *Integer32Proto) XXX_DiscardUnknown() {
 	xxx_messageInfo_Integer32Proto.DiscardUnknown(m)
 }
@@ -107,18 +121,23 @@ func (*Integer64Proto) ProtoMessage()    {}
 func (*Integer64Proto) Descriptor() ([]byte, []int) {
 	return fileDescriptor_api_base_9d49f8792e0c1140, []int{2}
 }
+
 func (m *Integer64Proto) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Integer64Proto.Unmarshal(m, b)
 }
+
 func (m *Integer64Proto) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Integer64Proto.Marshal(b, m, deterministic)
 }
+
 func (dst *Integer64Proto) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Integer64Proto.Merge(dst, src)
 }
+
 func (m *Integer64Proto) XXX_Size() int {
 	return xxx_messageInfo_Integer64Proto.Size(m)
 }
+
 func (m *Integer64Proto) XXX_DiscardUnknown() {
 	xxx_messageInfo_Integer64Proto.DiscardUnknown(m)
 }
@@ -145,18 +164,23 @@ func (*BoolProto) ProtoMessage()    {}
 func (*BoolProto) Descriptor() ([]byte, []int) {
 	return fileDescriptor_api_base_9d49f8792e0c1140, []int{3}
 }
+
 func (m *BoolProto) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BoolProto.Unmarshal(m, b)
 }
+
 func (m *BoolProto) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_BoolProto.Marshal(b, m, deterministic)
 }
+
 func (dst *BoolProto) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_BoolProto.Merge(dst, src)
 }
+
 func (m *BoolProto) XXX_Size() int {
 	return xxx_messageInfo_BoolProto.Size(m)
 }
+
 func (m *BoolProto) XXX_DiscardUnknown() {
 	xxx_messageInfo_BoolProto.DiscardUnknown(m)
 }
@@ -183,18 +207,23 @@ func (*DoubleProto) ProtoMessage()    {}
 func (*DoubleProto) Descriptor() ([]byte, []int) {
 	return fileDescriptor_api_base_9d49f8792e0c1140, []int{4}
 }
+
 func (m *DoubleProto) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DoubleProto.Unmarshal(m, b)
 }
+
 func (m *DoubleProto) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_DoubleProto.Marshal(b, m, deterministic)
 }
+
 func (dst *DoubleProto) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_DoubleProto.Merge(dst, src)
 }
+
 func (m *DoubleProto) XXX_Size() int {
 	return xxx_messageInfo_DoubleProto.Size(m)
 }
+
 func (m *DoubleProto) XXX_DiscardUnknown() {
 	xxx_messageInfo_DoubleProto.DiscardUnknown(m)
 }
@@ -221,18 +250,23 @@ func (*BytesProto) ProtoMessage()    {}
 func (*BytesProto) Descriptor() ([]byte, []int) {
 	return fileDescriptor_api_base_9d49f8792e0c1140, []int{5}
 }
+
 func (m *BytesProto) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BytesProto.Unmarshal(m, b)
 }
+
 func (m *BytesProto) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_BytesProto.Marshal(b, m, deterministic)
 }
+
 func (dst *BytesProto) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_BytesProto.Merge(dst, src)
 }
+
 func (m *BytesProto) XXX_Size() int {
 	return xxx_messageInfo_BytesProto.Size(m)
 }
+
 func (m *BytesProto) XXX_DiscardUnknown() {
 	xxx_messageInfo_BytesProto.DiscardUnknown(m)
 }
@@ -258,18 +292,23 @@ func (*VoidProto) ProtoMessage()    {}
 func (*VoidProto) Descriptor() ([]byte, []int) {
 	return fileDescriptor_api_base_9d49f8792e0c1140, []int{6}
 }
+
 func (m *VoidProto) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VoidProto.Unmarshal(m, b)
 }
+
 func (m *VoidProto) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_VoidProto.Marshal(b, m, deterministic)
 }
+
 func (dst *VoidProto) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_VoidProto.Merge(dst, src)
 }
+
 func (m *VoidProto) XXX_Size() int {
 	return xxx_messageInfo_VoidProto.Size(m)
 }
+
 func (m *VoidProto) XXX_DiscardUnknown() {
 	xxx_messageInfo_VoidProto.DiscardUnknown(m)
 }

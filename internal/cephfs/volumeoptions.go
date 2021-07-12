@@ -181,7 +181,6 @@ func newVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 
 	volOptions := req.GetParameters()
 	clusterData, err := getClusterInformation(volOptions)
-
 	if err != nil {
 		return nil, err
 	}
@@ -445,7 +444,6 @@ func newVolumeOptionsFromStaticVolume(
 	opts.ProvisionVolume = !staticVol
 
 	clusterData, err := getClusterInformation(options)
-
 	if err != nil {
 		return nil, nil, err
 	}

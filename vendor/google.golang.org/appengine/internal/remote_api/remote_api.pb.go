@@ -3,14 +3,18 @@
 
 package remote_api
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	proto "github.com/golang/protobuf/proto"
+	fmt "fmt"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
+var (
+	_ = proto.Marshal
+	_ = fmt.Errorf
+	_ = math.Inf
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
@@ -51,6 +55,7 @@ var RpcError_ErrorCode_name = map[int32]string{
 	11: "REPLAY_ERROR",
 	12: "DEADLINE_EXCEEDED",
 }
+
 var RpcError_ErrorCode_value = map[string]int32{
 	"UNKNOWN":             0,
 	"CALL_NOT_FOUND":      1,
@@ -72,9 +77,11 @@ func (x RpcError_ErrorCode) Enum() *RpcError_ErrorCode {
 	*p = x
 	return p
 }
+
 func (x RpcError_ErrorCode) String() string {
 	return proto.EnumName(RpcError_ErrorCode_name, int32(x))
 }
+
 func (x *RpcError_ErrorCode) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(RpcError_ErrorCode_value, data, "RpcError_ErrorCode")
 	if err != nil {
@@ -83,6 +90,7 @@ func (x *RpcError_ErrorCode) UnmarshalJSON(data []byte) error {
 	*x = RpcError_ErrorCode(value)
 	return nil
 }
+
 func (RpcError_ErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_remote_api_1978114ec33a273d, []int{2, 0}
 }
@@ -103,18 +111,23 @@ func (*Request) ProtoMessage()    {}
 func (*Request) Descriptor() ([]byte, []int) {
 	return fileDescriptor_remote_api_1978114ec33a273d, []int{0}
 }
+
 func (m *Request) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Request.Unmarshal(m, b)
 }
+
 func (m *Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Request.Marshal(b, m, deterministic)
 }
+
 func (dst *Request) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Request.Merge(dst, src)
 }
+
 func (m *Request) XXX_Size() int {
 	return xxx_messageInfo_Request.Size(m)
 }
+
 func (m *Request) XXX_DiscardUnknown() {
 	xxx_messageInfo_Request.DiscardUnknown(m)
 }
@@ -163,18 +176,23 @@ func (*ApplicationError) ProtoMessage()    {}
 func (*ApplicationError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_remote_api_1978114ec33a273d, []int{1}
 }
+
 func (m *ApplicationError) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ApplicationError.Unmarshal(m, b)
 }
+
 func (m *ApplicationError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ApplicationError.Marshal(b, m, deterministic)
 }
+
 func (dst *ApplicationError) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_ApplicationError.Merge(dst, src)
 }
+
 func (m *ApplicationError) XXX_Size() int {
 	return xxx_messageInfo_ApplicationError.Size(m)
 }
+
 func (m *ApplicationError) XXX_DiscardUnknown() {
 	xxx_messageInfo_ApplicationError.DiscardUnknown(m)
 }
@@ -209,18 +227,23 @@ func (*RpcError) ProtoMessage()    {}
 func (*RpcError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_remote_api_1978114ec33a273d, []int{2}
 }
+
 func (m *RpcError) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RpcError.Unmarshal(m, b)
 }
+
 func (m *RpcError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_RpcError.Marshal(b, m, deterministic)
 }
+
 func (dst *RpcError) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_RpcError.Merge(dst, src)
 }
+
 func (m *RpcError) XXX_Size() int {
 	return xxx_messageInfo_RpcError.Size(m)
 }
+
 func (m *RpcError) XXX_DiscardUnknown() {
 	xxx_messageInfo_RpcError.DiscardUnknown(m)
 }
@@ -258,18 +281,23 @@ func (*Response) ProtoMessage()    {}
 func (*Response) Descriptor() ([]byte, []int) {
 	return fileDescriptor_remote_api_1978114ec33a273d, []int{3}
 }
+
 func (m *Response) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Response.Unmarshal(m, b)
 }
+
 func (m *Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Response.Marshal(b, m, deterministic)
 }
+
 func (dst *Response) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Response.Merge(dst, src)
 }
+
 func (m *Response) XXX_Size() int {
 	return xxx_messageInfo_Response.Size(m)
 }
+
 func (m *Response) XXX_DiscardUnknown() {
 	xxx_messageInfo_Response.DiscardUnknown(m)
 }

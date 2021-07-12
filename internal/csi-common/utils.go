@@ -205,7 +205,6 @@ func panicHandler(
 // this.
 func FilesystemNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
 	isMnt, err := util.IsMountPoint(targetPath)
-
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s does not exist", targetPath)

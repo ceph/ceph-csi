@@ -342,7 +342,7 @@ func (ns *NodeServer) stageTransaction(
 
 	if !readOnly {
 		// #nosec - allow anyone to write inside the target path
-		err = os.Chmod(stagingTargetPath, 0777)
+		err = os.Chmod(stagingTargetPath, 0o777)
 	}
 	return transaction, err
 }
@@ -400,7 +400,7 @@ func (ns *NodeServer) undoStagingTransaction(
 func (ns *NodeServer) createStageMountPoint(ctx context.Context, mountPath string, isBlock bool) error {
 	if isBlock {
 		// #nosec:G304, intentionally creating file mountPath, not a security issue
-		pathFile, err := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0600)
+		pathFile, err := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0o600)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to create mountPath:%s with error: %v", mountPath, err)
 			return status.Error(codes.Internal, err.Error())
@@ -413,7 +413,7 @@ func (ns *NodeServer) createStageMountPoint(ctx context.Context, mountPath strin
 		return nil
 	}
 
-	err := os.Mkdir(mountPath, 0750)
+	err := os.Mkdir(mountPath, 0o750)
 	if err != nil {
 		if !os.IsExist(err) {
 			util.ErrorLog(ctx, "failed to create mountPath:%s with error: %v", mountPath, err)
@@ -582,7 +582,7 @@ func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath strin
 	}
 	if isBlock {
 		// #nosec
-		pathFile, e := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0750)
+		pathFile, e := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0o750)
 		if e != nil {
 			util.DebugLog(ctx, "Failed to create mountPath:%s with error: %v", mountPath, err)
 			return notMnt, status.Error(codes.Internal, e.Error())

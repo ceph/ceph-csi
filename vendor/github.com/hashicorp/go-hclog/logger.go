@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	//DefaultOutput is used as the default log output.
+	// DefaultOutput is used as the default log output.
 	DefaultOutput io.Writer = os.Stderr
 
 	// DefaultLevel is used as the default log level.

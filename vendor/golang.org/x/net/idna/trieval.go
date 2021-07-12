@@ -84,7 +84,7 @@ const (
 	joiningT
 	joiningR
 
-	//the following types are derived during processing
+	// the following types are derived during processing
 	joinZWJ
 	joinZWNJ
 	joinVirama

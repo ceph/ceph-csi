@@ -24,15 +24,18 @@ type Enums struct {
 func (p *Enums) Len() int {
 	return len(p.List)
 }
+
 func (p *Enums) Get(i int) protoreflect.EnumDescriptor {
 	return &p.List[i]
 }
+
 func (p *Enums) ByName(s protoreflect.Name) protoreflect.EnumDescriptor {
 	if d := p.lazyInit().byName[s]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *Enums) Format(s fmt.State, r rune) {
 	descfmt.FormatList(s, r, p)
 }
@@ -62,21 +65,25 @@ type EnumValues struct {
 func (p *EnumValues) Len() int {
 	return len(p.List)
 }
+
 func (p *EnumValues) Get(i int) protoreflect.EnumValueDescriptor {
 	return &p.List[i]
 }
+
 func (p *EnumValues) ByName(s protoreflect.Name) protoreflect.EnumValueDescriptor {
 	if d := p.lazyInit().byName[s]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *EnumValues) ByNumber(n protoreflect.EnumNumber) protoreflect.EnumValueDescriptor {
 	if d := p.lazyInit().byNum[n]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *EnumValues) Format(s fmt.State, r rune) {
 	descfmt.FormatList(s, r, p)
 }
@@ -109,15 +116,18 @@ type Messages struct {
 func (p *Messages) Len() int {
 	return len(p.List)
 }
+
 func (p *Messages) Get(i int) protoreflect.MessageDescriptor {
 	return &p.List[i]
 }
+
 func (p *Messages) ByName(s protoreflect.Name) protoreflect.MessageDescriptor {
 	if d := p.lazyInit().byName[s]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *Messages) Format(s fmt.State, r rune) {
 	descfmt.FormatList(s, r, p)
 }
@@ -149,33 +159,39 @@ type Fields struct {
 func (p *Fields) Len() int {
 	return len(p.List)
 }
+
 func (p *Fields) Get(i int) protoreflect.FieldDescriptor {
 	return &p.List[i]
 }
+
 func (p *Fields) ByName(s protoreflect.Name) protoreflect.FieldDescriptor {
 	if d := p.lazyInit().byName[s]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *Fields) ByJSONName(s string) protoreflect.FieldDescriptor {
 	if d := p.lazyInit().byJSON[s]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *Fields) ByTextName(s string) protoreflect.FieldDescriptor {
 	if d := p.lazyInit().byText[s]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *Fields) ByNumber(n protoreflect.FieldNumber) protoreflect.FieldDescriptor {
 	if d := p.lazyInit().byNum[n]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *Fields) Format(s fmt.State, r rune) {
 	descfmt.FormatList(s, r, p)
 }
@@ -216,15 +232,18 @@ type Oneofs struct {
 func (p *Oneofs) Len() int {
 	return len(p.List)
 }
+
 func (p *Oneofs) Get(i int) protoreflect.OneofDescriptor {
 	return &p.List[i]
 }
+
 func (p *Oneofs) ByName(s protoreflect.Name) protoreflect.OneofDescriptor {
 	if d := p.lazyInit().byName[s]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *Oneofs) Format(s fmt.State, r rune) {
 	descfmt.FormatList(s, r, p)
 }
@@ -253,15 +272,18 @@ type Extensions struct {
 func (p *Extensions) Len() int {
 	return len(p.List)
 }
+
 func (p *Extensions) Get(i int) protoreflect.ExtensionDescriptor {
 	return &p.List[i]
 }
+
 func (p *Extensions) ByName(s protoreflect.Name) protoreflect.ExtensionDescriptor {
 	if d := p.lazyInit().byName[s]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *Extensions) Format(s fmt.State, r rune) {
 	descfmt.FormatList(s, r, p)
 }
@@ -290,15 +312,18 @@ type Services struct {
 func (p *Services) Len() int {
 	return len(p.List)
 }
+
 func (p *Services) Get(i int) protoreflect.ServiceDescriptor {
 	return &p.List[i]
 }
+
 func (p *Services) ByName(s protoreflect.Name) protoreflect.ServiceDescriptor {
 	if d := p.lazyInit().byName[s]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *Services) Format(s fmt.State, r rune) {
 	descfmt.FormatList(s, r, p)
 }
@@ -327,15 +352,18 @@ type Methods struct {
 func (p *Methods) Len() int {
 	return len(p.List)
 }
+
 func (p *Methods) Get(i int) protoreflect.MethodDescriptor {
 	return &p.List[i]
 }
+
 func (p *Methods) ByName(s protoreflect.Name) protoreflect.MethodDescriptor {
 	if d := p.lazyInit().byName[s]; d != nil {
 		return d
 	}
 	return nil
 }
+
 func (p *Methods) Format(s fmt.State, r rune) {
 	descfmt.FormatList(s, r, p)
 }

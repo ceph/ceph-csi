@@ -164,7 +164,8 @@ func newHTTP2Server(conn net.Conn, config *ServerConfig) (_ ServerTransport, err
 	if iwz != defaultWindowSize {
 		isettings = append(isettings, http2.Setting{
 			ID:  http2.SettingInitialWindowSize,
-			Val: uint32(iwz)})
+			Val: uint32(iwz),
+		})
 	}
 	if config.MaxHeaderListSize != nil {
 		isettings = append(isettings, http2.Setting{
@@ -536,7 +537,6 @@ func (t *http2Server) adjustWindow(s *Stream, n uint32) {
 	if w := s.fc.maybeAdjust(n); w > 0 {
 		t.controlBuf.put(&outgoingWindowUpdate{streamID: s.id, increment: w})
 	}
-
 }
 
 // updateWindow adjusts the inbound quota for the stream and the transport.
@@ -544,7 +544,8 @@ func (t *http2Server) adjustWindow(s *Stream, n uint32) {
 // the cumulative quota exceeds the corresponding threshold.
 func (t *http2Server) updateWindow(s *Stream, n uint32) {
 	if w := s.fc.onRead(n); w > 0 {
-		t.controlBuf.put(&outgoingWindowUpdate{streamID: s.id,
+		t.controlBuf.put(&outgoingWindowUpdate{
+			streamID:  s.id,
 			increment: w,
 		})
 	}
@@ -572,7 +573,6 @@ func (t *http2Server) updateFlowControl(n uint32) {
 			},
 		},
 	})
-
 }
 
 func (t *http2Server) handleData(f *http2.DataFrame) {

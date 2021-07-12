@@ -273,7 +273,7 @@ func GenerateVolID(
 
 // CreateMountPoint creates the directory with given path.
 func CreateMountPoint(mountPath string) error {
-	return os.MkdirAll(mountPath, 0750)
+	return os.MkdirAll(mountPath, 0o750)
 }
 
 // checkDirExists checks directory  exists or not.

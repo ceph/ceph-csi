@@ -23,11 +23,12 @@
 package openapi_v2
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	anypb "google.golang.org/protobuf/types/known/anypb"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -6355,70 +6356,73 @@ func file_openapiv2_OpenAPIv2_proto_rawDescGZIP() []byte {
 	return file_openapiv2_OpenAPIv2_proto_rawDescData
 }
 
-var file_openapiv2_OpenAPIv2_proto_msgTypes = make([]protoimpl.MessageInfo, 60)
-var file_openapiv2_OpenAPIv2_proto_goTypes = []interface{}{
-	(*AdditionalPropertiesItem)(nil),     // 0: openapi.v2.AdditionalPropertiesItem
-	(*Any)(nil),                          // 1: openapi.v2.Any
-	(*ApiKeySecurity)(nil),               // 2: openapi.v2.ApiKeySecurity
-	(*BasicAuthenticationSecurity)(nil),  // 3: openapi.v2.BasicAuthenticationSecurity
-	(*BodyParameter)(nil),                // 4: openapi.v2.BodyParameter
-	(*Contact)(nil),                      // 5: openapi.v2.Contact
-	(*Default)(nil),                      // 6: openapi.v2.Default
-	(*Definitions)(nil),                  // 7: openapi.v2.Definitions
-	(*Document)(nil),                     // 8: openapi.v2.Document
-	(*Examples)(nil),                     // 9: openapi.v2.Examples
-	(*ExternalDocs)(nil),                 // 10: openapi.v2.ExternalDocs
-	(*FileSchema)(nil),                   // 11: openapi.v2.FileSchema
-	(*FormDataParameterSubSchema)(nil),   // 12: openapi.v2.FormDataParameterSubSchema
-	(*Header)(nil),                       // 13: openapi.v2.Header
-	(*HeaderParameterSubSchema)(nil),     // 14: openapi.v2.HeaderParameterSubSchema
-	(*Headers)(nil),                      // 15: openapi.v2.Headers
-	(*Info)(nil),                         // 16: openapi.v2.Info
-	(*ItemsItem)(nil),                    // 17: openapi.v2.ItemsItem
-	(*JsonReference)(nil),                // 18: openapi.v2.JsonReference
-	(*License)(nil),                      // 19: openapi.v2.License
-	(*NamedAny)(nil),                     // 20: openapi.v2.NamedAny
-	(*NamedHeader)(nil),                  // 21: openapi.v2.NamedHeader
-	(*NamedParameter)(nil),               // 22: openapi.v2.NamedParameter
-	(*NamedPathItem)(nil),                // 23: openapi.v2.NamedPathItem
-	(*NamedResponse)(nil),                // 24: openapi.v2.NamedResponse
-	(*NamedResponseValue)(nil),           // 25: openapi.v2.NamedResponseValue
-	(*NamedSchema)(nil),                  // 26: openapi.v2.NamedSchema
-	(*NamedSecurityDefinitionsItem)(nil), // 27: openapi.v2.NamedSecurityDefinitionsItem
-	(*NamedString)(nil),                  // 28: openapi.v2.NamedString
-	(*NamedStringArray)(nil),             // 29: openapi.v2.NamedStringArray
-	(*NonBodyParameter)(nil),             // 30: openapi.v2.NonBodyParameter
-	(*Oauth2AccessCodeSecurity)(nil),     // 31: openapi.v2.Oauth2AccessCodeSecurity
-	(*Oauth2ApplicationSecurity)(nil),    // 32: openapi.v2.Oauth2ApplicationSecurity
-	(*Oauth2ImplicitSecurity)(nil),       // 33: openapi.v2.Oauth2ImplicitSecurity
-	(*Oauth2PasswordSecurity)(nil),       // 34: openapi.v2.Oauth2PasswordSecurity
-	(*Oauth2Scopes)(nil),                 // 35: openapi.v2.Oauth2Scopes
-	(*Operation)(nil),                    // 36: openapi.v2.Operation
-	(*Parameter)(nil),                    // 37: openapi.v2.Parameter
-	(*ParameterDefinitions)(nil),         // 38: openapi.v2.ParameterDefinitions
-	(*ParametersItem)(nil),               // 39: openapi.v2.ParametersItem
-	(*PathItem)(nil),                     // 40: openapi.v2.PathItem
-	(*PathParameterSubSchema)(nil),       // 41: openapi.v2.PathParameterSubSchema
-	(*Paths)(nil),                        // 42: openapi.v2.Paths
-	(*PrimitivesItems)(nil),              // 43: openapi.v2.PrimitivesItems
-	(*Properties)(nil),                   // 44: openapi.v2.Properties
-	(*QueryParameterSubSchema)(nil),      // 45: openapi.v2.QueryParameterSubSchema
-	(*Response)(nil),                     // 46: openapi.v2.Response
-	(*ResponseDefinitions)(nil),          // 47: openapi.v2.ResponseDefinitions
-	(*ResponseValue)(nil),                // 48: openapi.v2.ResponseValue
-	(*Responses)(nil),                    // 49: openapi.v2.Responses
-	(*Schema)(nil),                       // 50: openapi.v2.Schema
-	(*SchemaItem)(nil),                   // 51: openapi.v2.SchemaItem
-	(*SecurityDefinitions)(nil),          // 52: openapi.v2.SecurityDefinitions
-	(*SecurityDefinitionsItem)(nil),      // 53: openapi.v2.SecurityDefinitionsItem
-	(*SecurityRequirement)(nil),          // 54: openapi.v2.SecurityRequirement
-	(*StringArray)(nil),                  // 55: openapi.v2.StringArray
-	(*Tag)(nil),                          // 56: openapi.v2.Tag
-	(*TypeItem)(nil),                     // 57: openapi.v2.TypeItem
-	(*VendorExtension)(nil),              // 58: openapi.v2.VendorExtension
-	(*Xml)(nil),                          // 59: openapi.v2.Xml
-	(*anypb.Any)(nil),                    // 60: google.protobuf.Any
-}
+var (
+	file_openapiv2_OpenAPIv2_proto_msgTypes = make([]protoimpl.MessageInfo, 60)
+	file_openapiv2_OpenAPIv2_proto_goTypes  = []interface{}{
+		(*AdditionalPropertiesItem)(nil),     // 0: openapi.v2.AdditionalPropertiesItem
+		(*Any)(nil),                          // 1: openapi.v2.Any
+		(*ApiKeySecurity)(nil),               // 2: openapi.v2.ApiKeySecurity
+		(*BasicAuthenticationSecurity)(nil),  // 3: openapi.v2.BasicAuthenticationSecurity
+		(*BodyParameter)(nil),                // 4: openapi.v2.BodyParameter
+		(*Contact)(nil),                      // 5: openapi.v2.Contact
+		(*Default)(nil),                      // 6: openapi.v2.Default
+		(*Definitions)(nil),                  // 7: openapi.v2.Definitions
+		(*Document)(nil),                     // 8: openapi.v2.Document
+		(*Examples)(nil),                     // 9: openapi.v2.Examples
+		(*ExternalDocs)(nil),                 // 10: openapi.v2.ExternalDocs
+		(*FileSchema)(nil),                   // 11: openapi.v2.FileSchema
+		(*FormDataParameterSubSchema)(nil),   // 12: openapi.v2.FormDataParameterSubSchema
+		(*Header)(nil),                       // 13: openapi.v2.Header
+		(*HeaderParameterSubSchema)(nil),     // 14: openapi.v2.HeaderParameterSubSchema
+		(*Headers)(nil),                      // 15: openapi.v2.Headers
+		(*Info)(nil),                         // 16: openapi.v2.Info
+		(*ItemsItem)(nil),                    // 17: openapi.v2.ItemsItem
+		(*JsonReference)(nil),                // 18: openapi.v2.JsonReference
+		(*License)(nil),                      // 19: openapi.v2.License
+		(*NamedAny)(nil),                     // 20: openapi.v2.NamedAny
+		(*NamedHeader)(nil),                  // 21: openapi.v2.NamedHeader
+		(*NamedParameter)(nil),               // 22: openapi.v2.NamedParameter
+		(*NamedPathItem)(nil),                // 23: openapi.v2.NamedPathItem
+		(*NamedResponse)(nil),                // 24: openapi.v2.NamedResponse
+		(*NamedResponseValue)(nil),           // 25: openapi.v2.NamedResponseValue
+		(*NamedSchema)(nil),                  // 26: openapi.v2.NamedSchema
+		(*NamedSecurityDefinitionsItem)(nil), // 27: openapi.v2.NamedSecurityDefinitionsItem
+		(*NamedString)(nil),                  // 28: openapi.v2.NamedString
+		(*NamedStringArray)(nil),             // 29: openapi.v2.NamedStringArray
+		(*NonBodyParameter)(nil),             // 30: openapi.v2.NonBodyParameter
+		(*Oauth2AccessCodeSecurity)(nil),     // 31: openapi.v2.Oauth2AccessCodeSecurity
+		(*Oauth2ApplicationSecurity)(nil),    // 32: openapi.v2.Oauth2ApplicationSecurity
+		(*Oauth2ImplicitSecurity)(nil),       // 33: openapi.v2.Oauth2ImplicitSecurity
+		(*Oauth2PasswordSecurity)(nil),       // 34: openapi.v2.Oauth2PasswordSecurity
+		(*Oauth2Scopes)(nil),                 // 35: openapi.v2.Oauth2Scopes
+		(*Operation)(nil),                    // 36: openapi.v2.Operation
+		(*Parameter)(nil),                    // 37: openapi.v2.Parameter
+		(*ParameterDefinitions)(nil),         // 38: openapi.v2.ParameterDefinitions
+		(*ParametersItem)(nil),               // 39: openapi.v2.ParametersItem
+		(*PathItem)(nil),                     // 40: openapi.v2.PathItem
+		(*PathParameterSubSchema)(nil),       // 41: openapi.v2.PathParameterSubSchema
+		(*Paths)(nil),                        // 42: openapi.v2.Paths
+		(*PrimitivesItems)(nil),              // 43: openapi.v2.PrimitivesItems
+		(*Properties)(nil),                   // 44: openapi.v2.Properties
+		(*QueryParameterSubSchema)(nil),      // 45: openapi.v2.QueryParameterSubSchema
+		(*Response)(nil),                     // 46: openapi.v2.Response
+		(*ResponseDefinitions)(nil),          // 47: openapi.v2.ResponseDefinitions
+		(*ResponseValue)(nil),                // 48: openapi.v2.ResponseValue
+		(*Responses)(nil),                    // 49: openapi.v2.Responses
+		(*Schema)(nil),                       // 50: openapi.v2.Schema
+		(*SchemaItem)(nil),                   // 51: openapi.v2.SchemaItem
+		(*SecurityDefinitions)(nil),          // 52: openapi.v2.SecurityDefinitions
+		(*SecurityDefinitionsItem)(nil),      // 53: openapi.v2.SecurityDefinitionsItem
+		(*SecurityRequirement)(nil),          // 54: openapi.v2.SecurityRequirement
+		(*StringArray)(nil),                  // 55: openapi.v2.StringArray
+		(*Tag)(nil),                          // 56: openapi.v2.Tag
+		(*TypeItem)(nil),                     // 57: openapi.v2.TypeItem
+		(*VendorExtension)(nil),              // 58: openapi.v2.VendorExtension
+		(*Xml)(nil),                          // 59: openapi.v2.Xml
+		(*anypb.Any)(nil),                    // 60: google.protobuf.Any
+	}
+)
+
 var file_openapiv2_OpenAPIv2_proto_depIdxs = []int32{
 	50,  // 0: openapi.v2.AdditionalPropertiesItem.schema:type_name -> openapi.v2.Schema
 	60,  // 1: openapi.v2.Any.value:type_name -> google.protobuf.Any

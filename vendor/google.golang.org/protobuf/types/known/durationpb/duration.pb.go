@@ -77,12 +77,13 @@
 package durationpb
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	math "math"
 	reflect "reflect"
 	sync "sync"
 	time "time"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 // A Duration represents a signed, fixed-length span of time represented
@@ -327,10 +328,13 @@ func file_google_protobuf_duration_proto_rawDescGZIP() []byte {
 	return file_google_protobuf_duration_proto_rawDescData
 }
 
-var file_google_protobuf_duration_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_google_protobuf_duration_proto_goTypes = []interface{}{
-	(*Duration)(nil), // 0: google.protobuf.Duration
-}
+var (
+	file_google_protobuf_duration_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+	file_google_protobuf_duration_proto_goTypes  = []interface{}{
+		(*Duration)(nil), // 0: google.protobuf.Duration
+	}
+)
+
 var file_google_protobuf_duration_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type

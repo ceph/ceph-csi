@@ -29,11 +29,15 @@ import (
 
 var verboseReader = false
 
-var fileCache map[string][]byte
-var infoCache map[string]*yaml.Node
+var (
+	fileCache map[string][]byte
+	infoCache map[string]*yaml.Node
+)
 
-var fileCacheEnable = true
-var infoCacheEnable = true
+var (
+	fileCacheEnable = true
+	infoCacheEnable = true
+)
 
 // These locks are used to synchronize accesses to the fileCache and infoCache
 // maps (above). They are global state and can throw thread-related errors
@@ -43,8 +47,10 @@ var infoCacheEnable = true
 // functions, so some public functions have private equivalents.
 // In the future, we might consider replacing the maps with sync.Map and
 // eliminating these mutexes.
-var fileCacheMutex sync.Mutex
-var infoCacheMutex sync.Mutex
+var (
+	fileCacheMutex sync.Mutex
+	infoCacheMutex sync.Mutex
+)
 
 func initializeFileCache() {
 	if fileCache == nil {

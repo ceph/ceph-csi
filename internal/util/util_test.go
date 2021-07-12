@@ -256,10 +256,21 @@ func TestParseKernelRelease(t *testing.T) {
 		}
 	}
 
-	goodReleases := []string{"5.12", "5.12xlinux", "5.1-2-yam", "3.1-5-x", "5.12.14", "5.12.14xlinux",
-		"5.12.14-xlinux", "5.12.14-99-x", "3.3x-3"}
-	goodVersions := [][]int{{5, 12, 0, 0}, {5, 12, 0, 0}, {5, 1, 0, 2}, {3, 1, 0, 5},
-		{5, 12, 14, 0}, {5, 12, 14, 0}, {5, 12, 14, 0}, {5, 12, 14, 99}, {3, 3, 0, 0}}
+	goodReleases := []string{
+		"5.12", "5.12xlinux", "5.1-2-yam", "3.1-5-x", "5.12.14", "5.12.14xlinux",
+		"5.12.14-xlinux", "5.12.14-99-x", "3.3x-3",
+	}
+	goodVersions := [][]int{
+		{5, 12, 0, 0},
+		{5, 12, 0, 0},
+		{5, 1, 0, 2},
+		{3, 1, 0, 5},
+		{5, 12, 14, 0},
+		{5, 12, 14, 0},
+		{5, 12, 14, 0},
+		{5, 12, 14, 99},
+		{3, 3, 0, 0},
+	}
 	for i, release := range goodReleases {
 		version, patchlevel, sublevel, extraversion, err := parseKernelRelease(release)
 		if err != nil {

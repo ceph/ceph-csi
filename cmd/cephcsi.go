@@ -50,9 +50,7 @@ const (
 	defaultNS = "default"
 )
 
-var (
-	conf util.Config
-)
+var conf util.Config
 
 func init() {
 	// common flags

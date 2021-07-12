@@ -147,7 +147,6 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 
 	Context("Cephfs Upgrade Test", func() {
 		It("Cephfs Upgrade Test", func() {
-
 			By("checking provisioner deployment is running", func() {
 				err = waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
@@ -410,7 +409,6 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 						e2elog.Failf("failed to check directory size with error %v", err)
 					}
 				}
-
 			})
 
 			By("delete pvc and app")
@@ -429,6 +427,5 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				e2elog.Failf("failed to delete user %s with error %v", keyringCephFSNodePluginUsername, err)
 			}
 		})
-
 	})
 })

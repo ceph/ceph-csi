@@ -152,11 +152,14 @@ func file_google_rpc_status_proto_rawDescGZIP() []byte {
 	return file_google_rpc_status_proto_rawDescData
 }
 
-var file_google_rpc_status_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_google_rpc_status_proto_goTypes = []interface{}{
-	(*Status)(nil),    // 0: google.rpc.Status
-	(*anypb.Any)(nil), // 1: google.protobuf.Any
-}
+var (
+	file_google_rpc_status_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+	file_google_rpc_status_proto_goTypes  = []interface{}{
+		(*Status)(nil),    // 0: google.rpc.Status
+		(*anypb.Any)(nil), // 1: google.protobuf.Any
+	}
+)
+
 var file_google_rpc_status_proto_depIdxs = []int32{
 	1, // 0: google.rpc.Status.details:type_name -> google.protobuf.Any
 	1, // [1:1] is the sub-list for method output_type

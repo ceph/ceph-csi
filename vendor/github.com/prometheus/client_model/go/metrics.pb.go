@@ -5,15 +5,18 @@ package io_prometheus_client
 
 import (
 	fmt "fmt"
+	math "math"
+
 	proto "github.com/golang/protobuf/proto"
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
-	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
+var (
+	_ = proto.Marshal
+	_ = fmt.Errorf
+	_ = math.Inf
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
@@ -88,15 +91,19 @@ func (*LabelPair) Descriptor() ([]byte, []int) {
 func (m *LabelPair) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LabelPair.Unmarshal(m, b)
 }
+
 func (m *LabelPair) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LabelPair.Marshal(b, m, deterministic)
 }
+
 func (m *LabelPair) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_LabelPair.Merge(m, src)
 }
+
 func (m *LabelPair) XXX_Size() int {
 	return xxx_messageInfo_LabelPair.Size(m)
 }
+
 func (m *LabelPair) XXX_DiscardUnknown() {
 	xxx_messageInfo_LabelPair.DiscardUnknown(m)
 }
@@ -134,15 +141,19 @@ func (*Gauge) Descriptor() ([]byte, []int) {
 func (m *Gauge) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Gauge.Unmarshal(m, b)
 }
+
 func (m *Gauge) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Gauge.Marshal(b, m, deterministic)
 }
+
 func (m *Gauge) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Gauge.Merge(m, src)
 }
+
 func (m *Gauge) XXX_Size() int {
 	return xxx_messageInfo_Gauge.Size(m)
 }
+
 func (m *Gauge) XXX_DiscardUnknown() {
 	xxx_messageInfo_Gauge.DiscardUnknown(m)
 }
@@ -174,15 +185,19 @@ func (*Counter) Descriptor() ([]byte, []int) {
 func (m *Counter) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Counter.Unmarshal(m, b)
 }
+
 func (m *Counter) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Counter.Marshal(b, m, deterministic)
 }
+
 func (m *Counter) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Counter.Merge(m, src)
 }
+
 func (m *Counter) XXX_Size() int {
 	return xxx_messageInfo_Counter.Size(m)
 }
+
 func (m *Counter) XXX_DiscardUnknown() {
 	xxx_messageInfo_Counter.DiscardUnknown(m)
 }
@@ -221,15 +236,19 @@ func (*Quantile) Descriptor() ([]byte, []int) {
 func (m *Quantile) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Quantile.Unmarshal(m, b)
 }
+
 func (m *Quantile) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Quantile.Marshal(b, m, deterministic)
 }
+
 func (m *Quantile) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Quantile.Merge(m, src)
 }
+
 func (m *Quantile) XXX_Size() int {
 	return xxx_messageInfo_Quantile.Size(m)
 }
+
 func (m *Quantile) XXX_DiscardUnknown() {
 	xxx_messageInfo_Quantile.DiscardUnknown(m)
 }
@@ -269,15 +288,19 @@ func (*Summary) Descriptor() ([]byte, []int) {
 func (m *Summary) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Summary.Unmarshal(m, b)
 }
+
 func (m *Summary) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Summary.Marshal(b, m, deterministic)
 }
+
 func (m *Summary) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Summary.Merge(m, src)
 }
+
 func (m *Summary) XXX_Size() int {
 	return xxx_messageInfo_Summary.Size(m)
 }
+
 func (m *Summary) XXX_DiscardUnknown() {
 	xxx_messageInfo_Summary.DiscardUnknown(m)
 }
@@ -322,15 +345,19 @@ func (*Untyped) Descriptor() ([]byte, []int) {
 func (m *Untyped) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Untyped.Unmarshal(m, b)
 }
+
 func (m *Untyped) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Untyped.Marshal(b, m, deterministic)
 }
+
 func (m *Untyped) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Untyped.Merge(m, src)
 }
+
 func (m *Untyped) XXX_Size() int {
 	return xxx_messageInfo_Untyped.Size(m)
 }
+
 func (m *Untyped) XXX_DiscardUnknown() {
 	xxx_messageInfo_Untyped.DiscardUnknown(m)
 }
@@ -363,15 +390,19 @@ func (*Histogram) Descriptor() ([]byte, []int) {
 func (m *Histogram) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Histogram.Unmarshal(m, b)
 }
+
 func (m *Histogram) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Histogram.Marshal(b, m, deterministic)
 }
+
 func (m *Histogram) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Histogram.Merge(m, src)
 }
+
 func (m *Histogram) XXX_Size() int {
 	return xxx_messageInfo_Histogram.Size(m)
 }
+
 func (m *Histogram) XXX_DiscardUnknown() {
 	xxx_messageInfo_Histogram.DiscardUnknown(m)
 }
@@ -418,15 +449,19 @@ func (*Bucket) Descriptor() ([]byte, []int) {
 func (m *Bucket) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Bucket.Unmarshal(m, b)
 }
+
 func (m *Bucket) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Bucket.Marshal(b, m, deterministic)
 }
+
 func (m *Bucket) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Bucket.Merge(m, src)
 }
+
 func (m *Bucket) XXX_Size() int {
 	return xxx_messageInfo_Bucket.Size(m)
 }
+
 func (m *Bucket) XXX_DiscardUnknown() {
 	xxx_messageInfo_Bucket.DiscardUnknown(m)
 }
@@ -473,15 +508,19 @@ func (*Exemplar) Descriptor() ([]byte, []int) {
 func (m *Exemplar) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Exemplar.Unmarshal(m, b)
 }
+
 func (m *Exemplar) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Exemplar.Marshal(b, m, deterministic)
 }
+
 func (m *Exemplar) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Exemplar.Merge(m, src)
 }
+
 func (m *Exemplar) XXX_Size() int {
 	return xxx_messageInfo_Exemplar.Size(m)
 }
+
 func (m *Exemplar) XXX_DiscardUnknown() {
 	xxx_messageInfo_Exemplar.DiscardUnknown(m)
 }
@@ -532,15 +571,19 @@ func (*Metric) Descriptor() ([]byte, []int) {
 func (m *Metric) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Metric.Unmarshal(m, b)
 }
+
 func (m *Metric) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Metric.Marshal(b, m, deterministic)
 }
+
 func (m *Metric) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Metric.Merge(m, src)
 }
+
 func (m *Metric) XXX_Size() int {
 	return xxx_messageInfo_Metric.Size(m)
 }
+
 func (m *Metric) XXX_DiscardUnknown() {
 	xxx_messageInfo_Metric.DiscardUnknown(m)
 }
@@ -616,15 +659,19 @@ func (*MetricFamily) Descriptor() ([]byte, []int) {
 func (m *MetricFamily) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MetricFamily.Unmarshal(m, b)
 }
+
 func (m *MetricFamily) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_MetricFamily.Marshal(b, m, deterministic)
 }
+
 func (m *MetricFamily) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_MetricFamily.Merge(m, src)
 }
+
 func (m *MetricFamily) XXX_Size() int {
 	return xxx_messageInfo_MetricFamily.Size(m)
 }
+
 func (m *MetricFamily) XXX_DiscardUnknown() {
 	xxx_messageInfo_MetricFamily.DiscardUnknown(m)
 }

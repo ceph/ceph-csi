@@ -15,14 +15,16 @@ import (
 	"github.com/onsi/ginkgo/types"
 )
 
-const defaultStyle = "\x1b[0m"
-const boldStyle = "\x1b[1m"
-const redColor = "\x1b[91m"
-const greenColor = "\x1b[32m"
-const yellowColor = "\x1b[33m"
-const cyanColor = "\x1b[36m"
-const grayColor = "\x1b[90m"
-const lightGrayColor = "\x1b[37m"
+const (
+	defaultStyle   = "\x1b[0m"
+	boldStyle      = "\x1b[1m"
+	redColor       = "\x1b[91m"
+	greenColor     = "\x1b[32m"
+	yellowColor    = "\x1b[33m"
+	cyanColor      = "\x1b[36m"
+	grayColor      = "\x1b[90m"
+	lightGrayColor = "\x1b[37m"
+)
 
 type cursorStateType int
 

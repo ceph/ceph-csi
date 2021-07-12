@@ -21,17 +21,20 @@ package client
 import (
 	context "context"
 	fmt "fmt"
+	math "math"
+
 	proto "github.com/golang/protobuf/proto"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
+var (
+	_ = proto.Marshal
+	_ = fmt.Errorf
+	_ = math.Inf
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
@@ -119,15 +122,19 @@ func (*Packet) Descriptor() ([]byte, []int) {
 func (m *Packet) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Packet.Unmarshal(m, b)
 }
+
 func (m *Packet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Packet.Marshal(b, m, deterministic)
 }
+
 func (m *Packet) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Packet.Merge(m, src)
 }
+
 func (m *Packet) XXX_Size() int {
 	return xxx_messageInfo_Packet.Size(m)
 }
+
 func (m *Packet) XXX_DiscardUnknown() {
 	xxx_messageInfo_Packet.DiscardUnknown(m)
 }
@@ -250,15 +257,19 @@ func (*DialRequest) Descriptor() ([]byte, []int) {
 func (m *DialRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DialRequest.Unmarshal(m, b)
 }
+
 func (m *DialRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_DialRequest.Marshal(b, m, deterministic)
 }
+
 func (m *DialRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_DialRequest.Merge(m, src)
 }
+
 func (m *DialRequest) XXX_Size() int {
 	return xxx_messageInfo_DialRequest.Size(m)
 }
+
 func (m *DialRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_DialRequest.DiscardUnknown(m)
 }
@@ -308,15 +319,19 @@ func (*DialResponse) Descriptor() ([]byte, []int) {
 func (m *DialResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DialResponse.Unmarshal(m, b)
 }
+
 func (m *DialResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_DialResponse.Marshal(b, m, deterministic)
 }
+
 func (m *DialResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_DialResponse.Merge(m, src)
 }
+
 func (m *DialResponse) XXX_Size() int {
 	return xxx_messageInfo_DialResponse.Size(m)
 }
+
 func (m *DialResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_DialResponse.DiscardUnknown(m)
 }
@@ -362,15 +377,19 @@ func (*CloseRequest) Descriptor() ([]byte, []int) {
 func (m *CloseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CloseRequest.Unmarshal(m, b)
 }
+
 func (m *CloseRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CloseRequest.Marshal(b, m, deterministic)
 }
+
 func (m *CloseRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CloseRequest.Merge(m, src)
 }
+
 func (m *CloseRequest) XXX_Size() int {
 	return xxx_messageInfo_CloseRequest.Size(m)
 }
+
 func (m *CloseRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_CloseRequest.DiscardUnknown(m)
 }
@@ -404,15 +423,19 @@ func (*CloseResponse) Descriptor() ([]byte, []int) {
 func (m *CloseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CloseResponse.Unmarshal(m, b)
 }
+
 func (m *CloseResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CloseResponse.Marshal(b, m, deterministic)
 }
+
 func (m *CloseResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_CloseResponse.Merge(m, src)
 }
+
 func (m *CloseResponse) XXX_Size() int {
 	return xxx_messageInfo_CloseResponse.Size(m)
 }
+
 func (m *CloseResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_CloseResponse.DiscardUnknown(m)
 }
@@ -455,15 +478,19 @@ func (*Data) Descriptor() ([]byte, []int) {
 func (m *Data) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Data.Unmarshal(m, b)
 }
+
 func (m *Data) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Data.Marshal(b, m, deterministic)
 }
+
 func (m *Data) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Data.Merge(m, src)
 }
+
 func (m *Data) XXX_Size() int {
 	return xxx_messageInfo_Data.Size(m)
 }
+
 func (m *Data) XXX_DiscardUnknown() {
 	xxx_messageInfo_Data.DiscardUnknown(m)
 }
@@ -541,8 +568,10 @@ var fileDescriptor_fec4258d9ecd175d = []byte{
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConn
+var (
+	_ context.Context
+	_ grpc.ClientConn
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
@@ -600,8 +629,7 @@ type ProxyServiceServer interface {
 }
 
 // UnimplementedProxyServiceServer can be embedded to have forward compatible implementations.
-type UnimplementedProxyServiceServer struct {
-}
+type UnimplementedProxyServiceServer struct{}
 
 func (*UnimplementedProxyServiceServer) Proxy(srv ProxyService_ProxyServer) error {
 	return status.Errorf(codes.Unimplemented, "method Proxy not implemented")

@@ -171,8 +171,10 @@ type watch struct {
 	buf    [4096]byte
 }
 
-type indexMap map[uint64]*watch
-type watchMap map[uint32]indexMap
+type (
+	indexMap map[uint64]*watch
+	watchMap map[uint32]indexMap
+)
 
 func (w *Watcher) wakeupReader() error {
 	e := syscall.PostQueuedCompletionStatus(w.port, 0, 0, nil)

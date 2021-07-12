@@ -44,7 +44,7 @@ const (
 )
 
 func createCephConfigRoot() error {
-	return os.MkdirAll(cephConfigRoot, 0755) // #nosec
+	return os.MkdirAll(cephConfigRoot, 0o755) // #nosec
 }
 
 // WriteCephConfig writes out a basic ceph.conf file, making it easy to use
@@ -54,7 +54,7 @@ func WriteCephConfig() error {
 		return err
 	}
 
-	err := ioutil.WriteFile(CephConfigPath, cephConfig, 0600)
+	err := ioutil.WriteFile(CephConfigPath, cephConfig, 0o600)
 	if err != nil {
 		return err
 	}

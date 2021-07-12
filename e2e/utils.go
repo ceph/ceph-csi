@@ -262,7 +262,8 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 					VolumeSource: v1.VolumeSource{
 						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
 							ClaimName: pvc.Name,
-							ReadOnly:  false},
+							ReadOnly:  false,
+						},
 					},
 				},
 			},
@@ -477,7 +478,7 @@ func addTopologyDomainsToDSYaml(template, labels string) string {
 }
 
 func oneReplicaDeployYaml(template string) string {
-	var re = regexp.MustCompile(`(\s+replicas:) \d+`)
+	re := regexp.MustCompile(`(\s+replicas:) \d+`)
 	return re.ReplaceAllString(template, `$1 1`)
 }
 

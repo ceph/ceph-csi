@@ -6812,8 +6812,10 @@ var nfkcSparseValues = [895]valueRange{
 }
 
 // recompMap: 7528 bytes (entries only)
-var recompMap map[uint32]rune
-var recompMapOnce sync.Once
+var (
+	recompMap     map[uint32]rune
+	recompMapOnce sync.Once
+)
 
 const recompMapPacked = "" +
 	"\x00A\x03\x00\x00\x00\x00\xc0" + // 0x00410300: 0x000000C0

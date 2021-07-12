@@ -3,14 +3,18 @@
 
 package log
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	proto "github.com/golang/protobuf/proto"
+	fmt "fmt"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
+var (
+	_ = proto.Marshal
+	_ = fmt.Errorf
+	_ = math.Inf
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
@@ -31,6 +35,7 @@ var LogServiceError_ErrorCode_name = map[int32]string{
 	1: "INVALID_REQUEST",
 	2: "STORAGE_ERROR",
 }
+
 var LogServiceError_ErrorCode_value = map[string]int32{
 	"OK":              0,
 	"INVALID_REQUEST": 1,
@@ -42,9 +47,11 @@ func (x LogServiceError_ErrorCode) Enum() *LogServiceError_ErrorCode {
 	*p = x
 	return p
 }
+
 func (x LogServiceError_ErrorCode) String() string {
 	return proto.EnumName(LogServiceError_ErrorCode_name, int32(x))
 }
+
 func (x *LogServiceError_ErrorCode) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(LogServiceError_ErrorCode_value, data, "LogServiceError_ErrorCode")
 	if err != nil {
@@ -53,6 +60,7 @@ func (x *LogServiceError_ErrorCode) UnmarshalJSON(data []byte) error {
 	*x = LogServiceError_ErrorCode(value)
 	return nil
 }
+
 func (LogServiceError_ErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{0, 0}
 }
@@ -69,18 +77,23 @@ func (*LogServiceError) ProtoMessage()    {}
 func (*LogServiceError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{0}
 }
+
 func (m *LogServiceError) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogServiceError.Unmarshal(m, b)
 }
+
 func (m *LogServiceError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogServiceError.Marshal(b, m, deterministic)
 }
+
 func (dst *LogServiceError) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_LogServiceError.Merge(dst, src)
 }
+
 func (m *LogServiceError) XXX_Size() int {
 	return xxx_messageInfo_LogServiceError.Size(m)
 }
+
 func (m *LogServiceError) XXX_DiscardUnknown() {
 	xxx_messageInfo_LogServiceError.DiscardUnknown(m)
 }
@@ -102,18 +115,23 @@ func (*UserAppLogLine) ProtoMessage()    {}
 func (*UserAppLogLine) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{1}
 }
+
 func (m *UserAppLogLine) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UserAppLogLine.Unmarshal(m, b)
 }
+
 func (m *UserAppLogLine) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_UserAppLogLine.Marshal(b, m, deterministic)
 }
+
 func (dst *UserAppLogLine) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_UserAppLogLine.Merge(dst, src)
 }
+
 func (m *UserAppLogLine) XXX_Size() int {
 	return xxx_messageInfo_UserAppLogLine.Size(m)
 }
+
 func (m *UserAppLogLine) XXX_DiscardUnknown() {
 	xxx_messageInfo_UserAppLogLine.DiscardUnknown(m)
 }
@@ -154,18 +172,23 @@ func (*UserAppLogGroup) ProtoMessage()    {}
 func (*UserAppLogGroup) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{2}
 }
+
 func (m *UserAppLogGroup) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UserAppLogGroup.Unmarshal(m, b)
 }
+
 func (m *UserAppLogGroup) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_UserAppLogGroup.Marshal(b, m, deterministic)
 }
+
 func (dst *UserAppLogGroup) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_UserAppLogGroup.Merge(dst, src)
 }
+
 func (m *UserAppLogGroup) XXX_Size() int {
 	return xxx_messageInfo_UserAppLogGroup.Size(m)
 }
+
 func (m *UserAppLogGroup) XXX_DiscardUnknown() {
 	xxx_messageInfo_UserAppLogGroup.DiscardUnknown(m)
 }
@@ -192,18 +215,23 @@ func (*FlushRequest) ProtoMessage()    {}
 func (*FlushRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{3}
 }
+
 func (m *FlushRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FlushRequest.Unmarshal(m, b)
 }
+
 func (m *FlushRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_FlushRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *FlushRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_FlushRequest.Merge(dst, src)
 }
+
 func (m *FlushRequest) XXX_Size() int {
 	return xxx_messageInfo_FlushRequest.Size(m)
 }
+
 func (m *FlushRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_FlushRequest.DiscardUnknown(m)
 }
@@ -230,18 +258,23 @@ func (*SetStatusRequest) ProtoMessage()    {}
 func (*SetStatusRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{4}
 }
+
 func (m *SetStatusRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SetStatusRequest.Unmarshal(m, b)
 }
+
 func (m *SetStatusRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SetStatusRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *SetStatusRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_SetStatusRequest.Merge(dst, src)
 }
+
 func (m *SetStatusRequest) XXX_Size() int {
 	return xxx_messageInfo_SetStatusRequest.Size(m)
 }
+
 func (m *SetStatusRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_SetStatusRequest.DiscardUnknown(m)
 }
@@ -268,18 +301,23 @@ func (*LogOffset) ProtoMessage()    {}
 func (*LogOffset) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{5}
 }
+
 func (m *LogOffset) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogOffset.Unmarshal(m, b)
 }
+
 func (m *LogOffset) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogOffset.Marshal(b, m, deterministic)
 }
+
 func (dst *LogOffset) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_LogOffset.Merge(dst, src)
 }
+
 func (m *LogOffset) XXX_Size() int {
 	return xxx_messageInfo_LogOffset.Size(m)
 }
+
 func (m *LogOffset) XXX_DiscardUnknown() {
 	xxx_messageInfo_LogOffset.DiscardUnknown(m)
 }
@@ -308,18 +346,23 @@ func (*LogLine) ProtoMessage()    {}
 func (*LogLine) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{6}
 }
+
 func (m *LogLine) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogLine.Unmarshal(m, b)
 }
+
 func (m *LogLine) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogLine.Marshal(b, m, deterministic)
 }
+
 func (dst *LogLine) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_LogLine.Merge(dst, src)
 }
+
 func (m *LogLine) XXX_Size() int {
 	return xxx_messageInfo_LogLine.Size(m)
 }
+
 func (m *LogLine) XXX_DiscardUnknown() {
 	xxx_messageInfo_LogLine.DiscardUnknown(m)
 }
@@ -397,27 +440,34 @@ func (*RequestLog) ProtoMessage()    {}
 func (*RequestLog) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{7}
 }
+
 func (m *RequestLog) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RequestLog.Unmarshal(m, b)
 }
+
 func (m *RequestLog) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_RequestLog.Marshal(b, m, deterministic)
 }
+
 func (dst *RequestLog) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_RequestLog.Merge(dst, src)
 }
+
 func (m *RequestLog) XXX_Size() int {
 	return xxx_messageInfo_RequestLog.Size(m)
 }
+
 func (m *RequestLog) XXX_DiscardUnknown() {
 	xxx_messageInfo_RequestLog.DiscardUnknown(m)
 }
 
 var xxx_messageInfo_RequestLog proto.InternalMessageInfo
 
-const Default_RequestLog_ModuleId string = "default"
-const Default_RequestLog_ReplicaIndex int32 = -1
-const Default_RequestLog_Finished bool = true
+const (
+	Default_RequestLog_ModuleId     string = "default"
+	Default_RequestLog_ReplicaIndex int32  = -1
+	Default_RequestLog_Finished     bool   = true
+)
 
 func (m *RequestLog) GetAppId() string {
 	if m != nil && m.AppId != nil {
@@ -699,18 +749,23 @@ func (*LogModuleVersion) ProtoMessage()    {}
 func (*LogModuleVersion) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{8}
 }
+
 func (m *LogModuleVersion) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogModuleVersion.Unmarshal(m, b)
 }
+
 func (m *LogModuleVersion) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogModuleVersion.Marshal(b, m, deterministic)
 }
+
 func (dst *LogModuleVersion) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_LogModuleVersion.Merge(dst, src)
 }
+
 func (m *LogModuleVersion) XXX_Size() int {
 	return xxx_messageInfo_LogModuleVersion.Size(m)
 }
+
 func (m *LogModuleVersion) XXX_DiscardUnknown() {
 	xxx_messageInfo_LogModuleVersion.DiscardUnknown(m)
 }
@@ -764,18 +819,23 @@ func (*LogReadRequest) ProtoMessage()    {}
 func (*LogReadRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{9}
 }
+
 func (m *LogReadRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogReadRequest.Unmarshal(m, b)
 }
+
 func (m *LogReadRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogReadRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *LogReadRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_LogReadRequest.Merge(dst, src)
 }
+
 func (m *LogReadRequest) XXX_Size() int {
 	return xxx_messageInfo_LogReadRequest.Size(m)
 }
+
 func (m *LogReadRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_LogReadRequest.DiscardUnknown(m)
 }
@@ -930,18 +990,23 @@ func (*LogReadResponse) ProtoMessage()    {}
 func (*LogReadResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{10}
 }
+
 func (m *LogReadResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogReadResponse.Unmarshal(m, b)
 }
+
 func (m *LogReadResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogReadResponse.Marshal(b, m, deterministic)
 }
+
 func (dst *LogReadResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_LogReadResponse.Merge(dst, src)
 }
+
 func (m *LogReadResponse) XXX_Size() int {
 	return xxx_messageInfo_LogReadResponse.Size(m)
 }
+
 func (m *LogReadResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_LogReadResponse.DiscardUnknown(m)
 }
@@ -987,18 +1052,23 @@ func (*LogUsageRecord) ProtoMessage()    {}
 func (*LogUsageRecord) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{11}
 }
+
 func (m *LogUsageRecord) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogUsageRecord.Unmarshal(m, b)
 }
+
 func (m *LogUsageRecord) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogUsageRecord.Marshal(b, m, deterministic)
 }
+
 func (dst *LogUsageRecord) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_LogUsageRecord.Merge(dst, src)
 }
+
 func (m *LogUsageRecord) XXX_Size() int {
 	return xxx_messageInfo_LogUsageRecord.Size(m)
 }
+
 func (m *LogUsageRecord) XXX_DiscardUnknown() {
 	xxx_messageInfo_LogUsageRecord.DiscardUnknown(m)
 }
@@ -1067,18 +1137,23 @@ func (*LogUsageRequest) ProtoMessage()    {}
 func (*LogUsageRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{12}
 }
+
 func (m *LogUsageRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogUsageRequest.Unmarshal(m, b)
 }
+
 func (m *LogUsageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogUsageRequest.Marshal(b, m, deterministic)
 }
+
 func (dst *LogUsageRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_LogUsageRequest.Merge(dst, src)
 }
+
 func (m *LogUsageRequest) XXX_Size() int {
 	return xxx_messageInfo_LogUsageRequest.Size(m)
 }
+
 func (m *LogUsageRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_LogUsageRequest.DiscardUnknown(m)
 }
@@ -1157,18 +1232,23 @@ func (*LogUsageResponse) ProtoMessage()    {}
 func (*LogUsageResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_log_service_f054fd4b5012319d, []int{13}
 }
+
 func (m *LogUsageResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogUsageResponse.Unmarshal(m, b)
 }
+
 func (m *LogUsageResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogUsageResponse.Marshal(b, m, deterministic)
 }
+
 func (dst *LogUsageResponse) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_LogUsageResponse.Merge(dst, src)
 }
+
 func (m *LogUsageResponse) XXX_Size() int {
 	return xxx_messageInfo_LogUsageResponse.Size(m)
 }
+
 func (m *LogUsageResponse) XXX_DiscardUnknown() {
 	xxx_messageInfo_LogUsageResponse.DiscardUnknown(m)
 }

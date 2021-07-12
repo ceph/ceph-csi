@@ -22,7 +22,6 @@ import (
 	"strconv"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
-	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 
 	librbd "github.com/ceph/go-ceph/rbd"
@@ -600,8 +599,7 @@ func (cs *ControllerServer) createBackingImage(
 	rbdSnap *rbdSnapshot) error {
 	var err error
 
-	var j = &journal.Connection{}
-	j, err = volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
+	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -747,8 +745,7 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 	defer cs.OperationLocks.ReleaseDeleteLock(volumeID)
 
-	var rbdVol = &rbdVolume{}
-	rbdVol, err = genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		if errors.Is(err, util.ErrPoolNotFound) {
@@ -871,9 +868,8 @@ func (cs *ControllerServer) CreateSnapshot(
 	}
 	defer cr.DeleteCredentials()
 
-	var rbdVol = &rbdVolume{}
 	// Fetch source volume information
-	rbdVol, err = genVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
+	rbdVol, err := genVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		switch {
@@ -950,9 +946,8 @@ func (cs *ControllerServer) CreateSnapshot(
 	}()
 
 	var ready bool
-	var vol = new(rbdVolume)
 
-	ready, vol, err = cs.doSnapshotClone(ctx, rbdVol, rbdSnap, cr)
+	ready, vol, err := cs.doSnapshotClone(ctx, rbdVol, rbdSnap, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -1145,9 +1140,8 @@ func (cs *ControllerServer) doSnapshotClone(
 		util.ErrorLog(ctx, "failed to get image id: %v", err)
 		return ready, cloneRbd, err
 	}
-	var j = &journal.Connection{}
 	// save image ID
-	j, err = snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
+	j, err := snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to connect to cluster: %v", err)
 		return ready, cloneRbd, err
@@ -1315,8 +1309,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	var rbdVol = &rbdVolume{}
-	rbdVol, err = genVolFromVolID(ctx, volID, cr, req.GetSecrets())
+	rbdVol, err := genVolFromVolID(ctx, volID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		switch {

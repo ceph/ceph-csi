@@ -7,13 +7,13 @@
 package internal
 
 import (
+	"appengine"
+	"appengine_internal"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"appengine"
-	"appengine_internal"
 	basepb "appengine_internal/base"
 
 	"github.com/golang/protobuf/proto"

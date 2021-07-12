@@ -22,11 +22,13 @@ import (
 	"testing"
 )
 
-var basePath = "./test_artifacts"
-var csiClusters = "csi-clusters.json"
-var pathToConfig = basePath + "/" + csiClusters
-var clusterID1 = "test1"
-var clusterID2 = "test2"
+var (
+	basePath     = "./test_artifacts"
+	csiClusters  = "csi-clusters.json"
+	pathToConfig = basePath + "/" + csiClusters
+	clusterID1   = "test1"
+	clusterID2   = "test2"
+)
 
 func cleanupTestData() {
 	os.RemoveAll(basePath)
@@ -41,7 +43,7 @@ func TestCSIConfig(t *testing.T) {
 
 	defer cleanupTestData()
 
-	err = os.MkdirAll(basePath, 0700)
+	err = os.MkdirAll(basePath, 0o700)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -53,7 +55,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	data = ""
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0o600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -65,7 +67,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	data = "[{\"clusterIDBad\":\"" + clusterID2 + "\",\"monitors\":[\"mon1\",\"mon2\",\"mon3\"]}]"
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0o600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -77,7 +79,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	data = "[{\"clusterID\":\"" + clusterID2 + "\",\"monitorsBad\":[\"mon1\",\"mon2\",\"mon3\"]}]"
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0o600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -89,7 +91,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	data = "[{\"clusterID\":\"" + clusterID2 + "\",\"monitors\":[\"mon1\",2,\"mon3\"]}]"
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0o600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -101,7 +103,7 @@ func TestCSIConfig(t *testing.T) {
 	}
 
 	data = "[{\"clusterID\":\"" + clusterID2 + "\",\"monitors\":[\"mon1\",\"mon2\",\"mon3\"]}]"
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0o600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}
@@ -120,7 +122,7 @@ func TestCSIConfig(t *testing.T) {
 
 	data = "[{\"clusterID\":\"" + clusterID2 + "\",\"monitors\":[\"mon1\",\"mon2\",\"mon3\"]}," +
 		"{\"clusterID\":\"" + clusterID1 + "\",\"monitors\":[\"mon4\",\"mon5\",\"mon6\"]}]"
-	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0600)
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0o600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
 	}

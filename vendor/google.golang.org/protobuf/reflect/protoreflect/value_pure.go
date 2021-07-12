@@ -41,9 +41,11 @@ type value struct {
 func valueOfString(v string) Value {
 	return Value{typ: stringType, str: v}
 }
+
 func valueOfBytes(v []byte) Value {
 	return Value{typ: bytesType, bin: v}
 }
+
 func valueOfIface(v interface{}) Value {
 	return Value{typ: ifaceType, iface: v}
 }
@@ -51,9 +53,11 @@ func valueOfIface(v interface{}) Value {
 func (v Value) getString() string {
 	return v.str
 }
+
 func (v Value) getBytes() []byte {
 	return v.bin
 }
+
 func (v Value) getIface() interface{} {
 	return v.iface
 }

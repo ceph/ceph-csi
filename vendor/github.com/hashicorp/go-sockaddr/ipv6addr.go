@@ -27,8 +27,10 @@ const IPv6HostPrefix = IPPrefixLen(128)
 var ipv6HostMask IPv6Mask
 
 // ipv6AddrAttrMap is a map of the IPv6Addr type-specific attributes.
-var ipv6AddrAttrMap map[AttrName]func(IPv6Addr) string
-var ipv6AddrAttrs []AttrName
+var (
+	ipv6AddrAttrMap map[AttrName]func(IPv6Addr) string
+	ipv6AddrAttrs   []AttrName
+)
 
 func init() {
 	biMask := new(big.Int)

@@ -526,7 +526,6 @@ func SetMirrorSiteName(conn *rados.Conn, name string) error {
 // int rbd_mirror_site_name_get(rados_t cluster,
 //                              char *name, size_t *max_len);
 func GetMirrorSiteName(conn *rados.Conn) (string, error) {
-
 	var (
 		cluster = C.rados_t(conn.Cluster())
 		err     error

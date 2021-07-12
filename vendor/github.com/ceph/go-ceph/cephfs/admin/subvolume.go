@@ -309,7 +309,6 @@ func (fsa *FSAdmin) ForceRemoveSubVolumeSnapshot(volume, group, subvolume, name 
 }
 
 func (fsa *FSAdmin) rmSubVolumeSnapshot(volume, group, subvolume, name string, o commonRmFlags) error {
-
 	m := map[string]string{
 		"prefix":    "fs subvolume snapshot rm",
 		"vol_name":  volume,

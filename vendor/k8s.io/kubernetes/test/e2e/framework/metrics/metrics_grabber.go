@@ -68,7 +68,6 @@ type Grabber struct {
 
 // NewMetricsGrabber returns new metrics which are initialized.
 func NewMetricsGrabber(c clientset.Interface, ec clientset.Interface, kubelets bool, scheduler bool, controllers bool, apiServer bool, clusterAutoscaler bool) (*Grabber, error) {
-
 	kubeScheduler := ""
 	kubeControllerManager := ""
 

@@ -157,6 +157,7 @@ func (l *lazyRecorder) Event(object runtime.Object, eventtype, reason, message s
 	}
 	l.prov.lock.RUnlock()
 }
+
 func (l *lazyRecorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
 	l.ensureRecording()
 
@@ -166,6 +167,7 @@ func (l *lazyRecorder) Eventf(object runtime.Object, eventtype, reason, messageF
 	}
 	l.prov.lock.RUnlock()
 }
+
 func (l *lazyRecorder) AnnotatedEventf(object runtime.Object, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
 	l.ensureRecording()
 

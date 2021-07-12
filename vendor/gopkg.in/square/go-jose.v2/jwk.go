@@ -261,7 +261,6 @@ func (k *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
 		hx, err := hex.DecodeString(string(x5tSHA1bytes))
 		if err != nil {
 			return fmt.Errorf("square/go-jose: invalid JWK, unable to hex decode x5t: %v", err)
-
 		}
 		x5tSHA1bytes = hx
 	}
@@ -330,9 +329,11 @@ func (s *JSONWebKeySet) Key(kid string) []JSONWebKey {
 	return keys
 }
 
-const rsaThumbprintTemplate = `{"e":"%s","kty":"RSA","n":"%s"}`
-const ecThumbprintTemplate = `{"crv":"%s","kty":"EC","x":"%s","y":"%s"}`
-const edThumbprintTemplate = `{"crv":"%s","kty":"OKP",x":"%s"}`
+const (
+	rsaThumbprintTemplate = `{"e":"%s","kty":"RSA","n":"%s"}`
+	ecThumbprintTemplate  = `{"crv":"%s","kty":"EC","x":"%s","y":"%s"}`
+	edThumbprintTemplate  = `{"crv":"%s","kty":"OKP",x":"%s"}`
+)
 
 func ecThumbprintInput(curve elliptic.Curve, x, y *big.Int) (string, error) {
 	coordLength := curveSize(curve)

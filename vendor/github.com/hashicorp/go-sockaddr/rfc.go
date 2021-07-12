@@ -2,8 +2,10 @@ package sockaddr
 
 // ForwardingBlacklist is a faux RFC that includes a list of non-forwardable IP
 // blocks.
-const ForwardingBlacklist = 4294967295
-const ForwardingBlacklistRFC = "4294967295"
+const (
+	ForwardingBlacklist    = 4294967295
+	ForwardingBlacklistRFC = "4294967295"
+)
 
 // IsRFC tests to see if an SockAddr matches the specified RFC
 func IsRFC(rfcNum uint, sa SockAddr) bool {
@@ -74,13 +76,13 @@ func KnownRFCs() map[uint]SockAddrs {
 		2928: {
 			// [RFC2928] Initial IPv6 Sub-TLA ID Assignments
 			MustIPv6Addr("2001::/16"), // Superblock
-			//MustIPv6Addr("2001:0000::/23"), // IANA
-			//MustIPv6Addr("2001:0200::/23"), // APNIC
-			//MustIPv6Addr("2001:0400::/23"), // ARIN
-			//MustIPv6Addr("2001:0600::/23"), // RIPE NCC
-			//MustIPv6Addr("2001:0800::/23"), // (future assignment)
+			// MustIPv6Addr("2001:0000::/23"), // IANA
+			// MustIPv6Addr("2001:0200::/23"), // APNIC
+			// MustIPv6Addr("2001:0400::/23"), // ARIN
+			// MustIPv6Addr("2001:0600::/23"), // RIPE NCC
+			// MustIPv6Addr("2001:0800::/23"), // (future assignment)
 			// ...
-			//MustIPv6Addr("2001:FE00::/23"), // (future assignment)
+			// MustIPv6Addr("2001:FE00::/23"), // (future assignment)
 		},
 		3056: { // 6to4 address
 			// [RFC3056] Connection of IPv6 Domains via IPv4 Clouds
@@ -921,7 +923,7 @@ func KnownRFCs() map[uint]SockAddrs {
 			// There is no way of expressing a whitelist per RFC2928
 			// atm without creating a negative mask, which I don't
 			// want to do atm.
-			//MustIPv6Addr("2001::/23"),
+			// MustIPv6Addr("2001::/23"),
 
 			MustIPv6Addr("2001:db8::/32"),
 			MustIPv6Addr("2001:10::/28"),

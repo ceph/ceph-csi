@@ -3,9 +3,10 @@ package lz4
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/pierrec/lz4/internal/xxh32"
 	"io"
 	"runtime"
+
+	"github.com/pierrec/lz4/internal/xxh32"
 )
 
 // zResult contains the results of compressing a block.

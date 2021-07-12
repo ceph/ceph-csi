@@ -30,8 +30,10 @@ import (
 	"google.golang.org/grpc/grpclog"
 )
 
-var once sync.Once
-var logger = grpclog.Component("core")
+var (
+	once   sync.Once
+	logger = grpclog.Component("core")
+)
 
 func log() {
 	once.Do(func() {
