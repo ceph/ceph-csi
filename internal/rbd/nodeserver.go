@@ -439,11 +439,8 @@ func (ns *NodeServer) NodePublishVolume(
 	volID := req.GetVolumeId()
 	stagingPath += "/" + volID
 
-	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
-	}
-	defer ns.VolumeLocks.Release(volID)
+	// Considering kubelet make sure the stage and publish operations
+	// are serialized, we dont need any extra locking in nodePublish
 
 	// Check if that target path exists properly
 	notMnt, err := ns.createTargetMountPath(ctx, targetPath, isBlock)
