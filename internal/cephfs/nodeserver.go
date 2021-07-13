@@ -267,16 +267,9 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	if err = util.ValidateNodeUnpublishVolumeRequest(req); err != nil {
 		return nil, err
 	}
-
-	volID := req.GetVolumeId()
+	// considering kubelet make sure node operations like unpublish/unstage...etc can not be called
+	// at same time, an explicit locking at time of nodeunpublish is not required.
 	targetPath := req.GetTargetPath()
-
-	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
-		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
-	}
-	defer ns.VolumeLocks.Release(volID)
-
 	isMnt, err := util.IsMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
