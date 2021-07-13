@@ -820,21 +820,17 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 	vol.Monitors = rv.Monitors
 	vol.RbdImageName = rv.RbdImageName
 	vol.conn = rv.conn.Copy()
+	currVol := &vol
 
 	for {
-		if vol.RbdImageName == "" {
+		if currVol.RbdImageName == "" {
 			return false, nil
 		}
-		err := vol.openIoctx()
+		err := currVol.openIoctx()
 		if err != nil {
 			return false, err
 		}
-
-		err = vol.getImageInfo()
-		// FIXME: create and destroy the vol inside the loop.
-		// see https://github.com/ceph/ceph-csi/pull/1838#discussion_r598530807
-		vol.ioctx.Destroy()
-		vol.ioctx = nil
+		parentVol, err := currVol.getParentVolume()
 		if err != nil {
 			// call to getImageInfo returns the parent name even if the parent
 			// is in the trash, when we try to open the parent image to get its
@@ -843,15 +839,14 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 			if errors.Is(err, ErrImageNotFound) {
 				return false, nil
 			}
-			util.ErrorLog(ctx, "failed to get image info for %s: %s", vol.String(), err)
-
+			util.ErrorLog(ctx, "failed to get parent image info for %s: %s", currVol.String(), err)
 			return false, err
 		}
-		if f := vol.hasFeature(feature); f {
+		defer parentVol.Destroy()
+		if f := currVol.hasFeature(feature); f {
 			return true, nil
 		}
-		vol.RbdImageName = vol.ParentName
-		vol.Pool = vol.ParentPool
+		currVol = parentVol
 	}
 }
 
