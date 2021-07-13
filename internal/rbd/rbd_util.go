@@ -593,6 +593,31 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	return nil
 }
 
+// getParentVolume returns the parent volume of the caller volume.
+func (rv *rbdVolume) getParentVolume() (*rbdVolume, error) {
+	parentVol := rbdVolume{}
+	rbdImage, err := rv.open()
+	if err != nil {
+		return nil, err
+	}
+	defer rbdImage.Close()
+	parentInfo, err := rbdImage.GetParent()
+	if err != nil {
+		// Caller should decide whether not finding
+		// the parent is an error or not.
+		if errors.Is(err, librbd.ErrNotFound) {
+			return &parentVol, nil
+		}
+		return nil, err
+	}
+	parentVol.RbdImageName = parentInfo.Image.ImageName
+	parentVol.Pool = parentInfo.Image.PoolName
+	parentVol.Monitors = rv.Monitors
+	parentVol.RadosNamespace = rv.RadosNamespace
+	parentVol.conn = rv.conn.Copy()
+	return &parentVol, nil
+}
+
 func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 	var depth uint
 	vol := rbdVolume{}
