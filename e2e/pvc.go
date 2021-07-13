@@ -61,13 +61,13 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 
 		pv, err = c.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
 		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
 			return false, fmt.Errorf("failed to get pv: %w", err)
-		}
-		if isRetryableAPIError(err) {
-			return false, nil
-		}
-		if apierrs.IsNotFound(err) {
-			return false, nil
 		}
 		err = e2epv.WaitOnPVandPVC(
 			c,
