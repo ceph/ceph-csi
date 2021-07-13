@@ -734,7 +734,7 @@ func (conn *Connection) Destroy() {
 // volumeHandle and the newly generated volumeHandle.
 func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
 	journalPool, volumeHandle string) (string, error) {
-	var cj = conn.config
+	cj := conn.config
 
 	// check if request name is already part of the directory omap
 	fetchKeys := []string{
@@ -762,7 +762,7 @@ func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
 // internal reference.
 func (conn *Connection) ReserveNewUUIDMapping(ctx context.Context,
 	journalPool, oldVolumeHandle, newVolumeHandle string) error {
-	var cj = conn.config
+	cj := conn.config
 
 	setKeys := map[string]string{
 		cj.csiNameKeyPrefix + oldVolumeHandle: newVolumeHandle,

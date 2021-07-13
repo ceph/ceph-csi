@@ -44,8 +44,10 @@ type ReconcilePersistentVolume struct {
 	Locks  *util.VolumeLocks
 }
 
-var _ reconcile.Reconciler = &ReconcilePersistentVolume{}
-var _ ctrl.ContollerManager = &ReconcilePersistentVolume{}
+var (
+	_ reconcile.Reconciler  = &ReconcilePersistentVolume{}
+	_ ctrl.ContollerManager = &ReconcilePersistentVolume{}
+)
 
 // Init will add the ReconcilePersistentVolume to the list.
 func Init() {

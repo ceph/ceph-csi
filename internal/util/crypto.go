@@ -18,13 +18,12 @@ package util
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"path"
 	"strings"
-
-	"crypto/rand"
 )
 
 const (

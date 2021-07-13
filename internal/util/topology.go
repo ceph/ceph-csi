@@ -133,9 +133,7 @@ type TopologyConstrainedPool struct {
 // from a CSI CreateVolume request.
 func GetTopologyFromRequest(
 	req *csi.CreateVolumeRequest) (*[]TopologyConstrainedPool, *csi.TopologyRequirement, error) {
-	var (
-		topologyPools []TopologyConstrainedPool
-	)
+	var topologyPools []TopologyConstrainedPool
 
 	// check if parameters have pool configuration pertaining to topology
 	topologyPoolsStr := req.GetParameters()["topologyConstrainedPools"]

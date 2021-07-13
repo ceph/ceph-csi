@@ -142,8 +142,10 @@ func (r *Driver) Run(conf *util.Config) {
 		// MULTI_NODE_SINGLE_WRITER etc, but need to do some verification of RO modes first
 		// will work those as follow up features
 		r.cd.AddVolumeCapabilityAccessModes(
-			[]csi.VolumeCapability_AccessMode_Mode{csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-				csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER})
+			[]csi.VolumeCapability_AccessMode_Mode{
+				csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+				csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+			})
 	}
 
 	// Create GRPC servers

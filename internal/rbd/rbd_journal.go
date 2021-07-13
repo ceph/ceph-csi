@@ -362,9 +362,7 @@ func (rv *rbdVolume) repairImageID(ctx context.Context, j *journal.Connection) e
 // reserveSnap is a helper routine to request a rbdSnapshot name reservation and generate the
 // volume ID for the generated name.
 func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, cr *util.Credentials) error {
-	var (
-		err error
-	)
+	var err error
 
 	journalPoolID, imagePoolID, err := util.GetPoolIDs(ctx, rbdSnap.Monitors, rbdSnap.JournalPool, rbdSnap.Pool, cr)
 	if err != nil {
@@ -435,9 +433,7 @@ func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 // reserveVol is a helper routine to request a rbdVolume name reservation and generate the
 // volume ID for the generated name.
 func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	var (
-		err error
-	)
+	var err error
 
 	err = updateTopologyConstraints(rbdVol, rbdSnap)
 	if err != nil {

@@ -70,9 +70,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, req *csi.NodeStageVolume
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	var (
-		volOptions *volumeOptions
-	)
+	var volOptions *volumeOptions
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
 	}
@@ -114,7 +112,6 @@ func (ns *NodeServer) NodeStageVolume(
 	// Check if the volume is already mounted
 
 	isMnt, err := util.IsMountPoint(stagingTargetPath)
-
 	if err != nil {
 		util.ErrorLog(ctx, "stat failed: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
@@ -184,7 +181,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 	if !csicommon.MountOptionContains(kernelMountOptions, readOnly) &&
 		!csicommon.MountOptionContains(fuseMountOptions, readOnly) {
 		// #nosec - allow anyone to write inside the stagingtarget path
-		err = os.Chmod(stagingTargetPath, 0777)
+		err = os.Chmod(stagingTargetPath, 0o777)
 		if err != nil {
 			util.ErrorLog(
 				ctx,
@@ -240,7 +237,6 @@ func (ns *NodeServer) NodePublishVolume(
 	// Check if the volume is already mounted
 
 	isMnt, err := util.IsMountPoint(targetPath)
-
 	if err != nil {
 		util.ErrorLog(ctx, "stat failed: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())

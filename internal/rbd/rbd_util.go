@@ -165,20 +165,18 @@ type imageFeature struct {
 	dependsOn []string
 }
 
-var (
-	supportedFeatures = map[string]imageFeature{
-		librbd.FeatureNameLayering: {
-			needRbdNbd: false,
-		},
-		librbd.FeatureNameExclusiveLock: {
-			needRbdNbd: true,
-		},
-		librbd.FeatureNameJournaling: {
-			needRbdNbd: true,
-			dependsOn:  []string{librbd.FeatureNameExclusiveLock},
-		},
-	}
-)
+var supportedFeatures = map[string]imageFeature{
+	librbd.FeatureNameLayering: {
+		needRbdNbd: false,
+	},
+	librbd.FeatureNameExclusiveLock: {
+		needRbdNbd: true,
+	},
+	librbd.FeatureNameJournaling: {
+		needRbdNbd: true,
+		dependsOn:  []string{librbd.FeatureNameExclusiveLock},
+	},
+}
 
 // Connect an rbdVolume to the Ceph cluster.
 func (ri *rbdImage) Connect(cr *util.Credentials) error {
@@ -491,7 +489,6 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 		pOpts.Pool)
 	supported := true
 	_, stderr, err := util.ExecCommand(ctx, "ceph", args...)
-
 	if err != nil {
 		switch {
 		case strings.Contains(stderr, rbdTaskRemoveCmdInvalidString1) &&
@@ -547,7 +544,8 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	}
 
 	// attempt to use Ceph manager based deletion support if available
-	args := []string{"trash", "remove",
+	args := []string{
+		"trash", "remove",
 		pOpts.Pool + "/" + pOpts.ImageID,
 		"--id", cr.ID,
 		"--keyfile=" + cr.KeyFile,
@@ -1398,7 +1396,7 @@ func (ri *rbdImageMetadataStash) String() string {
 // stashRBDImageMetadata stashes required fields into the stashFileName at the passed in path, in
 // JSON format.
 func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
-	var imgMeta = rbdImageMetadataStash{
+	imgMeta := rbdImageMetadataStash{
 		// there are no checks for this at present
 		Version:        3, // nolint:gomnd // number specifies version.
 		Pool:           volOptions.Pool,
@@ -1419,7 +1417,7 @@ func stashRBDImageMetadata(volOptions *rbdVolume, path string) error {
 	}
 
 	fPath := filepath.Join(path, stashFileName)
-	err = ioutil.WriteFile(fPath, encodedBytes, 0600)
+	err = ioutil.WriteFile(fPath, encodedBytes, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to stash JSON image metadata for image (%s) at path (%s): %w", volOptions, fPath, err)
 	}

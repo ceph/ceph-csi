@@ -29,21 +29,19 @@ import (
 	"github.com/ceph/go-ceph/rados"
 )
 
-var (
-	// clusterAdditionalInfo contains information regarding if resize is
-	// supported in the particular cluster and subvolumegroup is
-	// created or not.
-	// Subvolumegroup creation and volume resize decisions are
-	// taken through this additional cluster information.
-	clusterAdditionalInfo = make(map[string]*localClusterState)
-)
+// clusterAdditionalInfo contains information regarding if resize is
+// supported in the particular cluster and subvolumegroup is
+// created or not.
+// Subvolumegroup creation and volume resize decisions are
+// taken through this additional cluster information.
+var clusterAdditionalInfo = make(map[string]*localClusterState)
 
 const (
 	cephEntityClientPrefix = "client."
 
 	// modeAllRWX can be used for setting permissions to Read-Write-eXecute
 	// for User, Group and Other.
-	modeAllRWX = 0777
+	modeAllRWX = 0o777
 )
 
 // Subvolume holds subvolume information. This includes only the needed members
