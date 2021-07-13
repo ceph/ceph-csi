@@ -1,6 +1,6 @@
 ---
 # Snapshot API version compatibility matrix:
-# v1betav1:
+# v1beta1:
 #   v1.17 =< k8s < v1.20
 #   2.x =< snapshot-controller < v4.x
 # v1:
