@@ -9,7 +9,7 @@ mirroring for complete information.
 
 ## Architecture
 
-![mirror](rbd-mirror.png)
+![mirror](./images/rbd-mirror.png)
 
 ## Design
 
