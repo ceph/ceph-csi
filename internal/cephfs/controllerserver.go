@@ -609,8 +609,7 @@ func (cs *ControllerServer) CreateSnapshot(
 			}
 		}
 	}()
-	snap := snapshotInfo{}
-	snap, err = doSnapshot(ctx, parentVolOptions, vid.FsSubvolName, sID.FsSnapshotName)
+	snap, err := doSnapshot(ctx, parentVolOptions, vid.FsSubvolName, sID.FsSnapshotName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
