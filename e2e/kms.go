@@ -38,7 +38,7 @@ type vaultConfig struct {
 // in the kms-config.yaml file. These variables can be passed on to validation
 // functions when a StorageClass has a KMS enabled.
 var (
-	noKMS kmsConfig = nil
+	noKMS kmsConfig
 
 	secretsMetadataKMS = &simpleKMS{
 		provider: "secrets-metadata",
