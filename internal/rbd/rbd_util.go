@@ -626,21 +626,16 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 	vol.Monitors = rv.Monitors
 	vol.RbdImageName = rv.RbdImageName
 	vol.conn = rv.conn.Copy()
-
+	currVol := &vol
 	for {
-		if vol.RbdImageName == "" {
+		if currVol.RbdImageName == "" {
 			return depth, nil
 		}
-		err := vol.openIoctx()
+		err := currVol.openIoctx()
 		if err != nil {
 			return depth, err
 		}
-
-		err = vol.getImageInfo()
-		// FIXME: create and destroy the vol inside the loop.
-		// see https://github.com/ceph/ceph-csi/pull/1838#discussion_r598530807
-		vol.ioctx.Destroy()
-		vol.ioctx = nil
+		parentVol, err := currVol.getParentVolume()
 		if err != nil {
 			// if the parent image is moved to trash the name will be present
 			// in rbd image info but the image will be in trash, in that case
@@ -648,15 +643,14 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 			if errors.Is(err, ErrImageNotFound) {
 				return depth, nil
 			}
-			util.ErrorLog(ctx, "failed to check depth on image %s: %s", &vol, err)
-
+			util.ErrorLog(ctx, "failed to check depth on image %s: %s", &currVol, err)
 			return depth, err
 		}
-		if vol.ParentName != "" {
+		defer parentVol.Destroy()
+		if parentVol.RbdImageName != "" {
 			depth++
 		}
-		vol.RbdImageName = vol.ParentName
-		vol.Pool = vol.ParentPool
+		currVol = parentVol
 	}
 }
 
