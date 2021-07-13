@@ -417,7 +417,6 @@ var _ = Describe("RBD Upgrade Testing", func() {
 						e2elog.Failf("failed to check directory size with error %v", err)
 					}
 				}
-
 			})
 
 			By("delete pvc and app", func() {
@@ -437,6 +436,5 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				e2elog.Failf("failed to delete user %s with error %v", keyringRBDNodePluginUsername, err)
 			}
 		})
-
 	})
 })

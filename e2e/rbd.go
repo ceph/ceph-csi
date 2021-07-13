@@ -914,7 +914,8 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, map[string]string{
-					"thickProvision": "true"}, deletePolicy)
+					"thickProvision": "true",
+				}, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -1117,7 +1118,6 @@ var _ = Describe("RBD", func() {
 					err = resizePVCAndValidateSize(pvcPath, appPath, f)
 					if err != nil {
 						e2elog.Failf("failed to resize filesystem PVC with error %v", err)
-
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
@@ -1495,7 +1495,6 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete pool %s with error %v", clonePool, err)
 				}
-
 			})
 
 			By("create ROX PVC clone and mount it to multiple pods", func() {
@@ -1863,10 +1862,9 @@ var _ = Describe("RBD", func() {
 						}
 					}()
 
-					var pvc = &v1.PersistentVolumeClaim{}
-					pvc, err = loadPVC(pvcPath)
-					if err != nil {
-						e2elog.Failf("failed to load PVC with error %v", err)
+					pvc, pvcErr := loadPVC(pvcPath)
+					if pvcErr != nil {
+						e2elog.Failf("failed to load PVC with error %v", pvcErr)
 					}
 
 					pvc.Namespace = f.UniqueName
@@ -1995,7 +1993,8 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, map[string]string{
-					"thickProvision": "true"}, deletePolicy)
+					"thickProvision": "true",
+				}, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -2036,7 +2035,8 @@ var _ = Describe("RBD", func() {
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, map[string]string{
 					"mapOptions":   "lock_on_read,queue_depth=1024",
-					"unmapOptions": "force"}, deletePolicy)
+					"unmapOptions": "force",
+				}, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -2069,7 +2069,6 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
-
 			})
 
 			By("validate stale images in trash", func() {
