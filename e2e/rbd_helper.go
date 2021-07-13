@@ -434,7 +434,7 @@ type validateFunc func(f *framework.Framework, pvc *v1.PersistentVolumeClaim, ap
 
 // noPVCValidation can be used to pass to validatePVCClone when no extra
 // validation of the PVC is needed.
-var noPVCValidation validateFunc = nil
+var noPVCValidation validateFunc
 
 func isEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)

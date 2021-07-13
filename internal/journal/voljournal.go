@@ -644,8 +644,8 @@ func (conn *Connection) GetImageAttributes(
 	snapSource bool) (*ImageAttributes, error) {
 	var (
 		err             error
-		imageAttributes *ImageAttributes = &ImageAttributes{}
-		cj                               = conn.config
+		imageAttributes = &ImageAttributes{}
+		cj              = conn.config
 	)
 
 	if snapSource && cj.cephSnapSourceKey == "" {
