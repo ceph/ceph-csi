@@ -82,7 +82,7 @@ spec:
             - name: K8S_HOST
               value: https://kubernetes.default.svc.cluster.local
             - name: PLUGIN_ROLE
-              value: csi-kubernetes
+              value: ceph-csi-tenant
             - name: TENANT_SA_NAME
               value: ceph-csi-vault-sa
             - name: TENANT_NAMESPACE

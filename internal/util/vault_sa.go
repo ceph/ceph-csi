@@ -98,6 +98,9 @@ func initVaultTenantSA(args KMSInitializerArgs) (EncryptionKMS, error) {
 	}
 
 	kms := &VaultTenantSA{}
+	kms.vaultTenantConnection.init()
+	kms.tenantConfigOptionFilter = isTenantSAConfigOption
+
 	err = kms.initConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
@@ -107,13 +110,8 @@ func initVaultTenantSA(args KMSInitializerArgs) (EncryptionKMS, error) {
 	kms.ConfigName = vaultTokensDefaultConfigName
 	kms.tenantSAName = vaultTenantSAName
 
-	// TODO: should this be configurable per tenant?
-	vaultRole := vaultDefaultRole
-	err = setConfigString(&vaultRole, args.Config, "vaultRole")
-	if errors.Is(err, errConfigOptionInvalid) {
-		return nil, err
-	}
-	kms.vaultConfig[vault.AuthKubernetesRole] = vaultRole
+	// "vaultRole" is configurable per tenant
+	kms.vaultConfig[vault.AuthKubernetesRole] = vaultDefaultRole
 
 	err = kms.parseConfig(config)
 	if err != nil {
@@ -122,25 +120,9 @@ func initVaultTenantSA(args KMSInitializerArgs) (EncryptionKMS, error) {
 
 	// fetch the configuration for the tenant
 	if args.Tenant != "" {
-		kms.Tenant = args.Tenant
-		tenantConfig, found := fetchTenantConfig(config, args.Tenant)
-		if found {
-			// override connection details from the tenant
-			err = kms.parseConfig(tenantConfig)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		err = kms.parseTenantConfig()
+		err = kms.configureTenant(config, args.Tenant)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse config for tenant: %w", err)
-		}
-
-		err = kms.setServiceAccountName(config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to set the ServiceAccount name from %s for tenant (%s): %w",
-				kms.ConfigName, kms.Tenant, err)
+			return nil, err
 		}
 	}
 
@@ -171,6 +153,81 @@ func (kms *VaultTenantSA) Destroy() {
 	}
 
 	kms.vaultTenantConnection.Destroy()
+}
+
+func (kms *VaultTenantSA) configureTenant(config map[string]interface{}, tenant string) error {
+	kms.Tenant = tenant
+	tenantConfig, found := fetchTenantConfig(config, tenant)
+	if found {
+		// override connection details from the tenant
+		err := kms.parseConfig(tenantConfig)
+		if err != nil {
+			return err
+		}
+	}
+
+	// get the ConfigMap from the Tenant and apply the options
+	tenantConfig, err := kms.parseTenantConfig()
+	if err != nil {
+		return fmt.Errorf("failed to parse config for tenant: %w", err)
+	} else if tenantConfig != nil {
+		err = kms.parseConfig(tenantConfig)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// parseConfig calls vaultTenantConnection.parseConfig() and also set
+// additional config options specific to VaultTenantSA. This function is called
+// multiple times, for the different nested configuration layers.
+// parseTenantConfig() calls this as well, with a reduced set of options,
+// filtered by isTenantConfigOption().
+func (kms *VaultTenantSA) parseConfig(config map[string]interface{}) error {
+	err := kms.vaultTenantConnection.parseConfig(config)
+	if err != nil {
+		return err
+	}
+
+	err = kms.setServiceAccountName(config)
+	if err != nil {
+		return fmt.Errorf("failed to set the ServiceAccount name from %s for tenant (%s): %w",
+			kms.ConfigName, kms.Tenant, err)
+	}
+
+	// default vaultRole is set in initVaultTenantSA()
+	var vaultRole string
+	err = setConfigString(&vaultRole, config, "vaultRole")
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	} else if err == nil {
+		kms.vaultConfig[vault.AuthKubernetesRole] = vaultRole
+	}
+
+	return nil
+}
+
+// isTenantSAConfigOption is used by vaultTenantConnection.parseTenantConfig()
+// to filter options that should not be set by the configuration in the tenants
+// ConfigMap. Options that are allowed to be set, will return true, options
+// that are filtered return false.
+func isTenantSAConfigOption(opt string) bool {
+	// standard vaultTenantConnection options are accepted
+	if isTenantConfigOption(opt) {
+		return true
+	}
+
+	// additional options for VaultTenantSA
+	switch opt {
+	case "tenantSAName":
+	case "vaultRole":
+	default:
+		return false
+	}
+
+	return true
 }
 
 // setServiceAccountName stores the name of the ServiceAccount in the

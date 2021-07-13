@@ -20,3 +20,4 @@ metadata:
   name: ceph-csi-kms-config
 data:
   vaultBackendPath: tenant
+  vaultRole: ceph-csi-tenant

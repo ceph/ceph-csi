@@ -176,6 +176,12 @@ type vaultTenantConnection struct {
 	Tenant string
 	// ConfigName is the name of the ConfigMap in the Tenants Kubernetes Namespace
 	ConfigName string
+
+	// tenantConfigOptionFilter ise used to filter configuration options
+	// for the KMS that are provided by the ConfigMap in the Tenants
+	// Namespace. It defaults to isTenantConfigOption() as setup by the
+	// init() function.
+	tenantConfigOptionFilter func(string) bool
 }
 
 type VaultTokensKMS struct {
@@ -205,6 +211,7 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	}
 
 	kms := &VaultTokensKMS{}
+	kms.vaultTenantConnection.init()
 	err = kms.initConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Vault connection: %w", err)
@@ -227,25 +234,9 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 
 	// fetch the configuration for the tenant
 	if args.Tenant != "" {
-		kms.Tenant = args.Tenant
-		tenantConfig, found := fetchTenantConfig(config, args.Tenant)
-		if found {
-			// override connection details from the tenant
-			err = kms.parseConfig(tenantConfig)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		err = kms.parseTenantConfig()
+		err = kms.configureTenant(config, args.Tenant)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse config for tenant: %w", err)
-		}
-
-		err = kms.setTokenName(tenantConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to set the TokenName from %s for tenant (%s): %w",
-				kms.ConfigName, kms.Tenant, err)
+			return nil, err
 		}
 	}
 
@@ -267,6 +258,48 @@ func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 	}
 
 	return kms, nil
+}
+
+func (kms *VaultTokensKMS) configureTenant(config map[string]interface{}, tenant string) error {
+	kms.Tenant = tenant
+	tenantConfig, found := fetchTenantConfig(config, tenant)
+	if found {
+		// override connection details from the tenant
+		err := kms.parseConfig(tenantConfig)
+		if err != nil {
+			return err
+		}
+
+		err = kms.setTokenName(tenantConfig)
+		if err != nil {
+			return fmt.Errorf("failed to set the TokenName for tenant (%s): %w",
+				kms.Tenant, err)
+		}
+	}
+
+	// get the ConfigMap from the Tenant and apply the options
+	tenantConfig, err := kms.parseTenantConfig()
+	if err != nil {
+		return fmt.Errorf("failed to parse config for tenant: %w", err)
+	} else if tenantConfig != nil {
+		err = kms.parseConfig(tenantConfig)
+		if err != nil {
+			return fmt.Errorf("failed to parse config (%s) for tenant (%s): %w",
+				kms.ConfigName, kms.Tenant, err)
+		}
+
+		err = kms.setTokenName(tenantConfig)
+		if err != nil {
+			return fmt.Errorf("failed to set the TokenName from %s for tenant (%s): %w",
+				kms.ConfigName, kms.Tenant, err)
+		}
+	}
+
+	return nil
+}
+
+func (vtc *vaultTenantConnection) init() {
+	vtc.tenantConfigOptionFilter = isTenantConfigOption
 }
 
 // parseConfig updates the kms.vaultConfig with the options from config and
@@ -495,9 +528,9 @@ func isTenantConfigOption(opt string) bool {
 // parseTenantConfig gets the optional ConfigMap from the Tenants namespace,
 // and applies the allowable options (see isTenantConfigOption) to the KMS
 // configuration.
-func (vtc *vaultTenantConnection) parseTenantConfig() error {
+func (vtc *vaultTenantConnection) parseTenantConfig() (map[string]interface{}, error) {
 	if vtc.Tenant == "" || vtc.ConfigName == "" {
-		return nil
+		return nil, nil
 	}
 
 	// fetch the ConfigMap from the tenants namespace
@@ -506,9 +539,9 @@ func (vtc *vaultTenantConnection) parseTenantConfig() error {
 		vtc.ConfigName, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
 		// the tenant did not (re)configure any options
-		return nil
+		return nil, nil
 	} else if err != nil {
-		return fmt.Errorf("failed to get config (%s) for tenant (%s): %w",
+		return nil, fmt.Errorf("failed to get config (%s) for tenant (%s): %w",
 			vtc.ConfigName, vtc.Tenant, err)
 	}
 
@@ -516,23 +549,16 @@ func (vtc *vaultTenantConnection) parseTenantConfig() error {
 	// that a tenant may (re)configure
 	config := make(map[string]interface{})
 	for k, v := range cm.Data {
-		if isTenantConfigOption(k) {
+		if vtc.tenantConfigOptionFilter(k) {
 			config[k] = v
 		} // else: silently ignore the option
 	}
 	if len(config) == 0 {
 		// no options configured by the tenant
-		return nil
+		return nil, nil
 	}
 
-	// apply the configuration options from the tenant
-	err = vtc.parseConfig(config)
-	if err != nil {
-		return fmt.Errorf("failed to parse config (%s) for tenant (%s): %w",
-			vtc.ConfigName, vtc.Tenant, err)
-	}
-
-	return nil
+	return config, nil
 }
 
 // fetchTenantConfig fetches the configuration for the tenant if it exists.
