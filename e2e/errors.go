@@ -17,6 +17,8 @@ limitations under the License.
 package e2e
 
 import (
+	"strings"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 )
@@ -32,5 +34,11 @@ func isRetryableAPIError(err error) bool {
 	if _, shouldRetry := apierrors.SuggestsClientDelay(err); shouldRetry {
 		return true
 	}
+
+	// "etcdserver: request timed out" does not seem to match the timeout errors above
+	if strings.HasSuffix(err.Error(), "etcdserver: request timed out") {
+		return true
+	}
+
 	return false
 }
