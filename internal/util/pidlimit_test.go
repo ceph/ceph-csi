@@ -31,7 +31,6 @@ func TestGetPIDLimit(t *testing.T) {
 	}
 
 	limit, err := GetPIDLimit()
-
 	if err != nil {
 		t.Errorf("no error should be returned, got: %v", err)
 	}

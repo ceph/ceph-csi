@@ -57,7 +57,6 @@ func TestOperationLocks(t *testing.T) {
 	volumeID := "test-vol"
 	lock := NewOperationLock()
 	err := lock.GetCloneLock(volumeID)
-
 	if err != nil {
 		t.Errorf("failed to acquire clone lock for %s %s", volumeID, err)
 	}

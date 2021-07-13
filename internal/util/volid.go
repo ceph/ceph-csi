@@ -90,8 +90,10 @@ func (ci CSIIdentifier) ComposeCSIID() (string, error) {
 	binary.BigEndian.PutUint64(buf64, uint64(ci.LocationID))
 	poolIDEncodedHex := hex.EncodeToString(buf64)
 
-	return strings.Join([]string{versionEncodedHex, clusterIDLength, ci.ClusterID,
-		poolIDEncodedHex, ci.ObjectUUID}, "-"), nil
+	return strings.Join([]string{
+		versionEncodedHex, clusterIDLength, ci.ClusterID,
+		poolIDEncodedHex, ci.ObjectUUID,
+	}, "-"), nil
 }
 
 /*
