@@ -38,6 +38,7 @@ Rbd-nbd support status: **Alpha**
 | ---------------------------------------- | -------------- | ------------------ | -------------------- | ---------------- | ------------------ |
 | Creating and deleting snapshot           | Alpha          | >= v3.4.0          | Pacific (>=16.0.0)   | >= v1.0.0        | >= v1.17.0         |
 | Creating and deleting clones             | Alpha          | >= v3.4.0          | Pacific (>=16.0.0)   | >= v1.0.0        | >= v1.17.0         |
+| Creating and deleting encrypted volumes  | Alpha          | >= v3.4.0          | Pacific (>=16.0.0)   | >= v1.0.0        | >= v1.14.0         |
 | Expand volumes                           | Alpha          | >= v3.4.0          | Pacific (>=16.0.0)   | >= v1.1.0        | >= v1.15.0         |
 
 `NOTE`: The `Alpha` status reflects possible non-backward compatible
