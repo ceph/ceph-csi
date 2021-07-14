@@ -75,50 +75,52 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 			}
 
 			return true, nil
-		case !errors.Is(err, ErrImageNotFound):
-			// any error other than image not found return error
-			return false, err
-		}
-	} else {
-		// snap will be create after we flatten the temporary cloned image,no
-		// need to check for flatten here.
-		// as the snap exists,create clone image and delete temporary snapshot
-		// and add task to flatten temporary cloned image
-		err = rv.cloneRbdImageFromSnapshot(ctx, snap, parentVol)
-		if err != nil {
-			util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)
-			err = fmt.Errorf("failed to clone rbd image %s from snapshot %s: %w", rv.RbdImageName, snap.RbdSnapName, err)
+
+		case errors.Is(err, ErrImageNotFound):
+			// as the temp clone does not exist,check snapshot exists on parent volume
+			// snapshot name is same as temporary clone image
+			snap.RbdImageName = tempClone.RbdImageName
+			err = parentVol.checkSnapExists(snap)
+			if err == nil {
+				// the temp clone exists, delete it lets reserve a new ID and
+				// create new resources for a cleaner approach
+				err = parentVol.deleteSnapshot(ctx, snap)
+			}
+			if errors.Is(err, ErrSnapNotFound) {
+				return false, nil
+			}
 
 			return false, err
-		}
-		err = tempClone.deleteSnapshot(ctx, snap)
-		if err != nil {
-			util.ErrorLog(ctx, "failed to delete snapshot: %v", err)
 
+		default:
+			// any error other than the above return error
 			return false, err
 		}
-		// check image needs flatten, if yes add task to flatten the clone
-		err = rv.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-		if err != nil {
-			return false, err
-		}
-
-		return true, nil
 	}
-	// as the temp clone does not exist,check snapshot exists on parent volume
-	// snapshot name is same as temporary clone image
-	snap.RbdImageName = tempClone.RbdImageName
-	err = parentVol.checkSnapExists(snap)
-	if err == nil {
-		// the temp clone exists, delete it lets reserve a new ID and
-		// create new resources for a cleaner approach
-		err = parentVol.deleteSnapshot(ctx, snap)
+	// snap will be create after we flatten the temporary cloned image,no
+	// need to check for flatten here.
+	// as the snap exists,create clone image and delete temporary snapshot
+	// and add task to flatten temporary cloned image
+	err = rv.cloneRbdImageFromSnapshot(ctx, snap, parentVol)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)
+		err = fmt.Errorf("failed to clone rbd image %s from snapshot %s: %w", rv.RbdImageName, snap.RbdSnapName, err)
+
+		return false, err
 	}
-	if errors.Is(err, ErrSnapNotFound) {
-		return false, nil
+	err = tempClone.deleteSnapshot(ctx, snap)
+	if err != nil {
+		util.ErrorLog(ctx, "failed to delete snapshot: %v", err)
+
+		return false, err
+	}
+	// check image needs flatten, if yes add task to flatten the clone
+	err = rv.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+	if err != nil {
+		return false, err
 	}
 
-	return false, err
+	return true, nil
 }
 
 func (rv *rbdVolume) generateTempClone() *rbdVolume {
