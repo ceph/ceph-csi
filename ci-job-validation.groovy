@@ -8,8 +8,26 @@ def git_since = 'ci/centos'
 def base = ''
 def doc_change = 0
 // private, internal container image repository
-def cached_image = 'registry-ceph-csi.apps.ocp.ci.centos.org/ceph-csi'
+def ci_registry = 'registry-ceph-csi.apps.ocp.ci.centos.org'
+def cached_image = 'ceph-csi'
 def use_pulled_image = 'USE_PULLED_IMAGE=yes'
+
+def ssh(cmd) {
+	sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} '${cmd}'"
+}
+
+def podman_login(registry, username, passwd) {
+	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${registry}"
+}
+
+// podman_pull pulls image from the source (CI internal) registry, and tags it
+// as unqualified image name and into the destination registry. This prevents
+// pulling from the destination registry.
+//
+// Images need to be pre-pushed into the source registry, though.
+def podman_pull(source, destination, image) {
+	ssh "podman pull --authfile=~/.podman-auth.json ${source}/${image} && podman tag ${source}/${image} ${image} ${destination}/${image}"
+}
 
 node('cico-workspace') {
 	stage('checkout ci repository') {
@@ -67,7 +85,7 @@ node('cico-workspace') {
 				base = "--base=${ghprbTargetBranch}"
 			}
 			sh 'scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./prepare.sh root@${CICO_NODE}:'
-			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} ./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${ci_git_repo} --ref=${ref} ${base}"
+			ssh "./prepare.sh --workdir=/opt/build/go/src/github.com/ceph/ceph-csi --gitrepo=${ci_git_repo} --ref=${ref} ${base}"
 		}
 
 		// - check if the PR modifies the container image files
@@ -84,11 +102,12 @@ node('cico-workspace') {
 			}
 
 			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-				sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'podman pull --creds=${CREDS_USER}:${CREDS_PASSWD} ${cached_image}:test'"
+				podman_login(ci_registry, '$CREDS_USER', '$CREDS_PASSWD')
 			}
+			podman_pull(ci_registry, ci_registry, "${cached_image}:test")
 		}
 		stage('test') {
-			sh "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make ENV_CSI_IMAGE_NAME=${cached_image} ${use_pulled_image}'"
+			ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make ENV_CSI_IMAGE_NAME=${cached_image} ${use_pulled_image}"
 		}
 	}
 
