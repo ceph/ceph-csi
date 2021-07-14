@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ceph/ceph-csi/internal/util"
+
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
@@ -25,6 +27,18 @@ const (
 	// image metadata key for thick-provisioning.
 	thickProvisionMetaKey = "rbd.csi.ceph.com/thick-provisioned"
 )
+
+// nolint:gomnd // numbers specify Kernel versions.
+var nbdResizeSupport = []util.KernelVersion{
+	{
+		Version:      5,
+		PatchLevel:   3,
+		SubLevel:     0,
+		ExtraVersion: 0,
+		Distribution: "",
+		Backport:     false,
+	}, // standard 5.3+ versions
+}
 
 func imageSpec(pool, image string) string {
 	if radosNamespace != "" {

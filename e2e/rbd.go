@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ceph/ceph-csi/internal/util"
+
 	. "github.com/onsi/ginkgo" // nolint
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -426,6 +428,53 @@ var _ = Describe("RBD", func() {
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+			})
+
+			By("Resize rbd-nbd PVC and check application directory size", func() {
+				kernelRelease, err := util.GetKernelVersion()
+				if err != nil {
+					e2elog.Failf("failed to get kernel version with error %v", err)
+				}
+				if util.CheckKernelSupport(kernelRelease, nbdResizeSupport) {
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass with error %v", err)
+					}
+					// Storage class with rbd-nbd mounter
+					err = createRBDStorageClass(
+						f.ClientSet,
+						f,
+						defaultSCName,
+						nil,
+						map[string]string{"mounter": "rbd-nbd"},
+						deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass with error %v", err)
+					}
+					// Block PVC resize
+					err = resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
+					if err != nil {
+						e2elog.Failf("failed to resize block PVC with error %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+
+					// FileSystem PVC resize
+					err = resizePVCAndValidateSize(pvcPath, appPath, f)
+					if err != nil {
+						e2elog.Failf("failed to resize filesystem PVC with error %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass with error %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass with error %v", err)
+					}
 				}
 			})
 
