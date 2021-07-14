@@ -120,7 +120,7 @@ node('cico-workspace') {
 			def d_io_regex = ~"^docker.io/"
 
 			withCredentials([usernamePassword(credentialsId: 'container-registry-auth', usernameVariable: 'CREDS_USER', passwordVariable: 'CREDS_PASSWD')]) {
-				podman_login(ci_registry, "${CREDS_USER}", "${CREDS_PASSWD}")
+				podman_login(ci_registry, '$CREDS_USER', '$CREDS_PASSWD')
 			}
 
 			// base_image is like ceph/ceph:v15 or docker.io/ceph/ceph:v15, strip "docker.io/"
