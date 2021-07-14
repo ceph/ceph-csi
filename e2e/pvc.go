@@ -38,14 +38,15 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		return nil
 	}
 	name := pvc.Name
+	namespace := pvc.Namespace
 	start := time.Now()
 	e2elog.Logf("Waiting up to %v to be in Bound state", pvc)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		e2elog.Logf("waiting for PVC %s (%d seconds elapsed)", pvc.Name, int(time.Since(start).Seconds()))
-		pvc, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		e2elog.Logf("waiting for PVC %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+		pvc, err = c.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
-			e2elog.Logf("Error getting pvc in namespace: '%s': %v", pvc.Namespace, err)
+			e2elog.Logf("Error getting pvc %q in namespace %q: %v", name, namespace, err)
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
@@ -72,7 +73,7 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		err = e2epv.WaitOnPVandPVC(
 			c,
 			&framework.TimeoutContext{ClaimBound: timeout, PVBound: timeout},
-			pvc.Namespace,
+			namespace,
 			pv,
 			pvc)
 		if err != nil {
