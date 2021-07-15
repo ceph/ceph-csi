@@ -1637,111 +1637,144 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
-			By("validate PVC mounting if snapshot and parent PVC are deleted", func() {
-				// snapshot beta is only supported from v1.17+
-				if !k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					Skip("pvc restore is only supported from v1.17+")
-				}
-				err := createRBDSnapshotClass(f)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass with error %v", err)
-				}
-				defer func() {
-					err = deleteRBDSnapshotClass()
-					if err != nil {
-						e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
+			By(
+				"validate PVC mounting if snapshot and parent PVC are deleted chained with depth 2",
+				func() {
+					// snapshot beta is only supported from v1.17+
+					if !k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
+						Skip("pvc restore is only supported from v1.17+")
 					}
-				}()
+					snapChainDepth := 2
 
-				// create PVC and bind it to an app
-				pvc, err := loadPVC(pvcPath)
-				if err != nil {
-					e2elog.Failf("failed to load PVC with error %v", err)
-				}
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass with error %v", err)
+					}
 
-				pvc.Namespace = f.UniqueName
-				app, err := loadApp(appPath)
-				if err != nil {
-					e2elog.Failf("failed to load application with error %v", err)
-				}
-				app.Namespace = f.UniqueName
-				err = createPVCAndApp("", f, pvc, app, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create PVC and application with error %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 1, defaultRBDPool)
+					err = createRBDStorageClass(
+						f.ClientSet,
+						f,
+						defaultSCName,
+						nil,
+						map[string]string{
+							"encrypted":       "true",
+							"encryptionKMSID": "vault-test",
+						},
+						deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass with error %v", err)
+					}
 
-				snap := getSnapshot(snapshotPath)
-				snap.Namespace = f.UniqueName
-				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+					err = createRBDSnapshotClass(f)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass with error %v", err)
+					}
 
-				err = createSnapshot(&snap, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create snapshot with error %v", err)
-				}
-				// validate created backend rbd images
-				// parent PVC + snapshot
-				totalImages := 2
-				validateRBDImageCount(f, totalImages, defaultRBDPool)
-				pvcClone, err := loadPVC(pvcClonePath)
-				if err != nil {
-					e2elog.Failf("failed to load PVC with error %v", err)
-				}
+					defer func() {
+						err = deleteRBDSnapshotClass()
+						if err != nil {
+							e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
+						}
+						err = deleteResource(rbdExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete storageclass with error %v", err)
+						}
+						err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+						if err != nil {
+							e2elog.Failf("failed to create storageclass with error %v", err)
+						}
+					}()
 
-				// delete parent PVC
-				err = deletePVCAndApp("", f, pvc, app)
-				if err != nil {
-					e2elog.Failf("failed to delete PVC and application with error %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 1, defaultRBDPool)
+					// create PVC and bind it to an app
+					pvc, err := loadPVC(pvcPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC with error %v", err)
+					}
 
-				// create clone PVC
-				pvcClone.Namespace = f.UniqueName
-				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create PVC with error %v", err)
-				}
-				// validate created backend rbd images = snapshot + clone
-				totalImages = 2
-				validateRBDImageCount(f, totalImages, defaultRBDPool)
+					pvc.Namespace = f.UniqueName
+					app, err := loadApp(appPath)
+					if err != nil {
+						e2elog.Failf("failed to load application with error %v", err)
+					}
+					app.Namespace = f.UniqueName
+					err = createPVCAndApp("", f, pvc, app, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC and application with error %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 1, defaultRBDPool)
+					for i := 0; i < snapChainDepth; i++ {
+						var pvcClone *v1.PersistentVolumeClaim
+						snap := getSnapshot(snapshotPath)
+						snap.Name = fmt.Sprintf("%s-%d", snap.Name, i)
+						snap.Namespace = f.UniqueName
+						snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 
-				// delete snapshot
-				err = deleteSnapshot(&snap, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to delete snapshot with error %v", err)
-				}
+						err = createSnapshot(&snap, deployTimeout)
+						if err != nil {
+							e2elog.Failf("failed to create snapshot with error %v", err)
+						}
+						// validate created backend rbd images
+						// parent PVC + snapshot
+						totalImages := 2
+						validateRBDImageCount(f, totalImages, defaultRBDPool)
+						pvcClone, err = loadPVC(pvcClonePath)
+						if err != nil {
+							e2elog.Failf("failed to load PVC with error %v", err)
+						}
 
-				// validate created backend rbd images = clone
-				totalImages = 1
-				validateRBDImageCount(f, totalImages, defaultRBDPool)
+						// delete parent PVC
+						err = deletePVCAndApp("", f, pvc, app)
+						if err != nil {
+							e2elog.Failf("failed to delete PVC and application with error %v", err)
+						}
+						// validate created backend rbd images
+						validateRBDImageCount(f, 1, defaultRBDPool)
 
-				appClone, err := loadApp(appClonePath)
-				if err != nil {
-					e2elog.Failf("failed to load application with error %v", err)
-				}
-				appClone.Namespace = f.UniqueName
-				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+						// create clone PVC
+						pvcClone.Name = fmt.Sprintf("%s-%d", pvcClone.Name, i)
+						pvcClone.Namespace = f.UniqueName
+						pvcClone.Spec.DataSource.Name = snap.Name
+						err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+						if err != nil {
+							e2elog.Failf("failed to create PVC with error %v", err)
+						}
+						// validate created backend rbd images = snapshot + clone
+						totalImages = 2
+						validateRBDImageCount(f, totalImages, defaultRBDPool)
 
-				// create application
-				err = createApp(f.ClientSet, appClone, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create application with error %v", err)
-				}
+						// delete snapshot
+						err = deleteSnapshot(&snap, deployTimeout)
+						if err != nil {
+							e2elog.Failf("failed to delete snapshot with error %v", err)
+						}
 
-				err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to delete application with error %v", err)
-				}
-				// delete PVC clone
-				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to delete PVC with error %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-			})
+						// validate created backend rbd images = clone
+						totalImages = 1
+						validateRBDImageCount(f, totalImages, defaultRBDPool)
+
+						app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+						// create application
+						err = createApp(f.ClientSet, app, deployTimeout)
+						if err != nil {
+							e2elog.Failf("failed to create application with error %v", err)
+						}
+
+						pvc = pvcClone
+					}
+
+					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete application with error %v", err)
+					}
+					// delete PVC clone
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC with error %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+				})
 
 			By("ensuring all operations will work within a rados namespace", func() {
 				updateConfigMap := func(radosNS string) {
