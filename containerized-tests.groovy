@@ -18,7 +18,7 @@ def ssh(cmd) {
 }
 
 def podman_login(registry, username, passwd) {
-	ssh "podman login --authfile=~/.podman-auth.json --username=${username} --password='${passwd}' ${registry}"
+	ssh "podman login --authfile=~/.podman-auth.json --username='${username}' --password='${passwd}' ${registry}"
 }
 
 // podman_pull pulls image from the source (CI internal) registry, and tags it
