@@ -299,7 +299,7 @@ it in a Kubernetes Secret (by default) called `ceph-csi-kms-token`, where the
 Vault Token is stored in the `token` key as shown in [the
 example](../examples/kms/vault/tenant-token.yaml).
 
-#### Configuring HashiCorp Vault with Kubernetes ServiceAccount
+#### Configuring HashiCorp Vault with a single Kubernetes ServiceAccount
 
 Using Vault as KMS you need to configure Kubernetes authentication method as
 described in [official
@@ -316,6 +316,35 @@ Configure a role(s) for service accounts used for ceph-csi:
   permissions to delete passphrases on PVC delete
 * nodeplugin service account (`rbd-csi-nodeplugin`) requires **create** and
   **read** permissions to save new keys and retrieve existing
+
+#### Configuring Hashicorp Vault with a ServiceAccount per Tenant
+
+For deployments where a single ServiceAccount for accessing Hashicorp Vault is
+not suitable, it is possible to configure a ServiceAccount per Tenant to access
+the KMS. In order to configure this, each Tenant will need to have its own
+ServiceAccount in the Kubernetes Namespace where the volumes are created. The
+ServiceAccount is expected to be called `ceph-csi-vault-sa` by default. This
+can be changed by setting the `tenantSAName` option to a different value. An
+example of the global configuration that can be done in the Kubernetes
+Namespace where Ceph-CSI is deployed can be found in
+[`kms-config.yaml`](../examples/kms/vault/kms-config.yaml) where the
+`encryptionKMSType` is set to `vaulttenantsa`.
+
+Most notably, the Vault Tokens KMS configuration can be used, without the Token
+configuration, but with added `tenantSAName` and `vaultRole` options.
+
+Tenants do have the ability to reconfigure parts of the connection details to
+the Vault service. It will often be required to set the backend path to a
+location where the Tenant can manage the secrets. These changes can be done by
+placing a ConfigMap called `ceph-csi-kms-config` in the Tenants Namespace, an
+[example](../examples/kms/vault/tenant-sa.yaml) is available.
+
+As each ServiceAccount needs to be added to the Vault configuration, the
+administrator of the service will need to apply the permissions by creating a
+Vault Policy that allows a ServiceAccount to access a key-value store in the
+KMS. In the Ceph-CSI automated testing, there is [a Kubernetes Job that sets
+this up](../examples/kms/vault/tenant-token.yaml) for a single Tenant that uses
+the Kubernetes Namespace `tenant`.
 
 #### Configuring Amazon KMS
 
