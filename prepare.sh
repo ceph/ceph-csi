@@ -80,6 +80,10 @@ set -x
 
 dnf -y install git podman make
 
+# minikube wants the user (everything runs as root) to be in the libvirt group
+getent group libvirt || groupadd --system libvirt
+usermod --append --groups libvirt root
+
 # if --history is passed, don't pass --depth=1
 depth='--depth=1'
 if [[ "${history}" == 'yes' ]]
