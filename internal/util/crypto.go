@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -58,6 +59,25 @@ type VolumeEncryption struct {
 	dekStore DEKStore
 
 	id string
+}
+
+// FetchEncryptionKMSID returns non-empty kmsID if 'encrypted' parameter is evaluated as true.
+func FetchEncryptionKMSID(encrypted, kmsID string) (string, error) {
+	isEncrypted, err := strconv.ParseBool(encrypted)
+	if err != nil {
+		return "", fmt.Errorf(
+			"invalid value set in 'encrypted': %s (should be \"true\" or \"false\"): %w",
+			encrypted, err)
+	}
+	if !isEncrypted {
+		return "", nil
+	}
+
+	if kmsID == "" {
+		kmsID = defaultKMSType
+	}
+
+	return kmsID, nil
 }
 
 // NewVolumeEncryption creates a new instance of VolumeEncryption and

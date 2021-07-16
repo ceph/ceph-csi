@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -242,10 +241,27 @@ func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string)
 }
 
 func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[string]string) error {
+	kmsID, err := ri.ParseEncryptionOpts(ctx, volOptions)
+	if err != nil {
+		return err
+	} else if kmsID == "" {
+		return nil
+	}
+
+	err = ri.configureEncryption(kmsID, credentials)
+	if err != nil {
+		return fmt.Errorf("invalid encryption kms configuration: %w", err)
+	}
+
+	return nil
+}
+
+// ParseEncryptionOpts returns kmsID and sets Owner attribute.
+func (ri *rbdImage) ParseEncryptionOpts(ctx context.Context, volOptions map[string]string) (string, error) {
 	var (
-		err       error
-		ok        bool
-		encrypted string
+		err              error
+		ok               bool
+		encrypted, kmsID string
 	)
 
 	// if the KMS is of type VaultToken, additional metadata is needed
@@ -259,23 +275,14 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 
 	encrypted, ok = volOptions["encrypted"]
 	if !ok {
-		return nil
+		return "", nil
 	}
-
-	isEncrypted, err := strconv.ParseBool(encrypted)
+	kmsID, err = util.FetchEncryptionKMSID(encrypted, volOptions["encryptionKMSID"])
 	if err != nil {
-		return fmt.Errorf(
-			"invalid value set in 'encrypted': %s (should be \"true\" or \"false\")", encrypted)
-	} else if !isEncrypted {
-		return nil
+		return "", err
 	}
 
-	err = ri.configureEncryption(volOptions["encryptionKMSID"], credentials)
-	if err != nil {
-		return fmt.Errorf("invalid encryption kms configuration: %w", err)
-	}
-
-	return nil
+	return kmsID, nil
 }
 
 // configureEncryption sets up the VolumeEncryption for this rbdImage. Once
