@@ -1071,13 +1071,17 @@ func validatePVCSnapshot(
 // Mount the PVC to application (NodeStage/NodePublish should work)
 // Resize the PVC
 // Delete the Application and PVC.
-func validateController(f *framework.Framework, pvcPath, appPath, scPath string) error {
+func validateController(
+	f *framework.Framework,
+	pvcPath, appPath, scPath string,
+	scOptions, scParams map[string]string) error {
 	size := "1Gi"
 	poolName := defaultRBDPool
 	expandSize := "10Gi"
 	var err error
 	// create storageclass with retain
-	err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, retainPolicy)
+	err = createRBDStorageClass(f.ClientSet, f, defaultSCName, scOptions, scParams,
+		retainPolicy)
 	if err != nil {
 		return fmt.Errorf("failed to create storageclass: %w", err)
 	}
@@ -1109,7 +1113,8 @@ func validateController(f *framework.Framework, pvcPath, appPath, scPath string)
 	if err != nil {
 		return fmt.Errorf("failed to delete storageclass: %w", err)
 	}
-	err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+	err = createRBDStorageClass(f.ClientSet, f, defaultSCName, scOptions, scParams,
+		deletePolicy)
 	if err != nil {
 		return fmt.Errorf("failed to create storageclass: %w", err)
 	}
