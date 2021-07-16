@@ -522,6 +522,7 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // complete omap mapping between imageName and volumeID.
 
 // RegenerateJournal performs below operations
+// Extract parameters journalPool, pool from volumeAttributes
 // Extract information from volumeID
 // Get pool ID from pool name
 // Extract uuid from volumeID
@@ -530,13 +531,15 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // The volume handler won't remain same as its contains poolID,clusterID etc
 // which are not same across clusters.
 func RegenerateJournal(
-	imageName, volumeID, pool, journalPool, requestName string,
+	volumeAttributes map[string]string,
+	volumeID, requestName string,
 	cr *util.Credentials) (string, error) {
 	ctx := context.Background()
 	var (
 		options map[string]string
 		vi      util.CSIIdentifier
 		rbdVol  *rbdVolume
+		ok      bool
 	)
 
 	options = make(map[string]string)
@@ -560,12 +563,14 @@ func RegenerateJournal(
 		return "", err
 	}
 
-	rbdVol.Pool = pool
+	if rbdVol.Pool, ok = volumeAttributes["pool"]; !ok {
+		return "", errors.New("required 'pool' parameter missing in volume attributes")
+	}
 	err = rbdVol.Connect(cr)
 	if err != nil {
 		return "", err
 	}
-	rbdVol.JournalPool = journalPool
+	rbdVol.JournalPool = volumeAttributes["journalPool"]
 	if rbdVol.JournalPool == "" {
 		rbdVol.JournalPool = rbdVol.Pool
 	}
