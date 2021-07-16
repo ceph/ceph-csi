@@ -2366,17 +2366,23 @@ var _ = Describe("RBD", func() {
 			By("validate the functionality of controller", func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
-					e2elog.Failf("failed to delete storageclass with error %v", err)
+					e2elog.Failf("failed to delete storageclass : %v", err)
 				}
-				err = validateController(f, pvcPath, appPath, rbdExamplePath+"storageclass.yaml")
+				scParams := map[string]string{
+					"volumeNamePrefix": "test-",
+				}
+				err = validateController(f,
+					pvcPath, appPath, rbdExamplePath+"storageclass.yaml",
+					nil,
+					scParams)
 				if err != nil {
-					e2elog.Failf("failed to validate controller with error %v", err)
+					e2elog.Failf("failed to validate controller : %v", err)
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 				if err != nil {
-					e2elog.Failf("failed to create storageclass with error %v", err)
+					e2elog.Failf("failed to create storageclass : %v", err)
 				}
 			})
 
