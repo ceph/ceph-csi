@@ -523,6 +523,7 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 
 // RegenerateJournal performs below operations
 // Extract parameters journalPool, pool from volumeAttributes
+// Extract optional parameter volumeNamePrefix from volumeAttributes
 // Extract information from volumeID
 // Get pool ID from pool name
 // Extract uuid from volumeID
@@ -587,7 +588,7 @@ func RegenerateJournal(
 	}
 
 	rbdVol.RequestName = requestName
-	// TODO add Nameprefix also
+	rbdVol.NamePrefix = volumeAttributes["volumeNamePrefix"]
 
 	kmsID := ""
 	imageData, err := j.CheckReservation(
