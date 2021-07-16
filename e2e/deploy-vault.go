@@ -35,7 +35,7 @@ func deployVault(c kubernetes.Interface, deployTimeout int) {
 		"--ignore-not-found=true")
 	Expect(err).Should(BeNil())
 
-	createORDeleteVault("create")
+	createORDeleteVault(kubectlCreate)
 	opt := metav1.ListOptions{
 		LabelSelector: "app=vault",
 	}
@@ -49,10 +49,10 @@ func deployVault(c kubernetes.Interface, deployTimeout int) {
 }
 
 func deleteVault() {
-	createORDeleteVault("delete")
+	createORDeleteVault(kubectlDelete)
 }
 
-func createORDeleteVault(action string) {
+func createORDeleteVault(action kubectlAction) {
 	data, err := replaceNamespaceInTemplate(vaultExamplePath + vaultServicePath)
 	if err != nil {
 		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultServicePath, err)
@@ -61,7 +61,7 @@ func createORDeleteVault(action string) {
 	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
 
 	data = strings.ReplaceAll(data, "value: default", "value: "+cephCSINamespace)
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s vault statefulset %v", action, err)
 	}
@@ -70,7 +70,7 @@ func createORDeleteVault(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultRBACPath, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s vault statefulset %v", action, err)
 	}
@@ -80,7 +80,7 @@ func createORDeleteVault(action string) {
 		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultConfigPath, err)
 	}
 	data = strings.ReplaceAll(data, "default", cephCSINamespace)
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s vault configmap %v", action, err)
 	}
@@ -89,7 +89,7 @@ func createORDeleteVault(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultPSPPath, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s vault psp %v", action, err)
 	}
@@ -99,7 +99,7 @@ func createORDeleteVault(action string) {
 // the ServiceAccount for the tenant and configured Hashicorp Vault with a
 // kv-store that the ServiceAccount has access to.
 func createTenantServiceAccount(c kubernetes.Interface, ns string) error {
-	err := createORDeleteTenantServiceAccount("create", ns)
+	err := createORDeleteTenantServiceAccount(kubectlCreate, ns)
 	if err != nil {
 		return fmt.Errorf("failed to create ServiceAccount: %w", err)
 	}
@@ -117,15 +117,15 @@ func createTenantServiceAccount(c kubernetes.Interface, ns string) error {
 // deleteTenantServiceAccount removed the ServiceAccount and other objects that
 // were created with createTenantServiceAccount.
 func deleteTenantServiceAccount(ns string) {
-	err := createORDeleteTenantServiceAccount("delete", ns)
+	err := createORDeleteTenantServiceAccount(kubectlDelete, ns)
 	Expect(err).Should(BeNil())
 }
 
 // createORDeleteTenantServiceAccount is a helper that reads the tenant-sa.yaml
 // example file and replaces the default namespaces with the current deployment
 // configuration.
-func createORDeleteTenantServiceAccount(action, ns string) error {
-	_, err := framework.RunKubectl(ns, action, "-f", vaultExamplePath+vaultTenantPath)
+func createORDeleteTenantServiceAccount(action kubectlAction, ns string) error {
+	err := retryKubectlFile(ns, action, vaultExamplePath+vaultTenantPath, deployTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to %s tenant ServiceAccount: %w", action, err)
 	}
@@ -142,7 +142,7 @@ func createORDeleteTenantServiceAccount(action, ns string) error {
 	// replace "default" in the URL to the Vault service
 	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
 
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to %s ServiceAccount: %w", action, err)
 	}
