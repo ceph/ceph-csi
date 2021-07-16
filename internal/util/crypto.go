@@ -255,7 +255,7 @@ func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase
 	DebugLog(ctx, "Opening device %s with LUKS on %s", devicePath, mapperFile)
 	_, stderr, err := LuksOpen(devicePath, mapperFile, passphrase)
 	if err != nil {
-		WarningLog(ctx, "failed to open LUKS device %q: %s", devicePath, stderr)
+		ErrorLog(ctx, "failed to open LUKS device %q: %s", devicePath, stderr)
 	}
 
 	return err
