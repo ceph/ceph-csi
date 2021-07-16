@@ -523,7 +523,7 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 
 // RegenerateJournal performs below operations
 // Extract parameters journalPool, pool from volumeAttributes
-// Extract optional parameter volumeNamePrefix from volumeAttributes
+// Extract optional parameters volumeNamePrefix, kmsID, owner from volumeAttributes
 // Extract information from volumeID
 // Get pool ID from pool name
 // Extract uuid from volumeID
@@ -540,6 +540,8 @@ func RegenerateJournal(
 		options map[string]string
 		vi      util.CSIIdentifier
 		rbdVol  *rbdVolume
+		kmsID   string
+		err     error
 		ok      bool
 	)
 
@@ -547,10 +549,15 @@ func RegenerateJournal(
 	rbdVol = &rbdVolume{}
 	rbdVol.VolID = volumeID
 
-	err := vi.DecomposeCSIID(rbdVol.VolID)
+	err = vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
 		return "", fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
 			ErrInvalidVolID, err, rbdVol.VolID)
+	}
+
+	kmsID, err = rbdVol.ParseEncryptionOpts(ctx, volumeAttributes)
+	if err != nil {
+		return "", err
 	}
 
 	// TODO check clusterID mapping exists
@@ -590,7 +597,6 @@ func RegenerateJournal(
 	rbdVol.RequestName = requestName
 	rbdVol.NamePrefix = volumeAttributes["volumeNamePrefix"]
 
-	kmsID := ""
 	imageData, err := j.CheckReservation(
 		ctx, rbdVol.JournalPool, rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID)
 	if err != nil {
