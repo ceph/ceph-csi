@@ -152,10 +152,7 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 	if pv.Spec.CSI == nil || pv.Spec.CSI.Driver != r.config.DriverName {
 		return nil
 	}
-	pool := pv.Spec.CSI.VolumeAttributes["pool"]
-	journalPool := pv.Spec.CSI.VolumeAttributes["journalPool"]
 	requestName := pv.Name
-	imageName := pv.Spec.CSI.VolumeAttributes["imageName"]
 	volumeHandler := pv.Spec.CSI.VolumeHandle
 	secretName := ""
 	secretNamespace := ""
@@ -189,7 +186,7 @@ func (r ReconcilePersistentVolume) reconcilePV(obj runtime.Object) error {
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVolID, err := rbd.RegenerateJournal(imageName, volumeHandler, pool, journalPool, requestName, cr)
+	rbdVolID, err := rbd.RegenerateJournal(pv.Spec.CSI.VolumeAttributes, volumeHandler, requestName, cr)
 	if err != nil {
 		util.ErrorLogMsg("failed to regenerate journal %s", err)
 		return err
