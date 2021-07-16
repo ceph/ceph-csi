@@ -1185,3 +1185,67 @@ func waitForJobCompletion(c kubernetes.Interface, ns, job string, timeout int) e
 		return false, nil
 	})
 }
+
+// kubectlAction is used to tell retryKubectlInput() what action needs to be
+// done.
+type kubectlAction string
+
+const (
+	// kubectlCreate tells retryKubectlInput() to run "create"
+	kubectlCreate = kubectlAction("create")
+	// kubectlDelete tells retryKubectlInput() to run "delete"
+	kubectlDelete = kubectlAction("delete")
+)
+
+// String returns the string format of the kubectlAction, this is automatically
+// used when formatting strings with %s or %q.
+func (ka kubectlAction) String() string {
+	return string(ka)
+}
+
+// retryKubectlInput takes a namespace and action telling kubectl what to do,
+// it then feeds data through stdin to the process. This function retries until
+// no error occurred, or the timeout passed.
+func retryKubectlInput(namespace string, action kubectlAction, data string, t int) error {
+	timeout := time.Duration(t) * time.Minute
+	e2elog.Logf("waiting for kubectl (%s) to finish", action)
+	start := time.Now()
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err := framework.RunKubectlInput(namespace, data, string(action), "-f", "-")
+		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			e2elog.Logf(
+				"will run kubectl (%s) again (%d seconds elapsed)",
+				action,
+				int(time.Since(start).Seconds()))
+			return false, fmt.Errorf("failed to run kubectl: %w", err)
+		}
+		return true, nil
+	})
+}
+
+// retryKubectlFile takes a namespace and action telling kubectl what to do
+// with the passed filename. This function retries until no error occurred, or
+// the timeout passed.
+func retryKubectlFile(namespace string, action kubectlAction, filename string, t int) error {
+	timeout := time.Duration(t) * time.Minute
+	e2elog.Logf("waiting for kubectl (%s -f %q) to finish", action, filename)
+	start := time.Now()
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err := framework.RunKubectl(namespace, string(action), "-f", filename)
+		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			e2elog.Logf(
+				"will run kubectl (%s -f %q) again (%d seconds elapsed)",
+				action,
+				filename,
+				int(time.Since(start).Seconds()))
+			return false, fmt.Errorf("failed to run kubectl: %w", err)
+		}
+		return true, nil
+	})
+}
