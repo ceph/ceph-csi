@@ -165,9 +165,11 @@ func validateRBDImageCount(f *framework.Framework, count int, pool string) {
 	}
 	if len(imageList) != count {
 		e2elog.Failf(
-			"backend images not matching kubernetes resource count,image count %d kubernetes resource count %d",
+			"backend images not matching kubernetes resource count,image count %d kubernetes resource count %d"+
+				"\nbackend image Info:\n %v",
 			len(imageList),
-			count)
+			count,
+			imageList)
 	}
 }
 
