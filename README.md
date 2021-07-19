@@ -72,7 +72,7 @@ for its support details.
 |        | Provision Block Mode ROX volume from snapshot             | Alpha          | >= v3.0.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.17.0         |
 |        | Provision Block Mode ROX volume from another volume       | Alpha          | >= v3.0.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.16.0         |
 |        | Creating and deleting snapshot                            | Beta           | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.17.0         |
-|        | Provision volume from snapshot                            | Alpha          | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.17.0         |
+|        | Provision volume from snapshot                            | Beta           | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.17.0         |
 |        | Provision volume from another volume                      | Alpha          | >= v1.0.0          | >= v1.0.0        | Nautilus (>=14.0.0)  | >= v1.16.0         |
 |        | Expand volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Nautilus (>=14.0.0)  | >= v1.15.0         |
 |        | Volume/PV Metrics of File Mode Volume                     | Beta           | >= v1.2.0          | >= v1.1.0        | Nautilus (>=14.0.0)  | >= v1.15.0         |
@@ -82,7 +82,7 @@ for its support details.
 |        | Dynamically provision, de-provision File mode RWX volume  | Beta           | >= v1.1.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.14.0         |
 |        | Dynamically provision, de-provision File mode ROX volume  | Alpha          | >= v3.0.0          | >= v1.0.0        | Nautilus (>=v14.2.2) | >= v1.14.0         |
 |        | Creating and deleting snapshot                            | Beta           | >= v3.1.0          | >= v1.0.0        | Octopus (>=v15.2.3)  | >= v1.17.0         |
-|        | Provision volume from snapshot                            | Alpha          | >= v3.1.0          | >= v1.0.0        | Octopus (>=v15.2.3)  | >= v1.17.0         |
+|        | Provision volume from snapshot                            | Beta           | >= v3.1.0          | >= v1.0.0        | Octopus (>=v15.2.3)  | >= v1.17.0         |
 |        | Provision volume from another volume                      | Alpha          | >= v3.1.0          | >= v1.0.0        | Octopus (>=v15.2.3)  | >= v1.16.0         |
 |        | Expand volume                                             | Beta           | >= v2.0.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
 |        | Volume/PV Metrics of File Mode Volume                     | Beta           | >= v1.2.0          | >= v1.1.0        | Nautilus (>=v14.2.2) | >= v1.15.0         |
