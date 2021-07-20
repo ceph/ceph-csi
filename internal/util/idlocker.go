@@ -130,19 +130,10 @@ func (ol *OperationLock) tryAcquire(op operation, volumeID string) error {
 		val := ol.locks[cloneOpt][volumeID]
 		ol.locks[cloneOpt][volumeID] = val + 1
 	case deleteOp:
-		// / During delete operation the volume should not be under expand,
-		// clone or snapshot operation.
+		// During delete operation the volume should not be under expand,
 		// check any expand operation is going on for given volume ID
 		if _, ok := ol.locks[expandOp][volumeID]; ok {
 			return fmt.Errorf("an Expand operation with given id %s already exists", volumeID)
-		}
-		// check any clone operation is going on for given volume ID
-		if _, ok := ol.locks[cloneOpt][volumeID]; ok {
-			return fmt.Errorf("a Clone operation with given id %s already exists", volumeID)
-		}
-		// check any delete operation is going on for given volume ID
-		if _, ok := ol.locks[createOp][volumeID]; ok {
-			return fmt.Errorf("a Create operation with given id %s already exists", volumeID)
 		}
 		// check any restore operation is going on for given volume ID
 		if _, ok := ol.locks[restoreOp][volumeID]; ok {
