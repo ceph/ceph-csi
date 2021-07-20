@@ -9,6 +9,7 @@ data:
         "vaultAddress": "http://vault.default.svc.cluster.local:8200",
         "vaultAuthPath": "/v1/auth/kubernetes/login",
         "vaultRole": "csi-kubernetes",
+        "vaultBackend": "kv-v2",
         "vaultPassphraseRoot": "/v1/secret",
         "vaultPassphrasePath": "ceph-csi/",
         "vaultCAVerify": "false"
@@ -16,6 +17,7 @@ data:
       "vault-tokens-test": {
           "encryptionKMSType": "vaulttokens",
           "vaultAddress": "http://vault.default.svc.cluster.local:8200",
+          "vaultBackend": "kv-v2",
           "vaultBackendPath": "secret/",
           "vaultTLSServerName": "vault.default.svc.cluster.local",
           "vaultCAVerify": "false",

@@ -131,6 +131,16 @@ func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 	}
 	// default: !firstInit
 
+	vaultBackend := "" // optional
+	err = setConfigString(&vaultBackend, config, "vaultBackend")
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	}
+	// set the option if the value was not invalid
+	if !errors.Is(err, errConfigOptionMissing) {
+		vaultConfig[vault.VaultBackendKey] = vaultBackend
+	}
+
 	vaultBackendPath := "" // optional
 	err = setConfigString(&vaultBackendPath, config, "vaultBackendPath")
 	if errors.Is(err, errConfigOptionInvalid) {
