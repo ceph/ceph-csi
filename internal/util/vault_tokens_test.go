@@ -125,6 +125,7 @@ func TestStdVaultToCSIConfig(t *testing.T) {
 	vaultConfigMap := `{
 		"KMS_PROVIDER":"vaulttokens",
 		"VAULT_ADDR":"https://vault.example.com",
+		"VAULT_BACKEND":"kv-v2",
 		"VAULT_BACKEND_PATH":"/secret",
 		"VAULT_CACERT":"",
 		"VAULT_TLS_SERVER_NAME":"vault.example.com",
@@ -150,6 +151,8 @@ func TestStdVaultToCSIConfig(t *testing.T) {
 		t.Errorf("unexpected value for EncryptionKMSType: %s", v.EncryptionKMSType)
 	case v.VaultAddress != "https://vault.example.com":
 		t.Errorf("unexpected value for VaultAddress: %s", v.VaultAddress)
+	case v.VaultBackend != "kv-v2":
+		t.Errorf("unexpected value for VaultBackend: %s", v.VaultBackend)
 	case v.VaultBackendPath != "/secret":
 		t.Errorf("unexpected value for VaultBackendPath: %s", v.VaultBackendPath)
 	case v.VaultCAFromSecret != "":
@@ -172,6 +175,7 @@ func TestTransformConfig(t *testing.T) {
 	cm := make(map[string]interface{})
 	cm["KMS_PROVIDER"] = "vaulttokens"
 	cm["VAULT_ADDR"] = "https://vault.example.com"
+	cm["VAULT_BACKEND"] = "kv-v2"
 	cm["VAULT_BACKEND_PATH"] = "/secret"
 	cm["VAULT_CACERT"] = ""
 	cm["VAULT_TLS_SERVER_NAME"] = "vault.example.com"
@@ -184,6 +188,7 @@ func TestTransformConfig(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, config["encryptionKMSType"], cm["KMS_PROVIDER"])
 	assert.Equal(t, config["vaultAddress"], cm["VAULT_ADDR"])
+	assert.Equal(t, config["vaultBackend"], cm["VAULT_BACKEND"])
 	assert.Equal(t, config["vaultBackendPath"], cm["VAULT_BACKEND_PATH"])
 	assert.Equal(t, config["vaultCAFromSecret"], cm["VAULT_CACERT"])
 	assert.Equal(t, config["vaultTLSServerName"], cm["VAULT_TLS_SERVER_NAME"])
