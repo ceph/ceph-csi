@@ -56,6 +56,7 @@ const (
 type standardVault struct {
 	KmsPROVIDER        string `json:"KMS_PROVIDER"`
 	VaultADDR          string `json:"VAULT_ADDR"`
+	VaultBackend       string `json:"VAULT_BACKEND"`
 	VaultBackendPath   string `json:"VAULT_BACKEND_PATH"`
 	VaultCACert        string `json:"VAULT_CACERT"`
 	VaultTLSServerName string `json:"VAULT_TLS_SERVER_NAME"`
@@ -68,6 +69,7 @@ type standardVault struct {
 type vaultTokenConf struct {
 	EncryptionKMSType            string `json:"encryptionKMSType"`
 	VaultAddress                 string `json:"vaultAddress"`
+	VaultBackend                 string `json:"vaultBackend"`
 	VaultBackendPath             string `json:"vaultBackendPath"`
 	VaultCAFromSecret            string `json:"vaultCAFromSecret"`
 	VaultTLSServerName           string `json:"vaultTLSServerName"`
@@ -80,6 +82,7 @@ type vaultTokenConf struct {
 func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 	v.EncryptionKMSType = s.KmsPROVIDER
 	v.VaultAddress = s.VaultADDR
+	v.VaultBackend = s.VaultBackend
 	v.VaultBackendPath = s.VaultBackendPath
 	v.VaultCAFromSecret = s.VaultCACert
 	v.VaultClientCertFromSecret = s.VaultClientCert
@@ -145,6 +148,7 @@ Example JSON structure in the KMS config is,
     "vault-with-tokens": {
         "encryptionKMSType": "vaulttokens",
         "vaultAddress": "http://vault.default.svc.cluster.local:8200",
+        "vaultBackend": "kv-v2",
         "vaultBackendPath": "secret/",
         "vaultTLSServerName": "vault.default.svc.cluster.local",
         "vaultCAFromSecret": "vault-ca",
@@ -445,6 +449,7 @@ func getCertificate(tenant, secretName, key string) (string, error) {
 func isTenantConfigOption(opt string) bool {
 	switch opt {
 	case "vaultAddress":
+	case "vaultBackend":
 	case "vaultBackendPath":
 	case "vaultTLSServerName":
 	case "vaultCAFromSecret":

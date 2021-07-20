@@ -7,6 +7,7 @@ metadata:
   name: ceph-csi-kms-config
 data:
   vaultAddress: "http://vault.default.svc.cluster.local:8200"
+  vaultBackend: "kv-v1"
   vaultBackendPath: "secret/"
   vaultTLSServerName: "vault.default.svc.cluster.local"
   vaultCAVerify: "false"
