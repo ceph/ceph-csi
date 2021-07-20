@@ -71,9 +71,23 @@ func getMons(ns string, c kubernetes.Interface) ([]string, error) {
 	}
 	services := make([]string, 0)
 
-	svcList, err := c.CoreV1().Services(ns).List(context.TODO(), opt)
+	var svcList *v1.ServiceList
+	t := time.Duration(deployTimeout) * time.Minute
+	err := wait.PollImmediate(poll, t, func() (bool, error) {
+		var svcErr error
+		svcList, svcErr = c.CoreV1().Services(ns).List(context.TODO(), opt)
+		if svcErr != nil {
+			if isRetryableAPIError(svcErr) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to list Services in namespace %q: %w", ns, svcErr)
+		}
+
+		return true, nil
+	})
 	if err != nil {
-		return services, fmt.Errorf("failed to list services: %w", err)
+		return services, fmt.Errorf("could not get Services: %w", err)
 	}
 	for i := range svcList.Items {
 		s := fmt.Sprintf(
