@@ -21,7 +21,7 @@ data:
     vault login ${VAULT_DEV_ROOT_TOKEN_ID}
 
     # create a secret store for the tenant
-    vault secrets enable -path="tenant" kv
+    vault secrets enable -version=2 -path="tenant" kv
 
     # create a policy for the tenant
     vault policy write "${TENANT_NAMESPACE}" - << EOS

@@ -19,5 +19,6 @@ kind: ConfigMap
 metadata:
   name: ceph-csi-kms-config
 data:
+  vaultBackend: kv-v2
   vaultBackendPath: tenant
   vaultRole: ceph-csi-tenant
