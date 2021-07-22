@@ -235,6 +235,7 @@ func TestFindPoolAndTopology(t *testing.T) {
 				topologyPrefix+"/"+label1+l1Value1, topologyPrefix+"/"+label2+l2Value1,
 				poolName, topoSegment)
 		}
+
 		return nil
 	}
 	// Test nil values

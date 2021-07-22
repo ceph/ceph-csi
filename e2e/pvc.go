@@ -23,6 +23,7 @@ func loadPVC(path string) (*v1.PersistentVolumeClaim, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return pvc, err
 }
 
@@ -53,6 +54,7 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
+
 			return false, fmt.Errorf("failed to get pvc: %w", err)
 		}
 
@@ -68,6 +70,7 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
+
 			return false, fmt.Errorf("failed to get pv: %w", err)
 		}
 		err = e2epv.WaitOnPVandPVC(
@@ -79,6 +82,7 @@ func createPVCAndvalidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		if err != nil {
 			return false, fmt.Errorf("failed to wait for the pv and pvc to bind: %w", err)
 		}
+
 		return true, nil
 	})
 }
@@ -92,6 +96,7 @@ func createPVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 	if err != nil {
 		return fmt.Errorf("failed to create pv: %w", err)
 	}
+
 	return err
 }
 
@@ -125,6 +130,7 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 				// FIXME: see https://github.com/ceph/ceph-csi/issues/1874
 				e2elog.Logf("PVC %s is in a weird state: %s", pvcToDelete.Name, pvcToDelete.String())
 			}
+
 			return false, nil
 		}
 		if isRetryableAPIError(err) {
@@ -145,6 +151,7 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 
 	start = time.Now()
 	pvToDelete := pv
+
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		// Check that the PV is deleted.
 		e2elog.Logf(
@@ -179,6 +186,7 @@ func getPVCAndPV(
 	if err != nil {
 		return pvc, nil, fmt.Errorf("failed to get PV: %w", err)
 	}
+
 	return pvc, pv, nil
 }
 
@@ -203,6 +211,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		return fmt.Errorf("delete of PVC %v failed: %w", name, err)
 	}
 	start := time.Now()
+
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		// Check that the PVC is really deleted.
 		e2elog.Logf(
@@ -252,6 +261,7 @@ func getBoundPV(client kubernetes.Interface, pvc *v1.PersistentVolumeClaim) (*v1
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pv: %w", err)
 	}
+
 	return pv, nil
 }
 
@@ -289,6 +299,7 @@ func checkPVSelectorValuesForPVC(f *framework.Framework, pvc *v1.PersistentVolum
 			return errors.New("unexpected key in node selector terms found in PV")
 		}
 	}
+
 	return nil
 }
 
@@ -303,14 +314,17 @@ func getMetricsForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, t i
 
 	// retry as kubelet does not immediately have the metrics available
 	timeout := time.Duration(t) * time.Minute
+
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 		if err != nil {
 			e2elog.Logf("failed to get metrics for pvc %q (%v): %v", pvc.Name, err, stdErr)
+
 			return false, nil
 		}
 		if stdOut == "" {
 			e2elog.Logf("no metrics received from kublet on IP %s", kubelet)
+
 			return false, nil
 		}
 
@@ -324,11 +338,13 @@ func getMetricsForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, t i
 			if strings.Contains(line, namespace) && strings.Contains(line, name) {
 				// TODO: validate metrics if possible
 				e2elog.Logf("found metrics for pvc %s/%s: %s", pvc.Namespace, pvc.Name, line)
+
 				return true, nil
 			}
 		}
 
 		e2elog.Logf("no metrics found for pvc %s/%s", pvc.Namespace, pvc.Name)
+
 		return false, nil
 	})
 }

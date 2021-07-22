@@ -60,6 +60,7 @@ func (vo *volumeOptions) getVolumeRootPathCeph(ctx context.Context, volID volume
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin err %s", err)
+
 		return "", err
 	}
 	svPath, err := fsa.SubVolumePath(vo.FsName, vo.SubvolumeGroup, string(volID))
@@ -68,8 +69,10 @@ func (vo *volumeOptions) getVolumeRootPathCeph(ctx context.Context, volID volume
 		if errors.Is(err, rados.ErrNotFound) {
 			return "", util.JoinErrors(ErrVolumeNotFound, err)
 		}
+
 		return "", err
 	}
+
 	return svPath, nil
 }
 
@@ -77,6 +80,7 @@ func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin, can not fetch metadata pool for %s:", vo.FsName, err)
+
 		return nil, err
 	}
 
@@ -147,6 +151,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 	ca, err := volOptions.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin, can not create subvolume %s: %s", string(volID), err)
+
 		return err
 	}
 
@@ -161,6 +166,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 				volOptions.SubvolumeGroup,
 				string(volID),
 				err)
+
 			return err
 		}
 		util.DebugLog(ctx, "cephfs: created subvolume group %s", volOptions.SubvolumeGroup)
@@ -179,6 +185,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 	err = ca.CreateSubVolume(volOptions.FsName, volOptions.SubvolumeGroup, string(volID), &opts)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create subvolume %s in fs %s: %s", string(volID), volOptions.FsName, err)
+
 		return err
 	}
 
@@ -203,21 +210,25 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 		fsa, err := vo.conn.GetFSAdmin()
 		if err != nil {
 			util.ErrorLog(ctx, "could not get FSAdmin, can not resize volume %s:", vo.FsName, err)
+
 			return err
 		}
 		_, err = fsa.ResizeSubVolume(vo.FsName, vo.SubvolumeGroup, string(volID), fsAdmin.ByteCount(bytesQuota), true)
 		if err == nil {
 			clusterAdditionalInfo[vo.ClusterID].resizeState = supported
+
 			return nil
 		}
 		var invalid fsAdmin.NotImplementedError
 		// In case the error is other than invalid command return error to the caller.
 		if !errors.As(err, &invalid) {
 			util.ErrorLog(ctx, "failed to resize subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
+
 			return err
 		}
 	}
 	clusterAdditionalInfo[vo.ClusterID].resizeState = unsupported
+
 	return createVolume(ctx, vo, volID, bytesQuota)
 }
 
@@ -225,6 +236,7 @@ func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, force 
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin %s:", err)
+
 		return err
 	}
 
@@ -244,6 +256,7 @@ func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, force 
 		if errors.Is(err, rados.ErrNotFound) {
 			return util.JoinErrors(ErrVolumeNotFound, err)
 		}
+
 		return err
 	}
 
@@ -260,5 +273,6 @@ func checkSubvolumeHasFeature(feature string, subVolFeatures []string) bool {
 			return true
 		}
 	}
+
 	return false
 }

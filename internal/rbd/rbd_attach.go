@@ -140,6 +140,7 @@ func findDeviceMappingImage(ctx context.Context, pool, namespace, image string, 
 	rbdDeviceList, err := rbdGetDeviceList(ctx, accessType)
 	if err != nil {
 		util.WarningLog(ctx, "failed to determine if image (%s) is mapped to a device (%v)", imageSpec, err)
+
 		return "", false
 	}
 
@@ -177,14 +178,17 @@ func checkRbdNbdTools() bool {
 		_, _, err = util.ExecCommand(context.TODO(), "modprobe", moduleNbd)
 		if err != nil {
 			util.ExtendedLogMsg("rbd-nbd: nbd modprobe failed with error %v", err)
+
 			return false
 		}
 	}
 	if _, _, err := util.ExecCommand(context.TODO(), rbdTonbd, "--version"); err != nil {
 		util.ExtendedLogMsg("rbd-nbd: running rbd-nbd --version failed with error %v", err)
+
 		return false
 	}
 	util.ExtendedLogMsg("rbd-nbd tools were found.")
+
 	return true
 }
 
@@ -325,6 +329,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 				util.WarningLog(ctx, "rbd: %s unmap error %v", imagePath, detErr)
 			}
 		}
+
 		return "", fmt.Errorf("rbd: map failed with error %w, rbd error output: %s", err, stderr)
 	}
 	devicePath := strings.TrimSuffix(stdout, "\n")
@@ -342,8 +347,10 @@ func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdV
 		}
 		if (volOptions.DisableInUseChecks) && (used) {
 			util.UsefulLog(ctx, "valid multi-node attach requested, ignoring watcher in-use result")
+
 			return used, nil
 		}
+
 		return !used, nil
 	})
 	// return error if rbd image has not become available for the specified timeout
@@ -376,6 +383,7 @@ func detachRBDImageOrDeviceSpec(
 		if err != nil {
 			util.ErrorLog(ctx, "error determining LUKS device on %s, %s: %s",
 				mapperPath, imageOrDeviceSpec, err)
+
 			return err
 		}
 		if len(mapper) > 0 {
@@ -384,6 +392,7 @@ func detachRBDImageOrDeviceSpec(
 			if err != nil {
 				util.ErrorLog(ctx, "error closing LUKS device on %s, %s: %s",
 					mapperPath, imageOrDeviceSpec, err)
+
 				return err
 			}
 			imageOrDeviceSpec = mappedDevice
@@ -402,8 +411,10 @@ func detachRBDImageOrDeviceSpec(
 				strings.Contains(stderr, fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
 			// Devices found not to be mapped are treated as a successful detach
 			util.TraceLog(ctx, "image or device spec (%s) not mapped", imageOrDeviceSpec)
+
 			return nil
 		}
+
 		return fmt.Errorf("rbd: unmap for spec (%s) failed (%w): (%s)", imageOrDeviceSpec, err, stderr)
 	}
 

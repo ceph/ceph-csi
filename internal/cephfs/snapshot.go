@@ -52,6 +52,7 @@ func (vo *volumeOptions) createSnapshot(ctx context.Context, snapID, volID volum
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+
 		return err
 	}
 
@@ -59,8 +60,10 @@ func (vo *volumeOptions) createSnapshot(ctx context.Context, snapID, volID volum
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create subvolume snapshot %s %s in fs %s: %s",
 			string(snapID), string(volID), vo.FsName, err)
+
 		return err
 	}
+
 	return nil
 }
 
@@ -68,6 +71,7 @@ func (vo *volumeOptions) deleteSnapshot(ctx context.Context, snapID, volID volum
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+
 		return err
 	}
 
@@ -75,8 +79,10 @@ func (vo *volumeOptions) deleteSnapshot(ctx context.Context, snapID, volID volum
 	if err != nil {
 		util.ErrorLog(ctx, "failed to delete subvolume snapshot %s %s in fs %s: %s",
 			string(snapID), string(volID), vo.FsName, err)
+
 		return err
 	}
+
 	return nil
 }
 
@@ -92,6 +98,7 @@ func (vo *volumeOptions) getSnapshotInfo(ctx context.Context, snapID, volID volu
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+
 		return snap, err
 	}
 
@@ -107,11 +114,13 @@ func (vo *volumeOptions) getSnapshotInfo(ctx context.Context, snapID, volID volu
 			string(snapID),
 			vo.FsName,
 			err)
+
 		return snap, err
 	}
 	snap.CreatedAt = info.CreatedAt.Time
 	snap.HasPendingClones = info.HasPendingClones
 	snap.Protected = info.Protected
+
 	return snap, nil
 }
 
@@ -124,6 +133,7 @@ func (vo *volumeOptions) protectSnapshot(ctx context.Context, snapID, volID volu
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+
 		return err
 	}
 
@@ -140,8 +150,10 @@ func (vo *volumeOptions) protectSnapshot(ctx context.Context, snapID, volID volu
 			string(snapID),
 			vo.FsName,
 			err)
+
 		return err
 	}
+
 	return nil
 }
 
@@ -154,6 +166,7 @@ func (vo *volumeOptions) unprotectSnapshot(ctx context.Context, snapID, volID vo
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+
 		return err
 	}
 
@@ -172,8 +185,10 @@ func (vo *volumeOptions) unprotectSnapshot(ctx context.Context, snapID, volID vo
 			string(snapID),
 			vo.FsName,
 			err)
+
 		return err
 	}
+
 	return nil
 }
 
@@ -185,6 +200,7 @@ func (vo *volumeOptions) cloneSnapshot(
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin: %s", err)
+
 		return err
 	}
 	co := &admin.CloneOptions{
@@ -207,7 +223,9 @@ func (vo *volumeOptions) cloneSnapshot(
 		if errors.Is(err, rados.ErrNotFound) {
 			return ErrVolumeNotFound
 		}
+
 		return err
 	}
+
 	return nil
 }

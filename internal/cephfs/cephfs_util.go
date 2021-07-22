@@ -27,12 +27,14 @@ func (vo *volumeOptions) getFscID(ctx context.Context) (int64, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin, can not fetch filesystem ID for %s:", vo.FsName, err)
+
 		return 0, err
 	}
 
 	volumes, err := fsa.EnumerateVolumes()
 	if err != nil {
 		util.ErrorLog(ctx, "could not list volumes, can not fetch filesystem ID for %s:", vo.FsName, err)
+
 		return 0, err
 	}
 
@@ -43,6 +45,7 @@ func (vo *volumeOptions) getFscID(ctx context.Context) (int64, error) {
 	}
 
 	util.ErrorLog(ctx, "failed to list volume %s", vo.FsName)
+
 	return 0, ErrVolumeNotFound
 }
 
@@ -50,12 +53,14 @@ func (vo *volumeOptions) getMetadataPool(ctx context.Context) (string, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin, can not fetch metadata pool for %s:", vo.FsName, err)
+
 		return "", err
 	}
 
 	fsPoolInfos, err := fsa.ListFileSystems()
 	if err != nil {
 		util.ErrorLog(ctx, "could not list filesystems, can not fetch metadata pool for %s:", vo.FsName, err)
+
 		return "", err
 	}
 
@@ -72,12 +77,14 @@ func (vo *volumeOptions) getFsName(ctx context.Context) (string, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		util.ErrorLog(ctx, "could not get FSAdmin, can not fetch filesystem name for ID %d:", vo.FscID, err)
+
 		return "", err
 	}
 
 	volumes, err := fsa.EnumerateVolumes()
 	if err != nil {
 		util.ErrorLog(ctx, "could not list volumes, can not fetch filesystem name for ID %d:", vo.FscID, err)
+
 		return "", err
 	}
 

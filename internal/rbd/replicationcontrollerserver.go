@@ -90,12 +90,14 @@ func getForceOption(ctx context.Context, parameters map[string]string) (bool, er
 	val, ok := parameters[forceKey]
 	if !ok {
 		util.WarningLog(ctx, "%s is not set in parameters, setting to default (%v)", forceKey, false)
+
 		return false, nil
 	}
 	force, err := strconv.ParseBool(val)
 	if err != nil {
 		return false, status.Errorf(codes.Internal, err.Error())
 	}
+
 	return force, nil
 }
 
@@ -109,6 +111,7 @@ func getMirroringMode(ctx context.Context, parameters map[string]string) (librbd
 			"%s is not set in parameters, setting to mirroringMode to default (%s)",
 			imageMirroringKey,
 			imageMirrorModeSnapshot)
+
 		return librbd.ImageMirrorModeSnapshot, nil
 	}
 
@@ -119,6 +122,7 @@ func getMirroringMode(ctx context.Context, parameters map[string]string) (librbd
 	default:
 		return mirroringMode, status.Errorf(codes.InvalidArgument, "%s %s not supported", imageMirroringKey, val)
 	}
+
 	return mirroringMode, nil
 }
 
@@ -159,6 +163,7 @@ func getSchedulingDetails(parameters map[string]string) (admin.Interval, admin.S
 			return admInt, admin.NoStartTime, status.Error(codes.InvalidArgument, err.Error())
 		}
 	}
+
 	return admInt, adminStartTime, nil
 }
 
@@ -169,6 +174,7 @@ func validateSchedulingInterval(interval string) (admin.Interval, error) {
 	if re.MatchString(interval) {
 		return admin.Interval(interval), nil
 	}
+
 	return "", errors.New("interval specified without d, h, m suffix")
 }
 
@@ -195,6 +201,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 
 	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer rs.VolumeLocks.Release(volumeID)
@@ -210,6 +217,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 		default:
 			err = status.Errorf(codes.Internal, err.Error())
 		}
+
 		return nil, err
 	}
 	// extract the mirroring mode
@@ -221,6 +229,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	mirroringInfo, err := rbdVol.getImageMirroringInfo()
 	if err != nil {
 		util.ErrorLog(ctx, err.Error())
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -228,6 +237,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 		err = rbdVol.enableImageMirroring(mirroringMode)
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
+
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
@@ -266,6 +276,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 
 	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer rs.VolumeLocks.Release(volumeID)
@@ -281,6 +292,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 		default:
 			err = status.Errorf(codes.Internal, err.Error())
 		}
+
 		return nil, err
 	}
 	// extract the force option
@@ -292,6 +304,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	mirroringInfo, err := rbdVol.getImageMirroringInfo()
 	if err != nil {
 		util.ErrorLog(ctx, err.Error())
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -308,6 +321,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 		err = rbdVol.disableImageMirroring(force)
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
+
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		// the image state can be still disabling once we disable the mirroring
@@ -315,11 +329,13 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 		mirroringInfo, err = rbdVol.getImageMirroringInfo()
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
+
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		if mirroringInfo.State == librbd.MirrorImageDisabling {
 			return nil, status.Errorf(codes.Aborted, "%s is in disabling state", volumeID)
 		}
+
 		return &replication.DisableVolumeReplicationResponse{}, nil
 	default:
 		// TODO: use string instead of int for returning valid error message
@@ -348,6 +364,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 
 	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer rs.VolumeLocks.Release(volumeID)
@@ -363,12 +380,14 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 		default:
 			err = status.Errorf(codes.Internal, err.Error())
 		}
+
 		return nil, err
 	}
 
 	mirroringInfo, err := rbdVol.getImageMirroringInfo()
 	if err != nil {
 		util.ErrorLog(ctx, err.Error())
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -394,6 +413,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 			if strings.Contains(err.Error(), "Device or resource busy") {
 				return nil, status.Error(codes.FailedPrecondition, err.Error())
 			}
+
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
@@ -420,6 +440,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 
 	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer rs.VolumeLocks.Release(volumeID)
@@ -435,11 +456,13 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 		default:
 			err = status.Errorf(codes.Internal, err.Error())
 		}
+
 		return nil, err
 	}
 	mirroringInfo, err := rbdVol.getImageMirroringInfo()
 	if err != nil {
 		util.ErrorLog(ctx, err.Error())
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -456,9 +479,11 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 		err = rbdVol.demoteImage()
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
+
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
+
 	return &replication.DemoteVolumeResponse{}, nil
 }
 
@@ -481,6 +506,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer rs.VolumeLocks.Release(volumeID)
@@ -495,6 +521,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		default:
 			err = status.Errorf(codes.Internal, err.Error())
 		}
+
 		return nil, err
 	}
 
@@ -503,6 +530,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		// in case of Resync the image will get deleted and gets recreated and
 		// it takes time for this operation.
 		util.ErrorLog(ctx, err.Error())
+
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
 
@@ -523,9 +551,11 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 			resp := &replication.ResyncVolumeResponse{
 				Ready: false,
 			}
+
 			return resp, nil
 		}
 		util.ErrorLog(ctx, err.Error())
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	ready := false
@@ -561,6 +591,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		err = rbdVol.resyncImage()
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
+
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
@@ -574,5 +605,6 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	resp := &replication.ResyncVolumeResponse{
 		Ready: ready,
 	}
+
 	return resp, nil
 }

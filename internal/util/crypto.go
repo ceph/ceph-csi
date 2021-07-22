@@ -87,6 +87,7 @@ func NewVolumeEncryption(id string, kms EncryptionKMS) (*VolumeEncryption, error
 		}
 
 		ve.dekStore = dekStore
+
 		return ve, nil
 	}
 
@@ -196,6 +197,7 @@ func (ve *VolumeEncryption) StoreCryptoPassphrase(volumeID, passphrase string) e
 	if err != nil {
 		return fmt.Errorf("failed to save the passphrase for %s: %w", volumeID, err)
 	}
+
 	return nil
 }
 
@@ -226,6 +228,7 @@ func generateNewEncryptionPassphrase() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return base64.URLEncoding.EncodeToString(bytesPassphrase), nil
 }
 
@@ -233,6 +236,7 @@ func generateNewEncryptionPassphrase() (string, error) {
 func VolumeMapper(volumeID string) (mapperFile, mapperFilePath string) {
 	mapperFile = mapperFilePrefix + volumeID
 	mapperFilePath = path.Join(mapperFilePathPrefix, mapperFile)
+
 	return mapperFile, mapperFilePath
 }
 
@@ -242,6 +246,7 @@ func EncryptVolume(ctx context.Context, devicePath, passphrase string) error {
 	if _, _, err := LuksFormat(devicePath, passphrase); err != nil {
 		return fmt.Errorf("failed to encrypt device %s with LUKS: %w", devicePath, err)
 	}
+
 	return nil
 }
 
@@ -252,6 +257,7 @@ func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase
 	if err != nil {
 		WarningLog(ctx, "failed to open LUKS device %q: %s", devicePath, stderr)
 	}
+
 	return err
 }
 
@@ -259,12 +265,14 @@ func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase
 func CloseEncryptedVolume(ctx context.Context, mapperFile string) error {
 	DebugLog(ctx, "Closing LUKS device %s", mapperFile)
 	_, _, err := LuksClose(mapperFile)
+
 	return err
 }
 
 // IsDeviceOpen determines if encrypted device is already open.
 func IsDeviceOpen(ctx context.Context, device string) (bool, error) {
 	_, mappedFile, err := DeviceEncryptionStatus(ctx, device)
+
 	return (mappedFile != ""), err
 }
 
@@ -279,6 +287,7 @@ func DeviceEncryptionStatus(ctx context.Context, devicePath string) (mappedDevic
 	stdout, _, err := LuksStatus(mapPath)
 	if err != nil {
 		DebugLog(ctx, "device %s is not an active LUKS device: %v", devicePath, err)
+
 		return devicePath, "", nil
 	}
 	lines := strings.Split(string(stdout), "\n")

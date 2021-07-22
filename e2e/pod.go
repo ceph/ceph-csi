@@ -24,14 +24,17 @@ func getDaemonSetLabelSelector(f *framework.Framework, ns, daemonSetName string)
 	ds, err := f.ClientSet.AppsV1().DaemonSets(ns).Get(context.TODO(), daemonSetName, metav1.GetOptions{})
 	if err != nil {
 		e2elog.Logf("Error getting daemonsets with name %s in namespace %s", daemonSetName, ns)
+
 		return "", err
 	}
 	s, err := metav1.LabelSelectorAsSelector(ds.Spec.Selector)
 	if err != nil {
 		e2elog.Logf("Error parsing %s daemonset selector in namespace %s", daemonSetName, ns)
+
 		return "", err
 	}
 	e2elog.Logf("LabelSelector for %s daemonsets in namespace %s: %s", daemonSetName, ns, s.String())
+
 	return s.String(), nil
 }
 
@@ -50,6 +53,7 @@ func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
+
 			return false, err
 		}
 		dNum := ds.Status.DesiredNumberScheduled
@@ -85,6 +89,7 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 				return false, nil
 			}
 			e2elog.Logf("deployment error: %v", err)
+
 			return false, err
 		}
 
@@ -100,6 +105,7 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 			deployment.Status.Replicas,
 			deployment.Status.ReadyReplicas)
 		reason = fmt.Sprintf("deployment status: %#v", deployment.Status.String())
+
 		return false, nil
 	})
 
@@ -109,6 +115,7 @@ func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) e
 	if err != nil {
 		return fmt.Errorf("error waiting for deployment %q status to match expectation: %w", name, err)
 	}
+
 	return nil
 }
 
@@ -130,8 +137,10 @@ func findPodAndContainerName(f *framework.Framework, ns, cn string, opt *metav1.
 				}
 			}
 		}
+
 		return "", "", errors.New("container name not found")
 	}
+
 	return podList.Items[0].Name, podList.Items[0].Spec.Containers[0].Name, nil
 }
 
@@ -144,6 +153,7 @@ func getCommandInPodOpts(
 	if err != nil {
 		return framework.ExecOptions{}, err
 	}
+
 	return framework.ExecOptions{
 		Command:            cmd,
 		PodName:            pName,
@@ -192,6 +202,7 @@ func execCommandInDaemonsetPod(
 		CaptureStdout: true,
 		CaptureStderr: true,
 	}
+
 	return f.ExecWithOptions(podOpt)
 }
 
@@ -201,6 +212,7 @@ func listPods(f *framework.Framework, ns string, opt *metav1.ListOptions) ([]v1.
 	if len(podList.Items) == 0 {
 		return podList.Items, fmt.Errorf("podlist for label '%s' in namespace %s is empty", opt.LabelSelector, ns)
 	}
+
 	return podList.Items, err
 }
 
@@ -213,6 +225,7 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
+
 	return stdOut, stdErr, err
 }
 
@@ -226,6 +239,7 @@ func execCommandInContainer(
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
+
 	return stdOut, stdErr, err
 }
 
@@ -241,6 +255,7 @@ func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, stri
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
+
 	return stdOut, stdErr, err
 }
 
@@ -253,6 +268,7 @@ func execCommandInPodAndAllowFail(f *framework.Framework, c, ns string, opt *met
 	if err != nil {
 		e2elog.Logf("command %s failed: %v", c, err)
 	}
+
 	return stdOut, stdErr
 }
 
@@ -264,6 +280,7 @@ func loadApp(path string) (*v1.Pod, error) {
 	for i := range app.Spec.Containers {
 		app.Spec.Containers[i].ImagePullPolicy = v1.PullIfNotPresent
 	}
+
 	return &app, nil
 }
 
@@ -272,6 +289,7 @@ func createApp(c kubernetes.Interface, app *v1.Pod, timeout int) error {
 	if err != nil {
 		return fmt.Errorf("failed to create app: %w", err)
 	}
+
 	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout, noError)
 }
 
@@ -280,6 +298,7 @@ func createAppErr(c kubernetes.Interface, app *v1.Pod, timeout int, errString st
 	if err != nil {
 		return err
 	}
+
 	return waitForPodInRunningState(app.Name, app.Namespace, c, timeout, errString)
 }
 
@@ -287,12 +306,14 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
 	e2elog.Logf("Waiting up to %v to be in Running state", name)
+
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
+
 			return false, fmt.Errorf("failed to get app: %w", err)
 		}
 		switch pod.Status.Phase {
@@ -310,6 +331,7 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 				}
 				if strings.Contains(events.String(), expectedError) {
 					e2elog.Logf("Expected Error %q found successfully", expectedError)
+
 					return true, err
 				}
 			}
@@ -320,6 +342,7 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 				pod.Status.Phase,
 				int(time.Since(start).Seconds()))
 		}
+
 		return false, nil
 	})
 }
@@ -332,6 +355,7 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 	}
 	start := time.Now()
 	e2elog.Logf("Waiting for pod %v to be deleted", name)
+
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err := c.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
@@ -342,8 +366,10 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 				return true, nil
 			}
 			e2elog.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+
 			return false, fmt.Errorf("failed to get app: %w", err)
 		}
+
 		return false, nil
 	})
 }
@@ -353,6 +379,7 @@ func deletePodWithLabel(label, ns string, skipNotFound bool) error {
 	if err != nil {
 		e2elog.Logf("failed to delete pod %v", err)
 	}
+
 	return err
 }
 
@@ -369,5 +396,6 @@ func calculateSHA512sum(f *framework.Framework, app *v1.Pod, filePath string, op
 	// extract checksum from sha512sum output.
 	checkSum := strings.Split(sha512sumOut, "")[0]
 	e2elog.Logf("Calculated checksum  %s", checkSum)
+
 	return checkSum, nil
 }

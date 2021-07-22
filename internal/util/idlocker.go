@@ -51,6 +51,7 @@ func (vl *VolumeLocks) TryAcquire(volumeID string) bool {
 		return false
 	}
 	vl.locks.Insert(volumeID)
+
 	return true
 }
 
@@ -96,6 +97,7 @@ func NewOperationLock() *OperationLock {
 	lock[cloneOpt] = make(map[string]int)
 	lock[restoreOp] = make(map[string]int)
 	lock[expandOp] = make(map[string]int)
+
 	return &OperationLock{
 		locks: lock,
 	}
@@ -176,6 +178,7 @@ func (ol *OperationLock) tryAcquire(op operation, volumeID string) error {
 	default:
 		return fmt.Errorf("%v operation not supported", op)
 	}
+
 	return nil
 }
 

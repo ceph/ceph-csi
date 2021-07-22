@@ -48,11 +48,13 @@ func stripKey(out []string) bool {
 	for i := range out {
 		if strings.HasPrefix(out[i], keyArg) {
 			out[i] = strippedKey
+
 			return true
 		}
 
 		if strings.HasPrefix(out[i], keyFileArg) {
 			out[i] = strippedKeyFile
+
 			return true
 		}
 	}

@@ -72,6 +72,7 @@ func readClusterInfo(pathToConfig, clusterID string) (*ClusterInfo, error) {
 	content, err := ioutil.ReadFile(pathToConfig)
 	if err != nil {
 		err = fmt.Errorf("error fetching configuration for cluster ID %q: %w", clusterID, err)
+
 		return nil, err
 	}
 
@@ -100,6 +101,7 @@ func Mons(pathToConfig, clusterID string) (string, error) {
 	if len(cluster.Monitors) == 0 {
 		return "", fmt.Errorf("empty monitor list for cluster ID (%s) in config", clusterID)
 	}
+
 	return strings.Join(cluster.Monitors, ","), nil
 }
 
@@ -109,6 +111,7 @@ func RadosNamespace(pathToConfig, clusterID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return cluster.RadosNamespace, nil
 }
 
@@ -122,6 +125,7 @@ func CephFSSubvolumeGroup(pathToConfig, clusterID string) (string, error) {
 	if cluster.CephFS.SubvolumeGroup == "" {
 		return defaultCsiSubvolumeGroup, nil
 	}
+
 	return cluster.CephFS.SubvolumeGroup, nil
 }
 

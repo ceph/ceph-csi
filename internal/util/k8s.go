@@ -44,5 +44,6 @@ func NewK8sClient() *k8s.Clientset {
 	if err != nil {
 		FatalLogMsg("Failed to create client with error: %v\n", err)
 	}
+
 	return client
 }

@@ -111,8 +111,10 @@ func (cp *ConnPool) getConn(unique string) *rados.Conn {
 	ce, exists := cp.conns[unique]
 	if exists {
 		ce.get()
+
 		return ce.conn
 	}
+
 	return nil
 }
 
@@ -159,6 +161,7 @@ func (cp *ConnPool) Get(monitors, user, keyfile string) (*rados.Conn, error) {
 	if oldConn := cp.getConn(unique); oldConn != nil {
 		// there was a race, oldConn already exists
 		ce.destroy()
+
 		return oldConn, nil
 	}
 	// this really is a new connection, add it to the map
@@ -176,6 +179,7 @@ func (cp *ConnPool) Copy(conn *rados.Conn) *rados.Conn {
 	for _, ce := range cp.conns {
 		if ce.conn == conn {
 			ce.get()
+
 			return ce.conn
 		}
 	}
@@ -192,6 +196,7 @@ func (cp *ConnPool) Put(conn *rados.Conn) {
 	for _, ce := range cp.conns {
 		if ce.conn == conn {
 			ce.put()
+
 			return
 		}
 	}

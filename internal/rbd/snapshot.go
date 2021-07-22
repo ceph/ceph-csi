@@ -32,6 +32,7 @@ func createRBDClone(
 	err := parentVol.createSnapshot(ctx, snap)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create snapshot %s: %v", snap, err)
+
 		return err
 	}
 
@@ -58,6 +59,7 @@ func createRBDClone(
 		if delErr != nil {
 			util.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", cloneRbdVol, delErr)
 		}
+
 		return err
 	}
 
@@ -68,6 +70,7 @@ func createRBDClone(
 		if delErr != nil {
 			util.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", cloneRbdVol, delErr)
 		}
+
 		return err
 	}
 
@@ -86,6 +89,7 @@ func cleanUpSnapshot(
 	if err != nil {
 		if !errors.Is(err, ErrSnapNotFound) {
 			util.ErrorLog(ctx, "failed to delete snapshot %q: %v", rbdSnap, err)
+
 			return err
 		}
 	}
@@ -95,6 +99,7 @@ func cleanUpSnapshot(
 		if err != nil {
 			if !errors.Is(err, ErrImageNotFound) {
 				util.ErrorLog(ctx, "failed to delete rbd image %q with error: %v", rbdVol, err)
+
 				return err
 			}
 		}
@@ -117,6 +122,7 @@ func generateVolFromSnap(rbdSnap *rbdSnapshot) *rbdVolume {
 	// snapshot will have the same volumeID which cases the panic in
 	// copyEncryptionConfig function.
 	vol.encryption = rbdSnap.encryption
+
 	return vol
 }
 
@@ -129,8 +135,10 @@ func undoSnapshotCloning(
 	err := cleanUpSnapshot(ctx, parentVol, rbdSnap, cloneVol, cr)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to clean up  %s or %s: %v", cloneVol, rbdSnap, err)
+
 		return err
 	}
 	err = undoSnapReservation(ctx, rbdSnap, cr)
+
 	return err
 }

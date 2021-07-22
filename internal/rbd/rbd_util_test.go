@@ -131,6 +131,7 @@ func TestValidateImageFeatures(t *testing.T) {
 		err := test.rbdVol.validateImageFeatures(test.imageFeatures)
 		if test.isErr {
 			assert.EqualError(t, err, test.errMsg)
+
 			continue
 		}
 		assert.Nil(t, err)

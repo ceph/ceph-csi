@@ -184,6 +184,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 
 	cmd = fmt.Sprintf("rbd rm %s %s", rbdImageName, rbdOptions(defaultRBDPool))
 	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
+
 	return err
 }
 

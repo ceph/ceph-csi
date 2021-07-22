@@ -165,6 +165,7 @@ func validateSubvolumePath(f *framework.Framework, pvcName, pvcNamespace, fileSy
 			subVolumePath,
 			subVolumePathInPV)
 	}
+
 	return nil
 }
 
@@ -354,6 +355,7 @@ var _ = Describe("cephfs", func() {
 					fmt.Printf("Checking prefix on %s\n", subVol)
 					if strings.HasPrefix(subVol.Name, volumeNamePrefix) {
 						foundIt = true
+
 						break
 					}
 				}

@@ -44,6 +44,7 @@ func parseEndpoint(ep string) (string, string, error) {
 			return s[0], s[1], nil
 		}
 	}
+
 	return "", "", fmt.Errorf("invalid endpoint: %v", ep)
 }
 
@@ -55,6 +56,7 @@ func NewVolumeCapabilityAccessMode(mode csi.VolumeCapability_AccessMode_Mode) *c
 // NewDefaultNodeServer initializes default node server.
 func NewDefaultNodeServer(d *CSIDriver, t string, topology map[string]string) *DefaultNodeServer {
 	d.topology = topology
+
 	return &DefaultNodeServer{
 		Driver: d,
 		Type:   t,
@@ -98,6 +100,7 @@ func isReplicationRequest(req interface{}) bool {
 	default:
 		isReplicationRequest = false
 	}
+
 	return isReplicationRequest
 }
 
@@ -145,6 +148,7 @@ func getReqID(req interface{}) string {
 	case *replication.ResyncVolumeRequest:
 		reqID = r.VolumeId
 	}
+
 	return reqID
 }
 
@@ -160,6 +164,7 @@ func contextIDInjector(
 	if reqID := getReqID(req); reqID != "" {
 		ctx = context.WithValue(ctx, util.ReqID, reqID)
 	}
+
 	return handler(ctx, req)
 }
 
@@ -181,6 +186,7 @@ func logGRPC(
 	} else {
 		util.TraceLog(ctx, "GRPC response: %s", protosanitizer.StripSecrets(resp))
 	}
+
 	return resp, err
 }
 
@@ -196,6 +202,7 @@ func panicHandler(
 			err = status.Errorf(codes.Internal, "panic %v", r)
 		}
 	}()
+
 	return handler(ctx, req)
 }
 
@@ -209,6 +216,7 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.
 		if os.IsNotExist(err) {
 			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s does not exist", targetPath)
 		}
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if !isMnt {
@@ -228,6 +236,7 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.
 	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
 	if !ok {
 		util.ErrorLog(ctx, "failed to fetch capacity bytes")
+
 		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
 	}
 	used, ok := (*(volMetrics.Used)).AsInt64()
@@ -237,6 +246,7 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.
 	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
 	if !ok {
 		util.ErrorLog(ctx, "failed to fetch available inodes")
+
 		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
 	}
 	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
@@ -248,6 +258,7 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.
 	if !ok {
 		util.ErrorLog(ctx, "failed to fetch used inodes")
 	}
+
 	return &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
 			{

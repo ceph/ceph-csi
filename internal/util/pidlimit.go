@@ -53,6 +53,7 @@ func getCgroupPidsFile() (string, error) {
 		}
 		if parts[1] == "pids" {
 			slice = parts[2]
+
 			break
 		}
 	}
@@ -61,6 +62,7 @@ func getCgroupPidsFile() (string, error) {
 	}
 
 	pidsMax := fmt.Sprintf(sysPidsMaxFmt, slice)
+
 	return pidsMax, nil
 }
 
@@ -91,6 +93,7 @@ func GetPIDLimit() (int, error) {
 			return 0, err
 		}
 	}
+
 	return maxPids, nil
 }
 
@@ -115,6 +118,7 @@ func SetPIDLimit(limit int) error {
 	_, err = f.WriteString(limitStr)
 	if err != nil {
 		f.Close() // #nosec: a write error will be more useful to return
+
 		return err
 	}
 

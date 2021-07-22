@@ -91,6 +91,7 @@ func NewReplicationServer(c *ControllerServer) *ReplicationServer {
 // NewNodeServer initialize a node server for rbd CSI driver.
 func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string) (*NodeServer, error) {
 	mounter := mount.New("")
+
 	return &NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, topology),
 		mounter:           mounter,

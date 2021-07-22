@@ -522,9 +522,11 @@ var _ = Describe("RBD", func() {
 							reason = fmt.Sprintf("failed to run ps cmd : %v, stdErr: %v", err, stdErr)
 						}
 						e2elog.Logf("%s", reason)
+
 						return false, nil
 					}
 					e2elog.Logf("attach command running after restart, runningAttachCmd: %v", runningAttachCmd)
+
 					return true, nil
 				})
 
@@ -1213,6 +1215,7 @@ var _ = Describe("RBD", func() {
 					fmt.Printf("Checking prefix on %s\n", imgName)
 					if strings.HasPrefix(imgName, volumeNamePrefix) {
 						foundIt = true
+
 						break
 					}
 				}

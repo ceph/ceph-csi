@@ -98,6 +98,7 @@ func (cc *ClusterConnection) GetIoctx(pool string) (*rados.IOContext, error) {
 		} else {
 			err = fmt.Errorf("failed to open IOContext for pool %s: %w", pool, err)
 		}
+
 		return nil, err
 	}
 
@@ -137,5 +138,6 @@ func (cc *ClusterConnection) DisableDiscardOnZeroedWriteSame() error {
 	}
 
 	cc.discardOnZeroedWriteSameDisabled = true
+
 	return nil
 }

@@ -69,6 +69,7 @@ func TestValidateSchedulingInterval(t *testing.T) {
 			got, err := validateSchedulingInterval(tt.interval)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateSchedulingInterval() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -145,6 +146,7 @@ func TestGetSchedulingDetails(t *testing.T) {
 			interval, startTime, err := getSchedulingDetails(tt.parameters)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getSchedulingDetails() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 			if !reflect.DeepEqual(interval, tt.wantInterval) {

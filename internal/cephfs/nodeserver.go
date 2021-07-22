@@ -82,6 +82,7 @@ func (ns *NodeServer) NodeStageVolume(
 
 	if acquired := ns.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
+
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
 	}
 	defer ns.VolumeLocks.Release(req.GetVolumeId())
@@ -114,11 +115,13 @@ func (ns *NodeServer) NodeStageVolume(
 	isMnt, err := util.IsMountPoint(stagingTargetPath)
 	if err != nil {
 		util.ErrorLog(ctx, "stat failed: %v", err)
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if isMnt {
 		util.DebugLog(ctx, "cephfs: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
+
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
@@ -139,6 +142,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 	cr, err := getCredentialsForVolume(volOptions, req)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get ceph credentials for volume %s: %v", volID, err)
+
 		return status.Error(codes.Internal, err.Error())
 	}
 	defer cr.DeleteCredentials()
@@ -146,6 +150,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 	m, err := newMounter(volOptions)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create mounter for volume %s: %v", volID, err)
+
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -176,6 +181,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 			"failed to mount volume %s: %v Check dmesg logs if required.",
 			volID,
 			err)
+
 		return status.Error(codes.Internal, err.Error())
 	}
 	if !csicommon.MountOptionContains(kernelMountOptions, readOnly) &&
@@ -198,9 +204,11 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 					volID,
 					uErr)
 			}
+
 			return status.Error(codes.Internal, err.Error())
 		}
 	}
+
 	return nil
 }
 
@@ -222,6 +230,7 @@ func (ns *NodeServer) NodePublishVolume(
 
 	if err := util.CreateMountPoint(targetPath); err != nil {
 		util.ErrorLog(ctx, "failed to create mount point at %s: %v", targetPath, err)
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -236,11 +245,13 @@ func (ns *NodeServer) NodePublishVolume(
 	isMnt, err := util.IsMountPoint(targetPath)
 	if err != nil {
 		util.ErrorLog(ctx, "stat failed: %v", err)
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if isMnt {
 		util.DebugLog(ctx, "cephfs: volume %s is already bind-mounted to %s", volID, targetPath)
+
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
@@ -248,6 +259,7 @@ func (ns *NodeServer) NodePublishVolume(
 
 	if err = bindMount(ctx, req.GetStagingTargetPath(), req.GetTargetPath(), req.GetReadonly(), mountOptions); err != nil {
 		util.ErrorLog(ctx, "failed to bind-mount volume %s: %v", volID, err)
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -272,14 +284,17 @@ func (ns *NodeServer) NodeUnpublishVolume(
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
 			util.DebugLog(ctx, "targetPath: %s has already been deleted", targetPath)
+
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if !isMnt {
 		if err = os.RemoveAll(targetPath); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+
 		return &csi.NodeUnpublishVolumeResponse{}, nil
 	}
 
@@ -310,6 +325,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 	volID := req.GetVolumeId()
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
+
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
@@ -321,8 +337,10 @@ func (ns *NodeServer) NodeUnstageVolume(
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
 			util.DebugLog(ctx, "targetPath: %s has already been deleted", stagingTargetPath)
+
 			return &csi.NodeUnstageVolumeResponse{}, nil
 		}
+
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if !isMnt {
@@ -370,6 +388,7 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	targetPath := req.GetVolumePath()
 	if targetPath == "" {
 		err = fmt.Errorf("targetpath %v is empty", targetPath)
+
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 

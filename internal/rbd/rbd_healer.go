@@ -44,6 +44,7 @@ func accessModeStrToInt(mode v1.PersistentVolumeAccessMode) csi.VolumeCapability
 	case v1.ReadWriteMany:
 		return csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER
 	}
+
 	return csi.VolumeCapability_AccessMode_UNKNOWN
 }
 
@@ -54,6 +55,7 @@ func getSecret(c *k8s.Clientset, ns, name string) (map[string]string, error) {
 	secret, err := c.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		util.ErrorLogMsg("get secret failed, err: %v", err)
+
 		return nil, err
 	}
 
@@ -78,6 +80,7 @@ func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolu
 		pv.Spec.PersistentVolumeSource.CSI.NodeStageSecretRef.Name)
 	if err != nil {
 		util.ErrorLogMsg("getSecret failed for volID: %s, err: %v", volID, err)
+
 		return err
 	}
 
@@ -113,6 +116,7 @@ func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolu
 	if err != nil {
 		util.ErrorLogMsg("nodeStageVolume request failed, volID: %s, stagingPath: %s, err: %v",
 			volID, stagingParentPath, err)
+
 		return err
 	}
 
@@ -125,6 +129,7 @@ func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
 	val, err := c.StorageV1().VolumeAttachments().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		util.ErrorLogMsg("list volumeAttachments failed, err: %v", err)
+
 		return err
 	}
 
@@ -142,6 +147,7 @@ func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
 			if !apierrors.IsNotFound(err) {
 				util.ErrorLogMsg("get persistentVolumes failed for pv: %s, err: %v", pvName, err)
 			}
+
 			continue
 		}
 		// TODO: check with pv delete annotations, for eg: what happens when the pv is marked for delete
@@ -162,6 +168,7 @@ func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
 				util.ErrorLogMsg("get volumeAttachments failed for volumeAttachment: %s, volID: %s, err: %v",
 					val.Items[i].Name, pv.Spec.PersistentVolumeSource.CSI.VolumeHandle, err)
 			}
+
 			continue
 		}
 		if !va.Status.Attached {

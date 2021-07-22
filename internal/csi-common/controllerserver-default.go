@@ -75,6 +75,7 @@ func (cs *DefaultControllerServer) ControllerGetCapabilities(
 	if cs.Driver == nil {
 		return nil, status.Error(codes.Unimplemented, "Controller server is not enabled")
 	}
+
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: cs.Driver.capabilities,
 	}, nil

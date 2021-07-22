@@ -181,6 +181,7 @@ func getKMSProvider(config map[string]interface{}) (string, error) {
 			return "", fmt.Errorf("could not convert KMS provider"+
 				"type (%v) to string", providerName)
 		}
+
 		return name, nil
 	}
 
@@ -191,6 +192,7 @@ func getKMSProvider(config map[string]interface{}) (string, error) {
 			return "", fmt.Errorf("could not convert KMS provider"+
 				"type (%v) to string", providerName)
 		}
+
 		return name, nil
 	}
 

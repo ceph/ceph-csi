@@ -196,6 +196,7 @@ func NewCSISnapshotJournal(suffix string) *Config {
 func NewCSIVolumeJournalWithNamespace(suffix, ns string) *Config {
 	j := NewCSIVolumeJournal(suffix)
 	j.namespace = ns
+
 	return j
 }
 
@@ -204,6 +205,7 @@ func NewCSIVolumeJournalWithNamespace(suffix, ns string) *Config {
 func NewCSISnapshotJournalWithNamespace(suffix, ns string) *Config {
 	j := NewCSISnapshotJournal(suffix)
 	j.namespace = ns
+
 	return j
 }
 
@@ -216,6 +218,7 @@ func (cj *Config) GetNameForUUID(prefix, uid string, isSnapshot bool) string {
 			prefix = defaultVolumeNamingPrefix
 		}
 	}
+
 	return prefix + uid
 }
 
@@ -251,6 +254,7 @@ func (cj *Config) Connect(monitors, namespace string, cr *util.Credentials) (*Co
 		cr:       cr,
 		conn:     cc,
 	}
+
 	return conn, nil
 }
 
@@ -282,6 +286,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 	if parentName != "" {
 		if cj.cephSnapSourceKey == "" {
 			err := errors.New("invalid request, cephSnapSourceKey is nil")
+
 			return nil, err
 		}
 		snapSource = true
@@ -300,6 +305,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 			// stop processing but without an error for no reservation exists
 			return nil, nil
 		}
+
 		return nil, err
 	}
 	objUUIDAndPool, found := values[cj.csiNameKeyPrefix+reqName]
@@ -330,6 +336,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 			if errors.Is(err, util.ErrPoolNotFound) {
 				err = conn.UndoReservation(ctx, journalPool, "", "", reqName)
 			}
+
 			return nil, err
 		}
 	}
@@ -343,6 +350,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 			err = conn.UndoReservation(ctx, journalPool, savedImagePool,
 				cj.GetNameForUUID(namePrefix, objUUID, snapSource), reqName)
 		}
+
 		return nil, err
 	}
 
@@ -375,6 +383,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 			err = fmt.Errorf("%w: snapname points to different volume, request name (%s)"+
 				" source name (%s) saved source name (%s)", util.ErrSnapNameConflict,
 				reqName, parentName, savedImageAttributes.SourceName)
+
 			return nil, err
 		}
 	}
@@ -429,6 +438,7 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 		if err != nil {
 			if !errors.Is(err, util.ErrObjectNotFound) {
 				util.ErrorLog(ctx, "failed removing oMap %s (%s)", cj.cephUUIDDirectoryPrefix+imageUUID, err)
+
 				return err
 			}
 		}
@@ -439,6 +449,7 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 		[]string{cj.csiNameKeyPrefix + reqName})
 	if err != nil {
 		util.ErrorLog(ctx, "failed removing oMap key %s (%s)", cj.csiNameKeyPrefix+reqName, err)
+
 		return err
 	}
 
@@ -477,6 +488,7 @@ func reserveOMapName(
 				// try again with a different uuid, for maxAttempts tries
 				util.DebugLog(ctx, "uuid (%s) conflict detected, retrying (attempt %d of %d)",
 					iterUUID, attempt, maxAttempts)
+
 				continue
 			}
 
@@ -534,6 +546,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	if parentName != "" {
 		if cj.cephSnapSourceKey == "" {
 			err = errors.New("invalid request, cephSnapSourceKey is nil")
+
 			return "", "", err
 		}
 		snapSource = true
@@ -623,6 +636,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	if err != nil {
 		return "", "", err
 	}
+
 	return volUUID, imageName, nil
 }
 
@@ -650,6 +664,7 @@ func (conn *Connection) GetImageAttributes(
 
 	if snapSource && cj.cephSnapSourceKey == "" {
 		err = errors.New("invalid request, cephSnapSourceKey is nil")
+
 		return nil, err
 	}
 
@@ -720,6 +735,7 @@ func (conn *Connection) StoreImageID(ctx context.Context, pool, reservedUUID, im
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -749,8 +765,10 @@ func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
 			// stop processing but without an error for no reservation exists
 			return "", nil
 		}
+
 		return "", err
 	}
+
 	return values[cj.csiNameKeyPrefix+volumeHandle], nil
 }
 
@@ -767,5 +785,6 @@ func (conn *Connection) ReserveNewUUIDMapping(ctx context.Context,
 	setKeys := map[string]string{
 		cj.csiNameKeyPrefix + oldVolumeHandle: newVolumeHandle,
 	}
+
 	return setOMapKeys(ctx, conn, journalPool, cj.namespace, cj.csiDirectory, setKeys)
 }

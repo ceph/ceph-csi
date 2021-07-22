@@ -61,6 +61,7 @@ func (ids *DefaultIdentityServer) GetPluginCapabilities(
 	ctx context.Context,
 	req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	util.TraceLog(ctx, "Using default capabilities")
+
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
 			{

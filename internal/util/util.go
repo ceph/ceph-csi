@@ -52,6 +52,7 @@ func RoundOffBytes(bytes int64) int64 {
 		num = int64(math.Ceil(floatBytes / helpers.GiB))
 		num *= helpers.GiB
 	}
+
 	return num
 }
 
@@ -131,10 +132,12 @@ func ValidateDriverName(driverName string) error {
 	for _, msg := range validation.IsDNS1123Subdomain(strings.ToLower(driverName)) {
 		if err == nil {
 			err = errors.New(msg)
+
 			continue
 		}
 		err = fmt.Errorf("%s: %w", msg, err)
 	}
+
 	return err
 }
 
@@ -145,6 +148,7 @@ func GetKernelVersion() (string, error) {
 	if err := unix.Uname(&utsname); err != nil {
 		return "", err
 	}
+
 	return strings.TrimRight(string(utsname.Release[:]), "\x00"), nil
 }
 
@@ -213,6 +217,7 @@ func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool 
 	version, patchlevel, sublevel, extraversion, err := parseKernelRelease(release)
 	if err != nil {
 		ErrorLogMsg("%v", err)
+
 		return false
 	}
 
@@ -238,6 +243,7 @@ func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool 
 		}
 	}
 	ErrorLogMsg("kernel %s does not support required features", release)
+
 	return false
 }
 
@@ -282,6 +288,7 @@ func checkDirExists(p string) bool {
 	if _, err := os.Stat(p); os.IsNotExist(err) {
 		return false
 	}
+
 	return true
 }
 
@@ -299,6 +306,7 @@ func IsMountPoint(p string) (bool, error) {
 // Mount mounts the source to target path.
 func Mount(source, target, fstype string, options []string) error {
 	dummyMount := mount.New("")
+
 	return dummyMount.Mount(source, target, fstype, options)
 }
 
@@ -354,5 +362,6 @@ func getKeys(m map[string]interface{}) []string {
 func CallStack() string {
 	stack := make([]byte, 2048)
 	_ = runtime.Stack(stack, false)
+
 	return string(stack)
 }

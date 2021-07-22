@@ -134,6 +134,7 @@ func transformConfig(svMap map[string]interface{}) (map[string]interface{}, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to Unmarshal the CSI vault configuration: %w", err)
 	}
+
 	return jsonMap, nil
 }
 
@@ -577,5 +578,6 @@ func fetchTenantConfig(config map[string]interface{}, tenant string) (map[string
 	if !ok {
 		return nil, false
 	}
+
 	return tenantConfig, true
 }
