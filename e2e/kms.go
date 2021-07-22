@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	// defaultVaultBackendPath is the default VAULT_BACKEND_PATH for secrets
+	// defaultVaultBackendPath is the default VAULT_BACKEND_PATH for secrets.
 	defaultVaultBackendPath = "secret/"
 )
 
