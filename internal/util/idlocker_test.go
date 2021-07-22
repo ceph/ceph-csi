@@ -60,10 +60,6 @@ func TestOperationLocks(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to acquire clone lock for %s %s", volumeID, err)
 	}
-	err = lock.GetDeleteLock(volumeID)
-	if err == nil {
-		t.Errorf("expected to fail for GetDeleteLock for %s", volumeID)
-	}
 
 	err = lock.GetExpandLock(volumeID)
 	if err == nil {
@@ -106,11 +102,6 @@ func TestOperationLocks(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to acquire restore lock for %s %s", volumeID, err)
 	}
-	// try for snapshot delete lock
-	err = lock.GetDeleteLock(volumeID)
-	if err == nil {
-		t.Errorf("expected to fail for GetDeleteLock for %s", volumeID)
-	}
 	// release all restore locks
 	lock.ReleaseRestoreLock(volumeID)
 	lock.ReleaseRestoreLock(volumeID)
@@ -119,10 +110,6 @@ func TestOperationLocks(t *testing.T) {
 	err = lock.GetSnapshotCreateLock(volumeID)
 	if err != nil {
 		t.Errorf("failed to acquire createSnapshot lock for %s %s", volumeID, err)
-	}
-	err = lock.GetDeleteLock(volumeID)
-	if err == nil {
-		t.Errorf("expected to fail for GetDeleteLock for %s", volumeID)
 	}
 	lock.ReleaseSnapshotCreateLock(volumeID)
 
