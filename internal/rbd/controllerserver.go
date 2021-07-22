@@ -19,6 +19,7 @@ package rbd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
@@ -988,7 +989,7 @@ func (cs *ControllerServer) CreateSnapshot(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer func() {
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrFlattenInProgress) {
 			errDefer := undoSnapReservation(ctx, rbdSnap, cr)
 			if errDefer != nil {
 				util.WarningLog(ctx, "failed undoing reservation of snapshot: %s %v", req.GetName(), errDefer)
@@ -996,11 +997,9 @@ func (cs *ControllerServer) CreateSnapshot(
 		}
 	}()
 
-	var ready bool
-
-	ready, vol, err := cs.doSnapshotClone(ctx, rbdVol, rbdSnap, cr)
+	vol, err := cs.doSnapshotClone(ctx, rbdVol, rbdSnap, cr)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &csi.CreateSnapshotResponse{
@@ -1009,7 +1008,7 @@ func (cs *ControllerServer) CreateSnapshot(
 			SnapshotId:     vol.VolID,
 			SourceVolumeId: req.GetSourceVolumeId(),
 			CreationTime:   vol.CreatedAt,
-			ReadyToUse:     ready,
+			ReadyToUse:     true,
 		},
 	}, nil
 }
@@ -1064,12 +1063,11 @@ func cloneFromSnapshot(
 			}
 		}
 	}
-	// if flattening is not needed, the snapshot is ready for use
-	readyToUse := true
 
 	err = vol.flattenRbdImage(ctx, cr, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 	if errors.Is(err, ErrFlattenInProgress) {
-		readyToUse = false
+		// if flattening is in progress, return error and do not cleanup
+		return nil, status.Errorf(codes.Internal, err.Error())
 	} else if err != nil {
 		uErr := undoSnapshotCloning(ctx, rbdVol, rbdSnap, vol, cr)
 		if uErr != nil {
@@ -1085,7 +1083,7 @@ func cloneFromSnapshot(
 			SnapshotId:     rbdSnap.VolID,
 			SourceVolumeId: rbdSnap.SourceVolumeID,
 			CreationTime:   rbdSnap.CreatedAt,
-			ReadyToUse:     readyToUse,
+			ReadyToUse:     true,
 		},
 	}, nil
 }
@@ -1121,25 +1119,24 @@ func (cs *ControllerServer) doSnapshotClone(
 	ctx context.Context,
 	parentVol *rbdVolume,
 	rbdSnap *rbdSnapshot,
-	cr *util.Credentials) (bool, *rbdVolume, error) {
+	cr *util.Credentials) (*rbdVolume, error) {
 	// generate cloned volume details from snapshot
 	cloneRbd := generateVolFromSnap(rbdSnap)
 	defer cloneRbd.Destroy()
 	// add image feature for cloneRbd
 	f := []string{librbd.FeatureNameLayering, librbd.FeatureNameDeepFlatten}
 	cloneRbd.imageFeatureSet = librbd.FeatureSetFromNames(f)
-	ready := false
 
 	err := cloneRbd.Connect(cr)
 	if err != nil {
-		return ready, cloneRbd, err
+		return cloneRbd, err
 	}
 
 	err = createRBDClone(ctx, parentVol, cloneRbd, rbdSnap, cr)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to create snapshot: %v", err)
 
-		return ready, cloneRbd, status.Error(codes.Internal, err.Error())
+		return cloneRbd, err
 	}
 
 	defer func() {
@@ -1160,8 +1157,7 @@ func (cs *ControllerServer) doSnapshotClone(
 			util.WarningLog(ctx, "failed copy encryption "+
 				"config for %q: %v", cloneRbd, cryptErr)
 
-			return ready, nil, status.Errorf(codes.Internal,
-				err.Error())
+			return nil, err
 		}
 	}
 
@@ -1172,13 +1168,13 @@ func (cs *ControllerServer) doSnapshotClone(
 	// after snapshot is created.
 	thick, err := parentVol.isThickProvisioned()
 	if err != nil {
-		return ready, nil, status.Errorf(codes.Internal, "failed checking thick-provisioning of %q: %s", parentVol, err)
+		return nil, fmt.Errorf("failed checking thick-provisioning of %q: %w", parentVol, err)
 	}
 
 	if thick {
 		err = cloneRbd.setThickProvisioned()
 		if err != nil {
-			return ready, nil, status.Errorf(codes.Internal, "failed mark %q thick-provisioned: %s", cloneRbd, err)
+			return nil, fmt.Errorf("failed mark %q thick-provisioned: %w", cloneRbd, err)
 		}
 	} else {
 		err = cloneRbd.createSnapshot(ctx, rbdSnap)
@@ -1187,7 +1183,7 @@ func (cs *ControllerServer) doSnapshotClone(
 			rbdSnap.RbdImageName = cloneRbd.RbdImageName
 			util.ErrorLog(ctx, "failed to create snapshot %s: %v", rbdSnap, err)
 
-			return ready, cloneRbd, err
+			return cloneRbd, err
 		}
 	}
 
@@ -1195,14 +1191,14 @@ func (cs *ControllerServer) doSnapshotClone(
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get image id: %v", err)
 
-		return ready, cloneRbd, err
+		return cloneRbd, err
 	}
 	// save image ID
 	j, err := snapJournal.Connect(rbdSnap.Monitors, rbdSnap.RadosNamespace, cr)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to connect to cluster: %v", err)
 
-		return ready, cloneRbd, err
+		return cloneRbd, err
 	}
 	defer j.Destroy()
 
@@ -1210,20 +1206,15 @@ func (cs *ControllerServer) doSnapshotClone(
 	if err != nil {
 		util.ErrorLog(ctx, "failed to reserve volume id: %v", err)
 
-		return ready, cloneRbd, err
+		return cloneRbd, err
 	}
 
 	err = cloneRbd.flattenRbdImage(ctx, cr, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 	if err != nil {
-		if errors.Is(err, ErrFlattenInProgress) {
-			return ready, cloneRbd, nil
-		}
-
-		return ready, cloneRbd, err
+		return cloneRbd, err
 	}
-	ready = true
 
-	return ready, cloneRbd, nil
+	return cloneRbd, nil
 }
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
