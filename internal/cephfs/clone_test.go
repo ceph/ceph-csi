@@ -23,6 +23,7 @@ import (
 )
 
 func TestCloneStateToError(t *testing.T) {
+	t.Parallel()
 	errorState := make(map[cephFSCloneState]error)
 	errorState[cephFSCloneComplete] = nil
 	errorState[cephFSCloneError] = ErrInvalidClone

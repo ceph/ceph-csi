@@ -162,7 +162,7 @@ func healerStageTransaction(ctx context.Context, cr *util.Credentials, volOps *r
 //   - Create the staging file/directory under staging path
 //   - Stage the device (mount the device mapped for image)
 // TODO: make this function less complex.
-// nolint:gocyclo // reduce complexity
+// nolint:gocyclo,cyclop // reduce complexity
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {

@@ -1212,9 +1212,9 @@ func waitForJobCompletion(c kubernetes.Interface, ns, job string, timeout int) e
 type kubectlAction string
 
 const (
-	// kubectlCreate tells retryKubectlInput() to run "create"
+	// kubectlCreate tells retryKubectlInput() to run "create".
 	kubectlCreate = kubectlAction("create")
-	// kubectlDelete tells retryKubectlInput() to run "delete"
+	// kubectlDelete tells retryKubectlInput() to run "delete".
 	kubectlDelete = kubectlAction("delete")
 )
 

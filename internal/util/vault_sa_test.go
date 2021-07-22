@@ -23,6 +23,7 @@ import (
 )
 
 func TestVaultTenantSAKMSRegistered(t *testing.T) {
+	t.Parallel()
 	_, ok := kmsManager.providers[kmsTypeVaultTenantSA]
 	assert.True(t, ok)
 }
