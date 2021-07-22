@@ -35,6 +35,7 @@ spec:
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
       # resolved through k8s service, set dns policy to cluster first
       dnsPolicy: ClusterFirstWithHostNet
+      terminationGracePeriodSeconds: {{ .Values.nodeplugin.terminationGracePeriodSeconds }}
       containers:
         - name: driver-registrar
           # This is necessary only for systems with SELinux, where

@@ -53,6 +53,7 @@ nodeplugin:
   priorityClassName: system-node-critical
   # if you are using rbd-nbd client set this value to OnDelete
   updateStrategy: RollingUpdate
+  terminationGracePeriodSeconds: 180
 
   httpMetrics:
     # Metrics only available for cephcsi/cephcsi => 1.2.0
