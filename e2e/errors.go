@@ -37,7 +37,7 @@ func isRetryableAPIError(err error) bool {
 	}
 
 	// "etcdserver: request timed out" does not seem to match the timeout errors above
-	if strings.HasSuffix(err.Error(), "etcdserver: request timed out") {
+	if strings.Contains(err.Error(), "etcdserver: request timed out") {
 		return true
 	}
 
