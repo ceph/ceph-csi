@@ -932,11 +932,11 @@ func genSnapFromSnapID(
 func generateVolumeFromVolumeID(
 	ctx context.Context,
 	volumeID string,
+	vi util.CSIIdentifier,
 	cr *util.Credentials,
 	secrets map[string]string) (*rbdVolume, error) {
 	var (
 		options map[string]string
-		vi      util.CSIIdentifier
 		rbdVol  *rbdVolume
 		err     error
 	)
@@ -946,13 +946,6 @@ func generateVolumeFromVolumeID(
 	//              Mounter, MultiNodeWritable
 	rbdVol = &rbdVolume{}
 	rbdVol.VolID = volumeID
-
-	err = vi.DecomposeCSIID(rbdVol.VolID)
-	if err != nil {
-		return rbdVol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
-			ErrInvalidVolID, err, rbdVol.VolID)
-	}
-
 	// TODO check clusterID mapping exists
 
 	rbdVol.ClusterID = vi.ClusterID
@@ -1031,11 +1024,36 @@ func genVolFromVolID(
 	volumeID string,
 	cr *util.Credentials,
 	secrets map[string]string) (*rbdVolume, error) {
-	vol, err := generateVolumeFromVolumeID(ctx, volumeID, cr, secrets)
+	var (
+		vi  util.CSIIdentifier
+		vol *rbdVolume
+	)
+
+	err := vi.DecomposeCSIID(volumeID)
+	if err != nil {
+		return vol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
+			ErrInvalidVolID, err, volumeID)
+	}
+
+	vol, err = generateVolumeFromVolumeID(ctx, volumeID, vi, cr, secrets)
 	if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) &&
 		!errors.Is(err, ErrImageNotFound) {
 		return vol, err
 	}
+
+	// Check clusterID mapping exists
+	mapping, mErr := util.GetClusterMappingInfo(vi.ClusterID)
+	if mErr != nil {
+		return vol, mErr
+	}
+	if mapping != nil {
+		rbdVol, vErr := generateVolumeFromMapping(ctx, mapping, volumeID, vi, cr, secrets)
+		if !errors.Is(vErr, util.ErrKeyNotFound) && !errors.Is(vErr, util.ErrPoolNotFound) &&
+			!errors.Is(vErr, ErrImageNotFound) {
+			return rbdVol, vErr
+		}
+	}
+	// TODO: remove extracting volumeID from PV annotations.
 
 	// If the volume details are not found in the OMAP it can be a mirrored RBD
 	// image and the OMAP is already generated and the volumeHandle might not
@@ -1054,13 +1072,88 @@ func genVolFromVolID(
 		if pvlist.Items[i].Spec.CSI != nil && pvlist.Items[i].Spec.CSI.VolumeHandle == volumeID {
 			if v, ok := pvlist.Items[i].Annotations[PVVolumeHandleAnnotationKey]; ok {
 				util.UsefulLog(ctx, "found new volumeID %s for existing volumeID %s", v, volumeID)
+				err = vi.DecomposeCSIID(v)
+				if err != nil {
+					return vol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
+						ErrInvalidVolID, err, v)
+				}
 
-				return generateVolumeFromVolumeID(ctx, v, cr, secrets)
+				return generateVolumeFromVolumeID(ctx, v, vi, cr, secrets)
 			}
 		}
 	}
 
 	return vol, err
+}
+
+// generateVolumeFromMapping checks the clusterID and poolID mapping and
+// generates retrieves the OMAP information from the poolID got from the
+// mapping.
+func generateVolumeFromMapping(
+	ctx context.Context,
+	mapping *[]util.ClusterMappingInfo,
+	volumeID string,
+	vi util.CSIIdentifier,
+	cr *util.Credentials,
+	secrets map[string]string) (*rbdVolume, error) {
+	nvi := vi
+	vol := &rbdVolume{}
+	// extract clusterID mapping
+	for _, cm := range *mapping {
+		for key, val := range cm.ClusterIDMapping {
+			mappedClusterID := getMappedID(key, val, vi.ClusterID)
+			if mappedClusterID == "" {
+				continue
+			}
+
+			util.DebugLog(ctx,
+				"found new clusterID mapping %s for existing clusterID %s",
+				mappedClusterID,
+				vi.ClusterID)
+			// Add mapping clusterID to Identifier
+			nvi.ClusterID = mappedClusterID
+			poolID := fmt.Sprintf("%d", (vi.LocationID))
+			for _, pools := range cm.RBDpoolIDMappingInfo {
+				for key, val := range pools {
+					mappedPoolID := getMappedID(key, val, poolID)
+					if mappedPoolID == "" {
+						continue
+					}
+					util.DebugLog(ctx,
+						"found new poolID mapping %s for existing pooID %s",
+						mappedPoolID,
+						poolID)
+					pID, err := strconv.ParseInt(mappedPoolID, 10, 64)
+					if err != nil {
+						return vol, err
+					}
+					// Add mapping poolID to Identifier
+					nvi.LocationID = pID
+					vol, err = generateVolumeFromVolumeID(ctx, volumeID, nvi, cr, secrets)
+					if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) &&
+						!errors.Is(err, ErrImageNotFound) {
+						return vol, err
+					}
+				}
+			}
+		}
+	}
+
+	return vol, util.ErrPoolNotFound
+}
+
+// getMappedID check the input id is matching key or value.
+// If key==id the value will be returned.
+// If value==id the key will be returned.
+func getMappedID(key, value, id string) string {
+	if key == id {
+		return value
+	}
+	if value == id {
+		return key
+	}
+
+	return ""
 }
 
 func genVolFromVolumeOptions(
