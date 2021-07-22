@@ -65,6 +65,7 @@ func (cp *ConnPool) fakeGet(monitors, user, keyfile string) (*rados.Conn, string
 	if oldConn := cp.getConn(unique); oldConn != nil {
 		// there was a race, oldConn already exists
 		ce.destroy()
+
 		return oldConn, unique, nil
 	}
 	// this really is a new connection, add it to the map
@@ -83,6 +84,7 @@ func TestConnPool(t *testing.T) {
 	err := ioutil.WriteFile(keyfile, []byte("the-key"), 0o600)
 	if err != nil {
 		t.Errorf("failed to create keyfile: %v", err)
+
 		return
 	}
 	defer os.Remove(keyfile)

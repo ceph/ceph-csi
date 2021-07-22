@@ -104,6 +104,7 @@ func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) 
 					return true
 				}
 			}
+
 			return false
 		}
 		for _, f := range m.MountFlags {
@@ -112,6 +113,7 @@ func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) 
 			}
 		}
 	}
+
 	return mountOptions
 }
 
@@ -122,5 +124,6 @@ func MountOptionContains(mountOptions []string, opt string) bool {
 			return true
 		}
 	}
+
 	return false
 }

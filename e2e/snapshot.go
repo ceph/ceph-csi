@@ -20,6 +20,7 @@ func getSnapshotClass(path string) snapapi.VolumeSnapshotClass {
 	sc := snapapi.VolumeSnapshotClass{}
 	err := unmarshal(path, &sc)
 	Expect(err).Should(BeNil())
+
 	return sc
 }
 
@@ -27,6 +28,7 @@ func getSnapshot(path string) snapapi.VolumeSnapshot {
 	sc := snapapi.VolumeSnapshot{}
 	err := unmarshal(path, &sc)
 	Expect(err).Should(BeNil())
+
 	return sc
 }
 
@@ -39,6 +41,7 @@ func newSnapshotClient() (*snapclient.SnapshotV1Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating snapshot client: %w", err)
 	}
+
 	return c, err
 }
 
@@ -74,6 +77,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
+
 			return false, fmt.Errorf("failed to get volumesnapshot: %w", err)
 		}
 		if snaps.Status == nil || snaps.Status.ReadyToUse == nil {
@@ -83,6 +87,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 			return true, nil
 		}
 		e2elog.Logf("snapshot %s in %v state", snap.Name, *snaps.Status.ReadyToUse)
+
 		return false, nil
 	})
 }
@@ -149,6 +154,7 @@ func createRBDSnapshotClass(f *framework.Framework) error {
 		return err
 	}
 	_, err = sclient.VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+
 	return err
 }
 
@@ -160,6 +166,7 @@ func deleteRBDSnapshotClass() error {
 	if err != nil {
 		return err
 	}
+
 	return sclient.VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
 }
 
@@ -185,6 +192,7 @@ func createCephFSSnapshotClass(f *framework.Framework) error {
 	if err != nil {
 		return fmt.Errorf("failed to create volumesnapshotclass: %w", err)
 	}
+
 	return err
 }
 
@@ -207,5 +215,6 @@ func getVolumeSnapshotContent(namespace, snapshotName string) (*snapapi.VolumeSn
 	if err != nil {
 		return nil, fmt.Errorf("failed to get volumesnapshotcontent: %w", err)
 	}
+
 	return volumeSnapshotContent, nil
 }

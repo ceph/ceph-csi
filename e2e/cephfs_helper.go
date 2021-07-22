@@ -34,6 +34,7 @@ func validateSubvolumegroup(f *framework.Framework, subvolgrp string) error {
 	if stdOut != expectedGrpPath {
 		return fmt.Errorf("error unexpected group path. Found: %s", stdOut)
 	}
+
 	return nil
 }
 
@@ -84,6 +85,7 @@ func createCephfsStorageClass(
 	}
 	sc.Namespace = cephCSINamespace
 	_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+
 	return err
 }
 
@@ -102,6 +104,7 @@ func createCephfsSecret(f *framework.Framework, secretName, userName, userKey st
 	delete(sc.StringData, "userKey")
 	sc.Namespace = cephCSINamespace
 	_, err = f.ClientSet.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &sc, metav1.CreateOptions{})
+
 	return err
 }
 
@@ -110,6 +113,7 @@ func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error 
 	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
 		e2elog.Logf("Error occurred getting pod %s in namespace %s", appName, f.UniqueName)
+
 		return fmt.Errorf("failed to get pod: %w", err)
 	}
 	pvc, err := f.ClientSet.CoreV1().
@@ -117,6 +121,7 @@ func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error 
 		Get(context.TODO(), pvcName, metav1.GetOptions{})
 	if err != nil {
 		e2elog.Logf("Error occurred getting PVC %s in namespace %s", pvcName, f.UniqueName)
+
 		return fmt.Errorf("failed to get pvc: %w", err)
 	}
 	cmd := fmt.Sprintf(
@@ -133,6 +138,7 @@ func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error 
 	if stdErr != "" {
 		e2elog.Logf("StdErr occurred: %s", stdErr)
 	}
+
 	return err
 }
 
@@ -150,6 +156,7 @@ func deleteBackingCephFSVolume(f *framework.Framework, pvc *v1.PersistentVolumeC
 	if stdErr != "" {
 		return fmt.Errorf("error deleting backing volume %s %v", imageData.imageName, stdErr)
 	}
+
 	return nil
 }
 
@@ -174,6 +181,7 @@ func listCephFSSubVolumes(f *framework.Framework, filesystem, groupname string) 
 	if err != nil {
 		return subVols, err
 	}
+
 	return subVols, nil
 }
 
@@ -187,6 +195,7 @@ func getSubvolumePath(f *framework.Framework, filesystem, subvolgrp, subvolume s
 	if stdErr != "" {
 		return "", fmt.Errorf("failed to getpath for subvolume %s with error %s", subvolume, stdErr)
 	}
+
 	return strings.TrimSpace(stdOut), nil
 }
 
@@ -211,6 +220,7 @@ func getSnapName(snapNamespace, snapName string) (string, error) {
 	snapID := snapIDRegex.FindString(*sc.Status.SnapshotHandle)
 	snapshotName := fmt.Sprintf("csi-snap-%s", snapID)
 	e2elog.Logf("snapshotName= %s", snapshotName)
+
 	return snapshotName, nil
 }
 
@@ -239,5 +249,6 @@ func deleteBackingCephFSSubvolumeSnapshot(
 	if stdErr != "" {
 		return fmt.Errorf("error deleting backing snapshot %s %v", snapshotName, stdErr)
 	}
+
 	return nil
 }

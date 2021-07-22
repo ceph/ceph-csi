@@ -22,6 +22,7 @@ func upgradeCSI(version string) error {
 	if err != nil {
 		return fmt.Errorf("unable to switch directory : %w", err)
 	}
+
 	return nil
 }
 
@@ -38,5 +39,6 @@ func upgradeAndDeployCSI(version, testtype string) error {
 	default:
 		return errors.New("incorrect test type, can be cephfs/rbd")
 	}
+
 	return nil
 }

@@ -49,6 +49,7 @@ func Log(ctx context.Context, format string) string {
 		return a + format
 	}
 	a += fmt.Sprintf("Req-ID: %v ", reqID)
+
 	return a + format
 }
 

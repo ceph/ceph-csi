@@ -32,6 +32,7 @@ func ValidateNodeStageVolumeRequest(req *csi.NodeStageVolumeRequest) error {
 			"staging path %s does not exist on node",
 			req.GetStagingTargetPath())
 	}
+
 	return nil
 }
 
@@ -93,5 +94,6 @@ func CheckReadOnlyManyIsSupported(req *csi.CreateVolumeRequest) error {
 			}
 		}
 	}
+
 	return nil
 }

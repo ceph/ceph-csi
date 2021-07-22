@@ -21,6 +21,7 @@ func createNodeLabel(f *framework.Framework, labelKey, labelValue string) error 
 	for i := range nodes.Items {
 		framework.AddOrUpdateLabelOnNode(f.ClientSet, nodes.Items[i].Name, labelKey, labelValue)
 	}
+
 	return nil
 }
 
@@ -32,6 +33,7 @@ func deleteNodeLabel(c kubernetes.Interface, labelKey string) error {
 	for i := range nodes.Items {
 		framework.RemoveLabelOffNode(c, nodes.Items[i].Name, labelKey)
 	}
+
 	return nil
 }
 
@@ -43,6 +45,7 @@ func checkNodeHasLabel(c kubernetes.Interface, labelKey, labelValue string) erro
 	for i := range nodes.Items {
 		framework.ExpectNodeHasLabel(c, nodes.Items[i].Name, labelKey, labelValue)
 	}
+
 	return nil
 }
 

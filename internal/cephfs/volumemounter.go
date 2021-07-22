@@ -123,6 +123,7 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 	for _, availMounter := range availableMounters {
 		if availMounter == wantMounter {
 			chosenMounter = wantMounter
+
 			break
 		}
 	}
@@ -235,6 +236,7 @@ func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, v
 	if err != nil {
 		return fmt.Errorf("%w stderr: %s", err, stderr)
 	}
+
 	return err
 }
 
@@ -275,6 +277,7 @@ func unmountVolume(ctx context.Context, mountPoint string) error {
 			strings.Contains(err.Error(), "No such file or directory") {
 			return nil
 		}
+
 		return err
 	}
 

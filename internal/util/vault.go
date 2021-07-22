@@ -105,6 +105,7 @@ func setConfigString(option *string, config map[string]interface{}, key string) 
 	}
 
 	*option = s
+
 	return nil
 }
 
@@ -389,6 +390,7 @@ func detectAuthMountPath(path string) (string, error) {
 	for _, part := range parts {
 		if part == "auth" {
 			match = true
+
 			continue
 		}
 		if part == "login" {

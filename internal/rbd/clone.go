@@ -61,12 +61,14 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 			if errors.Is(err, ErrSnapNotFound) {
 				return true, nil
 			}
+
 			return false, err
 		}
 		err = tempClone.deleteSnapshot(ctx, snap)
 		if err == nil {
 			return true, nil
 		}
+
 		return false, err
 	}
 	if !errors.Is(err, ErrImageNotFound) {
@@ -90,6 +92,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 			if err != nil {
 				return false, err
 			}
+
 			return true, nil
 		case !errors.Is(err, ErrImageNotFound):
 			// any error other than image not found return error
@@ -104,13 +107,16 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		if err != nil {
 			util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)
 			err = fmt.Errorf("failed to clone rbd image %s from snapshot %s: %w", rv.RbdImageName, snap.RbdSnapName, err)
+
 			return false, err
 		}
 		err = tempClone.deleteSnapshot(ctx, snap)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to delete snapshot: %v", err)
+
 			return false, err
 		}
+
 		return true, nil
 	}
 	// as the temp clone does not exist,check snapshot exists on parent volume
@@ -125,6 +131,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 	if errors.Is(err, ErrSnapNotFound) {
 		return false, nil
 	}
+
 	return false, err
 }
 
@@ -142,6 +149,7 @@ func (rv *rbdVolume) generateTempClone() *rbdVolume {
 	// this name will be always unique, as cephcsi never creates an image with
 	// this format for new rbd images
 	tempClone.RbdImageName = rv.RbdImageName + "-temp"
+
 	return &tempClone
 }
 
@@ -160,6 +168,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	err = rv.getImageID()
 	if err != nil {
 		util.ErrorLog(ctx, "failed to get volume id %s: %v", rv, err)
+
 		return err
 	}
 
@@ -180,8 +189,10 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to store volume %s: %v", rv, err)
+
 		return err
 	}
+
 	return nil
 }
 
@@ -248,6 +259,7 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 		if errClone != nil {
 			// set errFlatten error to cleanup temporary snapshot and temporary clone
 			errFlatten = errors.New("failed to create user requested cloned image")
+
 			return errClone
 		}
 	}
@@ -285,5 +297,6 @@ func (rv *rbdVolume) flattenCloneImage(ctx context.Context) error {
 	if !errors.Is(err, ErrImageNotFound) {
 		return err
 	}
+
 	return rv.flattenRbdImage(ctx, rv.conn.Creds, false, hardLimit, softLimit)
 }

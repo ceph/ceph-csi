@@ -14,6 +14,7 @@ import (
 // ValidateURL validates the url.
 func ValidateURL(c *Config) error {
 	_, err := url.Parse(c.MetricsPath)
+
 	return err
 }
 

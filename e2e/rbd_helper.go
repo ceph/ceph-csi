@@ -30,6 +30,7 @@ func imageSpec(pool, image string) string {
 	if radosNamespace != "" {
 		return pool + "/" + radosNamespace + "/" + image
 	}
+
 	return pool + "/" + image
 }
 
@@ -37,6 +38,7 @@ func rbdOptions(pool string) string {
 	if radosNamespace != "" {
 		return "--pool=" + pool + " --namespace " + radosNamespace
 	}
+
 	return "--pool=" + pool
 }
 
@@ -92,6 +94,7 @@ func createRBDStorageClass(
 	}
 	sc.ReclaimPolicy = &policy
 	_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+
 	return err
 }
 
@@ -133,6 +136,7 @@ func createRadosNamespace(f *framework.Framework) error {
 			return fmt.Errorf("error creating rbd namespace %v", stdErr)
 		}
 	}
+
 	return nil
 }
 
@@ -149,6 +153,7 @@ func createRBDSecret(f *framework.Framework, secretName, userName, userKey strin
 	sc.StringData["userKey"] = userKey
 	sc.Namespace = cephCSINamespace
 	_, err = f.ClientSet.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &sc, metav1.CreateOptions{})
+
 	return err
 }
 
@@ -184,6 +189,7 @@ func getImageInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (
 		csiVolumeHandle: pv.Spec.CSI.VolumeHandle,
 		pvName:          pv.Name,
 	}
+
 	return imageData, nil
 }
 
@@ -196,6 +202,7 @@ func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string,
 	if stdErr != "" {
 		return strings.TrimSpace(stdOut), fmt.Errorf(stdErr)
 	}
+
 	return strings.TrimSpace(stdOut), nil
 }
 
@@ -262,6 +269,7 @@ func logErrors(f *framework.Framework, msg string, wgErrs []error) int {
 			failures++
 		}
 	}
+
 	return failures
 }
 
@@ -388,6 +396,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	validateRBDImageCount(f, 0, snapshotPool)
 	validateRBDImageCount(f, 0, defaultRBDPool)
 	validateRBDImageCount(f, 0, destImagePool)
+
 	return nil
 }
 
@@ -427,6 +436,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, kms kmsConfig, f
 			return fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
 		}
 	}
+
 	return nil
 }
 
@@ -457,6 +467,7 @@ func isThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.P
 	if err != nil {
 		return fmt.Errorf("failed to validate thick image: %w", err)
 	}
+
 	return nil
 }
 
@@ -474,6 +485,7 @@ func validateThickImageMetadata(f *framework.Framework, pvc *v1.PersistentVolume
 	if thickState == "" {
 		return fmt.Errorf("image metadata is set for %s", rbdImageSpec)
 	}
+
 	return nil
 }
 
@@ -518,6 +530,7 @@ func listRBDImages(f *framework.Framework, pool string) ([]string, error) {
 	if err != nil {
 		return imgInfos, err
 	}
+
 	return imgInfos, nil
 }
 
@@ -529,6 +542,7 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 
 	cmd := fmt.Sprintf("rbd rm %s %s", rbdOptions(defaultRBDPool), imageData.imageName)
 	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
+
 	return err
 }
 
@@ -586,6 +600,7 @@ func sparsifyBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeCla
 
 	cmd := fmt.Sprintf("rbd sparsify %s %s", rbdOptions(defaultRBDPool), imageData.imageName)
 	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
+
 	return err
 }
 
@@ -615,6 +630,7 @@ func deletePool(name string, cephfs bool, f *framework.Framework) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -632,6 +648,7 @@ func createPool(f *framework.Framework, name string) error {
 	// ceph osd pool set replicapool size 1
 	cmd = fmt.Sprintf("ceph osd pool set %s size %d --yes-i-really-mean-it", name, size)
 	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
+
 	return err
 }
 
@@ -876,6 +893,7 @@ func listRBDImagesInTrash(f *framework.Framework, poolName string) ([]trashInfo,
 	if err != nil {
 		return trashInfos, err
 	}
+
 	return trashInfos, nil
 }
 
@@ -892,11 +910,13 @@ func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int)
 		}
 		errReason = fmt.Errorf("found %d images found in trash. Image details %v", len(imagesInTrash), imagesInTrash)
 		e2elog.Logf(errReason.Error())
+
 		return false, nil
 	})
 
 	if errors.Is(err, wait.ErrWaitTimeout) {
 		err = errReason
 	}
+
 	return err
 }

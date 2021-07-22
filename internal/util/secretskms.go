@@ -64,6 +64,7 @@ func initSecretsKMS(secrets map[string]string) (EncryptionKMS, error) {
 	if !ok {
 		return nil, errors.New("missing encryption passphrase in secrets")
 	}
+
 	return SecretsKMS{passphrase: passphraseValue}, nil
 }
 
@@ -267,6 +268,7 @@ func generateCipher(passphrase, salt string) (cipher.AEAD, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return aead, nil
 }
 

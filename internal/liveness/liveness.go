@@ -44,12 +44,14 @@ func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 	if err != nil {
 		liveness.Set(0)
 		util.ErrorLogMsg("health check failed: %v", err)
+
 		return
 	}
 
 	if !ready {
 		liveness.Set(0)
 		util.ErrorLogMsg("driver responded but is not ready")
+
 		return
 	}
 	liveness.Set(1)

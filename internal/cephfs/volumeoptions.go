@@ -67,6 +67,7 @@ func (vo *volumeOptions) Connect(cr *util.Credentials) error {
 	}
 
 	vo.conn = conn
+
 	return nil
 }
 
@@ -98,6 +99,7 @@ func extractOptionalOption(dest *string, optionLabel string, options map[string]
 	}
 
 	*dest = opt
+
 	return nil
 }
 
@@ -112,6 +114,7 @@ func extractOption(dest *string, optionLabel string, options map[string]string) 
 	}
 
 	*dest = opt
+
 	return nil
 }
 
@@ -144,6 +147,7 @@ func getClusterInformation(options map[string]string) (*util.ClusterInfo, error)
 	clusterID, ok := options["clusterID"]
 	if !ok {
 		err := fmt.Errorf("clusterID must be set")
+
 		return nil, err
 	}
 
@@ -154,12 +158,14 @@ func getClusterInformation(options map[string]string) (*util.ClusterInfo, error)
 	monitors, err := util.Mons(util.CsiConfigFile, clusterID)
 	if err != nil {
 		err = fmt.Errorf("failed to fetch monitor list using clusterID (%s): %w", clusterID, err)
+
 		return nil, err
 	}
 
 	subvolumeGroup, err := util.CephFSSubvolumeGroup(util.CsiConfigFile, clusterID)
 	if err != nil {
 		err = fmt.Errorf("failed to fetch subvolumegroup using clusterID (%s): %w", clusterID, err)
+
 		return nil, err
 	}
 	clusterData := &util.ClusterInfo{
@@ -167,6 +173,7 @@ func getClusterInformation(options map[string]string) (*util.ClusterInfo, error)
 		Monitors:  strings.Split(monitors, ","),
 	}
 	clusterData.CephFS.SubvolumeGroup = subvolumeGroup
+
 	return clusterData, nil
 }
 
@@ -265,6 +272,7 @@ func newVolumeOptionsFromVolID(
 	err := vi.DecomposeCSIID(volID)
 	if err != nil {
 		err = fmt.Errorf("error decoding volume ID (%s): %w", volID, err)
+
 		return nil, nil, util.JoinErrors(ErrInvalidVolID, err)
 	}
 	volOptions.ClusterID = vi.ClusterID

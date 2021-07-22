@@ -72,5 +72,6 @@ if any ceph commands fails it will log below error message
 // createKeyRingFile creates the keyring files to fix above error message logging.
 func createKeyRingFile() error {
 	_, err := os.Create(keyRing)
+
 	return err
 }

@@ -58,6 +58,7 @@ func storeKey(key string) (string, error) {
 	keyFile := tmpfile.Name()
 	if keyFile == "" {
 		err = fmt.Errorf("error reading temporary filename for key: %w", err)
+
 		return "", err
 	}
 
@@ -115,5 +116,6 @@ func GetMonValFromSecret(secrets map[string]string) (string, error) {
 	if mons, ok := secrets[credMonitors]; ok {
 		return mons, nil
 	}
+
 	return "", fmt.Errorf("missing %q", credMonitors)
 }

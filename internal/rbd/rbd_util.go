@@ -190,6 +190,7 @@ func (ri *rbdImage) Connect(cr *util.Credentials) error {
 	}
 
 	ri.conn = conn
+
 	return nil
 }
 
@@ -212,6 +213,7 @@ func (ri *rbdImage) String() string {
 	if ri.RadosNamespace != "" {
 		return fmt.Sprintf("%s/%s/%s", ri.Pool, ri.RadosNamespace, ri.RbdImageName)
 	}
+
 	return fmt.Sprintf("%s/%s", ri.Pool, ri.RbdImageName)
 }
 
@@ -220,6 +222,7 @@ func (rs *rbdSnapshot) String() string {
 	if rs.RadosNamespace != "" {
 		return fmt.Sprintf("%s/%s/%s@%s", rs.Pool, rs.RadosNamespace, rs.RbdImageName, rs.RbdSnapName)
 	}
+
 	return fmt.Sprintf("%s/%s@%s", rs.Pool, rs.RbdImageName, rs.RbdSnapName)
 }
 
@@ -275,6 +278,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 			// nolint:errcheck // deleteImage() will log errors in
 			// case it fails, no need to log them here again
 			_ = deleteImage(ctx, pOpts, cr)
+
 			return fmt.Errorf("failed to thick provision image: %w", err)
 		}
 
@@ -283,6 +287,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 			// nolint:errcheck // deleteImage() will log errors in
 			// case it fails, no need to log them here again
 			_ = deleteImage(ctx, pOpts, cr)
+
 			return fmt.Errorf("failed to mark image as thick-provisioned: %w", err)
 		}
 	}
@@ -324,6 +329,7 @@ func (rv *rbdVolume) getImageID() error {
 		return err
 	}
 	rv.ImageID = id
+
 	return nil
 }
 
@@ -342,8 +348,10 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 		if errors.Is(err, librbd.ErrNotFound) {
 			err = util.JoinErrors(ErrImageNotFound, err)
 		}
+
 		return nil, err
 	}
+
 	return image, nil
 }
 
@@ -454,6 +462,7 @@ func (rv *rbdVolume) isInUse() (bool, error) {
 		// mirror daemon for mirrored images.
 		defaultWatchers++
 	}
+
 	return len(watchers) > defaultWatchers, nil
 }
 
@@ -471,6 +480,7 @@ func isNotMountPoint(mounter mount.Interface, stagingTargetPath string) (bool, e
 	if os.IsNotExist(err) {
 		err = nil
 	}
+
 	return isNotMnt, err
 }
 
@@ -509,6 +519,7 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 	if err != nil {
 		err = fmt.Errorf("%w. stdError:%s", err, stderr)
 	}
+
 	return supported, err
 }
 
@@ -540,6 +551,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	err = rbdImage.Trash(0)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", pOpts, err)
+
 		return err
 	}
 
@@ -554,6 +566,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	rbdCephMgrSupported, err := addRbdManagerTask(ctx, pOpts, args)
 	if rbdCephMgrSupported && err != nil {
 		util.ErrorLog(ctx, "failed to add task to delete rbd image: %s, %v", pOpts, err)
+
 		return err
 	}
 
@@ -561,6 +574,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		err = librbd.TrashRemove(pOpts.ioctx, pOpts.ImageID, true)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to delete rbd image: %s, %v", pOpts, err)
+
 			return err
 		}
 	}
@@ -599,6 +613,7 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 				return depth, nil
 			}
 			util.ErrorLog(ctx, "failed to check depth on image %s: %s", &vol, err)
+
 			return depth, err
 		}
 		if vol.ParentName != "" {
@@ -627,6 +642,7 @@ func flattenClonedRbdImages(
 	err := rv.Connect(cr)
 	if err != nil {
 		util.ErrorLog(ctx, "failed to open connection %s; err %v", rv, err)
+
 		return err
 	}
 	var origNameList []trashSnapInfo
@@ -652,9 +668,11 @@ func flattenClonedRbdImages(
 		err = rv.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 		if err != nil {
 			util.ErrorLog(ctx, "failed to flatten %s; err %v", rv, err)
+
 			continue
 		}
 	}
+
 	return nil
 }
 
@@ -694,6 +712,7 @@ func (rv *rbdVolume) flattenRbdImage(
 				return nil
 			}
 			util.ErrorLog(ctx, "failed to add task flatten for %s : %v", rv, err)
+
 			return err
 		}
 		if forceFlatten || depth >= hardlimit {
@@ -713,6 +732,7 @@ func (rv *rbdVolume) flattenRbdImage(
 			err := rv.flatten()
 			if err != nil {
 				util.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", rv.Pool, rv.RbdImageName, err)
+
 				return err
 			}
 		}
@@ -732,6 +752,7 @@ func (rv *rbdVolume) getParentName() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return parentInfo.Image.ImageName, nil
 }
 
@@ -753,6 +774,7 @@ func (rv *rbdVolume) flatten() error {
 			return nil
 		}
 	}
+
 	return nil
 }
 
@@ -792,6 +814,7 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 				return false, nil
 			}
 			util.ErrorLog(ctx, "failed to get image info for %s: %s", vol.String(), err)
+
 			return false, err
 		}
 		if f := vol.hasFeature(feature); f {
@@ -821,6 +844,7 @@ func genSnapFromSnapID(
 	err := vi.DecomposeCSIID(rbdSnap.VolID)
 	if err != nil {
 		util.ErrorLog(ctx, "error decoding snapshot ID (%s) (%s)", err, rbdSnap.VolID)
+
 		return err
 	}
 
@@ -830,6 +854,7 @@ func genSnapFromSnapID(
 	rbdSnap.Monitors, _, err = util.GetMonsAndClusterID(options)
 	if err != nil {
 		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+
 		return err
 	}
 
@@ -925,6 +950,7 @@ func generateVolumeFromVolumeID(
 	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(options)
 	if err != nil {
 		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+
 		return rbdVol, err
 	}
 
@@ -983,6 +1009,7 @@ func generateVolumeFromVolumeID(
 		}
 	}
 	err = rbdVol.getImageInfo()
+
 	return rbdVol, err
 }
 
@@ -1016,10 +1043,12 @@ func genVolFromVolID(
 		if pvlist.Items[i].Spec.CSI != nil && pvlist.Items[i].Spec.CSI.VolumeHandle == volumeID {
 			if v, ok := pvlist.Items[i].Annotations[PVVolumeHandleAnnotationKey]; ok {
 				util.UsefulLog(ctx, "found new volumeID %s for existing volumeID %s", v, volumeID)
+
 				return generateVolumeFromVolumeID(ctx, v, cr, secrets)
 			}
 		}
 	}
+
 	return vol, err
 }
 
@@ -1047,6 +1076,7 @@ func genVolFromVolumeOptions(
 	rbdVol.Monitors, rbdVol.ClusterID, err = util.GetMonsAndClusterID(volOptions)
 	if err != nil {
 		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+
 		return nil, err
 	}
 
@@ -1061,6 +1091,7 @@ func genVolFromVolumeOptions(
 	// which disable all RBD image features as we expected
 	if err = rbdVol.validateImageFeatures(volOptions["imageFeatures"]); err != nil {
 		util.ErrorLog(ctx, "failed to validate image features %v", err)
+
 		return nil, err
 	}
 
@@ -1107,6 +1138,7 @@ func (rv *rbdVolume) validateImageFeatures(imageFeatures string) error {
 		}
 	}
 	rv.imageFeatureSet = librbd.FeatureSetFromNames(arr)
+
 	return nil
 }
 
@@ -1121,6 +1153,7 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 	rbdSnap.Monitors, rbdSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
 	if err != nil {
 		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+
 		return nil, err
 	}
 
@@ -1145,6 +1178,7 @@ func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 	defer image.Close()
 
 	_, err = image.CreateSnapshot(pOpts.RbdSnapName)
+
 	return err
 }
 
@@ -1164,6 +1198,7 @@ func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 	if errors.Is(err, librbd.ErrNotFound) {
 		return util.JoinErrors(ErrSnapNotFound, err)
 	}
+
 	return err
 }
 
@@ -1299,6 +1334,7 @@ func (rv *rbdVolume) getImageInfo() error {
 		return err
 	}
 	rv.CreatedAt = protoTime
+
 	return nil
 }
 
@@ -1332,6 +1368,7 @@ func (rv *rbdVolume) updateVolWithImageInfo() error {
 			": (2) No such file or directory") {
 			return util.JoinErrors(ErrImageNotFound, err)
 		}
+
 		return err
 	}
 
@@ -1342,6 +1379,7 @@ func (rv *rbdVolume) updateVolWithImageInfo() error {
 		}
 		rv.Primary = imgInfo.Mirroring.Primary
 	}
+
 	return nil
 }
 
@@ -1391,6 +1429,7 @@ func (ri *rbdImageMetadataStash) String() string {
 	if ri.RadosNamespace != "" {
 		return fmt.Sprintf("%s/%s/%s", ri.Pool, ri.RadosNamespace, ri.ImageName)
 	}
+
 	return fmt.Sprintf("%s/%s", ri.Pool, ri.ImageName)
 }
 
@@ -1471,6 +1510,7 @@ func updateRBDImageMetadataStash(metaDataPath, device string) error {
 		return fmt.Errorf("failed to stash JSON image metadata at path: (%s) for spec:(%s) : %w",
 			fPath, imgMeta.String(), err)
 	}
+
 	return nil
 }
 
@@ -1522,6 +1562,7 @@ func (rv *rbdVolume) resize(newSize int64) error {
 			if resizeErr != nil {
 				err = fmt.Errorf("failed to shrink image (%v) after failed allocation: %w", resizeErr, err)
 			}
+
 			return err
 		}
 	}
@@ -1605,6 +1646,7 @@ func (ri *rbdImage) isThickProvisioned() (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to convert %q=%q to a boolean: %w", thickProvisionMetaKey, value, err)
 	}
+
 	return thick, nil
 }
 
@@ -1699,6 +1741,7 @@ func (rv *rbdVolume) listSnapshots() ([]librbd.SnapInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return snapInfoList, nil
 }
 
@@ -1719,6 +1762,7 @@ func (rv *rbdVolume) isTrashSnap(snapID uint64) (bool, error) {
 	if nsType == librbd.SnapNamespaceTypeTrash {
 		return true, nil
 	}
+
 	return false, nil
 }
 
@@ -1830,5 +1874,6 @@ func (ri *rbdImage) addSnapshotScheduling(
 	if err != nil {
 		return err
 	}
+
 	return nil
 }

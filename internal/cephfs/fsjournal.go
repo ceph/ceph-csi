@@ -97,8 +97,10 @@ func checkVolExists(ctx context.Context,
 				}
 				err = j.UndoReservation(ctx, volOptions.MetadataPool,
 					volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
+
 				return nil, err
 			}
+
 			return nil, err
 		}
 		if cloneState == cephFSCloneInprogress {
@@ -111,6 +113,7 @@ func checkVolExists(ctx context.Context,
 			err = volOptions.purgeVolume(ctx, volumeID(vid.FsSubvolName), true)
 			if err != nil {
 				util.ErrorLog(ctx, "failed to delete volume %s: %v", vid.FsSubvolName, err)
+
 				return nil, err
 			}
 			if pvID != nil {
@@ -124,6 +127,7 @@ func checkVolExists(ctx context.Context,
 			}
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
+
 			return nil, err
 		}
 		if cloneState != cephFSCloneComplete {
@@ -147,8 +151,10 @@ func checkVolExists(ctx context.Context,
 			}
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, vid.FsSubvolName, volOptions.RequestName)
+
 			return nil, err
 		}
+
 		return nil, err
 	}
 
@@ -327,6 +333,7 @@ func undoSnapReservation(
 
 	err = j.UndoReservation(ctx, volOptions.MetadataPool,
 		volOptions.MetadataPool, vid.FsSnapshotName, snapName)
+
 	return err
 }
 
@@ -374,8 +381,10 @@ func checkSnapExists(
 		if errors.Is(err, ErrSnapNotFound) {
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, snapID, snap.RequestName)
+
 			return nil, nil, err
 		}
+
 		return nil, nil, err
 	}
 
@@ -384,6 +393,7 @@ func checkSnapExists(
 			err = volOptions.deleteSnapshot(ctx, volumeID(snapID), volumeID(parentSubVolName))
 			if err != nil {
 				util.ErrorLog(ctx, "failed to delete snapshot %s: %v", snapID, err)
+
 				return
 			}
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,

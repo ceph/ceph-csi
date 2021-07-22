@@ -49,6 +49,7 @@ func addToManager(mgr manager.Manager, config Config) error {
 			return fmt.Errorf("failed to add: %w", err)
 		}
 	}
+
 	return nil
 }
 
@@ -65,16 +66,19 @@ func Start(config Config) error {
 	mgr, err := manager.New(clientConfig.GetConfigOrDie(), opts)
 	if err != nil {
 		util.ErrorLogMsg("failed to create manager %s", err)
+
 		return err
 	}
 	err = addToManager(mgr, config)
 	if err != nil {
 		util.ErrorLogMsg("failed to add manager %s", err)
+
 		return err
 	}
 	err = mgr.Start(signals.SetupSignalHandler())
 	if err != nil {
 		util.ErrorLogMsg("failed to start manager %s", err)
 	}
+
 	return err
 }

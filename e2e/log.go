@@ -33,6 +33,7 @@ func logsCSIPods(label string, c clientset.Interface) {
 	podList, err := c.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
 	if err != nil {
 		e2elog.Logf("failed to list pods with selector %s %v", label, err)
+
 		return
 	}
 
@@ -72,5 +73,6 @@ func getPreviousPodLogs(c clientset.Interface, namespace, podName, containerName
 	if strings.Contains(string(logs), "Internal Error") {
 		return "", fmt.Errorf("fetched log contains \"Internal Error\": %q", string(logs))
 	}
+
 	return string(logs), err
 }

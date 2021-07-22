@@ -52,6 +52,7 @@ func ExecCommand(ctx context.Context, program string, args ...string) (string, s
 		if ctx != context.TODO() {
 			UsefulLog(ctx, "%s", err)
 		}
+
 		return stdout, stderr, err
 	}
 
@@ -98,6 +99,7 @@ func GetPoolName(monitors string, cr *Credentials, poolID int64) (string, error)
 	} else if err != nil {
 		return "", fmt.Errorf("failed to get pool ID %d: %w", poolID, err)
 	}
+
 	return name, nil
 }
 
@@ -136,6 +138,7 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 		if errors.Is(err, ErrPoolNotFound) {
 			err = JoinErrors(ErrObjectNotFound, err)
 		}
+
 		return err
 	}
 	defer ioctx.Destroy()
@@ -149,6 +152,7 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 		return JoinErrors(ErrObjectExists, err)
 	} else if err != nil {
 		ErrorLog(ctx, "failed creating omap (%s) in pool (%s): (%v)", objectName, poolName, err)
+
 		return err
 	}
 
@@ -170,6 +174,7 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 		if errors.Is(err, ErrPoolNotFound) {
 			err = JoinErrors(ErrObjectNotFound, err)
 		}
+
 		return err
 	}
 	defer ioctx.Destroy()
@@ -183,6 +188,7 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 		return JoinErrors(ErrObjectNotFound, err)
 	} else if err != nil {
 		ErrorLog(ctx, "failed removing omap (%s) in pool (%s): (%v)", oMapName, poolName, err)
+
 		return err
 	}
 

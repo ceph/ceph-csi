@@ -37,6 +37,7 @@ func rbdNodePluginCaps(pool, rbdNamespace string) []string {
 	} else {
 		caps = append(caps, fmt.Sprintf("osd 'profile rbd pool=%s namespace=%s'", pool, rbdNamespace))
 	}
+
 	return caps
 }
 
@@ -50,6 +51,7 @@ func rbdProvisionerCaps(pool, rbdNamespace string) []string {
 	} else {
 		caps = append(caps, fmt.Sprintf("osd 'profile rbd pool=%s namespace=%s'", pool, rbdNamespace))
 	}
+
 	return caps
 }
 
@@ -62,6 +64,7 @@ func cephFSNodePluginCaps() []string {
 		"osd", "'allow rw tag cephfs *=*'",
 		"mds", "'allow rw'",
 	}
+
 	return caps
 }
 
@@ -71,6 +74,7 @@ func cephFSProvisionerCaps() []string {
 		"mgr", "'allow rw'",
 		"osd", "'allow rw tag cephfs metadata=*'",
 	}
+
 	return caps
 }
 
@@ -83,11 +87,13 @@ func createCephUser(f *framework.Framework, user string, caps []string) (string,
 	if stdErr != "" {
 		return "", fmt.Errorf("failed to create user %s with error %v", cmd, stdErr)
 	}
+
 	return strings.TrimSpace(stdOut), nil
 }
 
 func deleteCephUser(f *framework.Framework, user string) error {
 	cmd := fmt.Sprintf("ceph auth del client.%s", user)
 	_, _, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+
 	return err
 }

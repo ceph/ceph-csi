@@ -37,8 +37,10 @@ func createNamespace(c kubernetes.Interface, name string) error {
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
+
 			return false, err
 		}
+
 		return true, nil
 	})
 }
@@ -49,6 +51,7 @@ func deleteNamespace(c kubernetes.Interface, name string) error {
 	if err != nil && !apierrs.IsNotFound(err) {
 		return fmt.Errorf("failed to delete namespace: %w", err)
 	}
+
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err = c.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
@@ -59,8 +62,10 @@ func deleteNamespace(c kubernetes.Interface, name string) error {
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
+
 			return false, err
 		}
+
 		return false, nil
 	})
 }
@@ -70,5 +75,6 @@ func replaceNamespaceInTemplate(filePath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return strings.ReplaceAll(string(read), "namespace: default", fmt.Sprintf("namespace: %s", cephCSINamespace)), nil
 }

@@ -21,6 +21,7 @@ func deleteConfigMap(pluginPath string) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -120,5 +121,6 @@ func createCustomConfigMap(c kubernetes.Interface, pluginPath string, subvolgrpI
 	if err != nil {
 		return fmt.Errorf("failed to update configmap: %w", err)
 	}
+
 	return nil
 }

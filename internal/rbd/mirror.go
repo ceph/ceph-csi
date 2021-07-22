@@ -38,6 +38,7 @@ func (ri *rbdImage) enableImageMirroring(mode librbd.ImageMirrorMode) error {
 	if err != nil {
 		return fmt.Errorf("failed to enable mirroring on %q with error: %w", ri, err)
 	}
+
 	return nil
 }
 
@@ -53,6 +54,7 @@ func (ri *rbdImage) disableImageMirroring(force bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to disable mirroring on %q with error: %w", ri, err)
 	}
+
 	return nil
 }
 
@@ -68,6 +70,7 @@ func (ri *rbdImage) getImageMirroringInfo() (*librbd.MirrorImageInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mirroring info of %q with error: %w", ri, err)
 	}
+
 	return info, nil
 }
 
@@ -82,6 +85,7 @@ func (ri *rbdImage) promoteImage(force bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to promote image %q with error: %w", ri, err)
 	}
+
 	return nil
 }
 
@@ -96,6 +100,7 @@ func (ri *rbdImage) demoteImage() error {
 	if err != nil {
 		return fmt.Errorf("failed to demote image %q with error: %w", ri, err)
 	}
+
 	return nil
 }
 
@@ -110,6 +115,7 @@ func (ri *rbdImage) resyncImage() error {
 	if err != nil {
 		return fmt.Errorf("failed to resync image %q with error: %w", ri, err)
 	}
+
 	return nil
 }
 
@@ -148,6 +154,7 @@ func (ri *rbdImage) getImageMirroringStatus() (*imageMirrorStatus, error) {
 			": (2) No such file or directory") {
 			return nil, util.JoinErrors(ErrImageNotFound, err)
 		}
+
 		return nil, err
 	}
 
@@ -157,5 +164,6 @@ func (ri *rbdImage) getImageMirroringStatus() (*imageMirrorStatus, error) {
 			return nil, fmt.Errorf("unmarshal failed (%w), raw buffer response: %s", err, stdout)
 		}
 	}
+
 	return &imgStatus, nil
 }

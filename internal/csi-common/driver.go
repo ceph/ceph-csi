@@ -44,16 +44,19 @@ type CSIDriver struct {
 func NewCSIDriver(name, v, nodeID string) *CSIDriver {
 	if name == "" {
 		klog.Errorf("Driver name missing")
+
 		return nil
 	}
 
 	if nodeID == "" {
 		klog.Errorf("NodeID missing")
+
 		return nil
 	}
 	// TODO version format and validation
 	if v == "" {
 		klog.Errorf("Version argument missing")
+
 		return nil
 	}
 
@@ -78,6 +81,7 @@ func (d *CSIDriver) ValidateControllerServiceRequest(c csi.ControllerServiceCapa
 			return nil
 		}
 	}
+
 	return status.Error(codes.InvalidArgument, fmt.Sprintf("%s", c)) //nolint
 }
 
@@ -103,6 +107,7 @@ func (d *CSIDriver) AddVolumeCapabilityAccessModes(
 		vca = append(vca, NewVolumeCapabilityAccessMode(c))
 	}
 	d.vc = vca
+
 	return vca
 }
 

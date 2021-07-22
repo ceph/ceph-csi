@@ -76,13 +76,16 @@ func getOMapValues(
 		if errors.Is(err, rados.ErrNotFound) {
 			util.ErrorLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
+
 			return nil, util.JoinErrors(util.ErrKeyNotFound, err)
 		}
+
 		return nil, err
 	}
 
 	util.DebugLog(ctx, "got omap values: (pool=%q, namespace=%q, name=%q): %+v",
 		poolName, namespace, oid, results)
+
 	return results, nil
 }
 
@@ -112,11 +115,13 @@ func removeMapKeys(
 		} else {
 			util.ErrorLog(ctx, "failed removing omap keys (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
+
 			return err
 		}
 	}
 	util.DebugLog(ctx, "removed omap keys (pool=%q, namespace=%q, name=%q): %+v",
 		poolName, namespace, oid, keys)
+
 	return nil
 }
 
@@ -143,10 +148,12 @@ func setOMapKeys(
 	if err != nil {
 		util.ErrorLog(ctx, "failed setting omap keys (pool=%q, namespace=%q, name=%q, pairs=%+v): %v",
 			poolName, namespace, oid, pairs, err)
+
 		return err
 	}
 	util.DebugLog(ctx, "set omap keys (pool=%q, namespace=%q, name=%q): %+v)",
 		poolName, namespace, oid, pairs)
+
 	return nil
 }
 
@@ -154,5 +161,6 @@ func omapPoolError(err error) error {
 	if errors.Is(err, rados.ErrNotFound) {
 		return util.JoinErrors(util.ErrPoolNotFound, err)
 	}
+
 	return err
 }
