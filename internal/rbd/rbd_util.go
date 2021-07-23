@@ -1593,6 +1593,56 @@ func (ri *rbdImage) SetMetadata(key, value string) error {
 	return image.SetMetadata(key, value)
 }
 
+// RemoveMetadata deletes the key and data from the metadata of the image.
+func (ri *rbdImage) RemoveMetadata(key string) error {
+	image, err := ri.open()
+	if err != nil {
+		return err
+	}
+	defer image.Close()
+
+	return image.RemoveMetadata(key)
+}
+
+// MigrateMetadata reads the metadata contents from oldKey and stores it in
+// newKey. In case oldKey was not set, the defaultValue is stored in newKey.
+// Once done, oldKey will be removed as well.
+func (ri *rbdImage) MigrateMetadata(oldKey, newKey, defaultValue string) (string, error) {
+	value, err := ri.GetMetadata(newKey)
+	if err == nil {
+		return value, nil
+	} else if !errors.Is(err, librbd.ErrNotFound) {
+		return "", err
+	}
+
+	// migrate contents from oldKey to newKey
+	removeOldKey := true
+	value, err = ri.GetMetadata(oldKey)
+	if errors.Is(err, librbd.ErrNotFound) {
+		// in case oldKey was not set, set newKey to defaultValue
+		value = defaultValue
+		removeOldKey = false
+	} else if err != nil {
+		return "", err
+	}
+
+	// newKey was not set, set it now to prevent regular error cases for missing metadata
+	err = ri.SetMetadata(newKey, value)
+	if err != nil {
+		return "", err
+	}
+
+	// the newKey was set with data from oldKey, oldKey is not needed anymore
+	if removeOldKey {
+		err = ri.RemoveMetadata(oldKey)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return value, nil
+}
+
 // setThickProvisioned records in the image metadata that it has been
 // thick-provisioned.
 func (ri *rbdImage) setThickProvisioned() error {
@@ -1604,40 +1654,11 @@ func (ri *rbdImage) setThickProvisioned() error {
 	return nil
 }
 
-// setThinProvisioned records in the image metadata that it has been
-// thin-provisioned.
-func (ri *rbdImage) setThinProvisioned() error {
-	err := ri.SetMetadata(thickProvisionMetaKey, thinProvisionMetaData)
-	if err != nil {
-		return fmt.Errorf("failed to set metadata %q for %q: %w", thinProvisionMetaData, ri, err)
-	}
-
-	return nil
-}
-
 // isThickProvisioned checks in the image metadata if the image has been marked
 // as thick-provisioned. This can be used while expanding the image, so that
 // the expansion can be allocated too.
 func (ri *rbdImage) isThickProvisioned() (bool, error) {
-	value, err := ri.GetMetadata(thickProvisionMetaKey)
-	if errors.Is(err, librbd.ErrNotFound) {
-		// check if the image is having deprecated metadata key.
-		value, err = ri.GetMetadata(deprecatedthickProvisionMetaKey)
-		if errors.Is(err, librbd.ErrNotFound) {
-			return false, nil
-		}
-		// If we reach here means the image has deprecated metakey set. Set the
-		// new metakey so that we dont need to check for deprecated key again.
-		if value == thickProvisionMetaData {
-			err = ri.setThickProvisioned()
-		} else {
-			value = thinProvisionMetaData
-			// If we reach here means the image is thin provisioned. Set thin
-			// provisioned metadata on the image so that we dont need to check
-			// for thick metakey or deprecated thick metakey.
-			err = ri.setThinProvisioned()
-		}
-	}
+	value, err := ri.MigrateMetadata(deprecatedthickProvisionMetaKey, thickProvisionMetaKey, thinProvisionMetaData)
 	if err != nil {
 		return false, fmt.Errorf("failed to get metadata %q for %q: %w", thickProvisionMetaKey, ri, err)
 	}
