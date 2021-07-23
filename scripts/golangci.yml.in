@@ -176,5 +176,6 @@ linters:
     - gomoddirectives
     # TODO: enable gci
     - gci
-    # TODO: enable wrapcheck linter, see: https://github.com/ceph/ceph-csi/pull/2268
+    # TODO: enable wrapcheck linter
+    # See: https://github.com/ceph/ceph-csi/pull/2268
     - wrapcheck
