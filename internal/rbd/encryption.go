@@ -53,16 +53,18 @@ const (
 	rbdImageRequiresEncryption = rbdEncryptionState("requiresEncryption")
 
 	// image metadata key for encryption.
-	encryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
+	encryptionMetaKey    = "rbd.csi.ceph.com/encrypted"
+	oldEncryptionMetaKey = ".rbd.csi.ceph.com/encrypted"
 
 	// metadataDEK is the key in the image metadata where the (encrypted)
 	// DEK is stored.
-	metadataDEK = ".rbd.csi.ceph.com/dek"
+	metadataDEK    = "rbd.csi.ceph.com/dek"
+	oldMetadataDEK = ".rbd.csi.ceph.com/dek"
 )
 
 // checkRbdImageEncrypted verifies if rbd image was encrypted when created.
 func (ri *rbdImage) checkRbdImageEncrypted(ctx context.Context) (rbdEncryptionState, error) {
-	value, err := ri.GetMetadata(encryptionMetaKey)
+	value, err := ri.MigrateMetadata(oldEncryptionMetaKey, encryptionMetaKey, string(rbdImageEncryptionUnknown))
 	if errors.Is(err, librbd.ErrNotFound) {
 		util.DebugLog(ctx, "image %s encrypted state not set", ri)
 
@@ -317,7 +319,7 @@ func (ri *rbdImage) FetchDEK(volumeID string) (string, error) {
 		return "", fmt.Errorf("volume %q can not fetch DEK for %q", ri, volumeID)
 	}
 
-	return ri.GetMetadata(metadataDEK)
+	return ri.MigrateMetadata(oldMetadataDEK, metadataDEK, "")
 }
 
 // RemoveDEK does not need to remove the DEK from the metadata, the image is

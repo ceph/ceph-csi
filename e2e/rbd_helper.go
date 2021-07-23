@@ -494,7 +494,7 @@ func validateThickImageMetadata(f *framework.Framework, pvc *v1.PersistentVolume
 // - Metadata of the image should be set with the encryption state;
 // - The pvc should be mounted by a pod, so the filesystem type can be fetched.
 func validateEncryptedImage(f *framework.Framework, rbdImageSpec string, app *v1.Pod) error {
-	encryptedState, err := getImageMeta(rbdImageSpec, ".rbd.csi.ceph.com/encrypted", f)
+	encryptedState, err := getImageMeta(rbdImageSpec, "rbd.csi.ceph.com/encrypted", f)
 	if err != nil {
 		return err
 	}
