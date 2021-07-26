@@ -110,6 +110,9 @@ func initVaultTenantSA(args KMSInitializerArgs) (EncryptionKMS, error) {
 	kms.ConfigName = vaultTokensDefaultConfigName
 	kms.tenantSAName = vaultTenantSAName
 
+	// "vaultAuthPath" is configurable per tenant
+	kms.vaultConfig[vault.AuthMountPath] = vaultDefaultAuthMountPath
+
 	// "vaultRole" is configurable per tenant
 	kms.vaultConfig[vault.AuthKubernetesRole] = vaultDefaultRole
 
@@ -197,6 +200,18 @@ func (kms *VaultTenantSA) parseConfig(config map[string]interface{}) error {
 			kms.ConfigName, kms.Tenant, err)
 	}
 
+	// default vaultAuthPath is set in initVaultTenantSA()
+	var vaultAuthPath string
+	err = setConfigString(&vaultAuthPath, config, "vaultAuthPath")
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	} else if err == nil {
+		kms.vaultConfig[vault.AuthMountPath], err = detectAuthMountPath(vaultAuthPath)
+		if err != nil {
+			return fmt.Errorf("failed to set %s in Vault config: %w", vault.AuthMountPath, err)
+		}
+	}
+
 	// default vaultRole is set in initVaultTenantSA()
 	var vaultRole string
 	err = setConfigString(&vaultRole, config, "vaultRole")
@@ -222,6 +237,7 @@ func isTenantSAConfigOption(opt string) bool {
 	// additional options for VaultTenantSA
 	switch opt {
 	case "tenantSAName":
+	case "vaultAuthPath":
 	case "vaultRole":
 	default:
 		return false
