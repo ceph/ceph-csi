@@ -274,7 +274,7 @@ teardown-rook)
     ;;
 cephcsi)
     echo "copying the cephcsi image"
-    copy_image_to_cluster "${CEPHCSI_IMAGE_REPO}"/cephcsi:canary "${CEPHCSI_IMAGE_REPO}"/cephcsi:canary
+    copy_image_to_cluster "${CEPHCSI_IMAGE_REPO}"/cephcsi:v3.4.0 "${CEPHCSI_IMAGE_REPO}"/cephcsi:v3.4.0
     ;;
 k8s-sidecar)
     echo "copying the kubernetes sidecar images"
