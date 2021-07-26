@@ -27,6 +27,16 @@ serviceAccounts:
 #       - "<MONValue2>"
 csiConfig: []
 
+# Configuration details of clusterID,PoolID and FscID mapping
+# csiMapping:
+#  - clusterIDMapping:
+#     clusterID on site1: clusterID on site2
+#    RBDPoolIDMapping:
+#    - poolID on site1: poolID on site2
+#    CephFSFscIDMapping:
+#    - CephFS FscID on site1: CephFS FscID on site2
+csiMapping: []
+
 # Configuration for the encryption KMS
 # Ref: https://github.com/ceph/ceph-csi/blob/devel/docs/deploy-rbd.md
 # Example:

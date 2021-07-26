@@ -3,6 +3,7 @@
 # as required by the CSI plugins.
 apiVersion: v1
 kind: ConfigMap
+# Lets see the different configuration under config.json key.
 # The <cluster-id> is used by the CSI plugin to uniquely identify and use a
 # Ceph cluster, the value MUST match the value provided as `clusterID` in the
 # StorageClass
@@ -22,6 +23,14 @@ kind: ConfigMap
 # NOTE: Changes to the configmap is automatically updated in the running pods,
 # thus restarting existing pods using the configmap is NOT required on edits
 # to the configmap.
+
+# Lets see the different configuration under cluster-mapping.json key.
+# This configuration is needed when volumes are mirrored using the Ceph-CSI.
+# clusterIDMapping holds the mapping between two clusterId's of storage
+# clusters.
+# RBDPoolIDMapping holds the mapping between two poolId's of storage clusters.
+# CephFSFscIDMapping holds the mapping between two FscId's of storage
+# clusters.
 data:
   config.json: |-
     [
@@ -37,6 +46,22 @@ data:
         "cephFS": {
           "subvolumeGroup": "<subvolumegroup for cephfs volumes>"
         }
+      }
+    ]
+  cluster-mapping.json: |-
+    [
+      {
+        "clusterIDMapping": {
+          "clusterID on site1": "clusterID on site2"
+        },
+        "RBDPoolIDMapping": [{
+          "poolID on site1": "poolID on site2"
+          ...
+        }],
+        "CephFSFscIDMapping": [{
+          "CephFS FscID on site1": "CephFS FscID on site2"
+          ...
+        }]
       }
     ]
 metadata:
