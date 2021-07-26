@@ -55,14 +55,14 @@ func deployCephfsPlugin() {
 		e2elog.Failf("failed to delete nodeplugin rbac %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
 	}
 
-	createORDeleteCephfsResources("create")
+	createORDeleteCephfsResources(kubectlCreate)
 }
 
 func deleteCephfsPlugin() {
-	createORDeleteCephfsResources("delete")
+	createORDeleteCephfsResources(kubectlDelete)
 }
 
-func createORDeleteCephfsResources(action string) {
+func createORDeleteCephfsResources(action kubectlAction) {
 	csiDriver, err := ioutil.ReadFile(cephfsDirPath + csiDriverObject)
 	if err != nil {
 		// createORDeleteRbdResources is used for upgrade testing as csidriverObject is
@@ -71,7 +71,7 @@ func createORDeleteCephfsResources(action string) {
 			e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+csiDriverObject, err)
 		}
 	} else {
-		_, err = framework.RunKubectlInput(cephCSINamespace, string(csiDriver), action, "-f", "-")
+		err = retryKubectlInput(cephCSINamespace, action, string(csiDriver), deployTimeout)
 		if err != nil {
 			e2elog.Failf("failed to %s CSIDriver object with error %v", action, err)
 		}
@@ -81,7 +81,7 @@ func createORDeleteCephfsResources(action string) {
 		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisioner, err)
 	}
 	data = oneReplicaDeployYaml(data)
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS provisioner with error %v", action, err)
 	}
@@ -90,7 +90,7 @@ func createORDeleteCephfsResources(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS provisioner rbac with error %v", action, err)
 	}
@@ -99,7 +99,7 @@ func createORDeleteCephfsResources(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerPSP, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS provisioner psp with error %v", action, err)
 	}
@@ -108,7 +108,7 @@ func createORDeleteCephfsResources(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePlugin, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS nodeplugin with error %v", action, err)
 	}
@@ -117,7 +117,7 @@ func createORDeleteCephfsResources(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS nodeplugin rbac with error %v", action, err)
 	}
@@ -126,7 +126,7 @@ func createORDeleteCephfsResources(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginPSP, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS nodeplugin psp with error %v", action, err)
 	}
