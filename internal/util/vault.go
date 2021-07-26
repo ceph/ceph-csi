@@ -39,6 +39,7 @@ const (
 
 	// vault configuration defaults.
 	vaultDefaultAuthPath       = "/v1/auth/kubernetes/login"
+	vaultDefaultAuthMountPath  = "kubernetes" // main component of vaultAuthPath
 	vaultDefaultRole           = "csi-kubernetes"
 	vaultDefaultNamespace      = ""
 	vaultDefaultPassphrasePath = ""
