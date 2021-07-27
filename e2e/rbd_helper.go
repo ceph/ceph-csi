@@ -881,7 +881,7 @@ func listRBDImagesInTrash(f *framework.Framework, poolName string) ([]trashInfo,
 	var trashInfos []trashInfo
 
 	stdout, stdErr, err := execCommandInToolBoxPod(f,
-		fmt.Sprintf("rbd trash ls --format=json %s", poolName), rookNamespace)
+		fmt.Sprintf("rbd trash ls --format=json %s", rbdOptions(poolName)), rookNamespace)
 	if err != nil {
 		return trashInfos, err
 	}
