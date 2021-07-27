@@ -523,6 +523,16 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 	return supported, err
 }
 
+// getTrashPath returns the image path for trash operation.
+func (rv *rbdVolume) getTrashPath() string {
+	trashPath := rv.Pool
+	if rv.RadosNamespace != "" {
+		trashPath = trashPath + "/" + rv.RadosNamespace
+	}
+
+	return trashPath + "/" + rv.ImageID
+}
+
 // deleteImage deletes a ceph image with provision and volume options.
 func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	image := pOpts.RbdImageName
@@ -556,9 +566,10 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	}
 
 	// attempt to use Ceph manager based deletion support if available
+
 	args := []string{
 		"trash", "remove",
-		pOpts.Pool + "/" + pOpts.ImageID,
+		pOpts.getTrashPath(),
 		"--id", cr.ID,
 		"--keyfile=" + cr.KeyFile,
 		"-m", pOpts.Monitors,
