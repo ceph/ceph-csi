@@ -1945,6 +1945,11 @@ var _ = Describe("RBD", func() {
 						e2elog.Failf("failed to delete PVC with error %v", err)
 					}
 					validateRBDImageCount(f, 0, defaultRBDPool)
+
+					err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to validate rbd images in pool %s trash with error %v", rbdOptions(defaultRBDPool), err)
+					}
 				}
 
 				// delete RBD provisioner secret
