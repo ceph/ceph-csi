@@ -63,7 +63,7 @@ func deployRBDPlugin() {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdProvisionerRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, "--ignore-not-found=true", ns, "delete", "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, kubectlDelete, data, deployTimeout, "--ignore-not-found=true")
 	if err != nil {
 		e2elog.Failf("failed to delete provisioner rbac %s with error %v", rbdDirPath+rbdProvisionerRBAC, err)
 	}
@@ -72,19 +72,19 @@ func deployRBDPlugin() {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdNodePluginRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, "delete", "--ignore-not-found=true", ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, kubectlDelete, data, deployTimeout, "--ignore-not-found=true")
 	if err != nil {
 		e2elog.Failf("failed to delete nodeplugin rbac %s with error %v", rbdDirPath+rbdNodePluginRBAC, err)
 	}
 
-	createORDeleteRbdResources("create")
+	createORDeleteRbdResources(kubectlCreate)
 }
 
 func deleteRBDPlugin() {
-	createORDeleteRbdResources("delete")
+	createORDeleteRbdResources(kubectlDelete)
 }
 
-func createORDeleteRbdResources(action string) {
+func createORDeleteRbdResources(action kubectlAction) {
 	csiDriver, err := ioutil.ReadFile(rbdDirPath + csiDriverObject)
 	if err != nil {
 		// createORDeleteRbdResources is used for upgrade testing as csidriverObject is
@@ -93,7 +93,7 @@ func createORDeleteRbdResources(action string) {
 			e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+csiDriverObject, err)
 		}
 	} else {
-		_, err = framework.RunKubectlInput(cephCSINamespace, string(csiDriver), action, "-f", "-")
+		err = retryKubectlInput(cephCSINamespace, action, string(csiDriver), deployTimeout)
 		if err != nil {
 			e2elog.Failf("failed to %s CSIDriver object with error %v", action, err)
 		}
@@ -104,7 +104,7 @@ func createORDeleteRbdResources(action string) {
 	}
 	data = oneReplicaDeployYaml(data)
 	data = enableTopologyInTemplate(data)
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s rbd provisioner with error %v", action, err)
 	}
@@ -113,7 +113,7 @@ func createORDeleteRbdResources(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdProvisionerRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s provisioner rbac with error %v", action, err)
 	}
@@ -122,7 +122,7 @@ func createORDeleteRbdResources(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdProvisionerPSP, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s provisioner psp with error %v", action, err)
 	}
@@ -134,7 +134,7 @@ func createORDeleteRbdResources(action string) {
 
 	domainLabel := nodeRegionLabel + "," + nodeZoneLabel
 	data = addTopologyDomainsToDSYaml(data, domainLabel)
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s nodeplugin with error %v", action, err)
 	}
@@ -143,7 +143,7 @@ func createORDeleteRbdResources(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdNodePluginRBAC, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s nodeplugin rbac with error %v", action, err)
 	}
@@ -152,7 +152,7 @@ func createORDeleteRbdResources(action string) {
 	if err != nil {
 		e2elog.Failf("failed to read content from %s with error %v", rbdDirPath+rbdNodePluginPSP, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, action, ns, "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s nodeplugin psp with error %v", action, err)
 	}
@@ -1529,7 +1529,13 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to validate clones in different pool with error %v", err)
 				}
 
-				_, err = framework.RunKubectl(cephCSINamespace, "delete", "sc", cloneSC, "--ignore-not-found=true")
+				err = retryKubectlArgs(
+					cephCSINamespace,
+					kubectlDelete,
+					deployTimeout,
+					"sc",
+					cloneSC,
+					"--ignore-not-found=true")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass %s with error %v", cloneSC, err)
 				}

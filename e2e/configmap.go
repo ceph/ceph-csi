@@ -17,12 +17,8 @@ import (
 
 func deleteConfigMap(pluginPath string) error {
 	path := pluginPath + configMap
-	_, err := framework.RunKubectl(cephCSINamespace, "delete", "-f", path, ns)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return retryKubectlFile(cephCSINamespace, kubectlDelete, path, deployTimeout)
 }
 
 func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Framework) error {
