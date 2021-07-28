@@ -1238,6 +1238,9 @@ func retryKubectlInput(namespace string, action kubectlAction, data string, t in
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
+			if isAlreadyExistsCLIError(err) {
+				return true, nil
+			}
 			e2elog.Logf(
 				"will run kubectl (%s) again (%d seconds elapsed)",
 				action,
@@ -1263,6 +1266,9 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
+			}
+			if isAlreadyExistsCLIError(err) {
+				return true, nil
 			}
 			e2elog.Logf(
 				"will run kubectl (%s -f %q) again (%d seconds elapsed)",

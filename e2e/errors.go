@@ -43,3 +43,71 @@ func isRetryableAPIError(err error) bool {
 
 	return false
 }
+
+//nolint:lll // sample output cannot be split into multiple lines.
+/*
+getStdErr will extract the stderror and returns the actual error message
+
+Sample kubectl output:
+
+error running /usr/local/bin/kubectl --server=https://192.168.39.67:8443 --kubeconfig=***** --namespace=default create -f -:
+Command stdout:
+
+stderr:
+Error from server (AlreadyExists): error when creating "STDIN": services "csi-rbdplugin-provisioner" already exists
+Error from server (AlreadyExists): error when creating "STDIN": deployments.apps "csi-rbdplugin-provisioner" already exists
+
+error:
+exit status 1
+
+Sample message returned from this function:
+
+Error from server (AlreadyExists): error when creating "STDIN": services "csi-rbdplugin-provisioner" already exists
+Error from server (AlreadyExists): error when creating "STDIN": deployments.apps "csi-rbdplugin-provisioner" already exists.
+*/
+func getStdErr(errString string) string {
+	stdErrStr := "stderr:\n"
+	errStr := "error:\n"
+	stdErrPosition := strings.Index(errString, stdErrStr)
+	if stdErrPosition == -1 {
+		return ""
+	}
+
+	errPosition := strings.Index(errString, errStr)
+	if errPosition == -1 {
+		return ""
+	}
+
+	stdErrPositionLength := stdErrPosition + len(stdErrStr)
+	if stdErrPositionLength >= errPosition {
+		return ""
+	}
+
+	return errString[stdErrPosition+len(stdErrStr) : errPosition]
+}
+
+// isAlreadyExistsCLIError checks for already exists error from kubectl CLI.
+func isAlreadyExistsCLIError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// if multiple resources already exists. each error is separated by newline
+	stdErr := getStdErr(err.Error())
+	if stdErr == "" {
+		return false
+	}
+
+	stdErrs := strings.Split(stdErr, "\n")
+	for _, s := range stdErrs {
+		// If the string is just a new line continue
+		if strings.TrimSuffix(s, "\n") == "" {
+			continue
+		}
+		// Resource already exists error message
+		if !strings.Contains(s, "Error from server (AlreadyExists)") {
+			return false
+		}
+	}
+
+	return true
+}
