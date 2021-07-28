@@ -10,6 +10,7 @@
   - [Upgrading from v3.0 to v3.1](#upgrading-from-v30-to-v31)
   - [Upgrading from v3.1 to v3.2](#upgrading-from-v31-to-v32)
   - [Upgrading from v3.2 to v3.3](#upgrading-from-v32-to-v33)
+  - [Upgrading from v3.3 to v3.4](#upgrading-from-v33-to-v34)
     - [Upgrading CephFS](#upgrading-cephfs)
       - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
         - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -25,8 +26,6 @@
       - [4. Upgrade RBD Nodeplugin resources](#4-upgrade-rbd-nodeplugin-resources)
         - [4.1 Update the RBD Nodeplugin RBAC](#41-update-the-rbd-nodeplugin-rbac)
         - [4.2 Update the RBD Nodeplugin daemonset](#42-update-the-rbd-nodeplugin-daemonset)
-        - [4.3 Manual deletion of RBD Nodeplugin daemonset pods](#43-manual-deletion-of-rbd-nodeplugin-daemonset-pods)
-    - [Handling node reboot hangs due to existing network mounts](#handling-node-reboot-hangs-due-to-existing-network-mounts)
     - [CSI Sidecar containers consideration](#csi-sidecar-containers-consideration)
 
 ## Pre-upgrade considerations
@@ -35,13 +34,10 @@ In some scenarios there is an issue in the CSI driver that will cause
 application pods to be disconnected from their mounts when the CSI driver is
 restarted. Since the upgrade would cause the CSI driver to restart if it is
 updated, you need to be aware of whether this affects your applications. This
-issue will happen when using the Ceph fuse client or rbd-nbd:
+issue will happen when using the Ceph fuse client.
 
-CephFS: If you are provision volumes for CephFS and have a kernel less than
-version 4.17, The CSI driver will fall back to use the FUSE client.
-
-RBD: If you have set the mounter: rbd-nbd option in the RBD storage class, the
-NBD mounter will have this issue.
+If you provision volumes for CephFS and have a kernel less than version 4.17,
+the CSI driver will fall back to use the FUSE client.
 
 If you are affected by this issue, you will need to proceed carefully during
 the upgrade to restart your application pods. The recommended step is to modify
@@ -49,10 +45,10 @@ the update strategy of the CSI nodeplugin daemonsets to OnDelete so that you
 can control when the CSI driver pods are restarted on each node.
 
 To avoid this issue in future upgrades, we recommend that you do not use the
-fuse client or rbd-nbd as of now.
+fuse client as of now.
 
 This guide will walk you through the steps to upgrade the software in a cluster
-from v3.0 to v3.1
+from v3.3 to v3.4
 
 ### Snapshot-controller and snapshot crd
 
@@ -99,6 +95,11 @@ to upgrade from cephcsi v3.1 to v3.2
 
 ## Upgrading from v3.2 to v3.3
 
+Refer [upgrade-from-v3.2-v3.3](https://github.com/ceph/ceph-csi/blob/v3.3.1/docs/ceph-csi-upgrade.md)
+to upgrade from cephcsi v3.2 to v3.3
+
+## Upgrading from v3.3 to v3.4
+
 **Ceph-csi releases from devel are expressly unsupported.** It is strongly
 recommended that you use [official
 releases](https://github.com/ceph/ceph-csi/releases) of Ceph-csi. Unreleased
@@ -107,12 +108,15 @@ that will not be supported in the official releases. Builds from the devel
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-git checkout v3.3.0 tag
+**Also, we do not recommend any direct upgrades to 3.4 except from 3.3 to 3.4.**
+For example, upgrading from 3.2 to 3.4 is not recommended.
+
+git checkout v3.4.0 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.3.0
+git checkout v3.4.0
 ```
 
 **Note:** While upgrading please Ignore warning messages from kubectl output
@@ -179,7 +183,7 @@ clusterrolebinding.rbac.authorization.k8s.io/cephfs-csi-nodeplugin configured
 
 If you determined in [Pre-upgrade considerations](#pre-upgrade-considerations)
 that you were affected by the CSI driver restart issue that disconnects the
-application pods from their mounts, continue with this section.  Otherwise, you
+application pods from their mounts, continue with this section. Otherwise, you
 can skip to step 2.2
 
 ```console
@@ -237,7 +241,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded cephfs csi from v3.2 to v3.3
+we have successfully upgraded cephfs csi from v3.3 to v3.4
 
 ### Upgrading RBD
 
@@ -295,37 +299,6 @@ clusterrole.rbac.authorization.k8s.io/rbd-csi-nodeplugin-rules configured
 clusterrolebinding.rbac.authorization.k8s.io/rbd-csi-nodeplugin configured
 ```
 
-If you determined in [Pre-upgrade considerations](#pre-upgrade-considerations)
-that you were affected by the CSI driver restart issue that disconnects the
-application pods from their mounts, continue with this section. Otherwise, you
-can skip to step 4.2
-
-```console
-vi deploy/rbd/kubernetes/csi-rbdplugin.yaml
-```
-
-```yaml
-kind: DaemonSet
-apiVersion: apps/v1
-metadata:
-  name: csi-rbdplugin
-spec:
-  selector:
-    matchLabels:
-      app: csi-rbdplugin
-  updateStrategy:
-    type: OnDelete
-  template:
-    metadata:
-      labels:
-        app: csi-rbdplugin
-    spec:
-      serviceAccountName: rbd-csi-nodeplugin
-```
-
-in the above template we have added `updateStrategy` and its `type` to the
-daemonset spec
-
 ##### 4.2 Update the RBD Nodeplugin daemonset
 
 ```bash
@@ -334,40 +307,7 @@ daemonset.apps/csi-rbdplugin configured
 service/csi-metrics-rbdplugin configured
 ```
 
-##### 4.3 Manual deletion of RBD Nodeplugin daemonset pods
-
-If you determined in [Pre-upgrade considerations](#pre-upgrade-considerations)
-that you were affected by the CSI driver restart issue that disconnects the
-application pods from their mounts, continue with this section.
-Otherwise, you can skip this section.
-
-As we have set the updateStrategy to OnDelete the CSI driver pods will not be
-updated until you delete them manually. This allows you to control when your
-application pods will be affected by the CSI driver restart.
-
-For each node:
-
-- Drain your application pods from the node
-- Delete the CSI driver pods on the node
-  - The pods to delete will be named with a csi-rbdplugin prefix and have a
-    random suffix on each node. However, no need to delete the provisioner pods
-    csi-rbdplugin-provisioner-* .
-  - The pod deletion causes the pods to be restarted and updated automatically
-    on the node.
-
-we have successfully upgraded RBD csi from v3.2 to v3.3
-
-### Handling node reboot hangs due to existing network mounts
-
-With prior versions of ceph-csi a node reboot may hang the reboot process. This
-is due to existing cephfs or rbd network mounts not carrying the `_netdev`
-mount option. The missing mount option is fixed, and future mounts using
-ceph-csi would automatically carry the required flags needed for a clean
-reboot.
-
-It is suggested to upgrade to the latest ceph-csi release and drain application
-pods on all the nodes so that new mount option `_netdev` can be added to all
-the mountpoints.
+we have successfully upgraded RBD csi from v3.3 to v3.4
 
 ### CSI Sidecar containers consideration
 
