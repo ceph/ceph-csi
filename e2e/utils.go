@@ -113,7 +113,7 @@ func deleteResource(scPath string) error {
 	if err != nil {
 		e2elog.Logf("failed to read content from %s %v", scPath, err)
 	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, ns, "delete", "-f", "-")
+	err = retryKubectlInput(cephCSINamespace, kubectlDelete, data, deployTimeout)
 	if err != nil {
 		e2elog.Logf("failed to delete %s %v", scPath, err)
 	}

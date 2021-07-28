@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/gomega" // nolint
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
@@ -25,13 +24,12 @@ var (
 func deployVault(c kubernetes.Interface, deployTimeout int) {
 	// hack to make helm E2E pass as helm charts creates this configmap as part
 	// of cephcsi deployment
-	_, err := framework.RunKubectl(
+	err := retryKubectlArgs(
 		cephCSINamespace,
-		"delete",
+		kubectlDelete,
+		deployTimeout,
 		"cm",
 		"ceph-csi-encryption-kms-config",
-		"--namespace",
-		cephCSINamespace,
 		"--ignore-not-found=true")
 	Expect(err).Should(BeNil())
 
