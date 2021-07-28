@@ -375,7 +375,14 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 }
 
 func deletePodWithLabel(label, ns string, skipNotFound bool) error {
-	_, err := framework.RunKubectl(ns, "delete", "po", "-l", label, fmt.Sprintf("--ignore-not-found=%t", skipNotFound))
+	err := retryKubectlArgs(
+		ns,
+		kubectlDelete,
+		deployTimeout,
+		"po",
+		"-l",
+		label,
+		fmt.Sprintf("--ignore-not-found=%t", skipNotFound))
 	if err != nil {
 		e2elog.Logf("failed to delete pod %v", err)
 	}
