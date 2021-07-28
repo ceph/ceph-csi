@@ -1282,3 +1282,33 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 		return true, nil
 	})
 }
+
+// retryKubectlArgs takes a namespace and action telling kubectl what to do
+// with the passed arguments. This function retries until no error occurred, or
+// the timeout passed.
+func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...string) error {
+	timeout := time.Duration(t) * time.Minute
+	args = append([]string{string(action)}, args...)
+	e2elog.Logf("waiting for kubectl (%s args) to finish", args)
+	start := time.Now()
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err := framework.RunKubectl(namespace, args...)
+		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			if isAlreadyExistsCLIError(err) {
+				return true, nil
+			}
+			e2elog.Logf(
+				"will run kubectl (%s) again (%d seconds elapsed)",
+				args,
+				int(time.Since(start).Seconds()))
+
+			return false, fmt.Errorf("failed to run kubectl: %w", err)
+		}
+
+		return true, nil
+	})
+}
