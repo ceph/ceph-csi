@@ -1227,20 +1227,27 @@ func (ka kubectlAction) String() string {
 // retryKubectlInput takes a namespace and action telling kubectl what to do,
 // it then feeds data through stdin to the process. This function retries until
 // no error occurred, or the timeout passed.
-func retryKubectlInput(namespace string, action kubectlAction, data string, t int) error {
+func retryKubectlInput(namespace string, action kubectlAction, data string, t int, args ...string) error {
 	timeout := time.Duration(t) * time.Minute
-	e2elog.Logf("waiting for kubectl (%s) to finish", action)
+	e2elog.Logf("waiting for kubectl (%s -f %q args %s) to finish", action, args)
 	start := time.Now()
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		_, err := framework.RunKubectlInput(namespace, data, string(action), "-f", "-")
+		cmd := []string{}
+		if len(args) != 0 {
+			cmd = append(cmd, strings.Join(args, ""))
+		}
+		cmd = append(cmd, []string{string(action), "-f", "-"}...)
+
+		_, err := framework.RunKubectlInput(namespace, data, cmd...)
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
 			e2elog.Logf(
-				"will run kubectl (%s) again (%d seconds elapsed)",
+				"will run kubectl (%s) args (%s) again (%d seconds elapsed)",
 				action,
+				args,
 				int(time.Since(start).Seconds()))
 
 			return false, fmt.Errorf("failed to run kubectl: %w", err)
@@ -1251,23 +1258,30 @@ func retryKubectlInput(namespace string, action kubectlAction, data string, t in
 }
 
 // retryKubectlFile takes a namespace and action telling kubectl what to do
-// with the passed filename. This function retries until no error occurred, or
-// the timeout passed.
-func retryKubectlFile(namespace string, action kubectlAction, filename string, t int) error {
+// with the passed filename and arguments. This function retries until no error
+// occurred, or the timeout passed.
+func retryKubectlFile(namespace string, action kubectlAction, filename string, t int, args ...string) error {
 	timeout := time.Duration(t) * time.Minute
-	e2elog.Logf("waiting for kubectl (%s -f %q) to finish", action, filename)
+	e2elog.Logf("waiting for kubectl (%s -f %q args %s) to finish", action, filename, args)
 	start := time.Now()
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		_, err := framework.RunKubectl(namespace, string(action), "-f", filename)
+		cmd := []string{}
+		if len(args) != 0 {
+			cmd = append(cmd, strings.Join(args, ""))
+		}
+		cmd = append(cmd, []string{string(action), "-f", filename}...)
+
+		_, err := framework.RunKubectl(namespace, cmd...)
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
 			e2elog.Logf(
-				"will run kubectl (%s -f %q) again (%d seconds elapsed)",
+				"will run kubectl (%s -f %q args %s) again (%d seconds elapsed)",
 				action,
 				filename,
+				args,
 				int(time.Since(start).Seconds()))
 
 			return false, fmt.Errorf("failed to run kubectl: %w", err)
