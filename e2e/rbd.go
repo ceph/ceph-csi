@@ -465,6 +465,21 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create PVC and application with error %v", err)
 				}
 
+				appOpt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("app=%s", app.Name),
+				}
+				// TODO: Remove this once we ensure that rbd-nbd can sync data
+				// from Filesystem layer to backend rbd image as part of its
+				// detach or SIGTERM signal handler
+				_, stdErr, err := execCommandInPod(
+					f,
+					fmt.Sprintf("sync %s", app.Spec.Containers[0].VolumeMounts[0].MountPath),
+					app.Namespace,
+					&appOpt)
+				if err != nil || stdErr != "" {
+					e2elog.Failf("failed to sync, err: %v, stdErr: %v ", err, stdErr)
+				}
+
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
 
@@ -537,9 +552,6 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to poll: %v", err)
 				}
 
-				appOpt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", app.Name),
-				}
 				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				_, stdErr, err = execCommandInPod(
 					f,
