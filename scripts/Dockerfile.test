@@ -44,7 +44,7 @@ RUN source /build.env \
     && curl -L https://git.io/get_helm.sh | bash -s -- --version "${HELM_VERSION}" \
     && mkdir /opt/commitlint && pushd /opt/commitlint \
     && npm init -y \
-    && npm install @commitlint/cli \
+    && npm install @commitlint/cli@"${COMMITLINT_VERSION}" \
     && popd \
     && true
 
