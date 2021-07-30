@@ -131,7 +131,8 @@ func TestStdVaultToCSIConfig(t *testing.T) {
 		"VAULT_TLS_SERVER_NAME":"vault.example.com",
 		"VAULT_CLIENT_CERT":"",
 		"VAULT_CLIENT_KEY":"",
-		"VAULT_NAMESPACE":"a-department",
+		"VAULT_AUTH_NAMESPACE":"devops",
+		"VAULT_NAMESPACE":"devops/homepage",
 		"VAULT_SKIP_VERIFY":"true"
 	}`
 
@@ -161,7 +162,9 @@ func TestStdVaultToCSIConfig(t *testing.T) {
 		t.Errorf("unexpected value for VaultClientCertFromSecret: %s", v.VaultClientCertFromSecret)
 	case v.VaultClientCertKeyFromSecret != "":
 		t.Errorf("unexpected value for VaultClientCertKeyFromSecret: %s", v.VaultClientCertKeyFromSecret)
-	case v.VaultNamespace != "a-department":
+	case v.VaultAuthNamespace != "devops":
+		t.Errorf("unexpected value for VaultAuthNamespace: %s", v.VaultAuthNamespace)
+	case v.VaultNamespace != "devops/homepage":
 		t.Errorf("unexpected value for VaultNamespace: %s", v.VaultNamespace)
 	case v.VaultTLSServerName != "vault.example.com":
 		t.Errorf("unexpected value for VaultTLSServerName: %s", v.VaultTLSServerName)
@@ -181,7 +184,8 @@ func TestTransformConfig(t *testing.T) {
 	cm["VAULT_TLS_SERVER_NAME"] = "vault.example.com"
 	cm["VAULT_CLIENT_CERT"] = ""
 	cm["VAULT_CLIENT_KEY"] = ""
-	cm["VAULT_NAMESPACE"] = "a-department"
+	cm["VAULT_AUTH_NAMESPACE"] = "devops"
+	cm["VAULT_NAMESPACE"] = "devops/homepage"
 	cm["VAULT_SKIP_VERIFY"] = "true" // inverse of "vaultCAVerify"
 
 	config, err := transformConfig(cm)
@@ -194,6 +198,7 @@ func TestTransformConfig(t *testing.T) {
 	assert.Equal(t, config["vaultTLSServerName"], cm["VAULT_TLS_SERVER_NAME"])
 	assert.Equal(t, config["vaultClientCertFromSecret"], cm["VAULT_CLIENT_CERT"])
 	assert.Equal(t, config["vaultClientCertKeyFromSecret"], cm["VAULT_CLIENT_KEY"])
+	assert.Equal(t, config["vaultAuthNamespace"], cm["VAULT_AUTH_NAMESPACE"])
 	assert.Equal(t, config["vaultNamespace"], cm["VAULT_NAMESPACE"])
 	assert.Equal(t, config["vaultCAVerify"], "false")
 }
