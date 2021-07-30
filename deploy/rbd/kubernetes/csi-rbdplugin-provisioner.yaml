@@ -3,6 +3,8 @@ kind: Service
 apiVersion: v1
 metadata:
   name: csi-rbdplugin-provisioner
+  # replace with non-default namespace name
+  namespace: default
   labels:
     app: csi-metrics
 spec:
@@ -19,6 +21,8 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: csi-rbdplugin-provisioner
+  # replace with non-default namespace name
+  namespace: default
 spec:
   replicas: 3
   selector:
@@ -135,10 +139,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            # - name: POD_NAMESPACE
-            #   valueFrom:
-            #     fieldRef:
-            #       fieldPath: spec.namespace
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             # - name: KMS_CONFIGMAP_NAME
             #   value: encryptionConfig
             - name: CSI_ENDPOINT
