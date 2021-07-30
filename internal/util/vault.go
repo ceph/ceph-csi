@@ -249,7 +249,7 @@ func (vc *vaultConnection) initCertificates(config map[string]interface{}, secre
 func (vc *vaultConnection) connectVault() error {
 	v, err := vault.New(vc.vaultConfig)
 	if err != nil {
-		return fmt.Errorf("failed creating new Vault Secrets: %w", err)
+		return fmt.Errorf("failed connecting to Vault: %w", err)
 	}
 	vc.secrets = v
 
