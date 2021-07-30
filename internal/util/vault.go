@@ -167,9 +167,14 @@ func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err
 	}
+	vaultAuthNamespace := vaultNamespace // optional, same as vaultNamespace
+	err = setConfigString(&vaultAuthNamespace, config, "vaultAuthNamespace")
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	}
 	// set the option if the value was not invalid
 	if firstInit || !errors.Is(err, errConfigOptionMissing) {
-		vaultConfig[api.EnvVaultNamespace] = vaultNamespace
+		vaultConfig[api.EnvVaultNamespace] = vaultAuthNamespace
 		keyContext[loss.KeyVaultNamespace] = vaultNamespace
 	}
 

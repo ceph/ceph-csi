@@ -63,6 +63,7 @@ type standardVault struct {
 	VaultTLSServerName string `json:"VAULT_TLS_SERVER_NAME"`
 	VaultClientCert    string `json:"VAULT_CLIENT_CERT"`
 	VaultClientKey     string `json:"VAULT_CLIENT_KEY"`
+	VaultAuthNamespace string `json:"VAULT_AUTH_NAMESPACE"`
 	VaultNamespace     string `json:"VAULT_NAMESPACE"`
 	VaultSkipVerify    string `json:"VAULT_SKIP_VERIFY"`
 }
@@ -76,6 +77,7 @@ type vaultTokenConf struct {
 	VaultTLSServerName           string `json:"vaultTLSServerName"`
 	VaultClientCertFromSecret    string `json:"vaultClientCertFromSecret"`
 	VaultClientCertKeyFromSecret string `json:"vaultClientCertKeyFromSecret"`
+	VaultAuthNamespace           string `json:"vaultAuthNamespace"`
 	VaultNamespace               string `json:"vaultNamespace"`
 	VaultCAVerify                string `json:"vaultCAVerify"`
 }
@@ -88,6 +90,7 @@ func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 	v.VaultCAFromSecret = s.VaultCACert
 	v.VaultClientCertFromSecret = s.VaultClientCert
 	v.VaultClientCertKeyFromSecret = s.VaultClientKey
+	v.VaultAuthNamespace = s.VaultAuthNamespace
 	v.VaultNamespace = s.VaultNamespace
 	v.VaultTLSServerName = s.VaultTLSServerName
 
@@ -521,6 +524,8 @@ func isTenantConfigOption(opt string) bool {
 	case "vaultAddress":
 	case "vaultBackend":
 	case "vaultBackendPath":
+	case "vaultAuthNamespace":
+	case "vaultNamespace":
 	case "vaultTLSServerName":
 	case "vaultCAFromSecret":
 	case "vaultCAVerify":
