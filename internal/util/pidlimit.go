@@ -47,7 +47,7 @@ func getCgroupPidsFile() (string, error) {
 	scanner := bufio.NewScanner(cgroup)
 	var slice string
 	for scanner.Scan() {
-		parts := strings.Split(scanner.Text(), ":")
+		parts := strings.SplitN(scanner.Text(), ":", 3)
 		if parts == nil || len(parts) < 3 {
 			continue
 		}
