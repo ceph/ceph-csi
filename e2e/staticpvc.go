@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -123,7 +124,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 		opt["imageFeatures"] = "layering"
 	}
 	opt["pool"] = defaultRBDPool
-	opt["staticVolume"] = "true"
+	opt["staticVolume"] = strconv.FormatBool(true)
 	if radosNamespace != "" {
 		opt["radosNamespace"] = radosNamespace
 	}
@@ -279,7 +280,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 
 	opt["clusterID"] = fsID
 	opt["fsName"] = fsName
-	opt["staticVolume"] = "true"
+	opt["staticVolume"] = strconv.FormatBool(true)
 	opt["rootPath"] = rootPath
 	pv := getStaticPV(pvName, pvName, "4Gi", secretName, cephCSINamespace, sc, "cephfs.csi.ceph.com", false, opt)
 	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})

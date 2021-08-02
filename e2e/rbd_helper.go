@@ -770,6 +770,15 @@ func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeCl
 	return nil
 }
 
+// deleteJournalInfoInPool deletes all omap data regarding pvc.
+func deleteJournalInfoInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool string) error {
+	if err := deletePVCImageJournalInPool(f, pvc, pool); err != nil {
+		return err
+	}
+
+	return deletePVCCSIJournalInPool(f, pvc, pool)
+}
+
 func deletePVCImageJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, pool string) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
