@@ -803,11 +803,7 @@ var _ = Describe("RBD", func() {
 				namespace := cephCSINamespace
 
 				// create user Secret
-				secret, err := getSecret(vaultExamplePath + "user-secret.yaml")
-				if err != nil {
-					e2elog.Failf("failed to load user Secret: %v", err)
-				}
-				_, err = c.CoreV1().Secrets(namespace).Create(context.TODO(), &secret, metav1.CreateOptions{})
+				err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+"user-secret.yaml", deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create user Secret: %v", err)
 				}
@@ -820,7 +816,11 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 0, defaultRBDPool)
 
 				// delete user secret
-				err = c.CoreV1().Secrets(namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
+				err = retryKubectlFile(namespace,
+					kubectlDelete,
+					vaultExamplePath+"user-secret.yaml",
+					deployTimeout,
+					"--ignore-not-found=true")
 				if err != nil {
 					e2elog.Failf("failed to delete user Secret: %v", err)
 				}
@@ -855,11 +855,7 @@ var _ = Describe("RBD", func() {
 					namespace := f.UniqueName
 
 					// create user Secret
-					secret, err := getSecret(vaultExamplePath + "user-secret.yaml")
-					if err != nil {
-						e2elog.Failf("failed to load user Secret: %v", err)
-					}
-					_, err = c.CoreV1().Secrets(namespace).Create(context.TODO(), &secret, metav1.CreateOptions{})
+					err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+"user-secret.yaml", deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to create user Secret: %v", err)
 					}
@@ -872,7 +868,12 @@ var _ = Describe("RBD", func() {
 					validateRBDImageCount(f, 0, defaultRBDPool)
 
 					// delete user secret
-					err = c.CoreV1().Secrets(namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
+					err = retryKubectlFile(
+						namespace,
+						kubectlDelete,
+						vaultExamplePath+"user-secret.yaml",
+						deployTimeout,
+						"--ignore-not-found=true")
 					if err != nil {
 						e2elog.Failf("failed to delete user Secret: %v", err)
 					}
