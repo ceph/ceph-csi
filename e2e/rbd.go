@@ -2387,6 +2387,54 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("validate the functionality of controller with encryption and thick-provisioning", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass : %v", err)
+				}
+				scParams := map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "user-secrets-metadata-test",
+					"thickProvision":  "true",
+				}
+
+				// PVC creation namespace where secret will be created
+				namespace := f.UniqueName
+
+				// create user Secret
+				err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+"user-secret.yaml", deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create user Secret: %v", err)
+				}
+
+				err = validateController(f,
+					pvcPath, appPath, rbdExamplePath+"storageclass.yaml",
+					nil,
+					scParams)
+				if err != nil {
+					e2elog.Failf("failed to validate controller : %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				// delete user secret
+				err = retryKubectlFile(
+					namespace,
+					kubectlDelete,
+					vaultExamplePath+"user-secret.yaml",
+					deployTimeout,
+					"--ignore-not-found=true")
+				if err != nil {
+					e2elog.Failf("failed to delete user Secret: %v", err)
+				}
+
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass : %v", err)
+				}
+			})
+
 			By("validate stale images in trash", func() {
 				err := waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
 				if err != nil {
