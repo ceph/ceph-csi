@@ -93,6 +93,9 @@ spec:
               name: host-sys
             - mountPath: /run/mount
               name: host-mount
+            - mountPath: /etc/selinux
+              name: etc-selinux
+              readOnly: true
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
@@ -153,6 +156,9 @@ spec:
         - name: host-sys
           hostPath:
             path: /sys
+        - name: etc-selinux
+          hostPath:
+            path: /etc/selinux
         - name: host-mount
           hostPath:
             path: /run/mount

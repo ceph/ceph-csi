@@ -32,6 +32,8 @@ spec:
       readOnly: false
     - pathPrefix: '/sys'
       readOnly: false
+    - pathPrefix: '/etc/selinux'
+      readOnly: true
     - pathPrefix: '/lib/modules'
       readOnly: true
     - pathPrefix: '/var/lib/kubelet/pods'
