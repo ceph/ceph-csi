@@ -1,21 +1,14 @@
 package vault
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"net/http"
-	"os"
 	"path"
-	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/agent/auth"
-	"github.com/hashicorp/vault/command/agent/auth/kubernetes"
 	"github.com/libopenstorage/secrets"
+	"github.com/libopenstorage/secrets/vault/utils"
 )
 
 const (
@@ -23,40 +16,25 @@ const (
 	DefaultBackendPath  = "secret/"
 	VaultBackendPathKey = "VAULT_BACKEND_PATH"
 	VaultBackendKey     = "VAULT_BACKEND"
-	vaultAddressPrefix  = "http"
 	kvVersionKey        = "version"
 	kvDataKey           = "data"
+	kvMetadataKey       = "metadata"
 	kvVersion1          = "kv"
 	kvVersion2          = "kv-v2"
 
-	AuthMethodKubernetes = "kubernetes"
-
-	// AuthMethod is a vault authentication method used.
-	// https://www.vaultproject.io/docs/auth#auth-methods
-	AuthMethod = "VAULT_AUTH_METHOD"
-	// AuthMountPath defines a custom auth mount path.
-	AuthMountPath = "VAULT_AUTH_MOUNT_PATH"
-	// AuthKubernetesRole is the role to authenticate against on Vault
-	AuthKubernetesRole = "VAULT_AUTH_KUBERNETES_ROLE"
-	// AuthKubernetesTokenPath is the file path to a custom JWT token to use for authentication.
-	// If omitted, the default service account token path is used.
-	AuthKubernetesTokenPath = "VAULT_AUTH_KUBERNETES_TOKEN_PATH"
-
-	// AuthKubernetesMountPath
-	AuthKubernetesMountPath = "kubernetes"
+	AuthMethodKubernetes    = utils.AuthMethodKubernetes
+	AuthMethod              = utils.AuthMethod
+	AuthMountPath           = utils.AuthMountPath
+	AuthKubernetesRole      = utils.AuthKubernetesRole
+	AuthKubernetesTokenPath = utils.AuthKubernetesTokenPath
+	AuthKubernetesMountPath = utils.AuthKubernetesMountPath
 )
 
-var (
-	ErrVaultTokenNotSet    = errors.New("VAULT_TOKEN not set.")
-	ErrVaultAddressNotSet  = errors.New("VAULT_ADDR not set.")
-	ErrInvalidVaultToken   = errors.New("VAULT_TOKEN is invalid")
-	ErrInvalidSkipVerify   = errors.New("VAULT_SKIP_VERIFY is invalid")
-	ErrInvalidVaultAddress = errors.New("VAULT_ADDRESS is invalid. " +
-		"Should be of the form http(s)://<ip>:<port>")
-
-	ErrAuthMethodUnknown = fmt.Errorf("unknown auth method")
-	ErrKubernetesRole    = fmt.Errorf("%s not set", AuthKubernetesRole)
-)
+func init() {
+	if err := secrets.Register(Name, New); err != nil {
+		panic(err.Error())
+	}
+}
 
 type vaultSecrets struct {
 	mu     sync.RWMutex
@@ -89,17 +67,16 @@ func New(
 		return nil, config.Error
 	}
 
-	address := getVaultParam(secretConfig, api.EnvVaultAddress)
+	address := utils.GetVaultParam(secretConfig, api.EnvVaultAddress)
 	if address == "" {
-		return nil, ErrVaultAddressNotSet
+		return nil, utils.ErrVaultAddressNotSet
 	}
-	// Vault fails if address is not in correct format
-	if !strings.HasPrefix(address, vaultAddressPrefix) {
-		return nil, ErrInvalidVaultAddress
+	if err := utils.IsValidAddr(address); err != nil {
+		return nil, err
 	}
 	config.Address = address
 
-	if err := configureTLS(config, secretConfig); err != nil {
+	if err := utils.ConfigureTLS(config, secretConfig); err != nil {
 		return nil, err
 	}
 
@@ -108,7 +85,7 @@ func New(
 		return nil, err
 	}
 
-	namespace := getVaultParam(secretConfig, api.EnvVaultNamespace)
+	namespace := utils.GetVaultParam(secretConfig, api.EnvVaultNamespace)
 	if len(namespace) > 0 {
 		// use a namespace as a header for setup purposes
 		// later use it as a key prefix
@@ -116,32 +93,20 @@ func New(
 		defer client.SetNamespace("")
 	}
 
-	var autoAuth bool
-	var token string
-	if getVaultParam(secretConfig, AuthMethod) != "" {
-		token, err = getAuthToken(client, secretConfig)
-		if err != nil {
-			closeIdleConnections(config)
-			return nil, err
-		}
-
-		autoAuth = true
-	} else {
-		token = getVaultParam(secretConfig, api.EnvVaultToken)
-	}
-	if token == "" {
-		closeIdleConnections(config)
-		return nil, ErrVaultTokenNotSet
+	token, autoAuth, err := utils.Authenticate(client, secretConfig)
+	if err != nil {
+		utils.CloseIdleConnections(config)
+		return nil, fmt.Errorf("failed to get the authentication token: %w", err)
 	}
 	client.SetToken(token)
 
-	backendPath := getVaultParam(secretConfig, VaultBackendPathKey)
+	backendPath := utils.GetVaultParam(secretConfig, VaultBackendPathKey)
 	if backendPath == "" {
 		backendPath = DefaultBackendPath
 	}
 
 	var isBackendV2 bool
-	backend := getVaultParam(secretConfig, VaultBackendKey)
+	backend := utils.GetVaultParam(secretConfig, VaultBackendKey)
 	if backend == kvVersion1 {
 		isBackendV2 = false
 	} else if backend == kvVersion2 {
@@ -150,7 +115,7 @@ func New(
 		// TODO: Handle backends other than kv
 		isBackendV2, err = isKvV2(client, backendPath)
 		if err != nil {
-			closeIdleConnections(config)
+			utils.CloseIdleConnections(config)
 			return nil, err
 		}
 	}
@@ -170,15 +135,29 @@ func (v *vaultSecrets) String() string {
 	return Name
 }
 
-func (v *vaultSecrets) keyPath(secretID, namespace string) keyPath {
-	if namespace == "" {
+func (v *vaultSecrets) keyPath(secretID string, keyContext map[string]string) keyPath {
+	backendPath := v.backendPath
+	var namespace string
+	var ok bool
+	if namespace, ok = keyContext[secrets.KeyVaultNamespace]; !ok {
 		namespace = v.namespace
 	}
+
+	var isDestroyKey bool
+	if v.isKvBackendV2 {
+		if destroyAllSecrets, ok := keyContext[secrets.DestroySecret]; ok {
+			// checking for any value seems sufficient to assume 'destroy' is requested
+			if destroyAllSecrets != "" {
+				isDestroyKey = true
+			}
+		}
+	}
 	return keyPath{
-		backendPath: v.backendPath,
-		isBackendV2: v.isKvBackendV2,
-		namespace:   namespace,
-		secretID:    secretID,
+		backendPath:  backendPath,
+		isBackendV2:  v.isKvBackendV2,
+		namespace:    namespace,
+		secretID:     secretID,
+		isDestroyKey: isDestroyKey,
 	}
 }
 
@@ -186,7 +165,7 @@ func (v *vaultSecrets) GetSecret(
 	secretID string,
 	keyContext map[string]string,
 ) (map[string]interface{}, error) {
-	key := v.keyPath(secretID, keyContext[secrets.KeyVaultNamespace])
+	key := v.keyPath(secretID, keyContext)
 	secretValue, err := v.read(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret: %s: %s", key, err)
@@ -218,7 +197,7 @@ func (v *vaultSecrets) PutSecret(
 		}
 	}
 
-	key := v.keyPath(secretID, keyContext[secrets.KeyVaultNamespace])
+	key := v.keyPath(secretID, keyContext)
 	if _, err := v.write(key, secretData); err != nil {
 		return fmt.Errorf("failed to put secret: %s: %s", key, err)
 	}
@@ -229,7 +208,7 @@ func (v *vaultSecrets) DeleteSecret(
 	secretID string,
 	keyContext map[string]string,
 ) error {
-	key := v.keyPath(secretID, keyContext[secrets.KeyVaultNamespace])
+	key := v.keyPath(secretID, keyContext)
 	if _, err := v.delete(key); err != nil {
 		return fmt.Errorf("failed to delete secret: %s: %s", key, err)
 	}
@@ -355,7 +334,7 @@ func (v *vaultSecrets) renewToken(namespace string) error {
 		v.client.SetNamespace(namespace)
 		defer v.client.SetNamespace("")
 	}
-	token, err := getAuthToken(v.client, v.config)
+	token, err := utils.GetAuthToken(v.client, v.config)
 	if err != nil {
 		return fmt.Errorf("get auth token for %s namespace: %s", namespace, err)
 	}
@@ -403,131 +382,25 @@ func isKvBackendV2(client *api.Client, backendPath string) (bool, error) {
 		backendPath)
 }
 
-func getVaultParam(secretConfig map[string]interface{}, name string) string {
-	if tokenIntf, exists := secretConfig[name]; exists {
-		tokenStr, ok := tokenIntf.(string)
-		if !ok {
-			return ""
-		}
-		return strings.TrimSpace(tokenStr)
-	} else {
-		return strings.TrimSpace(os.Getenv(name))
-	}
-}
-
-func configureTLS(config *api.Config, secretConfig map[string]interface{}) error {
-	tlsConfig := api.TLSConfig{}
-	skipVerify := getVaultParam(secretConfig, api.EnvVaultInsecure)
-	if skipVerify != "" {
-		insecure, err := strconv.ParseBool(skipVerify)
-		if err != nil {
-			return ErrInvalidSkipVerify
-		}
-		tlsConfig.Insecure = insecure
-	}
-
-	cacert := getVaultParam(secretConfig, api.EnvVaultCACert)
-	tlsConfig.CACert = cacert
-
-	capath := getVaultParam(secretConfig, api.EnvVaultCAPath)
-	tlsConfig.CAPath = capath
-
-	clientcert := getVaultParam(secretConfig, api.EnvVaultClientCert)
-	tlsConfig.ClientCert = clientcert
-
-	clientkey := getVaultParam(secretConfig, api.EnvVaultClientKey)
-	tlsConfig.ClientKey = clientkey
-
-	tlsserverName := getVaultParam(secretConfig, api.EnvVaultTLSServerName)
-	tlsConfig.TLSServerName = tlsserverName
-
-	return config.ConfigureTLS(&tlsConfig)
-}
-
-func getAuthToken(client *api.Client, config map[string]interface{}) (string, error) {
-	path, _, data, err := authenticate(client, config)
-	if err != nil {
-		return "", err
-	}
-
-	secret, err := client.Logical().Write(path, data)
-	if err != nil {
-		return "", err
-	}
-	if secret == nil || secret.Auth == nil {
-		return "", errors.New("authentication returned nil auth info")
-	}
-	if secret.Auth.ClientToken == "" {
-		return "", errors.New("authentication returned empty client token")
-	}
-
-	return secret.Auth.ClientToken, err
-}
-
-func authenticate(client *api.Client, config map[string]interface{}) (string, http.Header, map[string]interface{}, error) {
-	method := getVaultParam(config, AuthMethod)
-	switch method {
-	case AuthMethodKubernetes:
-		return authKubernetes(client, config)
-	}
-	return "", nil, nil, fmt.Errorf("%s method: %s", method, ErrAuthMethodUnknown)
-}
-
-func authKubernetes(client *api.Client, config map[string]interface{}) (string, http.Header, map[string]interface{}, error) {
-	authConfig, err := buildAuthConfig(config)
-	if err != nil {
-		return "", nil, nil, err
-	}
-	method, err := kubernetes.NewKubernetesAuthMethod(authConfig)
-	if err != nil {
-		return "", nil, nil, err
-	}
-
-	return method.Authenticate(context.TODO(), client)
-}
-
-func buildAuthConfig(config map[string]interface{}) (*auth.AuthConfig, error) {
-	role := getVaultParam(config, AuthKubernetesRole)
-	if role == "" {
-		return nil, ErrKubernetesRole
-	}
-	mountPath := getVaultParam(config, AuthMountPath)
-	if mountPath == "" {
-		mountPath = AuthKubernetesMountPath
-	}
-	tokenPath := getVaultParam(config, AuthKubernetesTokenPath)
-
-	authMountPath := path.Join("auth", mountPath)
-	return &auth.AuthConfig{
-		Logger:    hclog.NewNullLogger(),
-		MountPath: authMountPath,
-		Config: map[string]interface{}{
-			"role":       role,
-			"token_path": tokenPath,
-		},
-	}, nil
-}
-
 func trimSlash(in string) string {
 	return strings.Trim(in, "/")
 }
 
-func init() {
-	if err := secrets.Register(Name, New); err != nil {
-		panic(err.Error())
-	}
-}
-
 type keyPath struct {
-	backendPath string
-	isBackendV2 bool
-	namespace   string
-	secretID    string
+	backendPath  string
+	isBackendV2  bool
+	namespace    string
+	secretID     string
+	isDestroyKey bool
 }
 
 func (k keyPath) Path() string {
 	if k.isBackendV2 {
-		return path.Join(k.namespace, k.backendPath, kvDataKey, k.secretID)
+		keyType := kvDataKey
+		if k.isDestroyKey {
+			keyType = kvMetadataKey
+		}
+		return path.Join(k.namespace, k.backendPath, keyType, k.secretID)
 	}
 	return path.Join(k.namespace, k.backendPath, k.secretID)
 }
@@ -538,14 +411,4 @@ func (k keyPath) Namespace() string {
 
 func (k keyPath) String() string {
 	return fmt.Sprintf("backendPath=%s, backendV2=%t, namespace=%s, secretID=%s", k.backendPath, k.isBackendV2, k.namespace, k.secretID)
-}
-
-func closeIdleConnections(cfg *api.Config) {
-	if cfg == nil || cfg.HttpClient == nil {
-		return
-	}
-	// close connection in case of error (a fix for go version < 1.12)
-	if tp, ok := cfg.HttpClient.Transport.(*http.Transport); ok {
-		tp.CloseIdleConnections()
-	}
 }

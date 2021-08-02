@@ -180,10 +180,11 @@ github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1
 github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1beta1
 github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned/scheme
 github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned/typed/volumesnapshot/v1
-# github.com/libopenstorage/secrets v0.0.0-20201006135900-af310b01fe47
+# github.com/libopenstorage/secrets v0.0.0-20210709082113-dde442ea20ec
 ## explicit
 github.com/libopenstorage/secrets
 github.com/libopenstorage/secrets/vault
+github.com/libopenstorage/secrets/vault/utils
 # github.com/mattn/go-colorable v0.1.6
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
@@ -308,7 +309,7 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
-# golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
+# golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
 # golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
@@ -353,7 +354,7 @@ google.golang.org/appengine/internal/log
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
+# google.golang.org/genproto v0.0.0-20201201144952-b05cb90ed32e
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.38.0 => google.golang.org/grpc v1.35.0
 ## explicit
@@ -589,7 +590,7 @@ k8s.io/apiserver/pkg/storage/names
 k8s.io/apiserver/pkg/util/feature
 k8s.io/apiserver/pkg/util/webhook
 k8s.io/apiserver/pkg/warning
-# k8s.io/client-go v0.21.2 => k8s.io/client-go v0.21.2
+# k8s.io/client-go v12.0.0+incompatible => k8s.io/client-go v0.21.2
 ## explicit
 k8s.io/client-go/applyconfigurations/admissionregistration/v1
 k8s.io/client-go/applyconfigurations/admissionregistration/v1beta1
@@ -974,6 +975,7 @@ sigs.k8s.io/yaml
 # github.com/golang/protobuf => github.com/golang/protobuf v1.4.3
 # github.com/hashicorp/vault/api => github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 # github.com/hashicorp/vault/sdk => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
+# github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 # google.golang.org/grpc => google.golang.org/grpc v1.35.0
 # k8s.io/api => k8s.io/api v0.21.2
 # k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.21.2

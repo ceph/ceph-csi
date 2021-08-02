@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 	github.com/kubernetes-csi/csi-lib-utils v0.9.1
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.1.0
-	github.com/libopenstorage/secrets v0.0.0-20201006135900-af310b01fe47
+	github.com/libopenstorage/secrets v0.0.0-20210709082113-dde442ea20ec
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
 	github.com/pborman/uuid v1.2.1
@@ -25,7 +25,7 @@ require (
 	google.golang.org/grpc v1.38.0
 	k8s.io/api v0.21.2
 	k8s.io/apimachinery v0.21.2
-	k8s.io/client-go v0.21.2
+	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cloud-provider v0.21.2
 	k8s.io/klog/v2 v2.8.0
 	k8s.io/kubernetes v1.21.2
@@ -38,6 +38,7 @@ replace (
 	github.com/golang/protobuf => github.com/golang/protobuf v1.4.3
 	github.com/hashicorp/vault/api => github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 	github.com/hashicorp/vault/sdk => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
+	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 	google.golang.org/grpc => google.golang.org/grpc v1.35.0
 	k8s.io/api => k8s.io/api v0.21.2
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.21.2
@@ -64,3 +65,6 @@ replace (
 	k8s.io/mount-utils => k8s.io/mount-utils v0.21.2
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.21.2
 )
+
+// This tag doesn't exist, but is imported by github.com/portworx/sched-ops.
+exclude github.com/kubernetes-incubator/external-storage v0.20.4-openstorage-rc2
