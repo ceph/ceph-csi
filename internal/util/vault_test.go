@@ -21,7 +21,9 @@ import (
 	"os"
 	"testing"
 
+	loss "github.com/libopenstorage/secrets"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDetectAuthMountPath(t *testing.T) {
@@ -99,6 +101,28 @@ func TestSetConfigString(t *testing.T) {
 	case optionDefaultOverload != "non-default":
 		t.Error("optionDefaultOverload should have been updated")
 	}
+}
+
+func TestDefaultVaultDestroyKeys(t *testing.T) {
+	t.Parallel()
+
+	vc := &vaultConnection{}
+	config := make(map[string]interface{})
+	config["vaultAddress"] = "https://vault.test.example.com"
+	err := vc.initConnection(config)
+	require.NoError(t, err)
+	keyContext := vc.getDeleteKeyContext()
+	destroySecret, ok := keyContext[loss.DestroySecret]
+	assert.NotEqual(t, destroySecret, "")
+	assert.True(t, ok)
+
+	// setting vaultDestroyKeys to !true should remove the loss.DestroySecret entry
+	config["vaultDestroyKeys"] = "false"
+	err = vc.initConnection(config)
+	require.NoError(t, err)
+	keyContext = vc.getDeleteKeyContext()
+	_, ok = keyContext[loss.DestroySecret]
+	assert.False(t, ok)
 }
 
 func TestVaultKMSRegistered(t *testing.T) {
