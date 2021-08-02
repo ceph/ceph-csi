@@ -59,6 +59,7 @@ type standardVault struct {
 	VaultADDR          string `json:"VAULT_ADDR"`
 	VaultBackend       string `json:"VAULT_BACKEND"`
 	VaultBackendPath   string `json:"VAULT_BACKEND_PATH"`
+	VaultDestroyKeys   string `json:"VAULT_DESTROY_KEYS"`
 	VaultCACert        string `json:"VAULT_CACERT"`
 	VaultTLSServerName string `json:"VAULT_TLS_SERVER_NAME"`
 	VaultClientCert    string `json:"VAULT_CLIENT_CERT"`
@@ -73,6 +74,7 @@ type vaultTokenConf struct {
 	VaultAddress                 string `json:"vaultAddress"`
 	VaultBackend                 string `json:"vaultBackend"`
 	VaultBackendPath             string `json:"vaultBackendPath"`
+	VaultDestroyKeys             string `json:"vaultDestroyKeys"`
 	VaultCAFromSecret            string `json:"vaultCAFromSecret"`
 	VaultTLSServerName           string `json:"vaultTLSServerName"`
 	VaultClientCertFromSecret    string `json:"vaultClientCertFromSecret"`
@@ -87,6 +89,7 @@ func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 	v.VaultAddress = s.VaultADDR
 	v.VaultBackend = s.VaultBackend
 	v.VaultBackendPath = s.VaultBackendPath
+	v.VaultDestroyKeys = s.VaultDestroyKeys
 	v.VaultCAFromSecret = s.VaultCACert
 	v.VaultClientCertFromSecret = s.VaultClientCert
 	v.VaultClientCertKeyFromSecret = s.VaultClientKey
@@ -483,7 +486,7 @@ func (vtc *vaultTenantConnection) StoreDEK(key, value string) error {
 
 // RemoveDEK deletes passphrase from Vault.
 func (vtc *vaultTenantConnection) RemoveDEK(key string) error {
-	err := vtc.secrets.DeleteSecret(key, vtc.keyContext)
+	err := vtc.secrets.DeleteSecret(key, vtc.getDeleteKeyContext())
 	if err != nil {
 		return fmt.Errorf("delete passphrase at %s request to vault failed: %w", key, err)
 	}
@@ -538,6 +541,7 @@ func isTenantConfigOption(opt string) bool {
 	case "vaultBackendPath":
 	case "vaultAuthNamespace":
 	case "vaultNamespace":
+	case "vaultDestroyKeys":
 	case "vaultTLSServerName":
 	case "vaultCAFromSecret":
 	case "vaultCAVerify":

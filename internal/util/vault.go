@@ -44,6 +44,7 @@ const (
 	vaultDefaultNamespace      = ""
 	vaultDefaultPassphrasePath = ""
 	vaultDefaultCAVerify       = "true"
+	vaultDefaultDestroyKeys    = "true"
 )
 
 var (
@@ -75,6 +76,15 @@ type vaultConnection struct {
 	secrets     loss.Secrets
 	vaultConfig map[string]interface{}
 	keyContext  map[string]string
+
+	// vaultDestroyKeys will by default set to `true`, and causes secrets
+	// to be deleted from Hashicorp Vault to be completely removed. Usually
+	// secrets in a kv-v2 store will be soft-deleted, and recovering the
+	// contents is still possible.
+	//
+	// This option is only valid during deletion of keys, see
+	// getDeleteKeyContext() for more details.
+	vaultDestroyKeys bool
 }
 
 type VaultKMS struct {
@@ -151,6 +161,20 @@ func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 	// set the option if the value was not invalid
 	if !errors.Is(err, errConfigOptionMissing) {
 		vaultConfig[vault.VaultBackendPathKey] = vaultBackendPath
+	}
+
+	// always set the default to prevent recovering kv-v2 keys
+	vaultDestroyKeys := vaultDefaultDestroyKeys
+	err = setConfigString(&vaultDestroyKeys, config, "vaultDestroyKeys")
+	if errors.Is(err, errConfigOptionInvalid) {
+		return err
+	}
+	if firstInit || !errors.Is(err, errConfigOptionMissing) {
+		if vaultDestroyKeys == vaultDefaultDestroyKeys {
+			vc.vaultDestroyKeys = true
+		} else {
+			vc.vaultDestroyKeys = false
+		}
 	}
 
 	vaultTLSServerName := "" // optional
@@ -279,6 +303,25 @@ func (vc *vaultConnection) Destroy() {
 	}
 }
 
+// getDeleteKeyContext creates a new KeyContext that has an optional value set
+// to destroy the contents of secrets. This is configurable with the
+// `vaultDestroyKeys` configuration parameter.
+//
+// Setting the option `DestroySecret` option in the KeyContext while creating
+// new keys, causes failures, so the option only needs to be set in the
+// RemoveDEK() calls.
+func (vc *vaultConnection) getDeleteKeyContext() map[string]string {
+	keyContext := map[string]string{}
+	for k, v := range vc.keyContext {
+		keyContext[k] = v
+	}
+	if vc.vaultDestroyKeys {
+		keyContext[loss.DestroySecret] = vaultDefaultDestroyKeys
+	}
+
+	return keyContext
+}
+
 var _ = RegisterKMSProvider(KMSProvider{
 	UniqueID:    kmsTypeVault,
 	Initializer: initVaultKMS,
@@ -387,7 +430,7 @@ func (kms *VaultKMS) StoreDEK(key, value string) error {
 // RemoveDEK deletes passphrase from Vault.
 func (kms *VaultKMS) RemoveDEK(key string) error {
 	pathKey := filepath.Join(kms.vaultPassphrasePath, key)
-	err := kms.secrets.DeleteSecret(pathKey, kms.keyContext)
+	err := kms.secrets.DeleteSecret(pathKey, kms.getDeleteKeyContext())
 	if err != nil {
 		return fmt.Errorf("delete passphrase at %s request to vault failed: %w", pathKey, err)
 	}
