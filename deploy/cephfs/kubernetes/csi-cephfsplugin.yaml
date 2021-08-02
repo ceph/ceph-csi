@@ -84,6 +84,9 @@ spec:
               mountPropagation: "Bidirectional"
             - name: host-sys
               mountPath: /sys
+            - name: etc-selinux
+              mountPath: /etc/selinux
+              readOnly: true
             - name: lib-modules
               mountPath: /lib/modules
               readOnly: true
@@ -137,6 +140,9 @@ spec:
         - name: host-sys
           hostPath:
             path: /sys
+        - name: etc-selinux
+          hostPath:
+            path: /etc/selinux
         - name: lib-modules
           hostPath:
             path: /lib/modules
