@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -981,10 +982,14 @@ func validateController(
 	if err != nil {
 		return fmt.Errorf("failed to load PVC with error %v", err)
 	}
+<<<<<<< HEAD
 	resizePvc, err := loadPVC(pvcPath)
 	if err != nil {
 		return fmt.Errorf("failed to load PVC with error %v", err)
 	}
+=======
+	resizePvc := pvc.DeepCopy()
+>>>>>>> 2f995ead (e2e: add modification to test encrypted PVC with rbd controller)
 	resizePvc.Namespace = f.UniqueName
 
 	pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(size)
@@ -1013,11 +1018,7 @@ func validateController(
 		return fmt.Errorf("failed to create storageclass with error %v", err)
 	}
 	// delete omap data
-	err = deletePVCImageJournalInPool(f, pvc, poolName)
-	if err != nil {
-		return err
-	}
-	err = deletePVCCSIJournalInPool(f, pvc, poolName)
+	err = deleteJournalInfoInPool(f, pvc, poolName)
 	if err != nil {
 		return err
 	}
@@ -1050,22 +1051,29 @@ func validateController(
 	if err != nil {
 		return err
 	}
-	// resize PVC
-	err = expandPVCSize(f.ClientSet, resizePvc, expandSize, deployTimeout)
-	if err != nil {
-		return err
-	}
-	if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem {
-		err = checkDirSize(app, f, &opt, expandSize)
+	if scParams["encrypted"] == strconv.FormatBool(true) {
+		// check encryption
+		err = isEncryptedPVC(f, resizePvc, app)
 		if err != nil {
 			return err
 		}
-	}
-
-	if *pvc.Spec.VolumeMode == v1.PersistentVolumeBlock {
-		err = checkDeviceSize(app, f, &opt, expandSize)
+	} else {
+		// resize PVC
+		err = expandPVCSize(f.ClientSet, resizePvc, expandSize, deployTimeout)
 		if err != nil {
 			return err
+		}
+		switch *pvc.Spec.VolumeMode {
+		case v1.PersistentVolumeFilesystem:
+			err = checkDirSize(app, f, &opt, expandSize)
+			if err != nil {
+				return err
+			}
+		case v1.PersistentVolumeBlock:
+			err = checkDeviceSize(app, f, &opt, expandSize)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	// delete pvc and storageclass
