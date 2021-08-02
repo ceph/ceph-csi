@@ -10,6 +10,7 @@ data:
         "vaultAuthPath": "/v1/auth/kubernetes/login",
         "vaultRole": "csi-kubernetes",
         "vaultBackend": "kv-v2",
+        "vaultDestroyKeys": "true",
         "vaultPassphraseRoot": "/v1/secret",
         "vaultPassphrasePath": "ceph-csi/",
         "vaultCAVerify": "false"
@@ -29,7 +30,8 @@ data:
                   "vaultCAVerify": "true"
               },
               "an-other-app": {
-                  "tenantTokenName": "storage-encryption-token"
+                  "tenantTokenName": "storage-encryption-token",
+                  "vaultDestroyKeys": "false"
               }
           }
       },

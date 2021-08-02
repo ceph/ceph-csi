@@ -127,6 +127,7 @@ func TestStdVaultToCSIConfig(t *testing.T) {
 		"VAULT_ADDR":"https://vault.example.com",
 		"VAULT_BACKEND":"kv-v2",
 		"VAULT_BACKEND_PATH":"/secret",
+		"VAULT_DESTROY_KEYS":"true",
 		"VAULT_CACERT":"",
 		"VAULT_TLS_SERVER_NAME":"vault.example.com",
 		"VAULT_CLIENT_CERT":"",
@@ -156,6 +157,8 @@ func TestStdVaultToCSIConfig(t *testing.T) {
 		t.Errorf("unexpected value for VaultBackend: %s", v.VaultBackend)
 	case v.VaultBackendPath != "/secret":
 		t.Errorf("unexpected value for VaultBackendPath: %s", v.VaultBackendPath)
+	case v.VaultDestroyKeys != vaultDefaultDestroyKeys:
+		t.Errorf("unexpected value for VaultDestroyKeys: %s", v.VaultDestroyKeys)
 	case v.VaultCAFromSecret != "":
 		t.Errorf("unexpected value for VaultCAFromSecret: %s", v.VaultCAFromSecret)
 	case v.VaultClientCertFromSecret != "":
@@ -180,6 +183,7 @@ func TestTransformConfig(t *testing.T) {
 	cm["VAULT_ADDR"] = "https://vault.example.com"
 	cm["VAULT_BACKEND"] = "kv-v2"
 	cm["VAULT_BACKEND_PATH"] = "/secret"
+	cm["VAULT_DESTROY_KEYS"] = "true"
 	cm["VAULT_CACERT"] = ""
 	cm["VAULT_TLS_SERVER_NAME"] = "vault.example.com"
 	cm["VAULT_CLIENT_CERT"] = ""
@@ -194,6 +198,7 @@ func TestTransformConfig(t *testing.T) {
 	assert.Equal(t, config["vaultAddress"], cm["VAULT_ADDR"])
 	assert.Equal(t, config["vaultBackend"], cm["VAULT_BACKEND"])
 	assert.Equal(t, config["vaultBackendPath"], cm["VAULT_BACKEND_PATH"])
+	assert.Equal(t, config["vaultDestroyKeys"], cm["VAULT_DESTROY_KEYS"])
 	assert.Equal(t, config["vaultCAFromSecret"], cm["VAULT_CACERT"])
 	assert.Equal(t, config["vaultTLSServerName"], cm["VAULT_TLS_SERVER_NAME"])
 	assert.Equal(t, config["vaultClientCertFromSecret"], cm["VAULT_CLIENT_CERT"])
