@@ -486,6 +486,7 @@ var _ = Describe("RBD", func() {
 			// nbd module should be present on the host machine to run use the
 			// rbd-nbd mounter.
 
+<<<<<<< HEAD
 			// By("create a PVC and Bind it to an app with journaling/exclusive-lock image-features and rbd-nbd mounter", func() {
 			// 	deleteResource(rbdExamplePath + "storageclass.yaml")
 			// 	createRBDStorageClass(f.ClientSet, f, nil, map[string]string{"imageFeatures": "layering,journaling,exclusive-lock", "mounter": "rbd-nbd"})
@@ -493,6 +494,128 @@ var _ = Describe("RBD", func() {
 			// 	deleteResource(rbdExamplePath + "storageclass.yaml")
 			// 	createRBDStorageClass(f.ClientSet, f, nil, make(map[string]string))
 			// })
+=======
+				// user provided namespace where secret will be created
+				namespace := cephCSINamespace
+
+				// create user Secret
+				err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+"user-secret.yaml", deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create user Secret: %v", err)
+				}
+
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, noKMS, f)
+				if err != nil {
+					e2elog.Failf("failed to validate encrypted pvc: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				// delete user secret
+				err = retryKubectlFile(namespace,
+					kubectlDelete,
+					vaultExamplePath+"user-secret.yaml",
+					deployTimeout,
+					"--ignore-not-found=true")
+				if err != nil {
+					e2elog.Failf("failed to delete user Secret: %v", err)
+				}
+
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+			})
+
+			By(
+				"test RBD volume encryption with user secrets based SecretsMetadataKMS with tenant namespace",
+				func() {
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					scOpts := map[string]string{
+						"encrypted":       "true",
+						"encryptionKMSID": "user-secrets-metadata-test",
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+
+					// PVC creation namespace where secret will be created
+					namespace := f.UniqueName
+
+					// create user Secret
+					err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+"user-secret.yaml", deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create user Secret: %v", err)
+					}
+
+					err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, noKMS, f)
+					if err != nil {
+						e2elog.Failf("failed to validate encrypted pvc: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+
+					// delete user secret
+					err = retryKubectlFile(
+						namespace,
+						kubectlDelete,
+						vaultExamplePath+"user-secret.yaml",
+						deployTimeout,
+						"--ignore-not-found=true")
+					if err != nil {
+						e2elog.Failf("failed to delete user Secret: %v", err)
+					}
+
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+				})
+
+			By(
+				"create a PVC and Bind it to an app with journaling/exclusive-lock image-features and rbd-nbd mounter",
+				func() {
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass with error %v", err)
+					}
+					err = createRBDStorageClass(
+						f.ClientSet,
+						f,
+						defaultSCName,
+						nil,
+						map[string]string{"imageFeatures": "layering,journaling,exclusive-lock", "mounter": "rbd-nbd"},
+						deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass with error %v", err)
+					}
+					err = validatePVCAndAppBinding(pvcPath, appPath, f)
+					if err != nil {
+						e2elog.Failf("failed to validate pvc and application binding with error %v", err)
+					}
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass with error %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass with error %v", err)
+					}
+				},
+			)
+>>>>>>> 8ca7a358 (e2e: use retryKubectlFile() for creating & deleting secrets)
 
 			By("create a PVC clone and bind it to an app", func() {
 				// snapshot beta is only supported from v1.17+
