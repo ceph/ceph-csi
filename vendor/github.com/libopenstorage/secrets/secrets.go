@@ -21,6 +21,8 @@ var (
 	ErrSecretExists = errors.New("Secret Id already exists")
 	// ErrInvalidSecretData is returned when no secret data is found
 	ErrInvalidSecretData = errors.New("Secret Data cannot be empty when CustomSecretData|PublicSecretData flag is set")
+	// ErrInvalidKvdbProvided is returned when an incorrect KVDB implementation is provided for persistence store.
+	ErrInvalidKvdbProvided = errors.New("Invalid kvdb provided. secret store works in conjuction with a kvdb")
 )
 
 const (
@@ -40,20 +42,26 @@ const (
 )
 
 const (
-	TypeAWS    = "aws-kms"
-	TypeAzure  = "azure-kv"
-	TypeDCOS   = "dcos"
-	TypeDocker = "docker"
-	TypeGCloud = "gcloud-kms"
-	TypeIBM    = "ibm-kp"
-	TypeK8s    = "k8s"
-	TypeKVDB   = "kvdb"
-	TypeVault  = "vault"
+	TypeAWS          = "aws-kms"
+	TypeAzure        = "azure-kv"
+	TypeDCOS         = "dcos"
+	TypeDocker       = "docker"
+	TypeGCloud       = "gcloud-kms"
+	TypeIBM          = "ibm-kp"
+	TypeK8s          = "k8s"
+	TypeKVDB         = "kvdb"
+	TypeVault        = "vault"
+	TypeVaultTransit = "vault-transit"
 )
 
 const (
 	// KeyVaultNamespace is a keyContext parameter for vault secrets.
 	KeyVaultNamespace = "vault-namespace"
+
+	// DestroySecret is a keyContext parameter for Vault secrets indicating whether the Secret should be destroyed
+	// This is only valid when Vault's KV Secret Engine is running on version 2 since by default keys are versioned and soft-deleted
+	// Activating this will PERMANENTLY delete all metadata and versions for a key
+	DestroySecret = "destroy-all-secret-versions"
 )
 
 // Secrets interface implemented by backend Key Management Systems (KMS)
