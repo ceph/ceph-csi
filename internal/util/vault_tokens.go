@@ -99,7 +99,7 @@ func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 
 	// by default the CA should get verified, only when VaultSkipVerify is
 	// set, verification should be disabled
-	v.VaultCAVerify = "true"
+	v.VaultCAVerify = vaultDefaultCAVerify
 	verify, err := strconv.ParseBool(s.VaultSkipVerify)
 	if err == nil {
 		v.VaultCAVerify = strconv.FormatBool(!verify)
