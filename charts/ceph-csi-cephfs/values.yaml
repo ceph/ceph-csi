@@ -109,6 +109,14 @@ nodeplugin:
 provisioner:
   name: provisioner
   replicaCount: 3
+  strategy:
+    # RollingUpdate strategy replaces old pods with new ones gradually,
+    # without incurring downtime.
+    type: RollingUpdate
+    rollingUpdate:
+      # maxUnavailable is the maximum number of pods that can be
+      # unavailable during the update process.
+      maxUnavailable: 50%
   # Timeout for waiting for creation or deletion of a volume
   timeout: 60s
 
