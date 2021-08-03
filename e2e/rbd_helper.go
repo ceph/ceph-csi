@@ -437,6 +437,15 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, kms kmsConfig, f
 		}
 	}
 
+	if kms != noKMS && kms.canVerifyKeyDestroyed() {
+		destroyed, msg := kms.verifyKeyDestroyed(f, imageData.csiVolumeHandle)
+		if !destroyed {
+			return fmt.Errorf("passphrased was not destroyed: %s", msg)
+		} else if msg != "" {
+			e2elog.Logf("passphrase destroyed, but message returned: %s", msg)
+		}
+	}
+
 	return nil
 }
 
