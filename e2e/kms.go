@@ -19,6 +19,8 @@ const (
 type kmsConfig interface {
 	canGetPassphrase() bool
 	getPassphrase(f *framework.Framework, key string) (string, string)
+	canVerifyKeyDestroyed() bool
+	verifyKeyDestroyed(f *framework.Framework, key string) (bool, string)
 }
 
 // simpleKMS is to be used for KMS configurations that do not offer options to
@@ -32,6 +34,9 @@ type simpleKMS struct {
 type vaultConfig struct {
 	*simpleKMS
 	backendPath string
+	// destroyKeys indicates that a Vault config needs to destroy the
+	// metadata of deleted keys in addition to the data
+	destroyKeys bool
 }
 
 // The following variables describe different KMS services as they are defined
@@ -49,18 +54,21 @@ var (
 			provider: "vault",
 		},
 		backendPath: defaultVaultBackendPath + "ceph-csi/",
+		destroyKeys: true,
 	}
 	vaultTokensKMS = &vaultConfig{
 		simpleKMS: &simpleKMS{
 			provider: "vaulttokens",
 		},
 		backendPath: defaultVaultBackendPath,
+		destroyKeys: true,
 	}
 	vaultTenantSAKMS = &vaultConfig{
 		simpleKMS: &simpleKMS{
 			provider: "vaulttenantsa",
 		},
 		backendPath: "tenant/",
+		destroyKeys: false,
 	}
 )
 
@@ -76,6 +84,14 @@ func (sk *simpleKMS) canGetPassphrase() bool {
 
 func (sk *simpleKMS) getPassphrase(f *framework.Framework, key string) (string, string) {
 	return "", ""
+}
+
+func (sk *simpleKMS) canVerifyKeyDestroyed() bool {
+	return false
+}
+
+func (sk *simpleKMS) verifyKeyDestroyed(f *framework.Framework, key string) (bool, string) {
+	return false, ""
 }
 
 func (vc *vaultConfig) String() string {
@@ -106,4 +122,34 @@ func (vc *vaultConfig) getPassphrase(f *framework.Framework, key string) (string
 	stdOut, stdErr := execCommandInPodAndAllowFail(f, cmd, cephCSINamespace, &opt)
 
 	return strings.TrimSpace(stdOut), strings.TrimSpace(stdErr)
+}
+
+// canVerifyKeyDestroyed returns true in case the Vault configuration for the
+// KMS setup destroys the keys in addition to (soft) deleting the contents.
+func (vc *vaultConfig) canVerifyKeyDestroyed() bool {
+	return vc.destroyKeys
+}
+
+// verifyKeyDestroyed checks for the metadata of a deleted key. If the
+// deletion_time from the metadata can be read, the key has not been destroyed
+// but only (soft) deleted.
+func (vc *vaultConfig) verifyKeyDestroyed(f *framework.Framework, key string) (bool, string) {
+	vaultAddr := fmt.Sprintf("http://vault.%s.svc.cluster.local:8200", cephCSINamespace)
+	loginCmd := fmt.Sprintf("vault login -address=%s sample_root_token_id > /dev/null", vaultAddr)
+	readDeletionTime := fmt.Sprintf("vault kv metadata get -address=%s -field=deletion_time %s%s",
+		vaultAddr, vc.backendPath, key)
+	cmd := fmt.Sprintf("%s && %s", loginCmd, readDeletionTime)
+	opt := metav1.ListOptions{
+		LabelSelector: "app=vault",
+	}
+	stdOut, stdErr := execCommandInPodAndAllowFail(f, cmd, cephCSINamespace, &opt)
+
+	// in case stdOut contains something, it will be the deletion_time
+	// when the deletion_time is set, the metadata is still available and not destroyed
+	if strings.TrimSpace(stdOut) != "" {
+		return false, stdOut
+	}
+
+	// when stdOut is empty, assume the key is completely destroyed
+	return true, stdErr
 }
