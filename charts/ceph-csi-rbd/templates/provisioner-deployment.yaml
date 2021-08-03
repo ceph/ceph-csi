@@ -11,6 +11,12 @@ metadata:
     heritage: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.provisioner.replicaCount }}
+  strategy:
+    type: {{ .Values.provisioner.strategy.type }}
+{{- if eq .Values.provisioner.strategy.type "RollingUpdate" }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.provisioner.strategy.rollingUpdate.maxUnavailable }}
+{{- end }}
   selector:
     matchLabels:
       app: {{ include "ceph-csi-rbd.name" . }}
