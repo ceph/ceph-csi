@@ -708,6 +708,12 @@ func validatePVCClone(
 							wgErrs[n] = fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
 						}
 					}
+					if wgErrs[n] == nil && kms.canVerifyKeyDestroyed() {
+						destroyed, msg := kms.verifyKeyDestroyed(f, imageData.csiVolumeHandle)
+						if !destroyed {
+							wgErrs[n] = fmt.Errorf("passphrased was not destroyed: %s", msg)
+						}
+					}
 				}
 			}
 			wg.Done()
@@ -1007,6 +1013,12 @@ func validatePVCSnapshot(
 						stdOut, _ := kms.getPassphrase(f, *content.Status.SnapshotHandle)
 						if stdOut != "" {
 							wgErrs[n] = fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
+						}
+					}
+					if wgErrs[n] == nil && kms.canVerifyKeyDestroyed() {
+						destroyed, msg := kms.verifyKeyDestroyed(f, *content.Status.SnapshotHandle)
+						if !destroyed {
+							wgErrs[n] = fmt.Errorf("passphrased was not destroyed: %s", msg)
 						}
 					}
 				}
