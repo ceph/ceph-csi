@@ -117,6 +117,14 @@ nodeplugin:
 provisioner:
   name: provisioner
   replicaCount: 3
+  strategy:
+    # RollingUpdate strategy replaces old pods with new ones gradually,
+    # without incurring downtime.
+    type: RollingUpdate
+    rollingUpdate:
+      # maxUnavailable is the maximum number of pods that can be
+      # unavailable during the update process.
+      maxUnavailable: 50%
   # if fstype is not specified in storageclass, ext4 is default
   defaultFSType: ext4
   # deployController to enable or disable the deployment of controller which
