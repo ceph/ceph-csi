@@ -6,7 +6,7 @@ metadata:
 spec:
   containers:
     - name: centos
-      image: registry.centos.org/centos:latest
+      image: quay.io/centos/centos:latest
       command: ["/bin/sleep", "infinity"]
       volumeDevices:
         - name: data
