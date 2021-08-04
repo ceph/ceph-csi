@@ -103,8 +103,8 @@ data:
     "1" (poolID on site1): "2" (poolID on site2),
     "11": "12"
    }],
-    "CephFSFsIDMapping": [{
-    "13" (FsID on site1): "34" (FsID on site2),
+    "CephFSFscIDMapping": [{
+    "13" (FscID on site1): "34" (FscID on site2),
     "3": "4"
    }]
   }, {
@@ -115,8 +115,8 @@ data:
    "5" (poolID on site3): "2" (poolID on site2),
    "16": "12"
    }],
-   "CephFSFsIDMapping": [{
-   "3"(FsID on site3): "34" (FsID on site2),
+   "CephFSFscIDMapping": [{
+   "3"(FscID on site3): "34" (FscID on site2),
    "4": "4"
    }]
  }]
