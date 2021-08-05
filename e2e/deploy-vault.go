@@ -12,11 +12,22 @@ import (
 )
 
 var (
+<<<<<<< HEAD
 	vaultExamplePath = "../examples/kms/vault/"
 	vaultServicePath = "vault.yaml"
 	vaultPSPPath     = "vault-psp.yaml"
 	vaultRBACPath    = "csi-vaulttokenreview-rbac.yaml"
 	vaultConfigPath  = "kms-config.yaml"
+=======
+	vaultExamplePath     = "../examples/kms/vault/"
+	vaultServicePath     = "vault.yaml"
+	vaultPSPPath         = "vault-psp.yaml"
+	vaultRBACPath        = "csi-vaulttokenreview-rbac.yaml"
+	vaultConfigPath      = "kms-config.yaml"
+	vaultTenantPath      = "tenant-sa.yaml"
+	vaultTenantAdminPath = "tenant-sa-admin.yaml"
+	vaultUserSecret      = "user-secret.yaml"
+>>>>>>> 1d49b6a2 (e2e: create reusable variable vaultUserSecretPath  = "user-secret.yaml")
 )
 
 func deployVault(c kubernetes.Interface, deployTimeout int) {
