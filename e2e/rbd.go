@@ -803,7 +803,7 @@ var _ = Describe("RBD", func() {
 				namespace := cephCSINamespace
 
 				// create user Secret
-				err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+"user-secret.yaml", deployTimeout)
+				err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+vaultUserSecret, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create user Secret: %v", err)
 				}
@@ -818,7 +818,7 @@ var _ = Describe("RBD", func() {
 				// delete user secret
 				err = retryKubectlFile(namespace,
 					kubectlDelete,
-					vaultExamplePath+"user-secret.yaml",
+					vaultExamplePath+vaultUserSecret,
 					deployTimeout,
 					"--ignore-not-found=true")
 				if err != nil {
@@ -855,7 +855,7 @@ var _ = Describe("RBD", func() {
 					namespace := f.UniqueName
 
 					// create user Secret
-					err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+"user-secret.yaml", deployTimeout)
+					err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+vaultUserSecret, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to create user Secret: %v", err)
 					}
@@ -871,7 +871,7 @@ var _ = Describe("RBD", func() {
 					err = retryKubectlFile(
 						namespace,
 						kubectlDelete,
-						vaultExamplePath+"user-secret.yaml",
+						vaultExamplePath+vaultUserSecret,
 						deployTimeout,
 						"--ignore-not-found=true")
 					if err != nil {
@@ -2390,7 +2390,7 @@ var _ = Describe("RBD", func() {
 				namespace := f.UniqueName
 
 				// create user Secret
-				err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+"user-secret.yaml", deployTimeout)
+				err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+vaultUserSecret, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create user Secret: %v", err)
 				}
@@ -2407,10 +2407,9 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 0, defaultRBDPool)
 
 				// delete user secret
-				err = retryKubectlFile(
-					namespace,
+				err = retryKubectlFile(namespace,
 					kubectlDelete,
-					vaultExamplePath+"user-secret.yaml",
+					vaultExamplePath+vaultUserSecret,
 					deployTimeout,
 					"--ignore-not-found=true")
 				if err != nil {
