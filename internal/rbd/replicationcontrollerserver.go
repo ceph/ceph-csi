@@ -23,6 +23,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
 
@@ -615,12 +616,15 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		}
 	}
 
+	// convert the last update time to UTC
+	lastUpdateTime := time.Unix(localStatus.LastUpdate, 0).UTC()
 	util.UsefulLog(
 		ctx,
 		"image mirroring state=%s, description=%s and lastUpdate=%s",
 		localStatus.State.String(),
 		localStatus.Description,
-		localStatus.LastUpdate)
+		lastUpdateTime)
+
 	resp := &replication.ResyncVolumeResponse{
 		Ready: ready,
 	}
