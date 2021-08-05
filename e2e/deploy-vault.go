@@ -20,6 +20,7 @@ var (
 	vaultConfigPath      = "kms-config.yaml"
 	vaultTenantPath      = "tenant-sa.yaml"
 	vaultTenantAdminPath = "tenant-sa-admin.yaml"
+	vaultUserSecret      = "user-secret.yaml"
 )
 
 func deployVault(c kubernetes.Interface, deployTimeout int) {
