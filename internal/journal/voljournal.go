@@ -310,7 +310,7 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 	}
 	objUUIDAndPool, found := values[cj.csiNameKeyPrefix+reqName]
 	if !found {
-		// oamp was read but was missing the desired key-value pair
+		// omap was read but was missing the desired key-value pair
 		// stop processing but without an error for no reservation exists
 		return nil, nil
 	}
@@ -459,9 +459,9 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 // reserveOMapName creates an omap with passed in oMapNamePrefix and a
 // generated <uuid>. If the passed volUUID is not empty it will use it instead
 // of generating its own UUID and it will return an error immediately if omap
-// already exists.if the passed volUUID is empty It ensures generated omap name
+// already exists. If the passed volUUID is empty, it ensures generated omap name
 // does not already exist and if conflicts are detected, a set number of
-// retires with newer uuids are attempted before returning an error.
+// retries with newer uuids are attempted before returning an error.
 func reserveOMapName(
 	ctx context.Context,
 	monitors string,
@@ -482,7 +482,7 @@ func reserveOMapName(
 		err := util.CreateObject(ctx, monitors, cr, pool, namespace, oMapNamePrefix+iterUUID)
 		if err != nil {
 			// if the volUUID is empty continue with retry as consumer of this
-			// function doesn't requested to create object with specific value.
+			// function didn't request to create object with specific value.
 			if volUUID == "" && errors.Is(err, util.ErrObjectExists) {
 				attempt++
 				// try again with a different uuid, for maxAttempts tries
@@ -514,16 +514,15 @@ held, to prevent parallel operations from modifying the state of the omaps for t
 
 Input arguments:
 	- journalPool: Pool where the CSI journal is stored (maybe different than the pool where the
-	  image/subvolume is created duw to topology constraints)
+	  image/subvolume is created due to topology constraints)
 	- journalPoolID: pool ID of the journalPool
 	- imagePool: Pool where the image/subvolume is created
 	- imagePoolID: pool ID of the imagePool
 	- reqName: Name of the volume request received
-	- namePrefix: Prefix to use when generating the image/subvolume name (suffix is an auto-genetated UUID)
+	- namePrefix: Prefix to use when generating the image/subvolume name (suffix is an auto-generated UUID)
 	- parentName: Name of the parent image/subvolume if reservation is for a snapshot (optional)
 	- kmsConf: Name of the key management service used to encrypt the image (optional)
-        - volUUID: UUID need to be reserved instead of auto-generating one (this is
-          useful for mirroring and metro-DR)
+	- volUUID: UUID need to be reserved instead of auto-generating one (this is useful for mirroring and metro-DR)
 	- owner: the owner of the volume (optional)
 
 Return values:
@@ -581,6 +580,9 @@ func (conn *Connection) ReserveName(ctx context.Context,
 		nameKeyVal = volUUID
 	}
 
+	// After generating the UUID Directory omap, we populate the csiDirectory
+	// omap with a key-value entry to map the request to the backend volume:
+	// `csiNameKeyPrefix + reqName: nameKeyVal`
 	err = setOMapKeys(ctx, conn, journalPool, cj.namespace, cj.csiDirectory,
 		map[string]string{cj.csiNameKeyPrefix + reqName: nameKeyVal})
 	if err != nil {
