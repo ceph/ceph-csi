@@ -595,27 +595,35 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 
 // getParentVolume returns the parent volume of the caller volume.
 func (rv *rbdVolume) getParentVolume() (*rbdVolume, error) {
-	parentVol := rbdVolume{}
-	rbdImage, err := rv.open()
+	rbdImageConn, err := rv.open()
 	if err != nil {
 		return nil, err
 	}
-	defer rbdImage.Close()
-	parentInfo, err := rbdImage.GetParent()
+	defer rbdImageConn.Close()
+	parentInfo, err := rbdImageConn.GetParent()
 	if err != nil {
 		// Caller should decide whether not finding
 		// the parent is an error or not.
 		if errors.Is(err, librbd.ErrNotFound) {
-			return &parentVol, nil
+			return &rbdVolume{}, nil
 		}
 		return nil, err
 	}
-	parentVol.RbdImageName = parentInfo.Image.ImageName
-	parentVol.Pool = parentInfo.Image.PoolName
-	parentVol.Monitors = rv.Monitors
-	parentVol.RadosNamespace = rv.RadosNamespace
-	parentVol.conn = rv.conn.Copy()
-	return &parentVol, nil
+	// parentVol.RbdImageName = parentInfo.Image.ImageName
+	// parentVol.Pool = parentInfo.Image.PoolName
+	// parentVol.Monitors = rv.Monitors
+	// parentVol.RadosNamespace = rv.RadosNamespace
+	// parentVol.conn = rv.conn.Copy()
+	// return &parentVol, nil
+	return &rbdVolume{
+		rbdImage: rbdImage{
+			RbdImageName:   parentInfo.Image.ImageName,
+			Pool:           parentInfo.Image.PoolName,
+			Monitors:       rv.Monitors,
+			RadosNamespace: rv.RadosNamespace,
+			conn:           rv.conn.Copy(),
+		},
+	}, nil
 }
 
 func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
@@ -626,7 +634,8 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 	vol.Monitors = rv.Monitors
 	vol.RbdImageName = rv.RbdImageName
 	vol.conn = rv.conn.Copy()
-	currVol := &vol
+	currVol := vol
+	defer currVol.Destroy()
 	for {
 		if currVol.RbdImageName == "" {
 			return depth, nil
@@ -646,11 +655,11 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 			util.ErrorLog(ctx, "failed to check depth on image %s: %s", &currVol, err)
 			return depth, err
 		}
-		defer parentVol.Destroy()
 		if parentVol.RbdImageName != "" {
 			depth++
 		}
-		currVol = parentVol
+		currVol = *parentVol
+		parentVol.Destroy()
 	}
 }
 
@@ -820,8 +829,8 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 	vol.Monitors = rv.Monitors
 	vol.RbdImageName = rv.RbdImageName
 	vol.conn = rv.conn.Copy()
-	currVol := &vol
-
+	currVol := vol
+	defer currVol.Destroy()
 	for {
 		if currVol.RbdImageName == "" {
 			return false, nil
@@ -842,11 +851,11 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 			util.ErrorLog(ctx, "failed to get parent image info for %s: %s", currVol.String(), err)
 			return false, err
 		}
-		defer parentVol.Destroy()
 		if f := currVol.hasFeature(feature); f {
 			return true, nil
 		}
-		currVol = parentVol
+		currVol = *parentVol
+		parentVol.Destroy()
 	}
 }
 
