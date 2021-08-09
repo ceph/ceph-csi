@@ -175,7 +175,6 @@ node('cico-workspace') {
 					deploy_param = '--deploy-sc --deploy-secret'
 				}
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh up'
-				ssh "kubectl create namespace '${namespace}'"
 				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh install-cephcsi --namespace '${namespace}' ${deploy_param}"
 			}
 		}
@@ -188,7 +187,6 @@ node('cico-workspace') {
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh cleanup-cephcsi --namespace '${namespace}'"
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh clean'
-				ssh "kubectl delete namespace '${namespace}' --ignore-not-found=true"
 			}
 		}
 	}
