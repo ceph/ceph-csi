@@ -138,6 +138,23 @@ func TestGetSchedulingDetails(t *testing.T) {
 			admin.NoStartTime,
 			false,
 		},
+		{
+			"when no parameters and scheduling details are specified",
+			map[string]string{},
+			admin.NoInterval,
+			admin.NoStartTime,
+			false,
+		},
+		{
+			"when no mirroring mode is specified",
+			map[string]string{
+				schedulingIntervalKey:  "1h",
+				schedulingStartTimeKey: "14:00:00-05:00",
+			},
+			admin.Interval("1h"),
+			admin.StartTime("14:00:00-05:00"),
+			false,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt

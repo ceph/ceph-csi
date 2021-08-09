@@ -130,7 +130,7 @@ func getMirroringMode(ctx context.Context, parameters map[string]string) (librbd
 
 // getSchedulingDetails gets the mirroring mode and scheduling details from the
 // input GRPC request parameters and validates the scheduling is only supported
-// for mirroring mode.
+// for snapshot mirroring mode.
 func getSchedulingDetails(parameters map[string]string) (admin.Interval, admin.StartTime, error) {
 	admInt := admin.NoInterval
 	adminStartTime := admin.NoStartTime
@@ -140,6 +140,10 @@ func getSchedulingDetails(parameters map[string]string) (admin.Interval, admin.S
 
 	switch imageMirroringMode(val) {
 	case imageMirrorModeSnapshot:
+	// If mirroring mode is not set in parameters, we are defaulting mirroring
+	// mode to snapshot. Discard empty mirroring mode from validation as it is
+	// an optional parameter.
+	case "":
 	default:
 		return admInt, adminStartTime, status.Error(codes.InvalidArgument, "scheduling is only supported for snapshot mode")
 	}
