@@ -148,6 +148,8 @@ install_cephcsi_helm_charts() {
         NAMESPACE="default"
     fi
 
+    kubectl_retry create namespace ${NAMESPACE}
+
     # label the nodes uniformly for domain information
     for node in $(kubectl_retry get node -o jsonpath='{.items[*].metadata.name}'); do
         kubectl_retry label node/"${node}" ${NODE_LABEL_REGION}=${REGION_VALUE}
@@ -195,6 +197,7 @@ cleanup_cephcsi_helm_charts() {
     fi
     "${HELM}" uninstall ${CEPHFS_CHART_NAME} --namespace ${NAMESPACE}
     "${HELM}" uninstall ${RBD_CHART_NAME} --namespace ${NAMESPACE}
+    kubectl_retry delete namespace ${NAMESPACE}
 }
 
 helm_reset() {
