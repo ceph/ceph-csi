@@ -84,81 +84,73 @@ func TestGetClusterMappingInfo(t *testing.T) {
 	expectedSite3To2Data := clusterMappingInfos[1:]
 
 	tests := []struct {
-		name                    string
-		clusterID               string
-		mappingFilecontent      []byte
-		expectedData            *[]ClusterMappingInfo
-		createMappingConfigFile bool
-		expectErr               bool
+		name               string
+		clusterID          string
+		mappingFilecontent []byte
+		expectedData       *[]ClusterMappingInfo
+		expectErr          bool
 	}{
 		{
-			name:                    "mapping file not found",
-			clusterID:               "site-a-clusterid",
-			createMappingConfigFile: false,
-			mappingFilecontent:      []byte{},
-			expectedData:            nil,
-			expectErr:               false,
+			name:               "mapping file not found",
+			clusterID:          "site-a-clusterid",
+			mappingFilecontent: []byte{},
+			expectedData:       nil,
+			expectErr:          false,
 		},
 		{
-			name:                    "mapping file found with empty data",
-			clusterID:               "site-a-clusterid",
-			createMappingConfigFile: true,
-			mappingFilecontent:      []byte{},
-			expectedData:            nil,
-			expectErr:               false,
+			name:               "mapping file found with empty data",
+			clusterID:          "site-a-clusterid",
+			mappingFilecontent: []byte{},
+			expectedData:       nil,
+			expectErr:          false,
 		},
 		{
-			name:                    "cluster-id mapping not found",
-			clusterID:               "site-a-clusterid",
-			createMappingConfigFile: true,
-			mappingFilecontent:      mappingFileContent,
-			expectedData:            nil,
-			expectErr:               false,
+			name:               "cluster-id mapping not found",
+			clusterID:          "site-a-clusterid",
+			mappingFilecontent: mappingFileContent,
+			expectedData:       nil,
+			expectErr:          false,
 		},
 		{
-			name:                    "site2-storage cluster-id mapping",
-			clusterID:               clusterIDOfSite2,
-			createMappingConfigFile: true,
-			mappingFilecontent:      mappingFileContent,
-			expectedData:            &expectedSite2Data,
-			expectErr:               false,
+			name:               "site2-storage cluster-id mapping",
+			clusterID:          clusterIDOfSite2,
+			mappingFilecontent: mappingFileContent,
+			expectedData:       &expectedSite2Data,
+			expectErr:          false,
 		},
 		{
-			name:                    "site1-storage cluster-id mapping",
-			clusterID:               clusterIDOfSite1,
-			createMappingConfigFile: true,
-			mappingFilecontent:      mappingFileContent,
-			expectedData:            &expectedSite1To2Data,
-			expectErr:               false,
+			name:               "site1-storage cluster-id mapping",
+			clusterID:          clusterIDOfSite1,
+			mappingFilecontent: mappingFileContent,
+			expectedData:       &expectedSite1To2Data,
+			expectErr:          false,
 		},
 		{
-			name:                    "site3-storage cluster-id mapping",
-			clusterID:               clusterIDOfSite3,
-			createMappingConfigFile: true,
-			mappingFilecontent:      mappingFileContent,
-			expectedData:            &expectedSite3To2Data,
-			expectErr:               false,
+			name:               "site3-storage cluster-id mapping",
+			clusterID:          clusterIDOfSite3,
+			mappingFilecontent: mappingFileContent,
+			expectedData:       &expectedSite3To2Data,
+			expectErr:          false,
 		},
 	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
+	for i, tt := range tests {
+		currentI := i
+		currentTT := tt
+		t.Run(currentTT.name, func(t *testing.T) {
 			t.Parallel()
-			if tt.createMappingConfigFile {
-				clusterMappingConfigFile = fmt.Sprintf("%s/mapping.json", mappingBasePath)
-			}
-			if len(tt.mappingFilecontent) != 0 {
-				err = ioutil.WriteFile(clusterMappingConfigFile, tt.mappingFilecontent, 0o600)
+			clusterMappingConfigFile = fmt.Sprintf("%s/mapping-%d.json", mappingBasePath, currentI)
+			if len(currentTT.mappingFilecontent) != 0 {
+				err = ioutil.WriteFile(clusterMappingConfigFile, currentTT.mappingFilecontent, 0o600)
 				if err != nil {
 					t.Errorf("GetClusterMappingInfo() error = %v", err)
 				}
 			}
-			data, mErr := GetClusterMappingInfo(tt.clusterID)
-			if (mErr != nil) != tt.expectErr {
-				t.Errorf("GetClusterMappingInfo() error = %v, expected Error %v", mErr, tt.expectErr)
+			data, mErr := GetClusterMappingInfo(currentTT.clusterID)
+			if (mErr != nil) != currentTT.expectErr {
+				t.Errorf("GetClusterMappingInfo() error = %v, expected Error %v", mErr, currentTT.expectErr)
 			}
-			if !reflect.DeepEqual(data, tt.expectedData) {
-				t.Errorf("GetClusterMappingInfo() = %v, expected data %v", data, tt.expectedData)
+			if !reflect.DeepEqual(data, currentTT.expectedData) {
+				t.Errorf("GetClusterMappingInfo() = %v, expected data %v", data, currentTT.expectedData)
 			}
 		})
 	}
