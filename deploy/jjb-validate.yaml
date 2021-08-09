@@ -12,7 +12,7 @@ objects:
         jjb/session: "${SESSION}"
       name: jjb-validate
     spec:
-      ttlSecondsAfterFinished: 0
+      ttlSecondsAfterFinished: 10
       backoffLimit: 1
       template:
         metadata:
