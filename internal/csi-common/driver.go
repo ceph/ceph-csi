@@ -88,7 +88,7 @@ func (d *CSIDriver) ValidateControllerServiceRequest(c csi.ControllerServiceCapa
 // AddControllerServiceCapabilities stores the controller capabilities
 // in driver object.
 func (d *CSIDriver) AddControllerServiceCapabilities(cl []csi.ControllerServiceCapability_RPC_Type) {
-	var csc []*csi.ControllerServiceCapability
+	csc := make([]*csi.ControllerServiceCapability, 0, len(cl))
 
 	for _, c := range cl {
 		util.DefaultLog("Enabling controller service capability: %v", c.String())
@@ -101,7 +101,7 @@ func (d *CSIDriver) AddControllerServiceCapabilities(cl []csi.ControllerServiceC
 // AddVolumeCapabilityAccessModes stores volume access modes.
 func (d *CSIDriver) AddVolumeCapabilityAccessModes(
 	vc []csi.VolumeCapability_AccessMode_Mode) []*csi.VolumeCapability_AccessMode {
-	var vca []*csi.VolumeCapability_AccessMode
+	vca := make([]*csi.VolumeCapability_AccessMode, 0, len(vc))
 	for _, c := range vc {
 		util.DefaultLog("Enabling volume access mode: %v", c.String())
 		vca = append(vca, NewVolumeCapabilityAccessMode(c))
