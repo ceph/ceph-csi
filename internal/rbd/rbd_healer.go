@@ -34,7 +34,7 @@ const (
 )
 
 // accessModeStrToInt convert access mode type string to int32.
-// Makesure to update this function as and when there are new modes introduced.
+// Make sure to update this function as and when there are new modes introduced.
 func accessModeStrToInt(mode v1.PersistentVolumeAccessMode) csi.VolumeCapability_AccessMode_Mode {
 	switch mode {
 	case v1.ReadWriteOnce:
@@ -43,6 +43,8 @@ func accessModeStrToInt(mode v1.PersistentVolumeAccessMode) csi.VolumeCapability
 		return csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY
 	case v1.ReadWriteMany:
 		return csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER
+	case v1.ReadWriteOncePod:
+		return csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER
 	}
 
 	return csi.VolumeCapability_AccessMode_UNKNOWN
