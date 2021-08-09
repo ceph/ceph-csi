@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -E
 
 #Based on ideas from https://github.com/rook/rook/blob/master/tests/scripts/helm.sh
 
@@ -7,6 +7,8 @@ TEMP="/tmp/cephcsi-helm-test"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 # shellcheck source=build.env
 [ ! -e "${SCRIPT_DIR}"/../build.env ] || source "${SCRIPT_DIR}"/../build.env
+# shellcheck disable=SC1091
+[ ! -e "${SCRIPT_DIR}"/utils.sh ] || source "${SCRIPT_DIR}"/utils.sh
 
 HELM="helm"
 HELM_VERSION=${HELM_VERSION:-"latest"}
@@ -54,12 +56,12 @@ check_deployment_status() {
     NAMESPACE=$2
     echo "Checking Deployment status for label $LABEL in Namespace $NAMESPACE"
     for ((retry = 0; retry <= DEPLOY_TIMEOUT; retry = retry + 5)); do
-        total_replicas=$(kubectl get deployment -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].status.replicas}')
+        total_replicas=$(kubectl_retry get deployment -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].status.replicas}')
 
-        ready_replicas=$(kubectl get deployment -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].status.readyReplicas}')
+        ready_replicas=$(kubectl_retry get deployment -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].status.readyReplicas}')
         if [ "$total_replicas" != "$ready_replicas" ]; then
             echo "Total replicas $total_replicas is not equal to ready count $ready_replicas"
-            kubectl get deployment -l "$LABEL" -n "$NAMESPACE"
+            kubectl_retry get deployment -l "$LABEL" -n "$NAMESPACE"
             sleep 10
         else
             echo "Total replicas $total_replicas is equal to ready count $ready_replicas"
@@ -78,12 +80,12 @@ check_daemonset_status() {
     NAMESPACE=$2
     echo "Checking Daemonset status for label $LABEL in Namespace $NAMESPACE"
     for ((retry = 0; retry <= DEPLOY_TIMEOUT; retry = retry + 5)); do
-        total_replicas=$(kubectl get daemonset -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].status.numberAvailable}')
+        total_replicas=$(kubectl_retry get daemonset -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].status.numberAvailable}')
 
-        ready_replicas=$(kubectl get daemonset -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].status.numberReady}')
+        ready_replicas=$(kubectl_retry get daemonset -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].status.numberReady}')
         if [ "$total_replicas" != "$ready_replicas" ]; then
             echo "Total replicas $total_replicas is not equal to ready count $ready_replicas"
-            kubectl get daemonset -l "$LABEL" -n "$NAMESPACE"
+            kubectl_retry get daemonset -l "$LABEL" -n "$NAMESPACE"
             sleep 10
         else
             echo "Total replicas $total_replicas is equal to ready count $ready_replicas"
@@ -119,11 +121,11 @@ detectArch() {
 }
 
 fetch_template_values() {
-    TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o=jsonpath='{.items[0].metadata.name}')
+    TOOLBOX_POD=$(kubectl_retry -n rook-ceph get pods -l app=rook-ceph-tools -o=jsonpath='{.items[0].metadata.name}')
     # fetch fsid to populate the clusterID in storageclass
-    FS_ID=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" -- ceph fsid)
+    FS_ID=$(kubectl_retry -n rook-ceph exec "${TOOLBOX_POD}" -- ceph fsid)
     # fetch the admin key corresponding to the adminID
-    ADMIN_KEY=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" -- ceph auth get-key client.admin)
+    ADMIN_KEY=$(kubectl_retry -n rook-ceph exec "${TOOLBOX_POD}" -- ceph auth get-key client.admin)
 }
 
 install() {
@@ -147,9 +149,9 @@ install_cephcsi_helm_charts() {
     fi
 
     # label the nodes uniformly for domain information
-    for node in $(kubectl get node -o jsonpath='{.items[*].metadata.name}'); do
-        kubectl label node/"${node}" ${NODE_LABEL_REGION}=${REGION_VALUE}
-        kubectl label node/"${node}" ${NODE_LABEL_ZONE}=${ZONE_VALUE}
+    for node in $(kubectl_retry get node -o jsonpath='{.items[*].metadata.name}'); do
+        kubectl_retry label node/"${node}" ${NODE_LABEL_REGION}=${REGION_VALUE}
+        kubectl_retry label node/"${node}" ${NODE_LABEL_ZONE}=${ZONE_VALUE}
     done
 
     # deploy storageclass if DEPLOY_SC flag is set
@@ -171,7 +173,7 @@ install_cephcsi_helm_charts() {
 
     # deleting configmap as a workaround to avoid configmap already present
     # issue when installing ceph-csi-rbd
-    kubectl delete cm ceph-csi-config --namespace ${NAMESPACE}
+    kubectl_retry delete cm ceph-csi-config --namespace ${NAMESPACE}
     # shellcheck disable=SC2086
     "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true --set provisioner.replicaCount=1 ${SET_SC_TEMPLATE_VALUES} ${RBD_SECRET_TEMPLATE_VALUES} ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2
 
@@ -182,9 +184,9 @@ install_cephcsi_helm_charts() {
 
 cleanup_cephcsi_helm_charts() {
     # remove set labels
-    for node in $(kubectl get node --no-headers | cut -f 1 -d ' '); do
-        kubectl label node/"$node" test.failure-domain/region-
-        kubectl label node/"$node" test.failure-domain/zone-
+    for node in $(kubectl_retry get node --no-headers | cut -f 1 -d ' '); do
+        kubectl_retry label node/"$node" test.failure-domain/region-
+        kubectl_retry label node/"$node" test.failure-domain/zone-
     done
     # TODO/LATER we could remove the CSI labels that would have been set as well
     NAMESPACE=$1
