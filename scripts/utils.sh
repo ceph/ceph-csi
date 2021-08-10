@@ -25,6 +25,18 @@ kubectl_retry() {
             fi
         fi
 
+        # in case of a failure when running "delete", ignore errors with "NotFound"
+        if [ "${action}" == 'delete' ]
+        then
+            # count lines in stderr that do not have "NotFound"
+            ret=$(grep -cvw 'NotFound' "${stderr}")
+            if [ "${ret}" -eq 0 ]
+            then
+                # Success! stderr is empty after removing all "NotFound" lines.
+                break
+            fi
+        fi
+
         retries=$((retries+1))
         if [ ${retries} -eq ${KUBECTL_RETRY} ]
         then
