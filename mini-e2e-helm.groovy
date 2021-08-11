@@ -188,7 +188,7 @@ node('cico-workspace') {
 			timeout(time: 30, unit: 'MINUTES') {
 				ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh cleanup-cephcsi --namespace '${namespace}'"
 				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && ./scripts/install-helm.sh clean'
-				ssh "kubectl delete namespace '${namespace}'"
+				ssh "kubectl delete namespace '${namespace}' --ignore-not-found=true"
 			}
 		}
 	}
