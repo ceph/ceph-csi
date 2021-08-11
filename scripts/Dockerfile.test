@@ -29,6 +29,7 @@ RUN source /build.env \
 	librbd-devel \
 	rubygems \
 	ShellCheck \
+      codespell \
 	yamllint \
 	npm \
 	diffutils \

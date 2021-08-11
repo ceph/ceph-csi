@@ -14,9 +14,4 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: codespell
-        uses: codespell-project/actions-codespell@master
-        with:
-          skip: .git,./vendor,./docs/design/proposals/images
-          check_filenames: true
-          ignore_words_list: ExtraVersion,extraversion,ba
-          check_hidden: true
+        run: CONTAINER_CMD=docker make containerized-test TARGET=codespell
