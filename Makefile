@@ -87,7 +87,7 @@ endif
 
 all: cephcsi
 
-.PHONY: go-test static-check mod-check go-lint lint-extras gosec commitlint
+.PHONY: go-test static-check mod-check go-lint lint-extras gosec commitlint codespell
 ifeq ($(CONTAINERIZED),no)
 # include mod-check in non-containerized runs
 test: go-test static-check mod-check
@@ -95,7 +95,7 @@ else
 # exclude mod-check for containerized runs (CI runs it separately)
 test: go-test static-check
 endif
-static-check: check-env go-lint lint-extras gosec
+static-check: check-env codespell go-lint lint-extras gosec
 
 go-test: TEST_COVERAGE ?= $(shell . $(CURDIR)/build.env ; echo $${TEST_COVERAGE})
 go-test: GO_COVER_DIR ?= $(shell . $(CURDIR)/build.env ; echo $${GO_COVER_DIR})
@@ -139,6 +139,8 @@ func-test:
 check-env:
 	@./scripts/check-env.sh
 
+codespell:
+	codespell --config scripts/codespell.conf
 #
 # commitlint will do a rebase on top of GIT_SINCE when REBASE=1 is passed.
 #
