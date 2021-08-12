@@ -831,6 +831,51 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 	defer cs.VolumeLocks.Release(rbdVol.RequestName)
 
+	return cleanupRBDImage(ctx, rbdVol, cr)
+}
+
+// cleanupRBDImage removes the rbd image and OMAP metadata associated with it.
+func cleanupRBDImage(ctx context.Context,
+	rbdVol *rbdVolume, cr *util.Credentials) (*csi.DeleteVolumeResponse, error) {
+	mirroringInfo, err := rbdVol.getImageMirroringInfo()
+	if err != nil {
+		util.ErrorLog(ctx, err.Error())
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// Cleanup only omap data if the following condition is met
+	// Mirroring is enabled on the image
+	// Local image is secondary
+	// Local image is in up+replaying state
+	if mirroringInfo.State == librbd.MirrorImageEnabled && !mirroringInfo.Primary {
+		// If the image is in a secondary state and its up+replaying means its
+		// an healthy secondary and the image is primary somewhere in the
+		// remote cluster and the local image is getting replayed. Delete the
+		// OMAP data generated as we cannot delete the secondary image. When
+		// the image on the primary cluster gets deleted/mirroring disabled,
+		// the image on all the remote (secondary) clusters will get
+		// auto-deleted. This helps in garbage collecting the OMAP, PVC and PV
+		// objects after failback operation.
+		localStatus, rErr := rbdVol.getLocalState()
+		if rErr != nil {
+			return nil, status.Error(codes.Internal, rErr.Error())
+		}
+		if localStatus.Up && localStatus.State == librbd.MirrorImageStatusStateReplaying {
+			if err = undoVolReservation(ctx, rbdVol, cr); err != nil {
+				util.ErrorLog(ctx, "failed to remove reservation for volume (%s) with backing image (%s) (%s)",
+					rbdVol.RequestName, rbdVol.RbdImageName, err)
+
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+
+			return &csi.DeleteVolumeResponse{}, nil
+		}
+		util.ErrorLog(ctx,
+			"secondary image status is up=%t and state=%s",
+			localStatus.Up,
+			localStatus.State)
+	}
+
 	inUse, err := rbdVol.isInUse()
 	if err != nil {
 		util.ErrorLog(ctx, "failed getting information for image (%s): (%s)", rbdVol, err)
