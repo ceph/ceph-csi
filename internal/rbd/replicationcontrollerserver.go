@@ -321,31 +321,56 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	case librbd.MirrorImageDisabling:
 		return nil, status.Errorf(codes.Aborted, "%s is in disabling state", volumeID)
 	case librbd.MirrorImageEnabled:
-		if !force && !mirroringInfo.Primary {
-			return nil, status.Error(codes.InvalidArgument, "image is in non-primary state")
-		}
-		err = rbdVol.disableImageMirroring(force)
-		if err != nil {
-			util.ErrorLog(ctx, err.Error())
-
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		// the image state can be still disabling once we disable the mirroring
-		// check the mirroring is disabled or not
-		mirroringInfo, err = rbdVol.getImageMirroringInfo()
-		if err != nil {
-			util.ErrorLog(ctx, err.Error())
-
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		if mirroringInfo.State == librbd.MirrorImageDisabling {
-			return nil, status.Errorf(codes.Aborted, "%s is in disabling state", volumeID)
-		}
-
-		return &replication.DisableVolumeReplicationResponse{}, nil
+		return disableVolumeReplication(rbdVol, mirroringInfo, force)
 	default:
 		// TODO: use string instead of int for returning valid error message
 		return nil, status.Errorf(codes.InvalidArgument, "image is in %d Mode", mirroringInfo.State)
+	}
+
+	return &replication.DisableVolumeReplicationResponse{}, nil
+}
+
+func disableVolumeReplication(rbdVol *rbdVolume,
+	mirroringInfo *librbd.MirrorImageInfo,
+	force bool) (*replication.DisableVolumeReplicationResponse, error) {
+	if !mirroringInfo.Primary {
+		// Return success if the below condition is met
+		// Local image is secondary
+		// Local image is in up+replaying state
+
+		// If the image is in a secondary and its state is  up+replaying means
+		// its an healthy secondary and the image is primary somewhere in the
+		// remote cluster and the local image is getting replayed. Return
+		// success for the Disabling mirroring as we cannot disable mirroring
+		// on the secondary image, when the image on the primary site gets
+		// disabled the image on all the remote (secondary) clusters will get
+		// auto-deleted. This helps in garbage collecting the volume
+		// replication Kubernetes artifacts after failback operation.
+		localStatus, rErr := rbdVol.getLocalState()
+		if rErr != nil {
+			return nil, status.Error(codes.Internal, rErr.Error())
+		}
+		if localStatus.Up && localStatus.State == librbd.MirrorImageStatusStateReplaying {
+			return &replication.DisableVolumeReplicationResponse{}, nil
+		}
+
+		return nil, status.Errorf(codes.InvalidArgument,
+			"secondary image status is up=%t and state=%s",
+			localStatus.Up,
+			localStatus.State)
+	}
+	err := rbdVol.disableImageMirroring(force)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// the image state can be still disabling once we disable the mirroring
+	// check the mirroring is disabled or not
+	mirroringInfo, err = rbdVol.getImageMirroringInfo()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if mirroringInfo.State == librbd.MirrorImageDisabling {
+		return nil, status.Errorf(codes.Aborted, "%s is in disabling state", rbdVol.VolID)
 	}
 
 	return &replication.DisableVolumeReplicationResponse{}, nil
