@@ -39,6 +39,9 @@ log minikube_ssh journalctl --boot
 log df -hT
 log minikube_ssh df -hT
 
+# get the rbd-nbd logs from the VM and write them to stdout
+log minikube_ssh "sudo find /var/log/ceph/ -type f | xargs sudo tail -n +1"
+
 # fetch all logs from /var/lib/rook in the VM and write them to stdout
 log minikube_ssh sudo tar c /var/lib/rook | tar xvO
 
