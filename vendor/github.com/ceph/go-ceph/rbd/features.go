@@ -39,6 +39,10 @@ const (
 	// librbd
 	FeatureDataPool = uint64(C.RBD_FEATURE_DATA_POOL)
 
+	// FeatureOperations is the representation of RBD_FEATURE_OPERATIONS
+	// from librbd
+	FeatureOperations = uint64(C.RBD_FEATURE_OPERATIONS)
+
 	// RBD features, strings
 
 	// FeatureNameLayering is the representation of
@@ -72,6 +76,10 @@ const (
 	// FeatureNameDataPool is the representation of
 	// RBD_FEATURE_NAME_DATA_POOL from librbd
 	FeatureNameDataPool = C.RBD_FEATURE_NAME_DATA_POOL
+
+	// FeatureNameOperations is the representation of
+	// RBD_FEATURE_NAME_OPERATIONS from librbd
+	FeatureNameOperations = C.RBD_FEATURE_NAME_OPERATIONS
 
 	// old names for backwards compatibility (unused?)
 
@@ -115,6 +123,7 @@ var (
 		FeatureNameDeepFlatten:   FeatureDeepFlatten,
 		FeatureNameJournaling:    FeatureJournaling,
 		FeatureNameDataPool:      FeatureDataPool,
+		FeatureNameOperations:    FeatureOperations,
 	}
 )
 

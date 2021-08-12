@@ -110,6 +110,23 @@ func (r Response) NoBody() Response {
 	return r
 }
 
+// EmptyBody is similar to NoBody but also accepts an empty JSON object.
+func (r Response) EmptyBody() Response {
+	if !r.Ok() {
+		return r
+	}
+	if len(r.body) != 0 {
+		d := map[string]interface{}{}
+		if err := json.Unmarshal(r.body, &d); err != nil {
+			return Response{r.body, r.status, err}
+		}
+		if len(d) != 0 {
+			return Response{r.body, r.status, ErrBodyNotEmpty}
+		}
+	}
+	return r
+}
+
 // NoData asserts that the input response has no status or body values.
 func (r Response) NoData() Response {
 	return r.NoStatus().NoBody()
