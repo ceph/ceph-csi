@@ -128,3 +128,24 @@ func (ri *rbdImage) getImageMirroringStatus() (*librbd.GlobalMirrorImageStatus, 
 
 	return &statusInfo, nil
 }
+
+// getLocalState returns the local state of the image.
+func (ri *rbdImage) getLocalState() (librbd.SiteMirrorImageStatus, error) {
+	localStatus := librbd.SiteMirrorImageStatus{}
+	image, err := ri.open()
+	if err != nil {
+		return localStatus, fmt.Errorf("failed to open image %q with error: %w", ri, err)
+	}
+	defer image.Close()
+
+	statusInfo, err := image.GetGlobalMirrorStatus()
+	if err != nil {
+		return localStatus, fmt.Errorf("failed to get image mirroring status %q with error: %w", ri, err)
+	}
+	localStatus, err = statusInfo.LocalStatus()
+	if err != nil {
+		return localStatus, fmt.Errorf("failed to get local status: %w", err)
+	}
+
+	return localStatus, nil
+}
