@@ -62,7 +62,7 @@ rules:
 {{- if .Values.topology.enabled }}
   - apiGroups: [""]
     resources: ["nodes"]
-    verbs: ["get", "list", watch"]
+    verbs: ["get", "list","watch"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["csinodes"]
     verbs: ["get", "list", "watch"]
