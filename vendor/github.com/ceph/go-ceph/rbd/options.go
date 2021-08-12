@@ -46,6 +46,12 @@ const (
 	// ImageOptionDataPool is the representation of RBD_IMAGE_OPTION_DATA_POOL
 	// from librbd
 	ImageOptionDataPool = C.RBD_IMAGE_OPTION_DATA_POOL
+	// ImageOptionFlatten is the representation of RBD_IMAGE_OPTION_FLATTEN
+	// from librbd
+	ImageOptionFlatten = C.RBD_IMAGE_OPTION_FLATTEN
+	// ImageOptionCloneFormat is the representation of
+	// RBD_IMAGE_OPTION_CLONE_FORMAT from librbd
+	ImageOptionCloneFormat = C.RBD_IMAGE_OPTION_CLONE_FORMAT
 
 	// RbdImageOptionFormat deprecated alias for ImageOptionFormat
 	RbdImageOptionFormat = ImageOptionFormat

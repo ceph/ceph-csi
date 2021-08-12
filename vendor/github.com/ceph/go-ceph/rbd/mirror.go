@@ -50,6 +50,16 @@ func (m MirrorMode) String() string {
 // ImageMirrorMode is used to indicate the mirroring approach for an RBD image.
 type ImageMirrorMode int64
 
+// ImageMirrorModeFilter is a ImageMirrorMode or nil for no filtering
+type ImageMirrorModeFilter interface {
+	mode() ImageMirrorMode
+}
+
+// Mode returns the ImageMirrorMode
+func (imm ImageMirrorMode) mode() ImageMirrorMode {
+	return imm
+}
+
 const (
 	// ImageMirrorModeJournal uses journaling to propagate RBD images between
 	// ceph clusters.
@@ -71,12 +81,12 @@ func (imm ImageMirrorMode) String() string {
 	}
 }
 
-//  GetMirrorUUID returns a string naming the mirroring uuid for the pool
-//  associated with the ioctx.
+// GetMirrorUUID returns a string naming the mirroring uuid for the pool
+// associated with the ioctx.
 //
-//  Implements:
-//  int rbd_mirror_uuid_get(rados_ioctx_t io_ctx,
-//	                       char *uuid, size_t *max_len);
+// Implements:
+//  int rbd_mirror_uuid_get(rados_ioctx_t io_ctx, char *uuid, size_t
+//                          *max_len);
 func GetMirrorUUID(ioctx *rados.IOContext) (string, error) {
 	var (
 		err   error
@@ -626,6 +636,45 @@ type GlobalMirrorImageIDAndStatus struct {
 	Status GlobalMirrorImageStatus
 }
 
+// iterBufSize is intentionally not a constant. The unit tests alter
+// this value in order to get more code coverage w/o needing to create
+// very many images.
+var iterBufSize = 64
+
+// MirrorImageGlobalStatusList returns a slice of GlobalMirrorImageIDAndStatus.
+// If the length of the returned slice equals max, the next chunk of the list
+// can be obtained by setting start to the ID of the last item of the returned
+// slice. If max is 0 a slice of all items is returned.
+//
+// Implements:
+// int rbd_mirror_image_status_list(rados_ioctx_t p,
+//     const char *start_id, size_t max, char **image_ids,
+//     rbd_mirror_image_status_t *images, size_t *len)
+func MirrorImageGlobalStatusList(
+	ioctx *rados.IOContext, start string, max int) ([]GlobalMirrorImageIDAndStatus, error) {
+	var (
+		result   []GlobalMirrorImageIDAndStatus
+		fetchAll bool
+	)
+	if max <= 0 {
+		max = iterBufSize
+		fetchAll = true
+	}
+	chunk := make([]GlobalMirrorImageIDAndStatus, max)
+	for {
+		length, err := mirrorImageGlobalStatusList(ioctx, start, chunk)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, chunk[:length]...)
+		if !fetchAll || length < max {
+			break
+		}
+		start = chunk[length-1].ID
+	}
+	return result, nil
+}
+
 func mirrorImageGlobalStatusList(
 	ioctx *rados.IOContext, start string,
 	results []GlobalMirrorImageIDAndStatus) (int, error) {
@@ -645,25 +694,22 @@ func mirrorImageGlobalStatusList(
 		cephIoctx(ioctx),
 		cStart,
 		max,
-		(**C.char)(unsafe.Pointer(&ids[0])),
-		(*C.rbd_mirror_image_global_status_t)(unsafe.Pointer(&images[0])),
+		&ids[0],
+		&images[0],
 		&length)
-
+	if err := getError(ret); err != nil {
+		return 0, err
+	}
 	for i := 0; i < int(length); i++ {
 		results[i].ID = C.GoString(ids[i])
 		results[i].Status = newGlobalMirrorImageStatus(&images[0])
 	}
 	C.rbd_mirror_image_global_status_list_cleanup(
-		(**C.char)(unsafe.Pointer(&ids[0])),
-		(*C.rbd_mirror_image_global_status_t)(unsafe.Pointer(&images[0])),
+		&ids[0],
+		&images[0],
 		length)
 	return int(length), getError(ret)
 }
-
-// statusIterBufSize is intentionally not a constant. The unit tests alter
-// this value in order to get more code coverage w/o needing to create
-// very many images.
-var statusIterBufSize = 64
 
 // MirrorImageGlobalStatusIter provide methods for iterating over all
 // the GlobalMirrorImageIdAndStatus values in a pool.
@@ -700,19 +746,159 @@ func (iter *MirrorImageGlobalStatusIter) Next() (*GlobalMirrorImageIDAndStatus, 
 }
 
 // Close terminates iteration regardless if iteration was completed and
-// frees any associated resources.
-func (iter *MirrorImageGlobalStatusIter) Close() error {
-	iter.buf = nil
-	iter.lastID = ""
+// frees any associated resources. (DEPRECATED)
+func (*MirrorImageGlobalStatusIter) Close() error {
 	return nil
 }
 
 func (iter *MirrorImageGlobalStatusIter) fetch() error {
 	iter.buf = nil
-	items := make([]GlobalMirrorImageIDAndStatus, statusIterBufSize)
+	items := make([]GlobalMirrorImageIDAndStatus, iterBufSize)
 	n, err := mirrorImageGlobalStatusList(
 		iter.ioctx,
 		iter.lastID,
+		items)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		iter.buf = items[:n]
+	}
+	return nil
+}
+
+// MirrorImageInfoItem contains an ID string for a RBD image and that image's
+// ImageMirrorMode and MirrorImageInfo.
+type MirrorImageInfoItem struct {
+	ID   string
+	Mode ImageMirrorMode
+	Info MirrorImageInfo
+}
+
+// MirrorImageInfoList returns a slice of MirrorImageInfoItem. If the length of
+// the returned slice equals max, the next chunk of the list can be obtained by
+// setting start to the ID of the last item of the returned slice. The returned
+// items are filtered by the mirror mode specified with modeFilter. If max is 0
+// a slice of all items is returned.
+//
+// Implements:
+// int rbd_mirror_image_info_list(
+//     rados_ioctx_t p, rbd_mirror_image_mode_t *mode_filter,
+//     const char *start_id, size_t max, char **image_ids,
+//     rbd_mirror_image_mode_t *mode_entries,
+//     rbd_mirror_image_info_t *info_entries, size_t *num_entries)
+func MirrorImageInfoList(
+	ioctx *rados.IOContext, modeFilter ImageMirrorModeFilter, start string,
+	max int) ([]MirrorImageInfoItem, error) {
+	var (
+		result   []MirrorImageInfoItem
+		fetchAll bool
+	)
+	if max <= 0 {
+		max = iterBufSize
+		fetchAll = true
+	}
+	chunk := make([]MirrorImageInfoItem, max)
+	for {
+		length, err := mirrorImageInfoList(ioctx, start, modeFilter, chunk)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, chunk[:length]...)
+		if !fetchAll || length < max {
+			break
+		}
+		start = chunk[length-1].ID
+	}
+	return result, nil
+}
+
+func mirrorImageInfoList(ioctx *rados.IOContext, start string,
+	modeFilter ImageMirrorModeFilter, results []MirrorImageInfoItem) (int, error) {
+
+	cStart := C.CString(start)
+	defer C.free(unsafe.Pointer(cStart))
+
+	var (
+		max           = C.size_t(len(results))
+		length        = C.size_t(0)
+		ids           = make([]*C.char, len(results))
+		modes         = make([]C.rbd_mirror_image_mode_t, len(results))
+		infos         = make([]C.rbd_mirror_image_info_t, len(results))
+		modeFilterPtr *C.rbd_mirror_image_mode_t
+	)
+	if modeFilter != nil {
+		cMode := C.rbd_mirror_image_mode_t(modeFilter.mode())
+		modeFilterPtr = &cMode
+	}
+	ret := C.rbd_mirror_image_info_list(
+		cephIoctx(ioctx),
+		modeFilterPtr,
+		cStart,
+		max,
+		&ids[0],
+		&modes[0],
+		&infos[0],
+		&length,
+	)
+	if err := getError(ret); err != nil {
+		return 0, err
+	}
+	for i := 0; i < int(length); i++ {
+		results[i].ID = C.GoString(ids[i])
+		results[i].Mode = ImageMirrorMode(modes[i])
+		results[i].Info = convertMirrorImageInfo(&infos[i])
+	}
+	C.rbd_mirror_image_info_list_cleanup(
+		&ids[0],
+		&infos[0],
+		length)
+	return int(length), getError(ret)
+}
+
+// MirrorImageInfoIter provide methods for iterating over all
+// the MirrorImageInfoItem values in a pool.
+type MirrorImageInfoIter struct {
+	ioctx *rados.IOContext
+
+	modeFilter ImageMirrorModeFilter
+	buf        []MirrorImageInfoItem
+	lastID     string
+}
+
+// NewMirrorImageInfoIter creates a new iterator ready for use.
+func NewMirrorImageInfoIter(ioctx *rados.IOContext, modeFilter ImageMirrorModeFilter) *MirrorImageInfoIter {
+	return &MirrorImageInfoIter{
+		ioctx:      ioctx,
+		modeFilter: modeFilter,
+	}
+}
+
+// Next fetches one MirrorImageInfoItem value or a nil value if iteration is
+// exhausted. The error return will be non-nil if an underlying error fetching
+// more values occurred.
+func (iter *MirrorImageInfoIter) Next() (*MirrorImageInfoItem, error) {
+	if len(iter.buf) == 0 {
+		if err := iter.fetch(); err != nil {
+			return nil, err
+		}
+		if len(iter.buf) == 0 {
+			return nil, nil
+		}
+		iter.lastID = iter.buf[len(iter.buf)-1].ID
+	}
+	item := iter.buf[0]
+	iter.buf = iter.buf[1:]
+	return &item, nil
+}
+
+func (iter *MirrorImageInfoIter) fetch() error {
+	iter.buf = nil
+	items := make([]MirrorImageInfoItem, iterBufSize)
+	n, err := mirrorImageInfoList(
+		iter.ioctx,
+		iter.lastID,
+		iter.modeFilter,
 		items)
 	if err != nil {
 		return err

@@ -1,4 +1,4 @@
-// +build !luminous,!mimic,!nautilus
+// +build !nautilus
 
 package rbd
 

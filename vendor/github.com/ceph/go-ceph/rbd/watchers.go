@@ -1,7 +1,3 @@
-// +build !luminous
-//
-// Ceph Mimic is the first version that supports watchers through librbd.
-
 package rbd
 
 /*
