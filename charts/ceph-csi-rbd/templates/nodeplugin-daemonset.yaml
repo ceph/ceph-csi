@@ -124,6 +124,8 @@ spec:
               mountPropagation: "Bidirectional"
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+            - name: ceph-logdir
+              mountPath: /var/log/ceph
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- if .Values.nodeplugin.httpMetrics.enabled }}
@@ -168,6 +170,10 @@ spec:
         - name: mountpoint-dir
           hostPath:
             path: {{ .Values.kubeletDir }}/pods
+            type: DirectoryOrCreate
+        - name: ceph-logdir
+          hostPath:
+            path: /var/log/ceph
             type: DirectoryOrCreate
         - name: host-dev
           hostPath:
