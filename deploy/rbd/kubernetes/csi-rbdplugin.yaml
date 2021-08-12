@@ -111,6 +111,8 @@ spec:
               mountPropagation: "Bidirectional"
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+            - name: ceph-logdir
+              mountPath: /var/log/ceph
         - name: liveness-prometheus
           securityContext:
             privileged: true
@@ -145,6 +147,10 @@ spec:
         - name: mountpoint-dir
           hostPath:
             path: /var/lib/kubelet/pods
+            type: DirectoryOrCreate
+        - name: ceph-logdir
+          hostPath:
+            path: /var/log/ceph
             type: DirectoryOrCreate
         - name: registration-dir
           hostPath:

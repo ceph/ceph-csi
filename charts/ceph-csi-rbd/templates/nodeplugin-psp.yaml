@@ -42,6 +42,8 @@ spec:
       readOnly: true
     - pathPrefix: '/lib/modules'
       readOnly: true
+    - pathPrefix: '/var/log/ceph'
+      readOnly: false
     - pathPrefix: '{{ .Values.kubeletDir }}'
       readOnly: false
 {{- end }}
