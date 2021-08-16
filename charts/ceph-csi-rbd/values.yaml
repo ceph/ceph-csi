@@ -102,7 +102,7 @@ nodeplugin:
   registrar:
     image:
       repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
-      tag: v2.2.0
+      tag: v2.3.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -198,7 +198,7 @@ provisioner:
   provisioner:
     image:
       repository: k8s.gcr.io/sig-storage/csi-provisioner
-      tag: v2.2.2
+      tag: v3.0.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -207,7 +207,7 @@ provisioner:
     enabled: true
     image:
       repository: k8s.gcr.io/sig-storage/csi-attacher
-      tag: v3.2.1
+      tag: v3.3.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -223,7 +223,7 @@ provisioner:
   snapshotter:
     image:
       repository: k8s.gcr.io/sig-storage/csi-snapshotter
-      tag: v4.1.1
+      tag: v4.2.0
       pullPolicy: IfNotPresent
     resources: {}
 
