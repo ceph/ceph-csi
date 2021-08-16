@@ -410,7 +410,10 @@ var _ = Describe("RBD", func() {
 					f,
 					defaultSCName,
 					nil,
-					map[string]string{"mounter": "rbd-nbd"},
+					map[string]string{
+						"mounter":    "rbd-nbd",
+						"mapOptions": "debug-rbd=20",
+					},
 					deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
@@ -447,7 +450,10 @@ var _ = Describe("RBD", func() {
 						f,
 						defaultSCName,
 						nil,
-						map[string]string{"mounter": "rbd-nbd"},
+						map[string]string{
+							"mounter":    "rbd-nbd",
+							"mapOptions": "debug-rbd=20",
+						},
 						deletePolicy)
 					if err != nil {
 						e2elog.Failf("failed to create storageclass with error %v", err)
@@ -489,7 +495,10 @@ var _ = Describe("RBD", func() {
 					f,
 					defaultSCName,
 					nil,
-					map[string]string{"mounter": "rbd-nbd"},
+					map[string]string{
+						"mounter":    "rbd-nbd",
+						"mapOptions": "debug-rbd=20",
+					},
 					deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
@@ -640,7 +649,11 @@ var _ = Describe("RBD", func() {
 					f,
 					defaultSCName,
 					nil,
-					map[string]string{"mounter": "rbd-nbd", "encrypted": "true"},
+					map[string]string{
+						"mounter":    "rbd-nbd",
+						"mapOptions": "debug-rbd=20",
+						"encrypted":  "true",
+					},
 					deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
@@ -993,7 +1006,11 @@ var _ = Describe("RBD", func() {
 						f,
 						defaultSCName,
 						nil,
-						map[string]string{"imageFeatures": "layering,journaling,exclusive-lock", "mounter": "rbd-nbd"},
+						map[string]string{
+							"imageFeatures": "layering,journaling,exclusive-lock",
+							"mounter":       "rbd-nbd",
+							"mapOptions":    "debug-rbd=20",
+						},
 						deletePolicy)
 					if err != nil {
 						e2elog.Failf("failed to create storageclass with error %v", err)
