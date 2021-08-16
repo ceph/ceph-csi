@@ -74,6 +74,12 @@ function set_env() {
     # use podman for minikube.sh, Docker is not installed on the host
     export CONTAINER_CMD='podman'
 
+    export CSI_ATTACHER_VERSION=${CSI_ATTACHER_VERSION:-"v3.2.1"}
+    export CSI_SNAPSHOTTER_VERSION=${CSI_SNAPSHOTTER_VERSION:-"v4.1.1"}
+    export CSI_PROVISIONER_VERSION=${CSI_PROVISIONER_VERSION:-"v2.2.2"}
+    export CSI_RESIZER_VERSION=${CSI_RESIZER_VERSION:-"v1.2.0"}
+    export CSI_NODE_DRIVER_REGISTRAR_VERSION=${CSI_NODE_DRIVER_REGISTRAR_VERSION:-"v2.2.0"}
+
     # script/minikube.sh installs under /usr/local/bin
     export PATH=$PATH:/usr/local/bin
 }
