@@ -84,7 +84,8 @@ func ExitOnConnectionLoss() func() bool {
 		if err := ioutil.WriteFile(terminationLogPath, []byte(terminationMsg), 0644); err != nil {
 			klog.Errorf("%s: %s", terminationLogPath, err)
 		}
-		klog.Fatalf(terminationMsg)
+		klog.Exit(terminationMsg)
+		// Not reached.
 		return false
 	}
 }
