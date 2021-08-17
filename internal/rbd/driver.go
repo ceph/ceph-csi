@@ -50,11 +50,11 @@ var (
 	// VolumeName to backing RBD images.
 	volJournal  *journal.Config
 	snapJournal *journal.Config
-	// rbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten
+	// rbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before flatten
 	// occurs.
 	rbdHardMaxCloneDepth uint
 
-	// rbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before a flatten
+	// rbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before flatten
 	// occurs.
 	rbdSoftMaxCloneDepth              uint
 	maxSnapshotsOnImage               uint
@@ -141,7 +141,7 @@ func (r *Driver) Run(conf *util.Config) {
 		// general
 		// In addition, we want to add the remaining modes like MULTI_NODE_READER_ONLY,
 		// MULTI_NODE_SINGLE_WRITER etc, but need to do some verification of RO modes first
-		// will work those as follow up features
+		// will work those as follow-up features
 		r.cd.AddVolumeCapabilityAccessModes(
 			[]csi.VolumeCapability_AccessMode_Mode{
 				csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
