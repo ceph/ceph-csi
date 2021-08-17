@@ -308,7 +308,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	util.DebugLog(ctx, "cephfs: successfully unbinded volume %s from %s", req.GetVolumeId(), targetPath)
+	util.DebugLog(ctx, "cephfs: successfully unbounded volume %s from %s", req.GetVolumeId(), targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }

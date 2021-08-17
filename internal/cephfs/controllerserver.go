@@ -595,7 +595,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	info, err := parentVolOptions.getSubVolumeInfo(ctx, volumeID(vid.FsSubvolName))
 	if err != nil {
 		// Check error code value against ErrInvalidCommand to understand the cluster
-		// support it or not, its safe to evaluat as the filtering
+		// support it or not, It's safe to evaluate as the filtering
 		// is already done from getSubVolumeInfo() and send out the error here.
 		if errors.Is(err, ErrInvalidCommand) {
 			return nil, status.Error(

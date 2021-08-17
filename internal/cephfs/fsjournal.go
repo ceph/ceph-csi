@@ -345,7 +345,7 @@ volume names as requested by the CSI drivers. Hence, these need to be invoked on
 respective CSI driver generated volume name based locks are held, as otherwise racy
 access to these omaps may end up leaving them in an inconsistent state.
 
-These functions also cleanup omap reservations that are stale. I.e when omap entries exist and
+These functions also cleanup omap reservations that are stale. I.e. when omap entries exist and
 backing subvolumes are missing, or one of the omaps exist and the next is missing. This is
 because, the order of omap creation and deletion are inverse of each other, and protected by the
 request name lock, and hence any stale omaps are leftovers from incomplete transactions and are
