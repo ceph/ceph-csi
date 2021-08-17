@@ -176,7 +176,7 @@ github.com/inconshreveable/mousetrap
 github.com/jmespath/go-jmespath
 # github.com/json-iterator/go v1.1.11
 github.com/json-iterator/go
-# github.com/kubernetes-csi/csi-lib-utils v0.9.1
+# github.com/kubernetes-csi/csi-lib-utils v0.10.0
 ## explicit
 github.com/kubernetes-csi/csi-lib-utils/connection
 github.com/kubernetes-csi/csi-lib-utils/metrics
