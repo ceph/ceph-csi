@@ -13,7 +13,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 	github.com/kubernetes-csi/csi-lib-utils v0.9.1
-	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.1.0
+	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
 	github.com/libopenstorage/secrets v0.0.0-20210709082113-dde442ea20ec
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
