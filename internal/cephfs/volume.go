@@ -109,9 +109,7 @@ func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (
 		// If info.BytesQuota == Infinite (in case it is not set)
 		// or nil (in case the subvolume is in snapshot-retained state),
 		// just continue without returning quota information.
-		// TODO: make use of subvolume "state" attribute once
-		// https://github.com/ceph/go-ceph/issues/453 is fixed.
-		if !(info.BytesQuota == fsAdmin.Infinite || info.BytesQuota == nil) {
+		if !(info.BytesQuota == fsAdmin.Infinite || info.State == fsAdmin.StateSnapRetained) {
 			return nil, fmt.Errorf("subvolume %s has unsupported quota: %v", string(volID), info.BytesQuota)
 		}
 	} else {
