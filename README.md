@@ -101,6 +101,7 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | devel (Branch)          | quay.io/cephcsi/cephcsi      | canary    |
+| v3.4.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.4.0    |
 | v3.3.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.3.1    |
 | v3.3.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.3.0    |
 | v3.2.2 (Release)        | quay.io/cephcsi/cephcsi      | v3.2.2    |
@@ -158,7 +159,7 @@ welcome and encouraged to join.
 Please use the following to reach members of the community:
 
 - Slack: Join our [slack channel](https://cephcsi.slack.com) to discuss
-  about anything related to this project. You can join the slack by
+  anything related to this project. You can join the slack by
   this [invite link](https://bit.ly/2MeS4KY )
 - Forums: [ceph-csi](https://groups.google.com/forum/#!forum/ceph-csi)
 - Twitter: [@CephCsi](https://twitter.com/CephCsi)
