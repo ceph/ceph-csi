@@ -418,7 +418,7 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 					"restoring thick-provisioned volume %q has been interrupted, please retry", rbdVol)
 			}
 		}
-		// restore from snapshot imploes rbdSnap != nil
+		// restore from snapshot implies rbdSnap != nil
 		// check if image depth is reached limit and requires flatten
 		err := checkFlatten(ctx, rbdVol, cr)
 		if err != nil {
@@ -533,7 +533,7 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 	return nil
 }
 
-// checkFlatten ensures that that the image chain depth is not reached
+// checkFlatten ensures that the image chain depth is not reached
 // hardlimit or softlimit. if the softlimit is reached it adds a task and
 // return success,the hardlimit is reached it starts a task to flatten the
 // image and return Aborted.
@@ -823,7 +823,7 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 
 	// lock out parallel create requests against the same volume name as we
-	// cleanup the image and associated omaps for the same
+	// clean up the image and associated omaps for the same
 	if acquired := cs.VolumeLocks.TryAcquire(rbdVol.RequestName); !acquired {
 		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
 
@@ -1302,7 +1302,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 
 	rbdSnap := &rbdSnapshot{}
 	if err = genSnapFromSnapID(ctx, rbdSnap, snapshotID, cr, req.GetSecrets()); err != nil {
-		// if error is ErrPoolNotFound, the pool is already deleted we dont
+		// if error is ErrPoolNotFound, the pool is already deleted we don't
 		// need to worry about deleting snapshot or omap data, return success
 		if errors.Is(err, util.ErrPoolNotFound) {
 			util.WarningLog(ctx, "failed to get backend snapshot for %s: %v", snapshotID, err)

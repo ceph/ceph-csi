@@ -97,7 +97,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 			return false, err
 		}
 	}
-	// snap will be create after we flatten the temporary cloned image,no
+	// snap will be created after we flatten the temporary cloned image,no
 	// need to check for flatten here.
 	// as the snap exists,create clone image and delete temporary snapshot
 	// and add task to flatten temporary cloned image
@@ -266,8 +266,8 @@ func (rv *rbdVolume) flattenCloneImage(ctx context.Context) error {
 	// If the intermediate clone reaches the depth we may need to return ABORT
 	// error message as it need to be flatten before continuing, this may leak
 	// omap entries and stale temporary snapshots in corner cases, if we reduce
-	// the limit and check for the depth of the parent image clain it self we
-	// can flatten the parent images before use to avoid the stale omap entries.
+	// the limit and check for the depth of the parent image clain itself we
+	// can flatten the parent images before used to avoid the stale omap entries.
 	hardLimit := rbdHardMaxCloneDepth
 	softLimit := rbdSoftMaxCloneDepth
 	// choosing 2 so that we don't need to flatten the image in the request.
