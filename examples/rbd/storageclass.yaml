@@ -69,6 +69,12 @@ parameters:
    # on supported nodes
    # mounter: rbd-nbd
 
+   # (optional) ceph client log location, eg: rbd-nbd
+   # By default host-path /var/log/ceph of node is bind-mounted into
+   # csi-rbdplugin pod at /var/log/ceph mount path. See docs/rbd-nbd.md
+   # for available configuration options.
+   # cephLogDir: /var/log/ceph
+
    # (optional) Prefix to use for naming RBD images.
    # If omitted, defaults to "csi-vol-".
    # volumeNamePrefix: "foo-bar-"

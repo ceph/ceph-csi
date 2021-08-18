@@ -296,6 +296,14 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 		util.WarningLog(ctx, "failed to detect if image %q is thick-provisioned: %v", volOpt, err)
 	}
 
+	if isNbd {
+		if volOpt.LogDir == "" {
+			volOpt.LogDir = defaultLogDir
+		}
+		mapArgs = append(mapArgs, "--log-file",
+			getCephClientLogFileName(volOpt.VolID, volOpt.LogDir, "rbd-nbd"))
+	}
+
 	cli := rbd
 	if device != "" {
 		// TODO: use rbd cli for attach/detach in the future

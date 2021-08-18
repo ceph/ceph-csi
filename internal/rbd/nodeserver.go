@@ -274,6 +274,7 @@ func (ns *NodeServer) NodeStageVolume(
 	volOptions.MapOptions = req.GetVolumeContext()["mapOptions"]
 	volOptions.UnmapOptions = req.GetVolumeContext()["unmapOptions"]
 	volOptions.Mounter = req.GetVolumeContext()["mounter"]
+	volOptions.LogDir = req.GetVolumeContext()["cephLogDir"]
 
 	err = volOptions.Connect(cr)
 	if err != nil {
