@@ -45,8 +45,8 @@ type ReconcilePersistentVolume struct {
 }
 
 var (
-	_ reconcile.Reconciler  = &ReconcilePersistentVolume{}
-	_ ctrl.ContollerManager = &ReconcilePersistentVolume{}
+	_ reconcile.Reconciler = &ReconcilePersistentVolume{}
+	_ ctrl.Manager         = &ReconcilePersistentVolume{}
 )
 
 // Init will add the ReconcilePersistentVolume to the list.

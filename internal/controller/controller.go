@@ -25,10 +25,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
-// ContollerManager is the interface that will wrap Add function.
+// Manager is the interface that will wrap Add function.
 // The New controllers which gets added, as to implement Add function to get
 // started by the manager.
-type ContollerManager interface {
+type Manager interface {
 	Add(manager.Manager, Config) error
 }
 
@@ -39,7 +39,7 @@ type Config struct {
 }
 
 // ControllerList holds the list of managers need to be started.
-var ControllerList []ContollerManager
+var ControllerList []Manager
 
 // addToManager calls the registered managers Add method.
 func addToManager(mgr manager.Manager, config Config) error {
