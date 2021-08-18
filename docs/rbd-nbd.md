@@ -3,6 +3,7 @@
 - [RBD NBD Mounter](#rbd-nbd-mounter)
   - [Overview](#overview)
   - [Configuration](#configuration)
+    - [Configuring logging path](#configuring-logging-path)
   - [Status](#status)
   - [Support Matrix](#support-matrix)
     - [CSI spec and Kubernetes version compatibility](#csi-spec-and-kubernetes-version-compatibility)
@@ -27,6 +28,41 @@ client-side, which is inside the `csi-rbdplugin` node plugin.
 
 To use the rbd-nbd mounter for RBD-backed PVs, set `mounter` to `rbd-nbd`
 in the StorageClass.
+
+### Configuring logging path
+
+If you are using the default rbd nodeplugin daemonset and StorageClass
+templates then `cephLogDir` will be `/var/log/ceph`, this directory will be
+a host-path and the default log file path will be
+`/var/log/ceph/rbd-nbd-<volID>.log`. rbd-nbd creates a log file per volume
+under the `cephLogDir` path on NodeStage(map) and removed the same on
+the respective NodeUnstage(unmap).
+
+In case if you need a customized log path, you should do below:
+
+- Edit the daemonset templates to change the `cephLogDir`
+  - If you are using helm charts, then you can use key `cephLogDir`
+
+    ```
+    helm install --set cephLogDir=/var/log/ceph-csi/my-dir
+    ```
+
+  - For standard templates edit [csi-rbdplugin.yaml](../deploy/rbd/kubernetes/csi-rbdplugin.yaml)
+    to update `hostPath` for `ceph-logdir`, also edit psp [csi-nodeplugin-psp.yaml](../deploy/rbd/kubernetes/csi-nodeplugin-psp.yaml)
+    to update `pathPrefix` spec entries.
+- Update the StorageClass with the customized log directory path
+  - Now update rbd StorageClass for `cephLogDir`, for example
+
+    ```
+    cephLogDir: "/var/log/prod-A-logs"
+    ```
+
+`NOTE`:
+
+- On uninstall make sure to delete `cephLogDir` on host manually to freeup
+  some space just in case if there are any uncleaned log files.
+- In case if you do not need the rbd-nbd logging to persistent, then just
+  update the StorageClass for `cephLogDir` to use a non-persistent path.
 
 ## Status
 
