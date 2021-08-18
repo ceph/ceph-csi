@@ -123,8 +123,17 @@ node('cico-workspace') {
 				podman_login(ci_registry, '$CREDS_USER', '$CREDS_PASSWD')
 			}
 
-			// base_image is like ceph/ceph:v15 or docker.io/ceph/ceph:v15, strip "docker.io/"
-			podman_pull(ci_registry, "docker.io", "${base_image}" - d_io_regex)
+			def quay = "quay.io"
+			def docker = "docker.io"
+			def io_regex = ~"(^docker.io/)|(^quay.io/)"
+
+			if (base_image.startsWith(quay)) {
+				// base_image is like quay.io/ceph/ceph:v15, strip "quay.io/"
+				podman_pull(ci_registry, quay, "${base_image}" - io_regex)
+			}else{
+				// base_image is like ceph/ceph:v15 or docker.io/ceph/ceph:v15, strip "docker.io/"
+				podman_pull(ci_registry, docker , "${base_image}" - io_regex)
+			}
 			// cephcsi:devel is used with 'make containerized-build'
 			podman_pull(ci_registry, ci_registry, "ceph-csi:devel")
 		}

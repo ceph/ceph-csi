@@ -137,10 +137,19 @@ node('cico-workspace') {
 						script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${BASE_IMAGE}\'',
 						returnStdout: true
 					).trim()
-					def d_io_regex = ~"^docker.io/"
 
-					// base_image is like ceph/ceph:v15 or docker.io/ceph/ceph:v15, strip "docker.io/"
-					podman_pull(ci_registry, "docker.io", "${base_image}" - d_io_regex)
+					def quay = "quay.io"
+					def docker = "docker.io"
+					def io_regex = ~"(^docker.io/)|(^quay.io/)"
+
+					if (base_image.startsWith(quay)) {
+						// base_image is like quay.io/ceph/ceph:v15, strip "quay.io/"
+						podman_pull(ci_registry, quay, "${base_image}" - io_regex)
+					}else{
+						// base_image is like ceph/ceph:v15 or docker.io/ceph/ceph:v15, strip "docker.io/"
+						podman_pull(ci_registry, docker , "${base_image}" - io_regex)
+					}
+
 				}
 			}
 		}

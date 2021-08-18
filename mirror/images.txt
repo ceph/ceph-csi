@@ -6,6 +6,9 @@
 # format: <full-image-spec> <short-name>
 #
 
+# ceph-csi devel
+quay.io/ceph/ceph:v16		ceph/ceph:v16
+
 # ceph-csi v3.4
 docker.io/ceph/ceph:v16		ceph/ceph:v16
 docker.io/rook/ceph:v1.6.2	rook/ceph:v1.6.2
