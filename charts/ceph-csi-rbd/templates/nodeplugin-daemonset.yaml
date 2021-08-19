@@ -173,7 +173,7 @@ spec:
             type: DirectoryOrCreate
         - name: ceph-logdir
           hostPath:
-            path: /var/log/ceph
+            path: {{ .Values.cephLogDir }}
             type: DirectoryOrCreate
         - name: host-dev
           hostPath:

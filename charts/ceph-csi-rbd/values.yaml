@@ -382,6 +382,8 @@ provisionerSocketFile: csi-provisioner.sock
 pluginSocketFile: csi.sock
 # kubelet working directory,can be set using `--root-dir` when starting kubelet.
 kubeletDir: /var/lib/kubelet
+# Host path location for ceph client processes logging, ex: rbd-nbd
+cephLogDir: /var/log/ceph
 # Name of the csi-driver
 driverName: rbd.csi.ceph.com
 # Name of the configmap used for state
