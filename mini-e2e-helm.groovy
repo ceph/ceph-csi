@@ -134,7 +134,7 @@ node('cico-workspace') {
 			// build container image
 			ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make image-cephcsi GOARCH=amd64 CONTAINER_CMD=podman'
 			// build e2e.test executable
-			ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman TARGET=e2e.test'
+			ssh "cd /opt/build/go/src/github.com/ceph/ceph-csi && make containerized-build CONTAINER_CMD=podman TARGET=e2e.test ENV_CSI_IMAGE_NAME=${ci_registry}/ceph-csi USE_PULLED_IMAGE=yes"
 		}
 		stage("deploy k8s-${k8s_version} and rook") {
 			def rook_version = sh(
