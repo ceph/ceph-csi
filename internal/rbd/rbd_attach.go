@@ -48,9 +48,16 @@ const (
 	rbdUnmapCmdNbdMissingMap  = "rbd-nbd: %s is not mapped"
 	rbdMapConnectionTimeout   = "Connection timed out"
 
-	defaultNbdReAttachTimeout = 300
+	defaultNbdReAttachTimeout = 300 /* in seconds */
 
-	useNbdNetlink  = "try-netlink"
+	// The default way of creating nbd devices via rbd-nbd is through the
+	// legacy ioctl interface, to take advantage of netlink features we
+	// should specify `try-netlink` flag explicitly.
+	useNbdNetlink = "try-netlink"
+
+	// `reattach-timeout` of rbd-nbd is to tweak NBD_ATTR_DEAD_CONN_TIMEOUT.
+	// It specifies how long the device should be held waiting for the
+	// userspace process to come back to life.
 	setNbdReattach = "reattach-timeout"
 )
 
