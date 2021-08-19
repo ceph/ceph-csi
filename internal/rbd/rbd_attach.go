@@ -49,6 +49,7 @@ const (
 	rbdMapConnectionTimeout   = "Connection timed out"
 
 	defaultNbdReAttachTimeout = 300 /* in seconds */
+	defaultNbdIOTimeout       = 0   /* do not abort the requests */
 
 	// The default way of creating nbd devices via rbd-nbd is through the
 	// legacy ioctl interface, to take advantage of netlink features we
@@ -59,6 +60,10 @@ const (
 	// It specifies how long the device should be held waiting for the
 	// userspace process to come back to life.
 	setNbdReattach = "reattach-timeout"
+
+	// `io-timeout` of rbd-nbd is to tweak NBD_ATTR_TIMEOUT. It specifies
+	// how long the IO should wait to get handled before bailing out.
+	setNbdIOTimeout = "io-timeout"
 )
 
 var hasNBD = false
@@ -256,6 +261,9 @@ func appendDeviceTypeAndOptions(cmdArgs []string, isNbd, isThick bool, userOptio
 		if !strings.Contains(userOptions, setNbdReattach) {
 			cmdArgs = append(cmdArgs, "--options", fmt.Sprintf("%s=%d", setNbdReattach, defaultNbdReAttachTimeout))
 		}
+		if !strings.Contains(userOptions, setNbdIOTimeout) {
+			cmdArgs = append(cmdArgs, "--options", fmt.Sprintf("%s=%d", setNbdIOTimeout, defaultNbdIOTimeout))
+		}
 	}
 	if isThick {
 		// When an image is thick-provisioned, any discard/unmap/trim
@@ -279,6 +287,9 @@ func appendRbdNbdCliOptions(cmdArgs []string, userOptions string) []string {
 	}
 	if !strings.Contains(userOptions, setNbdReattach) {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%d", setNbdReattach, defaultNbdReAttachTimeout))
+	}
+	if !strings.Contains(userOptions, setNbdIOTimeout) {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%d", setNbdIOTimeout, defaultNbdIOTimeout))
 	}
 	if userOptions != "" {
 		options := strings.Split(userOptions, ",")
