@@ -94,9 +94,10 @@ def list_pvc_vol_name_mapping(arg):
         # list all pvc and get mapping
     else:
         cmd += ['get', 'pvc', '-o', 'json']
-    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
-    stdout, stderr = out.communicate()
+
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
+
     if stderr is not None:
         if arg.debug:
             print("failed to list pvc %s", stderr)
@@ -194,10 +195,9 @@ def check_pv_name_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
     if arg.toolboxdeployed is True:
         kube = get_cmd_prefix(arg)
         cmd = kube + cmd
-    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
 
-    stdout, stderr = out.communicate()
     if stderr is not None:
         return False
     name = b''
@@ -229,10 +229,9 @@ def check_image_in_cluster(arg, image_uuid, pool_name, volname_prefix):
         kube = get_cmd_prefix(arg)
         cmd = kube + cmd
 
-    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
 
-    stdout, stderr = out.communicate()
     if stderr is not None:
         if arg.debug:
             print(b"failed to toolbox %s", stderr)
@@ -256,10 +255,10 @@ def check_image_uuid_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
     if arg.toolboxdeployed is True:
         kube = get_cmd_prefix(arg)
         cmd = kube + cmd
-    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
 
-    stdout, stderr = out.communicate()
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
+
     if stderr is not None:
         if arg.debug:
             print("failed to get toolbox %s", stderr)
@@ -320,9 +319,10 @@ def get_volume_handler_from_pv(arg, pvname):
             cmd += ["--kubeconfig", arg.kubeconfig]
 
     cmd += ['get', 'pv', pvname, '-o', 'json']
-    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
-    stdout, stderr = out.communicate()
+
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
+
     if stderr is not None:
         if arg.debug:
             print("failed to pv %s", stderr)
@@ -347,10 +347,10 @@ def get_tool_box_pod_name(arg):
             cmd += ["--kubeconfig", arg.kubeconfig]
     cmd += ['get', 'po', '-l=app=rook-ceph-tools',
             '-n', arg.rooknamespace, '-o', 'json']
-    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
 
-    stdout, stderr = out.communicate()
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
+
     if stderr is not None:
         if arg.debug:
             print("failed to get toolbox pod name %s", stderr)
@@ -377,10 +377,10 @@ def get_pool_name(arg, vol_id, is_rbd):
     if arg.toolboxdeployed is True:
         kube = get_cmd_prefix(arg)
         cmd = kube + cmd
-    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
 
-    stdout, stderr = out.communicate()
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
+
     if stderr is not None:
         if arg.debug:
             print("failed to get the pool name %s", stderr)
@@ -426,9 +426,10 @@ def check_subvol_path(arg, subvol_name, subvol_group, fsname):
     if arg.toolboxdeployed is True:
         kube = get_cmd_prefix(arg)
         cmd = kube + cmd
-    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
-    stdout, stderr = out.communicate()
+
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
+
     if stderr is not None:
         if arg.debug:
             print("failed to get toolbox %s", stderr)
@@ -451,9 +452,10 @@ def get_subvol_group(arg):
             cmd += ["--kubeconfig", arg.kubeconfig]
     cmd += ['get', 'cm', arg.configmap, '-o', 'json']
     cmd += ['--namespace', arg.configmapnamespace]
-    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
-    stdout, stderr = out.communicate()
+
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
+
     if stderr is not None:
         if arg.debug:
             print("failed to get configmap %s", stderr)
@@ -463,6 +465,7 @@ def get_subvol_group(arg):
     except ValueError as err:
         print(err, stdout)
         sys.exit()
+
     # default subvolumeGroup
     subvol_group = "csi"
     cm_data = config_map['data'].get('config.json')
@@ -508,9 +511,10 @@ def get_pv_data(arg, pvname):
             cmd += ["--kubeconfig", arg.kubeconfig]
 
     cmd += ['get', 'pv', pvname, '-o', 'json']
-    out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT)
-    stdout, stderr = out.communicate()
+
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as out:
+        stdout, stderr = out.communicate()
+
     if stderr is not None:
         if arg.debug:
             print("failed to get pv %s", stderr)
