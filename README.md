@@ -1,5 +1,6 @@
 # Ceph CSI
 
+[![GitHub release](https://img.shields.io/github/release/ceph/ceph-csi/all.svg)](https://github.com/ceph/ceph-csi/releases)
 [![Go Report
 Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreportcard.com/report/github.com/ceph/ceph-csi)
 [![TODOs](https://badgen.net/https/api.tickgit.com/badgen/github.com/ceph/ceph-csi/devel)](https://www.tickgit.com/browse?repo=github.com/ceph/ceph-csi&branch=devel)
