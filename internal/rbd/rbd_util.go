@@ -1525,6 +1525,7 @@ type rbdImageMetadataStash struct {
 	NbdAccess      bool   `json:"accessType"`
 	Encrypted      bool   `json:"encrypted"`
 	DevicePath     string `json:"device"` // holds NBD device path for now
+	LogDir         string `json:"logDir"` // holds the client log path
 }
 
 // file name in which image metadata is stashed.
@@ -1555,6 +1556,7 @@ func stashRBDImageMetadata(volOptions *rbdVolume, metaDataPath string) error {
 	imgMeta.NbdAccess = false
 	if volOptions.Mounter == rbdTonbd && hasNBD {
 		imgMeta.NbdAccess = true
+		imgMeta.LogDir = volOptions.LogDir
 	}
 
 	encodedBytes, err := json.Marshal(imgMeta)

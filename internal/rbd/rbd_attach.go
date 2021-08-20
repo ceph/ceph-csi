@@ -88,6 +88,7 @@ type detachRBDImageArgs struct {
 	encrypted         bool
 	volumeID          string
 	unmapOptions      string
+	logDir            string
 }
 
 // rbdGetDeviceList queries rbd about mapped devices and returns a list of rbdDeviceInfo
@@ -306,9 +307,6 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 	}
 
 	if isNbd {
-		if volOpt.LogDir == "" {
-			volOpt.LogDir = defaultLogDir
-		}
 		mapArgs = append(mapArgs, "--log-file",
 			getCephClientLogFileName(volOpt.VolID, volOpt.LogDir, "rbd-nbd"))
 	}
@@ -341,6 +339,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 				encrypted:         volOpt.isEncrypted(),
 				volumeID:          volOpt.VolID,
 				unmapOptions:      volOpt.UnmapOptions,
+				logDir:            volOpt.LogDir,
 			}
 			detErr := detachRBDImageOrDeviceSpec(ctx, dArgs)
 			if detErr != nil {
@@ -441,6 +440,13 @@ func detachRBDImageOrDeviceSpec(
 		}
 
 		return fmt.Errorf("rbd: unmap for spec (%s) failed (%w): (%s)", dArgs.imageOrDeviceSpec, err, stderr)
+	}
+	if dArgs.isNbd && dArgs.logDir != "" {
+		logFile := getCephClientLogFileName(dArgs.volumeID, dArgs.logDir, "rbd-nbd")
+		if err = os.Remove(logFile); err != nil {
+			util.WarningLog(ctx, "failed to remove logfile: %s, error: %v",
+				logFile, err)
+		}
 	}
 
 	return nil
