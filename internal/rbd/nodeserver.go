@@ -275,6 +275,9 @@ func (ns *NodeServer) NodeStageVolume(
 	volOptions.UnmapOptions = req.GetVolumeContext()["unmapOptions"]
 	volOptions.Mounter = req.GetVolumeContext()["mounter"]
 	volOptions.LogDir = req.GetVolumeContext()["cephLogDir"]
+	if volOptions.LogDir == "" {
+		volOptions.LogDir = defaultLogDir
+	}
 
 	err = volOptions.Connect(cr)
 	if err != nil {
@@ -827,6 +830,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		encrypted:         imgInfo.Encrypted,
 		volumeID:          req.GetVolumeId(),
 		unmapOptions:      imgInfo.UnmapOptions,
+		logDir:            imgInfo.LogDir,
 	}
 	if err = detachRBDImageOrDeviceSpec(ctx, dArgs); err != nil {
 		util.ErrorLog(
