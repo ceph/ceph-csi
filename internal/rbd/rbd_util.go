@@ -565,6 +565,26 @@ func (rv *rbdVolume) getTrashPath() string {
 	return trashPath + "/" + rv.ImageID
 }
 
+// ensureImageCleanup finds image in trash and if found removes it
+// from trash.
+func (rv *rbdVolume) ensureImageCleanup(ctx context.Context) error {
+	trashInfoList, err := librbd.GetTrashList(rv.ioctx)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to list images in trash: %v", err)
+
+		return err
+	}
+	for _, val := range trashInfoList {
+		if val.Name == rv.RbdImageName {
+			rv.ImageID = val.Id
+
+			return trashRemoveImage(ctx, rv, rv.conn.Creds)
+		}
+	}
+
+	return nil
+}
+
 // deleteImage deletes a ceph image with provision and volume options.
 func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	image := pOpts.RbdImageName
@@ -597,6 +617,12 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		return err
 	}
 
+	return trashRemoveImage(ctx, pOpts, cr)
+}
+
+// trashRemoveImage adds a task to trash remove an image using ceph manager if supported,
+// otherwise removes the image from trash.
+func trashRemoveImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	// attempt to use Ceph manager based deletion support if available
 
 	args := []string{

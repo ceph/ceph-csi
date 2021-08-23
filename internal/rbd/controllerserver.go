@@ -776,8 +776,13 @@ func (cs *ControllerServer) checkErrAndUndoReserve(
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	// All errors other than ErrImageNotFound should return an error back to the caller
-	if !errors.Is(err, ErrImageNotFound) {
+	if errors.Is(err, ErrImageNotFound) {
+		err = rbdVol.ensureImageCleanup(ctx)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	} else {
+		// All errors other than ErrImageNotFound should return an error back to the caller
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -924,8 +929,13 @@ func cleanupRBDImage(ctx context.Context,
 	tempClone := rbdVol.generateTempClone()
 	err = deleteImage(ctx, tempClone, cr)
 	if err != nil {
-		// return error if it is not ErrImageNotFound
-		if !errors.Is(err, ErrImageNotFound) {
+		if errors.Is(err, ErrImageNotFound) {
+			err = tempClone.ensureImageCleanup(ctx)
+			if err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		} else {
+			// return error if it is not ErrImageNotFound
 			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v",
 				tempClone, err)
 
