@@ -81,6 +81,15 @@ type nbdDeviceInfo struct {
 	Device         string `json:"device"`
 }
 
+type detachRBDImageArgs struct {
+	imageOrDeviceSpec string
+	isImageSpec       bool
+	isNbd             bool
+	encrypted         bool
+	volumeID          string
+	unmapOptions      string
+}
+
 // rbdGetDeviceList queries rbd about mapped devices and returns a list of rbdDeviceInfo
 // It will selectively list devices mapped using krbd or nbd as specified by accessType.
 func rbdGetDeviceList(ctx context.Context, accessType string) ([]rbdDeviceInfo, error) {
@@ -325,14 +334,15 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 		util.WarningLog(ctx, "rbd: map error %v, rbd output: %s", err, stderr)
 		// unmap rbd image if connection timeout
 		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
-			detErr := detachRBDImageOrDeviceSpec(
-				ctx,
-				imagePath,
-				true,
-				isNbd,
-				volOpt.isEncrypted(),
-				volOpt.VolID,
-				volOpt.UnmapOptions)
+			dArgs := detachRBDImageArgs{
+				imageOrDeviceSpec: imagePath,
+				isImageSpec:       true,
+				isNbd:             isNbd,
+				encrypted:         volOpt.isEncrypted(),
+				volumeID:          volOpt.VolID,
+				unmapOptions:      volOpt.UnmapOptions,
+			}
+			detErr := detachRBDImageOrDeviceSpec(ctx, dArgs)
 			if detErr != nil {
 				util.WarningLog(ctx, "rbd: %s unmap error %v", imagePath, detErr)
 			}
@@ -375,22 +385,29 @@ func detachRBDDevice(ctx context.Context, devicePath, volumeID, unmapOptions str
 		nbdType = true
 	}
 
-	return detachRBDImageOrDeviceSpec(ctx, devicePath, false, nbdType, encrypted, volumeID, unmapOptions)
+	dArgs := detachRBDImageArgs{
+		imageOrDeviceSpec: devicePath,
+		isImageSpec:       false,
+		isNbd:             nbdType,
+		encrypted:         encrypted,
+		volumeID:          volumeID,
+		unmapOptions:      unmapOptions,
+	}
+
+	return detachRBDImageOrDeviceSpec(ctx, dArgs)
 }
 
 // detachRBDImageOrDeviceSpec detaches an rbd imageSpec or devicePath, with additional checking
 // when imageSpec is used to decide if image is already unmapped.
 func detachRBDImageOrDeviceSpec(
 	ctx context.Context,
-	imageOrDeviceSpec string,
-	isImageSpec, isNbd, encrypted bool,
-	volumeID, unmapOptions string) error {
-	if encrypted {
-		mapperFile, mapperPath := util.VolumeMapper(volumeID)
+	dArgs detachRBDImageArgs) error {
+	if dArgs.encrypted {
+		mapperFile, mapperPath := util.VolumeMapper(dArgs.volumeID)
 		mappedDevice, mapper, err := util.DeviceEncryptionStatus(ctx, mapperPath)
 		if err != nil {
 			util.ErrorLog(ctx, "error determining LUKS device on %s, %s: %s",
-				mapperPath, imageOrDeviceSpec, err)
+				mapperPath, dArgs.imageOrDeviceSpec, err)
 
 			return err
 		}
@@ -399,31 +416,31 @@ func detachRBDImageOrDeviceSpec(
 			err = util.CloseEncryptedVolume(ctx, mapperFile)
 			if err != nil {
 				util.ErrorLog(ctx, "error closing LUKS device on %s, %s: %s",
-					mapperPath, imageOrDeviceSpec, err)
+					mapperPath, dArgs.imageOrDeviceSpec, err)
 
 				return err
 			}
-			imageOrDeviceSpec = mappedDevice
+			dArgs.imageOrDeviceSpec = mappedDevice
 		}
 	}
 
-	unmapArgs := []string{"unmap", imageOrDeviceSpec}
-	unmapArgs = appendDeviceTypeAndOptions(unmapArgs, isNbd, false, unmapOptions)
+	unmapArgs := []string{"unmap", dArgs.imageOrDeviceSpec}
+	unmapArgs = appendDeviceTypeAndOptions(unmapArgs, dArgs.isNbd, false, dArgs.unmapOptions)
 
 	_, stderr, err := util.ExecCommand(ctx, rbd, unmapArgs...)
 	if err != nil {
 		// Messages for krbd and nbd differ, hence checking either of them for missing mapping
 		// This is not applicable when a device path is passed in
-		if isImageSpec &&
-			(strings.Contains(stderr, fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, imageOrDeviceSpec)) ||
-				strings.Contains(stderr, fmt.Sprintf(rbdUnmapCmdNbdMissingMap, imageOrDeviceSpec))) {
+		if dArgs.isImageSpec &&
+			(strings.Contains(stderr, fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, dArgs.imageOrDeviceSpec)) ||
+				strings.Contains(stderr, fmt.Sprintf(rbdUnmapCmdNbdMissingMap, dArgs.imageOrDeviceSpec))) {
 			// Devices found not to be mapped are treated as a successful detach
-			util.TraceLog(ctx, "image or device spec (%s) not mapped", imageOrDeviceSpec)
+			util.TraceLog(ctx, "image or device spec (%s) not mapped", dArgs.imageOrDeviceSpec)
 
 			return nil
 		}
 
-		return fmt.Errorf("rbd: unmap for spec (%s) failed (%w): (%s)", imageOrDeviceSpec, err, stderr)
+		return fmt.Errorf("rbd: unmap for spec (%s) failed (%w): (%s)", dArgs.imageOrDeviceSpec, err, stderr)
 	}
 
 	return nil

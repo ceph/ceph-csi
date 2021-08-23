@@ -819,13 +819,16 @@ func (ns *NodeServer) NodeUnstageVolume(
 
 	// Unmapping rbd device
 	imageSpec := imgInfo.String()
-	if err = detachRBDImageOrDeviceSpec(
-		ctx, imageSpec,
-		true,
-		imgInfo.NbdAccess,
-		imgInfo.Encrypted,
-		req.GetVolumeId(),
-		imgInfo.UnmapOptions); err != nil {
+
+	dArgs := detachRBDImageArgs{
+		imageOrDeviceSpec: imageSpec,
+		isImageSpec:       true,
+		isNbd:             imgInfo.NbdAccess,
+		encrypted:         imgInfo.Encrypted,
+		volumeID:          req.GetVolumeId(),
+		unmapOptions:      imgInfo.UnmapOptions,
+	}
+	if err = detachRBDImageOrDeviceSpec(ctx, dArgs); err != nil {
 		util.ErrorLog(
 			ctx,
 			"error unmapping volume (%s) from staging path (%s): (%v)",
