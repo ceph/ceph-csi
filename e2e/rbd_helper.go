@@ -40,6 +40,28 @@ var nbdResizeSupport = []util.KernelVersion{
 	}, // standard 5.3+ versions
 }
 
+// To use `io-timeout=0` we need
+// www.mail-archive.com/linux-block@vger.kernel.org/msg38060.html
+// nolint:gomnd // numbers specify Kernel versions.
+var nbdZeroIOtimeoutSupport = []util.KernelVersion{
+	{
+		Version:      5,
+		PatchLevel:   4,
+		SubLevel:     0,
+		ExtraVersion: 0,
+		Distribution: "",
+		Backport:     false,
+	}, // standard 5.4+ versions
+	{
+		Version:      4,
+		PatchLevel:   18,
+		SubLevel:     0,
+		ExtraVersion: 305,
+		Distribution: ".el8",
+		Backport:     true,
+	}, // CentOS 8.4
+}
+
 func imageSpec(pool, image string) string {
 	if radosNamespace != "" {
 		return pool + "/" + radosNamespace + "/" + image

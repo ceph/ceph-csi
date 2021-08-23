@@ -57,6 +57,8 @@ var (
 	appBlockSmartClonePath = rbdExamplePath + "block-pod-clone.yaml"
 	snapshotPath           = rbdExamplePath + "snapshot.yaml"
 	defaultCloneCount      = 10
+
+	nbdMapOptions = "debug-rbd=20"
 )
 
 func deployRBDPlugin() {
@@ -178,6 +180,7 @@ func validateRBDImageCount(f *framework.Framework, count int, pool string) {
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework("rbd")
 	var c clientset.Interface
+	var kernelRelease string
 	// deploy RBD CSI
 	BeforeEach(func() {
 		if !testRBD || upgradeTesting {
@@ -232,6 +235,27 @@ var _ = Describe("RBD", func() {
 			e2elog.Failf("failed to create node secret with error %v", err)
 		}
 		deployVault(f.ClientSet, deployTimeout)
+
+		// wait for provisioner deployment
+		err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+		if err != nil {
+			e2elog.Failf("timeout waiting for deployment %s with error %v", rbdDeploymentName, err)
+		}
+
+		// wait for nodeplugin deamonset pods
+		err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+		if err != nil {
+			e2elog.Failf("timeout waiting for daemonset %s with error %v", rbdDaemonsetName, err)
+		}
+
+		kernelRelease, err = getKernelVersionFromDaemonset(f, cephCSINamespace, rbdDaemonsetName, "csi-rbdplugin")
+		if err != nil {
+			e2elog.Failf("failed to get the kernel version with error %v", err)
+		}
+		// default io-timeout=0, needs kernel >= 5.4
+		if !util.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
+			nbdMapOptions = "debug-rbd=20,io-timeout=330"
+		}
 	})
 
 	AfterEach(func() {
@@ -302,20 +326,6 @@ var _ = Describe("RBD", func() {
 
 	Context("Test RBD CSI", func() {
 		It("Test RBD CSI", func() {
-			By("checking provisioner deployment is running", func() {
-				err := waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
-				if err != nil {
-					e2elog.Failf("timeout waiting for deployment %s with error %v", rbdDeploymentName, err)
-				}
-			})
-
-			By("checking nodeplugin deamonset pods are running", func() {
-				err := waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
-				if err != nil {
-					e2elog.Failf("timeout waiting for daemonset %s with error %v", rbdDaemonsetName, err)
-				}
-			})
-
 			// test only if ceph-csi is deployed via helm
 			if helmTest {
 				By("verify PVC and app binding on helm installation", func() {
@@ -412,7 +422,7 @@ var _ = Describe("RBD", func() {
 					nil,
 					map[string]string{
 						"mounter":    "rbd-nbd",
-						"mapOptions": "debug-rbd=20",
+						"mapOptions": nbdMapOptions,
 					},
 					deletePolicy)
 				if err != nil {
@@ -435,10 +445,6 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("Resize rbd-nbd PVC and check application directory size", func() {
-				kernelRelease, err := util.GetKernelVersion()
-				if err != nil {
-					e2elog.Failf("failed to get kernel version with error %v", err)
-				}
 				if util.CheckKernelSupport(kernelRelease, nbdResizeSupport) {
 					err := deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
@@ -452,7 +458,7 @@ var _ = Describe("RBD", func() {
 						nil,
 						map[string]string{
 							"mounter":    "rbd-nbd",
-							"mapOptions": "debug-rbd=20",
+							"mapOptions": nbdMapOptions,
 						},
 						deletePolicy)
 					if err != nil {
@@ -497,7 +503,7 @@ var _ = Describe("RBD", func() {
 					nil,
 					map[string]string{
 						"mounter":    "rbd-nbd",
-						"mapOptions": "debug-rbd=20",
+						"mapOptions": nbdMapOptions,
 					},
 					deletePolicy)
 				if err != nil {
@@ -651,7 +657,7 @@ var _ = Describe("RBD", func() {
 					nil,
 					map[string]string{
 						"mounter":    "rbd-nbd",
-						"mapOptions": "debug-rbd=20",
+						"mapOptions": nbdMapOptions,
 						"encrypted":  "true",
 					},
 					deletePolicy)
@@ -1009,7 +1015,7 @@ var _ = Describe("RBD", func() {
 						map[string]string{
 							"imageFeatures": "layering,journaling,exclusive-lock",
 							"mounter":       "rbd-nbd",
-							"mapOptions":    "debug-rbd=20",
+							"mapOptions":    nbdMapOptions,
 						},
 						deletePolicy)
 					if err != nil {
