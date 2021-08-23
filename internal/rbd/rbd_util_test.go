@@ -189,3 +189,74 @@ func TestGetMappedID(t *testing.T) {
 		})
 	}
 }
+
+func TestGetCephClientLogFileName(t *testing.T) {
+	t.Parallel()
+	type args struct {
+		id     string
+		logDir string
+		prefix string
+	}
+	volID := "0001-0024-fed5480a-f00f-417a-a51d-31d8a8144c03-0000000000000003-eba90b33-0156-11ec-a30b-4678a93686c2"
+	tests := []struct {
+		name     string
+		args     args
+		expected string
+	}{
+		{
+			name: "test for empty id",
+			args: args{
+				id:     "",
+				logDir: "/var/log/ceph-csi",
+				prefix: "rbd-nbd",
+			},
+			expected: "/var/log/ceph-csi/rbd-nbd-.log",
+		},
+		{
+			name: "test for empty logDir",
+			args: args{
+				id:     volID,
+				logDir: "",
+				prefix: "rbd-nbd",
+			},
+			expected: "/var/log/ceph/rbd-nbd-" + volID + ".log",
+		},
+		{
+			name: "test for empty prefix",
+			args: args{
+				id:     volID,
+				logDir: "/var/log/ceph-csi",
+				prefix: "",
+			},
+			expected: "/var/log/ceph-csi/ceph-" + volID + ".log",
+		},
+		{
+			name: "test for all unavailable args",
+			args: args{
+				id:     "",
+				logDir: "",
+				prefix: "",
+			},
+			expected: "/var/log/ceph/ceph-.log",
+		},
+		{
+			name: "test for all available args",
+			args: args{
+				id:     volID,
+				logDir: "/var/log/ceph-csi",
+				prefix: "rbd-nbd",
+			},
+			expected: "/var/log/ceph-csi/rbd-nbd-" + volID + ".log",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			val := getCephClientLogFileName(tt.args.id, tt.args.logDir, tt.args.prefix)
+			if val != tt.expected {
+				t.Errorf("getCephClientLogFileName() got = %v, expected %v", val, tt.expected)
+			}
+		})
+	}
+}
