@@ -65,9 +65,9 @@ type ClusterMappingInfo struct {
 // ...
 // }]
 
-func readClusterMappingInfo() (*[]ClusterMappingInfo, error) {
+func readClusterMappingInfo(filename string) (*[]ClusterMappingInfo, error) {
 	var info []ClusterMappingInfo
-	content, err := ioutil.ReadFile(clusterMappingConfigFile)
+	content, err := ioutil.ReadFile(filename) // #nosec:G304, file inclusion via variable.
 	if err != nil {
 		err = fmt.Errorf("error fetching clusterID mapping %w", err)
 
@@ -83,11 +83,11 @@ func readClusterMappingInfo() (*[]ClusterMappingInfo, error) {
 	return &info, nil
 }
 
-// GetClusterMappingInfo returns corresponding cluster details like clusterID's
-// poolID,fscID lists read from configfile.
-func GetClusterMappingInfo(clusterID string) (*[]ClusterMappingInfo, error) {
+// getClusterMappingInfo returns corresponding cluster details like clusterID's
+// poolID,fscID lists read from 'filename'.
+func getClusterMappingInfo(clusterID, filename string) (*[]ClusterMappingInfo, error) {
 	var mappingInfo []ClusterMappingInfo
-	info, err := readClusterMappingInfo()
+	info, err := readClusterMappingInfo(filename)
 	if err != nil {
 		// discard not found error as this file is expected to be created by
 		// the admin in case of failover.
@@ -113,4 +113,10 @@ func GetClusterMappingInfo(clusterID string) (*[]ClusterMappingInfo, error) {
 	}
 
 	return &mappingInfo, nil
+}
+
+// GetClusterMappingInfo returns corresponding cluster details like clusterID's
+// poolID,fscID lists read from configfile.
+func GetClusterMappingInfo(clusterID string) (*[]ClusterMappingInfo, error) {
+	return getClusterMappingInfo(clusterID, clusterMappingConfigFile)
 }
