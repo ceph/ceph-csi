@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"google.golang.org/grpc/codes"
@@ -103,14 +103,14 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 	// and add task to flatten temporary cloned image
 	err = rv.cloneRbdImageFromSnapshot(ctx, snap, parentVol)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)
+		log.ErrorLog(ctx, "failed to clone rbd image %s from snapshot %s: %v", rv.RbdImageName, snap.RbdSnapName, err)
 		err = fmt.Errorf("failed to clone rbd image %s from snapshot %s: %w", rv.RbdImageName, snap.RbdSnapName, err)
 
 		return false, err
 	}
 	err = tempClone.deleteSnapshot(ctx, snap)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to delete snapshot: %v", err)
+		log.ErrorLog(ctx, "failed to delete snapshot: %v", err)
 
 		return false, err
 	}
@@ -155,7 +155,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 
 	err = rv.getImageID()
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get volume id %s: %v", rv, err)
+		log.ErrorLog(ctx, "failed to get volume id %s: %v", rv, err)
 
 		return err
 	}
@@ -176,7 +176,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 
 	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to store volume %s: %v", rv, err)
+		log.ErrorLog(ctx, "failed to store volume %s: %v", rv, err)
 
 		return err
 	}
@@ -213,7 +213,7 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 		if err != nil || errClone != nil {
 			cErr := cleanUpSnapshot(ctx, tempClone, cloneSnap, rv, rv.conn.Creds)
 			if cErr != nil {
-				util.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", cloneSnap, tempClone, cErr)
+				log.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", cloneSnap, tempClone, cErr)
 			}
 		}
 
@@ -222,7 +222,7 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 				// cleanup snapshot
 				cErr := cleanUpSnapshot(ctx, parentVol, tempSnap, tempClone, rv.conn.Creds)
 				if cErr != nil {
-					util.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", tempSnap, tempClone, cErr)
+					log.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", tempSnap, tempClone, cErr)
 				}
 			}
 		}

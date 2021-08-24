@@ -20,6 +20,7 @@ import (
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	mount "k8s.io/mount-utils"
@@ -107,7 +108,7 @@ func (r *Driver) Run(conf *util.Config) {
 
 	// Create ceph.conf for use with CLI commands
 	if err = util.WriteCephConfig(); err != nil {
-		util.FatalLogMsg("failed to write ceph configuration file (%v)", err)
+		log.FatalLogMsg("failed to write ceph configuration file (%v)", err)
 	}
 
 	// Use passed in instance ID, if provided for omap suffix naming
@@ -128,7 +129,7 @@ func (r *Driver) Run(conf *util.Config) {
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
 	if r.cd == nil {
-		util.FatalLogMsg("Failed to initialize CSI Driver.")
+		log.FatalLogMsg("Failed to initialize CSI Driver.")
 	}
 	if conf.IsControllerServer || !conf.IsNodeServer {
 		r.cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
@@ -155,11 +156,11 @@ func (r *Driver) Run(conf *util.Config) {
 	if conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			util.FatalLogMsg(err.Error())
+			log.FatalLogMsg(err.Error())
 		}
 		r.ns, err = NewNodeServer(r.cd, conf.Vtype, topology)
 		if err != nil {
-			util.FatalLogMsg("failed to start node server, err %v\n", err)
+			log.FatalLogMsg("failed to start node server, err %v\n", err)
 		}
 	}
 
@@ -170,11 +171,11 @@ func (r *Driver) Run(conf *util.Config) {
 	if !conf.IsControllerServer && !conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			util.FatalLogMsg(err.Error())
+			log.FatalLogMsg(err.Error())
 		}
 		r.ns, err = NewNodeServer(r.cd, conf.Vtype, topology)
 		if err != nil {
-			util.FatalLogMsg("failed to start node server, err %v\n", err)
+			log.FatalLogMsg("failed to start node server, err %v\n", err)
 		}
 		r.cs = NewControllerServer(r.cd)
 	}
@@ -190,14 +191,14 @@ func (r *Driver) Run(conf *util.Config) {
 	}
 	s.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {
-		util.WarningLogMsg("EnableGRPCMetrics is deprecated")
+		log.WarningLogMsg("EnableGRPCMetrics is deprecated")
 		go util.StartMetricsServer(conf)
 	}
 	if conf.EnableProfiling {
 		if !conf.EnableGRPCMetrics {
 			go util.StartMetricsServer(conf)
 		}
-		util.DebugLogMsg("Registering profiling handler")
+		log.DebugLogMsg("Registering profiling handler")
 		go util.EnableProfiling()
 	}
 	if conf.IsNodeServer {
@@ -205,7 +206,7 @@ func (r *Driver) Run(conf *util.Config) {
 			// TODO: move the healer to csi-addons
 			err := runVolumeHealer(r.ns, conf)
 			if err != nil {
-				util.ErrorLogMsg("healer had failures, err %v\n", err)
+				log.ErrorLogMsg("healer had failures, err %v\n", err)
 			}
 		}()
 	}

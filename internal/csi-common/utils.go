@@ -25,6 +25,7 @@ import (
 	"sync/atomic"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	rp "github.com/csi-addons/replication-lib-utils/protosanitizer"
@@ -160,9 +161,9 @@ func contextIDInjector(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler) (resp interface{}, err error) {
 	atomic.AddUint64(&id, 1)
-	ctx = context.WithValue(ctx, util.CtxKey, id)
+	ctx = context.WithValue(ctx, log.CtxKey, id)
 	if reqID := getReqID(req); reqID != "" {
-		ctx = context.WithValue(ctx, util.ReqID, reqID)
+		ctx = context.WithValue(ctx, log.ReqID, reqID)
 	}
 
 	return handler(ctx, req)
@@ -173,18 +174,18 @@ func logGRPC(
 	req interface{},
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler) (interface{}, error) {
-	util.ExtendedLog(ctx, "GRPC call: %s", info.FullMethod)
+	log.ExtendedLog(ctx, "GRPC call: %s", info.FullMethod)
 	if isReplicationRequest(req) {
-		util.TraceLog(ctx, "GRPC request: %s", rp.StripReplicationSecrets(req))
+		log.TraceLog(ctx, "GRPC request: %s", rp.StripReplicationSecrets(req))
 	} else {
-		util.TraceLog(ctx, "GRPC request: %s", protosanitizer.StripSecrets(req))
+		log.TraceLog(ctx, "GRPC request: %s", protosanitizer.StripSecrets(req))
 	}
 
 	resp, err := handler(ctx, req)
 	if err != nil {
-		klog.Errorf(util.Log(ctx, "GRPC error: %v"), err)
+		klog.Errorf(log.Log(ctx, "GRPC error: %v"), err)
 	} else {
-		util.TraceLog(ctx, "GRPC response: %s", protosanitizer.StripSecrets(resp))
+		log.TraceLog(ctx, "GRPC response: %s", protosanitizer.StripSecrets(resp))
 	}
 
 	return resp, err
@@ -231,32 +232,32 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.
 
 	available, ok := (*(volMetrics.Available)).AsInt64()
 	if !ok {
-		util.ErrorLog(ctx, "failed to fetch available bytes")
+		log.ErrorLog(ctx, "failed to fetch available bytes")
 	}
 	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
 	if !ok {
-		util.ErrorLog(ctx, "failed to fetch capacity bytes")
+		log.ErrorLog(ctx, "failed to fetch capacity bytes")
 
 		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
 	}
 	used, ok := (*(volMetrics.Used)).AsInt64()
 	if !ok {
-		util.ErrorLog(ctx, "failed to fetch used bytes")
+		log.ErrorLog(ctx, "failed to fetch used bytes")
 	}
 	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
 	if !ok {
-		util.ErrorLog(ctx, "failed to fetch available inodes")
+		log.ErrorLog(ctx, "failed to fetch available inodes")
 
 		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
 	}
 	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
 	if !ok {
-		util.ErrorLog(ctx, "failed to fetch free inodes")
+		log.ErrorLog(ctx, "failed to fetch free inodes")
 	}
 
 	inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
 	if !ok {
-		util.ErrorLog(ctx, "failed to fetch used inodes")
+		log.ErrorLog(ctx, "failed to fetch used inodes")
 	}
 
 	return &csi.NodeGetVolumeStatsResponse{

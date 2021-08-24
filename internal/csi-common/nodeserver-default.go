@@ -19,7 +19,7 @@ package csicommon
 import (
 	"context"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -57,7 +57,7 @@ func (ns *DefaultNodeServer) NodeExpandVolume(
 func (ns *DefaultNodeServer) NodeGetInfo(
 	ctx context.Context,
 	req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	util.TraceLog(ctx, "Using default NodeGetInfo")
+	log.TraceLog(ctx, "Using default NodeGetInfo")
 
 	csiTopology := &csi.Topology{
 		Segments: ns.Driver.topology,
@@ -73,7 +73,7 @@ func (ns *DefaultNodeServer) NodeGetInfo(
 func (ns *DefaultNodeServer) NodeGetCapabilities(
 	ctx context.Context,
 	req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
-	util.TraceLog(ctx, "Using default NodeGetCapabilities")
+	log.TraceLog(ctx, "Using default NodeGetCapabilities")
 
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{

@@ -29,6 +29,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/liveness"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"k8s.io/klog/v2"
 )
@@ -164,7 +165,7 @@ func main() {
 		}
 		os.Exit(0)
 	}
-	util.DefaultLog("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
+	log.DefaultLog("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
 
 	if conf.Vtype == "" {
 		logAndExit("driver type not specified")
@@ -182,15 +183,15 @@ func main() {
 		if pidErr != nil {
 			klog.Errorf("Failed to get the PID limit, can not reconfigure: %v", pidErr)
 		} else {
-			util.DefaultLog("Initial PID limit is set to %d", currentLimit)
+			log.DefaultLog("Initial PID limit is set to %d", currentLimit)
 			err = util.SetPIDLimit(conf.PidLimit)
 			switch {
 			case err != nil:
 				klog.Errorf("Failed to set new PID limit to %d: %v", conf.PidLimit, err)
 			case conf.PidLimit == -1:
-				util.DefaultLog("Reconfigured PID limit to %d (max)", conf.PidLimit)
+				log.DefaultLog("Reconfigured PID limit to %d (max)", conf.PidLimit)
 			default:
-				util.DefaultLog("Reconfigured PID limit to %d", conf.PidLimit)
+				log.DefaultLog("Reconfigured PID limit to %d", conf.PidLimit)
 			}
 		}
 	}
@@ -209,7 +210,7 @@ func main() {
 		}
 	}
 
-	util.DefaultLog("Starting driver type: %v with name: %v", conf.Vtype, dname)
+	log.DefaultLog("Starting driver type: %v with name: %v", conf.Vtype, dname)
 	switch conf.Vtype {
 	case rbdType:
 		validateCloneDepthFlag(&conf)

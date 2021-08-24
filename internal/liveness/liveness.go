@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	connlib "github.com/kubernetes-csi/csi-lib-utils/connection"
 	"github.com/kubernetes-csi/csi-lib-utils/metrics"
@@ -39,23 +40,23 @@ func getLiveness(timeout time.Duration, csiConn *grpc.ClientConn) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	util.TraceLogMsg("Sending probe request to CSI driver")
+	log.TraceLogMsg("Sending probe request to CSI driver")
 	ready, err := rpc.Probe(ctx, csiConn)
 	if err != nil {
 		liveness.Set(0)
-		util.ErrorLogMsg("health check failed: %v", err)
+		log.ErrorLogMsg("health check failed: %v", err)
 
 		return
 	}
 
 	if !ready {
 		liveness.Set(0)
-		util.ErrorLogMsg("driver responded but is not ready")
+		log.ErrorLogMsg("driver responded but is not ready")
 
 		return
 	}
 	liveness.Set(1)
-	util.ExtendedLogMsg("Health check succeeded")
+	log.ExtendedLogMsg("Health check succeeded")
 }
 
 func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration) {
@@ -63,14 +64,14 @@ func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration
 	// register prometheus metrics
 	err := prometheus.Register(liveness)
 	if err != nil {
-		util.FatalLogMsg(err.Error())
+		log.FatalLogMsg(err.Error())
 	}
 
 	csiConn, err := connlib.Connect(endpoint, liveMetricsManager)
 	if err != nil {
 		// connlib should retry forever so a returned error should mean
 		// the grpc client is misconfigured rather than an error on the network
-		util.FatalLogMsg("failed to establish connection to CSI driver: %v", err)
+		log.FatalLogMsg("failed to establish connection to CSI driver: %v", err)
 	}
 
 	// get liveness periodically
@@ -83,7 +84,7 @@ func recordLiveness(endpoint, drivername string, pollTime, timeout time.Duration
 
 // Run starts liveness collection and prometheus endpoint.
 func Run(conf *util.Config) {
-	util.ExtendedLogMsg("Liveness Running")
+	log.ExtendedLogMsg("Liveness Running")
 
 	// start liveness collection
 	go recordLiveness(conf.Endpoint, conf.DriverName, conf.PollTime, conf.PoolTimeout)

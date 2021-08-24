@@ -24,6 +24,7 @@ import (
 	ctrl "github.com/ceph/ceph-csi/internal/controller"
 	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -98,7 +99,7 @@ func (r *ReconcilePersistentVolume) getCredentials(
 
 	if name == "" || namespace == "" {
 		errStr := "secret name or secret namespace is empty"
-		util.ErrorLogMsg(errStr)
+		log.ErrorLogMsg(errStr)
 
 		return nil, errors.New(errStr)
 	}
@@ -117,7 +118,7 @@ func (r *ReconcilePersistentVolume) getCredentials(
 
 	cr, err = util.NewUserCredentials(credentials)
 	if err != nil {
-		util.ErrorLogMsg("failed to get user credentials %s", err)
+		log.ErrorLogMsg("failed to get user credentials %s", err)
 
 		return nil, err
 	}
@@ -201,7 +202,7 @@ func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.
 
 	cr, err := r.getCredentials(ctx, secretName, secretNamespace)
 	if err != nil {
-		util.ErrorLogMsg("failed to get credentials from secret %s", err)
+		log.ErrorLogMsg("failed to get credentials from secret %s", err)
 
 		return err
 	}
@@ -209,14 +210,14 @@ func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.
 
 	rbdVolID, err := rbd.RegenerateJournal(pv.Spec.CSI.VolumeAttributes, volumeHandler, requestName, cr)
 	if err != nil {
-		util.ErrorLogMsg("failed to regenerate journal %s", err)
+		log.ErrorLogMsg("failed to regenerate journal %s", err)
 
 		return err
 	}
 	if rbdVolID != volumeHandler {
 		err = r.storeVolumeIDInPV(ctx, pv, rbdVolID)
 		if err != nil {
-			util.ErrorLogMsg("failed to store volumeID in PV %s", err)
+			log.ErrorLogMsg("failed to store volumeID in PV %s", err)
 
 			return err
 		}

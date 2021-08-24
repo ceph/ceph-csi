@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/pborman/uuid"
 )
@@ -437,7 +438,7 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 			cj.cephUUIDDirectoryPrefix+imageUUID)
 		if err != nil {
 			if !errors.Is(err, util.ErrObjectNotFound) {
-				util.ErrorLog(ctx, "failed removing oMap %s (%s)", cj.cephUUIDDirectoryPrefix+imageUUID, err)
+				log.ErrorLog(ctx, "failed removing oMap %s (%s)", cj.cephUUIDDirectoryPrefix+imageUUID, err)
 
 				return err
 			}
@@ -448,7 +449,7 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 	err := removeMapKeys(ctx, conn, csiJournalPool, cj.namespace, cj.csiDirectory,
 		[]string{cj.csiNameKeyPrefix + reqName})
 	if err != nil {
-		util.ErrorLog(ctx, "failed removing oMap key %s (%s)", cj.csiNameKeyPrefix+reqName, err)
+		log.ErrorLog(ctx, "failed removing oMap key %s (%s)", cj.csiNameKeyPrefix+reqName, err)
 
 		return err
 	}
@@ -486,7 +487,7 @@ func reserveOMapName(
 			if volUUID == "" && errors.Is(err, util.ErrObjectExists) {
 				attempt++
 				// try again with a different uuid, for maxAttempts tries
-				util.DebugLog(ctx, "uuid (%s) conflict detected, retrying (attempt %d of %d)",
+				log.DebugLog(ctx, "uuid (%s) conflict detected, retrying (attempt %d of %d)",
 					iterUUID, attempt, maxAttempts)
 
 				continue
@@ -590,10 +591,10 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	}
 	defer func() {
 		if err != nil {
-			util.WarningLog(ctx, "reservation failed for volume: %s", reqName)
+			log.WarningLog(ctx, "reservation failed for volume: %s", reqName)
 			errDefer := conn.UndoReservation(ctx, imagePool, journalPool, imageName, reqName)
 			if errDefer != nil {
-				util.WarningLog(ctx, "failed undoing reservation of volume: %s (%v)", reqName, errDefer)
+				log.WarningLog(ctx, "failed undoing reservation of volume: %s (%v)", reqName, errDefer)
 			}
 		}
 	}()
@@ -686,7 +687,7 @@ func (conn *Connection) GetImageAttributes(
 		if !errors.Is(err, util.ErrKeyNotFound) && !errors.Is(err, util.ErrPoolNotFound) {
 			return nil, err
 		}
-		util.WarningLog(ctx, "unable to read omap keys: pool or key missing: %v", err)
+		log.WarningLog(ctx, "unable to read omap keys: pool or key missing: %v", err)
 	}
 
 	var found bool

@@ -28,6 +28,7 @@ import (
 	"sync"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (
@@ -75,7 +76,7 @@ func loadAvailableMounters(conf *util.Config) error {
 
 	err := kernelMounterProbe.Run()
 	if err != nil {
-		util.ErrorLogMsg("failed to run mount.ceph %v", err)
+		log.ErrorLogMsg("failed to run mount.ceph %v", err)
 	} else {
 		// fetch the current running kernel info
 		release, kvErr := util.GetKernelVersion()
@@ -84,18 +85,18 @@ func loadAvailableMounters(conf *util.Config) error {
 		}
 
 		if conf.ForceKernelCephFS || util.CheckKernelSupport(release, quotaSupport) {
-			util.DefaultLog("loaded mounter: %s", volumeMounterKernel)
+			log.DefaultLog("loaded mounter: %s", volumeMounterKernel)
 			availableMounters = append(availableMounters, volumeMounterKernel)
 		} else {
-			util.DefaultLog("kernel version < 4.17 might not support quota feature, hence not loading kernel client")
+			log.DefaultLog("kernel version < 4.17 might not support quota feature, hence not loading kernel client")
 		}
 	}
 
 	err = fuseMounterProbe.Run()
 	if err != nil {
-		util.ErrorLogMsg("failed to run ceph-fuse %v", err)
+		log.ErrorLogMsg("failed to run ceph-fuse %v", err)
 	} else {
-		util.DefaultLog("loaded mounter: %s", volumeMounterFuse)
+		log.DefaultLog("loaded mounter: %s", volumeMounterFuse)
 		availableMounters = append(availableMounters, volumeMounterFuse)
 	}
 
@@ -131,7 +132,7 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 	if chosenMounter == "" {
 		// Otherwise pick whatever is left
 		chosenMounter = availableMounters[0]
-		util.DebugLogMsg("requested mounter: %s, chosen mounter: %s", wantMounter, chosenMounter)
+		log.DebugLogMsg("requested mounter: %s, chosen mounter: %s", wantMounter, chosenMounter)
 	}
 
 	// Create the mounter
@@ -291,10 +292,10 @@ func unmountVolume(ctx context.Context, mountPoint string) error {
 	if ok {
 		p, err := os.FindProcess(pid)
 		if err != nil {
-			util.WarningLog(ctx, "failed to find process %d: %v", pid, err)
+			log.WarningLog(ctx, "failed to find process %d: %v", pid, err)
 		} else {
 			if _, err = p.Wait(); err != nil {
-				util.WarningLog(ctx, "%d is not a child process: %v", pid, err)
+				log.WarningLog(ctx, "%d is not a child process: %v", pid, err)
 			}
 		}
 	}

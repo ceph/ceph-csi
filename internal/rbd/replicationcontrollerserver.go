@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
@@ -91,7 +92,7 @@ type ReplicationServer struct {
 func getForceOption(ctx context.Context, parameters map[string]string) (bool, error) {
 	val, ok := parameters[forceKey]
 	if !ok {
-		util.WarningLog(ctx, "%s is not set in parameters, setting to default (%v)", forceKey, false)
+		log.WarningLog(ctx, "%s is not set in parameters, setting to default (%v)", forceKey, false)
 
 		return false, nil
 	}
@@ -108,7 +109,7 @@ func getForceOption(ctx context.Context, parameters map[string]string) (bool, er
 func getMirroringMode(ctx context.Context, parameters map[string]string) (librbd.ImageMirrorMode, error) {
 	val, ok := parameters[imageMirroringKey]
 	if !ok {
-		util.WarningLog(
+		log.WarningLog(
 			ctx,
 			"%s is not set in parameters, setting to mirroringMode to default (%s)",
 			imageMirroringKey,
@@ -206,7 +207,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	}
 
 	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
 
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
@@ -234,7 +235,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 
 	mirroringInfo, err := rbdVol.getImageMirroringInfo()
 	if err != nil {
-		util.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, err.Error())
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -242,7 +243,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	if mirroringInfo.State != librbd.MirrorImageEnabled {
 		err = rbdVol.enableImageMirroring(mirroringMode)
 		if err != nil {
-			util.ErrorLog(ctx, err.Error())
+			log.ErrorLog(ctx, err.Error())
 
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -253,7 +254,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		util.DebugLog(
+		log.DebugLog(
 			ctx,
 			"Added scheduling at interval %s, start time %s for volume %s",
 			interval,
@@ -281,7 +282,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	defer cr.DeleteCredentials()
 
 	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
 
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
@@ -309,7 +310,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 
 	mirroringInfo, err := rbdVol.getImageMirroringInfo()
 	if err != nil {
-		util.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, err.Error())
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -394,7 +395,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	defer cr.DeleteCredentials()
 
 	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
 
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
@@ -417,7 +418,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 
 	mirroringInfo, err := rbdVol.getImageMirroringInfo()
 	if err != nil {
-		util.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, err.Error())
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -434,7 +435,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	if !mirroringInfo.Primary {
 		err = rbdVol.promoteImage(req.Force)
 		if err != nil {
-			util.ErrorLog(ctx, err.Error())
+			log.ErrorLog(ctx, err.Error())
 			// In case of the DR the image on the primary site cannot be
 			// demoted as the cluster is down, during failover the image need
 			// to be force promoted. RBD returns `Device or resource busy`
@@ -470,7 +471,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	defer cr.DeleteCredentials()
 
 	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
 
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
@@ -492,7 +493,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	}
 	mirroringInfo, err := rbdVol.getImageMirroringInfo()
 	if err != nil {
-		util.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, err.Error())
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -509,7 +510,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	if mirroringInfo.Primary {
 		err = rbdVol.demoteImage()
 		if err != nil {
-			util.ErrorLog(ctx, err.Error())
+			log.ErrorLog(ctx, err.Error())
 
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -525,7 +526,7 @@ func checkRemoteSiteStatus(ctx context.Context, mirrorStatus *librbd.GlobalMirro
 	for _, s := range mirrorStatus.SiteStatuses {
 		if s.MirrorUUID != "" {
 			if imageMirroringState(s.State.String()) != unknown && !s.Up {
-				util.UsefulLog(
+				log.UsefulLog(
 					ctx,
 					"peer site mirrorUUID=%s, mirroring state=%s, description=%s and lastUpdate=%s",
 					s.MirrorUUID,
@@ -559,7 +560,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	defer cr.DeleteCredentials()
 
 	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
-		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
 
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
@@ -583,7 +584,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	if err != nil {
 		// in case of Resync the image will get deleted and gets recreated and
 		// it takes time for this operation.
-		util.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, err.Error())
 
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
@@ -608,7 +609,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 			return resp, nil
 		}
-		util.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, err.Error())
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -616,7 +617,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 	localStatus, err := mirrorStatus.LocalStatus()
 	if err != nil {
-		util.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, err.Error())
 
 		return nil, fmt.Errorf("failed to get local status: %w", err)
 	}
@@ -639,7 +640,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	if strings.Contains(localStatus.State.String(), string(errorState)) {
 		err = rbdVol.resyncImage()
 		if err != nil {
-			util.ErrorLog(ctx, err.Error())
+			log.ErrorLog(ctx, err.Error())
 
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -647,7 +648,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 	// convert the last update time to UTC
 	lastUpdateTime := time.Unix(localStatus.LastUpdate, 0).UTC()
-	util.UsefulLog(
+	log.UsefulLog(
 		ctx,
 		"image mirroring state=%s, description=%s and lastUpdate=%s",
 		localStatus.State.String(),

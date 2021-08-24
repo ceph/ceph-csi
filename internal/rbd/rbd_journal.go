@@ -23,6 +23,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (
@@ -167,7 +168,7 @@ func checkSnapCloneExists(
 			err = parentVol.deleteSnapshot(ctx, rbdSnap)
 			if err != nil {
 				if !errors.Is(err, ErrSnapNotFound) {
-					util.ErrorLog(ctx, "failed to delete snapshot %s: %v", rbdSnap, err)
+					log.ErrorLog(ctx, "failed to delete snapshot %s: %v", rbdSnap, err)
 
 					return false, err
 				}
@@ -198,7 +199,7 @@ func checkSnapCloneExists(
 		// create snapshot
 		sErr := vol.createSnapshot(ctx, rbdSnap)
 		if sErr != nil {
-			util.ErrorLog(ctx, "failed to create snapshot %s: %v", rbdSnap, sErr)
+			log.ErrorLog(ctx, "failed to create snapshot %s: %v", rbdSnap, sErr)
 			err = undoSnapshotCloning(ctx, parentVol, rbdSnap, vol, cr)
 
 			return false, err
@@ -211,21 +212,21 @@ func checkSnapCloneExists(
 	if vol.ImageID == "" {
 		sErr := vol.getImageID()
 		if sErr != nil {
-			util.ErrorLog(ctx, "failed to get image id %s: %v", vol, sErr)
+			log.ErrorLog(ctx, "failed to get image id %s: %v", vol, sErr)
 			err = undoSnapshotCloning(ctx, parentVol, rbdSnap, vol, cr)
 
 			return false, err
 		}
 		sErr = j.StoreImageID(ctx, vol.JournalPool, vol.ReservedID, vol.ImageID)
 		if sErr != nil {
-			util.ErrorLog(ctx, "failed to store volume id %s: %v", vol, sErr)
+			log.ErrorLog(ctx, "failed to store volume id %s: %v", vol, sErr)
 			err = undoSnapshotCloning(ctx, parentVol, rbdSnap, vol, cr)
 
 			return false, err
 		}
 	}
 
-	util.DebugLog(ctx, "found existing image (%s) with name (%s) for request (%s)",
+	log.DebugLog(ctx, "found existing image (%s) with name (%s) for request (%s)",
 		rbdSnap.VolID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return true, nil
@@ -335,13 +336,13 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	if parentVol != nil && parentVol.isEncrypted() {
 		err = parentVol.copyEncryptionConfig(&rv.rbdImage)
 		if err != nil {
-			util.ErrorLog(ctx, err.Error())
+			log.ErrorLog(ctx, err.Error())
 
 			return false, err
 		}
 	}
 
-	util.DebugLog(ctx, "found existing volume (%s) with image name (%s) for request (%s)",
+	log.DebugLog(ctx, "found existing volume (%s) with image name (%s) for request (%s)",
 		rv.VolID, rv.RbdImageName, rv.RequestName)
 
 	return true, nil
@@ -357,13 +358,13 @@ func (rv *rbdVolume) repairImageID(ctx context.Context, j *journal.Connection) e
 
 	err := rv.getImageID()
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get image id %s: %v", rv, err)
+		log.ErrorLog(ctx, "failed to get image id %s: %v", rv, err)
 
 		return err
 	}
 	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to store volume id %s: %v", rv, err)
+		log.ErrorLog(ctx, "failed to store volume id %s: %v", rv, err)
 
 		return err
 	}
@@ -405,7 +406,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 		return err
 	}
 
-	util.DebugLog(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)",
+	log.DebugLog(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)",
 		rbdSnap.VolID, rbdSnap.RbdSnapName, rbdSnap.RequestName)
 
 	return nil
@@ -481,7 +482,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 		return err
 	}
 
-	util.DebugLog(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)",
+	log.DebugLog(ctx, "generated Volume ID (%s) and image name (%s) for request name (%s)",
 		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
 
 	return nil
@@ -566,7 +567,7 @@ func RegenerateJournal(
 
 	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(options)
 	if err != nil {
-		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
 		return "", err
 	}
@@ -634,7 +635,7 @@ func RegenerateJournal(
 			undoErr := j.UndoReservation(ctx, rbdVol.JournalPool, rbdVol.Pool,
 				rbdVol.RbdImageName, rbdVol.RequestName)
 			if undoErr != nil {
-				util.ErrorLog(ctx, "failed to undo reservation %s: %v", rbdVol, undoErr)
+				log.ErrorLog(ctx, "failed to undo reservation %s: %v", rbdVol, undoErr)
 			}
 		}
 	}()
@@ -644,7 +645,7 @@ func RegenerateJournal(
 		return "", err
 	}
 
-	util.DebugLog(ctx, "re-generated Volume ID (%s) and image name (%s) for request name (%s)",
+	log.DebugLog(ctx, "re-generated Volume ID (%s) and image name (%s) for request name (%s)",
 		rbdVol.VolID, rbdVol.RbdImageName, rbdVol.RequestName)
 	if rbdVol.ImageID == "" {
 		err = rbdVol.storeImageID(ctx, j)
@@ -660,13 +661,13 @@ func RegenerateJournal(
 func (rv *rbdVolume) storeImageID(ctx context.Context, j *journal.Connection) error {
 	err := rv.getImageID()
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get image id %s: %v", rv, err)
+		log.ErrorLog(ctx, "failed to get image id %s: %v", rv, err)
 
 		return err
 	}
 	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to store volume id %s: %v", rv, err)
+		log.ErrorLog(ctx, "failed to store volume id %s: %v", rv, err)
 
 		return err
 	}

@@ -19,7 +19,7 @@ package csicommon
 import (
 	"context"
 
-	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -71,7 +71,7 @@ func (cs *DefaultControllerServer) GetCapacity(
 func (cs *DefaultControllerServer) ControllerGetCapabilities(
 	ctx context.Context,
 	req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	util.TraceLog(ctx, "Using default ControllerGetCapabilities")
+	log.TraceLog(ctx, "Using default ControllerGetCapabilities")
 	if cs.Driver == nil {
 		return nil, status.Error(codes.Unimplemented, "Controller server is not enabled")
 	}

@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 func createRBDClone(
@@ -31,7 +32,7 @@ func createRBDClone(
 	// create snapshot
 	err := parentVol.createSnapshot(ctx, snap)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to create snapshot %s: %v", snap, err)
+		log.ErrorLog(ctx, "failed to create snapshot %s: %v", snap, err)
 
 		return err
 	}
@@ -40,7 +41,7 @@ func createRBDClone(
 	// create clone image and delete snapshot
 	err = cloneRbdVol.cloneRbdImageFromSnapshot(ctx, snap, parentVol)
 	if err != nil {
-		util.ErrorLog(
+		log.ErrorLog(
 			ctx,
 			"failed to clone rbd image %s from snapshot %s: %v",
 			cloneRbdVol.RbdImageName,
@@ -54,10 +55,10 @@ func createRBDClone(
 	}
 	errSnap := parentVol.deleteSnapshot(ctx, snap)
 	if errSnap != nil {
-		util.ErrorLog(ctx, "failed to delete snapshot: %v", errSnap)
+		log.ErrorLog(ctx, "failed to delete snapshot: %v", errSnap)
 		delErr := deleteImage(ctx, cloneRbdVol, cr)
 		if delErr != nil {
-			util.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", cloneRbdVol, delErr)
+			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", cloneRbdVol, delErr)
 		}
 
 		return err
@@ -65,10 +66,10 @@ func createRBDClone(
 
 	err = cloneRbdVol.getImageInfo()
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get rbd image: %s details with error: %v", cloneRbdVol, err)
+		log.ErrorLog(ctx, "failed to get rbd image: %s details with error: %v", cloneRbdVol, err)
 		delErr := deleteImage(ctx, cloneRbdVol, cr)
 		if delErr != nil {
-			util.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", cloneRbdVol, delErr)
+			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", cloneRbdVol, delErr)
 		}
 
 		return err
@@ -88,7 +89,7 @@ func cleanUpSnapshot(
 	err := parentVol.deleteSnapshot(ctx, rbdSnap)
 	if err != nil {
 		if !errors.Is(err, ErrSnapNotFound) {
-			util.ErrorLog(ctx, "failed to delete snapshot %q: %v", rbdSnap, err)
+			log.ErrorLog(ctx, "failed to delete snapshot %q: %v", rbdSnap, err)
 
 			return err
 		}
@@ -98,7 +99,7 @@ func cleanUpSnapshot(
 		err := deleteImage(ctx, rbdVol, cr)
 		if err != nil {
 			if !errors.Is(err, ErrImageNotFound) {
-				util.ErrorLog(ctx, "failed to delete rbd image %q with error: %v", rbdVol, err)
+				log.ErrorLog(ctx, "failed to delete rbd image %q with error: %v", rbdVol, err)
 
 				return err
 			}
@@ -134,7 +135,7 @@ func undoSnapshotCloning(
 	cr *util.Credentials) error {
 	err := cleanUpSnapshot(ctx, parentVol, rbdSnap, cloneVol, cr)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to clean up  %s or %s: %v", cloneVol, rbdSnap, err)
+		log.ErrorLog(ctx, "failed to clean up  %s or %s: %v", cloneVol, rbdSnap, err)
 
 		return err
 	}

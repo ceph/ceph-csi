@@ -21,6 +21,7 @@ import (
 	"errors"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/ceph/go-ceph/rados"
 )
@@ -74,7 +75,7 @@ func getOMapValues(
 
 	if err != nil {
 		if errors.Is(err, rados.ErrNotFound) {
-			util.ErrorLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
+			log.ErrorLog(ctx, "omap not found (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
 
 			return nil, util.JoinErrors(util.ErrKeyNotFound, err)
@@ -83,7 +84,7 @@ func getOMapValues(
 		return nil, err
 	}
 
-	util.DebugLog(ctx, "got omap values: (pool=%q, namespace=%q, name=%q): %+v",
+	log.DebugLog(ctx, "got omap values: (pool=%q, namespace=%q, name=%q): %+v",
 		poolName, namespace, oid, results)
 
 	return results, nil
@@ -110,16 +111,16 @@ func removeMapKeys(
 			// the previous implementation of removing omap keys (via the cli)
 			// treated failure to find the omap as a non-error. Do so here to
 			// mimic the previous behavior.
-			util.DebugLog(ctx, "when removing omap keys, omap not found (pool=%q, namespace=%q, name=%q): %+v",
+			log.DebugLog(ctx, "when removing omap keys, omap not found (pool=%q, namespace=%q, name=%q): %+v",
 				poolName, namespace, oid, keys)
 		} else {
-			util.ErrorLog(ctx, "failed removing omap keys (pool=%q, namespace=%q, name=%q): %v",
+			log.ErrorLog(ctx, "failed removing omap keys (pool=%q, namespace=%q, name=%q): %v",
 				poolName, namespace, oid, err)
 
 			return err
 		}
 	}
-	util.DebugLog(ctx, "removed omap keys (pool=%q, namespace=%q, name=%q): %+v",
+	log.DebugLog(ctx, "removed omap keys (pool=%q, namespace=%q, name=%q): %+v",
 		poolName, namespace, oid, keys)
 
 	return nil
@@ -146,12 +147,12 @@ func setOMapKeys(
 	}
 	err = ioctx.SetOmap(oid, bpairs)
 	if err != nil {
-		util.ErrorLog(ctx, "failed setting omap keys (pool=%q, namespace=%q, name=%q, pairs=%+v): %v",
+		log.ErrorLog(ctx, "failed setting omap keys (pool=%q, namespace=%q, name=%q, pairs=%+v): %v",
 			poolName, namespace, oid, pairs, err)
 
 		return err
 	}
-	util.DebugLog(ctx, "set omap keys (pool=%q, namespace=%q, name=%q): %+v)",
+	log.DebugLog(ctx, "set omap keys (pool=%q, namespace=%q, name=%q): %+v)",
 		poolName, namespace, oid, pairs)
 
 	return nil

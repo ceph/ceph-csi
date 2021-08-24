@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	fsAdmin "github.com/ceph/go-ceph/cephfs/admin"
 	"github.com/ceph/go-ceph/rados"
@@ -59,13 +60,13 @@ func getVolumeRootPathCephDeprecated(volID volumeID) string {
 func (vo *volumeOptions) getVolumeRootPathCeph(ctx context.Context, volID volumeID) (string, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
-		util.ErrorLog(ctx, "could not get FSAdmin err %s", err)
+		log.ErrorLog(ctx, "could not get FSAdmin err %s", err)
 
 		return "", err
 	}
 	svPath, err := fsa.SubVolumePath(vo.FsName, vo.SubvolumeGroup, string(volID))
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get the rootpath for the vol %s: %s", string(volID), err)
+		log.ErrorLog(ctx, "failed to get the rootpath for the vol %s: %s", string(volID), err)
 		if errors.Is(err, rados.ErrNotFound) {
 			return "", util.JoinErrors(ErrVolumeNotFound, err)
 		}
@@ -79,14 +80,14 @@ func (vo *volumeOptions) getVolumeRootPathCeph(ctx context.Context, volID volume
 func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (*Subvolume, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
-		util.ErrorLog(ctx, "could not get FSAdmin, can not fetch metadata pool for %s:", vo.FsName, err)
+		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch metadata pool for %s:", vo.FsName, err)
 
 		return nil, err
 	}
 
 	info, err := fsa.SubVolumeInfo(vo.FsName, vo.SubvolumeGroup, string(volID))
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get subvolume info for the vol %s: %s", string(volID), err)
+		log.ErrorLog(ctx, "failed to get subvolume info for the vol %s: %s", string(volID), err)
 		if errors.Is(err, rados.ErrNotFound) {
 			return nil, ErrVolumeNotFound
 		}
@@ -148,7 +149,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 
 	ca, err := volOptions.conn.GetFSAdmin()
 	if err != nil {
-		util.ErrorLog(ctx, "could not get FSAdmin, can not create subvolume %s: %s", string(volID), err)
+		log.ErrorLog(ctx, "could not get FSAdmin, can not create subvolume %s: %s", string(volID), err)
 
 		return err
 	}
@@ -158,7 +159,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 		opts := fsAdmin.SubVolumeGroupOptions{}
 		err = ca.CreateSubVolumeGroup(volOptions.FsName, volOptions.SubvolumeGroup, &opts)
 		if err != nil {
-			util.ErrorLog(
+			log.ErrorLog(
 				ctx,
 				"failed to create subvolume group %s, for the vol %s: %s",
 				volOptions.SubvolumeGroup,
@@ -167,7 +168,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 
 			return err
 		}
-		util.DebugLog(ctx, "cephfs: created subvolume group %s", volOptions.SubvolumeGroup)
+		log.DebugLog(ctx, "cephfs: created subvolume group %s", volOptions.SubvolumeGroup)
 		clusterAdditionalInfo[volOptions.ClusterID].subVolumeGroupCreated = true
 	}
 
@@ -182,7 +183,7 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 	// FIXME: check if the right credentials are used ("-n", cephEntityClientPrefix + cr.ID)
 	err = ca.CreateSubVolume(volOptions.FsName, volOptions.SubvolumeGroup, string(volID), &opts)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to create subvolume %s in fs %s: %s", string(volID), volOptions.FsName, err)
+		log.ErrorLog(ctx, "failed to create subvolume %s in fs %s: %s", string(volID), volOptions.FsName, err)
 
 		return err
 	}
@@ -207,7 +208,7 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 		clusterAdditionalInfo[vo.ClusterID].resizeState == supported {
 		fsa, err := vo.conn.GetFSAdmin()
 		if err != nil {
-			util.ErrorLog(ctx, "could not get FSAdmin, can not resize volume %s:", vo.FsName, err)
+			log.ErrorLog(ctx, "could not get FSAdmin, can not resize volume %s:", vo.FsName, err)
 
 			return err
 		}
@@ -220,7 +221,7 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 		var invalid fsAdmin.NotImplementedError
 		// In case the error is other than invalid command return error to the caller.
 		if !errors.As(err, &invalid) {
-			util.ErrorLog(ctx, "failed to resize subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
+			log.ErrorLog(ctx, "failed to resize subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
 
 			return err
 		}
@@ -233,7 +234,7 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, force bool) error {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
-		util.ErrorLog(ctx, "could not get FSAdmin %s:", err)
+		log.ErrorLog(ctx, "could not get FSAdmin %s:", err)
 
 		return err
 	}
@@ -247,7 +248,7 @@ func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, force 
 
 	err = fsa.RemoveSubVolumeWithFlags(vo.FsName, vo.SubvolumeGroup, string(volID), opt)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to purge subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
+		log.ErrorLog(ctx, "failed to purge subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
 		if strings.Contains(err.Error(), volumeNotEmpty) {
 			return util.JoinErrors(ErrVolumeHasSnapshots, err)
 		}

@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -161,7 +162,7 @@ func findDeviceMappingImage(ctx context.Context, pool, namespace, image string, 
 
 	rbdDeviceList, err := rbdGetDeviceList(ctx, accessType)
 	if err != nil {
-		util.WarningLog(ctx, "failed to determine if image (%s) is mapped to a device (%v)", imageSpec, err)
+		log.WarningLog(ctx, "failed to determine if image (%s) is mapped to a device (%v)", imageSpec, err)
 
 		return "", false
 	}
@@ -199,17 +200,17 @@ func checkRbdNbdTools() bool {
 		// try to load the module
 		_, _, err = util.ExecCommand(context.TODO(), "modprobe", moduleNbd)
 		if err != nil {
-			util.ExtendedLogMsg("rbd-nbd: nbd modprobe failed with error %v", err)
+			log.ExtendedLogMsg("rbd-nbd: nbd modprobe failed with error %v", err)
 
 			return false
 		}
 	}
 	if _, _, err := util.ExecCommand(context.TODO(), rbdTonbd, "--version"); err != nil {
-		util.ExtendedLogMsg("rbd-nbd: running rbd-nbd --version failed with error %v", err)
+		log.ExtendedLogMsg("rbd-nbd: running rbd-nbd --version failed with error %v", err)
 
 		return false
 	}
-	util.ExtendedLogMsg("rbd-nbd tools were found.")
+	log.ExtendedLogMsg("rbd-nbd tools were found.")
 
 	return true
 }
@@ -305,7 +306,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 	isNbd := false
 	imagePath := volOpt.String()
 
-	util.TraceLog(ctx, "rbd: map mon %s", volOpt.Monitors)
+	log.TraceLog(ctx, "rbd: map mon %s", volOpt.Monitors)
 
 	mapArgs := []string{
 		"--id", cr.ID,
@@ -321,7 +322,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 	// check if the image should stay thick-provisioned
 	isThick, err := volOpt.isThickProvisioned()
 	if err != nil {
-		util.WarningLog(ctx, "failed to detect if image %q is thick-provisioned: %v", volOpt, err)
+		log.WarningLog(ctx, "failed to detect if image %q is thick-provisioned: %v", volOpt, err)
 	}
 
 	if isNbd {
@@ -347,7 +348,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 	// Execute map
 	stdout, stderr, err := util.ExecCommand(ctx, cli, mapArgs...)
 	if err != nil {
-		util.WarningLog(ctx, "rbd: map error %v, rbd output: %s", err, stderr)
+		log.WarningLog(ctx, "rbd: map error %v, rbd output: %s", err, stderr)
 		// unmap rbd image if connection timeout
 		if strings.Contains(err.Error(), rbdMapConnectionTimeout) {
 			dArgs := detachRBDImageArgs{
@@ -361,7 +362,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 			}
 			detErr := detachRBDImageOrDeviceSpec(ctx, dArgs)
 			if detErr != nil {
-				util.WarningLog(ctx, "rbd: %s unmap error %v", imagePath, detErr)
+				log.WarningLog(ctx, "rbd: %s unmap error %v", imagePath, detErr)
 			}
 		}
 
@@ -381,7 +382,7 @@ func waitForrbdImage(ctx context.Context, backoff wait.Backoff, volOptions *rbdV
 			return false, fmt.Errorf("fail to check rbd image status: (%w)", err)
 		}
 		if (volOptions.DisableInUseChecks) && (used) {
-			util.UsefulLog(ctx, "valid multi-node attach requested, ignoring watcher in-use result")
+			log.UsefulLog(ctx, "valid multi-node attach requested, ignoring watcher in-use result")
 
 			return used, nil
 		}
@@ -423,7 +424,7 @@ func detachRBDImageOrDeviceSpec(
 		mapperFile, mapperPath := util.VolumeMapper(dArgs.volumeID)
 		mappedDevice, mapper, err := util.DeviceEncryptionStatus(ctx, mapperPath)
 		if err != nil {
-			util.ErrorLog(ctx, "error determining LUKS device on %s, %s: %s",
+			log.ErrorLog(ctx, "error determining LUKS device on %s, %s: %s",
 				mapperPath, dArgs.imageOrDeviceSpec, err)
 
 			return err
@@ -432,7 +433,7 @@ func detachRBDImageOrDeviceSpec(
 			// mapper found, so it is open Luks device
 			err = util.CloseEncryptedVolume(ctx, mapperFile)
 			if err != nil {
-				util.ErrorLog(ctx, "error closing LUKS device on %s, %s: %s",
+				log.ErrorLog(ctx, "error closing LUKS device on %s, %s: %s",
 					mapperPath, dArgs.imageOrDeviceSpec, err)
 
 				return err
@@ -452,7 +453,7 @@ func detachRBDImageOrDeviceSpec(
 			(strings.Contains(stderr, fmt.Sprintf(rbdUnmapCmdkRbdMissingMap, dArgs.imageOrDeviceSpec)) ||
 				strings.Contains(stderr, fmt.Sprintf(rbdUnmapCmdNbdMissingMap, dArgs.imageOrDeviceSpec))) {
 			// Devices found not to be mapped are treated as a successful detach
-			util.TraceLog(ctx, "image or device spec (%s) not mapped", dArgs.imageOrDeviceSpec)
+			log.TraceLog(ctx, "image or device spec (%s) not mapped", dArgs.imageOrDeviceSpec)
 
 			return nil
 		}
@@ -462,7 +463,7 @@ func detachRBDImageOrDeviceSpec(
 	if dArgs.isNbd && dArgs.logDir != "" {
 		logFile := getCephClientLogFileName(dArgs.volumeID, dArgs.logDir, "rbd-nbd")
 		if err = os.Remove(logFile); err != nil {
-			util.WarningLog(ctx, "failed to remove logfile: %s, error: %v",
+			log.WarningLog(ctx, "failed to remove logfile: %s, error: %v",
 				logFile, err)
 		}
 	}

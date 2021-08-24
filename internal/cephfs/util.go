@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
@@ -130,7 +131,7 @@ func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (sn
 
 	cephfsSnap.Monitors, cephfsSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
 	if err != nil {
-		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
 		return nil, err
 	}
@@ -144,7 +145,7 @@ func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (sn
 func parseTime(ctx context.Context, createTime time.Time) (*timestamp.Timestamp, error) {
 	tm, err := ptypes.TimestampProto(createTime)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to convert time %s %v", createTime, err)
+		log.ErrorLog(ctx, "failed to convert time %s %v", createTime, err)
 
 		return tm, err
 	}

@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
@@ -112,7 +113,7 @@ func checkVolExists(ctx context.Context,
 		if cloneState == cephFSCloneFailed {
 			err = volOptions.purgeVolume(ctx, volumeID(vid.FsSubvolName), true)
 			if err != nil {
-				util.ErrorLog(ctx, "failed to delete volume %s: %v", vid.FsSubvolName, err)
+				log.ErrorLog(ctx, "failed to delete volume %s: %v", vid.FsSubvolName, err)
 
 				return nil, err
 			}
@@ -171,7 +172,7 @@ func checkVolExists(ctx context.Context,
 		return nil, err
 	}
 
-	util.DebugLog(ctx, "Found existing volume (%s) with subvolume name (%s) for request (%s)",
+	log.DebugLog(ctx, "Found existing volume (%s) with subvolume name (%s) for request (%s)",
 		vid.VolumeID, vid.FsSubvolName, volOptions.RequestName)
 
 	if parentVolOpt != nil && pvID != nil {
@@ -269,7 +270,7 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 		return nil, err
 	}
 
-	util.DebugLog(ctx, "Generated Volume ID (%s) and subvolume name (%s) for request name (%s)",
+	log.DebugLog(ctx, "Generated Volume ID (%s) and subvolume name (%s) for request name (%s)",
 		vid.VolumeID, vid.FsSubvolName, volOptions.RequestName)
 
 	return &vid, nil
@@ -311,7 +312,7 @@ func reserveSnap(
 		return nil, err
 	}
 
-	util.DebugLog(ctx, "Generated Snapshot ID (%s) for request name (%s)",
+	log.DebugLog(ctx, "Generated Snapshot ID (%s) for request name (%s)",
 		vid.SnapshotID, snap.RequestName)
 
 	return &vid, nil
@@ -392,14 +393,14 @@ func checkSnapExists(
 		if err != nil {
 			err = volOptions.deleteSnapshot(ctx, volumeID(snapID), volumeID(parentSubVolName))
 			if err != nil {
-				util.ErrorLog(ctx, "failed to delete snapshot %s: %v", snapID, err)
+				log.ErrorLog(ctx, "failed to delete snapshot %s: %v", snapID, err)
 
 				return
 			}
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, snapID, snap.RequestName)
 			if err != nil {
-				util.ErrorLog(ctx, "removing reservation failed for snapshot %s: %v", snapID, err)
+				log.ErrorLog(ctx, "removing reservation failed for snapshot %s: %v", snapID, err)
 			}
 		}
 	}()
@@ -415,7 +416,7 @@ func checkSnapExists(
 	if err != nil {
 		return nil, nil, err
 	}
-	util.DebugLog(ctx, "Found existing snapshot (%s) with subvolume name (%s) for request (%s)",
+	log.DebugLog(ctx, "Found existing snapshot (%s) with subvolume name (%s) for request (%s)",
 		snapData.ImageAttributes.RequestName, parentSubVolName, sid.FsSnapshotName)
 
 	return sid, &snapInfo, nil

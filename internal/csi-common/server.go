@@ -23,6 +23,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ceph/ceph-csi/internal/util/log"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/csi-addons/spec/lib/go/replication"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -30,8 +32,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"k8s.io/klog/v2"
-
-	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // NonBlockingGRPCServer defines Non blocking GRPC server interfaces.
@@ -128,7 +128,7 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, srv Servers, 
 		replication.RegisterControllerServer(server, srv.RS)
 	}
 
-	util.DefaultLog("Listening for connections on address: %#v", listener.Addr())
+	log.DefaultLog("Listening for connections on address: %#v", listener.Addr())
 	if metrics {
 		ho := strings.Split(hstOptions, ",")
 		const expectedHo = 3

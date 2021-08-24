@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/ceph/go-ceph/rados"
 	librbd "github.com/ceph/go-ceph/rbd"
@@ -241,7 +242,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 			return fmt.Errorf("failed to set data pool: %w", err)
 		}
 	}
-	util.DebugLog(ctx, logMsg,
+	log.DebugLog(ctx, logMsg,
 		pOpts, volSzMiB, pOpts.imageFeatureSet.Names(), pOpts.Monitors)
 
 	if pOpts.imageFeatureSet != 0 {
@@ -492,7 +493,7 @@ func isNotMountPoint(mounter mount.Interface, stagingTargetPath string) (bool, e
 func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (bool, error) {
 	args := []string{"rbd", "task", "add"}
 	args = append(args, arg...)
-	util.DebugLog(
+	log.DebugLog(
 		ctx,
 		"executing %v for image (%s) using mon %s, pool %s",
 		args,
@@ -505,17 +506,17 @@ func addRbdManagerTask(ctx context.Context, pOpts *rbdVolume, arg []string) (boo
 		switch {
 		case strings.Contains(stderr, rbdTaskRemoveCmdInvalidString1) &&
 			strings.Contains(stderr, rbdTaskRemoveCmdInvalidString2):
-			util.WarningLog(
+			log.WarningLog(
 				ctx,
 				"cluster with cluster ID (%s) does not support Ceph manager based rbd commands"+
 					"(minimum ceph version required is v14.2.3)",
 				pOpts.ClusterID)
 			supported = false
 		case strings.HasPrefix(stderr, rbdTaskRemoveCmdAccessDeniedMessage):
-			util.WarningLog(ctx, "access denied to Ceph MGR-based rbd commands on cluster ID (%s)", pOpts.ClusterID)
+			log.WarningLog(ctx, "access denied to Ceph MGR-based rbd commands on cluster ID (%s)", pOpts.ClusterID)
 			supported = false
 		default:
-			util.WarningLog(ctx, "uncaught error while scheduling a task (%v): %s", err, stderr)
+			log.WarningLog(ctx, "uncaught error while scheduling a task (%v): %s", err, stderr)
 		}
 	}
 	if err != nil {
@@ -539,7 +540,7 @@ func (rv *rbdVolume) getTrashPath() string {
 func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	image := pOpts.RbdImageName
 
-	util.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
+	log.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
 
 	// Support deleting the older rbd images whose imageID is not stored in omap
 	err := pOpts.getImageID()
@@ -548,9 +549,9 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	}
 
 	if pOpts.isEncrypted() {
-		util.DebugLog(ctx, "rbd: going to remove DEK for %q", pOpts)
+		log.DebugLog(ctx, "rbd: going to remove DEK for %q", pOpts)
 		if err = pOpts.encryption.RemoveDEK(pOpts.VolID); err != nil {
-			util.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", pOpts.VolID, err)
+			log.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", pOpts.VolID, err)
 		}
 	}
 
@@ -562,7 +563,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	rbdImage := librbd.GetImage(pOpts.ioctx, image)
 	err = rbdImage.Trash(0)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", pOpts, err)
+		log.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", pOpts, err)
 
 		return err
 	}
@@ -578,7 +579,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	}
 	rbdCephMgrSupported, err := addRbdManagerTask(ctx, pOpts, args)
 	if rbdCephMgrSupported && err != nil {
-		util.ErrorLog(ctx, "failed to add task to delete rbd image: %s, %v", pOpts, err)
+		log.ErrorLog(ctx, "failed to add task to delete rbd image: %s, %v", pOpts, err)
 
 		return err
 	}
@@ -586,7 +587,7 @@ func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 	if !rbdCephMgrSupported {
 		err = librbd.TrashRemove(pOpts.ioctx, pOpts.ImageID, true)
 		if err != nil {
-			util.ErrorLog(ctx, "failed to delete rbd image: %s, %v", pOpts, err)
+			log.ErrorLog(ctx, "failed to delete rbd image: %s, %v", pOpts, err)
 
 			return err
 		}
@@ -625,7 +626,7 @@ func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
 			if errors.Is(err, ErrImageNotFound) {
 				return depth, nil
 			}
-			util.ErrorLog(ctx, "failed to check depth on image %s: %s", &vol, err)
+			log.ErrorLog(ctx, "failed to check depth on image %s: %s", &vol, err)
 
 			return depth, err
 		}
@@ -654,7 +655,7 @@ func flattenClonedRbdImages(
 	defer rv.Destroy()
 	err := rv.Connect(cr)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to open connection %s; err %v", rv, err)
+		log.ErrorLog(ctx, "failed to open connection %s; err %v", rv, err)
 
 		return err
 	}
@@ -680,7 +681,7 @@ func flattenClonedRbdImages(
 		rv.RbdImageName = snapName.origSnapName
 		err = rv.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 		if err != nil {
-			util.ErrorLog(ctx, "failed to flatten %s; err %v", rv, err)
+			log.ErrorLog(ctx, "failed to flatten %s; err %v", rv, err)
 
 			continue
 		}
@@ -703,7 +704,7 @@ func (rv *rbdVolume) flattenRbdImage(
 		if err != nil {
 			return err
 		}
-		util.ExtendedLog(
+		log.ExtendedLog(
 			ctx,
 			"clone depth is (%d), configured softlimit (%d) and hardlimit (%d) for %s",
 			depth,
@@ -724,7 +725,7 @@ func (rv *rbdVolume) flattenRbdImage(
 			if strings.Contains(err.Error(), rbdFlattenNoParent) {
 				return nil
 			}
-			util.ErrorLog(ctx, "failed to add task flatten for %s : %v", rv, err)
+			log.ErrorLog(ctx, "failed to add task flatten for %s : %v", rv, err)
 
 			return err
 		}
@@ -733,7 +734,7 @@ func (rv *rbdVolume) flattenRbdImage(
 		}
 	}
 	if !supported {
-		util.ErrorLog(
+		log.ErrorLog(
 			ctx,
 			"task manager does not support flatten,image will be flattened once hardlimit is reached: %v",
 			err)
@@ -744,7 +745,7 @@ func (rv *rbdVolume) flattenRbdImage(
 			}
 			err := rv.flatten()
 			if err != nil {
-				util.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", rv.Pool, rv.RbdImageName, err)
+				log.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", rv.Pool, rv.RbdImageName, err)
 
 				return err
 			}
@@ -826,7 +827,7 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 			if errors.Is(err, ErrImageNotFound) {
 				return false, nil
 			}
-			util.ErrorLog(ctx, "failed to get image info for %s: %s", vol.String(), err)
+			log.ErrorLog(ctx, "failed to get image info for %s: %s", vol.String(), err)
 
 			return false, err
 		}
@@ -856,7 +857,7 @@ func genSnapFromSnapID(
 
 	err := vi.DecomposeCSIID(rbdSnap.VolID)
 	if err != nil {
-		util.ErrorLog(ctx, "error decoding snapshot ID (%s) (%s)", err, rbdSnap.VolID)
+		log.ErrorLog(ctx, "error decoding snapshot ID (%s) (%s)", err, rbdSnap.VolID)
 
 		return err
 	}
@@ -866,7 +867,7 @@ func genSnapFromSnapID(
 
 	rbdSnap.Monitors, _, err = util.GetMonsAndClusterID(options)
 	if err != nil {
-		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
 		return err
 	}
@@ -955,7 +956,7 @@ func generateVolumeFromVolumeID(
 
 	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(options)
 	if err != nil {
-		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
 		return rbdVol, err
 	}
@@ -1073,7 +1074,7 @@ func genVolFromVolID(
 	for i := range pvlist.Items {
 		if pvlist.Items[i].Spec.CSI != nil && pvlist.Items[i].Spec.CSI.VolumeHandle == volumeID {
 			if v, ok := pvlist.Items[i].Annotations[PVVolumeHandleAnnotationKey]; ok {
-				util.UsefulLog(ctx, "found new volumeID %s for existing volumeID %s", v, volumeID)
+				log.UsefulLog(ctx, "found new volumeID %s for existing volumeID %s", v, volumeID)
 				err = vi.DecomposeCSIID(v)
 				if err != nil {
 					return vol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
@@ -1108,7 +1109,7 @@ func generateVolumeFromMapping(
 				continue
 			}
 
-			util.DebugLog(ctx,
+			log.DebugLog(ctx,
 				"found new clusterID mapping %s for existing clusterID %s",
 				mappedClusterID,
 				vi.ClusterID)
@@ -1121,7 +1122,7 @@ func generateVolumeFromMapping(
 					if mappedPoolID == "" {
 						continue
 					}
-					util.DebugLog(ctx,
+					log.DebugLog(ctx,
 						"found new poolID mapping %s for existing pooID %s",
 						mappedPoolID,
 						poolID)
@@ -1181,7 +1182,7 @@ func genVolFromVolumeOptions(
 
 	rbdVol.Monitors, rbdVol.ClusterID, err = util.GetMonsAndClusterID(volOptions)
 	if err != nil {
-		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
 		return nil, err
 	}
@@ -1196,12 +1197,12 @@ func genVolFromVolumeOptions(
 	// if no image features is provided, it results in empty string
 	// which disable all RBD image features as we expected
 	if err = rbdVol.validateImageFeatures(volOptions["imageFeatures"]); err != nil {
-		util.ErrorLog(ctx, "failed to validate image features %v", err)
+		log.ErrorLog(ctx, "failed to validate image features %v", err)
 
 		return nil, err
 	}
 
-	util.ExtendedLog(
+	log.ExtendedLog(
 		ctx,
 		"setting disableInUseChecks: %t image features: %v mounter: %s",
 		disableInUseChecks,
@@ -1258,7 +1259,7 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 
 	rbdSnap.Monitors, rbdSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
 	if err != nil {
-		util.ErrorLog(ctx, "failed getting mons (%s)", err)
+		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
 		return nil, err
 	}
@@ -1276,7 +1277,7 @@ func (rv *rbdVolume) hasSnapshotFeature() bool {
 }
 
 func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
-	util.DebugLog(ctx, "rbd: snap create %s using mon %s", pOpts, pOpts.Monitors)
+	log.DebugLog(ctx, "rbd: snap create %s using mon %s", pOpts, pOpts.Monitors)
 	image, err := rv.open()
 	if err != nil {
 		return err
@@ -1289,7 +1290,7 @@ func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 }
 
 func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
-	util.DebugLog(ctx, "rbd: snap rm %s using mon %s", pOpts, pOpts.Monitors)
+	log.DebugLog(ctx, "rbd: snap rm %s using mon %s", pOpts, pOpts.Monitors)
 	image, err := rv.open()
 	if err != nil {
 		return err
@@ -1335,7 +1336,7 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 		}
 	}
 
-	util.DebugLog(ctx, logMsg,
+	log.DebugLog(ctx, logMsg,
 		pSnapOpts, rv, rv.imageFeatureSet.Names(), rv.Monitors)
 
 	if rv.imageFeatureSet != 0 {
@@ -1373,7 +1374,7 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 		if deleteClone {
 			err = librbd.RemoveImage(rv.ioctx, rv.RbdImageName)
 			if err != nil {
-				util.ErrorLog(ctx, "failed to delete temporary image %q: %v", rv, err)
+				log.ErrorLog(ctx, "failed to delete temporary image %q: %v", rv, err)
 			}
 		}
 	}()
