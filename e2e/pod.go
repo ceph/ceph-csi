@@ -406,3 +406,22 @@ func calculateSHA512sum(f *framework.Framework, app *v1.Pod, filePath string, op
 
 	return checkSum, nil
 }
+
+// getKernelVersionFromDaemonset gets the kernel version from the specified container.
+func getKernelVersionFromDaemonset(f *framework.Framework, ns, dsn, cn string) (string, error) {
+	selector, err := getDaemonSetLabelSelector(f, ns, dsn)
+	if err != nil {
+		return "", err
+	}
+
+	opt := metav1.ListOptions{
+		LabelSelector: selector,
+	}
+
+	kernelRelease, stdErr, err := execCommandInContainer(f, "uname -r", ns, cn, &opt)
+	if err != nil || stdErr != "" {
+		return "", err
+	}
+
+	return kernelRelease, nil
+}
