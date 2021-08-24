@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/ceph/ceph-csi/internal/util/log"
+
 	"github.com/ceph/go-ceph/rados"
 )
 
@@ -50,14 +52,14 @@ func ExecCommand(ctx context.Context, program string, args ...string) (string, s
 	if err != nil {
 		err = fmt.Errorf("an error (%w) occurred while running %s args: %v", err, program, sanitizedArgs)
 		if ctx != context.TODO() {
-			UsefulLog(ctx, "%s", err)
+			log.UsefulLog(ctx, "%s", err)
 		}
 
 		return stdout, stderr, err
 	}
 
 	if ctx != context.TODO() {
-		UsefulLog(ctx, "command succeeded: %s %v", program, sanitizedArgs)
+		log.UsefulLog(ctx, "command succeeded: %s %v", program, sanitizedArgs)
 	}
 
 	return stdout, stderr, nil
@@ -151,7 +153,7 @@ func CreateObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 	if errors.Is(err, rados.ErrObjectExists) {
 		return JoinErrors(ErrObjectExists, err)
 	} else if err != nil {
-		ErrorLog(ctx, "failed creating omap (%s) in pool (%s): (%v)", objectName, poolName, err)
+		log.ErrorLog(ctx, "failed creating omap (%s) in pool (%s): (%v)", objectName, poolName, err)
 
 		return err
 	}
@@ -187,7 +189,7 @@ func RemoveObject(ctx context.Context, monitors string, cr *Credentials, poolNam
 	if errors.Is(err, rados.ErrNotFound) {
 		return JoinErrors(ErrObjectNotFound, err)
 	} else if err != nil {
-		ErrorLog(ctx, "failed removing omap (%s) in pool (%s): (%v)", oMapName, poolName, err)
+		log.ErrorLog(ctx, "failed removing omap (%s) in pool (%s): (%v)", oMapName, poolName, err)
 
 		return err
 	}

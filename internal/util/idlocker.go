@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ceph/ceph-csi/internal/util/log"
+
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -240,6 +242,6 @@ func (ol *OperationLock) release(op operation, volumeID string) {
 			}
 		}
 	default:
-		ErrorLogMsg("%v operation not supported", op)
+		log.ErrorLogMsg("%v operation not supported", op)
 	}
 }

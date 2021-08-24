@@ -8,6 +8,8 @@ import (
 	runtime_pprof "runtime/pprof"
 	"strconv"
 
+	"github.com/ceph/ceph-csi/internal/util/log"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -24,13 +26,13 @@ func StartMetricsServer(c *Config) {
 	http.Handle(c.MetricsPath, promhttp.Handler())
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
-		FatalLogMsg("failed to listen on address %v: %s", addr, err)
+		log.FatalLogMsg("failed to listen on address %v: %s", addr, err)
 	}
 }
 
 func addPath(name string, handler http.Handler) {
 	http.Handle(name, handler)
-	DebugLogMsg("DEBUG: registered profiling handler on /debug/pprof/%s\n", name)
+	log.DebugLogMsg("DEBUG: registered profiling handler on /debug/pprof/%s\n", name)
 }
 
 // EnableProfiling enables golang profiling.

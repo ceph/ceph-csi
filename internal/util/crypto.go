@@ -25,6 +25,8 @@ import (
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 const (
@@ -262,7 +264,7 @@ func VolumeMapper(volumeID string) (mapperFile, mapperFilePath string) {
 
 // EncryptVolume encrypts provided device with LUKS.
 func EncryptVolume(ctx context.Context, devicePath, passphrase string) error {
-	DebugLog(ctx, "Encrypting device %s with LUKS", devicePath)
+	log.DebugLog(ctx, "Encrypting device %s with LUKS", devicePath)
 	if _, _, err := LuksFormat(devicePath, passphrase); err != nil {
 		return fmt.Errorf("failed to encrypt device %s with LUKS: %w", devicePath, err)
 	}
@@ -272,10 +274,10 @@ func EncryptVolume(ctx context.Context, devicePath, passphrase string) error {
 
 // OpenEncryptedVolume opens volume so that it can be used by the client.
 func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase string) error {
-	DebugLog(ctx, "Opening device %s with LUKS on %s", devicePath, mapperFile)
+	log.DebugLog(ctx, "Opening device %s with LUKS on %s", devicePath, mapperFile)
 	_, stderr, err := LuksOpen(devicePath, mapperFile, passphrase)
 	if err != nil {
-		ErrorLog(ctx, "failed to open LUKS device %q: %s", devicePath, stderr)
+		log.ErrorLog(ctx, "failed to open LUKS device %q: %s", devicePath, stderr)
 	}
 
 	return err
@@ -283,10 +285,10 @@ func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase
 
 // ResizeEncryptedVolume resizes encrypted volume so that it can be used by the client.
 func ResizeEncryptedVolume(ctx context.Context, mapperFile string) error {
-	DebugLog(ctx, "Resizing LUKS device %s", mapperFile)
+	log.DebugLog(ctx, "Resizing LUKS device %s", mapperFile)
 	_, stderr, err := LuksResize(mapperFile)
 	if err != nil {
-		ErrorLog(ctx, "failed to resize LUKS device %s: %s", mapperFile, stderr)
+		log.ErrorLog(ctx, "failed to resize LUKS device %s: %s", mapperFile, stderr)
 	}
 
 	return err
@@ -294,7 +296,7 @@ func ResizeEncryptedVolume(ctx context.Context, mapperFile string) error {
 
 // CloseEncryptedVolume closes encrypted volume so it can be detached.
 func CloseEncryptedVolume(ctx context.Context, mapperFile string) error {
-	DebugLog(ctx, "Closing LUKS device %s", mapperFile)
+	log.DebugLog(ctx, "Closing LUKS device %s", mapperFile)
 	_, _, err := LuksClose(mapperFile)
 
 	return err
@@ -317,7 +319,7 @@ func DeviceEncryptionStatus(ctx context.Context, devicePath string) (mappedDevic
 	mapPath := strings.TrimPrefix(devicePath, mapperFilePathPrefix+"/")
 	stdout, _, err := LuksStatus(mapPath)
 	if err != nil {
-		DebugLog(ctx, "device %s is not an active LUKS device: %v", devicePath, err)
+		log.DebugLog(ctx, "device %s is not an active LUKS device: %v", devicePath, err)
 
 		return devicePath, "", nil
 	}

@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 )
@@ -65,17 +66,17 @@ const (
 func (ri *rbdImage) checkRbdImageEncrypted(ctx context.Context) (rbdEncryptionState, error) {
 	value, err := ri.MigrateMetadata(oldEncryptionMetaKey, encryptionMetaKey, string(rbdImageEncryptionUnknown))
 	if errors.Is(err, librbd.ErrNotFound) {
-		util.DebugLog(ctx, "image %s encrypted state not set", ri)
+		log.DebugLog(ctx, "image %s encrypted state not set", ri)
 
 		return rbdImageEncryptionUnknown, nil
 	} else if err != nil {
-		util.ErrorLog(ctx, "checking image %s encrypted state metadata failed: %s", ri, err)
+		log.ErrorLog(ctx, "checking image %s encrypted state metadata failed: %s", ri, err)
 
 		return rbdImageEncryptionUnknown, err
 	}
 
 	encrypted := rbdEncryptionState(strings.TrimSpace(value))
-	util.DebugLog(ctx, "image %s encrypted state metadata reports %q", ri, encrypted)
+	log.DebugLog(ctx, "image %s encrypted state metadata reports %q", ri, encrypted)
 
 	return encrypted, nil
 }
@@ -100,7 +101,7 @@ func (ri *rbdImage) isEncrypted() bool {
 func (ri *rbdImage) setupEncryption(ctx context.Context) error {
 	err := ri.encryption.StoreNewCryptoPassphrase(ri.VolID)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to save encryption passphrase for "+
+		log.ErrorLog(ctx, "failed to save encryption passphrase for "+
 			"image %s: %s", ri, err)
 
 		return err
@@ -108,7 +109,7 @@ func (ri *rbdImage) setupEncryption(ctx context.Context) error {
 
 	err = ri.ensureEncryptionMetadataSet(rbdImageEncryptionPrepared)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to save encryption status, deleting "+
+		log.ErrorLog(ctx, "failed to save encryption status, deleting "+
 			"image %s: %s", ri, err)
 
 		return err
@@ -185,7 +186,7 @@ func (ri *rbdImage) repairEncryptionConfig(dest *rbdImage) error {
 func (ri *rbdImage) encryptDevice(ctx context.Context, devicePath string) error {
 	passphrase, err := ri.encryption.GetCryptoPassphrase(ri.VolID)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get crypto passphrase for %s: %v",
+		log.ErrorLog(ctx, "failed to get crypto passphrase for %s: %v",
 			ri, err)
 
 		return err
@@ -193,14 +194,14 @@ func (ri *rbdImage) encryptDevice(ctx context.Context, devicePath string) error 
 
 	if err = util.EncryptVolume(ctx, devicePath, passphrase); err != nil {
 		err = fmt.Errorf("failed to encrypt volume %s: %w", ri, err)
-		util.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, err.Error())
 
 		return err
 	}
 
 	err = ri.ensureEncryptionMetadataSet(rbdImageEncrypted)
 	if err != nil {
-		util.ErrorLog(ctx, err.Error())
+		log.ErrorLog(ctx, err.Error())
 
 		return err
 	}
@@ -211,7 +212,7 @@ func (ri *rbdImage) encryptDevice(ctx context.Context, devicePath string) error 
 func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string) (string, error) {
 	passphrase, err := rv.encryption.GetCryptoPassphrase(rv.VolID)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get passphrase for encrypted device %s: %v",
+		log.ErrorLog(ctx, "failed to get passphrase for encrypted device %s: %v",
 			rv, err)
 
 		return "", err
@@ -221,16 +222,16 @@ func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string)
 
 	isOpen, err := util.IsDeviceOpen(ctx, mapperFilePath)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to check device %s encryption status: %s", devicePath, err)
+		log.ErrorLog(ctx, "failed to check device %s encryption status: %s", devicePath, err)
 
 		return devicePath, err
 	}
 	if isOpen {
-		util.DebugLog(ctx, "encrypted device is already open at %s", mapperFilePath)
+		log.DebugLog(ctx, "encrypted device is already open at %s", mapperFilePath)
 	} else {
 		err = util.OpenEncryptedVolume(ctx, devicePath, mapperFile, passphrase)
 		if err != nil {
-			util.ErrorLog(ctx, "failed to open device %s: %v",
+			log.ErrorLog(ctx, "failed to open device %s: %v",
 				rv, err)
 
 			return devicePath, err
@@ -270,7 +271,7 @@ func (ri *rbdImage) ParseEncryptionOpts(ctx context.Context, volOptions map[stri
 	// FIXME: this works only on Kubernetes, how do other CO supply metadata?
 	ri.Owner, ok = volOptions["csi.storage.k8s.io/pvc/namespace"]
 	if !ok {
-		util.DebugLog(ctx, "could not detect owner for %s", ri)
+		log.DebugLog(ctx, "could not detect owner for %s", ri)
 	}
 
 	encrypted, ok = volOptions["encrypted"]

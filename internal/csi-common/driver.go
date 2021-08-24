@@ -19,12 +19,12 @@ package csicommon
 import (
 	"fmt"
 
+	"github.com/ceph/ceph-csi/internal/util/log"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog/v2"
-
-	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // CSIDriver stores driver information.
@@ -91,7 +91,7 @@ func (d *CSIDriver) AddControllerServiceCapabilities(cl []csi.ControllerServiceC
 	csc := make([]*csi.ControllerServiceCapability, 0, len(cl))
 
 	for _, c := range cl {
-		util.DefaultLog("Enabling controller service capability: %v", c.String())
+		log.DefaultLog("Enabling controller service capability: %v", c.String())
 		csc = append(csc, NewControllerServiceCapability(c))
 	}
 
@@ -103,7 +103,7 @@ func (d *CSIDriver) AddVolumeCapabilityAccessModes(
 	vc []csi.VolumeCapability_AccessMode_Mode) []*csi.VolumeCapability_AccessMode {
 	vca := make([]*csi.VolumeCapability_AccessMode, 0, len(vc))
 	for _, c := range vc {
-		util.DefaultLog("Enabling volume access mode: %v", c.String())
+		log.DefaultLog("Enabling volume access mode: %v", c.String())
 		vca = append(vca, NewVolumeCapabilityAccessMode(c))
 	}
 	d.vc = vca

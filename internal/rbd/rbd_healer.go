@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	v1 "k8s.io/api/core/v1"
@@ -56,7 +57,7 @@ func getSecret(c *k8s.Clientset, ns, name string) (map[string]string, error) {
 
 	secret, err := c.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		util.ErrorLogMsg("get secret failed, err: %v", err)
+		log.ErrorLogMsg("get secret failed, err: %v", err)
 
 		return nil, err
 	}
@@ -74,14 +75,14 @@ func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolu
 	volID := pv.Spec.PersistentVolumeSource.CSI.VolumeHandle
 	stagingParentPath := stagingPath + pv.Name + "/globalmount"
 
-	util.DefaultLog("sending nodeStageVolume for volID: %s, stagingPath: %s",
+	log.DefaultLog("sending nodeStageVolume for volID: %s, stagingPath: %s",
 		volID, stagingParentPath)
 
 	deviceSecret, err := getSecret(c,
 		pv.Spec.PersistentVolumeSource.CSI.NodeStageSecretRef.Namespace,
 		pv.Spec.PersistentVolumeSource.CSI.NodeStageSecretRef.Name)
 	if err != nil {
-		util.ErrorLogMsg("getSecret failed for volID: %s, err: %v", volID, err)
+		log.ErrorLogMsg("getSecret failed for volID: %s, err: %v", volID, err)
 
 		return err
 	}
@@ -116,7 +117,7 @@ func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolu
 
 	_, err = ns.NodeStageVolume(context.TODO(), req)
 	if err != nil {
-		util.ErrorLogMsg("nodeStageVolume request failed, volID: %s, stagingPath: %s, err: %v",
+		log.ErrorLogMsg("nodeStageVolume request failed, volID: %s, stagingPath: %s, err: %v",
 			volID, stagingParentPath, err)
 
 		return err
@@ -130,7 +131,7 @@ func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
 	c := util.NewK8sClient()
 	val, err := c.StorageV1().VolumeAttachments().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		util.ErrorLogMsg("list volumeAttachments failed, err: %v", err)
+		log.ErrorLogMsg("list volumeAttachments failed, err: %v", err)
 
 		return err
 	}
@@ -147,7 +148,7 @@ func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
 		if err != nil {
 			// skip if volume doesn't exist
 			if !apierrors.IsNotFound(err) {
-				util.ErrorLogMsg("get persistentVolumes failed for pv: %s, err: %v", pvName, err)
+				log.ErrorLogMsg("get persistentVolumes failed for pv: %s, err: %v", pvName, err)
 			}
 
 			continue
@@ -167,7 +168,7 @@ func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
 		if err != nil {
 			// skip if volume attachment doesn't exist
 			if !apierrors.IsNotFound(err) {
-				util.ErrorLogMsg("get volumeAttachments failed for volumeAttachment: %s, volID: %s, err: %v",
+				log.ErrorLogMsg("get volumeAttachments failed for volumeAttachment: %s, volID: %s, err: %v",
 					val.Items[i].Name, pv.Spec.PersistentVolumeSource.CSI.VolumeHandle, err)
 			}
 
@@ -192,7 +193,7 @@ func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
 
 	for s := range channel {
 		if s != nil {
-			util.ErrorLogMsg("callNodeStageVolume failed, err: %v", s)
+			log.ErrorLogMsg("callNodeStageVolume failed, err: %v", s)
 		}
 	}
 

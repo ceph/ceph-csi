@@ -25,6 +25,7 @@ import (
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
@@ -81,7 +82,7 @@ func (ns *NodeServer) NodeStageVolume(
 	volID := volumeID(req.GetVolumeId())
 
 	if acquired := ns.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
-		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, req.GetVolumeId())
 	}
@@ -114,13 +115,13 @@ func (ns *NodeServer) NodeStageVolume(
 
 	isMnt, err := util.IsMountPoint(stagingTargetPath)
 	if err != nil {
-		util.ErrorLog(ctx, "stat failed: %v", err)
+		log.ErrorLog(ctx, "stat failed: %v", err)
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if isMnt {
-		util.DebugLog(ctx, "cephfs: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
+		log.DebugLog(ctx, "cephfs: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
 
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
@@ -130,7 +131,7 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, err
 	}
 
-	util.DebugLog(ctx, "cephfs: successfully mounted volume %s to %s", volID, stagingTargetPath)
+	log.DebugLog(ctx, "cephfs: successfully mounted volume %s to %s", volID, stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
@@ -141,7 +142,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 
 	cr, err := getCredentialsForVolume(volOptions, req)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to get ceph credentials for volume %s: %v", volID, err)
+		log.ErrorLog(ctx, "failed to get ceph credentials for volume %s: %v", volID, err)
 
 		return status.Error(codes.Internal, err.Error())
 	}
@@ -149,12 +150,12 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 
 	m, err := newMounter(volOptions)
 	if err != nil {
-		util.ErrorLog(ctx, "failed to create mounter for volume %s: %v", volID, err)
+		log.ErrorLog(ctx, "failed to create mounter for volume %s: %v", volID, err)
 
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	util.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, m.name())
+	log.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, m.name())
 
 	readOnly := "ro"
 	fuseMountOptions := strings.Split(volOptions.FuseMountOptions, ",")
@@ -177,7 +178,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 	}
 
 	if err = m.mount(ctx, stagingTargetPath, cr, volOptions); err != nil {
-		util.ErrorLog(ctx,
+		log.ErrorLog(ctx,
 			"failed to mount volume %s: %v Check dmesg logs if required.",
 			volID,
 			err)
@@ -189,7 +190,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 		// #nosec - allow anyone to write inside the stagingtarget path
 		err = os.Chmod(stagingTargetPath, 0o777)
 		if err != nil {
-			util.ErrorLog(
+			log.ErrorLog(
 				ctx,
 				"failed to change stagingtarget path %s permission for volume %s: %v",
 				stagingTargetPath,
@@ -197,7 +198,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 				err)
 			uErr := unmountVolume(ctx, stagingTargetPath)
 			if uErr != nil {
-				util.ErrorLog(
+				log.ErrorLog(
 					ctx,
 					"failed to umount stagingtarget path %s for volume %s: %v",
 					stagingTargetPath,
@@ -229,7 +230,7 @@ func (ns *NodeServer) NodePublishVolume(
 	// are serialized, we dont need any extra locking in nodePublish
 
 	if err := util.CreateMountPoint(targetPath); err != nil {
-		util.ErrorLog(ctx, "failed to create mount point at %s: %v", targetPath, err)
+		log.ErrorLog(ctx, "failed to create mount point at %s: %v", targetPath, err)
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -244,13 +245,13 @@ func (ns *NodeServer) NodePublishVolume(
 
 	isMnt, err := util.IsMountPoint(targetPath)
 	if err != nil {
-		util.ErrorLog(ctx, "stat failed: %v", err)
+		log.ErrorLog(ctx, "stat failed: %v", err)
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if isMnt {
-		util.DebugLog(ctx, "cephfs: volume %s is already bind-mounted to %s", volID, targetPath)
+		log.DebugLog(ctx, "cephfs: volume %s is already bind-mounted to %s", volID, targetPath)
 
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
@@ -258,12 +259,12 @@ func (ns *NodeServer) NodePublishVolume(
 	// It's not, mount now
 
 	if err = bindMount(ctx, req.GetStagingTargetPath(), req.GetTargetPath(), req.GetReadonly(), mountOptions); err != nil {
-		util.ErrorLog(ctx, "failed to bind-mount volume %s: %v", volID, err)
+		log.ErrorLog(ctx, "failed to bind-mount volume %s: %v", volID, err)
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	util.DebugLog(ctx, "cephfs: successfully bind-mounted volume %s to %s", volID, targetPath)
+	log.DebugLog(ctx, "cephfs: successfully bind-mounted volume %s to %s", volID, targetPath)
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }
@@ -283,7 +284,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	if err != nil {
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
-			util.DebugLog(ctx, "targetPath: %s has already been deleted", targetPath)
+			log.DebugLog(ctx, "targetPath: %s has already been deleted", targetPath)
 
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
@@ -308,7 +309,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	util.DebugLog(ctx, "cephfs: successfully unbounded volume %s from %s", req.GetVolumeId(), targetPath)
+	log.DebugLog(ctx, "cephfs: successfully unbounded volume %s from %s", req.GetVolumeId(), targetPath)
 
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
@@ -324,7 +325,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 
 	volID := req.GetVolumeId()
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
-		util.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
@@ -336,7 +337,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 	if err != nil {
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
-			util.DebugLog(ctx, "targetPath: %s has already been deleted", stagingTargetPath)
+			log.DebugLog(ctx, "targetPath: %s has already been deleted", stagingTargetPath)
 
 			return &csi.NodeUnstageVolumeResponse{}, nil
 		}
@@ -351,7 +352,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	util.DebugLog(ctx, "cephfs: successfully unmounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
+	log.DebugLog(ctx, "cephfs: successfully unmounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }

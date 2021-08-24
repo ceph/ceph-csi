@@ -20,6 +20,7 @@ import (
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
@@ -93,11 +94,11 @@ func (fs *Driver) Run(conf *util.Config) {
 
 	// Configuration
 	if err = loadAvailableMounters(conf); err != nil {
-		util.FatalLogMsg("cephfs: failed to load ceph mounters: %v", err)
+		log.FatalLogMsg("cephfs: failed to load ceph mounters: %v", err)
 	}
 
 	if err = util.WriteCephConfig(); err != nil {
-		util.FatalLogMsg("failed to write ceph configuration file: %v", err)
+		log.FatalLogMsg("failed to write ceph configuration file: %v", err)
 	}
 
 	// Use passed in instance ID, if provided for omap suffix naming
@@ -112,7 +113,7 @@ func (fs *Driver) Run(conf *util.Config) {
 
 	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
 	if fs.cd == nil {
-		util.FatalLogMsg("failed to initialize CSI driver")
+		log.FatalLogMsg("failed to initialize CSI driver")
 	}
 
 	if conf.IsControllerServer || !conf.IsNodeServer {
@@ -134,7 +135,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	if conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			util.FatalLogMsg(err.Error())
+			log.FatalLogMsg(err.Error())
 		}
 		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology)
 	}
@@ -145,7 +146,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	if !conf.IsControllerServer && !conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
 		if err != nil {
-			util.FatalLogMsg(err.Error())
+			log.FatalLogMsg(err.Error())
 		}
 		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology)
 		fs.cs = NewControllerServer(fs.cd)
@@ -161,14 +162,14 @@ func (fs *Driver) Run(conf *util.Config) {
 	}
 	server.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {
-		util.WarningLogMsg("EnableGRPCMetrics is deprecated")
+		log.WarningLogMsg("EnableGRPCMetrics is deprecated")
 		go util.StartMetricsServer(conf)
 	}
 	if conf.EnableProfiling {
 		if !conf.EnableGRPCMetrics {
 			go util.StartMetricsServer(conf)
 		}
-		util.DebugLogMsg("Registering profiling handler")
+		log.DebugLogMsg("Registering profiling handler")
 		go util.EnableProfiling()
 	}
 	server.Wait()

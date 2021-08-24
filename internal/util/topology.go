@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ceph/ceph-csi/internal/util/log"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -59,7 +61,7 @@ func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map
 
 	// Convert passed in labels to a map, and check for uniqueness
 	labelsToRead := strings.SplitN(domainLabels, labelSeparator, -1)
-	DefaultLog("passed in node labels for processing: %+v", labelsToRead)
+	log.DefaultLog("passed in node labels for processing: %+v", labelsToRead)
 
 	labelsIn := make(map[string]bool)
 	labelCount := 0
@@ -106,7 +108,7 @@ func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map
 		return nil, fmt.Errorf("missing domain labels %v on node %q", missingLabels, nodeName)
 	}
 
-	DefaultLog("list of domains processed: %+v", domainMap)
+	log.DefaultLog("list of domains processed: %+v", domainMap)
 
 	topology := make(map[string]string)
 	for domain, value := range domainMap {
