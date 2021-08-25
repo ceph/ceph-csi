@@ -55,7 +55,13 @@ support other orchestration environments in the future.
 
 NOTE:
 
-- **`csiv0.3`** is deprecated with release of **`csi v1.1.0`**
+The supported window of Ceph CSI versions  is known as "N.(x-1)":
+(N (Latest major release) . (x (Latest minor release) - 1)).
+
+For example, if Ceph CSI latest major version is `3.4.0` today, support is
+provided for the versions above `3.3.0`. If users are running an unsupported
+Ceph CSI version, they will be asked to upgrade when requesting support for the
+cluster.
 
 ## Support Matrix
 
@@ -106,24 +112,27 @@ in the Kubernetes documentation.
 | v3.4.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.4.0    |
 | v3.3.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.3.1    |
 | v3.3.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.3.0    |
-| v3.2.2 (Release)        | quay.io/cephcsi/cephcsi      | v3.2.2    |
-| v3.2.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.2.1    |
-| v3.2.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.2.0    |
-| v3.1.2 (Release)        | quay.io/cephcsi/cephcsi      | v3.1.2    |
-| v3.1.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.1.1    |
-| v3.1.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.1.0    |
-| v3.0.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.0.0    |
-| v2.1.2 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.2    |
-| v2.1.1 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.1    |
-| v2.1.0 (Release)        | quay.io/cephcsi/cephcsi      | v2.1.0    |
-| v2.0.1 (Release)        | quay.io/cephcsi/cephcsi      | v2.0.1    |
-| v2.0.0 (Release)        | quay.io/cephcsi/cephcsi      | v2.0.0    |
-| v1.2.2 (Release)        | quay.io/cephcsi/cephcsi      | v1.2.2    |
-| v1.2.1 (Release)        | quay.io/cephcsi/cephcsi      | v1.2.1    |
-| v1.2.0 (Release)        | quay.io/cephcsi/cephcsi      | v1.2.0    |
-| v1.1.0 (Release)        | quay.io/cephcsi/cephcsi      | v1.1.0    |
-| v1.0.0 (Branch)         | quay.io/cephcsi/cephfsplugin | v1.0.0    |
-| v1.0.0 (Branch)         | quay.io/cephcsi/rbdplugin    | v1.0.0    |
+
+| Deprecated Ceph CSI Release/Branch | Container image name | Image Tag |
+| ----------------------- | --------------------------------| --------- |
+| v3.2.2 (Release)        | quay.io/cephcsi/cephcsi         | v3.2.2    |
+| v3.2.1 (Release)        | quay.io/cephcsi/cephcsi         | v3.2.1    |
+| v3.2.0 (Release)        | quay.io/cephcsi/cephcsi         | v3.2.0    |
+| v3.1.2 (Release)        | quay.io/cephcsi/cephcsi         | v3.1.2    |
+| v3.1.1 (Release)        | quay.io/cephcsi/cephcsi         | v3.1.1    |
+| v3.1.0 (Release)        | quay.io/cephcsi/cephcsi         | v3.1.0    |
+| v3.0.0 (Release)        | quay.io/cephcsi/cephcsi         | v3.0.0    |
+| v2.1.2 (Release)        | quay.io/cephcsi/cephcsi         | v2.1.2    |
+| v2.1.1 (Release)        | quay.io/cephcsi/cephcsi         | v2.1.1    |
+| v2.1.0 (Release)        | quay.io/cephcsi/cephcsi         | v2.1.0    |
+| v2.0.1 (Release)        | quay.io/cephcsi/cephcsi         | v2.0.1    |
+| v2.0.0 (Release)        | quay.io/cephcsi/cephcsi         | v2.0.0    |
+| v1.2.2 (Release)        | quay.io/cephcsi/cephcsi         | v1.2.2    |
+| v1.2.1 (Release)        | quay.io/cephcsi/cephcsi         | v1.2.1    |
+| v1.2.0 (Release)        | quay.io/cephcsi/cephcsi         | v1.2.0    |
+| v1.1.0 (Release)        | quay.io/cephcsi/cephcsi         | v1.1.0    |
+| v1.0.0 (Branch)         | quay.io/cephcsi/cephfsplugin    | v1.0.0    |
+| v1.0.0 (Branch)         | quay.io/cephcsi/rbdplugin       | v1.0.0    |
 
 ## Contributing to this repo
 
