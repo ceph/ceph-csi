@@ -257,6 +257,10 @@ Once your PR has been submitted for review the following criteria will
 need to be met before it will be merged:
 
 * Each PR needs reviews accepting the change from at least two developers for merging.
+* Each PR needs approval from
+  [ceph-csi-contributors](https://github.com/orgs/ceph/teams/ceph-csi-contributors)
+  and
+  [ceph-csi-maintainers](https://github.com/orgs/ceph/teams/ceph-csi-maintainers).
 * It is common to request reviews from those reviewers automatically suggested
   by GitHub.
 * Each PR needs to have been open for at least 24 working hours to allow for
