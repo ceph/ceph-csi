@@ -38,6 +38,8 @@ pull_request_rules:
       - base~=^(devel)|(release-.+)$
       - "#approved-reviews-by>=2"
       - "#changes-requested-reviews-by=0"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
       - "status-success=codespell"
       - "status-success=multi-arch-build"
       - "status-success=go-test"
@@ -64,7 +66,7 @@ pull_request_rules:
       - label!=DNM
       - label=ready-to-merge
       - base~=^(devel)|(release-.+)$
-      - "#approved-reviews-by>=1"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
       - "status-success=codespell"
       - "status-success=multi-arch-build"
       - "status-success=go-test"
@@ -122,7 +124,9 @@ pull_request_rules:
       - base=release-v2.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
-      - "#approved-reviews-by>=1"
+      - "#approved-reviews-by>=2"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
     actions:
       merge: {}
       dismiss_reviews: {}
@@ -142,7 +146,9 @@ pull_request_rules:
       - base=release-v2.1
       - label!=DNM
       - "#changes-requested-reviews-by=0"
-      - "#approved-reviews-by>=1"
+      - "#approved-reviews-by>=2"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
     actions:
       merge: {}
       dismiss_reviews: {}
@@ -162,7 +168,9 @@ pull_request_rules:
       - base=release-v3.0
       - label!=DNM
       - "#changes-requested-reviews-by=0"
-      - "#approved-reviews-by>=1"
+      - "#approved-reviews-by>=2"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
     actions:
       merge: {}
       dismiss_reviews: {}
@@ -182,7 +190,9 @@ pull_request_rules:
       - base=release-v3.1
       - label!=DNM
       - "#changes-requested-reviews-by=0"
-      - "#approved-reviews-by>=1"
+      - "#approved-reviews-by>=2"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
       - "status-success=multi-arch-build"
       - "status-success=commitlint"
       - "status-success=ci/centos/mini-e2e-helm/k8s-1.20"
@@ -212,7 +222,9 @@ pull_request_rules:
       - author=mergify[bot]
       - base=release-v3.2
       - label!=DNM
-      - "#approved-reviews-by>=1"
+      - "#approved-reviews-by>=2"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
       - "status-success=codespell"
       - "status-success=multi-arch-build"
       - "status-success=go-test"
@@ -249,7 +261,9 @@ pull_request_rules:
       - author=mergify[bot]
       - base=release-v3.3
       - label!=DNM
-      - "#approved-reviews-by>=1"
+      - "#approved-reviews-by>=2"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
       - "status-success=codespell"
       - "status-success=multi-arch-build"
       - "status-success=go-test"
@@ -286,7 +300,9 @@ pull_request_rules:
       - author=mergify[bot]
       - base=release-v3.4
       - label!=DNM
-      - "#approved-reviews-by>=1"
+      - "#approved-reviews-by>=2"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
       - "status-success=codespell"
       - "status-success=multi-arch-build"
       - "status-success=go-test"
@@ -321,6 +337,8 @@ pull_request_rules:
       - label!=DNM
       - base=ci/centos
       - "#approved-reviews-by>=2"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
       - "#changes-requested-reviews-by=0"
       - "status-success=ci/centos/job-validation"
       - "status-success=ci/centos/jjb-validate"
@@ -334,7 +352,7 @@ pull_request_rules:
       - label!=DNM
       - label=ready-to-merge
       - base=ci/centos
-      - "#approved-reviews-by>=1"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
       - "#changes-requested-reviews-by=0"
       - "status-success=ci/centos/job-validation"
       - "status-success=ci/centos/jjb-validate"
