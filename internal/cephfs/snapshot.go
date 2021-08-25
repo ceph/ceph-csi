@@ -21,6 +21,7 @@ import (
 	"errors"
 	"time"
 
+	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/ceph/go-ceph/cephfs/admin"
@@ -105,7 +106,7 @@ func (vo *volumeOptions) getSnapshotInfo(ctx context.Context, snapID, volID volu
 	info, err := fsa.SubVolumeSnapshotInfo(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
 	if err != nil {
 		if errors.Is(err, rados.ErrNotFound) {
-			return snap, ErrSnapNotFound
+			return snap, cerrors.ErrSnapNotFound
 		}
 		log.ErrorLog(
 			ctx,
@@ -221,7 +222,7 @@ func (vo *volumeOptions) cloneSnapshot(
 			vo.FsName,
 			err)
 		if errors.Is(err, rados.ErrNotFound) {
-			return ErrVolumeNotFound
+			return cerrors.ErrVolumeNotFound
 		}
 
 		return err

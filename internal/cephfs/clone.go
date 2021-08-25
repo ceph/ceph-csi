@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 
+	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -48,13 +49,13 @@ func (cs cephFSCloneState) toError() error {
 	case cephFSCloneComplete:
 		return nil
 	case cephFSCloneError:
-		return ErrInvalidClone
+		return cerrors.ErrInvalidClone
 	case cephFSCloneInprogress:
-		return ErrCloneInProgress
+		return cerrors.ErrCloneInProgress
 	case cephFSClonePending:
-		return ErrClonePending
+		return cerrors.ErrClonePending
 	case cephFSCloneFailed:
-		return ErrCloneFailed
+		return cerrors.ErrCloneFailed
 	}
 
 	return nil
@@ -90,7 +91,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 				// In case the snap is already unprotected we get ErrSnapProtectionExist error code
 				// in that case we are safe and we could discard this error and we are good to go
 				// ahead with deletion
-				if !errors.Is(err, ErrSnapProtectionExist) {
+				if !errors.Is(err, cerrors.ErrSnapProtectionExist) {
 					log.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapshotID, err)
 				}
 			}
@@ -137,7 +138,7 @@ func createCloneFromSubvolume(ctx context.Context, volID, cloneID volumeID, volO
 		// In case the snap is already unprotected we get ErrSnapProtectionExist error code
 		// in that case we are safe and we could discard this error and we are good to go
 		// ahead with deletion
-		if !errors.Is(err, ErrSnapProtectionExist) {
+		if !errors.Is(err, cerrors.ErrSnapProtectionExist) {
 			log.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapshotID, err)
 
 			return err
@@ -161,7 +162,7 @@ func cleanupCloneFromSubvolumeSnapshot(
 	snapShotID := cloneID
 	snapInfo, err := parentVolOpt.getSnapshotInfo(ctx, snapShotID, volID)
 	if err != nil {
-		if errors.Is(err, ErrSnapNotFound) {
+		if errors.Is(err, cerrors.ErrSnapNotFound) {
 			return nil
 		}
 
@@ -189,7 +190,7 @@ func cleanupCloneFromSubvolumeSnapshot(
 // isCloneRetryError returns true if the clone error is pending,in-progress
 // error.
 func isCloneRetryError(err error) bool {
-	return errors.Is(err, ErrCloneInProgress) || errors.Is(err, ErrClonePending)
+	return errors.Is(err, cerrors.ErrCloneInProgress) || errors.Is(err, cerrors.ErrClonePending)
 }
 
 func createCloneFromSnapshot(

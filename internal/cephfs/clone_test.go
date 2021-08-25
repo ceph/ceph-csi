@@ -19,6 +19,8 @@ package cephfs
 import (
 	"testing"
 
+	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,10 +28,10 @@ func TestCloneStateToError(t *testing.T) {
 	t.Parallel()
 	errorState := make(map[cephFSCloneState]error)
 	errorState[cephFSCloneComplete] = nil
-	errorState[cephFSCloneError] = ErrInvalidClone
-	errorState[cephFSCloneInprogress] = ErrCloneInProgress
-	errorState[cephFSClonePending] = ErrClonePending
-	errorState[cephFSCloneFailed] = ErrCloneFailed
+	errorState[cephFSCloneError] = cerrors.ErrInvalidClone
+	errorState[cephFSCloneInprogress] = cerrors.ErrCloneInProgress
+	errorState[cephFSClonePending] = cerrors.ErrClonePending
+	errorState[cephFSCloneFailed] = cerrors.ErrCloneFailed
 
 	for state, err := range errorState {
 		assert.Equal(t, state.toError(), err)

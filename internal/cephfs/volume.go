@@ -23,6 +23,7 @@ import (
 	"path"
 	"strings"
 
+	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -68,7 +69,7 @@ func (vo *volumeOptions) getVolumeRootPathCeph(ctx context.Context, volID volume
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get the rootpath for the vol %s: %s", string(volID), err)
 		if errors.Is(err, rados.ErrNotFound) {
-			return "", util.JoinErrors(ErrVolumeNotFound, err)
+			return "", util.JoinErrors(cerrors.ErrVolumeNotFound, err)
 		}
 
 		return "", err
@@ -89,12 +90,12 @@ func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get subvolume info for the vol %s: %s", string(volID), err)
 		if errors.Is(err, rados.ErrNotFound) {
-			return nil, ErrVolumeNotFound
+			return nil, cerrors.ErrVolumeNotFound
 		}
 		// In case the error is invalid command return error to the caller.
 		var invalid fsAdmin.NotImplementedError
 		if errors.As(err, &invalid) {
-			return nil, ErrInvalidCommand
+			return nil, cerrors.ErrInvalidCommand
 		}
 
 		return nil, err
@@ -249,11 +250,11 @@ func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, force 
 	err = fsa.RemoveSubVolumeWithFlags(vo.FsName, vo.SubvolumeGroup, string(volID), opt)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to purge subvolume %s in fs %s: %s", string(volID), vo.FsName, err)
-		if strings.Contains(err.Error(), volumeNotEmpty) {
-			return util.JoinErrors(ErrVolumeHasSnapshots, err)
+		if strings.Contains(err.Error(), cerrors.VolumeNotEmpty) {
+			return util.JoinErrors(cerrors.ErrVolumeHasSnapshots, err)
 		}
 		if errors.Is(err, rados.ErrNotFound) {
-			return util.JoinErrors(ErrVolumeNotFound, err)
+			return util.JoinErrors(cerrors.ErrVolumeNotFound, err)
 		}
 
 		return err

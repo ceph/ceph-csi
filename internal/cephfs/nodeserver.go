@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 
+	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -90,14 +91,14 @@ func (ns *NodeServer) NodeStageVolume(
 
 	volOptions, _, err := newVolumeOptionsFromVolID(ctx, string(volID), req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
-		if !errors.Is(err, ErrInvalidVolID) {
+		if !errors.Is(err, cerrors.ErrInvalidVolID) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		// gets mon IPs from the supplied cluster info
 		volOptions, _, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
 		if err != nil {
-			if !errors.Is(err, ErrNonStaticVolume) {
+			if !errors.Is(err, cerrors.ErrNonStaticVolume) {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 
