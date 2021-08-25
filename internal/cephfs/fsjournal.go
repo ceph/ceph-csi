@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -86,7 +87,7 @@ func checkVolExists(ctx context.Context,
 	if sID != nil || pvID != nil {
 		cloneState, cloneStateErr := volOptions.getCloneState(ctx, volumeID(vid.FsSubvolName))
 		if cloneStateErr != nil {
-			if errors.Is(cloneStateErr, ErrVolumeNotFound) {
+			if errors.Is(cloneStateErr, cerrors.ErrVolumeNotFound) {
 				if pvID != nil {
 					err = cleanupCloneFromSubvolumeSnapshot(
 						ctx, volumeID(pvID.FsSubvolName),
@@ -105,10 +106,10 @@ func checkVolExists(ctx context.Context,
 			return nil, err
 		}
 		if cloneState == cephFSCloneInprogress {
-			return nil, ErrCloneInProgress
+			return nil, cerrors.ErrCloneInProgress
 		}
 		if cloneState == cephFSClonePending {
-			return nil, ErrClonePending
+			return nil, cerrors.ErrClonePending
 		}
 		if cloneState == cephFSCloneFailed {
 			err = volOptions.purgeVolume(ctx, volumeID(vid.FsSubvolName), true)
@@ -137,7 +138,7 @@ func checkVolExists(ctx context.Context,
 	}
 	volOptions.RootPath, err = volOptions.getVolumeRootPathCeph(ctx, volumeID(vid.FsSubvolName))
 	if err != nil {
-		if errors.Is(err, ErrVolumeNotFound) {
+		if errors.Is(err, cerrors.ErrVolumeNotFound) {
 			// If the subvolume is not present, cleanup the stale snapshot
 			// created for clone.
 			if parentVolOpt != nil && pvID != nil {
@@ -379,7 +380,7 @@ func checkSnapExists(
 	sid.FsSnapshotName = snapData.ImageAttributes.ImageName
 	snapInfo, err := volOptions.getSnapshotInfo(ctx, volumeID(snapID), volumeID(parentSubVolName))
 	if err != nil {
-		if errors.Is(err, ErrSnapNotFound) {
+		if errors.Is(err, cerrors.ErrSnapNotFound) {
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
 				volOptions.MetadataPool, snapID, snap.RequestName)
 

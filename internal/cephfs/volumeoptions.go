@@ -25,6 +25,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 
+	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
@@ -273,7 +274,7 @@ func newVolumeOptionsFromVolID(
 	if err != nil {
 		err = fmt.Errorf("error decoding volume ID (%s): %w", volID, err)
 
-		return nil, nil, util.JoinErrors(ErrInvalidVolID, err)
+		return nil, nil, util.JoinErrors(cerrors.ErrInvalidVolID, err)
 	}
 	volOptions.ClusterID = vi.ClusterID
 	vid.VolumeID = volID
@@ -360,7 +361,7 @@ func newVolumeOptionsFromVolID(
 		volOptions.Features = info.Features
 	}
 
-	if errors.Is(err, ErrInvalidCommand) {
+	if errors.Is(err, cerrors.ErrInvalidCommand) {
 		volOptions.RootPath, err = volOptions.getVolumeRootPathCeph(ctx, volumeID(vid.FsSubvolName))
 	}
 
@@ -444,7 +445,7 @@ func newVolumeOptionsFromStaticVolume(
 
 	val, ok := options["staticVolume"]
 	if !ok {
-		return nil, nil, ErrNonStaticVolume
+		return nil, nil, cerrors.ErrNonStaticVolume
 	}
 
 	if staticVol, err = strconv.ParseBool(val); err != nil {
@@ -452,7 +453,7 @@ func newVolumeOptionsFromStaticVolume(
 	}
 
 	if !staticVol {
-		return nil, nil, ErrNonStaticVolume
+		return nil, nil, cerrors.ErrNonStaticVolume
 	}
 
 	// Volume is static, and ProvisionVolume carries bool stating if it was provisioned, hence
@@ -512,7 +513,7 @@ func newSnapshotOptionsFromID(
 	// Decode the snapID first, to detect pre-provisioned snapshot before other errors
 	err := vi.DecomposeCSIID(snapID)
 	if err != nil {
-		return &volOptions, nil, &sid, ErrInvalidVolID
+		return &volOptions, nil, &sid, cerrors.ErrInvalidVolID
 	}
 	volOptions.ClusterID = vi.ClusterID
 	sid.SnapshotID = snapID

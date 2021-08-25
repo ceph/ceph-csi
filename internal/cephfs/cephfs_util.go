@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -47,7 +48,7 @@ func (vo *volumeOptions) getFscID(ctx context.Context) (int64, error) {
 
 	log.ErrorLog(ctx, "failed to list volume %s", vo.FsName)
 
-	return 0, ErrVolumeNotFound
+	return 0, cerrors.ErrVolumeNotFound
 }
 
 func (vo *volumeOptions) getMetadataPool(ctx context.Context) (string, error) {
