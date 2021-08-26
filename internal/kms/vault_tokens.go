@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package kms
 
 import (
 	"context"
@@ -181,7 +181,7 @@ Example JSON structure in the KMS config is,
 */
 type vaultTenantConnection struct {
 	vaultConnection
-	integratedDEK
+	IntegratedDEK
 
 	client *kubernetes.Clientset
 
@@ -204,13 +204,13 @@ type VaultTokensKMS struct {
 	TokenName string
 }
 
-var _ = RegisterKMSProvider(KMSProvider{
+var _ = RegisterProvider(Provider{
 	UniqueID:    kmsTypeVaultTokens,
 	Initializer: initVaultTokensKMS,
 })
 
 // InitVaultTokensKMS returns an interface to HashiCorp Vault KMS.
-func initVaultTokensKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
+func initVaultTokensKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	var err error
 
 	config := args.Config

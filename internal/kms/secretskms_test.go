@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package kms
 
 import (
 	"testing"
@@ -22,6 +22,26 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewSecretsKMS(t *testing.T) {
+	t.Parallel()
+	secrets := map[string]string{}
+
+	// no passphrase in the secrets, should fail
+	kms, err := newSecretsKMS(ProviderInitArgs{
+		Secrets: secrets,
+	})
+	assert.Error(t, err)
+	assert.Nil(t, kms)
+
+	// set a passphrase and it should pass
+	secrets[encryptionPassphraseKey] = "plaintext encryption key"
+	kms, err = newSecretsKMS(ProviderInitArgs{
+		Secrets: secrets,
+	})
+	assert.NotNil(t, kms)
+	assert.NoError(t, err)
+}
 
 func TestGenerateNonce(t *testing.T) {
 	t.Parallel()
@@ -44,7 +64,7 @@ func TestGenerateCipher(t *testing.T) {
 
 func TestInitSecretsMetadataKMS(t *testing.T) {
 	t.Parallel()
-	args := KMSInitializerArgs{
+	args := ProviderInitArgs{
 		Tenant:  "tenant",
 		Config:  nil,
 		Secrets: map[string]string{},
@@ -61,7 +81,7 @@ func TestInitSecretsMetadataKMS(t *testing.T) {
 	kms, err = initSecretsMetadataKMS(args)
 	assert.NoError(t, err)
 	require.NotNil(t, kms)
-	assert.Equal(t, DEKStoreMetadata, kms.requiresDEKStore())
+	assert.Equal(t, DEKStoreMetadata, kms.RequiresDEKStore())
 }
 
 func TestWorkflowSecretsMetadataKMS(t *testing.T) {
@@ -69,7 +89,7 @@ func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 	secrets := map[string]string{
 		encryptionPassphraseKey: "my-passphrase-from-kubernetes",
 	}
-	args := KMSInitializerArgs{
+	args := ProviderInitArgs{
 		Tenant:  "tenant",
 		Config:  nil,
 		Secrets: secrets,
@@ -81,9 +101,7 @@ func TestWorkflowSecretsMetadataKMS(t *testing.T) {
 	require.NotNil(t, kms)
 
 	// plainDEK is the (LUKS) passphrase for the volume
-	plainDEK, err := generateNewEncryptionPassphrase()
-	assert.NoError(t, err)
-	assert.NotEqual(t, "", plainDEK)
+	plainDEK := "usually created with generateNewEncryptionPassphrase()"
 
 	encryptedDEK, err := kms.EncryptDEK(volumeID, plainDEK)
 	assert.NoError(t, err)

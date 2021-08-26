@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package kms
 
 import (
 	"testing"
@@ -22,8 +22,34 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAWSMetadataKMSRegistered(t *testing.T) {
+func noinitKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+	return nil, nil
+}
+
+func TestRegisterProvider(t *testing.T) {
 	t.Parallel()
-	_, ok := kmsManager.providers[kmsTypeAWSMetadata]
-	assert.True(t, ok)
+	tests := []struct {
+		provider Provider
+		panics   bool
+	}{{
+		Provider{
+			UniqueID: "incomplete-provider",
+		},
+		true,
+	}, {
+		Provider{
+			UniqueID:    "initializer-only",
+			Initializer: noinitKMS,
+		},
+		false,
+	}}
+
+	for _, test := range tests {
+		provider := test.provider
+		if test.panics {
+			assert.Panics(t, func() { RegisterProvider(provider) })
+		} else {
+			assert.True(t, RegisterProvider(provider))
+		}
+	}
 }

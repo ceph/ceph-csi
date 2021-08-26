@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package kms
 
 import (
 	"context"
@@ -36,9 +36,6 @@ const (
 	// Encryption passphrase location in K8s secrets.
 	encryptionPassphraseKey = "encryptionPassphrase"
 
-	// Default KMS type.
-	defaultKMSType = "default"
-
 	// kmsTypeSecretsMetadata is the SecretsKMS with per-volume encryption,
 	// where the DEK is stored in the metadata of the volume itself.
 	kmsTypeSecretsMetadata = "metadata"
@@ -53,16 +50,21 @@ const (
 
 // SecretsKMS is default KMS implementation that means no KMS is in use.
 type SecretsKMS struct {
-	integratedDEK
+	IntegratedDEK
 
 	passphrase string
 }
 
-// initSecretsKMS initializes a SecretsKMS that uses the passphrase from the
+var _ = RegisterProvider(Provider{
+	UniqueID:    DefaultKMSType,
+	Initializer: newSecretsKMS,
+})
+
+// newSecretsKMS initializes a SecretsKMS that uses the passphrase from the
 // secret that is configured for the StorageClass. This KMS provider uses a
 // single (LUKS) passhprase for all volumes.
-func initSecretsKMS(secrets map[string]string) (EncryptionKMS, error) {
-	passphraseValue, ok := secrets[encryptionPassphraseKey]
+func newSecretsKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+	passphraseValue, ok := args.Secrets[encryptionPassphraseKey]
 	if !ok {
 		return nil, errors.New("missing encryption passphrase in secrets")
 	}
@@ -98,7 +100,7 @@ type SecretsMetadataKMS struct {
 	SecretsKMS
 }
 
-var _ = RegisterKMSProvider(KMSProvider{
+var _ = RegisterProvider(Provider{
 	UniqueID:    kmsTypeSecretsMetadata,
 	Initializer: initSecretsMetadataKMS,
 })
@@ -106,7 +108,7 @@ var _ = RegisterKMSProvider(KMSProvider{
 // initSecretsMetadataKMS initializes a SecretsMetadataKMS that wraps a SecretsKMS,
 // so that the passphrase from the user provided or StorageClass secrets can be used
 // for encrypting/decrypting DEKs that are stored in a detached DEKStore.
-func initSecretsMetadataKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
+func initSecretsMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	var (
 		smKMS                SecretsMetadataKMS
 		encryptionPassphrase string
@@ -179,7 +181,7 @@ func (kms SecretsMetadataKMS) Destroy() {
 	kms.SecretsKMS.Destroy()
 }
 
-func (kms SecretsMetadataKMS) requiresDEKStore() DEKStoreType {
+func (kms SecretsMetadataKMS) RequiresDEKStore() DEKStoreType {
 	return DEKStoreMetadata
 }
 

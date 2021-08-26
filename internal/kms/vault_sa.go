@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package kms
 
 import (
 	"context"
@@ -77,14 +77,14 @@ type VaultTenantSA struct {
 	saTokenDir string
 }
 
-var _ = RegisterKMSProvider(KMSProvider{
+var _ = RegisterProvider(Provider{
 	UniqueID:    kmsTypeVaultTenantSA,
 	Initializer: initVaultTenantSA,
 })
 
 // initVaultTenantSA returns an interface to HashiCorp Vault KMS where Tenants
 // use their ServiceAccount to access the service.
-func initVaultTenantSA(args KMSInitializerArgs) (EncryptionKMS, error) {
+func initVaultTenantSA(args ProviderInitArgs) (EncryptionKMS, error) {
 	var err error
 
 	config := args.Config

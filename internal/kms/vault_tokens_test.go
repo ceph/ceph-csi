@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package kms
 
 import (
 	"encoding/json"
@@ -76,7 +76,7 @@ func TestInitVaultTokensKMS(t *testing.T) {
 		return
 	}
 
-	args := KMSInitializerArgs{
+	args := ProviderInitArgs{
 		Tenant:  "bob",
 		Config:  make(map[string]interface{}),
 		Secrets: nil,
