@@ -202,15 +202,6 @@ provisioner:
       pullPolicy: IfNotPresent
     resources: {}
 
-  attacher:
-    name: attacher
-    enabled: true
-    image:
-      repository: k8s.gcr.io/sig-storage/csi-attacher
-      tag: v3.3.0
-      pullPolicy: IfNotPresent
-    resources: {}
-
   resizer:
     name: resizer
     enabled: true

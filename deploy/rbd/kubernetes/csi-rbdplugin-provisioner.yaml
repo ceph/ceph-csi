@@ -82,20 +82,6 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-        - name: csi-attacher
-          image: k8s.gcr.io/sig-storage/csi-attacher:v3.3.0
-          args:
-            - "--v=5"
-            - "--csi-address=$(ADDRESS)"
-            - "--leader-election=true"
-            - "--retry-interval-start=500ms"
-          env:
-            - name: ADDRESS
-              value: /csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
         - name: csi-resizer
           image: k8s.gcr.io/sig-storage/csi-resizer:v1.3.0
           args:

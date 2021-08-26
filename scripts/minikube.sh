@@ -163,7 +163,6 @@ if [[ "${VM_DRIVER}" == "kvm2" ]]; then
     DISK="vda1"
 fi
 #configure csi sidecar version
-CSI_ATTACHER_VERSION=${CSI_ATTACHER_VERSION:-"v3.2.1"}
 CSI_SNAPSHOTTER_VERSION=${CSI_SNAPSHOTTER_VERSION:-"v4.1.1"}
 CSI_PROVISIONER_VERSION=${CSI_PROVISIONER_VERSION:-"v2.2.2"}
 CSI_RESIZER_VERSION=${CSI_RESIZER_VERSION:-"v1.2.0"}
@@ -284,7 +283,6 @@ cephcsi)
     ;;
 k8s-sidecar)
     echo "copying the kubernetes sidecar images"
-    copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-attacher:${CSI_ATTACHER_VERSION}" "${K8S_IMAGE_REPO}/csi-attacher:${CSI_ATTACHER_VERSION}"
     copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-snapshotter:${CSI_SNAPSHOTTER_VERSION}" "${K8S_IMAGE_REPO}/csi-snapshotter:${CSI_SNAPSHOTTER_VERSION}"
     copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-provisioner:${CSI_PROVISIONER_VERSION}" "${K8S_IMAGE_REPO}/csi-provisioner:${CSI_PROVISIONER_VERSION}"
     copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-node-driver-registrar:${CSI_NODE_DRIVER_REGISTRAR_VERSION}" "${K8S_IMAGE_REPO}/csi-node-driver-registrar:${CSI_NODE_DRIVER_REGISTRAR_VERSION}"
