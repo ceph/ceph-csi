@@ -523,6 +523,7 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // complete omap mapping between imageName and volumeID.
 
 // RegenerateJournal performs below operations
+// Extract clusterID, Mons after checkig clusterID mapping
 // Extract parameters journalPool, pool from volumeAttributes
 // Extract optional parameters volumeNamePrefix, kmsID, owner from volumeAttributes
 // Extract information from volumeID
@@ -538,15 +539,13 @@ func RegenerateJournal(
 	cr *util.Credentials) (string, error) {
 	ctx := context.Background()
 	var (
-		options map[string]string
-		vi      util.CSIIdentifier
-		rbdVol  *rbdVolume
-		kmsID   string
-		err     error
-		ok      bool
+		vi     util.CSIIdentifier
+		rbdVol *rbdVolume
+		kmsID  string
+		err    error
+		ok     bool
 	)
 
-	options = make(map[string]string)
 	rbdVol = &rbdVolume{}
 	rbdVol.VolID = volumeID
 
@@ -561,14 +560,8 @@ func RegenerateJournal(
 		return "", err
 	}
 
-	// TODO check clusterID mapping exists
-	rbdVol.ClusterID = vi.ClusterID
-	options["clusterID"] = rbdVol.ClusterID
-
-	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(options)
+	rbdVol.Monitors, rbdVol.ClusterID, err = util.FetchMappedClusterIDAndMons(ctx, vi.ClusterID)
 	if err != nil {
-		log.ErrorLog(ctx, "failed getting mons (%s)", err)
-
 		return "", err
 	}
 

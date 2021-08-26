@@ -17,11 +17,14 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 // clusterMappingConfigFile is the location of the cluster mapping config file.
@@ -133,4 +136,54 @@ func GetMappedID(key, value, id string) string {
 	}
 
 	return ""
+}
+
+// fetchMappedClusterIDAndMons returns monitors and clusterID info after checking cluster mapping.
+func fetchMappedClusterIDAndMons(ctx context.Context,
+	clusterID, clusterMappingConfigFile, csiConfigFile string) (string, string, error) {
+	var mons string
+	clusterMappingInfo, err := getClusterMappingInfo(clusterID, clusterMappingConfigFile)
+	if err != nil {
+		return "", "", err
+	}
+
+	if clusterMappingInfo != nil {
+		for _, cm := range *clusterMappingInfo {
+			for key, val := range cm.ClusterIDMapping {
+				mappedClusterID := GetMappedID(key, val, clusterID)
+				if mappedClusterID == "" {
+					continue
+				}
+				log.DebugLog(ctx,
+					"found new clusterID mapping %q for existing clusterID %q",
+					mappedClusterID,
+					clusterID)
+
+				mons, err = Mons(csiConfigFile, mappedClusterID)
+				if err != nil {
+					log.DebugLog(ctx, "failed getting mons with mapped cluster id %q: %v",
+						mappedClusterID, err)
+
+					continue
+				}
+
+				return mons, mappedClusterID, nil
+			}
+		}
+	}
+
+	// check original clusterID for backward compatibility when cluster ids were expected to be same.
+	mons, err = Mons(csiConfigFile, clusterID)
+	if err != nil {
+		log.ErrorLog(ctx, "failed getting mons with cluster id %q: %v", clusterID, err)
+
+		return "", "", err
+	}
+
+	return mons, clusterID, err
+}
+
+// FetchMappedClusterIDAndMons returns monitors and clusterID info after checking cluster mapping.
+func FetchMappedClusterIDAndMons(ctx context.Context, clusterID string) (string, string, error) {
+	return fetchMappedClusterIDAndMons(ctx, clusterID, clusterMappingConfigFile, CsiConfigFile)
 }
