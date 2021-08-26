@@ -153,9 +153,8 @@ func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
 
 			continue
 		}
-		// TODO: check with pv delete annotations, for eg: what happens when the pv is marked for delete
-		// skip this volumeattachment if its pv is not bound
-		if pv.Status.Phase != v1.VolumeBound {
+		// skip this volumeattachment if its pv is not bound or marked for deletion
+		if pv.Status.Phase != v1.VolumeBound || pv.DeletionTimestamp != nil {
 			continue
 		}
 		// skip if mounter is not rbd-nbd
