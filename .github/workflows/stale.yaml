@@ -1,0 +1,40 @@
+---
+# Reference https://github.com/actions/stale
+name: "Mark or close stale issues and PRs"
+# yamllint disable-line rule:truthy
+on:
+  schedule:
+    # Run the stalebot every day at 9pm UTC
+    - cron: "00 21 * * *"
+# yamllint disable rule:line-length
+jobs:
+  stale:
+    runs-on: ubuntu-18.04
+    if: github.repository == 'ceph/ceph-csi'
+    steps:
+      - uses: actions/stale@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-issue-stale: 30
+          days-before-issue-close: 7
+          stale-issue-message: >
+            This issue has been automatically marked as stale because it has not had recent activity.
+            It will be closed in a week if no further activity occurs.
+            Thank you for your contributions.
+          close-issue-message: >
+            This issue has been automatically closed due to inactivity.
+            Please re-open if this still requires investigation.
+          stale-issue-label: "wontfix"
+          exempt-issue-labels: "keepalive,security,reliability,release requirement"
+
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+          stale-pr-message: >
+            This pull request has been automatically marked as stale because it has not had
+            recent activity. It will be closed in two weeks if no further activity occurs.
+            Thank you for your contributions.
+          close-pr-message: >
+            This pull request has been automatically closed due to inactivity.
+            Please re-open if these changes are still required.
+          stale-pr-label: "stale"
+          exempt-pr-labels: "keepalive,security,reliability,release requirement"
