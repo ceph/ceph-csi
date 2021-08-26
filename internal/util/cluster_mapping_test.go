@@ -17,10 +17,12 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -287,6 +289,136 @@ func TestGetMappedID(t *testing.T) {
 			val := GetMappedID(tt.args.key, tt.args.value, tt.args.id)
 			if val != tt.expected {
 				t.Errorf("getMappedID() got = %v, expected %v", val, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFetchMappedClusterIDAndMons(t *testing.T) {
+	t.Parallel()
+	ctx := context.TODO()
+	type args struct {
+		ctx       context.Context
+		clusterID string
+	}
+	mappingBasePath := t.TempDir()
+	csiConfigFile := mappingBasePath + "/config.json"
+	clusterMappingConfigFile := mappingBasePath + "/cluster-mapping.json"
+	csiConfig := []ClusterInfo{
+		{
+			ClusterID: "cluster-1",
+			Monitors:  []string{"ip-1", "ip-2"},
+		},
+		{
+			ClusterID: "cluster-2",
+			Monitors:  []string{"ip-3", "ip-4"},
+		},
+	}
+	csiConfigFileContent, err := json.Marshal(csiConfig)
+	if err != nil {
+		t.Errorf("failed to marshal csi config info %v", err)
+	}
+	err = ioutil.WriteFile(csiConfigFile, csiConfigFileContent, 0o600)
+	if err != nil {
+		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
+	}
+
+	t.Run("cluster-mapping.json does not exist", func(t *testing.T) {
+		_, _, err = fetchMappedClusterIDAndMons(ctx, "cluster-2", clusterMappingConfigFile, csiConfigFile)
+		if err != nil {
+			t.Errorf("FetchMappedClusterIDAndMons() error = %v, wantErr %v", err, nil)
+		}
+	})
+
+	clusterMapping := []ClusterMappingInfo{
+		{
+			ClusterIDMapping: map[string]string{
+				"cluster-1": "cluster-3",
+			},
+		},
+		{
+			ClusterIDMapping: map[string]string{
+				"cluster-1": "cluster-4",
+			},
+		},
+		{
+			ClusterIDMapping: map[string]string{
+				"cluster-4": "cluster-3",
+			},
+		},
+	}
+	clusterMappingFileContent, err := json.Marshal(clusterMapping)
+	if err != nil {
+		t.Errorf("failed to marshal mapping info %v", err)
+	}
+	err = ioutil.WriteFile(clusterMappingConfigFile, clusterMappingFileContent, 0o600)
+	if err != nil {
+		t.Errorf("failed to write %s file content: %v", clusterMappingFileContent, err)
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		want1   string
+		wantErr bool
+	}{
+		{
+			name: "test cluster id=cluster-1",
+			args: args{
+				ctx:       ctx,
+				clusterID: "cluster-1",
+			},
+			want:    strings.Join(csiConfig[0].Monitors, ","),
+			want1:   "cluster-1",
+			wantErr: false,
+		},
+		{
+			name: "test cluster id=cluster-3",
+			args: args{
+				ctx:       ctx,
+				clusterID: "cluster-3",
+			},
+			want:    strings.Join(csiConfig[0].Monitors, ","),
+			want1:   "cluster-1",
+			wantErr: false,
+		},
+		{
+			name: "test cluster id=cluster-4",
+			args: args{
+				ctx:       ctx,
+				clusterID: "cluster-4",
+			},
+			want:    strings.Join(csiConfig[0].Monitors, ","),
+			want1:   "cluster-1",
+			wantErr: false,
+		},
+		{
+			name: "test missing cluster id=cluster-6",
+			args: args{
+				ctx:       ctx,
+				clusterID: "cluster-6",
+			},
+			want:    "",
+			want1:   "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, got1, err := fetchMappedClusterIDAndMons(ctx, tt.args.clusterID, clusterMappingConfigFile, csiConfigFile)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FetchMappedClusterIDAndMons() error = %v, wantErr %v", err, tt.wantErr)
+
+				return
+			}
+			if got != tt.want {
+				t.Errorf("FetchMappedClusterIDAndMons() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("FetchMappedClusterIDAndMons() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
 	}
