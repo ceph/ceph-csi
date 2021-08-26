@@ -126,6 +126,12 @@ details, refer to [Creating CSI configuration for RBD based
 provisioning](../examples/README.md#creating-csi-configuration-for-rbd-based-provisioning)
 for more information.
 
+**Deploy Ceph configuration ConfigMap for CSI pods:**
+
+```bash
+kubectl create -f ../example/ceph-config.yaml
+```
+
 **Deploy CSI sidecar containers:**
 
 ```bash
