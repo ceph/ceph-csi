@@ -94,6 +94,8 @@ spec:
               mountPath: /dev
             - name: host-mount
               mountPath: /run/mount
+            - name: ceph-config
+              mountPath: /etc/ceph/
             - name: ceph-csi-config
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
@@ -152,6 +154,9 @@ spec:
         - name: host-mount
           hostPath:
             path: /run/mount
+        - name: ceph-config
+          configMap:
+            name: ceph-config
         - name: ceph-csi-config
           configMap:
             name: ceph-csi-config
