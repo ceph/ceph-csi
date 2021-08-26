@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/ceph/go-ceph/rados"
@@ -1063,7 +1064,7 @@ func genVolFromVolID(
 	// be the same in the PV.Spec.CSI.VolumeHandle. Check the PV annotation for
 	// the new volumeHandle. If the new volumeHandle is found, generate the RBD
 	// volume structure from the new volumeHandle.
-	c := util.NewK8sClient()
+	c := k8s.NewK8sClient()
 	listOpt := metav1.ListOptions{
 		LabelSelector: PVReplicatedLabelKey,
 	}

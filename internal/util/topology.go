@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -34,7 +35,7 @@ const (
 )
 
 func k8sGetNodeLabels(nodeName string) (map[string]string, error) {
-	client := NewK8sClient()
+	client := k8s.NewK8sClient()
 	node, err := client.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node %q information: %w", nodeName, err)

@@ -23,6 +23,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/ceph/ceph-csi/internal/util/k8s"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -146,7 +148,7 @@ func getKMSConfigMap() (map[string]interface{}, error) {
 	}
 	cmName := getKMSConfigMapName()
 
-	c := NewK8sClient()
+	c := k8s.NewK8sClient()
 	cm, err := c.CoreV1().ConfigMaps(ns).Get(context.Background(),
 		cmName, metav1.GetOptions{})
 	if err != nil {

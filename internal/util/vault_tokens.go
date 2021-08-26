@@ -24,6 +24,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ceph/ceph-csi/internal/util/k8s"
+
 	"github.com/hashicorp/vault/api"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -438,7 +440,7 @@ func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}
 
 func (vtc *vaultTenantConnection) getK8sClient() *kubernetes.Clientset {
 	if vtc.client == nil {
-		vtc.client = NewK8sClient()
+		vtc.client = k8s.NewK8sClient()
 	}
 
 	return vtc.client
