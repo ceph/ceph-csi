@@ -157,6 +157,12 @@ within the Ceph CSI plugin pods. To add a specific Ceph clusters configuration
 details, refer to [Creating CSI configuration](../examples/README.md#creating-csi-configuration)
 for more information.
 
+**Deploy Ceph configuration ConfigMap for CSI pods:**
+
+```bash
+kubectl create -f ../example/ceph-config.yaml
+```
+
 **Deploy CSI sidecar containers:**
 
 ```bash
