@@ -1261,7 +1261,7 @@ func (ka kubectlAction) String() string {
 // no error occurred, or the timeout passed.
 func retryKubectlInput(namespace string, action kubectlAction, data string, t int, args ...string) error {
 	timeout := time.Duration(t) * time.Minute
-	e2elog.Logf("waiting for kubectl (%s -f %q args %s) to finish", action, args)
+	e2elog.Logf("waiting for kubectl (%s -f args %s) to finish", action, args)
 	start := time.Now()
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
