@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/ceph/ceph-csi/internal/util"
+	kubeclient "github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -128,7 +129,7 @@ func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolu
 
 // runVolumeHealer heal the volumes attached on a node.
 func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
-	c := util.NewK8sClient()
+	c := kubeclient.NewK8sClient()
 	val, err := c.StorageV1().VolumeAttachments().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		log.ErrorLogMsg("list volumeAttachments failed, err: %v", err)

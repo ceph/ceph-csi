@@ -14,20 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package k8s
 
 import (
 	"os"
 
 	"github.com/ceph/ceph-csi/internal/util/log"
 
-	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 // NewK8sClient create kubernetes client.
-func NewK8sClient() *k8s.Clientset {
+func NewK8sClient() *kubernetes.Clientset {
 	var cfg *rest.Config
 	var err error
 	cPath := os.Getenv("KUBERNETES_CONFIG_PATH")
@@ -42,7 +42,7 @@ func NewK8sClient() *k8s.Clientset {
 			log.FatalLogMsg("Failed to get cluster config with error: %v\n", err)
 		}
 	}
-	client, err := k8s.NewForConfig(cfg)
+	client, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		log.FatalLogMsg("Failed to create client with error: %v\n", err)
 	}

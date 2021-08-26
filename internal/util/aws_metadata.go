@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ceph/ceph-csi/internal/util/k8s"
+
 	"github.com/aws/aws-sdk-go/aws"
 	awsCreds "github.com/aws/aws-sdk-go/aws/credentials"
 	awsSession "github.com/aws/aws-sdk-go/aws/session"
@@ -123,7 +125,7 @@ func initAWSMetadataKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
 }
 
 func (kms *AWSMetadataKMS) getSecrets() (map[string]interface{}, error) {
-	c := NewK8sClient()
+	c := k8s.NewK8sClient()
 	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
 		kms.secretName, metav1.GetOptions{})
 	if err != nil {
