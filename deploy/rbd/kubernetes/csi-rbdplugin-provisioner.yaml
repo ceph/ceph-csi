@@ -164,6 +164,8 @@ spec:
               mountPath: /etc/ceph-csi-encryption-kms-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+            - name: ceph-config
+              mountPath: /etc/ceph/
         - name: csi-rbdplugin-controller
           securityContext:
             privileged: true
@@ -187,6 +189,8 @@ spec:
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+            - name: ceph-config
+              mountPath: /etc/ceph/
         - name: liveness-prometheus
           image: quay.io/cephcsi/cephcsi:canary
           args:
@@ -221,6 +225,9 @@ spec:
           emptyDir: {
             medium: "Memory"
           }
+        - name: ceph-config
+          configMap:
+            name: ceph-config
         - name: ceph-csi-config
           configMap:
             name: ceph-csi-config

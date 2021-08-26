@@ -113,6 +113,8 @@ spec:
               mountPath: /tmp/csi/keys
             - name: ceph-logdir
               mountPath: /var/log/ceph
+            - name: ceph-config
+              mountPath: /etc/ceph/
         - name: liveness-prometheus
           securityContext:
             privileged: true
@@ -171,6 +173,9 @@ spec:
         - name: lib-modules
           hostPath:
             path: /lib/modules
+        - name: ceph-config
+          configMap:
+            name: ceph-config
         - name: ceph-csi-config
           configMap:
             name: ceph-csi-config
