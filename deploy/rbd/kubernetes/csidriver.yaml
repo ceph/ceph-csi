@@ -7,4 +7,4 @@ metadata:
   name: rbd.csi.ceph.com
 spec:
   attachRequired: true
-  podInfoOnMount: false
+  podInfoOnMount: true
