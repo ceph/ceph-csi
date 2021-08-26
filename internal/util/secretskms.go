@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ceph/ceph-csi/internal/util/k8s"
+
 	"golang.org/x/crypto/scrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -155,7 +157,7 @@ func (kms SecretsMetadataKMS) fetchEncryptionPassphrase(
 		secretNamespace = defaultNamespace
 	}
 
-	c := NewK8sClient()
+	c := k8s.NewK8sClient()
 	secret, err := c.CoreV1().Secrets(secretNamespace).Get(context.TODO(),
 		secretName, metav1.GetOptions{})
 	if err != nil {
