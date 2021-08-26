@@ -103,6 +103,10 @@ func isAlreadyExistsCLIError(err error) bool {
 		if strings.TrimSuffix(s, "\n") == "" {
 			continue
 		}
+		// Ignore warnings
+		if strings.Contains(s, "Warning") {
+			continue
+		}
 		// Resource already exists error message
 		if !strings.Contains(s, "Error from server (AlreadyExists)") {
 			return false
