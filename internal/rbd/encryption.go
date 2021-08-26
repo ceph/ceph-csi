@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -289,7 +290,7 @@ func (ri *rbdImage) ParseEncryptionOpts(ctx context.Context, volOptions map[stri
 // configureEncryption sets up the VolumeEncryption for this rbdImage. Once
 // configured, use isEncrypted() to see if the volume supports encryption.
 func (ri *rbdImage) configureEncryption(kmsID string, credentials map[string]string) error {
-	kms, err := util.GetKMS(ri.Owner, kmsID, credentials)
+	kms, err := kmsapi.GetKMS(ri.Owner, kmsID, credentials)
 	if err != nil {
 		return err
 	}

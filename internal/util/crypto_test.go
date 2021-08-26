@@ -20,25 +20,11 @@ import (
 	"encoding/base64"
 	"testing"
 
+	"github.com/ceph/ceph-csi/internal/kms"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestInitSecretsKMS(t *testing.T) {
-	t.Parallel()
-	secrets := map[string]string{}
-
-	// no passphrase in the secrets, should fail
-	kms, err := initSecretsKMS(secrets)
-	assert.Error(t, err)
-	assert.Nil(t, kms)
-
-	// set a passphrase and it should pass
-	secrets[encryptionPassphraseKey] = "plaintext encryption key"
-	kms, err = initSecretsKMS(secrets)
-	assert.NotNil(t, kms)
-	assert.NoError(t, err)
-}
 
 func TestGenerateNewEncryptionPassphrase(t *testing.T) {
 	t.Parallel()
@@ -55,17 +41,18 @@ func TestGenerateNewEncryptionPassphrase(t *testing.T) {
 func TestKMSWorkflow(t *testing.T) {
 	t.Parallel()
 	secrets := map[string]string{
-		encryptionPassphraseKey: "workflow test",
+		// FIXME: use encryptionPassphraseKey from SecretsKMS
+		"encryptionPassphrase": "workflow test",
 	}
 
-	kms, err := GetKMS("tenant", defaultKMSType, secrets)
+	kmsProvider, err := kms.GetDefaultKMS(secrets)
 	assert.NoError(t, err)
-	require.NotNil(t, kms)
+	require.NotNil(t, kmsProvider)
 
-	ve, err := NewVolumeEncryption("", kms)
+	ve, err := NewVolumeEncryption("", kmsProvider)
 	assert.NoError(t, err)
 	require.NotNil(t, ve)
-	assert.Equal(t, defaultKMSType, ve.GetID())
+	assert.Equal(t, kms.DefaultKMSType, ve.GetID())
 
 	volumeID := "volume-id"
 
@@ -74,5 +61,5 @@ func TestKMSWorkflow(t *testing.T) {
 
 	passphrase, err := ve.GetCryptoPassphrase(volumeID)
 	assert.NoError(t, err)
-	assert.Equal(t, secrets[encryptionPassphraseKey], passphrase)
+	assert.Equal(t, secrets["encryptionPassphrase"], passphrase)
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package kms
 
 import (
 	"errors"
@@ -89,7 +89,7 @@ type vaultConnection struct {
 
 type VaultKMS struct {
 	vaultConnection
-	integratedDEK
+	IntegratedDEK
 
 	// vaultPassphrasePath (VPP) used to be added before the "key" of the
 	// secret (like /v1/secret/data/<VPP>/key)
@@ -317,13 +317,13 @@ func (vc *vaultConnection) getDeleteKeyContext() map[string]string {
 	return keyContext
 }
 
-var _ = RegisterKMSProvider(KMSProvider{
+var _ = RegisterProvider(Provider{
 	UniqueID:    kmsTypeVault,
 	Initializer: initVaultKMS,
 })
 
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.
-func initVaultKMS(args KMSInitializerArgs) (EncryptionKMS, error) {
+func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	kms := &VaultKMS{}
 	err := kms.initConnection(args.Config)
 	if err != nil {

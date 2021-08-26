@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package kms
 
 import (
 	"context"
@@ -46,6 +46,12 @@ const (
 	// defaultKMSConfigMapName default ConfigMap name to fetch kms
 	// connection details.
 	defaultKMSConfigMapName = "csi-kms-connection-details"
+
+	// kmsConfigPath is the location of the vault config file.
+	kmsConfigPath = "/etc/ceph-csi-encryption-kms-config/config.json"
+
+	// Default KMS type.
+	DefaultKMSType = "default"
 )
 
 // GetKMS returns an instance of Key Management System.
@@ -56,8 +62,8 @@ const (
 // - secrets contain additional details, like TLS certificates to connect to
 //   the KMS
 func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, error) {
-	if kmsID == "" || kmsID == defaultKMSType {
-		return initSecretsKMS(secrets)
+	if kmsID == "" || kmsID == DefaultKMSType {
+		return GetDefaultKMS(secrets)
 	}
 
 	config, err := getKMSConfiguration()
@@ -170,10 +176,10 @@ func getKMSConfigMap() (map[string]interface{}, error) {
 	return kmsConfig, nil
 }
 
-// getKMSProvider inspects the configuration and tries to identify what
-// KMSProvider is expected to be used with it. This returns the
-// KMSProvider.UniqueID.
-func getKMSProvider(config map[string]interface{}) (string, error) {
+// getProvider inspects the configuration and tries to identify what
+// Provider is expected to be used with it. This returns the
+// Provider.UniqueID.
+func getProvider(config map[string]interface{}) (string, error) {
 	var name string
 
 	providerName, ok := config[kmsTypeKey]
@@ -202,45 +208,45 @@ func getKMSProvider(config map[string]interface{}) (string, error) {
 		"configuration option %q or %q", kmsTypeKey, kmsProviderKey)
 }
 
-// KMSInitializerArgs get passed to KMSInitializerFunc when a new instance of a
-// KMSProvider is initialized.
-type KMSInitializerArgs struct {
+// ProviderInitArgs get passed to ProviderInitFunc when a new instance of a
+// Provider is initialized.
+type ProviderInitArgs struct {
 	Tenant  string
 	Config  map[string]interface{}
 	Secrets map[string]string
 	// Namespace contains the Kubernetes Namespace where the Ceph-CSI Pods
 	// are running. This is an optional option, and might be unset when the
-	// KMSProvider.Initializer is called.
+	// Provider.Initializer is called.
 	Namespace string
 }
 
-// KMSInitializerFunc gets called when the KMSProvider needs to be
+// ProviderInitFunc gets called when the Provider needs to be
 // instantiated.
-type KMSInitializerFunc func(args KMSInitializerArgs) (EncryptionKMS, error)
+type ProviderInitFunc func(args ProviderInitArgs) (EncryptionKMS, error)
 
-type KMSProvider struct {
+type Provider struct {
 	UniqueID    string
-	Initializer KMSInitializerFunc
+	Initializer ProviderInitFunc
 }
 
 type kmsProviderList struct {
-	providers map[string]KMSProvider
+	providers map[string]Provider
 }
 
 // kmsManager is used to create instances for a KMS provider.
-var kmsManager = kmsProviderList{providers: map[string]KMSProvider{}}
+var kmsManager = kmsProviderList{providers: map[string]Provider{}}
 
-// RegisterKMSProvider uses kmsManager to register the given KMSProvider. The
-// KMSProvider.Initializer function will get called when a new instance of the
+// RegisterProvider uses kmsManager to register the given Provider. The
+// Provider.Initializer function will get called when a new instance of the
 // KMS is required.
-func RegisterKMSProvider(provider KMSProvider) bool {
+func RegisterProvider(provider Provider) bool {
 	// validate uniqueness of the UniqueID
 	if provider.UniqueID == "" {
 		panic("a provider MUST set a UniqueID")
 	}
 	_, ok := kmsManager.providers[provider.UniqueID]
 	if ok {
-		panic("duplicate registration of KMSProvider.UniqueID: " + provider.UniqueID)
+		panic("duplicate registration of Provider.UniqueID: " + provider.UniqueID)
 	}
 
 	// validate the Initializer
@@ -253,14 +259,14 @@ func RegisterKMSProvider(provider KMSProvider) bool {
 	return true
 }
 
-// buildKMS creates a new KMSProvider instance, based on the configuration that
-// was passed. This uses getKMSProvider() internally to identify the
-// KMSProvider to instantiate.
+// buildKMS creates a new Provider instance, based on the configuration that
+// was passed. This uses getProvider() internally to identify the
+// Provider to instantiate.
 func (kf *kmsProviderList) buildKMS(
 	tenant string,
 	config map[string]interface{},
 	secrets map[string]string) (EncryptionKMS, error) {
-	providerName, err := getKMSProvider(config)
+	providerName, err := getProvider(config)
 	if err != nil {
 		return nil, err
 	}
@@ -271,18 +277,111 @@ func (kf *kmsProviderList) buildKMS(
 			providerName)
 	}
 
-	kmsInitArgs := KMSInitializerArgs{
+	kmsInitArgs := ProviderInitArgs{
 		Tenant:  tenant,
 		Config:  config,
 		Secrets: secrets,
 	}
 
 	// Namespace is an optional parameter, it may not be set and is not
-	// required for all KMSProviders
+	// required for all Providers
 	ns, err := getPodNamespace()
 	if err == nil {
 		kmsInitArgs.Namespace = ns
 	}
 
 	return provider.Initializer(kmsInitArgs)
+}
+
+func GetDefaultKMS(secrets map[string]string) (EncryptionKMS, error) {
+	provider, ok := kmsManager.providers[DefaultKMSType]
+	if !ok {
+		return nil, fmt.Errorf("could not find KMS provider %q", DefaultKMSType)
+	}
+
+	kmsInitArgs := ProviderInitArgs{
+		Secrets: secrets,
+	}
+
+	return provider.Initializer(kmsInitArgs)
+}
+
+// EncryptionKMS provides external Key Management System for encryption
+// passphrases storage.
+type EncryptionKMS interface {
+	Destroy()
+
+	// RequiresDEKStore returns the DEKStoreType that is needed to be
+	// configure for the KMS. Nothing needs to be done when this function
+	// returns DEKStoreIntegrated, otherwise you will need to configure an
+	// alternative storage for the DEKs.
+	RequiresDEKStore() DEKStoreType
+
+	// EncryptDEK provides a way for a KMS to encrypt a DEK. In case the
+	// encryption is done transparently inside the KMS service, the
+	// function can return an unencrypted value.
+	EncryptDEK(volumeID, plainDEK string) (string, error)
+
+	// DecryptDEK provides a way for a KMS to decrypt a DEK. In case the
+	// encryption is done transparently inside the KMS service, the
+	// function does not need to do anything except return the encyptedDEK
+	// as it was received.
+	DecryptDEK(volumeID, encyptedDEK string) (string, error)
+}
+
+// DEKStoreType describes what DEKStore needs to be configured when using a
+// particular KMS. A KMS might support different DEKStores depending on its
+// configuration.
+type DEKStoreType string
+
+const (
+	// DEKStoreIntegrated indicates that the KMS itself supports storing
+	// DEKs.
+	DEKStoreIntegrated = DEKStoreType("")
+	// DEKStoreMetadata indicates that the KMS should be configured to
+	// store the DEK in the metadata of the volume.
+	DEKStoreMetadata = DEKStoreType("metadata")
+)
+
+// DEKStore allows KMS instances to implement a modular backend for DEK
+// storage. This can be used to store the DEK in a different location, in case
+// the KMS can not store passphrases for volumes.
+type DEKStore interface {
+	// StoreDEK saves the DEK in the configured store.
+	StoreDEK(volumeID string, dek string) error
+	// FetchDEK reads the DEK from the configured store and returns it.
+	FetchDEK(volumeID string) (string, error)
+	// RemoveDEK deletes the DEK from the configured store.
+	RemoveDEK(volumeID string) error
+}
+
+// IntegratedDEK is a DEKStore that can not be configured. Either the KMS does
+// not use a DEK, or the DEK is stored in the KMS without additional
+// configuration options.
+type IntegratedDEK struct{}
+
+func (i IntegratedDEK) RequiresDEKStore() DEKStoreType {
+	return DEKStoreIntegrated
+}
+
+func (i IntegratedDEK) EncryptDEK(volumeID, plainDEK string) (string, error) {
+	return plainDEK, nil
+}
+
+func (i IntegratedDEK) DecryptDEK(volumeID, encyptedDEK string) (string, error) {
+	return encyptedDEK, nil
+}
+
+// getKeys takes a map that uses strings for keys and returns a slice with the
+// keys.
+func getKeys(m map[string]interface{}) []string {
+	keys := make([]string, len(m))
+
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+
+	return keys
 }
