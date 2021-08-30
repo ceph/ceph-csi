@@ -990,7 +990,7 @@ k8s.io/kubernetes/test/e2e/storage/podlogs
 k8s.io/kubernetes/test/e2e/storage/utils
 k8s.io/kubernetes/test/utils
 k8s.io/kubernetes/test/utils/image
-# k8s.io/mount-utils v0.22.0 => k8s.io/mount-utils v0.22.0
+# k8s.io/mount-utils v0.22.1 => k8s.io/mount-utils v0.22.0
 ## explicit
 k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20210707171843-4b05e18ac7d9
