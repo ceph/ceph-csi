@@ -138,58 +138,6 @@ func TestValidateImageFeatures(t *testing.T) {
 	}
 }
 
-func TestGetMappedID(t *testing.T) {
-	t.Parallel()
-	type args struct {
-		key   string
-		value string
-		id    string
-	}
-	tests := []struct {
-		name     string
-		args     args
-		expected string
-	}{
-		{
-			name: "test for matching key",
-			args: args{
-				key:   "cluster1",
-				value: "cluster2",
-				id:    "cluster1",
-			},
-			expected: "cluster2",
-		},
-		{
-			name: "test for matching value",
-			args: args{
-				key:   "cluster1",
-				value: "cluster2",
-				id:    "cluster2",
-			},
-			expected: "cluster1",
-		},
-		{
-			name: "test for invalid match",
-			args: args{
-				key:   "cluster1",
-				value: "cluster2",
-				id:    "cluster3",
-			},
-			expected: "",
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			val := getMappedID(tt.args.key, tt.args.value, tt.args.id)
-			if val != tt.expected {
-				t.Errorf("getMappedID() got = %v, expected %v", val, tt.expected)
-			}
-		})
-	}
-}
-
 func TestGetCephClientLogFileName(t *testing.T) {
 	t.Parallel()
 	type args struct {

@@ -1105,7 +1105,7 @@ func generateVolumeFromMapping(
 	// extract clusterID mapping
 	for _, cm := range *mapping {
 		for key, val := range cm.ClusterIDMapping {
-			mappedClusterID := getMappedID(key, val, vi.ClusterID)
+			mappedClusterID := util.GetMappedID(key, val, vi.ClusterID)
 			if mappedClusterID == "" {
 				continue
 			}
@@ -1119,7 +1119,7 @@ func generateVolumeFromMapping(
 			poolID := fmt.Sprintf("%d", (vi.LocationID))
 			for _, pools := range cm.RBDpoolIDMappingInfo {
 				for key, val := range pools {
-					mappedPoolID := getMappedID(key, val, poolID)
+					mappedPoolID := util.GetMappedID(key, val, poolID)
 					if mappedPoolID == "" {
 						continue
 					}
@@ -1144,20 +1144,6 @@ func generateVolumeFromMapping(
 	}
 
 	return vol, util.ErrPoolNotFound
-}
-
-// getMappedID check the input id is matching key or value.
-// If key==id the value will be returned.
-// If value==id the key will be returned.
-func getMappedID(key, value, id string) string {
-	if key == id {
-		return value
-	}
-	if value == id {
-		return key
-	}
-
-	return ""
 }
 
 func genVolFromVolumeOptions(
