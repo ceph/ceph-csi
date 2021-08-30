@@ -4,11 +4,6 @@
   - [Pre-upgrade considerations](#pre-upgrade-considerations)
     - [Snapshot-controller and snapshot crd](#snapshot-controller-and-snapshot-crd)
       - [Snapshot API version support matrix](#snapshot-api-version-support-matrix)
-  - [Upgrading from v1.2 to v2.0](#upgrading-from-v12-to-v20)
-  - [Upgrading from v2.0 to v2.1](#upgrading-from-v20-to-v21)
-  - [Upgrading from v2.1 to v3.0](#upgrading-from-v21-to-v30)
-  - [Upgrading from v3.0 to v3.1](#upgrading-from-v30-to-v31)
-  - [Upgrading from v3.1 to v3.2](#upgrading-from-v31-to-v32)
   - [Upgrading from v3.2 to v3.3](#upgrading-from-v32-to-v33)
   - [Upgrading from v3.3 to v3.4](#upgrading-from-v33-to-v34)
     - [Upgrading CephFS](#upgrading-cephfs)
@@ -64,34 +59,6 @@ controller and snapshot CRD. more info can be found
 | v1                   | k8s >= v1.20         | snapshot-controller >= v4.x        | sidecar >= v2.x |
 
 **Note:** We recommend to use {sidecar, controller, crds} of same version
-
-## Upgrading from v1.2 to v2.0
-
-Refer
-[upgrade-from-v1.2-v2.0](https://github.com/ceph/ceph-csi/blob/v2.0.1/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi v1.2 to v2.0
-
-## Upgrading from v2.0 to v2.1
-
-Refer
-[upgrade-from-v2.0-v2.1](https://github.com/ceph/ceph-csi/blob/v2.1.2/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi v2.0 to v2.1
-
-## Upgrading from v2.1 to v3.0
-
-Refer
-[upgrade-from-v2.1-v3.0](https://github.com/ceph/ceph-csi/blob/v3.0.0/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi v2.1 to v3.0
-
-## Upgrading from v3.0 to v3.1
-
-Refer [upgrade-from-v3.0-v3.1](https://github.com/ceph/ceph-csi/blob/v3.1.2/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi v3.0 to v3.1
-
-## Upgrading from v3.1 to v3.2
-
-Refer [upgrade-from-v3.1-v3.2](https://github.com/ceph/ceph-csi/blob/v3.2.1/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi v3.1 to v3.2
 
 ## Upgrading from v3.2 to v3.3
 
