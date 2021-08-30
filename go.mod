@@ -35,6 +35,7 @@ require (
 )
 
 replace (
+	code.cloudfoundry.org/gofileutils => github.com/cloudfoundry/gofileutils v0.0.0-20170111115228-4d0c80011a0f
 	github.com/golang/protobuf => github.com/golang/protobuf v1.4.3
 	github.com/hashicorp/vault/api => github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 	github.com/hashicorp/vault/sdk => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
