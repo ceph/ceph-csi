@@ -120,3 +120,17 @@ func getClusterMappingInfo(clusterID, filename string) (*[]ClusterMappingInfo, e
 func GetClusterMappingInfo(clusterID string) (*[]ClusterMappingInfo, error) {
 	return getClusterMappingInfo(clusterID, clusterMappingConfigFile)
 }
+
+// GetMappedID check the input id is matching key or value.
+// If key==id the value will be returned.
+// If value==id the key will be returned.
+func GetMappedID(key, value, id string) string {
+	if key == id {
+		return value
+	}
+	if value == id {
+		return key
+	}
+
+	return ""
+}
