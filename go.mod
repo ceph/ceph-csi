@@ -27,7 +27,7 @@ require (
 	k8s.io/apimachinery v0.22.0
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cloud-provider v1.22.0
-	k8s.io/klog/v2 v2.9.0
+	k8s.io/klog/v2 v2.10.0
 	k8s.io/kubernetes v1.22.0
 	k8s.io/mount-utils v0.22.0
 	k8s.io/utils v0.0.0-20210707171843-4b05e18ac7d9

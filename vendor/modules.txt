@@ -918,7 +918,7 @@ k8s.io/component-base/version
 # k8s.io/component-helpers v0.22.0 => k8s.io/component-helpers v0.22.0
 k8s.io/component-helpers/scheduling/corev1
 k8s.io/component-helpers/scheduling/corev1/nodeaffinity
-# k8s.io/klog/v2 v2.9.0
+# k8s.io/klog/v2 v2.10.0
 ## explicit
 k8s.io/klog/v2
 # k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e
