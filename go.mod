@@ -39,6 +39,7 @@ replace (
 	github.com/hashicorp/vault/api => github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 	github.com/hashicorp/vault/sdk => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
 	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
+	gomodules.xyz/jsonpatch/v2 => github.com/gomodules/jsonpatch/v2 v2.2.0
 	google.golang.org/grpc => google.golang.org/grpc v1.35.0
 	k8s.io/api => k8s.io/api v0.22.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.22.0
