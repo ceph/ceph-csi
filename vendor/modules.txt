@@ -426,7 +426,7 @@ google.golang.org/appengine/urlfetch
 google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/protobuf/field_mask
-# google.golang.org/grpc v1.40.0 => google.golang.org/grpc v1.35.0
+# google.golang.org/grpc v1.40.0
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -1061,7 +1061,6 @@ sigs.k8s.io/yaml
 # github.com/hashicorp/vault/sdk => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
 # github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 # gomodules.xyz/jsonpatch/v2 => github.com/gomodules/jsonpatch/v2 v2.2.0
-# google.golang.org/grpc => google.golang.org/grpc v1.35.0
 # k8s.io/api => k8s.io/api v0.22.1
 # k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.22.1
 # k8s.io/apimachinery => k8s.io/apimachinery v0.22.1
