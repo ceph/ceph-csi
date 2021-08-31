@@ -159,7 +159,12 @@ func (kms SecretsMetadataKMS) fetchEncryptionPassphrase(
 		secretNamespace = defaultNamespace
 	}
 
-	c := k8s.NewK8sClient()
+	c, err := k8s.NewK8sClient()
+	if err != nil {
+		return "", fmt.Errorf("can not get Secret %s/%s, failed to "+
+			"connect to Kubernetes: %w", secretNamespace, secretName, err)
+	}
+
 	secret, err := c.CoreV1().Secrets(secretNamespace).Get(context.TODO(),
 		secretName, metav1.GetOptions{})
 	if err != nil {
