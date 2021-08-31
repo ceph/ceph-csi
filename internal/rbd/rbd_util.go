@@ -1060,7 +1060,11 @@ func genVolFromVolID(
 	// be the same in the PV.Spec.CSI.VolumeHandle. Check the PV annotation for
 	// the new volumeHandle. If the new volumeHandle is found, generate the RBD
 	// volume structure from the new volumeHandle.
-	c := util.NewK8sClient()
+	c, cErr := util.NewK8sClient()
+	if cErr != nil {
+		return vol, cErr
+	}
+
 	listOpt := metav1.ListOptions{
 		LabelSelector: PVReplicatedLabelKey,
 	}

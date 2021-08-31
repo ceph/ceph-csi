@@ -125,7 +125,13 @@ func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolu
 
 // runVolumeHealer heal the volumes attached on a node.
 func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
-	c := util.NewK8sClient()
+	c, err := util.NewK8sClient()
+	if err != nil {
+		util.ErrorLogMsg("failed to connect to Kubernetes: %v", err)
+
+		return err
+	}
+
 	val, err := c.StorageV1().VolumeAttachments().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		util.ErrorLogMsg("list volumeAttachments failed, err: %v", err)

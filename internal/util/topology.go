@@ -32,7 +32,12 @@ const (
 )
 
 func k8sGetNodeLabels(nodeName string) (map[string]string, error) {
-	client := NewK8sClient()
+	client, err := NewK8sClient()
+	if err != nil {
+		return nil, fmt.Errorf("can not get node %q information, failed "+
+			"to connect to Kubernetes: %w", nodeName, err)
+	}
+
 	node, err := client.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node %q information: %w", nodeName, err)
