@@ -3,7 +3,7 @@ module github.com/ceph/ceph-csi
 go 1.16
 
 require (
-	github.com/aws/aws-sdk-go v1.38.63
+	github.com/aws/aws-sdk-go v1.40.33
 	github.com/ceph/go-ceph v0.11.0
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
@@ -42,6 +42,9 @@ replace (
 	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 	gomodules.xyz/jsonpatch/v2 => github.com/gomodules/jsonpatch/v2 v2.2.0
 	google.golang.org/grpc => google.golang.org/grpc v1.35.0
+	//
+	// k8s.io/kubernetes depends on these k8s.io packages, but unversioned
+	//
 	k8s.io/api => k8s.io/api v0.22.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.22.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.22.0
