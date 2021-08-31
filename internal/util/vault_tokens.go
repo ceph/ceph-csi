@@ -433,12 +433,16 @@ func (vtc *vaultTenantConnection) initCertificates(config map[string]interface{}
 	return nil
 }
 
-func (vtc *vaultTenantConnection) getK8sClient() *kubernetes.Clientset {
+func (vtc *vaultTenantConnection) getK8sClient() (*kubernetes.Clientset, error) {
 	if vtc.client == nil {
-		vtc.client = NewK8sClient()
+		client, err := NewK8sClient()
+		if err != nil {
+			return nil, err
+		}
+		vtc.client = client
 	}
 
-	return vtc.client
+	return vtc.client, nil
 }
 
 // FetchDEK returns passphrase from Vault. The passphrase is stored in a
@@ -488,7 +492,11 @@ func (vtc *vaultTenantConnection) RemoveDEK(key string) error {
 }
 
 func (kms *VaultTokensKMS) getToken() (string, error) {
-	c := kms.getK8sClient()
+	c, err := kms.getK8sClient()
+	if err != nil {
+		return "", err
+	}
+
 	secret, err := c.CoreV1().Secrets(kms.Tenant).Get(context.TODO(), kms.TokenName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -503,7 +511,11 @@ func (kms *VaultTokensKMS) getToken() (string, error) {
 }
 
 func (vtc *vaultTenantConnection) getCertificate(tenant, secretName, key string) (string, error) {
-	c := vtc.getK8sClient()
+	c, err := vtc.getK8sClient()
+	if err != nil {
+		return "", err
+	}
+
 	secret, err := c.CoreV1().Secrets(tenant).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -545,7 +557,11 @@ func (vtc *vaultTenantConnection) parseTenantConfig() (map[string]interface{}, e
 	}
 
 	// fetch the ConfigMap from the tenants namespace
-	c := vtc.getK8sClient()
+	c, err := vtc.getK8sClient()
+	if err != nil {
+		return nil, err
+	}
+
 	cm, err := c.CoreV1().ConfigMaps(vtc.Tenant).Get(context.TODO(),
 		vtc.ConfigName, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {

@@ -17,33 +17,34 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
 	"os"
 
-	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 // NewK8sClient create kubernetes client.
-func NewK8sClient() *k8s.Clientset {
+func NewK8sClient() (*kubernetes.Clientset, error) {
 	var cfg *rest.Config
 	var err error
 	cPath := os.Getenv("KUBERNETES_CONFIG_PATH")
 	if cPath != "" {
 		cfg, err = clientcmd.BuildConfigFromFlags("", cPath)
 		if err != nil {
-			FatalLogMsg("Failed to get cluster config with error: %v\n", err)
+			return nil, fmt.Errorf("failed to get cluster config from %q: %w", cPath, err)
 		}
 	} else {
 		cfg, err = rest.InClusterConfig()
 		if err != nil {
-			FatalLogMsg("Failed to get cluster config with error: %v\n", err)
+			return nil, fmt.Errorf("failed to get cluster config: %w", err)
 		}
 	}
-	client, err := k8s.NewForConfig(cfg)
+	client, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		FatalLogMsg("Failed to create client with error: %v\n", err)
+		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
-	return client
+	return client, nil
 }
