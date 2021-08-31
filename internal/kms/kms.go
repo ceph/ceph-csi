@@ -154,7 +154,12 @@ func getKMSConfigMap() (map[string]interface{}, error) {
 	}
 	cmName := getKMSConfigMapName()
 
-	c := k8s.NewK8sClient()
+	c, err := k8s.NewK8sClient()
+	if err != nil {
+		return nil, fmt.Errorf("can not get ConfigMap %q, failed to "+
+			"connect to Kubernetes: %w", cmName, err)
+	}
+
 	cm, err := c.CoreV1().ConfigMaps(ns).Get(context.Background(),
 		cmName, metav1.GetOptions{})
 	if err != nil {

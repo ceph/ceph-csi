@@ -260,7 +260,12 @@ func (kms *VaultTenantSA) setServiceAccountName(config map[string]interface{}) e
 // getServiceAccount returns the Tenants ServiceAccount with the name
 // configured in the VaultTenantSA.
 func (kms *VaultTenantSA) getServiceAccount() (*corev1.ServiceAccount, error) {
-	c := kms.getK8sClient()
+	c, err := kms.getK8sClient()
+	if err != nil {
+		return nil, fmt.Errorf("can not get ServiceAccount %s/%s, "+
+			"failed to connect to Kubernetes: %w", kms.Tenant, kms.tenantSAName, err)
+	}
+
 	sa, err := c.CoreV1().ServiceAccounts(kms.Tenant).Get(context.TODO(),
 		kms.tenantSAName, metav1.GetOptions{})
 	if err != nil {
@@ -279,7 +284,13 @@ func (kms *VaultTenantSA) getToken() (string, error) {
 		return "", err
 	}
 
-	c := kms.getK8sClient()
+	c, err := kms.getK8sClient()
+	if err != nil {
+		return "", fmt.Errorf("can not get ServiceAccount %s/%s, failed "+
+			"to connect to Kubernetes: %w", kms.Tenant,
+			kms.tenantSAName, err)
+	}
+
 	for _, secretRef := range sa.Secrets {
 		secret, err := c.CoreV1().Secrets(kms.Tenant).Get(context.TODO(), secretRef.Name, metav1.GetOptions{})
 		if err != nil {

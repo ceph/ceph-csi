@@ -17,9 +17,8 @@ limitations under the License.
 package k8s
 
 import (
+	"fmt"
 	"os"
-
-	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -27,25 +26,25 @@ import (
 )
 
 // NewK8sClient create kubernetes client.
-func NewK8sClient() *kubernetes.Clientset {
+func NewK8sClient() (*kubernetes.Clientset, error) {
 	var cfg *rest.Config
 	var err error
 	cPath := os.Getenv("KUBERNETES_CONFIG_PATH")
 	if cPath != "" {
 		cfg, err = clientcmd.BuildConfigFromFlags("", cPath)
 		if err != nil {
-			log.FatalLogMsg("Failed to get cluster config with error: %v\n", err)
+			return nil, fmt.Errorf("failed to get cluster config from %q: %w", cPath, err)
 		}
 	} else {
 		cfg, err = rest.InClusterConfig()
 		if err != nil {
-			log.FatalLogMsg("Failed to get cluster config with error: %v\n", err)
+			return nil, fmt.Errorf("failed to get cluster config: %w", err)
 		}
 	}
 	client, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		log.FatalLogMsg("Failed to create client with error: %v\n", err)
+		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
-	return client
+	return client, nil
 }
