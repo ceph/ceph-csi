@@ -505,7 +505,14 @@ func flattenTemporaryClonedImages(ctx context.Context, rbdVol *rbdVolume, cr *ut
 			return status.Error(codes.Internal, err.Error())
 		}
 
-		return status.Errorf(codes.ResourceExhausted, "rbd image %s has %d snapshots", rbdVol, len(snaps))
+		// Abort current try, flattening is likely to be in progress, a
+		// next retry might succeed
+		return status.Errorf(
+			codes.Aborted,
+			"rbd image %s has %d snapshots (max %d)",
+			rbdVol,
+			len(snaps),
+			maxSnapshotsOnImage)
 	}
 
 	if len(snaps) > int(minSnapshotsOnImageToStartFlatten) {
