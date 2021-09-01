@@ -18,6 +18,9 @@ parameters:
 {{- if .Values.storageClass.mounter }}
   mounter: {{ .Values.storageClass.mounter }}
 {{- end }}
+{{- if .Values.storageClass.cephLogDir }}
+  cephLogDir: {{ .Values.storageClass.cephLogDir }}
+{{- end }}
 {{- if .Values.storageClass.dataPool }}
   dataPool: {{ .Values.storageClass.dataPool }}
 {{- end }}
