@@ -114,6 +114,8 @@ spec:
               readOnly: true
             - name: ceph-csi-config
               mountPath: /etc/ceph-csi-config/
+            - name: ceph-config
+              mountPath: /etc/ceph/
             - name: ceph-csi-encryption-kms-config
               mountPath: /etc/ceph-csi-encryption-kms-config/
             - name: plugin-dir
@@ -190,6 +192,9 @@ spec:
         - name: lib-modules
           hostPath:
             path: /lib/modules
+        - name: ceph-config
+          configMap:
+            name: ceph-config
         - name: ceph-csi-config
           configMap:
             name: {{ .Values.configMapName | quote }}
