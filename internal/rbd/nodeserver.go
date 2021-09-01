@@ -847,7 +847,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		unmapOptions:      imgInfo.UnmapOptions,
 		logDir:            imgInfo.LogDir,
 	}
-	if err = detachRBDImageOrDeviceSpec(ctx, dArgs); err != nil {
+	if err = detachRBDImageOrDeviceSpec(ctx, &dArgs); err != nil {
 		log.ErrorLog(
 			ctx,
 			"error unmapping volume (%s) from staging path (%s): (%v)",
