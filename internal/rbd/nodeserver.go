@@ -225,6 +225,10 @@ func populateRbdVol(
 	if rv.LogDir == "" {
 		rv.LogDir = defaultLogDir
 	}
+	rv.LogStrategy = req.GetVolumeContext()["cephLogStrategy"]
+	if rv.LogStrategy == "" {
+		rv.LogStrategy = defaultLogStrategy
+	}
 
 	return rv, err
 }
@@ -846,6 +850,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		volumeID:          req.GetVolumeId(),
 		unmapOptions:      imgInfo.UnmapOptions,
 		logDir:            imgInfo.LogDir,
+		logStrategy:       imgInfo.LogStrategy,
 	}
 	if err = detachRBDImageOrDeviceSpec(ctx, &dArgs); err != nil {
 		log.ErrorLog(

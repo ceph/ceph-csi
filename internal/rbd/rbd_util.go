@@ -53,6 +53,7 @@ const (
 	rbdDefaultMounter        = "rbd"
 	rbdNbdMounter            = "rbd-nbd"
 	defaultLogDir            = "/var/log/ceph"
+	defaultLogStrategy       = "remove" // supports remove, compress and preserve
 
 	// Output strings returned during invocation of "ceph rbd task add remove <imagespec>" when
 	// command is not supported by ceph manager. Used to check errors and recover when the command
@@ -140,6 +141,7 @@ type rbdVolume struct {
 	MapOptions         string
 	UnmapOptions       string
 	LogDir             string
+	LogStrategy        string
 	VolName            string `json:"volName"`
 	MonValueFromSecret string `json:"monValueFromSecret"`
 	VolSize            int64  `json:"volSize"`
@@ -1515,8 +1517,9 @@ type rbdImageMetadataStash struct {
 	UnmapOptions   string `json:"unmapOptions"`
 	NbdAccess      bool   `json:"accessType"`
 	Encrypted      bool   `json:"encrypted"`
-	DevicePath     string `json:"device"` // holds NBD device path for now
-	LogDir         string `json:"logDir"` // holds the client log path
+	DevicePath     string `json:"device"`          // holds NBD device path for now
+	LogDir         string `json:"logDir"`          // holds the client log path
+	LogStrategy    string `json:"logFileStrategy"` // ceph client log strategy
 }
 
 // file name in which image metadata is stashed.
@@ -1548,6 +1551,7 @@ func stashRBDImageMetadata(volOptions *rbdVolume, metaDataPath string) error {
 	if volOptions.Mounter == rbdTonbd && hasNBD {
 		imgMeta.NbdAccess = true
 		imgMeta.LogDir = volOptions.LogDir
+		imgMeta.LogStrategy = volOptions.LogStrategy
 	}
 
 	encodedBytes, err := json.Marshal(imgMeta)
@@ -2020,4 +2024,24 @@ func CheckSliceContains(options []string, opt string) bool {
 	}
 
 	return false
+}
+
+// strategicActionOnLogFile act on log file based on cephLogStrategy.
+func strategicActionOnLogFile(ctx context.Context, logStrategy, logFile string) {
+	var err error
+
+	switch strings.ToLower(logStrategy) {
+	case "compress":
+		if err = log.GzipLogFile(logFile); err != nil {
+			log.ErrorLog(ctx, "failed to compress logfile %q: %v", logFile, err)
+		}
+	case "remove":
+		if err = os.Remove(logFile); err != nil {
+			log.ErrorLog(ctx, "failed to remove logfile %q: %v", logFile, err)
+		}
+	case "preserve":
+		// do nothing
+	default:
+		log.ErrorLog(ctx, "unknown cephLogStrategy option %q: hint: 'remove'|'compress'|'preserve'", logStrategy)
+	}
 }

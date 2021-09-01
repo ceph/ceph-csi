@@ -17,6 +17,9 @@ limitations under the License.
 package rbd
 
 import (
+	"context"
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -204,6 +207,78 @@ func TestGetCephClientLogFileName(t *testing.T) {
 			val := getCephClientLogFileName(tt.args.id, tt.args.logDir, tt.args.prefix)
 			if val != tt.expected {
 				t.Errorf("getCephClientLogFileName() got = %v, expected %v", val, tt.expected)
+			}
+		})
+	}
+}
+
+func TestStrategicActionOnLogFile(t *testing.T) {
+	t.Parallel()
+	ctx := context.TODO()
+	tmpDir := t.TempDir()
+
+	var logFile [3]string
+	for i := 0; i < 3; i++ {
+		f, err := ioutil.TempFile(tmpDir, "rbd-*.log")
+		if err != nil {
+			t.Errorf("creating tempfile failed: %v", err)
+		}
+		logFile[i] = f.Name()
+	}
+
+	type args struct {
+		logStrategy string
+		logFile     string
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "test for compress",
+			args: args{
+				logStrategy: "compress",
+				logFile:     logFile[0],
+			},
+		},
+		{
+			name: "test for remove",
+			args: args{
+				logStrategy: "remove",
+				logFile:     logFile[1],
+			},
+		},
+		{
+			name: "test for preserve",
+			args: args{
+				logStrategy: "preserve",
+				logFile:     logFile[2],
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			strategicActionOnLogFile(ctx, tt.args.logStrategy, tt.args.logFile)
+
+			var err error
+			switch tt.args.logStrategy {
+			case "compress":
+				newExt := strings.Replace(tt.args.logFile, ".log", ".gz", -1)
+				if _, err = os.Stat(newExt); os.IsNotExist(err) {
+					t.Errorf("compressed logFile (%s) not found: %v", newExt, err)
+				}
+				os.Remove(newExt)
+			case "remove":
+				if _, err = os.Stat(tt.args.logFile); !os.IsNotExist(err) {
+					t.Errorf("logFile (%s) not removed: %v", tt.args.logFile, err)
+				}
+			case "preserve":
+				if _, err = os.Stat(tt.args.logFile); os.IsNotExist(err) {
+					t.Errorf("logFile (%s) not preserved: %v", tt.args.logFile, err)
+				}
+				os.Remove(tt.args.logFile)
 			}
 		})
 	}

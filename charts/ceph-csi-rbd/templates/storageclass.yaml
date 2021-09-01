@@ -21,6 +21,9 @@ parameters:
 {{- if .Values.storageClass.cephLogDir }}
   cephLogDir: {{ .Values.storageClass.cephLogDir }}
 {{- end }}
+{{- if .Values.storageClass.cephLogStrategy }}
+  cephLogStrategy: {{ .Values.storageClass.cephLogStrategy }}
+{{- end }}
 {{- if .Values.storageClass.dataPool }}
   dataPool: {{ .Values.storageClass.dataPool }}
 {{- end }}
