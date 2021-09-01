@@ -50,11 +50,16 @@ func createCephConfigRoot() error {
 // WriteCephConfig writes out a basic ceph.conf file, making it easy to use
 // ceph related CLIs.
 func WriteCephConfig() error {
-	if err := createCephConfigRoot(); err != nil {
+	var err error
+	if err = createCephConfigRoot(); err != nil {
 		return err
 	}
 
-	err := ioutil.WriteFile(CephConfigPath, cephConfig, 0o600)
+	// create config file if it does not exist to support backward compatibility
+	if _, err = os.Stat(CephConfigPath); os.IsNotExist(err) {
+		err = ioutil.WriteFile(CephConfigPath, cephConfig, 0o600)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -71,7 +76,11 @@ if any ceph commands fails it will log below error message
 */
 // createKeyRingFile creates the keyring files to fix above error message logging.
 func createKeyRingFile() error {
-	_, err := os.Create(keyRing)
+	var err error
+	// create keyring file if it does not exist to support backward compatibility
+	if _, err = os.Stat(keyRing); os.IsNotExist(err) {
+		_, err = os.Create(keyRing)
+	}
 
 	return err
 }
