@@ -40,11 +40,11 @@ the respective NodeUnstage(unmap).
 
 In case if you need a customized log path, you should do below:
 
-- Edit the daemonset templates to change the `cephLogDir`
-  - If you are using helm charts, then you can use key `cephLogDir`
+- Edit the daemonset templates to change the ceph log directory host-path
+  - If you are using helm charts, then you can use key `cephLogDirHostPath`
 
     ```
-    helm install --set cephLogDir=/var/log/ceph-csi/my-dir
+    helm install --set cephLogDirHostPath=/var/log/ceph-csi/my-dir
     ```
 
   - For standard templates edit [csi-rbdplugin.yaml](../deploy/rbd/kubernetes/csi-rbdplugin.yaml)
