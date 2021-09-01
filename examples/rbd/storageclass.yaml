@@ -71,10 +71,17 @@ parameters:
 
    # (optional) ceph client log location, eg: rbd-nbd
    # By default host-path /var/log/ceph of node is bind-mounted into
-   # csi-rbdplugin pod at /var/log/ceph mount path. See docs/rbd-nbd.md
-   # for available configuration options.
-   # This is to configure target bindmount path used inside container.
+   # csi-rbdplugin pod at /var/log/ceph mount path. This is to configure
+   # target bindmount path used inside container for ceph clients logging.
+   # See docs/rbd-nbd.md for available configuration options.
    # cephLogDir: /var/log/ceph
+
+   # (optional) ceph client log strategy
+   # By default, log file belonging to a particular volume will be deleted
+   # on unmap, but you can choose to just compress instead of deleting it
+   # or even preserve the log file in text format as it is.
+   # Available options `remove` or `compress` or `preserve`
+   # cephLogStrategy: remove
 
    # (optional) Prefix to use for naming RBD images.
    # If omitted, defaults to "csi-vol-".

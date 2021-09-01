@@ -102,6 +102,7 @@ type detachRBDImageArgs struct {
 	volumeID          string
 	unmapOptions      string
 	logDir            string
+	logStrategy       string
 }
 
 // rbdGetDeviceList queries rbd about mapped devices and returns a list of rbdDeviceInfo
@@ -383,6 +384,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 				volumeID:          volOpt.VolID,
 				unmapOptions:      volOpt.UnmapOptions,
 				logDir:            volOpt.LogDir,
+				logStrategy:       volOpt.LogStrategy,
 			}
 			detErr := detachRBDImageOrDeviceSpec(ctx, &dArgs)
 			if detErr != nil {
@@ -490,10 +492,7 @@ func detachRBDImageOrDeviceSpec(
 	}
 	if dArgs.isNbd && dArgs.logDir != "" {
 		logFile := getCephClientLogFileName(dArgs.volumeID, dArgs.logDir, "rbd-nbd")
-		if err = os.Remove(logFile); err != nil {
-			log.WarningLog(ctx, "failed to remove logfile: %s, error: %v",
-				logFile, err)
-		}
+		go strategicActionOnLogFile(ctx, dArgs.logStrategy, logFile)
 	}
 
 	return nil
