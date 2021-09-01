@@ -173,6 +173,8 @@ spec:
               readOnly: true
             - name: host-dev
               mountPath: /dev
+            - name: ceph-config
+              mountPath: /etc/ceph/
             - name: ceph-csi-config
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
@@ -217,6 +219,9 @@ spec:
         - name: host-dev
           hostPath:
             path: /dev
+        - name: ceph-config
+          configMap:
+            name: ceph-config
         - name: ceph-csi-config
           configMap:
             name: {{ .Values.configMapName | quote }}
