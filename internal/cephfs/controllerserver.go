@@ -186,7 +186,12 @@ func (cs *ControllerServer) CreateVolume(
 	defer volOptions.Destroy()
 
 	if req.GetCapacityRange() != nil {
-		volOptions.Size = util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
+		// we were doing round off ( by util.RoundOffBytes) to the size passed
+		// in from the provisioner before Ceph CSI v3.4.0, however this can
+		// cause wastage of space in the cluster. The CephFS filesystem is capable
+		// of creating volume with the exact size passed in. so no need of Roundoff
+		// here before we reach out to the cluster
+		volOptions.Size = req.GetCapacityRange().GetRequiredBytes()
 	}
 
 	parentVol, pvID, sID, err := checkContentSource(ctx, req, cr)
