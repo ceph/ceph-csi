@@ -243,19 +243,11 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, device string, c
 	return devicePath, err
 }
 
-func appendDeviceTypeAndOptions(cmdArgs []string, isNbd, isThick bool, userOptions string) []string {
-	accessType := accessTypeKRbd
-	if isNbd {
-		accessType = accessTypeNbd
-	}
+func appendNbdDeviceTypeAndOptions(cmdArgs []string, isThick bool, userOptions string) []string {
+	cmdArgs = append(cmdArgs, "--device-type", accessTypeNbd)
 
-	cmdArgs = append(cmdArgs, "--device-type", accessType)
-	if !isNbd {
-		// Enable mapping and unmapping images from a non-initial network
-		// namespace (e.g. for Multus CNI).  The network namespace must be
-		// owned by the initial user namespace.
-		cmdArgs = append(cmdArgs, "--options", "noudev")
-	} else {
+	isUnmap := CheckSliceContains(cmdArgs, "unmap")
+	if !isUnmap {
 		if !strings.Contains(userOptions, useNbdNetlink) {
 			cmdArgs = append(cmdArgs, "--options", useNbdNetlink)
 		}
@@ -265,12 +257,40 @@ func appendDeviceTypeAndOptions(cmdArgs []string, isNbd, isThick bool, userOptio
 		if !strings.Contains(userOptions, setNbdIOTimeout) {
 			cmdArgs = append(cmdArgs, "--options", fmt.Sprintf("%s=%d", setNbdIOTimeout, defaultNbdIOTimeout))
 		}
+
+		if isThick {
+			// When an image is thick-provisioned, any discard/unmap/trim
+			// requests should not free extents.
+			cmdArgs = append(cmdArgs, "--options", "notrim")
+		}
 	}
-	if isThick {
-		// When an image is thick-provisioned, any discard/unmap/trim
-		// requests should not free extents.
-		cmdArgs = append(cmdArgs, "--options", "notrim")
+
+	if userOptions != "" {
+		// userOptions is appended after, possibly overriding the above
+		// default options.
+		cmdArgs = append(cmdArgs, "--options", userOptions)
 	}
+
+	return cmdArgs
+}
+
+func appendKRbdDeviceTypeAndOptions(cmdArgs []string, isThick bool, userOptions string) []string {
+	cmdArgs = append(cmdArgs, "--device-type", accessTypeKRbd)
+
+	isUnmap := CheckSliceContains(cmdArgs, "unmap")
+	if !isUnmap {
+		if isThick {
+			// When an image is thick-provisioned, any discard/unmap/trim
+			// requests should not free extents.
+			cmdArgs = append(cmdArgs, "--options", "notrim")
+		}
+	}
+
+	// Enable mapping and unmapping images from a non-initial network
+	// namespace (e.g. for Multus CNI).  The network namespace must be
+	// owned by the initial user namespace.
+	cmdArgs = append(cmdArgs, "--options", "noudev")
+
 	if userOptions != "" {
 		// userOptions is appended after, possibly overriding the above
 		// default options.
@@ -338,7 +358,11 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 		mapArgs = appendRbdNbdCliOptions(mapArgs, volOpt.MapOptions)
 	} else {
 		mapArgs = append(mapArgs, "map", imagePath)
-		mapArgs = appendDeviceTypeAndOptions(mapArgs, isNbd, isThick, volOpt.MapOptions)
+		if isNbd {
+			mapArgs = appendNbdDeviceTypeAndOptions(mapArgs, isThick, volOpt.MapOptions)
+		} else {
+			mapArgs = appendKRbdDeviceTypeAndOptions(mapArgs, isThick, volOpt.MapOptions)
+		}
 	}
 
 	if volOpt.readOnly {
@@ -443,7 +467,11 @@ func detachRBDImageOrDeviceSpec(
 	}
 
 	unmapArgs := []string{"unmap", dArgs.imageOrDeviceSpec}
-	unmapArgs = appendDeviceTypeAndOptions(unmapArgs, dArgs.isNbd, false, dArgs.unmapOptions)
+	if dArgs.isNbd {
+		unmapArgs = appendNbdDeviceTypeAndOptions(unmapArgs, false, dArgs.unmapOptions)
+	} else {
+		unmapArgs = appendKRbdDeviceTypeAndOptions(unmapArgs, false, dArgs.unmapOptions)
+	}
 
 	_, stderr, err := util.ExecCommand(ctx, rbd, unmapArgs...)
 	if err != nil {

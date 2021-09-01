@@ -2011,3 +2011,14 @@ func getCephClientLogFileName(id, logDir, prefix string) string {
 
 	return fmt.Sprintf("%s/%s-%s.log", logDir, prefix, id)
 }
+
+// CheckSliceContains checks the slice for string.
+func CheckSliceContains(options []string, opt string) bool {
+	for _, o := range options {
+		if o == opt {
+			return true
+		}
+	}
+
+	return false
+}
