@@ -188,7 +188,6 @@ func (cs *ControllerServer) CreateVolume(
 	if req.GetCapacityRange() != nil {
 		volOptions.Size = util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
 	}
-	// TODO need to add check for 0 volume size
 
 	parentVol, pvID, sID, err := checkContentSource(ctx, req, cr)
 	if err != nil {
