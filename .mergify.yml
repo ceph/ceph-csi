@@ -26,6 +26,7 @@ pull_request_rules:
   - name: ask to resolve conflict
     conditions:
       - conflict
+      - author!=dependabot[bot]
     actions:
       comment:
         # yamllint disable-line rule:truthy
