@@ -8,7 +8,7 @@ Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreport
 - [Ceph CSI](#ceph-csi)
   - [Overview](#overview)
   - [Project status](#project-status)
-  - [Supported CO platforms](#supported-co-platforms)
+  - [Known to work CO platforms](#known-to-work-co-platforms)
   - [Support Matrix](#support-matrix)
     - [Ceph-CSI features and available versions](#ceph-csi-features-and-available-versions)
     - [CSI spec and Kubernetes version compatibility](#csi-spec-and-kubernetes-version-compatibility)
@@ -47,11 +47,18 @@ NOTE:
 
 Status: **GA**
 
-## Supported CO platforms
+## Known to work CO platforms
 
 Ceph CSI drivers are currently developed and tested **exclusively** on Kubernetes
-environments. There is work in progress to make this CO independent and thus
-support other orchestration environments in the future.
+environments.
+
+| Ceph CSI Version | Container Orchestrator Name | Version Tested|
+| -----------------| --------------------------- | --------------|
+| v3.4.0 | Kubernetes | v1.20, v1.21, v1.22|
+| v3.3.0 | Kubernetes | v1.20, v1.21, v1.22|
+
+There is work in progress to make this CO independent and thus
+support other orchestration environments (Nomad, Mesos..etc) in the future.
 
 NOTE:
 
