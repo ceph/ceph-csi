@@ -28,9 +28,11 @@ var (
 	rbdNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
 	rbdNodePluginPSP   = "csi-nodeplugin-psp.yaml"
 	configMap          = "csi-config-map.yaml"
+	cephConfconfigMap  = "ceph-conf.yaml"
 	csiDriverObject    = "csidriver.yaml"
 	rbdDirPath         = "../deploy/rbd/kubernetes/"
-	rbdExamplePath     = "../examples/rbd/"
+	examplePath        = "../examples/"
+	rbdExamplePath     = examplePath + "/rbd/"
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
 	defaultRBDPool     = "replicapool"
@@ -100,6 +102,19 @@ func createORDeleteRbdResources(action kubectlAction) {
 		err = retryKubectlInput(cephCSINamespace, action, string(csiDriver), deployTimeout)
 		if err != nil {
 			e2elog.Failf("failed to %s CSIDriver object with error %v", action, err)
+		}
+	}
+	cephConf, err := ioutil.ReadFile(examplePath + cephConfconfigMap)
+	if err != nil {
+		// createORDeleteRbdResources is used for upgrade testing as cephConf Configmap is
+		// newly added, discarding file not found error.
+		if !os.IsNotExist(err) {
+			e2elog.Failf("failed to read content from %s with error %v", examplePath+cephConfconfigMap, err)
+		}
+	} else {
+		err = retryKubectlInput(cephCSINamespace, action, string(cephConf), deployTimeout)
+		if err != nil {
+			e2elog.Failf("failed to %s ceph-conf configmap object with error %v", action, err)
 		}
 	}
 	data, err := replaceNamespaceInTemplate(rbdDirPath + rbdProvisioner)
