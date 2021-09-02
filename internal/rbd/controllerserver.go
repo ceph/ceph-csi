@@ -743,9 +743,56 @@ func checkContentSource(
 	return nil, nil, status.Errorf(codes.InvalidArgument, "not a proper volume source")
 }
 
+// checkErrAndUndoReserve work on error from genVolFromVolID() and undo omap reserve.
+// Even-though volumeID is part of rbdVolume struct we take it as an arg here, the main reason
+// being, the volume id is getting filled from `genVolFromVolID->generateVolumeFromVolumeID` call path,
+// and this function is operating on the error case/scenario of above call chain, so we can not rely
+// on the 'rbdvol->rbdimage->voldID' field.
+
+func (cs *ControllerServer) checkErrAndUndoReserve(
+	ctx context.Context,
+	err error,
+	volumeID string,
+	rbdVol *rbdVolume, cr *util.Credentials) (*csi.DeleteVolumeResponse, error) {
+	if errors.Is(err, util.ErrPoolNotFound) {
+		log.WarningLog(ctx, "failed to get backend volume for %s: %v", volumeID, err)
+
+		return &csi.DeleteVolumeResponse{}, nil
+	}
+
+	// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
+	// or partially complete (image and imageOMap are garbage collected already), hence return
+	// success as deletion is complete
+	if errors.Is(err, util.ErrKeyNotFound) {
+		log.WarningLog(ctx, "failed to volume options for %s: %v", volumeID, err)
+
+		return &csi.DeleteVolumeResponse{}, nil
+	}
+
+	// All errors other than ErrImageNotFound should return an error back to the caller
+	if !errors.Is(err, ErrImageNotFound) {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// If error is ErrImageNotFound then we failed to find the image, but found the imageOMap
+	// to lead us to the image, hence the imageOMap needs to be garbage collected, by calling
+	// unreserve for the same
+	if acquired := cs.VolumeLocks.TryAcquire(rbdVol.RequestName); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
+	}
+	defer cs.VolumeLocks.Release(rbdVol.RequestName)
+
+	if err = undoVolReservation(ctx, rbdVol, cr); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.DeleteVolumeResponse{}, nil
+}
+
 // DeleteVolume deletes the volume in backend and removes the volume metadata
-// from store
-// TODO: make this function less complex.
+// from store.
 func (cs *ControllerServer) DeleteVolume(
 	ctx context.Context,
 	req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
@@ -786,41 +833,7 @@ func (cs *ControllerServer) DeleteVolume(
 	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
-		if errors.Is(err, util.ErrPoolNotFound) {
-			log.WarningLog(ctx, "failed to get backend volume for %s: %v", volumeID, err)
-
-			return &csi.DeleteVolumeResponse{}, nil
-		}
-
-		// if error is ErrKeyNotFound, then a previous attempt at deletion was complete
-		// or partially complete (image and imageOMap are garbage collected already), hence return
-		// success as deletion is complete
-		if errors.Is(err, util.ErrKeyNotFound) {
-			log.WarningLog(ctx, "Failed to volume options for %s: %v", volumeID, err)
-
-			return &csi.DeleteVolumeResponse{}, nil
-		}
-
-		// All errors other than ErrImageNotFound should return an error back to the caller
-		if !errors.Is(err, ErrImageNotFound) {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
-		// If error is ErrImageNotFound then we failed to find the image, but found the imageOMap
-		// to lead us to the image, hence the imageOMap needs to be garbage collected, by calling
-		// unreserve for the same
-		if acquired := cs.VolumeLocks.TryAcquire(rbdVol.RequestName); !acquired {
-			log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
-
-			return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, rbdVol.RequestName)
-		}
-		defer cs.VolumeLocks.Release(rbdVol.RequestName)
-
-		if err = undoVolReservation(ctx, rbdVol, cr); err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
-		return &csi.DeleteVolumeResponse{}, nil
+		return cs.checkErrAndUndoReserve(ctx, err, volumeID, rbdVol, cr)
 	}
 
 	// lock out parallel create requests against the same volume name as we
