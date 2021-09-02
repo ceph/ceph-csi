@@ -173,9 +173,11 @@ install_cephcsi_helm_charts() {
     check_deployment_status app=ceph-csi-cephfs ${NAMESPACE}
     check_daemonset_status app=ceph-csi-cephfs ${NAMESPACE}
 
-    # deleting configmap as a workaround to avoid configmap already present
+    # deleting configmaps as a workaround to avoid configmap already present
     # issue when installing ceph-csi-rbd
     kubectl_retry delete cm ceph-csi-config --namespace ${NAMESPACE}
+    kubectl_retry delete cm ceph-config --namespace ${NAMESPACE}
+
     # shellcheck disable=SC2086
     "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.podSecurityPolicy.enabled=true --set nodeplugin.podSecurityPolicy.enabled=true --set provisioner.replicaCount=1 ${SET_SC_TEMPLATE_VALUES} ${RBD_SECRET_TEMPLATE_VALUES} ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2
 
