@@ -324,8 +324,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	case librbd.MirrorImageEnabled:
 		return disableVolumeReplication(rbdVol, mirroringInfo, force)
 	default:
-		// TODO: use string instead of int for returning valid error message
-		return nil, status.Errorf(codes.InvalidArgument, "image is in %d Mode", mirroringInfo.State)
+		return nil, status.Errorf(codes.InvalidArgument, "image is in %s Mode", mirroringInfo.State)
 	}
 
 	return &replication.DisableVolumeReplicationResponse{}, nil
