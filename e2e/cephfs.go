@@ -28,7 +28,7 @@ var (
 	cephfsDeamonSetName   = "csi-cephfsplugin"
 	cephfsContainerName   = "csi-cephfsplugin"
 	cephfsDirPath         = "../deploy/cephfs/kubernetes/"
-	cephfsExamplePath     = "../examples/cephfs/"
+	cephfsExamplePath     = examplePath + "cephfs/"
 	subvolumegroup        = "e2e"
 	fileSystemName        = "myfs"
 )
@@ -74,6 +74,19 @@ func createORDeleteCephfsResources(action kubectlAction) {
 		err = retryKubectlInput(cephCSINamespace, action, string(csiDriver), deployTimeout)
 		if err != nil {
 			e2elog.Failf("failed to %s CSIDriver object with error %v", action, err)
+		}
+	}
+	cephConf, err := ioutil.ReadFile(examplePath + cephConfconfigMap)
+	if err != nil {
+		// createORDeleteCephfsResources is used for upgrade testing as cephConfConfigmap is
+		// newly added, discarding file not found error.
+		if !os.IsNotExist(err) {
+			e2elog.Failf("failed to read content from %s with error %v", examplePath+cephConfconfigMap, err)
+		}
+	} else {
+		err = retryKubectlInput(cephCSINamespace, action, string(cephConf), deployTimeout)
+		if err != nil {
+			e2elog.Failf("failed to %s ceph-conf configmap object with error %v", action, err)
 		}
 	}
 	data, err := replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisioner)
