@@ -146,8 +146,33 @@ func checkContentSource(
 	return nil, nil, nil, status.Errorf(codes.InvalidArgument, "not a proper volume source %v", volumeSource)
 }
 
+// rollbackOnRootPathError do actions like purging if there was an error
+// while fetching or getting the rootpath for a subvolume via getVolumeRootPathCeph.
+func (cs *ControllerServer) rollbackOnRootPathError(
+	ctx context.Context,
+	err error,
+	volOptions *volumeOptions,
+	vID *volumeIdentifier) (*csi.CreateVolumeResponse, error) {
+	purgeErr := volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), true)
+	if purgeErr != nil {
+		log.ErrorLog(ctx, "failed to delete volume %s: %v", vID.FsSubvolName, purgeErr)
+		// All errors other than ErrVolumeNotFound should return an error back to the caller
+		if !errors.Is(purgeErr, cerrors.ErrVolumeNotFound) {
+			// If the subvolume deletion is failed, we should not cleanup
+			// the OMAP entry it will stale subvolume in cluster.
+			// set err=nil so that when we get the request again we can get
+			// the subvolume info.
+			err = nil
+
+			return nil, status.Error(codes.Internal, purgeErr.Error())
+		}
+	}
+	log.ErrorLog(ctx, "failed to get subvolume path %s: %v", vID.FsSubvolName, err)
+
+	return nil, status.Error(codes.Internal, err.Error())
+}
+
 // CreateVolume creates a reservation and the volume in backend, if it is not already present.
-// nolint:gocyclo,cyclop // TODO: reduce complexity
 func (cs *ControllerServer) CreateVolume(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
@@ -260,23 +285,7 @@ func (cs *ControllerServer) CreateVolume(
 
 	volOptions.RootPath, err = volOptions.getVolumeRootPathCeph(ctx, volumeID(vID.FsSubvolName))
 	if err != nil {
-		purgeErr := volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), true)
-		if purgeErr != nil {
-			log.ErrorLog(ctx, "failed to delete volume %s: %v", vID.FsSubvolName, purgeErr)
-			// All errors other than ErrVolumeNotFound should return an error back to the caller
-			if !errors.Is(purgeErr, cerrors.ErrVolumeNotFound) {
-				// If the subvolume deletion is failed, we should not cleanup
-				// the OMAP entry it will stale subvolume in cluster.
-				// set err=nil so that when we get the request again we can get
-				// the subvolume info.
-				err = nil
-
-				return nil, status.Error(codes.Internal, purgeErr.Error())
-			}
-		}
-		log.ErrorLog(ctx, "failed to get subvolume path %s: %v", vID.FsSubvolName, err)
-
-		return nil, status.Error(codes.Internal, err.Error())
+		return cs.rollbackOnRootPathError(ctx, err, volOptions, vID)
 	}
 
 	log.DebugLog(ctx, "cephfs: successfully created backing volume named %s for request name %s",
