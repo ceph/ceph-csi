@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	ctrl "github.com/ceph/ceph-csi/internal/controller"
 	"github.com/ceph/ceph-csi/internal/rbd"
@@ -126,19 +125,8 @@ func (r *ReconcilePersistentVolume) getCredentials(
 	return cr, nil
 }
 
-func checkStaticVolume(pv *corev1.PersistentVolume) (bool, error) {
-	static := false
-	var err error
-
-	staticVol := pv.Spec.CSI.VolumeAttributes["staticVolume"]
-	if staticVol != "" {
-		static, err = strconv.ParseBool(staticVol)
-		if err != nil {
-			return false, fmt.Errorf("failed to parse preProvisionedVolume: %w", err)
-		}
-	}
-
-	return static, nil
+func checkStaticVolume(pv *corev1.PersistentVolume) bool {
+	return pv.Spec.CSI.VolumeAttributes["staticVolume"] == "true"
 }
 
 // storeVolumeIDInPV stores the new volumeID in PV object.
@@ -178,10 +166,7 @@ func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.
 	secretName := ""
 	secretNamespace := ""
 	// check static volume
-	static, err := checkStaticVolume(pv)
-	if err != nil {
-		return err
-	}
+	static := checkStaticVolume(pv)
 	// if the volume is static, dont generate OMAP data
 	if static {
 		return nil
