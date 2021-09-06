@@ -26,8 +26,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
-type volumeID string
-
 func parseTime(ctx context.Context, createTime time.Time) (*timestamp.Timestamp, error) {
 	tm, err := ptypes.TimestampProto(createTime)
 	if err != nil {
