@@ -27,6 +27,7 @@ import (
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
 type volumeOptions struct {
@@ -585,4 +586,22 @@ func newSnapshotOptionsFromID(
 	}
 
 	return &volOptions, &info, &sid, nil
+}
+
+func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (snap *cephfsSnapshot, err error) {
+	cephfsSnap := &cephfsSnapshot{}
+	cephfsSnap.RequestName = req.GetName()
+	snapOptions := req.GetParameters()
+
+	cephfsSnap.Monitors, cephfsSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
+	if err != nil {
+		log.ErrorLog(ctx, "failed getting mons (%s)", err)
+
+		return nil, err
+	}
+	if namePrefix, ok := snapOptions["snapshotNamePrefix"]; ok {
+		cephfsSnap.NamePrefix = namePrefix
+	}
+
+	return cephfsSnap, nil
 }

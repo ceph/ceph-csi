@@ -23,7 +23,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
@@ -34,24 +33,6 @@ func execCommandErr(ctx context.Context, program string, args ...string) error {
 	_, _, err := util.ExecCommand(ctx, program, args...)
 
 	return err
-}
-
-func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (snap *cephfsSnapshot, err error) {
-	cephfsSnap := &cephfsSnapshot{}
-	cephfsSnap.RequestName = req.GetName()
-	snapOptions := req.GetParameters()
-
-	cephfsSnap.Monitors, cephfsSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
-	if err != nil {
-		log.ErrorLog(ctx, "failed getting mons (%s)", err)
-
-		return nil, err
-	}
-	if namePrefix, ok := snapOptions["snapshotNamePrefix"]; ok {
-		cephfsSnap.NamePrefix = namePrefix
-	}
-
-	return cephfsSnap, nil
 }
 
 func parseTime(ctx context.Context, createTime time.Time) (*timestamp.Timestamp, error) {
