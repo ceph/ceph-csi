@@ -178,7 +178,7 @@ func populateRbdVol(
 		disableInUseChecks = true
 	}
 
-	rv, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks)
+	rv, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks, true)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
