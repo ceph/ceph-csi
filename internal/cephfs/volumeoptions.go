@@ -30,6 +30,8 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
+type volumeID string
+
 type volumeOptions struct {
 	TopologyPools       *[]util.TopologyConstrainedPool
 	TopologyRequirement *csi.TopologyRequirement
