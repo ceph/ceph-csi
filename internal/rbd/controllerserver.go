@@ -122,7 +122,10 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	}
 
 	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
-	rbdVol, err := genVolFromVolumeOptions(ctx, req.GetParameters(), req.GetSecrets(), (isMultiNode && isBlock))
+	rbdVol, err := genVolFromVolumeOptions(
+		ctx,
+		req.GetParameters(), req.GetSecrets(),
+		(isMultiNode && isBlock), false)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

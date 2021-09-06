@@ -231,7 +231,7 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Error(codes.InvalidArgument, "missing required parameter imageFeatures")
 	}
 
-	volOptions, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks)
+	volOptions, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks, true)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

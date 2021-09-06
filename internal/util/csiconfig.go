@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -131,10 +132,18 @@ func CephFSSubvolumeGroup(pathToConfig, clusterID string) (string, error) {
 
 // GetMonsAndClusterID returns monitors and clusterID information read from
 // configfile.
-func GetMonsAndClusterID(options map[string]string) (string, string, error) {
+func GetMonsAndClusterID(ctx context.Context, options map[string]string, checkClusterIDMapping bool) (string, string, error) {
 	clusterID, ok := options["clusterID"]
 	if !ok {
 		return "", "", errors.New("clusterID must be set")
+	}
+	if checkClusterIDMapping {
+		monitors, mappedClusterID, err := FetchMappedClusterIDAndMons(ctx, clusterID)
+		if err != nil {
+			return "", "", err
+		}
+
+		return monitors, mappedClusterID, nil
 	}
 
 	monitors, err := Mons(CsiConfigFile, clusterID)
