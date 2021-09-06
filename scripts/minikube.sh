@@ -154,6 +154,8 @@ MINIKUBE_WAIT=${MINIKUBE_WAIT:-"all"}
 CPUS=${CPUS:-"$(nproc)"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
 CNI=${CNI:-"bridge"}
+NUM_DISKS=${NUM_DISKS:-"1"}
+DISK_SIZE=${DISK_SIZE:-"32g"}
 #configure image repo
 CEPHCSI_IMAGE_REPO=${CEPHCSI_IMAGE_REPO:-"quay.io/cephcsi"}
 K8S_IMAGE_REPO=${K8S_IMAGE_REPO:-"k8s.gcr.io/sig-storage"}
@@ -162,6 +164,14 @@ if [[ "${VM_DRIVER}" == "kvm2" ]]; then
     # use vda1 instead of sda1 when running with the libvirt driver
     DISK="vda1"
 fi
+
+if [[ "${VM_DRIVER}" == "kvm2" ]] || [[ "${VM_DRIVER}" == "hyperkit" ]]; then
+    # adding extra disks is only supported on kvm2 and hyperkit
+    DISK_CONFIG=${DISK_CONFIG:-" --extra-disks=${NUM_DISKS} --disk-size=${DISK_SIZE} "}
+else
+    DISK_CONFIG=""
+fi
+
 #configure csi sidecar version
 CSI_ATTACHER_VERSION=${CSI_ATTACHER_VERSION:-"v3.2.1"}
 CSI_SNAPSHOTTER_VERSION=${CSI_SNAPSHOTTER_VERSION:-"v4.1.1"}
@@ -216,16 +226,16 @@ up)
     if minikube_supports_psp; then
         enable_psp
         # shellcheck disable=SC2086
-        ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG} ${EXTRA_CONFIG_PSP} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure
+        ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG} ${EXTRA_CONFIG_PSP} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure "${DISK_CONFIG}"
     else
         # This is a workaround to fix psp issues in minikube >1.6.2 and <1.11.0
         # shellcheck disable=SC2086
-        ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure
+        ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure "${DISK_CONFIG}"
         DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
         ${minikube} kubectl -- apply -f "$DIR"/psp.yaml
         ${minikube} stop
         # shellcheck disable=SC2086
-        ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG} ${EXTRA_CONFIG_PSP} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}"
+        ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG} ${EXTRA_CONFIG_PSP} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" "${DISK_CONFIG}"
     fi
 
     # create a link so the default dataDirHostPath will work for this
