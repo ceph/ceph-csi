@@ -595,7 +595,7 @@ func genSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (sn
 	cephfsSnap.RequestName = req.GetName()
 	snapOptions := req.GetParameters()
 
-	cephfsSnap.Monitors, cephfsSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
+	cephfsSnap.Monitors, cephfsSnap.ClusterID, err = util.GetMonsAndClusterID(ctx, snapOptions, false)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 

@@ -866,7 +866,7 @@ func genSnapFromSnapID(
 	rbdSnap.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdSnap.ClusterID
 
-	rbdSnap.Monitors, _, err = util.GetMonsAndClusterID(options)
+	rbdSnap.Monitors, _, err = util.GetMonsAndClusterID(ctx, options, false)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
@@ -950,12 +950,11 @@ func generateVolumeFromVolumeID(
 	//              Mounter, MultiNodeWritable
 	rbdVol = &rbdVolume{}
 	rbdVol.VolID = volumeID
-	// TODO check clusterID mapping exists
 
 	rbdVol.ClusterID = vi.ClusterID
 	options["clusterID"] = rbdVol.ClusterID
 
-	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(options)
+	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(ctx, options, false)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
@@ -1153,7 +1152,7 @@ func generateVolumeFromMapping(
 func genVolFromVolumeOptions(
 	ctx context.Context,
 	volOptions, credentials map[string]string,
-	disableInUseChecks bool) (*rbdVolume, error) {
+	disableInUseChecks, checkClusterIDMapping bool) (*rbdVolume, error) {
 	var (
 		ok         bool
 		err        error
@@ -1171,7 +1170,7 @@ func genVolFromVolumeOptions(
 		rbdVol.NamePrefix = namePrefix
 	}
 
-	rbdVol.Monitors, rbdVol.ClusterID, err = util.GetMonsAndClusterID(volOptions)
+	rbdVol.Monitors, rbdVol.ClusterID, err = util.GetMonsAndClusterID(ctx, volOptions, checkClusterIDMapping)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
@@ -1248,7 +1247,7 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 	rbdSnap.JournalPool = rbdVol.JournalPool
 	rbdSnap.RadosNamespace = rbdVol.RadosNamespace
 
-	rbdSnap.Monitors, rbdSnap.ClusterID, err = util.GetMonsAndClusterID(snapOptions)
+	rbdSnap.Monitors, rbdSnap.ClusterID, err = util.GetMonsAndClusterID(ctx, snapOptions, false)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
