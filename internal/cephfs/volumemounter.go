@@ -66,6 +66,12 @@ var (
 	}
 )
 
+func execCommandErr(ctx context.Context, program string, args ...string) error {
+	_, _, err := util.ExecCommand(ctx, program, args...)
+
+	return err
+}
+
 // Load available ceph mounters installed on system into availableMounters
 // Called from driver.go's Run().
 func loadAvailableMounters(conf *util.Config) error {

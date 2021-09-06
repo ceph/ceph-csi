@@ -20,7 +20,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/golang/protobuf/ptypes"
@@ -28,12 +27,6 @@ import (
 )
 
 type volumeID string
-
-func execCommandErr(ctx context.Context, program string, args ...string) error {
-	_, _, err := util.ExecCommand(ctx, program, args...)
-
-	return err
-}
 
 func parseTime(ctx context.Context, createTime time.Time) (*timestamp.Timestamp, error) {
 	tm, err := ptypes.TimestampProto(createTime)
