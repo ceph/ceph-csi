@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Controller service request validation.
+// validateCreateVolumeRequest validates the Controller CreateVolume request.
 func (cs *ControllerServer) validateCreateVolumeRequest(req *csi.CreateVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
