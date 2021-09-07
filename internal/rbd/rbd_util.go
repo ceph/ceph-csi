@@ -848,11 +848,7 @@ func genSnapFromSnapID(
 	snapshotID string,
 	cr *util.Credentials,
 	secrets map[string]string) error {
-	var (
-		options map[string]string
-		vi      util.CSIIdentifier
-	)
-	options = make(map[string]string)
+	var vi util.CSIIdentifier
 
 	rbdSnap.VolID = snapshotID
 
@@ -864,9 +860,8 @@ func genSnapFromSnapID(
 	}
 
 	rbdSnap.ClusterID = vi.ClusterID
-	options["clusterID"] = rbdSnap.ClusterID
 
-	rbdSnap.Monitors, _, err = util.GetMonsAndClusterID(ctx, options, false)
+	rbdSnap.Monitors, _, err = util.GetMonsAndClusterID(ctx, rbdSnap.ClusterID, false)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
@@ -940,11 +935,9 @@ func generateVolumeFromVolumeID(
 	cr *util.Credentials,
 	secrets map[string]string) (*rbdVolume, error) {
 	var (
-		options map[string]string
-		rbdVol  *rbdVolume
-		err     error
+		rbdVol *rbdVolume
+		err    error
 	)
-	options = make(map[string]string)
 
 	// rbdVolume fields that are not filled up in this function are:
 	//              Mounter, MultiNodeWritable
@@ -952,9 +945,8 @@ func generateVolumeFromVolumeID(
 	rbdVol.VolID = volumeID
 
 	rbdVol.ClusterID = vi.ClusterID
-	options["clusterID"] = rbdVol.ClusterID
 
-	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(ctx, options, false)
+	rbdVol.Monitors, _, err = util.GetMonsAndClusterID(ctx, rbdVol.ClusterID, false)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
@@ -1170,7 +1162,11 @@ func genVolFromVolumeOptions(
 		rbdVol.NamePrefix = namePrefix
 	}
 
-	rbdVol.Monitors, rbdVol.ClusterID, err = util.GetMonsAndClusterID(ctx, volOptions, checkClusterIDMapping)
+	clusterID, err := util.GetClusterID(volOptions)
+	if err != nil {
+		return nil, err
+	}
+	rbdVol.Monitors, rbdVol.ClusterID, err = util.GetMonsAndClusterID(ctx, clusterID, checkClusterIDMapping)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 
@@ -1247,7 +1243,11 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 	rbdSnap.JournalPool = rbdVol.JournalPool
 	rbdSnap.RadosNamespace = rbdVol.RadosNamespace
 
-	rbdSnap.Monitors, rbdSnap.ClusterID, err = util.GetMonsAndClusterID(ctx, snapOptions, false)
+	clusterID, err := util.GetClusterID(snapOptions)
+	if err != nil {
+		return nil, err
+	}
+	rbdSnap.Monitors, rbdSnap.ClusterID, err = util.GetMonsAndClusterID(ctx, clusterID, false)
 	if err != nil {
 		log.ErrorLog(ctx, "failed getting mons (%s)", err)
 

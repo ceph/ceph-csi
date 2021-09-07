@@ -19,7 +19,6 @@ package util
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -32,6 +31,9 @@ const (
 
 	// CsiConfigFile is the location of the CSI config file.
 	CsiConfigFile = "/etc/ceph-csi-config/config.json"
+
+	// ClusterIDKey is the name of the key containing clusterID.
+	clusterIDKey = "clusterID"
 )
 
 // ClusterInfo strongly typed JSON spec for the below JSON structure.
@@ -132,11 +134,7 @@ func CephFSSubvolumeGroup(pathToConfig, clusterID string) (string, error) {
 
 // GetMonsAndClusterID returns monitors and clusterID information read from
 // configfile.
-func GetMonsAndClusterID(ctx context.Context, options map[string]string, checkClusterIDMapping bool) (string, string, error) {
-	clusterID, ok := options["clusterID"]
-	if !ok {
-		return "", "", errors.New("clusterID must be set")
-	}
+func GetMonsAndClusterID(ctx context.Context, clusterID string, checkClusterIDMapping bool) (string, string, error) {
 	if checkClusterIDMapping {
 		monitors, mappedClusterID, err := FetchMappedClusterIDAndMons(ctx, clusterID)
 		if err != nil {
@@ -152,4 +150,14 @@ func GetMonsAndClusterID(ctx context.Context, options map[string]string, checkCl
 	}
 
 	return monitors, clusterID, nil
+}
+
+// GetClusterID fetches clusterID from given options map.
+func GetClusterID(options map[string]string) (string, error) {
+	clusterID, ok := options[clusterIDKey]
+	if !ok {
+		return "", ErrClusterIDNotSet
+	}
+
+	return clusterID, nil
 }
