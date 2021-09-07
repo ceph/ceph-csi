@@ -66,6 +66,8 @@ function set_env() {
     export TEST_COVERAGE="stdout"
     export VM_DRIVER="kvm2"
     export MEMORY="14336"
+    export NUM_DISKS="3"
+    export DISK_SIZE="32gb"
     export CEPH_CSI_RUN_ALL_TESTS=true
     # downloading rook images is sometimes slow, extend timeout to 15 minutes
     export ROOK_VERSION=${ROOK_VERSION:-'v1.3.9'}
@@ -100,18 +102,7 @@ function install_minikube()
     # copy kubectl from minikube to /usr/bin
     cp ~/.minikube/cache/linux/"${k8s_version}"/kubectl /usr/bin/
 
-    # add disks to the minikube VM
-    if [ ! -d /opt/minikube/images ]; then
-        mkdir -p /opt/minikube/images
-        virsh pool-create-as --name minikube --type dir --target /opt/minikube/images
-    fi
-    virsh vol-create-as --pool minikube --name osd-0 --capacity 32G
-    virsh vol-create-as --pool minikube --name osd-1 --capacity 32G
-    virsh vol-create-as --pool minikube --name osd-2 --capacity 32G
-    virsh attach-disk --domain minikube --source /opt/minikube/images/osd-0 --target vdb
-    virsh attach-disk --domain minikube --source /opt/minikube/images/osd-1 --target vdc
-    virsh attach-disk --domain minikube --source /opt/minikube/images/osd-2 --target vdd
-    # rescan for newly attached virtio devices
+    # scan for extra disks
     minikube ssh 'echo 1 | sudo tee /sys/bus/pci/rescan > /dev/null ; dmesg | grep virtio_blk'
 }
 
