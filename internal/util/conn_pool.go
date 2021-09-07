@@ -145,6 +145,10 @@ func (cp *ConnPool) Get(monitors, user, keyfile string) (*rados.Conn, error) {
 		return nil, fmt.Errorf("parsing cmdline args (%v) failed: %w", args, err)
 	}
 
+	if err = conn.ReadConfigFile(CephConfigPath); err != nil {
+		return nil, fmt.Errorf("failed to read config file %q: %w", CephConfigPath, err)
+	}
+
 	err = conn.Connect()
 	if err != nil {
 		return nil, fmt.Errorf("connecting failed: %w", err)
