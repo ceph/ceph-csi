@@ -33,6 +33,8 @@ var (
 	ErrSnapNameConflict = errors.New("snapshot name conflict")
 	// ErrPoolNotFound is returned when pool is not found.
 	ErrPoolNotFound = errors.New("pool not found")
+	// ErrClusterIDNotSet is returned when cluster id is not set.
+	ErrClusterIDNotSet = errors.New("clusterID must be set")
 )
 
 type errorPair struct {
