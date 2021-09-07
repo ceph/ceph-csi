@@ -94,7 +94,7 @@ func (cs *ControllerServer) validateDeleteVolumeRequest() error {
 	return nil
 }
 
-// Controller expand volume request validation.
+// validateExpandVolumeRequest validates the Controller ExpandVolume request.
 func (cs *ControllerServer) validateExpandVolumeRequest(req *csi.ControllerExpandVolumeRequest) error {
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
 		return fmt.Errorf("invalid ExpandVolumeRequest: %w", err)
