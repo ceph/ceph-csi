@@ -163,7 +163,7 @@ CSI_NODE_DRIVER_REGISTRAR_VERSION=${CSI_NODE_DRIVER_REGISTRAR_VERSION:-"v2.2.0"}
 K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-"ExpandCSIVolumes=true"}
 
 #extra-config for kube https://minikube.sigs.k8s.io/docs/reference/configuration/kubernetes/
-EXTRA_CONFIG_PSP="--extra-config=apiserver.enable-admission-plugins=PodSecurityPolicy"
+EXTRA_CONFIG_PSP="--extra-config=apiserver.enable-admission-plugins=PodSecurityPolicy --addons=pod-security-policy"
 
 # kubelet.resolv-conf needs to point to a file, not a symlink
 # the default minikube VM has /etc/resolv.conf -> /run/systemd/resolve/resolv.conf
