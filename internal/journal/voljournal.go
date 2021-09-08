@@ -261,7 +261,7 @@ func (cj *Config) Connect(monitors, namespace string, cr *util.Credentials) (*Co
 
 /*
 CheckReservation checks if given request name contains a valid reservation
-- If there is a valid reservation, then the corresponding UUID for the volume/snapshot is returned
+- If there is a valid reservation, then the corresponding ImageData for the volume/snapshot is returned
 - If there is a reservation that is stale (or not fully cleaned up), it is garbage collected using
 the UndoReservation call, as appropriate
 - If a snapshot is being checked, then its source is matched to the parentName that is provided
@@ -270,8 +270,8 @@ NOTE: As the function manipulates omaps, it should be called with a lock against
 held, to prevent parallel operations from modifying the state of the omaps for this request name.
 
 Return values:
-	- string: Contains the UUID that was reserved for the passed in reqName, empty if
-	there was no reservation found
+	- ImageData: which contains the UUID,Pool,PoolID and ImageAttributes that were reserved for the
+     passed in reqName, empty if there was no reservation found
 	- error: non-nil in case of any errors
 */
 func (conn *Connection) CheckReservation(ctx context.Context,
