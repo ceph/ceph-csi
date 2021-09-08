@@ -209,6 +209,10 @@ func main() {
 		}
 	}
 
+	if err = util.WriteCephConfig(); err != nil {
+		util.FatalLogMsg("failed to write ceph configuration file (%v)", err)
+	}
+
 	util.DefaultLog("Starting driver type: %v with name: %v", conf.Vtype, dname)
 	switch conf.Vtype {
 	case rbdType:
