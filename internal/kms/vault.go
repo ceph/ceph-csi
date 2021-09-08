@@ -192,10 +192,15 @@ func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err
 	}
-	vaultAuthNamespace := vaultNamespace // optional, same as vaultNamespace
+	vaultAuthNamespace := ""
 	err = setConfigString(&vaultAuthNamespace, config, "vaultAuthNamespace")
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err
+	}
+	// if the vaultAuthNamespace key is present and value is empty in config, set
+	// the optional vaultNamespace.
+	if vaultAuthNamespace == "" {
+		vaultAuthNamespace = vaultNamespace
 	}
 	// set the option if the value was not invalid
 	if firstInit || !errors.Is(err, errConfigOptionMissing) {
