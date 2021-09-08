@@ -97,10 +97,6 @@ func (fs *Driver) Run(conf *util.Config) {
 		log.FatalLogMsg("cephfs: failed to load ceph mounters: %v", err)
 	}
 
-	if err = util.WriteCephConfig(); err != nil {
-		log.FatalLogMsg("failed to write ceph configuration file: %v", err)
-	}
-
 	// Use passed in instance ID, if provided for omap suffix naming
 	if conf.InstanceID != "" {
 		CSIInstanceID = conf.InstanceID
