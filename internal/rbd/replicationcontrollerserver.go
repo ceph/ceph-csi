@@ -599,14 +599,13 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 	mirrorStatus, err := rbdVol.getImageMirroringStatus()
 	if err != nil {
-		// the image gets recreated after issuing resync in that case return
-		// volume as not ready.
+		// the image gets recreated after issuing resync
 		if errors.Is(err, ErrImageNotFound) {
-			resp := &replication.ResyncVolumeResponse{
-				Ready: false,
-			}
-
-			return resp, nil
+			// caller retries till RBD syncs an initial version of the image to
+			// report its status in the resync call. Ideally, this line will not
+			// be executed as the error would get returned due to getImageMirroringInfo
+			// failing to find an image above.
+			return nil, status.Error(codes.Aborted, err.Error())
 		}
 		log.ErrorLog(ctx, err.Error())
 
@@ -643,6 +642,11 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+
+		// If we issued a resync, return a non-final error as image needs to be recreated
+		// locally. Caller retries till RBD syncs an initial version of the image to
+		// report its status in the resync request.
+		return nil, status.Error(codes.Unavailable, "awaiting initial resync due to split brain")
 	}
 
 	// convert the last update time to UTC
