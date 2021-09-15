@@ -134,7 +134,7 @@ MINIKUBE_WAIT=${MINIKUBE_WAIT:-"all"}
 CPUS=${CPUS:-"$(nproc)"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
 CNI=${CNI:-"bridge"}
-NUM_DISKS=${NUM_DISKS:-"0"}
+NUM_DISKS=${NUM_DISKS:-"1"}
 DISK_SIZE=${DISK_SIZE:-"32g"}
 #configure image repo
 CEPHCSI_IMAGE_REPO=${CEPHCSI_IMAGE_REPO:-"quay.io/cephcsi"}
