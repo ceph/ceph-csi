@@ -161,3 +161,44 @@ func GetClusterID(options map[string]string) (string, error) {
 
 	return clusterID, nil
 }
+
+// GetClusterIDFromMon will be called with a mon string to fetch
+// clusterID based on the passed in mon string. If passed in 'mon'
+// string has been found in the config the clusterID is returned,
+// else error.
+func GetClusterIDFromMon(mon string) (string, error) {
+	clusterID, err := readClusterInfoWithMon(CsiConfigFile, mon)
+	if err != nil {
+		return "", err
+	}
+
+	return clusterID, nil
+}
+
+func readClusterInfoWithMon(pathToConfig, mon string) (string, error) {
+	var config []ClusterInfo
+
+	// #nosec
+	content, err := ioutil.ReadFile(pathToConfig)
+	if err != nil {
+		err = fmt.Errorf("error fetching configuration file %q: %w", pathToConfig, err)
+
+		return "", err
+	}
+
+	err = json.Unmarshal(content, &config)
+	if err != nil {
+		return "", fmt.Errorf("unmarshal failed (%w), raw buffer response: %s",
+			err, string(content))
+	}
+
+	for _, cluster := range config {
+		for _, m := range cluster.Monitors {
+			if m == mon {
+				return cluster.ClusterID, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("missing configuration of cluster ID for mon %q", mon)
+}
