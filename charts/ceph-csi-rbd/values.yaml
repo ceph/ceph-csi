@@ -284,10 +284,11 @@ storageClass:
   thickProvision: false
 
   # (required) RBD image features, CSI creates image with image-format 2
-  # CSI RBD currently supports `layering`, `journaling`, `exclusive-lock`
-  # features. If `journaling` is enabled, must enable `exclusive-lock` too.
-  # imageFeatures: layering,journaling,exclusive-lock
-  imageFeatures: layering
+  # CSI RBD currently supports `layering`, `journaling`, `exclusive-lock`,
+  # `object-map`, `fast-diff` features. If `journaling` is enabled, must
+  # enable `exclusive-lock` too.
+  # imageFeatures: layering,journaling,exclusive-lock,object-map,fast-diff
+  imageFeatures: "layering"
 
   # (optional) Specifies whether to try other mounters in case if the current
   # mounter fails to mount the rbd image for any reason. True means fallback

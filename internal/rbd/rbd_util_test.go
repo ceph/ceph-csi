@@ -89,20 +89,36 @@ func TestValidateImageFeatures(t *testing.T) {
 			"",
 		},
 		{
+			"layering,exclusive-lock,object-map,fast-diff",
+			&rbdVolume{
+				Mounter: rbdDefaultMounter,
+			},
+			false,
+			"",
+		},
+		{
 			"layering,journaling",
 			&rbdVolume{
-				Mounter: rbdNbdMounter,
+				Mounter: rbdDefaultMounter,
 			},
 			true,
 			"feature journaling requires exclusive-lock to be set",
 		},
 		{
-			"layering,exclusive-lock,journaling",
+			"object-map,fast-diff",
 			&rbdVolume{
 				Mounter: rbdDefaultMounter,
 			},
 			true,
-			"feature exclusive-lock requires rbd-nbd for mounter",
+			"feature object-map requires exclusive-lock to be set",
+		},
+		{
+			"fast-diff",
+			&rbdVolume{
+				Mounter: rbdDefaultMounter,
+			},
+			true,
+			"feature fast-diff requires object-map to be set",
 		},
 		{
 			"layering,exclusive-lock,journaling",
@@ -110,7 +126,15 @@ func TestValidateImageFeatures(t *testing.T) {
 				Mounter: rbdDefaultMounter,
 			},
 			true,
-			"feature exclusive-lock requires rbd-nbd for mounter",
+			"feature journaling requires rbd-nbd for mounter",
+		},
+		{
+			"layering,exclusive-lock,journaling",
+			&rbdVolume{
+				Mounter: rbdDefaultMounter,
+			},
+			true,
+			"feature journaling requires rbd-nbd for mounter",
 		},
 		{
 			"layering,exclusive-loc,journaling",
