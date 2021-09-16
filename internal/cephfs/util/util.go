@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cephfs
+package util
 
 import (
 	"context"
@@ -26,7 +26,18 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
-func parseTime(ctx context.Context, createTime time.Time) (*timestamp.Timestamp, error) {
+// VolumeID string representation.
+type VolumeID string
+
+const (
+	// VolIDVersion is the version number of volume ID encoding scheme.
+	VolIDVersion uint16 = 1
+
+	// RadosNamespace to store CSI specific objects and keys.
+	RadosNamespace = "csi"
+)
+
+func ParseTime(ctx context.Context, createTime time.Time) (*timestamp.Timestamp, error) {
 	tm, err := ptypes.TimestampProto(createTime)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to convert time %s %v", createTime, err)

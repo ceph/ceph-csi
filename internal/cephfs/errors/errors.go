@@ -62,3 +62,9 @@ var (
 	// ErrVolumeHasSnapshots is returned when a subvolume has snapshots.
 	ErrVolumeHasSnapshots = coreError.New("volume has snapshots")
 )
+
+// IsCloneRetryError returns true if the clone error is pending,in-progress
+// error.
+func IsCloneRetryError(err error) bool {
+	return coreError.Is(err, ErrCloneInProgress) || coreError.Is(err, ErrClonePending)
+}

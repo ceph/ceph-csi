@@ -108,8 +108,8 @@ func Mons(pathToConfig, clusterID string) (string, error) {
 	return strings.Join(cluster.Monitors, ","), nil
 }
 
-// RadosNamespace returns the namespace for the given clusterID.
-func RadosNamespace(pathToConfig, clusterID string) (string, error) {
+// GetRadosNamespace returns the namespace for the given clusterID.
+func GetRadosNamespace(pathToConfig, clusterID string) (string, error) {
 	cluster, err := readClusterInfo(pathToConfig, clusterID)
 	if err != nil {
 		return "", err

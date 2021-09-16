@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cephfs
+package core
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"time"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
+	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/ceph/go-ceph/cephfs/admin"
@@ -35,8 +36,8 @@ const (
 	autoProtect = "snapshot-autoprotect"
 )
 
-// cephfsSnapshot represents a CSI snapshot and its cluster information.
-type cephfsSnapshot struct {
+// CephfsSnapshot represents a CSI snapshot and its cluster information.
+type CephfsSnapshot struct {
 	NamePrefix string
 	Monitors   string
 	// MetadataPool & Pool fields are not used atm. But its definitely good to have it in this struct
@@ -49,7 +50,7 @@ type cephfsSnapshot struct {
 	ReservedID string
 }
 
-func (vo *volumeOptions) createSnapshot(ctx context.Context, snapID, volID volumeID) error {
+func (vo *VolumeOptions) CreateSnapshot(ctx context.Context, snapID, volID fsutil.VolumeID) error {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
@@ -68,7 +69,7 @@ func (vo *volumeOptions) createSnapshot(ctx context.Context, snapID, volID volum
 	return nil
 }
 
-func (vo *volumeOptions) deleteSnapshot(ctx context.Context, snapID, volID volumeID) error {
+func (vo *VolumeOptions) DeleteSnapshot(ctx context.Context, snapID, volID fsutil.VolumeID) error {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
@@ -87,15 +88,15 @@ func (vo *volumeOptions) deleteSnapshot(ctx context.Context, snapID, volID volum
 	return nil
 }
 
-type snapshotInfo struct {
+type SnapshotInfo struct {
 	CreatedAt        time.Time
 	CreationTime     *timestamp.Timestamp
 	HasPendingClones string
 	Protected        string
 }
 
-func (vo *volumeOptions) getSnapshotInfo(ctx context.Context, snapID, volID volumeID) (snapshotInfo, error) {
-	snap := snapshotInfo{}
+func (vo *VolumeOptions) GetSnapshotInfo(ctx context.Context, snapID, volID fsutil.VolumeID) (SnapshotInfo, error) {
+	snap := SnapshotInfo{}
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
@@ -125,7 +126,7 @@ func (vo *volumeOptions) getSnapshotInfo(ctx context.Context, snapID, volID volu
 	return snap, nil
 }
 
-func (vo *volumeOptions) protectSnapshot(ctx context.Context, snapID, volID volumeID) error {
+func (vo *VolumeOptions) ProtectSnapshot(ctx context.Context, snapID, volID fsutil.VolumeID) error {
 	// If "snapshot-autoprotect" feature is present, The ProtectSnapshot
 	// call should be treated as a no-op.
 	if checkSubvolumeHasFeature(autoProtect, vo.Features) {
@@ -158,7 +159,7 @@ func (vo *volumeOptions) protectSnapshot(ctx context.Context, snapID, volID volu
 	return nil
 }
 
-func (vo *volumeOptions) unprotectSnapshot(ctx context.Context, snapID, volID volumeID) error {
+func (vo *VolumeOptions) UnprotectSnapshot(ctx context.Context, snapID, volID fsutil.VolumeID) error {
 	// If "snapshot-autoprotect" feature is present, The UnprotectSnapshot
 	// call should be treated as a no-op.
 	if checkSubvolumeHasFeature(autoProtect, vo.Features) {
@@ -193,10 +194,10 @@ func (vo *volumeOptions) unprotectSnapshot(ctx context.Context, snapID, volID vo
 	return nil
 }
 
-func (vo *volumeOptions) cloneSnapshot(
+func (vo *VolumeOptions) cloneSnapshot(
 	ctx context.Context,
-	volID, snapID, cloneID volumeID,
-	cloneVolOptions *volumeOptions,
+	volID, snapID, cloneID fsutil.VolumeID,
+	cloneVolOptions *VolumeOptions,
 ) error {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {

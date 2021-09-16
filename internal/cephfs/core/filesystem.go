@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cephfs
+package core
 
 import (
 	"context"
@@ -25,7 +25,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
-func (vo *volumeOptions) getFscID(ctx context.Context) (int64, error) {
+func (vo *VolumeOptions) getFscID(ctx context.Context) (int64, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch filesystem ID for %s:", vo.FsName, err)
@@ -51,7 +51,7 @@ func (vo *volumeOptions) getFscID(ctx context.Context) (int64, error) {
 	return 0, cerrors.ErrVolumeNotFound
 }
 
-func (vo *volumeOptions) getMetadataPool(ctx context.Context) (string, error) {
+func (vo *VolumeOptions) getMetadataPool(ctx context.Context) (string, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch metadata pool for %s:", vo.FsName, err)
@@ -75,7 +75,7 @@ func (vo *volumeOptions) getMetadataPool(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("%w: could not find metadata pool for %s", util.ErrPoolNotFound, vo.FsName)
 }
 
-func (vo *volumeOptions) getFsName(ctx context.Context) (string, error) {
+func (vo *VolumeOptions) getFsName(ctx context.Context) (string, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch filesystem name for ID %d:", vo.FscID, err)

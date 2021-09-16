@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
+	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -53,11 +55,11 @@ type ControllerServer struct {
 func (cs *ControllerServer) createBackingVolume(
 	ctx context.Context,
 	volOptions,
-	parentVolOpt *volumeOptions,
+	parentVolOpt *core.VolumeOptions,
 
 	vID,
-	pvID *volumeIdentifier,
-	sID *snapshotIdentifier) error {
+	pvID *core.VolumeIdentifier,
+	sID *core.SnapshotIdentifier) error {
 	var err error
 	if sID != nil {
 		if err = cs.OperationLocks.GetRestoreLock(sID.SnapshotID); err != nil {
@@ -67,7 +69,7 @@ func (cs *ControllerServer) createBackingVolume(
 		}
 		defer cs.OperationLocks.ReleaseRestoreLock(sID.SnapshotID)
 
-		err = createCloneFromSnapshot(ctx, parentVolOpt, volOptions, vID, sID)
+		err = core.CreateCloneFromSnapshot(ctx, parentVolOpt, volOptions, vID, sID)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to create clone from snapshot %s: %v", sID.FsSnapshotName, err)
 
@@ -83,14 +85,14 @@ func (cs *ControllerServer) createBackingVolume(
 			return status.Error(codes.Aborted, err.Error())
 		}
 		defer cs.OperationLocks.ReleaseCloneLock(pvID.VolumeID)
-		err = createCloneFromSubvolume(
+		err = core.CreateCloneFromSubvolume(
 			ctx,
-			volumeID(pvID.FsSubvolName),
-			volumeID(vID.FsSubvolName),
+			fsutil.VolumeID(pvID.FsSubvolName),
+			fsutil.VolumeID(vID.FsSubvolName),
 			volOptions,
 			parentVolOpt)
 		if err != nil {
-			log.ErrorLog(ctx, "failed to create clone from subvolume %s: %v", volumeID(pvID.FsSubvolName), err)
+			log.ErrorLog(ctx, "failed to create clone from subvolume %s: %v", fsutil.VolumeID(pvID.FsSubvolName), err)
 
 			return err
 		}
@@ -98,7 +100,7 @@ func (cs *ControllerServer) createBackingVolume(
 		return nil
 	}
 
-	if err = createVolume(ctx, volOptions, volumeID(vID.FsSubvolName), volOptions.Size); err != nil {
+	if err = core.CreateVolume(ctx, volOptions, fsutil.VolumeID(vID.FsSubvolName), volOptions.Size); err != nil {
 		log.ErrorLog(ctx, "failed to create volume %s: %v", volOptions.RequestName, err)
 
 		return status.Error(codes.Internal, err.Error())
@@ -110,7 +112,7 @@ func (cs *ControllerServer) createBackingVolume(
 func checkContentSource(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
-	cr *util.Credentials) (*volumeOptions, *volumeIdentifier, *snapshotIdentifier, error) {
+	cr *util.Credentials) (*core.VolumeOptions, *core.VolumeIdentifier, *core.SnapshotIdentifier, error) {
 	if req.VolumeContentSource == nil {
 		return nil, nil, nil, nil
 	}
@@ -118,7 +120,7 @@ func checkContentSource(
 	switch volumeSource.Type.(type) {
 	case *csi.VolumeContentSource_Snapshot:
 		snapshotID := req.VolumeContentSource.GetSnapshot().GetSnapshotId()
-		volOpt, _, sid, err := newSnapshotOptionsFromID(ctx, snapshotID, cr)
+		volOpt, _, sid, err := core.NewSnapshotOptionsFromID(ctx, snapshotID, cr)
 		if err != nil {
 			if errors.Is(err, cerrors.ErrSnapNotFound) {
 				return nil, nil, nil, status.Error(codes.NotFound, err.Error())
@@ -131,7 +133,7 @@ func checkContentSource(
 	case *csi.VolumeContentSource_Volume:
 		// Find the volume using the provided VolumeID
 		volID := req.VolumeContentSource.GetVolume().GetVolumeId()
-		parentVol, pvID, err := newVolumeOptionsFromVolID(ctx, volID, nil, req.Secrets)
+		parentVol, pvID, err := core.NewVolumeOptionsFromVolID(ctx, volID, nil, req.Secrets)
 		if err != nil {
 			if !errors.Is(err, cerrors.ErrVolumeNotFound) {
 				return nil, nil, nil, status.Error(codes.NotFound, err.Error())
@@ -177,7 +179,7 @@ func (cs *ControllerServer) CreateVolume(
 	}
 	defer cs.VolumeLocks.Release(requestName)
 
-	volOptions, err := newVolumeOptions(ctx, requestName, req, cr)
+	volOptions, err := core.NewVolumeOptions(ctx, requestName, req, cr)
 	if err != nil {
 		log.ErrorLog(ctx, "validation and extraction of volume options failed: %v", err)
 
@@ -197,9 +199,9 @@ func (cs *ControllerServer) CreateVolume(
 		defer parentVol.Destroy()
 	}
 
-	vID, err := checkVolExists(ctx, volOptions, parentVol, pvID, sID, cr)
+	vID, err := core.CheckVolExists(ctx, volOptions, parentVol, pvID, sID, cr)
 	if err != nil {
-		if isCloneRetryError(err) {
+		if cerrors.IsCloneRetryError(err) {
 			return nil, status.Error(codes.Aborted, err.Error())
 		}
 
@@ -230,15 +232,15 @@ func (cs *ControllerServer) CreateVolume(
 	}
 
 	// Reservation
-	vID, err = reserveVol(ctx, volOptions, secret)
+	vID, err = core.ReserveVol(ctx, volOptions, secret)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	defer func() {
 		if err != nil {
-			if !isCloneRetryError(err) {
-				errDefer := undoVolReservation(ctx, volOptions, *vID, secret)
+			if !cerrors.IsCloneRetryError(err) {
+				errDefer := core.UndoVolReservation(ctx, volOptions, *vID, secret)
 				if errDefer != nil {
 					log.WarningLog(ctx, "failed undoing reservation of volume: %s (%s)",
 						requestName, errDefer)
@@ -250,16 +252,16 @@ func (cs *ControllerServer) CreateVolume(
 	// Create a volume
 	err = cs.createBackingVolume(ctx, volOptions, parentVol, vID, pvID, sID)
 	if err != nil {
-		if isCloneRetryError(err) {
+		if cerrors.IsCloneRetryError(err) {
 			return nil, status.Error(codes.Aborted, err.Error())
 		}
 
 		return nil, err
 	}
 
-	volOptions.RootPath, err = volOptions.getVolumeRootPathCeph(ctx, volumeID(vID.FsSubvolName))
+	volOptions.RootPath, err = volOptions.GetVolumeRootPathCeph(ctx, fsutil.VolumeID(vID.FsSubvolName))
 	if err != nil {
-		purgeErr := volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), true)
+		purgeErr := volOptions.PurgeVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), true)
 		if purgeErr != nil {
 			log.ErrorLog(ctx, "failed to delete volume %s: %v", vID.FsSubvolName, purgeErr)
 			// All errors other than ErrVolumeNotFound should return an error back to the caller
@@ -311,7 +313,7 @@ func (cs *ControllerServer) DeleteVolume(
 		return nil, err
 	}
 
-	volID := volumeID(req.GetVolumeId())
+	volID := fsutil.VolumeID(req.GetVolumeId())
 	secrets := req.GetSecrets()
 
 	// lock out parallel delete operations
@@ -331,7 +333,7 @@ func (cs *ControllerServer) DeleteVolume(
 	defer cs.OperationLocks.ReleaseDeleteLock(req.GetVolumeId())
 
 	// Find the volume using the provided VolumeID
-	volOptions, vID, err := newVolumeOptionsFromVolID(ctx, string(volID), nil, secrets)
+	volOptions, vID, err := core.NewVolumeOptionsFromVolID(ctx, string(volID), nil, secrets)
 	if err != nil {
 		// if error is ErrPoolNotFound, the pool is already deleted we dont
 		// need to worry about deleting subvolume or omap data, return success
@@ -362,7 +364,7 @@ func (cs *ControllerServer) DeleteVolume(
 		}
 		defer cs.VolumeLocks.Release(volOptions.RequestName)
 
-		if err = undoVolReservation(ctx, volOptions, *vID, secrets); err != nil {
+		if err = core.UndoVolReservation(ctx, volOptions, *vID, secrets); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
@@ -386,7 +388,7 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	if err = volOptions.purgeVolume(ctx, volumeID(vID.FsSubvolName), false); err != nil {
+	if err = volOptions.PurgeVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), false); err != nil {
 		log.ErrorLog(ctx, "failed to delete volume %s: %v", volID, err)
 		if errors.Is(err, cerrors.ErrVolumeHasSnapshots) {
 			return nil, status.Error(codes.FailedPrecondition, err.Error())
@@ -397,7 +399,7 @@ func (cs *ControllerServer) DeleteVolume(
 		}
 	}
 
-	if err := undoVolReservation(ctx, volOptions, *vID, secrets); err != nil {
+	if err := core.UndoVolReservation(ctx, volOptions, *vID, secrets); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -460,7 +462,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	volOptions, volIdentifier, err := newVolumeOptionsFromVolID(ctx, volID, nil, secret)
+	volOptions, volIdentifier, err := core.NewVolumeOptionsFromVolID(ctx, volID, nil, secret)
 	if err != nil {
 		log.ErrorLog(ctx, "validation and extraction of volume options failed: %v", err)
 
@@ -470,8 +472,8 @@ func (cs *ControllerServer) ControllerExpandVolume(
 
 	RoundOffSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
 
-	if err = volOptions.resizeVolume(ctx, volumeID(volIdentifier.FsSubvolName), RoundOffSize); err != nil {
-		log.ErrorLog(ctx, "failed to expand volume %s: %v", volumeID(volIdentifier.FsSubvolName), err)
+	if err = volOptions.ResizeVolume(ctx, fsutil.VolumeID(volIdentifier.FsSubvolName), RoundOffSize); err != nil {
+		log.ErrorLog(ctx, "failed to expand volume %s: %v", fsutil.VolumeID(volIdentifier.FsSubvolName), err)
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -497,7 +499,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	}
 	defer cr.DeleteCredentials()
 
-	clusterData, err := getClusterInformation(req.GetParameters())
+	clusterData, err := core.GetClusterInformation(req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -521,7 +523,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	defer cs.OperationLocks.ReleaseSnapshotCreateLock(sourceVolID)
 
 	// Find the volume using the provided VolumeID
-	parentVolOptions, vid, err := newVolumeOptionsFromVolID(ctx, sourceVolID, nil, req.GetSecrets())
+	parentVolOptions, vid, err := core.NewVolumeOptionsFromVolID(ctx, sourceVolID, nil, req.GetSecrets())
 	if err != nil {
 		if errors.Is(err, util.ErrPoolNotFound) {
 			log.WarningLog(ctx, "failed to get backend volume for %s: %v", sourceVolID, err)
@@ -545,7 +547,7 @@ func (cs *ControllerServer) CreateSnapshot(
 			parentVolOptions.ClusterID)
 	}
 
-	cephfsSnap, genSnapErr := genSnapFromOptions(ctx, req)
+	cephfsSnap, genSnapErr := core.GenSnapFromOptions(ctx, req)
 	if genSnapErr != nil {
 		return nil, status.Error(codes.Internal, genSnapErr.Error())
 	}
@@ -558,7 +560,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	}
 	defer cs.VolumeLocks.Release(sourceVolID)
 	snapName := req.GetName()
-	sid, snapInfo, err := checkSnapExists(ctx, parentVolOptions, vid.FsSubvolName, cephfsSnap, cr)
+	sid, snapInfo, err := core.CheckSnapExists(ctx, parentVolOptions, vid.FsSubvolName, cephfsSnap, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -568,18 +570,18 @@ func (cs *ControllerServer) CreateSnapshot(
 	// as we are not able to retrieve the parent size we are rejecting the
 	// request to create snapshot.
 	// TODO: For this purpose we could make use of cached clusterAdditionalInfo too.
-	info, err := parentVolOptions.getSubVolumeInfo(ctx, volumeID(vid.FsSubvolName))
+	info, err := parentVolOptions.GetSubVolumeInfo(ctx, fsutil.VolumeID(vid.FsSubvolName))
 	if err != nil {
 		// Check error code value against ErrInvalidCommand to understand the cluster
 		// support it or not, It's safe to evaluate as the filtering
-		// is already done from getSubVolumeInfo() and send out the error here.
+		// is already done from GetSubVolumeInfo() and send out the error here.
 		if errors.Is(err, cerrors.ErrInvalidCommand) {
 			return nil, status.Error(
 				codes.FailedPrecondition,
 				"subvolume info command not supported in current ceph cluster")
 		}
 		if sid != nil {
-			errDefer := undoSnapReservation(ctx, parentVolOptions, *sid, snapName, cr)
+			errDefer := core.UndoSnapReservation(ctx, parentVolOptions, *sid, snapName, cr)
 			if errDefer != nil {
 				log.WarningLog(ctx, "failed undoing reservation of snapshot: %s (%s)",
 					requestName, errDefer)
@@ -592,8 +594,8 @@ func (cs *ControllerServer) CreateSnapshot(
 	if sid != nil {
 		// check snapshot is protected
 		protected := true
-		if !(snapInfo.Protected == snapshotIsProtected) {
-			err = parentVolOptions.protectSnapshot(ctx, volumeID(sid.FsSnapshotName), volumeID(vid.FsSubvolName))
+		if !(snapInfo.Protected == core.SnapshotIsProtected) {
+			err = parentVolOptions.ProtectSnapshot(ctx, fsutil.VolumeID(sid.FsSnapshotName), fsutil.VolumeID(vid.FsSubvolName))
 			if err != nil {
 				protected = false
 				log.WarningLog(ctx, "failed to protect snapshot of snapshot: %s (%s)",
@@ -613,13 +615,13 @@ func (cs *ControllerServer) CreateSnapshot(
 	}
 
 	// Reservation
-	sID, err := reserveSnap(ctx, parentVolOptions, vid.FsSubvolName, cephfsSnap, cr)
+	sID, err := core.ReserveSnap(ctx, parentVolOptions, vid.FsSubvolName, cephfsSnap, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer func() {
 		if err != nil {
-			errDefer := undoSnapReservation(ctx, parentVolOptions, *sID, snapName, cr)
+			errDefer := core.UndoSnapReservation(ctx, parentVolOptions, *sID, snapName, cr)
 			if errDefer != nil {
 				log.WarningLog(ctx, "failed undoing reservation of snapshot: %s (%s)",
 					requestName, errDefer)
@@ -642,11 +644,15 @@ func (cs *ControllerServer) CreateSnapshot(
 	}, nil
 }
 
-func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snapshotName string) (snapshotInfo, error) {
-	volID := volumeID(subvolumeName)
-	snapID := volumeID(snapshotName)
-	snap := snapshotInfo{}
-	err := volOpt.createSnapshot(ctx, snapID, volID)
+func doSnapshot(
+	ctx context.Context,
+	volOpt *core.VolumeOptions,
+	subvolumeName,
+	snapshotName string) (core.SnapshotInfo, error) {
+	volID := fsutil.VolumeID(subvolumeName)
+	snapID := fsutil.VolumeID(snapshotName)
+	snap := core.SnapshotInfo{}
+	err := volOpt.CreateSnapshot(ctx, snapID, volID)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create snapshot %s %v", snapID, err)
 
@@ -654,25 +660,25 @@ func doSnapshot(ctx context.Context, volOpt *volumeOptions, subvolumeName, snaps
 	}
 	defer func() {
 		if err != nil {
-			dErr := volOpt.deleteSnapshot(ctx, snapID, volID)
+			dErr := volOpt.DeleteSnapshot(ctx, snapID, volID)
 			if dErr != nil {
 				log.ErrorLog(ctx, "failed to delete snapshot %s %v", snapID, err)
 			}
 		}
 	}()
-	snap, err = volOpt.getSnapshotInfo(ctx, snapID, volID)
+	snap, err = volOpt.GetSnapshotInfo(ctx, snapID, volID)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get snapshot info %s %v", snapID, err)
 
 		return snap, fmt.Errorf("failed to get snapshot info for snapshot:%s", snapID)
 	}
 	var t *timestamp.Timestamp
-	t, err = parseTime(ctx, snap.CreatedAt)
+	t, err = fsutil.ParseTime(ctx, snap.CreatedAt)
 	if err != nil {
 		return snap, err
 	}
 	snap.CreationTime = t
-	err = volOpt.protectSnapshot(ctx, snapID, volID)
+	err = volOpt.ProtectSnapshot(ctx, snapID, volID)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to protect snapshot %s %v", snapID, err)
 	}
@@ -736,7 +742,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 	}
 	defer cs.OperationLocks.ReleaseDeleteLock(snapshotID)
 
-	volOpt, snapInfo, sid, err := newSnapshotOptionsFromID(ctx, snapshotID, cr)
+	volOpt, snapInfo, sid, err := core.NewSnapshotOptionsFromID(ctx, snapshotID, cr)
 	if err != nil {
 		switch {
 		case errors.Is(err, util.ErrPoolNotFound):
@@ -751,7 +757,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 			// success as deletion is complete
 			return &csi.DeleteSnapshotResponse{}, nil
 		case errors.Is(err, cerrors.ErrSnapNotFound):
-			err = undoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
+			err = core.UndoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
 					sid.FsSubvolName, sid.FsSnapshotName, err)
@@ -764,7 +770,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 			// if the error is ErrVolumeNotFound, the subvolume is already deleted
 			// from backend, Hence undo the omap entries and return success
 			log.ErrorLog(ctx, "Volume not present")
-			err = undoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
+			err = core.UndoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
 					sid.FsSubvolName, sid.FsSnapshotName, err)
@@ -791,17 +797,17 @@ func (cs *ControllerServer) DeleteSnapshot(
 	if snapInfo.HasPendingClones == "yes" {
 		return nil, status.Errorf(codes.FailedPrecondition, "snapshot %s has pending clones", snapshotID)
 	}
-	if snapInfo.Protected == snapshotIsProtected {
-		err = volOpt.unprotectSnapshot(ctx, volumeID(sid.FsSnapshotName), volumeID(sid.FsSubvolName))
+	if snapInfo.Protected == core.SnapshotIsProtected {
+		err = volOpt.UnprotectSnapshot(ctx, fsutil.VolumeID(sid.FsSnapshotName), fsutil.VolumeID(sid.FsSubvolName))
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
-	err = volOpt.deleteSnapshot(ctx, volumeID(sid.FsSnapshotName), volumeID(sid.FsSubvolName))
+	err = volOpt.DeleteSnapshot(ctx, fsutil.VolumeID(sid.FsSnapshotName), fsutil.VolumeID(sid.FsSubvolName))
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	err = undoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
+	err = core.UndoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
 			sid.RequestName, sid.FsSnapshotName, err)

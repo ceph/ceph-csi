@@ -23,7 +23,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
+	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -42,7 +44,9 @@ type NodeServer struct {
 	VolumeLocks *util.VolumeLocks
 }
 
-func getCredentialsForVolume(volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) (*util.Credentials, error) {
+func getCredentialsForVolume(
+	volOptions *core.VolumeOptions,
+	req *csi.NodeStageVolumeRequest) (*util.Credentials, error) {
 	var (
 		err     error
 		cr      *util.Credentials
@@ -72,7 +76,7 @@ func getCredentialsForVolume(volOptions *volumeOptions, req *csi.NodeStageVolume
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	var volOptions *volumeOptions
+	var volOptions *core.VolumeOptions
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
 	}
@@ -80,7 +84,7 @@ func (ns *NodeServer) NodeStageVolume(
 	// Configuration
 
 	stagingTargetPath := req.GetStagingTargetPath()
-	volID := volumeID(req.GetVolumeId())
+	volID := fsutil.VolumeID(req.GetVolumeId())
 
 	if acquired := ns.VolumeLocks.TryAcquire(req.GetVolumeId()); !acquired {
 		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
@@ -89,21 +93,21 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 	defer ns.VolumeLocks.Release(req.GetVolumeId())
 
-	volOptions, _, err := newVolumeOptionsFromVolID(ctx, string(volID), req.GetVolumeContext(), req.GetSecrets())
+	volOptions, _, err := core.NewVolumeOptionsFromVolID(ctx, string(volID), req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
 		if !errors.Is(err, cerrors.ErrInvalidVolID) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		// gets mon IPs from the supplied cluster info
-		volOptions, _, err = newVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
+		volOptions, _, err = core.NewVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
 		if err != nil {
 			if !errors.Is(err, cerrors.ErrNonStaticVolume) {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 
 			// get mon IPs from the volume context
-			volOptions, _, err = newVolumeOptionsFromMonitorList(string(volID), req.GetVolumeContext(),
+			volOptions, _, err = core.NewVolumeOptionsFromMonitorList(string(volID), req.GetVolumeContext(),
 				req.GetSecrets())
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
@@ -137,9 +141,9 @@ func (ns *NodeServer) NodeStageVolume(
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *csi.NodeStageVolumeRequest) error {
+func (*NodeServer) mount(ctx context.Context, volOptions *core.VolumeOptions, req *csi.NodeStageVolumeRequest) error {
 	stagingTargetPath := req.GetStagingTargetPath()
-	volID := volumeID(req.GetVolumeId())
+	volID := fsutil.VolumeID(req.GetVolumeId())
 
 	cr, err := getCredentialsForVolume(volOptions, req)
 	if err != nil {
@@ -149,14 +153,14 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 	}
 	defer cr.DeleteCredentials()
 
-	m, err := newMounter(volOptions)
+	m, err := core.NewMounter(volOptions)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create mounter for volume %s: %v", volID, err)
 
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	log.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, m.name())
+	log.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, m.Name())
 
 	readOnly := "ro"
 	fuseMountOptions := strings.Split(volOptions.FuseMountOptions, ",")
@@ -165,12 +169,12 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
 		req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
 		switch m.(type) {
-		case *fuseMounter:
+		case *core.FuseMounter:
 			if !csicommon.MountOptionContains(strings.Split(volOptions.FuseMountOptions, ","), readOnly) {
 				volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, readOnly)
 				fuseMountOptions = append(fuseMountOptions, readOnly)
 			}
-		case *kernelMounter:
+		case *core.KernelMounter:
 			if !csicommon.MountOptionContains(strings.Split(volOptions.KernelMountOptions, ","), readOnly) {
 				volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, readOnly)
 				kernelMountOptions = append(kernelMountOptions, readOnly)
@@ -178,7 +182,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 		}
 	}
 
-	if err = m.mount(ctx, stagingTargetPath, cr, volOptions); err != nil {
+	if err = m.Mount(ctx, stagingTargetPath, cr, volOptions); err != nil {
 		log.ErrorLog(ctx,
 			"failed to mount volume %s: %v Check dmesg logs if required.",
 			volID,
@@ -197,7 +201,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *volumeOptions, req *cs
 				stagingTargetPath,
 				volID,
 				err)
-			uErr := unmountVolume(ctx, stagingTargetPath)
+			uErr := core.UnmountVolume(ctx, stagingTargetPath)
 			if uErr != nil {
 				log.ErrorLog(
 					ctx,
@@ -259,7 +263,12 @@ func (ns *NodeServer) NodePublishVolume(
 
 	// It's not, mount now
 
-	if err = bindMount(ctx, req.GetStagingTargetPath(), req.GetTargetPath(), req.GetReadonly(), mountOptions); err != nil {
+	if err = core.BindMount(
+		ctx,
+		req.GetStagingTargetPath(),
+		req.GetTargetPath(),
+		req.GetReadonly(),
+		mountOptions); err != nil {
 		log.ErrorLog(ctx, "failed to bind-mount volume %s: %v", volID, err)
 
 		return nil, status.Error(codes.Internal, err.Error())
@@ -301,7 +310,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	}
 
 	// Unmount the bind-mount
-	if err = unmountVolume(ctx, targetPath); err != nil {
+	if err = core.UnmountVolume(ctx, targetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -349,7 +358,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		return &csi.NodeUnstageVolumeResponse{}, nil
 	}
 	// Unmount the volume
-	if err = unmountVolume(ctx, stagingTargetPath); err != nil {
+	if err = core.UnmountVolume(ctx, stagingTargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

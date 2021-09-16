@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cephfs
+package core
 
 import (
 	"context"
@@ -22,20 +22,32 @@ import (
 	"fmt"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
+	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
+	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
-// volumeIdentifier structure contains an association between the CSI VolumeID to its subvolume
+var (
+	// VolJournal is used to maintain RADOS based journals for CO generated.
+	// VolumeName to backing CephFS subvolumes.
+	VolJournal *journal.Config
+
+	// SnapJournal is used to maintain RADOS based journals for CO generated.
+	// SnapshotName to backing CephFS subvolumes.
+	SnapJournal *journal.Config
+)
+
+// VolumeIdentifier structure contains an association between the CSI VolumeID to its subvolume
 // name on the backing CephFS instance.
-type volumeIdentifier struct {
+type VolumeIdentifier struct {
 	FsSubvolName string
 	VolumeID     string
 }
 
-type snapshotIdentifier struct {
+type SnapshotIdentifier struct {
 	FsSnapshotName string
 	SnapshotID     string
 	RequestName    string
@@ -44,7 +56,7 @@ type snapshotIdentifier struct {
 }
 
 /*
-checkVolExists checks to determine if passed in RequestName in volOptions exists on the backend.
+CheckVolExists checks to determine if passed in RequestName in volOptions exists on the backend.
 
 **NOTE:** These functions manipulate the rados omaps that hold information regarding
 volume names as requested by the CSI drivers. Hence, these need to be invoked only when the
@@ -58,16 +70,16 @@ request name lock, and hence any stale omaps are leftovers from incomplete trans
 hence safe to garbage collect.
 */
 // nolint:gocognit,gocyclo,nestif,cyclop // TODO: reduce complexity
-func checkVolExists(ctx context.Context,
+func CheckVolExists(ctx context.Context,
 	volOptions,
-	parentVolOpt *volumeOptions,
+	parentVolOpt *VolumeOptions,
 
-	pvID *volumeIdentifier,
-	sID *snapshotIdentifier,
-	cr *util.Credentials) (*volumeIdentifier, error) {
-	var vid volumeIdentifier
+	pvID *VolumeIdentifier,
+	sID *SnapshotIdentifier,
+	cr *util.Credentials) (*VolumeIdentifier, error) {
+	var vid VolumeIdentifier
 	// Connect to cephfs' default radosNamespace (csi)
-	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
+	j, err := VolJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -85,13 +97,13 @@ func checkVolExists(ctx context.Context,
 	vid.FsSubvolName = imageData.ImageAttributes.ImageName
 
 	if sID != nil || pvID != nil {
-		cloneState, cloneStateErr := volOptions.getCloneState(ctx, volumeID(vid.FsSubvolName))
+		cloneState, cloneStateErr := volOptions.getCloneState(ctx, fsutil.VolumeID(vid.FsSubvolName))
 		if cloneStateErr != nil {
 			if errors.Is(cloneStateErr, cerrors.ErrVolumeNotFound) {
 				if pvID != nil {
 					err = cleanupCloneFromSubvolumeSnapshot(
-						ctx, volumeID(pvID.FsSubvolName),
-						volumeID(vid.FsSubvolName),
+						ctx, fsutil.VolumeID(pvID.FsSubvolName),
+						fsutil.VolumeID(vid.FsSubvolName),
 						parentVolOpt)
 					if err != nil {
 						return nil, err
@@ -112,7 +124,7 @@ func checkVolExists(ctx context.Context,
 			return nil, cerrors.ErrClonePending
 		}
 		if cloneState == cephFSCloneFailed {
-			err = volOptions.purgeVolume(ctx, volumeID(vid.FsSubvolName), true)
+			err = volOptions.PurgeVolume(ctx, fsutil.VolumeID(vid.FsSubvolName), true)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to delete volume %s: %v", vid.FsSubvolName, err)
 
@@ -120,8 +132,8 @@ func checkVolExists(ctx context.Context,
 			}
 			if pvID != nil {
 				err = cleanupCloneFromSubvolumeSnapshot(
-					ctx, volumeID(pvID.FsSubvolName),
-					volumeID(vid.FsSubvolName),
+					ctx, fsutil.VolumeID(pvID.FsSubvolName),
+					fsutil.VolumeID(vid.FsSubvolName),
 					parentVolOpt)
 				if err != nil {
 					return nil, err
@@ -136,7 +148,7 @@ func checkVolExists(ctx context.Context,
 			return nil, fmt.Errorf("clone is not in complete state for %s", vid.FsSubvolName)
 		}
 	}
-	volOptions.RootPath, err = volOptions.getVolumeRootPathCeph(ctx, volumeID(vid.FsSubvolName))
+	volOptions.RootPath, err = volOptions.GetVolumeRootPathCeph(ctx, fsutil.VolumeID(vid.FsSubvolName))
 	if err != nil {
 		if errors.Is(err, cerrors.ErrVolumeNotFound) {
 			// If the subvolume is not present, cleanup the stale snapshot
@@ -144,8 +156,8 @@ func checkVolExists(ctx context.Context,
 			if parentVolOpt != nil && pvID != nil {
 				err = cleanupCloneFromSubvolumeSnapshot(
 					ctx,
-					volumeID(pvID.FsSubvolName),
-					volumeID(vid.FsSubvolName),
+					fsutil.VolumeID(pvID.FsSubvolName),
+					fsutil.VolumeID(vid.FsSubvolName),
 					parentVolOpt)
 				if err != nil {
 					return nil, err
@@ -168,7 +180,7 @@ func checkVolExists(ctx context.Context,
 
 	// found a volume already available, process and return it!
 	vid.VolumeID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
-		"", volOptions.ClusterID, imageUUID, volIDVersion)
+		"", volOptions.ClusterID, imageUUID, fsutil.VolIDVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -179,8 +191,8 @@ func checkVolExists(ctx context.Context,
 	if parentVolOpt != nil && pvID != nil {
 		err = cleanupCloneFromSubvolumeSnapshot(
 			ctx,
-			volumeID(pvID.FsSubvolName),
-			volumeID(vid.FsSubvolName),
+			fsutil.VolumeID(pvID.FsSubvolName),
+			fsutil.VolumeID(vid.FsSubvolName),
 			parentVolOpt)
 		if err != nil {
 			return nil, err
@@ -190,11 +202,11 @@ func checkVolExists(ctx context.Context,
 	return &vid, nil
 }
 
-// undoVolReservation is a helper routine to undo a name reservation for a CSI VolumeName.
-func undoVolReservation(
+// UndoVolReservation is a helper routine to undo a name reservation for a CSI VolumeName.
+func UndoVolReservation(
 	ctx context.Context,
-	volOptions *volumeOptions,
-	vid volumeIdentifier,
+	volOptions *VolumeOptions,
+	vid VolumeIdentifier,
 	secret map[string]string) error {
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
@@ -203,7 +215,7 @@ func undoVolReservation(
 	defer cr.DeleteCredentials()
 
 	// Connect to cephfs' default radosNamespace (csi)
-	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
+	j, err := VolJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
 	if err != nil {
 		return err
 	}
@@ -215,7 +227,7 @@ func undoVolReservation(
 	return err
 }
 
-func updateTopologyConstraints(volOpts *volumeOptions) error {
+func updateTopologyConstraints(volOpts *VolumeOptions) error {
 	// update request based on topology constrained parameters (if present)
 	poolName, _, topology, err := util.FindPoolAndTopology(volOpts.TopologyPools, volOpts.TopologyRequirement)
 	if err != nil {
@@ -229,11 +241,11 @@ func updateTopologyConstraints(volOpts *volumeOptions) error {
 	return nil
 }
 
-// reserveVol is a helper routine to request a UUID reservation for the CSI VolumeName and,
+// ReserveVol is a helper routine to request a UUID reservation for the CSI VolumeName and,
 // to generate the volume identifier for the reserved UUID.
-func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[string]string) (*volumeIdentifier, error) {
+func ReserveVol(ctx context.Context, volOptions *VolumeOptions, secret map[string]string) (*VolumeIdentifier, error) {
 	var (
-		vid       volumeIdentifier
+		vid       VolumeIdentifier
 		imageUUID string
 		err       error
 	)
@@ -250,7 +262,7 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 	}
 
 	// Connect to cephfs' default radosNamespace (csi)
-	j, err := volJournal.Connect(volOptions.Monitors, radosNamespace, cr)
+	j, err := VolJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +278,7 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 
 	// generate the volume ID to return to the CO system
 	vid.VolumeID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
-		"", volOptions.ClusterID, imageUUID, volIDVersion)
+		"", volOptions.ClusterID, imageUUID, fsutil.VolIDVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -277,22 +289,22 @@ func reserveVol(ctx context.Context, volOptions *volumeOptions, secret map[strin
 	return &vid, nil
 }
 
-// reserveSnap is a helper routine to request a UUID reservation for the CSI SnapName and,
+// ReserveSnap is a helper routine to request a UUID reservation for the CSI SnapName and,
 // to generate the snapshot identifier for the reserved UUID.
-func reserveSnap(
+func ReserveSnap(
 	ctx context.Context,
-	volOptions *volumeOptions,
+	volOptions *VolumeOptions,
 	parentSubVolName string,
-	snap *cephfsSnapshot,
-	cr *util.Credentials) (*snapshotIdentifier, error) {
+	snap *CephfsSnapshot,
+	cr *util.Credentials) (*SnapshotIdentifier, error) {
 	var (
-		vid       snapshotIdentifier
+		vid       SnapshotIdentifier
 		imageUUID string
 		err       error
 	)
 
 	// Connect to cephfs' default radosNamespace (csi)
-	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
+	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +320,7 @@ func reserveSnap(
 
 	// generate the snapshot ID to return to the CO system
 	vid.SnapshotID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
-		"", volOptions.ClusterID, imageUUID, volIDVersion)
+		"", volOptions.ClusterID, imageUUID, fsutil.VolIDVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -319,15 +331,15 @@ func reserveSnap(
 	return &vid, nil
 }
 
-// undoSnapReservation is a helper routine to undo a name reservation for a CSI SnapshotName.
-func undoSnapReservation(
+// UndoSnapReservation is a helper routine to undo a name reservation for a CSI SnapshotName.
+func UndoSnapReservation(
 	ctx context.Context,
-	volOptions *volumeOptions,
-	vid snapshotIdentifier,
+	volOptions *VolumeOptions,
+	vid SnapshotIdentifier,
 	snapName string,
 	cr *util.Credentials) error {
 	// Connect to cephfs' default radosNamespace (csi)
-	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
+	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
 	if err != nil {
 		return err
 	}
@@ -340,7 +352,7 @@ func undoSnapReservation(
 }
 
 /*
-checkSnapExists checks to determine if passed in RequestName in volOptions exists on the backend.
+CheckSnapExists checks to determine if passed in RequestName in volOptions exists on the backend.
 
 **NOTE:** These functions manipulate the rados omaps that hold information regarding
 volume names as requested by the CSI drivers. Hence, these need to be invoked only when the
@@ -353,14 +365,14 @@ because, the order of omap creation and deletion are inverse of each other, and 
 request name lock, and hence any stale omaps are leftovers from incomplete transactions and are
 hence safe to garbage collect.
 */
-func checkSnapExists(
+func CheckSnapExists(
 	ctx context.Context,
-	volOptions *volumeOptions,
+	volOptions *VolumeOptions,
 	parentSubVolName string,
-	snap *cephfsSnapshot,
-	cr *util.Credentials) (*snapshotIdentifier, *snapshotInfo, error) {
+	snap *CephfsSnapshot,
+	cr *util.Credentials) (*SnapshotIdentifier, *SnapshotInfo, error) {
 	// Connect to cephfs' default radosNamespace (csi)
-	j, err := snapJournal.Connect(volOptions.Monitors, radosNamespace, cr)
+	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -374,11 +386,11 @@ func checkSnapExists(
 	if snapData == nil {
 		return nil, nil, nil
 	}
-	sid := &snapshotIdentifier{}
+	sid := &SnapshotIdentifier{}
 	snapUUID := snapData.ImageUUID
 	snapID := snapData.ImageAttributes.ImageName
 	sid.FsSnapshotName = snapData.ImageAttributes.ImageName
-	snapInfo, err := volOptions.getSnapshotInfo(ctx, volumeID(snapID), volumeID(parentSubVolName))
+	snapInfo, err := volOptions.GetSnapshotInfo(ctx, fsutil.VolumeID(snapID), fsutil.VolumeID(parentSubVolName))
 	if err != nil {
 		if errors.Is(err, cerrors.ErrSnapNotFound) {
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
@@ -392,7 +404,7 @@ func checkSnapExists(
 
 	defer func() {
 		if err != nil {
-			err = volOptions.deleteSnapshot(ctx, volumeID(snapID), volumeID(parentSubVolName))
+			err = volOptions.DeleteSnapshot(ctx, fsutil.VolumeID(snapID), fsutil.VolumeID(parentSubVolName))
 			if err != nil {
 				log.ErrorLog(ctx, "failed to delete snapshot %s: %v", snapID, err)
 
@@ -405,7 +417,7 @@ func checkSnapExists(
 			}
 		}
 	}()
-	tm, err := parseTime(ctx, snapInfo.CreatedAt)
+	tm, err := fsutil.ParseTime(ctx, snapInfo.CreatedAt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -413,7 +425,7 @@ func checkSnapExists(
 	sid.CreationTime = tm
 	// found a snapshot already available, process and return it!
 	sid.SnapshotID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
-		"", volOptions.ClusterID, snapUUID, volIDVersion)
+		"", volOptions.ClusterID, snapUUID, fsutil.VolIDVersion)
 	if err != nil {
 		return nil, nil, err
 	}
