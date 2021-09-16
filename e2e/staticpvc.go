@@ -189,6 +189,102 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 	return err
 }
 
+func validateRBDStaticMigrationPV(f *framework.Framework, appPath string, isBlock bool) error {
+	opt := make(map[string]string)
+	var (
+		rbdImageName = "test-static-pv"
+		pvName       = "pv-name"
+		pvcName      = "pvc-name"
+		namespace    = f.UniqueName
+		// minikube creates default class in cluster, we need to set dummy
+		// storageclass on PV and PVC to avoid storageclass name mismatch
+		sc = "storage-class"
+	)
+
+	c := f.ClientSet
+	mons, err := getMons(rookNamespace, c)
+	if err != nil {
+		return fmt.Errorf("failed to get mons: %w", err)
+	}
+	mon := strings.Join(mons, ",")
+	size := "4Gi"
+	// create rbd image
+	cmd := fmt.Sprintf(
+		"rbd create %s --size=%d --image-feature=layering %s",
+		rbdImageName,
+		4096,
+		rbdOptions(defaultRBDPool))
+
+	_, e, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+	if err != nil {
+		return err
+	}
+	if e != "" {
+		return fmt.Errorf("failed to create rbd image %s", e)
+	}
+
+	opt["migration"] = "true"
+	opt["monitors"] = mon
+	opt["imageFeatures"] = "layering"
+	opt["pool"] = defaultRBDPool
+	opt["staticVolume"] = strconv.FormatBool(true)
+	opt["imageName"] = rbdImageName
+	pv := getStaticPV(
+		pvName,
+		rbdImageName,
+		size,
+		rbdNodePluginSecretName,
+		cephCSINamespace,
+		sc,
+		"rbd.csi.ceph.com",
+		isBlock,
+		opt)
+
+	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("PV Create API error: %w", err)
+	}
+
+	pvc := getStaticPVC(pvcName, pvName, size, namespace, sc, isBlock)
+
+	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("PVC Create API error: %w", err)
+	}
+	// bind pvc to app
+	app, err := loadApp(appPath)
+	if err != nil {
+		return err
+	}
+
+	app.Namespace = namespace
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return err
+	}
+
+	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return err
+	}
+
+	err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete pvc: %w", err)
+	}
+
+	err = c.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete pv: %w", err)
+	}
+
+	cmd = fmt.Sprintf("rbd rm %s %s", rbdImageName, rbdOptions(defaultRBDPool))
+	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
+
+	return err
+}
+
 // nolint:gocyclo,cyclop // reduce complexity
 func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) error {
 	opt := make(map[string]string)
