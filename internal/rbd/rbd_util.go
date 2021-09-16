@@ -880,7 +880,7 @@ func genSnapFromSnapID(
 	}
 	rbdSnap.JournalPool = rbdSnap.Pool
 
-	rbdSnap.RadosNamespace, err = util.RadosNamespace(util.CsiConfigFile, rbdSnap.ClusterID)
+	rbdSnap.RadosNamespace, err = util.GetRadosNamespace(util.CsiConfigFile, rbdSnap.ClusterID)
 	if err != nil {
 		return err
 	}
@@ -959,7 +959,7 @@ func generateVolumeFromVolumeID(
 		return rbdVol, err
 	}
 
-	rbdVol.RadosNamespace, err = util.RadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
+	rbdVol.RadosNamespace, err = util.GetRadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
 	if err != nil {
 		return rbdVol, err
 	}
@@ -1179,7 +1179,7 @@ func genVolFromVolumeOptions(
 		return nil, err
 	}
 
-	rbdVol.RadosNamespace, err = util.RadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
+	rbdVol.RadosNamespace, err = util.GetRadosNamespace(util.CsiConfigFile, rbdVol.ClusterID)
 	if err != nil {
 		return nil, err
 	}

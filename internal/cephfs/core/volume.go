@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cephfs
+package core
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
+	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -54,11 +55,11 @@ type Subvolume struct {
 	Features   []string
 }
 
-func getVolumeRootPathCephDeprecated(volID volumeID) string {
+func GetVolumeRootPathCephDeprecated(volID fsutil.VolumeID) string {
 	return path.Join("/", "csi-volumes", string(volID))
 }
 
-func (vo *volumeOptions) getVolumeRootPathCeph(ctx context.Context, volID volumeID) (string, error) {
+func (vo *VolumeOptions) GetVolumeRootPathCeph(ctx context.Context, volID fsutil.VolumeID) (string, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin err %s", err)
@@ -78,7 +79,7 @@ func (vo *volumeOptions) getVolumeRootPathCeph(ctx context.Context, volID volume
 	return svPath, nil
 }
 
-func (vo *volumeOptions) getSubVolumeInfo(ctx context.Context, volID volumeID) (*Subvolume, error) {
+func (vo *VolumeOptions) GetSubVolumeInfo(ctx context.Context, volID fsutil.VolumeID) (*Subvolume, error) {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch metadata pool for %s:", vo.FsName, err)
@@ -141,7 +142,7 @@ type localClusterState struct {
 	subVolumeGroupCreated bool
 }
 
-func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID, bytesQuota int64) error {
+func CreateVolume(ctx context.Context, volOptions *VolumeOptions, volID fsutil.VolumeID, bytesQuota int64) error {
 	// verify if corresponding ClusterID key is present in the map,
 	// and if not, initialize with default values(false).
 	if _, keyPresent := clusterAdditionalInfo[volOptions.ClusterID]; !keyPresent {
@@ -192,10 +193,10 @@ func createVolume(ctx context.Context, volOptions *volumeOptions, volID volumeID
 	return nil
 }
 
-// resizeVolume will try to use ceph fs subvolume resize command to resize the
+// ResizeVolume will try to use ceph fs subvolume resize command to resize the
 // subvolume. If the command is not available as a fallback it will use
 // CreateVolume to resize the subvolume.
-func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytesQuota int64) error {
+func (vo *VolumeOptions) ResizeVolume(ctx context.Context, volID fsutil.VolumeID, bytesQuota int64) error {
 	// keyPresent checks whether corresponding clusterID key is present in clusterAdditionalInfo
 	var keyPresent bool
 	// verify if corresponding ClusterID key is present in the map,
@@ -229,10 +230,10 @@ func (vo *volumeOptions) resizeVolume(ctx context.Context, volID volumeID, bytes
 	}
 	clusterAdditionalInfo[vo.ClusterID].resizeState = unsupported
 
-	return createVolume(ctx, vo, volID, bytesQuota)
+	return CreateVolume(ctx, vo, volID, bytesQuota)
 }
 
-func (vo *volumeOptions) purgeVolume(ctx context.Context, volID volumeID, force bool) error {
+func (vo *VolumeOptions) PurgeVolume(ctx context.Context, volID fsutil.VolumeID, force bool) error {
 	fsa, err := vo.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin %s:", err)

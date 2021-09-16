@@ -17,20 +17,14 @@ limitations under the License.
 package cephfs
 
 import (
+	"github.com/ceph/ceph-csi/internal/cephfs/core"
+	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-)
-
-const (
-	// volIDVersion is the version number of volume ID encoding scheme.
-	volIDVersion uint16 = 1
-
-	// RADOS namespace to store CSI specific objects and keys.
-	radosNamespace = "csi"
 )
 
 // Driver contains the default identity,node and controller struct.
@@ -46,14 +40,6 @@ var (
 	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
 	// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
 	CSIInstanceID = "default"
-
-	// volJournal is used to maintain RADOS based journals for CO generated
-	// VolumeName to backing CephFS subvolumes.
-	volJournal *journal.Config
-
-	// snapJournal is used to maintain RADOS based journals for CO generated
-	// SnapshotName to backing CephFS subvolumes.
-	snapJournal *journal.Config
 )
 
 // NewDriver returns new ceph driver.
@@ -93,7 +79,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	var topology map[string]string
 
 	// Configuration
-	if err = loadAvailableMounters(conf); err != nil {
+	if err = core.LoadAvailableMounters(conf); err != nil {
 		log.FatalLogMsg("cephfs: failed to load ceph mounters: %v", err)
 	}
 
@@ -102,9 +88,9 @@ func (fs *Driver) Run(conf *util.Config) {
 		CSIInstanceID = conf.InstanceID
 	}
 	// Create an instance of the volume journal
-	volJournal = journal.NewCSIVolumeJournalWithNamespace(CSIInstanceID, radosNamespace)
+	core.VolJournal = journal.NewCSIVolumeJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
 
-	snapJournal = journal.NewCSISnapshotJournalWithNamespace(CSIInstanceID, radosNamespace)
+	core.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
 	// Initialize default library driver
 
 	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cephfs
+package core
 
 import (
 	"context"
@@ -74,7 +74,7 @@ func execCommandErr(ctx context.Context, program string, args ...string) error {
 
 // Load available ceph mounters installed on system into availableMounters
 // Called from driver.go's Run().
-func loadAvailableMounters(conf *util.Config) error {
+func LoadAvailableMounters(conf *util.Config) error {
 	// #nosec
 	fuseMounterProbe := exec.Command("ceph-fuse", "--version")
 	// #nosec
@@ -113,12 +113,12 @@ func loadAvailableMounters(conf *util.Config) error {
 	return nil
 }
 
-type volumeMounter interface {
-	mount(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error
-	name() string
+type VolumeMounter interface {
+	Mount(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *VolumeOptions) error
+	Name() string
 }
 
-func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
+func NewMounter(volOptions *VolumeOptions) (VolumeMounter, error) {
 	// Get the mounter from the configuration
 
 	wantMounter := volOptions.Mounter
@@ -145,17 +145,17 @@ func newMounter(volOptions *volumeOptions) (volumeMounter, error) {
 
 	switch chosenMounter {
 	case volumeMounterFuse:
-		return &fuseMounter{}, nil
+		return &FuseMounter{}, nil
 	case volumeMounterKernel:
-		return &kernelMounter{}, nil
+		return &KernelMounter{}, nil
 	}
 
 	return nil, fmt.Errorf("unknown mounter '%s'", chosenMounter)
 }
 
-type fuseMounter struct{}
+type FuseMounter struct{}
 
-func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
+func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *VolumeOptions) error {
 	args := []string{
 		mountPoint,
 		"-m", volOptions.Monitors,
@@ -203,11 +203,11 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 	return nil
 }
 
-func (m *fuseMounter) mount(
+func (m *FuseMounter) Mount(
 	ctx context.Context,
 	mountPoint string,
 	cr *util.Credentials,
-	volOptions *volumeOptions) error {
+	volOptions *VolumeOptions) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}
@@ -215,11 +215,11 @@ func (m *fuseMounter) mount(
 	return mountFuse(ctx, mountPoint, cr, volOptions)
 }
 
-func (m *fuseMounter) name() string { return "Ceph FUSE driver" }
+func (m *FuseMounter) Name() string { return "Ceph FUSE driver" }
 
-type kernelMounter struct{}
+type KernelMounter struct{}
 
-func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *volumeOptions) error {
+func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *VolumeOptions) error {
 	if err := execCommandErr(ctx, "modprobe", "ceph"); err != nil {
 		return err
 	}
@@ -247,11 +247,11 @@ func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, v
 	return err
 }
 
-func (m *kernelMounter) mount(
+func (m *KernelMounter) Mount(
 	ctx context.Context,
 	mountPoint string,
 	cr *util.Credentials,
-	volOptions *volumeOptions) error {
+	volOptions *VolumeOptions) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}
@@ -259,9 +259,9 @@ func (m *kernelMounter) mount(
 	return mountKernel(ctx, mountPoint, cr, volOptions)
 }
 
-func (m *kernelMounter) name() string { return "Ceph kernel client" }
+func (m *KernelMounter) Name() string { return "Ceph kernel client" }
 
-func bindMount(ctx context.Context, from, to string, readOnly bool, mntOptions []string) error {
+func BindMount(ctx context.Context, from, to string, readOnly bool, mntOptions []string) error {
 	mntOptionSli := strings.Join(mntOptions, ",")
 	if err := execCommandErr(ctx, "mount", "-o", mntOptionSli, from, to); err != nil {
 		return fmt.Errorf("failed to bind-mount %s to %s: %w", from, to, err)
@@ -277,7 +277,7 @@ func bindMount(ctx context.Context, from, to string, readOnly bool, mntOptions [
 	return nil
 }
 
-func unmountVolume(ctx context.Context, mountPoint string) error {
+func UnmountVolume(ctx context.Context, mountPoint string) error {
 	if _, stderr, err := util.ExecCommand(ctx, "umount", mountPoint); err != nil {
 		err = fmt.Errorf("%w stderr: %s", err, stderr)
 		if strings.Contains(err.Error(), fmt.Sprintf("umount: %s: not mounted", mountPoint)) ||
