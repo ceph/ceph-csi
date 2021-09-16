@@ -18,6 +18,7 @@ package cephfs
 
 import (
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
+	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
@@ -36,11 +37,9 @@ type Driver struct {
 	cs *ControllerServer
 }
 
-var (
-	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
-	// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
-	CSIInstanceID = "default"
-)
+// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
+// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
+var CSIInstanceID = "default"
 
 // NewDriver returns new ceph driver.
 func NewDriver() *Driver {
@@ -79,7 +78,7 @@ func (fs *Driver) Run(conf *util.Config) {
 	var topology map[string]string
 
 	// Configuration
-	if err = core.LoadAvailableMounters(conf); err != nil {
+	if err = mounter.LoadAvailableMounters(conf); err != nil {
 		log.FatalLogMsg("cephfs: failed to load ceph mounters: %v", err)
 	}
 

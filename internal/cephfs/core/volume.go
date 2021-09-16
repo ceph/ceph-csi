@@ -40,8 +40,6 @@ import (
 var clusterAdditionalInfo = make(map[string]*localClusterState)
 
 const (
-	cephEntityClientPrefix = "client."
-
 	// modeAllRWX can be used for setting permissions to Read-Write-eXecute
 	// for User, Group and Other.
 	modeAllRWX = 0o777
