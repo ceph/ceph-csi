@@ -34,7 +34,7 @@ func cleanupTestData() {
 	os.RemoveAll(basePath)
 }
 
-// TODO: make this function less complex.
+//  nolint:gocyclo,cyclop // TODO: make this function less complex.
 func TestCSIConfig(t *testing.T) {
 	t.Parallel()
 	var err error
@@ -131,5 +131,43 @@ func TestCSIConfig(t *testing.T) {
 	content, err = Mons(pathToConfig, clusterID1)
 	if err != nil || content != "mon4,mon5,mon6" {
 		t.Errorf("Failed: want (%s), got (%s) (%v)", "mon4,mon5,mon6", content, err)
+	}
+
+	data = "[{\"clusterID\":\"" + clusterID2 + "\",\"monitors\":[\"mon1\",\"mon2\",\"mon3\"]}," +
+		"{\"clusterID\":\"" + clusterID1 + "\",\"monitors\":[\"mon4\",\"mon5\",\"mon6\"]}]"
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0o600)
+	if err != nil {
+		t.Errorf("Test setup error %s", err)
+	}
+
+	// TEST: Should pass as clusterID is present in config
+	content, err = readClusterInfoWithMon(pathToConfig, "mon1")
+	if err != nil || content != "test2" {
+		t.Errorf("Failed: want (%s), got (%s) (%v)", "test2", content, err)
+	}
+
+	// TEST: Should pass as clusterID is present in config
+	content, err = readClusterInfoWithMon(pathToConfig, "mon5")
+	if err != nil || content != "test1" {
+		t.Errorf("Failed: want (%s), got (%s) (%v)", "test1", content, err)
+	}
+
+	// TEST: Should fail as clusterID is not present in config
+	content, err = readClusterInfoWithMon(pathToConfig, "mon8")
+	if err == nil {
+		t.Errorf("Failed: got (%s)", content)
+	}
+
+	data = "[{\"clusterID\":\"" + clusterID2 + "\", \"radosNamespace\": \"ns1\", \"monitors\":[\"mon1\"]}," +
+		"{\"clusterID\":\"" + clusterID1 + "\",\"monitors\":[\"mon1\"]}]"
+	err = ioutil.WriteFile(basePath+"/"+csiClusters, []byte(data), 0o600)
+	if err != nil {
+		t.Errorf("Test setup error %s", err)
+	}
+
+	// TEST: Should pass as clusterID is present in config
+	content, err = readClusterInfoWithMon(pathToConfig, "mon1")
+	if err != nil || content != clusterID1 {
+		t.Errorf("Failed: want (%s), got (%s) (%v)", "test2", content, err)
 	}
 }
