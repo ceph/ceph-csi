@@ -206,7 +206,15 @@ var (
 			needRbdNbd: false,
 		},
 		librbd.FeatureNameExclusiveLock: {
-			needRbdNbd: true,
+			needRbdNbd: false,
+		},
+		librbd.FeatureNameObjectMap: {
+			needRbdNbd: false,
+			dependsOn:  []string{librbd.FeatureNameExclusiveLock},
+		},
+		librbd.FeatureNameFastDiff: {
+			needRbdNbd: false,
+			dependsOn:  []string{librbd.FeatureNameObjectMap},
 		},
 		librbd.FeatureNameJournaling: {
 			needRbdNbd: true,
