@@ -25,6 +25,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
+	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -153,7 +154,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *core.VolumeOptions, re
 	}
 	defer cr.DeleteCredentials()
 
-	m, err := core.NewMounter(volOptions)
+	m, err := mounter.New(volOptions)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create mounter for volume %s: %v", volID, err)
 
@@ -169,12 +170,12 @@ func (*NodeServer) mount(ctx context.Context, volOptions *core.VolumeOptions, re
 	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
 		req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
 		switch m.(type) {
-		case *core.FuseMounter:
+		case *mounter.FuseMounter:
 			if !csicommon.MountOptionContains(strings.Split(volOptions.FuseMountOptions, ","), readOnly) {
 				volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, readOnly)
 				fuseMountOptions = append(fuseMountOptions, readOnly)
 			}
-		case *core.KernelMounter:
+		case *mounter.KernelMounter:
 			if !csicommon.MountOptionContains(strings.Split(volOptions.KernelMountOptions, ","), readOnly) {
 				volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, readOnly)
 				kernelMountOptions = append(kernelMountOptions, readOnly)
@@ -201,7 +202,7 @@ func (*NodeServer) mount(ctx context.Context, volOptions *core.VolumeOptions, re
 				stagingTargetPath,
 				volID,
 				err)
-			uErr := core.UnmountVolume(ctx, stagingTargetPath)
+			uErr := mounter.UnmountVolume(ctx, stagingTargetPath)
 			if uErr != nil {
 				log.ErrorLog(
 					ctx,
@@ -263,7 +264,7 @@ func (ns *NodeServer) NodePublishVolume(
 
 	// It's not, mount now
 
-	if err = core.BindMount(
+	if err = mounter.BindMount(
 		ctx,
 		req.GetStagingTargetPath(),
 		req.GetTargetPath(),
@@ -310,7 +311,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	}
 
 	// Unmount the bind-mount
-	if err = core.UnmountVolume(ctx, targetPath); err != nil {
+	if err = mounter.UnmountVolume(ctx, targetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -358,7 +359,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		return &csi.NodeUnstageVolumeResponse{}, nil
 	}
 	// Unmount the volume
-	if err = core.UnmountVolume(ctx, stagingTargetPath); err != nil {
+	if err = mounter.UnmountVolume(ctx, stagingTargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

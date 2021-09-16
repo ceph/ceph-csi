@@ -123,8 +123,8 @@ func extractOption(dest *string, optionLabel string, options map[string]string) 
 
 func validateMounter(m string) error {
 	switch m {
-	case volumeMounterFuse:
-	case volumeMounterKernel:
+	case "fuse":
+	case "kernel":
 	default:
 		return fmt.Errorf("unknown mounter '%s'. Valid options are 'fuse' and 'kernel'", m)
 	}
