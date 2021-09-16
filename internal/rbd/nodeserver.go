@@ -149,6 +149,25 @@ func healerStageTransaction(ctx context.Context, cr *util.Credentials, volOps *r
 	return nil
 }
 
+// getClusterIDFromMigrationVolume fills the clusterID for the passed in monitors.
+func getClusterIDFromMigrationVolume(parameters map[string]string) (string, error) {
+	var err error
+	var rclusterID string
+	mons := parameters["monitors"]
+	for _, m := range strings.Split(mons, ",") {
+		rclusterID, err = util.GetClusterIDFromMon(m)
+		if err != nil && !errors.Is(err, util.ErrMissingConfigForMonitor) {
+			return "", err
+		}
+
+		if rclusterID != "" {
+			return rclusterID, nil
+		}
+	}
+
+	return "", err
+}
+
 // populateRbdVol update the fields in rbdVolume struct based on the request it received.
 func populateRbdVol(
 	ctx context.Context,
@@ -188,6 +207,10 @@ func populateRbdVol(
 	// get rbd image name from the volume journal
 	// for static volumes, the image name is actually the volume ID itself
 	if isStaticVol {
+		if req.GetVolumeContext()[intreeMigrationKey] == intreeMigrationLabel {
+			// if migration static volume, use imageName as volID
+			volID = req.GetVolumeContext()["imageName"]
+		}
 		rv.RbdImageName = volID
 	} else {
 		var vi util.CSIIdentifier
@@ -267,6 +290,16 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volID)
 	}
 	defer ns.VolumeLocks.Release(volID)
+
+	// Check this is a migration request because in that case, unlike other node stage requests
+	// it will be missing the clusterID, so fill it by fetching it from config file using mon.
+	if req.GetVolumeContext()[intreeMigrationKey] == intreeMigrationLabel && req.VolumeContext[util.ClusterIDKey] == "" {
+		cID, cErr := getClusterIDFromMigrationVolume(req.GetVolumeContext())
+		if cErr != nil {
+			return nil, status.Error(codes.Internal, cErr.Error())
+		}
+		req.VolumeContext[util.ClusterIDKey] = cID
+	}
 
 	stagingParentPath := req.GetStagingTargetPath()
 	stagingTargetPath := stagingParentPath + "/" + volID

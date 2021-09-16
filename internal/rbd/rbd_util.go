@@ -73,6 +73,10 @@ const (
 	// thick provisioned or thin provisioned.
 	thickProvisionMetaData = "true"
 	thinProvisionMetaData  = "false"
+
+	// these are the migration label key and value for parameters in volume context.
+	intreeMigrationKey   = "migration"
+	intreeMigrationLabel = "true"
 )
 
 // rbdImage contains common attributes and methods for the rbdVolume and

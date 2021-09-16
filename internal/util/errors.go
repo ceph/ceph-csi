@@ -35,6 +35,8 @@ var (
 	ErrPoolNotFound = errors.New("pool not found")
 	// ErrClusterIDNotSet is returned when cluster id is not set.
 	ErrClusterIDNotSet = errors.New("clusterID must be set")
+	// ErrMissingConfigForMonitor is returned when clusterID is not found for the mon.
+	ErrMissingConfigForMonitor = errors.New("missing configuration of cluster ID for monitor")
 )
 
 type errorPair struct {

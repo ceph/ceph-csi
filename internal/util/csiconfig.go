@@ -33,7 +33,7 @@ const (
 	CsiConfigFile = "/etc/ceph-csi-config/config.json"
 
 	// ClusterIDKey is the name of the key containing clusterID.
-	clusterIDKey = "clusterID"
+	ClusterIDKey = "clusterID"
 )
 
 // ClusterInfo strongly typed JSON spec for the below JSON structure.
@@ -154,7 +154,7 @@ func GetMonsAndClusterID(ctx context.Context, clusterID string, checkClusterIDMa
 
 // GetClusterID fetches clusterID from given options map.
 func GetClusterID(options map[string]string) (string, error) {
-	clusterID, ok := options[clusterIDKey]
+	clusterID, ok := options[ClusterIDKey]
 	if !ok {
 		return "", ErrClusterIDNotSet
 	}
@@ -168,11 +168,8 @@ func GetClusterID(options map[string]string) (string, error) {
 // else error.
 func GetClusterIDFromMon(mon string) (string, error) {
 	clusterID, err := readClusterInfoWithMon(CsiConfigFile, mon)
-	if err != nil {
-		return "", err
-	}
 
-	return clusterID, nil
+	return clusterID, err
 }
 
 func readClusterInfoWithMon(pathToConfig, mon string) (string, error) {
@@ -193,6 +190,12 @@ func readClusterInfoWithMon(pathToConfig, mon string) (string, error) {
 	}
 
 	for _, cluster := range config {
+		// as the same mons can fall into different clusterIDs with
+		// different radosnamespace configurations, we are bailing out
+		// if radosnamespace configuration is found for this cluster
+		if cluster.RadosNamespace != "" {
+			continue
+		}
 		for _, m := range cluster.Monitors {
 			if m == mon {
 				return cluster.ClusterID, nil
@@ -200,5 +203,5 @@ func readClusterInfoWithMon(pathToConfig, mon string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("missing configuration of cluster ID for mon %q", mon)
+	return "", ErrMissingConfigForMonitor
 }
