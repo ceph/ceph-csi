@@ -34,7 +34,7 @@ func cleanupTestData() {
 	os.RemoveAll(basePath)
 }
 
-//  nolint:gocyclo,cyclop // TODO: make this function less complex.
+// nolint:gocyclo,cyclop // TODO: make this function less complex.
 func TestCSIConfig(t *testing.T) {
 	t.Parallel()
 	var err error

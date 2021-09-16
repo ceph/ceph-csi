@@ -1435,6 +1435,24 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 0, defaultRBDPool)
 			})
 
+			By("validate RBD migration+static FileSystem PVC", func() {
+				err := validateRBDStaticMigrationPV(f, appPath, false)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd migrated static pv with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+			})
+
+			By("validate RBD migration+static Block PVC", func() {
+				err := validateRBDStaticMigrationPV(f, rawAppPath, true)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd migrated static block pv with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+			})
+
 			By("validate failure of RBD static PVC without imageFeatures parameter", func() {
 				err := validateRBDStaticPV(f, rawAppPath, true, true)
 				if err != nil {
