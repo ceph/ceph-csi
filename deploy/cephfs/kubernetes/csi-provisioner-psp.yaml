@@ -4,12 +4,8 @@ kind: PodSecurityPolicy
 metadata:
   name: cephfs-csi-provisioner-psp
 spec:
-  allowPrivilegeEscalation: true
-  allowedCapabilities:
-    - 'SYS_ADMIN'
   fsGroup:
     rule: RunAsAny
-  privileged: true
   runAsUser:
     rule: RunAsAny
   seLinux:
@@ -21,7 +17,6 @@ spec:
     - 'emptyDir'
     - 'projected'
     - 'secret'
-    - 'downwardAPI'
     - 'hostPath'
   allowedHostPaths:
     - pathPrefix: '/dev'
