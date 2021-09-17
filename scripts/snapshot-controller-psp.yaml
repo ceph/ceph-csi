@@ -19,9 +19,8 @@ spec:
   volumes:
     - "configMap"
     - "emptyDir"
-    - "projected"
     - "secret"
-    - "downwardAPI"
+    - "projected"
     - "hostPath"
 
 ---
