@@ -29,7 +29,6 @@ spec:
     - 'emptyDir'
     - 'projected'
     - 'secret'
-    - 'downwardAPI'
     - 'hostPath'
   allowedHostPaths:
     - pathPrefix: '/dev'
