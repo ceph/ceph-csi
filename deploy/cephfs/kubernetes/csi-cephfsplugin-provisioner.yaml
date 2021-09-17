@@ -86,8 +86,6 @@ spec:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
           imagePullPolicy: "IfNotPresent"
-          securityContext:
-            privileged: true
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
@@ -106,10 +104,6 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-cephfsplugin
-          securityContext:
-            privileged: true
-            capabilities:
-              add: ["SYS_ADMIN"]
           # for stable functionality replace canary with latest release version
           image: quay.io/cephcsi/cephcsi:canary
           args:
