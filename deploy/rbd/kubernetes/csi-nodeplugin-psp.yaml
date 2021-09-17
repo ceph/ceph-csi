@@ -22,9 +22,8 @@ spec:
     - 'configMap'
     - 'emptyDir'
     - 'projected'
-    - 'secret'
-    - 'downwardAPI'
     - 'hostPath'
+    - 'secret'
   allowedHostPaths:
     - pathPrefix: '/dev'
       readOnly: false
