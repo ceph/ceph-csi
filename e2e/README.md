@@ -3,6 +3,7 @@
 - [End-to-End Testing](#end-to-end-testing)
   - [Introduction](#introduction)
   - [Install Kubernetes](#install-kubernetes)
+  - [Deploy Rook](#deploy-rook)
   - [Test parameters](#test-parameters)
   - [E2E for snapshot](#e2e-for-snapshot)
   - [Running E2E](#running-e2e)
@@ -89,9 +90,9 @@ are available while running tests:
 | flag              | description                                                                   |
 | ----------------- | ----------------------------------------------------------------------------- |
 | deploy-timeout    | Timeout to wait for created kubernetes resources (default: 10 minutes)        |
-| deploy-cephfs     | Deploy cephfs csi driver as part of E2E (default: true)                       |
+| deploy-cephfs     | Deploy cephFS csi driver as part of E2E (default: true)                       |
 | deploy-rbd        | Deploy rbd csi driver as part of E2E (default: true)                          |
-| test-cephfs       | Test cephfs csi driver as part of E2E (default: true)                         |
+| test-cephfs       | Test cephFS csi driver as part of E2E (default: true)                         |
 | upgrade-testing   | Perform upgrade testing (default: false)                                      |
 | upgrade-version   | Target version for upgrade testing (default: "v3.3.1")                        |
 | test-rbd          | Test rbd csi driver as part of E2E (default: true)                            |

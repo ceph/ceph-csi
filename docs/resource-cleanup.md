@@ -3,7 +3,7 @@
 If the PVC is created with storage class which is having the `reclaimPolicy`
 as `Retain` will not delete the PV object, backend omap metadata and backend image.
 Manual deletion of PV will result in stale omap keys, values,
-cephfs subvolume and rbd image.
+cephFS subvolume and rbd image.
 It is required to cleanup metadata and image separately.
 
 ## Steps
@@ -67,7 +67,7 @@ a. remove rbd image(csi-vol-omapval, the prefix csi-vol is value of [volumeNameP
   Removing image: 100% complete...done.
   ```
 
-b. remove cephfs subvolume(csi-vol-omapval)
+b. remove cephFS subvolume(csi-vol-omapval)
 
   ```
   ceph fs subvolume rm volume_name subvolume_name group_name

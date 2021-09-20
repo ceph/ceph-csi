@@ -43,7 +43,7 @@ func createCephfsStorageClass(
 	f *framework.Framework,
 	enablePool bool,
 	params map[string]string) error {
-	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "storageclass.yaml")
+	scPath := fmt.Sprintf("%s/%s", cephFSExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func createCephfsStorageClass(
 }
 
 func createCephfsSecret(f *framework.Framework, secretName, userName, userKey string) error {
-	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "secret.yaml")
+	scPath := fmt.Sprintf("%s/%s", cephFSExamplePath, "secret.yaml")
 	sc, err := getSecret(scPath)
 	if err != nil {
 		return err
@@ -131,9 +131,9 @@ func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error 
 	_, stdErr, err := execCommandInDaemonsetPod(
 		f,
 		cmd,
-		cephfsDeamonSetName,
+		cephFSDeamonSetName,
 		pod.Spec.NodeName,
-		cephfsContainerName,
+		cephFSContainerName,
 		cephCSINamespace)
 	if stdErr != "" {
 		e2elog.Logf("StdErr occurred: %s", stdErr)

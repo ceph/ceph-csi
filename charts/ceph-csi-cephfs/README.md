@@ -1,6 +1,6 @@
 # ceph-csi-cephfs
 
-The ceph-csi-cephfs chart adds cephfs volume support to your cluster.
+The ceph-csi-cephfs chart adds cephFS volume support to your cluster.
 
 ## Install from release repo
 
@@ -134,12 +134,12 @@ charts and their default values.
 | `configMapName`                                | Name of the configmap which contains cluster configuration                                                                                           | `ceph-csi-config`                                  |
 | `externallyManagedConfigmap`                   | Specifies the use of an externally provided configmap                                                                                                | `false`                                            |
 | `storageClass.create`                          | Specifies whether the StorageClass should be created                                                                                                 | `false`                                            |
-| `storageClass.name`                            | Specifies the cephfs StorageClass name                                                                                                               | `csi-cephfs-sc`                                    |
+| `storageClass.name`                            | Specifies the cephFS StorageClass name                                                                                                               | `csi-cephfs-sc`                                    |
 | `storageClass.clusterID`                       | String representing a Ceph cluster to provision storage from                                                                                         | `<cluster-ID>`                                     |
 | `storageClass.fsName`                          | CephFS filesystem name into which the volume shall be created                                                                                        | `myfs`                                             |
 | `storageClass.pool`                            | Ceph pool into which volume data shall be stored                                                                                                     | `""`                                               |
 | `storageClass.fuseMountOptions`                | Comma separated string of Ceph-fuse mount options                                                                                                    | `""`                                               |
-| `storageclass.kernelMountOptions`              | Comma separated string of Cephfs kernel mount options                                                                                                | `""`                                               |
+| `storageclass.kernelMountOptions`              | Comma separated string of CephFS kernel mount options                                                                                                | `""`                                               |
 | `storageClass.mounter`                         | The driver can use either ceph-fuse (fuse) or ceph kernelclient (kernel)                                                                             | `""`                                               |
 | `storageClass.volumeNamePrefix`                | Prefix to use for naming subvolumes                                                                                                                  | `""`                                               |
 | `storageClass.provisionerSecret`               | The secrets have to contain user and/or Ceph admin credentials.                                                                                      | `csi-cephfs-secret`                                |
@@ -152,8 +152,8 @@ charts and their default values.
 | `storageClass.allowVolumeExpansion`            | Specifies whether volume expansion should be allowed                                                                                                 | `true`                                             |
 | `storageClass.mountOptions`                    | Specifies the mount options                                                                                                                          | `[]`                                               |
 | `secret.create`                                | Specifies whether the secret should be created                                                                                                       | `false`                                            |
-| `secret.name`                                  | Specifies the cephfs secret name                                                                                                                     | `csi-cephfs-secret`                                |
-| `secret.adminID`                               | Specifies the admin ID of the cephfs secret                                                                                                          | `<plaintext ID>`                                   |
+| `secret.name`                                  | Specifies the cephFS secret name                                                                                                                     | `csi-cephfs-secret`                                |
+| `secret.adminID`                               | Specifies the admin ID of the cephFS secret                                                                                                          | `<plaintext ID>`                                   |
 | `secret.adminKey`                              | Specifies the key that corresponds to the adminID                                                                                                    | `<Ceph auth key corresponding to ID above>`        |
 
 ### Command Line

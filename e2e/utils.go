@@ -422,7 +422,7 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	return err
 }
 
-func pvcDeleteWhenPoolNotFound(pvcPath string, cephfs bool, f *framework.Framework) error {
+func pvcDeleteWhenPoolNotFound(pvcPath string, cephFS bool, f *framework.Framework) error {
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
 		return err
@@ -433,13 +433,13 @@ func pvcDeleteWhenPoolNotFound(pvcPath string, cephfs bool, f *framework.Framewo
 	if err != nil {
 		return err
 	}
-	if cephfs {
+	if cephFS {
 		err = deleteBackingCephFSVolume(f, pvc)
 		if err != nil {
 			return err
 		}
-		// delete cephfs filesystem
-		err = deletePool("myfs", cephfs, f)
+		// delete cephFS filesystem
+		err = deletePool("myfs", cephFS, f)
 		if err != nil {
 			return err
 		}
@@ -449,7 +449,7 @@ func pvcDeleteWhenPoolNotFound(pvcPath string, cephfs bool, f *framework.Framewo
 			return err
 		}
 		// delete rbd pool
-		err = deletePool(defaultRBDPool, cephfs, f)
+		err = deletePool(defaultRBDPool, cephFS, f)
 		if err != nil {
 			return err
 		}

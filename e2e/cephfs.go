@@ -18,17 +18,17 @@ import (
 )
 
 var (
-	cephfsProvisioner     = "csi-cephfsplugin-provisioner.yaml"
-	cephfsProvisionerRBAC = "csi-provisioner-rbac.yaml"
-	cephfsProvisionerPSP  = "csi-provisioner-psp.yaml"
-	cephfsNodePlugin      = "csi-cephfsplugin.yaml"
-	cephfsNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
-	cephfsNodePluginPSP   = "csi-nodeplugin-psp.yaml"
-	cephfsDeploymentName  = "csi-cephfsplugin-provisioner"
-	cephfsDeamonSetName   = "csi-cephfsplugin"
-	cephfsContainerName   = "csi-cephfsplugin"
-	cephfsDirPath         = "../deploy/cephfs/kubernetes/"
-	cephfsExamplePath     = examplePath + "cephfs/"
+	cephFSProvisioner     = "csi-cephfsplugin-provisioner.yaml"
+	cephFSProvisionerRBAC = "csi-provisioner-rbac.yaml"
+	cephFSProvisionerPSP  = "csi-provisioner-psp.yaml"
+	cephFSNodePlugin      = "csi-cephfsplugin.yaml"
+	cephFSNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
+	cephFSNodePluginPSP   = "csi-nodeplugin-psp.yaml"
+	cephFSDeploymentName  = "csi-cephfsplugin-provisioner"
+	cephFSDeamonSetName   = "csi-cephfsplugin"
+	cephFSContainerName   = "csi-cephfsplugin"
+	cephFSDirPath         = "../deploy/cephfs/kubernetes/"
+	cephFSExamplePath     = examplePath + "cephfs/"
 	subvolumegroup        = "e2e"
 	fileSystemName        = "myfs"
 )
@@ -36,23 +36,23 @@ var (
 func deployCephfsPlugin() {
 	// delete objects deployed by rook
 
-	data, err := replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisionerRBAC)
+	data, err := replaceNamespaceInTemplate(cephFSDirPath + cephFSProvisionerRBAC)
 	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerRBAC, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephFSDirPath+cephFSProvisionerRBAC, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, "--ignore-not-found=true", ns, "delete", "-f", "-")
 	if err != nil {
-		e2elog.Failf("failed to delete provisioner rbac %s with error %v", cephfsDirPath+cephfsProvisionerRBAC, err)
+		e2elog.Failf("failed to delete provisioner rbac %s with error %v", cephFSDirPath+cephFSProvisionerRBAC, err)
 	}
 
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePluginRBAC)
+	data, err = replaceNamespaceInTemplate(cephFSDirPath + cephFSNodePluginRBAC)
 	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephFSDirPath+cephFSNodePluginRBAC, err)
 	}
 	_, err = framework.RunKubectlInput(cephCSINamespace, data, "delete", "--ignore-not-found=true", ns, "-f", "-")
 
 	if err != nil {
-		e2elog.Failf("failed to delete nodeplugin rbac %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
+		e2elog.Failf("failed to delete nodeplugin rbac %s with error %v", cephFSDirPath+cephFSNodePluginRBAC, err)
 	}
 
 	createORDeleteCephfsResources(kubectlCreate)
@@ -63,12 +63,12 @@ func deleteCephfsPlugin() {
 }
 
 func createORDeleteCephfsResources(action kubectlAction) {
-	csiDriver, err := ioutil.ReadFile(cephfsDirPath + csiDriverObject)
+	csiDriver, err := ioutil.ReadFile(cephFSDirPath + csiDriverObject)
 	if err != nil {
 		// createORDeleteRbdResources is used for upgrade testing as csidriverObject is
 		// newly added, discarding file not found error.
 		if !os.IsNotExist(err) {
-			e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+csiDriverObject, err)
+			e2elog.Failf("failed to read content from %s with error %v", cephFSDirPath+csiDriverObject, err)
 		}
 	} else {
 		err = retryKubectlInput(cephCSINamespace, action, string(csiDriver), deployTimeout)
@@ -89,55 +89,55 @@ func createORDeleteCephfsResources(action kubectlAction) {
 			e2elog.Failf("failed to %s ceph-conf configmap object with error %v", action, err)
 		}
 	}
-	data, err := replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisioner)
+	data, err := replaceNamespaceInTemplate(cephFSDirPath + cephFSProvisioner)
 	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisioner, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephFSDirPath+cephFSProvisioner, err)
 	}
 	data = oneReplicaDeployYaml(data)
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS provisioner with error %v", action, err)
 	}
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisionerRBAC)
+	data, err = replaceNamespaceInTemplate(cephFSDirPath + cephFSProvisionerRBAC)
 
 	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerRBAC, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephFSDirPath+cephFSProvisionerRBAC, err)
 	}
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS provisioner rbac with error %v", action, err)
 	}
 
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsProvisionerPSP)
+	data, err = replaceNamespaceInTemplate(cephFSDirPath + cephFSProvisionerPSP)
 	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsProvisionerPSP, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephFSDirPath+cephFSProvisionerPSP, err)
 	}
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS provisioner psp with error %v", action, err)
 	}
 
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePlugin)
+	data, err = replaceNamespaceInTemplate(cephFSDirPath + cephFSNodePlugin)
 	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePlugin, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephFSDirPath+cephFSNodePlugin, err)
 	}
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS nodeplugin with error %v", action, err)
 	}
 
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePluginRBAC)
+	data, err = replaceNamespaceInTemplate(cephFSDirPath + cephFSNodePluginRBAC)
 	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginRBAC, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephFSDirPath+cephFSNodePluginRBAC, err)
 	}
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
 		e2elog.Failf("failed to %s CephFS nodeplugin rbac with error %v", action, err)
 	}
 
-	data, err = replaceNamespaceInTemplate(cephfsDirPath + cephfsNodePluginPSP)
+	data, err = replaceNamespaceInTemplate(cephFSDirPath + cephFSNodePluginPSP)
 	if err != nil {
-		e2elog.Failf("failed to read content from %s with error %v", cephfsDirPath+cephfsNodePluginPSP, err)
+		e2elog.Failf("failed to read content from %s with error %v", cephFSDirPath+cephFSNodePluginPSP, err)
 	}
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
@@ -200,7 +200,7 @@ var _ = Describe("cephfs", func() {
 			}
 			deployCephfsPlugin()
 		}
-		err := createConfigMap(cephfsDirPath, f.ClientSet, f)
+		err := createConfigMap(cephFSDirPath, f.ClientSet, f)
 		if err != nil {
 			e2elog.Failf("failed to create configmap with error %v", err)
 		}
@@ -239,7 +239,7 @@ var _ = Describe("cephfs", func() {
 			// log all details from the namespace where Ceph-CSI is deployed
 			framework.DumpAllNamespaceInfo(c, cephCSINamespace)
 		}
-		err := deleteConfigMap(cephfsDirPath)
+		err := deleteConfigMap(cephFSDirPath)
 		if err != nil {
 			e2elog.Failf("failed to delete configmap with error %v", err)
 		}
@@ -255,7 +255,7 @@ var _ = Describe("cephfs", func() {
 		if err != nil {
 			e2elog.Failf("failed to delete node secret with error %v", err)
 		}
-		err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+		err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 		if err != nil {
 			e2elog.Failf("failed to delete storageclass with error %v", err)
 		}
@@ -272,25 +272,25 @@ var _ = Describe("cephfs", func() {
 
 	Context("Test CephFS CSI", func() {
 		It("Test CephFS CSI", func() {
-			pvcPath := cephfsExamplePath + "pvc.yaml"
-			appPath := cephfsExamplePath + "pod.yaml"
-			pvcClonePath := cephfsExamplePath + "pvc-restore.yaml"
-			pvcSmartClonePath := cephfsExamplePath + "pvc-clone.yaml"
-			appClonePath := cephfsExamplePath + "pod-restore.yaml"
-			appSmartClonePath := cephfsExamplePath + "pod-clone.yaml"
-			snapshotPath := cephfsExamplePath + "snapshot.yaml"
+			pvcPath := cephFSExamplePath + "pvc.yaml"
+			appPath := cephFSExamplePath + "pod.yaml"
+			pvcClonePath := cephFSExamplePath + "pvc-restore.yaml"
+			pvcSmartClonePath := cephFSExamplePath + "pvc-clone.yaml"
+			appClonePath := cephFSExamplePath + "pod-restore.yaml"
+			appSmartClonePath := cephFSExamplePath + "pod-clone.yaml"
+			snapshotPath := cephFSExamplePath + "snapshot.yaml"
 
 			By("checking provisioner deployment is running", func() {
-				err := waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err := waitForDeploymentComplete(cephFSDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					e2elog.Failf("timeout waiting for deployment %s with error %v", cephfsDeploymentName, err)
+					e2elog.Failf("timeout waiting for deployment %s with error %v", cephFSDeploymentName, err)
 				}
 			})
 
 			By("checking nodeplugin deamonset pods are running", func() {
-				err := waitForDaemonSets(cephfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err := waitForDaemonSets(cephFSDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					e2elog.Failf("timeout waiting for daemonset %s with error %v", cephfsDeamonSetName, err)
+					e2elog.Failf("timeout waiting for daemonset %s with error %v", cephFSDeamonSetName, err)
 				}
 			})
 
@@ -302,11 +302,11 @@ var _ = Describe("cephfs", func() {
 						e2elog.Failf("failed to validate CephFS pvc and application binding with error %v", err)
 					}
 					//  Deleting the storageclass and secret created by helm
-					err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+					err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 					if err != nil {
 						e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
 					}
-					err = deleteResource(cephfsExamplePath + "secret.yaml")
+					err = deleteResource(cephFSExamplePath + "secret.yaml")
 					if err != nil {
 						e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
 					}
@@ -314,7 +314,7 @@ var _ = Describe("cephfs", func() {
 			}
 
 			By("check static PVC", func() {
-				scPath := cephfsExamplePath + "secret.yaml"
+				scPath := cephFSExamplePath + "secret.yaml"
 				err := validateCephFsStaticPV(f, appPath, scPath)
 				if err != nil {
 					e2elog.Failf("failed to validate CephFS static pv with error %v", err)
@@ -330,7 +330,7 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to validate CephFS pvc and application binding with error %v", err)
 				}
-				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
 				}
@@ -378,7 +378,7 @@ var _ = Describe("cephfs", func() {
 					e2elog.Failf("failed to  delete PVC with error %v", err)
 				}
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
-				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
@@ -399,7 +399,7 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to validate CephFS pvc and application binding with error %v", err)
 				}
-				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
 				}
@@ -418,7 +418,7 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to validate CephFS pvc and application binding with error %v", err)
 				}
-				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete CephFS storageclass with error %v", err)
 				}
@@ -529,7 +529,7 @@ var _ = Describe("cephfs", func() {
 			})
 
 			By("validate multiple subvolumegroup creation", func() {
-				err := deleteResource(cephfsExamplePath + "storageclass.yaml")
+				err := deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
@@ -538,7 +538,7 @@ var _ = Describe("cephfs", func() {
 					"clusterID-1": "subvolgrp1",
 					"clusterID-2": "subvolgrp2",
 				}
-				err = createCustomConfigMap(f.ClientSet, cephfsDirPath, subvolgrpInfo)
+				err = createCustomConfigMap(f.ClientSet, cephFSDirPath, subvolgrpInfo)
 				if err != nil {
 					e2elog.Failf("failed to create configmap with error %v", err)
 				}
@@ -553,7 +553,7 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to validate pvc and application with error %v", err)
 				}
-				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
@@ -574,7 +574,7 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to validate pvc and application with error %v", err)
 				}
-				err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
@@ -582,11 +582,11 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to validate subvolume group with error %v", err)
 				}
-				err = deleteConfigMap(cephfsDirPath)
+				err = deleteConfigMap(cephFSDirPath)
 				if err != nil {
 					e2elog.Failf("failed to delete configmap with error %v", err)
 				}
-				err = createConfigMap(cephfsDirPath, f.ClientSet, f)
+				err = createConfigMap(cephFSDirPath, f.ClientSet, f)
 				if err != nil {
 					e2elog.Failf("failed to create configmap with error %v", err)
 				}
@@ -703,7 +703,7 @@ var _ = Describe("cephfs", func() {
 						e2elog.Failf("failed to delete PVC with error %v", err)
 					}
 
-					err = deleteResource(cephfsExamplePath + "snapshotclass.yaml")
+					err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
 					if err != nil {
 						e2elog.Failf("failed to delete CephFS snapshotclass with error %v", err)
 					}
@@ -782,7 +782,7 @@ var _ = Describe("cephfs", func() {
 						e2elog.Failf("failed to delete snapshot (%s): %v", f.UniqueName, err)
 					}
 
-					err = deleteResource(cephfsExamplePath + "snapshotclass.yaml")
+					err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
 					if err != nil {
 						e2elog.Failf("failed to delete CephFS snapshotclass with error %v", err)
 					}

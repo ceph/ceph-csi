@@ -171,7 +171,7 @@ func deleteRBDSnapshotClass() error {
 }
 
 func createCephFSSnapshotClass(f *framework.Framework) error {
-	scPath := fmt.Sprintf("%s/%s", cephfsExamplePath, "snapshotclass.yaml")
+	scPath := fmt.Sprintf("%s/%s", cephFSExamplePath, "snapshotclass.yaml")
 	sc := getSnapshotClass(scPath)
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-name"] = cephFSProvisionerSecretName
