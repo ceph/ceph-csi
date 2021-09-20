@@ -18,9 +18,9 @@ func init() {
 	log.SetOutput(GinkgoWriter)
 
 	flag.IntVar(&deployTimeout, "deploy-timeout", 10, "timeout to wait for created kubernetes resources")
-	flag.BoolVar(&deployCephFS, "deploy-cephfs", true, "deploy cephfs csi driver")
+	flag.BoolVar(&deployCephFS, "deploy-cephfs", true, "deploy cephFS csi driver")
 	flag.BoolVar(&deployRBD, "deploy-rbd", true, "deploy rbd csi driver")
-	flag.BoolVar(&testCephFS, "test-cephfs", true, "test cephfs csi driver")
+	flag.BoolVar(&testCephFS, "test-cephfs", true, "test cephFS csi driver")
 	flag.BoolVar(&testRBD, "test-rbd", true, "test rbd csi driver")
 	flag.BoolVar(&helmTest, "helm-test", false, "tests running on deployment via helm")
 	flag.BoolVar(&upgradeTesting, "upgrade-testing", false, "perform upgrade testing")

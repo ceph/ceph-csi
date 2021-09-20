@@ -13,7 +13,7 @@ A clear and concise description of what the bug is.
 - Image/version of Ceph CSI driver :
 - Helm chart version :
 - Kernel version :
-- Mounter used for mounting PVC (for cephfs its `fuse` or `kernel`. for rbd its
+- Mounter used for mounting PVC (for cephFS its `fuse` or `kernel`. for rbd its
   `krbd` or `rbd-nbd`) :
 - Kubernetes cluster version :
 - Ceph cluster version :
@@ -61,7 +61,7 @@ If the issue is in PVC mounting please attach complete logs of below containers.
 - if required attach dmesg logs.
 
 **Note:-** If its a rbd issue please provide only rbd related logs, if its a
-cephfs issue please provide cephfs logs.
+cephFS issue please provide cephFS logs.
 
 # Additional context #
 

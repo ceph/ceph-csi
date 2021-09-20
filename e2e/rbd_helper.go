@@ -649,9 +649,9 @@ func sparsifyBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeCla
 	return err
 }
 
-func deletePool(name string, cephfs bool, f *framework.Framework) error {
+func deletePool(name string, cephFS bool, f *framework.Framework) error {
 	cmds := []string{}
-	if cephfs {
+	if cephFS {
 		// ceph fs fail
 		// ceph fs rm myfs --yes-i-really-mean-it
 		// ceph osd pool delete myfs-metadata myfs-metadata

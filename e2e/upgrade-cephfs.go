@@ -37,7 +37,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		appKey   = "app"
 		appLabel = "cephfs-upgrade-testing"
 	)
-	// deploy cephfs CSI
+	// deploy cephFS CSI
 	BeforeEach(func() {
 		if !upgradeTesting || !testCephFS {
 			Skip("Skipping CephFS Upgrade Test")
@@ -60,7 +60,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to upgrade csi with error %v", err)
 		}
-		err = createConfigMap(cephfsDirPath, f.ClientSet, f)
+		err = createConfigMap(cephFSDirPath, f.ClientSet, f)
 		if err != nil {
 			e2elog.Failf("failed to create configmap with error %v", err)
 		}
@@ -108,7 +108,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 			// log all details from the namespace where Ceph-CSI is deployed
 			framework.DumpAllNamespaceInfo(c, cephCSINamespace)
 		}
-		err = deleteConfigMap(cephfsDirPath)
+		err = deleteConfigMap(cephFSDirPath)
 		if err != nil {
 			e2elog.Failf("failed to delete configmap with error %v", err)
 		}
@@ -124,11 +124,11 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		if err != nil {
 			e2elog.Failf("failed to delete node secret with error %v", err)
 		}
-		err = deleteResource(cephfsExamplePath + "storageclass.yaml")
+		err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 		if err != nil {
 			e2elog.Failf("failed to delete storageclass with error %v", err)
 		}
-		err = deleteResource(cephfsExamplePath + "snapshotclass.yaml")
+		err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
 		if err != nil {
 			e2elog.Failf("failed to delete storageclass with error %v", err)
 		}
@@ -148,22 +148,22 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 	Context("Cephfs Upgrade Test", func() {
 		It("Cephfs Upgrade Test", func() {
 			By("checking provisioner deployment is running", func() {
-				err = waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDeploymentComplete(cephFSDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					e2elog.Failf("timeout waiting for deployment %s with error %v", cephfsDeploymentName, err)
+					e2elog.Failf("timeout waiting for deployment %s with error %v", cephFSDeploymentName, err)
 				}
 			})
 			By("checking nodeplugin deamonset pods are running", func() {
-				err = waitForDaemonSets(cephfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDaemonSets(cephFSDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					e2elog.Failf("timeout waiting for daemonset %s with error%v", cephfsDeamonSetName, err)
+					e2elog.Failf("timeout waiting for daemonset %s with error%v", cephFSDeamonSetName, err)
 				}
 			})
 
 			By("upgrade to latest changes and verify app re-mount", func() {
 				// TODO: fetch pvc size from spec.
-				pvcPath := cephfsExamplePath + "pvc.yaml"
-				appPath := cephfsExamplePath + "pod.yaml"
+				pvcPath := cephFSExamplePath + "pvc.yaml"
+				appPath := cephFSExamplePath + "pod.yaml"
 				data := "check data persists"
 				label := make(map[string]string)
 
@@ -218,7 +218,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				// pvc clone is only supported from v1.16+
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
 					// Create snapshot of the pvc
-					snapshotPath := cephfsExamplePath + "snapshot.yaml"
+					snapshotPath := cephFSExamplePath + "snapshot.yaml"
 					snap := getSnapshot(snapshotPath)
 					snap.Name = "cephfs-pvc-snapshot"
 					snap.Namespace = f.UniqueName
@@ -241,14 +241,14 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				}
 				deployCephfsPlugin()
 
-				err = waitForDeploymentComplete(cephfsDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDeploymentComplete(cephFSDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					e2elog.Failf("timeout waiting for upgraded deployment %s with error %v", cephfsDeploymentName, err)
+					e2elog.Failf("timeout waiting for upgraded deployment %s with error %v", cephFSDeploymentName, err)
 				}
 
-				err = waitForDaemonSets(cephfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDaemonSets(cephFSDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					e2elog.Failf("timeout waiting for upgraded daemonset %s with error %v", cephfsDeamonSetName, err)
+					e2elog.Failf("timeout waiting for upgraded daemonset %s with error %v", cephFSDeamonSetName, err)
 				}
 
 				app.Labels = label
@@ -261,8 +261,8 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 			})
 
 			By("Create clone from a snapshot", func() {
-				pvcClonePath := cephfsExamplePath + "pvc-restore.yaml"
-				appClonePath := cephfsExamplePath + "pod-restore.yaml"
+				pvcClonePath := cephFSExamplePath + "pvc-restore.yaml"
+				appClonePath := cephFSExamplePath + "pod-restore.yaml"
 				label := make(map[string]string)
 
 				// pvc clone is only supported from v1.16+
@@ -310,7 +310,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 					}
 
 					// Delete the snapshot of the parent pvc.
-					snapshotPath := cephfsExamplePath + "snapshot.yaml"
+					snapshotPath := cephFSExamplePath + "snapshot.yaml"
 					snap := getSnapshot(snapshotPath)
 					snap.Name = "cephfs-pvc-snapshot"
 					snap.Namespace = f.UniqueName
@@ -324,8 +324,8 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 			})
 
 			By("Create clone from existing PVC", func() {
-				pvcSmartClonePath := cephfsExamplePath + "pvc-clone.yaml"
-				appSmartClonePath := cephfsExamplePath + "pod-clone.yaml"
+				pvcSmartClonePath := cephFSExamplePath + "pvc-clone.yaml"
+				appSmartClonePath := cephFSExamplePath + "pod-clone.yaml"
 				label := make(map[string]string)
 
 				// pvc clone is only supported from v1.16+
