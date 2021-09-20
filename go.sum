@@ -233,8 +233,9 @@ github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ3
 github.com/creack/pty v1.1.11/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/csi-addons/replication-lib-utils v0.2.0 h1:tGs42wfjkObbBo/98a3uxTFWEJ1dq5PIMqPWtdLd040=
 github.com/csi-addons/replication-lib-utils v0.2.0/go.mod h1:ROQlEsc2EerVtc/K/C+6Hx8pqaQ9MVy9xFFpyKfI9lc=
-github.com/csi-addons/spec v0.1.0 h1:y3TOd7qtnwBQPikGa1VvaL7ObyddAZehYW8DNGBlOyc=
 github.com/csi-addons/spec v0.1.0/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
+github.com/csi-addons/spec v0.1.1 h1:Bm9ZVCQ+nYMs7Y5PK+izkzCeer262W4rjCyGpuqu9C4=
+github.com/csi-addons/spec v0.1.1/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
 github.com/cyphar/filepath-securejoin v0.2.2 h1:jCwT2GTP+PY5nBz3c/YL5PAIbusElVrPujOBSCj8xRg=
 github.com/cyphar/filepath-securejoin v0.2.2/go.mod h1:FpkQEhXnPnOthhzymB7CGsFk2G9VLXONKD9G7QGMM+4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

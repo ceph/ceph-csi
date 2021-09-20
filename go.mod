@@ -7,7 +7,7 @@ require (
 	github.com/ceph/go-ceph v0.11.0
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
-	github.com/csi-addons/spec v0.1.0
+	github.com/csi-addons/spec v0.1.1
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
