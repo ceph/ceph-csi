@@ -250,7 +250,7 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, device string, c
 	return devicePath, err
 }
 
-func appendNbdDeviceTypeAndOptions(cmdArgs []string, isThick bool, userOptions string) []string {
+func appendNbdDeviceTypeAndOptions(cmdArgs []string, isThick bool, userOptions, cookie string) []string {
 	cmdArgs = append(cmdArgs, "--device-type", accessTypeNbd)
 
 	isUnmap := CheckSliceContains(cmdArgs, "unmap")
@@ -263,6 +263,10 @@ func appendNbdDeviceTypeAndOptions(cmdArgs []string, isThick bool, userOptions s
 		}
 		if !strings.Contains(userOptions, setNbdIOTimeout) {
 			cmdArgs = append(cmdArgs, "--options", fmt.Sprintf("%s=%d", setNbdIOTimeout, defaultNbdIOTimeout))
+		}
+
+		if hasNBDCookieSupport {
+			cmdArgs = append(cmdArgs, "--options", fmt.Sprintf("cookie=%s", cookie))
 		}
 
 		if isThick {
@@ -309,7 +313,7 @@ func appendKRbdDeviceTypeAndOptions(cmdArgs []string, isThick bool, userOptions 
 
 // appendRbdNbdCliOptions append mandatory options and convert list of useroptions
 // provided for rbd integrated cli to rbd-nbd cli format specific.
-func appendRbdNbdCliOptions(cmdArgs []string, userOptions string) []string {
+func appendRbdNbdCliOptions(cmdArgs []string, userOptions, cookie string) []string {
 	if !strings.Contains(userOptions, useNbdNetlink) {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s", useNbdNetlink))
 	}
@@ -318,6 +322,9 @@ func appendRbdNbdCliOptions(cmdArgs []string, userOptions string) []string {
 	}
 	if !strings.Contains(userOptions, setNbdIOTimeout) {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%d", setNbdIOTimeout, defaultNbdIOTimeout))
+	}
+	if hasNBDCookieSupport {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--cookie=%s", cookie))
 	}
 	if userOptions != "" {
 		options := strings.Split(userOptions, ",")
@@ -362,11 +369,11 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 		// TODO: use rbd cli for attach/detach in the future
 		cli = rbdNbdMounter
 		mapArgs = append(mapArgs, "attach", imagePath, "--device", device)
-		mapArgs = appendRbdNbdCliOptions(mapArgs, volOpt.MapOptions)
+		mapArgs = appendRbdNbdCliOptions(mapArgs, volOpt.MapOptions, volOpt.VolID)
 	} else {
 		mapArgs = append(mapArgs, "map", imagePath)
 		if isNbd {
-			mapArgs = appendNbdDeviceTypeAndOptions(mapArgs, isThick, volOpt.MapOptions)
+			mapArgs = appendNbdDeviceTypeAndOptions(mapArgs, isThick, volOpt.MapOptions, volOpt.VolID)
 		} else {
 			mapArgs = appendKRbdDeviceTypeAndOptions(mapArgs, isThick, volOpt.MapOptions)
 		}
@@ -476,7 +483,7 @@ func detachRBDImageOrDeviceSpec(
 
 	unmapArgs := []string{"unmap", dArgs.imageOrDeviceSpec}
 	if dArgs.isNbd {
-		unmapArgs = appendNbdDeviceTypeAndOptions(unmapArgs, false, dArgs.unmapOptions)
+		unmapArgs = appendNbdDeviceTypeAndOptions(unmapArgs, false, dArgs.unmapOptions, dArgs.volumeID)
 	} else {
 		unmapArgs = appendKRbdDeviceTypeAndOptions(unmapArgs, false, dArgs.unmapOptions)
 	}
