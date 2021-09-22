@@ -34,7 +34,7 @@ DriverInfo:
     persistence: true
 
     # Volume ownership via fsGroup
-    fsGroup: true
+    fsGroup: false
 
     # Raw block mode
     block: false
