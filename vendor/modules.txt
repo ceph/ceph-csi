@@ -47,6 +47,8 @@ github.com/aws/aws-sdk-go/service/sts/stsiface
 github.com/beorn7/perks/quantile
 # github.com/blang/semver v3.5.1+incompatible
 github.com/blang/semver
+# github.com/cenkalti/backoff/v3 v3.0.0
+github.com/cenkalti/backoff/v3
 # github.com/ceph/go-ceph v0.11.0
 ## explicit
 github.com/ceph/go-ceph/cephfs/admin
@@ -135,7 +137,7 @@ github.com/grpc-ecosystem/grpc-gateway/utilities
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-cleanhttp v0.5.1
 github.com/hashicorp/go-cleanhttp
-# github.com/hashicorp/go-hclog v0.14.1
+# github.com/hashicorp/go-hclog v0.16.1
 github.com/hashicorp/go-hclog
 # github.com/hashicorp/go-multierror v1.1.0
 github.com/hashicorp/go-multierror
@@ -160,10 +162,10 @@ github.com/hashicorp/hcl/json/token
 # github.com/hashicorp/vault v1.4.2
 github.com/hashicorp/vault/command/agent/auth
 github.com/hashicorp/vault/command/agent/auth/kubernetes
-# github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a => github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
+# github.com/hashicorp/vault/api v1.1.1
 ## explicit
 github.com/hashicorp/vault/api
-# github.com/hashicorp/vault/sdk v0.1.14-0.20200519221838-e0cfd64bc267 => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
+# github.com/hashicorp/vault/sdk v0.2.1 => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
 github.com/hashicorp/vault/sdk/helper/compressutil
 github.com/hashicorp/vault/sdk/helper/consts
 github.com/hashicorp/vault/sdk/helper/hclutil
@@ -190,7 +192,7 @@ github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1
 github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1beta1
 github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned/scheme
 github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned/typed/volumesnapshot/v1
-# github.com/libopenstorage/secrets v0.0.0-20210709082113-dde442ea20ec
+# github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
 ## explicit
 github.com/libopenstorage/secrets
 github.com/libopenstorage/secrets/vault
@@ -1056,7 +1058,6 @@ sigs.k8s.io/structured-merge-diff/v4/value
 sigs.k8s.io/yaml
 # code.cloudfoundry.org/gofileutils => github.com/cloudfoundry/gofileutils v0.0.0-20170111115228-4d0c80011a0f
 # github.com/golang/protobuf => github.com/golang/protobuf v1.4.3
-# github.com/hashicorp/vault/api => github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a
 # github.com/hashicorp/vault/sdk => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
 # github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 # gomodules.xyz/jsonpatch/v2 => github.com/gomodules/jsonpatch/v2 v2.2.0
