@@ -1105,7 +1105,7 @@ func cloneFromSnapshot(
 	defer vol.Destroy()
 
 	if rbdVol.isEncrypted() {
-		err = rbdVol.copyEncryptionConfig(&vol.rbdImage)
+		err = rbdVol.copyEncryptionConfig(&vol.rbdImage, false)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -1224,7 +1224,7 @@ func (cs *ControllerServer) doSnapshotClone(
 	}()
 
 	if parentVol.isEncrypted() {
-		cryptErr := parentVol.copyEncryptionConfig(&cloneRbd.rbdImage)
+		cryptErr := parentVol.copyEncryptionConfig(&cloneRbd.rbdImage, false)
 		if cryptErr != nil {
 			log.WarningLog(ctx, "failed copy encryption "+
 				"config for %q: %v", cloneRbd, cryptErr)

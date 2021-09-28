@@ -123,7 +123,11 @@ func (ri *rbdImage) setupEncryption(ctx context.Context) error {
 // rbdImage to the passed argument. This function re-encrypts the passphrase
 // from the original, so that both encrypted passphrases (potentially, depends
 // on the DEKStore) have different contents.
-func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage) error {
+// When copyOnlyPassphrase is set to true, only the passphrase is copied to the
+// destination rbdImage's VolumeEncryption object which needs to be initialized
+// beforehand and is possibly different from the source VolumeEncryption
+// (Usecase: Restoring snapshot into a storageclass with different encryption config).
+func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage, copyOnlyPassphrase bool) error {
 	if ri.VolID == cp.VolID {
 		return fmt.Errorf("BUG: %q and %q have the same VolID (%s) "+
 			"set!? Call stack: %s", ri, cp, ri.VolID, util.CallStack())
@@ -136,9 +140,11 @@ func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage) error {
 			ri, err)
 	}
 
-	cp.encryption, err = util.NewVolumeEncryption(ri.encryption.GetID(), ri.encryption.KMS)
-	if errors.Is(err, util.ErrDEKStoreNeeded) {
-		cp.encryption.SetDEKStore(cp)
+	if !copyOnlyPassphrase {
+		cp.encryption, err = util.NewVolumeEncryption(ri.encryption.GetID(), ri.encryption.KMS)
+		if errors.Is(err, util.ErrDEKStoreNeeded) {
+			cp.encryption.SetDEKStore(cp)
+		}
 	}
 
 	// re-encrypt the plain passphrase for the cloned volume
@@ -178,7 +184,7 @@ func (ri *rbdImage) repairEncryptionConfig(dest *rbdImage) error {
 			dest.conn = ri.conn.Copy()
 		}
 
-		return ri.copyEncryptionConfig(dest)
+		return ri.copyEncryptionConfig(dest, false)
 	}
 
 	return nil
