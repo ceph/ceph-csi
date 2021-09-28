@@ -333,7 +333,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	}
 
 	if parentVol != nil && parentVol.isEncrypted() {
-		err = parentVol.copyEncryptionConfig(&rv.rbdImage)
+		err = parentVol.copyEncryptionConfig(&rv.rbdImage, false)
 		if err != nil {
 			util.ErrorLog(ctx, err.Error())
 
