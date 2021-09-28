@@ -161,7 +161,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 	}
 
 	if parentVol.isEncrypted() {
-		err = parentVol.copyEncryptionConfig(&rv.rbdImage)
+		err = parentVol.copyEncryptionConfig(&rv.rbdImage, false)
 		if err != nil {
 			return fmt.Errorf("failed to copy encryption config for %q: %w", rv, err)
 		}
