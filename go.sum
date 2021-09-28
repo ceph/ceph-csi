@@ -155,7 +155,10 @@ github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dR
 github.com/boltdb/bolt v1.3.1/go.mod h1:clJnj/oiGkjum5o1McbSZDSLxVThjynRyGBgiAx27Ps=
 github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc/go.mod h1:paBWMcWSl3LHKBqUq+rly7CNSldXjb2rDl3JlRe0mD8=
 github.com/briankassouf/jose v0.9.2-0.20180619214549-d2569464773f/go.mod h1:HQhVmdUf7dBNwIIdBTivnCDxcf6IZY3/zrb+uKSJz6Y=
+github.com/cenkalti/backoff v2.2.1+incompatible h1:tNowT99t7UNflLxfYYSlKYsBpXdEet03Pg2g16Swow4=
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
+github.com/cenkalti/backoff/v3 v3.0.0 h1:ske+9nBpD9qZsTBoF41nW5L+AIuFBKMeze18XQ3eG1c=
+github.com/cenkalti/backoff/v3 v3.0.0/go.mod h1:cIeZDE3IrqwwJl6VUwCN6trj1oXrTS4rc0ij+ULvLYs=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/centrify/cloud-golang-sdk v0.0.0-20190214225812-119110094d0f/go.mod h1:C0rtzmGXgN78pYR0tGJFhtHgkbAs0lIbHwkB81VxDQE=
 github.com/ceph/go-ceph v0.11.0 h1:A1pphV40LL8GQKDPpU4XqCa7gkmozsst7rhCC730/nk=
@@ -486,8 +489,9 @@ github.com/hashicorp/go-hclog v0.9.1/go.mod h1:5CU+agLiy3J7N7QjHK5d05KxGsuXiQLrj
 github.com/hashicorp/go-hclog v0.9.2/go.mod h1:5CU+agLiy3J7N7QjHK5d05KxGsuXiQLrjA0H7acj2lQ=
 github.com/hashicorp/go-hclog v0.10.1/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
 github.com/hashicorp/go-hclog v0.12.0/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
-github.com/hashicorp/go-hclog v0.14.1 h1:nQcJDQwIAGnmoUWp8ubocEX40cCml/17YkF6csQLReU=
 github.com/hashicorp/go-hclog v0.14.1/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
+github.com/hashicorp/go-hclog v0.16.1 h1:IVQwpTGNRRIHafnTs2dQLIk4ENtneRIEEJWOVDqz99o=
+github.com/hashicorp/go-hclog v0.16.1/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
 github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-immutable-radix v1.1.0 h1:vN9wG1D6KG6YHRTWr8512cxGOVgTMEfgEdSj/hr8MPc=
 github.com/hashicorp/go-immutable-radix v1.1.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
@@ -508,6 +512,7 @@ github.com/hashicorp/go-plugin v1.0.1/go.mod h1:++UyYGoz3o5w9ZzAdZxtQKrWWP+iqPBn
 github.com/hashicorp/go-raftchunking v0.6.3-0.20191002164813-7e9e8525653a h1:FmnBDwGwlTgugDGbVxwV8UavqSMACbGrUpfc98yFLR4=
 github.com/hashicorp/go-raftchunking v0.6.3-0.20191002164813-7e9e8525653a/go.mod h1:xbXnmKqX9/+RhPkJ4zrEx4738HacP72aaUPlT2RZ4sU=
 github.com/hashicorp/go-retryablehttp v0.5.3/go.mod h1:9B5zBasrRhHXnJnui7y6sL7es7NDiJgTc6Er0maI1Xs=
+github.com/hashicorp/go-retryablehttp v0.5.4/go.mod h1:9B5zBasrRhHXnJnui7y6sL7es7NDiJgTc6Er0maI1Xs=
 github.com/hashicorp/go-retryablehttp v0.6.2/go.mod h1:gEx6HMUGxYYhJScX7W1Il64m6cc2C1mDaW3NQ9sY1FY=
 github.com/hashicorp/go-retryablehttp v0.6.6 h1:HJunrbHTDDbBb/ay4kxa1n+dLmttUlnP3V9oNE4hmsM=
 github.com/hashicorp/go-retryablehttp v0.6.6/go.mod h1:vAew36LZh98gCBJNLH42IQ1ER/9wtLZZ8meHqQvEYWY=
@@ -570,8 +575,15 @@ github.com/hashicorp/vault-plugin-secrets-gcpkms v0.5.5/go.mod h1:b6RwFD1bny1zbf
 github.com/hashicorp/vault-plugin-secrets-kv v0.5.5/go.mod h1:oNyUoMMQq6uNTwyYPnkldiedaknYbPfQIdKoyKQdy2g=
 github.com/hashicorp/vault-plugin-secrets-mongodbatlas v0.1.2/go.mod h1:YRW9zn9NZNitRlPYNAWRp/YEdKCF/X8aOg8IYSxFT5Y=
 github.com/hashicorp/vault-plugin-secrets-openldap v0.1.3-0.20200518214608-746aba5fead6/go.mod h1:9Cy4Jp779BjuIOhYLjEfH3M3QCUxZgPnvJ3tAOOmof4=
-github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a h1:1DIoo5Mqq4RKFpL2iOmrX7DJIdMLiAt1Tv5f8nMJqRI=
+github.com/hashicorp/vault/api v1.0.1/go.mod h1:AV/+M5VPDpB90arloVX0rVDUIHkONiwz5Uza9HRtpUE=
+github.com/hashicorp/vault/api v1.0.5-0.20190730042357-746c0b111519/go.mod h1:i9PKqwFko/s/aihU1uuHGh/FaQS+Xcgvd9dvnfAvQb0=
+github.com/hashicorp/vault/api v1.0.5-0.20191122173911-80fcc7907c78/go.mod h1:Uf8LaHyrYsgVgHzO2tMZKhqRGlL3UJ6XaSwW2EA1Iqo=
+github.com/hashicorp/vault/api v1.0.5-0.20200215224050-f6547fa8e820/go.mod h1:3f12BMfgDGjTsTtIUj+ZKZwSobQpZtYGFIEehOv5z1o=
+github.com/hashicorp/vault/api v1.0.5-0.20200317185738-82f498082f02/go.mod h1:3f12BMfgDGjTsTtIUj+ZKZwSobQpZtYGFIEehOv5z1o=
+github.com/hashicorp/vault/api v1.0.5-0.20200519221902-385fac77e20f/go.mod h1:euTFbi2YJgwcju3imEt919lhJKF68nN1cQPq3aA+kBE=
 github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a/go.mod h1:R3Umvhlxi2TN7Ex2hzOowyeNb+SfbVWI973N+ctaFMk=
+github.com/hashicorp/vault/api v1.1.1 h1:907ld+Z9cALyvbZK2qUX9cLwvSaEQsMVQB3x2KE8+AI=
+github.com/hashicorp/vault/api v1.1.1/go.mod h1:29UXcn/1cLOPHQNMWA7bCz2By4PSd0VKPAydKXS5yN0=
 github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b h1:vQeIf4LdAqtYoD3N6KSiYilntYZq0F0vxcBTlx/69wg=
 github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b/go.mod h1:cAGI4nVnEfAyMeqt9oB+Mase8DNn3qA/LDNHURiwssY=
 github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb/go.mod h1:+NfK9FKeTrX5uv1uIXGdwYDTeHna2qgaIlx54MXqjAM=
@@ -662,8 +674,8 @@ github.com/libopenstorage/autopilot-api v0.6.1-0.20210128210103-5fbb67948648/go.
 github.com/libopenstorage/openstorage v1.0.0/go.mod h1:Sp1sIObHjat1BeXhfMqLZ14wnOzEhNx2YQedreMcUyc=
 github.com/libopenstorage/openstorage v8.0.0+incompatible/go.mod h1:Sp1sIObHjat1BeXhfMqLZ14wnOzEhNx2YQedreMcUyc=
 github.com/libopenstorage/operator v0.0.0-20200725001727-48d03e197117/go.mod h1:Qh+VXOB6hj60VmlgsmY+R1w+dFuHK246UueM4SAqZG0=
-github.com/libopenstorage/secrets v0.0.0-20210709082113-dde442ea20ec h1:ezv9ybzCRb86E8aMgG7/GcNSRU/72D0BVEhkNjnCEz8=
-github.com/libopenstorage/secrets v0.0.0-20210709082113-dde442ea20ec/go.mod h1:gE8rSd6lwLNXNbiW3DrRZjFMs+y4fDHy/6uiOO9cdzY=
+github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a h1:A4GqCY7+LrLmO0F1EK27iLqa5ZuvWeaVwGvhmzFb12s=
+github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a/go.mod h1:gE8rSd6lwLNXNbiW3DrRZjFMs+y4fDHy/6uiOO9cdzY=
 github.com/libopenstorage/stork v1.3.0-beta1.0.20200630005842-9255e7a98775/go.mod h1:qBSzYTJVHlOMg5RINNiHD1kBzlasnrc2uKLPZLgu1Qs=
 github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de/go.mod h1:zAbeS9B/r2mtpb6U+EI2rYA5OAXxsYw6wTamcNW+zcE=
 github.com/lithammer/dedent v1.1.0/go.mod h1:jrXYCQtgg0nJiN+StA2KgR7w6CiQNv9Fd/Z9BP0jIOc=
