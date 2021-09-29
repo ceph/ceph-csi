@@ -758,7 +758,8 @@ func validatePVCClone(
 func validatePVCSnapshot(
 	totalCount int,
 	pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string,
-	kms kmsConfig,
+	kms, restoreKMS kmsConfig,
+	restoreSCName string,
 	f *framework.Framework) {
 	var wg sync.WaitGroup
 	wgErrs := make([]error, totalCount)
@@ -859,6 +860,9 @@ func validatePVCSnapshot(
 	pvcClone.Namespace = f.UniqueName
 	appClone.Namespace = f.UniqueName
 	pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
+	if restoreSCName != "" {
+		pvcClone.Spec.StorageClassName = &restoreSCName
+	}
 
 	// create multiple PVC from same snapshot
 	wg.Add(totalCount)
@@ -872,6 +876,26 @@ func validatePVCSnapshot(
 				LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
 			}
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+			if wgErrs[n] == nil && restoreKMS != noKMS {
+				if restoreKMS.canGetPassphrase() {
+					imageData, sErr := getImageInfoFromPVC(p.Namespace, name, f)
+					if sErr != nil {
+						wgErrs[n] = fmt.Errorf(
+							"failed to get image info for %s namespace=%s volumehandle=%s error=%w",
+							name,
+							p.Namespace,
+							imageData.csiVolumeHandle,
+							sErr)
+					} else {
+						// check new passphrase created
+						_, stdErr := restoreKMS.getPassphrase(f, imageData.csiVolumeHandle)
+						if stdErr != "" {
+							wgErrs[n] = fmt.Errorf("failed to read passphrase from vault: %s", stdErr)
+						}
+					}
+				}
+				wgErrs[n] = isEncryptedPVC(f, &p, &a)
+			}
 			if wgErrs[n] == nil {
 				filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				var checkSumClone string
@@ -887,9 +911,6 @@ func validatePVCSnapshot(
 						checkSum,
 						checkSumClone)
 				}
-			}
-			if wgErrs[n] == nil && kms != noKMS {
-				wgErrs[n] = isEncryptedPVC(f, &p, &a)
 			}
 			wg.Done()
 		}(i, *pvcClone, *appClone)

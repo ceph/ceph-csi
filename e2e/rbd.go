@@ -1102,7 +1102,8 @@ var _ = Describe("RBD", func() {
 						snapshotPath,
 						pvcClonePath,
 						appClonePath,
-						noKMS,
+						noKMS, noKMS,
+						defaultSCName,
 						f)
 				}
 			})
@@ -1169,7 +1170,11 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 
-				validatePVCSnapshot(1, pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath, vaultKMS, f)
+				validatePVCSnapshot(1,
+					pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath,
+					vaultKMS, vaultKMS,
+					defaultSCName,
+					f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
