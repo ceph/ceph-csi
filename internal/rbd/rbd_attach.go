@@ -67,10 +67,13 @@ const (
 	setNbdIOTimeout = "io-timeout"
 )
 
-var hasNBD = false
+var (
+	hasNBD              = true
+	hasNBDCookieSupport = false
+)
 
 func init() {
-	hasNBD = checkRbdNbdTools()
+	setRbdNbdToolFeatures()
 }
 
 // rbdDeviceInfo strongly typed JSON spec for rbd device list output (of type krbd).
@@ -193,27 +196,30 @@ func waitForPath(ctx context.Context, pool, namespace, image string, maxRetries 
 	return "", false
 }
 
-// Check if rbd-nbd tools are installed.
-func checkRbdNbdTools() bool {
+// set features available with rbd-nbd, and NBD module loaded status.
+func setRbdNbdToolFeatures() {
 	// check if the module is loaded or compiled in
 	_, err := os.Stat(fmt.Sprintf("/sys/module/%s", moduleNbd))
 	if os.IsNotExist(err) {
 		// try to load the module
 		_, _, err = util.ExecCommand(context.TODO(), "modprobe", moduleNbd)
 		if err != nil {
-			log.ExtendedLogMsg("rbd-nbd: nbd modprobe failed with error %v", err)
-
-			return false
+			hasNBD = false
+			log.WarningLogMsg("rbd-nbd: nbd modprobe failed with error %v", err)
 		}
 	}
-	if _, _, err := util.ExecCommand(context.TODO(), rbdTonbd, "--version"); err != nil {
-		log.ExtendedLogMsg("rbd-nbd: running rbd-nbd --version failed with error %v", err)
 
-		return false
+	stdout, stderr, err := util.ExecCommand(context.TODO(), rbdTonbd, "--help")
+	if err != nil || stderr != "" {
+		hasNBD = false
+		log.WarningLogMsg("running rbd-nbd --help failed with error:%v, stderr:%s", err, stderr)
 	}
-	log.ExtendedLogMsg("rbd-nbd tools were found.")
 
-	return true
+	if strings.Contains(stdout, "--cookie") {
+		hasNBDCookieSupport = true
+	}
+
+	log.DefaultLog("NBD module loaded: %t, rbd-nbd supported features, cookie: %t", hasNBD, hasNBDCookieSupport)
 }
 
 func attachRBDImage(ctx context.Context, volOptions *rbdVolume, device string, cr *util.Credentials) (string, error) {
