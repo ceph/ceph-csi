@@ -102,6 +102,9 @@ go-test: GO_COVER_DIR ?= $(shell . $(CURDIR)/build.env ; echo $${GO_COVER_DIR})
 go-test: check-env
 	TEST_COVERAGE="$(TEST_COVERAGE)" GO_COVER_DIR="$(GO_COVER_DIR)" GO_TAGS="$(GO_TAGS)" ./scripts/test-go.sh
 
+go-test-api: check-env
+	@pushd api/deploy/ocp && go test -v ./... && popd
+
 mod-check: check-env
 	@echo 'running: go mod verify'
 	@go mod verify && [ "$(shell sha512sum go.mod)" = "`sha512sum go.mod`" ] || ( echo "ERROR: go.mod was modified by 'go mod verify'" && false )
@@ -159,6 +162,9 @@ cephcsi: check-env
 
 e2e.test: check-env
 	go test $(GO_TAGS) -mod=vendor -c ./e2e
+
+deploy/scc.yaml: api/deploy/ocp/scc.go
+	$(MAKE) -C tools generate-deploy
 
 #
 # e2e testing by compiling e2e.test in case it does not exist and running the
