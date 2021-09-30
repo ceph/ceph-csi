@@ -1014,6 +1014,63 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("Validate PVC restore from vaultKMS to vaultTenantSAKMS", func() {
+				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
+					Skip("pvc clone is only supported from v1.16+")
+				}
+				restoreSCName := "restore-sc"
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+				scOpts := map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "vault-test",
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+
+				scOpts = map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "vault-tenant-sa-test",
+				}
+				err = createRBDStorageClass(f.ClientSet, f, restoreSCName, nil, scOpts, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+
+				err = createTenantServiceAccount(f.ClientSet, f.UniqueName)
+				if err != nil {
+					e2elog.Failf("failed to create ServiceAccount: %v", err)
+				}
+				defer deleteTenantServiceAccount(f.UniqueName)
+
+				validatePVCSnapshot(1,
+					pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath,
+					vaultKMS, vaultTenantSAKMS,
+					restoreSCName, f)
+
+				err = retryKubectlArgs(cephCSINamespace, kubectlDelete, deployTimeout, "storageclass", restoreSCName)
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass %q: %v", restoreSCName, err)
+				}
+
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+			})
+
 			By("create an encrypted PVC-PVC clone and bind it to an app", func() {
 				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
 					Skip("pvc clone is only supported from v1.16+")
