@@ -60,7 +60,8 @@ var (
 	snapshotPath           = rbdExamplePath + "snapshot.yaml"
 	defaultCloneCount      = 10
 
-	nbdMapOptions = "debug-rbd=20"
+	nbdMapOptions             = "debug-rbd=20"
+	e2eDefaultCephLogStrategy = "preserve"
 )
 
 func deployRBDPlugin() {
@@ -477,8 +478,9 @@ var _ = Describe("RBD", func() {
 					defaultSCName,
 					nil,
 					map[string]string{
-						"mounter":    "rbd-nbd",
-						"mapOptions": nbdMapOptions,
+						"mounter":         "rbd-nbd",
+						"mapOptions":      nbdMapOptions,
+						"cephLogStrategy": e2eDefaultCephLogStrategy,
 					},
 					deletePolicy)
 				if err != nil {
@@ -513,8 +515,9 @@ var _ = Describe("RBD", func() {
 						defaultSCName,
 						nil,
 						map[string]string{
-							"mounter":    "rbd-nbd",
-							"mapOptions": nbdMapOptions,
+							"mounter":         "rbd-nbd",
+							"mapOptions":      nbdMapOptions,
+							"cephLogStrategy": e2eDefaultCephLogStrategy,
 						},
 						deletePolicy)
 					if err != nil {
@@ -558,8 +561,9 @@ var _ = Describe("RBD", func() {
 					defaultSCName,
 					nil,
 					map[string]string{
-						"mounter":    "rbd-nbd",
-						"mapOptions": nbdMapOptions,
+						"mounter":         "rbd-nbd",
+						"mapOptions":      nbdMapOptions,
+						"cephLogStrategy": e2eDefaultCephLogStrategy,
 					},
 					deletePolicy)
 				if err != nil {
@@ -712,9 +716,10 @@ var _ = Describe("RBD", func() {
 					defaultSCName,
 					nil,
 					map[string]string{
-						"mounter":    "rbd-nbd",
-						"mapOptions": nbdMapOptions,
-						"encrypted":  "true",
+						"mounter":         "rbd-nbd",
+						"mapOptions":      nbdMapOptions,
+						"cephLogStrategy": e2eDefaultCephLogStrategy,
+						"encrypted":       "true",
 					},
 					deletePolicy)
 				if err != nil {
@@ -1069,9 +1074,10 @@ var _ = Describe("RBD", func() {
 						defaultSCName,
 						nil,
 						map[string]string{
-							"imageFeatures": "layering,journaling,exclusive-lock",
-							"mounter":       "rbd-nbd",
-							"mapOptions":    nbdMapOptions,
+							"imageFeatures":   "layering,journaling,exclusive-lock",
+							"mounter":         "rbd-nbd",
+							"mapOptions":      nbdMapOptions,
+							"cephLogStrategy": e2eDefaultCephLogStrategy,
 						},
 						deletePolicy)
 					if err != nil {
