@@ -1327,6 +1327,7 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 // retryKubectlArgs takes a namespace and action telling kubectl what to do
 // with the passed arguments. This function retries until no error occurred, or
 // the timeout passed.
+// nolint:unparam // retryKubectlArgs will be used with kubectlDelete arg later on.
 func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...string) error {
 	timeout := time.Duration(t) * time.Minute
 	args = append([]string{string(action)}, args...)
