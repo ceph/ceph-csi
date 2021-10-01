@@ -150,11 +150,10 @@ func healerStageTransaction(ctx context.Context, cr *util.Credentials, volOps *r
 }
 
 // getClusterIDFromMigrationVolume fills the clusterID for the passed in monitors.
-func getClusterIDFromMigrationVolume(parameters map[string]string) (string, error) {
+func getClusterIDFromMigrationVolume(monitors string) (string, error) {
 	var err error
 	var rclusterID string
-	mons := parameters["monitors"]
-	for _, m := range strings.Split(mons, ",") {
+	for _, m := range strings.Split(monitors, ",") {
 		rclusterID, err = util.GetClusterIDFromMon(m)
 		if err != nil && !errors.Is(err, util.ErrMissingConfigForMonitor) {
 			return "", err
@@ -294,7 +293,7 @@ func (ns *NodeServer) NodeStageVolume(
 	// Check this is a migration request because in that case, unlike other node stage requests
 	// it will be missing the clusterID, so fill it by fetching it from config file using mon.
 	if req.GetVolumeContext()[intreeMigrationKey] == intreeMigrationLabel && req.VolumeContext[util.ClusterIDKey] == "" {
-		cID, cErr := getClusterIDFromMigrationVolume(req.GetVolumeContext())
+		cID, cErr := getClusterIDFromMigrationVolume(req.GetVolumeContext()["monitors"])
 		if cErr != nil {
 			return nil, status.Error(codes.Internal, cErr.Error())
 		}

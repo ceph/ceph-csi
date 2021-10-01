@@ -74,9 +74,23 @@ const (
 	thickProvisionMetaData = "true"
 	thinProvisionMetaData  = "false"
 
-	// these are the migration label key and value for parameters in volume context.
+	// migration label key and value for parameters in volume context.
 	intreeMigrationKey   = "migration"
 	intreeMigrationLabel = "true"
+	migInTreeImagePrefix = "kubernetes-dynamic-pvc-"
+	// migration volume handle identifiers.
+	// total length of fields in the migration volume handle.
+	migVolIDTotalLength = 4
+	// split boundary length of fields.
+	migVolIDSplitLength = 3
+	// separator for migration handle fields.
+	migVolIDFieldSep = "_"
+	// identifier of a migration vol handle.
+	migIdentifier = "mig"
+	// prefix of image field.
+	migImageNamePrefix = "image-"
+	// prefix in the handle for monitors field.
+	migMonPrefix = "mons-"
 )
 
 // rbdImage contains common attributes and methods for the rbdVolume and
@@ -173,6 +187,14 @@ type imageFeature struct {
 	needRbdNbd bool
 	// dependsOn is the image features required for this imageFeature
 	dependsOn []string
+}
+
+// migrationvolID is a struct which consists of required fields of a rbd volume
+// from migrated volumeID.
+type migrationVolID struct {
+	imageName string
+	poolName  string
+	clusterID string
 }
 
 var supportedFeatures = map[string]imageFeature{

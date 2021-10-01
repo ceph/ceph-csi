@@ -833,6 +833,16 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 	defer cs.OperationLocks.ReleaseDeleteLock(volumeID)
 
+	if isMigrationVolID(volumeID) {
+		log.DebugLog(ctx, "migration volume ID : %s", volumeID)
+		err = parseAndDeleteMigratedVolume(ctx, volumeID, cr)
+		if err != nil && !errors.Is(err, ErrImageNotFound) {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		return &csi.DeleteVolumeResponse{}, nil
+	}
+
 	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {

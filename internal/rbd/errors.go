@@ -34,4 +34,12 @@ var (
 	ErrMissingStash = errors.New("missing stash")
 	// ErrFlattenInProgress is returned when flatten is in progress for an image.
 	ErrFlattenInProgress = errors.New("flatten in progress")
+	// ErrMissingMonitorsInVolID is returned when monitor information is missing in migration volID.
+	ErrMissingMonitorsInVolID = errors.New("monitor information can not be empty in volID")
+	// ErrMissingPoolNameInVolID is returned when pool information is missing in migration volID.
+	ErrMissingPoolNameInVolID = errors.New("pool information can not be empty in volID")
+	// ErrMissingImageNameInVolID is returned when image name information is missing in migration volID.
+	ErrMissingImageNameInVolID = errors.New("rbd image name information can not be empty in volID")
+	// ErrDecodeClusterIDFromMonsInVolID is returned when mons hash decoding on migration volID.
+	ErrDecodeClusterIDFromMonsInVolID = errors.New("failed to get clusterID from monitors hash in volID")
 )
