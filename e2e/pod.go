@@ -374,6 +374,7 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 	})
 }
 
+// nolint:unparam // currently skipNotFound is always false, this can change in the future
 func deletePodWithLabel(label, ns string, skipNotFound bool) error {
 	err := retryKubectlArgs(
 		ns,
