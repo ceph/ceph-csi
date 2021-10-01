@@ -602,6 +602,10 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to mark %q thick-provisioned: %s", rbdVol, err)
 		}
+		err = parentVol.copyEncryptionConfig(&rbdVol.rbdImage, true)
+		if err != nil {
+			return status.Errorf(codes.Internal, err.Error())
+		}
 	} else {
 		// create clone image and delete snapshot
 		err = rbdVol.cloneRbdImageFromSnapshot(ctx, rbdSnap, parentVol)
