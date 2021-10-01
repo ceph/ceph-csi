@@ -76,7 +76,10 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 }
 
 // createCustomConfigMap provides multiple clusters information.
-func createCustomConfigMap(c kubernetes.Interface, pluginPath string, subvolgrpInfo map[string]string) error {
+func createCustomConfigMap(
+	c kubernetes.Interface,
+	pluginPath string,
+	clusterInfo map[string]map[string]string) error {
 	path := pluginPath + configMap
 	cm := v1.ConfigMap{}
 	err := unmarshal(path, &cm)
@@ -90,7 +93,7 @@ func createCustomConfigMap(c kubernetes.Interface, pluginPath string, subvolgrpI
 	}
 	// get clusterIDs
 	var clusterID []string
-	for key := range subvolgrpInfo {
+	for key := range clusterInfo {
 		clusterID = append(clusterID, key)
 	}
 	conmap := []util.ClusterInfo{
@@ -103,9 +106,27 @@ func createCustomConfigMap(c kubernetes.Interface, pluginPath string, subvolgrpI
 			Monitors:  mons,
 		},
 	}
-	for i := 0; i < len(subvolgrpInfo); i++ {
-		conmap[i].CephFS.SubvolumeGroup = subvolgrpInfo[clusterID[i]]
+
+	// fill radosNamespace and subvolgroups
+	for cluster, confItems := range clusterInfo {
+		for i, j := range confItems {
+			switch i {
+			case "subvolumeGroup":
+				for c := range conmap {
+					if conmap[c].ClusterID == cluster {
+						conmap[c].CephFS.SubvolumeGroup = j
+					}
+				}
+			case "radosNamespace":
+				for c := range conmap {
+					if conmap[c].ClusterID == cluster {
+						conmap[c].RadosNamespace = j
+					}
+				}
+			}
+		}
 	}
+
 	data, err := json.Marshal(conmap)
 	if err != nil {
 		return err
