@@ -1071,6 +1071,78 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("Validate thick PVC restore from vaultKMS to userSecretsMetadataKMS", func() {
+				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
+					Skip("pvc clone is only supported from v1.16+")
+				}
+				restoreSCName := "restore-sc"
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+				scOpts := map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "vault-test",
+					"thickProvision":  "true",
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+
+				scOpts = map[string]string{
+					"encrypted":       "true",
+					"encryptionKMSID": "user-secrets-metadata-test",
+					"thickProvision":  "true",
+				}
+				err = createRBDStorageClass(f.ClientSet, f, restoreSCName, nil, scOpts, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+
+				// PVC creation namespace where secret will be created
+				namespace := f.UniqueName
+
+				// create user Secret
+				err = retryKubectlFile(namespace, kubectlCreate, vaultExamplePath+vaultUserSecret, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create user Secret: %v", err)
+				}
+
+				validatePVCSnapshot(1,
+					pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath,
+					vaultKMS, secretsMetadataKMS,
+					restoreSCName, f)
+
+				// delete user secret
+				err = retryKubectlFile(namespace,
+					kubectlDelete,
+					vaultExamplePath+vaultUserSecret,
+					deployTimeout,
+					"--ignore-not-found=true")
+				if err != nil {
+					e2elog.Failf("failed to delete user Secret: %v", err)
+				}
+
+				err = retryKubectlArgs(cephCSINamespace, kubectlDelete, deployTimeout, "storageclass", restoreSCName)
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass %q: %v", restoreSCName, err)
+				}
+
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+			})
+
 			By("create an encrypted PVC-PVC clone and bind it to an app", func() {
 				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
 					Skip("pvc clone is only supported from v1.16+")
