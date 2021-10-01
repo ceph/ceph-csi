@@ -49,6 +49,9 @@ github.com/beorn7/perks/quantile
 github.com/blang/semver
 # github.com/cenkalti/backoff/v3 v3.0.0
 github.com/cenkalti/backoff/v3
+# github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000 => ./api
+## explicit
+github.com/ceph/ceph-csi/api/deploy/ocp
 # github.com/ceph/go-ceph v0.11.0
 ## explicit
 github.com/ceph/go-ceph/cephfs/admin
@@ -88,6 +91,8 @@ github.com/fatih/color
 github.com/felixge/httpsnoop
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
+# github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+github.com/ghodss/yaml
 # github.com/go-logr/logr v0.4.0
 github.com/go-logr/logr
 # github.com/gogo/protobuf v1.3.2
@@ -258,6 +263,8 @@ github.com/opencontainers/go-digest
 # github.com/opencontainers/runc v1.0.2
 github.com/opencontainers/runc/libcontainer/apparmor
 github.com/opencontainers/runc/libcontainer/utils
+# github.com/openshift/api v0.0.0-20210927171657-636513e97fda
+github.com/openshift/api/security/v1
 # github.com/pborman/uuid v1.2.1
 ## explicit
 github.com/pborman/uuid
@@ -1057,6 +1064,7 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.2.0
 sigs.k8s.io/yaml
 # code.cloudfoundry.org/gofileutils => github.com/cloudfoundry/gofileutils v0.0.0-20170111115228-4d0c80011a0f
+# github.com/ceph/ceph-csi/api => ./api
 # github.com/golang/protobuf => github.com/golang/protobuf v1.4.3
 # github.com/hashicorp/vault/sdk => github.com/hashicorp/vault/sdk v0.1.14-0.20201116234512-b4d4137dfe8b
 # github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
