@@ -12,16 +12,26 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
+const (
+	staticPVSize         = "4Gi"
+	staticPVImageFeature = "layering"
+	monsPrefix           = "mons-"
+	imagePrefix          = "image-"
+	migIdentifier        = "mig"
+	intreeVolPrefix      = "kubernetes-dynamic-pvc-"
+)
+
+// nolint:unparam // currently name receive pvName, this can change in the future
 func getStaticPV(
 	name, volName, size, secretName, secretNS, sc, driverName string,
 	blockPV bool,
-	options map[string]string) *v1.PersistentVolume {
+	options, annotations map[string]string, policy v1.PersistentVolumeReclaimPolicy) *v1.PersistentVolume {
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: v1.PersistentVolumeSpec{
-			PersistentVolumeReclaimPolicy: v1.PersistentVolumeReclaimRetain,
+			PersistentVolumeReclaimPolicy: policy,
 			Capacity: v1.ResourceList{
 				v1.ResourceStorage: resource.MustParse(size),
 			},
@@ -49,10 +59,17 @@ func getStaticPV(
 		volumeMode := v1.PersistentVolumeFilesystem
 		pv.Spec.VolumeMode = &volumeMode
 	}
+	if len(annotations) > 0 {
+		pv.Annotations = make(map[string]string)
+		for k, v := range annotations {
+			pv.Annotations[k] = v
+		}
+	}
 
 	return pv
 }
 
+// nolint:unparam // currently name receive same name, this can change in the future
 func getStaticPVC(name, pvName, size, ns, sc string, blockPVC bool) *v1.PersistentVolumeClaim {
 	pvc := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -104,12 +121,12 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 	}
 	// remove new line present in fsID
 	fsID = strings.Trim(fsID, "\n")
-	size := "4Gi"
+	size := staticPVSize
 	// create rbd image
 	cmd := fmt.Sprintf(
-		"rbd create %s --size=%d --image-feature=layering %s",
+		"rbd create %s --size=%s --image-feature=layering %s",
 		rbdImageName,
-		4096,
+		staticPVSize,
 		rbdOptions(defaultRBDPool))
 
 	_, e, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
@@ -121,7 +138,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 	}
 	opt["clusterID"] = fsID
 	if !checkImgFeat {
-		opt["imageFeatures"] = "layering"
+		opt["imageFeatures"] = staticPVImageFeature
 	}
 	opt["pool"] = defaultRBDPool
 	opt["staticVolume"] = strconv.FormatBool(true)
@@ -138,7 +155,8 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 		sc,
 		"rbd.csi.ceph.com",
 		isBlock,
-		opt)
+		opt,
+		nil, retainPolicy)
 
 	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	if err != nil {
@@ -207,7 +225,7 @@ func validateRBDStaticMigrationPV(f *framework.Framework, appPath string, isBloc
 		return fmt.Errorf("failed to get mons: %w", err)
 	}
 	mon := strings.Join(mons, ",")
-	size := "4Gi"
+	size := staticPVSize
 	// create rbd image
 	cmd := fmt.Sprintf(
 		"rbd create %s --size=%d --image-feature=layering %s",
@@ -225,7 +243,7 @@ func validateRBDStaticMigrationPV(f *framework.Framework, appPath string, isBloc
 
 	opt["migration"] = "true"
 	opt["monitors"] = mon
-	opt["imageFeatures"] = "layering"
+	opt["imageFeatures"] = staticPVImageFeature
 	opt["pool"] = defaultRBDPool
 	opt["staticVolume"] = strconv.FormatBool(true)
 	opt["imageName"] = rbdImageName
@@ -238,7 +256,7 @@ func validateRBDStaticMigrationPV(f *framework.Framework, appPath string, isBloc
 		sc,
 		"rbd.csi.ceph.com",
 		isBlock,
-		opt)
+		opt, nil, retainPolicy)
 
 	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	if err != nil {
@@ -378,7 +396,18 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	opt["fsName"] = fsName
 	opt["staticVolume"] = strconv.FormatBool(true)
 	opt["rootPath"] = rootPath
-	pv := getStaticPV(pvName, pvName, "4Gi", secretName, cephCSINamespace, sc, "cephfs.csi.ceph.com", false, opt)
+	pv := getStaticPV(
+		pvName,
+		pvName,
+		staticPVSize,
+		secretName,
+		cephCSINamespace,
+		sc,
+		"cephfs.csi.ceph.com",
+		false,
+		opt,
+		nil,
+		retainPolicy)
 	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create PV: %w", err)

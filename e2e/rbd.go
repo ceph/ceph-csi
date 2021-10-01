@@ -366,6 +366,47 @@ var _ = Describe("RBD", func() {
 					}
 				})
 			}
+			By("validate RBD migration+static Block PVC Deletion", func() {
+				// create monitors hash by fetching monitors from the cluster.
+				mons, err := getMons(rookNamespace, c)
+				if err != nil {
+					e2elog.Failf("failed to get monitors %v", err)
+				}
+				mon := strings.Join(mons, ",")
+				inClusterID := getMonsHash(mon)
+
+				clusterInfo := map[string]map[string]string{}
+				clusterInfo[inClusterID] = map[string]string{}
+
+				// create custom configmap
+				err = createCustomConfigMap(f.ClientSet, rbdDirPath, clusterInfo)
+				if err != nil {
+					e2elog.Failf("failed to create configmap with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, "migrationsc", nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				// restart csi pods for the configmap to take effect.
+				err = recreateCSIRBDPods(f)
+				if err != nil {
+					e2elog.Failf("failed to recreate rbd csi pods with error %v", err)
+				}
+				err = validateRBDStaticMigrationPVDeletion(f, rawAppPath, "migrationsc", true)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd migrated static block pv with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				err = deleteConfigMap(rbdDirPath)
+				if err != nil {
+					e2elog.Failf("failed to delete configmap with error %v", err)
+				}
+				err = createConfigMap(rbdDirPath, f.ClientSet, f)
+				if err != nil {
+					e2elog.Failf("failed to create configmap with error %v", err)
+				}
+			})
 
 			By("create a PVC and validate owner", func() {
 				err := validateImageOwner(pvcPath, f)

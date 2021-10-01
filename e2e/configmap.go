@@ -96,15 +96,11 @@ func createCustomConfigMap(
 	for key := range clusterInfo {
 		clusterID = append(clusterID, key)
 	}
-	conmap := []util.ClusterInfo{
-		{
-			ClusterID: clusterID[0],
-			Monitors:  mons,
-		},
-		{
-			ClusterID: clusterID[1],
-			Monitors:  mons,
-		},
+	conmap := make([]util.ClusterInfo, len(clusterID))
+
+	for i, j := range clusterID {
+		conmap[i].ClusterID = j
+		conmap[i].Monitors = mons
 	}
 
 	// fill radosNamespace and subvolgroups
