@@ -163,8 +163,13 @@ cephcsi: check-env
 e2e.test: check-env
 	go test $(GO_TAGS) -mod=vendor -c ./e2e
 
-deploy/scc.yaml: api/deploy/ocp/scc.go
-	$(MAKE) -C tools generate-deploy
+#
+# Update the generated deploy/ files when the template changed. This requires
+# running 'go mod vendor' so update the API files under the vendor/ directory.
+.PHONY: generate-deploy
+generate-deploy:
+	go mod vendor
+	$(MAKE) -C deploy
 
 #
 # e2e testing by compiling e2e.test in case it does not exist and running the
