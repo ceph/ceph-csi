@@ -533,12 +533,17 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
 				}
+
 				// re-define configmap with information of multiple clusters.
-				subvolgrpInfo := map[string]string{
-					"clusterID-1": "subvolgrp1",
-					"clusterID-2": "subvolgrp2",
-				}
-				err = createCustomConfigMap(f.ClientSet, cephFSDirPath, subvolgrpInfo)
+				clusterInfo := map[string]map[string]string{}
+				clusterID1 := "clusterID-1"
+				clusterID2 := "clusterID-2"
+				clusterInfo[clusterID1] = map[string]string{}
+				clusterInfo[clusterID1]["subvolumeGroup"] = "subvolgrp1"
+				clusterInfo[clusterID2] = map[string]string{}
+				clusterInfo[clusterID2]["subvolumeGroup"] = "subvolgrp2"
+
+				err = createCustomConfigMap(f.ClientSet, cephFSDirPath, clusterInfo)
 				if err != nil {
 					e2elog.Failf("failed to create configmap with error %v", err)
 				}
