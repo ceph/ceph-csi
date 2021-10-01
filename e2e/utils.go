@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"crypto/md5" //nolint:gosec // hash generation
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -100,6 +101,10 @@ func getMons(ns string, c kubernetes.Interface) ([]string, error) {
 	}
 
 	return services, nil
+}
+
+func getMonsHash(mons string) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(mons))) //nolint:gosec // hash generation
 }
 
 func getStorageClass(path string) (scv1.StorageClass, error) {

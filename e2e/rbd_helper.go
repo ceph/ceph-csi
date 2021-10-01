@@ -974,3 +974,22 @@ func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int)
 
 	return err
 }
+
+func recreateCSIRBDPods(f *framework.Framework) error {
+	err := deletePodWithLabel("app in (ceph-csi-rbd, csi-rbdplugin, csi-rbdplugin-provisioner)",
+		cephCSINamespace, false)
+	if err != nil {
+		return fmt.Errorf("failed to delete pods with labels with error %w", err)
+	}
+	// wait for csi pods to come up
+	err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("timeout waiting for daemonset pods with error %w", err)
+	}
+	err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("timeout waiting for deployment to be in running state with error %w", err)
+	}
+
+	return nil
+}
