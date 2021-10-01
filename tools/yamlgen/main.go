@@ -19,7 +19,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"reflect"
 
+	"github.com/ceph/ceph-csi/api/deploy/kubernetes/rbd"
 	"github.com/ceph/ceph-csi/api/deploy/ocp"
 )
 
@@ -35,18 +37,20 @@ const header = `---
 
 type deploymentArtifact struct {
 	filename string
-	// FIXME: This is not dynamic enough for additional YAML generating
-	// functions. Need to look into typecasting the functions and passing
-	// interface{} instead of ocp.SecurityContextConstraintsValues.
-	yamlFunc func(ocp.SecurityContextConstraintsValues) (string, error)
-	defaults ocp.SecurityContextConstraintsValues
+	yamlFunc reflect.Value
+	defaults reflect.Value
 }
 
 var yamlArtifacts = []deploymentArtifact{
 	{
 		"../deploy/scc.yaml",
-		ocp.NewSecurityContextConstraintsYAML,
-		ocp.SecurityContextConstraintsDefaults,
+		reflect.ValueOf(ocp.NewSecurityContextConstraintsYAML),
+		reflect.ValueOf(ocp.SecurityContextConstraintsDefaults),
+	},
+	{
+		"../deploy/rbd/kubernetes/csidriver.yaml",
+		reflect.ValueOf(rbd.NewCSIDriverYAML),
+		reflect.ValueOf(rbd.CSIDriverDefaults),
 	},
 }
 
@@ -69,9 +73,10 @@ func writeArtifact(artifact deploymentArtifact) {
 		panic(fmt.Sprintf("failed to write header to %q: %v", artifact.filename, err))
 	}
 
-	data, err := artifact.yamlFunc(artifact.defaults)
-	if err != nil {
-		panic(fmt.Sprintf("failed to generate YAML for %q: %v", artifact.filename, err))
+	result := artifact.yamlFunc.Call([]reflect.Value{artifact.defaults})
+	data := result[0].String()
+	if data == "" {
+		panic(fmt.Sprintf("failed to generate YAML for %q: %v", artifact.filename, result[1].String()))
 	}
 
 	_, err = f.WriteString(data)
