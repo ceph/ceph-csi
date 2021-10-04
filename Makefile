@@ -103,7 +103,7 @@ go-test: check-env
 	TEST_COVERAGE="$(TEST_COVERAGE)" GO_COVER_DIR="$(GO_COVER_DIR)" GO_TAGS="$(GO_TAGS)" ./scripts/test-go.sh
 
 go-test-api: check-env
-	@pushd api/deploy/ocp && go test -v ./... && popd
+	@pushd api && ../scripts/test-go.sh && popd
 
 mod-check: check-env
 	@echo 'running: go mod verify'
