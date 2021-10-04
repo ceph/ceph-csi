@@ -1,12 +1,13 @@
 #!/bin/bash
 
-GOPACKAGES="$(go list -mod=vendor ./... | grep -v -e vendor -e e2e)"
+MOD_VENDOR=$(test -d vendor && echo '-mod=vendor')
+GOPACKAGES="$(go list "${MOD_VENDOR}" ./... | grep -v -e vendor -e e2e)"
 COVERFILE="${GO_COVER_DIR}/profile.cov"
 
 # no special options, exec to go test w/ all pkgs
 if [[ "${TEST_EXITFIRST}" != "yes" && -z "${TEST_COVERAGE}" ]]; then
 	# shellcheck disable=SC2086
-	exec go test "${GO_TAGS}" -mod=vendor -v ${GOPACKAGES}
+	exec go test ${GO_TAGS} ${MOD_VENDOR} -v ${GOPACKAGES}
 fi
 
 # our options are set so we need to handle each go package one
@@ -20,7 +21,7 @@ failed=0
 for gopackage in ${GOPACKAGES}; do
 	echo "--- testing: ${gopackage} ---"
 	# shellcheck disable=SC2086
-	go test "${GO_TAGS}" -mod=vendor -v ${GOTESTOPTS[*]} "${gopackage}" || ((failed += 1))
+	go test "${GO_TAGS}" "${MOD_VENDOR}" -v ${GOTESTOPTS[*]} "${gopackage}" || ((failed += 1))
 	if [[ -f cover.out ]]; then
 		# Append to coverfile
 		grep -v "^mode: count" cover.out >>"${COVERFILE}"
