@@ -157,6 +157,15 @@ func (r *Driver) Run(conf *util.Config) {
 		if err != nil {
 			log.FatalLogMsg("failed to start node server, err %v\n", err)
 		}
+		var attr string
+		attr, err = getKrbdSupportedFeatures()
+		if err != nil {
+			log.FatalLogMsg(err.Error())
+		}
+		krbdFeatures, err = hexStringToInteger(attr)
+		if err != nil {
+			log.FatalLogMsg(err.Error())
+		}
 	}
 
 	if conf.IsControllerServer {

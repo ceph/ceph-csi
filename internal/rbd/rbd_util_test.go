@@ -283,3 +283,42 @@ func TestStrategicActionOnLogFile(t *testing.T) {
 		})
 	}
 }
+
+func TestIsKrbdFeatureSupported(t *testing.T) {
+	t.Parallel()
+	ctx := context.TODO()
+
+	tests := []struct {
+		name        string
+		featureName string
+		isSupported bool
+	}{
+		{
+			name:        "supported feature",
+			featureName: "layering",
+			isSupported: true,
+		},
+		{
+			name:        "not supported feature",
+			featureName: "journaling",
+			isSupported: false,
+		},
+	}
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var err error
+			krbdSupportedFeaturesAttr := "0x1"
+			krbdFeatures, err = hexStringToInteger(krbdSupportedFeaturesAttr) // initialize krbdFeatures
+			if err != nil {
+				t.Errorf("hexStringToInteger(%s) failed", krbdSupportedFeaturesAttr)
+			}
+			supported := isKrbdFeatureSupported(ctx, tc.featureName)
+			if supported != tc.isSupported {
+				t.Errorf("isKrbdFeatureSupported(%s) returned supported status, expected: %t, got: %t",
+					tc.featureName, tc.isSupported, supported)
+			}
+		})
+	}
+}

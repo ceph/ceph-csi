@@ -226,10 +226,22 @@ func populateRbdVol(
 		rv.RbdImageName = imageAttributes.ImageName
 	}
 
+	krbdSupported := false
+	if req.GetVolumeContext()["mounter"] != rbdNbdMounter {
+		krbdSupported = isKrbdFeatureSupported(ctx, req.GetVolumeContext()["imageFeatures"])
+	}
+	if krbdSupported {
+		rv.MapOptions = req.GetVolumeContext()["mapOptions"]
+		rv.UnmapOptions = req.GetVolumeContext()["unmapOptions"]
+		rv.Mounter = req.GetVolumeContext()["mounter"]
+	} else {
+		// fallback to rbd-nbd,
+		// ignore the mapOptions and unmapOptions as they are meant for krbd use.
+		rv.Mounter = rbdNbdMounter
+	}
+
 	rv.VolID = volID
-	rv.MapOptions = req.GetVolumeContext()["mapOptions"]
-	rv.UnmapOptions = req.GetVolumeContext()["unmapOptions"]
-	rv.Mounter = req.GetVolumeContext()["mounter"]
+
 	rv.LogDir = req.GetVolumeContext()["cephLogDir"]
 	if rv.LogDir == "" {
 		rv.LogDir = defaultLogDir
