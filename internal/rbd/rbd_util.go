@@ -91,6 +91,9 @@ const (
 	migImageNamePrefix = "image-"
 	// prefix in the handle for monitors field.
 	migMonPrefix = "mons-"
+
+	// krbd attribute file to check supported features.
+	krbdSupportedFeaturesFile = "/sys/bus/rbd/supported_features"
 )
 
 // rbdImage contains common attributes and methods for the rbdVolume and
@@ -197,17 +200,85 @@ type migrationVolID struct {
 	clusterID string
 }
 
-var supportedFeatures = map[string]imageFeature{
-	librbd.FeatureNameLayering: {
-		needRbdNbd: false,
-	},
-	librbd.FeatureNameExclusiveLock: {
-		needRbdNbd: true,
-	},
-	librbd.FeatureNameJournaling: {
-		needRbdNbd: true,
-		dependsOn:  []string{librbd.FeatureNameExclusiveLock},
-	},
+var (
+	supportedFeatures = map[string]imageFeature{
+		librbd.FeatureNameLayering: {
+			needRbdNbd: false,
+		},
+		librbd.FeatureNameExclusiveLock: {
+			needRbdNbd: true,
+		},
+		librbd.FeatureNameJournaling: {
+			needRbdNbd: true,
+			dependsOn:  []string{librbd.FeatureNameExclusiveLock},
+		},
+	}
+
+	krbdFeatures uint64 // krbd features supported by the loaded driver.
+)
+
+// getKrbdSupportedFeatures load the module if needed and return supported
+// features attribute as a string.
+func getKrbdSupportedFeatures() (string, error) {
+	// check if the module is loaded or compiled in
+	_, err := os.Stat(krbdSupportedFeaturesFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.ErrorLogMsg("stat on %q failed: %v", krbdSupportedFeaturesFile, err)
+
+			return "", err
+		}
+		// try to load the module
+		_, _, err = util.ExecCommand(context.TODO(), "modprobe", rbdDefaultMounter)
+		if err != nil {
+			log.ErrorLogMsg("modprobe failed: %v", err)
+
+			return "", err
+		}
+	}
+	val, err := ioutil.ReadFile(krbdSupportedFeaturesFile)
+	if err != nil {
+		log.ErrorLogMsg("reading file %q failed: %v", krbdSupportedFeaturesFile, err)
+
+		return "", err
+	}
+
+	return strings.TrimSuffix(string(val), "\n"), nil
+}
+
+// hexStringToInteger convert hex value to uint.
+func hexStringToInteger(hexString string) (uint64, error) {
+	// trim 0x prefix
+	numberStr := strings.TrimPrefix(strings.ToLower(hexString), "0x")
+
+	output, err := strconv.ParseUint(numberStr, 16, 64)
+	if err != nil {
+		log.ErrorLogMsg("converting string %q to integer failed: %v", numberStr, err)
+
+		return 0, err
+	}
+
+	return output, nil
+}
+
+// isKrbdFeatureSupported checks if a given Image Feature is supported by krbd
+// driver or not.
+func isKrbdFeatureSupported(ctx context.Context, imageFeatures string) bool {
+	arr := strings.Split(imageFeatures, ",")
+	log.UsefulLog(ctx, "checking for ImageFeatures: %v", arr)
+	imageFeatureSet := librbd.FeatureSetFromNames(arr)
+
+	supported := true
+	for _, featureName := range imageFeatureSet.Names() {
+		if (uint64(librbd.FeatureSetFromNames(strings.Split(featureName, " "))) & krbdFeatures) == 0 {
+			supported = false
+			log.ErrorLog(ctx, "krbd feature %q not supported", featureName)
+
+			break
+		}
+	}
+
+	return supported
 }
 
 // Connect an rbdVolume to the Ceph cluster.
