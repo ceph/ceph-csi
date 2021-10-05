@@ -68,8 +68,9 @@ const (
 	xfsReflinkNoSupport
 	xfsReflinkSupport
 
-	staticVol    = "staticVolume"
-	volHealerCtx = "volumeHealerContext"
+	staticVol        = "staticVolume"
+	volHealerCtx     = "volumeHealerContext"
+	tryOtherMounters = "tryOtherMounters"
 )
 
 var (
@@ -218,6 +219,11 @@ func populateRbdVol(
 	krbdSupported := false
 	if req.GetVolumeContext()["mounter"] != rbdNbdMounter {
 		krbdSupported = isKrbdFeatureSupported(ctx, req.GetVolumeContext()["imageFeatures"])
+		if !krbdSupported && !parseBoolOption(ctx, req.GetVolumeContext(), tryOtherMounters, false) {
+			log.ErrorLog(ctx, "unsupported krbd Feature, set `tryOtherMounters:true` or fix krbd driver")
+
+			return nil, status.Errorf(codes.Internal, "unsupported krbd Feature")
+		}
 	}
 	if krbdSupported {
 		rv.MapOptions = req.GetVolumeContext()["mapOptions"]

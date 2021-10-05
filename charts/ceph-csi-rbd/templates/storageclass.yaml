@@ -19,6 +19,9 @@ parameters:
   pool: {{ .Values.storageClass.pool }}
   imageFeatures: {{ .Values.storageClass.imageFeatures }}
   thickProvision: {{ .Values.storageClass.thickProvision | quote}}
+{{- if .Values.storageClass.tryOtherMounters }}
+  tryOtherMounters: {{ .Values.storageClass.tryOtherMounters | quote}}
+{{- end }}
 {{- if .Values.storageClass.mounter }}
   mounter: {{ .Values.storageClass.mounter }}
 {{- end }}

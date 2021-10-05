@@ -289,6 +289,15 @@ storageClass:
   # imageFeatures: layering,journaling,exclusive-lock
   imageFeatures: layering
 
+  # (optional) Specifies whether to try other mounters in case if the current
+  # mounter fails to mount the rbd image for any reason. True means fallback
+  # to next mounter, default is set to false.
+  # Note: tryOtherMounters is currently useful to fallback from krbd to rbd-nbd
+  # in case if any of the specified imageFeatures is not supported by krbd
+  # driver on node scheduled for application pod launch, but in the future this
+  # should work with any mounter type.
+  # tryOtherMounters: false
+
   # (optional) uncomment the following to use rbd-nbd as mounter
   # on supported nodes
   # mounter: rbd-nbd
