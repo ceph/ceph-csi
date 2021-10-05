@@ -1383,7 +1383,12 @@ func (cs *ControllerServer) DeleteSnapshot(
 
 	err = rbdVol.getImageInfo()
 	if err != nil {
-		if !errors.Is(err, ErrImageNotFound) {
+		if errors.Is(err, ErrImageNotFound) {
+			err = rbdVol.ensureImageCleanup(ctx)
+			if err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		} else {
 			log.ErrorLog(ctx, "failed to delete rbd image: %s/%s with error: %v", rbdVol.Pool, rbdVol.VolName, err)
 
 			return nil, status.Error(codes.Internal, err.Error())
