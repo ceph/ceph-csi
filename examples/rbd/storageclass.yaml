@@ -39,6 +39,15 @@ parameters:
    # imageFeatures: layering,journaling,exclusive-lock
    imageFeatures: layering
 
+   # (optional) Specifies whether to try other mounters in case if the current
+   # mounter fails to mount the rbd image for any reason. True means fallback
+   # to next mounter, default is set to false.
+   # Note: tryOtherMounters is currently useful to fallback from krbd to rbd-nbd
+   # in case if any of the specified imageFeatures is not supported by krbd
+   # driver on node scheduled for application pod launch, but in the future this
+   # should work with any mounter type.
+   # tryOtherMounters: false
+
    # (optional) mapOptions is a comma-separated list of map options.
    # For krbd options refer
    # https://docs.ceph.com/docs/master/man/8/rbd/#kernel-rbd-krbd-options
