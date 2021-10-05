@@ -33,6 +33,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/kubernetes/pkg/volume"
 	mount "k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
 )
@@ -1140,18 +1141,10 @@ func (ns *NodeServer) NodeGetVolumeStats(
 //
 // TODO: https://github.com/container-storage-interface/spec/issues/371#issuecomment-756834471
 func blockNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
-	args := []string{"--noheadings", "--bytes", "--output=SIZE", targetPath}
-	lsblkSize, _, err := util.ExecCommand(ctx, "/bin/lsblk", args...)
+	mp := volume.NewMetricsBlock(targetPath)
+	m, err := mp.GetMetrics()
 	if err != nil {
-		err = fmt.Errorf("lsblk %v returned an error: %w", args, err)
-		log.ErrorLog(ctx, err.Error())
-
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	size, err := strconv.ParseInt(strings.TrimSpace(lsblkSize), 10, 64)
-	if err != nil {
-		err = fmt.Errorf("failed to convert %q to bytes: %w", lsblkSize, err)
+		err = fmt.Errorf("failed to get metrics: %w", err)
 		log.ErrorLog(ctx, err.Error())
 
 		return nil, status.Error(codes.Internal, err.Error())
@@ -1160,7 +1153,7 @@ func blockNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.NodeG
 	return &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
 			{
-				Total: size,
+				Total: m.Capacity.Value(),
 				Unit:  csi.VolumeUsage_BYTES,
 			},
 		},
