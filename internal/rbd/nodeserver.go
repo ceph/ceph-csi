@@ -386,8 +386,6 @@ func (ns *NodeServer) stageTransaction(
 
 	var err error
 	var readOnly bool
-	var feature bool
-	var depth uint
 
 	var cr *util.Credentials
 	cr, err = util.NewUserCredentials(req.GetSecrets())
@@ -403,29 +401,11 @@ func (ns *NodeServer) stageTransaction(
 		volOptions.readOnly = true
 	}
 
-	if kernelRelease == "" {
-		// fetch the current running kernel info
-		kernelRelease, err = util.GetKernelVersion()
-		if err != nil {
-			return transaction, err
-		}
+	err = flattenImageBeforeMapping(ctx, volOptions, cr)
+	if err != nil {
+		return transaction, err
 	}
-	if !util.CheckKernelSupport(kernelRelease, deepFlattenSupport) && !skipForceFlatten {
-		feature, err = volOptions.checkImageChainHasFeature(ctx, librbd.FeatureDeepFlatten)
-		if err != nil {
-			return transaction, err
-		}
-		depth, err = volOptions.getCloneDepth(ctx)
-		if err != nil {
-			return transaction, err
-		}
-		if feature || depth != 0 {
-			err = volOptions.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-			if err != nil {
-				return transaction, err
-			}
-		}
-	}
+
 	// Mapping RBD image
 	var devicePath string
 	devicePath, err = attachRBDImage(ctx, volOptions, devicePath, cr)
@@ -479,6 +459,41 @@ func (ns *NodeServer) stageTransaction(
 	}
 
 	return transaction, err
+}
+
+func flattenImageBeforeMapping(
+	ctx context.Context,
+	volOptions *rbdVolume,
+	cr *util.Credentials) error {
+	var err error
+	var feature bool
+	var depth uint
+
+	if kernelRelease == "" {
+		// fetch the current running kernel info
+		kernelRelease, err = util.GetKernelVersion()
+		if err != nil {
+			return err
+		}
+	}
+	if !util.CheckKernelSupport(kernelRelease, deepFlattenSupport) && !skipForceFlatten {
+		feature, err = volOptions.checkImageChainHasFeature(ctx, librbd.FeatureDeepFlatten)
+		if err != nil {
+			return err
+		}
+		depth, err = volOptions.getCloneDepth(ctx)
+		if err != nil {
+			return err
+		}
+		if feature || depth != 0 {
+			err = volOptions.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (ns *NodeServer) undoStagingTransaction(
