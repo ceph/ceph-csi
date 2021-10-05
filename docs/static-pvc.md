@@ -6,6 +6,7 @@
     - [Create RBD static PV](#create-rbd-static-pv)
     - [RBD Volume Attributes in PV](#rbd-volume-attributes-in-pv)
     - [Create RBD static PVC](#create-rbd-static-pvc)
+    - [Resize RBD image](#resize-rbd-image)
   - [CephFS static PVC](#cephfs-static-pvc)
     - [Create CephFS subvolume](#create-cephfs-subvolume)
     - [Create CephFS static PV](#create-cephfs-static-pv)
@@ -123,6 +124,26 @@ spec:
 $ kubectl create -f fs-static-pvc.yaml
 persistentvolumeclaim/fs-static-pvc created
 ```
+
+### Resize RBD image
+
+Let us resize the RBD image in ceph cluster
+
+```console
+rbd resize static-image --size=2048 --pool=replicapool
+```
+
+Once the rbd image is resized in the ceph cluster, update the PV size and PVC
+size to match the size of the rbd image.
+
+Now scale down the application pod which is using `cephfs-static-pvc` and scale
+up the application pod to resize the filesystem.
+
+**Note** If you have mounted same static PVC to multiple application pods, make
+sure you will scale down all the application pods and make sure no application
+pods using the static PVC is running on the node and scale up all the
+application pods again(this will trigger `NodeStageVolumeRequest` which will
+resize the filesystem for static volume).
 
 **Note** deleting PV and PVC does not removed the backend rbd image, user need to
 manually delete the rbd image if required

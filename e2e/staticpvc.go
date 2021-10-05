@@ -14,6 +14,7 @@ import (
 
 const (
 	staticPVSize         = "4Gi"
+	staticPVNewSize      = "8Gi"
 	staticPVImageFeature = "layering"
 	monsPrefix           = "mons-"
 	imagePrefix          = "image-"
@@ -175,6 +176,11 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 		return err
 	}
 
+	app.Labels = make(map[string]string)
+	app.Labels[appKey] = appLabel
+	appOpt := metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", appKey, appLabel),
+	}
 	app.Namespace = namespace
 	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
 	if checkImgFeat {
@@ -189,6 +195,14 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 	if err != nil {
 		return err
+	}
+
+	// resize image only if the image is already mounted and formatted
+	if !checkImgFeat {
+		err = validateRBDStaticResize(f, app, &appOpt, pvc, rbdImageName)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{})
@@ -472,4 +486,37 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	}
 
 	return nil
+}
+
+func validateRBDStaticResize(
+	f *framework.Framework,
+	app *v1.Pod,
+	appOpt *metav1.ListOptions,
+	pvc *v1.PersistentVolumeClaim,
+	rbdImageName string) error {
+	// resize rbd image
+	size := staticPVNewSize
+	cmd := fmt.Sprintf(
+		"rbd resize %s --size=%s %s",
+		rbdImageName,
+		size,
+		rbdOptions(defaultRBDPool))
+
+	_, _, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+	if err != nil {
+		return err
+	}
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return err
+	}
+	// check size for the filesystem type PVC
+	if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem {
+		err = checkDirSize(app, f, appOpt, size)
+		if err != nil {
+			return err
+		}
+	}
+
+	return deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 }

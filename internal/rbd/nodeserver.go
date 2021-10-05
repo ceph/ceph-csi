@@ -453,6 +453,26 @@ func (ns *NodeServer) stageTransaction(
 	}
 	transaction.isMounted = true
 
+	// resize if its fileSystemType static volume.
+	if staticVol && !isBlock {
+		var ok bool
+		resizer := mount.NewResizeFs(utilexec.New())
+		ok, err = resizer.NeedResize(devicePath, stagingTargetPath)
+		if err != nil {
+			return transaction, status.Errorf(codes.Internal,
+				"Need resize check failed on devicePath %s and staingPath %s, error: %v",
+				devicePath,
+				stagingTargetPath,
+				err)
+		}
+		if ok {
+			ok, err = resizer.Resize(devicePath, stagingTargetPath)
+			if !ok {
+				return transaction, status.Errorf(codes.Internal,
+					"resize failed on path %s, error: %v", stagingTargetPath, err)
+			}
+		}
+	}
 	if !readOnly {
 		// #nosec - allow anyone to write inside the target path
 		err = os.Chmod(stagingTargetPath, 0o777)
