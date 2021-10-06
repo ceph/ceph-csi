@@ -52,6 +52,11 @@ var yamlArtifacts = []deploymentArtifact{
 		reflect.ValueOf(rbd.NewCSIDriverYAML),
 		reflect.ValueOf(rbd.CSIDriverDefaults),
 	},
+	{
+		"../deploy/rbd/kubernetes/csi-config-map.yaml",
+		reflect.ValueOf(rbd.NewCSIConfigMapYAML),
+		reflect.ValueOf(rbd.CSIConfigMapDefaults),
+	},
 }
 
 func main() {
