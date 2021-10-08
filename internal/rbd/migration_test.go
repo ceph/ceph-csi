@@ -54,12 +54,12 @@ func TestIsMigrationVolID(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
+		newtt := tt
+		t.Run(newtt.name, func(t *testing.T) {
 			t.Parallel()
-			got := isMigrationVolID(tt.args)
-			if got != tt.migVolID {
-				t.Errorf("isMigrationVolID() = %v, want %v", got, tt.migVolID)
+			got := isMigrationVolID(newtt.args)
+			if got != newtt.migVolID {
+				t.Errorf("isMigrationVolID() = %v, want %v", got, newtt.migVolID)
 			}
 		})
 	}
@@ -156,17 +156,17 @@ func TestParseMigrationVolID(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
+		newtt := tt
+		t.Run(newtt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := parseMigrationVolID(tt.args)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseMigrationVolID() error = %v, wantErr %v", err, tt.wantErr)
+			got, err := parseMigrationVolID(newtt.args)
+			if (err != nil) != newtt.wantErr {
+				t.Errorf("ParseMigrationVolID() error = %v, wantErr %v", err, newtt.wantErr)
 
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParseMigrationVolID() got = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(got, newtt.want) {
+				t.Errorf("ParseMigrationVolID() got = %v, want %v", got, newtt.want)
 			}
 		})
 	}
