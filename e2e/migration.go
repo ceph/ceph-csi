@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -48,7 +49,7 @@ func validateRBDStaticMigrationPVDeletion(f *framework.Framework, appPath, scNam
 	}
 
 	opt["migration"] = "true"
-	opt["monitors"] = mon
+	opt["clusterID"] = getMonsHash(mon)
 	opt["imageFeatures"] = staticPVImageFeature
 	opt["pool"] = defaultRBDPool
 	opt["staticVolume"] = strconv.FormatBool(true)
@@ -113,4 +114,33 @@ func composeIntreeMigVolID(mons, rbdImageName string) string {
 	vhSlice := []string{migIdentifier, monsField, imageField, poolField}
 
 	return strings.Join(vhSlice, "_")
+}
+
+// generateClusterIDConfigMapForMigration retrieve monitors and generate a hash value which
+// is used as a clusterID in the custom configmap, this function also recreate RBD CSI pods
+// once the custom config map has been recreated.
+func generateClusterIDConfigMapForMigration(f *framework.Framework, c kubernetes.Interface) error {
+	// create monitors hash by fetching monitors from the cluster.
+	mons, err := getMons(rookNamespace, c)
+	if err != nil {
+		return fmt.Errorf("failed to get monitors %w", err)
+	}
+	mon := strings.Join(mons, ",")
+	inClusterID := getMonsHash(mon)
+
+	clusterInfo := map[string]map[string]string{}
+	clusterInfo[inClusterID] = map[string]string{}
+
+	// create custom configmap
+	err = createCustomConfigMap(f.ClientSet, rbdDirPath, clusterInfo)
+	if err != nil {
+		return fmt.Errorf("failed to create configmap with error %w", err)
+	}
+	// restart csi pods for the configmap to take effect.
+	err = recreateCSIRBDPods(f)
+	if err != nil {
+		return fmt.Errorf("failed to recreate rbd csi pods with error %w", err)
+	}
+
+	return nil
 }

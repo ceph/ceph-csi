@@ -256,7 +256,7 @@ func validateRBDStaticMigrationPV(f *framework.Framework, appPath string, isBloc
 	}
 
 	opt["migration"] = "true"
-	opt["monitors"] = mon
+	opt["clusterID"] = getMonsHash(mon)
 	opt["imageFeatures"] = staticPVImageFeature
 	opt["pool"] = defaultRBDPool
 	opt["staticVolume"] = strconv.FormatBool(true)
