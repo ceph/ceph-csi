@@ -2761,6 +2761,109 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("validate image deletion when it is moved to trash", func() {
+				// make sure pool is empty
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				err := createRBDSnapshotClass(f)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+				defer func() {
+					err = deleteRBDSnapshotClass()
+					if err != nil {
+						e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
+					}
+				}()
+
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load pvc: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create pvc: %v", err)
+				}
+
+				pvcSmartClone, err := loadPVC(pvcSmartClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load pvcSmartClone: %v", err)
+				}
+				pvcSmartClone.Namespace = f.UniqueName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create pvc: %v", err)
+				}
+
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create snapshot: %v", err)
+				}
+
+				smartCloneImageData, err := getImageInfoFromPVC(pvcSmartClone.Namespace, pvcSmartClone.Name, f)
+				if err != nil {
+					e2elog.Failf("failed to get ImageInfo from pvc: %v", err)
+				}
+
+				imageList, err := listRBDImages(f, defaultRBDPool)
+				if err != nil {
+					e2elog.Failf("failed to list rbd images: %v", err)
+				}
+				for _, imageName := range imageList {
+					if imageName == smartCloneImageData.imageName {
+						// do not move smartclone image to trash to test
+						// temporary image clone cleanup.
+						continue
+					}
+					_, _, err = execCommandInToolBoxPod(f,
+						fmt.Sprintf("rbd snap purge %s %s", rbdOptions(defaultRBDPool), imageName), rookNamespace)
+					if err != nil {
+						e2elog.Failf(
+							"failed to snap purge %s %s: %v",
+							imageName,
+							rbdOptions(defaultRBDPool),
+							err)
+					}
+					_, _, err = execCommandInToolBoxPod(f,
+						fmt.Sprintf("rbd trash move %s %s", rbdOptions(defaultRBDPool), imageName), rookNamespace)
+					if err != nil {
+						e2elog.Failf(
+							"failed to move rbd image %s %s to trash: %v",
+							imageName,
+							rbdOptions(defaultRBDPool),
+							err)
+					}
+				}
+
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete snapshot: %v", err)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc: %v", err)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc: %v", err)
+				}
+
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd images in trash %s: %v", rbdOptions(defaultRBDPool), err)
+				}
+			})
+
 			By("validate stale images in trash", func() {
 				err := waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
 				if err != nil {
