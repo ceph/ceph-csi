@@ -634,8 +634,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		ready = checkRemoteSiteStatus(ctx, mirrorStatus)
 	}
 
-	// resync only if the image is in error state
-	if strings.Contains(localStatus.State.String(), string(errorState)) {
+	if resyncRequired(localStatus) {
 		err = rbdVol.resyncImage()
 		if err != nil {
 			log.ErrorLog(ctx, err.Error())
@@ -663,4 +662,21 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	}
 
 	return resp, nil
+}
+
+// resyncRequired returns true if local image is in split-brain state and image
+// needs resync.
+func resyncRequired(localStatus librbd.SiteMirrorImageStatus) bool {
+	// resync is required if the image is in error state or the description
+	// contains split-brain message.
+	// In some corner cases like `re-player shutdown` the local image will not
+	// be in an error state. It would be also worth considering the `description`
+	// field to make sure about split-brain.
+	splitBrain := "split-brain"
+	if strings.Contains(localStatus.State.String(), string(errorState)) ||
+		strings.Contains(localStatus.Description, splitBrain) {
+		return true
+	}
+
+	return false
 }
