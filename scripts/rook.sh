@@ -42,22 +42,28 @@ function deploy_rook() {
 	  then
 	      kubectl_retry create -f "${ROOK_URL}/crds.yaml"
 	  fi
-        kubectl_retry create -f "${ROOK_URL}/operator.yaml"
+        TEMP_DIR="$(mktemp -d)"
+        curl -o "${TEMP_DIR}/operator.yaml" "${ROOK_URL}/operator.yaml"
+        # disable rook deployed csi drivers
+        sed -i 's|ROOK_CSI_ENABLE_CEPHFS: "true"|ROOK_CSI_ENABLE_CEPHFS: "false"|g' "${TEMP_DIR}/operator.yaml"
+        sed -i 's|ROOK_CSI_ENABLE_RBD: "true"|ROOK_CSI_ENABLE_RBD: "false"|g' "${TEMP_DIR}/operator.yaml"
+
+        kubectl_retry create -f "${TEMP_DIR}/operator.yaml"
         # Override the ceph version which rook installs by default.
         if  [ -z "${ROOK_CEPH_CLUSTER_IMAGE}" ]
         then
             kubectl_retry create -f "${ROOK_URL}/cluster-test.yaml"
         else
             ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH="image: ${ROOK_CEPH_CLUSTER_IMAGE}"
-            TEMP_DIR="$(mktemp -d)"
+
             curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
             sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
             sed -i "s/config: |/config: |\n    \[mon\]\n    mon_warn_on_insecure_global_id_reclaim_allowed = false/g" "${TEMP_DIR}"/cluster-test.yaml
             sed -i "s/healthCheck:/healthCheck:\n    livenessProbe:\n      mon:\n        disabled: true\n      mgr:\n        disabled: true\n      mds:\n        disabled: true/g" "${TEMP_DIR}"/cluster-test.yaml
 			cat  "${TEMP_DIR}"/cluster-test.yaml
             kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
-            rm -rf "${TEMP_DIR}"
         fi
+        rm -rf "${TEMP_DIR}"
 
         kubectl_retry create -f "${ROOK_URL}/toolbox.yaml"
         kubectl_retry create -f "${ROOK_URL}/filesystem-test.yaml"
