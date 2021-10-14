@@ -2405,6 +2405,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				updateConfigMap("e2e-ns")
+				radosNamespace = "e2e-ns"
 				// create rbd provisioner secret
 				key, err := createCephUser(
 					f,
@@ -2438,11 +2439,11 @@ var _ = Describe("RBD", func() {
 				param := make(map[string]string)
 				// override existing secrets
 				param["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
-				param["csi.storage.k8s.io/provisioner-secret-name"] = rbdProvisionerSecretName
+				param["csi.storage.k8s.io/provisioner-secret-name"] = rbdNamespaceProvisionerSecretName
 				param["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
-				param["csi.storage.k8s.io/controller-expand-secret-name"] = rbdProvisionerSecretName
+				param["csi.storage.k8s.io/controller-expand-secret-name"] = rbdNamespaceProvisionerSecretName
 				param["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
-				param["csi.storage.k8s.io/node-stage-secret-name"] = rbdNodePluginSecretName
+				param["csi.storage.k8s.io/node-stage-secret-name"] = rbdNamespaceNodePluginSecretName
 
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, param, deletePolicy)
 				if err != nil {
