@@ -48,6 +48,8 @@ spec:
               value: sample_root_token_id
             - name: SKIP_SETCAP
               value: any
+            - name: HOME
+              value: /home
           livenessProbe:
             exec:
               command:
@@ -58,6 +60,28 @@ spec:
           ports:
             - containerPort: 8200
               name: vault-api
+          volumeMounts:
+            - name: home
+              mountPath: /home
+        - name: monitor
+          image: docker.io/library/vault:latest
+          imagePullPolicy: "IfNotPresent"
+          securityContext:
+            runAsUser: 100
+          env:
+            - name: VAULT_ADDR
+              value: http://localhost:8200
+            - name: HOME
+              value: /home
+          command:
+            - vault
+            - monitor
+          volumeMounts:
+            - name: home
+              mountPath: /home
+      volumes:
+        - name: home
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: ConfigMap
