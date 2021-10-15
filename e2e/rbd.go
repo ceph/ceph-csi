@@ -374,7 +374,9 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to generate clusterID configmap with error %v", err)
 				}
-				err = createRBDStorageClass(f.ClientSet, f, "migrationsc", nil, nil, deletePolicy)
+
+				// create a sc with different migration secret
+				err = createMigrationUserSecretAndSC(f, "migrationsc")
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
@@ -391,6 +393,15 @@ var _ = Describe("RBD", func() {
 				err = createConfigMap(rbdDirPath, f.ClientSet, f)
 				if err != nil {
 					e2elog.Failf("failed to create configmap with error %v", err)
+				}
+
+				err = deleteProvNodeMigrationSecret(f, true, true)
+				if err != nil {
+					e2elog.Failf("failed to delete migration users and Secrets associated with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
 				}
 			})
 
@@ -1606,12 +1617,24 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to generate clusterID configmap with error %v", err)
 				}
-				err = validateRBDStaticMigrationPV(f, appPath, false)
+				// create node user and migration secret.
+				err = createProvNodeCephUserAndSecret(f, false, true)
+				if err != nil {
+					e2elog.Failf("failed to create users and secret with error %v", err)
+				}
+
+				err = validateRBDStaticMigrationPV(f, appPath, rbdMigrationNodePluginSecretName, false)
 				if err != nil {
 					e2elog.Failf("failed to validate rbd migrated static pv with error %v", err)
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				err = deleteProvNodeMigrationSecret(f, false, true)
+				if err != nil {
+					e2elog.Failf("failed to delete users and secret with error %v", err)
+				}
+
 				err = deleteConfigMap(rbdDirPath)
 				if err != nil {
 					e2elog.Failf("failed to delete configmap with error %v", err)
@@ -1627,12 +1650,24 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to generate clusterID configmap with error %v", err)
 				}
-				err = validateRBDStaticMigrationPV(f, rawAppPath, true)
+				// create node user and migration secret.
+				err = createProvNodeCephUserAndSecret(f, false, true)
+				if err != nil {
+					e2elog.Failf("failed to create users and secret with error %v", err)
+				}
+
+				err = validateRBDStaticMigrationPV(f, rawAppPath, rbdMigrationNodePluginSecretName, true)
 				if err != nil {
 					e2elog.Failf("failed to validate rbd migrated static block pv with error %v", err)
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+
+				err = deleteProvNodeMigrationSecret(f, false, true)
+				if err != nil {
+					e2elog.Failf("failed to delete users and secret with error %v", err)
+				}
+
 				err = deleteConfigMap(rbdDirPath)
 				if err != nil {
 					e2elog.Failf("failed to delete configmap with error %v", err)

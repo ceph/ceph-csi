@@ -21,6 +21,8 @@ const (
 	rbdProvisionerSecretName          = "cephcsi-rbd-provisioner"
 	rbdNamespaceNodePluginSecretName  = "cephcsi-rbd-ns-node"
 	rbdNamespaceProvisionerSecretName = "cephcsi-rbd-ns-provisioner"
+	rbdMigrationNodePluginSecretName  = "cephcsi-rbd-mig-node"
+	rbdMigrationProvisionerSecretName = "cephcsi-rbd-mig-provisioner"
 	cephFSNodePluginSecretName        = "cephcsi-cephfs-node"
 	cephFSProvisionerSecretName       = "cephcsi-cephfs-provisioner"
 )

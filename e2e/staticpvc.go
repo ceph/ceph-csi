@@ -221,7 +221,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 	return err
 }
 
-func validateRBDStaticMigrationPV(f *framework.Framework, appPath string, isBlock bool) error {
+func validateRBDStaticMigrationPV(f *framework.Framework, appPath, nodeSecretName string, isBlock bool) error {
 	opt := make(map[string]string)
 	var (
 		rbdImageName = "test-static-pv"
@@ -254,6 +254,9 @@ func validateRBDStaticMigrationPV(f *framework.Framework, appPath string, isBloc
 	if e != "" {
 		return fmt.Errorf("failed to create rbd image %s", e)
 	}
+	if nodeSecretName == "" {
+		nodeSecretName = rbdNodePluginSecretName
+	}
 
 	opt["migration"] = "true"
 	opt["clusterID"] = getMonsHash(mon)
@@ -265,7 +268,7 @@ func validateRBDStaticMigrationPV(f *framework.Framework, appPath string, isBloc
 		pvName,
 		rbdImageName,
 		size,
-		rbdNodePluginSecretName,
+		nodeSecretName,
 		cephCSINamespace,
 		sc,
 		"rbd.csi.ceph.com",
