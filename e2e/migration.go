@@ -96,7 +96,7 @@ func validateRBDStaticMigrationPVDeletion(f *framework.Framework, appPath, scNam
 
 	err = deletePVCAndApp("", f, pvc, app)
 	if err != nil {
-		return fmt.Errorf("failed to delete PVC and application with error %w", err)
+		return fmt.Errorf("failed to delete PVC and application: %w", err)
 	}
 
 	return err
@@ -134,12 +134,142 @@ func generateClusterIDConfigMapForMigration(f *framework.Framework, c kubernetes
 	// create custom configmap
 	err = createCustomConfigMap(f.ClientSet, rbdDirPath, clusterInfo)
 	if err != nil {
-		return fmt.Errorf("failed to create configmap with error %w", err)
+		return fmt.Errorf("failed to create configmap: %w", err)
 	}
 	// restart csi pods for the configmap to take effect.
 	err = recreateCSIRBDPods(f)
 	if err != nil {
-		return fmt.Errorf("failed to recreate rbd csi pods with error %w", err)
+		return fmt.Errorf("failed to recreate rbd csi pods: %w", err)
+	}
+
+	return nil
+}
+
+// createRBDMigrationSecret creates a migration secret with the passed in user name.
+// this secret differs from csi secret data on below aspects.
+// equivalent to the `UserKey` field, migration secret has `key` field.
+// if 'userName' has passed and if it is not admin, the passed in userName will be
+// set as the `adminId` field in the secret.
+func createRBDMigrationSecret(f *framework.Framework, secretName, userName, userKey string) error {
+	secPath := fmt.Sprintf("%s/%s", rbdExamplePath, "secret.yaml")
+	sec, err := getSecret(secPath)
+	if err != nil {
+		return err
+	}
+	if secretName != "" {
+		sec.Name = secretName
+	}
+	// if its admin, we dont need to change anything in the migration secret, the CSI driver
+	// will use the key from existing secret and continue.
+	if userName != "admin" {
+		sec.StringData["adminId"] = userName
+	}
+	sec.StringData["key"] = userKey
+	sec.Namespace = cephCSINamespace
+	_, err = f.ClientSet.CoreV1().Secrets(cephCSINamespace).Create(context.TODO(), &sec, metav1.CreateOptions{})
+
+	return err
+}
+
+// createMigrationUserSecretAndSC creates migration user and a secret associated with this user first,
+// then create SC based on the same.
+func createMigrationUserSecretAndSC(f *framework.Framework, scName string) error {
+	if scName == "" {
+		scName = defaultSCName
+	}
+	err := createProvNodeCephUserAndSecret(f, true, true)
+	if err != nil {
+		return err
+	}
+
+	err = createMigrationSC(f, scName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createMigrationSC(f *framework.Framework, scName string) error {
+	err := deleteResource(rbdExamplePath + "storageclass.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to delete storageclass: %w", err)
+	}
+	param := make(map[string]string)
+	// add new secrets to the SC parameters
+	param["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
+	param["csi.storage.k8s.io/provisioner-secret-name"] = rbdMigrationProvisionerSecretName
+	param["csi.storage.k8s.io/controller-expand-secret-namespace"] = cephCSINamespace
+	param["csi.storage.k8s.io/controller-expand-secret-name"] = rbdMigrationProvisionerSecretName
+	param["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
+	param["csi.storage.k8s.io/node-stage-secret-name"] = rbdMigrationNodePluginSecretName
+	err = createRBDStorageClass(f.ClientSet, f, scName, nil, param, deletePolicy)
+	if err != nil {
+		return fmt.Errorf("failed to create storageclass: %w", err)
+	}
+
+	return nil
+}
+
+// createProvNodeCephUserAndSecret fetches the ceph migration user's key and create migration secret
+// with it based on the arg values of 'provSecret' and 'nodeSecret'.
+func createProvNodeCephUserAndSecret(f *framework.Framework, provisionerSecret, nodeSecret bool) error {
+	if provisionerSecret {
+		// Fetch the key.
+		key, err := createCephUser(
+			f,
+			keyringRBDProvisionerUsername,
+			rbdProvisionerCaps(defaultRBDPool, radosNamespace),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create user %q: %w", keyringRBDProvisionerUsername, err)
+		}
+		err = createRBDMigrationSecret(f, rbdMigrationProvisionerSecretName, keyringRBDProvisionerUsername, key)
+		if err != nil {
+			return fmt.Errorf("failed to create provisioner secret: %w", err)
+		}
+	}
+
+	if nodeSecret {
+		// Fetch the key.
+		key, err := createCephUser(
+			f,
+			keyringRBDNodePluginUsername,
+			rbdNodePluginCaps(defaultRBDPool, radosNamespace))
+		if err != nil {
+			return fmt.Errorf("failed to create user %q: %w", keyringRBDNodePluginUsername, err)
+		}
+		err = createRBDMigrationSecret(f, rbdMigrationNodePluginSecretName, keyringRBDNodePluginUsername, key)
+		if err != nil {
+			return fmt.Errorf("failed to create node secret: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// deleteProvNodeMigrationSecret deletes ceph migration secrets based on the
+// arg values of 'provisionerSecret' and 'nodeSecret'.
+func deleteProvNodeMigrationSecret(f *framework.Framework, provisionerSecret, nodeSecret bool) error {
+	c := f.ClientSet
+	if provisionerSecret {
+		// delete RBD provisioner secret.
+		err := c.CoreV1().
+			Secrets(cephCSINamespace).
+			Delete(context.TODO(), rbdMigrationProvisionerSecretName, metav1.DeleteOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to delete provisioner secret: %w", err)
+		}
+	}
+
+	if nodeSecret {
+		// delete RBD node secret.
+		err := c.CoreV1().
+			Secrets(cephCSINamespace).
+			Delete(context.TODO(), rbdMigrationNodePluginSecretName, metav1.DeleteOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to delete node secret: %w", err)
+		}
 	}
 
 	return nil
