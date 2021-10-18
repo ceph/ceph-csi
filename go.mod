@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/aws/aws-sdk-go v1.41.0
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
-	github.com/ceph/go-ceph v0.11.0
+	github.com/ceph/go-ceph v0.12.0
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
 	github.com/csi-addons/spec v0.1.1

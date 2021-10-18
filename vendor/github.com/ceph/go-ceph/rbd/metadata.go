@@ -21,8 +21,8 @@ func (image *Image) GetMetadata(key string) (string, error) {
 		return "", err
 	}
 
-	c_key := C.CString(key)
-	defer C.free(unsafe.Pointer(c_key))
+	cKey := C.CString(key)
+	defer C.free(unsafe.Pointer(cKey))
 
 	var (
 		buf []byte
@@ -34,7 +34,7 @@ func (image *Image) GetMetadata(key string) (string, error) {
 		// rbd_metadata_get is a bit quirky and *does not* update the size
 		// value if the size passed in >= the needed size.
 		ret := C.rbd_metadata_get(
-			image.image, c_key, (*C.char)(unsafe.Pointer(&buf[0])), &csize)
+			image.image, cKey, (*C.char)(unsafe.Pointer(&buf[0])), &csize)
 		err = getError(ret)
 		return retry.Size(int(csize)).If(err == errRange)
 	})
@@ -53,12 +53,12 @@ func (image *Image) SetMetadata(key string, value string) error {
 		return err
 	}
 
-	c_key := C.CString(key)
-	c_value := C.CString(value)
-	defer C.free(unsafe.Pointer(c_key))
-	defer C.free(unsafe.Pointer(c_value))
+	cKey := C.CString(key)
+	cValue := C.CString(value)
+	defer C.free(unsafe.Pointer(cKey))
+	defer C.free(unsafe.Pointer(cValue))
 
-	ret := C.rbd_metadata_set(image.image, c_key, c_value)
+	ret := C.rbd_metadata_set(image.image, cKey, cValue)
 	if ret < 0 {
 		return rbdError(ret)
 	}
@@ -75,10 +75,10 @@ func (image *Image) RemoveMetadata(key string) error {
 		return err
 	}
 
-	c_key := C.CString(key)
-	defer C.free(unsafe.Pointer(c_key))
+	cKey := C.CString(key)
+	defer C.free(unsafe.Pointer(cKey))
 
-	ret := C.rbd_metadata_remove(image.image, c_key)
+	ret := C.rbd_metadata_remove(image.image, cKey)
 	if ret < 0 {
 		return rbdError(ret)
 	}

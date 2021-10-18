@@ -1,4 +1,6 @@
+//go:build !luminous && !mimic
 // +build !luminous,!mimic
+
 //
 // Ceph Nautilus is the first release that includes rbd_pool_metadata_get(),
 // rbd_pool_metadata_set() and rbd_pool_metadata_remove().

@@ -45,6 +45,8 @@ const (
 	CreateIdempotent = C.LIBRADOS_CREATE_IDEMPOTENT
 )
 
+//revive:disable:var-naming old-yet-exported public api
+
 // PoolStat represents Ceph pool statistics.
 type PoolStat struct {
 	// space used in bytes
@@ -68,6 +70,8 @@ type PoolStat struct {
 	Num_wr               uint64
 	Num_wr_kb            uint64
 }
+
+//revive:enable:var-naming
 
 // ObjectStat represents an object stat information
 type ObjectStat struct {

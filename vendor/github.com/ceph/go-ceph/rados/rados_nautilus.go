@@ -1,3 +1,4 @@
+//go:build !mimic
 // +build !mimic
 
 package rados
