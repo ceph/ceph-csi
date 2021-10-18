@@ -167,7 +167,7 @@ node('cico-workspace') {
 		}
 		stage('run e2e') {
 			timeout(time: 120, unit: 'MINUTES') {
-				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e'
+				ssh 'cd /opt/build/go/src/github.com/ceph/ceph-csi && make run-e2e E2E_ARGS="--delete-namespace-on-failure=false"'
 			}
 		}
 	}
