@@ -1,3 +1,4 @@
+//go:build !luminous && !mimic
 // +build !luminous,!mimic
 
 package admin

@@ -27,10 +27,10 @@ func (image *Image) CreateSnapshot(snapname string) (*Snapshot, error) {
 		return nil, err
 	}
 
-	c_snapname := C.CString(snapname)
-	defer C.free(unsafe.Pointer(c_snapname))
+	cSnapName := C.CString(snapname)
+	defer C.free(unsafe.Pointer(cSnapName))
 
-	ret := C.rbd_snap_create(image.image, c_snapname)
+	ret := C.rbd_snap_create(image.image, cSnapName)
 	if ret < 0 {
 		return nil, rbdError(ret)
 	}
@@ -72,10 +72,10 @@ func (snapshot *Snapshot) Remove() error {
 		return err
 	}
 
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
+	cSnapName := C.CString(snapshot.name)
+	defer C.free(unsafe.Pointer(cSnapName))
 
-	return getError(C.rbd_snap_remove(snapshot.image.image, c_snapname))
+	return getError(C.rbd_snap_remove(snapshot.image.image, cSnapName))
 }
 
 // Rollback the image to the snapshot.
@@ -87,10 +87,10 @@ func (snapshot *Snapshot) Rollback() error {
 		return err
 	}
 
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
+	cSnapName := C.CString(snapshot.name)
+	defer C.free(unsafe.Pointer(cSnapName))
 
-	return getError(C.rbd_snap_rollback(snapshot.image.image, c_snapname))
+	return getError(C.rbd_snap_rollback(snapshot.image.image, cSnapName))
 }
 
 // Protect a snapshot from unwanted deletion.
@@ -102,10 +102,10 @@ func (snapshot *Snapshot) Protect() error {
 		return err
 	}
 
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
+	cSnapName := C.CString(snapshot.name)
+	defer C.free(unsafe.Pointer(cSnapName))
 
-	return getError(C.rbd_snap_protect(snapshot.image.image, c_snapname))
+	return getError(C.rbd_snap_protect(snapshot.image.image, cSnapName))
 }
 
 // Unprotect stops protecting the snapshot.
@@ -117,10 +117,10 @@ func (snapshot *Snapshot) Unprotect() error {
 		return err
 	}
 
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
+	cSnapName := C.CString(snapshot.name)
+	defer C.free(unsafe.Pointer(cSnapName))
 
-	return getError(C.rbd_snap_unprotect(snapshot.image.image, c_snapname))
+	return getError(C.rbd_snap_unprotect(snapshot.image.image, cSnapName))
 }
 
 // IsProtected returns true if the snapshot is currently protected.
@@ -133,23 +133,24 @@ func (snapshot *Snapshot) IsProtected() (bool, error) {
 		return false, err
 	}
 
-	var c_is_protected C.int
+	var cIsProtected C.int
 
-	c_snapname := C.CString(snapshot.name)
-	defer C.free(unsafe.Pointer(c_snapname))
+	cSnapName := C.CString(snapshot.name)
+	defer C.free(unsafe.Pointer(cSnapName))
 
-	ret := C.rbd_snap_is_protected(snapshot.image.image, c_snapname,
-		&c_is_protected)
+	ret := C.rbd_snap_is_protected(snapshot.image.image, cSnapName,
+		&cIsProtected)
 	if ret < 0 {
 		return false, rbdError(ret)
 	}
 
-	return c_is_protected != 0, nil
+	return cIsProtected != 0, nil
 }
 
-// Set updates the rbd image (not the Snapshot) such that the snapshot
-// is the source of readable data.
-// This method is deprecated. Refer the SetSnapshot method of the Image type instead.
+// Set updates the rbd image (not the Snapshot) such that the snapshot is the
+// source of readable data.
+//
+// Deprecated: use the SetSnapshot method of the Image type instead
 //
 // Implements:
 //  int rbd_snap_set(rbd_image_t image, const char *snapname);

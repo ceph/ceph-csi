@@ -1,4 +1,6 @@
+//go:build !luminous && !mimic
 // +build !luminous,!mimic
+
 //
 // Ceph Nautilus introduced rbd_get_parent() and deprecated rbd_get_parent_info().
 // Ceph Nautilus introduced rbd_list_children3() and deprecated rbd_list_children().

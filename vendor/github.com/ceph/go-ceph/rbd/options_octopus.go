@@ -1,3 +1,4 @@
+//go:build !nautilus
 // +build !nautilus
 
 package rbd

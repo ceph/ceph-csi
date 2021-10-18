@@ -1,3 +1,4 @@
+//go:build !octopus && !nautilus
 // +build !octopus,!nautilus
 
 package rbd
