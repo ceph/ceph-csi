@@ -129,9 +129,10 @@ MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
 KUBE_VERSION=${KUBE_VERSION:-"latest"}
 CONTAINER_CMD=${CONTAINER_CMD:-"docker"}
 MEMORY=${MEMORY:-"4096"}
-MINIKUBE_WAIT_TIMEOUT=${MINIKUBE_WAIT_TIMEOUT:-"10m"}
+MINIKUBE_WAIT_TIMEOUT=${MINIKUBE_WAIT_TIMEOUT:-"20m"}
 MINIKUBE_WAIT=${MINIKUBE_WAIT:-"all"}
 CPUS=${CPUS:-"$(nproc)"}
+NODES=${NODES:-"2"}
 VM_DRIVER=${VM_DRIVER:-"virtualbox"}
 CNI=${CNI:-"bridge"}
 NUM_DISKS=${NUM_DISKS:-"1"}
@@ -203,7 +204,7 @@ up)
     disable_storage_addons
 
     # shellcheck disable=SC2086
-    ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG} ${EXTRA_CONFIG_PSP} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
+    ${minikube} start --force --memory="${MEMORY}" --nodes="${NODES}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" ${EXTRA_CONFIG} ${EXTRA_CONFIG_PSP} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
 
     # create a link so the default dataDirHostPath will work for this
     # environment
