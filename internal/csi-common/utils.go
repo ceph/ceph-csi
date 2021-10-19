@@ -263,17 +263,30 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.
 	return &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
 			{
-				Available: available,
-				Total:     capacity,
-				Used:      used,
+				Available: requirePositive(available),
+				Total:     requirePositive(capacity),
+				Used:      requirePositive(used),
 				Unit:      csi.VolumeUsage_BYTES,
 			},
 			{
-				Available: inodesFree,
-				Total:     inodes,
-				Used:      inodesUsed,
+				Available: requirePositive(inodesFree),
+				Total:     requirePositive(inodes),
+				Used:      requirePositive(inodesUsed),
 				Unit:      csi.VolumeUsage_INODES,
 			},
 		},
 	}, nil
+}
+
+// requirePositive returns the value for `x` when it is greater or equal to 0,
+// or returns 0 in the acse `x` is negative.
+//
+// This is used for VolumeUsage entries in the NodeGetVolumeStatsResponse. The
+// CSI spec does not allow negative values in the VolumeUsage objects.
+func requirePositive(x int64) int64 {
+	if x >= 0 {
+		return x
+	}
+
+	return 0
 }

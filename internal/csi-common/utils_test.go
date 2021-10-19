@@ -17,9 +17,15 @@ limitations under the License.
 package csicommon
 
 import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var fakeID = "fake-id"
@@ -69,4 +75,44 @@ func TestGetReqID(t *testing.T) {
 	if got := getReqID(nil); got != "" {
 		t.Errorf("getReqID() = %v, want empty string", got)
 	}
+}
+
+func TestFilesystemNodeGetVolumeStats(t *testing.T) {
+	t.Parallel()
+
+	// ideally this is tested on different filesystems, including CephFS,
+	// but we'll settle for the filesystem where the project is checked out
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	// retry until a mountpoint is found
+	for {
+		stats, err := FilesystemNodeGetVolumeStats(context.TODO(), cwd)
+		if err != nil && cwd != "/" && strings.HasSuffix(err.Error(), "is not mounted") {
+			// try again with the parent directory
+			cwd = filepath.Dir(cwd)
+
+			continue
+		}
+
+		require.NoError(t, err)
+		assert.NotEqual(t, len(stats.Usage), 0)
+		for _, usage := range stats.Usage {
+			assert.NotEqual(t, usage.Available, -1)
+			assert.NotEqual(t, usage.Total, -1)
+			assert.NotEqual(t, usage.Used, -1)
+			assert.NotEqual(t, usage.Unit, 0)
+		}
+
+		// tests done, no need to retry again
+		break
+	}
+}
+
+func TestRequirePositive(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, requirePositive(0), int64(0))
+	assert.Equal(t, requirePositive(-1), int64(0))
+	assert.Equal(t, requirePositive(1), int64(1))
 }
