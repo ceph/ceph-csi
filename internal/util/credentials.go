@@ -31,6 +31,9 @@ const (
 	credMonitors         = "monitors"
 	tmpKeyFileLocation   = "/tmp/csi/keys"
 	tmpKeyFileNamePrefix = "keyfile-"
+	migUserName          = "admin"
+	migUserID            = "adminId"
+	migUserKey           = "key"
 )
 
 // Credentials struct represents credentials to access the ceph cluster.
@@ -118,4 +121,35 @@ func GetMonValFromSecret(secrets map[string]string) (string, error) {
 	}
 
 	return "", fmt.Errorf("missing %q", credMonitors)
+}
+
+// ParseAndSetSecretMapFromMigSecret parse the secretmap from the migration request and return
+// newsecretmap with the userID and userKey fields set.
+func ParseAndSetSecretMapFromMigSecret(secretmap map[string]string) (map[string]string, error) {
+	newSecretMap := make(map[string]string)
+	// parse and set userKey
+	if !IsMigrationSecret(secretmap) {
+		return nil, errors.New("passed secret map does not contain user key or it is nil")
+	}
+	newSecretMap[credUserKey] = secretmap[migUserKey]
+	// parse and set the userID
+	newSecretMap[credUserID] = migUserName
+	if secretmap[migUserID] != "" {
+		newSecretMap[credUserID] = secretmap[migUserID]
+	}
+
+	return newSecretMap, nil
+}
+
+// IsMigrationSecret validates if the passed in secretmap is a secret
+// of a migration volume request. The migration secret carry a field
+// called `key` which is the equivalent of `userKey` which is what we
+// check here for identifying the secret.
+func IsMigrationSecret(passedSecretMap map[string]string) bool {
+	// the below 'nil' check is an extra measure as the request validators like
+	// ValidateNodeStageVolumeRequest() already does the nil check, however considering
+	// this function can be called independently with a map of secret values
+	// it is good to have this check in place, also it gives clear error about this
+	// was hit on migration request compared to general one.
+	return len(passedSecretMap) != 0 && passedSecretMap[migUserKey] != ""
 }
