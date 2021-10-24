@@ -808,24 +808,33 @@ func (cs *ControllerServer) checkErrAndUndoReserve(
 func (cs *ControllerServer) DeleteVolume(
 	ctx context.Context,
 	req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	if err := cs.Driver.ValidateControllerServiceRequest(
+	var err error
+	if err = cs.Driver.ValidateControllerServiceRequest(
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); err != nil {
 		log.ErrorLog(ctx, "invalid delete volume req: %v", protosanitizer.StripSecrets(req))
 
 		return nil, err
 	}
 
-	cr, err := util.NewUserCredentials(req.GetSecrets())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	defer cr.DeleteCredentials()
-
 	// For now the image get unconditionally deleted, but here retention policy can be checked
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
+
+	secrets := req.GetSecrets()
+	if util.IsMigrationSecret(secrets) {
+		secrets, err = util.ParseAndSetSecretMapFromMigSecret(secrets)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+	}
+
+	cr, err := util.NewUserCredentials(secrets)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer cr.DeleteCredentials()
 
 	if acquired := cs.VolumeLocks.TryAcquire(volumeID); !acquired {
 		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
@@ -852,7 +861,7 @@ func (cs *ControllerServer) DeleteVolume(
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, secrets)
 	defer rbdVol.Destroy()
 	if err != nil {
 		return cs.checkErrAndUndoReserve(ctx, err, volumeID, rbdVol, cr)
