@@ -1502,6 +1502,10 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}, nil
 }
 
+// logThickProvisioningDeprecation makes sure the deprecation warning about
+// thick-provisining is logged only once.
+var logThickProvisioningDeprecation = true
+
 // isThickProvisionRequest returns true in case the request contains the
 // `thickProvision` option set to `true`.
 func isThickProvisionRequest(parameters map[string]string) bool {
@@ -1515,6 +1519,12 @@ func isThickProvisionRequest(parameters map[string]string) bool {
 	thickBool, err := strconv.ParseBool(thick)
 	if err != nil {
 		return false
+	}
+
+	if logThickProvisioningDeprecation {
+		log.WarningLogMsg("thick-provisioning is deprecated and will " +
+			"be removed in a future release")
+		logThickProvisioningDeprecation = false
 	}
 
 	return thickBool
