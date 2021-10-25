@@ -513,9 +513,10 @@ func checkRemoteSiteStatus(ctx context.Context, mirrorStatus *librbd.GlobalMirro
 	for _, s := range mirrorStatus.SiteStatuses {
 		log.UsefulLog(
 			ctx,
-			"peer site mirrorUUID=%s, mirroring state=%s, description=%s and lastUpdate=%s",
+			"peer site mirrorUUID=%q, daemon up=%t, mirroring state=%q, description=%q and lastUpdate=%d",
 			s.MirrorUUID,
-			s.State.String(),
+			s.Up,
+			s.State,
 			s.Description,
 			s.LastUpdate)
 		if s.MirrorUUID != "" {
@@ -611,8 +612,9 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	lastUpdateTime := time.Unix(localStatus.LastUpdate, 0).UTC()
 	log.UsefulLog(
 		ctx,
-		"local image mirroring state=%s, description=%s and lastUpdate=%s",
-		localStatus.State.String(),
+		"local status: daemon up=%t, image mirroring state=%q, description=%q and lastUpdate=%s",
+		localStatus.Up,
+		localStatus.State,
 		localStatus.Description,
 		lastUpdateTime)
 
