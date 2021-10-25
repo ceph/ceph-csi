@@ -851,11 +851,15 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 	defer cs.OperationLocks.ReleaseDeleteLock(volumeID)
 
+	// if this is a migration request volID, delete the volume in backend
 	if isMigrationVolID(volumeID) {
-		log.DebugLog(ctx, "migration volume ID : %s", volumeID)
-		err = parseAndDeleteMigratedVolume(ctx, volumeID, cr)
-		if err != nil && !errors.Is(err, ErrImageNotFound) {
-			return nil, status.Error(codes.Internal, err.Error())
+		pmVolID, pErr := parseMigrationVolID(volumeID)
+		if pErr != nil {
+			return nil, status.Error(codes.InvalidArgument, pErr.Error())
+		}
+		pErr = deleteMigratedVolume(ctx, pmVolID, cr)
+		if pErr != nil && !errors.Is(pErr, ErrImageNotFound) {
+			return nil, status.Error(codes.Internal, pErr.Error())
 		}
 
 		return &csi.DeleteVolumeResponse{}, nil
