@@ -523,16 +523,15 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 func checkRemoteSiteStatus(ctx context.Context, mirrorStatus *librbd.GlobalMirrorImageStatus) bool {
 	ready := true
 	for _, s := range mirrorStatus.SiteStatuses {
+		log.UsefulLog(
+			ctx,
+			"peer site mirrorUUID=%s, mirroring state=%s, description=%s and lastUpdate=%s",
+			s.MirrorUUID,
+			s.State.String(),
+			s.Description,
+			s.LastUpdate)
 		if s.MirrorUUID != "" {
 			if imageMirroringState(s.State.String()) != unknown && !s.Up {
-				log.UsefulLog(
-					ctx,
-					"peer site mirrorUUID=%s, mirroring state=%s, description=%s and lastUpdate=%s",
-					s.MirrorUUID,
-					s.State.String(),
-					s.Description,
-					s.LastUpdate)
-
 				ready = false
 			}
 		}
