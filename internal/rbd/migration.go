@@ -74,15 +74,10 @@ func parseMigrationVolID(vh string) (*migrationVolID, error) {
 	return mh, nil
 }
 
-// parseAndDeleteMigratedVolume get rbd volume details from the migration volID
+// deleteMigratedVolume get rbd volume details from the migration volID
 // and delete the volume from the cluster, return err if there was an error on the process.
-func parseAndDeleteMigratedVolume(ctx context.Context, volumeID string, cr *util.Credentials) error {
-	parsedMigHandle, err := parseMigrationVolID(volumeID)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to parse migration volumeID: %s , err: %v", volumeID, err)
-
-		return err
-	}
+func deleteMigratedVolume(ctx context.Context, parsedMigHandle *migrationVolID, cr *util.Credentials) error {
+	var err error
 	rv := &rbdVolume{}
 
 	// fill details to rv struct from parsed migration handle
