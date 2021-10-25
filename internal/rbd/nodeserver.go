@@ -151,10 +151,14 @@ func healerStageTransaction(ctx context.Context, cr *util.Credentials, volOps *r
 }
 
 // populateRbdVol update the fields in rbdVolume struct based on the request it received.
+// this function also receive the credentials and secrets args as it differs in its data.
+// The credentials are used directly by functions like voljournal.Connect() and other functions
+// like genVolFromVolumeOptions() make use of secrets.
 func populateRbdVol(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
-	cr *util.Credentials) (*rbdVolume, error) {
+	cr *util.Credentials,
+	secrets map[string]string) (*rbdVolume, error) {
 	var err error
 	var j *journal.Connection
 	volID := req.GetVolumeId()
@@ -179,7 +183,7 @@ func populateRbdVol(
 		disableInUseChecks = true
 	}
 
-	rv, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), req.GetSecrets(), disableInUseChecks, true)
+	rv, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), secrets, disableInUseChecks, true)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -254,13 +258,20 @@ func populateRbdVol(
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
+	var err error
+	if err = util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
 	}
 
 	volID := req.GetVolumeId()
-
-	cr, err := util.NewUserCredentials(req.GetSecrets())
+	secrets := req.GetSecrets()
+	if util.IsMigrationSecret(secrets) {
+		secrets, err = util.ParseAndSetSecretMapFromMigSecret(secrets)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+	}
+	cr, err := util.NewUserCredentials(secrets)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -298,7 +309,7 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Error(codes.InvalidArgument, "missing required parameter imageFeatures")
 	}
 
-	rv, err := populateRbdVol(ctx, req, cr)
+	rv, err := populateRbdVol(ctx, req, cr, secrets)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +346,7 @@ func (ns *NodeServer) NodeStageVolume(
 
 	// perform the actual staging and if this fails, have undoStagingTransaction
 	// cleans up for us
-	transaction, err = ns.stageTransaction(ctx, req, rv, isStaticVol)
+	transaction, err = ns.stageTransaction(ctx, req, cr, rv, isStaticVol)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -352,19 +363,13 @@ func (ns *NodeServer) NodeStageVolume(
 func (ns *NodeServer) stageTransaction(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
+	cr *util.Credentials,
 	volOptions *rbdVolume,
 	staticVol bool) (stageTransaction, error) {
 	transaction := stageTransaction{}
 
 	var err error
 	var readOnly bool
-
-	var cr *util.Credentials
-	cr, err = util.NewUserCredentials(req.GetSecrets())
-	if err != nil {
-		return transaction, err
-	}
-	defer cr.DeleteCredentials()
 
 	// Allow image to be mounted on multiple nodes if it is ROX
 	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY {
