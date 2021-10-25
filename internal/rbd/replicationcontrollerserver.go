@@ -633,6 +633,14 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	if state == unknown && localStatus.Up {
 		ready = checkRemoteSiteStatus(ctx, mirrorStatus)
 	}
+	// convert the last update time to UTC
+	lastUpdateTime := time.Unix(localStatus.LastUpdate, 0).UTC()
+	log.UsefulLog(
+		ctx,
+		"image mirroring state=%s, description=%s and lastUpdate=%s",
+		localStatus.State.String(),
+		localStatus.Description,
+		lastUpdateTime)
 
 	if resyncRequired(localStatus) {
 		err = rbdVol.resyncImage()
@@ -648,20 +656,35 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		return nil, status.Error(codes.Unavailable, "awaiting initial resync due to split brain")
 	}
 
-	// convert the last update time to UTC
-	lastUpdateTime := time.Unix(localStatus.LastUpdate, 0).UTC()
-	log.UsefulLog(
-		ctx,
-		"image mirroring state=%s, description=%s and lastUpdate=%s",
-		localStatus.State.String(),
-		localStatus.Description,
-		lastUpdateTime)
+	err = checkVolumeResyncStatus(localStatus)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
 	resp := &replication.ResyncVolumeResponse{
 		Ready: ready,
 	}
 
 	return resp, nil
+}
+
+func checkVolumeResyncStatus(localStatus librbd.SiteMirrorImageStatus) error {
+	// we are considering 2 states to check resync started and resync completed
+	// as below. all other states will be considered as an error state so that
+	// cephCSI can return error message and volume replication operator can
+	// mark the VolumeReplication status as not resyncing for the volume.
+
+	// If the state is Replaying means the resync is going on.
+	// Once the volume on remote cluster is demoted and resync
+	// is completed the image state will be moved to UNKNOWN .
+	if localStatus.State != librbd.MirrorImageStatusStateReplaying &&
+		localStatus.State != librbd.MirrorImageStatusStateUnknown {
+		return fmt.Errorf(
+			"not resyncing. image is in %q state",
+			localStatus.State)
+	}
+
+	return nil
 }
 
 // resyncRequired returns true if local image is in split-brain state and image
