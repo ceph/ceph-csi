@@ -44,18 +44,6 @@ const (
 	imageMirrorModeSnapshot imageMirroringMode = "snapshot"
 )
 
-// imageMirroringState represents the image mirroring state.
-type imageMirroringState string
-
-const (
-	// If the state is unknown means the rbd-mirror daemon is
-	// running and the image is demoted on both the clusters.
-	unknown imageMirroringState = "unknown"
-
-	// If the state is error means image need resync.
-	errorState imageMirroringState = "error"
-)
-
 const (
 	// mirroringMode + key to get the imageMirroringMode from parameters.
 	imageMirroringKey = "mirroringMode"
@@ -531,7 +519,7 @@ func checkRemoteSiteStatus(ctx context.Context, mirrorStatus *librbd.GlobalMirro
 			s.Description,
 			s.LastUpdate)
 		if s.MirrorUUID != "" {
-			if imageMirroringState(s.State.String()) != unknown && !s.Up {
+			if s.State != librbd.MirrorImageStatusStateUnknown && !s.Up {
 				ready = false
 			}
 		}
@@ -618,7 +606,16 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 		return nil, fmt.Errorf("failed to get local status: %w", err)
 	}
-	state := imageMirroringState(localStatus.State.String())
+
+	// convert the last update time to UTC
+	lastUpdateTime := time.Unix(localStatus.LastUpdate, 0).UTC()
+	log.UsefulLog(
+		ctx,
+		"local image mirroring state=%s, description=%s and lastUpdate=%s",
+		localStatus.State.String(),
+		localStatus.Description,
+		lastUpdateTime)
+
 	//  To recover from split brain (up+error) state the image need to be
 	//  demoted and requested for resync on site-a and then the image on site-b
 	//  should be demoted. The volume should be marked to ready=true when the
@@ -629,17 +626,9 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	// If the image state on both the sites are up+unknown consider that
 	// complete data is synced as the last snapshot
 	// gets exchanged between the clusters.
-	if state == unknown && localStatus.Up {
+	if localStatus.State == librbd.MirrorImageStatusStateUnknown && localStatus.Up {
 		ready = checkRemoteSiteStatus(ctx, mirrorStatus)
 	}
-	// convert the last update time to UTC
-	lastUpdateTime := time.Unix(localStatus.LastUpdate, 0).UTC()
-	log.UsefulLog(
-		ctx,
-		"image mirroring state=%s, description=%s and lastUpdate=%s",
-		localStatus.State.String(),
-		localStatus.Description,
-		lastUpdateTime)
 
 	if resyncRequired(localStatus) {
 		err = rbdVol.resyncImage()
@@ -695,7 +684,7 @@ func resyncRequired(localStatus librbd.SiteMirrorImageStatus) bool {
 	// be in an error state. It would be also worth considering the `description`
 	// field to make sure about split-brain.
 	splitBrain := "split-brain"
-	if strings.Contains(localStatus.State.String(), string(errorState)) ||
+	if localStatus.State == librbd.MirrorImageStatusStateError ||
 		strings.Contains(localStatus.Description, splitBrain) {
 		return true
 	}
