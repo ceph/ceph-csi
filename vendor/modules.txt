@@ -100,7 +100,7 @@ github.com/felixge/httpsnoop
 github.com/fsnotify/fsnotify
 # github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 github.com/ghodss/yaml
-# github.com/go-logr/logr v0.4.0
+# github.com/go-logr/logr v1.2.0
 github.com/go-logr/logr
 # github.com/go-sql-driver/mysql v1.5.0
 ## explicit
@@ -987,7 +987,7 @@ k8s.io/component-base/version
 # k8s.io/component-helpers v0.22.4 => k8s.io/component-helpers v0.22.4
 k8s.io/component-helpers/scheduling/corev1
 k8s.io/component-helpers/scheduling/corev1/nodeaffinity
-# k8s.io/klog/v2 v2.10.0
+# k8s.io/klog/v2 v2.30.0
 ## explicit
 k8s.io/klog/v2
 # k8s.io/kube-openapi v0.0.0-20211109043538-20434351676c
