@@ -29,9 +29,10 @@ parameters:
    # eg: pool: rbdpool
    pool: <rbd-pool-name>
 
-   # Set thickProvision to true if you want RBD images to be fully allocated on
-   # creation (thin provisioning is the default).
-   thickProvision: "false"
+   # Deprecated: Set thickProvision to true if you want RBD images to be fully
+   # allocated on creation (thin provisioning is the default).
+   # thickProvision: "false"
+
    # (required) RBD image features, CSI creates image with image-format 2
    # CSI RBD currently supports `layering`, `journaling`, `exclusive-lock`
    # features. If `journaling` is enabled, must enable `exclusive-lock` too.
