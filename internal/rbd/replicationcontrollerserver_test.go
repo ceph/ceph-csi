@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"testing"
 
+	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
 )
 
@@ -171,6 +172,81 @@ func TestGetSchedulingDetails(t *testing.T) {
 			}
 			if !reflect.DeepEqual(startTime, tt.wantStartTime) {
 				t.Errorf("getSchedulingDetails() startTime = %v, want %v", startTime, tt.wantStartTime)
+			}
+		})
+	}
+}
+
+func TestCheckVolumeResyncStatus(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		args    librbd.SiteMirrorImageStatus
+		wantErr bool
+	}{
+		{
+			name: "test for unknown state",
+			args: librbd.SiteMirrorImageStatus{
+				State: librbd.MirrorImageStatusStateUnknown,
+			},
+			wantErr: false,
+		},
+		{
+			name: "test for error state",
+			args: librbd.SiteMirrorImageStatus{
+				State: librbd.MirrorImageStatusStateError,
+			},
+			wantErr: true,
+		},
+		{
+			name: "test for syncing state",
+			args: librbd.SiteMirrorImageStatus{
+				State: librbd.MirrorImageStatusStateSyncing,
+			},
+			wantErr: true,
+		},
+		{
+			name: "test for starting_replay state",
+			args: librbd.SiteMirrorImageStatus{
+				State: librbd.MirrorImageStatusStateStartingReplay,
+			},
+			wantErr: true,
+		},
+		{
+			name: "test for replaying state",
+			args: librbd.SiteMirrorImageStatus{
+				State: librbd.MirrorImageStatusStateReplaying,
+			},
+			wantErr: false,
+		},
+		{
+			name: "test for stopping_replay state",
+			args: librbd.SiteMirrorImageStatus{
+				State: librbd.MirrorImageStatusStateStoppingReplay,
+			},
+			wantErr: true,
+		},
+		{
+			name: "test for stopped state",
+			args: librbd.SiteMirrorImageStatus{
+				State: librbd.MirrorImageStatusStateStopped,
+			},
+			wantErr: true,
+		},
+		{
+			name: "test for invalid state",
+			args: librbd.SiteMirrorImageStatus{
+				State: librbd.MirrorImageStatusState(100),
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		ts := tt
+		t.Run(ts.name, func(t *testing.T) {
+			t.Parallel()
+			if err := checkVolumeResyncStatus(ts.args); (err != nil) != ts.wantErr {
+				t.Errorf("checkVolumeResyncStatus() error = %v, expect error = %v", err, ts.wantErr)
 			}
 		})
 	}
