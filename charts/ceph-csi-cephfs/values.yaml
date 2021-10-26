@@ -217,6 +217,12 @@ storageClass:
   # Specifies whether the Storage class should be created
   create: false
   name: csi-cephfs-sc
+  # Annotations for the storage class
+  # Example:
+  # annotations:
+  #   storageclass.kubernetes.io/is-default-class: "true"
+  annotations: {}
+
   # String representing a Ceph cluster to provision storage from.
   # Should be unique across all Ceph clusters in use for provisioning,
   # cannot be greater than 36 bytes in length, and should remain immutable for

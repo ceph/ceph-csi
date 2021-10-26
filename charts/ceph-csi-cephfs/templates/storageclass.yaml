@@ -2,13 +2,17 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-   name: {{ .Values.storageClass.name }}
-   namespace: {{ .Release.Namespace }}
-   labels:
-     app: {{ include "ceph-csi-cephfs.name" . }}
-     chart: {{ include "ceph-csi-cephfs.chart" . }}
-     release: {{ .Release.Name }}
-     heritage: {{ .Release.Service }}
+  name: {{ .Values.storageClass.name }}
+  namespace: {{ .Release.Namespace }}
+{{- if .Values.storageClass.annotations }}
+  annotations:
+{{ toYaml .Values.storageClass.annotations | indent 4 }}
+{{- end }}
+  labels:
+    app: {{ include "ceph-csi-cephfs.name" . }}
+    chart: {{ include "ceph-csi-cephfs.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
 provisioner: {{ .Values.driverName }}
 parameters:
   clusterID: {{ .Values.storageClass.clusterID }}
