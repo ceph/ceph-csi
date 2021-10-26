@@ -177,3 +177,421 @@ func TestIsBlockMultiNode(t *testing.T) {
 		assert.Equal(t, isMultiNode, test.isMultiNode, test.name)
 	}
 }
+
+func TestIsFileRWO(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		caps    []*csi.VolumeCapability
+		rwoFile bool
+	}{
+		{
+			name: "non valid",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessMode: nil,
+					AccessType: nil,
+				},
+			},
+			rwoFile: false,
+		},
+
+		{
+			name: "single writer FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
+					},
+				},
+			},
+			rwoFile: true,
+		},
+		{
+			name: "single node multi writer FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
+					},
+				},
+			},
+			rwoFile: true,
+		},
+		{
+			name: "multi node multi writer FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+					},
+				},
+			},
+			rwoFile: false,
+		},
+		{
+			name: "multi node multi reader FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
+					},
+				},
+			},
+			rwoFile: false,
+		},
+		{
+			name: "single node reader FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY,
+					},
+				},
+			},
+			rwoFile: false,
+		},
+	}
+
+	for _, tt := range tests {
+		newtt := tt
+		t.Run(newtt.name, func(t *testing.T) {
+			t.Parallel()
+			rwoFile := IsFileRWO(newtt.caps)
+			if rwoFile != newtt.rwoFile {
+				t.Errorf("IsFileRWO() rwofile = %v, want %v", rwoFile, newtt.rwoFile)
+			}
+		})
+	}
+}
+
+func TestIsBlockMultiWriter(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		caps        []*csi.VolumeCapability
+		multiWriter bool
+		block       bool
+	}{
+		{
+			name: "non valid",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessMode: nil,
+					AccessType: nil,
+				},
+			},
+			multiWriter: false,
+			block:       false,
+		},
+		{
+			name: "multi node multi writer block mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Block{
+						Block: &csi.VolumeCapability_BlockVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+					},
+				},
+			},
+			multiWriter: true,
+			block:       true,
+		},
+		{
+			name: "single node multi writer block mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Block{
+						Block: &csi.VolumeCapability_BlockVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
+					},
+				},
+			},
+			multiWriter: true,
+			block:       true,
+		},
+		{
+			name: "single writer block mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Block{
+						Block: &csi.VolumeCapability_BlockVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
+					},
+				},
+			},
+			multiWriter: false,
+			block:       true,
+		},
+		{
+			name: "single writer FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
+					},
+				},
+			},
+			multiWriter: false,
+			block:       false,
+		},
+		{
+			name: "single node multi writer FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
+					},
+				},
+			},
+			multiWriter: true,
+			block:       false,
+		},
+		{
+			name: "multi node multi writer FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+					},
+				},
+			},
+			multiWriter: true,
+			block:       false,
+		},
+		{
+			name: "multi node multi reader FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
+					},
+				},
+			},
+			multiWriter: false,
+			block:       false,
+		},
+		{
+			name: "single node reader FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY,
+					},
+				},
+			},
+			multiWriter: false,
+			block:       false,
+		},
+		{
+			name: "multi node reader block mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Block{
+						Block: &csi.VolumeCapability_BlockVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
+					},
+				},
+			},
+			multiWriter: false,
+			block:       true,
+		},
+		{
+			name: "single node reader block mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Block{
+						Block: &csi.VolumeCapability_BlockVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY,
+					},
+				},
+			},
+			multiWriter: false,
+			block:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		newtt := tt
+		t.Run(newtt.name, func(t *testing.T) {
+			t.Parallel()
+			multiWriter, block := IsBlockMultiWriter(newtt.caps)
+			if multiWriter != newtt.multiWriter {
+				t.Errorf("IsBlockMultiWriter() multiWriter = %v, want %v", multiWriter, newtt.multiWriter)
+			}
+			if block != newtt.block {
+				t.Errorf("IsBlockMultiWriter block = %v, want %v", block, newtt.block)
+			}
+		})
+	}
+}
+
+func TestIsReaderOnly(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		caps   []*csi.VolumeCapability
+		roOnly bool
+	}{
+		{
+			name: "non valid",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessMode: nil,
+					AccessType: nil,
+				},
+			},
+			roOnly: false,
+		},
+
+		{
+			name: "single writer FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
+					},
+				},
+			},
+			roOnly: false,
+		},
+		{
+			name: "single node multi writer FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
+					},
+				},
+			},
+			roOnly: false,
+		},
+		{
+			name: "multi node multi writer FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+					},
+				},
+			},
+			roOnly: false,
+		},
+		{
+			name: "multi node multi reader FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
+					},
+				},
+			},
+			roOnly: true,
+		},
+		{
+			name: "single node reader FS mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY,
+					},
+				},
+			},
+			roOnly: true,
+		},
+		{
+			name: "multi node reader block mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Block{
+						Block: &csi.VolumeCapability_BlockVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
+					},
+				},
+			},
+			roOnly: true,
+		},
+		{
+			name: "single node reader block mode",
+			caps: []*csi.VolumeCapability{
+				{
+					AccessType: &csi.VolumeCapability_Block{
+						Block: &csi.VolumeCapability_BlockVolume{},
+					},
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY,
+					},
+				},
+			},
+			roOnly: true,
+		},
+	}
+
+	for _, tt := range tests {
+		newtt := tt
+		t.Run(newtt.name, func(t *testing.T) {
+			t.Parallel()
+			roOnly := IsReaderOnly(newtt.caps)
+			if roOnly != newtt.roOnly {
+				t.Errorf("isReadOnly() roOnly = %v, want %v", roOnly, newtt.roOnly)
+			}
+		})
+	}
+}
