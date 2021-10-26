@@ -101,11 +101,17 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
-	// RO modes need to be handled independently (ie right now even if access mode is RO, they'll be RW upon attach)
-	isBlock, isMultiNode := csicommon.IsBlockMultiNode(req.VolumeCapabilities)
+	// below capability check indicates that we support both {SINGLE_NODE or MULTI_NODE} WRITERs and the `isMultiWriter`
+	// flag has been set accordingly.
+	isMultiWriter, isBlock := csicommon.IsBlockMultiWriter(req.VolumeCapabilities)
 
+	// below return value has set, if it is RWO mode File PVC.
+	isRWOFile := csicommon.IsFileRWO(req.VolumeCapabilities)
+
+	// below return value has set, if it is ReadOnly capability.
+	isROOnly := csicommon.IsReaderOnly(req.VolumeCapabilities)
 	// We want to fail early if the user is trying to create a RWX on a non-block type device
-	if isMultiNode && !isBlock {
+	if !isRWOFile && !isBlock && !isROOnly {
 		return nil, status.Error(
 			codes.InvalidArgument,
 			"multi node access modes are only supported on rbd `block` type volumes")
@@ -115,11 +121,13 @@ func (cs *ControllerServer) parseVolCreateRequest(
 		return nil, status.Error(codes.InvalidArgument, "missing required parameter imageFeatures")
 	}
 
-	// if it's NOT SINGLE_NODE_WRITER and it's BLOCK we'll set the parameter to ignore the in-use checks
+	// if it's NOT SINGLE_NODE_WRITER, and it's BLOCK we'll set the parameter to ignore the in-use checks
 	rbdVol, err := genVolFromVolumeOptions(
 		ctx,
-		req.GetParameters(), req.GetSecrets(),
-		(isMultiNode && isBlock), false)
+		req.GetParameters(),
+		req.GetSecrets(),
+		isMultiWriter && isBlock,
+		false)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
