@@ -38,6 +38,7 @@ var (
 	rbdDaemonsetName   = "csi-rbdplugin"
 	defaultRBDPool     = "replicapool"
 	erasureCodedPool   = "ec-pool"
+	noDataPool         = ""
 	// Topology related variables.
 	nodeRegionLabel     = "test.failure-domain/region"
 	regionValue         = "testregion"
@@ -498,14 +499,20 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass with error %v", err)
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass with error %v", err)
-				}
+			})
+
+			By("create an erasure coded PVC and validate snapshot restore", func() {
+				validatePVCSnapshot(
+					defaultCloneCount,
+					pvcPath,
+					appPath,
+					snapshotPath,
+					pvcClonePath,
+					appClonePath,
+					noKMS, noKMS,
+					defaultSCName,
+					erasureCodedPool,
+					f)
 			})
 
 			By("create a PVC and bind it to an app with ext4 as the FS ", func() {
@@ -1518,6 +1525,7 @@ var _ = Describe("RBD", func() {
 					appClonePath,
 					noKMS, noKMS,
 					defaultSCName,
+					noDataPool,
 					f)
 			})
 
@@ -1574,7 +1582,7 @@ var _ = Describe("RBD", func() {
 				validatePVCSnapshot(1,
 					pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath,
 					vaultKMS, vaultKMS,
-					defaultSCName,
+					defaultSCName, noDataPool,
 					f)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
@@ -1620,7 +1628,7 @@ var _ = Describe("RBD", func() {
 				validatePVCSnapshot(1,
 					pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath,
 					vaultKMS, vaultTenantSAKMS,
-					restoreSCName, f)
+					restoreSCName, noDataPool, f)
 
 				err = retryKubectlArgs(cephCSINamespace, kubectlDelete, deployTimeout, "storageclass", restoreSCName)
 				if err != nil {
@@ -1679,7 +1687,7 @@ var _ = Describe("RBD", func() {
 				validatePVCSnapshot(1,
 					pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath,
 					vaultKMS, secretsMetadataKMS,
-					restoreSCName, f)
+					restoreSCName, noDataPool, f)
 
 				// delete user secret
 				err = retryKubectlFile(namespace,

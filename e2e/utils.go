@@ -802,9 +802,8 @@ func validatePVCClone(
 func validatePVCSnapshot(
 	totalCount int,
 	pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string,
-	kms, restoreKMS kmsConfig,
-	restoreSCName string,
-	f *framework.Framework) {
+	kms, restoreKMS kmsConfig, restoreSCName,
+	dataPool string, f *framework.Framework) {
 	var wg sync.WaitGroup
 	wgErrs := make([]error, totalCount)
 	chErrs := make([]error, totalCount)
@@ -1020,6 +1019,10 @@ func validatePVCSnapshot(
 			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+			if wgErrs[n] == nil && dataPool != noDataPool {
+				wgErrs[n] = checkPVCDataPoolForImageInPool(f, &p, defaultRBDPool, dataPool)
+			}
+
 			wg.Done()
 		}(i, *pvcClone, *appClone)
 	}
