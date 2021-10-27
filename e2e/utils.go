@@ -594,7 +594,8 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 // nolint:gocyclo,gocognit,nestif,cyclop // reduce complexity
 func validatePVCClone(
 	totalCount int,
-	sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath string,
+	sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath,
+	dataPool string,
 	kms kmsConfig,
 	validatePVC validateFunc,
 	f *framework.Framework) {
@@ -662,6 +663,9 @@ func validatePVCClone(
 				LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
 			}
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+			if wgErrs[n] == nil && dataPool != noDataPool {
+				wgErrs[n] = checkPVCDataPoolForImageInPool(f, &p, defaultRBDPool, dataPool)
+			}
 			if wgErrs[n] == nil && kms != noKMS {
 				if kms.canGetPassphrase() {
 					imageData, sErr := getImageInfoFromPVC(p.Namespace, name, f)
