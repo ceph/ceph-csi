@@ -37,6 +37,7 @@ var (
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
 	defaultRBDPool     = "replicapool"
+	erasureCodedPool   = "ec-pool"
 	// Topology related variables.
 	nodeRegionLabel     = "test.failure-domain/region"
 	regionValue         = "testregion"
@@ -463,6 +464,48 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+			})
+
+			By("create an erasure coded PVC and bind it to an app", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{
+						"dataPool": erasureCodedPool,
+						"pool":     defaultRBDPool,
+					},
+					deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+				pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create pvc and application binding: %v", err)
+				}
+				err = checkPVCDataPoolForImageInPool(f, pvc, defaultRBDPool, "ec-pool")
+				if err != nil {
+					e2elog.Failf("failed to check data pool for image: %v", err)
+				}
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc and application : %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass with error %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
 			})
 
 			By("create a PVC and bind it to an app with ext4 as the FS ", func() {
