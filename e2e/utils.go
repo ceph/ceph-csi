@@ -15,6 +15,7 @@ import (
 	"time"
 
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
@@ -173,6 +174,50 @@ func createPVCAndApp(
 		return err
 	}
 	err = createApp(f.ClientSet, app, deployTimeout)
+
+	return err
+}
+
+// createPVCAndDeploymentApp creates pvc and deployment, if name is not empty
+// same will be set as pvc and app name.
+func createPVCAndDeploymentApp(
+	f *framework.Framework,
+	name string,
+	pvc *v1.PersistentVolumeClaim,
+	app *appsv1.Deployment,
+	pvcTimeout int) error {
+	if name != "" {
+		pvc.Name = name
+		app.Name = name
+		app.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+	}
+	err := createPVCAndvalidatePV(f.ClientSet, pvc, pvcTimeout)
+	if err != nil {
+		return err
+	}
+	err = createDeploymentApp(f.ClientSet, app, deployTimeout)
+
+	return err
+}
+
+// DeletePVCAndDeploymentApp deletes pvc and deployment, if name is not empty
+// same will be set as pvc and app name.
+func deletePVCAndDeploymentApp(
+	f *framework.Framework,
+	name string,
+	pvc *v1.PersistentVolumeClaim,
+	app *appsv1.Deployment) error {
+	if name != "" {
+		pvc.Name = name
+		app.Name = name
+		app.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+	}
+
+	err := deleteDeploymentApp(f.ClientSet, app.Name, app.Namespace, deployTimeout)
+	if err != nil {
+		return err
+	}
+	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 
 	return err
 }
