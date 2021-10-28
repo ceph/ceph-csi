@@ -19,6 +19,7 @@ package kms
 import (
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -206,6 +207,18 @@ func TestTransformConfig(t *testing.T) {
 	assert.Equal(t, config["vaultAuthNamespace"], cm["VAULT_AUTH_NAMESPACE"])
 	assert.Equal(t, config["vaultNamespace"], cm["VAULT_NAMESPACE"])
 	assert.Equal(t, config["vaultCAVerify"], "false")
+}
+
+func TestTransformConfigDefaults(t *testing.T) {
+	t.Parallel()
+	cm := make(map[string]interface{})
+	cm["KMS_PROVIDER"] = kmsTypeVaultTokens
+
+	config, err := transformConfig(cm)
+	require.NoError(t, err)
+	assert.Equal(t, config["encryptionKMSType"], cm["KMS_PROVIDER"])
+	assert.Equal(t, config["vaultDestroyKeys"], vaultDefaultDestroyKeys)
+	assert.Equal(t, config["vaultCAVerify"], strconv.FormatBool(vaultDefaultCAVerify))
 }
 
 func TestVaultTokensKMSRegistered(t *testing.T) {

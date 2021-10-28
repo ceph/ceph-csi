@@ -101,7 +101,6 @@ func (v *vaultTokenConf) convertStdVaultToCSIConfig(s *standardVault) {
 
 	// by default the CA should get verified, only when VaultSkipVerify is
 	// set, verification should be disabled
-	v.VaultCAVerify = vaultDefaultCAVerify
 	verify, err := strconv.ParseBool(s.VaultSkipVerify)
 	if err == nil {
 		v.VaultCAVerify = strconv.FormatBool(!verify)
@@ -124,8 +123,14 @@ func transformConfig(svMap map[string]interface{}) (map[string]interface{}, erro
 		return nil, fmt.Errorf("failed to convert config %T to JSON: %w", svMap, err)
 	}
 
-	// convert the JSON back to a standardVault struct
-	sv := &standardVault{}
+	// convert the JSON back to a standardVault struct, default values are
+	// set in case the configuration does not provide all options
+	sv := &standardVault{
+		VaultDestroyKeys: vaultDefaultDestroyKeys,
+		VaultNamespace:   vaultDefaultNamespace,
+		VaultSkipVerify:  strconv.FormatBool(!vaultDefaultCAVerify),
+	}
+
 	err = json.Unmarshal(data, sv)
 	if err != nil {
 		return nil, fmt.Errorf("failed to Unmarshal the vault configuration: %w", err)
