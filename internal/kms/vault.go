@@ -43,7 +43,7 @@ const (
 	vaultDefaultRole           = "csi-kubernetes"
 	vaultDefaultNamespace      = ""
 	vaultDefaultPassphrasePath = ""
-	vaultDefaultCAVerify       = "true"
+	vaultDefaultCAVerify       = true
 	vaultDefaultDestroyKeys    = "true"
 )
 
@@ -208,7 +208,7 @@ func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 		keyContext[loss.KeyVaultNamespace] = vaultNamespace
 	}
 
-	verifyCA := vaultDefaultCAVerify // optional
+	verifyCA := strconv.FormatBool(vaultDefaultCAVerify) // optional
 	err = setConfigString(&verifyCA, config, "vaultCAVerify")
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err
