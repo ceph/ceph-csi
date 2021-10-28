@@ -1,0 +1,30 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-block-rx-volume
+  labels:
+    app: pod-block-rx-volume
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pod-block-rx-volume
+  template:
+    metadata:
+      labels:
+        app: pod-block-rx-volume
+    spec:
+      containers:
+        - name: centos
+          image: quay.io/centos/centos:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sleep", "infinity"]
+          volumeDevices:
+            - name: data
+              devicePath: /dev/xvda
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: raw-block-pvc
+            readOnly: false
