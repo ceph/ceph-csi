@@ -282,7 +282,7 @@ var _ = Describe("cephfs", func() {
 			appEphemeralPath := cephFSExamplePath + "pod-ephemeral.yaml"
 
 			By("checking provisioner deployment is running", func() {
-				err := waitForDeploymentComplete(cephFSDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err := waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)
 				if err != nil {
 					e2elog.Failf("timeout waiting for deployment %s: %v", cephFSDeploymentName, err)
 				}

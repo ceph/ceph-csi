@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,52 +70,6 @@ func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 
 		return true, nil
 	})
-}
-
-// Waits for the deployment to complete.
-
-func waitForDeploymentComplete(name, ns string, c kubernetes.Interface, t int) error {
-	var (
-		deployment *appsv1.Deployment
-		reason     string
-		err        error
-	)
-	timeout := time.Duration(t) * time.Minute
-	err = wait.PollImmediate(poll, timeout, func() (bool, error) {
-		deployment, err = c.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
-		if err != nil {
-			if isRetryableAPIError(err) {
-				return false, nil
-			}
-			e2elog.Logf("deployment error: %v", err)
-
-			return false, err
-		}
-
-		// TODO need to check rolling update
-
-		// When the deployment status and its underlying resources reach the
-		// desired state, we're done
-		if deployment.Status.Replicas == deployment.Status.ReadyReplicas {
-			return true, nil
-		}
-		e2elog.Logf(
-			"deployment status: expected replica count %d running replica count %d",
-			deployment.Status.Replicas,
-			deployment.Status.ReadyReplicas)
-		reason = fmt.Sprintf("deployment status: %#v", deployment.Status.String())
-
-		return false, nil
-	})
-
-	if errors.Is(err, wait.ErrWaitTimeout) {
-		err = fmt.Errorf("%s", reason)
-	}
-	if err != nil {
-		return fmt.Errorf("error waiting for deployment %q status to match expectation: %w", name, err)
-	}
-
-	return nil
 }
 
 func findPodAndContainerName(f *framework.Framework, ns, cn string, opt *metav1.ListOptions) (string, string, error) {

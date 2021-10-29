@@ -997,7 +997,7 @@ func recreateCSIRBDPods(f *framework.Framework) error {
 	if err != nil {
 		return fmt.Errorf("timeout waiting for daemonset pods: %w", err)
 	}
-	err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+	err = waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
 	if err != nil {
 		return fmt.Errorf("timeout waiting for deployment to be in running state: %w", err)
 	}

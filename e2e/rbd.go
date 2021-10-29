@@ -254,7 +254,7 @@ var _ = Describe("RBD", func() {
 		deployVault(f.ClientSet, deployTimeout)
 
 		// wait for provisioner deployment
-		err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+		err = waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
 		if err != nil {
 			e2elog.Failf("timeout waiting for deployment %s: %v", rbdDeploymentName, err)
 		}
@@ -2414,7 +2414,7 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						e2elog.Failf("timeout waiting for daemonset pods: %v", err)
 					}
-					err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+					err = waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
 					if err != nil {
 						e2elog.Failf("timeout waiting for deployment to be in running state: %v", err)
 					}
