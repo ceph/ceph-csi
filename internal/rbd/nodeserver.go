@@ -67,6 +67,9 @@ const (
 	xfsReflinkUnset int = iota
 	xfsReflinkNoSupport
 	xfsReflinkSupport
+
+	staticVol    = "staticVolume"
+	volHealerCtx = "volumeHealerContext"
 )
 
 var (
@@ -98,34 +101,20 @@ var (
 	xfsHasReflink = xfsReflinkUnset
 )
 
-// isHealerContext checks if the request is been made from volumeHealer.
-func isHealerContext(parameters map[string]string) bool {
-	var err error
-	healerContext := false
+// parseBoolOption checks if parameters contain option and parse it. If it is
+// empty or not set return default.
+// nolint:unparam // currently defValue is always false, this can change in the future
+func parseBoolOption(ctx context.Context, parameters map[string]string, optionName string, defValue bool) bool {
+	boolVal := defValue
 
-	val, ok := parameters["volumeHealerContext"]
-	if ok {
-		if healerContext, err = strconv.ParseBool(val); err != nil {
-			return false
+	if val, ok := parameters[optionName]; ok {
+		var err error
+		if boolVal, err = strconv.ParseBool(val); err != nil {
+			log.ErrorLog(ctx, "failed to parse value of %q: %q", optionName, val)
 		}
 	}
 
-	return healerContext
-}
-
-// isStaticVolume checks if the volume is static.
-func isStaticVolume(parameters map[string]string) bool {
-	var err error
-	staticVol := false
-
-	val, ok := parameters["staticVolume"]
-	if ok {
-		if staticVol, err = strconv.ParseBool(val); err != nil {
-			return false
-		}
-	}
-
-	return staticVol
+	return boolVal
 }
 
 // healerStageTransaction attempts to attach the rbd Image with previously
@@ -189,7 +178,7 @@ func populateRbdVol(
 	}
 
 	rv.ThickProvision = isThickProvisionRequest(req.GetVolumeContext())
-	isStaticVol := isStaticVolume(req.GetVolumeContext())
+	isStaticVol := parseBoolOption(ctx, req.GetVolumeContext(), staticVol, false)
 	// get rbd image name from the volume journal
 	// for static volumes, the image name is actually the volume ID itself
 	if isStaticVol {
@@ -299,7 +288,7 @@ func (ns *NodeServer) NodeStageVolume(
 	stagingParentPath := req.GetStagingTargetPath()
 	stagingTargetPath := stagingParentPath + "/" + volID
 
-	isHealer := isHealerContext(req.GetVolumeContext())
+	isHealer := parseBoolOption(ctx, req.GetVolumeContext(), volHealerCtx, false)
 	if !isHealer {
 		var isNotMnt bool
 		// check if stagingPath is already mounted
@@ -313,7 +302,7 @@ func (ns *NodeServer) NodeStageVolume(
 		}
 	}
 
-	isStaticVol := isStaticVolume(req.GetVolumeContext())
+	isStaticVol := parseBoolOption(ctx, req.GetVolumeContext(), staticVol, false)
 
 	// throw error when imageFeatures parameter is missing or empty
 	// for backward compatibility, ignore error for non-static volumes from older cephcsi version
