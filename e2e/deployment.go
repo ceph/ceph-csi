@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -123,4 +124,49 @@ func waitForDeploymentInAvailableState(clientSet kubernetes.Interface, name, ns 
 
 		return cond != nil, nil
 	})
+}
+
+// Waits for the deployment to complete.
+func waitForDeploymentComplete(clientSet kubernetes.Interface, name, ns string, deployTimeout int) error {
+	var (
+		deployment *appsv1.Deployment
+		reason     string
+		err        error
+	)
+	timeout := time.Duration(deployTimeout) * time.Minute
+	err = wait.PollImmediate(poll, timeout, func() (bool, error) {
+		deployment, err = clientSet.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			e2elog.Logf("deployment error: %v", err)
+
+			return false, err
+		}
+
+		// TODO need to check rolling update
+
+		// When the deployment status and its underlying resources reach the
+		// desired state, we're done
+		if deployment.Status.Replicas == deployment.Status.ReadyReplicas {
+			return true, nil
+		}
+		e2elog.Logf(
+			"deployment status: expected replica count %d running replica count %d",
+			deployment.Status.Replicas,
+			deployment.Status.ReadyReplicas)
+		reason = fmt.Sprintf("deployment status: %#v", deployment.Status.String())
+
+		return false, nil
+	})
+
+	if errors.Is(err, wait.ErrWaitTimeout) {
+		err = fmt.Errorf("%s", reason)
+	}
+	if err != nil {
+		return fmt.Errorf("error waiting for deployment %q status to match desired state: %w", name, err)
+	}
+
+	return nil
 }

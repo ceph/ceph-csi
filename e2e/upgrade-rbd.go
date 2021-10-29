@@ -165,7 +165,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			appPath := rbdExamplePath + "pod.yaml"
 
 			By("checking provisioner deployment is running", func() {
-				err := waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err := waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
 				if err != nil {
 					e2elog.Failf("timeout waiting for deployment %s: %v", rbdDeploymentName, err)
 				}
@@ -260,7 +260,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 
 				deployRBDPlugin()
 
-				err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
 				if err != nil {
 					e2elog.Failf("timeout waiting for upgraded deployment %s: %v", rbdDeploymentName, err)
 				}

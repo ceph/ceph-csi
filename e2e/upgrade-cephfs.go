@@ -148,7 +148,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 	Context("Cephfs Upgrade Test", func() {
 		It("Cephfs Upgrade Test", func() {
 			By("checking provisioner deployment is running", func() {
-				err = waitForDeploymentComplete(cephFSDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)
 				if err != nil {
 					e2elog.Failf("timeout waiting for deployment %s: %v", cephFSDeploymentName, err)
 				}
@@ -241,7 +241,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				}
 				deployCephfsPlugin()
 
-				err = waitForDeploymentComplete(cephFSDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
+				err = waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)
 				if err != nil {
 					e2elog.Failf("timeout waiting for upgraded deployment %s: %v", cephFSDeploymentName, err)
 				}
