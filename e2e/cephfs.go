@@ -279,6 +279,7 @@ var _ = Describe("cephfs", func() {
 			appClonePath := cephFSExamplePath + "pod-restore.yaml"
 			appSmartClonePath := cephFSExamplePath + "pod-clone.yaml"
 			snapshotPath := cephFSExamplePath + "snapshot.yaml"
+			appEphemeralPath := cephFSExamplePath + "pod-ephemeral.yaml"
 
 			By("checking provisioner deployment is running", func() {
 				err := waitForDeploymentComplete(cephFSDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
@@ -312,6 +313,37 @@ var _ = Describe("cephfs", func() {
 					}
 				})
 			}
+			By("verify generic ephemeral volume support", func() {
+				// generic ephemeral volume support is beta since v1.21.
+				if !k8sVersionGreaterEquals(f.ClientSet, 1, 21) {
+					Skip("generic ephemeral volume only supported from v1.21+")
+				}
+				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
+				if err != nil {
+					e2elog.Failf("failed to create CephFS storageclass: %v", err)
+				}
+				// create application
+				app, err := loadApp(appEphemeralPath)
+				if err != nil {
+					e2elog.Failf("failed to load application: %v", err)
+				}
+				app.Namespace = f.UniqueName
+				err = createApp(f.ClientSet, app, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create application: %v", err)
+				}
+				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
+				// delete pod
+				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete application: %v", err)
+				}
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+			})
 
 			By("check static PVC", func() {
 				scPath := cephFSExamplePath + "secret.yaml"
