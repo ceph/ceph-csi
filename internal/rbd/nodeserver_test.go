@@ -17,6 +17,7 @@ limitations under the License.
 package rbd
 
 import (
+	"context"
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -54,5 +55,53 @@ func TestGetStagingPath(t *testing.T) {
 	stagingPath = getStagingTargetPath("")
 	if stagingPath != expect {
 		t.Errorf("getStagingTargetPath() = %s, got %s", stagingPath, expect)
+	}
+}
+
+func TestParseBoolOption(t *testing.T) {
+	t.Parallel()
+	ctx := context.TODO()
+	optionName := "myOption"
+	defaultValue := false
+
+	tests := []struct {
+		name         string
+		scParameters map[string]string
+		expect       bool
+	}{
+		{
+			name:         "myOption => true",
+			scParameters: map[string]string{optionName: "true"},
+			expect:       true,
+		},
+		{
+			name:         "myOption => false",
+			scParameters: map[string]string{optionName: "false"},
+			expect:       false,
+		},
+		{
+			name:         "myOption => empty",
+			scParameters: map[string]string{optionName: ""},
+			expect:       defaultValue,
+		},
+		{
+			name:         "myOption => not-parsable",
+			scParameters: map[string]string{optionName: "non-boolean"},
+			expect:       defaultValue,
+		},
+		{
+			name:         "myOption => not-set",
+			scParameters: map[string]string{},
+			expect:       defaultValue,
+		},
+	}
+
+	for _, tt := range tests {
+		tc := tt
+		val := parseBoolOption(ctx, tc.scParameters, optionName, defaultValue)
+		if val != tc.expect {
+			t.Errorf("parseBoolOption(%v) returned: %t, expected: %t",
+				tc.scParameters, val, tc.expect)
+		}
 	}
 }
