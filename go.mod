@@ -9,11 +9,11 @@ require (
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
 	github.com/csi-addons/spec v0.1.1
+	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/hashicorp/vault/api v1.2.0
+	github.com/hashicorp/vault/api v1.3.0
 	github.com/kubernetes-csi/csi-lib-utils v0.10.0
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
@@ -22,7 +22,7 @@ require (
 	github.com/pborman/uuid v1.2.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2
 	google.golang.org/grpc v1.41.0
 	k8s.io/api v0.22.2
