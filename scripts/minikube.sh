@@ -160,7 +160,7 @@ CSI_RESIZER_VERSION=${CSI_RESIZER_VERSION:-"v1.2.0"}
 CSI_NODE_DRIVER_REGISTRAR_VERSION=${CSI_NODE_DRIVER_REGISTRAR_VERSION:-"v2.2.0"}
 
 #feature-gates for kube
-K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-"ExpandCSIVolumes=true"}
+K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-""}
 
 #extra-config for kube https://minikube.sigs.k8s.io/docs/reference/configuration/kubernetes/
 EXTRA_CONFIG_PSP="--extra-config=apiserver.enable-admission-plugins=PodSecurityPolicy --addons=pod-security-policy"
