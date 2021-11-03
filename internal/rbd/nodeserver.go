@@ -335,22 +335,21 @@ func (ns *NodeServer) NodeStageVolume(
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	transaction := stageTransaction{}
 	// Stash image details prior to mapping the image (useful during Unstage as it has no
 	// voloptions passed to the RPC as per the CSI spec)
 	err = stashRBDImageMetadata(rv, stagingParentPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	defer func() {
-		if err != nil {
-			ns.undoStagingTransaction(ctx, req, transaction, rv)
-		}
-	}()
 
 	// perform the actual staging and if this fails, have undoStagingTransaction
 	// cleans up for us
-	transaction, err = ns.stageTransaction(ctx, req, cr, rv, isStaticVol)
+	txn, err := ns.stageTransaction(ctx, req, cr, rv, isStaticVol)
+	defer func() {
+		if err != nil {
+			ns.undoStagingTransaction(ctx, req, txn, rv)
+		}
+	}()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -369,8 +368,8 @@ func (ns *NodeServer) stageTransaction(
 	req *csi.NodeStageVolumeRequest,
 	cr *util.Credentials,
 	volOptions *rbdVolume,
-	staticVol bool) (stageTransaction, error) {
-	transaction := stageTransaction{}
+	staticVol bool) (*stageTransaction, error) {
+	transaction := &stageTransaction{}
 
 	var err error
 	var readOnly bool
@@ -500,7 +499,7 @@ func flattenImageBeforeMapping(
 func (ns *NodeServer) undoStagingTransaction(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
-	transaction stageTransaction,
+	transaction *stageTransaction,
 	volOptions *rbdVolume) {
 	var err error
 
