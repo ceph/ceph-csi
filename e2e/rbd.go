@@ -1116,26 +1116,19 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create a PVC-PVC clone and bind it to an app", func() {
-				// pvc clone is only supported from v1.16+
-				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					validatePVCClone(
-						defaultCloneCount,
-						pvcPath,
-						appPath,
-						pvcSmartClonePath,
-						appSmartClonePath,
-						noKMS,
-						noPVCValidation,
-						f)
-				}
+				validatePVCClone(
+					defaultCloneCount,
+					pvcPath,
+					appPath,
+					pvcSmartClonePath,
+					appSmartClonePath,
+					noKMS,
+					noPVCValidation,
+					f)
+
 			})
 
 			By("create a thick-provisioned PVC-PVC clone and bind it to an app", func() {
-				// pvc clone is only supported from v1.16+
-				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					Skip("pvc clone is only supported from v1.16+")
-				}
-
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
@@ -1160,10 +1153,6 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create an encrypted PVC snapshot and restore it for an app with VaultKMS", func() {
-				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					Skip("pvc clone is only supported from v1.16+")
-				}
-
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
@@ -1194,9 +1183,6 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("Validate PVC restore from vaultKMS to vaultTenantSAKMS", func() {
-				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					Skip("pvc clone is only supported from v1.16+")
-				}
 				restoreSCName := "restore-sc"
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -1251,9 +1237,6 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("Validate thick PVC restore from vaultKMS to userSecretsMetadataKMS", func() {
-				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					Skip("pvc clone is only supported from v1.16+")
-				}
 				restoreSCName := "restore-sc"
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -1323,10 +1306,6 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create an encrypted PVC-PVC clone and bind it to an app", func() {
-				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					Skip("pvc clone is only supported from v1.16+")
-				}
-
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
@@ -1353,10 +1332,6 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create an encrypted PVC-PVC clone and bind it to an app with VaultKMS", func() {
-				if !k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					Skip("pvc clone is only supported from v1.16+")
-				}
-
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass with error %v", err)
@@ -1389,22 +1364,19 @@ var _ = Describe("RBD", func() {
 				}
 			})
 			By("create a Block mode PVC-PVC clone and bind it to an app", func() {
-				v, err := f.ClientSet.Discovery().ServerVersion()
+				_, err := f.ClientSet.Discovery().ServerVersion()
 				if err != nil {
 					e2elog.Failf("failed to get server version with error %v", err)
 				}
-				// pvc clone is only supported from v1.16+
-				if v.Major > "1" || (v.Major == "1" && v.Minor >= "16") {
-					validatePVCClone(
-						defaultCloneCount,
-						rawPvcPath,
-						rawAppPath,
-						pvcBlockSmartClonePath,
-						appBlockSmartClonePath,
-						noKMS,
-						noPVCValidation,
-						f)
-				}
+				validatePVCClone(
+					defaultCloneCount,
+					rawPvcPath,
+					rawAppPath,
+					pvcBlockSmartClonePath,
+					appBlockSmartClonePath,
+					noKMS,
+					noPVCValidation,
+					f)
 			})
 			By("create/delete multiple PVCs and Apps", func() {
 				totalCount := 2
@@ -1485,15 +1457,12 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("Resize Block PVC and check Device size", func() {
-				// Block PVC resize is supported in kubernetes 1.16+
-				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					err := resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
-					if err != nil {
-						e2elog.Failf("failed to resize block PVC with error %v", err)
-					}
-					// validate created backend rbd images
-					validateRBDImageCount(f, 0, defaultRBDPool)
+				err := resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
+				if err != nil {
+					e2elog.Failf("failed to resize block PVC with error %v", err)
 				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
 			})
 
 			By("Test unmount after nodeplugin restart", func() {
@@ -2485,12 +2454,9 @@ var _ = Describe("RBD", func() {
 				}
 
 				// Resize Block PVC and check Device size within the namespace
-				// Block PVC resize is supported in kubernetes 1.16+
-				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					err = resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
-					if err != nil {
-						e2elog.Failf("failed to resize block PVC with error %v", err)
-					}
+				err = resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
+				if err != nil {
+					e2elog.Failf("failed to resize block PVC with error %v", err)
 				}
 
 				// Resize Filesystem PVC and check application directory size
