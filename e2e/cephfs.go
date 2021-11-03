@@ -1010,108 +1010,105 @@ var _ = Describe("cephfs", func() {
 			})
 
 			By("create a PVC-PVC clone and bind it to an app", func() {
-				// pvc clone is only supported from v1.16+
-				if k8sVersionGreaterEquals(f.ClientSet, 1, 16) {
-					var wg sync.WaitGroup
-					totalCount := 3
-					wgErrs := make([]error, totalCount)
-					// totalSubvolumes represents the subvolumes in backend
-					// always totalCount+parentPVC
-					totalSubvolumes := totalCount + 1
-					pvc, err := loadPVC(pvcPath)
-					if err != nil {
-						e2elog.Failf("failed to load PVC with error %v", err)
-					}
-
-					pvc.Namespace = f.UniqueName
-					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to create PVC with error %v", err)
-					}
-					app, err := loadApp(appPath)
-					if err != nil {
-						e2elog.Failf("failed to load application with error %v", err)
-					}
-					app.Namespace = f.UniqueName
-					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-					label := make(map[string]string)
-					label[appKey] = appLabel
-					app.Labels = label
-					opt := metav1.ListOptions{
-						LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
-					}
-					wErr := writeDataInPod(app, &opt, f)
-					if wErr != nil {
-						e2elog.Failf("failed to write data from application %v", wErr)
-					}
-
-					pvcClone, err := loadPVC(pvcSmartClonePath)
-					if err != nil {
-						e2elog.Failf("failed to load PVC with error %v", err)
-					}
-					pvcClone.Spec.DataSource.Name = pvc.Name
-					pvcClone.Namespace = f.UniqueName
-					appClone, err := loadApp(appSmartClonePath)
-					if err != nil {
-						e2elog.Failf("failed to load application with error %v", err)
-					}
-					appClone.Namespace = f.UniqueName
-					wg.Add(totalCount)
-					// create clone and bind it to an app
-					for i := 0; i < totalCount; i++ {
-						go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-							name := fmt.Sprintf("%s%d", f.UniqueName, n)
-							wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
-							wg.Done()
-						}(i, *pvcClone, *appClone)
-					}
-					wg.Wait()
-
-					failed := 0
-					for i, err := range wgErrs {
-						if err != nil {
-							// not using Failf() as it aborts the test and does not log other errors
-							e2elog.Logf("failed to create PVC or application (%s%d): %v", f.UniqueName, i, err)
-							failed++
-						}
-					}
-					if failed != 0 {
-						e2elog.Failf("deleting PVCs and apps failed, %d errors were logged", failed)
-					}
-
-					validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
-
-					// delete parent pvc
-					err = deletePVCAndApp("", f, pvc, app)
-					if err != nil {
-						e2elog.Failf("failed to delete PVC or application with error %v", err)
-					}
-
-					wg.Add(totalCount)
-					// delete clone and app
-					for i := 0; i < totalCount; i++ {
-						go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-							name := fmt.Sprintf("%s%d", f.UniqueName, n)
-							p.Spec.DataSource.Name = name
-							wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
-							wg.Done()
-						}(i, *pvcClone, *appClone)
-					}
-					wg.Wait()
-
-					for i, err := range wgErrs {
-						if err != nil {
-							// not using Failf() as it aborts the test and does not log other errors
-							e2elog.Logf("failed to delete PVC or application (%s%d): %v", f.UniqueName, i, err)
-							failed++
-						}
-					}
-					if failed != 0 {
-						e2elog.Failf("deleting PVCs and apps failed, %d errors were logged", failed)
-					}
-
-					validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				var wg sync.WaitGroup
+				totalCount := 3
+				wgErrs := make([]error, totalCount)
+				// totalSubvolumes represents the subvolumes in backend
+				// always totalCount+parentPVC
+				totalSubvolumes := totalCount + 1
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
 				}
+
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC with error %v", err)
+				}
+				app, err := loadApp(appPath)
+				if err != nil {
+					e2elog.Failf("failed to load application with error %v", err)
+				}
+				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+				label := make(map[string]string)
+				label[appKey] = appLabel
+				app.Labels = label
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+				}
+				wErr := writeDataInPod(app, &opt, f)
+				if wErr != nil {
+					e2elog.Failf("failed to write data from application %v", wErr)
+				}
+
+				pvcClone, err := loadPVC(pvcSmartClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+				pvcClone.Spec.DataSource.Name = pvc.Name
+				pvcClone.Namespace = f.UniqueName
+				appClone, err := loadApp(appSmartClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load application with error %v", err)
+				}
+				appClone.Namespace = f.UniqueName
+				wg.Add(totalCount)
+				// create clone and bind it to an app
+				for i := 0; i < totalCount; i++ {
+					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+						wg.Done()
+					}(i, *pvcClone, *appClone)
+				}
+				wg.Wait()
+
+				failed := 0
+				for i, err := range wgErrs {
+					if err != nil {
+						// not using Failf() as it aborts the test and does not log other errors
+						e2elog.Logf("failed to create PVC or application (%s%d): %v", f.UniqueName, i, err)
+						failed++
+					}
+				}
+				if failed != 0 {
+					e2elog.Failf("deleting PVCs and apps failed, %d errors were logged", failed)
+				}
+
+				validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
+
+				// delete parent pvc
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC or application with error %v", err)
+				}
+
+				wg.Add(totalCount)
+				// delete clone and app
+				for i := 0; i < totalCount; i++ {
+					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						p.Spec.DataSource.Name = name
+						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
+						wg.Done()
+					}(i, *pvcClone, *appClone)
+				}
+				wg.Wait()
+
+				for i, err := range wgErrs {
+					if err != nil {
+						// not using Failf() as it aborts the test and does not log other errors
+						e2elog.Logf("failed to delete PVC or application (%s%d): %v", f.UniqueName, i, err)
+						failed++
+					}
+				}
+				if failed != 0 {
+					e2elog.Failf("deleting PVCs and apps failed, %d errors were logged", failed)
+				}
+
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 			})
 
 			By("Create ROX PVC and bind it to an app", func() {
