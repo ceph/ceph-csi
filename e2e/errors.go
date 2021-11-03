@@ -41,6 +41,11 @@ func isRetryableAPIError(err error) bool {
 		return true
 	}
 
+	// "transport is closing" is an internal gRPC err, we can not use ErrConnClosing
+	if strings.Contains(err.Error(), "transport is closing") {
+		return true
+	}
+
 	return false
 }
 
