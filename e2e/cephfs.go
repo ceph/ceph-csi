@@ -602,12 +602,9 @@ var _ = Describe("cephfs", func() {
 			})
 
 			By("Resize PVC and check application directory size", func() {
-				// Resize 0.3.0 is only supported from v1.15+
-				if k8sVersionGreaterEquals(f.ClientSet, 1, 15) {
-					err := resizePVCAndValidateSize(pvcPath, appPath, f)
-					if err != nil {
-						e2elog.Failf("failed to resize PVC with error %v", err)
-					}
+				err := resizePVCAndValidateSize(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to resize PVC with error %v", err)
 				}
 			})
 
