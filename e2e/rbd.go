@@ -1102,19 +1102,17 @@ var _ = Describe("RBD", func() {
 			)
 
 			By("create a PVC clone and bind it to an app", func() {
-				// snapshot beta is only supported from v1.17+
-				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					validatePVCSnapshot(
-						defaultCloneCount,
-						pvcPath,
-						appPath,
-						snapshotPath,
-						pvcClonePath,
-						appClonePath,
-						noKMS, noKMS,
-						defaultSCName,
-						f)
-				}
+				validatePVCSnapshot(
+					defaultCloneCount,
+					pvcPath,
+					appPath,
+					snapshotPath,
+					pvcClonePath,
+					appClonePath,
+					noKMS, noKMS,
+					defaultSCName,
+					f)
+
 			})
 
 			By("create a PVC-PVC clone and bind it to an app", func() {
@@ -1873,10 +1871,6 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create rbd clones in different pool", func() {
-				// snapshot beta is only supported from v1.17+
-				if !k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					Skip("pvc restore is only supported from v1.17+")
-				}
 				clonePool := "clone-test"
 				// create pool for clones
 				err := createPool(f, clonePool)
@@ -1933,147 +1927,141 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create ROX PVC clone and mount it to multiple pods", func() {
-				// snapshot beta is only supported from v1.17+
-				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					err := createRBDSnapshotClass(f)
+				err := createRBDSnapshotClass(f)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				defer func() {
+					err = deleteRBDSnapshotClass()
 					if err != nil {
-						e2elog.Failf("failed to create storageclass with error %v", err)
+						e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
 					}
-					defer func() {
-						err = deleteRBDSnapshotClass()
-						if err != nil {
-							e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
-						}
-					}()
+				}()
 
-					// create PVC and bind it to an app
-					pvc, err := loadPVC(pvcPath)
+				// create PVC and bind it to an app
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+
+				pvc.Namespace = f.UniqueName
+				app, err := loadApp(appPath)
+				if err != nil {
+					e2elog.Failf("failed to load application with error %v", err)
+				}
+				app.Namespace = f.UniqueName
+				err = createPVCAndApp("", f, pvc, app, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC and application with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+				// delete pod as we should not create snapshot for in-use pvc
+				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete application with error %v", err)
+				}
+
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create snapshot with error %v", err)
+				}
+				// validate created backend rbd images
+				// parent PVC + snapshot
+				totalImages := 2
+				validateRBDImageCount(f, totalImages, defaultRBDPool)
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC with error %v", err)
+				}
+
+				// create clone PVC as ROX
+				pvcClone.Namespace = f.UniqueName
+				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC with error %v", err)
+				}
+				// validate created backend rbd images
+				// parent pvc+ snapshot + clone
+				totalImages = 3
+				validateRBDImageCount(f, totalImages, defaultRBDPool)
+
+				appClone, err := loadApp(appClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load application with error %v", err)
+				}
+
+				totalCount := 2
+				appClone.Namespace = f.UniqueName
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+
+				// create PVC and app
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					label := map[string]string{
+						"app": name,
+					}
+					appClone.Labels = label
+					appClone.Name = name
+					err = createApp(f.ClientSet, appClone, deployTimeout)
 					if err != nil {
-						e2elog.Failf("failed to load PVC with error %v", err)
+						e2elog.Failf("failed to create application with error %v", err)
+					}
+				}
+
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("app=%s", name),
 					}
 
-					pvc.Namespace = f.UniqueName
-					app, err := loadApp(appPath)
-					if err != nil {
-						e2elog.Failf("failed to load application with error %v", err)
+					filePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+					_, stdErr := execCommandInPodAndAllowFail(
+						f,
+						fmt.Sprintf("echo 'Hello World' > %s", filePath),
+						appClone.Namespace,
+						&opt)
+					readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+					if !strings.Contains(stdErr, readOnlyErr) {
+						e2elog.Failf(stdErr)
 					}
-					app.Namespace = f.UniqueName
-					err = createPVCAndApp("", f, pvc, app, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to create PVC and application with error %v", err)
-					}
-					// validate created backend rbd images
-					validateRBDImageCount(f, 1, defaultRBDPool)
-					// delete pod as we should not create snapshot for in-use pvc
-					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+				}
+
+				// delete app
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					appClone.Name = name
+					err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to delete application with error %v", err)
 					}
-
-					snap := getSnapshot(snapshotPath)
-					snap.Namespace = f.UniqueName
-					snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
-
-					err = createSnapshot(&snap, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to create snapshot with error %v", err)
-					}
-					// validate created backend rbd images
-					// parent PVC + snapshot
-					totalImages := 2
-					validateRBDImageCount(f, totalImages, defaultRBDPool)
-					pvcClone, err := loadPVC(pvcClonePath)
-					if err != nil {
-						e2elog.Failf("failed to load PVC with error %v", err)
-					}
-
-					// create clone PVC as ROX
-					pvcClone.Namespace = f.UniqueName
-					pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
-					err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to create PVC with error %v", err)
-					}
-					// validate created backend rbd images
-					// parent pvc+ snapshot + clone
-					totalImages = 3
-					validateRBDImageCount(f, totalImages, defaultRBDPool)
-
-					appClone, err := loadApp(appClonePath)
-					if err != nil {
-						e2elog.Failf("failed to load application with error %v", err)
-					}
-
-					totalCount := 2
-					appClone.Namespace = f.UniqueName
-					appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
-
-					// create PVC and app
-					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						label := map[string]string{
-							"app": name,
-						}
-						appClone.Labels = label
-						appClone.Name = name
-						err = createApp(f.ClientSet, appClone, deployTimeout)
-						if err != nil {
-							e2elog.Failf("failed to create application with error %v", err)
-						}
-					}
-
-					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						opt := metav1.ListOptions{
-							LabelSelector: fmt.Sprintf("app=%s", name),
-						}
-
-						filePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-						_, stdErr := execCommandInPodAndAllowFail(
-							f,
-							fmt.Sprintf("echo 'Hello World' > %s", filePath),
-							appClone.Namespace,
-							&opt)
-						readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
-						if !strings.Contains(stdErr, readOnlyErr) {
-							e2elog.Failf(stdErr)
-						}
-					}
-
-					// delete app
-					for i := 0; i < totalCount; i++ {
-						name := fmt.Sprintf("%s%d", f.UniqueName, i)
-						appClone.Name = name
-						err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
-						if err != nil {
-							e2elog.Failf("failed to delete application with error %v", err)
-						}
-					}
-					// delete PVC clone
-					err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to delete PVC with error %v", err)
-					}
-					// delete snapshot
-					err = deleteSnapshot(&snap, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to delete snapshot with error %v", err)
-					}
-					// delete parent pvc
-					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to delete PVC with error %v", err)
-					}
-					// validate created backend rbd images
-					validateRBDImageCount(f, 0, defaultRBDPool)
 				}
+				// delete PVC clone
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC with error %v", err)
+				}
+				// delete snapshot
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete snapshot with error %v", err)
+				}
+				// delete parent pvc
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC with error %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+
 			})
 
 			By("validate PVC mounting if snapshot and parent PVC are deleted", func() {
-				// snapshot beta is only supported from v1.17+
-				if !k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					Skip("pvc restore is only supported from v1.17+")
-				}
 				err := createRBDSnapshotClass(f)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass with error %v", err)
@@ -2178,10 +2166,6 @@ var _ = Describe("RBD", func() {
 			By(
 				"validate PVC mounting if snapshot and parent PVC are deleted chained with depth 2",
 				func() {
-					// snapshot beta is only supported from v1.17+
-					if !k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-						Skip("pvc restore is only supported from v1.17+")
-					}
 					snapChainDepth := 2
 
 					err := deleteResource(rbdExamplePath + "storageclass.yaml")
@@ -2315,10 +2299,6 @@ var _ = Describe("RBD", func() {
 				})
 
 			By("validate PVC Clone chained with depth 2", func() {
-				// snapshot beta is only supported from v1.17+
-				if !k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					Skip("pvc restore is only supported from v1.17+")
-				}
 				cloneChainDepth := 2
 
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
@@ -2523,9 +2503,12 @@ var _ = Describe("RBD", func() {
 				}
 
 				// Create a PVC clone and bind it to an app within the namespace
-				// snapshot beta is only supported from v1.17+
-				if k8sVersionGreaterEquals(f.ClientSet, 1, 17) {
-					err = createRBDSnapshotClass(f)
+				err = createRBDSnapshotClass(f)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass with error %v", err)
+				}
+				defer func() {
+					err = deleteRBDSnapshotClass()
 					if err != nil {
 						e2elog.Failf("failed to create storageclass with error %v", err)
 					}
