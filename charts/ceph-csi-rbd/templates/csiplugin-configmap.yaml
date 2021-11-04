@@ -12,7 +12,7 @@ metadata:
     heritage: {{ .Release.Service }}
 data:
   config.json: |-
-{{ toJson .Values.csiConfig | indent 4 -}}
+{{ toJson .Values.csiConfig | indent 4 }}
   cluster-mapping.json: |-
-{{ toJson .Values.csiMapping | indent 4 -}}
+{{ toJson .Values.csiMapping | indent 4 }}
 {{- end }}
