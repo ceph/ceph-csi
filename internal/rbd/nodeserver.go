@@ -394,8 +394,8 @@ func (ns *NodeServer) stageTransaction(
 	}
 	transaction.devicePath = devicePath
 
-	log.DebugLog(ctx, "rbd image: %s/%s was successfully mapped at %s\n",
-		req.GetVolumeId(), volOptions.Pool, devicePath)
+	log.DebugLog(ctx, "rbd image: %s was successfully mapped at %s\n",
+		volOptions, devicePath)
 
 	// userspace mounters like nbd need the device path as a reference while
 	// restarting the userspace processes on a nodeplugin restart. For kernel
