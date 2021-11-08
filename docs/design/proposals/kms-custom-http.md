@@ -14,11 +14,11 @@ externalizes the storage and retrieval of passphrases to an opaque service.
 ## Solution Requirements
 
 1. For new volumes the generated passphrases should be sent to the service
-for persisting.
+   for persisting.
 1. For existing volumes the passphrases should be fetched from the
-aftermentioned service.
+   aftermentioned service.
 1. The communication should be secure because the passphrases are transferred
-in plain format.
+   in plain format.
 
 ## Suggested Implementation
 
@@ -44,10 +44,10 @@ Example configuration:
 The service is expected to respect these endpoints:
 
 * Persist a new volume passphrase
-`POST /key`
-payload: `{ "volumeid": "vol123", "key": "<passphrase>" }`
+  `POST /key`
+  payload: `{ "volumeid": "vol123", "key": "<passphrase>" }`
 * Retrieve an existing passphrase
-`GET /key/<volume-id>`
-response: `{"key":"<passphrase>"}`
+  `GET /key/<volume-id>`
+  response: `{"key":"<passphrase>"}`
 * Delete a pasphrase
-`DELETE /key/<volume-id>`
+  `DELETE /key/<volume-id>`
