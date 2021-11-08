@@ -440,7 +440,7 @@ func (ns *NodeServer) stageTransaction(
 		ok, err = resizer.NeedResize(devicePath, stagingTargetPath)
 		if err != nil {
 			return transaction, status.Errorf(codes.Internal,
-				"Need resize check failed on devicePath %s and staingPath %s, error: %v",
+				"need resize check failed on devicePath %s and staingPath %s, error: %v",
 				devicePath,
 				stagingTargetPath,
 				err)
