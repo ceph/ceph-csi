@@ -196,20 +196,21 @@ func VolumeMapper(volumeID string) (mapperFile, mapperFilePath string) {
 
 // EncryptVolume encrypts provided device with LUKS.
 func EncryptVolume(ctx context.Context, devicePath, passphrase string) error {
-	log.DebugLog(ctx, "Encrypting device %s with LUKS", devicePath)
-	if _, _, err := LuksFormat(devicePath, passphrase); err != nil {
-		return fmt.Errorf("failed to encrypt device %s with LUKS: %w", devicePath, err)
+	log.DebugLog(ctx, "Encrypting device %q	 with LUKS", devicePath)
+	_, stdErr, err := LuksFormat(devicePath, passphrase)
+	if err != nil || stdErr != "" {
+		log.ErrorLog(ctx, "failed to encrypt device %q with LUKS (%v): %s", devicePath, err, stdErr)
 	}
 
-	return nil
+	return err
 }
 
 // OpenEncryptedVolume opens volume so that it can be used by the client.
 func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase string) error {
-	log.DebugLog(ctx, "Opening device %s with LUKS on %s", devicePath, mapperFile)
-	_, stderr, err := LuksOpen(devicePath, mapperFile, passphrase)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to open LUKS device %q: %s", devicePath, stderr)
+	log.DebugLog(ctx, "Opening device %q with LUKS on %q", devicePath, mapperFile)
+	_, stdErr, err := LuksOpen(devicePath, mapperFile, passphrase)
+	if err != nil || stdErr != "" {
+		log.ErrorLog(ctx, "failed to open device %q (%v): %s", devicePath, err, stdErr)
 	}
 
 	return err
@@ -217,10 +218,10 @@ func OpenEncryptedVolume(ctx context.Context, devicePath, mapperFile, passphrase
 
 // ResizeEncryptedVolume resizes encrypted volume so that it can be used by the client.
 func ResizeEncryptedVolume(ctx context.Context, mapperFile string) error {
-	log.DebugLog(ctx, "Resizing LUKS device %s", mapperFile)
-	_, stderr, err := LuksResize(mapperFile)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to resize LUKS device %s: %s", mapperFile, stderr)
+	log.DebugLog(ctx, "Resizing LUKS device %q", mapperFile)
+	_, stdErr, err := LuksResize(mapperFile)
+	if err != nil || stdErr != "" {
+		log.ErrorLog(ctx, "failed to resize LUKS device %q (%v): %s", mapperFile, err, stdErr)
 	}
 
 	return err
@@ -228,8 +229,11 @@ func ResizeEncryptedVolume(ctx context.Context, mapperFile string) error {
 
 // CloseEncryptedVolume closes encrypted volume so it can be detached.
 func CloseEncryptedVolume(ctx context.Context, mapperFile string) error {
-	log.DebugLog(ctx, "Closing LUKS device %s", mapperFile)
-	_, _, err := LuksClose(mapperFile)
+	log.DebugLog(ctx, "Closing LUKS device %q", mapperFile)
+	_, stdErr, err := LuksClose(mapperFile)
+	if err != nil || stdErr != "" {
+		log.ErrorLog(ctx, "failed to close LUKS device %q (%v): %s", mapperFile, err, stdErr)
+	}
 
 	return err
 }
@@ -249,13 +253,13 @@ func DeviceEncryptionStatus(ctx context.Context, devicePath string) (mappedDevic
 		return devicePath, "", nil
 	}
 	mapPath := strings.TrimPrefix(devicePath, mapperFilePathPrefix+"/")
-	stdout, _, err := LuksStatus(mapPath)
-	if err != nil {
-		log.DebugLog(ctx, "device %s is not an active LUKS device: %v", devicePath, err)
+	stdout, stdErr, err := LuksStatus(mapPath)
+	if err != nil || stdErr != "" {
+		log.DebugLog(ctx, "%q is not an active LUKS device (%v): %s", devicePath, err, stdErr)
 
 		return devicePath, "", nil
 	}
-	lines := strings.Split(string(stdout), "\n")
+	lines := strings.Split(stdout, "\n")
 	if len(lines) < 1 {
 		return "", "", fmt.Errorf("device encryption status returned no stdout for %s", devicePath)
 	}

@@ -24,7 +24,7 @@ import (
 )
 
 // LuksFormat sets up volume as an encrypted LUKS partition.
-func LuksFormat(devicePath, passphrase string) (stdout, stderr []byte, err error) {
+func LuksFormat(devicePath, passphrase string) (string, string, error) {
 	return execCryptsetupCommand(
 		&passphrase,
 		"-q",
@@ -39,28 +39,28 @@ func LuksFormat(devicePath, passphrase string) (stdout, stderr []byte, err error
 }
 
 // LuksOpen opens LUKS encrypted partition and sets up a mapping.
-func LuksOpen(devicePath, mapperFile, passphrase string) (stdout, stderr []byte, err error) {
+func LuksOpen(devicePath, mapperFile, passphrase string) (string, string, error) {
 	// cryptsetup option --disable-keyring (introduced with cryptsetup v2.0.0)
 	// will be ignored with luks1
 	return execCryptsetupCommand(&passphrase, "luksOpen", devicePath, mapperFile, "--disable-keyring", "-d", "/dev/stdin")
 }
 
 // LuksResize resizes LUKS encrypted partition.
-func LuksResize(mapperFile string) (stdout, stderr []byte, err error) {
+func LuksResize(mapperFile string) (string, string, error) {
 	return execCryptsetupCommand(nil, "resize", mapperFile)
 }
 
 // LuksClose removes existing mapping.
-func LuksClose(mapperFile string) (stdout, stderr []byte, err error) {
+func LuksClose(mapperFile string) (string, string, error) {
 	return execCryptsetupCommand(nil, "luksClose", mapperFile)
 }
 
 // LuksStatus returns encryption status of a provided device.
-func LuksStatus(mapperFile string) (stdout, stderr []byte, err error) {
+func LuksStatus(mapperFile string) (string, string, error) {
 	return execCryptsetupCommand(nil, "status", mapperFile)
 }
 
-func execCryptsetupCommand(stdin *string, args ...string) (stdout, stderr []byte, err error) {
+func execCryptsetupCommand(stdin *string, args ...string) (string, string, error) {
 	var (
 		program       = "cryptsetup"
 		cmd           = exec.Command(program, args...) // #nosec:G204, commands executing not vulnerable.
@@ -74,11 +74,14 @@ func execCryptsetupCommand(stdin *string, args ...string) (stdout, stderr []byte
 	if stdin != nil {
 		cmd.Stdin = strings.NewReader(*stdin)
 	}
+	err := cmd.Run()
+	stdout := stdoutBuf.String()
+	stderr := stderrBuf.String()
 
-	if err := cmd.Run(); err != nil {
-		return stdoutBuf.Bytes(), stderrBuf.Bytes(), fmt.Errorf("an error (%v)"+
+	if err != nil {
+		return stdout, stderr, fmt.Errorf("an error (%v)"+
 			" occurred while running %s args: %v", err, program, sanitizedArgs)
 	}
 
-	return stdoutBuf.Bytes(), nil, nil
+	return stdout, stderr, err
 }
