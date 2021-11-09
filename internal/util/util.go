@@ -244,7 +244,7 @@ func CheckKernelSupport(release string, supportedVersions []KernelVersion) bool 
 			}
 		}
 	}
-	log.ErrorLogMsg("kernel %s does not support required features", release)
+	log.WarningLogMsg("kernel %s does not support required features", release)
 
 	return false
 }
