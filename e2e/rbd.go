@@ -268,10 +268,6 @@ var _ = Describe("RBD", func() {
 		if err != nil {
 			e2elog.Failf("failed to get the kernel version with error %v", err)
 		}
-		// default io-timeout=0, needs kernel >= 5.4
-		if !util.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
-			nbdMapOptions = "debug-rbd=20,io-timeout=330"
-		}
 	})
 
 	AfterEach(func() {
@@ -674,14 +670,21 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to poll: %v", err)
 				}
 
-				filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-				_, stdErr, err = execCommandInPod(
-					f,
-					fmt.Sprintf("echo 'Hello World' > %s", filePath),
-					app.Namespace,
-					&appOpt)
-				if err != nil || stdErr != "" {
-					e2elog.Failf("failed to write IO, err: %v, stdErr: %v ", err, stdErr)
+				// Writes on kernel < 5.4 are failing due to a bug in NBD driver,
+				// NBD zero cmd timeout handling is fixed with kernel >= 5.4
+				// see https://github.com/ceph/ceph-csi/issues/2204#issuecomment-930941047
+				if util.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
+					filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+					_, stdErr, err = execCommandInPod(
+						f,
+						fmt.Sprintf("echo 'Hello World' > %s", filePath),
+						app.Namespace,
+						&appOpt)
+					if err != nil || stdErr != "" {
+						e2elog.Failf("failed to write IO, err: %v, stdErr: %v ", err, stdErr)
+					}
+				} else {
+					e2elog.Logf("kernel %q does not meet recommendation, skipping IO test", kernelRelease)
 				}
 
 				err = deletePVCAndApp("", f, pvc, app)
