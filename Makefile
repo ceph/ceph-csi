@@ -54,12 +54,12 @@ LDFLAGS += -X $(GO_PROJECT)/internal/util.DriverVersion=$(CSI_IMAGE_VERSION)
 
 BASE_IMAGE ?= $(shell . $(CURDIR)/build.env ; echo $${BASE_IMAGE})
 
-ifndef CEPH_VERSION
-	CEPH_VERSION = $(shell . $(CURDIR)/build.env ; echo $${CEPH_VERSION})
+ifndef BUILD_TAGS
+	BUILD_TAGS = $(shell . $(CURDIR)/build.env ; echo $${BUILD_TAGS})
 endif
-ifdef CEPH_VERSION
+ifdef BUILD_TAGS
 	# pass -tags to go commands (for go-ceph build constraints)
-	GO_TAGS = -tags=$(CEPH_VERSION)
+	GO_TAGS = -tags=$(BUILD_TAGS)
 endif
 
 # passing TARGET=static-check on the 'make containerized-test' or 'make
@@ -110,7 +110,7 @@ mod-check: check-env
 	@go mod verify && [ "$(shell sha512sum go.mod)" = "`sha512sum go.mod`" ] || ( echo "ERROR: go.mod was modified by 'go mod verify'" && false )
 
 scripts/golangci.yml: build.env scripts/golangci.yml.in
-	sed "s/@@CEPH_VERSION@@/$(CEPH_VERSION)/g" < scripts/golangci.yml.in > scripts/golangci.yml
+	sed "s/@@BUILD_TAGS@@/$(BUILD_TAGS)/g" < scripts/golangci.yml.in > scripts/golangci.yml
 
 go-lint: scripts/golangci.yml
 	./scripts/lint-go.sh
