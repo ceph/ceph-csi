@@ -871,10 +871,6 @@ func (rv *rbdVolume) flattenRbdImage(
 			"task manager does not support flatten,image will be flattened once hardlimit is reached: %v",
 			err)
 		if forceFlatten || depth >= hardlimit {
-			err = rv.Connect(cr)
-			if err != nil {
-				return err
-			}
 			err := rv.flatten()
 			if err != nil {
 				log.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", rv.Pool, rv.RbdImageName, err)
