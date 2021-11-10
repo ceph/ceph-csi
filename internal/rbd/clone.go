@@ -58,18 +58,18 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		case errors.Is(err, ErrSnapNotFound):
 			// check temporary image needs flatten, if yes add task to flatten the
 			// temporary clone
-			err = tempClone.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+			err = tempClone.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 			if err != nil {
 				return false, err
 			}
 			// as the snapshot is not present, create new snapshot,clone and
 			// delete the temporary snapshot
-			err = createRBDClone(ctx, tempClone, rv, snap, rv.conn.Creds)
+			err = createRBDClone(ctx, tempClone, rv, snap)
 			if err != nil {
 				return false, err
 			}
 			// check image needs flatten, if yes add task to flatten the clone
-			err = rv.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+			err = rv.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 			if err != nil {
 				return false, err
 			}
@@ -115,7 +115,7 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 		return false, err
 	}
 	// check image needs flatten, if yes add task to flatten the clone
-	err = rv.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+	err = rv.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 	if err != nil {
 		return false, err
 	}
@@ -212,14 +212,14 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 	cloneSnap.Pool = rv.Pool
 
 	// create snapshot and temporary clone and delete snapshot
-	err := createRBDClone(ctx, parentVol, tempClone, tempSnap, rv.conn.Creds)
+	err := createRBDClone(ctx, parentVol, tempClone, tempSnap)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
 		if err != nil || errClone != nil {
-			cErr := cleanUpSnapshot(ctx, tempClone, cloneSnap, rv, rv.conn.Creds)
+			cErr := cleanUpSnapshot(ctx, tempClone, cloneSnap, rv)
 			if cErr != nil {
 				log.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", cloneSnap, tempClone, cErr)
 			}
@@ -228,7 +228,7 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 		if err != nil || errFlatten != nil {
 			if !errors.Is(errFlatten, ErrFlattenInProgress) {
 				// cleanup snapshot
-				cErr := cleanUpSnapshot(ctx, parentVol, tempSnap, tempClone, rv.conn.Creds)
+				cErr := cleanUpSnapshot(ctx, parentVol, tempSnap, tempClone)
 				if cErr != nil {
 					log.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", tempSnap, tempClone, cErr)
 				}
@@ -243,7 +243,7 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 		}
 	} else {
 		// flatten clone
-		errFlatten = tempClone.flattenRbdImage(ctx, rv.conn.Creds, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+		errFlatten = tempClone.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 		if errFlatten != nil {
 			return errFlatten
 		}
@@ -251,7 +251,7 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 		// create snap of temp clone from temporary cloned image
 		// create final clone
 		// delete snap of temp clone
-		errClone = createRBDClone(ctx, tempClone, rv, cloneSnap, rv.conn.Creds)
+		errClone = createRBDClone(ctx, tempClone, rv, cloneSnap)
 		if errClone != nil {
 			// set errFlatten error to cleanup temporary snapshot and temporary clone
 			errFlatten = errors.New("failed to create user requested cloned image")
@@ -288,11 +288,11 @@ func (rv *rbdVolume) flattenCloneImage(ctx context.Context) error {
 	}
 	err := tempClone.getImageInfo()
 	if err == nil {
-		return tempClone.flattenRbdImage(ctx, tempClone.conn.Creds, false, hardLimit, softLimit)
+		return tempClone.flattenRbdImage(ctx, false, hardLimit, softLimit)
 	}
 	if !errors.Is(err, ErrImageNotFound) {
 		return err
 	}
 
-	return rv.flattenRbdImage(ctx, rv.conn.Creds, false, hardLimit, softLimit)
+	return rv.flattenRbdImage(ctx, false, hardLimit, softLimit)
 }

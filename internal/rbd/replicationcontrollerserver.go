@@ -349,7 +349,7 @@ func repairDummyImage(ctx context.Context, dummyVol *rbdVolume) error {
 
 	// deleting and recreating the dummy image will not impact anything as its
 	// a workaround to fix the scheduling problem.
-	err := deleteImage(ctx, dummyVol, dummyVol.conn.Creds)
+	err := dummyVol.deleteImage(ctx)
 	if err != nil {
 		return err
 	}

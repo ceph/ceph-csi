@@ -387,7 +387,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		if err != nil {
 			// nolint:errcheck // deleteImage() will log errors in
 			// case it fails, no need to log them here again
-			_ = deleteImage(ctx, pOpts, cr)
+			_ = pOpts.deleteImage(ctx)
 
 			return fmt.Errorf("failed to thick provision image: %w", err)
 		}
@@ -396,7 +396,7 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		if err != nil {
 			// nolint:errcheck // deleteImage() will log errors in
 			// case it fails, no need to log them here again
-			_ = deleteImage(ctx, pOpts, cr)
+			_ = pOpts.deleteImage(ctx)
 
 			return fmt.Errorf("failed to mark image as thick-provisioned: %w", err)
 		}
@@ -640,7 +640,7 @@ func (rv *rbdVolume) ensureImageCleanup(ctx context.Context) error {
 		if val.Name == rv.RbdImageName {
 			rv.ImageID = val.Id
 
-			return trashRemoveImage(ctx, rv, rv.conn.Creds)
+			return rv.trashRemoveImage(ctx)
 		}
 	}
 
@@ -648,71 +648,71 @@ func (rv *rbdVolume) ensureImageCleanup(ctx context.Context) error {
 }
 
 // deleteImage deletes a ceph image with provision and volume options.
-func deleteImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
-	image := pOpts.RbdImageName
+func (rv *rbdVolume) deleteImage(ctx context.Context) error {
+	image := rv.RbdImageName
 
-	log.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, pOpts.Monitors, pOpts.Pool)
+	log.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, rv.Monitors, rv.Pool)
 
 	// Support deleting the older rbd images whose imageID is not stored in omap
-	err := pOpts.getImageID()
+	err := rv.getImageID()
 	if err != nil {
 		return err
 	}
 
-	if pOpts.isEncrypted() {
-		log.DebugLog(ctx, "rbd: going to remove DEK for %q", pOpts)
-		if err = pOpts.encryption.RemoveDEK(pOpts.VolID); err != nil {
-			log.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", pOpts.VolID, err)
+	if rv.isEncrypted() {
+		log.DebugLog(ctx, "rbd: going to remove DEK for %q", rv)
+		if err = rv.encryption.RemoveDEK(rv.VolID); err != nil {
+			log.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", rv.VolID, err)
 		}
 	}
 
-	err = pOpts.openIoctx()
+	err = rv.openIoctx()
 	if err != nil {
 		return err
 	}
 
-	rbdImage := librbd.GetImage(pOpts.ioctx, image)
+	rbdImage := librbd.GetImage(rv.ioctx, image)
 	err = rbdImage.Trash(0)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", pOpts, err)
+		log.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", rv, err)
 
 		return err
 	}
 
-	return trashRemoveImage(ctx, pOpts, cr)
+	return rv.trashRemoveImage(ctx)
 }
 
 // trashRemoveImage adds a task to trash remove an image using ceph manager if supported,
 // otherwise removes the image from trash.
-func trashRemoveImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
+func (rv *rbdVolume) trashRemoveImage(ctx context.Context) error {
 	// attempt to use Ceph manager based deletion support if available
 
-	ra, err := pOpts.conn.GetRBDAdmin()
+	ra, err := rv.conn.GetRBDAdmin()
 	if err != nil {
 		return err
 	}
 
-	log.DebugLog(ctx, "rbd: adding task to remove image %s with id %s from trash", pOpts, pOpts.ImageID)
+	log.DebugLog(ctx, "rbd: adding task to remove image %s with id %s from trash", rv, rv.ImageID)
 
 	ta := ra.Task()
-	_, err = ta.AddTrashRemove(admin.NewImageSpec(pOpts.Pool, pOpts.RadosNamespace, pOpts.ImageID))
+	_, err = ta.AddTrashRemove(admin.NewImageSpec(rv.Pool, rv.RadosNamespace, rv.ImageID))
 
-	rbdCephMgrSupported := isCephMgrSupported(ctx, pOpts.ClusterID, err)
+	rbdCephMgrSupported := isCephMgrSupported(ctx, rv.ClusterID, err)
 	if rbdCephMgrSupported && err != nil {
-		log.ErrorLog(ctx, "failed to add task to delete rbd image: %s, %v", pOpts, err)
+		log.ErrorLog(ctx, "failed to add task to delete rbd image: %s, %v", rv, err)
 
 		return err
 	}
 
 	if !rbdCephMgrSupported {
-		err = librbd.TrashRemove(pOpts.ioctx, pOpts.ImageID, true)
+		err = librbd.TrashRemove(rv.ioctx, rv.ImageID, true)
 		if err != nil {
-			log.ErrorLog(ctx, "failed to delete rbd image: %s, %v", pOpts, err)
+			log.ErrorLog(ctx, "failed to delete rbd image: %s, %v", rv, err)
 
 			return err
 		}
 	} else {
-		log.DebugLog(ctx, "rbd: successfully added task to move image %s with id %s to trash", pOpts, pOpts.ImageID)
+		log.DebugLog(ctx, "rbd: successfully added task to move image %s with id %s to trash", rv, rv.ImageID)
 	}
 
 	return nil
@@ -801,7 +801,7 @@ func flattenClonedRbdImages(
 
 	for _, snapName := range origNameList {
 		rv.RbdImageName = snapName.origSnapName
-		err = rv.flattenRbdImage(ctx, cr, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+		err = rv.flattenRbdImage(ctx, true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to flatten %s; err %v", rv, err)
 
@@ -814,7 +814,6 @@ func flattenClonedRbdImages(
 
 func (rv *rbdVolume) flattenRbdImage(
 	ctx context.Context,
-	cr *util.Credentials,
 	forceFlatten bool,
 	hardlimit, softlimit uint) error {
 	var depth uint
