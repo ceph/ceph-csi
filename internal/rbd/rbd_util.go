@@ -617,16 +617,6 @@ func isCephMgrSupported(ctx context.Context, clusterID string, err error) bool {
 	return true
 }
 
-// getTrashPath returns the image path for trash operation.
-func (rv *rbdVolume) getTrashPath() string {
-	trashPath := rv.Pool
-	if rv.RadosNamespace != "" {
-		trashPath = trashPath + "/" + rv.RadosNamespace
-	}
-
-	return trashPath + "/" + rv.ImageID
-}
-
 // ensureImageCleanup finds image in trash and if found removes it
 // from trash.
 func (rv *rbdVolume) ensureImageCleanup(ctx context.Context) error {
