@@ -268,6 +268,10 @@ var _ = Describe("RBD", func() {
 		if err != nil {
 			e2elog.Failf("failed to get the kernel version with error %v", err)
 		}
+		// default io-timeout=0, needs kernel >= 5.4
+		if !util.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
+			nbdMapOptions = "debug-rbd=20,io-timeout=330"
+		}
 	})
 
 	AfterEach(func() {
