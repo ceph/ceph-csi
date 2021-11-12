@@ -409,6 +409,35 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 	}
 	devicePath := strings.TrimSuffix(stdout, "\n")
 
+	if isNbd && volOpt.isEncrypted() {
+		stdout, stderr, err := util.ExecCommand(ctx, "sh", "-c", "ps aux | grep rbd-nbd")
+		if err != nil || stderr != "" {
+			log.WarningLog(ctx, "rbd-nbd: ps command failed, error %v, ps output stdout:%q stderr: %q", err, stdout, stderr)
+		} else {
+			log.UsefulLog(ctx, "rbd-nbd: ps command succeeded, stdout: %q", stdout)
+		}
+
+		// FIXME: Just a test
+		wipeArgs := []string{
+			"--all",
+			"--force",
+			devicePath,
+		}
+		stdout, stderr, err = util.ExecCommand(ctx, "wipefs", wipeArgs...)
+		if err != nil {
+			log.WarningLog(ctx, "rbd-nbd: wipefs command failed, error %v, wipefs output stdout:%q stderr: %q", err, stdout, stderr)
+		} else {
+			log.UsefulLog(ctx, "rbd-nbd: wipefsi command succeeded")
+		}
+
+		stdout, stderr, err = util.ExecCommand(ctx, "sh", "-c", "ps aux | grep rbd-nbd")
+		if err != nil || stderr != "" {
+			log.WarningLog(ctx, "rbd-nbd: ps command failed, error %v, ps output stdout:%q stderr: %q", err, stdout, stderr)
+		} else {
+			log.UsefulLog(ctx, "rbd-nbd: ps command succeeded, stdout: %q", stdout)
+		}
+	}
+
 	return devicePath, nil
 }
 

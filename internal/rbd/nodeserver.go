@@ -413,7 +413,23 @@ func (ns *NodeServer) stageTransaction(
 	}
 
 	if volOptions.isEncrypted() {
+		if volOptions.Mounter == rbdNbdMounter {
+			stdout, stderr, saveErr := util.ExecCommand(ctx, "sh", "-c", "ps aux | grep rbd-nbd")
+			if saveErr != nil || stderr != "" {
+				log.WarningLog(ctx, "rbd-nbd: ps command failed, error %v, ps output stdout:%q stderr: %q", saveErr, stdout, stderr)
+			} else {
+				log.UsefulLog(ctx, "rbd-nbd: ps command succeeded, stdout: %q", stdout)
+			}
+		}
 		devicePath, err = ns.processEncryptedDevice(ctx, volOptions, devicePath)
+		if volOptions.Mounter == rbdNbdMounter {
+			stdout, stderr, saveErr := util.ExecCommand(ctx, "sh", "-c", "ps aux | grep rbd-nbd")
+			if saveErr != nil || stderr != "" {
+				log.WarningLog(ctx, "rbd-nbd: ps command failed, error %v, ps output stdout:%q stderr: %q", saveErr, stdout, stderr)
+			} else {
+				log.UsefulLog(ctx, "rbd-nbd: ps command succeeded, stdout: %q", stdout)
+			}
+		}
 		if err != nil {
 			return transaction, err
 		}
