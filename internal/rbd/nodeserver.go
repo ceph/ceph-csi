@@ -216,23 +216,20 @@ func populateRbdVol(
 		rv.RbdImageName = imageAttributes.ImageName
 	}
 
-	krbdSupported := false
-	if req.GetVolumeContext()["mounter"] != rbdNbdMounter {
-		krbdSupported = isKrbdFeatureSupported(ctx, req.GetVolumeContext()["imageFeatures"])
-		if !krbdSupported && !parseBoolOption(ctx, req.GetVolumeContext(), tryOtherMounters, false) {
+	if req.GetVolumeContext()["mounter"] == rbdDefaultMounter &&
+		!isKrbdFeatureSupported(ctx, req.GetVolumeContext()["imageFeatures"]) {
+		if !parseBoolOption(ctx, req.GetVolumeContext(), tryOtherMounters, false) {
 			log.ErrorLog(ctx, "unsupported krbd Feature, set `tryOtherMounters:true` or fix krbd driver")
 
 			return nil, status.Errorf(codes.Internal, "unsupported krbd Feature")
 		}
-	}
-	if krbdSupported {
-		rv.MapOptions = req.GetVolumeContext()["mapOptions"]
-		rv.UnmapOptions = req.GetVolumeContext()["unmapOptions"]
-		rv.Mounter = req.GetVolumeContext()["mounter"]
-	} else {
 		// fallback to rbd-nbd,
 		// ignore the mapOptions and unmapOptions as they are meant for krbd use.
 		rv.Mounter = rbdNbdMounter
+	} else {
+		rv.Mounter = req.GetVolumeContext()["mounter"]
+		rv.MapOptions = req.GetVolumeContext()["mapOptions"]
+		rv.UnmapOptions = req.GetVolumeContext()["unmapOptions"]
 	}
 
 	rv.VolID = volID
