@@ -117,12 +117,10 @@ func getMirroringMode(ctx context.Context, parameters map[string]string) (librbd
 	return mirroringMode, nil
 }
 
-// getSchedulingDetails gets the mirroring mode and scheduling details from the
+// validateSchedulingDetails gets the mirroring mode and scheduling details from the
 // input GRPC request parameters and validates the scheduling is only supported
 // for snapshot mirroring mode.
-func getSchedulingDetails(parameters map[string]string) (admin.Interval, admin.StartTime, error) {
-	admInt := admin.NoInterval
-	adminStartTime := admin.NoStartTime
+func validateSchedulingDetails(parameters map[string]string) error {
 	var err error
 
 	val := parameters[imageMirroringKey]
@@ -134,43 +132,49 @@ func getSchedulingDetails(parameters map[string]string) (admin.Interval, admin.S
 	// an optional parameter.
 	case "":
 	default:
-		return admInt, adminStartTime, status.Error(codes.InvalidArgument, "scheduling is only supported for snapshot mode")
+		return status.Error(codes.InvalidArgument, "scheduling is only supported for snapshot mode")
 	}
 
 	// validate mandatory interval field
 	interval, ok := parameters[schedulingIntervalKey]
 	if ok && interval == "" {
-		return admInt, adminStartTime, status.Error(codes.InvalidArgument, "scheduling interval cannot be empty")
+		return status.Error(codes.InvalidArgument, "scheduling interval cannot be empty")
 	}
-	adminStartTime = admin.StartTime(parameters[schedulingStartTimeKey])
+	adminStartTime := admin.StartTime(parameters[schedulingStartTimeKey])
 	if !ok {
 		// startTime is alone not supported it has to be present with interval
 		if adminStartTime != "" {
-			return admInt, admin.NoStartTime, status.Errorf(codes.InvalidArgument,
+			return status.Errorf(codes.InvalidArgument,
 				"%q parameter is supported only with %q",
 				schedulingStartTimeKey,
 				schedulingIntervalKey)
 		}
 	}
 	if interval != "" {
-		admInt, err = validateSchedulingInterval(interval)
+		err = validateSchedulingInterval(interval)
 		if err != nil {
-			return admInt, admin.NoStartTime, status.Error(codes.InvalidArgument, err.Error())
+			return status.Error(codes.InvalidArgument, err.Error())
 		}
 	}
 
-	return admInt, adminStartTime, nil
+	return nil
+}
+
+// getSchedulingDetails returns scheduling interval and scheduling startTime.
+func getSchedulingDetails(parameters map[string]string) (admin.Interval, admin.StartTime) {
+	return admin.Interval(parameters[schedulingIntervalKey]),
+		admin.StartTime(parameters[schedulingStartTimeKey])
 }
 
 // validateSchedulingInterval return the interval as it is if its ending with
 // `m|h|d` or else it will return error.
-func validateSchedulingInterval(interval string) (admin.Interval, error) {
+func validateSchedulingInterval(interval string) error {
 	re := regexp.MustCompile(`^\d+[mhd]$`)
 	if re.MatchString(interval) {
-		return admin.Interval(interval), nil
+		return nil
 	}
 
-	return "", errors.New("interval specified without d, h, m suffix")
+	return errors.New("interval specified without d, h, m suffix")
 }
 
 // EnableVolumeReplication extracts the RBD volume information from the
@@ -189,7 +193,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	}
 	defer cr.DeleteCredentials()
 
-	interval, startTime, err := getSchedulingDetails(req.GetParameters())
+	err = validateSchedulingDetails(req.GetParameters())
 	if err != nil {
 		return nil, err
 	}
@@ -235,19 +239,6 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-	}
-
-	if interval != "" {
-		err = rbdVol.addSnapshotScheduling(interval, startTime)
-		if err != nil {
-			return nil, err
-		}
-		log.DebugLog(
-			ctx,
-			"Added scheduling at interval %s, start time %s for volume %s",
-			interval,
-			startTime,
-			rbdVol)
 	}
 
 	return &replication.EnableVolumeReplicationResponse{}, nil
@@ -435,6 +426,20 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+	}
+
+	interval, startTime := getSchedulingDetails(req.GetParameters())
+	if interval != admin.NoInterval {
+		err = rbdVol.addSnapshotScheduling(interval, startTime)
+		if err != nil {
+			return nil, err
+		}
+		log.DebugLog(
+			ctx,
+			"Added scheduling at interval %s, start time %s for volume %s",
+			interval,
+			startTime,
+			rbdVol)
 	}
 
 	return &replication.PromoteVolumeResponse{}, nil
