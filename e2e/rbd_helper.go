@@ -447,7 +447,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, kms kmsConfig, f
 	}
 
 	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
-	err = validateEncryptedImage(f, rbdImageSpec, app)
+	err = validateEncryptedImage(f, rbdImageSpec, imageData.pvName, app.Name)
 	if err != nil {
 		return err
 	}
@@ -498,7 +498,7 @@ func isEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *
 	}
 	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
 
-	return validateEncryptedImage(f, rbdImageSpec, app)
+	return validateEncryptedImage(f, rbdImageSpec, imageData.pvName, app.Name)
 }
 
 func isThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
@@ -538,7 +538,7 @@ func validateThickImageMetadata(f *framework.Framework, pvc *v1.PersistentVolume
 // following checks are performed:
 // - Metadata of the image should be set with the encryption state;
 // - The pvc should be mounted by a pod, so the filesystem type can be fetched.
-func validateEncryptedImage(f *framework.Framework, rbdImageSpec string, app *v1.Pod) error {
+func validateEncryptedImage(f *framework.Framework, rbdImageSpec, pvName, appName string) error {
 	encryptedState, err := getImageMeta(rbdImageSpec, "rbd.csi.ceph.com/encrypted", f)
 	if err != nil {
 		return err
@@ -547,8 +547,19 @@ func validateEncryptedImage(f *framework.Framework, rbdImageSpec string, app *v1
 		return fmt.Errorf("%v not equal to encrypted", encryptedState)
 	}
 
-	volumeMountPath := app.Spec.Containers[0].VolumeMounts[0].MountPath
-	mountType, err := getMountType(app.Name, app.Namespace, volumeMountPath, f)
+	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get pod %q in namespace %q: %w", appName, f.UniqueName, err)
+	}
+	volumeMountPath := fmt.Sprintf(
+		"/var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount",
+		pod.UID,
+		pvName)
+	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
+	if err != nil {
+		return fmt.Errorf("failed to get labels: %w", err)
+	}
+	mountType, err := getMountType(selector, volumeMountPath, f)
 	if err != nil {
 		return err
 	}

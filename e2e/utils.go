@@ -20,7 +20,6 @@ import (
 	scv1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
@@ -230,12 +229,12 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) e
 	return err
 }
 
-func getMountType(appName, appNamespace, mountPath string, f *framework.Framework) (string, error) {
+func getMountType(selector, mountPath string, f *framework.Framework) (string, error) {
 	opt := metav1.ListOptions{
-		FieldSelector: fields.OneTermEqualSelector("metadata.name", appName).String(),
+		LabelSelector: selector,
 	}
 	cmd := fmt.Sprintf("lsblk -o TYPE,MOUNTPOINT | grep '%s' | awk '{print $1}'", mountPath)
-	stdOut, stdErr, err := execCommandInPod(f, cmd, appNamespace, &opt)
+	stdOut, stdErr, err := execCommandInContainer(f, cmd, cephCSINamespace, "csi-rbdplugin", &opt)
 	if err != nil {
 		return "", err
 	}
