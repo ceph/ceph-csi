@@ -22,7 +22,7 @@ function run_check() {
         if [ -z "${regex}" ]; then
             "$exe" "$@"
         else
-            find . -path ./vendor -prune -o -regextype egrep -iregex "$regex" -print0 |
+            find . -path "*/vendor" -prune -o -regextype egrep -iregex "$regex" -print0 |
                 xargs -0rt -n1 "$exe" "$@"
         fi
     elif [ "$all_required" -eq 0 ]; then
