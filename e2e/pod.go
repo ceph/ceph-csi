@@ -229,6 +229,7 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 	return stdOut, stdErr, err
 }
 
+// nolint:unparam // cn is always "csi-rbdplugin", introduced with #2665.
 func execCommandInContainer(
 	f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions) (string, string, error) {
 	podOpt, err := getCommandInPodOpts(f, c, ns, cn, opt)
