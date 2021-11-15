@@ -2050,28 +2050,6 @@ func (ri *rbdImage) addSnapshotScheduling(
 		return err
 	}
 	adminConn := ra.MirrorSnashotSchedule()
-	// list all the snapshot scheduling and check at least one image scheduling
-	// exists with specified interval.
-	ssList, err := adminConn.List(ls)
-	if err != nil {
-		return err
-	}
-
-	for _, ss := range ssList {
-		// make sure we are matching image level scheduling. The
-		// `adminConn.List` lists the global level scheduling also.
-		if ss.Name == ri.String() {
-			for _, s := range ss.Schedule {
-				// TODO: Add support to check start time also.
-				// The start time is currently stored with different format
-				// in ceph. Comparison is not possible unless we know in
-				// which format ceph is storing it.
-				if s.Interval == interval {
-					return err
-				}
-			}
-		}
-	}
 	err = adminConn.Add(ls, interval, startTime)
 	if err != nil {
 		return err

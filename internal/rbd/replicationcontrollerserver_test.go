@@ -29,37 +29,31 @@ func TestValidateSchedulingInterval(t *testing.T) {
 	tests := []struct {
 		name     string
 		interval string
-		want     admin.Interval
 		wantErr  bool
 	}{
 		{
 			"valid interval in minutes",
 			"3m",
-			admin.Interval("3m"),
 			false,
 		},
 		{
 			"valid interval in hour",
 			"22h",
-			admin.Interval("22h"),
 			false,
 		},
 		{
 			"valid interval in days",
 			"13d",
-			admin.Interval("13d"),
 			false,
 		},
 		{
 			"invalid interval without number",
 			"d",
-			admin.Interval(""),
 			true,
 		},
 		{
 			"invalid interval without (m|h|d) suffix",
 			"12",
-			admin.Interval(""),
 			true,
 		},
 	}
@@ -67,14 +61,86 @@ func TestValidateSchedulingInterval(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := validateSchedulingInterval(tt.interval)
+			err := validateSchedulingInterval(tt.interval)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateSchedulingInterval() error = %v, wantErr %v", err, tt.wantErr)
 
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("validateSchedulingInterval() = %v, want %v", got, tt.want)
+		})
+	}
+}
+
+func TestValidateSchedulingDetails(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		parameters map[string]string
+		wantErr    bool
+	}{
+		{
+			"valid parameters",
+			map[string]string{
+				imageMirroringKey:      string(imageMirrorModeSnapshot),
+				schedulingIntervalKey:  "1h",
+				schedulingStartTimeKey: "14:00:00-05:00",
+			},
+			false,
+		},
+		{
+			"valid parameters when optional startTime is missing",
+			map[string]string{
+				imageMirroringKey:     string(imageMirrorModeSnapshot),
+				schedulingIntervalKey: "1h",
+			},
+			false,
+		},
+		{
+			"when mirroring mode is journal",
+			map[string]string{
+				imageMirroringKey:     "journal",
+				schedulingIntervalKey: "1h",
+			},
+			true,
+		},
+		{
+			"when startTime is specified without interval",
+			map[string]string{
+				imageMirroringKey:      string(imageMirrorModeSnapshot),
+				schedulingStartTimeKey: "14:00:00-05:00",
+			},
+			true,
+		},
+		{
+			"when no scheduling is specified",
+			map[string]string{
+				imageMirroringKey: string(imageMirrorModeSnapshot),
+			},
+			false,
+		},
+		{
+			"when no parameters and scheduling details are specified",
+			map[string]string{},
+			false,
+		},
+		{
+			"when no mirroring mode is specified",
+			map[string]string{
+				schedulingIntervalKey:  "1h",
+				schedulingStartTimeKey: "14:00:00-05:00",
+			},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateSchedulingDetails(tt.parameters)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getSchedulingDetails() error = %v, wantErr %v", err, tt.wantErr)
+
+				return
 			}
 		})
 	}
@@ -87,18 +153,15 @@ func TestGetSchedulingDetails(t *testing.T) {
 		parameters    map[string]string
 		wantInterval  admin.Interval
 		wantStartTime admin.StartTime
-		wantErr       bool
 	}{
 		{
 			"valid parameters",
 			map[string]string{
-				imageMirroringKey:      string(imageMirrorModeSnapshot),
 				schedulingIntervalKey:  "1h",
 				schedulingStartTimeKey: "14:00:00-05:00",
 			},
 			admin.Interval("1h"),
 			admin.StartTime("14:00:00-05:00"),
-			false,
 		},
 		{
 			"valid parameters when optional startTime is missing",
@@ -108,17 +171,6 @@ func TestGetSchedulingDetails(t *testing.T) {
 			},
 			admin.Interval("1h"),
 			admin.NoStartTime,
-			false,
-		},
-		{
-			"when mirroring mode is journal",
-			map[string]string{
-				imageMirroringKey:     "journal",
-				schedulingIntervalKey: "1h",
-			},
-			admin.NoInterval,
-			admin.NoStartTime,
-			true,
 		},
 		{
 			"when startTime is specified without interval",
@@ -127,46 +179,20 @@ func TestGetSchedulingDetails(t *testing.T) {
 				schedulingStartTimeKey: "14:00:00-05:00",
 			},
 			admin.NoInterval,
-			admin.NoStartTime,
-			true,
-		},
-		{
-			"when no scheduling is specified",
-			map[string]string{
-				imageMirroringKey: string(imageMirrorModeSnapshot),
-			},
-			admin.NoInterval,
-			admin.NoStartTime,
-			false,
+			admin.StartTime("14:00:00-05:00"),
 		},
 		{
 			"when no parameters and scheduling details are specified",
 			map[string]string{},
 			admin.NoInterval,
 			admin.NoStartTime,
-			false,
-		},
-		{
-			"when no mirroring mode is specified",
-			map[string]string{
-				schedulingIntervalKey:  "1h",
-				schedulingStartTimeKey: "14:00:00-05:00",
-			},
-			admin.Interval("1h"),
-			admin.StartTime("14:00:00-05:00"),
-			false,
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			interval, startTime, err := getSchedulingDetails(tt.parameters)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getSchedulingDetails() error = %v, wantErr %v", err, tt.wantErr)
-
-				return
-			}
+			interval, startTime := getSchedulingDetails(tt.parameters)
 			if !reflect.DeepEqual(interval, tt.wantInterval) {
 				t.Errorf("getSchedulingDetails() interval = %v, want %v", interval, tt.wantInterval)
 			}
