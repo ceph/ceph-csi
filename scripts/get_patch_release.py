@@ -77,7 +77,9 @@ def get_releases(gh_releases):
     '''
     releases = list()
     for release in gh_releases:
-        releases.append(release['name'].split()[-1])
+        # ignore prereleases
+        if not release['prerelease']:
+            releases.append(release['name'].split()[-1])
     return releases
 
 
