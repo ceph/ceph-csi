@@ -1,0 +1,27 @@
+---
+name: "Retest pull Requests Github Action"
+description: "This action can be executed as a job to retest the failed tests"
+inputs:
+  max-retry:
+    description: "Maximum retry of retest of a test in a Pull Request"
+    required: false
+    default: "5"
+  required-approve-count:
+    description: "Total number of approved review required on a Pull Request"
+    required: true
+    default: "2"
+  exempt-label:
+    description: "Labels to skip running the retest"
+    required: false
+    default: "DNM"
+  required-label:
+    description: "required Label on Pull Request to run retest"
+    required: true
+  GITHUB_TOKEN:
+    description: "Github Token for PR comments"
+    required: true
+runs:
+  using: docker
+  image: Dockerfile
+  env:
+    GITHUB_TOKEN: "${{ inputs.GITHUB_TOKEN }}"
