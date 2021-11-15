@@ -1,0 +1,23 @@
+---
+name: test-retest-action
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Enter retest directory
+        run: cd actions/retest
+
+      - name: Build
+        run: go build -v ./...
