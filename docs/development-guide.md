@@ -324,3 +324,18 @@ appropriate command to retrigger the job[s].
 If you are uncertain about the CI failure, we prefer that you ping us on
 [Slack channel #ci](https://cephcsi.slack.com) with more details on
 failures before retriggering the jobs, we will be happy to help.
+
+### Retesting failed Jobs
+
+The CI Jobs gets triggered automatically on these events, such as on opening
+fresh PRs, rebase of PRs and force pushing changes to existing PRs.
+
+In case of failed we already documented steps  to manually
+[retrigger](#retriggering-the-ci-jobs) the CI jobs. Sometime the tests might be
+flaky which required manually retriggering always. We have newly added a github
+action which runs periodically to retest the failed PR's. Below are the cretia
+for auto retesting the failed PR.
+
+* Analyze the logs and make sure its a flaky test.
+* Pull Request should have required approvals.
+* `ci/retest/e2e` label should be set on the PR.
