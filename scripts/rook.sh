@@ -4,6 +4,7 @@ ROOK_VERSION=${ROOK_VERSION:-"v1.6.2"}
 ROOK_DEPLOY_TIMEOUT=${ROOK_DEPLOY_TIMEOUT:-300}
 ROOK_URL="https://raw.githubusercontent.com/rook/rook/${ROOK_VERSION}/cluster/examples/kubernetes/ceph"
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
+ROOK_BLOCK_EC_POOL_NAME=${ROOK_BLOCK_EC_POOL_NAME:-"ec-pool"}
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 # shellcheck disable=SC1091
@@ -116,6 +117,22 @@ function delete_block_pool() {
 	rm -f "./newpool.yaml"
 }
 
+function create_block_ec_pool() {
+	curl -o block-pool-ec.yaml "${ROOK_URL}/pool-ec.yaml"
+	sed -i "s/ec-pool/${ROOK_BLOCK_EC_POOL_NAME}/g" block-pool-ec.yaml
+	kubectl_retry create -f "./block-pool-ec.yaml"
+	rm -f "./block-pool-ec.yaml"
+
+	check_rbd_stat "${ROOK_BLOCK_EC_POOL_NAME}"
+}
+
+function delete_block_ec_pool() {
+	curl -o block-pool-ec.yaml "${ROOK_URL}/pool-ec.yaml"
+	sed -i "s/ec-pool/${ROOK_BLOCK_EC_POOL_NAME}/g" block-pool-ec.yaml
+	kubectl delete -f "./block-pool-ec.yaml"
+	rm -f "./block-pool-ec.yaml"
+}
+
 function check_ceph_cluster_health() {
 	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
 		echo "Wait for rook deploy... ${retry}s" && sleep 5
@@ -203,6 +220,12 @@ create-block-pool)
 	;;
 delete-block-pool)
 	delete_block_pool
+	;;
+create-block-ec-pool)
+	create_block_ec_pool
+	;;
+delete-block-ec-pool)
+	delete_block_ec_pool
 	;;
 *)
 	echo " $0 [command]
