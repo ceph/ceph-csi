@@ -87,7 +87,7 @@ endif
 
 all: cephcsi
 
-.PHONY: go-test static-check mod-check go-lint lint-extras gosec commitlint codespell
+.PHONY: go-test static-check mod-check go-lint lint-extras commitlint codespell
 ifeq ($(CONTAINERIZED),no)
 # include mod-check in non-containerized runs
 test: go-test static-check mod-check
@@ -95,7 +95,7 @@ else
 # exclude mod-check for containerized runs (CI runs it separately)
 test: go-test static-check
 endif
-static-check: check-env codespell go-lint lint-extras gosec
+static-check: check-env codespell go-lint lint-extras
 
 go-test: TEST_COVERAGE ?= $(shell . $(CURDIR)/build.env ; echo $${TEST_COVERAGE})
 go-test: GO_COVER_DIR ?= $(shell . $(CURDIR)/build.env ; echo $${GO_COVER_DIR})
@@ -132,9 +132,6 @@ lint-helm:
 
 lint-py:
 	./scripts/lint-extras.sh lint-py
-
-gosec:
-	GO_TAGS="$(GO_TAGS)" ./scripts/gosec.sh
 
 func-test:
 	go test $(GO_TAGS) -mod=vendor github.com/ceph/ceph-csi/e2e $(TESTOPTIONS)
