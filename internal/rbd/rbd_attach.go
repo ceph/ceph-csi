@@ -29,6 +29,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -220,6 +221,65 @@ func setRbdNbdToolFeatures() {
 	}
 
 	log.DefaultLog("NBD module loaded: %t, rbd-nbd supported features, cookie: %t", hasNBD, hasNBDCookieSupport)
+}
+
+// parseMapOptions helps parse formatted mapOptions and unmapOptions and
+// returns mounter specific options.
+func parseMapOptions(mapOptions string) (string, string, error) {
+	var krbdMapOptions, nbdMapOptions string
+	const (
+		noKeyLength = 1
+		validLength = 2
+	)
+	for _, item := range strings.Split(mapOptions, ";") {
+		var mounter, options string
+		if item == "" {
+			continue
+		}
+		s := strings.Split(item, ":")
+		switch len(s) {
+		case noKeyLength:
+			options = strings.TrimSpace(s[0])
+			krbdMapOptions = options
+		case validLength:
+			mounter = strings.TrimSpace(s[0])
+			options = strings.TrimSpace(s[1])
+			switch strings.ToLower(mounter) {
+			case accessTypeKRbd:
+				krbdMapOptions = options
+			case accessTypeNbd:
+				nbdMapOptions = options
+			default:
+				return "", "", fmt.Errorf("unknown mounter type: %q", mounter)
+			}
+		default:
+			return "", "", fmt.Errorf("badly formatted map/unmap options: %q", mapOptions)
+		}
+	}
+
+	return krbdMapOptions, nbdMapOptions, nil
+}
+
+// getMapOptions is a wrapper func, calls parse map/unmap funcs and feeds the
+// rbdVolume object.
+func getMapOptions(req *csi.NodeStageVolumeRequest, rv *rbdVolume) error {
+	krbdMapOptions, nbdMapOptions, err := parseMapOptions(req.GetVolumeContext()["mapOptions"])
+	if err != nil {
+		return err
+	}
+	krbdUnmapOptions, nbdUnmapOptions, err := parseMapOptions(req.GetVolumeContext()["unmapOptions"])
+	if err != nil {
+		return err
+	}
+	if rv.Mounter == rbdDefaultMounter {
+		rv.MapOptions = krbdMapOptions
+		rv.UnmapOptions = krbdUnmapOptions
+	} else if rv.Mounter == rbdNbdMounter {
+		rv.MapOptions = nbdMapOptions
+		rv.UnmapOptions = nbdUnmapOptions
+	}
+
+	return nil
 }
 
 func attachRBDImage(ctx context.Context, volOptions *rbdVolume, device string, cr *util.Credentials) (string, error) {
