@@ -224,12 +224,14 @@ func populateRbdVol(
 			return nil, status.Errorf(codes.Internal, "unsupported krbd Feature")
 		}
 		// fallback to rbd-nbd,
-		// ignore the mapOptions and unmapOptions as they are meant for krbd use.
 		rv.Mounter = rbdNbdMounter
 	} else {
 		rv.Mounter = req.GetVolumeContext()["mounter"]
-		rv.MapOptions = req.GetVolumeContext()["mapOptions"]
-		rv.UnmapOptions = req.GetVolumeContext()["unmapOptions"]
+	}
+
+	err = getMapOptions(req, rv)
+	if err != nil {
+		return nil, err
 	}
 
 	rv.VolID = volID
