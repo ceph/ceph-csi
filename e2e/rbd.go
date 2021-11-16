@@ -61,7 +61,7 @@ var (
 	snapshotPath           = rbdExamplePath + "snapshot.yaml"
 	defaultCloneCount      = 10
 
-	nbdMapOptions             = "debug-rbd=20"
+	nbdMapOptions             = "nbd:debug-rbd=20"
 	e2eDefaultCephLogStrategy = "preserve"
 )
 
@@ -271,7 +271,7 @@ var _ = Describe("RBD", func() {
 		}
 		// default io-timeout=0, needs kernel >= 5.4
 		if !util.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
-			nbdMapOptions = "debug-rbd=20,io-timeout=330"
+			nbdMapOptions = "nbd:debug-rbd=20,io-timeout=330"
 		}
 	})
 
