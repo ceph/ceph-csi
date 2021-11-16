@@ -362,6 +362,11 @@ storageClass:
   # https://docs.ceph.com/docs/master/man/8/rbd/#kernel-rbd-krbd-options
   # For nbd options refer
   # https://docs.ceph.com/docs/master/man/8/rbd-nbd/#options
+  # Format:
+  # mapOptions: "<mounter>:op1,op2;<mounter>:op1,op2"
+  # An empty mounter field is treated as krbd type for compatibility.
+  # eg:
+  # mapOptions: "krbd:lock_on_read,queue_depth=1024;nbd:try-netlink"
   mapOptions: ""
 
   # (optional) unmapOptions is a comma-separated list of unmap options.
@@ -369,6 +374,11 @@ storageClass:
   # https://docs.ceph.com/docs/master/man/8/rbd/#kernel-rbd-krbd-options
   # For nbd options refer
   # https://docs.ceph.com/docs/master/man/8/rbd-nbd/#options
+  # Format:
+  # unmapOptions: "<mounter>:op1,op2;<mounter>:op1,op2"
+  # An empty mounter field is treated as krbd type for compatibility.
+  # eg:
+  # unmapOptions: "krbd:force;nbd:force"
   unmapOptions: ""
 
   # The secrets have to contain Ceph credentials with required access

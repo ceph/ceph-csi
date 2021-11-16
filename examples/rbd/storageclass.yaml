@@ -53,14 +53,22 @@ parameters:
    # https://docs.ceph.com/docs/master/man/8/rbd/#kernel-rbd-krbd-options
    # For nbd options refer
    # https://docs.ceph.com/docs/master/man/8/rbd-nbd/#options
-   # mapOptions: lock_on_read,queue_depth=1024
+   # Format:
+   # mapOptions: "<mounter>:op1,op2;<mounter>:op1,op2"
+   # An empty mounter field is treated as krbd type for compatibility.
+   # eg:
+   # mapOptions: "krbd:lock_on_read,queue_depth=1024;nbd:try-netlink"
 
    # (optional) unmapOptions is a comma-separated list of unmap options.
    # For krbd options refer
    # https://docs.ceph.com/docs/master/man/8/rbd/#kernel-rbd-krbd-options
    # For nbd options refer
    # https://docs.ceph.com/docs/master/man/8/rbd-nbd/#options
-   # unmapOptions: force
+   # Format:
+   # unmapOptions: "<mounter>:op1,op2;<mounter>:op1,op2"
+   # An empty mounter field is treated as krbd type for compatibility.
+   # eg:
+   # unmapOptions: "krbd:force;nbd:force"
 
    # The secrets have to contain Ceph credentials with required access
    # to the 'pool'.
