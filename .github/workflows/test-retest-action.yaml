@@ -3,7 +3,7 @@ name: test-retest-action
 # yamllint disable-line rule:truthy
 on:
   pull_request:
-    branches: [main]
+    branches: [devel]
 
 jobs:
   build:
