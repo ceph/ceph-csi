@@ -676,15 +676,13 @@ func (rv *rbdVolume) deleteImage(ctx context.Context) error {
 // otherwise removes the image from trash.
 func (rv *rbdVolume) trashRemoveImage(ctx context.Context) error {
 	// attempt to use Ceph manager based deletion support if available
+	log.DebugLog(ctx, "rbd: adding task to remove image %s with id %s from trash", rv, rv.ImageID)
 
-	ra, err := rv.conn.GetRBDAdmin()
+	ta, err := rv.conn.GetTaskAdmin()
 	if err != nil {
 		return err
 	}
 
-	log.DebugLog(ctx, "rbd: adding task to remove image %s with id %s from trash", rv, rv.ImageID)
-
-	ta := ra.Task()
 	_, err = ta.AddTrashRemove(admin.NewImageSpec(rv.Pool, rv.RadosNamespace, rv.ImageID))
 
 	rbdCephMgrSupported := isCephMgrSupported(ctx, rv.ClusterID, err)
@@ -828,14 +826,13 @@ func (rv *rbdVolume) flattenRbdImage(
 		return nil
 	}
 
-	ra, err := rv.conn.GetRBDAdmin()
+	log.DebugLog(ctx, "rbd: adding task to flatten image %q", rv)
+
+	ta, err := rv.conn.GetTaskAdmin()
 	if err != nil {
 		return err
 	}
 
-	log.DebugLog(ctx, "rbd: adding task to flatten image %s", rv)
-
-	ta := ra.Task()
 	_, err = ta.AddFlatten(admin.NewImageSpec(rv.Pool, rv.RadosNamespace, rv.RbdImageName))
 	rbdCephMgrSupported := isCephMgrSupported(ctx, rv.ClusterID, err)
 	if rbdCephMgrSupported {

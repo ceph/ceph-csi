@@ -131,6 +131,16 @@ func (cc *ClusterConnection) GetRBDAdmin() (*ra.RBDAdmin, error) {
 	return ra.NewFromConn(cc.conn), nil
 }
 
+// GetTaskAdmin returns TaskAdmin to add tasks on rbd images.
+func (cc *ClusterConnection) GetTaskAdmin() (*ra.TaskAdmin, error) {
+	rbdAdmin, err := cc.GetRBDAdmin()
+	if err != nil {
+		return nil, err
+	}
+
+	return rbdAdmin.Task(), nil
+}
+
 // DisableDiscardOnZeroedWriteSame enables the
 // `rbd_discard_on_zeroed_write_same` option in the cluster connection, so that
 // writing zero blocks of data are actual writes on the OSDs (doing
