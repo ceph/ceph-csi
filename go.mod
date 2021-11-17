@@ -64,4 +64,6 @@ replace (
 	k8s.io/metrics => k8s.io/metrics v0.21.2
 	k8s.io/mount-utils => k8s.io/mount-utils v0.21.2
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.21.2
+	// layeh.com seems to be misbehaving
+	layeh.com/radius => github.com/layeh/radius v0.0.0-20190322222518-890bc1058917
 )
