@@ -10,7 +10,7 @@ WORKDIR ${WORK_DIR}
 
 RUN go build -mod=vendor -o retest ./main.go
 
-FROM scratch
+FROM ${BASE_IMAGE}
 
 ARG WORK_DIR
 
