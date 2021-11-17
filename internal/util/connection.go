@@ -114,6 +114,14 @@ func (cc *ClusterConnection) GetFSAdmin() (*ca.FSAdmin, error) {
 	return ca.NewFromConn(cc.conn), nil
 }
 
+func (cc *ClusterConnection) GetFSID() (string, error) {
+	if cc.conn == nil {
+		return "", errors.New("cluster is not connected yet")
+	}
+
+	return cc.conn.GetFSID()
+}
+
 // GetRBDAdmin get RBDAdmin to administrate rbd volumes.
 func (cc *ClusterConnection) GetRBDAdmin() (*ra.RBDAdmin, error) {
 	if cc.conn == nil {
