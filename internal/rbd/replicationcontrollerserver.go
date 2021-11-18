@@ -756,6 +756,11 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	err = repairResyncedImageID(ctx, rbdVol, ready)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to resync Image ID: %s", err.Error())
+	}
+
 	resp := &replication.ResyncVolumeResponse{
 		Ready: ready,
 	}
@@ -797,4 +802,24 @@ func resyncRequired(localStatus librbd.SiteMirrorImageStatus) bool {
 	}
 
 	return false
+}
+
+// repairResyncedImageID updates the existing image ID with new one.
+func repairResyncedImageID(ctx context.Context, rv *rbdVolume, ready bool) error {
+	// During resync operation the local image will get deleted and a new
+	// image is recreated by the rbd mirroring. The new image will have a
+	// new image ID. Once resync is completed update the image ID in the OMAP
+	// to get the image removed from the trash during DeleteVolume.
+
+	// if the image is not completely resynced skip repairing image ID.
+	if !ready {
+		return nil
+	}
+	j, err := volJournal.Connect(rv.Monitors, rv.RadosNamespace, rv.conn.Creds)
+	if err != nil {
+		return err
+	}
+	defer j.Destroy()
+	// reset the image ID which is stored in the existing OMAP
+	return rv.repairImageID(ctx, j, true)
 }
