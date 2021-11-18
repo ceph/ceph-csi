@@ -37,3 +37,13 @@ updates:
       - dependency-name: "k8s.io/mount-utils"
       - dependency-name: "k8s.io/pod-security-admission"
       - dependency-name: "k8s.io/sample-apiserver"
+  - package-ecosystem: "gomod"
+    directory: "/actions/retest"
+    schedule:
+      interval: "weekly"
+    rebase-strategy: "disabled"
+    labels:
+      - rebase
+      - ci/skip/e2e
+    commit-message:
+      prefix: "rebase"
