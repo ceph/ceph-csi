@@ -3,7 +3,7 @@ module github.com/ceph/ceph-csi
 go 1.16
 
 require (
-	github.com/aws/aws-sdk-go v1.41.15
+	github.com/aws/aws-sdk-go v1.42.7
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/ceph/go-ceph v0.12.0
 	github.com/container-storage-interface/spec v1.5.0
