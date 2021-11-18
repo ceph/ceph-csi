@@ -110,6 +110,7 @@ function deploy_rook()
 {
     ${GOPATH}/src/github.com/ceph/ceph-csi/scripts/minikube.sh deploy-rook
     ${GOPATH}/src/github.com/ceph/ceph-csi/scripts/minikube.sh create-block-pool
+    ${GOPATH}/src/github.com/ceph/ceph-csi/scripts/minikube.sh create-block-ec-pool
     ${GOPATH}/src/github.com/ceph/ceph-csi/scripts/minikube.sh k8s-sidecar
 
     # TODO: only needed for k8s 1.17.0 and newer
