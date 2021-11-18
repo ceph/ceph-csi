@@ -69,12 +69,11 @@ type operation string
 var (
 	// pool+"/"+key to check dummy image is created.
 	dummyImageCreated operation = "dummyImageCreated"
-	// pool+"/"+key to check mirroring enabled on dummy image.
-	dummyImageMirroringEnabled operation = "dummyImageMirrorEnabled"
-	// pool+"/"+key to check mirroring disabled on dummy image.
-	dummyImageMirroringDisabled operation = "dummyImageMirrorDisabled"
 	// Read write lock to ensure that only one operation is happening at a time.
 	operationLock = sync.Map{}
+
+	// Lock to serialize operations on the dummy image to tickle RBD snapshot schedule.
+	dummyImageOpsLock sync.Mutex
 )
 
 // ReplicationServer struct of rbd CSI driver with supported methods of Replication
@@ -303,51 +302,32 @@ func createDummyImage(ctx context.Context, rbdVol *rbdVolume) error {
 	return nil
 }
 
-// enableImageMirroring enables the mirroring for the dummy image.
-func enableMirroringOnDummyImage(rbdVol *rbdVolume, mirroringMode librbd.ImageMirrorMode) error {
-	optName := getOperationName(rbdVol.Pool, dummyImageMirroringEnabled)
-	if _, ok := operationLock.Load(optName); !ok {
-		imgName, err := getDummyImageName(rbdVol.conn)
-		if err != nil {
-			return err
-		}
-		dummyVol := rbdVol
-		dummyVol.RbdImageName = imgName
-		// this is a idempotent call we dont need to worry multiple enable calls
-		err = dummyVol.enableImageMirroring(mirroringMode)
-		if err != nil {
-			return err
-		}
-		operationLock.Store(optName, true)
-		// Remove the dummyImageMirroringDisabled lock so that the mirroring can
-		// be disabled on the image.
-		optName = getOperationName(rbdVol.Pool, dummyImageMirroringDisabled)
-		operationLock.Delete(optName)
+// tickleMirroringOnDummyImage disables and reenables mirroring on the dummy image, and sets a
+// schedule of a minute for the dummy image, to force a schedule refresh for other mirrored images
+// within a minute.
+func tickleMirroringOnDummyImage(rbdVol *rbdVolume, mirroringMode librbd.ImageMirrorMode) error {
+	imgName, err := getDummyImageName(rbdVol.conn)
+	if err != nil {
+		return err
+	}
+	dummyVol := rbdVol
+	dummyVol.RbdImageName = imgName
+
+	dummyImageOpsLock.Lock()
+	defer dummyImageOpsLock.Unlock()
+	err = dummyVol.disableImageMirroring(false)
+	if err != nil {
+		return err
 	}
 
-	return nil
-}
+	err = dummyVol.enableImageMirroring(mirroringMode)
+	if err != nil {
+		return err
+	}
 
-// disableImageMirroring disables the mirroring for the dummy image.
-func disableMirroringOnDummyImage(rbdVol *rbdVolume) error {
-	optName := getOperationName(rbdVol.Pool, dummyImageMirroringDisabled)
-	if _, ok := operationLock.Load(optName); !ok {
-		imgName, err := getDummyImageName(rbdVol.conn)
-		if err != nil {
-			return err
-		}
-		dummyVol := rbdVol
-		dummyVol.RbdImageName = imgName
-
-		err = dummyVol.disableImageMirroring(false)
-		if err != nil {
-			return err
-		}
-		operationLock.Store(optName, true)
-		// Remove the dummyImageMirroringEnabled lock so that the mirroring can
-		// be re-enabled on the image.
-		optName = getOperationName(rbdVol.Pool, dummyImageMirroringEnabled)
-		operationLock.Delete(optName)
+	err = dummyVol.addSnapshotScheduling(admin.Interval("1m"), admin.NoStartTime)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -542,7 +522,9 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get mirroring mode %s", err.Error())
 	}
-	err = enableMirroringOnDummyImage(rbdVol, mode)
+
+	log.DebugLog(ctx, "Attempting to tickle dummy image for restarting RBD schedules")
+	err = tickleMirroringOnDummyImage(rbdVol, mode)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to enable mirroring on dummy image %s", err.Error())
 	}
@@ -619,10 +601,6 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 
 	// demote image to secondary
 	if mirroringInfo.Primary {
-		err = disableMirroringOnDummyImage(rbdVol)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to disable mirroring on dummy image %s", err.Error())
-		}
 		err = rbdVol.demoteImage()
 		if err != nil {
 			log.ErrorLog(ctx, err.Error())
