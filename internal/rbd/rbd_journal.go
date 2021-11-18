@@ -314,7 +314,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	}
 	// TODO: check image needs flattening and completed?
 
-	err = rv.repairImageID(ctx, j)
+	err = rv.repairImageID(ctx, j, false)
 	if err != nil {
 		return false, err
 	}
@@ -351,7 +351,13 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 // repairImageID checks if rv.ImageID is already available (if so, it was
 // fetched from the journal), in case it is missing, the imageID is obtained
 // and stored in the journal.
-func (rv *rbdVolume) repairImageID(ctx context.Context, j *journal.Connection) error {
+// if the force is set to true, the latest imageID will get added/updated in OMAP.
+func (rv *rbdVolume) repairImageID(ctx context.Context, j *journal.Connection, force bool) error {
+	if force {
+		// reset the imageID so that we can fetch latest imageID from ceph cluster.
+		rv.ImageID = ""
+	}
+
 	if rv.ImageID != "" {
 		return nil
 	}
