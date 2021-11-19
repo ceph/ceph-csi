@@ -159,11 +159,13 @@ node('cico-workspace') {
 				ssh "./single-node-k8s.sh --k8s-version=${k8s_release}"
 			}
 
-			// vault:latest and nginx:latest are used by the e2e tests
+			// vault:latest,1.8.5 and nginx:latest are used by the e2e tests
 			podman_pull(ci_registry, "docker.io", "library/vault:latest")
 			ssh "./podman2minikube.sh docker.io/library/vault:latest"
 			podman_pull(ci_registry, "docker.io", "library/nginx:latest")
 			ssh "./podman2minikube.sh docker.io/library/nginx:latest"
+			podman_pull(ci_registry, "docker.io", "library/vault:1.8.5")
+			ssh "./podman2minikube.sh docker.io/library/vault:1.8.5"
 		}
 		stage('run e2e') {
 			timeout(time: 120, unit: 'MINUTES') {
