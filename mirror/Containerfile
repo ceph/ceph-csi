@@ -1,4 +1,4 @@
-FROM centos:latest
+FROM quay.io/centos/centos:latest
 
 RUN true \
  && yum -y install skopeo \
