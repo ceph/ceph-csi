@@ -18,3 +18,4 @@ docker.io/rook/ceph:v1.4.9	rook/ceph:v1.4.9
 docker.io/library/busybox:1.29	library/busybox:1.29
 docker.io/library/nginx:latest	library/nginx:latest
 docker.io/library/vault:latest	library/vault:latest
+docker.io/library/vault:1.8.5	library/vault:1.8.5
