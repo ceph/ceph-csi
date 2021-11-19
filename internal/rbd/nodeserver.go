@@ -270,19 +270,11 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 
 	volID := req.GetVolumeId()
-	secrets := req.GetSecrets()
-	if util.IsMigrationSecret(secrets) {
-		secrets, err = util.ParseAndSetSecretMapFromMigSecret(secrets)
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-	}
-	cr, err := util.NewUserCredentials(secrets)
+	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
-
 	if acquired := ns.VolumeLocks.TryAcquire(volID); !acquired {
 		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volID)
 
@@ -315,7 +307,7 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Error(codes.InvalidArgument, "missing required parameter imageFeatures")
 	}
 
-	rv, err := populateRbdVol(ctx, req, cr, secrets)
+	rv, err := populateRbdVol(ctx, req, cr, req.GetSecrets())
 	if err != nil {
 		return nil, err
 	}
