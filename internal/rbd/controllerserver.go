@@ -94,6 +94,8 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	return nil
 }
 
+// parseVolCreateRequest take create volume `request` argument and make use of the
+// request arguments for subsequent calls.
 func (cs *ControllerServer) parseVolCreateRequest(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest) (*rbdVolume, error) {
@@ -262,18 +264,19 @@ func checkValidCreateVolumeRequest(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSna
 func (cs *ControllerServer) CreateVolume(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	if err := cs.validateVolumeReq(ctx, req); err != nil {
+	err := cs.validateVolumeReq(ctx, req)
+	if err != nil {
 		return nil, err
 	}
 
 	// TODO: create/get a connection from the the ConnPool, and do not pass
 	// the credentials to any of the utility functions.
-	cr, err := util.NewUserCredentials(req.GetSecrets())
+
+	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
-
 	rbdVol, err := cs.parseVolCreateRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -382,7 +385,6 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 		}
-
 	// rbdVol is a restore from snapshot, rbdSnap is passed
 	case vcs.GetSnapshot() != nil:
 		// When restoring of a thick-provisioned volume was happening,
@@ -813,17 +815,9 @@ func (cs *ControllerServer) DeleteVolume(
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
 	}
 
-	secrets := req.GetSecrets()
-	if util.IsMigrationSecret(secrets) {
-		secrets, err = util.ParseAndSetSecretMapFromMigSecret(secrets)
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-	}
-
-	cr, err := util.NewUserCredentials(secrets)
+	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
 
@@ -856,7 +850,7 @@ func (cs *ControllerServer) DeleteVolume(
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, secrets)
+	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		return cs.checkErrAndUndoReserve(ctx, err, volumeID, rbdVol, cr)
@@ -1423,7 +1417,8 @@ func (cs *ControllerServer) DeleteSnapshot(
 func (cs *ControllerServer) ControllerExpandVolume(
 	ctx context.Context,
 	req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME); err != nil {
+	err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_EXPAND_VOLUME)
+	if err != nil {
 		log.ErrorLog(ctx, "invalid expand volume req: %v", protosanitizer.StripSecrets(req))
 
 		return nil, err
@@ -1447,9 +1442,9 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}
 	defer cs.VolumeLocks.Release(volID)
 
-	cr, err := util.NewUserCredentials(req.GetSecrets())
+	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
 

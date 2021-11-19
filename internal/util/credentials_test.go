@@ -42,7 +42,7 @@ func TestIsMigrationSecret(t *testing.T) {
 		newtt := tt
 		t.Run(newtt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := IsMigrationSecret(newtt.vc); got != newtt.want {
+			if got := isMigrationSecret(newtt.vc); got != newtt.want {
 				t.Errorf("isMigrationSecret() = %v, want %v", got, newtt.want)
 			}
 		})

@@ -128,7 +128,7 @@ func GetMonValFromSecret(secrets map[string]string) (string, error) {
 func ParseAndSetSecretMapFromMigSecret(secretmap map[string]string) (map[string]string, error) {
 	newSecretMap := make(map[string]string)
 	// parse and set userKey
-	if !IsMigrationSecret(secretmap) {
+	if !isMigrationSecret(secretmap) {
 		return nil, errors.New("passed secret map does not contain user key or it is nil")
 	}
 	newSecretMap[credUserKey] = secretmap[migUserKey]
@@ -141,15 +141,35 @@ func ParseAndSetSecretMapFromMigSecret(secretmap map[string]string) (map[string]
 	return newSecretMap, nil
 }
 
-// IsMigrationSecret validates if the passed in secretmap is a secret
+// isMigrationSecret validates if the passed in secretmap is a secret
 // of a migration volume request. The migration secret carry a field
 // called `key` which is the equivalent of `userKey` which is what we
 // check here for identifying the secret.
-func IsMigrationSecret(passedSecretMap map[string]string) bool {
+func isMigrationSecret(secrets map[string]string) bool {
 	// the below 'nil' check is an extra measure as the request validators like
 	// ValidateNodeStageVolumeRequest() already does the nil check, however considering
 	// this function can be called independently with a map of secret values
 	// it is good to have this check in place, also it gives clear error about this
 	// was hit on migration request compared to general one.
-	return len(passedSecretMap) != 0 && passedSecretMap[migUserKey] != ""
+	return len(secrets) != 0 && secrets[migUserKey] != ""
+}
+
+// NewUserCredentialsWithMigration takes secret map from the request and validate it is
+// a migration secret, if yes, it continues to create CR from it after parsing the migration
+// secret. If it is not a migration it will continue the attempt to create credentials from it
+// without parsing the secret. This function returns credentials and error.
+func NewUserCredentialsWithMigration(secrets map[string]string) (*Credentials, error) {
+	if isMigrationSecret(secrets) {
+		migSecret, err := ParseAndSetSecretMapFromMigSecret(secrets)
+		if err != nil {
+			return nil, err
+		}
+		secrets = migSecret
+	}
+	cr, cErr := NewUserCredentials(secrets)
+	if cErr != nil {
+		return nil, cErr
+	}
+
+	return cr, nil
 }
