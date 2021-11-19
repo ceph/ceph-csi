@@ -4,103 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"strconv"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
-
-func validateRBDStaticMigrationPVDeletion(f *framework.Framework, appPath, scName string, isBlock bool) error {
-	opt := make(map[string]string)
-	var (
-		rbdImageName        = "kubernetes-dynamic-pvc-e0b45b52-7e09-47d3-8f1b-806995fa4412"
-		pvName              = "pv-name"
-		pvcName             = "pvc-name"
-		namespace           = f.UniqueName
-		sc                  = scName
-		provisionerAnnKey   = "pv.kubernetes.io/provisioned-by"
-		provisionerAnnValue = "rbd.csi.ceph.com"
-	)
-
-	c := f.ClientSet
-	PVAnnMap := make(map[string]string)
-	PVAnnMap[provisionerAnnKey] = provisionerAnnValue
-	mons, err := getMons(rookNamespace, c)
-	if err != nil {
-		return fmt.Errorf("failed to get mons: %w", err)
-	}
-	mon := strings.Join(mons, ",")
-	size := staticPVSize
-	// create rbd image
-	cmd := fmt.Sprintf(
-		"rbd create %s --size=%s --image-feature=layering %s",
-		rbdImageName,
-		staticPVSize,
-		rbdOptions(defaultRBDPool))
-
-	_, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
-	if err != nil {
-		return err
-	}
-	if stdErr != "" {
-		return fmt.Errorf("failed to create rbd image %s", stdErr)
-	}
-
-	opt["migration"] = "true"
-	opt["clusterID"] = getMonsHash(mon)
-	opt["imageFeatures"] = staticPVImageFeature
-	opt["pool"] = defaultRBDPool
-	opt["staticVolume"] = strconv.FormatBool(true)
-	opt["imageName"] = rbdImageName
-
-	// Make volumeID similar to the migration volumeID
-	volID := composeIntreeMigVolID(mon, rbdImageName)
-	pv := getStaticPV(
-		pvName,
-		volID,
-		size,
-		rbdNodePluginSecretName,
-		cephCSINamespace,
-		sc,
-		provisionerAnnValue,
-		isBlock,
-		opt,
-		PVAnnMap,
-		deletePolicy)
-
-	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
-	if err != nil {
-		return fmt.Errorf("PV Create API error: %w", err)
-	}
-
-	pvc := getStaticPVC(pvcName, pvName, size, namespace, sc, isBlock)
-
-	_, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(context.TODO(), pvc, metav1.CreateOptions{})
-	if err != nil {
-		return fmt.Errorf("PVC Create API error: %w", err)
-	}
-	// bind pvc to app
-	app, err := loadApp(appPath)
-	if err != nil {
-		return err
-	}
-
-	app.Namespace = namespace
-	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
-	err = createApp(f.ClientSet, app, deployTimeout)
-	if err != nil {
-		return err
-	}
-
-	err = deletePVCAndApp("", f, pvc, app)
-	if err != nil {
-		return fmt.Errorf("failed to delete PVC and application: %w", err)
-	}
-
-	return err
-}
 
 // composeIntreeMigVolID create a volID similar to intree migration volID
 // the migration volID format looks like below
@@ -190,6 +99,7 @@ func createMigrationUserSecretAndSC(f *framework.Framework, scName string) error
 	return nil
 }
 
+// createMigrationSC create a SC with migration specific secrets and clusterid.
 func createMigrationSC(f *framework.Framework, scName string) error {
 	err := deleteResource(rbdExamplePath + "storageclass.yaml")
 	if err != nil {
@@ -203,6 +113,13 @@ func createMigrationSC(f *framework.Framework, scName string) error {
 	param["csi.storage.k8s.io/controller-expand-secret-name"] = rbdMigrationProvisionerSecretName
 	param["csi.storage.k8s.io/node-stage-secret-namespace"] = cephCSINamespace
 	param["csi.storage.k8s.io/node-stage-secret-name"] = rbdMigrationNodePluginSecretName
+	mons, err := getMons(rookNamespace, f.ClientSet)
+	if err != nil {
+		return fmt.Errorf("failed to get mons: %w", err)
+	}
+	mon := strings.Join(mons, ",")
+	param["migration"] = "true"
+	param["clusterID"] = getMonsHash(mon)
 	err = createRBDStorageClass(f.ClientSet, f, scName, nil, param, deletePolicy)
 	if err != nil {
 		return fmt.Errorf("failed to create storageclass: %w", err)
@@ -270,6 +187,43 @@ func deleteProvNodeMigrationSecret(f *framework.Framework, provisionerSecret, no
 		if err != nil {
 			return fmt.Errorf("failed to delete node secret: %w", err)
 		}
+	}
+
+	return nil
+}
+
+// setupMigrationCMSecretAndSC create custom configmap, secret and SC for migration tests.
+func setupMigrationCMSecretAndSC(f *framework.Framework, scName string) error {
+	c := f.ClientSet
+	if scName == "" {
+		scName = defaultSCName
+	}
+	err := generateClusterIDConfigMapForMigration(f, c)
+	if err != nil {
+		return fmt.Errorf("failed to generate clusterID configmap: %w", err)
+	}
+
+	err = createMigrationUserSecretAndSC(f, scName)
+	if err != nil {
+		return fmt.Errorf("failed to create storageclass: %w", err)
+	}
+
+	return nil
+}
+
+// tearDownMigrationSetup deletes custom configmap and secret.
+func tearDownMigrationSetup(f *framework.Framework) error {
+	err := deleteConfigMap(rbdDirPath)
+	if err != nil {
+		return fmt.Errorf("failed to delete configmap: %w", err)
+	}
+	err = createConfigMap(rbdDirPath, f.ClientSet, f)
+	if err != nil {
+		return fmt.Errorf("failed to create configmap: %w", err)
+	}
+	err = deleteProvNodeMigrationSecret(f, true, true)
+	if err != nil {
+		return fmt.Errorf("failed to delete migration users and Secrets associated: %w", err)
 	}
 
 	return nil

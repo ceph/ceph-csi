@@ -219,19 +219,21 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 	return err
 }
 
-func validateRBDStaticMigrationPV(f *framework.Framework, appPath, nodeSecretName string, isBlock bool) error {
+func validateRBDStaticMigrationPVC(f *framework.Framework, appPath, scName string, isBlock bool) error {
 	opt := make(map[string]string)
 	var (
-		rbdImageName = "test-static-pv"
-		pvName       = "pv-name"
-		pvcName      = "pvc-name"
-		namespace    = f.UniqueName
-		// minikube creates default class in cluster, we need to set dummy
-		// storageclass on PV and PVC to avoid storageclass name mismatch
-		sc = "storage-class"
+		rbdImageName        = "kubernetes-dynamic-pvc-e0b45b52-7e09-47d3-8f1b-806995fa4412"
+		pvName              = "pv-name"
+		pvcName             = "pvc-name"
+		namespace           = f.UniqueName
+		sc                  = scName
+		provisionerAnnKey   = "pv.kubernetes.io/provisioned-by"
+		provisionerAnnValue = "rbd.csi.ceph.com"
 	)
 
 	c := f.ClientSet
+	PVAnnMap := make(map[string]string)
+	PVAnnMap[provisionerAnnKey] = provisionerAnnValue
 	mons, err := getMons(rookNamespace, c)
 	if err != nil {
 		return fmt.Errorf("failed to get mons: %w", err)
@@ -240,20 +242,17 @@ func validateRBDStaticMigrationPV(f *framework.Framework, appPath, nodeSecretNam
 	size := staticPVSize
 	// create rbd image
 	cmd := fmt.Sprintf(
-		"rbd create %s --size=%d --image-feature=layering %s",
+		"rbd create %s --size=%s --image-feature=layering %s",
 		rbdImageName,
-		4096,
+		staticPVSize,
 		rbdOptions(defaultRBDPool))
 
-	_, e, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+	_, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if err != nil {
 		return err
 	}
-	if e != "" {
-		return fmt.Errorf("failed to create rbd image %s", e)
-	}
-	if nodeSecretName == "" {
-		nodeSecretName = rbdNodePluginSecretName
+	if stdErr != "" {
+		return fmt.Errorf("failed to create rbd image %s", stdErr)
 	}
 
 	opt["migration"] = "true"
@@ -262,16 +261,21 @@ func validateRBDStaticMigrationPV(f *framework.Framework, appPath, nodeSecretNam
 	opt["pool"] = defaultRBDPool
 	opt["staticVolume"] = strconv.FormatBool(true)
 	opt["imageName"] = rbdImageName
+
+	// Make volumeID similar to the migration volumeID
+	volID := composeIntreeMigVolID(mon, rbdImageName)
 	pv := getStaticPV(
 		pvName,
-		rbdImageName,
+		volID,
 		size,
-		nodeSecretName,
+		rbdNodePluginSecretName,
 		cephCSINamespace,
 		sc,
-		"rbd.csi.ceph.com",
+		provisionerAnnValue,
 		isBlock,
-		opt, nil, retainPolicy)
+		opt,
+		PVAnnMap,
+		deletePolicy)
 
 	_, err = c.CoreV1().PersistentVolumes().Create(context.TODO(), pv, metav1.CreateOptions{})
 	if err != nil {
@@ -297,23 +301,10 @@ func validateRBDStaticMigrationPV(f *framework.Framework, appPath, nodeSecretNam
 		return err
 	}
 
-	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+	err = deletePVCAndApp("", f, pvc, app)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete PVC and application: %w", err)
 	}
-
-	err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to delete pvc: %w", err)
-	}
-
-	err = c.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metav1.DeleteOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to delete pv: %w", err)
-	}
-
-	cmd = fmt.Sprintf("rbd rm %s %s", rbdImageName, rbdOptions(defaultRBDPool))
-	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
 
 	return err
 }

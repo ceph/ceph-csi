@@ -402,37 +402,58 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
-			// todo: may be remove the below deletion test later once the migration nodestage tests are adjusted
-			// also to have deletion validation through the same.
-			By("validate RBD migration+static Block PVC Deletion", func() {
-				err := generateClusterIDConfigMapForMigration(f, c)
+			By("validate RBD migration PVC", func() {
+				err := setupMigrationCMSecretAndSC(f, "")
 				if err != nil {
-					e2elog.Failf("failed to generate clusterID configmap: %v", err)
+					e2elog.Failf("failed to setup migration prerequisites: %v", err)
 				}
-
-				// create a sc with different migration secret
-				err = createMigrationUserSecretAndSC(f, "migrationsc")
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
-				}
-				err = validateRBDStaticMigrationPVDeletion(f, rawAppPath, "migrationsc", true)
-				if err != nil {
-					e2elog.Failf("failed to validate rbd migrated static block pv: %v", err)
+					e2elog.Failf("failed to validate pvc and application binding: %v", err)
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
-				err = deleteConfigMap(rbdDirPath)
+
+				// Block PVC resize
+				err = resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
 				if err != nil {
-					e2elog.Failf("failed to delete configmap: %v", err)
-				}
-				err = createConfigMap(rbdDirPath, f.ClientSet, f)
-				if err != nil {
-					e2elog.Failf("failed to create configmap: %v", err)
+					e2elog.Failf("failed to resize block PVC: %v", err)
 				}
 
-				err = deleteProvNodeMigrationSecret(f, true, true)
+				// FileSystem PVC resize
+				err = resizePVCAndValidateSize(pvcPath, appPath, f)
 				if err != nil {
-					e2elog.Failf("failed to delete migration users and Secrets associated: %v", err)
+					e2elog.Failf("failed to resize filesystem PVC: %v", err)
+				}
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+				err = tearDownMigrationSetup(f)
+				if err != nil {
+					e2elog.Failf("failed to tear down migration setup: %v", err)
+				}
+			})
+
+			By("validate RBD migration+static FileSystem", func() {
+				err := setupMigrationCMSecretAndSC(f, "migrationsc")
+				if err != nil {
+					e2elog.Failf("failed to setup migration prerequisites: %v", err)
+				}
+				// validate filesystem pvc mount
+				err = validateRBDStaticMigrationPVC(f, appPath, "migrationsc", false)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd migrated static file mode pvc: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				err = tearDownMigrationSetup(f)
+				if err != nil {
+					e2elog.Failf("failed to tear down migration setup: %v", err)
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 				if err != nil {
@@ -2115,72 +2136,6 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
-			})
-
-			By("validate RBD migration+static FileSystem PVC", func() {
-				err := generateClusterIDConfigMapForMigration(f, c)
-				if err != nil {
-					e2elog.Failf("failed to generate clusterID configmap: %v", err)
-				}
-				// create node user and migration secret.
-				err = createProvNodeCephUserAndSecret(f, false, true)
-				if err != nil {
-					e2elog.Failf("failed to create users and secret: %v", err)
-				}
-
-				err = validateRBDStaticMigrationPV(f, appPath, rbdMigrationNodePluginSecretName, false)
-				if err != nil {
-					e2elog.Failf("failed to validate rbd migrated static pv: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-
-				err = deleteProvNodeMigrationSecret(f, false, true)
-				if err != nil {
-					e2elog.Failf("failed to delete users and secret: %v", err)
-				}
-
-				err = deleteConfigMap(rbdDirPath)
-				if err != nil {
-					e2elog.Failf("failed to delete configmap: %v", err)
-				}
-				err = createConfigMap(rbdDirPath, f.ClientSet, f)
-				if err != nil {
-					e2elog.Failf("failed to create configmap: %v", err)
-				}
-			})
-
-			By("validate RBD migration+static Block PVC", func() {
-				err := generateClusterIDConfigMapForMigration(f, c)
-				if err != nil {
-					e2elog.Failf("failed to generate clusterID configmap: %v", err)
-				}
-				// create node user and migration secret.
-				err = createProvNodeCephUserAndSecret(f, false, true)
-				if err != nil {
-					e2elog.Failf("failed to create users and secret: %v", err)
-				}
-
-				err = validateRBDStaticMigrationPV(f, rawAppPath, rbdMigrationNodePluginSecretName, true)
-				if err != nil {
-					e2elog.Failf("failed to validate rbd migrated static block pv: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-
-				err = deleteProvNodeMigrationSecret(f, false, true)
-				if err != nil {
-					e2elog.Failf("failed to delete users and secret: %v", err)
-				}
-
-				err = deleteConfigMap(rbdDirPath)
-				if err != nil {
-					e2elog.Failf("failed to delete configmap: %v", err)
-				}
-				err = createConfigMap(rbdDirPath, f.ClientSet, f)
-				if err != nil {
-					e2elog.Failf("failed to create configmap: %v", err)
-				}
 			})
 
 			By("validate failure of RBD static PVC without imageFeatures parameter", func() {
