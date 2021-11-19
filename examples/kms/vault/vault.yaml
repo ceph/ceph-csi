@@ -39,7 +39,7 @@ spec:
     spec:
       containers:
         - name: vault
-          image: docker.io/library/vault:latest
+          image: docker.io/library/vault:1.8.5
           imagePullPolicy: "IfNotPresent"
           securityContext:
             runAsUser: 100
@@ -64,7 +64,7 @@ spec:
             - name: home
               mountPath: /home
         - name: monitor
-          image: docker.io/library/vault:latest
+          image: docker.io/library/vault:1.8.5
           imagePullPolicy: "IfNotPresent"
           securityContext:
             runAsUser: 100
@@ -151,7 +151,7 @@ spec:
             name: init-scripts
       containers:
         - name: vault-init-job
-          image: docker.io/library/vault:latest
+          image: docker.io/library/vault:1.8.5
           securityContext:
             runAsUser: 100
           volumeMounts:
