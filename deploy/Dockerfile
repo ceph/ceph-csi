@@ -1,4 +1,4 @@
-FROM centos:latest
+FROM quay.io/centos/centos:latest
 
 RUN true \
  && yum -y install git make python3-pip \
