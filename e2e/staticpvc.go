@@ -22,7 +22,6 @@ const (
 	intreeVolPrefix      = "kubernetes-dynamic-pvc-"
 )
 
-// nolint:unparam // currently name receive pvName, this can change in the future
 func getStaticPV(
 	name, volName, size, secretName, secretNS, sc, driverName string,
 	blockPV bool,
@@ -70,7 +69,6 @@ func getStaticPV(
 	return pv
 }
 
-// nolint:unparam // currently name receive same name, this can change in the future
 func getStaticPVC(name, pvName, size, ns, sc string, blockPVC bool) *v1.PersistentVolumeClaim {
 	pvc := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
