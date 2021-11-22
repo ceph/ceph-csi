@@ -315,13 +315,13 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	wgErrs := make([]error, totalCount)
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
-		return fmt.Errorf("failed to load PVC with error %w", err)
+		return fmt.Errorf("failed to load PVC: %w", err)
 	}
 
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to create PVC with error %w", err)
+		return fmt.Errorf("failed to create PVC: %w", err)
 	}
 	validateRBDImageCount(f, 1, defaultRBDPool)
 	snap := getSnapshot(snapshotPath)
@@ -345,7 +345,7 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	// delete parent pvc
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to delete PVC with error %w", err)
+		return fmt.Errorf("failed to delete PVC: %w", err)
 	}
 
 	// validate the rbd images created for snapshots
@@ -353,11 +353,11 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 
 	pvcClone, err := loadPVC(pvcClonePath)
 	if err != nil {
-		return fmt.Errorf("failed to load PVC with error %w", err)
+		return fmt.Errorf("failed to load PVC: %w", err)
 	}
 	appClone, err := loadApp(appClonePath)
 	if err != nil {
-		return fmt.Errorf("failed to load application with error %w", err)
+		return fmt.Errorf("failed to load application: %w", err)
 	}
 	pvcClone.Namespace = f.UniqueName
 	// if request is to create clone with different storage class
@@ -839,7 +839,7 @@ func deletePVCImageJournalInPool(f *framework.Framework, pvc *v1.PersistentVolum
 	}
 	if stdErr != "" {
 		return fmt.Errorf(
-			"failed to remove omap %s csi.volume.%s with error %v",
+			"failed to remove omap %s csi.volume.%s: %v",
 			rbdOptions(pool),
 			imageData.imageID,
 			stdErr)
@@ -866,7 +866,7 @@ func deletePVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeC
 	}
 	if stdErr != "" {
 		return fmt.Errorf(
-			"failed to remove %s csi.volumes.default csi.volume.%s with error %v",
+			"failed to remove %s csi.volumes.default csi.volume.%s: %v",
 			rbdOptions(pool),
 			imageData.imageID,
 			stdErr)
@@ -881,7 +881,7 @@ func validateThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, siz
 
 	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to create PVC with error %w", err)
+		return fmt.Errorf("failed to create PVC: %w", err)
 	}
 	validateRBDImageCount(f, 1, defaultRBDPool)
 
@@ -929,7 +929,7 @@ func validateThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, siz
 
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to delete PVC with error: %w", err)
+		return fmt.Errorf("failed to delete PVC:: %w", err)
 	}
 	validateRBDImageCount(f, 0, defaultRBDPool)
 
@@ -990,16 +990,16 @@ func recreateCSIRBDPods(f *framework.Framework) error {
 	err := deletePodWithLabel("app in (ceph-csi-rbd, csi-rbdplugin, csi-rbdplugin-provisioner)",
 		cephCSINamespace, false)
 	if err != nil {
-		return fmt.Errorf("failed to delete pods with labels with error %w", err)
+		return fmt.Errorf("failed to delete pods with labels: %w", err)
 	}
 	// wait for csi pods to come up
 	err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("timeout waiting for daemonset pods with error %w", err)
+		return fmt.Errorf("timeout waiting for daemonset pods: %w", err)
 	}
 	err = waitForDeploymentComplete(rbdDeploymentName, cephCSINamespace, f.ClientSet, deployTimeout)
 	if err != nil {
-		return fmt.Errorf("timeout waiting for deployment to be in running state with error %w", err)
+		return fmt.Errorf("timeout waiting for deployment to be in running state: %w", err)
 	}
 
 	return nil
