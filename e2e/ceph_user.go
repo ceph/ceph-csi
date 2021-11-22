@@ -87,7 +87,7 @@ func createCephUser(f *framework.Framework, user string, caps []string) (string,
 		return "", err
 	}
 	if stdErr != "" {
-		return "", fmt.Errorf("failed to create user %s with error %v", cmd, stdErr)
+		return "", fmt.Errorf("failed to create user %s: %v", cmd, stdErr)
 	}
 
 	return strings.TrimSpace(stdOut), nil
