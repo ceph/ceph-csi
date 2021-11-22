@@ -290,9 +290,9 @@ func createDummyImage(ctx context.Context, rbdVol *rbdVolume) error {
 		if err != nil {
 			return err
 		}
-		dummyVol := rbdVol
+		dummyVol := *rbdVol
 		dummyVol.RbdImageName = imgName
-		err = createImage(ctx, dummyVol, dummyVol.conn.Creds)
+		err = createImage(ctx, &dummyVol, dummyVol.conn.Creds)
 		if err != nil && !strings.Contains(err.Error(), "File exists") {
 			return err
 		}
@@ -310,7 +310,7 @@ func tickleMirroringOnDummyImage(rbdVol *rbdVolume, mirroringMode librbd.ImageMi
 	if err != nil {
 		return err
 	}
-	dummyVol := rbdVol
+	dummyVol := *rbdVol
 	dummyVol.RbdImageName = imgName
 
 	dummyImageOpsLock.Lock()
