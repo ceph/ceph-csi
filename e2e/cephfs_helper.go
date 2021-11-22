@@ -27,7 +27,7 @@ func validateSubvolumegroup(f *framework.Framework, subvolgrp string) error {
 		return fmt.Errorf("failed to exec command in toolbox: %w", err)
 	}
 	if stdErr != "" {
-		return fmt.Errorf("failed to getpath for subvolumegroup %s with error %v", subvolgrp, stdErr)
+		return fmt.Errorf("failed to getpath for subvolumegroup %s : %v", subvolgrp, stdErr)
 	}
 	expectedGrpPath := "/volumes/" + subvolgrp
 	stdOut = strings.TrimSpace(stdOut)
@@ -193,7 +193,7 @@ func getSubvolumePath(f *framework.Framework, filesystem, subvolgrp, subvolume s
 		return "", err
 	}
 	if stdErr != "" {
-		return "", fmt.Errorf("failed to getpath for subvolume %s with error %s", subvolume, stdErr)
+		return "", fmt.Errorf("failed to getpath for subvolume %s : %s", subvolume, stdErr)
 	}
 
 	return strings.TrimSpace(stdOut), nil
