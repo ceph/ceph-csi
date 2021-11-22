@@ -526,21 +526,21 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 	// write data in PVC
 	err := writeDataInPod(app, opt, f)
 	if err != nil {
-		e2elog.Logf("failed to write data in the pod with error %v", err)
+		e2elog.Logf("failed to write data in the pod: %v", err)
 
 		return "", err
 	}
 
 	checkSum, err := calculateSHA512sum(f, app, filePath, opt)
 	if err != nil {
-		e2elog.Logf("failed to calculate checksum with error %v", err)
+		e2elog.Logf("failed to calculate checksum: %v", err)
 
 		return checkSum, err
 	}
 
 	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to delete pod with error %v", err)
+		e2elog.Failf("failed to delete pod: %v", err)
 	}
 
 	return checkSum, nil
@@ -558,18 +558,18 @@ func validatePVCClone(
 	chErrs := make([]error, totalCount)
 	pvc, err := loadPVC(sourcePvcPath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC with error %v", err)
+		e2elog.Failf("failed to load PVC: %v", err)
 	}
 
 	label := make(map[string]string)
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to create PVC with error %v", err)
+		e2elog.Failf("failed to create PVC: %v", err)
 	}
 	app, err := loadApp(sourceAppPath)
 	if err != nil {
-		e2elog.Failf("failed to load app with error %v", err)
+		e2elog.Failf("failed to load app: %v", err)
 	}
 	label[appKey] = appLabel
 	app.Namespace = f.UniqueName
@@ -589,20 +589,20 @@ func validatePVCClone(
 	if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem {
 		checkSum, err = writeDataAndCalChecksum(app, &opt, f)
 		if err != nil {
-			e2elog.Failf("failed to calculate checksum with error %v", err)
+			e2elog.Failf("failed to calculate checksum: %v", err)
 		}
 	}
 	// validate created backend rbd images
 	validateRBDImageCount(f, 1, defaultRBDPool)
 	pvcClone, err := loadPVC(clonePvcPath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC with error %v", err)
+		e2elog.Failf("failed to load PVC: %v", err)
 	}
 	pvcClone.Spec.DataSource.Name = pvc.Name
 	pvcClone.Namespace = f.UniqueName
 	appClone, err := loadApp(clonePvcAppPath)
 	if err != nil {
-		e2elog.Failf("failed to load application with error %v", err)
+		e2elog.Failf("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
 	wg.Add(totalCount)
@@ -690,7 +690,7 @@ func validatePVCClone(
 	// delete parent pvc
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to delete PVC with error %v", err)
+		e2elog.Failf("failed to delete PVC: %v", err)
 	}
 
 	totalCloneCount = totalCount + totalCount
@@ -765,7 +765,7 @@ func validatePVCSnapshot(
 	chErrs := make([]error, totalCount)
 	err := createRBDSnapshotClass(f)
 	if err != nil {
-		e2elog.Failf("failed to create storageclass with error %v", err)
+		e2elog.Failf("failed to create storageclass: %v", err)
 	}
 	defer func() {
 		err = deleteRBDSnapshotClass()
@@ -776,17 +776,17 @@ func validatePVCSnapshot(
 
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC with error %v", err)
+		e2elog.Failf("failed to load PVC: %v", err)
 	}
 	label := make(map[string]string)
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to create PVC with error %v", err)
+		e2elog.Failf("failed to create PVC: %v", err)
 	}
 	app, err := loadApp(appPath)
 	if err != nil {
-		e2elog.Failf("failed to load app with error %v", err)
+		e2elog.Failf("failed to load app: %v", err)
 	}
 	// write data in PVC
 	label[appKey] = appLabel
@@ -798,7 +798,7 @@ func validatePVCSnapshot(
 	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 	checkSum, err := writeDataAndCalChecksum(app, &opt, f)
 	if err != nil {
-		e2elog.Failf("failed to calculate checksum with error %v", err)
+		e2elog.Failf("failed to calculate checksum: %v", err)
 	}
 	validateRBDImageCount(f, 1, defaultRBDPool)
 	snap := getSnapshot(snapshotPath)
@@ -816,7 +816,7 @@ func validatePVCSnapshot(
 					content, sErr := getVolumeSnapshotContent(s.Namespace, s.Name)
 					if sErr != nil {
 						wgErrs[n] = fmt.Errorf(
-							"failed to get snapshotcontent for %s in namespace %s with error: %w",
+							"failed to get snapshotcontent for %s in namespace %s: %w",
 							s.Name,
 							s.Namespace,
 							sErr)
@@ -850,11 +850,11 @@ func validatePVCSnapshot(
 	validateRBDImageCount(f, totalCount+1, defaultRBDPool)
 	pvcClone, err := loadPVC(pvcClonePath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC with error %v", err)
+		e2elog.Failf("failed to load PVC: %v", err)
 	}
 	appClone, err := loadApp(appClonePath)
 	if err != nil {
-		e2elog.Failf("failed to load application with error %v", err)
+		e2elog.Failf("failed to load application: %v", err)
 	}
 	pvcClone.Namespace = f.UniqueName
 	appClone.Namespace = f.UniqueName
@@ -902,7 +902,7 @@ func validatePVCSnapshot(
 				checkSumClone, chErrs[n] = calculateSHA512sum(f, &a, filePath, &opt)
 				e2elog.Logf("checksum value for the clone is %s with pod name %s", checkSumClone, name)
 				if chErrs[n] != nil {
-					e2elog.Logf("failed to calculte checksum for clone with error %s", chErrs[n])
+					e2elog.Logf("failed to calculte checksum for clone: %s", chErrs[n])
 				}
 				if checkSumClone != checkSum {
 					e2elog.Logf(
@@ -998,7 +998,7 @@ func validatePVCSnapshot(
 	// delete parent pvc
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to delete PVC with error %v", err)
+		e2elog.Failf("failed to delete PVC: %v", err)
 	}
 
 	// total images in cluster is total snaps+ total clones
@@ -1016,7 +1016,7 @@ func validatePVCSnapshot(
 					content, err = getVolumeSnapshotContent(s.Namespace, s.Name)
 					if err != nil {
 						wgErrs[n] = fmt.Errorf(
-							"failed to get snapshotcontent for %s in namespace %s with error: %w",
+							"failed to get snapshotcontent for %s in namespace %s: %w",
 							s.Name,
 							s.Namespace,
 							err)
@@ -1221,7 +1221,7 @@ func validateController(
 func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
 	v, err := c.Discovery().ServerVersion()
 	if err != nil {
-		e2elog.Failf("failed to get server version with error %v", err)
+		e2elog.Failf("failed to get server version: %v", err)
 		// Failf() marks the case as failure, and returns from the
 		// Go-routine that runs the case. This function will not have a
 		// return value.
