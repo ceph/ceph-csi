@@ -24,12 +24,9 @@ jobs:
           username: ${{ secrets.QUAY_IO_USERNAME }}
           password: ${{ secrets.QUAY_IO_PASSWORD }}
 
-      - name: Set build environment based on Git branch name
-        if: github.ref == 'refs/heads/devel'
-        run: echo "BRANCH_NAME=devel" >> $GITHUB_ENV
-
       - name: Set build environment variables
         run: |
+          echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
           echo "GITHUB_USER=${{ secrets.CEPH_CSI_BOT_NAME }}" >> $GITHUB_ENV
           echo "GITHUB_EMAIL=${{ secrets.CEPH_CSI_BOT_EMAIL }}" >> $GITHUB_ENV
           echo "GITHUB_TOKEN=${{ secrets.CEPH_CSI_BOT_TOKEN }}" >> $GITHUB_ENV
