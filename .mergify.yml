@@ -310,7 +310,7 @@ pull_request_rules:
           - ci/skip/e2e
   - name: title contains Mergify
     conditions:
-      - "title~=mergify"
+      - "title~=(?i)mergify"
     actions:
       label:
         add:
