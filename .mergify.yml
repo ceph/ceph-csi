@@ -316,12 +316,3 @@ pull_request_rules:
         add:
           - Repo activity
           - ci/skip/e2e
-  - name: label PR that only changes actions
-    conditions:
-      - -files~=^(!?actions/)
-    actions:
-      label:
-        add:
-          - component/build
-          - component/testing
-          - ci/skip/e2e
