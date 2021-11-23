@@ -142,7 +142,9 @@ func main() {
 					continue
 				}
 
-				for _, r := range rs {
+				statusList := filterStatusList(rs)
+
+				for _, r := range statusList {
 					log.Printf("found context %s with status %s\n", r.GetContext(), r.GetState())
 					if contains([]string{"failed", "failure"}, r.GetState()) {
 						log.Printf("found failed test %s\n", r.GetContext())
@@ -232,4 +234,24 @@ func contains(s []string, e string) bool {
 	}
 
 	return false
+}
+
+// filterStatusesList returns list of unique and recently updated github RepoStatuses.
+// Raw github RepoStatus list may contain duplicate and older statuses.
+func filterStatusList(rawStatusList []*github.RepoStatus) []*github.RepoStatus {
+	testStatus := make(map[string]*github.RepoStatus)
+
+	for _, r := range rawStatusList {
+		status, ok := testStatus[r.GetContext()]
+		if !ok || r.GetUpdatedAt().After(status.GetUpdatedAt()) {
+			testStatus[r.GetContext()] = r
+		}
+	}
+
+	statusList := make([]*github.RepoStatus, 0)
+	for _, rs := range testStatus {
+		statusList = append(statusList, rs)
+	}
+
+	return statusList
 }
