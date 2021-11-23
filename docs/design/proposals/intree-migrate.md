@@ -4,7 +4,13 @@ Prior to CSI, Kubernetes provided a powerful volume plugin system. These volume
 plugins were “in-tree” meaning their code was part of the core Kubernetes code
 and shipped with the core Kubernetes binaries. The CSI migration effort enables
 the replacement of existing in-tree storage plugins such as kubernetes.io/rbd
-with a corresponding CSI driver. For more information on CSI migration effort
+with a corresponding CSI driver. This will be an opt-in feature turned on at
+cluster creation time that will redirect in-tree plugin operations to a
+corresponding CSI Driver. The main mechanism we will use to migrate plugins is
+redirecting in-tree operation calls to the CSI Driver instead of the in-tree
+driver, the external components will pick up these in-tree PV's and use a
+translation library to translate to CSI Source. For more information on CSI
+migration effort
 refer [design doc](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/storage/csi-migration.md)
 
 ## RBD in-tree plugin to CSI migration
@@ -18,13 +24,17 @@ migration for RBD plugin:
 
 Considering the `clusterID` field is a required one for CSI, but in-tree
 StorageClass has `monitors` field as a required thing the clusterID will be sent
-from the migration library based on the monitors field, Kubernetes storage admin
-supposed to create a clusterID based on the monitors hash ( ex: `#md5sum <<<
+from the migration library based on the monitors field as like any other CSI
+request, Kubernetes storage admin supposed to create a clusterID based on the
+monitors hash ( ex: `#md5sum <<<
 "<monaddress:port>"`) in the CSI config map and keep the monitors under this
 configuration before enabling the migration. While CSI driver receive the volume
-ID it will look at the configmap and figure out the monitors to do the
-operations. Thus, CSI operations are unchanged or untouched wrt to the clusterID
-field.
+ID, it will look at the configmap and figure out the monitors to do the
+operations like create volume. Thus, CSI operations are unchanged or untouched
+wrt to the clusterID field. In other words, for Ceph CSI this is yet another
+request coming in from a client with required parameters. This is an opaque/NOOP
+change from the Ceph CSI side for its operations, however mentioning it here as
+a reference.
 
 ### New Volume ID for existing volume operations
 
@@ -45,13 +55,19 @@ Details on the hash values:
 
 * PoolHash: this is an encoded string of pool name.
 
-The existing in-tree volume's node operations should work without any issues as
-those will be tracked as static volumes for the CSI driver. From above volume
-ID, the CSI driver can also connect to the backend cluster and clean/delete the
-image. The migration volume ID carry the information like monitors, pool and
-image name which is good enough for the driver to identify and connect to the
-backend cluster for its operations. With above volume ID in place, we will be
-able to support mount, unmount, delete and resize operations.
+This volume handle is introduced as the existing in-tree volume does not have
+the volume ID format (
+ex: `0001-0020-b7f67366bb43f32e07d8a261a7840da9 -0000000000000002-c867ff35-3f04-11ec-b823-0242ac110003`)
+which Ceph CSI use by default. However, Ceph CSI need certain information like
+clusterID, pool, Image name to perform deletion and expansion of the volumes.
+The existing in-tree
+volume's `NodeStageVolume, NodePublishVolume, NodeUnstageVolume, NodeUnpublishVolume`
+operations should work without any issues as those will be tracked as static
+volumes for the CSI driver. For `DeleteVolume and ControllerExpandVolume`
+operations, from above migration specific volume ID, the CSI driver can derive
+the required details and connect to the backend cluster ( as it carry
+information like monitors, pool and image name) then perform deletion of the
+image or perform resize operation.
 
 ### Migration secret for CSI operations
 
@@ -68,8 +84,36 @@ field.
 field
 
 if `adminId` field is nil or not set, `UserID` field will be filled with default
-value ie `admin`.The above logic get activated only when the secret is a
+value ie `admin`. The above logic get activated only when the secret is a
 migration secret, otherwise skipped to the normal workflow as we have today.
+CreateVolume, DeleteVolume, NodeStage and ExpandVolume has to validate the
+secret and use for its operations:
+
+## Helper functions
+
+Few helper/utility functions will be introduced as part of this effort to handle
+migration specific logic to it.
+
+internal/rbd/migration.go
+
+* isMigrationVolID() - Identify the volume ID is of above-mentioned form of
+  migration volume ID.
+* parseMigrationVolID() - Parse the migration volume ID and populate the
+  required information like `pool`, `image`, `clusterID`..etc. into
+  `migrationVolID` structure.
+* deleteMigratedVolume() - Deletes the volume from the cluster by making use of
+  the `migrationVolID` structure fields like `pool, image, clusterID`.
+
+internal/util/credentials.go
+
+* isMigrationSecret() - Identify the passed in secret is a migration secret
+  based on the map values (ex: `key` field) of request secret.
+* NewUserCredentialsWithMigration() - This take request secret map as input and
+  validate whether it is migration secret with the help of isMigrationSecret(),
+  and return credentials by calling NewUserCredentials().
+* ParseAndSetSecretMapFromMigSecret() - Parse the secret map from the migration
+  request and return a map with adjusted secret fields for the CSI driver to
+  continue performing secret specific operations.
 
 ## CephFS in-tree plugin to CSI migration
 
