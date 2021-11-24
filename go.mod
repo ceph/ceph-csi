@@ -23,10 +23,10 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
-	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2
+	golang.org/x/sys v0.0.0-20211029165221-6e7872819dc8
 	google.golang.org/grpc v1.42.0
-	k8s.io/api v0.22.4
-	k8s.io/apimachinery v0.22.4
+	k8s.io/api v0.23.0-alpha.3
+	k8s.io/apimachinery v0.23.0-alpha.3
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cloud-provider v0.22.4
 	k8s.io/klog/v2 v2.30.0
@@ -35,8 +35,8 @@ require (
 	//
 	k8s.io/kubernetes v1.22.4
 	k8s.io/mount-utils v0.22.4
-	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
-	sigs.k8s.io/controller-runtime v0.10.3
+	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
+	sigs.k8s.io/controller-runtime v0.11.0-beta.0
 )
 
 replace (
