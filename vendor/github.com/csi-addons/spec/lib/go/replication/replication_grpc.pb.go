@@ -251,5 +251,5 @@ var Controller_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "replication.proto",
+	Metadata: "replication/replication.proto",
 }

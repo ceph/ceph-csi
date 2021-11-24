@@ -8,7 +8,7 @@ require (
 	github.com/ceph/go-ceph v0.12.0
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
-	github.com/csi-addons/spec v0.1.1
+	github.com/csi-addons/spec v0.1.2-0.20211123125058-fd968c478af7
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
