@@ -234,6 +234,8 @@ Available Commands:
   teardown           Teardown a rook
   create-block-pool  Create a rook block pool
   delete-block-pool  Delete a rook block pool
+  create-block-ec-pool Creates a rook erasure coded block pool
+  delete-block-ec-pool Deletes a rook erasure coded block pool
 " >&2
 	;;
 esac
