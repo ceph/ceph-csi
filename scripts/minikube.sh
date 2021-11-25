@@ -179,6 +179,7 @@ EXTRA_CONFIG="${EXTRA_CONFIG} --extra-config=kubelet.resolv-conf=${RESOLV_CONF}"
 
 #extra Rook configuration
 ROOK_BLOCK_POOL_NAME=${ROOK_BLOCK_POOL_NAME:-"newrbdpool"}
+ROOK_BLOCK_EC_POOL_NAME=${ROOK_BLOCK_EC_POOL_NAME:-"ec-pool"}
 
 # enable read-only anonymous access to kubelet metrics
 EXTRA_CONFIG="${EXTRA_CONFIG} --extra-config=kubelet.read-only-port=10255"
@@ -241,6 +242,16 @@ delete-block-pool)
     DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
     "$DIR"/rook.sh delete-block-pool
     ;;
+create-block-ec-pool)
+    echo "creating a erasure coded block pool named $ROOK_BLOCK_EC_POOL_NAME"
+    DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+    "$DIR"/rook.sh create-block-ec-pool
+    ;;
+delete-block-ec-pool)
+    echo "deleting erasure coded block pool named $ROOK_BLOCK_EC_POOL_NAME"
+    DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+    "$DIR"/rook.sh delete-block-ec-pool
+    ;;
 cleanup-snapshotter)
     echo "cleanup snapshot controller"
     DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -281,6 +292,8 @@ Available Commands:
   install-snapshotter  Install snapshot controller
   create-block-pool    Creates a rook block pool (named $ROOK_BLOCK_POOL_NAME)
   delete-block-pool    Deletes a rook block pool (named $ROOK_BLOCK_POOL_NAME)
+  create-block-ec-pool Creates a rook erasure coded block pool (named $ROOK_BLOCK_EC_POOL_NAME)
+  delete-block-ec-pool Creates a rook erasure coded block pool (named $ROOK_BLOCK_EC_POOL_NAME)
   cleanup-snapshotter  Cleanup snapshot controller
   teardown-rook        Teardown rook from minikube
   cephcsi              Copy built docker images to kubernetes cluster
