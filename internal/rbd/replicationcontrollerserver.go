@@ -43,6 +43,9 @@ const (
 	// imageMirrorModeSnapshot uses snapshots to propagate RBD images between
 	// ceph clusters.
 	imageMirrorModeSnapshot imageMirroringMode = "snapshot"
+	// imageMirrorModeJournal uses journaling to propagate RBD images between
+	// ceph clusters.
+	imageMirrorModeJournal imageMirroringMode = "journal"
 )
 
 const (
@@ -123,6 +126,8 @@ func getMirroringMode(ctx context.Context, parameters map[string]string) (librbd
 	switch imageMirroringMode(val) {
 	case imageMirrorModeSnapshot:
 		mirroringMode = librbd.ImageMirrorModeSnapshot
+	case imageMirrorModeJournal:
+		mirroringMode = librbd.ImageMirrorModeJournal
 	default:
 		return mirroringMode, status.Errorf(codes.InvalidArgument, "%s %s not supported", imageMirroringKey, val)
 	}
@@ -133,12 +138,24 @@ func getMirroringMode(ctx context.Context, parameters map[string]string) (librbd
 // validateSchedulingDetails gets the mirroring mode and scheduling details from the
 // input GRPC request parameters and validates the scheduling is only supported
 // for snapshot mirroring mode.
-func validateSchedulingDetails(parameters map[string]string) error {
+func validateSchedulingDetails(ctx context.Context, parameters map[string]string) error {
 	var err error
 
 	val := parameters[imageMirroringKey]
 
 	switch imageMirroringMode(val) {
+	case imageMirrorModeJournal:
+		// journal mirror mode does not require scheduling parameters
+		if _, ok := parameters[schedulingIntervalKey]; ok {
+			log.WarningLog(ctx, "%s parameter cannot be used with %s mirror mode, ignoring it",
+				schedulingIntervalKey, string(imageMirrorModeJournal))
+		}
+		if _, ok := parameters[schedulingStartTimeKey]; ok {
+			log.WarningLog(ctx, "%s parameter cannot be used with %s mirror mode, ignoring it",
+				schedulingStartTimeKey, string(imageMirrorModeJournal))
+		}
+
+		return nil
 	case imageMirrorModeSnapshot:
 	// If mirroring mode is not set in parameters, we are defaulting mirroring
 	// mode to snapshot. Discard empty mirroring mode from validation as it is
@@ -206,7 +223,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	}
 	defer cr.DeleteCredentials()
 
-	err = validateSchedulingDetails(req.GetParameters())
+	err = validateSchedulingDetails(ctx, req.GetParameters())
 	if err != nil {
 		return nil, err
 	}
@@ -325,9 +342,11 @@ func tickleMirroringOnDummyImage(rbdVol *rbdVolume, mirroringMode librbd.ImageMi
 		return err
 	}
 
-	err = dummyVol.addSnapshotScheduling(admin.Interval("1m"), admin.NoStartTime)
-	if err != nil {
-		return err
+	if mirroringMode == librbd.ImageMirrorModeSnapshot {
+		err = dummyVol.addSnapshotScheduling(admin.Interval("1m"), admin.NoStartTime)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

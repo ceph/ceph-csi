@@ -17,6 +17,7 @@ limitations under the License.
 package rbd
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -73,6 +74,7 @@ func TestValidateSchedulingInterval(t *testing.T) {
 
 func TestValidateSchedulingDetails(t *testing.T) {
 	t.Parallel()
+	ctx := context.TODO()
 	tests := []struct {
 		name       string
 		parameters map[string]string
@@ -98,10 +100,10 @@ func TestValidateSchedulingDetails(t *testing.T) {
 		{
 			"when mirroring mode is journal",
 			map[string]string{
-				imageMirroringKey:     "journal",
+				imageMirroringKey:     string(imageMirrorModeJournal),
 				schedulingIntervalKey: "1h",
 			},
-			true,
+			false,
 		},
 		{
 			"when startTime is specified without interval",
@@ -136,7 +138,7 @@ func TestValidateSchedulingDetails(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := validateSchedulingDetails(tt.parameters)
+			err := validateSchedulingDetails(ctx, tt.parameters)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getSchedulingDetails() error = %v, wantErr %v", err, tt.wantErr)
 
