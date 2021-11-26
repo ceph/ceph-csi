@@ -128,6 +128,9 @@ func init() {
 	flag.BoolVar(&conf.Version, "version", false, "Print cephcsi version information")
 	flag.BoolVar(&conf.EnableProfiling, "enableprofiling", false, "enable go profiling")
 
+	// CSI-Addons configuration
+	flag.StringVar(&conf.CSIAddonsEndpoint, "csi-addons-endpoint", "unix://tmp/csi-addons.sock", "CSI-Addons endpoint")
+
 	klog.InitFlags(nil)
 	if err := flag.Set("logtostderr", "true"); err != nil {
 		klog.Exitf("failed to set logtostderr flag: %v", err)
