@@ -214,13 +214,9 @@ func (r *Driver) Run(conf *util.Config) {
 		log.WarningLogMsg("EnableGRPCMetrics is deprecated")
 		go util.StartMetricsServer(conf)
 	}
-	if conf.EnableProfiling {
-		if !conf.EnableGRPCMetrics {
-			go util.StartMetricsServer(conf)
-		}
-		log.DebugLogMsg("Registering profiling handler")
-		go util.EnableProfiling()
-	}
+
+	r.startProfiling(conf)
+
 	if conf.IsNodeServer {
 		go func() {
 			// TODO: move the healer to csi-addons
@@ -254,4 +250,16 @@ func (r *Driver) setupCSIAddonsServer(endpoint string) error {
 	}
 
 	return nil
+}
+
+// startProfiling checks which profiling options are enabled in the config and
+// starts the required profiling services.
+func (r *Driver) startProfiling(conf *util.Config) {
+	if conf.EnableProfiling {
+		if !conf.EnableGRPCMetrics {
+			go util.StartMetricsServer(conf)
+		}
+		log.DebugLogMsg("Registering profiling handler")
+		go util.EnableProfiling()
+	}
 }
