@@ -21,12 +21,25 @@ import (
 
 	"github.com/csi-addons/spec/lib/go/identity"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 // IdentityServer struct of rbd CSI driver with supported methods of CSI
 // identity server spec.
 type IdentityServer struct {
 	*identity.UnimplementedIdentityServer
+
+	config *util.Config
+}
+
+// NewIdentityServer creates a new IdentityServer which handles the Identity
+// Service requests from the CSI-Addons specification.
+func NewIdentityServer(config *util.Config) *IdentityServer {
+	return &IdentityServer{
+		config: config,
+	}
 }
 
 func (is *IdentityServer) RegisterService(server grpc.ServiceRegistrar) {
@@ -37,19 +50,62 @@ func (is *IdentityServer) RegisterService(server grpc.ServiceRegistrar) {
 func (is *IdentityServer) GetIdentity(
 	ctx context.Context,
 	req *identity.GetIdentityRequest) (*identity.GetIdentityResponse, error) {
-	return nil, nil
+	// only include Name and VendorVersion, Manifest is optional
+	res := &identity.GetIdentityResponse{
+		Name:          is.config.DriverName,
+		VendorVersion: util.DriverVersion,
+	}
+
+	return res, nil
 }
 
 // GetCapabilities returns available capabilities of the rbd driver.
 func (is *IdentityServer) GetCapabilities(
 	ctx context.Context,
 	req *identity.GetCapabilitiesRequest) (*identity.GetCapabilitiesResponse, error) {
-	return nil, nil
+	// build the list of capabilities, depending on the config
+	caps := make([]*identity.Capability, 0)
+
+	if is.config.IsControllerServer {
+		// we're running as a CSI Controller service
+		caps = append(caps,
+			&identity.Capability{
+				Type: &identity.Capability_Service_{
+					Service: &identity.Capability_Service{
+						Type: identity.Capability_Service_CONTROLLER_SERVICE,
+					},
+				},
+			})
+	}
+
+	if is.config.IsNodeServer {
+		// we're running as a CSI node-plugin service
+		caps = append(caps,
+			&identity.Capability{
+				Type: &identity.Capability_Service_{
+					Service: &identity.Capability_Service{
+						Type: identity.Capability_Service_NODE_SERVICE,
+					},
+				},
+			})
+	}
+
+	res := &identity.GetCapabilitiesResponse{
+		Capabilities: caps,
+	}
+
+	return res, nil
 }
 
-// GetCapabilities returns available capabilities of the rbd driver.
+// Probe is called by the CO plugin to validate that the CSI-Addons Node is
+// still healthy.
 func (is *IdentityServer) Probe(
 	ctx context.Context,
 	req *identity.ProbeRequest) (*identity.ProbeResponse, error) {
-	return nil, nil
+	// there is nothing that would cause a delay in getting ready
+	res := &identity.ProbeResponse{
+		Ready: &wrapperspb.BoolValue{Value: true},
+	}
+
+	return res, nil
 }

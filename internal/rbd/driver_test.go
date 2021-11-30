@@ -22,6 +22,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ceph/ceph-csi/internal/util"
 )
 
 func TestSetupCSIAddonsServer(t *testing.T) {
@@ -31,8 +33,12 @@ func TestSetupCSIAddonsServer(t *testing.T) {
 	tmpDir := t.TempDir()
 	endpoint := "unix://" + tmpDir + "/csi-addons.sock"
 
+	config := &util.Config{
+		CSIAddonsEndpoint: endpoint,
+	}
+
 	drv := &Driver{}
-	err := drv.setupCSIAddonsServer(endpoint)
+	err := drv.setupCSIAddonsServer(config)
 	require.NoError(t, err)
 	require.NotNil(t, drv.cas)
 
