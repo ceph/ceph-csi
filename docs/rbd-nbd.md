@@ -76,16 +76,16 @@ storageclass yaml
 
 ## Status
 
-Rbd-nbd support status: **Alpha**
+Rbd-nbd support status: **Beta**
 
 ## Support Matrix
 
 | Features                                 | Feature Status | CSI Driver Version | Ceph Cluster Version | CSI Spec Version | Kubernetes Version |
 | ---------------------------------------- | -------------- | ------------------ | -------------------- | ---------------- | ------------------ |
-| Creating and deleting snapshot           | Alpha          | >= v3.4.0          | Pacific (>=16.0.0)   | >= v1.0.0        | >= v1.17.0         |
-| Creating and deleting clones             | Alpha          | >= v3.4.0          | Pacific (>=16.0.0)   | >= v1.0.0        | >= v1.17.0         |
-| Creating and deleting encrypted volumes  | Alpha          | >= v3.4.0          | Pacific (>=16.0.0)   | >= v1.0.0        | >= v1.14.0         |
-| Expand volumes                           | Alpha          | >= v3.4.0          | Pacific (>=16.0.0)   | >= v1.1.0        | >= v1.15.0         |
+| Creating and deleting snapshot           | Beta           | >= v3.5.0          | Pacific (>=16.0.0)   | >= v1.0.0        | >= v1.17.0         |
+| Creating and deleting clones             | Beta           | >= v3.5.0          | Pacific (>=16.0.0)   | >= v1.0.0        | >= v1.17.0         |
+| Creating and deleting encrypted volumes  | Beta           | >= v3.5.0          | Pacific (>=16.0.0)   | >= v1.0.0        | >= v1.14.0         |
+| Expand volumes                           | Beta           | >= v3.5.0          | Pacific (>=16.0.0)   | >= v1.1.0        | >= v1.15.0         |
 
 `NOTE`: The `Alpha` status reflects possible non-backward compatible
 changes in the future, and is thus not recommended for production use.
