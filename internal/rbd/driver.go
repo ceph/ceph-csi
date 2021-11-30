@@ -132,7 +132,7 @@ func (r *Driver) Run(conf *util.Config) {
 	snapJournal = journal.NewCSISnapshotJournal(CSIInstanceID)
 
 	// configre CSI-Addons server and components
-	err = r.setupCSIAddonsServer(conf.CSIAddonsEndpoint)
+	err = r.setupCSIAddonsServer(conf)
 	if err != nil {
 		log.FatalLogMsg(err.Error())
 	}
@@ -232,16 +232,17 @@ func (r *Driver) Run(conf *util.Config) {
 // setupCSIAddonsServer creates a new CSI-Addons Server on the given (URL)
 // endpoint. The supported CSI-Addons operations get registered as their own
 // services.
-func (r *Driver) setupCSIAddonsServer(endpoint string) error {
+func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 	var err error
 
-	r.cas, err = csiaddons.NewCSIAddonsServer(endpoint)
+	r.cas, err = csiaddons.NewCSIAddonsServer(conf.CSIAddonsEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to create CSI-Addons server: %w", err)
 	}
 
 	// register services
-	r.cas.RegisterService(&casrbd.IdentityServer{})
+	is := casrbd.NewIdentityServer(conf)
+	r.cas.RegisterService(is)
 
 	// start the server, this does not block, it runs a new go-routine
 	err = r.cas.Start()
