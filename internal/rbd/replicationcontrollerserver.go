@@ -300,23 +300,46 @@ func getOperationName(poolName string, optName operation) string {
 // createDummyImage creates a dummy image as a workaround for the rbd
 // scheduling problem.
 func createDummyImage(ctx context.Context, rbdVol *rbdVolume) error {
+	var err error
+	var imgName string
+
+	dummyImageOpsLock.Lock()
+	defer dummyImageOpsLock.Unlock()
 	optName := getOperationName(rbdVol.Pool, dummyImageCreated)
 	if _, ok := operationLock.Load(optName); !ok {
 		// create a dummy image
-		imgName, err := getDummyImageName(rbdVol.conn)
+		imgName, err = getDummyImageName(rbdVol.conn)
 		if err != nil {
 			return err
 		}
 		dummyVol := *rbdVol
 		dummyVol.RbdImageName = imgName
+		// create 1MiB dummy image. 1MiB=1048576 bytes
+		dummyVol.VolSize = 1048576
 		err = createImage(ctx, &dummyVol, dummyVol.conn.Creds)
-		if err != nil && !strings.Contains(err.Error(), "File exists") {
-			return err
+		if err != nil {
+			if strings.Contains(err.Error(), "File exists") {
+				err = repairDummyImage(ctx, &dummyVol)
+			}
 		}
-		operationLock.Store(optName, true)
+		if err == nil {
+			operationLock.Store(optName, true)
+		}
 	}
 
-	return nil
+	return err
+}
+
+// repairDummyImage deletes and recreates the dummy image.
+func repairDummyImage(ctx context.Context, dummyVol *rbdVolume) error {
+	// deleting and recreating the dummy image will not impact anything as its
+	// a workaround to fix the scheduling problem.
+	err := deleteImage(ctx, dummyVol, dummyVol.conn.Creds)
+	if err != nil {
+		return err
+	}
+
+	return createImage(ctx, dummyVol, dummyVol.conn.Creds)
 }
 
 // tickleMirroringOnDummyImage disables and reenables mirroring on the dummy image, and sets a
