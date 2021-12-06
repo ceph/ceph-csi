@@ -9,7 +9,6 @@ require (
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
 	github.com/csi-addons/spec v0.1.2-0.20211123125058-fd968c478af7
-	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -23,8 +22,9 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
-	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2
+	golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6
 	google.golang.org/grpc v1.42.0
+	google.golang.org/protobuf v1.26.0
 	k8s.io/api v0.22.4
 	k8s.io/apimachinery v0.22.4
 	k8s.io/client-go v12.0.0+incompatible
@@ -43,6 +43,7 @@ replace (
 	code.cloudfoundry.org/gofileutils => github.com/cloudfoundry/gofileutils v0.0.0-20170111115228-4d0c80011a0f
 	github.com/ceph/ceph-csi/api => ./api
 	github.com/golang/protobuf => github.com/golang/protobuf v1.4.3
+	github.com/hashicorp/vault => github.com/hashicorp/vault v1.8.5
 	github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 	gomodules.xyz/jsonpatch/v2 => github.com/gomodules/jsonpatch/v2 v2.2.0
 	//

@@ -93,7 +93,7 @@ github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
 # github.com/evanphx/json-patch v4.11.0+incompatible
 github.com/evanphx/json-patch
-# github.com/fatih/color v1.9.0
+# github.com/fatih/color v1.13.0
 github.com/fatih/color
 # github.com/felixge/httpsnoop v1.0.1
 github.com/felixge/httpsnoop
@@ -103,8 +103,6 @@ github.com/fsnotify/fsnotify
 github.com/ghodss/yaml
 # github.com/go-logr/logr v0.4.0
 github.com/go-logr/logr
-# github.com/go-sql-driver/mysql v1.5.0
-## explicit
 # github.com/gogo/protobuf v1.3.2
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/sortkeys
@@ -151,7 +149,7 @@ github.com/grpc-ecosystem/grpc-gateway/runtime
 github.com/grpc-ecosystem/grpc-gateway/utilities
 # github.com/hashicorp/errwrap v1.1.0
 github.com/hashicorp/errwrap
-# github.com/hashicorp/go-cleanhttp v0.5.1
+# github.com/hashicorp/go-cleanhttp v0.5.2
 github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-hclog v0.16.2
 github.com/hashicorp/go-hclog
@@ -162,7 +160,7 @@ github.com/hashicorp/go-multierror
 # github.com/hashicorp/go-plugin v1.4.3
 github.com/hashicorp/go-plugin
 github.com/hashicorp/go-plugin/internal/plugin
-# github.com/hashicorp/go-retryablehttp v0.6.6
+# github.com/hashicorp/go-retryablehttp v0.6.7
 github.com/hashicorp/go-retryablehttp
 # github.com/hashicorp/go-rootcerts v1.0.2
 github.com/hashicorp/go-rootcerts
@@ -176,12 +174,12 @@ github.com/hashicorp/go-secure-stdlib/strutil
 github.com/hashicorp/go-sockaddr
 # github.com/hashicorp/go-uuid v1.0.2
 github.com/hashicorp/go-uuid
-# github.com/hashicorp/go-version v1.2.0
+# github.com/hashicorp/go-version v1.2.1
 github.com/hashicorp/go-version
 # github.com/hashicorp/golang-lru v0.5.4
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
-# github.com/hashicorp/hcl v1.0.0
+# github.com/hashicorp/hcl v1.0.1-vault-3
 github.com/hashicorp/hcl
 github.com/hashicorp/hcl/hcl/ast
 github.com/hashicorp/hcl/hcl/parser
@@ -191,7 +189,7 @@ github.com/hashicorp/hcl/hcl/token
 github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/hashicorp/vault v1.4.2
+# github.com/hashicorp/vault v1.4.2 => github.com/hashicorp/vault v1.8.5
 github.com/hashicorp/vault/command/agent/auth
 github.com/hashicorp/vault/command/agent/auth/kubernetes
 # github.com/hashicorp/vault/api v1.3.0
@@ -243,9 +241,9 @@ github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned/typ
 github.com/libopenstorage/secrets
 github.com/libopenstorage/secrets/vault
 github.com/libopenstorage/secrets/vault/utils
-# github.com/mattn/go-colorable v0.1.6
+# github.com/mattn/go-colorable v0.1.11
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.12
+# github.com/mattn/go-isatty v0.0.14
 github.com/mattn/go-isatty
 # github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369
 github.com/matttproud/golang_protobuf_extensions/pbutil
@@ -253,7 +251,7 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 github.com/mitchellh/copystructure
 # github.com/mitchellh/go-homedir v1.1.0
 github.com/mitchellh/go-homedir
-# github.com/mitchellh/go-testing-interface v1.0.0
+# github.com/mitchellh/go-testing-interface v1.14.0
 github.com/mitchellh/go-testing-interface
 # github.com/mitchellh/mapstructure v1.4.2
 github.com/mitchellh/mapstructure
@@ -444,7 +442,7 @@ golang.org/x/net/trace
 # golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2
+# golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
@@ -543,6 +541,7 @@ google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
 # google.golang.org/protobuf v1.26.0
+## explicit
 google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
@@ -1129,6 +1128,7 @@ sigs.k8s.io/yaml
 # code.cloudfoundry.org/gofileutils => github.com/cloudfoundry/gofileutils v0.0.0-20170111115228-4d0c80011a0f
 # github.com/ceph/ceph-csi/api => ./api
 # github.com/golang/protobuf => github.com/golang/protobuf v1.4.3
+# github.com/hashicorp/vault => github.com/hashicorp/vault v1.8.5
 # github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 # gomodules.xyz/jsonpatch/v2 => github.com/gomodules/jsonpatch/v2 v2.2.0
 # k8s.io/api => k8s.io/api v0.22.4
