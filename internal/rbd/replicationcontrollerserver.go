@@ -314,6 +314,14 @@ func createDummyImage(ctx context.Context, rbdVol *rbdVolume) error {
 		}
 		dummyVol := *rbdVol
 		dummyVol.RbdImageName = imgName
+		f := []string{
+			librbd.FeatureNameLayering,
+			librbd.FeatureNameObjectMap,
+			librbd.FeatureNameExclusiveLock,
+			librbd.FeatureNameFastDiff,
+		}
+		features := librbd.FeatureSetFromNames(f)
+		dummyVol.imageFeatureSet = features
 		// create 1MiB dummy image. 1MiB=1048576 bytes
 		dummyVol.VolSize = 1048576
 		err = createImage(ctx, &dummyVol, dummyVol.conn.Creds)
@@ -332,6 +340,10 @@ func createDummyImage(ctx context.Context, rbdVol *rbdVolume) error {
 
 // repairDummyImage deletes and recreates the dummy image.
 func repairDummyImage(ctx context.Context, dummyVol *rbdVolume) error {
+	// instead of checking the images features and than adding missing image
+	// features, updating the image size to 1Mib. We will delete the image
+	// and recreate it.
+
 	// deleting and recreating the dummy image will not impact anything as its
 	// a workaround to fix the scheduling problem.
 	err := deleteImage(ctx, dummyVol, dummyVol.conn.Creds)
