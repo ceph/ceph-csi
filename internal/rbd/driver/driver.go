@@ -213,6 +213,16 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 	is := casrbd.NewIdentityServer(conf)
 	r.cas.RegisterService(is)
 
+	if conf.IsControllerServer {
+		rs := casrbd.NewReclaimSpaceControllerServer()
+		r.cas.RegisterService(rs)
+	}
+
+	if conf.IsNodeServer {
+		rs := casrbd.NewReclaimSpaceNodeServer()
+		r.cas.RegisterService(rs)
+	}
+
 	// start the server, this does not block, it runs a new go-routine
 	err = r.cas.Start()
 	if err != nil {
