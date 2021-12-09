@@ -31,7 +31,7 @@ import (
 	"golang.org/x/sys/unix"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cloud-provider/volume/helpers"
-	"k8s.io/utils/mount"
+	mount "k8s.io/mount-utils"
 )
 
 // RoundOffVolSize rounds up given quantity up to chunks of MiB/GiB.
