@@ -99,17 +99,8 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	req *csi.CreateVolumeRequest) (*rbdVolume, error) {
 	// TODO (sbezverk) Last check for not exceeding total storage capacity
 
-	isMultiNode := false
-	isBlock := false
-	for _, capability := range req.VolumeCapabilities {
-		// RO modes need to be handled independently (ie right now even if access mode is RO, they'll be RW upon attach)
-		if capability.GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
-			isMultiNode = true
-		}
-		if capability.GetBlock() != nil {
-			isBlock = true
-		}
-	}
+	// RO modes need to be handled independently (ie right now even if access mode is RO, they'll be RW upon attach)
+	isBlock, isMultiNode := csicommon.IsBlockMultiNode(req.VolumeCapabilities)
 
 	// We want to fail early if the user is trying to create a RWX on a non-block type device
 	if isMultiNode && !isBlock {
