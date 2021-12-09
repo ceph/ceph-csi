@@ -250,8 +250,8 @@ func GetKrbdSupportedFeatures() (string, error) {
 	return strings.TrimSuffix(string(val), "\n"), nil
 }
 
-// hexStringToInteger convert hex value to uint.
-func hexStringToInteger(hexString string) (uint64, error) {
+// HexStringToInteger convert hex value to uint.
+func HexStringToInteger(hexString string) (uint, error) {
 	// trim 0x prefix
 	numberStr := strings.TrimPrefix(strings.ToLower(hexString), "0x")
 
@@ -262,7 +262,7 @@ func hexStringToInteger(hexString string) (uint64, error) {
 		return 0, err
 	}
 
-	return output, nil
+	return uint(output), nil
 }
 
 // isKrbdFeatureSupported checks if a given Image Feature is supported by krbd
@@ -274,7 +274,7 @@ func isKrbdFeatureSupported(ctx context.Context, imageFeatures string) bool {
 
 	supported := true
 	for _, featureName := range imageFeatureSet.Names() {
-		if (uint64(librbd.FeatureSetFromNames(strings.Split(featureName, " "))) & krbdFeatures) == 0 {
+		if (uint(librbd.FeatureSetFromNames(strings.Split(featureName, " "))) & krbdFeatures) == 0 {
 			supported = false
 			log.ErrorLog(ctx, "krbd feature %q not supported", featureName)
 
