@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rbd
+package rbddriver
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ import (
 	casrbd "github.com/ceph/ceph-csi/internal/csi-addons/rbd"
 	csiaddons "github.com/ceph/ceph-csi/internal/csi-addons/server"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
-	"github.com/ceph/ceph-csi/internal/journal"
+	"github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -30,45 +30,18 @@ import (
 	mount "k8s.io/mount-utils"
 )
 
-const (
-	// volIDVersion is the version number of volume ID encoding scheme.
-	volIDVersion uint16 = 1
-)
-
 // Driver contains the default identity,node and controller struct.
 type Driver struct {
 	cd *csicommon.CSIDriver
 
-	ids *IdentityServer
-	ns  *NodeServer
-	cs  *ControllerServer
-	rs  *ReplicationServer
+	ids *rbd.IdentityServer
+	ns  *rbd.NodeServer
+	cs  *rbd.ControllerServer
+	rs  *rbd.ReplicationServer
 
 	// cas is the CSIAddonsServer where CSI-Addons services are handled
 	cas *csiaddons.CSIAddonsServer
 }
-
-var (
-
-	// CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
-	// ceph clusters across CSI instances, to differentiate omap names per CSI instance.
-	CSIInstanceID = "default"
-
-	// volJournal and snapJournal are used to maintain RADOS based journals for CO generated
-	// VolumeName to backing RBD images.
-	volJournal  *journal.Config
-	snapJournal *journal.Config
-	// rbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before flatten
-	// occurs.
-	rbdHardMaxCloneDepth uint
-
-	// rbdSoftMaxCloneDepth is the soft limit for maximum number of nested volume clones that are taken before flatten
-	// occurs.
-	rbdSoftMaxCloneDepth              uint
-	maxSnapshotsOnImage               uint
-	minSnapshotsOnImageToStartFlatten uint
-	skipForceFlatten                  bool
-)
 
 // NewDriver returns new rbd driver.
 func NewDriver() *Driver {
@@ -76,15 +49,15 @@ func NewDriver() *Driver {
 }
 
 // NewIdentityServer initialize a identity server for rbd CSI driver.
-func NewIdentityServer(d *csicommon.CSIDriver) *IdentityServer {
-	return &IdentityServer{
+func NewIdentityServer(d *csicommon.CSIDriver) *rbd.IdentityServer {
+	return &rbd.IdentityServer{
 		DefaultIdentityServer: csicommon.NewDefaultIdentityServer(d),
 	}
 }
 
 // NewControllerServer initialize a controller server for rbd CSI driver.
-func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
-	return &ControllerServer{
+func NewControllerServer(d *csicommon.CSIDriver) *rbd.ControllerServer {
+	return &rbd.ControllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		VolumeLocks:             util.NewVolumeLocks(),
 		SnapshotLocks:           util.NewVolumeLocks(),
@@ -92,17 +65,17 @@ func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
 	}
 }
 
-func NewReplicationServer(c *ControllerServer) *ReplicationServer {
-	return &ReplicationServer{ControllerServer: c}
+func NewReplicationServer(c *rbd.ControllerServer) *rbd.ReplicationServer {
+	return &rbd.ReplicationServer{ControllerServer: c}
 }
 
 // NewNodeServer initialize a node server for rbd CSI driver.
-func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string) (*NodeServer, error) {
+func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string) (*rbd.NodeServer, error) {
 	mounter := mount.New("")
 
-	return &NodeServer{
+	return &rbd.NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, topology),
-		mounter:           mounter,
+		Mounter:           mounter,
 		VolumeLocks:       util.NewVolumeLocks(),
 	}, nil
 }
@@ -116,20 +89,14 @@ func (r *Driver) Run(conf *util.Config) {
 	var err error
 	var topology map[string]string
 
-	// Use passed in instance ID, if provided for omap suffix naming
-	if conf.InstanceID != "" {
-		CSIInstanceID = conf.InstanceID
-	}
-
 	// update clone soft and hard limit
-	rbdHardMaxCloneDepth = conf.RbdHardMaxCloneDepth
-	rbdSoftMaxCloneDepth = conf.RbdSoftMaxCloneDepth
-	skipForceFlatten = conf.SkipForceFlatten
-	maxSnapshotsOnImage = conf.MaxSnapshotsOnImage
-	minSnapshotsOnImageToStartFlatten = conf.MinSnapshotsOnImage
+	rbd.SetGlobalInt("rbdHardMaxCloneDepth", conf.RbdHardMaxCloneDepth)
+	rbd.SetGlobalInt("rbdSoftMaxCloneDepth", conf.RbdSoftMaxCloneDepth)
+	rbd.SetGlobalBool("skipForceFlatten", conf.SkipForceFlatten)
+	rbd.SetGlobalInt("maxSnapshotsOnImage", conf.MaxSnapshotsOnImage)
+	rbd.SetGlobalInt("minSnapshotsOnImageToStartFlatten", conf.MinSnapshotsOnImage)
 	// Create instances of the volume and snapshot journal
-	volJournal = journal.NewCSIVolumeJournal(CSIInstanceID)
-	snapJournal = journal.NewCSISnapshotJournal(CSIInstanceID)
+	rbd.InitJournals(conf.InstanceID)
 
 	// configre CSI-Addons server and components
 	err = r.setupCSIAddonsServer(conf)
@@ -174,14 +141,16 @@ func (r *Driver) Run(conf *util.Config) {
 			log.FatalLogMsg("failed to start node server, err %v\n", err)
 		}
 		var attr string
-		attr, err = getKrbdSupportedFeatures()
+		attr, err = rbd.GetKrbdSupportedFeatures()
 		if err != nil {
 			log.FatalLogMsg(err.Error())
 		}
-		krbdFeatures, err = hexStringToInteger(attr)
+		var krbdFeatures uint
+		krbdFeatures, err = rbd.HexStringToInteger(attr)
 		if err != nil {
 			log.FatalLogMsg(err.Error())
 		}
+		rbd.SetGlobalInt("krbdFeatures", krbdFeatures)
 	}
 
 	if conf.IsControllerServer {
@@ -220,7 +189,7 @@ func (r *Driver) Run(conf *util.Config) {
 	if conf.IsNodeServer {
 		go func() {
 			// TODO: move the healer to csi-addons
-			err := runVolumeHealer(r.ns, conf)
+			err := rbd.RunVolumeHealer(r.ns, conf)
 			if err != nil {
 				log.ErrorLogMsg("healer had failures, err %v\n", err)
 			}
