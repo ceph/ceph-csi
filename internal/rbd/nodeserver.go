@@ -42,7 +42,7 @@ import (
 // node server spec.
 type NodeServer struct {
 	*csicommon.DefaultNodeServer
-	mounter mount.Interface
+	Mounter mount.Interface
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID) return an Aborted error
 	VolumeLocks *util.VolumeLocks
@@ -297,7 +297,7 @@ func (ns *NodeServer) NodeStageVolume(
 	if !isHealer {
 		var isNotMnt bool
 		// check if stagingPath is already mounted
-		isNotMnt, err = isNotMountPoint(ns.mounter, stagingTargetPath)
+		isNotMnt, err = isNotMountPoint(ns.Mounter, stagingTargetPath)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		} else if !isNotMnt {
@@ -507,7 +507,7 @@ func (ns *NodeServer) undoStagingTransaction(
 
 	stagingTargetPath := getStagingTargetPath(req)
 	if transaction.isMounted {
-		err = ns.mounter.Unmount(stagingTargetPath)
+		err = ns.Mounter.Unmount(stagingTargetPath)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to unmount stagingtargetPath: %s with error: %v", stagingTargetPath, err)
 
@@ -626,7 +626,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	stagingPath, devicePath string) (bool, error) {
 	readOnly := false
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
-	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.Mounter, Exec: utilexec.New()}
 	// rbd images are thin-provisioned and return zeros for unwritten areas.  A freshly created
 	// image will not benefit from discard and we also want to avoid as much unnecessary zeroing
 	// as possible.  Open-code mkfs here because FormatAndMount() doesn't accept custom mkfs
@@ -730,7 +730,7 @@ func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *
 
 func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath string, isBlock bool) (bool, error) {
 	// Check if that mount path exists properly
-	notMnt, err := mount.IsNotMountPoint(ns.mounter, mountPath)
+	notMnt, err := mount.IsNotMountPoint(ns.Mounter, mountPath)
 	if err == nil {
 		return notMnt, nil
 	}
@@ -773,7 +773,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	targetPath := req.GetTargetPath()
 	// considering kubelet make sure node operations like unpublish/unstage...etc can not be called
 	// at same time, an explicit locking at time of nodeunpublish is not required.
-	notMnt, err := mount.IsNotMountPoint(ns.mounter, targetPath)
+	notMnt, err := mount.IsNotMountPoint(ns.Mounter, targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
@@ -792,7 +792,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 		return &csi.NodeUnpublishVolumeResponse{}, nil
 	}
 
-	if err = ns.mounter.Unmount(targetPath); err != nil {
+	if err = ns.Mounter.Unmount(targetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -839,7 +839,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 	stagingParentPath := req.GetStagingTargetPath()
 	stagingTargetPath := getStagingTargetPath(req)
 
-	notMnt, err := mount.IsNotMountPoint(ns.mounter, stagingTargetPath)
+	notMnt, err := mount.IsNotMountPoint(ns.Mounter, stagingTargetPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, status.Error(codes.NotFound, err.Error())
@@ -849,7 +849,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 	}
 	if !notMnt {
 		// Unmounting the image
-		err = ns.mounter.Unmount(stagingTargetPath)
+		err = ns.Mounter.Unmount(stagingTargetPath)
 		if err != nil {
 			log.ExtendedLog(ctx, "failed to unmount targetPath: %s with error: %v", stagingTargetPath, err)
 
@@ -1061,7 +1061,7 @@ func (ns *NodeServer) processEncryptedDevice(
 		// make sure we continue with the encrypting of the device
 		fallthrough
 	case encrypted == rbdImageEncryptionPrepared:
-		diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
+		diskMounter := &mount.SafeFormatAndMount{Interface: ns.Mounter, Exec: utilexec.New()}
 		// TODO: update this when adding support for static (pre-provisioned) PVs
 		var existingFormat string
 		existingFormat, err = diskMounter.GetDiskFormat(devicePath)
@@ -1109,7 +1109,7 @@ func (ns *NodeServer) xfsSupportsReflink() bool {
 
 	// run mkfs.xfs in the same namespace as formatting would be done in
 	// mountVolumeToStagePath()
-	diskMounter := &mount.SafeFormatAndMount{Interface: ns.mounter, Exec: utilexec.New()}
+	diskMounter := &mount.SafeFormatAndMount{Interface: ns.Mounter, Exec: utilexec.New()}
 	out, err := diskMounter.Exec.Command("mkfs.xfs").CombinedOutput()
 	if err != nil {
 		// mkfs.xfs should fail with an error message (and help text)
