@@ -200,34 +200,30 @@ type migrationVolID struct {
 	clusterID string
 }
 
-var (
-	supportedFeatures = map[string]imageFeature{
-		librbd.FeatureNameLayering: {
-			needRbdNbd: false,
-		},
-		librbd.FeatureNameExclusiveLock: {
-			needRbdNbd: false,
-		},
-		librbd.FeatureNameObjectMap: {
-			needRbdNbd: false,
-			dependsOn:  []string{librbd.FeatureNameExclusiveLock},
-		},
-		librbd.FeatureNameFastDiff: {
-			needRbdNbd: false,
-			dependsOn:  []string{librbd.FeatureNameObjectMap},
-		},
-		librbd.FeatureNameJournaling: {
-			needRbdNbd: true,
-			dependsOn:  []string{librbd.FeatureNameExclusiveLock},
-		},
-	}
+var supportedFeatures = map[string]imageFeature{
+	librbd.FeatureNameLayering: {
+		needRbdNbd: false,
+	},
+	librbd.FeatureNameExclusiveLock: {
+		needRbdNbd: false,
+	},
+	librbd.FeatureNameObjectMap: {
+		needRbdNbd: false,
+		dependsOn:  []string{librbd.FeatureNameExclusiveLock},
+	},
+	librbd.FeatureNameFastDiff: {
+		needRbdNbd: false,
+		dependsOn:  []string{librbd.FeatureNameObjectMap},
+	},
+	librbd.FeatureNameJournaling: {
+		needRbdNbd: true,
+		dependsOn:  []string{librbd.FeatureNameExclusiveLock},
+	},
+}
 
-	krbdFeatures uint64 // krbd features supported by the loaded driver.
-)
-
-// getKrbdSupportedFeatures load the module if needed and return supported
+// GetKrbdSupportedFeatures load the module if needed and return supported
 // features attribute as a string.
-func getKrbdSupportedFeatures() (string, error) {
+func GetKrbdSupportedFeatures() (string, error) {
 	// check if the module is loaded or compiled in
 	_, err := os.Stat(krbdSupportedFeaturesFile)
 	if err != nil {
