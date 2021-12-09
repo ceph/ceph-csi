@@ -27,7 +27,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/controller"
 	"github.com/ceph/ceph-csi/internal/controller/persistentvolume"
 	"github.com/ceph/ceph-csi/internal/liveness"
-	"github.com/ceph/ceph-csi/internal/rbd"
+	rbddriver "github.com/ceph/ceph-csi/internal/rbd/driver"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -222,7 +222,7 @@ func main() {
 	case rbdType:
 		validateCloneDepthFlag(&conf)
 		validateMaxSnaphostFlag(&conf)
-		driver := rbd.NewDriver()
+		driver := rbddriver.NewDriver()
 		driver.Run(&conf)
 
 	case cephFSType:
