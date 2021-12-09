@@ -127,8 +127,8 @@ func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolu
 	return nil
 }
 
-// runVolumeHealer heal the volumes attached on a node.
-func runVolumeHealer(ns *NodeServer, conf *util.Config) error {
+// RunVolumeHealer heal the volumes attached on a node.
+func RunVolumeHealer(ns *NodeServer, conf *util.Config) error {
 	c, err := kubeclient.NewK8sClient()
 	if err != nil {
 		log.ErrorLogMsg("failed to connect to Kubernetes: %v", err)
