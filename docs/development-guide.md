@@ -13,7 +13,7 @@ it is **highly** encouraged to:
 
 ### Workspace and repository setup
 
-* [Download](https://golang.org/dl/) Go (>=1.16.x) and
+* [Download](https://golang.org/dl/) Go (>=1.17.x) and
    [install](https://golang.org/doc/install) it on your system.
 * Setup the [GOPATH](http://www.g33knotes.org/2014/07/60-second-count-down-to-go.html)
    environment.
