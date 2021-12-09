@@ -1145,9 +1145,11 @@ func generateVolumeFromVolumeID(
 	return rbdVol, err
 }
 
-// genVolFromVolID generates a rbdVolume structure from the provided identifier, updating
+// GenVolFromVolID generates a rbdVolume structure from the provided identifier, updating
 // the structure with elements from on-disk image metadata as well.
-func genVolFromVolID(
+//
+// nolint // returns non-exported *rbdVolume, which is fine
+func GenVolFromVolID(
 	ctx context.Context,
 	volumeID string,
 	cr *util.Credentials,

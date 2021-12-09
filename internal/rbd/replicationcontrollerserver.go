@@ -235,7 +235,7 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		switch {
@@ -410,7 +410,7 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		switch {
@@ -522,7 +522,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		switch {
@@ -658,7 +658,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 
-	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		switch {
@@ -745,7 +745,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
 	}
 	defer rs.VolumeLocks.Release(volumeID)
-	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		switch {
