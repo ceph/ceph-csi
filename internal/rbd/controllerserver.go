@@ -734,7 +734,7 @@ func checkContentSource(
 		if volID == "" {
 			return nil, nil, status.Errorf(codes.NotFound, "volume ID cannot be empty")
 		}
-		rbdvol, err := genVolFromVolID(ctx, volID, cr, req.GetSecrets())
+		rbdvol, err := GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
 		if err != nil {
 			log.ErrorLog(ctx, "failed to get backend image for %s: %v", volID, err)
 			if !errors.Is(err, ErrImageNotFound) {
@@ -750,9 +750,9 @@ func checkContentSource(
 	return nil, nil, status.Errorf(codes.InvalidArgument, "not a proper volume source")
 }
 
-// checkErrAndUndoReserve work on error from genVolFromVolID() and undo omap reserve.
+// checkErrAndUndoReserve work on error from GenVolFromVolID() and undo omap reserve.
 // Even-though volumeID is part of rbdVolume struct we take it as an arg here, the main reason
-// being, the volume id is getting filled from `genVolFromVolID->generateVolumeFromVolumeID` call path,
+// being, the volume id is getting filled from `GenVolFromVolID->generateVolumeFromVolumeID` call path,
 // and this function is operating on the error case/scenario of above call chain, so we can not rely
 // on the 'rbdvol->rbdimage->voldID' field.
 
@@ -865,7 +865,7 @@ func (cs *ControllerServer) DeleteVolume(
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	rbdVol, err := genVolFromVolID(ctx, volumeID, cr, secrets)
+	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, secrets)
 	defer rbdVol.Destroy()
 	if err != nil {
 		return cs.checkErrAndUndoReserve(ctx, err, volumeID, rbdVol, cr)
@@ -1016,7 +1016,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	defer cr.DeleteCredentials()
 
 	// Fetch source volume information
-	rbdVol, err := genVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
+	rbdVol, err := GenVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		switch {
@@ -1462,7 +1462,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVol, err := genVolFromVolID(ctx, volID, cr, req.GetSecrets())
+	rbdVol, err := GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
 	defer rbdVol.Destroy()
 	if err != nil {
 		switch {
