@@ -17,7 +17,7 @@ ENV \
  GOPATH=${GOPATH} \
  GOROOT=${GOROOT} \
  GO111MODULE=on \
- PATH="${GOROOT}/bin:${GOPATH}/bin:/opt/commitlint/node_modules/.bin:${PATH}"
+ PATH="${GOPATH}/bin:${GOROOT}/bin:/opt/commitlint/node_modules/.bin:${PATH}"
 
 COPY build.env /
 
@@ -26,16 +26,17 @@ RUN source /build.env \
 	git \
 	make \
 	gcc \
+	findutils \
 	librados-devel \
 	librbd-devel \
 	rubygems \
 	ShellCheck \
-      codespell \
+	codespell \
 	yamllint \
 	npm \
 	diffutils \
-      python3-prettytable \
-      pylint \
+	python3-prettytable \
+	pylint \
     && dnf -y update \
     && dnf -y clean all \
     && gem install mdl \
