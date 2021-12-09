@@ -334,9 +334,9 @@ func TestIsKrbdFeatureSupported(t *testing.T) {
 			t.Parallel()
 			var err error
 			krbdSupportedFeaturesAttr := "0x1"
-			krbdFeatures, err = hexStringToInteger(krbdSupportedFeaturesAttr) // initialize krbdFeatures
+			krbdFeatures, err = HexStringToInteger(krbdSupportedFeaturesAttr) // initialize krbdFeatures
 			if err != nil {
-				t.Errorf("hexStringToInteger(%s) failed", krbdSupportedFeaturesAttr)
+				t.Errorf("HexStringToInteger(%s) failed", krbdSupportedFeaturesAttr)
 			}
 			supported := isKrbdFeatureSupported(ctx, tc.featureName)
 			if supported != tc.isSupported {
