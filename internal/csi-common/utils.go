@@ -290,3 +290,19 @@ func requirePositive(x int64) int64 {
 
 	return 0
 }
+
+// IsBlockMultiNode checks the volume capabilities for BlockMode and MultiNode.
+func IsBlockMultiNode(caps []*csi.VolumeCapability) (bool, bool) {
+	isMultiNode := false
+	isBlock := false
+	for _, capability := range caps {
+		if capability.GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+			isMultiNode = true
+		}
+		if capability.GetBlock() != nil {
+			isBlock = true
+		}
+	}
+
+	return isBlock, isMultiNode
+}

@@ -116,3 +116,64 @@ func TestRequirePositive(t *testing.T) {
 	assert.Equal(t, requirePositive(-1), int64(0))
 	assert.Equal(t, requirePositive(1), int64(1))
 }
+
+func TestIsBlockMultiNode(t *testing.T) {
+	t.Parallel()
+
+	blockCap := &csi.VolumeCapability{
+		AccessType: &csi.VolumeCapability_Block{
+			Block: &csi.VolumeCapability_BlockVolume{},
+		},
+	}
+
+	fsCap := &csi.VolumeCapability{
+		AccessType: &csi.VolumeCapability_Mount{
+			Mount: &csi.VolumeCapability_MountVolume{},
+		},
+	}
+
+	multiNodeCap := &csi.VolumeCapability{
+		AccessMode: &csi.VolumeCapability_AccessMode{
+			Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+		},
+	}
+
+	singleNodeCap := &csi.VolumeCapability{
+		AccessMode: &csi.VolumeCapability_AccessMode{
+			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
+		},
+	}
+
+	tests := []struct {
+		name        string
+		caps        []*csi.VolumeCapability
+		isBlock     bool
+		isMultiNode bool
+	}{{
+		name:        "block/multi-node",
+		caps:        []*csi.VolumeCapability{blockCap, multiNodeCap},
+		isBlock:     true,
+		isMultiNode: true,
+	}, {
+		name:        "block/single-node",
+		caps:        []*csi.VolumeCapability{blockCap, singleNodeCap},
+		isBlock:     true,
+		isMultiNode: false,
+	}, {
+		name:        "filesystem/multi-node",
+		caps:        []*csi.VolumeCapability{fsCap, multiNodeCap},
+		isBlock:     false,
+		isMultiNode: true,
+	}, {
+		name:        "filesystem/single-node",
+		caps:        []*csi.VolumeCapability{fsCap, singleNodeCap},
+		isBlock:     false,
+		isMultiNode: false,
+	}}
+
+	for _, test := range tests {
+		isBlock, isMultiNode := IsBlockMultiNode(test.caps)
+		assert.Equal(t, isBlock, test.isBlock, test.name)
+		assert.Equal(t, isMultiNode, test.isMultiNode, test.name)
+	}
+}
