@@ -2,14 +2,14 @@
 - project:
     name: mini-e2e
     k8s_version:
-      - '1.19':
-          only_run_on_request: true
       - '1.20':
           only_run_on_request: false
       - '1.21':
           only_run_on_request: false
       - '1.22':
           only_run_on_request: false
+      - '1.23':
+          only_run_on_request: true
     jobs:
       - 'mini-e2e_k8s-{k8s_version}'
       - 'mini-e2e-helm_k8s-{k8s_version}'
