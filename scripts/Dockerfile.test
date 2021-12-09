@@ -11,11 +11,13 @@
 FROM registry.fedoraproject.org/fedora:latest
 
 ARG GOPATH=/go
+ARG GOROOT=/usr/local/go
 
 ENV \
  GOPATH=${GOPATH} \
+ GOROOT=${GOROOT} \
  GO111MODULE=on \
- PATH="${GOPATH}/bin:/opt/commitlint/node_modules/.bin:${PATH}"
+ PATH="${GOROOT}/bin:${GOPATH}/bin:/opt/commitlint/node_modules/.bin:${PATH}"
 
 COPY build.env /
 
@@ -23,7 +25,6 @@ RUN source /build.env \
     && dnf -y install \
 	git \
 	make \
-	golang \
 	gcc \
 	librados-devel \
 	librbd-devel \
@@ -38,6 +39,9 @@ RUN source /build.env \
     && dnf -y update \
     && dnf -y clean all \
     && gem install mdl \
+    && mkdir -p ${GOROOT} \
+    && curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz  \
+       | tar xzf - -C ${GOROOT} --strip-components=1 \
     && curl -sf "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh" \
        | bash -s -- -b ${GOPATH}/bin "${GOLANGCI_VERSION}" \
     && curl -L https://git.io/get_helm.sh | bash -s -- --version "${HELM_VERSION}" \
