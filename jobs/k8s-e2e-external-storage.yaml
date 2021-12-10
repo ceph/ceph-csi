@@ -7,7 +7,7 @@
       - '1.22':
           only_run_on_request: false
       - '1.23':
-          only_run_on_request: true
+          only_run_on_request: false
     jobs:
       - 'k8s-e2e-external-storage-{k8s_version}'
 
