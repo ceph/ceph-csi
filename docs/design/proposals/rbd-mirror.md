@@ -74,13 +74,10 @@ secondary cluster as the PoolID and ClusterID always may not be the same.
 To solve this problem, We will have a new controller(rbdplugin controller)
 running as part of provisioner pod which watches for the PV objects. When a PV
 is created it will extract the required information from the PV spec and it
-will regenerate the OMAP data and also it will generate a new VolumeHandle
-(`newclusterID-newpoolID-volumeuniqueID`) and it adds a PV annotation
-`csi.ceph.io/volume-handle` for mapping between old VolumeHandle and new
-VolumeHandle. Whenever Ceph-CSI gets a RPC request with older VolumeHandle, it
-will check if any new VolumeHandle exists for the old VolumeHandle. If yes, it
-uses the new VolumeHandle for internal operations (to get pool name, Ceph
-monitor details from the ClusterID etc).
+will regenerate the OMAP data. Whenever Ceph-CSI gets a RPC request with older
+VolumeHandle, it will check if any new VolumeHandle exists for the old
+VolumeHandle. If yes, it uses the new VolumeHandle for internal operations (to
+get pool name, Ceph monitor details from the ClusterID etc).
 
 Currently, We are making use of watchers in node stage request to make sure
 ReadWriteOnce (RWO) PVC is mounted on a single node at a given point in time.
@@ -92,6 +89,8 @@ To solve the ClusterID problem, If the ClusterID is different on the second
 cluster, the admin has to create a new ConfigMap for the mapped ClusterID's.
 Whenever Ceph-CSI gets a request, it will check if the ClusterID mapping exists
 and uses the mapped ClusterID to get the information like Ceph monitors etc.
+Details about creation of clusterID's mapping are available at
+[clusterID-mapping](./clusterid-mapping.md).
 
 **This design does not cover the below items:**
 
