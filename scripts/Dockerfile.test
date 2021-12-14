@@ -12,6 +12,7 @@ FROM registry.fedoraproject.org/fedora:latest
 
 ARG GOPATH=/go
 ARG GOROOT=/usr/local/go
+ARG GOARCH
 
 ENV \
  GOPATH=${GOPATH} \
@@ -22,6 +23,8 @@ ENV \
 COPY build.env /
 
 RUN source /build.env \
+    && \
+    ( test -n "${GOARCH}" && exit 0; echo -e "\n\nMissing GOARCH argument for building image, install Golang or run: make containerized-test GOARCH=amd64\n\n"; exit 1 ) \
     && dnf -y install \
 	git \
 	make \
@@ -41,7 +44,7 @@ RUN source /build.env \
     && dnf -y clean all \
     && gem install mdl \
     && mkdir -p ${GOROOT} \
-    && curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz  \
+    && curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GOARCH}.tar.gz  \
        | tar xzf - -C ${GOROOT} --strip-components=1 \
     && curl -sf "https://install.goreleaser.com/github.com/golangci/golangci-lint.sh" \
        | bash -s -- -b ${GOPATH}/bin "${GOLANGCI_VERSION}" \

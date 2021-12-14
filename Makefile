@@ -212,10 +212,11 @@ else
 endif
 
 ifeq ($(USE_PULLED_IMAGE),no)
+.test-container-id: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 # create a (cached) container image with dependencies for testing cephcsi
 .test-container-id: .container-cmd build.env scripts/Dockerfile.test
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
-	$(CONTAINER_CMD) build $(CPUSET) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
+	$(CONTAINER_CMD) build $(CPUSET) --build-arg GOARCH=$(GOARCH) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
 else
 # create the .test-container-id file based on the pulled image
