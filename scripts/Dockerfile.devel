@@ -2,6 +2,7 @@ ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 ARG GOROOT=/usr/local/go
+ARG GOARCH
 
 ENV GOPATH=/go \
  GOROOT=${GOROOT} \
@@ -11,8 +12,10 @@ ENV GOPATH=/go \
 COPY build.env /
 
 RUN source /build.env \
+    && \
+    ( test -n "${GOARCH}" && exit 0; echo -e "\n\nMissing GOARCH argument for building image, install Golang or run: make containerized-build GOARCH=amd64\n\n"; exit 1 ) \
     && mkdir -p /usr/local/go \
-    && curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
+    && curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GOARCH}.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
 
 RUN dnf -y install \
 	git \
