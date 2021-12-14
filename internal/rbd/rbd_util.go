@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/ceph/go-ceph/rados"
@@ -38,7 +37,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
 	mount "k8s.io/mount-utils"
@@ -1179,40 +1177,6 @@ func GenVolFromVolID(
 			return rbdVol, vErr
 		}
 	}
-	// TODO: remove extracting volumeID from PV annotations.
-
-	// If the volume details are not found in the OMAP it can be a mirrored RBD
-	// image and the OMAP is already generated and the volumeHandle might not
-	// be the same in the PV.Spec.CSI.VolumeHandle. Check the PV annotation for
-	// the new volumeHandle. If the new volumeHandle is found, generate the RBD
-	// volume structure from the new volumeHandle.
-	c, cErr := k8s.NewK8sClient()
-	if cErr != nil {
-		return vol, cErr
-	}
-
-	listOpt := metav1.ListOptions{
-		LabelSelector: PVReplicatedLabelKey,
-	}
-	pvlist, pErr := c.CoreV1().PersistentVolumes().List(context.TODO(), listOpt)
-	if pErr != nil {
-		return vol, pErr
-	}
-	for i := range pvlist.Items {
-		if pvlist.Items[i].Spec.CSI != nil && pvlist.Items[i].Spec.CSI.VolumeHandle == volumeID {
-			if v, ok := pvlist.Items[i].Annotations[PVVolumeHandleAnnotationKey]; ok {
-				log.UsefulLog(ctx, "found new volumeID %s for existing volumeID %s", v, volumeID)
-				err = vi.DecomposeCSIID(v)
-				if err != nil {
-					return vol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
-						ErrInvalidVolID, err, v)
-				}
-
-				return generateVolumeFromVolumeID(ctx, v, vi, cr, secrets)
-			}
-		}
-	}
-
 	return vol, err
 }
 

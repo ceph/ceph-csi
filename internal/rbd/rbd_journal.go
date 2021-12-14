@@ -26,15 +26,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
-const (
-	// PVVolumeHandleAnnotationKey is the annotation key set on the PV object.
-	PVVolumeHandleAnnotationKey = "csi.ceph.io/volume-handle"
-	// PVReplicatedLabelKey is the label key set on PV object.
-	PVReplicatedLabelKey = "csi.ceph.io/replicated-volume"
-	// PVReplicatedLabelValue is the label value set on PV object.
-	PVReplicatedLabelValue = "volume-handle-detected"
-)
-
 func validateNonEmptyField(field, fieldName, structName string) error {
 	if field == "" {
 		return fmt.Errorf("value '%s' in '%s' structure cannot be empty", fieldName, structName)

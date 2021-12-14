@@ -129,28 +129,6 @@ func checkStaticVolume(pv *corev1.PersistentVolume) bool {
 	return pv.Spec.CSI.VolumeAttributes["staticVolume"] == "true"
 }
 
-// storeVolumeIDInPV stores the new volumeID in PV object.
-func (r ReconcilePersistentVolume) storeVolumeIDInPV(
-	ctx context.Context,
-	pv *corev1.PersistentVolume,
-	newVolumeID string) error {
-	if v, ok := pv.Annotations[rbd.PVVolumeHandleAnnotationKey]; ok {
-		if v == newVolumeID {
-			return nil
-		}
-	}
-	if pv.Annotations == nil {
-		pv.Annotations = make(map[string]string)
-	}
-	if pv.Labels == nil {
-		pv.Labels = make(map[string]string)
-	}
-	pv.Labels[rbd.PVReplicatedLabelKey] = rbd.PVReplicatedLabelValue
-	pv.Annotations[rbd.PVVolumeHandleAnnotationKey] = newVolumeID
-
-	return r.client.Update(ctx, pv)
-}
-
 // reconcilePV will extract the image details from the pv spec and regenerates
 // the omap data.
 func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.Object) error {
@@ -200,12 +178,7 @@ func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.
 		return err
 	}
 	if rbdVolID != volumeHandler {
-		err = r.storeVolumeIDInPV(ctx, pv, rbdVolID)
-		if err != nil {
-			log.ErrorLogMsg("failed to store volumeID in PV %s", err)
-
-			return err
-		}
+		log.DebugLog(ctx, "volumeHandler changed from %s to %s", volumeHandler, rbdVolID)
 	}
 
 	return nil
