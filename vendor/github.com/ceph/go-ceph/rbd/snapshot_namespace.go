@@ -1,6 +1,3 @@
-//go:build !luminous
-// +build !luminous
-
 //
 // Ceph Mimic introduced rbd_snap_get_namespace_type().
 

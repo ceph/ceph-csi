@@ -6,7 +6,7 @@ require (
 	github.com/IBM/keyprotect-go-client v0.7.0
 	github.com/aws/aws-sdk-go v1.42.7
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
-	github.com/ceph/go-ceph v0.12.0
+	github.com/ceph/go-ceph v0.13.0
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
 	github.com/csi-addons/spec v0.1.2-0.20211220083702-c779b23cf97c

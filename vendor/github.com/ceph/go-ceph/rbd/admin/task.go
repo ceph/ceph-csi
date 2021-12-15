@@ -1,5 +1,5 @@
-//go:build !nautilus && ceph_preview
-// +build !nautilus,ceph_preview
+//go:build !nautilus
+// +build !nautilus
 
 package admin
 
@@ -9,19 +9,16 @@ import (
 )
 
 // TaskAdmin encapsulates management functions for ceph rbd task operations.
-//  PREVIEW
 type TaskAdmin struct {
 	conn ccom.MgrCommander
 }
 
 // Task returns a TaskAdmin type for managing ceph rbd task operations.
-//  PREVIEW
 func (ra *RBDAdmin) Task() *TaskAdmin {
 	return &TaskAdmin{conn: ra.conn}
 }
 
 // TaskRefs contains the action name and information about the image.
-//  PREVIEW
 type TaskRefs struct {
 	Action        string `json:"action"`
 	PoolName      string `json:"pool_name"`
@@ -31,7 +28,6 @@ type TaskRefs struct {
 }
 
 // TaskResponse contains the information about the task added on an image.
-//  PREVIEW
 type TaskResponse struct {
 	Sequence      int      `json:"sequence"`
 	ID            string   `json:"id"`
@@ -58,7 +54,6 @@ func parseTaskResponseList(res commands.Response) ([]TaskResponse, error) {
 
 // AddFlatten adds a background task to flatten a cloned image based on the
 // supplied image spec.
-//  PREVIEW
 //
 // Similar To:
 //  rbd task add flatten <image_spec>
@@ -73,7 +68,6 @@ func (ta *TaskAdmin) AddFlatten(img ImageSpec) (TaskResponse, error) {
 
 // AddRemove adds a background task to remove an image based on the supplied
 // image spec.
-//  PREVIEW
 //
 // Similar To:
 //  rbd task add remove <image_spec>
@@ -88,7 +82,6 @@ func (ta *TaskAdmin) AddRemove(img ImageSpec) (TaskResponse, error) {
 
 // AddTrashRemove adds a background task to remove an image from the trash based
 // on the supplied image id spec.
-//  PREVIEW
 //
 // Similar To:
 //  rbd task add trash remove <image_id_spec>
@@ -102,7 +95,6 @@ func (ta *TaskAdmin) AddTrashRemove(img ImageSpec) (TaskResponse, error) {
 }
 
 // List pending or running asynchronous tasks.
-//  PREVIEW
 //
 // Similar To:
 //  rbd task list
@@ -115,7 +107,6 @@ func (ta *TaskAdmin) List() ([]TaskResponse, error) {
 }
 
 // GetTaskByID returns pending or running asynchronous task using id.
-//  PREVIEW
 //
 // Similar To:
 //  rbd task list <task_id>
@@ -129,7 +120,6 @@ func (ta *TaskAdmin) GetTaskByID(taskID string) (TaskResponse, error) {
 }
 
 // Cancel a pending or running asynchronous task.
-//  PREVIEW
 //
 // Similar To:
 //  rbd task cancel <task_id>

@@ -1,5 +1,5 @@
-//go:build !nautilus && ceph_preview
-// +build !nautilus,ceph_preview
+//go:build !nautilus
+// +build !nautilus
 
 package admin
 
@@ -10,14 +10,12 @@ import (
 // ImageSpec values are used to identify an RBD image wherever Ceph APIs
 // require an image_spec/image_id_spec using image name/id and optional
 // pool and namespace.
-//  PREVIEW
 type ImageSpec struct {
 	spec string
 }
 
 // NewImageSpec is used to construct an ImageSpec given an image name/id
 // and optional namespace and pool names.
-//  PREVIEW
 //
 // NewImageSpec constructs an ImageSpec to identify an RBD image and thus
 // requires image name/id, whereas NewLevelSpec constructs LevelSpec to
@@ -37,7 +35,6 @@ func NewImageSpec(pool, namespace, image string) ImageSpec {
 
 // NewRawImageSpec returns a ImageSpec directly based on the spec string
 // argument without constructing it from component values.
-//  PREVIEW
 //
 // This should only be used if NewImageSpec can not create the imagespec value
 // you want to pass to ceph.

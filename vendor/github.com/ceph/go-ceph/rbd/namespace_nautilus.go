@@ -1,6 +1,3 @@
-//go:build !luminous && !mimic
-// +build !luminous,!mimic
-
 //
 // Ceph Nautilus is the first release that includes rbd_namespace_create(),
 // rbd_namespace_remove(), rbd_namespace_exists() and rbd_namespace_list().

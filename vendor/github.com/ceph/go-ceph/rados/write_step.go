@@ -25,7 +25,7 @@ type writeStep struct {
 func newWriteStep(b []byte, writeLen, offset uint64) *writeStep {
 	return &writeStep{
 		b:         b,
-		cBuffer:   (*C.char)(unsafe.Pointer(&b[0])),
+		cBuffer:   (*C.char)(unsafe.Pointer(&b[0])), // TODO: must be pinned
 		cDataLen:  C.size_t(len(b)),
 		cWriteLen: C.size_t(writeLen),
 		cOffset:   C.uint64_t(offset),
