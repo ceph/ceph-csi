@@ -403,23 +403,32 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 					rbdVol,
 					err)
 			} else if !thick {
-				err = cleanUpSnapshot(ctx, parentVol, rbdSnap, rbdVol, cr)
-				if err != nil {
-					return nil, status.Errorf(codes.Internal, "failed to remove partially cloned volume %q: %s", rbdVol, err)
-				}
-				err = undoVolReservation(ctx, rbdVol, cr)
-				if err != nil {
-					return nil, status.Errorf(codes.Internal, "failed to remove volume %q from journal: %s", rbdVol, err)
-				}
-
-				return nil, status.Errorf(
-					codes.Internal,
-					"cloning thick-provisioned volume %q has been interrupted, please retry", rbdVol)
+				return nil, cleanupThickClone(ctx, parentVol, rbdVol, rbdSnap, cr)
 			}
 		}
 	}
 
 	return buildCreateVolumeResponse(req, rbdVol), nil
+}
+
+// cleanupThickClone will delete the snapshot and volume and undo the reservation.
+func cleanupThickClone(ctx context.Context,
+	rbdVol,
+	parentVol *rbdVolume,
+	rbdSnap *rbdSnapshot,
+	cr *util.Credentials) error {
+	err := cleanUpSnapshot(ctx, parentVol, rbdSnap, rbdVol, cr)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to remove partially cloned volume %q: %s", rbdVol, err)
+	}
+	err = undoVolReservation(ctx, rbdVol, cr)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to remove volume %q from journal: %s", rbdVol, err)
+	}
+
+	return status.Errorf(
+		codes.Internal,
+		"cloning thick-provisioned volume %q has been interrupted, please retry", rbdVol)
 }
 
 // check snapshots on the rbd image, as we have limit from krbd that an image
