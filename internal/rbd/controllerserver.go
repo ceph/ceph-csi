@@ -192,48 +192,8 @@ func getGRPCErrorForCreateVolume(err error) error {
 	return status.Error(codes.Internal, err.Error())
 }
 
-// validateRequestedVolumeSize validates the request volume size with the
-// source snapshot or volume size, if there is a size mismatches it returns an error.
-func validateRequestedVolumeSize(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	if rbdSnap != nil {
-		vol := generateVolFromSnap(rbdSnap)
-		err := vol.Connect(cr)
-		if err != nil {
-			return status.Error(codes.Internal, err.Error())
-		}
-		defer vol.Destroy()
-
-		err = vol.getImageInfo()
-		if err != nil {
-			return status.Error(codes.Internal, err.Error())
-		}
-		if rbdVol.VolSize != vol.VolSize {
-			return status.Errorf(
-				codes.InvalidArgument,
-				"size mismatches, requested volume size %d and source snapshot size %d",
-				rbdVol.VolSize,
-				vol.VolSize)
-		}
-	}
-	if parentVol != nil {
-		if rbdVol.VolSize != parentVol.VolSize {
-			return status.Errorf(
-				codes.InvalidArgument,
-				"size mismatches, requested volume size %d and source volume size %d",
-				rbdVol.VolSize,
-				parentVol.VolSize)
-		}
-	}
-
-	return nil
-}
-
-func checkValidCreateVolumeRequest(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) error {
-	err := validateRequestedVolumeSize(rbdVol, parentVol, rbdSnap, cr)
-	if err != nil {
-		return err
-	}
-
+func checkValidCreateVolumeRequest(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSnapshot) error {
+	var err error
 	switch {
 	case rbdSnap != nil:
 		err = rbdSnap.isCompatibleEncryption(&rbdVol.rbdImage)
@@ -309,7 +269,7 @@ func (cs *ControllerServer) CreateVolume(
 		return cs.repairExistingVolume(ctx, req, cr, rbdVol, parentVol, rbdSnap)
 	}
 
-	err = checkValidCreateVolumeRequest(rbdVol, parentVol, rbdSnap, cr)
+	err = checkValidCreateVolumeRequest(rbdVol, parentVol, rbdSnap)
 	if err != nil {
 		return nil, err
 	}
