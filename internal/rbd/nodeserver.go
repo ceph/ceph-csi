@@ -427,32 +427,102 @@ func (ns *NodeServer) stageTransaction(
 	}
 	transaction.isMounted = true
 
-	// resize if its fileSystemType static volume.
-	if staticVol && !isBlock {
-		var ok bool
-		resizer := mount.NewResizeFs(utilexec.New())
-		ok, err = resizer.NeedResize(devicePath, stagingTargetPath)
-		if err != nil {
-			return transaction, status.Errorf(codes.Internal,
-				"need resize check failed on devicePath %s and staingPath %s, error: %v",
-				devicePath,
-				stagingTargetPath,
-				err)
-		}
-		if ok {
-			ok, err = resizer.Resize(devicePath, stagingTargetPath)
-			if !ok {
-				return transaction, status.Errorf(codes.Internal,
-					"resize failed on path %s, error: %v", stagingTargetPath, err)
-			}
-		}
+	// As we are supporting the restore of a volume to a bigger size and
+	// creating bigger size clone from a volume, we need to check filesystem
+	// resize is required, if required resize filesystem.
+	// in case of encrypted block PVC resize only the LUKS device.
+	err = resizeNodeStagePath(ctx, isBlock, transaction, req.GetVolumeId(), stagingTargetPath)
+	if err != nil {
+		return transaction, err
 	}
+
 	if !readOnly {
 		// #nosec - allow anyone to write inside the target path
 		err = os.Chmod(stagingTargetPath, 0o777)
 	}
 
 	return transaction, err
+}
+
+// resizeNodeStagePath resizes the device if its encrypted and it also resizes
+// the stagingTargetPath if filesystem needs resize.
+func resizeNodeStagePath(ctx context.Context,
+	isBlock bool,
+	transaction *stageTransaction,
+	volID,
+	stagingTargetPath string) error {
+	var err error
+	devicePath := transaction.devicePath
+	var ok bool
+
+	// if its a non encrypted block device we dont need any expansion
+	if isBlock && !transaction.isEncrypted {
+		return nil
+	}
+
+	resizer := mount.NewResizeFs(utilexec.New())
+
+	if transaction.isEncrypted {
+		devicePath, err = resizeEncryptedDevice(ctx, volID, stagingTargetPath, devicePath)
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+	}
+	// check stagingPath needs resize.
+	ok, err = resizer.NeedResize(devicePath, stagingTargetPath)
+	if err != nil {
+		return status.Errorf(codes.Internal,
+			"need resize check failed on devicePath %s and staingPath %s, error: %v",
+			devicePath,
+			stagingTargetPath,
+			err)
+	}
+	// return nil if no resize is required
+	if !ok {
+		return nil
+	}
+	ok, err = resizer.Resize(devicePath, stagingTargetPath)
+	if !ok {
+		return status.Errorf(codes.Internal,
+			"resize failed on path %s, error: %v", stagingTargetPath, err)
+	}
+
+	return nil
+}
+
+func resizeEncryptedDevice(ctx context.Context, volID, stagingTargetPath, devicePath string) (string, error) {
+	rbdDevSize, err := getDeviceSize(ctx, devicePath)
+	if err != nil {
+		return "", fmt.Errorf(
+			"failed to get device size of %s and staingPath %s, error: %w",
+			devicePath,
+			stagingTargetPath,
+			err)
+	}
+	_, mapperPath := util.VolumeMapper(volID)
+	encDevSize, err := getDeviceSize(ctx, mapperPath)
+	if err != nil {
+		return "", fmt.Errorf(
+			"failed to get device size of %s and staingPath %s, error: %w",
+			mapperPath,
+			stagingTargetPath,
+			err)
+	}
+	// if the rbd device `/dev/rbd0` size is greater than LUKS device size
+	// we need to resize the LUKS device.
+	if rbdDevSize > encDevSize {
+		// The volume is encrypted, resize an active mapping
+		err = util.ResizeEncryptedVolume(ctx, mapperPath)
+		if err != nil {
+			log.ErrorLog(ctx, "failed to resize device %s: %v",
+				mapperPath, err)
+
+			return "", fmt.Errorf(
+				"failed to resize device %s: %w", mapperPath, err)
+		}
+	}
+
+	return mapperPath, nil
 }
 
 func flattenImageBeforeMapping(
@@ -1167,4 +1237,23 @@ func blockNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.NodeG
 			},
 		},
 	}, nil
+}
+
+// getDeviceSize gets the block device size.
+func getDeviceSize(ctx context.Context, devicePath string) (uint64, error) {
+	output, _, err := util.ExecCommand(ctx, "blockdev", "--getsize64", devicePath)
+	if err != nil {
+		return 0, fmt.Errorf("blockdev %v returned an error: %w", devicePath, err)
+	}
+
+	outStr := strings.TrimSpace(output)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read size of device %s: %s: %w", devicePath, outStr, err)
+	}
+	size, err := strconv.ParseUint(outStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse size of device %s %s: %w", devicePath, outStr, err)
+	}
+
+	return size, nil
 }
