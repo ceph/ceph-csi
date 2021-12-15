@@ -1,6 +1,3 @@
-//go:build !luminous && !mimic
-// +build !luminous,!mimic
-
 //
 // Ceph Nautilus is the first release that includes rbd_list2() and
 // rbd_get_create_timestamp().

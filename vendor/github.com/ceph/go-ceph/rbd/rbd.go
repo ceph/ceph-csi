@@ -951,6 +951,11 @@ func (image *Image) GetId() (string, error) {
 
 }
 
+// GetName returns the image name.
+func (image *Image) GetName() string {
+	return image.name
+}
+
 // SetSnapshot updates the rbd image (not the Snapshot) such that the snapshot
 // is the source of readable data.
 //

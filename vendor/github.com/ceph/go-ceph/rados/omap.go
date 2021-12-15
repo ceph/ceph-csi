@@ -99,8 +99,8 @@ type GetOmapStep struct {
 
 	// C returned data:
 	iter C.rados_omap_iter_t
-	more C.uchar
-	rval C.int
+	more *C.uchar
+	rval *C.int
 
 	// internal state:
 
@@ -116,6 +116,8 @@ func newGetOmapStep(startAfter, filterPrefix string, maxReturn uint64) *GetOmapS
 		maxReturn:     maxReturn,
 		cStartAfter:   C.CString(startAfter),
 		cFilterPrefix: C.CString(filterPrefix),
+		more:          (*C.uchar)(C.malloc(C.sizeof_uchar)),
+		rval:          (*C.int)(C.malloc(C.sizeof_int)),
 	}
 	runtime.SetFinalizer(gos, opStepFinalizer)
 	return gos
@@ -127,8 +129,10 @@ func (gos *GetOmapStep) free() {
 		C.rados_omap_get_end(gos.iter)
 	}
 	gos.iter = nil
-	gos.more = 0
-	gos.rval = 0
+	C.free(unsafe.Pointer(gos.more))
+	gos.more = nil
+	C.free(unsafe.Pointer(gos.rval))
+	gos.rval = nil
 	C.free(unsafe.Pointer(gos.cStartAfter))
 	gos.cStartAfter = nil
 	C.free(unsafe.Pointer(gos.cFilterPrefix))
@@ -136,7 +140,7 @@ func (gos *GetOmapStep) free() {
 }
 
 func (gos *GetOmapStep) update() error {
-	err := getError(gos.rval)
+	err := getError(*gos.rval)
 	gos.canIterate = (err == nil)
 	return err
 }
@@ -168,7 +172,7 @@ func (gos *GetOmapStep) Next() (*OmapKeyValue, error) {
 func (gos *GetOmapStep) More() bool {
 	// tad bit hacky, but go can't automatically convert from
 	// unsigned char to bool
-	return gos.more != 0
+	return *gos.more != 0
 }
 
 // removeOmapKeysStep is a write operation step used to track state, especially

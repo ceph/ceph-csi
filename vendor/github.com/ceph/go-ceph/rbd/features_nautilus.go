@@ -1,6 +1,3 @@
-//go:build !luminous && !mimic
-// +build !luminous,!mimic
-
 package rbd
 
 // #include <rbd/librbd.h>

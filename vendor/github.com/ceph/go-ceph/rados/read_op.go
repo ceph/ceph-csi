@@ -77,8 +77,8 @@ func (r *ReadOp) GetOmapValues(startAfter, filterPrefix string, maxReturn uint64
 		gos.cFilterPrefix,
 		C.uint64_t(gos.maxReturn),
 		&gos.iter,
-		&gos.more,
-		&gos.rval,
+		gos.more,
+		gos.rval,
 	)
 	return gos
 }

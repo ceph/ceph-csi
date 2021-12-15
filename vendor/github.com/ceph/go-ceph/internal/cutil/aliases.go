@@ -23,6 +23,9 @@ const (
 	SizeTSize = C.sizeof_size_t
 )
 
+// Compile-time assertion ensuring that Go's `int` is at least as large as C's.
+const _ = unsafe.Sizeof(int(0)) - C.sizeof_int
+
 // SizeT wraps size_t from C.
 type SizeT C.size_t
 

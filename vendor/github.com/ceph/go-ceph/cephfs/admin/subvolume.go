@@ -1,6 +1,3 @@
-//go:build !luminous && !mimic
-// +build !luminous,!mimic
-
 package admin
 
 // this is the internal type used to create JSON for ceph.
