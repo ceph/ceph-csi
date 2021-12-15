@@ -1703,6 +1703,16 @@ func cleanupRBDImageMetadataStash(metaDataPath string) error {
 	return nil
 }
 
+// expand checks if the requestedVolume size and the existing image size both
+// are same. If they are same, it returns nil else it resizes the image.
+func (rv *rbdVolume) expand() error {
+	if rv.RequestedVolSize == rv.VolSize {
+		return nil
+	}
+
+	return rv.resize(rv.RequestedVolSize)
+}
+
 // resize the given volume to new size.
 // updates Volsize of rbdVolume object to newSize in case of success.
 func (rv *rbdVolume) resize(newSize int64) error {

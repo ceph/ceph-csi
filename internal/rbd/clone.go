@@ -181,6 +181,14 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		return err
 	}
 
+	// expand the image if the requested size is greater than the current size
+	err = rv.expand()
+	if err != nil {
+		log.ErrorLog(ctx, "failed to resize volume %s: %v", rv, err)
+
+		return err
+	}
+
 	return nil
 }
 
