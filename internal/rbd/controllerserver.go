@@ -408,6 +408,13 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 				return nil, cleanupThickClone(ctx, parentVol, rbdVol, rbdSnap, cr)
 			}
 		}
+		// expand the image if the requested size is greater than the current size
+		err := rbdVol.expand()
+		if err != nil {
+			log.ErrorLog(ctx, "failed to resize volume %s: %v", rbdVol, err)
+
+			return nil, err
+		}
 	}
 
 	return buildCreateVolumeResponse(req, rbdVol), nil
