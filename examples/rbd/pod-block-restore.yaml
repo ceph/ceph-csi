@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-block-volume-restore
+spec:
+  containers:
+    - name: centos
+      image: quay.io/centos/centos:latest
+      command: ["/bin/sleep", "infinity"]
+      volumeDevices:
+        - name: data
+          devicePath: /dev/xvda
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: rbd-block-pvc-restore
