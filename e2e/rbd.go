@@ -3444,6 +3444,77 @@ var _ = Describe("RBD", func() {
 				})
 			})
 
+			By("clone PVC to a bigger size PVC", func() {
+				By("clone PVC to bigger size encrypted PVC with VaultKMS", func() {
+					scOpts := map[string]string{
+						"encrypted":       "true",
+						"encryptionKMSID": "vault-test",
+					}
+					err := createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+					defer func() {
+						err = deleteResource(rbdExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete storageclass: %v", err)
+						}
+					}()
+
+					// validate filesystem mode PVC
+					err = validateBiggerCloneFromPVC(f,
+						pvcPath,
+						appPath,
+						pvcSmartClonePath,
+						appSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to validate bigger size clone: %v", err)
+					}
+					// validate block mode PVC
+					err = validateBiggerCloneFromPVC(f,
+						rawPvcPath,
+						rawAppPath,
+						pvcBlockSmartClonePath,
+						appBlockSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to validate bigger size clone: %v", err)
+					}
+				})
+
+				By("clone PVC to bigger size pvc", func() {
+					err := createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+					// validate filesystem mode PVC
+					err = validateBiggerCloneFromPVC(f,
+						pvcPath,
+						appPath,
+						pvcSmartClonePath,
+						appSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to validate bigger size clone: %v", err)
+					}
+					// validate block mode PVC
+					err = validateBiggerCloneFromPVC(f,
+						rawPvcPath,
+						rawAppPath,
+						pvcBlockSmartClonePath,
+						appBlockSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to validate bigger size clone: %v", err)
+					}
+				})
+
+				By("validate image deletion", func() {
+					validateRBDImageCount(f, 0, defaultRBDPool)
+					err := waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to validate rbd images in pool %s trash: %v", defaultRBDPool, err)
+					}
+				})
+			})
+
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and delete PVC when backend pool deleted", func() {
