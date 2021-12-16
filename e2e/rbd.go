@@ -60,6 +60,8 @@ var (
 	appClonePath           = rbdExamplePath + "pod-restore.yaml"
 	appSmartClonePath      = rbdExamplePath + "pod-clone.yaml"
 	appBlockSmartClonePath = rbdExamplePath + "block-pod-clone.yaml"
+	pvcBlockRestorePath    = rbdExamplePath + "pvc-block-restore.yaml"
+	appBlockRestorePath    = rbdExamplePath + "pod-block-restore.yaml"
 	appEphemeralPath       = rbdExamplePath + "pod-ephemeral.yaml"
 	snapshotPath           = rbdExamplePath + "snapshot.yaml"
 	deployFSAppPath        = e2eTemplatesPath + "rbd-fs-deployment.yaml"
@@ -3336,6 +3338,110 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to validate rbd images in pool %s trash: %v", defaultRBDPool, err)
 				}
+			})
+
+			By("restore snapshot to a bigger size PVC", func() {
+				By("restore snapshot to bigger size pvc", func() {
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+					defer func() {
+						err = deleteResource(rbdExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete storageclass: %v", err)
+						}
+					}()
+					err = createRBDSnapshotClass(f)
+					if err != nil {
+						e2elog.Failf("failed to create VolumeSnapshotClass: %v", err)
+					}
+					defer func() {
+						err = deleteRBDSnapshotClass()
+						if err != nil {
+							e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
+						}
+					}()
+					// validate filesystem mode PVC
+					err = validateBiggerPVCFromSnapshot(f,
+						pvcPath,
+						appPath,
+						snapshotPath,
+						pvcClonePath,
+						appClonePath)
+					if err != nil {
+						e2elog.Failf("failed to validate restore bigger size clone: %v", err)
+					}
+					// validate block mode PVC
+					err = validateBiggerPVCFromSnapshot(f,
+						rawPvcPath,
+						rawAppPath,
+						snapshotPath,
+						pvcBlockRestorePath,
+						appBlockRestorePath)
+					if err != nil {
+						e2elog.Failf("failed to validate restore bigger size clone: %v", err)
+					}
+				})
+
+				By("restore snapshot to bigger size encrypted PVC with VaultKMS", func() {
+					scOpts := map[string]string{
+						"encrypted":       "true",
+						"encryptionKMSID": "vault-test",
+					}
+					err := createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, scOpts, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+					defer func() {
+						err = deleteResource(rbdExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete storageclass: %v", err)
+						}
+					}()
+					err = createRBDSnapshotClass(f)
+					if err != nil {
+						e2elog.Failf("failed to create VolumeSnapshotClass: %v", err)
+					}
+					defer func() {
+						err = deleteRBDSnapshotClass()
+						if err != nil {
+							e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
+						}
+					}()
+					// validate filesystem mode PVC
+					err = validateBiggerPVCFromSnapshot(f,
+						pvcPath,
+						appPath,
+						snapshotPath,
+						pvcClonePath,
+						appClonePath)
+					if err != nil {
+						e2elog.Failf("failed to validate restore bigger size clone: %v", err)
+					}
+					// validate block mode PVC
+					err = validateBiggerPVCFromSnapshot(f,
+						rawPvcPath,
+						rawAppPath,
+						snapshotPath,
+						pvcBlockRestorePath,
+						appBlockRestorePath)
+					if err != nil {
+						e2elog.Failf("failed to validate restore bigger size clone: %v", err)
+					}
+				})
+
+				By("validate image deletion", func() {
+					validateRBDImageCount(f, 0, defaultRBDPool)
+					err := waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to validate rbd images in pool %s trash: %v", defaultRBDPool, err)
+					}
+				})
 			})
 
 			// Make sure this should be last testcase in this file, because

@@ -9,7 +9,9 @@ import (
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	snapclient "github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned/typed/volumesnapshot/v1"
 	. "github.com/onsi/gomega" // nolint
+	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -217,4 +219,89 @@ func getVolumeSnapshotContent(namespace, snapshotName string) (*snapapi.VolumeSn
 	}
 
 	return volumeSnapshotContent, nil
+}
+
+func validateBiggerPVCFromSnapshot(f *framework.Framework,
+	pvcPath,
+	appPath,
+	snapPath,
+	pvcClonePath,
+	appClonePath string) error {
+	const (
+		size    = "1Gi"
+		newSize = "2Gi"
+	)
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return fmt.Errorf("failed to load PVC: %w", err)
+	}
+	label := make(map[string]string)
+	pvc.Namespace = f.UniqueName
+	pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(size)
+	app, err := loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load app: %w", err)
+	}
+	label[appKey] = appLabel
+	app.Namespace = f.UniqueName
+	app.Labels = label
+	opt := metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+	}
+	err = createPVCAndApp("", f, pvc, app, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create pvc and application: %w", err)
+	}
+
+	snap := getSnapshot(snapPath)
+	snap.Namespace = f.UniqueName
+	snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+	err = createSnapshot(&snap, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create snapshot: %w", err)
+	}
+	err = deletePVCAndApp("", f, pvc, app)
+	if err != nil {
+		return fmt.Errorf("failed to delete pvc and application: %w", err)
+	}
+	pvcClone, err := loadPVC(pvcClonePath)
+	if err != nil {
+		e2elog.Failf("failed to load PVC: %v", err)
+	}
+	pvcClone.Namespace = f.UniqueName
+	pvcClone.Spec.DataSource.Name = snap.Name
+	pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(newSize)
+	appClone, err := loadApp(appClonePath)
+	if err != nil {
+		e2elog.Failf("failed to load application: %v", err)
+	}
+	appClone.Namespace = f.UniqueName
+	appClone.Labels = label
+	err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create pvc clone and application: %w", err)
+	}
+	err = deleteSnapshot(&snap, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete snapshot: %w", err)
+	}
+	if pvcClone.Spec.VolumeMode == nil || *pvcClone.Spec.VolumeMode == v1.PersistentVolumeFilesystem {
+		err = checkDirSize(appClone, f, &opt, newSize)
+		if err != nil {
+			return fmt.Errorf("failed to validate directory size: %w", err)
+		}
+	}
+
+	if pvcClone.Spec.VolumeMode != nil && *pvcClone.Spec.VolumeMode == v1.PersistentVolumeBlock {
+		err = checkDeviceSize(appClone, f, &opt, newSize)
+		if err != nil {
+			return fmt.Errorf("failed to validate device size: %w", err)
+		}
+	}
+	err = deletePVCAndApp("", f, pvcClone, appClone)
+	if err != nil {
+		return fmt.Errorf("failed to delete pvc and application: %w", err)
+	}
+
+	return nil
 }
