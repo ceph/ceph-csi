@@ -676,7 +676,7 @@ func (rv *rbdVolume) deleteImage(ctx context.Context) error {
 // otherwise removes the image from trash.
 func (rv *rbdVolume) trashRemoveImage(ctx context.Context) error {
 	// attempt to use Ceph manager based deletion support if available
-	log.DebugLog(ctx, "rbd: adding task to remove image %s with id %s from trash", rv, rv.ImageID)
+	log.DebugLog(ctx, "rbd: adding task to remove image %q with id %q from trash", rv, rv.ImageID)
 
 	ta, err := rv.conn.GetTaskAdmin()
 	if err != nil {
@@ -700,7 +700,7 @@ func (rv *rbdVolume) trashRemoveImage(ctx context.Context) error {
 			return err
 		}
 	} else {
-		log.DebugLog(ctx, "rbd: successfully added task to move image %s with id %s to trash", rv, rv.ImageID)
+		log.DebugLog(ctx, "rbd: successfully added task to move image %q with id %q to trash", rv, rv.ImageID)
 	}
 
 	return nil
@@ -849,7 +849,7 @@ func (rv *rbdVolume) flattenRbdImage(
 		if forceFlatten || depth >= hardlimit {
 			return fmt.Errorf("%w: flatten is in progress for image %s", ErrFlattenInProgress, rv.RbdImageName)
 		}
-		log.DebugLog(ctx, "successfully added task to flatten image %s", rv)
+		log.DebugLog(ctx, "successfully added task to flatten image %q", rv)
 	}
 	if !rbdCephMgrSupported {
 		log.ErrorLog(
