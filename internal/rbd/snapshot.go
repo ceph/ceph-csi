@@ -64,17 +64,6 @@ func createRBDClone(
 		return err
 	}
 
-	err = cloneRbdVol.getImageInfo()
-	if err != nil {
-		log.ErrorLog(ctx, "failed to get rbd image: %s details with error: %v", cloneRbdVol, err)
-		delErr := deleteImage(ctx, cloneRbdVol, cr)
-		if delErr != nil {
-			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", cloneRbdVol, delErr)
-		}
-
-		return err
-	}
-
 	return nil
 }
 
