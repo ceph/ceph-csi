@@ -90,6 +90,12 @@ data:
       "user-secrets-metadata-test": {
         "encryptionKMSType": "metadata",
         "secretName": "storage-encryption-secret"
+      },
+      "kp-metadata-test": {
+        "encryptionKMSType": "kp-metadata",
+        "secretName": "ceph-csi-kp-credentials",
+        "keyProtectRegionKey": "us-south-2",
+        "keyProtectServiceInstanceID": "7abef064-01dd-4237-9ea5-8b3890970be3"
       }
     }
 metadata:
