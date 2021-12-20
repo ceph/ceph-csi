@@ -128,7 +128,7 @@ func (rv *rbdVolume) generateTempClone() *rbdVolume {
 	tempClone.conn = rv.conn.Copy()
 	// The temp clone image need to have deep flatten feature
 	f := []string{librbd.FeatureNameLayering, librbd.FeatureNameDeepFlatten}
-	tempClone.imageFeatureSet = librbd.FeatureSetFromNames(f)
+	tempClone.ImageFeatureSet = librbd.FeatureSetFromNames(f)
 	tempClone.ClusterID = rv.ClusterID
 	tempClone.Monitors = rv.Monitors
 	tempClone.Pool = rv.Pool

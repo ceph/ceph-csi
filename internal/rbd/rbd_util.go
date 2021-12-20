@@ -127,6 +127,12 @@ type rbdImage struct {
 	RequestName string
 	NamePrefix  string
 
+	// ParentName represents the parent image name of the image.
+	ParentName string
+	// Parent Pool is the pool that contains the parent image.
+	ParentPool      string
+	ImageFeatureSet librbd.FeatureSet
+
 	// encryption provides access to optional VolumeEncryption functions
 	encryption *util.VolumeEncryption
 	// Owner is the creator (tenant, Kubernetes Namespace) of the volume
@@ -151,11 +157,7 @@ type rbdVolume struct {
 	Topology            map[string]string
 	// DataPool is where the data for images in `Pool` are stored, this is used as the `--data-pool`
 	// argument when the pool is created, and is not used anywhere else
-	DataPool   string
-	ParentName string
-	// Parent Pool is the pool that contains the parent image.
-	ParentPool         string
-	imageFeatureSet    librbd.FeatureSet
+	DataPool           string
 	AdminID            string
 	UserID             string
 	Mounter            string
@@ -349,10 +351,10 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		}
 	}
 	log.DebugLog(ctx, logMsg,
-		pOpts, volSzMiB, pOpts.imageFeatureSet.Names(), pOpts.Monitors)
+		pOpts, volSzMiB, pOpts.ImageFeatureSet.Names(), pOpts.Monitors)
 
-	if pOpts.imageFeatureSet != 0 {
-		err := options.SetUint64(librbd.RbdImageOptionFeatures, uint64(pOpts.imageFeatureSet))
+	if pOpts.ImageFeatureSet != 0 {
+		err := options.SetUint64(librbd.RbdImageOptionFeatures, uint64(pOpts.ImageFeatureSet))
 		if err != nil {
 			return fmt.Errorf("failed to set image features: %w", err)
 		}
@@ -925,7 +927,7 @@ func (rv *rbdVolume) flatten() error {
 }
 
 func (rv *rbdVolume) hasFeature(feature uint64) bool {
-	return (uint64(rv.imageFeatureSet) & feature) == feature
+	return (uint64(rv.ImageFeatureSet) & feature) == feature
 }
 
 func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
@@ -1315,7 +1317,7 @@ func genVolFromVolumeOptions(
 		ctx,
 		"setting disableInUseChecks: %t image features: %v mounter: %s",
 		disableInUseChecks,
-		rbdVol.imageFeatureSet.Names(),
+		rbdVol.ImageFeatureSet.Names(),
 		rbdVol.Mounter)
 	rbdVol.DisableInUseChecks = disableInUseChecks
 
@@ -1353,7 +1355,7 @@ func (rv *rbdVolume) validateImageFeatures(imageFeatures string) error {
 			return fmt.Errorf("feature %s requires rbd-nbd for mounter", f)
 		}
 	}
-	rv.imageFeatureSet = librbd.FeatureSetFromNames(arr)
+	rv.ImageFeatureSet = librbd.FeatureSetFromNames(arr)
 
 	return nil
 }
@@ -1386,7 +1388,7 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 
 // hasSnapshotFeature checks if Layering is enabled for this image.
 func (rv *rbdVolume) hasSnapshotFeature() bool {
-	return (uint64(rv.imageFeatureSet) & librbd.FeatureLayering) == librbd.FeatureLayering
+	return (uint64(rv.ImageFeatureSet) & librbd.FeatureLayering) == librbd.FeatureLayering
 }
 
 func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
@@ -1450,10 +1452,10 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 	}
 
 	log.DebugLog(ctx, logMsg,
-		pSnapOpts, rv, rv.imageFeatureSet.Names(), rv.Monitors)
+		pSnapOpts, rv, rv.ImageFeatureSet.Names(), rv.Monitors)
 
-	if rv.imageFeatureSet != 0 {
-		err = options.SetUint64(librbd.RbdImageOptionFeatures, uint64(rv.imageFeatureSet))
+	if rv.ImageFeatureSet != 0 {
+		err = options.SetUint64(librbd.RbdImageOptionFeatures, uint64(rv.ImageFeatureSet))
 		if err != nil {
 			return fmt.Errorf("failed to set image features: %w", err)
 		}
@@ -1527,7 +1529,7 @@ func (rv *rbdVolume) getImageInfo() error {
 	if err != nil {
 		return err
 	}
-	rv.imageFeatureSet = librbd.FeatureSet(features)
+	rv.ImageFeatureSet = librbd.FeatureSet(features)
 
 	// Get parent information.
 	parentInfo, err := image.GetParent()

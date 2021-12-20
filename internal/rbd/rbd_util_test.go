@@ -41,7 +41,7 @@ func TestHasSnapshotFeature(t *testing.T) {
 	rv := rbdVolume{}
 
 	for _, test := range tests {
-		rv.imageFeatureSet = librbd.FeatureSetFromNames(strings.Split(test.features, ","))
+		rv.ImageFeatureSet = librbd.FeatureSetFromNames(strings.Split(test.features, ","))
 		if got := rv.hasSnapshotFeature(); got != test.hasFeature {
 			t.Errorf("hasSnapshotFeature(%s) = %t, want %t", test.features, got, test.hasFeature)
 		}
