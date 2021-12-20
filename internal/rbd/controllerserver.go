@@ -655,7 +655,7 @@ func (cs *ControllerServer) createBackingImage(
 		}
 	}
 
-	log.DebugLog(ctx, "created volume %s backed by image %s", rbdVol.RequestName, rbdVol.RbdImageName)
+	log.DebugLog(ctx, "created image %s backed for request name %s", rbdVol, rbdVol.RequestName)
 
 	defer func() {
 		if err != nil {
