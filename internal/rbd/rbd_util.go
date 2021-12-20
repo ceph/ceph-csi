@@ -153,21 +153,21 @@ type rbdVolume struct {
 	// Parent Pool is the pool that contains the parent image.
 	ParentPool         string
 	imageFeatureSet    librbd.FeatureSet
-	AdminID            string `json:"adminId"`
-	UserID             string `json:"userId"`
-	Mounter            string `json:"mounter"`
+	AdminID            string
+	UserID             string
+	Mounter            string
 	ReservedID         string
 	MapOptions         string
 	UnmapOptions       string
 	LogDir             string
 	LogStrategy        string
-	VolName            string `json:"volName"`
-	MonValueFromSecret string `json:"monValueFromSecret"`
-	VolSize            int64  `json:"volSize"`
+	VolName            string
+	MonValueFromSecret string
+	VolSize            int64
 	// RequestedVolSize has the size of the volume requested by the user and
 	// this value will not be updated when doing getImageInfo() on rbdVolume.
 	RequestedVolSize   int64
-	DisableInUseChecks bool `json:"disableInUseChecks"`
+	DisableInUseChecks bool
 	readOnly           bool
 	Primary            bool
 	ThickProvision     bool
