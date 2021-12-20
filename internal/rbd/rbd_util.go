@@ -184,7 +184,6 @@ type rbdSnapshot struct {
 	SourceVolumeID string
 	ReservedID     string
 	RbdSnapName    string
-	SizeBytes      int64
 }
 
 // imageFeature represents required image features and value.
