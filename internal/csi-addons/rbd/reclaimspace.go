@@ -18,10 +18,13 @@ package rbd
 
 import (
 	"context"
+	"fmt"
 
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	rbdutil "github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	rs "github.com/csi-addons/spec/lib/go/reclaimspace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -71,4 +74,74 @@ func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 	}
 
 	return &rs.ControllerReclaimSpaceResponse{}, nil
+}
+
+// ReclaimSpaceNodeServer struct of rbd CSI driver with supported methods
+// of CSI-addons reclaimspace controller service spec.
+type ReclaimSpaceNodeServer struct {
+	*rs.UnimplementedReclaimSpaceNodeServer
+}
+
+// NewReclaimSpaceNodeServer creates a new IdentityServer which handles the
+// Identity Service requests from the CSI-Addons specification.
+func NewReclaimSpaceNodeServer() *ReclaimSpaceNodeServer {
+	return &ReclaimSpaceNodeServer{}
+}
+
+func (rsns *ReclaimSpaceNodeServer) RegisterService(server grpc.ServiceRegistrar) {
+	rs.RegisterReclaimSpaceNodeServer(server, rsns)
+}
+
+// NodeReclaimSpace runs fstrim or blkdiscard on the path where the volume is
+// mounted or attached. When a volume with multi-node permissions is detected,
+// an error is returned to prevent potential data corruption.
+func (rsns *ReclaimSpaceNodeServer) NodeReclaimSpace(
+	ctx context.Context,
+	req *rs.NodeReclaimSpaceRequest) (*rs.NodeReclaimSpaceResponse, error) {
+	// volumeID is a required attribute, it is part of the path to run the
+	// space reducing command on
+	// nolint:ifshort // volumeID is incorrectly assumed to be used only once
+	volumeID := req.GetVolumeId()
+	if volumeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	}
+
+	// path can either be the staging path on the node, or the volume path
+	// inside an application container
+	path := req.GetStagingTargetPath()
+	if path == "" {
+		path = req.GetVolumePath()
+		if path == "" {
+			return nil, status.Error(
+				codes.InvalidArgument,
+				"required parameter staging_target_path or volume_path is not set")
+		}
+	} else {
+		// append the right staging location used by this CSI-driver
+		path = fmt.Sprintf("%s/%s", path, volumeID)
+	}
+
+	// do not allow RWX block-mode volumes, danger of data corruption
+	isBlock, isMultiNode := csicommon.IsBlockMultiNode([]*csi.VolumeCapability{req.GetVolumeCapability()})
+	if isMultiNode {
+		return nil, status.Error(codes.Unimplemented, "multi-node space reclaim is not supported")
+	}
+
+	cmd := "fstrim"
+	if isBlock {
+		cmd = "blkdiscard"
+	}
+
+	_, stderr, err := util.ExecCommand(ctx, cmd, path)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			"failed to execute %q on %q (%s): %s",
+			cmd,
+			path,
+			err.Error(),
+			stderr)
+	}
+
+	return &rs.NodeReclaimSpaceResponse{}, nil
 }

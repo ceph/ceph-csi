@@ -41,3 +41,22 @@ func TestControllerReclaimSpace(t *testing.T) {
 	_, err := controller.ControllerReclaimSpace(context.TODO(), req)
 	assert.Error(t, err)
 }
+
+// TestNodeReclaimSpace is a minimal test for the NodeReclaimSpace() procedure.
+// During unit-testing, there is no Ceph cluster available, so actual
+// operations can not be performed.
+func TestNodeReclaimSpace(t *testing.T) {
+	t.Parallel()
+
+	node := NewReclaimSpaceNodeServer()
+
+	req := &rs.NodeReclaimSpaceRequest{
+		VolumeId:         "",
+		VolumePath:       "",
+		VolumeCapability: nil,
+		Secrets:          nil,
+	}
+
+	_, err := node.NodeReclaimSpace(context.TODO(), req)
+	assert.Error(t, err)
+}
