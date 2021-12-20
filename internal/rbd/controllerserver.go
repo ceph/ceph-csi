@@ -1001,7 +1001,7 @@ func (cs *ControllerServer) CreateSnapshot(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	rbdSnap.RbdImageName = rbdVol.RbdImageName
-	rbdSnap.SizeBytes = rbdVol.VolSize
+	rbdSnap.VolSize = rbdVol.VolSize
 	rbdSnap.SourceVolumeID = req.GetSourceVolumeId()
 	rbdSnap.RequestName = req.GetName()
 
@@ -1134,7 +1134,7 @@ func cloneFromSnapshot(
 
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
-			SizeBytes:      rbdSnap.SizeBytes,
+			SizeBytes:      rbdSnap.VolSize,
 			SnapshotId:     rbdSnap.VolID,
 			SourceVolumeId: rbdSnap.SourceVolumeID,
 			CreationTime:   rbdSnap.CreatedAt,

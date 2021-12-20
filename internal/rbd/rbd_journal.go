@@ -176,7 +176,7 @@ func checkSnapCloneExists(
 	// Code from here on, rolls the transaction forward.
 
 	rbdSnap.CreatedAt = vol.CreatedAt
-	rbdSnap.SizeBytes = vol.VolSize
+	rbdSnap.VolSize = vol.VolSize
 	// found a snapshot already available, process and return its information
 	rbdSnap.VolID, err = util.GenerateVolID(ctx, rbdSnap.Monitors, cr, snapData.ImagePoolID, rbdSnap.Pool,
 		rbdSnap.ClusterID, snapUUID, volIDVersion)
