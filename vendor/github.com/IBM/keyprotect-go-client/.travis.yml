@@ -1,0 +1,25 @@
+language: go
+dist: xenial
+
+go: 
+ - 1.14.x
+ - 1.15.x
+
+env:
+  - GO111MODULE=on
+
+before_script:
+  - GO111MODULE=off go get -u github.com/haya14busa/goverage
+
+install:
+  - go build ./...
+
+script:
+  - $GOPATH/bin/goverage -v -race -coverprofile=cover.out $(go list ./... | grep -v '/vendor|/scripts')
+  - go tool cover -func=cover.out
+  - go tool cover -html=cover.out -o=cover.html
+
+# FIXME: these scripts don't exist in this repo
+# after_success:
+#   - ./scripts/calculateCoverage.sh
+#   - ./scripts/publishCoverage.sh
