@@ -324,7 +324,7 @@ func createDummyImage(ctx context.Context, rbdVol *rbdVolume) error {
 			librbd.FeatureNameFastDiff,
 		}
 		features := librbd.FeatureSetFromNames(f)
-		dummyVol.imageFeatureSet = features
+		dummyVol.ImageFeatureSet = features
 		// create 1MiB dummy image. 1MiB=1048576 bytes
 		dummyVol.VolSize = 1048576
 		err = createImage(ctx, &dummyVol, dummyVol.conn.Creds)
