@@ -637,7 +637,6 @@ func (cs *ControllerServer) createBackingImage(
 		if err != nil {
 			return err
 		}
-		log.DebugLog(ctx, "created volume %s from snapshot %s", rbdVol.RequestName, rbdSnap.RbdSnapName)
 	case parentVol != nil:
 		if err = cs.OperationLocks.GetCloneLock(parentVol.VolID); err != nil {
 			log.ErrorLog(ctx, err.Error())
