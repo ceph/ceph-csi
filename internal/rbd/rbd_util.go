@@ -164,7 +164,10 @@ type rbdVolume struct {
 	VolName            string `json:"volName"`
 	MonValueFromSecret string `json:"monValueFromSecret"`
 	VolSize            int64  `json:"volSize"`
-	DisableInUseChecks bool   `json:"disableInUseChecks"`
+	// RequestedVolSize has the size of the volume requested by the user and
+	// this value will not be updated when doing getImageInfo() on rbdVolume.
+	RequestedVolSize   int64
+	DisableInUseChecks bool `json:"disableInUseChecks"`
 	readOnly           bool
 	Primary            bool
 	ThickProvision     bool
