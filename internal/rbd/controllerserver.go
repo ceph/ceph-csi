@@ -596,7 +596,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 		}
 	}
 
-	log.DebugLog(ctx, "create volume %s from snapshot %s", rbdVol.RequestName, rbdSnap.RbdSnapName)
+	log.DebugLog(ctx, "create volume %s from snapshot %s", rbdVol, rbdSnap)
 
 	// resize the volume if the size is different
 	// expand the image if the requested size is greater than the current size
