@@ -107,6 +107,9 @@ type rbdImage struct {
 	// identifying this rbd image
 	VolID string `json:"volID"`
 
+	// VolSize is the size of the RBD image backing this rbdImage.
+	VolSize int64
+
 	Monitors string
 	// JournalPool is the ceph pool in which the CSI Journal/CSI snapshot Journal is
 	// stored
@@ -163,7 +166,6 @@ type rbdVolume struct {
 	LogStrategy        string
 	VolName            string
 	MonValueFromSecret string
-	VolSize            int64
 	// RequestedVolSize has the size of the volume requested by the user and
 	// this value will not be updated when doing getImageInfo() on rbdVolume.
 	RequestedVolSize   int64
