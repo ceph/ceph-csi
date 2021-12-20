@@ -136,6 +136,8 @@ func (cs *ControllerServer) parseVolCreateRequest(
 
 	// always round up the request size in bytes to the nearest MiB/GiB
 	rbdVol.VolSize = util.RoundOffBytes(volSizeBytes)
+	// RequestedVolSize has the size of the volume requested by the user.
+	rbdVol.RequestedVolSize = rbdVol.VolSize
 
 	// start with pool the same as journal pool, in case there is a topology
 	// based split, pool for the image will be updated subsequently
