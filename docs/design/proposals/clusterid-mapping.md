@@ -1,7 +1,7 @@
 # Design to handle clusterID and poolID for DR
 
 During disaster recovery/migration of a cluster, as part of the failover, the
-kubernetes artifacts like deployment, PVC, PV, etc will be restored to a new
+kubernetes artifacts like deployment, PVC, PV, etc. will be restored to a new
 cluster by the admin. Even if the kubernetes objects are restored the
 corresponding RBD/CephFS subvolume cannot be retrieved during CSI operations as
 the clusterID and poolID are not the same in both clusters. Let's see the
@@ -10,8 +10,8 @@ problem in more detail below.
 `0001-0009-rook-ceph-0000000000000002-b0285c97-a0ce-11eb-8c66-0242ac110002`
 
 The above is the sample volumeID sent back in response to the CreateVolume
-operation and added as a volumeHandle in the PV spec. CO (Kubernetes) uses
-above as the identifier for other operations on the volume/PVC.
+operation and added as a volumeHandle in the PV spec. CO (Kubernetes) uses above
+as the identifier for other operations on the volume/PVC.
 
 The VolumeID is encoded as,
 
@@ -33,7 +33,7 @@ the other cluster.
 
 During the Disaster Recovery (failover operation) the PVC and PV will be
 recreated on the other cluster. When Ceph-CSI receives the request for
-operations like (NodeStage, ExpandVolume, DeleteVolume, etc) the volumeID is
+operations like (NodeStage, ExpandVolume, DeleteVolume, etc.) the volumeID is
 sent in the request which will help to identify the volume.
 
 ```yaml=
@@ -68,15 +68,15 @@ metadata:
 ```
 
 During CSI/Replication operations, Ceph-CSI will decode the volumeID and gets
-the monitor configuration from the configmap and by the poolID will get the
-pool Name and retrieves the OMAP data stored in the rados OMAP and finally
-check the volume is present in the pool.
+the monitor configuration from the configmap and by the poolID will get the pool
+Name and retrieves the OMAP data stored in the rados OMAP and finally check the
+volume is present in the pool.
 
 ## Problems with volumeID Replication
 
 * The clusterID can be different
-  * as the clusterID is the namespace where rook is deployed, the Rook might be
-    deployed in the different namespace on a secondary cluster
+  * as the clusterID is the namespace where rook is deployed, the Rook might
+    be deployed in the different namespace on a secondary cluster
   * In standalone Ceph-CSI the clusterID is fsID and fsID is unique per
     cluster
 
@@ -124,8 +124,8 @@ metadata:
   name: ceph-csi-config
 ```
 
-**Note:-** the configmap will be mounted as a volume to the CSI (provisioner
-and node plugin) pods.
+**Note:-** the configmap will be mounted as a volume to the CSI (provisioner and
+node plugin) pods.
 
 The above configmap will get created as it is or updated (if new Pools are
 created on the existing cluster) with new entries when the admin choose to
@@ -149,28 +149,28 @@ Replicapool with ID `1` on site1 and Replicapool with ID `2` on site2.
 After getting the required mapping Ceph-CSI has the required information to get
 more details from the rados OMAP. If we have multiple clusterID mapping it will
 loop through all the mapping and checks the corresponding pool to get the OMAP
-data. If the clusterID mapping does not exist Ceph-CSI will return a `Not
-Found` error message to the caller.
+data. If the clusterID mapping does not exist Ceph-CSI will return a `Not Found`
+error message to the caller.
 
 After failover to the cluster `site2-storage`, the admin might have created new
 PVCs on the primary cluster `site2-storage`. Later after recovering the
 cluster `site1-storage`, the admin might choose to failback from
 `site2-storage` to `site1-storage`. Now admin needs to copy all the newly
 created kubernetes artifacts to the failback cluster. For clusterID mapping, the
-admin needs to copy the above-created configmap `ceph-clusterid-mapping` to
-the failback cluster. When Ceph-CSI receives a CSI/Replication request for
-the volumes created on the `site2-storage` it will decode the volumeID and
-retrieves the clusterID ie `site2-storage`. In the above configmap
+admin needs to copy the above-created configmap `ceph-clusterid-mapping` to the
+failback cluster. When Ceph-CSI receives a CSI/Replication request for the
+volumes created on the `site2-storage` it will decode the volumeID and retrieves
+the clusterID ie `site2-storage`. In the above configmap
 `ceph-clusterid-mapping` the `site2-storage` is the value and `site1-storage`
 is the key in the `clusterIDMapping` entry.
 
 Ceph-CSI will check both `key` and `value` to check the clusterID mapping. If it
-is found in `key` it will consider `value` as the  corresponding mapping, if it
+is found in `key` it will consider `value` as the corresponding mapping, if it
 is found in `value` place it will treat `key` as the corresponding mapping and
 retrieves all the poolID details of the cluster.
 
-This mapping on the remote cluster is only required when we are doing a
-failover operation from the primary cluster to a remote cluster. The existing
-volumes that are created on the remote cluster does not require
-any mapping as the volumeHandle already contains the required information about
-the local cluster (clusterID, poolID etc).
+This mapping on the remote cluster is only required when we are doing a failover
+operation from the primary cluster to a remote cluster. The existing volumes
+that are created on the remote cluster does not require any mapping as the
+volumeHandle already contains the required information about the local cluster (
+clusterID, poolID etc).

@@ -14,7 +14,8 @@ KMS implementation. Or, if changes would be minimal, a configuration option to
 one of the implementations can be added.
 
 Different KMS implementations and their configurable options can be found at
-[`csi-kms-connection-details.yaml`](../../../examples/kms/vault/csi-kms-connection-details.yaml).
+[`csi-kms-connection-details.yaml`](../../../examples/kms/vault/csi-kms-connection-details.yaml)
+.
 
 ### VaultTokensKMS
 
@@ -26,7 +27,8 @@ An example of the per Tenant configuration options are in
 [`tenant-config.yaml`](../../../examples/kms/vault/tenant-config.yaml) and
 [`tenant-token.yaml`](../../../examples/kms/vault/tenant-token.yaml).
 
-Implementation is in [`vault_tokens.go`](../../../internal/util/vault_tokens.go).
+Implementation is in [`vault_tokens.go`](../../../internal/util/vault_tokens.go)
+.
 
 ### Vault
 
@@ -36,7 +38,7 @@ Implementation is in [`vault.go`](../../../internal/util/vault.go).
 
 ## Extension or New KMS implementation
 
-Normally ServiceAccounts are provided by Kubernetes in the containers
+Normally ServiceAccounts are provided by Kubernetes in the containers'
 filesystem. This only allows a single ServiceAccount and is static for the
 lifetime of the Pod. Ceph-CSI runs in the namespace of the storage
 administrator, and has access to the single ServiceAccount linked in the
@@ -53,7 +55,7 @@ steps need to be taken:
   replace the default (`AuthKubernetesTokenPath:
   /var/run/secrets/kubernetes.io/serviceaccount/token`)
 
-Currently the Ceph-CSI components may read Secrets and ConfigMaps from the
+Currently, the Ceph-CSI components may read Secrets and ConfigMaps from the
 Tenants namespace. These permissions need to be extended to allow Ceph-CSI to
 read the contents of the ServiceAccount(s) in the Tenants namespace.
 
@@ -61,7 +63,8 @@ read the contents of the ServiceAccount(s) in the Tenants namespace.
 
 ### Global Configuration
 
-1. a StorageClass links to a KMS configuration by providing the `kmsID` parameter
+1. a StorageClass links to a KMS configuration by providing the `kmsID`
+   parameter
 1. a ConfigMap in the namespace of the Ceph-CSI deployment contains the KMS
    configuration for the `kmsID`
    ([`csi-kms-connection-details.yaml`](../../../examples/kms/vault/csi-kms-connection-details.yaml))
@@ -76,8 +79,8 @@ configuration from the ConfigMap.
 1. needs ServiceAccount with a known name with permissions to connect to Vault
 1. optional ConfigMap with options for Vault that override default settings
 
-A `CreateVolume` request contains the owner (Namespace) of the Volume.
-The KMS configuration indicates that additional attributes need to be fetched
-from the Tenants namespace, so the provisioner will fetch these. The additional
-configuration and ServiceAccount are merged in the provisioners configuration
+A `CreateVolume` request contains the owner (Namespace) of the Volume. The KMS
+configuration indicates that additional attributes need to be fetched from the
+Tenants namespace, so the provisioner will fetch these. The additional
+configuration and ServiceAccount are merged in the provisioners' configuration
 for the KMS-implementation while creating the volume.

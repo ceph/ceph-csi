@@ -16,7 +16,7 @@ Some but not all the benefits of this approach:
 
 * volume encryption: encryption of a volume attached by rbd
 * encryption at rest: encryption of physical disk done by ceph
-* LUKS: Linux Unified Key Setup: stores all of the needed setup information for
+* LUKS: Linux Unified Key Setup: stores all the needed setup information for
   dm-crypt on the disk
 * dm-crypt: linux kernel device-mapper crypto target
 * cryptsetup: the command line tool to interface with dm-crypt
@@ -28,8 +28,8 @@ requirement by using dm-crypt module through cryptsetup cli interface.
 
 ### Implementation Summary
 
-* Encryption is implemented using cryptsetup with LUKS extension.
-  A good introduction to LUKS and dm-crypt in general can be found
+* Encryption is implemented using cryptsetup with LUKS extension. A good
+  introduction to LUKS and dm-crypt in general can be found
   [here](https://wiki.archlinux.org/index.php/Dm-crypt/Device_encryption#Encrypting_devices_with_cryptsetup)
   Functions to implement necessary interaction are implemented in a separate
   `cryptsetup.go` file.
@@ -45,8 +45,8 @@ requirement by using dm-crypt module through cryptsetup cli interface.
   volume attach request
 * `NodeStageVolume`: refactored to open encrypted device (`openEncryptedDevice`)
 * `openEncryptedDevice`: looks up for a passphrase matching the volume id,
-  returns the new device path in the form: `/dev/mapper/luks-<volume_id>`.
-  On the woker node where the attach is scheduled:
+  returns the new device path in the form: `/dev/mapper/luks-<volume_id>`. On
+  the worker node where the attach is scheduled:
 
   ```shell
   $ lsblk
@@ -62,10 +62,10 @@ requirement by using dm-crypt module through cryptsetup cli interface.
   before detaching the volume.
 
 * StorageClass extended with following parameters:
-  1. `encrypted` ("true" or "false")
-  1. `encryptionKMSID` (string representing kms configuration of choice)
-  ceph-csi plugin may support different kms vendors with different type of
-  authentication
+ 1. `encrypted` ("true" or "false")
+ 2. `encryptionKMSID` (string representing kms configuration of choice)
+    ceph-csi plugin may support different kms vendors with different type of
+    authentication
 
 * New KMS Configuration created.
 
@@ -75,37 +75,37 @@ requirement by using dm-crypt module through cryptsetup cli interface.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-   name: csi-rbd
+  name: csi-rbd
 provisioner: rbd.csi.ceph.com
 parameters:
-   # String representing Ceph cluster configuration
-   clusterID: <cluster-id>
-   # ceph pool
-   pool: rbd
+  # String representing Ceph cluster configuration
+  clusterID: <cluster-id>
+  # ceph pool
+  pool: rbd
 
-   # RBD image features, CSI creates image with image-format 2
-   # CSI RBD currently supports only `layering` feature.
-   imageFeatures: layering
+  # RBD image features, CSI creates image with image-format 2
+  # CSI RBD currently supports only `layering` feature.
+  imageFeatures: layering
 
-   # The secrets have to contain Ceph credentials with required access
-   # to the 'pool'.
-   csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
-   csi.storage.k8s.io/provisioner-secret-namespace: default
-   csi.storage.k8s.io/controller-expand-secret-name: csi-rbd-secret
-   csi.storage.k8s.io/controller-expand-secret-namespace: default
-   csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
-   csi.storage.k8s.io/node-stage-secret-namespace: default
-   # Specify the filesystem type of the volume. If not specified,
-   # csi-provisioner will set default as `ext4`.
-   csi.storage.k8s.io/fstype: ext4
+  # The secrets have to contain Ceph credentials with required access
+  # to the 'pool'.
+  csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+  csi.storage.k8s.io/controller-expand-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: default
+  csi.storage.k8s.io/node-stage-secret-name: csi-rbd-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: default
+  # Specify the filesystem type of the volume. If not specified,
+  # csi-provisioner will set default as `ext4`.
+  csi.storage.k8s.io/fstype: ext4
 
-   # Encrypt volumes
-   encrypted: "true"
+  # Encrypt volumes
+  encrypted: "true"
 
-   # Use external key management system for encryption passphrases by specifying
-   # a unique ID matching KMS ConfigMap. The ID is only used for correlation to
-   # configmap entry.
-   encryptionKMSID: <kms-id>
+  # Use external key management system for encryption passphrases by specifying
+  # a unique ID matching KMS ConfigMap. The ID is only used for correlation to
+  # configmap entry.
+  encryptionKMSID: <kms-id>
 
 reclaimPolicy: Delete
 ```
@@ -133,14 +133,19 @@ metadata:
 The main components that are used to support encrypted volumes:
 
 1. the `EncryptionKMS` interface
-  * an instance is configured per volume object (`rbdVolume.KMS`)
-  * used to authenticate with a master key or token
-  * can store the KEK (Key-Encryption-Key) for encrypting and decrypting the
-    DEKs (Data-Encryption-Key)
+
+* an instance is configured per volume object (`rbdVolume.KMS`)
+* used to authenticate with a master key or token
+* can store the KEK (Key-Encryption-Key) for encrypting and decrypting the
+  DEKs (Data-Encryption-Key)
+
 1. the `DEKStore` interface
-  * saves and fetches the DEK (Data-Encryption-Key)
-  * can be provided by a KMS, or by other components (like `rbdVolume`)
+
+* saves and fetches the DEK (Data-Encryption-Key)
+* can be provided by a KMS, or by other components (like `rbdVolume`)
+
 1. the `VolumeEncryption` type
-  * combines `EncryptionKMS` and `DEKStore` into a single place
-  * easy to configure from other components or subsystems
-  * provides a simple API for all KMS operations
+
+* combines `EncryptionKMS` and `DEKStore` into a single place
+* easy to configure from other components or subsystems
+* provides a simple API for all KMS operations
