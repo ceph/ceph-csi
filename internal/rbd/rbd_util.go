@@ -1503,6 +1503,12 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 		}
 	}
 
+	// get image latest information
+	err = rv.getImageInfo()
+	if err != nil {
+		return fmt.Errorf("failed to get image info of %s: %w", rv, err)
+	}
+
 	// Success! Do not delete the cloned image now :)
 	deleteClone = false
 
