@@ -27,7 +27,6 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/csi-addons/spec/lib/go/replication"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
@@ -104,12 +103,8 @@ func (s *nonBlockingGRPCServer) serve(endpoint, hstOptions string, srv Servers, 
 		klog.Fatalf("Failed to listen: %v", err)
 	}
 
-	middleWare := []grpc.UnaryServerInterceptor{contextIDInjector, logGRPC, panicHandler}
-	if metrics {
-		middleWare = append(middleWare, grpc_prometheus.UnaryServerInterceptor)
-	}
 	opts := []grpc.ServerOption{
-		grpc_middleware.WithUnaryServerChain(middleWare...),
+		NewMiddlewareServerOption(metrics),
 	}
 
 	server := grpc.NewServer(opts...)
