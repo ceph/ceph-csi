@@ -19,7 +19,7 @@ rules:
   # Body shouldn't be empty
   body-min-length: [2, always, 1]
   # Wrap the lines to 80 characters.
-  body-max-line-length: [1, always, 80]
+  body-max-line-length: [2, always, 80]
 
   # always sign off the commit
   trailer-exists: [2, always, "Signed-off-by:"]
