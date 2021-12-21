@@ -1,5 +1,4 @@
 {{- if .Values.rbac.create -}}
-{{- if .Values.topology.enabled }}
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -18,5 +17,4 @@ roleRef:
   kind: ClusterRole
   name: {{ include "ceph-csi-rbd.nodeplugin.fullname" . }}
   apiGroup: rbac.authorization.k8s.io
-{{- end }}
 {{- end -}}
