@@ -149,7 +149,7 @@ func checkContentSource(
 }
 
 // CreateVolume creates a reservation and the volume in backend, if it is not already present.
-// nolint:gocyclo,cyclop // TODO: reduce complexity
+// nolint:gocognit,gocyclo,nestif,cyclop // TODO: reduce complexity
 func (cs *ControllerServer) CreateVolume(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
@@ -210,6 +210,31 @@ func (cs *ControllerServer) CreateVolume(
 	// TODO return error message if requested vol size greater than found volume return error
 
 	if vID != nil {
+		if sID != nil || pvID != nil {
+			// while cloning the volume the size is not populated properly to the new volume now.
+			// it will be fixed in cephfs soon with the parentvolume size. Till then by below
+			// resize we are making sure we return or satisfy the requested size by setting the size
+			// explicitly
+			err = volOptions.ResizeVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), volOptions.Size)
+			if err != nil {
+				purgeErr := volOptions.PurgeVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), false)
+				if purgeErr != nil {
+					log.ErrorLog(ctx, "failed to delete volume %s: %v", requestName, purgeErr)
+					// All errors other than ErrVolumeNotFound should return an error back to the caller
+					if !errors.Is(purgeErr, cerrors.ErrVolumeNotFound) {
+						return nil, status.Error(codes.Internal, purgeErr.Error())
+					}
+				}
+				errUndo := core.UndoVolReservation(ctx, volOptions, *vID, secret)
+				if errUndo != nil {
+					log.WarningLog(ctx, "failed undoing reservation of volume: %s (%s)",
+						requestName, errUndo)
+				}
+				log.ErrorLog(ctx, "failed to expand volume %s: %v", fsutil.VolumeID(vID.FsSubvolName), err)
+
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
 		volumeContext := req.GetParameters()
 		volumeContext["subvolumeName"] = vID.FsSubvolName
 		volumeContext["subvolumePath"] = volOptions.RootPath
