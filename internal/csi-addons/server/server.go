@@ -25,6 +25,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -86,7 +87,7 @@ func (cas *CSIAddonsServer) RegisterService(svc CSIAddonsService) {
 // returned.
 func (cas *CSIAddonsServer) Start() error {
 	// create the gRPC server and register services
-	cas.server = grpc.NewServer()
+	cas.server = grpc.NewServer(csicommon.NewMiddlewareServerOption(false))
 
 	for _, svc := range cas.services {
 		svc.RegisterService(cas.server)
