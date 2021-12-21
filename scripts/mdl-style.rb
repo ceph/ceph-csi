@@ -3,7 +3,7 @@ all
 #Refer below url for more information about the markdown rules.
 #https://github.com/markdownlint/markdownlint/blob/master/docs/RULES.md
 
-rule 'MD013', :code_blocks => false, :tables => false
+rule 'MD013', :code_blocks => false, :tables => false, :line_length => 80
 
 exclude_rule 'MD033' # In-line HTML: GitHub style markdown adds HTML tags
 exclude_rule 'MD040' # Fenced code blocks should have a language specified
