@@ -30,6 +30,8 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	rp "github.com/csi-addons/replication-lib-utils/protosanitizer"
 	"github.com/csi-addons/spec/lib/go/replication"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -103,6 +105,18 @@ func isReplicationRequest(req interface{}) bool {
 	}
 
 	return isReplicationRequest
+}
+
+// NewMiddlewareServerOption creates a new grpc.ServerOption that configures a
+// common format for log messages and other gRPC related handlers.
+func NewMiddlewareServerOption(withMetrics bool) grpc.ServerOption {
+	middleWare := []grpc.UnaryServerInterceptor{contextIDInjector, logGRPC, panicHandler}
+
+	if withMetrics {
+		middleWare = append(middleWare, grpc_prometheus.UnaryServerInterceptor)
+	}
+
+	return grpc_middleware.WithUnaryServerChain(middleWare...)
 }
 
 func getReqID(req interface{}) string {
