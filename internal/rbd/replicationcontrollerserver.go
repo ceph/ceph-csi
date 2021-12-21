@@ -314,6 +314,9 @@ func createDummyImage(ctx context.Context, rbdVol *rbdVolume) error {
 		}
 		dummyVol := *rbdVol
 		dummyVol.RbdImageName = imgName
+		// dummyVol holds rbdVol details, reset ImageID or else dummy image cannot be
+		// deleted from trash during repair operation.
+		dummyVol.ImageID = ""
 		f := []string{
 			librbd.FeatureNameLayering,
 			librbd.FeatureNameObjectMap,
