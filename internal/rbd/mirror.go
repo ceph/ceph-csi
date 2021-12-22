@@ -16,7 +16,11 @@ limitations under the License.
 package rbd
 
 import (
+	"context"
 	"fmt"
+	"time"
+
+	"github.com/ceph/ceph-csi/internal/util"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 )
@@ -79,6 +83,35 @@ func (ri *rbdImage) promoteImage(force bool) error {
 	err = image.MirrorPromote(force)
 	if err != nil {
 		return fmt.Errorf("failed to promote image %q with error: %w", ri, err)
+	}
+
+	return nil
+}
+
+// forcePromoteImage promotes image to primary with force option with 1 minute
+// timeout. If there is no response within 1 minute,the rbd CLI process will be
+// killed and an error is returned.
+func (rv *rbdVolume) forcePromoteImage(cr *util.Credentials) error {
+	promoteArgs := []string{
+		"mirror", "image", "promote",
+		rv.String(),
+		"--force",
+		"--id", cr.ID,
+		"-m", rv.Monitors,
+		"--keyfile=" + cr.KeyFile,
+	}
+	_, stderr, err := util.ExecCommandWithTimeout(
+		context.TODO(),
+		time.Minute,
+		"rbd",
+		promoteArgs...,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to promote image %q with error: %w", rv, err)
+	}
+
+	if stderr != "" {
+		return fmt.Errorf("failed to promote image %q with stderror: %s", rv, stderr)
 	}
 
 	return nil
