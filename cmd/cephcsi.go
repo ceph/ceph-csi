@@ -59,7 +59,7 @@ var conf util.Config
 func init() {
 	// common flags
 	flag.StringVar(&conf.Vtype, "type", "", "driver type [rbd|cephfs|liveness|controller]")
-	flag.StringVar(&conf.Endpoint, "endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	flag.StringVar(&conf.Endpoint, "endpoint", "unix:///tmp/csi.sock", "CSI endpoint")
 	flag.StringVar(&conf.DriverName, "drivername", "", "name of the driver")
 	flag.StringVar(&conf.DriverNamespace, "drivernamespace", defaultNS, "namespace in which driver is deployed")
 	flag.StringVar(&conf.NodeID, "nodeid", "", "node id")
@@ -129,7 +129,7 @@ func init() {
 	flag.BoolVar(&conf.EnableProfiling, "enableprofiling", false, "enable go profiling")
 
 	// CSI-Addons configuration
-	flag.StringVar(&conf.CSIAddonsEndpoint, "csi-addons-endpoint", "unix://tmp/csi-addons.sock", "CSI-Addons endpoint")
+	flag.StringVar(&conf.CSIAddonsEndpoint, "csi-addons-endpoint", "unix:///tmp/csi-addons.sock", "CSI-Addons endpoint")
 
 	klog.InitFlags(nil)
 	if err := flag.Set("logtostderr", "true"); err != nil {
