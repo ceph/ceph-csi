@@ -1447,9 +1447,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	defer cr.DeleteCredentials()
-
-	rbdVol, err := GenVolFromVolID(ctx, volID, cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	rbdVol, err := genVolFromVolIDWithMigration(ctx, volID, cr, req.GetSecrets())
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrImageNotFound):
@@ -1463,6 +1461,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 
 		return nil, err
 	}
+	defer rbdVol.Destroy()
 
 	// NodeExpansion is needed for PersistentVolumes with,
 	// 1. Filesystem VolumeMode with & without Encryption and

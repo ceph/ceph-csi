@@ -77,35 +77,41 @@ func parseMigrationVolID(vh string) (*migrationVolID, error) {
 // deleteMigratedVolume get rbd volume details from the migration volID
 // and delete the volume from the cluster, return err if there was an error on the process.
 func deleteMigratedVolume(ctx context.Context, parsedMigHandle *migrationVolID, cr *util.Credentials) error {
+	rv, err := genVolFromMigVolID(ctx, parsedMigHandle, cr)
+	if err != nil {
+		return err
+	}
+	defer rv.Destroy()
+	err = deleteImage(ctx, rv, cr)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to delete rbd image: %s, err: %v", rv, err)
+	}
+
+	return err
+}
+
+// genVolFromMigVolID populate rbdVol struct from the migration volID.
+func genVolFromMigVolID(ctx context.Context, migVolID *migrationVolID, cr *util.Credentials) (*rbdVolume, error) {
 	var err error
 	rv := &rbdVolume{}
 
 	// fill details to rv struct from parsed migration handle
-	rv.RbdImageName = parsedMigHandle.imageName
-	rv.Pool = parsedMigHandle.poolName
-	rv.ClusterID = parsedMigHandle.clusterID
+	rv.RbdImageName = migVolID.imageName
+	rv.Pool = migVolID.poolName
+	rv.ClusterID = migVolID.clusterID
 	rv.Monitors, err = util.Mons(util.CsiConfigFile, rv.ClusterID)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to fetch monitors using clusterID: %s, err: %v", rv.ClusterID, err)
 
-		return err
+		return nil, err
 	}
-
 	// connect to the volume.
 	err = rv.Connect(cr)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get connected to the rbd image : %s, err: %v", rv.RbdImageName, err)
 
-		return err
-	}
-	defer rv.Destroy()
-	// if connected , delete it
-	err = deleteImage(ctx, rv, cr)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to delete rbd image : %s, err: %v", rv.RbdImageName, err)
-
-		return err
+		return nil, err
 	}
 
-	return nil
+	return rv, nil
 }
