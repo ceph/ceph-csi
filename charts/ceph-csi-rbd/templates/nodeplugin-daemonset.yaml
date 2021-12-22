@@ -71,6 +71,7 @@ spec:
             - "--nodeserver=true"
             - "--pidlimit=-1"
             - "--endpoint=$(CSI_ENDPOINT)"
+            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
             - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
 {{- if .Values.topology.enabled }}
@@ -92,6 +93,8 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: "unix:///csi/{{ .Values.pluginSocketFile }}"
+            - name: CSI_ADDONS_ENDPOINT
+              value: "unix:///csi/csi-addons.sock"
           securityContext:
             privileged: true
             capabilities:

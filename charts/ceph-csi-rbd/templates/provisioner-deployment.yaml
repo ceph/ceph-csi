@@ -137,6 +137,7 @@ spec:
             - "--controllerserver=true"
             - "--pidlimit=-1"
             - "--endpoint=$(CSI_ENDPOINT)"
+            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
             - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
             - "--rbdhardmaxclonedepth={{ .Values.provisioner.hardMaxCloneDepth }}"
@@ -162,6 +163,8 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
+            - name: CSI_ADDONS_ENDPOINT
+              value: "unix:///csi/csi-addons.sock"
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
