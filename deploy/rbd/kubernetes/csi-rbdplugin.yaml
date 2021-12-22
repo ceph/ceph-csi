@@ -58,6 +58,7 @@ spec:
             - "--type=rbd"
             - "--nodeserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
+            - "--csi-addons-endpoint=$(CSI_ADDONS_ENDPOINT)"
             - "--v=5"
             - "--drivername=rbd.csi.ceph.com"
             - "--enableprofiling=false"
@@ -83,6 +84,8 @@ spec:
             #   value: encryptionConfig
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
+            - name: CSI_ADDONS_ENDPOINT
+              value: unix:///csi/csi-addons.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
