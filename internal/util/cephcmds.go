@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"time"
 
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -53,6 +54,59 @@ func ExecCommand(ctx context.Context, program string, args ...string) (string, s
 		err = fmt.Errorf("an error (%w) occurred while running %s args: %v", err, program, sanitizedArgs)
 		if ctx != context.TODO() {
 			log.UsefulLog(ctx, "%s", err)
+		}
+
+		return stdout, stderr, err
+	}
+
+	if ctx != context.TODO() {
+		log.UsefulLog(ctx, "command succeeded: %s %v", program, sanitizedArgs)
+	}
+
+	return stdout, stderr, nil
+}
+
+// ExecCommandWithTimeout executes passed in program with args, timeout and
+// returns separate stdout and stderr streams. If the command is not executed
+// within given timeout, the process will be killed. In case ctx is not set to
+// context.TODO(), the command will be logged after it was executed.
+func ExecCommandWithTimeout(
+	ctx context.Context,
+	timeout time.Duration,
+	program string,
+	args ...string) (
+	string,
+	string,
+	error) {
+	var (
+		sanitizedArgs = StripSecretInArgs(args)
+		stdoutBuf     bytes.Buffer
+		stderrBuf     bytes.Buffer
+	)
+
+	cctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(cctx, program, args...) // #nosec:G204, commands executing not vulnerable.
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	err := cmd.Run()
+	stdout := stdoutBuf.String()
+	stderr := stderrBuf.String()
+	if err != nil {
+		// if its a timeout log return context deadline exceeded error message
+		if errors.Is(cctx.Err(), context.DeadlineExceeded) {
+			err = fmt.Errorf("timeout: %w", cctx.Err())
+		}
+		err = fmt.Errorf("an error (%w) and stderror (%s) occurred while running %s args: %v",
+			err,
+			stderr,
+			program,
+			sanitizedArgs)
+
+		if ctx != context.TODO() {
+			log.ErrorLog(ctx, "%s", err)
 		}
 
 		return stdout, stderr, err
