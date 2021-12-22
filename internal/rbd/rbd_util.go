@@ -2071,3 +2071,22 @@ func strategicActionOnLogFile(ctx context.Context, logStrategy, logFile string) 
 		log.ErrorLog(ctx, "unknown cephLogStrategy option %q: hint: 'remove'|'compress'|'preserve'", logStrategy)
 	}
 }
+
+// genVolFromVolIDWithMigration populate a rbdVol structure based on the volID format.
+func genVolFromVolIDWithMigration(
+	ctx context.Context, volID string, cr *util.Credentials, secrets map[string]string) (*rbdVolume, error) {
+	if isMigrationVolID(volID) {
+		pmVolID, pErr := parseMigrationVolID(volID)
+		if pErr != nil {
+			return nil, pErr
+		}
+
+		return genVolFromMigVolID(ctx, pmVolID, cr)
+	}
+	rv, err := GenVolFromVolID(ctx, volID, cr, secrets)
+	if err != nil {
+		rv.Destroy()
+	}
+
+	return rv, err
+}
