@@ -15,3 +15,7 @@
 .PHONY: generate-deploy
 generate-deploy: yamlgen/main.go
 	go run yamlgen/main.go
+
+.PHONY: csi-addons
+csi-addons: csi-addons/*.go
+	go build -o ../_output/csi-addons ./csi-addons
