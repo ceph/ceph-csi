@@ -44,8 +44,8 @@ WORKDIR ${SRC_DIR}
 # Copy source directories
 COPY . ${SRC_DIR}
 
-# Build executable
-RUN make cephcsi
+# Build executables
+RUN make cephcsi csi-addons
 
 #-- Final container
 FROM ${BASE_IMAGE}
@@ -58,6 +58,7 @@ LABEL maintainers="Ceph-CSI Authors" \
     description="Ceph-CSI Plugin"
 
 COPY --from=builder ${SRC_DIR}/_output/cephcsi /usr/local/bin/cephcsi
+COPY --from=builder ${SRC_DIR}/_output/csi-addons /usr/local/bin/csi-addons
 
 # verify that all dynamically linked libraries are available
 RUN [ $(ldd /usr/local/bin/cephcsi | grep -c '=> not found') = '0' ]
