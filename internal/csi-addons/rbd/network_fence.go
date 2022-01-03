@@ -84,3 +84,31 @@ func (fcs *FenceControllerServer) FenceClusterNetwork(
 
 	return &fence.FenceClusterNetworkResponse{}, nil
 }
+
+// UnfenceClusterNetwork unblocks the access to a CIDR block by removing the network fence.
+func (fcs *FenceControllerServer) UnfenceClusterNetwork(
+	ctx context.Context,
+	req *fence.UnfenceClusterNetworkRequest) (*fence.UnfenceClusterNetworkResponse, error) {
+	err := validateNetworkFenceReq(req.GetCidrs(), req.Parameters)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	cr, err := util.NewUserCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	nwFence, err := nf.NewNetworkFence(ctx, cr, req.Cidrs, req.GetParameters())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	err = nwFence.RemoveNetworkFence(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to unfence CIDR block %q: %s", nwFence.Cidr, err.Error())
+	}
+
+	return &fence.UnfenceClusterNetworkResponse{}, nil
+}
