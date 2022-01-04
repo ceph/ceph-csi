@@ -33,7 +33,7 @@ const (
 
 	// keyProtectMetadataDefaultSecretsName is the default name of the Kubernetes Secret
 	// that contains the credentials to access the Key Protect KMS. The name of
-	// the Secret can be configured by setting the `KMS_SECRET_NAME`
+	// the Secret can be configured by setting the `IBM_KP_SECRET_NAME`
 	// option.
 	//
 	// #nosec:G101, value not credential, just references token.
@@ -43,17 +43,16 @@ const (
 	// the credentials to access the Key ProtectKMS.
 	//
 	// #nosec:G101, no hardcoded secret, this is a configuration key.
-	keyProtectSecretNameKey = "KMS_SECRET_NAME"
-	keyProtectRegionKey     = "KP_REGION"
+	keyProtectSecretNameKey = "IBM_KP_SECRET_NAME"
+	keyProtectRegionKey     = "IBM_KP_REGION"
 
-	keyProtectServiceInstanceID = "KP_SERVICE_INSTANCE_ID"
+	keyProtectServiceInstanceID = "IBM_KP_SERVICE_INSTANCE_ID"
 	// The following options are part of the Kubernetes Secrets.
 	// #nosec:G101, no hardcoded secrets, only configuration keys.
-	keyProtectServiceAPIKey   = "KP_SERVICE_API_KEY"
-	KeyProtectCustomerRootKey = "KP_CUSTOMER_ROOT_KEY"
-
-	keyProtectSessionToken = "KP_SESSION_TOKEN"
-	keyProtectCRK          = "KP_CRK_ARN"
+	keyProtectServiceAPIKey   = "IBM_KP_SERVICE_API_KEY"
+	KeyProtectCustomerRootKey = "IBM_KP_CUSTOMER_ROOT_KEY"
+	keyProtectSessionToken    = "IBM_KP_SESSION_TOKEN" //nolint:gosec // only configuration key
+	keyProtectCRK             = "IBM_KP_CRK_ARN"
 )
 
 var _ = RegisterProvider(Provider{
