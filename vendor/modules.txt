@@ -91,9 +91,11 @@ github.com/container-storage-interface/spec/lib/go/csi
 # github.com/csi-addons/replication-lib-utils v0.2.0
 ## explicit; go 1.15
 github.com/csi-addons/replication-lib-utils/protosanitizer
-# github.com/csi-addons/spec v0.1.2-0.20211220083702-c779b23cf97c
+# github.com/csi-addons/spec v0.1.2-0.20211220115741-32fa508dadbe
 ## explicit
+github.com/csi-addons/spec/lib/go/fence
 github.com/csi-addons/spec/lib/go/identity
+github.com/csi-addons/spec/lib/go/reclaimspace
 github.com/csi-addons/spec/lib/go/replication
 # github.com/cyphar/filepath-securejoin v0.2.2
 ## explicit
