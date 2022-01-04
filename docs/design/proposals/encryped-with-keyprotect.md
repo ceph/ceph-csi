@@ -15,16 +15,16 @@ service from the CSI driver and to make use of the encryption operations:
 * KMS_SERVICE_NAME=[kms_service_name]
 A unique name for the key management service within the project.
 
-* KP_SERVICE_INSTANCE_ID=[service_instance_id]
+* IBM_KP_SERVICE_INSTANCE_ID=[service_instance_id]
 The Instance ID of the IBM HPCS service, ex:  crn:v1:bluemix:public:hs-crypto:us-south:a/5d19cf8b82874c2dab37e397426fbc42:e2ae65ff-954b-453f-b0d7-fc5064c203ce::
 
-* KP_SERVICE_API_KEY=[service_api_key]
+* IBM_KP_SERVICE_API_KEY=[service_api_key]
 Ex:  06x6DbTkVQ-qCRmq9cK-p9xOQpU2UwJMcdjnIDdr0g2R
 
-* KP_CUSTOMER_ROOT_KEY=[customer_root_key]
+* IBM_KP_CUSTOMER_ROOT_KEY=[customer_root_key]
 Ex: c7a9aa91-5cb5-48da-a821-e85c27b99d92
 
-* KP_REGION = [region of the key protect service]
+* IBM_KP_REGION = [region of the key protect service]
 Ex: us-south-2
 ```
 
