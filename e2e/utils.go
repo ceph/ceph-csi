@@ -60,6 +60,8 @@ const (
 	appLabel = "write-data-in-pod"
 
 	noError = ""
+	// labels/selector used to list/delete rbd pods.
+	rbdPodLabels = "app in (ceph-csi-rbd, csi-rbdplugin, csi-rbdplugin-provisioner)"
 )
 
 var (

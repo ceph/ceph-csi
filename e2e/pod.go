@@ -395,3 +395,22 @@ func getKernelVersionFromDaemonset(f *framework.Framework, ns, dsn, cn string) (
 
 	return kernelRelease, nil
 }
+
+// recreateCSIPods delete the daemonset and deployment pods based on the selectors passed in.
+func recreateCSIPods(f *framework.Framework, podLabels, daemonsetName, deploymentName string) error {
+	err := deletePodWithLabel(podLabels, cephCSINamespace, false)
+	if err != nil {
+		return fmt.Errorf("failed to delete pods with labels (%s): %w", podLabels, err)
+	}
+	// wait for csi pods to come up
+	err = waitForDaemonSets(daemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("timeout waiting for daemonset pods: %w", err)
+	}
+	err = waitForDeploymentComplete(f.ClientSet, deploymentName, cephCSINamespace, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("timeout waiting for deployment to be in running state: %w", err)
+	}
+
+	return nil
+}
