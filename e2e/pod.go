@@ -273,7 +273,6 @@ func createAppErr(c kubernetes.Interface, app *v1.Pod, timeout int, errString st
 
 func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, expectedError string) error {
 	timeout := time.Duration(t) * time.Minute
-	start := time.Now()
 	e2elog.Logf("Waiting up to %v to be in Running state", name)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
@@ -304,12 +303,6 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 					return true, err
 				}
 			}
-		case v1.PodUnknown:
-			e2elog.Logf(
-				"%s app  is in %s phase expected to be in Running  state (%d seconds elapsed)",
-				name,
-				pod.Status.Phase,
-				int(time.Since(start).Seconds()))
 		}
 
 		return false, nil
