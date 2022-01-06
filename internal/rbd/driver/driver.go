@@ -216,6 +216,9 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 	if conf.IsControllerServer {
 		rs := casrbd.NewReclaimSpaceControllerServer()
 		r.cas.RegisterService(rs)
+
+		fcs := casrbd.NewFenceControllerServer()
+		r.cas.RegisterService(fcs)
 	}
 
 	if conf.IsNodeServer {
