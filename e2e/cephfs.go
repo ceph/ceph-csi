@@ -290,13 +290,14 @@ var _ = Describe("cephfs", func() {
 		It("Test CephFS CSI", func() {
 			pvcPath := cephFSExamplePath + "pvc.yaml"
 			appPath := cephFSExamplePath + "pod.yaml"
+			appRWOPPath := cephFSExamplePath + "pod-rwop.yaml"
 			pvcClonePath := cephFSExamplePath + "pvc-restore.yaml"
 			pvcSmartClonePath := cephFSExamplePath + "pvc-clone.yaml"
 			appClonePath := cephFSExamplePath + "pod-restore.yaml"
 			appSmartClonePath := cephFSExamplePath + "pod-clone.yaml"
 			snapshotPath := cephFSExamplePath + "snapshot.yaml"
 			appEphemeralPath := cephFSExamplePath + "pod-ephemeral.yaml"
-
+			pvcRWOPPath := cephFSExamplePath + "pvc-rwop.yaml"
 			By("checking provisioner deployment is running", func() {
 				err := waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)
 				if err != nil {
@@ -351,6 +352,48 @@ var _ = Describe("cephfs", func() {
 					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to delete application: %v", err)
+					}
+					validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+					err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete CephFS storageclass: %v", err)
+					}
+				}
+			})
+
+			By("verify RWOP volume support", func() {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 22) {
+					err := createCephfsStorageClass(f.ClientSet, f, true, nil)
+					if err != nil {
+						e2elog.Failf("failed to create CephFS storageclass: %v", err)
+					}
+					pvc, err := loadPVC(pvcRWOPPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC: %v", err)
+					}
+					pvc.Namespace = f.UniqueName
+
+					// create application
+					app, err := loadApp(appRWOPPath)
+					if err != nil {
+						e2elog.Failf("failed to load application: %v", err)
+					}
+					app.Namespace = f.UniqueName
+					baseAppName := app.Name
+
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC: %v", err)
+					}
+					err = createApp(f.ClientSet, app, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create application: %v", err)
+					}
+					validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
+
+					err = validateRWOPPodCreation(f, pvc, app, baseAppName)
+					if err != nil {
+						e2elog.Failf("failed to validate RWOP pod creation: %v", err)
 					}
 					validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 					err = deleteResource(cephFSExamplePath + "storageclass.yaml")
