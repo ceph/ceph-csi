@@ -33,6 +33,8 @@ import (
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
+const errRWOPConflict = "node has pod using PersistentVolumeClaim with the same name and ReadWriteOncePod access mode."
+
 // getDaemonSetLabelSelector returns labels of daemonset given name and namespace dynamically,
 // needed since labels are not same for helm and non-helm deployments.
 func getDaemonSetLabelSelector(f *framework.Framework, ns, daemonSetName string) (string, error) {
@@ -410,6 +412,36 @@ func recreateCSIPods(f *framework.Framework, podLabels, daemonsetName, deploymen
 	err = waitForDeploymentComplete(f.ClientSet, deploymentName, cephCSINamespace, deployTimeout)
 	if err != nil {
 		return fmt.Errorf("timeout waiting for deployment to be in running state: %w", err)
+	}
+
+	return nil
+}
+
+// validateRWOPPodCreation validates the second pod creation failure scenario with RWOP pvc.
+func validateRWOPPodCreation(
+	f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	app *v1.Pod,
+	baseAppName string) error {
+	var err error
+	// create one more  app with same PVC
+	name := fmt.Sprintf("%s%d", f.UniqueName, deployTimeout)
+	app.Name = name
+
+	err = createAppErr(f.ClientSet, app, deployTimeout, errRWOPConflict)
+	if err != nil {
+		return fmt.Errorf("application should not go to running state due to RWOP access mode: %w", err)
+	}
+
+	err = deletePod(name, app.Namespace, f.ClientSet, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to delete application: %w", err)
+	}
+
+	app.Name = baseAppName
+	err = deletePVCAndApp("", f, pvc, app)
+	if err != nil {
+		return fmt.Errorf("failed to delete PVC and application: %w", err)
 	}
 
 	return nil
