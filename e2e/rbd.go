@@ -70,9 +70,13 @@ var (
 	appPath                = rbdExamplePath + "pod.yaml"
 	rawPvcPath             = rbdExamplePath + "raw-block-pvc.yaml"
 	rawAppPath             = rbdExamplePath + "raw-block-pod.yaml"
+	rawAppRWOPPath         = rbdExamplePath + "raw-block-pod-rwop.yaml"
+	rawPVCRWOPPath         = rbdExamplePath + "raw-block-pvc-rwop.yaml"
 	pvcClonePath           = rbdExamplePath + "pvc-restore.yaml"
 	pvcSmartClonePath      = rbdExamplePath + "pvc-clone.yaml"
 	pvcBlockSmartClonePath = rbdExamplePath + "pvc-block-clone.yaml"
+	pvcRWOPPath            = rbdExamplePath + "pvc-rwop.yaml"
+	appRWOPPath            = rbdExamplePath + "pod-rwop.yaml"
 	appClonePath           = rbdExamplePath + "pod-restore.yaml"
 	appSmartClonePath      = rbdExamplePath + "pod-clone.yaml"
 	appBlockSmartClonePath = rbdExamplePath + "block-pod-clone.yaml"
@@ -504,6 +508,74 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+			})
+
+			By("create a Block mode RWOP PVC and bind it to more than one app", func() {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 22) {
+					pvc, err := loadPVC(rawPVCRWOPPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC: %v", err)
+					}
+					pvc.Namespace = f.UniqueName
+
+					app, err := loadApp(rawAppRWOPPath)
+					if err != nil {
+						e2elog.Failf("failed to load application: %v", err)
+					}
+					app.Namespace = f.UniqueName
+					baseAppName := app.Name
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 1, defaultRBDPool)
+
+					err = createApp(f.ClientSet, app, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create application: %v", err)
+					}
+					err = validateRWOPPodCreation(f, pvc, app, baseAppName)
+					if err != nil {
+						e2elog.Failf("failed to validate RWOP pod creation: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+				}
+			})
+
+			By("create a RWOP PVC and bind it to more than one app", func() {
+				if k8sVersionGreaterEquals(f.ClientSet, 1, 22) {
+					pvc, err := loadPVC(pvcRWOPPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC: %v", err)
+					}
+					pvc.Namespace = f.UniqueName
+
+					app, err := loadApp(appRWOPPath)
+					if err != nil {
+						e2elog.Failf("failed to load application: %v", err)
+					}
+					app.Namespace = f.UniqueName
+					baseAppName := app.Name
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 1, defaultRBDPool)
+
+					err = createApp(f.ClientSet, app, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create application: %v", err)
+					}
+					err = validateRWOPPodCreation(f, pvc, app, baseAppName)
+					if err != nil {
+						e2elog.Failf("failed to validate RWOP pod creation: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+				}
 			})
 
 			By("create an erasure coded PVC and bind it to an app", func() {
