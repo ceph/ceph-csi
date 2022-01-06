@@ -82,6 +82,12 @@ func (is *IdentityServer) GetCapabilities(
 						Type: identity.Capability_ReclaimSpace_OFFLINE,
 					},
 				},
+			}, &identity.Capability{
+				Type: &identity.Capability_NetworkFence_{
+					NetworkFence: &identity.Capability_NetworkFence{
+						Type: identity.Capability_NetworkFence_NETWORK_FENCE,
+					},
+				},
 			})
 	}
 
