@@ -43,6 +43,15 @@ minikube_version() {
     echo "${MINIKUBE_VERSION}" | sed 's/^v//' | cut -d'.' -f"${1}"
 }
 
+# parse the kubernetes version, return the digit passed as argument
+# v1.21.0 -> kube_version 1 -> 1
+# v1.21.0 -> kube_version 2 -> 21
+# v1.21.0 -> kube_version 3 -> 0
+kube_version() {
+    echo "${KUBE_VERSION}" | sed 's/^v//' | cut -d'.' -f"${1}"
+}
+
+
 # detect if there is a minikube executable available already. If there is none,
 # fallback to using /usr/local/bin/minikube, as that is where
 # install_minikube() will place it too.
@@ -203,6 +212,13 @@ up)
 
     disable_storage_addons
 
+    #  get kubernetes version we are operating on and accordingly enable feature gates
+    KUBE_MAJOR=$(kube_version 1)
+    KUBE_MINOR=$(kube_version 2)
+    if [ "${KUBE_MAJOR}" -eq 1 ] && [ "${KUBE_MINOR}" -ge 22 ];then
+        # if kubernetes version is greater than 1.22 enable RWOP feature gate
+        K8S_FEATURE_GATES="${K8S_FEATURE_GATES},ReadWriteOncePod=true"
+    fi
     # shellcheck disable=SC2086
     ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG} ${EXTRA_CONFIG_PSP} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
 
