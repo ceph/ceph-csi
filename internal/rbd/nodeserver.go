@@ -366,7 +366,6 @@ func (ns *NodeServer) stageTransaction(
 	transaction := &stageTransaction{}
 
 	var err error
-	var readOnly bool
 
 	// Allow image to be mounted on multiple nodes if it is ROX
 	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY {
@@ -421,7 +420,7 @@ func (ns *NodeServer) stageTransaction(
 	transaction.isStagePathCreated = true
 
 	// nodeStage Path
-	readOnly, err = ns.mountVolumeToStagePath(ctx, req, staticVol, stagingTargetPath, devicePath)
+	_, err = ns.mountVolumeToStagePath(ctx, req, staticVol, stagingTargetPath, devicePath)
 	if err != nil {
 		return transaction, err
 	}
@@ -434,11 +433,6 @@ func (ns *NodeServer) stageTransaction(
 	err = resizeNodeStagePath(ctx, isBlock, transaction, req.GetVolumeId(), stagingTargetPath)
 	if err != nil {
 		return transaction, err
-	}
-
-	if !readOnly {
-		// #nosec - allow anyone to write inside the target path
-		err = os.Chmod(stagingTargetPath, 0o777)
 	}
 
 	return transaction, err
