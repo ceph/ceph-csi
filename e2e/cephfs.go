@@ -1261,6 +1261,34 @@ var _ = Describe("cephfs", func() {
 					e2elog.Failf("failed to delete PVC: %v", err)
 				}
 			})
+
+			By("restore snapshot to a bigger size PVC", func() {
+				err := validateBiggerPVCFromSnapshot(f,
+					pvcPath,
+					appPath,
+					snapshotPath,
+					pvcClonePath,
+					appClonePath)
+				if err != nil {
+					e2elog.Failf("failed to validate restore bigger size clone: %v", err)
+				}
+
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+			})
+
+			By("clone PVC to a bigger size PVC", func() {
+				err := validateBiggerCloneFromPVC(f,
+					pvcPath,
+					appPath,
+					pvcSmartClonePath,
+					appSmartClonePath)
+				if err != nil {
+					e2elog.Failf("failed to validate bigger size clone: %v", err)
+				}
+
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+			})
+
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and delete PVC when backend pool deleted", func() {
