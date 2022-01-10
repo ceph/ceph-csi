@@ -12,20 +12,26 @@ Below parameters/values can be used to establish the connection to the HPCS
 service from the CSI driver and to make use of the encryption operations:
 
 ```text
-* KMS_SERVICE_NAME=[kms_service_name]
+* IBM_KP_BASE_URL
+The Key Protect/HPCS connection URL.
+
+* IBM_KP_TOKEN_URL
+The Token Authenticaltion URL of KeyProtect/HPCS service.
+
+* KMS_SERVICE_NAME
 A unique name for the key management service within the project.
 
-* IBM_KP_SERVICE_INSTANCE_ID=[service_instance_id]
+* IBM_KP_SERVICE_INSTANCE_ID
 The Instance ID of the IBM HPCS service, ex:  crn:v1:bluemix:public:hs-crypto:us-south:a/5d19cf8b82874c2dab37e397426fbc42:e2ae65ff-954b-453f-b0d7-fc5064c203ce::
 
-* IBM_KP_SERVICE_API_KEY=[service_api_key]
+* IBM_KP_SERVICE_API_KEY
 Ex:  06x6DbTkVQ-qCRmq9cK-p9xOQpU2UwJMcdjnIDdr0g2R
 
-* IBM_KP_CUSTOMER_ROOT_KEY=[customer_root_key]
+* IBM_KP_CUSTOMER_ROOT_KEY
 Ex: c7a9aa91-5cb5-48da-a821-e85c27b99d92
 
-* IBM_KP_REGION = [region of the key protect service]
-Ex: us-south-2
+* IBM_KP_REGION
+Region of the key protect service, ex: us-south-2
 ```
 
 ### Values provided in the connection Secret
