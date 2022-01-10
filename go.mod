@@ -13,7 +13,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/hashicorp/vault/api v1.3.0
+	github.com/hashicorp/vault/api v1.3.1
 	github.com/kubernetes-csi/csi-lib-utils v0.10.0
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
@@ -67,7 +67,7 @@ require (
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v0.16.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect

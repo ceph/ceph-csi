@@ -513,8 +513,9 @@ github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brv
 github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY2I=
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/go-cleanhttp v0.5.0/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
-github.com/hashicorp/go-cleanhttp v0.5.1 h1:dH3aiDG9Jvb5r5+bYHsikaOUIpcM0xvgMXVoDkXMzJM=
 github.com/hashicorp/go-cleanhttp v0.5.1/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
+github.com/hashicorp/go-cleanhttp v0.5.2 h1:035FKYIWjmULyFRBKPs8TBQoi0x6d9G4xc9neXJWAZQ=
+github.com/hashicorp/go-cleanhttp v0.5.2/go.mod h1:kO/YDlP8L1346E6Sodw+PrpBSV4/SoxCXGY6BqNFT48=
 github.com/hashicorp/go-gatedio v0.5.0/go.mod h1:Lr3t8L6IyxD3DAeaUxGcgl2JnRUpWMCsmBl4Omu/2t4=
 github.com/hashicorp/go-gcp-common v0.5.0/go.mod h1:IDGUI2N/OS3PiU4qZcXJeWKPI6O/9Y8hOrbSiMcqyYw=
 github.com/hashicorp/go-gcp-common v0.6.0/go.mod h1:RuZi18562/z30wxOzpjeRrGcmk9Ro/rBzixaSZDhIhY=
@@ -633,8 +634,8 @@ github.com/hashicorp/vault/api v1.0.5-0.20191122173911-80fcc7907c78/go.mod h1:Uf
 github.com/hashicorp/vault/api v1.0.5-0.20200215224050-f6547fa8e820/go.mod h1:3f12BMfgDGjTsTtIUj+ZKZwSobQpZtYGFIEehOv5z1o=
 github.com/hashicorp/vault/api v1.0.5-0.20200317185738-82f498082f02/go.mod h1:3f12BMfgDGjTsTtIUj+ZKZwSobQpZtYGFIEehOv5z1o=
 github.com/hashicorp/vault/api v1.0.5-0.20200902155336-f9d5ce5a171a/go.mod h1:R3Umvhlxi2TN7Ex2hzOowyeNb+SfbVWI973N+ctaFMk=
-github.com/hashicorp/vault/api v1.3.0 h1:uDy39PLSvy6gtKyjOCRPizy2QdFiIYSWBR2pxCEzYL8=
-github.com/hashicorp/vault/api v1.3.0/go.mod h1:EabNQLI0VWbWoGlA+oBLC8PXmR9D60aUVgQGvangFWQ=
+github.com/hashicorp/vault/api v1.3.1 h1:pkDkcgTh47PRjY1NEFeofqR4W/HkNUi9qIakESO2aRM=
+github.com/hashicorp/vault/api v1.3.1/go.mod h1:QeJoWxMFt+MsuWcYhmwRLwKEXrjwAFFywzhptMsTIUw=
 github.com/hashicorp/vault/sdk v0.1.8/go.mod h1:tHZfc6St71twLizWNHvnnbiGFo1aq0eD2jGPLtP8kAU=
 github.com/hashicorp/vault/sdk v0.1.14-0.20190730042320-0dc007d98cc8/go.mod h1:B+hVj7TpuQY1Y/GPbCpffmgd+tSEwvhkWnjtSYCaS2M=
 github.com/hashicorp/vault/sdk v0.1.14-0.20191108161836-82f2b5571044/go.mod h1:PcekaFGiPJyHnFy+NZhP6ll650zEw51Ag7g/YEa+EOU=
