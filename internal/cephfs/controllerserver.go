@@ -211,11 +211,7 @@ func (cs *ControllerServer) CreateVolume(
 
 	if vID != nil {
 		if sID != nil || pvID != nil {
-			// while cloning the volume the size is not populated properly to the new volume now.
-			// it will be fixed in cephfs soon with the parentvolume size. Till then by below
-			// resize we are making sure we return or satisfy the requested size by setting the size
-			// explicitly
-			err = volOptions.ResizeVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), volOptions.Size)
+			err = volOptions.ExpandVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), volOptions.Size)
 			if err != nil {
 				purgeErr := volOptions.PurgeVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), false)
 				if purgeErr != nil {
@@ -235,6 +231,7 @@ func (cs *ControllerServer) CreateVolume(
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 		}
+
 		volumeContext := req.GetParameters()
 		volumeContext["subvolumeName"] = vID.FsSubvolName
 		volumeContext["subvolumePath"] = volOptions.RootPath

@@ -191,6 +191,23 @@ func CreateVolume(ctx context.Context, volOptions *VolumeOptions, volID fsutil.V
 	return nil
 }
 
+// ExpandVolume will expand the volume if the requested size is greater than
+// the subvolume size.
+func (vo *VolumeOptions) ExpandVolume(ctx context.Context, volID fsutil.VolumeID, bytesQuota int64) error {
+	// get the subvolume size for comparison with the requested size.
+	info, err := vo.GetSubVolumeInfo(ctx, volID)
+	if err != nil {
+		return err
+	}
+	// resize if the requested size is greater than the current size.
+	if vo.Size > info.BytesQuota {
+		log.DebugLog(ctx, "clone %s size %d is greater than requested size %d", volID, info.BytesQuota, bytesQuota)
+		err = vo.ResizeVolume(ctx, volID, bytesQuota)
+	}
+
+	return err
+}
+
 // ResizeVolume will try to use ceph fs subvolume resize command to resize the
 // subvolume. If the command is not available as a fallback it will use
 // CreateVolume to resize the subvolume.

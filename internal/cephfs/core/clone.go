@@ -131,13 +131,14 @@ func CreateCloneFromSubvolume(
 
 		return cloneState.toError()
 	}
-	// This is a work around to fix sizing issue for cloned images
-	err = volOpt.ResizeVolume(ctx, cloneID, volOpt.Size)
+
+	err = volOpt.ExpandVolume(ctx, cloneID, volOpt.Size)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to expand volume %s: %v", cloneID, err)
 
 		return err
 	}
+
 	// As we completed clone, remove the intermediate snap
 	if err = parentvolOpt.UnprotectSnapshot(ctx, snapshotID, volID); err != nil {
 		// In case the snap is already unprotected we get ErrSnapProtectionExist error code
@@ -227,10 +228,8 @@ func CreateCloneFromSnapshot(
 	if cloneState != cephFSCloneComplete {
 		return cloneState.toError()
 	}
-	// The clonedvolume currently does not reflect the proper size due to an issue in cephfs
-	// however this is getting addressed in cephfs and the parentvolume size will be reflected
-	// in the new cloned volume too. Till then we are explicitly making the size set
-	err = volOptions.ResizeVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), volOptions.Size)
+
+	err = volOptions.ExpandVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), volOptions.Size)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to expand volume %s with error: %v", vID.FsSubvolName, err)
 
