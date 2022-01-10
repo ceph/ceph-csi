@@ -1105,7 +1105,7 @@ k8s.io/component-base/version
 k8s.io/component-helpers/node/util/sysctl
 k8s.io/component-helpers/scheduling/corev1
 k8s.io/component-helpers/scheduling/corev1/nodeaffinity
-# k8s.io/klog/v2 v2.30.0
+# k8s.io/klog/v2 v2.40.1
 ## explicit; go 1.13
 k8s.io/klog/v2
 # k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65
