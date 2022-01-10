@@ -361,6 +361,7 @@ func NewVolumeOptionsFromVolID(
 	if err == nil {
 		volOptions.RootPath = info.Path
 		volOptions.Features = info.Features
+		volOptions.Size = info.BytesQuota
 	}
 
 	if errors.Is(err, cerrors.ErrInvalidCommand) {
@@ -580,6 +581,7 @@ func NewSnapshotOptionsFromID(
 		return &volOptions, nil, &sid, err
 	}
 	volOptions.Features = subvolInfo.Features
+	volOptions.Size = subvolInfo.BytesQuota
 
 	info, err := volOptions.GetSnapshotInfo(ctx, fsutil.VolumeID(sid.FsSnapshotName), fsutil.VolumeID(sid.FsSubvolName))
 	if err != nil {
