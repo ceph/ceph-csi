@@ -30,7 +30,7 @@ require (
 	k8s.io/apimachinery v0.23.0
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cloud-provider v0.23.0
-	k8s.io/klog/v2 v2.30.0
+	k8s.io/klog/v2 v2.40.1
 	//
 	// when updating k8s.io/kubernetes, make sure to update the replace section too
 	//
