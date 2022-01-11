@@ -124,6 +124,11 @@ func CheckVolExists(ctx context.Context,
 			return nil, cerrors.ErrClonePending
 		}
 		if cloneState == cephFSCloneFailed {
+			log.ErrorLog(ctx,
+				"clone failed, deleting subvolume clone. vol=%s, subvol=%s subvolgroup=%s",
+				volOptions.FsName,
+				vid.FsSubvolName,
+				volOptions.SubvolumeGroup)
 			err = volOptions.PurgeVolume(ctx, fsutil.VolumeID(vid.FsSubvolName), true)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to delete volume %s: %v", vid.FsSubvolName, err)
