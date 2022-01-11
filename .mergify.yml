@@ -17,6 +17,9 @@ queue_rules:
   - name: default
     conditions:
       # Conditions to get out of the queue (= merged)
+      - label!=DNM
+      - -closed
+      - -draft
       - or:
           - and:
               - base~=^(devel)|(release-.+)$
