@@ -67,8 +67,6 @@ pull_request_rules:
     conditions:
       - base~=^(devel)|(release-.+)$
     actions:
-      queue:
-        name: default
       dismiss_reviews:
         approved: true
         changes_requested: false
@@ -77,8 +75,6 @@ pull_request_rules:
       - conflict
       - author!=dependabot[bot]
     actions:
-      queue:
-        name: default
       comment:
         # yamllint disable-line rule:truthy
         message: "This pull request now has conflicts with the target branch.
