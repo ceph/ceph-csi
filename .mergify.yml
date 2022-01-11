@@ -17,6 +17,13 @@ queue_rules:
   - name: default
     conditions:
       # Conditions to get out of the queue (= merged)
+      - label!=DNM
+      - -closed
+      - -draft
+      - "#approved-reviews-by>=2"
+      - "#changes-requested-reviews-by=0"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
       - or:
           - and:
               - base~=^(devel)|(release-.+)$
