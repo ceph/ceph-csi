@@ -107,8 +107,15 @@ pull_request_rules:
     actions:
       queue:
         name: default
-      dismiss_reviews: {}
       delete_head_branch: {}
+
+  - name: dismiss review of merged pull request
+    conditions:
+      - base~=^(devel)|(release-.+)$
+      - merged
+    actions:
+      dismiss_reviews: {}
+
   - name: automatic merge
     conditions:
       - label!=DNM
@@ -139,8 +146,8 @@ pull_request_rules:
     actions:
       queue:
         name: default
-      dismiss_reviews: {}
       delete_head_branch: {}
+
   - name: automatic merge PR having ready-to-merge label
     conditions:
       - label!=DNM
@@ -170,7 +177,6 @@ pull_request_rules:
     actions:
       queue:
         name: default
-      dismiss_reviews: {}
       delete_head_branch: {}
   - name: backport patches to release-v3.5 branch
     conditions:
@@ -249,7 +255,6 @@ pull_request_rules:
     actions:
       queue:
         name: default
-      dismiss_reviews: {}
       delete_head_branch: {}
   - name: remove outdated approvals on ci/centos
     conditions:
@@ -272,7 +277,6 @@ pull_request_rules:
     actions:
       queue:
         name: default
-      dismiss_reviews: {}
       delete_head_branch: {}
   - name: automatic merge PR having ready-to-merge label on ci/centos
     conditions:
@@ -287,7 +291,6 @@ pull_request_rules:
     actions:
       queue:
         name: default
-      dismiss_reviews: {}
       delete_head_branch: {}
   ##
   ## Automatically set/remove labels
