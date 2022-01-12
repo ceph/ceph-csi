@@ -231,6 +231,11 @@ func checkValidCreateVolumeRequest(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSna
 		if err != nil {
 			return status.Errorf(codes.InvalidArgument, "cannot clone from volume %s: %s", parentVol, err.Error())
 		}
+
+		err = parentVol.isCompabitableClone(&rbdVol.rbdImage)
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "cannot clone from volume %s: %s", parentVol, err.Error())
+		}
 	}
 
 	return nil
