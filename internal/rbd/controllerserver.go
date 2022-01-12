@@ -593,7 +593,7 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 	parentVol.conn = rbdVol.conn.Copy()
 
 	if rbdVol.ThickProvision {
-		err = parentVol.DeepCopy(rbdVol)
+		err = parentVol.DeepCopy(&rbdVol.rbdImage)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to deep copy %q into %q: %v", parentVol, rbdVol, err)
 		}

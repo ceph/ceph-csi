@@ -237,7 +237,7 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 	}()
 
 	if rv.ThickProvision {
-		err = tempClone.DeepCopy(rv)
+		err = tempClone.DeepCopy(&rv.rbdImage)
 		if err != nil {
 			return fmt.Errorf("failed to deep copy %q into %q: %w", parentVol, rv, err)
 		}
