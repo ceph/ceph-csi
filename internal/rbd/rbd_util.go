@@ -1993,6 +1993,17 @@ func (ri *rbdImage) isCompatibleEncryption(dst *rbdImage) error {
 	return nil
 }
 
+func (ri *rbdImage) isCompabitableClone(dst *rbdImage) error {
+	if dst.VolSize < ri.VolSize {
+		return fmt.Errorf(
+			"volume size %d is smaller than source volume size %d",
+			dst.VolSize,
+			ri.VolSize)
+	}
+
+	return nil
+}
+
 func (ri *rbdImage) isCompatibleThickProvision(dst *rbdVolume) error {
 	thick, err := ri.isThickProvisioned()
 	if err != nil {

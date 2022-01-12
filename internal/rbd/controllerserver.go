@@ -215,6 +215,12 @@ func checkValidCreateVolumeRequest(rbdVol, parentVol *rbdVolume, rbdSnap *rbdSna
 		if err != nil {
 			return status.Errorf(codes.InvalidArgument, "cannot restore from snapshot %s: %s", rbdSnap, err.Error())
 		}
+
+		err = rbdSnap.isCompabitableClone(&rbdVol.rbdImage)
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "cannot restore from snapshot %s: %s", rbdSnap, err.Error())
+		}
+
 	case parentVol != nil:
 		err = parentVol.isCompatibleEncryption(&rbdVol.rbdImage)
 		if err != nil {
