@@ -131,6 +131,8 @@ type rbdImage struct {
 	// Parent Pool is the pool that contains the parent image.
 	ParentPool      string
 	ImageFeatureSet librbd.FeatureSet
+	// Primary represent if the image is primary or not.
+	Primary bool
 
 	// encryption provides access to optional VolumeEncryption functions
 	encryption *util.VolumeEncryption
@@ -172,7 +174,6 @@ type rbdVolume struct {
 	RequestedVolSize   int64
 	DisableInUseChecks bool
 	readOnly           bool
-	Primary            bool
 	ThickProvision     bool
 }
 
@@ -424,11 +425,11 @@ func (ri *rbdImage) openIoctx() error {
 
 // getImageID queries rbd about the given image and stores its id, returns
 // ErrImageNotFound if provided image is not found.
-func (rv *rbdVolume) getImageID() error {
-	if rv.ImageID != "" {
+func (ri *rbdImage) getImageID() error {
+	if ri.ImageID != "" {
 		return nil
 	}
-	image, err := rv.open()
+	image, err := ri.open()
 	if err != nil {
 		return err
 	}
@@ -438,7 +439,7 @@ func (rv *rbdVolume) getImageID() error {
 	if err != nil {
 		return err
 	}
-	rv.ImageID = id
+	ri.ImageID = id
 
 	return nil
 }
@@ -467,17 +468,17 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 
 // allocate uses the stripe-period of the image to fully allocate (thick
 // provision) the image.
-func (rv *rbdVolume) allocate(offset uint64) error {
+func (ri *rbdImage) allocate(offset uint64) error {
 	// We do not want to call discard, we really want to write zeros to get
 	// the allocation. This sets the option for the re-used connection, and
 	// all subsequent images that are opened. That is not a problem, as
 	// this is the only place images get written.
-	err := rv.conn.DisableDiscardOnZeroedWriteSame()
+	err := ri.conn.DisableDiscardOnZeroedWriteSame()
 	if err != nil {
 		return err
 	}
 
-	image, err := rv.open()
+	image, err := ri.open()
 	if err != nil {
 		return err
 	}
@@ -543,8 +544,8 @@ func (rv *rbdVolume) allocate(offset uint64) error {
 
 // isInUse checks if there is a watcher on the image. It returns true if there
 // is a watcher on the image, otherwise returns false.
-func (rv *rbdVolume) isInUse() (bool, error) {
-	image, err := rv.open()
+func (ri *rbdImage) isInUse() (bool, error) {
+	image, err := ri.open()
 	if err != nil {
 		if errors.Is(err, ErrImageNotFound) || errors.Is(err, util.ErrPoolNotFound) {
 			return false, err
@@ -563,11 +564,11 @@ func (rv *rbdVolume) isInUse() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	rv.Primary = mirrorInfo.Primary
+	ri.Primary = mirrorInfo.Primary
 
 	// because we opened the image, there is at least one watcher
 	defaultWatchers := 1
-	if rv.Primary {
+	if ri.Primary {
 		// if rbd mirror daemon is running, a watcher will be added by the rbd
 		// mirror daemon for mirrored images.
 		defaultWatchers++
@@ -619,18 +620,18 @@ func isCephMgrSupported(ctx context.Context, clusterID string, err error) bool {
 
 // ensureImageCleanup finds image in trash and if found removes it
 // from trash.
-func (rv *rbdVolume) ensureImageCleanup(ctx context.Context) error {
-	trashInfoList, err := librbd.GetTrashList(rv.ioctx)
+func (ri *rbdImage) ensureImageCleanup(ctx context.Context) error {
+	trashInfoList, err := librbd.GetTrashList(ri.ioctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to list images in trash: %v", err)
 
 		return err
 	}
 	for _, val := range trashInfoList {
-		if val.Name == rv.RbdImageName {
-			rv.ImageID = val.Id
+		if val.Name == ri.RbdImageName {
+			ri.ImageID = val.Id
 
-			return rv.trashRemoveImage(ctx)
+			return ri.trashRemoveImage(ctx)
 		}
 	}
 
@@ -638,82 +639,82 @@ func (rv *rbdVolume) ensureImageCleanup(ctx context.Context) error {
 }
 
 // deleteImage deletes a ceph image with provision and volume options.
-func (rv *rbdVolume) deleteImage(ctx context.Context) error {
-	image := rv.RbdImageName
+func (ri *rbdImage) deleteImage(ctx context.Context) error {
+	image := ri.RbdImageName
 
-	log.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, rv.Monitors, rv.Pool)
+	log.DebugLog(ctx, "rbd: delete %s using mon %s, pool %s", image, ri.Monitors, ri.Pool)
 
 	// Support deleting the older rbd images whose imageID is not stored in omap
-	err := rv.getImageID()
+	err := ri.getImageID()
 	if err != nil {
 		return err
 	}
 
-	if rv.isEncrypted() {
-		log.DebugLog(ctx, "rbd: going to remove DEK for %q", rv)
-		if err = rv.encryption.RemoveDEK(rv.VolID); err != nil {
-			log.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", rv.VolID, err)
+	if ri.isEncrypted() {
+		log.DebugLog(ctx, "rbd: going to remove DEK for %q", ri)
+		if err = ri.encryption.RemoveDEK(ri.VolID); err != nil {
+			log.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", ri.VolID, err)
 		}
 	}
 
-	err = rv.openIoctx()
+	err = ri.openIoctx()
 	if err != nil {
 		return err
 	}
 
-	rbdImage := librbd.GetImage(rv.ioctx, image)
+	rbdImage := librbd.GetImage(ri.ioctx, image)
 	err = rbdImage.Trash(0)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", rv, err)
+		log.ErrorLog(ctx, "failed to delete rbd image: %s, error: %v", ri, err)
 
 		return err
 	}
 
-	return rv.trashRemoveImage(ctx)
+	return ri.trashRemoveImage(ctx)
 }
 
 // trashRemoveImage adds a task to trash remove an image using ceph manager if supported,
 // otherwise removes the image from trash.
-func (rv *rbdVolume) trashRemoveImage(ctx context.Context) error {
+func (ri *rbdImage) trashRemoveImage(ctx context.Context) error {
 	// attempt to use Ceph manager based deletion support if available
-	log.DebugLog(ctx, "rbd: adding task to remove image %q with id %q from trash", rv, rv.ImageID)
+	log.DebugLog(ctx, "rbd: adding task to remove image %q with id %q from trash", ri, ri.ImageID)
 
-	ta, err := rv.conn.GetTaskAdmin()
+	ta, err := ri.conn.GetTaskAdmin()
 	if err != nil {
 		return err
 	}
 
-	_, err = ta.AddTrashRemove(admin.NewImageSpec(rv.Pool, rv.RadosNamespace, rv.ImageID))
+	_, err = ta.AddTrashRemove(admin.NewImageSpec(ri.Pool, ri.RadosNamespace, ri.ImageID))
 
-	rbdCephMgrSupported := isCephMgrSupported(ctx, rv.ClusterID, err)
+	rbdCephMgrSupported := isCephMgrSupported(ctx, ri.ClusterID, err)
 	if rbdCephMgrSupported && err != nil {
-		log.ErrorLog(ctx, "failed to add task to delete rbd image: %s, %v", rv, err)
+		log.ErrorLog(ctx, "failed to add task to delete rbd image: %s, %v", ri, err)
 
 		return err
 	}
 
 	if !rbdCephMgrSupported {
-		err = librbd.TrashRemove(rv.ioctx, rv.ImageID, true)
+		err = librbd.TrashRemove(ri.ioctx, ri.ImageID, true)
 		if err != nil {
-			log.ErrorLog(ctx, "failed to delete rbd image: %s, %v", rv, err)
+			log.ErrorLog(ctx, "failed to delete rbd image: %s, %v", ri, err)
 
 			return err
 		}
 	} else {
-		log.DebugLog(ctx, "rbd: successfully added task to move image %q with id %q to trash", rv, rv.ImageID)
+		log.DebugLog(ctx, "rbd: successfully added task to move image %q with id %q to trash", ri, ri.ImageID)
 	}
 
 	return nil
 }
 
-func (rv *rbdVolume) getCloneDepth(ctx context.Context) (uint, error) {
+func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 	var depth uint
 	vol := rbdVolume{}
 
-	vol.Pool = rv.Pool
-	vol.Monitors = rv.Monitors
-	vol.RbdImageName = rv.RbdImageName
-	vol.conn = rv.conn.Copy()
+	vol.Pool = ri.Pool
+	vol.Monitors = ri.Monitors
+	vol.RbdImageName = ri.RbdImageName
+	vol.conn = ri.conn.Copy()
 
 	for {
 		if vol.RbdImageName == "" {
@@ -800,7 +801,7 @@ func flattenClonedRbdImages(
 	return nil
 }
 
-func (rv *rbdVolume) flattenRbdImage(
+func (ri *rbdImage) flattenRbdImage(
 	ctx context.Context,
 	forceFlatten bool,
 	hardlimit, softlimit uint) error {
@@ -809,7 +810,7 @@ func (rv *rbdVolume) flattenRbdImage(
 
 	// skip clone depth check if request is for force flatten
 	if !forceFlatten {
-		depth, err = rv.getCloneDepth(ctx)
+		depth, err = ri.getCloneDepth(ctx)
 		if err != nil {
 			return err
 		}
@@ -819,37 +820,37 @@ func (rv *rbdVolume) flattenRbdImage(
 			depth,
 			softlimit,
 			hardlimit,
-			rv)
+			ri)
 	}
 
 	if !forceFlatten && (depth < hardlimit) && (depth < softlimit) {
 		return nil
 	}
 
-	log.DebugLog(ctx, "rbd: adding task to flatten image %q", rv)
+	log.DebugLog(ctx, "rbd: adding task to flatten image %q", ri)
 
-	ta, err := rv.conn.GetTaskAdmin()
+	ta, err := ri.conn.GetTaskAdmin()
 	if err != nil {
 		return err
 	}
 
-	_, err = ta.AddFlatten(admin.NewImageSpec(rv.Pool, rv.RadosNamespace, rv.RbdImageName))
-	rbdCephMgrSupported := isCephMgrSupported(ctx, rv.ClusterID, err)
+	_, err = ta.AddFlatten(admin.NewImageSpec(ri.Pool, ri.RadosNamespace, ri.RbdImageName))
+	rbdCephMgrSupported := isCephMgrSupported(ctx, ri.ClusterID, err)
 	if rbdCephMgrSupported {
 		if err != nil {
 			// discard flattening error if the image does not have any parent
-			rbdFlattenNoParent := fmt.Sprintf("Image %s/%s does not have a parent", rv.Pool, rv.RbdImageName)
+			rbdFlattenNoParent := fmt.Sprintf("Image %s/%s does not have a parent", ri.Pool, ri.RbdImageName)
 			if strings.Contains(err.Error(), rbdFlattenNoParent) {
 				return nil
 			}
-			log.ErrorLog(ctx, "failed to add task flatten for %s : %v", rv, err)
+			log.ErrorLog(ctx, "failed to add task flatten for %s : %v", ri, err)
 
 			return err
 		}
 		if forceFlatten || depth >= hardlimit {
-			return fmt.Errorf("%w: flatten is in progress for image %s", ErrFlattenInProgress, rv.RbdImageName)
+			return fmt.Errorf("%w: flatten is in progress for image %s", ErrFlattenInProgress, ri.RbdImageName)
 		}
-		log.DebugLog(ctx, "successfully added task to flatten image %q", rv)
+		log.DebugLog(ctx, "successfully added task to flatten image %q", ri)
 	}
 	if !rbdCephMgrSupported {
 		log.ErrorLog(
@@ -857,9 +858,9 @@ func (rv *rbdVolume) flattenRbdImage(
 			"task manager does not support flatten,image will be flattened once hardlimit is reached: %v",
 			err)
 		if forceFlatten || depth >= hardlimit {
-			err := rv.flatten()
+			err := ri.flatten()
 			if err != nil {
-				log.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", rv.Pool, rv.RbdImageName, err)
+				log.ErrorLog(ctx, "rbd failed to flatten image %s %s: %v", ri.Pool, ri.RbdImageName, err)
 
 				return err
 			}
@@ -869,8 +870,8 @@ func (rv *rbdVolume) flattenRbdImage(
 	return nil
 }
 
-func (rv *rbdVolume) getParentName() (string, error) {
-	rbdImage, err := rv.open()
+func (ri *rbdImage) getParentName() (string, error) {
+	rbdImage, err := ri.open()
 	if err != nil {
 		return "", err
 	}
@@ -884,8 +885,8 @@ func (rv *rbdVolume) getParentName() (string, error) {
 	return parentInfo.Image.ImageName, nil
 }
 
-func (rv *rbdVolume) flatten() error {
-	rbdImage, err := rv.open()
+func (ri *rbdImage) flatten() error {
+	rbdImage, err := ri.open()
 	if err != nil {
 		return err
 	}
@@ -894,7 +895,7 @@ func (rv *rbdVolume) flatten() error {
 	err = rbdImage.Flatten()
 	if err != nil {
 		// rbd image flatten will fail if the rbd image does not have a parent
-		parent, pErr := rv.getParentName()
+		parent, pErr := ri.getParentName()
 		if pErr != nil {
 			return util.JoinErrors(err, pErr)
 		}
@@ -906,33 +907,33 @@ func (rv *rbdVolume) flatten() error {
 	return nil
 }
 
-func (rv *rbdVolume) hasFeature(feature uint64) bool {
-	return (uint64(rv.ImageFeatureSet) & feature) == feature
+func (ri *rbdImage) hasFeature(feature uint64) bool {
+	return (uint64(ri.ImageFeatureSet) & feature) == feature
 }
 
-func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
-	vol := rbdVolume{}
+func (ri *rbdImage) checkImageChainHasFeature(ctx context.Context, feature uint64) (bool, error) {
+	rbdImg := rbdImage{}
 
-	vol.Pool = rv.Pool
-	vol.RadosNamespace = rv.RadosNamespace
-	vol.Monitors = rv.Monitors
-	vol.RbdImageName = rv.RbdImageName
-	vol.conn = rv.conn.Copy()
+	rbdImg.Pool = ri.Pool
+	rbdImg.RadosNamespace = ri.RadosNamespace
+	rbdImg.Monitors = ri.Monitors
+	rbdImg.RbdImageName = ri.RbdImageName
+	rbdImg.conn = ri.conn.Copy()
 
 	for {
-		if vol.RbdImageName == "" {
+		if rbdImg.RbdImageName == "" {
 			return false, nil
 		}
-		err := vol.openIoctx()
+		err := rbdImg.openIoctx()
 		if err != nil {
 			return false, err
 		}
 
-		err = vol.getImageInfo()
+		err = rbdImg.getImageInfo()
 		// FIXME: create and destroy the vol inside the loop.
 		// see https://github.com/ceph/ceph-csi/pull/1838#discussion_r598530807
-		vol.ioctx.Destroy()
-		vol.ioctx = nil
+		rbdImg.ioctx.Destroy()
+		rbdImg.ioctx = nil
 		if err != nil {
 			// call to getImageInfo returns the parent name even if the parent
 			// is in the trash, when we try to open the parent image to get its
@@ -941,15 +942,15 @@ func (rv *rbdVolume) checkImageChainHasFeature(ctx context.Context, feature uint
 			if errors.Is(err, ErrImageNotFound) {
 				return false, nil
 			}
-			log.ErrorLog(ctx, "failed to get image info for %s: %s", vol.String(), err)
+			log.ErrorLog(ctx, "failed to get image info for %s: %s", rbdImg.String(), err)
 
 			return false, err
 		}
-		if f := vol.hasFeature(feature); f {
+		if f := rbdImg.hasFeature(feature); f {
 			return true, nil
 		}
-		vol.RbdImageName = vol.ParentName
-		vol.Pool = vol.ParentPool
+		rbdImg.RbdImageName = rbdImg.ParentName
+		rbdImg.Pool = rbdImg.ParentPool
 	}
 }
 
@@ -1367,13 +1368,13 @@ func genSnapFromOptions(ctx context.Context, rbdVol *rbdVolume, snapOptions map[
 }
 
 // hasSnapshotFeature checks if Layering is enabled for this image.
-func (rv *rbdVolume) hasSnapshotFeature() bool {
-	return (uint64(rv.ImageFeatureSet) & librbd.FeatureLayering) == librbd.FeatureLayering
+func (ri *rbdImage) hasSnapshotFeature() bool {
+	return (uint64(ri.ImageFeatureSet) & librbd.FeatureLayering) == librbd.FeatureLayering
 }
 
-func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
+func (ri *rbdImage) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
 	log.DebugLog(ctx, "rbd: snap create %s using mon %s", pOpts, pOpts.Monitors)
-	image, err := rv.open()
+	image, err := ri.open()
 	if err != nil {
 		return err
 	}
@@ -1384,9 +1385,9 @@ func (rv *rbdVolume) createSnapshot(ctx context.Context, pOpts *rbdSnapshot) err
 	return err
 }
 
-func (rv *rbdVolume) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
+func (ri *rbdImage) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) error {
 	log.DebugLog(ctx, "rbd: snap rm %s using mon %s", pOpts, pOpts.Monitors)
-	image, err := rv.open()
+	image, err := ri.open()
 	if err != nil {
 		return err
 	}
@@ -1497,8 +1498,8 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
 // ErrImageNotFound if provided image is not found.
-func (rv *rbdVolume) getImageInfo() error {
-	image, err := rv.open()
+func (ri *rbdImage) getImageInfo() error {
+	image, err := ri.open()
 	if err != nil {
 		return err
 	}
@@ -1509,13 +1510,13 @@ func (rv *rbdVolume) getImageInfo() error {
 		return err
 	}
 	// TODO: can rv.VolSize not be a uint64? Or initialize it to -1?
-	rv.VolSize = int64(imageInfo.Size)
+	ri.VolSize = int64(imageInfo.Size)
 
 	features, err := image.GetFeatures()
 	if err != nil {
 		return err
 	}
-	rv.ImageFeatureSet = librbd.FeatureSet(features)
+	ri.ImageFeatureSet = librbd.FeatureSet(features)
 
 	// Get parent information.
 	parentInfo, err := image.GetParent()
@@ -1523,13 +1524,13 @@ func (rv *rbdVolume) getImageInfo() error {
 		// Caller should decide whether not finding
 		// the parent is an error or not.
 		if errors.Is(err, librbd.ErrNotFound) {
-			rv.ParentName = ""
+			ri.ParentName = ""
 		} else {
 			return err
 		}
 	} else {
-		rv.ParentName = parentInfo.Image.ImageName
-		rv.ParentPool = parentInfo.Image.PoolName
+		ri.ParentName = parentInfo.Image.ImageName
+		ri.ParentPool = parentInfo.Image.PoolName
 	}
 	// Get image creation time
 	tm, err := image.GetCreateTimestamp()
@@ -1541,7 +1542,7 @@ func (rv *rbdVolume) getImageInfo() error {
 	if err != nil {
 		return err
 	}
-	rv.CreatedAt = protoTime
+	ri.CreatedAt = protoTime
 
 	return nil
 }
@@ -1551,8 +1552,8 @@ checkSnapExists queries rbd about the snapshots of the given image and returns
 ErrImageNotFound if provided image is not found, and ErrSnapNotFound if
 provided snap is not found in the images snapshot list.
 */
-func (rv *rbdVolume) checkSnapExists(rbdSnap *rbdSnapshot) error {
-	image, err := rv.open()
+func (ri *rbdImage) checkSnapExists(rbdSnap *rbdSnapshot) error {
+	image, err := ri.open()
 	if err != nil {
 		return err
 	}
@@ -1703,14 +1704,14 @@ func (rv *rbdVolume) expand() error {
 
 // resize the given volume to new size.
 // updates Volsize of rbdVolume object to newSize in case of success.
-func (rv *rbdVolume) resize(newSize int64) error {
-	image, err := rv.open()
+func (ri *rbdImage) resize(newSize int64) error {
+	image, err := ri.open()
 	if err != nil {
 		return err
 	}
 	defer image.Close()
 
-	thick, err := rv.isThickProvisioned()
+	thick, err := ri.isThickProvisioned()
 	if err != nil {
 		return err
 	}
@@ -1733,7 +1734,7 @@ func (rv *rbdVolume) resize(newSize int64) error {
 	}
 
 	if thick {
-		err = rv.allocate(offset)
+		err = ri.allocate(offset)
 		if err != nil {
 			resizeErr := image.Resize(offset)
 			if resizeErr != nil {
@@ -1745,7 +1746,7 @@ func (rv *rbdVolume) resize(newSize int64) error {
 	}
 
 	// update Volsize of rbdVolume object to newSize.
-	rv.VolSize = newSize
+	ri.VolSize = newSize
 
 	return nil
 }
@@ -1851,35 +1852,35 @@ func (ri *rbdImage) isThickProvisioned() (bool, error) {
 // RepairThickProvision writes zero bytes to the volume so that it will be
 // completely allocated. In case the volume is already marked as
 // thick-provisioned, nothing will be done.
-func (rv *rbdVolume) RepairThickProvision() error {
+func (ri *rbdImage) RepairThickProvision() error {
 	// if the image has the thick-provisioned metadata, it has been fully
 	// allocated
-	done, err := rv.isThickProvisioned()
+	done, err := ri.isThickProvisioned()
 	if err != nil {
-		return fmt.Errorf("failed to repair thick-provisioning of %q: %w", rv, err)
+		return fmt.Errorf("failed to repair thick-provisioning of %q: %w", ri, err)
 	} else if done {
 		return nil
 	}
 
 	// in case there are watchers, assume allocating is still happening in
 	// the background (by an other process?)
-	background, err := rv.isInUse()
+	background, err := ri.isInUse()
 	if err != nil {
-		return fmt.Errorf("failed to get users of %q: %w", rv, err)
+		return fmt.Errorf("failed to get users of %q: %w", ri, err)
 	} else if background {
-		return fmt.Errorf("not going to restart thick-provisioning of in-use image %q", rv)
+		return fmt.Errorf("not going to restart thick-provisioning of in-use image %q", ri)
 	}
 
 	// TODO: can this be improved by starting at the offset where
 	// allocating was aborted/restarted?
-	err = rv.allocate(0)
+	err = ri.allocate(0)
 	if err != nil {
-		return fmt.Errorf("failed to continue thick-provisioning of %q: %w", rv, err)
+		return fmt.Errorf("failed to continue thick-provisioning of %q: %w", ri, err)
 	}
 
-	err = rv.setThickProvisioned()
+	err = ri.setThickProvisioned()
 	if err != nil {
-		return fmt.Errorf("failed to continue thick-provisioning of %q: %w", rv, err)
+		return fmt.Errorf("failed to continue thick-provisioning of %q: %w", ri, err)
 	}
 
 	return nil
@@ -1887,7 +1888,7 @@ func (rv *rbdVolume) RepairThickProvision() error {
 
 // DeepCopy creates an independent image (dest) from the source image. This
 // process may take some time when the image is large.
-func (rv *rbdVolume) DeepCopy(dest *rbdVolume) error {
+func (ri *rbdImage) DeepCopy(dest *rbdImage) error {
 	opts := librbd.NewRbdImageOptions()
 	defer opts.Destroy()
 
@@ -1902,7 +1903,7 @@ func (rv *rbdVolume) DeepCopy(dest *rbdVolume) error {
 		return err
 	}
 
-	image, err := rv.open()
+	image, err := ri.open()
 	if err != nil {
 		return err
 	}
@@ -1918,8 +1919,8 @@ func (rv *rbdVolume) DeepCopy(dest *rbdVolume) error {
 }
 
 // DisableDeepFlatten removed the deep-flatten feature from the image.
-func (rv *rbdVolume) DisableDeepFlatten() error {
-	image, err := rv.open()
+func (ri *rbdImage) DisableDeepFlatten() error {
+	image, err := ri.open()
 	if err != nil {
 		return err
 	}
@@ -1928,8 +1929,8 @@ func (rv *rbdVolume) DisableDeepFlatten() error {
 	return image.UpdateFeatures(librbd.FeatureDeepFlatten, false)
 }
 
-func (rv *rbdVolume) listSnapshots() ([]librbd.SnapInfo, error) {
-	image, err := rv.open()
+func (ri *rbdImage) listSnapshots() ([]librbd.SnapInfo, error) {
+	image, err := ri.open()
 	if err != nil {
 		return nil, err
 	}
@@ -1944,8 +1945,8 @@ func (rv *rbdVolume) listSnapshots() ([]librbd.SnapInfo, error) {
 }
 
 // isTrashSnap returns true if the snapshot belongs to trash namespace.
-func (rv *rbdVolume) isTrashSnap(snapID uint64) (bool, error) {
-	image, err := rv.open()
+func (ri *rbdImage) isTrashSnap(snapID uint64) (bool, error) {
+	image, err := ri.open()
 	if err != nil {
 		return false, err
 	}
@@ -1966,8 +1967,8 @@ func (rv *rbdVolume) isTrashSnap(snapID uint64) (bool, error) {
 
 // getOrigSnapName returns the original snap name for
 // the snapshots in Trash Namespace.
-func (rv *rbdVolume) getOrigSnapName(snapID uint64) (string, error) {
-	image, err := rv.open()
+func (ri *rbdImage) getOrigSnapName(snapID uint64) (string, error) {
+	image, err := ri.open()
 	if err != nil {
 		return "", err
 	}
