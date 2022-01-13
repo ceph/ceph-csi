@@ -175,6 +175,46 @@ pull_request_rules:
         name: default
       dismiss_reviews: {}
       delete_head_branch: {}
+  - name: backport patches to release-v3.5 branch
+    conditions:
+      - base=devel
+      - label=backport-to-release-v3.5
+    actions:
+      backport:
+        branches:
+          - release-v3.5
+  # automerge backports if CI successfully ran
+  - name: automerge backport release-v3.5
+    conditions:
+      - author=mergify[bot]
+      - base=release-v3.5
+      - label!=DNM
+      - "#approved-reviews-by>=2"
+      - "approved-reviews-by=@ceph/ceph-csi-contributors"
+      - "approved-reviews-by=@ceph/ceph-csi-maintainers"
+      - "#changes-requested-reviews-by=0"
+      - "status-success=codespell"
+      - "status-success=multi-arch-build"
+      - "status-success=go-test"
+      - "status-success=commitlint"
+      - "status-success=golangci-lint"
+      - "status-success=mod-check"
+      - "status-success=lint-extras"
+      - "status-success=ci/centos/mini-e2e-helm/k8s-1.21"
+      - "status-success=ci/centos/mini-e2e-helm/k8s-1.22"
+      - "status-success=ci/centos/mini-e2e-helm/k8s-1.23"
+      - "status-success=ci/centos/mini-e2e/k8s-1.21"
+      - "status-success=ci/centos/mini-e2e/k8s-1.22"
+      - "status-success=ci/centos/mini-e2e/k8s-1.23"
+      - "status-success=ci/centos/k8s-e2e-external-storage/1.21"
+      - "status-success=ci/centos/k8s-e2e-external-storage/1.22"
+      - "status-success=ci/centos/k8s-e2e-external-storage/1.23"
+      - "status-success=ci/centos/upgrade-tests-cephfs"
+      - "status-success=ci/centos/upgrade-tests-rbd"
+      - "status-success=DCO"
+    actions:
+      queue:
+        name: default
   - name: backport patches to release-v3.4 branch
     conditions:
       - base=devel
