@@ -29,6 +29,9 @@ client-side, which is inside the `csi-rbdplugin` node plugin.
 To use the rbd-nbd mounter for RBD-backed PVs, set `mounter` to `rbd-nbd`
 in the StorageClass.
 
+Please note that the minimum recommended kernel version to use rbd-nbd is
+5.4 or higher.
+
 ### Configuring logging path
 
 If you are using the default rbd nodePlugin DaemonSet and StorageClass
