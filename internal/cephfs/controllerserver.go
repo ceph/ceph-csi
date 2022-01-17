@@ -148,6 +148,35 @@ func checkContentSource(
 	return nil, nil, nil, status.Errorf(codes.InvalidArgument, "not a proper volume source %v", volumeSource)
 }
 
+// checkValidCreateVolumeRequest checks if the request is valid
+// CreateVolumeRequest by inspecting the request parameters.
+func checkValidCreateVolumeRequest(
+	vol,
+	parentVol *store.VolumeOptions,
+	pvID *store.VolumeIdentifier,
+	sID *store.SnapshotIdentifier) error {
+	switch {
+	case pvID != nil:
+		if vol.Size < parentVol.Size {
+			return fmt.Errorf(
+				"cannot clone from volume %s: volume size %d is smaller than source volume size %d",
+				pvID.VolumeID,
+				parentVol.Size,
+				vol.Size)
+		}
+	case sID != nil:
+		if vol.Size < parentVol.Size {
+			return fmt.Errorf(
+				"cannot restore from snapshot %s: volume size %d is smaller than source volume size %d",
+				sID.SnapshotID,
+				parentVol.Size,
+				vol.Size)
+		}
+	}
+
+	return nil
+}
+
 // CreateVolume creates a reservation and the volume in backend, if it is not already present.
 // nolint:gocognit,gocyclo,nestif,cyclop // TODO: reduce complexity
 func (cs *ControllerServer) CreateVolume(
@@ -197,6 +226,11 @@ func (cs *ControllerServer) CreateVolume(
 	}
 	if parentVol != nil {
 		defer parentVol.Destroy()
+	}
+
+	err = checkValidCreateVolumeRequest(volOptions, parentVol, pvID, sID)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	vID, err := store.CheckVolExists(ctx, volOptions, parentVol, pvID, sID, cr)
