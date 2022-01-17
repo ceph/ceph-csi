@@ -7,7 +7,7 @@ SCRIPT_DIR="$(dirname "${0}")"
 # shellcheck source=build.env
 source "${SCRIPT_DIR}/../build.env"
 
-SNAPSHOT_VERSION=${SNAPSHOT_VERSION:-"v4.0.0"}
+SNAPSHOT_VERSION=${SNAPSHOT_VERSION:-"v5.0.1"}
 
 TEMP_DIR="$(mktemp -d)"
 SNAPSHOTTER_URL="https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/${SNAPSHOT_VERSION}"
@@ -24,7 +24,7 @@ VOLUME_SNAPSHOT="${SNAPSHOTTER_URL}/client/config/crd/snapshot.storage.k8s.io_vo
 function install_snapshot_controller() {
     local namespace=$1
     if [ -z "${namespace}" ]; then
-        namespace="default"
+        namespace="kube-system"
     fi
 
     create_or_delete_resource "create" ${namespace}
@@ -51,7 +51,7 @@ function install_snapshot_controller() {
 function cleanup_snapshot_controller() {
     local namespace=$1
     if [ -z "${namespace}" ]; then
-        namespace="default"
+        namespace="kube-system"
     fi
     create_or_delete_resource "delete" ${namespace}
 }
@@ -65,8 +65,9 @@ function create_or_delete_resource() {
     mkdir -p "${TEMP_DIR}"
     curl -o "${temp_rbac}" "${SNAPSHOT_RBAC}"
     curl -o "${temp_snap_controller}" "${SNAPSHOT_CONTROLLER}"
-    sed -i "s/namespace: default/namespace: ${namespace}/g" "${temp_rbac}"
-    sed -i "s/namespace: default/namespace: ${namespace}/g" "${snapshotter_psp}"
+    sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${temp_rbac}"
+    sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${temp_snap_controller}"
+    sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${snapshotter_psp}"
     sed -i "s/canary/${SNAPSHOT_VERSION}/g" "${temp_snap_controller}"
 
     kubectl "${operation}" -f "${temp_rbac}"

@@ -3,6 +3,7 @@ apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   name: csi-snapshotter-psp
+  namespace: kube-system
 spec:
   allowPrivilegeEscalation: true
   allowedCapabilities:
@@ -28,8 +29,8 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-snapshotter-psp
-  # replace with non-default namespace name
-  namespace: default
+  # replace with non-kube-system namespace name
+  namespace: kube-system
 rules:
   - apiGroups: ["policy"]
     resources: ["podsecuritypolicies"]
@@ -41,13 +42,13 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-snapshotter-psp
-  # replace with non-default namespace name
-  namespace: default
+  # replace with non-kube-system namespace name
+  namespace: kube-system
 subjects:
   - kind: ServiceAccount
     name: snapshot-controller
-    # replace with non-default namespace name
-    namespace: default
+    # replace with non-kube-system namespace name
+    namespace: kube-system
 roleRef:
   kind: Role
   name: csi-snapshotter-psp
