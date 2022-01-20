@@ -168,6 +168,9 @@ CSI_PROVISIONER_VERSION=${CSI_PROVISIONER_VERSION:-"v2.2.2"}
 CSI_RESIZER_VERSION=${CSI_RESIZER_VERSION:-"v1.2.0"}
 CSI_NODE_DRIVER_REGISTRAR_VERSION=${CSI_NODE_DRIVER_REGISTRAR_VERSION:-"v2.2.0"}
 
+# configure csi image version
+CSI_IMAGE_VERSION=${CSI_IMAGE_VERSION:-"canary"}
+
 #feature-gates for kube
 K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-""}
 
@@ -284,7 +287,7 @@ teardown-rook)
     ;;
 cephcsi)
     echo "copying the cephcsi image"
-    copy_image_to_cluster "${CEPHCSI_IMAGE_REPO}"/cephcsi:canary "${CEPHCSI_IMAGE_REPO}"/cephcsi:canary
+    copy_image_to_cluster "${CEPHCSI_IMAGE_REPO}"/cephcsi:"${CSI_IMAGE_VERSION}" "${CEPHCSI_IMAGE_REPO}"/cephcsi:"${CSI_IMAGE_VERSION}"
     ;;
 k8s-sidecar)
     echo "copying the kubernetes sidecar images"
