@@ -50,7 +50,7 @@ spec:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
           # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:v3.5-canary
+          image: quay.io/cephcsi/cephcsi:v3.5.1
           args:
             - "--nodeid=$(NODE_ID)"
             - "--pluginpath=/var/lib/kubelet/plugins"
@@ -121,7 +121,7 @@ spec:
         - name: liveness-prometheus
           securityContext:
             privileged: true
-          image: quay.io/cephcsi/cephcsi:v3.5-canary
+          image: quay.io/cephcsi/cephcsi:v3.5.1
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
