@@ -39,27 +39,27 @@ var (
 	ErrMissingConfigForMonitor = errors.New("missing configuration of cluster ID for monitor")
 )
 
-type errorPair struct {
+type pairError struct {
 	first  error
 	second error
 }
 
-func (e errorPair) Error() string {
+func (e pairError) Error() string {
 	return fmt.Sprintf("%v: %v", e.first, e.second)
 }
 
 // Is checks if target error is wrapped in the first error.
-func (e errorPair) Is(target error) bool {
+func (e pairError) Is(target error) bool {
 	return errors.Is(e.first, target)
 }
 
 // Unwrap returns the second error.
-func (e errorPair) Unwrap() error {
+func (e pairError) Unwrap() error {
 	return e.second
 }
 
 // JoinErrors combines two errors. Of the returned error, Is() follows the first
 // branch, Unwrap() follows the second branch.
 func JoinErrors(e1, e2 error) error {
-	return errorPair{e1, e2}
+	return pairError{e1, e2}
 }
