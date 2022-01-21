@@ -54,7 +54,7 @@ func storeKey(key string) (string, error) {
 		}
 	}()
 
-	if _, err = tmpfile.Write([]byte(key)); err != nil {
+	if _, err = tmpfile.WriteString(key); err != nil {
 		return "", fmt.Errorf("error writing key to temporary keyfile: %w", err)
 	}
 
