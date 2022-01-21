@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -120,7 +119,7 @@ func deleteRBDPlugin() {
 }
 
 func createORDeleteRbdResources(action kubectlAction) {
-	csiDriver, err := ioutil.ReadFile(rbdDirPath + csiDriverObject)
+	csiDriver, err := os.ReadFile(rbdDirPath + csiDriverObject)
 	if err != nil {
 		// createORDeleteRbdResources is used for upgrade testing as csidriverObject is
 		// newly added, discarding file not found error.
@@ -133,7 +132,7 @@ func createORDeleteRbdResources(action kubectlAction) {
 			e2elog.Failf("failed to %s CSIDriver object: %v", action, err)
 		}
 	}
-	cephConf, err := ioutil.ReadFile(examplePath + cephConfconfigMap)
+	cephConf, err := os.ReadFile(examplePath + cephConfconfigMap)
 	if err != nil {
 		// createORDeleteRbdResources is used for upgrade testing as cephConf Configmap is
 		// newly added, discarding file not found error.

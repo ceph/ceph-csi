@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -70,7 +69,7 @@ type ClusterMappingInfo struct {
 
 func readClusterMappingInfo(filename string) (*[]ClusterMappingInfo, error) {
 	var info []ClusterMappingInfo
-	content, err := ioutil.ReadFile(filename) // #nosec:G304, file inclusion via variable.
+	content, err := os.ReadFile(filename) // #nosec:G304, file inclusion via variable.
 	if err != nil {
 		err = fmt.Errorf("error fetching clusterID mapping %w", err)
 

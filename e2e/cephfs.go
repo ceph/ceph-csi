@@ -19,7 +19,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -79,7 +78,7 @@ func deleteCephfsPlugin() {
 }
 
 func createORDeleteCephfsResources(action kubectlAction) {
-	csiDriver, err := ioutil.ReadFile(cephFSDirPath + csiDriverObject)
+	csiDriver, err := os.ReadFile(cephFSDirPath + csiDriverObject)
 	if err != nil {
 		// createORDeleteRbdResources is used for upgrade testing as csidriverObject is
 		// newly added, discarding file not found error.
@@ -92,7 +91,7 @@ func createORDeleteCephfsResources(action kubectlAction) {
 			e2elog.Failf("failed to %s CSIDriver object: %v", action, err)
 		}
 	}
-	cephConf, err := ioutil.ReadFile(examplePath + cephConfconfigMap)
+	cephConf, err := os.ReadFile(examplePath + cephConfconfigMap)
 	if err != nil {
 		// createORDeleteCephfsResources is used for upgrade testing as cephConfConfigmap is
 		// newly added, discarding file not found error.

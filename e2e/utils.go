@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -160,7 +160,7 @@ func deleteResource(scPath string) error {
 }
 
 func unmarshal(fileName string, obj interface{}) error {
-	f, err := ioutil.ReadFile(fileName)
+	f, err := os.ReadFile(fileName)
 	if err != nil {
 		return err
 	}

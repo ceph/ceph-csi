@@ -15,7 +15,6 @@ package log
 
 import (
 	"compress/gzip"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -24,7 +23,7 @@ import (
 // compressed format.
 func GzipLogFile(pathToFile string) error {
 	// Get all the bytes from the file.
-	content, err := ioutil.ReadFile(pathToFile) // #nosec:G304, file inclusion via variable.
+	content, err := os.ReadFile(pathToFile) // #nosec:G304, file inclusion via variable.
 	if err != nil {
 		return err
 	}
