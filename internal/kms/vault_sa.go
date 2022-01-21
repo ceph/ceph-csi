@@ -320,7 +320,7 @@ func (kms *VaultTenantSA) getTokenPath() (string, error) {
 		return "", err
 	}
 
-	err = os.WriteFile(dir+"/token", []byte(token), 0600)
+	err = os.WriteFile(dir+"/token", []byte(token), 0o600)
 	if err != nil {
 		return "", fmt.Errorf("failed to write token for ServiceAccount %s/%s: %w", kms.tenantSAName, kms.Tenant, err)
 	}
