@@ -280,8 +280,8 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 		snapSource       bool
 		objUUID          string
 		savedImagePool   string
-		savedImagePoolID int64 = util.InvalidPoolID
-		cj                     = conn.config
+		savedImagePoolID = util.InvalidPoolID
+		cj               = conn.config
 	)
 
 	if snapParentName != "" {
