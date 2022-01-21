@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -244,7 +243,7 @@ func GetKrbdSupportedFeatures() (string, error) {
 			return "", err
 		}
 	}
-	val, err := ioutil.ReadFile(krbdSupportedFeaturesFile)
+	val, err := os.ReadFile(krbdSupportedFeaturesFile)
 	if err != nil {
 		log.ErrorLogMsg("reading file %q failed: %v", krbdSupportedFeaturesFile, err)
 
@@ -1638,7 +1637,7 @@ func lookupRBDImageMetadataStash(metaDataPath string) (rbdImageMetadataStash, er
 	var imgMeta rbdImageMetadataStash
 
 	fPath := filepath.Join(metaDataPath, stashFileName)
-	encodedBytes, err := ioutil.ReadFile(fPath) // #nosec - intended reading from fPath
+	encodedBytes, err := os.ReadFile(fPath) // #nosec - intended reading from fPath
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return imgMeta, fmt.Errorf("failed to read stashed JSON image metadata from path (%s): %w", fPath, err)

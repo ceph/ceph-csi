@@ -19,7 +19,7 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -87,7 +87,7 @@ func deleteNamespace(c kubernetes.Interface, name string) error {
 }
 
 func replaceNamespaceInTemplate(filePath string) (string, error) {
-	read, err := ioutil.ReadFile(filePath)
+	read, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", err
 	}

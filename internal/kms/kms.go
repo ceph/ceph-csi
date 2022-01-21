@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
@@ -94,7 +93,7 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 func getKMSConfiguration() (map[string]interface{}, error) {
 	var config map[string]interface{}
 	// #nosec
-	content, err := ioutil.ReadFile(kmsConfigPath)
+	content, err := os.ReadFile(kmsConfigPath)
 	if err == nil {
 		// kmsConfigPath exists and was successfully read
 		err = json.Unmarshal(content, &config)

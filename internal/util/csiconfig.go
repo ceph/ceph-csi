@@ -20,7 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -72,7 +72,7 @@ func readClusterInfo(pathToConfig, clusterID string) (*ClusterInfo, error) {
 	var config []ClusterInfo
 
 	// #nosec
-	content, err := ioutil.ReadFile(pathToConfig)
+	content, err := os.ReadFile(pathToConfig)
 	if err != nil {
 		err = fmt.Errorf("error fetching configuration for cluster ID %q: %w", clusterID, err)
 
