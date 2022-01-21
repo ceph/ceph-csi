@@ -274,7 +274,7 @@ func TestParseKernelRelease(t *testing.T) {
 	for i, release := range goodReleases {
 		version, patchlevel, sublevel, extraversion, err := parseKernelRelease(release)
 		if err != nil {
-			t.Errorf("parsing error for release %q: %w", release, err)
+			t.Errorf("parsing error for release %q: %s", release, err)
 		}
 		good := goodVersions[i]
 		if version != good[0] || patchlevel != good[1] || sublevel != good[2] || extraversion != good[3] {
