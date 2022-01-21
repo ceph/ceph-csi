@@ -20,7 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -142,7 +142,7 @@ func TestGetClusterMappingInfo(t *testing.T) {
 			t.Parallel()
 			mappingConfigFile := fmt.Sprintf("%s/mapping-%d.json", mappingBasePath, currentI)
 			if len(currentTT.mappingFilecontent) != 0 {
-				err = ioutil.WriteFile(mappingConfigFile, currentTT.mappingFilecontent, 0o600)
+				err = os.WriteFile(mappingConfigFile, currentTT.mappingFilecontent, 0o600)
 				if err != nil {
 					t.Errorf("failed to write to %q, error = %v", mappingConfigFile, err)
 				}
@@ -158,7 +158,7 @@ func TestGetClusterMappingInfo(t *testing.T) {
 	}
 
 	clusterMappingConfigFile = fmt.Sprintf("%s/mapping.json", mappingBasePath)
-	err = ioutil.WriteFile(clusterMappingConfigFile, mappingFileContent, 0o600)
+	err = os.WriteFile(clusterMappingConfigFile, mappingFileContent, 0o600)
 	if err != nil {
 		t.Errorf("failed to write mapping content error = %v", err)
 	}
@@ -318,7 +318,7 @@ func TestFetchMappedClusterIDAndMons(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to marshal csi config info %v", err)
 	}
-	err = ioutil.WriteFile(csiConfigFile, csiConfigFileContent, 0o600)
+	err = os.WriteFile(csiConfigFile, csiConfigFileContent, 0o600)
 	if err != nil {
 		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
 	}
@@ -351,7 +351,7 @@ func TestFetchMappedClusterIDAndMons(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to marshal mapping info %v", err)
 	}
-	err = ioutil.WriteFile(clusterMappingConfigFile, clusterMappingFileContent, 0o600)
+	err = os.WriteFile(clusterMappingConfigFile, clusterMappingFileContent, 0o600)
 	if err != nil {
 		t.Errorf("failed to write %s file content: %v", clusterMappingFileContent, err)
 	}

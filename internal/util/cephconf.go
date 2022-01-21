@@ -17,7 +17,6 @@ limitations under the License.
 package util
 
 import (
-	"io/ioutil"
 	"os"
 )
 
@@ -57,7 +56,7 @@ func WriteCephConfig() error {
 
 	// create config file if it does not exist to support backward compatibility
 	if _, err = os.Stat(CephConfigPath); os.IsNotExist(err) {
-		err = ioutil.WriteFile(CephConfigPath, cephConfig, 0o600)
+		err = os.WriteFile(CephConfigPath, cephConfig, 0o600)
 	}
 
 	if err != nil {
