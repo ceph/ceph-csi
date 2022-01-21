@@ -17,7 +17,6 @@ limitations under the License.
 package util
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -81,7 +80,7 @@ func TestConnPool(t *testing.T) {
 
 	// create a keyfile with some contents
 	keyfile := "/tmp/conn_utils.keyfile"
-	err := ioutil.WriteFile(keyfile, []byte("the-key"), 0o600)
+	err := os.WriteFile(keyfile, []byte("the-key"), 0o600)
 	if err != nil {
 		t.Errorf("failed to create keyfile: %v", err)
 

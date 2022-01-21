@@ -1625,7 +1625,7 @@ func stashRBDImageMetadata(volOptions *rbdVolume, metaDataPath string) error {
 	}
 
 	fPath := filepath.Join(metaDataPath, stashFileName)
-	err = ioutil.WriteFile(fPath, encodedBytes, 0o600)
+	err = os.WriteFile(fPath, encodedBytes, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to stash JSON image metadata for image (%s) at path (%s): %w", volOptions, fPath, err)
 	}
@@ -1673,7 +1673,7 @@ func updateRBDImageMetadataStash(metaDataPath, device string) error {
 	}
 
 	fPath := filepath.Join(metaDataPath, stashFileName)
-	err = ioutil.WriteFile(fPath, encodedBytes, 0600)
+	err = os.WriteFile(fPath, encodedBytes, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to stash JSON image metadata at path: (%s) for spec:(%s) : %w",
 			fPath, imgMeta.String(), err)
