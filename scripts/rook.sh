@@ -34,56 +34,55 @@ rook_version() {
 }
 
 function deploy_rook() {
-        kubectl_retry create -f "${ROOK_URL}/common.yaml"
+	kubectl_retry create -f "${ROOK_URL}/common.yaml"
 
-        # If rook version is > 1.5 , we will apply CRDs.
-        ROOK_MAJOR=$(rook_version 1)
-        ROOK_MINOR=$(rook_version 2)
-        if  [ "${ROOK_MAJOR}" -eq 1 ] && [ "${ROOK_MINOR}" -ge 5 ];
-	  then
-	      kubectl_retry create -f "${ROOK_URL}/crds.yaml"
-	  fi
-        TEMP_DIR="$(mktemp -d)"
-        curl -o "${TEMP_DIR}/operator.yaml" "${ROOK_URL}/operator.yaml"
-        # disable rook deployed csi drivers
-        sed -i 's|ROOK_CSI_ENABLE_CEPHFS: "true"|ROOK_CSI_ENABLE_CEPHFS: "false"|g' "${TEMP_DIR}/operator.yaml"
-        sed -i 's|ROOK_CSI_ENABLE_RBD: "true"|ROOK_CSI_ENABLE_RBD: "false"|g' "${TEMP_DIR}/operator.yaml"
+	ROOK_MAJOR=$(rook_version 1)
+	ROOK_MINOR=$(rook_version 2)
 
-        kubectl_retry create -f "${TEMP_DIR}/operator.yaml"
-        # Override the ceph version which rook installs by default.
-        if  [ -z "${ROOK_CEPH_CLUSTER_IMAGE}" ]
-        then
-            kubectl_retry create -f "${ROOK_URL}/cluster-test.yaml"
-        else
-            ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH="image: ${ROOK_CEPH_CLUSTER_IMAGE}"
+	# If rook version is > 1.5 , we will apply CRDs.
+	if [ "${ROOK_MAJOR}" -eq 1 ] && [ "${ROOK_MINOR}" -ge 5 ]; then
+		kubectl_retry create -f "${ROOK_URL}/crds.yaml"
+	fi
+	TEMP_DIR="$(mktemp -d)"
+	curl -o "${TEMP_DIR}/operator.yaml" "${ROOK_URL}/operator.yaml"
+	# disable rook deployed csi drivers
+	sed -i 's|ROOK_CSI_ENABLE_CEPHFS: "true"|ROOK_CSI_ENABLE_CEPHFS: "false"|g' "${TEMP_DIR}/operator.yaml"
+	sed -i 's|ROOK_CSI_ENABLE_RBD: "true"|ROOK_CSI_ENABLE_RBD: "false"|g' "${TEMP_DIR}/operator.yaml"
 
-            curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
-            sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
-            sed -i "s/config: |/config: |\n    \[mon\]\n    mon_warn_on_insecure_global_id_reclaim_allowed = false/g" "${TEMP_DIR}"/cluster-test.yaml
-            sed -i "s/healthCheck:/healthCheck:\n    livenessProbe:\n      mon:\n        disabled: true\n      mgr:\n        disabled: true\n      mds:\n        disabled: true/g" "${TEMP_DIR}"/cluster-test.yaml
-			cat  "${TEMP_DIR}"/cluster-test.yaml
-            kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
-        fi
-        rm -rf "${TEMP_DIR}"
+	kubectl_retry create -f "${TEMP_DIR}/operator.yaml"
+	# Override the ceph version which rook installs by default.
+	if [ -z "${ROOK_CEPH_CLUSTER_IMAGE}" ]; then
+		kubectl_retry create -f "${ROOK_URL}/cluster-test.yaml"
+	else
+		ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH="image: ${ROOK_CEPH_CLUSTER_IMAGE}"
 
-        kubectl_retry create -f "${ROOK_URL}/toolbox.yaml"
-        kubectl_retry create -f "${ROOK_URL}/filesystem-test.yaml"
-        kubectl_retry create -f "${ROOK_URL}/pool-test.yaml"
+		curl -o "${TEMP_DIR}"/cluster-test.yaml "${ROOK_URL}/cluster-test.yaml"
+		sed -i "s|image.*|${ROOK_CEPH_CLUSTER_VERSION_IMAGE_PATH}|g" "${TEMP_DIR}"/cluster-test.yaml
+		sed -i "s/config: |/config: |\n    \[mon\]\n    mon_warn_on_insecure_global_id_reclaim_allowed = false/g" "${TEMP_DIR}"/cluster-test.yaml
+		sed -i "s/healthCheck:/healthCheck:\n    livenessProbe:\n      mon:\n        disabled: true\n      mgr:\n        disabled: true\n      mds:\n        disabled: true/g" "${TEMP_DIR}"/cluster-test.yaml
+		cat "${TEMP_DIR}"/cluster-test.yaml
+		kubectl_retry create -f "${TEMP_DIR}/cluster-test.yaml"
+	fi
+	rm -rf "${TEMP_DIR}"
 
-        # Check if CephCluster is empty
-        if ! kubectl_retry -n rook-ceph get cephclusters -oyaml | grep 'items: \[\]' &>/dev/null; then
-            check_ceph_cluster_health
-        fi
+	kubectl_retry create -f "${ROOK_URL}/toolbox.yaml"
+	kubectl_retry create -f "${ROOK_URL}/filesystem-test.yaml"
+	kubectl_retry create -f "${ROOK_URL}/pool-test.yaml"
 
-        # Check if CephFileSystem is empty
-        if ! kubectl_retry -n rook-ceph get cephfilesystems -oyaml | grep 'items: \[\]' &>/dev/null; then
-            check_mds_stat
-        fi
+	# Check if CephCluster is empty
+	if ! kubectl_retry -n rook-ceph get cephclusters -oyaml | grep 'items: \[\]' &>/dev/null; then
+		check_ceph_cluster_health
+	fi
 
-        # Check if CephBlockPool is empty
-        if ! kubectl_retry -n rook-ceph get cephblockpools -oyaml | grep 'items: \[\]' &>/dev/null; then
-            check_rbd_stat ""
-        fi
+	# Check if CephFileSystem is empty
+	if ! kubectl_retry -n rook-ceph get cephfilesystems -oyaml | grep 'items: \[\]' &>/dev/null; then
+		check_mds_stat
+	fi
+
+	# Check if CephBlockPool is empty
+	if ! kubectl_retry -n rook-ceph get cephblockpools -oyaml | grep 'items: \[\]' &>/dev/null; then
+		check_rbd_stat ""
+	fi
 }
 
 function teardown_rook() {
@@ -93,10 +92,9 @@ function teardown_rook() {
 	kubectl delete -f "${ROOK_URL}/cluster-test.yaml"
 	kubectl delete -f "${ROOK_URL}/operator.yaml"
 	ROOK_MAJOR=$(rook_version 1)
-      ROOK_MINOR=$(rook_version 2)
-      if  [ "${ROOK_MAJOR}" -eq 1 ] && [ "${ROOK_MINOR}" -ge 5 ];
-	then
-	      kubectl delete -f "${ROOK_URL}/crds.yaml"
+	ROOK_MINOR=$(rook_version 2)
+	if [ "${ROOK_MAJOR}" -eq 1 ] && [ "${ROOK_MINOR}" -ge 5 ]; then
+		kubectl delete -f "${ROOK_URL}/crds.yaml"
 	fi
 	kubectl delete -f "${ROOK_URL}/common.yaml"
 }
@@ -192,8 +190,11 @@ function check_rbd_stat() {
 
 		TOOLBOX_POD=$(kubectl_retry -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
 		TOOLBOX_POD_STATUS=$(kubectl_retry -n rook-ceph get pod "$TOOLBOX_POD" -ojsonpath='{.status.phase}')
-		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] && \
-			{ echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"; continue; }
+		[[ "$TOOLBOX_POD_STATUS" != "Running" ]] &&
+			{
+				echo "Toolbox POD ($TOOLBOX_POD) status: [$TOOLBOX_POD_STATUS]"
+				continue
+			}
 
 		if kubectl_retry exec -n rook-ceph "$TOOLBOX_POD" -it -- rbd pool stats "$RBD_POOL_NAME" &>/dev/null; then
 			echo "RBD ($RBD_POOL_NAME) is successfully created..."
