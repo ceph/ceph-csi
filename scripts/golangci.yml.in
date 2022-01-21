@@ -179,3 +179,10 @@ linters:
     # TODO: enable wrapcheck linter
     # See: https://github.com/ceph/ceph-csi/pull/2268
     - wrapcheck
+    # TODO: enable linters added in golangci-lint 1.43
+    - contextcheck
+    - gomnd
+    - ireturn
+    - tagliatelle
+    - varnamelen
+    - nilnil
