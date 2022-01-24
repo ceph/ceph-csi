@@ -67,7 +67,7 @@ Example JSON structure in the KMS config is,
 	...
 }.
 */
-type VaultTenantSA struct {
+type vaultTenantSA struct {
 	vaultTenantConnection
 
 	// tenantSAName is the name of the ServiceAccount in the Tenants Kubernetes Namespace
@@ -97,7 +97,7 @@ func initVaultTenantSA(args ProviderInitArgs) (EncryptionKMS, error) {
 		}
 	}
 
-	kms := &VaultTenantSA{}
+	kms := &vaultTenantSA{}
 	kms.vaultTenantConnection.init()
 	kms.tenantConfigOptionFilter = isTenantSAConfigOption
 
@@ -150,7 +150,7 @@ func initVaultTenantSA(args ProviderInitArgs) (EncryptionKMS, error) {
 
 // Destroy removes the temporary stored token from the ServiceAccount and
 // destroys the vaultTenantConnection object.
-func (kms *VaultTenantSA) Destroy() {
+func (kms *vaultTenantSA) Destroy() {
 	if kms.saTokenDir != "" {
 		_ = os.RemoveAll(kms.saTokenDir)
 	}
@@ -158,7 +158,7 @@ func (kms *VaultTenantSA) Destroy() {
 	kms.vaultTenantConnection.Destroy()
 }
 
-func (kms *VaultTenantSA) configureTenant(config map[string]interface{}, tenant string) error {
+func (kms *vaultTenantSA) configureTenant(config map[string]interface{}, tenant string) error {
 	kms.Tenant = tenant
 	tenantConfig, found := fetchTenantConfig(config, tenant)
 	if found {
@@ -184,11 +184,11 @@ func (kms *VaultTenantSA) configureTenant(config map[string]interface{}, tenant 
 }
 
 // parseConfig calls vaultTenantConnection.parseConfig() and also set
-// additional config options specific to VaultTenantSA. This function is called
+// additional config options specific to vaultTenantSA. This function is called
 // multiple times, for the different nested configuration layers.
 // parseTenantConfig() calls this as well, with a reduced set of options,
 // filtered by isTenantConfigOption().
-func (kms *VaultTenantSA) parseConfig(config map[string]interface{}) error {
+func (kms *vaultTenantSA) parseConfig(config map[string]interface{}) error {
 	err := kms.vaultTenantConnection.parseConfig(config)
 	if err != nil {
 		return err
@@ -234,7 +234,7 @@ func isTenantSAConfigOption(opt string) bool {
 		return true
 	}
 
-	// additional options for VaultTenantSA
+	// additional options for vaultTenantSA
 	switch opt {
 	case "tenantSAName":
 	case "vaultAuthPath":
@@ -248,7 +248,7 @@ func isTenantSAConfigOption(opt string) bool {
 
 // setServiceAccountName stores the name of the ServiceAccount in the
 // configuration if it has been set in the options.
-func (kms *VaultTenantSA) setServiceAccountName(config map[string]interface{}) error {
+func (kms *vaultTenantSA) setServiceAccountName(config map[string]interface{}) error {
 	err := setConfigString(&kms.tenantSAName, config, "tenantSAName")
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err
@@ -258,8 +258,8 @@ func (kms *VaultTenantSA) setServiceAccountName(config map[string]interface{}) e
 }
 
 // getServiceAccount returns the Tenants ServiceAccount with the name
-// configured in the VaultTenantSA.
-func (kms *VaultTenantSA) getServiceAccount() (*corev1.ServiceAccount, error) {
+// configured in the vaultTenantSA.
+func (kms *vaultTenantSA) getServiceAccount() (*corev1.ServiceAccount, error) {
 	c, err := kms.getK8sClient()
 	if err != nil {
 		return nil, fmt.Errorf("can not get ServiceAccount %s/%s, "+
@@ -278,7 +278,7 @@ func (kms *VaultTenantSA) getServiceAccount() (*corev1.ServiceAccount, error) {
 // getToken looks up the ServiceAccount and the Secrets linked from it. When it
 // finds the Secret that contains the `token` field, the contents is read and
 // returned.
-func (kms *VaultTenantSA) getToken() (string, error) {
+func (kms *vaultTenantSA) getToken() (string, error) {
 	sa, err := kms.getServiceAccount()
 	if err != nil {
 		return "", err
@@ -309,7 +309,7 @@ func (kms *VaultTenantSA) getToken() (string, error) {
 // getTokenPath creates a temporary directory structure that contains the token
 // linked from the ServiceAccount. This path can then be used in place of the
 // standard `/var/run/secrets/kubernetes.io/serviceaccount/token` location.
-func (kms *VaultTenantSA) getTokenPath() (string, error) {
+func (kms *vaultTenantSA) getTokenPath() (string, error) {
 	dir, err := ioutil.TempDir("", kms.tenantSAName)
 	if err != nil {
 		return "", fmt.Errorf("failed to create directory for ServiceAccount %s/%s: %w", kms.tenantSAName, kms.Tenant, err)
