@@ -65,7 +65,7 @@ var _ = RegisterProvider(Provider{
 	Initializer: initAWSMetadataKMS,
 })
 
-type AWSMetadataKMS struct {
+type awsMetadataKMS struct {
 	// basic options to get the secret
 	namespace  string
 	secretName string
@@ -79,7 +79,7 @@ type AWSMetadataKMS struct {
 }
 
 func initAWSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
-	kms := &AWSMetadataKMS{
+	kms := &awsMetadataKMS{
 		namespace: args.Namespace,
 	}
 
@@ -124,7 +124,7 @@ func initAWSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	return kms, nil
 }
 
-func (kms *AWSMetadataKMS) getSecrets() (map[string]interface{}, error) {
+func (kms *awsMetadataKMS) getSecrets() (map[string]interface{}, error) {
 	c, err := k8s.NewK8sClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
@@ -153,18 +153,18 @@ func (kms *AWSMetadataKMS) getSecrets() (map[string]interface{}, error) {
 	return config, nil
 }
 
-func (kms *AWSMetadataKMS) Destroy() {
+func (kms *awsMetadataKMS) Destroy() {
 	// Nothing to do.
 }
 
 // RequiresDEKStore indicates that the DEKs should get stored in the metadata
 // of the volumes. This Amazon KMS provider does not support storing DEKs in
 // AWS as that adds additional costs.
-func (kms *AWSMetadataKMS) RequiresDEKStore() DEKStoreType {
+func (kms *awsMetadataKMS) RequiresDEKStore() DEKStoreType {
 	return DEKStoreMetadata
 }
 
-func (kms *AWSMetadataKMS) getService() (*awsKMS.KMS, error) {
+func (kms *awsMetadataKMS) getService() (*awsKMS.KMS, error) {
 	creds := awsCreds.NewStaticCredentials(kms.accessKey,
 		kms.secretAccessKey, kms.sessionToken)
 
@@ -183,7 +183,7 @@ func (kms *AWSMetadataKMS) getService() (*awsKMS.KMS, error) {
 }
 
 // EncryptDEK uses the Amazon KMS and the configured CMK to encrypt the DEK.
-func (kms *AWSMetadataKMS) EncryptDEK(volumeID, plainDEK string) (string, error) {
+func (kms *awsMetadataKMS) EncryptDEK(volumeID, plainDEK string) (string, error) {
 	svc, err := kms.getService()
 	if err != nil {
 		return "", fmt.Errorf("could not get KMS service: %w", err)
@@ -206,7 +206,7 @@ func (kms *AWSMetadataKMS) EncryptDEK(volumeID, plainDEK string) (string, error)
 }
 
 // DecryptDEK uses the Amazon KMS and the configured CMK to decrypt the DEK.
-func (kms *AWSMetadataKMS) DecryptDEK(volumeID, encryptedDEK string) (string, error) {
+func (kms *awsMetadataKMS) DecryptDEK(volumeID, encryptedDEK string) (string, error) {
 	svc, err := kms.getService()
 	if err != nil {
 		return "", fmt.Errorf("could not get KMS service: %w", err)
