@@ -31,7 +31,7 @@ func TestVaultTenantSAKMSRegistered(t *testing.T) {
 
 func TestTenantSAParseConfig(t *testing.T) {
 	t.Parallel()
-	vts := VaultTenantSA{}
+	vts := vaultTenantSA{}
 
 	config := make(map[string]interface{})
 
