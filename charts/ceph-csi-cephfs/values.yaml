@@ -179,7 +179,7 @@ provisioner:
     enabled: true
     image:
       repository: k8s.gcr.io/sig-storage/csi-resizer
-      tag: v1.3.0
+      tag: v1.4.0
       pullPolicy: IfNotPresent
     resources: {}
 
