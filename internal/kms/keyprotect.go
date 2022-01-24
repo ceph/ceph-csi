@@ -79,7 +79,7 @@ func initKeyProtectKMSOld(args ProviderInitArgs) (EncryptionKMS, error) {
 }
 
 // KeyProtectKMS store the KMS connection information retrieved from the kms configmap.
-type KeyProtectKMS struct {
+type keyProtectKMS struct {
 	// basic options to get the secret
 	namespace  string
 	secretName string
@@ -97,7 +97,7 @@ type KeyProtectKMS struct {
 }
 
 func initKeyProtectKMS(args ProviderInitArgs) (EncryptionKMS, error) {
-	kms := &KeyProtectKMS{
+	kms := &keyProtectKMS{
 		namespace: args.Namespace,
 	}
 	// required options for further configuration (getting secrets)
@@ -164,7 +164,7 @@ func initKeyProtectKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	return kms, nil
 }
 
-func (kms *KeyProtectKMS) getSecrets() (map[string]interface{}, error) {
+func (kms *keyProtectKMS) getSecrets() (map[string]interface{}, error) {
 	c, err := k8s.NewK8sClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
@@ -193,16 +193,16 @@ func (kms *KeyProtectKMS) getSecrets() (map[string]interface{}, error) {
 	return config, nil
 }
 
-func (kms *KeyProtectKMS) Destroy() {
+func (kms *keyProtectKMS) Destroy() {
 	// Nothing to do.
 }
 
-func (kms *KeyProtectKMS) RequiresDEKStore() DEKStoreType {
+func (kms *keyProtectKMS) RequiresDEKStore() DEKStoreType {
 	return DEKStoreMetadata
 }
 
-func (kms *KeyProtectKMS) getService() error {
-	// Use Service API Key and KeyProtect Service Instance ID to create a ClientConfig
+func (kms *keyProtectKMS) getService() error {
+	// Use your Service API Key and your KeyProtect Service Instance ID to create a ClientConfig
 	cc := kp.ClientConfig{
 		BaseURL:    kms.baseURL,
 		TokenURL:   kms.tokenURL,
@@ -221,7 +221,7 @@ func (kms *KeyProtectKMS) getService() error {
 }
 
 // EncryptDEK uses the KeyProtect KMS and the configured CRK to encrypt the DEK.
-func (kms *KeyProtectKMS) EncryptDEK(volumeID, plainDEK string) (string, error) {
+func (kms *keyProtectKMS) EncryptDEK(volumeID, plainDEK string) (string, error) {
 	if err := kms.getService(); err != nil {
 		return "", fmt.Errorf("could not get KMS service: %w", err)
 	}
@@ -240,7 +240,7 @@ func (kms *KeyProtectKMS) EncryptDEK(volumeID, plainDEK string) (string, error) 
 }
 
 // DecryptDEK uses the Key protect KMS and the configured CRK to decrypt the DEK.
-func (kms *KeyProtectKMS) DecryptDEK(volumeID, encryptedDEK string) (string, error) {
+func (kms *keyProtectKMS) DecryptDEK(volumeID, encryptedDEK string) (string, error) {
 	if err := kms.getService(); err != nil {
 		return "", fmt.Errorf("could not get KMS service: %w", err)
 	}
