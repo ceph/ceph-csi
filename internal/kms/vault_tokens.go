@@ -186,7 +186,7 @@ Example JSON structure in the KMS config is,
 */
 type vaultTenantConnection struct {
 	vaultConnection
-	IntegratedDEK
+	integratedDEK
 
 	client *kubernetes.Clientset
 
