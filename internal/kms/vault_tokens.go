@@ -202,7 +202,7 @@ type vaultTenantConnection struct {
 	tenantConfigOptionFilter func(string) bool
 }
 
-type VaultTokensKMS struct {
+type vaultTokensKMS struct {
 	vaultTenantConnection
 
 	// TokenName is the name of the Secret in the Tenants Kubernetes Namespace
@@ -228,7 +228,7 @@ func initVaultTokensKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 		}
 	}
 
-	kms := &VaultTokensKMS{}
+	kms := &vaultTokensKMS{}
 	kms.vaultTenantConnection.init()
 	err = kms.initConnection(config)
 	if err != nil {
@@ -278,7 +278,7 @@ func initVaultTokensKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	return kms, nil
 }
 
-func (kms *VaultTokensKMS) configureTenant(config map[string]interface{}, tenant string) error {
+func (kms *vaultTokensKMS) configureTenant(config map[string]interface{}, tenant string) error {
 	kms.Tenant = tenant
 	tenantConfig, found := fetchTenantConfig(config, tenant)
 	if found {
@@ -340,7 +340,7 @@ func (vtc *vaultTenantConnection) parseConfig(config map[string]interface{}) err
 // setTokenName updates the kms.TokenName with the options from config. This
 // method can be called multiple times, i.e. to override configuration options
 // from tenants.
-func (kms *VaultTokensKMS) setTokenName(config map[string]interface{}) error {
+func (kms *vaultTokensKMS) setTokenName(config map[string]interface{}) error {
 	err := setConfigString(&kms.TokenName, config, "tenantTokenName")
 	if errors.Is(err, errConfigOptionInvalid) {
 		return err
@@ -501,7 +501,7 @@ func (vtc *vaultTenantConnection) RemoveDEK(key string) error {
 	return nil
 }
 
-func (kms *VaultTokensKMS) getToken() (string, error) {
+func (kms *vaultTokensKMS) getToken() (string, error) {
 	c, err := kms.getK8sClient()
 	if err != nil {
 		return "", err
