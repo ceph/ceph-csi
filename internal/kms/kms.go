@@ -359,20 +359,20 @@ type DEKStore interface {
 	RemoveDEK(volumeID string) error
 }
 
-// IntegratedDEK is a DEKStore that can not be configured. Either the KMS does
+// integratedDEK is a DEKStore that can not be configured. Either the KMS does
 // not use a DEK, or the DEK is stored in the KMS without additional
 // configuration options.
-type IntegratedDEK struct{}
+type integratedDEK struct{}
 
-func (i IntegratedDEK) RequiresDEKStore() DEKStoreType {
+func (i integratedDEK) RequiresDEKStore() DEKStoreType {
 	return DEKStoreIntegrated
 }
 
-func (i IntegratedDEK) EncryptDEK(volumeID, plainDEK string) (string, error) {
+func (i integratedDEK) EncryptDEK(volumeID, plainDEK string) (string, error) {
 	return plainDEK, nil
 }
 
-func (i IntegratedDEK) DecryptDEK(volumeID, encyptedDEK string) (string, error) {
+func (i integratedDEK) DecryptDEK(volumeID, encyptedDEK string) (string, error) {
 	return encyptedDEK, nil
 }
 
