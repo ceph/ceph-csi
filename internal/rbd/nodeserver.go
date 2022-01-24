@@ -420,7 +420,7 @@ func (ns *NodeServer) stageTransaction(
 	transaction.isStagePathCreated = true
 
 	// nodeStage Path
-	_, err = ns.mountVolumeToStagePath(ctx, req, staticVol, stagingTargetPath, devicePath)
+	err = ns.mountVolumeToStagePath(ctx, req, staticVol, stagingTargetPath, devicePath)
 	if err != nil {
 		return transaction, err
 	}
@@ -678,7 +678,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
 	staticVol bool,
-	stagingPath, devicePath string) (bool, error) {
+	stagingPath, devicePath string) error {
 	readOnly := false
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.Mounter, Exec: utilexec.New()}
@@ -696,7 +696,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get disk format for path %s, error: %v", devicePath, err)
 
-		return readOnly, err
+		return err
 	}
 
 	opt := []string{"_netdev"}
@@ -736,7 +736,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 			if cmdErr != nil {
 				log.ErrorLog(ctx, "failed to run mkfs error: %v, output: %v", cmdErr, string(cmdOut))
 
-				return readOnly, cmdErr
+				return cmdErr
 			}
 		}
 	}
@@ -757,7 +757,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 			err)
 	}
 
-	return readOnly, err
+	return err
 }
 
 func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *csi.NodePublishVolumeRequest) error {

@@ -333,6 +333,7 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 			},
 		},
 		Spec: v1.PodSpec{
+			SecurityContext: &v1.PodSecurityContext{FSGroup: &user},
 			Containers: []v1.Container{
 				{
 					Name:    "write-pod",
