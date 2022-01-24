@@ -198,6 +198,12 @@ function check_rbd_stat() {
 		else
 			RBD_POOL_NAME=$1
 		fi
+		# Rook creates a detault pool with name device_health_metrics for
+		#  device-health-metrics CephBlockPool CR
+		if [[ "${RBD_POOL_NAME}" == "device-health-metrics" ]]; then
+			RBD_POOL_NAME="device_health_metrics"
+		fi
+
 		echo "Checking RBD ($RBD_POOL_NAME) stats... ${retry}s" && sleep 5
 
 		TOOLBOX_POD=$(kubectl_retry -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
