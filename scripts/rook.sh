@@ -130,6 +130,7 @@ function delete_block_pool() {
 function create_block_ec_pool() {
 	curl -o block-pool-ec.yaml "${ROOK_URL}/pool-ec.yaml"
 	sed -i "s/ec-pool/${ROOK_BLOCK_EC_POOL_NAME}/g" block-pool-ec.yaml
+	sed -i "s/failureDomain: host/failureDomain: osd/g" block-pool-ec.yaml
 	kubectl_retry create -f "./block-pool-ec.yaml"
 	rm -f "./block-pool-ec.yaml"
 
