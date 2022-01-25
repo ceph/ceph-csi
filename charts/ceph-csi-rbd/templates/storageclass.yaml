@@ -18,7 +18,6 @@ parameters:
   clusterID: {{ .Values.storageClass.clusterID }}
   pool: {{ .Values.storageClass.pool }}
   imageFeatures: {{ .Values.storageClass.imageFeatures }}
-  thickProvision: {{ .Values.storageClass.thickProvision | quote}}
 {{- if .Values.storageClass.tryOtherMounters }}
   tryOtherMounters: {{ .Values.storageClass.tryOtherMounters | quote}}
 {{- end }}

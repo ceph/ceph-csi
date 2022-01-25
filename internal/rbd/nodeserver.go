@@ -178,7 +178,6 @@ func populateRbdVol(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	rv.ThickProvision = isThickProvisionRequest(req.GetVolumeContext())
 	isStaticVol := parseBoolOption(ctx, req.GetVolumeContext(), staticVol, false)
 	// get rbd image name from the volume journal
 	// for static volumes, the image name is actually the volume ID itself

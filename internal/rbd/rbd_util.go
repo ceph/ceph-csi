@@ -58,18 +58,6 @@ const (
 	rbdTaskRemoveCmdInvalidString       = "No handler found"
 	rbdTaskRemoveCmdAccessDeniedMessage = "access denied:"
 
-	// image metadata key for thick-provisioning.
-	// As image metadata key starting with '.rbd' will not be copied when we do
-	// clone or mirroring, deprecating the old key for the same reason use
-	// 'thickProvisionMetaKey' to set image metadata.
-	deprecatedthickProvisionMetaKey = ".rbd.csi.ceph.com/thick-provisioned"
-	thickProvisionMetaKey           = "rbd.csi.ceph.com/thick-provisioned"
-
-	// these are the metadata set on the image to identify the image is
-	// thick provisioned or thin provisioned.
-	thickProvisionMetaData = "true"
-	thinProvisionMetaData  = "false"
-
 	// migration label key and value for parameters in volume context.
 	intreeMigrationKey   = "migration"
 	intreeMigrationLabel = "true"
@@ -173,7 +161,6 @@ type rbdVolume struct {
 	RequestedVolSize   int64
 	DisableInUseChecks bool
 	readOnly           bool
-	ThickProvision     bool
 }
 
 // rbdSnapshot represents a CSI snapshot and its RBD snapshot specifics.
@@ -382,26 +369,6 @@ func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) er
 		}
 	}
 
-	if pOpts.ThickProvision {
-		err = pOpts.allocate(0)
-		if err != nil {
-			// nolint:errcheck // deleteImage() will log errors in
-			// case it fails, no need to log them here again
-			_ = pOpts.deleteImage(ctx)
-
-			return fmt.Errorf("failed to thick provision image: %w", err)
-		}
-
-		err = pOpts.setThickProvisioned()
-		if err != nil {
-			// nolint:errcheck // deleteImage() will log errors in
-			// case it fails, no need to log them here again
-			_ = pOpts.deleteImage(ctx)
-
-			return fmt.Errorf("failed to mark image as thick-provisioned: %w", err)
-		}
-	}
-
 	return nil
 }
 
@@ -463,82 +430,6 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 	}
 
 	return image, nil
-}
-
-// allocate uses the stripe-period of the image to fully allocate (thick
-// provision) the image.
-func (ri *rbdImage) allocate(offset uint64) error {
-	// We do not want to call discard, we really want to write zeros to get
-	// the allocation. This sets the option for the re-used connection, and
-	// all subsequent images that are opened. That is not a problem, as
-	// this is the only place images get written.
-	err := ri.conn.DisableDiscardOnZeroedWriteSame()
-	if err != nil {
-		return err
-	}
-
-	image, err := ri.open()
-	if err != nil {
-		return err
-	}
-	defer image.Close()
-
-	st, err := image.Stat()
-	if err != nil {
-		return err
-	}
-
-	sc, err := image.GetStripeCount()
-	if err != nil {
-		return err
-	}
-
-	// blockSize is the stripe-period: size of the object-size multiplied
-	// by the stripe-count
-	blockSize := sc * (1 << st.Order)
-	zeroBlock := make([]byte, blockSize)
-
-	// the actual size of the image as available in the pool, can be
-	// marginally different from the requested image size
-	size := st.Size - offset
-
-	// In case the remaining space on the volume is smaller than blockSize,
-	// write a partial block with WriteAt() after this loop.
-	for size > blockSize {
-		writeSize := size
-		// write a maximum of 1GB per WriteSame() call
-		if size > helpers.GiB {
-			writeSize = helpers.GiB
-		}
-
-		// round down to the size of a zeroBlock
-		if (writeSize % blockSize) != 0 {
-			writeSize = (writeSize / blockSize) * blockSize
-		}
-
-		_, err = image.WriteSame(offset, writeSize, zeroBlock,
-			rados.OpFlagNone)
-		if err != nil {
-			return fmt.Errorf("failed to allocate %d/%d bytes at "+
-				"offset %d: %w", writeSize, blockSize, offset, err)
-		}
-
-		// write succeeded
-		size -= writeSize
-		offset += writeSize
-	}
-
-	// write the last remaining bytes, in case the image size can not be
-	// written with the optimal blockSize
-	if size != 0 {
-		_, err = image.WriteAt(zeroBlock[:size], int64(offset))
-		if err != nil {
-			return fmt.Errorf("failed to allocate %d bytes at "+
-				"offset %d: %w", size, offset, err)
-		}
-	}
-
-	return nil
 }
 
 // isInUse checks if there is a watcher on the image. It returns true if there
@@ -1710,40 +1601,10 @@ func (ri *rbdImage) resize(newSize int64) error {
 	}
 	defer image.Close()
 
-	thick, err := ri.isThickProvisioned()
-	if err != nil {
-		return err
-	}
-
-	// offset is used to track from where on the expansion is done, so that
-	// the extents can be allocated in case the image is thick-provisioned
-	var offset uint64
-	if thick {
-		st, statErr := image.Stat()
-		if statErr != nil {
-			return statErr
-		}
-
-		offset = st.Size
-	}
-
 	err = image.Resize(uint64(util.RoundOffVolSize(newSize) * helpers.MiB))
 	if err != nil {
 		return err
 	}
-
-	if thick {
-		err = ri.allocate(offset)
-		if err != nil {
-			resizeErr := image.Resize(offset)
-			if resizeErr != nil {
-				err = fmt.Errorf("failed to shrink image (%v) after failed allocation: %w", resizeErr, err)
-			}
-
-			return err
-		}
-	}
-
 	// update Volsize of rbdVolume object to newSize.
 	ri.VolSize = newSize
 
@@ -1818,71 +1679,6 @@ func (ri *rbdImage) MigrateMetadata(oldKey, newKey, defaultValue string) (string
 	}
 
 	return value, nil
-}
-
-// setThickProvisioned records in the image metadata that it has been
-// thick-provisioned.
-func (ri *rbdImage) setThickProvisioned() error {
-	err := ri.SetMetadata(thickProvisionMetaKey, thickProvisionMetaData)
-	if err != nil {
-		return fmt.Errorf("failed to set metadata %q for %q: %w", thickProvisionMetaKey, ri, err)
-	}
-
-	return nil
-}
-
-// isThickProvisioned checks in the image metadata if the image has been marked
-// as thick-provisioned. This can be used while expanding the image, so that
-// the expansion can be allocated too.
-func (ri *rbdImage) isThickProvisioned() (bool, error) {
-	value, err := ri.MigrateMetadata(deprecatedthickProvisionMetaKey, thickProvisionMetaKey, thinProvisionMetaData)
-	if err != nil {
-		return false, fmt.Errorf("failed to get metadata %q for %q: %w", thickProvisionMetaKey, ri, err)
-	}
-
-	thick, err := strconv.ParseBool(value)
-	if err != nil {
-		return false, fmt.Errorf("failed to convert %q=%q to a boolean: %w", thickProvisionMetaKey, value, err)
-	}
-
-	return thick, nil
-}
-
-// RepairThickProvision writes zero bytes to the volume so that it will be
-// completely allocated. In case the volume is already marked as
-// thick-provisioned, nothing will be done.
-func (ri *rbdImage) RepairThickProvision() error {
-	// if the image has the thick-provisioned metadata, it has been fully
-	// allocated
-	done, err := ri.isThickProvisioned()
-	if err != nil {
-		return fmt.Errorf("failed to repair thick-provisioning of %q: %w", ri, err)
-	} else if done {
-		return nil
-	}
-
-	// in case there are watchers, assume allocating is still happening in
-	// the background (by an other process?)
-	background, err := ri.isInUse()
-	if err != nil {
-		return fmt.Errorf("failed to get users of %q: %w", ri, err)
-	} else if background {
-		return fmt.Errorf("not going to restart thick-provisioning of in-use image %q", ri)
-	}
-
-	// TODO: can this be improved by starting at the offset where
-	// allocating was aborted/restarted?
-	err = ri.allocate(0)
-	if err != nil {
-		return fmt.Errorf("failed to continue thick-provisioning of %q: %w", ri, err)
-	}
-
-	err = ri.setThickProvisioned()
-	if err != nil {
-		return fmt.Errorf("failed to continue thick-provisioning of %q: %w", ri, err)
-	}
-
-	return nil
 }
 
 // DeepCopy creates an independent image (dest) from the source image. This
@@ -1999,50 +1795,6 @@ func (ri *rbdImage) isCompabitableClone(dst *rbdImage) error {
 			"volume size %d is smaller than source volume size %d",
 			dst.VolSize,
 			ri.VolSize)
-	}
-
-	return nil
-}
-
-func (ri *rbdImage) isCompatibleThickProvision(dst *rbdVolume) error {
-	thick, err := ri.isThickProvisioned()
-	if err != nil {
-		return err
-	}
-	switch {
-	case thick && !dst.ThickProvision:
-		return fmt.Errorf("cannot create thin volume from thick volume %q", ri)
-
-	case !thick && dst.ThickProvision:
-		return fmt.Errorf("cannot create thick volume from thin volume %q", ri)
-	}
-
-	return nil
-}
-
-// FIXME: merge isCompatibleThickProvision of rbdSnapshot and rbdImage to a single
-// function.
-func (rs *rbdSnapshot) isCompatibleThickProvision(dst *rbdVolume) error {
-	// During CreateSnapshot the rbd image will be created with the
-	// snapshot name. Replacing RbdImageName with RbdSnapName so that we
-	// can check if the image is thick provisioned
-	vol := generateVolFromSnap(rs)
-	err := vol.Connect(rs.conn.Creds)
-	if err != nil {
-		return err
-	}
-	defer vol.Destroy()
-
-	thick, err := vol.isThickProvisioned()
-	if err != nil {
-		return err
-	}
-	switch {
-	case thick && !dst.ThickProvision:
-		return fmt.Errorf("cannot create thin volume from thick volume %q", vol)
-
-	case !thick && dst.ThickProvision:
-		return fmt.Errorf("cannot create thick volume from thin volume %q", vol)
 	}
 
 	return nil

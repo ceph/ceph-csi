@@ -310,7 +310,7 @@ func attachRBDImage(ctx context.Context, volOptions *rbdVolume, device string, c
 	return devicePath, err
 }
 
-func appendNbdDeviceTypeAndOptions(cmdArgs []string, isThick bool, userOptions, cookie string) []string {
+func appendNbdDeviceTypeAndOptions(cmdArgs []string, userOptions, cookie string) []string {
 	cmdArgs = append(cmdArgs, "--device-type", accessTypeNbd)
 
 	isUnmap := CheckSliceContains(cmdArgs, "unmap")
@@ -328,12 +328,6 @@ func appendNbdDeviceTypeAndOptions(cmdArgs []string, isThick bool, userOptions, 
 		if hasNBDCookieSupport {
 			cmdArgs = append(cmdArgs, "--options", fmt.Sprintf("cookie=%s", cookie))
 		}
-
-		if isThick {
-			// When an image is thick-provisioned, any discard/unmap/trim
-			// requests should not free extents.
-			cmdArgs = append(cmdArgs, "--options", "notrim")
-		}
 	}
 
 	if userOptions != "" {
@@ -345,22 +339,11 @@ func appendNbdDeviceTypeAndOptions(cmdArgs []string, isThick bool, userOptions, 
 	return cmdArgs
 }
 
-func appendKRbdDeviceTypeAndOptions(cmdArgs []string, isThick bool, userOptions string) []string {
-	cmdArgs = append(cmdArgs, "--device-type", accessTypeKRbd)
-
-	isUnmap := CheckSliceContains(cmdArgs, "unmap")
-	if !isUnmap {
-		if isThick {
-			// When an image is thick-provisioned, any discard/unmap/trim
-			// requests should not free extents.
-			cmdArgs = append(cmdArgs, "--options", "notrim")
-		}
-	}
-
+func appendKRbdDeviceTypeAndOptions(cmdArgs []string, userOptions string) []string {
 	// Enable mapping and unmapping images from a non-initial network
 	// namespace (e.g. for Multus CNI).  The network namespace must be
 	// owned by the initial user namespace.
-	cmdArgs = append(cmdArgs, "--options", "noudev")
+	cmdArgs = append(cmdArgs, "--device-type", accessTypeKRbd, "--options", "noudev")
 
 	if userOptions != "" {
 		// userOptions is appended after, possibly overriding the above
@@ -413,12 +396,6 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 		isNbd = true
 	}
 
-	// check if the image should stay thick-provisioned
-	isThick, err := volOpt.isThickProvisioned()
-	if err != nil {
-		log.WarningLog(ctx, "failed to detect if image %q is thick-provisioned: %v", volOpt, err)
-	}
-
 	if isNbd {
 		mapArgs = append(mapArgs, "--log-file",
 			getCephClientLogFileName(volOpt.VolID, volOpt.LogDir, "rbd-nbd"))
@@ -433,9 +410,9 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 	} else {
 		mapArgs = append(mapArgs, "map", imagePath)
 		if isNbd {
-			mapArgs = appendNbdDeviceTypeAndOptions(mapArgs, isThick, volOpt.MapOptions, volOpt.VolID)
+			mapArgs = appendNbdDeviceTypeAndOptions(mapArgs, volOpt.MapOptions, volOpt.VolID)
 		} else {
-			mapArgs = appendKRbdDeviceTypeAndOptions(mapArgs, isThick, volOpt.MapOptions)
+			mapArgs = appendKRbdDeviceTypeAndOptions(mapArgs, volOpt.MapOptions)
 		}
 	}
 
@@ -543,9 +520,9 @@ func detachRBDImageOrDeviceSpec(
 
 	unmapArgs := []string{"unmap", dArgs.imageOrDeviceSpec}
 	if dArgs.isNbd {
-		unmapArgs = appendNbdDeviceTypeAndOptions(unmapArgs, false, dArgs.unmapOptions, dArgs.volumeID)
+		unmapArgs = appendNbdDeviceTypeAndOptions(unmapArgs, dArgs.unmapOptions, dArgs.volumeID)
 	} else {
-		unmapArgs = appendKRbdDeviceTypeAndOptions(unmapArgs, false, dArgs.unmapOptions)
+		unmapArgs = appendKRbdDeviceTypeAndOptions(unmapArgs, dArgs.unmapOptions)
 	}
 
 	_, stderr, err := util.ExecCommand(ctx, rbd, unmapArgs...)

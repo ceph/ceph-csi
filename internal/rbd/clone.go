@@ -167,13 +167,6 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		}
 	}
 
-	if rv.ThickProvision {
-		err = rv.setThickProvisioned()
-		if err != nil {
-			return fmt.Errorf("failed mark %q thick-provisioned: %w", rv, err)
-		}
-	}
-
 	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to store volume %s: %v", rv, err)
@@ -236,39 +229,27 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 		}
 	}()
 
-	if rv.ThickProvision {
-		err = tempClone.DeepCopy(&rv.rbdImage)
-		if err != nil {
-			return fmt.Errorf("failed to deep copy %q into %q: %w", parentVol, rv, err)
-		}
-	} else {
-		// flatten clone
-		errFlatten = tempClone.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-		if errFlatten != nil {
-			return errFlatten
-		}
+	// flatten clone
+	errFlatten = tempClone.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+	if errFlatten != nil {
+		return errFlatten
+	}
 
-		// create snap of temp clone from temporary cloned image
-		// create final clone
-		// delete snap of temp clone
-		errClone = createRBDClone(ctx, tempClone, rv, cloneSnap)
-		if errClone != nil {
-			// set errFlatten error to cleanup temporary snapshot and temporary clone
-			errFlatten = errors.New("failed to create user requested cloned image")
+	// create snap of temp clone from temporary cloned image
+	// create final clone
+	// delete snap of temp clone
+	errClone = createRBDClone(ctx, tempClone, rv, cloneSnap)
+	if errClone != nil {
+		// set errFlatten error to cleanup temporary snapshot and temporary clone
+		errFlatten = errors.New("failed to create user requested cloned image")
 
-			return errClone
-		}
+		return errClone
 	}
 
 	return nil
 }
 
 func (rv *rbdVolume) flattenCloneImage(ctx context.Context) error {
-	if rv.ThickProvision {
-		// thick-provisioned images do not need flattening
-		return nil
-	}
-
 	tempClone := rv.generateTempClone()
 	// reducing the limit for cloned images to make sure the limit is in range,
 	// If the intermediate clone reaches the depth we may need to return ABORT
