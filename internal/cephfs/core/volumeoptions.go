@@ -230,12 +230,13 @@ func NewVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 		return nil, err
 	}
 
-	opts.FscID, err = opts.getFscID(ctx)
+	fs := NewFileSystem(opts.conn)
+	opts.FscID, err = fs.GetFscID(ctx, opts.FsName)
 	if err != nil {
 		return nil, err
 	}
 
-	opts.MetadataPool, err = opts.getMetadataPool(ctx)
+	opts.MetadataPool, err = fs.GetMetadataPool(ctx, opts.FsName)
 	if err != nil {
 		return nil, err
 	}
@@ -308,12 +309,13 @@ func NewVolumeOptionsFromVolID(
 		}
 	}()
 
-	volOptions.FsName, err = volOptions.getFsName(ctx)
+	fs := NewFileSystem(volOptions.conn)
+	volOptions.FsName, err = fs.GetFsName(ctx, volOptions.FscID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	volOptions.MetadataPool, err = volOptions.getMetadataPool(ctx)
+	volOptions.MetadataPool, err = fs.GetMetadataPool(ctx, volOptions.FsName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -549,12 +551,13 @@ func NewSnapshotOptionsFromID(
 		}
 	}()
 
-	volOptions.FsName, err = volOptions.getFsName(ctx)
+	fs := NewFileSystem(volOptions.conn)
+	volOptions.FsName, err = fs.GetFsName(ctx, volOptions.FscID)
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}
 
-	volOptions.MetadataPool, err = volOptions.getMetadataPool(ctx)
+	volOptions.MetadataPool, err = fs.GetMetadataPool(ctx, volOptions.FsName)
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}
