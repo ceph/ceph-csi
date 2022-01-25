@@ -52,14 +52,14 @@ func NewFileSystem(conn *util.ClusterConnection) FileSystem {
 func (f *fileSystem) GetFscID(ctx context.Context, fsName string) (int64, error) {
 	fsa, err := f.conn.GetFSAdmin()
 	if err != nil {
-		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch filesystem ID for %s:", fsName, err)
+		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch filesystem ID for %s: %s", fsName, err)
 
 		return 0, err
 	}
 
 	volumes, err := fsa.EnumerateVolumes()
 	if err != nil {
-		log.ErrorLog(ctx, "could not list volumes, can not fetch filesystem ID for %s:", fsName, err)
+		log.ErrorLog(ctx, "could not list volumes, can not fetch filesystem ID for %s: %s", fsName, err)
 
 		return 0, err
 	}
@@ -79,14 +79,14 @@ func (f *fileSystem) GetFscID(ctx context.Context, fsName string) (int64, error)
 func (f *fileSystem) GetMetadataPool(ctx context.Context, fsName string) (string, error) {
 	fsa, err := f.conn.GetFSAdmin()
 	if err != nil {
-		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch metadata pool for %s:", fsName, err)
+		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch metadata pool for %s: %s", fsName, err)
 
 		return "", err
 	}
 
 	fsPoolInfos, err := fsa.ListFileSystems()
 	if err != nil {
-		log.ErrorLog(ctx, "could not list filesystems, can not fetch metadata pool for %s:", fsName, err)
+		log.ErrorLog(ctx, "could not list filesystems, can not fetch metadata pool for %s: %s", fsName, err)
 
 		return "", err
 	}
@@ -104,14 +104,14 @@ func (f *fileSystem) GetMetadataPool(ctx context.Context, fsName string) (string
 func (f *fileSystem) GetFsName(ctx context.Context, fscID int64) (string, error) {
 	fsa, err := f.conn.GetFSAdmin()
 	if err != nil {
-		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch filesystem name for ID %d:", fscID, err)
+		log.ErrorLog(ctx, "could not get FSAdmin, can not fetch filesystem name for ID %d: %s", fscID, err)
 
 		return "", err
 	}
 
 	volumes, err := fsa.EnumerateVolumes()
 	if err != nil {
-		log.ErrorLog(ctx, "could not list volumes, can not fetch filesystem name for ID %d:", fscID, err)
+		log.ErrorLog(ctx, "could not list volumes, can not fetch filesystem name for ID %d: %s", fscID, err)
 
 		return "", err
 	}
