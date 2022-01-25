@@ -140,23 +140,3 @@ func (cc *ClusterConnection) GetTaskAdmin() (*ra.TaskAdmin, error) {
 
 	return rbdAdmin.Task(), nil
 }
-
-// DisableDiscardOnZeroedWriteSame enables the
-// `rbd_discard_on_zeroed_write_same` option in the cluster connection, so that
-// writing zero blocks of data are actual writes on the OSDs (doing
-// allocations) and not discard calls. This makes writes much slower, but
-// enables the option to do thick-provisioning.
-func (cc *ClusterConnection) DisableDiscardOnZeroedWriteSame() error {
-	if cc.discardOnZeroedWriteSameDisabled {
-		return nil
-	}
-
-	err := cc.conn.SetConfigOption("rbd_discard_on_zeroed_write_same", "false")
-	if err != nil {
-		return err
-	}
-
-	cc.discardOnZeroedWriteSameDisabled = true
-
-	return nil
-}

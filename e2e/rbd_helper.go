@@ -31,17 +31,11 @@ import (
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
-)
-
-const (
-	// image metadata key for thick-provisioning.
-	thickProvisionMetaKey = "rbd.csi.ceph.com/thick-provisioned"
 )
 
 // nolint:gomnd // numbers specify Kernel versions.
@@ -529,39 +523,6 @@ func isEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *
 	return validateEncryptedImage(f, rbdImageSpec, imageData.pvName, app.Name)
 }
 
-func isThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
-	du, err := getRbdDu(f, pvc)
-	if err != nil {
-		return fmt.Errorf("failed to get allocations of RBD image: %w", err)
-	} else if du.UsedSize == 0 || du.UsedSize != du.ProvisionedSize {
-		return fmt.Errorf("backing RBD image is not thick-provisioned (%d/%d)", du.UsedSize, du.ProvisionedSize)
-	}
-	err = validateThickImageMetadata(f, pvc, thickProvisionMetaKey)
-	if err != nil {
-		return fmt.Errorf("failed to validate thick image: %w", err)
-	}
-
-	return nil
-}
-
-// validateThickImage check thick metadata is set on the the image.
-func validateThickImageMetadata(f *framework.Framework, pvc *v1.PersistentVolumeClaim, key string) error {
-	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
-	if err != nil {
-		return err
-	}
-	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
-	thickState, err := getImageMeta(rbdImageSpec, key, f)
-	if err != nil {
-		return err
-	}
-	if thickState == "" {
-		return fmt.Errorf("image metadata is set for %s", rbdImageSpec)
-	}
-
-	return nil
-}
-
 // validateEncryptedImage verifies that the RBD image is encrypted. The
 // following checks are performed:
 // - Metadata of the image should be set with the encryption state;
@@ -630,6 +591,7 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 	return err
 }
 
+//nolint:unused // required for reclaimspace e2e.
 // rbdDuImage contains the disk-usage statistics of an RBD image.
 type rbdDuImage struct {
 	Name            string `json:"name"`
@@ -637,11 +599,13 @@ type rbdDuImage struct {
 	UsedSize        uint64 `json:"used_size"`
 }
 
+//nolint:unused // required for reclaimspace e2e.
 // rbdDuImageList contains the list of images returned by 'rbd du'.
 type rbdDuImageList struct {
 	Images []*rbdDuImage `json:"images"`
 }
 
+//nolint:deadcode,unused // required for reclaimspace e2e.
 // getRbdDu runs 'rbd du' on the RBD image and returns a rbdDuImage struct with
 // the result.
 func getRbdDu(f *framework.Framework, pvc *v1.PersistentVolumeClaim) (*rbdDuImage, error) {
@@ -672,6 +636,7 @@ func getRbdDu(f *framework.Framework, pvc *v1.PersistentVolumeClaim) (*rbdDuImag
 	return nil, fmt.Errorf("image %s not found", imageData.imageName)
 }
 
+//nolint:deadcode,unused // required for reclaimspace e2e.
 // sparsifyBackingRBDImage runs `rbd sparsify` on the RBD image. Once done, all
 // data blocks that contain zeros are discarded/trimmed/unmapped and do not
 // take up any space anymore. This can be used to verify that an empty, but
@@ -899,67 +864,6 @@ func deletePVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeC
 			imageData.imageID,
 			stdErr)
 	}
-
-	return nil
-}
-
-func validateThickPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, size string) error {
-	pvc.Namespace = f.UniqueName
-	pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(size)
-
-	err := createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-	if err != nil {
-		return fmt.Errorf("failed to create PVC: %w", err)
-	}
-	validateRBDImageCount(f, 1, defaultRBDPool)
-
-	err = validateThickImageMetadata(f, pvc, thickProvisionMetaKey)
-	if err != nil {
-		return fmt.Errorf("failed to validate thick image: %w", err)
-	}
-	// nothing has been written, but the image should be allocated
-	du, err := getRbdDu(f, pvc)
-	if err != nil {
-		return fmt.Errorf("failed to get allocations of RBD image: %w", err)
-	} else if du.UsedSize == 0 || du.UsedSize != du.ProvisionedSize {
-		return fmt.Errorf("backing RBD image is not thick-provisioned (%d/%d)", du.UsedSize, du.ProvisionedSize)
-	}
-
-	// expanding the PVC should thick-allocate the expansion
-	// nolint:gomnd // we want 2x the size so that extending is done
-	newSize := du.ProvisionedSize * 2
-	err = expandPVCSize(f.ClientSet, pvc, fmt.Sprintf("%d", newSize), deployTimeout)
-	if err != nil {
-		return fmt.Errorf("failed to expand PVC: %w", err)
-	}
-
-	// after expansion, the updated 'du' should be larger
-	du, err = getRbdDu(f, pvc)
-	if err != nil {
-		return fmt.Errorf("failed to get allocations of RBD image: %w", err)
-	} else if du.UsedSize != newSize {
-		return fmt.Errorf("backing RBD image is not extended thick-provisioned (%d/%d)", du.UsedSize, newSize)
-	}
-
-	// thick provisioning allows for sparsifying
-	err = sparsifyBackingRBDImage(f, pvc)
-	if err != nil {
-		return fmt.Errorf("failed to sparsify RBD image: %w", err)
-	}
-
-	// after sparsifying the image should not have any allocations
-	du, err = getRbdDu(f, pvc)
-	if err != nil {
-		return fmt.Errorf("backing RBD image is not thick-provisioned: %w", err)
-	} else if du.UsedSize != 0 {
-		return fmt.Errorf("backing RBD image was not sparsified (%d bytes allocated)", du.UsedSize)
-	}
-
-	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-	if err != nil {
-		return fmt.Errorf("failed to delete PVC:: %w", err)
-	}
-	validateRBDImageCount(f, 0, defaultRBDPool)
 
 	return nil
 }
