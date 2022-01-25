@@ -75,7 +75,7 @@ func createCephfsStorageClass(
 	sc.Parameters["csi.storage.k8s.io/node-stage-secret-name"] = cephFSNodePluginSecretName
 
 	if enablePool {
-		sc.Parameters["pool"] = "myfs-data0"
+		sc.Parameters["pool"] = "myfs-replicated"
 	}
 
 	// overload any parameters that were passed

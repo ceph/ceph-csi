@@ -695,12 +695,12 @@ func deletePool(name string, cephFS bool, f *framework.Framework) error {
 		// ceph fs rm myfs --yes-i-really-mean-it
 		// ceph osd pool delete myfs-metadata myfs-metadata
 		// --yes-i-really-mean-it
-		// ceph osd pool delete myfs-data0 myfs-data0
+		// ceph osd pool delete myfs-replicated myfs-replicated
 		// --yes-i-really-mean-it
 		cmds = append(cmds, fmt.Sprintf("ceph fs fail %s", name),
 			fmt.Sprintf("ceph fs rm %s --yes-i-really-mean-it", name),
 			fmt.Sprintf("ceph osd pool delete %s-metadata %s-metadata --yes-i-really-really-mean-it", name, name),
-			fmt.Sprintf("ceph osd pool delete %s-data0 %s-data0 --yes-i-really-really-mean-it", name, name))
+			fmt.Sprintf("ceph osd pool delete %s-replicated %s-replicated --yes-i-really-really-mean-it", name, name))
 	} else {
 		// ceph osd pool delete replicapool replicapool
 		// --yes-i-really-mean-it
