@@ -37,7 +37,6 @@ queue_rules:
               - "status-success=ci/centos/mini-e2e/k8s-1.23"
               - "status-success=ci/centos/upgrade-tests-cephfs"
               - "status-success=ci/centos/upgrade-tests-rbd"
-              - "status-success=DCO"
           - and:
               - base=release-v3.4
               - "status-success=codespell"
@@ -55,12 +54,10 @@ queue_rules:
               - "status-success=ci/centos/mini-e2e/k8s-1.23"
               - "status-success=ci/centos/upgrade-tests-cephfs"
               - "status-success=ci/centos/upgrade-tests-rbd"
-              - "status-success=DCO"
           - and:
               - base=ci/centos
               - "status-success=ci/centos/job-validation"
               - "status-success=ci/centos/jjb-validate"
-              - "status-success=DCO"
 
 pull_request_rules:
   - name: remove outdated approvals
