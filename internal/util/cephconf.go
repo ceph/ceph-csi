@@ -24,14 +24,6 @@ var cephConfig = []byte(`[global]
 auth_cluster_required = cephx
 auth_service_required = cephx
 auth_client_required = cephx
-
-# Workaround for http://tracker.ceph.com/issues/23446
-fuse_set_user_groups = false
-
-# ceph-fuse which uses libfuse2 by default has write buffer size of 2KiB
-# adding 'fuse_big_writes = true' option by default to override this limit
-# see https://github.com/ceph/ceph-csi/issues/1928
-fuse_big_writes = true
 `)
 
 const (
