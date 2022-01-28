@@ -166,6 +166,11 @@ func buildCreateVolumeResponse(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) 
 	if rbdVol.RadosNamespace != "" {
 		volumeContext["radosNamespace"] = rbdVol.RadosNamespace
 	}
+
+	if rbdVol.DataPool != "" {
+		volumeContext["dataPool"] = rbdVol.DataPool
+	}
+
 	volume := &csi.Volume{
 		VolumeId:      rbdVol.VolID,
 		CapacityBytes: rbdVol.VolSize,
