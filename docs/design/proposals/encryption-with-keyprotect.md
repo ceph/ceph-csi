@@ -16,7 +16,7 @@ service from the CSI driver and to make use of the encryption operations:
 The Key Protect/HPCS connection URL.
 
 * IBM_KP_TOKEN_URL
-The Token Authenticaltion URL of KeyProtect/HPCS service.
+The Token Authentication URL of KeyProtect/HPCS service.
 
 * KMS_SERVICE_NAME
 A unique name for the key management service within the project.
@@ -31,14 +31,14 @@ Ex:  06x6DbTkVQ-qCRmq9cK-p9xOQpU2UwJMcdjnIDdr0g2R
 Ex: c7a9aa91-5cb5-48da-a821-e85c27b99d92
 
 * IBM_KP_REGION
-Region of the key protect service, ex: us-south-2
+Region of the Key Protect service, ex: us-south-2
 ```
 
 ### Values provided in the connection Secret
 
 Considering `SERVICE_API_KEY` and `CUSTOMER_ROOT_KEY` are sensitive information,
 those will be provided as a Kubernetes Secret to the CSI driver. The Ceph CSI
-KMS plugin interface for the key protect will read the Secret name from the kms
+KMS plugin interface for the Key Protect will read the Secret name from the kms
 ConfigMap and fetch these values. `SESSION_TOKEN and CRK_ARN` values can also be
 provided by the user as part of the Secret if needed. How-ever these values are
 considered to be optional.
@@ -56,7 +56,7 @@ config map to `KMS_SERVICE_NAME`.
 
 ## Volume Encrypt or Decrypt Operation
 
-The IBM Key protect server's `wrap` and `unwrap` functionalities will be used by
+The IBM Key Protect server's `wrap` and `unwrap` functionalities will be used by
 the Ceph CSI driver to achieve encryption and decryption of volumes. The DEK can
 be wrapped with the help of Customer Root Key (CRK) and can be used for LUKS
 operation. The wrapped cipher blob will be stored inside the image metadata ( as
@@ -66,7 +66,7 @@ with the help of cipher blob and Key Protect server
 ## Integration APIS
 
 [Key Protect Go Client](https://github.com/IBM/keyprotect-go-client) provide the
-client SDK to interact with the Key Protect server and perform key protect
+client SDK to interact with the Key Protect server and perform Key Protect
 operations.
 
 ## Additional Reference
