@@ -58,7 +58,7 @@ Key points:
 * No actual new subvolumes are created in CephFS.
 * The resulting volume is a reference to the source subvolume snapshot. This
   reference would be stored in `Volume.volume_context` map. In order to
-  reference a snapshot, we need subvol name and snapshot name.
+  reference a snapshot, we need subvolume name and snapshot name.
 * Mounting such volume means mounting the respective CephFS subvolume and
   exposing the snapshot to workloads.
 * Let's call a *shallow read-only volume with a subvolume snapshot as its data
@@ -73,7 +73,7 @@ a shallow volume is created, what would happen if:
   exists?_
 
   This shouldn't be a problem already. The parent volume has either
-  `snapshot-retention` subvol feature in which case its snapshots remain
+  `snapshot-retention` subvolume feature in which case its snapshots remain
   available, or if it doesn't have that feature, it will fail to be deleted
   because it still has snapshots associated to it.
 * _Source snapshot from which the shallow volume originates is removed while
@@ -256,16 +256,15 @@ Volume context `Volume.volume_context`:
   [`NodeStageVolume`, `NodeUnstageVolume` section](#NodeStageVolume-NodeUnstageVolume)
   , snapshots cannot be mounted directly. How do we pass in path to the parent
   subvolume?
-* a) Path to the snapshot is passed in via `subvolumePath` / `rootPath`,
-  e.g.
-  `/volumes/<VOLUME NAME>/<SUBVOLUME NAME>/<UUID>/.snap/<SNAPSHOT NAME>`.
-  From that we can derive path to the subvolume: it's the parent of `.snap`
+* a) Path to the snapshot is passed in via `subvolumePath` / `rootPath`, e.g.
+  `/volumes/<VOLUME NAME>/<SUBVOLUME NAME>/<UUID>/.snap/<SNAPSHOT NAME>`. From
+  that we can derive path to the subvolume: it's the parent of `.snap`
   directory.
 * b) Similar to a), path to the snapshot is passed in via `subvolumePath` /
   `rootPath`, but instead of trying to derive the right path we introduce
   another volume context parameter containing path to the parent subvolume
   explicitly.
-* c) `subvolumePath` / `rootPath` contains path to the parent subvolume and
-  we introduce another volume context parameter containing name of the
-  snapshot. Path to the snapshot is then formed by appending
+* c) `subvolumePath` / `rootPath` contains path to the parent subvolume and we
+  introduce another volume context parameter containing name of the snapshot.
+  Path to the snapshot is then formed by appending
   `/.snap/<SNAPSHOT NAME>` to the subvolume path.
