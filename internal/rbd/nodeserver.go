@@ -45,6 +45,8 @@ type NodeServer struct {
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID) return an Aborted error
 	VolumeLocks *util.VolumeLocks
+
+	StagingPath string
 }
 
 // stageTransaction struct represents the state a transaction was when it either completed
@@ -1109,6 +1111,13 @@ func (ns *NodeServer) NodeGetCapabilities(
 			{
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_VOLUME_CONDITION,
+					},
+				},
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
 					},
 				},
@@ -1221,31 +1230,100 @@ func (ns *NodeServer) xfsSupportsReflink() bool {
 	return false
 }
 
+// extractPVNameFromPath extracts PV name from path containing PV name.
+func extractPVNameFromPath(path string) string {
+	str := strings.Split(path, "/pvc-")[1]
+	str = strings.Split(str, "/")[0]
+
+	return "pvc-" + str
+}
+
 // NodeGetVolumeStats returns volume stats.
 func (ns *NodeServer) NodeGetVolumeStats(
 	ctx context.Context,
 	req *csi.NodeGetVolumeStatsRequest,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
-	var err error
-	targetPath := req.GetVolumePath()
-	if targetPath == "" {
-		err = fmt.Errorf("targetpath %v is empty", targetPath)
-
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	var (
+		imgInfo rbdImageMetadataStash
+		err     error
+	)
+	var metadataPath string
+	volumePath := req.GetStagingTargetPath()
+	if volumePath == "" {
+		if volumePath = req.GetVolumePath(); volumePath == "" {
+			return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
+		}
+		pvName := extractPVNameFromPath(volumePath)
+		metadataPath = ns.StagingPath + pvName + "/globalmount"
+	} else {
+		metadataPath = volumePath
+		volumePath = volumePath + "/" + req.GetVolumeId()
 	}
 
-	stat, err := os.Stat(targetPath)
+	imgInfo, err = lookupRBDImageMetadataStash(metadataPath)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to get stat for targetpath %q: %v", targetPath, err)
+		log.ErrorLog(ctx, "failed to find image metadata at stagingPath %q: %v", volumePath, err)
+
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	return checkBlockDeviceStatus(ctx, volumePath, &imgInfo, ns.Mounter)
+}
+
+// checkBlockDeviceStatus checks the block device current status.
+func checkBlockDeviceStatus(
+	ctx context.Context,
+	volumePath string,
+	imgInfo *rbdImageMetadataStash,
+	mounter mount.Interface,
+) (*csi.NodeGetVolumeStatsResponse, error) {
+	var volCondition csi.VolumeCondition
+
+	stat, err := os.Stat(volumePath)
+	if err != nil {
+		volCondition.Abnormal = true
+		volCondition.Message = fmt.Sprintf("failed to get stat for volumepath %q: %v", volumePath, err)
+
+		return &csi.NodeGetVolumeStatsResponse{
+			VolumeCondition: &volCondition,
+		}, nil
+	}
+
+	// userspace mounters
+	var stdout, stderr string
+	if imgInfo.NbdAccess {
+		stdout, stderr, err = util.ExecCommand(ctx, "rbd-nbd", "list-mapped")
+		if err != nil || stderr != "" {
+			log.ErrorLog(ctx, "running rbd-nbd list-mapped failed with error:%v, stderr:%s", err, stderr)
+
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		if !strings.Contains(stdout, imgInfo.DevicePath) && !strings.Contains(stdout, imgInfo.ImageName) {
+			volCondition.Abnormal = true
+			volCondition.Message = fmt.Sprintf("rbd-nbd process not found for image: %s, device: %s",
+				imgInfo.String(), imgInfo.DevicePath)
+
+			return &csi.NodeGetVolumeStatsResponse{
+				VolumeCondition: &volCondition,
+			}, nil
+		}
+	}
+
+	var res *csi.NodeGetVolumeStatsResponse
 	if stat.Mode().IsDir() {
-		return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath)
+		res, err = csicommon.FilesystemNodeGetVolumeStats(ctx, mounter, volumePath)
+		res.VolumeCondition = &volCondition
+
+		return res, err
 	} else if (stat.Mode() & os.ModeDevice) == os.ModeDevice {
-		return blockNodeGetVolumeStats(ctx, targetPath)
+		res, err = blockNodeGetVolumeStats(ctx, volumePath)
+		res.VolumeCondition = &volCondition
+
+		return res, err
 	}
 
-	return nil, fmt.Errorf("targetpath %q is not a block device", targetPath)
+	return nil, fmt.Errorf("volumePath %q is not a block device", volumePath)
 }
 
 // blockNodeGetVolumeStats gets the metrics for a `volumeMode: Block` type of

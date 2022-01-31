@@ -140,6 +140,7 @@ func (r *Driver) Run(conf *util.Config) {
 		if err != nil {
 			log.FatalLogMsg("failed to start node server, err %v\n", err)
 		}
+		r.ns.StagingPath = conf.StagingPath
 		var attr string
 		attr, err = rbd.GetKrbdSupportedFeatures()
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
