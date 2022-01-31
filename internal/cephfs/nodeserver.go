@@ -603,6 +603,13 @@ func (ns *NodeServer) NodeGetCapabilities(
 			{
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_VOLUME_CONDITION,
+					},
+				},
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 					},
 				},
@@ -623,22 +630,32 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	ctx context.Context,
 	req *csi.NodeGetVolumeStatsRequest,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
-	var err error
-	targetPath := req.GetVolumePath()
-	if targetPath == "" {
-		err = fmt.Errorf("targetpath %v is empty", targetPath)
-
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	volumePath := req.GetStagingTargetPath()
+	if volumePath == "" {
+		if volumePath = req.GetVolumePath(); volumePath == "" {
+			return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
+		}
+	} else {
+		volumePath = volumePath + "/" + req.GetVolumeId()
 	}
 
-	stat, err := os.Stat(targetPath)
+	var volCondition csi.VolumeCondition
+	stat, err := os.Stat(volumePath)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to get stat for targetpath %q: %v", targetPath, err)
+		volCondition.Abnormal = true
+		volCondition.Message = fmt.Sprintf("failed to get stat for volumepath %q: %v", volumePath, err)
+
+		return &csi.NodeGetVolumeStatsResponse{
+			VolumeCondition: &volCondition,
+		}, nil
 	}
 
 	if stat.Mode().IsDir() {
-		return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath)
+		res, err := csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, volumePath)
+		res.VolumeCondition = &volCondition
+
+		return res, err
 	}
 
-	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
+	return nil, status.Errorf(codes.InvalidArgument, "volumePath %q is not a directory or device", volumePath)
 }
