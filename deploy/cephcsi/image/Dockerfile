@@ -4,6 +4,15 @@ ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE} as builder
 
+# FIXME: Ceph base containers should use CentOS Stream 8
+# Move the container to CentOS Stream 8. Do this as 1st step in the
+# container-image creation, so that the final container-image can use the
+# cached layer.
+RUN true \
+    && dnf -y swap --disablerepo='*' --repofrompath=c8-extras,http://mirror.centos.org/centos/8/extras/x86_64/os centos-linux-repos centos-stream-repos \
+    && dnf -y distro-sync \
+    && true
+
 LABEL stage="build"
 
 ARG CSI_IMAGE_NAME=quay.io/cephcsi/cephcsi
@@ -49,6 +58,13 @@ RUN make cephcsi
 
 #-- Final container
 FROM ${BASE_IMAGE}
+
+# FIXME: Ceph base containers should use CentOS Stream 8
+# Move the container to CentOS Stream 8
+RUN true \
+    && dnf -y swap --disablerepo='*' --repofrompath=c8-extras,http://mirror.centos.org/centos/8/extras/x86_64/os centos-linux-repos centos-stream-repos \
+    && dnf -y distro-sync \
+    && true
 
 ARG SRC_DIR
 

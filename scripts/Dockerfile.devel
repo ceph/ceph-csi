@@ -9,6 +9,13 @@ ENV GOPATH=/go \
  GO111MODULE=on \
  PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
 
+# FIXME: Ceph base containers should use CentOS Stream 8
+# Move the container to CentOS Stream 8
+RUN true \
+    && dnf -y swap --disablerepo='*' --repofrompath=c8-extras,http://mirror.centos.org/centos/8/extras/x86_64/os centos-linux-repos centos-stream-repos \
+    && dnf -y distro-sync \
+    && true
+
 COPY build.env /
 
 RUN source /build.env \
