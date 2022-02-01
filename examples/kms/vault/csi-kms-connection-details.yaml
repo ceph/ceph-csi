@@ -57,7 +57,7 @@ data:
   aws-metadata-test: |-
     {
       "KMS_PROVIDER": "aws-metadata",
-      "IBM_KP_SECRET_NAME": "ceph-csi-aws-credentials",
+      "KMS_SECRET_NAME": "ceph-csi-aws-credentials",
       "AWS_REGION": "us-west-2"
     }
   ibmkeyprotect-test: |-
@@ -66,7 +66,7 @@ data:
       "IBM_KP_SECRET_NAME": "ceph-csi-kp-credentials",
       "IBM_KP_SERVICE_INSTANCE_ID": "7abef064-01dd-4237-9ea5-8b3890970be3",
       "IBM_KP_BASE_URL": "https://us-south.kms.cloud.ibm.com",
-      "IBM_KP_TOKEN_URL": ""https://iam.cloud.ibm.com/oidc/token",
+      "IBM_KP_TOKEN_URL": "https://iam.cloud.ibm.com/oidc/token",
       "IBM_KP_REGION": "us-south-2",
     }
 metadata:
