@@ -126,6 +126,8 @@ spec:
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+            - name: ceph-csi-mountinfo
+              mountPath: /csi/mountinfo
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- if .Values.nodeplugin.httpMetrics.enabled }}
@@ -207,6 +209,10 @@ spec:
           emptyDir: {
             medium: "Memory"
           }
+        - name: ceph-csi-mountinfo
+          hostPath:
+            path: {{ .Values.kubeletDir }}/plugins/{{ .Values.driverName }}/mountinfo
+            type: DirectoryOrCreate
 {{- if .Values.nodeplugin.affinity }}
       affinity:
 {{ toYaml .Values.nodeplugin.affinity | indent 8 -}}

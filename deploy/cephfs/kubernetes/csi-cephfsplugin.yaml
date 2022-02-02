@@ -100,6 +100,8 @@ spec:
               mountPath: /etc/ceph-csi-config/
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
+            - name: ceph-csi-mountinfo
+              mountPath: /csi/mountinfo
         - name: liveness-prometheus
           securityContext:
             privileged: true
@@ -164,6 +166,10 @@ spec:
           emptyDir: {
             medium: "Memory"
           }
+        - name: ceph-csi-mountinfo
+          hostPath:
+            path: /var/lib/kubelet/plugins/cephfs.csi.ceph.com/mountinfo
+            type: DirectoryOrCreate
 ---
 # This is a service to expose the liveness metrics
 apiVersion: v1

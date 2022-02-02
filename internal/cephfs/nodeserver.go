@@ -135,6 +135,10 @@ func (ns *NodeServer) NodeStageVolume(
 
 	// Check if the volume is already mounted
 
+	if err = ns.tryRestoreFuseMountInNodeStage(ctx, mnt, stagingTargetPath); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to try to restore FUSE mounts: %v", err)
+	}
+
 	isMnt, err := util.IsMountPoint(stagingTargetPath)
 	if err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
@@ -163,6 +167,25 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 
 	log.DebugLog(ctx, "cephfs: successfully mounted volume %s to %s", volID, stagingTargetPath)
+
+	if _, isFuse := mnt.(*mounter.FuseMounter); isFuse {
+		// FUSE mount recovery needs NodeStageMountinfo records.
+
+		if err = fsutil.WriteNodeStageMountinfo(volID, &fsutil.NodeStageMountinfo{
+			VolumeCapability: req.GetVolumeCapability(),
+			Secrets:          req.GetSecrets(),
+		}); err != nil {
+			log.ErrorLog(ctx, "cephfs: failed to write NodeStageMountinfo for volume %s: %v", volID, err)
+
+			// Try to clean node stage mount.
+			if unmountErr := mounter.UnmountVolume(ctx, stagingTargetPath); unmountErr != nil {
+				log.ErrorLog(ctx, "cephfs: failed to unmount %s in WriteNodeStageMountinfo clean up: %v",
+					stagingTargetPath, unmountErr)
+			}
+
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
@@ -237,11 +260,33 @@ func (ns *NodeServer) NodePublishVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	if err := ns.tryRestoreFuseMountsInNodePublish(
+		ctx,
+		volID,
+		stagingTargetPath,
+		targetPath,
+		req.GetVolumeContext(),
+	); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to try to restore FUSE mounts: %v", err)
+	}
+
 	if req.GetReadonly() {
 		mountOptions = append(mountOptions, "ro")
 	}
 
 	mountOptions = csicommon.ConstructMountOptions(mountOptions, req.GetVolumeCapability())
+
+	// Ensure staging target path is a mountpoint.
+
+	if isMnt, err := util.IsMountPoint(stagingTargetPath); err != nil {
+		log.ErrorLog(ctx, "stat failed: %v", err)
+
+		return nil, status.Error(codes.Internal, err.Error())
+	} else if !isMnt {
+		return nil, status.Errorf(
+			codes.Internal, "staging path %s for volume %s is not a mountpoint", stagingTargetPath, volID,
+		)
+	}
 
 	// Check if the volume is already mounted
 
@@ -284,11 +329,14 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	if err = util.ValidateNodeUnpublishVolumeRequest(req); err != nil {
 		return nil, err
 	}
+
 	// considering kubelet make sure node operations like unpublish/unstage...etc can not be called
 	// at same time, an explicit locking at time of nodeunpublish is not required.
 	targetPath := req.GetTargetPath()
 	isMnt, err := util.IsMountPoint(targetPath)
 	if err != nil {
+		log.ErrorLog(ctx, "stat failed: %v", err)
+
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
 			log.DebugLog(ctx, "targetPath: %s has already been deleted", targetPath)
@@ -296,7 +344,14 @@ func (ns *NodeServer) NodeUnpublishVolume(
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
 
-		return nil, status.Error(codes.Internal, err.Error())
+		if !util.IsCorruptedMountError(err) {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		// Corrupted mounts need to be unmounted properly too,
+		// regardless of the mounter used. Continue as normal.
+		log.DebugLog(ctx, "cephfs: detected corrupted mount in publish target path %s, trying to unmount anyway", targetPath)
+		isMnt = true
 	}
 	if !isMnt {
 		if err = os.RemoveAll(targetPath); err != nil {
@@ -340,8 +395,16 @@ func (ns *NodeServer) NodeUnstageVolume(
 
 	stagingTargetPath := req.GetStagingTargetPath()
 
+	if err = fsutil.RemoveNodeStageMountinfo(fsutil.VolumeID(volID)); err != nil {
+		log.ErrorLog(ctx, "cephfs: failed to remove NodeStageMountinfo for volume %s: %v", volID, err)
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	isMnt, err := util.IsMountPoint(stagingTargetPath)
 	if err != nil {
+		log.ErrorLog(ctx, "stat failed: %v", err)
+
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
 			log.DebugLog(ctx, "targetPath: %s has already been deleted", stagingTargetPath)
@@ -349,7 +412,16 @@ func (ns *NodeServer) NodeUnstageVolume(
 			return &csi.NodeUnstageVolumeResponse{}, nil
 		}
 
-		return nil, status.Error(codes.Internal, err.Error())
+		if !util.IsCorruptedMountError(err) {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		// Corrupted mounts need to be unmounted properly too,
+		// regardless of the mounter used. Continue as normal.
+		log.DebugLog(ctx,
+			"cephfs: detected corrupted mount in staging target path %s, trying to unmount anyway",
+			stagingTargetPath)
+		isMnt = true
 	}
 	if !isMnt {
 		return &csi.NodeUnstageVolumeResponse{}, nil
