@@ -1,8 +1,8 @@
-FROM quay.io/centos/centos:latest
+FROM quay.io/centos/centos:stream8
 
 RUN true \
- && yum -y install skopeo \
- && yum -y clean all \
+ && dnf -y install skopeo \
+ && dnf -y clean all \
  && true
 
 ADD images.txt /opt/mirror/
