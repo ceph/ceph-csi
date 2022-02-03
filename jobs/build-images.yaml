@@ -28,11 +28,14 @@
                   ceph-csi-canary"
           },
           test: {
-            sh 'oc start-build --follow ceph-csi-test'
+            sh 'oc start-build --follow \
+                  --build-arg=GOARCH=amd64 \
+                  ceph-csi-test'
           },
           devel: {
             sh "oc start-build --follow \
                   --build-arg=BASE_IMAGE='${base_image}' \
+                  --build-arg=GOARCH=amd64 \
                   ceph-csi-devel"
           }
         }
