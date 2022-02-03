@@ -1265,11 +1265,11 @@ var _ = Describe("RBD", func() {
 					var runningAttachCmd string
 					runningAttachCmd, stdErr, err = execCommandInContainer(
 						f,
-						"ps -eo 'cmd' | grep [r]bd-nbd",
+						"pstree --arguments | grep [r]bd-nbd",
 						cephCSINamespace,
 						"csi-rbdplugin",
 						&opt)
-					// if the rbd-nbd process is not running the ps | grep command
+					// if the rbd-nbd process is not running the 'grep' command
 					// will return with exit code 1
 					if err != nil {
 						if strings.Contains(err.Error(), "command terminated with exit code 1") {
