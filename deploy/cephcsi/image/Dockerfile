@@ -57,6 +57,8 @@ LABEL maintainers="Ceph-CSI Authors" \
     architecture=${GO_ARCH} \
     description="Ceph-CSI Plugin"
 
+RUN dnf -y install procps-ng
+
 COPY --from=builder ${SRC_DIR}/_output/cephcsi /usr/local/bin/cephcsi
 
 # verify that all dynamically linked libraries are available
