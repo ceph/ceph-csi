@@ -17,6 +17,9 @@ spec:
     rule: RunAsAny
   privileged: true
   hostNetwork: true
+  hostPorts:
+    - min: {{ .Values.nodeplugin.httpMetrics.containerPort }}
+      max: {{ .Values.nodeplugin.httpMetrics.containerPort }}
   hostPID: true
   runAsUser:
     rule: RunAsAny

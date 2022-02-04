@@ -229,6 +229,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+          ports:
+            - containerPort: {{ .Values.provisioner.httpMetrics.containerPort }}
+              name: metrics
+              protocol: TCP
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
