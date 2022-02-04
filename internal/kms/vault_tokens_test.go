@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/vault/api"
+	loss "github.com/libopenstorage/secrets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,6 +43,8 @@ func TestParseConfig(t *testing.T) {
 
 	// fill default options (normally done in initVaultTokensKMS)
 	config["vaultAddress"] = "https://vault.default.cluster.svc"
+	config["vaultNamespace"] = "default"
+	config["vaultAuthNamespace"] = "company-sso"
 	config["tenantConfigName"] = vaultTokensDefaultConfigName
 
 	// parsing with all required options
@@ -55,12 +59,17 @@ func TestParseConfig(t *testing.T) {
 	// tenant "bob" uses a different kms.ConfigName
 	bob := make(map[string]interface{})
 	bob["tenantConfigName"] = "the-config-from-bob"
+	bob["vaultNamespace"] = "bobs-place"
 	err = vtc.parseConfig(bob)
 	switch {
 	case err != nil:
 		t.Errorf("unexpected error: %s", err)
 	case vtc.ConfigName != "the-config-from-bob":
 		t.Errorf("ConfigName contains unexpected value: %s", vtc.ConfigName)
+	case vtc.vaultConfig[api.EnvVaultNamespace] != "company-sso":
+		t.Errorf("EnvVaultNamespace contains unexpected value: %s", vtc.vaultConfig[api.EnvVaultNamespace])
+	case vtc.keyContext[loss.KeyVaultNamespace] != "bobs-place":
+		t.Errorf("KeyVaultNamespace contains unexpected value: %s", vtc.keyContext[loss.KeyVaultNamespace])
 	}
 }
 
