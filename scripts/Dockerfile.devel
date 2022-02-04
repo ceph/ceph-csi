@@ -17,6 +17,11 @@ RUN source /build.env \
     && mkdir -p /usr/local/go \
     && curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${GOARCH}.tar.gz | tar xzf - -C ${GOROOT} --strip-components=1
 
+# FIXME: Ceph does not need Apache Arrow anymore, some container images may
+# still have the repository enabled. Disabling the repository can be removed in
+# the future, see https://github.com/ceph/ceph-container/pull/1990 .
+RUN dnf config-manager --disable apache-arrow-centos || true
+
 RUN dnf -y install \
 	git \
 	make \
