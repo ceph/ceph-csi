@@ -203,6 +203,7 @@ ifeq ($(USE_PULLED_IMAGE),no)
 .devel-container-id: GOARCH ?= $(shell go env GOARCH 2>/dev/null)
 .devel-container-id: .container-cmd scripts/Dockerfile.devel
 	[ ! -f .devel-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):devel
+	$(RM) .devel-container-id
 	$(CONTAINER_CMD) build $(CPUSET) --build-arg BASE_IMAGE=$(BASE_IMAGE) --build-arg GOARCH=$(GOARCH) -t $(CSI_IMAGE_NAME):devel -f ./scripts/Dockerfile.devel .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):devel > .devel-container-id
 else
@@ -216,6 +217,7 @@ ifeq ($(USE_PULLED_IMAGE),no)
 # create a (cached) container image with dependencies for testing cephcsi
 .test-container-id: .container-cmd build.env scripts/Dockerfile.test
 	[ ! -f .test-container-id ] || $(CONTAINER_CMD) rmi $(CSI_IMAGE_NAME):test
+	$(RM) .test-container-id
 	$(CONTAINER_CMD) build $(CPUSET) --build-arg GOARCH=$(GOARCH) -t $(CSI_IMAGE_NAME):test -f ./scripts/Dockerfile.test .
 	$(CONTAINER_CMD) inspect -f '{{.Id}}' $(CSI_IMAGE_NAME):test > .test-container-id
 else
