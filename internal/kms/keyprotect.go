@@ -251,7 +251,8 @@ func (kms *keyProtectKMS) DecryptDEK(volumeID, encryptedDEK string) (string, err
 			err)
 	}
 
-	result, err := kms.client.Unwrap(context.TODO(), kms.customerRootKey, ciphertextBlob, nil)
+	aadVolID := []string{volumeID}
+	result, err := kms.client.Unwrap(context.TODO(), kms.customerRootKey, ciphertextBlob, &aadVolID)
 	if err != nil {
 		return "", fmt.Errorf("failed to unwrap the DEK: %w", err)
 	}
