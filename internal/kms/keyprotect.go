@@ -23,15 +23,13 @@ import (
 	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/util/k8s"
-	"github.com/ceph/ceph-csi/internal/util/log"
 
 	kp "github.com/IBM/keyprotect-go-client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	kmsTypeKeyProtectMetadata    = "ibmkeyprotect"
-	kmsTypeKeyProtectMetadataOld = "kp-metadata"
+	kmsTypeKeyProtectMetadata = "ibmkeyprotect"
 	// keyProtectMetadataDefaultSecretsName is the default name of the Kubernetes Secret
 	// that contains the credentials to access the Key Protect KMS. The name of
 	// the Secret can be configured by setting the `IBM_KP_SECRET_NAME`
@@ -62,21 +60,6 @@ var _ = RegisterProvider(Provider{
 	UniqueID:    kmsTypeKeyProtectMetadata,
 	Initializer: initKeyProtectKMS,
 })
-
-// RegisterProvider for kmsTypeKeyProtectMetadataOld is kept here for backward compatibility.
-var _ = RegisterProvider(Provider{
-	UniqueID:    kmsTypeKeyProtectMetadataOld,
-	Initializer: initKeyProtectKMSOld,
-})
-
-// initKeyProtectKMSOld is the wrapper with a warning log.
-func initKeyProtectKMSOld(args ProviderInitArgs) (EncryptionKMS, error) {
-	log.WarningLogMsg("%q is deprecated provider for IBM key Protect,"+
-		"use new provider name %q in the configuration, proceeding with %q",
-		kmsTypeKeyProtectMetadataOld, kmsTypeKeyProtectMetadata, kmsTypeKeyProtectMetadata)
-
-	return initKeyProtectKMS(args)
-}
 
 // KeyProtectKMS store the KMS connection information retrieved from the kms configmap.
 type keyProtectKMS struct {
