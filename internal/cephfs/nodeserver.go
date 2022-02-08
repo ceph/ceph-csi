@@ -164,8 +164,6 @@ func (*NodeServer) mount(ctx context.Context, volOptions *core.VolumeOptions, re
 	log.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, m.Name())
 
 	readOnly := "ro"
-	fuseMountOptions := strings.Split(volOptions.FuseMountOptions, ",")
-	kernelMountOptions := strings.Split(volOptions.KernelMountOptions, ",")
 
 	if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
 		req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
@@ -173,12 +171,10 @@ func (*NodeServer) mount(ctx context.Context, volOptions *core.VolumeOptions, re
 		case *mounter.FuseMounter:
 			if !csicommon.MountOptionContains(strings.Split(volOptions.FuseMountOptions, ","), readOnly) {
 				volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, readOnly)
-				fuseMountOptions = append(fuseMountOptions, readOnly)
 			}
 		case *mounter.KernelMounter:
 			if !csicommon.MountOptionContains(strings.Split(volOptions.KernelMountOptions, ","), readOnly) {
 				volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, readOnly)
-				kernelMountOptions = append(kernelMountOptions, readOnly)
 			}
 		}
 	}
@@ -190,30 +186,6 @@ func (*NodeServer) mount(ctx context.Context, volOptions *core.VolumeOptions, re
 			err)
 
 		return status.Error(codes.Internal, err.Error())
-	}
-	if !csicommon.MountOptionContains(kernelMountOptions, readOnly) &&
-		!csicommon.MountOptionContains(fuseMountOptions, readOnly) {
-		// #nosec - allow anyone to write inside the stagingtarget path
-		err = os.Chmod(stagingTargetPath, 0o777)
-		if err != nil {
-			log.ErrorLog(
-				ctx,
-				"failed to change stagingtarget path %s permission for volume %s: %v",
-				stagingTargetPath,
-				volID,
-				err)
-			uErr := mounter.UnmountVolume(ctx, stagingTargetPath)
-			if uErr != nil {
-				log.ErrorLog(
-					ctx,
-					"failed to umount stagingtarget path %s for volume %s: %v",
-					stagingTargetPath,
-					volID,
-					uErr)
-			}
-
-			return status.Error(codes.Internal, err.Error())
-		}
 	}
 
 	return nil
