@@ -124,6 +124,21 @@ function validate_container_cmd() {
     fi
 }
 
+# validate csi sidecar image version
+function validate_sidecar() {
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+# shellcheck disable=SC1091
+    source "${SCRIPT_DIR}/../build.env"
+
+    sidecars=(CSI_ATTACHER_VERSION CSI_SNAPSHOTTER_VERSION CSI_PROVISIONER_VERSION CSI_RESIZER_VERSION CSI_NODE_DRIVER_REGISTRAR_VERSION)
+    for sidecar in "${sidecars[@]}"; do
+        if [[ -z "${!sidecar}" ]]; then
+	   echo "${sidecar}" version is empty, make sure build.env has set this sidecar version
+	   exit 1
+    fi
+done
+}
+
 # Storage providers and the default storage class is not needed for Ceph-CSI
 # testing. In order to reduce resources and potential conflicts between storage
 # plugins, disable them.
@@ -160,13 +175,6 @@ if [[ "${VM_DRIVER}" == "kvm2" ]] || [[ "${VM_DRIVER}" == "hyperkit" ]]; then
 else
     DISK_CONFIG=""
 fi
-
-#configure csi sidecar version
-CSI_ATTACHER_VERSION=${CSI_ATTACHER_VERSION:-"v3.2.1"}
-CSI_SNAPSHOTTER_VERSION=${CSI_SNAPSHOTTER_VERSION:-"v4.1.1"}
-CSI_PROVISIONER_VERSION=${CSI_PROVISIONER_VERSION:-"v2.2.2"}
-CSI_RESIZER_VERSION=${CSI_RESIZER_VERSION:-"v1.2.0"}
-CSI_NODE_DRIVER_REGISTRAR_VERSION=${CSI_NODE_DRIVER_REGISTRAR_VERSION:-"v2.2.0"}
 
 # configure csi image version
 CSI_IMAGE_VERSION=${CSI_IMAGE_VERSION:-"canary"}
@@ -290,6 +298,8 @@ cephcsi)
     copy_image_to_cluster "${CEPHCSI_IMAGE_REPO}"/cephcsi:"${CSI_IMAGE_VERSION}" "${CEPHCSI_IMAGE_REPO}"/cephcsi:"${CSI_IMAGE_VERSION}"
     ;;
 k8s-sidecar)
+    echo "validating sidecar's image version"
+    validate_sidecar
     echo "copying the kubernetes sidecar images"
     copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-attacher:${CSI_ATTACHER_VERSION}" "${K8S_IMAGE_REPO}/csi-attacher:${CSI_ATTACHER_VERSION}"
     copy_image_to_cluster "${K8S_IMAGE_REPO}/csi-snapshotter:${CSI_SNAPSHOTTER_VERSION}" "${K8S_IMAGE_REPO}/csi-snapshotter:${CSI_SNAPSHOTTER_VERSION}"
