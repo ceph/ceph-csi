@@ -3,7 +3,6 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: {{ .Values.storageClass.name }}
-  namespace: {{ .Release.Namespace }}
 {{- if .Values.storageClass.annotations }}
   annotations:
 {{ toYaml .Values.storageClass.annotations | indent 4 }}
