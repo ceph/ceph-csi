@@ -61,6 +61,8 @@ const (
 	// DEK is stored.
 	metadataDEK    = "rbd.csi.ceph.com/dek"
 	oldMetadataDEK = ".rbd.csi.ceph.com/dek"
+
+	encryptionPassphraseSize = 20
 )
 
 // checkRbdImageEncrypted verifies if rbd image was encrypted when created.
@@ -100,7 +102,7 @@ func (ri *rbdImage) isEncrypted() bool {
 // - the Data-Encryption-Key (DEK) will be generated stored for use by the KMS;
 // - the RBD image will be marked to support encryption in its metadata.
 func (ri *rbdImage) setupEncryption(ctx context.Context) error {
-	err := ri.encryption.StoreNewCryptoPassphrase(ri.VolID)
+	err := ri.encryption.StoreNewCryptoPassphrase(ri.VolID, encryptionPassphraseSize)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to save encryption passphrase for "+
 			"image %s: %s", ri, err)

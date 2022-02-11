@@ -28,14 +28,14 @@ import (
 
 func TestGenerateNewEncryptionPassphrase(t *testing.T) {
 	t.Parallel()
-	b64Passphrase, err := generateNewEncryptionPassphrase()
+	b64Passphrase, err := generateNewEncryptionPassphrase(defaultEncryptionPassphraseSize)
 	require.NoError(t, err)
 
 	// b64Passphrase is URL-encoded, decode to verify the length of the
 	// passphrase
 	passphrase, err := base64.URLEncoding.DecodeString(b64Passphrase)
 	assert.NoError(t, err)
-	assert.Equal(t, encryptionPassphraseSize, len(passphrase))
+	assert.Equal(t, defaultEncryptionPassphraseSize, len(passphrase))
 }
 
 func TestKMSWorkflow(t *testing.T) {
@@ -56,7 +56,7 @@ func TestKMSWorkflow(t *testing.T) {
 
 	volumeID := "volume-id"
 
-	err = ve.StoreNewCryptoPassphrase(volumeID)
+	err = ve.StoreNewCryptoPassphrase(volumeID, defaultEncryptionPassphraseSize)
 	assert.NoError(t, err)
 
 	passphrase, err := ve.GetCryptoPassphrase(volumeID)
