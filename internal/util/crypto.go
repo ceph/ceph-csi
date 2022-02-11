@@ -36,7 +36,7 @@ const (
 
 	// Passphrase size - 20 bytes is 160 bits to satisfy:
 	// https://tools.ietf.org/html/rfc6749#section-10.10
-	encryptionPassphraseSize = 20
+	defaultEncryptionPassphraseSize = 20
 )
 
 var (
@@ -156,8 +156,8 @@ func (ve *VolumeEncryption) StoreCryptoPassphrase(volumeID, passphrase string) e
 }
 
 // StoreNewCryptoPassphrase generates a new passphrase and saves it in the KMS.
-func (ve *VolumeEncryption) StoreNewCryptoPassphrase(volumeID string) error {
-	passphrase, err := generateNewEncryptionPassphrase()
+func (ve *VolumeEncryption) StoreNewCryptoPassphrase(volumeID string, length int) error {
+	passphrase, err := generateNewEncryptionPassphrase(length)
 	if err != nil {
 		return fmt.Errorf("failed to generate passphrase for %s: %w", volumeID, err)
 	}
@@ -176,8 +176,8 @@ func (ve *VolumeEncryption) GetCryptoPassphrase(volumeID string) (string, error)
 }
 
 // generateNewEncryptionPassphrase generates a random passphrase for encryption.
-func generateNewEncryptionPassphrase() (string, error) {
-	bytesPassphrase := make([]byte, encryptionPassphraseSize)
+func generateNewEncryptionPassphrase(length int) (string, error) {
+	bytesPassphrase := make([]byte, length)
 	_, err := rand.Read(bytesPassphrase)
 	if err != nil {
 		return "", err
