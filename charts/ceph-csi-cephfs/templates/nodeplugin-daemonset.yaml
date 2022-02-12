@@ -194,7 +194,7 @@ spec:
             path: /dev
         - name: ceph-config
           configMap:
-            name: ceph-config
+            name: {{ .Values.cephConfConfigMapName | quote }}
         - name: ceph-csi-config
           configMap:
             name: {{ .Values.configMapName | quote }}
