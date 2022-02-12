@@ -323,3 +323,5 @@ configMapName: ceph-csi-config
 # configMapKey:
 # Use an externally provided configmap
 externallyManagedConfigmap: false
+# Name of the configmap used for ceph.conf
+cephConfConfigMapName: ceph-config

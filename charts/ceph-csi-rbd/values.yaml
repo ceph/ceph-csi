@@ -447,5 +447,7 @@ configMapName: ceph-csi-config
 # configMapKey:
 # Use an externally provided configmap
 externallyManagedConfigmap: false
+# Name of the configmap used for ceph.conf
+cephConfConfigMapName: ceph-config
 # Name of the configmap used for encryption kms configuration
 kmsConfigMapName: ceph-csi-encryption-kms-config
