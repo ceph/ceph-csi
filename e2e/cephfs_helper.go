@@ -22,10 +22,13 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -100,9 +103,24 @@ func createCephfsStorageClass(
 		sc.Parameters["clusterID"] = strings.Trim(fsID, "\n")
 	}
 	sc.Namespace = cephCSINamespace
-	_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 
-	return err
+	timeout := time.Duration(deployTimeout) * time.Minute
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+		if err != nil {
+			e2elog.Logf("error creating StorageClass %q in namespace %q: %v", sc.Name, sc.Namespace, err)
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to create StorageClass %q: %w", sc.Name, err)
+		}
+
+		return true, nil
+	})
 }
 
 func createCephfsSecret(f *framework.Framework, secretName, userName, userKey string) error {
