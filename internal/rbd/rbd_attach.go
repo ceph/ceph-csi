@@ -199,14 +199,15 @@ func waitForPath(ctx context.Context, pool, namespace, image string, maxRetries 
 
 // set features available with rbd-nbd, and NBD module loaded status.
 func setRbdNbdToolFeatures() {
+	var stderr string
 	// check if the module is loaded or compiled in
 	_, err := os.Stat(fmt.Sprintf("/sys/module/%s", moduleNbd))
 	if os.IsNotExist(err) {
 		// try to load the module
-		_, _, err = util.ExecCommand(context.TODO(), "modprobe", moduleNbd)
+		_, stderr, err = util.ExecCommand(context.TODO(), "modprobe", moduleNbd)
 		if err != nil {
 			hasNBD = false
-			log.WarningLogMsg("rbd-nbd: nbd modprobe failed with error %v", err)
+			log.WarningLogMsg("rbd-nbd: nbd modprobe failed (%v): %q", err, stderr)
 		}
 	}
 

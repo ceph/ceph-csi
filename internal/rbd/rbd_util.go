@@ -214,6 +214,7 @@ var supportedFeatures = map[string]imageFeature{
 // GetKrbdSupportedFeatures load the module if needed and return supported
 // features attribute as a string.
 func GetKrbdSupportedFeatures() (string, error) {
+	var stderr string
 	// check if the module is loaded or compiled in
 	_, err := os.Stat(krbdSupportedFeaturesFile)
 	if err != nil {
@@ -223,9 +224,9 @@ func GetKrbdSupportedFeatures() (string, error) {
 			return "", err
 		}
 		// try to load the module
-		_, _, err = util.ExecCommand(context.TODO(), "modprobe", rbdDefaultMounter)
+		_, stderr, err = util.ExecCommand(context.TODO(), "modprobe", rbdDefaultMounter)
 		if err != nil {
-			log.ErrorLogMsg("modprobe failed: %v", err)
+			log.ErrorLogMsg("modprobe failed (%v): %q", err, stderr)
 
 			return "", err
 		}
