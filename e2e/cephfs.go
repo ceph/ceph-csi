@@ -51,21 +51,12 @@ var (
 func deployCephfsPlugin() {
 	// delete objects deployed by rook
 
-	data, err := replaceNamespaceInTemplate(cephFSDirPath + cephFSProvisionerRBAC)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s: %v", cephFSDirPath+cephFSProvisionerRBAC, err)
-	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, "--ignore-not-found=true", ns, "delete", "-f", "-")
+	err := deleteResource(cephFSDirPath + cephFSProvisionerRBAC)
 	if err != nil {
 		e2elog.Failf("failed to delete provisioner rbac %s: %v", cephFSDirPath+cephFSProvisionerRBAC, err)
 	}
 
-	data, err = replaceNamespaceInTemplate(cephFSDirPath + cephFSNodePluginRBAC)
-	if err != nil {
-		e2elog.Failf("failed to read content from %s: %v", cephFSDirPath+cephFSNodePluginRBAC, err)
-	}
-	_, err = framework.RunKubectlInput(cephCSINamespace, data, "delete", "--ignore-not-found=true", ns, "-f", "-")
-
+	err = deleteResource(cephFSDirPath + cephFSNodePluginRBAC)
 	if err != nil {
 		e2elog.Failf("failed to delete nodeplugin rbac %s: %v", cephFSDirPath+cephFSNodePluginRBAC, err)
 	}
