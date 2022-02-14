@@ -105,6 +105,7 @@ func createCephfsStorageClass(
 	sc.Namespace = cephCSINamespace
 
 	timeout := time.Duration(deployTimeout) * time.Minute
+
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 		if err != nil {
