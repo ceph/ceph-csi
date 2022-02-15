@@ -72,5 +72,4 @@ func handleFlags() {
 	framework.RegisterClusterFlags(flag.CommandLine)
 	testing.Init()
 	flag.Parse()
-	initResources()
 }

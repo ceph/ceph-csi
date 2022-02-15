@@ -77,13 +77,8 @@ var (
 	cephCSINamespace string
 	rookNamespace    string
 	radosNamespace   string
-	ns               string
 	poll             = 2 * time.Second
 )
-
-func initResources() {
-	ns = fmt.Sprintf("--namespace=%v", cephCSINamespace)
-}
 
 func getMons(ns string, c kubernetes.Interface) ([]string, error) {
 	opt := metav1.ListOptions{
