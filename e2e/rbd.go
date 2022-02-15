@@ -984,7 +984,7 @@ var _ = Describe("RBD", func() {
 				}
 				app.Namespace = f.UniqueName
 
-				err = createPVCAndDeploymentApp(f, "", pvc, app, deployTimeout)
+				err = createPVCAndDeploymentApp(f, pvc, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC and application: %v", err)
 				}
@@ -1014,7 +1014,7 @@ var _ = Describe("RBD", func() {
 					}
 				}
 
-				err = deletePVCAndDeploymentApp(f, "", pvc, app)
+				err = deletePVCAndDeploymentApp(f, pvc, app)
 				if err != nil {
 					e2elog.Failf("failed to delete PVC and application: %v", err)
 				}
@@ -1093,7 +1093,7 @@ var _ = Describe("RBD", func() {
 				appClone.Namespace = f.UniqueName
 				appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 				appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
-				err = createPVCAndDeploymentApp(f, "", pvcClone, appClone, deployTimeout)
+				err = createPVCAndDeploymentApp(f, pvcClone, appClone, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC and application: %v", err)
 				}
@@ -1131,7 +1131,7 @@ var _ = Describe("RBD", func() {
 					}
 				}
 
-				err = deletePVCAndDeploymentApp(f, "", pvcClone, appClone)
+				err = deletePVCAndDeploymentApp(f, pvcClone, appClone)
 				if err != nil {
 					e2elog.Failf("failed to delete PVC and application: %v", err)
 				}
@@ -1217,7 +1217,7 @@ var _ = Describe("RBD", func() {
 				appClone.Namespace = f.UniqueName
 				appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 				appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
-				err = createPVCAndDeploymentApp(f, "", pvcClone, appClone, deployTimeout)
+				err = createPVCAndDeploymentApp(f, pvcClone, appClone, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC and application: %v", err)
 				}
@@ -1254,7 +1254,7 @@ var _ = Describe("RBD", func() {
 						e2elog.Failf(stdErr)
 					}
 				}
-				err = deletePVCAndDeploymentApp(f, "", pvcClone, appClone)
+				err = deletePVCAndDeploymentApp(f, pvcClone, appClone)
 				if err != nil {
 					e2elog.Failf("failed to delete PVC and application: %v", err)
 				}

@@ -280,6 +280,7 @@ var _ = Describe("cephfs", func() {
 		It("Test CephFS CSI", func() {
 			pvcPath := cephFSExamplePath + "pvc.yaml"
 			appPath := cephFSExamplePath + "pod.yaml"
+			deplPath := cephFSExamplePath + "deployment.yaml"
 			appRWOPPath := cephFSExamplePath + "pod-rwop.yaml"
 			pvcClonePath := cephFSExamplePath + "pvc-restore.yaml"
 			pvcSmartClonePath := cephFSExamplePath + "pvc-clone.yaml"
@@ -497,6 +498,134 @@ var _ = Describe("cephfs", func() {
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
 					e2elog.Failf("failed to validate CephFS pvc and application binding: %v", err)
+				}
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+			})
+
+			By("verifying that ceph-fuse recovery works for new pods", func() {
+				err := deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+				err = createCephfsStorageClass(f.ClientSet, f, true, map[string]string{
+					"mounter": "fuse",
+				})
+				if err != nil {
+					e2elog.Failf("failed to create CephFS storageclass: %v", err)
+				}
+				replicas := int32(2)
+				pvc, depl, err := validatePVCAndDeploymentAppBinding(
+					f, pvcPath, deplPath, f.UniqueName, &replicas, deployTimeout,
+				)
+				if err != nil {
+					e2elog.Failf("failed to create PVC and Deployment: %v", err)
+				}
+				deplPods, err := listPods(f, depl.Namespace, &metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("app=%s", depl.Labels["app"]),
+				})
+				if err != nil {
+					e2elog.Failf("failed to list pods for Deployment: %v", err)
+				}
+
+				doStat := func(podName string) (stdErr string, err error) {
+					_, stdErr, err = execCommandInContainerByPodName(
+						f,
+						fmt.Sprintf("stat %s", depl.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath),
+						depl.Namespace,
+						podName,
+						depl.Spec.Template.Spec.Containers[0].Name,
+					)
+
+					return stdErr, err
+				}
+				ensureStatSucceeds := func(podName string) error {
+					stdErr, statErr := doStat(podName)
+					if statErr != nil || stdErr != "" {
+						return fmt.Errorf(
+							"expected stat to succeed without error output ; got err %w, stderr %s",
+							statErr, stdErr,
+						)
+					}
+
+					return nil
+				}
+
+				pod1Name, pod2Name := deplPods[0].Name, deplPods[1].Name
+
+				// stat() ceph-fuse mountpoints to make sure they are working.
+				for i := range deplPods {
+					err = ensureStatSucceeds(deplPods[i].Name)
+					if err != nil {
+						e2elog.Failf(err.Error())
+					}
+				}
+				// Kill ceph-fuse in cephfs-csi node plugin Pods.
+				nodePluginSelector, err := getDaemonSetLabelSelector(f, cephCSINamespace, cephFSDeamonSetName)
+				if err != nil {
+					e2elog.Failf("failed to get node plugin DaemonSet label selector: %v", err)
+				}
+				_, stdErr, err := execCommandInContainer(
+					f, "killall -9 ceph-fuse", cephCSINamespace, "csi-cephfsplugin", &metav1.ListOptions{
+						LabelSelector: nodePluginSelector,
+					},
+				)
+				if err != nil {
+					e2elog.Failf("killall command failed: err %v, stderr %s", err, stdErr)
+				}
+				// Verify Pod podName2 that stat()-ing the mountpoint results in ENOTCONN.
+				stdErr, err = doStat(pod2Name)
+				if err == nil || !strings.Contains(stdErr, "not connected") {
+					e2elog.Failf(
+						"expected stat to fail with 'Transport endpoint not connected' or 'Socket not connected'; got err %v, stderr %s",
+						err, stdErr,
+					)
+				}
+				// Delete podName2 Pod. This serves two purposes: it verifies that deleting pods with
+				// corrupted ceph-fuse mountpoints works, and it lets the replicaset controller recreate
+				// the pod with hopefully mounts working again.
+				err = deletePod(pod2Name, depl.Namespace, c, deployTimeout)
+				if err != nil {
+					e2elog.Failf(err.Error())
+				}
+				// Wait for the second Pod to be recreated.
+				err = waitForDeploymentComplete(c, depl.Name, depl.Namespace, deployTimeout)
+				if err != nil {
+					e2elog.Failf(err.Error())
+				}
+				// List Deployment's pods again to get name of the new pod.
+				deplPods, err = listPods(f, depl.Namespace, &metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("app=%s", depl.Labels["app"]),
+				})
+				if err != nil {
+					e2elog.Failf("failed to list pods for Deployment: %v", err)
+				}
+				for i := range deplPods {
+					if deplPods[i].Name != pod1Name {
+						pod2Name = deplPods[i].Name
+
+						break
+					}
+				}
+				if pod2Name == "" {
+					podNames := make([]string, len(deplPods))
+					for i := range deplPods {
+						podNames[i] = deplPods[i].Name
+					}
+					e2elog.Failf("no new replica found ; found replicas %v", podNames)
+				}
+				// Verify Pod podName3 has its ceph-fuse mount working again.
+				err = ensureStatSucceeds(pod2Name)
+				if err != nil {
+					e2elog.Failf(err.Error())
+				}
+
+				// Delete created resources.
+				err = deletePVCAndDeploymentApp(f, pvc, depl)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC and Deployment: %v", err)
 				}
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {

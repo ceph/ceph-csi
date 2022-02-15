@@ -191,19 +191,12 @@ func createPVCAndApp(
 	return err
 }
 
-// createPVCAndDeploymentApp creates pvc and deployment, if name is not empty
-// same will be set as pvc and app name.
+// createPVCAndDeploymentApp creates pvc and deployment.
 func createPVCAndDeploymentApp(
 	f *framework.Framework,
-	name string,
 	pvc *v1.PersistentVolumeClaim,
 	app *appsv1.Deployment,
 	pvcTimeout int) error {
-	if name != "" {
-		pvc.Name = name
-		app.Name = name
-		app.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
-	}
 	err := createPVCAndvalidatePV(f.ClientSet, pvc, pvcTimeout)
 	if err != nil {
 		return err
@@ -213,19 +206,50 @@ func createPVCAndDeploymentApp(
 	return err
 }
 
-// DeletePVCAndDeploymentApp deletes pvc and deployment, if name is not empty
-// same will be set as pvc and app name.
-func deletePVCAndDeploymentApp(
+// validatePVCAndDeploymentAppBinding creates PVC and Deployment, and waits until
+// all its replicas are Running. Use `replicas` to override default number of replicas
+// defined in `deploymentPath` Deployment manifest.
+func validatePVCAndDeploymentAppBinding(
 	f *framework.Framework,
-	name string,
-	pvc *v1.PersistentVolumeClaim,
-	app *appsv1.Deployment) error {
-	if name != "" {
-		pvc.Name = name
-		app.Name = name
-		app.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = name
+	pvcPath string,
+	deploymentPath string,
+	namespace string,
+	replicas *int32,
+	pvcTimeout int,
+) (*v1.PersistentVolumeClaim, *appsv1.Deployment, error) {
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load PVC: %w", err)
+	}
+	pvc.Namespace = namespace
+
+	depl, err := loadAppDeployment(deploymentPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load Deployment: %w", err)
+	}
+	depl.Namespace = f.UniqueName
+	if replicas != nil {
+		depl.Spec.Replicas = replicas
 	}
 
+	err = createPVCAndDeploymentApp(f, pvc, depl, pvcTimeout)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = waitForDeploymentComplete(f.ClientSet, depl.Name, depl.Namespace, deployTimeout)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return pvc, depl, nil
+}
+
+// DeletePVCAndDeploymentApp deletes pvc and deployment.
+func deletePVCAndDeploymentApp(
+	f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	app *appsv1.Deployment) error {
 	err := deleteDeploymentApp(f.ClientSet, app.Name, app.Namespace, deployTimeout)
 	if err != nil {
 		return err
