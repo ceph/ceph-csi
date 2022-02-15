@@ -214,6 +214,29 @@ func execCommandInContainer(
 	return stdOut, stdErr, err
 }
 
+func execCommandInContainerByPodName(
+	f *framework.Framework, shellCmd, namespace, podName, containerName string,
+) (string, string, error) {
+	cmd := []string{"/bin/sh", "-c", shellCmd}
+	execOpts := framework.ExecOptions{
+		Command:            cmd,
+		PodName:            podName,
+		Namespace:          namespace,
+		ContainerName:      containerName,
+		Stdin:              nil,
+		CaptureStdout:      true,
+		CaptureStderr:      true,
+		PreserveWhitespace: true,
+	}
+
+	stdOut, stdErr, err := f.ExecWithOptions(execOpts)
+	if stdErr != "" {
+		e2elog.Logf("stdErr occurred: %v", stdErr)
+	}
+
+	return stdOut, stdErr, err
+}
+
 func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, string, error) {
 	opt := &metav1.ListOptions{
 		LabelSelector: rookToolBoxPodLabel,
