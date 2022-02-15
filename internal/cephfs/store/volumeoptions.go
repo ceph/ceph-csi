@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package core
+package store
 
 import (
 	"context"
@@ -25,6 +25,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 
+	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -32,27 +33,23 @@ import (
 )
 
 type VolumeOptions struct {
+	core.SubVolume
 	TopologyPools       *[]util.TopologyConstrainedPool
 	TopologyRequirement *csi.TopologyRequirement
 	Topology            map[string]string
 	RequestName         string
 	NamePrefix          string
-	Size                int64
 	ClusterID           string
-	FsName              string
 	FscID               int64
+	MetadataPool        string
 	// ReservedID represents the ID reserved for a subvolume
 	ReservedID         string
-	MetadataPool       string
 	Monitors           string `json:"monitors"`
-	Pool               string `json:"pool"`
 	RootPath           string `json:"rootPath"`
 	Mounter            string `json:"mounter"`
 	ProvisionVolume    bool   `json:"provisionVolume"`
 	KernelMountOptions string `json:"kernelMountOptions"`
 	FuseMountOptions   string `json:"fuseMountOptions"`
-	SubvolumeGroup     string
-	Features           []string
 
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection
@@ -180,6 +177,11 @@ func GetClusterInformation(options map[string]string) (*util.ClusterInfo, error)
 	return clusterData, nil
 }
 
+// GetConnection returns the cluster connection.
+func (vo *VolumeOptions) GetConnection() *util.ClusterConnection {
+	return vo.conn
+}
+
 // NewVolumeOptions generates a new instance of volumeOptions from the provided
 // CSI request parameters.
 func NewVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVolumeRequest,
@@ -230,7 +232,7 @@ func NewVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 		return nil, err
 	}
 
-	fs := NewFileSystem(opts.conn)
+	fs := core.NewFileSystem(opts.conn)
 	opts.FscID, err = fs.GetFscID(ctx, opts.FsName)
 	if err != nil {
 		return nil, err
@@ -281,6 +283,7 @@ func NewVolumeOptionsFromVolID(
 	}
 	volOptions.ClusterID = vi.ClusterID
 	vid.VolumeID = volID
+	volOptions.VolID = volID
 	volOptions.FscID = vi.LocationID
 
 	if volOptions.Monitors, err = util.Mons(util.CsiConfigFile, vi.ClusterID); err != nil {
@@ -309,7 +312,7 @@ func NewVolumeOptionsFromVolID(
 		}
 	}()
 
-	fs := NewFileSystem(volOptions.conn)
+	fs := core.NewFileSystem(volOptions.conn)
 	volOptions.FsName, err = fs.GetFsName(ctx, volOptions.FscID)
 	if err != nil {
 		return nil, nil, err
@@ -358,8 +361,9 @@ func NewVolumeOptionsFromVolID(
 	}
 
 	volOptions.ProvisionVolume = true
-
-	info, err := volOptions.GetSubVolumeInfo(ctx, fsutil.VolumeID(vid.FsSubvolName))
+	volOptions.SubVolume.VolID = vid.FsSubvolName
+	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID)
+	info, err := vol.GetSubVolumeInfo(ctx)
 	if err == nil {
 		volOptions.RootPath = info.Path
 		volOptions.Features = info.Features
@@ -367,7 +371,7 @@ func NewVolumeOptionsFromVolID(
 	}
 
 	if errors.Is(err, cerrors.ErrInvalidCommand) {
-		volOptions.RootPath, err = volOptions.GetVolumeRootPathCeph(ctx, fsutil.VolumeID(vid.FsSubvolName))
+		volOptions.RootPath, err = vol.GetVolumeRootPathCeph(ctx)
 	}
 
 	return &volOptions, &vid, err
@@ -410,7 +414,7 @@ func NewVolumeOptionsFromMonitorList(
 			return nil, nil, err
 		}
 
-		opts.RootPath = GetVolumeRootPathCephDeprecated(fsutil.VolumeID(volID))
+		opts.RootPath = core.GetVolumeRootPathCephDeprecated(fsutil.VolumeID(volID))
 	} else {
 		if err = extractOption(&opts.RootPath, "rootPath", options); err != nil {
 			return nil, nil, err
@@ -509,7 +513,7 @@ func NewVolumeOptionsFromStaticVolume(
 func NewSnapshotOptionsFromID(
 	ctx context.Context,
 	snapID string,
-	cr *util.Credentials) (*VolumeOptions, *SnapshotInfo, *SnapshotIdentifier, error) {
+	cr *util.Credentials) (*VolumeOptions, *core.SnapshotInfo, *SnapshotIdentifier, error) {
 	var (
 		vi         util.CSIIdentifier
 		volOptions VolumeOptions
@@ -551,7 +555,7 @@ func NewSnapshotOptionsFromID(
 		}
 	}()
 
-	fs := NewFileSystem(volOptions.conn)
+	fs := core.NewFileSystem(volOptions.conn)
 	volOptions.FsName, err = fs.GetFsName(ctx, volOptions.FscID)
 	if err != nil {
 		return &volOptions, nil, &sid, err
@@ -579,14 +583,17 @@ func NewSnapshotOptionsFromID(
 	sid.FsSnapshotName = imageAttributes.ImageName
 	sid.FsSubvolName = imageAttributes.SourceName
 
-	subvolInfo, err := volOptions.GetSubVolumeInfo(ctx, fsutil.VolumeID(sid.FsSubvolName))
+	volOptions.SubVolume.VolID = sid.FsSubvolName
+	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID)
+
+	subvolInfo, err := vol.GetSubVolumeInfo(ctx)
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}
 	volOptions.Features = subvolInfo.Features
 	volOptions.Size = subvolInfo.BytesQuota
-
-	info, err := volOptions.GetSnapshotInfo(ctx, fsutil.VolumeID(sid.FsSnapshotName), fsutil.VolumeID(sid.FsSubvolName))
+	snap := core.NewSnapshot(volOptions.conn, sid.FsSnapshotName, &volOptions.SubVolume)
+	info, err := snap.GetSnapshotInfo(ctx)
 	if err != nil {
 		return &volOptions, nil, &sid, err
 	}
@@ -594,8 +601,17 @@ func NewSnapshotOptionsFromID(
 	return &volOptions, &info, &sid, nil
 }
 
-func GenSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (snap *CephfsSnapshot, err error) {
-	cephfsSnap := &CephfsSnapshot{}
+// SnapshotOption is a struct that holds the information about the snapshot.
+type SnapshotOption struct {
+	ReservedID  string // ID reserved for the snapshot.
+	RequestName string // Request name of the snapshot.
+	ClusterID   string // Cluster ID of to identify ceph cluster connection information.
+	Monitors    string // Monitors of the ceph cluster.
+	NamePrefix  string // Name prefix of the snapshot.
+}
+
+func GenSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (*SnapshotOption, error) {
+	cephfsSnap := &SnapshotOption{}
 	cephfsSnap.RequestName = req.GetName()
 	snapOptions := req.GetParameters()
 

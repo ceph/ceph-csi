@@ -23,7 +23,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/ceph/ceph-csi/internal/cephfs/core"
+	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -99,11 +99,11 @@ func LoadAvailableMounters(conf *util.Config) error {
 }
 
 type VolumeMounter interface {
-	Mount(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *core.VolumeOptions) error
+	Mount(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *store.VolumeOptions) error
 	Name() string
 }
 
-func New(volOptions *core.VolumeOptions) (VolumeMounter, error) {
+func New(volOptions *store.VolumeOptions) (VolumeMounter, error) {
 	// Get the mounter from the configuration
 
 	wantMounter := volOptions.Mounter

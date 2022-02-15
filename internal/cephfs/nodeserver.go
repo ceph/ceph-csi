@@ -23,9 +23,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
+	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -46,7 +46,7 @@ type NodeServer struct {
 }
 
 func getCredentialsForVolume(
-	volOptions *core.VolumeOptions,
+	volOptions *store.VolumeOptions,
 	req *csi.NodeStageVolumeRequest) (*util.Credentials, error) {
 	var (
 		err     error
@@ -77,7 +77,7 @@ func getCredentialsForVolume(
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	var volOptions *core.VolumeOptions
+	var volOptions *store.VolumeOptions
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
 	}
@@ -94,21 +94,21 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 	defer ns.VolumeLocks.Release(req.GetVolumeId())
 
-	volOptions, _, err := core.NewVolumeOptionsFromVolID(ctx, string(volID), req.GetVolumeContext(), req.GetSecrets())
+	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, string(volID), req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
 		if !errors.Is(err, cerrors.ErrInvalidVolID) {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
 		// gets mon IPs from the supplied cluster info
-		volOptions, _, err = core.NewVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
+		volOptions, _, err = store.NewVolumeOptionsFromStaticVolume(string(volID), req.GetVolumeContext())
 		if err != nil {
 			if !errors.Is(err, cerrors.ErrNonStaticVolume) {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 
 			// get mon IPs from the volume context
-			volOptions, _, err = core.NewVolumeOptionsFromMonitorList(string(volID), req.GetVolumeContext(),
+			volOptions, _, err = store.NewVolumeOptionsFromMonitorList(string(volID), req.GetVolumeContext(),
 				req.GetSecrets())
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
@@ -142,7 +142,7 @@ func (ns *NodeServer) NodeStageVolume(
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (*NodeServer) mount(ctx context.Context, volOptions *core.VolumeOptions, req *csi.NodeStageVolumeRequest) error {
+func (*NodeServer) mount(ctx context.Context, volOptions *store.VolumeOptions, req *csi.NodeStageVolumeRequest) error {
 	stagingTargetPath := req.GetStagingTargetPath()
 	volID := fsutil.VolumeID(req.GetVolumeId())
 

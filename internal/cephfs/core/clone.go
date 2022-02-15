@@ -21,7 +21,6 @@ import (
 	"errors"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
-	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -29,16 +28,16 @@ import (
 type cephFSCloneState string
 
 const (
-	// cephFSCloneError indicates that fetching the clone state returned an error.
-	cephFSCloneError = cephFSCloneState("")
-	// cephFSCloneFailed indicates that clone is in failed state.
-	cephFSCloneFailed = cephFSCloneState("failed")
-	// cephFSClonePending indicates that clone is in pending state.
-	cephFSClonePending = cephFSCloneState("pending")
-	// cephFSCloneInprogress indicates that clone is in in-progress state.
-	cephFSCloneInprogress = cephFSCloneState("in-progress")
-	// cephFSCloneComplete indicates that clone is in complete state.
-	cephFSCloneComplete = cephFSCloneState("complete")
+	// CephFSCloneError indicates that fetching the clone state returned an error.
+	CephFSCloneError = cephFSCloneState("")
+	// CephFSCloneFailed indicates that clone is in failed state.
+	CephFSCloneFailed = cephFSCloneState("failed")
+	// CephFSClonePending indicates that clone is in pending state.
+	CephFSClonePending = cephFSCloneState("pending")
+	// CephFSCloneInprogress indicates that clone is in in-progress state.
+	CephFSCloneInprogress = cephFSCloneState("in-progress")
+	// CephFSCloneComplete indicates that clone is in complete state.
+	CephFSCloneComplete = cephFSCloneState("complete")
 
 	// SnapshotIsProtected string indicates that the snapshot is currently protected.
 	SnapshotIsProtected = "yes"
@@ -47,28 +46,28 @@ const (
 // toError checks the state of the clone if it's not cephFSCloneComplete.
 func (cs cephFSCloneState) toError() error {
 	switch cs {
-	case cephFSCloneComplete:
+	case CephFSCloneComplete:
 		return nil
-	case cephFSCloneError:
+	case CephFSCloneError:
 		return cerrors.ErrInvalidClone
-	case cephFSCloneInprogress:
+	case CephFSCloneInprogress:
 		return cerrors.ErrCloneInProgress
-	case cephFSClonePending:
+	case CephFSClonePending:
 		return cerrors.ErrClonePending
-	case cephFSCloneFailed:
+	case CephFSCloneFailed:
 		return cerrors.ErrCloneFailed
 	}
 
 	return nil
 }
 
-func CreateCloneFromSubvolume(
+// CreateCloneFromSubvolume creates a clone from a subvolume.
+func (s *subVolumeClient) CreateCloneFromSubvolume(
 	ctx context.Context,
-	volID, cloneID fsutil.VolumeID,
-	volOpt,
-	parentvolOpt *VolumeOptions) error {
-	snapshotID := cloneID
-	err := parentvolOpt.CreateSnapshot(ctx, snapshotID, volID)
+	parentvolOpt *SubVolume) error {
+	snapshotID := s.VolID
+	snapClient := NewSnapshot(s.conn, snapshotID, parentvolOpt)
+	err := snapClient.CreateSnapshot(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create snapshot %s %v", snapshotID, err)
 
@@ -82,17 +81,17 @@ func CreateCloneFromSubvolume(
 	)
 	defer func() {
 		if protectErr != nil {
-			err = parentvolOpt.DeleteSnapshot(ctx, snapshotID, volID)
+			err = snapClient.DeleteSnapshot(ctx)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
 			}
 		}
 
 		if cloneErr != nil {
-			if err = volOpt.PurgeVolume(ctx, cloneID, true); err != nil {
-				log.ErrorLog(ctx, "failed to delete volume %s: %v", cloneID, err)
+			if err = s.PurgeVolume(ctx, true); err != nil {
+				log.ErrorLog(ctx, "failed to delete volume %s: %v", s.VolID, err)
 			}
-			if err = parentvolOpt.UnprotectSnapshot(ctx, snapshotID, volID); err != nil {
+			if err = snapClient.UnprotectSnapshot(ctx); err != nil {
 				// In case the snap is already unprotected we get ErrSnapProtectionExist error code
 				// in that case we are safe and we could discard this error and we are good to go
 				// ahead with deletion
@@ -100,47 +99,46 @@ func CreateCloneFromSubvolume(
 					log.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapshotID, err)
 				}
 			}
-			if err = parentvolOpt.DeleteSnapshot(ctx, snapshotID, volID); err != nil {
+			if err = snapClient.DeleteSnapshot(ctx); err != nil {
 				log.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
 			}
 		}
 	}()
-	protectErr = parentvolOpt.ProtectSnapshot(ctx, snapshotID, volID)
+	protectErr = snapClient.ProtectSnapshot(ctx)
 	if protectErr != nil {
 		log.ErrorLog(ctx, "failed to protect snapshot %s %v", snapshotID, protectErr)
 
 		return protectErr
 	}
-
-	cloneErr = parentvolOpt.cloneSnapshot(ctx, volID, snapshotID, cloneID, volOpt)
+	cloneErr = snapClient.CloneSnapshot(ctx, s.SubVolume)
 	if cloneErr != nil {
-		log.ErrorLog(ctx, "failed to clone snapshot %s %s to %s %v", volID, snapshotID, cloneID, cloneErr)
+		log.ErrorLog(ctx, "failed to clone snapshot %s %s to %s %v", parentvolOpt.VolID, snapshotID, s.VolID, cloneErr)
 
 		return cloneErr
 	}
 
-	cloneState, cloneErr := volOpt.getCloneState(ctx, cloneID)
+	cloneState, cloneErr := s.GetCloneState(ctx)
 	if cloneErr != nil {
 		log.ErrorLog(ctx, "failed to get clone state: %v", cloneErr)
 
 		return cloneErr
 	}
 
-	if cloneState != cephFSCloneComplete {
-		log.ErrorLog(ctx, "clone %s did not complete: %v", cloneID, cloneState.toError())
+	if cloneState != CephFSCloneComplete {
+		log.ErrorLog(ctx, "clone %s did not complete: %v", s.VolID, cloneState.toError())
 
 		return cloneState.toError()
 	}
 
-	err = volOpt.ExpandVolume(ctx, cloneID, volOpt.Size)
+	err = s.ExpandVolume(ctx, s.Size)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to expand volume %s: %v", cloneID, err)
+		log.ErrorLog(ctx, "failed to expand volume %s: %v", s.VolID, err)
 
 		return err
 	}
 
 	// As we completed clone, remove the intermediate snap
-	if err = parentvolOpt.UnprotectSnapshot(ctx, snapshotID, volID); err != nil {
+	if err = snapClient.UnprotectSnapshot(ctx); err != nil {
 		// In case the snap is already unprotected we get ErrSnapProtectionExist error code
 		// in that case we are safe and we could discard this error and we are good to go
 		// ahead with deletion
@@ -150,7 +148,7 @@ func CreateCloneFromSubvolume(
 			return err
 		}
 	}
-	if err = parentvolOpt.DeleteSnapshot(ctx, snapshotID, volID); err != nil {
+	if err = snapClient.DeleteSnapshot(ctx); err != nil {
 		log.ErrorLog(ctx, "failed to delete snapshot %s %v", snapshotID, err)
 
 		return err
@@ -159,14 +157,14 @@ func CreateCloneFromSubvolume(
 	return nil
 }
 
-func cleanupCloneFromSubvolumeSnapshot(
-	ctx context.Context,
-	volID, cloneID fsutil.VolumeID,
-	parentVolOpt *VolumeOptions) error {
+// CleanupSnapshotFromSubvolume	removes the snapshot from the subvolume.
+func (s *subVolumeClient) CleanupSnapshotFromSubvolume(
+	ctx context.Context, parentVol *SubVolume) error {
 	// snapshot name is same as clone name as we need a name which can be
 	// identified during PVC-PVC cloning.
-	snapShotID := cloneID
-	snapInfo, err := parentVolOpt.GetSnapshotInfo(ctx, snapShotID, volID)
+	snapShotID := s.VolID
+	snapClient := NewSnapshot(s.conn, snapShotID, parentVol)
+	snapInfo, err := snapClient.GetSnapshotInfo(ctx)
 	if err != nil {
 		if errors.Is(err, cerrors.ErrSnapNotFound) {
 			return nil
@@ -176,14 +174,14 @@ func cleanupCloneFromSubvolumeSnapshot(
 	}
 
 	if snapInfo.Protected == SnapshotIsProtected {
-		err = parentVolOpt.UnprotectSnapshot(ctx, snapShotID, volID)
+		err = snapClient.UnprotectSnapshot(ctx)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to unprotect snapshot %s %v", snapShotID, err)
 
 			return err
 		}
 	}
-	err = parentVolOpt.DeleteSnapshot(ctx, snapShotID, volID)
+	err = snapClient.DeleteSnapshot(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to delete snapshot %s %v", snapShotID, err)
 
@@ -193,45 +191,39 @@ func cleanupCloneFromSubvolumeSnapshot(
 	return nil
 }
 
-func CreateCloneFromSnapshot(
-	ctx context.Context,
-	parentVolOpt, volOptions *VolumeOptions,
-	vID *VolumeIdentifier,
-	sID *SnapshotIdentifier) error {
-	snapID := fsutil.VolumeID(sID.FsSnapshotName)
-	err := parentVolOpt.cloneSnapshot(
-		ctx,
-		fsutil.VolumeID(sID.FsSubvolName),
-		snapID,
-		fsutil.VolumeID(vID.FsSubvolName),
-		volOptions)
+// CreateSnapshotFromSubvolume creates a clone from subvolume snapshot.
+func (s *subVolumeClient) CreateCloneFromSnapshot(
+	ctx context.Context, snap Snapshot) error {
+	snapID := snap.SnapshotID
+	snapClient := NewSnapshot(s.conn, snapID, snap.SubVolume)
+	err := snapClient.CloneSnapshot(ctx, s.SubVolume)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			if !cerrors.IsCloneRetryError(err) {
-				if dErr := volOptions.PurgeVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), true); dErr != nil {
-					log.ErrorLog(ctx, "failed to delete volume %s: %v", vID.FsSubvolName, dErr)
+				if dErr := s.PurgeVolume(ctx, true); dErr != nil {
+					log.ErrorLog(ctx, "failed to delete volume %s: %v", s.VolID, dErr)
 				}
 			}
 		}
 	}()
 
-	cloneState, err := volOptions.getCloneState(ctx, fsutil.VolumeID(vID.FsSubvolName))
+	cloneState, err := s.GetCloneState(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get clone state: %v", err)
 
 		return err
 	}
 
-	if cloneState != cephFSCloneComplete {
+	if cloneState != CephFSCloneComplete {
 		return cloneState.toError()
 	}
 
-	err = volOptions.ExpandVolume(ctx, fsutil.VolumeID(vID.FsSubvolName), volOptions.Size)
+	err = s.ExpandVolume(ctx, s.Size)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to expand volume %s with error: %v", vID.FsSubvolName, err)
+		log.ErrorLog(ctx, "failed to expand volume %s with error: %v", s.VolID, err)
 
 		return err
 	}
@@ -239,24 +231,25 @@ func CreateCloneFromSnapshot(
 	return nil
 }
 
-func (vo *VolumeOptions) getCloneState(ctx context.Context, volID fsutil.VolumeID) (cephFSCloneState, error) {
-	fsa, err := vo.conn.GetFSAdmin()
+// GetCloneState returns the clone state of the subvolume.
+func (s *subVolumeClient) GetCloneState(ctx context.Context) (cephFSCloneState, error) {
+	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(
 			ctx,
 			"could not get FSAdmin, can get clone status for volume %s with ID %s: %v",
-			vo.FsName,
-			string(volID),
+			s.FsName,
+			s.VolID,
 			err)
 
-		return cephFSCloneError, err
+		return CephFSCloneError, err
 	}
 
-	cs, err := fsa.CloneStatus(vo.FsName, vo.SubvolumeGroup, string(volID))
+	cs, err := fsa.CloneStatus(s.FsName, s.SubvolumeGroup, s.VolID)
 	if err != nil {
-		log.ErrorLog(ctx, "could not get clone state for volume %s with ID %s: %v", vo.FsName, string(volID), err)
+		log.ErrorLog(ctx, "could not get clone state for volume %s with ID %s: %v", s.FsName, s.VolID, err)
 
-		return cephFSCloneError, err
+		return CephFSCloneError, err
 	}
 
 	return cephFSCloneState(cs.State), nil

@@ -22,7 +22,7 @@ import (
 	"time"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
-	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
+	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/ceph/go-ceph/cephfs/admin"
@@ -36,32 +36,59 @@ const (
 	autoProtect = "snapshot-autoprotect"
 )
 
-// CephfsSnapshot represents a CSI snapshot and its cluster information.
-type CephfsSnapshot struct {
-	NamePrefix string
-	Monitors   string
-	// MetadataPool & Pool fields are not used atm. But its definitely good to have it in this struct
-	// so keeping it here
-	MetadataPool string
-	Pool         string
-	ClusterID    string
-	RequestName  string
-	// ReservedID represents the ID reserved for a snapshot
-	ReservedID string
+// SnapshotClient is the interface that holds the signature of snapshot methods
+// that interacts with CephFS snapshot API's.
+type SnapshotClient interface {
+	// CreateSnapshot creates a snapshot of the subvolume.
+	CreateSnapshot(ctx context.Context) error
+	// DeleteSnapshot deletes the snapshot of the subvolume.
+	DeleteSnapshot(ctx context.Context) error
+	// GetSnapshotInfo returns the snapshot info of the subvolume.
+	GetSnapshotInfo(ctx context.Context) (SnapshotInfo, error)
+	// ProtectSnapshot protects the snapshot of the subvolume.
+	ProtectSnapshot(ctx context.Context) error
+	// UnprotectSnapshot unprotects the snapshot of the subvolume.
+	UnprotectSnapshot(ctx context.Context) error
+	// CloneSnapshot clones the snapshot of the subvolume.
+	CloneSnapshot(ctx context.Context, cloneVolOptions *SubVolume) error
 }
 
-func (vo *VolumeOptions) CreateSnapshot(ctx context.Context, snapID, volID fsutil.VolumeID) error {
-	fsa, err := vo.conn.GetFSAdmin()
+// snapshotClient is the implementation of SnapshotClient interface.
+type snapshotClient struct {
+	*Snapshot                         // Embedded snapshot struct.
+	conn      *util.ClusterConnection // Cluster connection.
+}
+
+// Snapshot represents a subvolume snapshot and its cluster information.
+type Snapshot struct {
+	SnapshotID string // subvolume snapshot id.
+	*SubVolume        // parent subvolume information.
+}
+
+// NewSnapshot creates a new snapshot client.
+func NewSnapshot(conn *util.ClusterConnection, snapshotID string, vol *SubVolume) SnapshotClient {
+	return &snapshotClient{
+		Snapshot: &Snapshot{
+			SnapshotID: snapshotID,
+			SubVolume:  vol,
+		},
+		conn: conn,
+	}
+}
+
+// CreateSnapshot creates a snapshot of the subvolume.
+func (s *snapshotClient) CreateSnapshot(ctx context.Context) error {
+	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
 
 		return err
 	}
 
-	err = fsa.CreateSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
+	err = fsa.CreateSubVolumeSnapshot(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create subvolume snapshot %s %s in fs %s: %s",
-			string(snapID), string(volID), vo.FsName, err)
+			s.SnapshotID, s.VolID, s.FsName, err)
 
 		return err
 	}
@@ -69,18 +96,19 @@ func (vo *VolumeOptions) CreateSnapshot(ctx context.Context, snapID, volID fsuti
 	return nil
 }
 
-func (vo *VolumeOptions) DeleteSnapshot(ctx context.Context, snapID, volID fsutil.VolumeID) error {
-	fsa, err := vo.conn.GetFSAdmin()
+// DeleteSnapshot deletes the snapshot of the subvolume.
+func (s *snapshotClient) DeleteSnapshot(ctx context.Context) error {
+	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
 
 		return err
 	}
 
-	err = fsa.ForceRemoveSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
+	err = fsa.ForceRemoveSubVolumeSnapshot(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to delete subvolume snapshot %s %s in fs %s: %s",
-			string(snapID), string(volID), vo.FsName, err)
+			s.SnapshotID, s.VolID, s.FsName, err)
 
 		return err
 	}
@@ -95,16 +123,17 @@ type SnapshotInfo struct {
 	Protected        string
 }
 
-func (vo *VolumeOptions) GetSnapshotInfo(ctx context.Context, snapID, volID fsutil.VolumeID) (SnapshotInfo, error) {
+// GetSnapshotInfo returns the snapshot info of the subvolume.
+func (s *snapshotClient) GetSnapshotInfo(ctx context.Context) (SnapshotInfo, error) {
 	snap := SnapshotInfo{}
-	fsa, err := vo.conn.GetFSAdmin()
+	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
 
 		return snap, err
 	}
 
-	info, err := fsa.SubVolumeSnapshotInfo(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID))
+	info, err := fsa.SubVolumeSnapshotInfo(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID)
 	if err != nil {
 		if errors.Is(err, rados.ErrNotFound) {
 			return snap, cerrors.ErrSnapNotFound
@@ -112,9 +141,9 @@ func (vo *VolumeOptions) GetSnapshotInfo(ctx context.Context, snapID, volID fsut
 		log.ErrorLog(
 			ctx,
 			"failed to get subvolume snapshot info %s %s in fs %s with error %s",
-			string(volID),
-			string(snapID),
-			vo.FsName,
+			s.VolID,
+			s.SnapshotID,
+			s.FsName,
 			err)
 
 		return snap, err
@@ -126,21 +155,21 @@ func (vo *VolumeOptions) GetSnapshotInfo(ctx context.Context, snapID, volID fsut
 	return snap, nil
 }
 
-func (vo *VolumeOptions) ProtectSnapshot(ctx context.Context, snapID, volID fsutil.VolumeID) error {
+// ProtectSnapshot protects the snapshot of the subvolume.
+func (s *snapshotClient) ProtectSnapshot(ctx context.Context) error {
 	// If "snapshot-autoprotect" feature is present, The ProtectSnapshot
 	// call should be treated as a no-op.
-	if checkSubvolumeHasFeature(autoProtect, vo.Features) {
+	if checkSubvolumeHasFeature(autoProtect, s.Features) {
 		return nil
 	}
-	fsa, err := vo.conn.GetFSAdmin()
+	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
 
 		return err
 	}
 
-	err = fsa.ProtectSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID),
-		string(snapID))
+	err = fsa.ProtectSubVolumeSnapshot(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID)
 	if err != nil {
 		if errors.Is(err, rados.ErrObjectExists) {
 			return nil
@@ -148,9 +177,9 @@ func (vo *VolumeOptions) ProtectSnapshot(ctx context.Context, snapID, volID fsut
 		log.ErrorLog(
 			ctx,
 			"failed to protect subvolume snapshot %s %s in fs %s with error: %s",
-			string(volID),
-			string(snapID),
-			vo.FsName,
+			s.VolID,
+			s.SnapshotID,
+			s.FsName,
 			err)
 
 		return err
@@ -159,21 +188,22 @@ func (vo *VolumeOptions) ProtectSnapshot(ctx context.Context, snapID, volID fsut
 	return nil
 }
 
-func (vo *VolumeOptions) UnprotectSnapshot(ctx context.Context, snapID, volID fsutil.VolumeID) error {
+// UnprotectSnapshot unprotects the snapshot of the subvolume.
+func (s *snapshotClient) UnprotectSnapshot(ctx context.Context) error {
 	// If "snapshot-autoprotect" feature is present, The UnprotectSnapshot
 	// call should be treated as a no-op.
-	if checkSubvolumeHasFeature(autoProtect, vo.Features) {
+	if checkSubvolumeHasFeature(autoProtect, s.Features) {
 		return nil
 	}
-	fsa, err := vo.conn.GetFSAdmin()
+	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
 
 		return err
 	}
 
-	err = fsa.UnprotectSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID),
-		string(snapID))
+	err = fsa.UnprotectSubVolumeSnapshot(s.FsName, s.SubvolumeGroup, s.VolID,
+		s.SnapshotID)
 	if err != nil {
 		// In case the snap is already unprotected we get ErrSnapProtectionExist error code
 		// in that case we are safe and we could discard this error.
@@ -183,9 +213,9 @@ func (vo *VolumeOptions) UnprotectSnapshot(ctx context.Context, snapID, volID fs
 		log.ErrorLog(
 			ctx,
 			"failed to unprotect subvolume snapshot %s %s in fs %s with error: %s",
-			string(volID),
-			string(snapID),
-			vo.FsName,
+			s.VolID,
+			s.SnapshotID,
+			s.FsName,
 			err)
 
 		return err
@@ -194,33 +224,33 @@ func (vo *VolumeOptions) UnprotectSnapshot(ctx context.Context, snapID, volID fs
 	return nil
 }
 
-func (vo *VolumeOptions) cloneSnapshot(
+// CloneSnapshot clones the snapshot of the subvolume.
+func (s *snapshotClient) CloneSnapshot(
 	ctx context.Context,
-	volID, snapID, cloneID fsutil.VolumeID,
-	cloneVolOptions *VolumeOptions,
+	cloneSubVol *SubVolume,
 ) error {
-	fsa, err := vo.conn.GetFSAdmin()
+	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		log.ErrorLog(ctx, "could not get FSAdmin: %s", err)
 
 		return err
 	}
 	co := &admin.CloneOptions{
-		TargetGroup: cloneVolOptions.SubvolumeGroup,
+		TargetGroup: cloneSubVol.SubvolumeGroup,
 	}
-	if cloneVolOptions.Pool != "" {
-		co.PoolLayout = cloneVolOptions.Pool
+	if cloneSubVol.Pool != "" {
+		co.PoolLayout = cloneSubVol.Pool
 	}
 
-	err = fsa.CloneSubVolumeSnapshot(vo.FsName, vo.SubvolumeGroup, string(volID), string(snapID), string(cloneID), co)
+	err = fsa.CloneSubVolumeSnapshot(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID, cloneSubVol.VolID, co)
 	if err != nil {
 		log.ErrorLog(
 			ctx,
 			"failed to clone subvolume snapshot %s %s in fs %s with error: %s",
-			string(volID),
-			string(snapID),
-			string(cloneID),
-			vo.FsName,
+			s.VolID,
+			s.SnapshotID,
+			cloneSubVol.VolID,
+			s.FsName,
 			err)
 		if errors.Is(err, rados.ErrNotFound) {
 			return cerrors.ErrVolumeNotFound
