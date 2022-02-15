@@ -201,6 +201,10 @@ provisioner:
   podSecurityPolicy:
     enabled: false
 
+# Mount the host /etc/selinux inside pods to support
+# selinux-enabled filesystems
+selinuxMount: true
+
 topology:
   # Specifies whether topology based provisioning support should
   # be exposed by CSI
