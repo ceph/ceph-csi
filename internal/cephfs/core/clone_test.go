@@ -27,11 +27,11 @@ import (
 func TestCloneStateToError(t *testing.T) {
 	t.Parallel()
 	errorState := make(map[cephFSCloneState]error)
-	errorState[cephFSCloneComplete] = nil
-	errorState[cephFSCloneError] = cerrors.ErrInvalidClone
-	errorState[cephFSCloneInprogress] = cerrors.ErrCloneInProgress
-	errorState[cephFSClonePending] = cerrors.ErrClonePending
-	errorState[cephFSCloneFailed] = cerrors.ErrCloneFailed
+	errorState[CephFSCloneComplete] = nil
+	errorState[CephFSCloneError] = cerrors.ErrInvalidClone
+	errorState[CephFSCloneInprogress] = cerrors.ErrCloneInProgress
+	errorState[CephFSClonePending] = cerrors.ErrClonePending
+	errorState[CephFSCloneFailed] = cerrors.ErrCloneFailed
 
 	for state, err := range errorState {
 		assert.Equal(t, state.toError(), err)

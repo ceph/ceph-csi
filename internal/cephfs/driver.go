@@ -17,8 +17,8 @@ limitations under the License.
 package cephfs
 
 import (
-	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
+	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
@@ -87,9 +87,9 @@ func (fs *Driver) Run(conf *util.Config) {
 		CSIInstanceID = conf.InstanceID
 	}
 	// Create an instance of the volume journal
-	core.VolJournal = journal.NewCSIVolumeJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
+	store.VolJournal = journal.NewCSIVolumeJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
 
-	core.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
+	store.SnapJournal = journal.NewCSISnapshotJournalWithNamespace(CSIInstanceID, fsutil.RadosNamespace)
 	// Initialize default library driver
 
 	fs.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)

@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ceph/ceph-csi/internal/cephfs/core"
+	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	"github.com/ceph/ceph-csi/internal/util"
 )
 
@@ -31,7 +31,7 @@ const (
 
 type KernelMounter struct{}
 
-func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *core.VolumeOptions) error {
+func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *store.VolumeOptions) error {
 	if err := execCommandErr(ctx, "modprobe", "ceph"); err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (m *KernelMounter) Mount(
 	ctx context.Context,
 	mountPoint string,
 	cr *util.Credentials,
-	volOptions *core.VolumeOptions) error {
+	volOptions *store.VolumeOptions) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}

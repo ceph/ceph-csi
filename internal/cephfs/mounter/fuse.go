@@ -25,7 +25,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ceph/ceph-csi/internal/cephfs/core"
+	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -47,7 +47,7 @@ var (
 
 type FuseMounter struct{}
 
-func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *core.VolumeOptions) error {
+func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, volOptions *store.VolumeOptions) error {
 	args := []string{
 		mountPoint,
 		"-m", volOptions.Monitors,
@@ -99,7 +99,7 @@ func (m *FuseMounter) Mount(
 	ctx context.Context,
 	mountPoint string,
 	cr *util.Credentials,
-	volOptions *core.VolumeOptions) error {
+	volOptions *store.VolumeOptions) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}

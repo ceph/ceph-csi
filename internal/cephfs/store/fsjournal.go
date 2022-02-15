@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package core
+package store
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
+	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/journal"
@@ -95,16 +96,16 @@ func CheckVolExists(ctx context.Context,
 	}
 	imageUUID := imageData.ImageUUID
 	vid.FsSubvolName = imageData.ImageAttributes.ImageName
+	volOptions.VolID = vid.FsSubvolName
 
+	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID)
 	if sID != nil || pvID != nil {
-		cloneState, cloneStateErr := volOptions.getCloneState(ctx, fsutil.VolumeID(vid.FsSubvolName))
+		cloneState, cloneStateErr := vol.GetCloneState(ctx)
 		if cloneStateErr != nil {
 			if errors.Is(cloneStateErr, cerrors.ErrVolumeNotFound) {
 				if pvID != nil {
-					err = cleanupCloneFromSubvolumeSnapshot(
-						ctx, fsutil.VolumeID(pvID.FsSubvolName),
-						fsutil.VolumeID(vid.FsSubvolName),
-						parentVolOpt)
+					err = vol.CleanupSnapshotFromSubvolume(
+						ctx, &parentVolOpt.SubVolume)
 					if err != nil {
 						return nil, err
 					}
@@ -117,29 +118,27 @@ func CheckVolExists(ctx context.Context,
 
 			return nil, err
 		}
-		if cloneState == cephFSCloneInprogress {
+		if cloneState == core.CephFSCloneInprogress {
 			return nil, cerrors.ErrCloneInProgress
 		}
-		if cloneState == cephFSClonePending {
+		if cloneState == core.CephFSClonePending {
 			return nil, cerrors.ErrClonePending
 		}
-		if cloneState == cephFSCloneFailed {
+		if cloneState == core.CephFSCloneFailed {
 			log.ErrorLog(ctx,
 				"clone failed, deleting subvolume clone. vol=%s, subvol=%s subvolgroup=%s",
 				volOptions.FsName,
 				vid.FsSubvolName,
 				volOptions.SubvolumeGroup)
-			err = volOptions.PurgeVolume(ctx, fsutil.VolumeID(vid.FsSubvolName), true)
+			err = vol.PurgeVolume(ctx, true)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to delete volume %s: %v", vid.FsSubvolName, err)
 
 				return nil, err
 			}
 			if pvID != nil {
-				err = cleanupCloneFromSubvolumeSnapshot(
-					ctx, fsutil.VolumeID(pvID.FsSubvolName),
-					fsutil.VolumeID(vid.FsSubvolName),
-					parentVolOpt)
+				err = vol.CleanupSnapshotFromSubvolume(
+					ctx, &parentVolOpt.SubVolume)
 				if err != nil {
 					return nil, err
 				}
@@ -149,21 +148,18 @@ func CheckVolExists(ctx context.Context,
 
 			return nil, err
 		}
-		if cloneState != cephFSCloneComplete {
+		if cloneState != core.CephFSCloneComplete {
 			return nil, fmt.Errorf("clone is not in complete state for %s", vid.FsSubvolName)
 		}
 	}
-	volOptions.RootPath, err = volOptions.GetVolumeRootPathCeph(ctx, fsutil.VolumeID(vid.FsSubvolName))
+	volOptions.RootPath, err = vol.GetVolumeRootPathCeph(ctx)
 	if err != nil {
 		if errors.Is(err, cerrors.ErrVolumeNotFound) {
 			// If the subvolume is not present, cleanup the stale snapshot
 			// created for clone.
 			if parentVolOpt != nil && pvID != nil {
-				err = cleanupCloneFromSubvolumeSnapshot(
-					ctx,
-					fsutil.VolumeID(pvID.FsSubvolName),
-					fsutil.VolumeID(vid.FsSubvolName),
-					parentVolOpt)
+				err = vol.CleanupSnapshotFromSubvolume(
+					ctx, &parentVolOpt.SubVolume)
 				if err != nil {
 					return nil, err
 				}
@@ -194,11 +190,8 @@ func CheckVolExists(ctx context.Context,
 		vid.VolumeID, vid.FsSubvolName, volOptions.RequestName)
 
 	if parentVolOpt != nil && pvID != nil {
-		err = cleanupCloneFromSubvolumeSnapshot(
-			ctx,
-			fsutil.VolumeID(pvID.FsSubvolName),
-			fsutil.VolumeID(vid.FsSubvolName),
-			parentVolOpt)
+		err = vol.CleanupSnapshotFromSubvolume(
+			ctx, &parentVolOpt.SubVolume)
 		if err != nil {
 			return nil, err
 		}
@@ -280,7 +273,7 @@ func ReserveVol(ctx context.Context, volOptions *VolumeOptions, secret map[strin
 	if err != nil {
 		return nil, err
 	}
-
+	volOptions.VolID = vid.FsSubvolName
 	// generate the volume ID to return to the CO system
 	vid.VolumeID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
 		"", volOptions.ClusterID, imageUUID, fsutil.VolIDVersion)
@@ -300,7 +293,7 @@ func ReserveSnap(
 	ctx context.Context,
 	volOptions *VolumeOptions,
 	parentSubVolName string,
-	snap *CephfsSnapshot,
+	snap *SnapshotOption,
 	cr *util.Credentials) (*SnapshotIdentifier, error) {
 	var (
 		vid       SnapshotIdentifier
@@ -373,9 +366,8 @@ hence safe to garbage collect.
 func CheckSnapExists(
 	ctx context.Context,
 	volOptions *VolumeOptions,
-	parentSubVolName string,
-	snap *CephfsSnapshot,
-	cr *util.Credentials) (*SnapshotIdentifier, *SnapshotInfo, error) {
+	snap *SnapshotOption,
+	cr *util.Credentials) (*SnapshotIdentifier, *core.SnapshotInfo, error) {
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
 	if err != nil {
@@ -384,7 +376,7 @@ func CheckSnapExists(
 	defer j.Destroy()
 
 	snapData, err := j.CheckReservation(
-		ctx, volOptions.MetadataPool, snap.RequestName, snap.NamePrefix, parentSubVolName, "")
+		ctx, volOptions.MetadataPool, snap.RequestName, snap.NamePrefix, volOptions.VolID, "")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -395,7 +387,8 @@ func CheckSnapExists(
 	snapUUID := snapData.ImageUUID
 	snapID := snapData.ImageAttributes.ImageName
 	sid.FsSnapshotName = snapData.ImageAttributes.ImageName
-	snapInfo, err := volOptions.GetSnapshotInfo(ctx, fsutil.VolumeID(snapID), fsutil.VolumeID(parentSubVolName))
+	snapClient := core.NewSnapshot(volOptions.conn, snapID, &volOptions.SubVolume)
+	snapInfo, err := snapClient.GetSnapshotInfo(ctx)
 	if err != nil {
 		if errors.Is(err, cerrors.ErrSnapNotFound) {
 			err = j.UndoReservation(ctx, volOptions.MetadataPool,
@@ -409,7 +402,7 @@ func CheckSnapExists(
 
 	defer func() {
 		if err != nil {
-			err = volOptions.DeleteSnapshot(ctx, fsutil.VolumeID(snapID), fsutil.VolumeID(parentSubVolName))
+			err = snapClient.DeleteSnapshot(ctx)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to delete snapshot %s: %v", snapID, err)
 
@@ -435,7 +428,7 @@ func CheckSnapExists(
 		return nil, nil, err
 	}
 	log.DebugLog(ctx, "Found existing snapshot (%s) with subvolume name (%s) for request (%s)",
-		snapData.ImageAttributes.RequestName, parentSubVolName, sid.FsSnapshotName)
+		snapData.ImageAttributes.RequestName, volOptions.VolID, sid.FsSnapshotName)
 
 	return sid, &snapInfo, nil
 }
