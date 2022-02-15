@@ -112,9 +112,11 @@ spec:
               name: host-mount
             - mountPath: /sys
               name: host-sys
+{{- if .Values.selinuxMount }}
             - mountPath: /etc/selinux
               name: etc-selinux
               readOnly: true
+{{- end }}
             - mountPath: /lib/modules
               name: lib-modules
               readOnly: true
@@ -176,9 +178,11 @@ spec:
         - name: host-sys
           hostPath:
             path: /sys
+{{- if .Values.selinuxMount }}
         - name: etc-selinux
           hostPath:
             path: /etc/selinux
+{{- end }}
         - name: host-mount
           hostPath:
             path: /run/mount

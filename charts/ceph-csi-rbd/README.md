@@ -175,6 +175,7 @@ charts and their default values.
 | `secret.userID`                                | Specifies the user ID of the rbd secret                                                                                                              | `<plaintext ID>`                                   |
 | `secret.userKey`                               | Specifies the key that corresponds to the userID                                                                                                     | `<Ceph auth key corresponding to ID above>`        |
 | `secret.encryptionPassphrase`                  | Specifies the encryption passphrase of the secret                                                                                                    | `test_passphrase`                                  |
+| `selinuxMount`                                | Mount the host /etc/selinux inside pods to support selinux-enabled filesystems                                                                                                      | `true`                                            |
 
 ### Command Line
 
