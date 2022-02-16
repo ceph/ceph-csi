@@ -265,14 +265,19 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	targetPath := req.GetTargetPath()
 	isMnt, err := util.IsMountPoint(targetPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// targetPath has already been deleted
-			log.DebugLog(ctx, "targetPath: %s has already been deleted", targetPath)
+		// The ceph module returns "permission denied" if the client has been evicted
+		if os.IsPermission(err) {
+			isMnt = true
+		} else {
+			if os.IsNotExist(err) {
+				// targetPath has already been deleted
+				log.DebugLog(ctx, "targetPath: %s has already been deleted", targetPath)
 
-			return &csi.NodeUnpublishVolumeResponse{}, nil
+				return &csi.NodeUnpublishVolumeResponse{}, nil
+			}
+
+			return nil, status.Error(codes.Internal, err.Error())
 		}
-
-		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if !isMnt {
 		if err = os.RemoveAll(targetPath); err != nil {
@@ -318,14 +323,19 @@ func (ns *NodeServer) NodeUnstageVolume(
 
 	isMnt, err := util.IsMountPoint(stagingTargetPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// targetPath has already been deleted
-			log.DebugLog(ctx, "targetPath: %s has already been deleted", stagingTargetPath)
+		// The ceph module returns "permission denied" if the client has been evicted
+		if os.IsPermission(err) {
+			isMnt = true
+		} else {
+			if os.IsNotExist(err) {
+				// targetPath has already been deleted
+				log.DebugLog(ctx, "targetPath: %s has already been deleted", stagingTargetPath)
 
-			return &csi.NodeUnstageVolumeResponse{}, nil
+				return &csi.NodeUnstageVolumeResponse{}, nil
+			}
+
+			return nil, status.Error(codes.Internal, err.Error())
 		}
-
-		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if !isMnt {
 		return &csi.NodeUnstageVolumeResponse{}, nil
