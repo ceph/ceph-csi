@@ -354,3 +354,35 @@ func TestIsKrbdFeatureSupported(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkValidImageFeatures(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		imageFeatures string
+		ok            bool
+		want          bool
+	}{
+		{
+			name:          "test for valid image features",
+			imageFeatures: "layering,exclusive-lock,object-map,fast-diff,deep-flatten",
+			ok:            true,
+			want:          true,
+		},
+		{
+			name:          "test for empty image features",
+			imageFeatures: "",
+			ok:            true,
+			want:          false,
+		},
+	}
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := checkValidImageFeatures(tc.imageFeatures, tc.ok); got != tc.want {
+				t.Errorf("checkValidImageFeatures() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

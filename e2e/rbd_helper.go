@@ -149,6 +149,10 @@ func createRBDStorageClass(
 	sc.Parameters["clusterID"] = fsID
 	for k, v := range parameters {
 		sc.Parameters[k] = v
+		// if any values are empty remove it from the map
+		if v == "" {
+			delete(sc.Parameters, k)
+		}
 	}
 	sc.Namespace = cephCSINamespace
 

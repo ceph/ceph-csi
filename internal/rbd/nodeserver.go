@@ -215,12 +215,33 @@ func populateRbdVol(
 		rv.RbdImageName = imageAttributes.ImageName
 	}
 
+	err = rv.Connect(cr)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to connect to volume %s: %v", rv, err)
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// in case of any error call Destroy for cleanup.
+	defer func() {
+		if err != nil {
+			rv.Destroy()
+		}
+	}()
+	// get the image details from the ceph cluster.
+	err = rv.getImageInfo()
+	if err != nil {
+		log.ErrorLog(ctx, "failed to get image details %s: %v", rv, err)
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	if req.GetVolumeContext()["mounter"] == rbdDefaultMounter &&
-		!isKrbdFeatureSupported(ctx, req.GetVolumeContext()["imageFeatures"]) {
+		!isKrbdFeatureSupported(ctx, strings.Join(rv.ImageFeatureSet.Names(), ",")) {
 		if !parseBoolOption(ctx, req.GetVolumeContext(), tryOtherMounters, false) {
 			log.ErrorLog(ctx, "unsupported krbd Feature, set `tryOtherMounters:true` or fix krbd driver")
+			err = errors.New("unsupported krbd Feature")
 
-			return nil, status.Errorf(codes.Internal, "unsupported krbd Feature")
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 		// fallback to rbd-nbd,
 		rv.Mounter = rbdNbdMounter
@@ -299,23 +320,9 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 
 	isStaticVol := parseBoolOption(ctx, req.GetVolumeContext(), staticVol, false)
-
-	// throw error when imageFeatures parameter is missing or empty
-	// for backward compatibility, ignore error for non-static volumes from older cephcsi version
-	if imageFeatures, ok := req.GetVolumeContext()["imageFeatures"]; checkImageFeatures(imageFeatures, ok, isStaticVol) {
-		return nil, status.Error(codes.InvalidArgument, "missing required parameter imageFeatures")
-	}
-
 	rv, err := populateRbdVol(ctx, req, cr, req.GetSecrets())
 	if err != nil {
 		return nil, err
-	}
-
-	err = rv.Connect(cr)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to connect to volume %s: %v", rv, err)
-
-		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer rv.Destroy()
 
