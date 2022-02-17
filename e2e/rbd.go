@@ -795,6 +795,63 @@ var _ = Describe("RBD", func() {
 					}
 				})
 
+			By("create PVC with layering,deep-flatten image-features and bind it to an app",
+				func() {
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(
+						f.ClientSet,
+						f,
+						defaultSCName,
+						nil,
+						map[string]string{
+							"imageFeatures": "layering,deep-flatten",
+						},
+						deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+					// set up PVC
+					pvc, err := loadPVC(pvcPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC: %v", err)
+					}
+					pvc.Namespace = f.UniqueName
+					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 1, defaultRBDPool)
+
+					if util.CheckKernelSupport(kernelRelease, deepFlattenSupport) {
+						app, aErr := loadApp(appPath)
+						if aErr != nil {
+							e2elog.Failf("failed to load application: %v", aErr)
+						}
+						app.Namespace = f.UniqueName
+						err = createApp(f.ClientSet, app, deployTimeout)
+						if err != nil {
+							e2elog.Failf("failed to create application: %v", err)
+						}
+						// delete pod as we should not create snapshot for in-use pvc
+						err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+						if err != nil {
+							e2elog.Failf("failed to delete application: %v", err)
+						}
+
+					}
+					// clean up after ourselves
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+				})
+
 			By("create PVC with journaling,fast-diff image-features and bind it to an app using rbd-nbd mounter",
 				func() {
 					if util.CheckKernelSupport(kernelRelease, fastDiffSupport) {

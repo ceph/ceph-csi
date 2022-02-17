@@ -152,6 +152,14 @@ func TestValidateImageFeatures(t *testing.T) {
 			true,
 			"invalid feature ayering",
 		},
+		{
+			"deep-flatten",
+			&rbdVolume{
+				Mounter: rbdDefaultMounter,
+			},
+			false,
+			"",
+		},
 	}
 
 	for _, test := range tests {
