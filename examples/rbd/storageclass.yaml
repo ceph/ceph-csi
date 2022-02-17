@@ -29,7 +29,7 @@ parameters:
    # eg: pool: rbdpool
    pool: <rbd-pool-name>
 
-   # (required) RBD image features, CSI creates image with image-format 2 CSI
+   # (optional) RBD image features, CSI creates image with image-format 2 CSI
    # RBD currently supports `layering`, `journaling`, `exclusive-lock`,
    # `object-map`, `fast-diff`, `deep-flatten` features. If `journaling` is
    # enabled, must enable `exclusive-lock` too.
