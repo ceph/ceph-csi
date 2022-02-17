@@ -140,6 +140,9 @@ func waitForDeploymentComplete(clientSet kubernetes.Interface, name, ns string, 
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
 			e2elog.Logf("deployment error: %v", err)
 
 			return false, err
