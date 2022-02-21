@@ -56,20 +56,9 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrSnapNotFound):
-			// check temporary image needs flatten, if yes add task to flatten the
-			// temporary clone
-			err = tempClone.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-			if err != nil {
-				return false, err
-			}
 			// as the snapshot is not present, create new snapshot,clone and
 			// delete the temporary snapshot
 			err = createRBDClone(ctx, tempClone, rv, snap)
-			if err != nil {
-				return false, err
-			}
-			// check image needs flatten, if yes add task to flatten the clone
-			err = rv.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
 			if err != nil {
 				return false, err
 			}
@@ -112,11 +101,6 @@ func (rv *rbdVolume) checkCloneImage(ctx context.Context, parentVol *rbdVolume) 
 	if err != nil {
 		log.ErrorLog(ctx, "failed to delete snapshot: %v", err)
 
-		return false, err
-	}
-	// check image needs flatten, if yes add task to flatten the clone
-	err = rv.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-	if err != nil {
 		return false, err
 	}
 
@@ -186,10 +170,7 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 }
 
 func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) error {
-	var (
-		errClone   error
-		errFlatten error
-	)
+	var errClone error
 
 	// generate temp cloned volume
 	tempClone := rv.generateTempClone()
@@ -218,62 +199,22 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 			}
 		}
 
-		if err != nil || errFlatten != nil {
-			if !errors.Is(errFlatten, ErrFlattenInProgress) {
-				// cleanup snapshot
-				cErr := cleanUpSnapshot(ctx, parentVol, tempSnap, tempClone)
-				if cErr != nil {
-					log.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", tempSnap, tempClone, cErr)
-				}
+		if err != nil {
+			// cleanup snapshot
+			cErr := cleanUpSnapshot(ctx, parentVol, tempSnap, tempClone)
+			if cErr != nil {
+				log.ErrorLog(ctx, "failed to cleanup image %s or snapshot %s: %v", tempClone, tempSnap, cErr)
 			}
 		}
 	}()
-
-	// flatten clone
-	errFlatten = tempClone.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
-	if errFlatten != nil {
-		return errFlatten
-	}
 
 	// create snap of temp clone from temporary cloned image
 	// create final clone
 	// delete snap of temp clone
 	errClone = createRBDClone(ctx, tempClone, rv, cloneSnap)
 	if errClone != nil {
-		// set errFlatten error to cleanup temporary snapshot and temporary clone
-		errFlatten = errors.New("failed to create user requested cloned image")
-
 		return errClone
 	}
 
 	return nil
-}
-
-func (rv *rbdVolume) flattenCloneImage(ctx context.Context) error {
-	tempClone := rv.generateTempClone()
-	// reducing the limit for cloned images to make sure the limit is in range,
-	// If the intermediate clone reaches the depth we may need to return ABORT
-	// error message as it need to be flatten before continuing, this may leak
-	// omap entries and stale temporary snapshots in corner cases, if we reduce
-	// the limit and check for the depth of the parent image clain itself we
-	// can flatten the parent images before used to avoid the stale omap entries.
-	hardLimit := rbdHardMaxCloneDepth
-	softLimit := rbdSoftMaxCloneDepth
-	// choosing 2 so that we don't need to flatten the image in the request.
-	const depthToAvoidFlatten = 2
-	if rbdHardMaxCloneDepth > depthToAvoidFlatten {
-		hardLimit = rbdHardMaxCloneDepth - depthToAvoidFlatten
-	}
-	if rbdSoftMaxCloneDepth > depthToAvoidFlatten {
-		softLimit = rbdSoftMaxCloneDepth - depthToAvoidFlatten
-	}
-	err := tempClone.getImageInfo()
-	if err == nil {
-		return tempClone.flattenRbdImage(ctx, false, hardLimit, softLimit)
-	}
-	if !errors.Is(err, ErrImageNotFound) {
-		return err
-	}
-
-	return rv.flattenRbdImage(ctx, false, hardLimit, softLimit)
 }

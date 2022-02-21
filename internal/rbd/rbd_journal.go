@@ -303,7 +303,6 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 
 		return false, err
 	}
-	// TODO: check image needs flattening and completed?
 
 	err = rv.repairImageID(ctx, j, false)
 	if err != nil {
