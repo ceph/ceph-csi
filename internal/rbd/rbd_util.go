@@ -1440,6 +1440,47 @@ func (ri *rbdImage) getImageInfo() error {
 	return nil
 }
 
+// getParent returns parent image if it exists.
+func (ri *rbdImage) getParent() (*rbdImage, error) {
+	err := ri.getImageInfo()
+	if err != nil {
+		return nil, err
+	}
+	if ri.ParentName == "" {
+		return nil, nil
+	}
+
+	parentImage := rbdImage{}
+	parentImage.conn = ri.conn.Copy()
+	parentImage.ClusterID = ri.ClusterID
+	parentImage.Monitors = ri.Monitors
+	parentImage.Pool = ri.ParentPool
+	parentImage.RadosNamespace = ri.RadosNamespace
+	parentImage.RbdImageName = ri.ParentName
+
+	err = parentImage.getImageInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	return &parentImage, nil
+}
+
+// flattenParent flatten the given image's parent if it exists according to hard and soft
+// limits.
+func (ri *rbdImage) flattenParent(ctx context.Context, hardLimit, softLimit uint) error {
+	parentImage, err := ri.getParent()
+	if err != nil {
+		return err
+	}
+
+	if parentImage == nil {
+		return nil
+	}
+
+	return parentImage.flattenRbdImage(ctx, false, hardLimit, softLimit)
+}
+
 /*
 checkSnapExists queries rbd about the snapshots of the given image and returns
 ErrImageNotFound if provided image is not found, and ErrSnapNotFound if
