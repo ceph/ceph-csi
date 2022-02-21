@@ -177,7 +177,13 @@ func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVolID, err := rbd.RegenerateJournal(pv.Spec.CSI.VolumeAttributes, volumeHandler, requestName, pvcNamespace, cr)
+	rbdVolID, err := rbd.RegenerateJournal(
+		pv.Spec.CSI.VolumeAttributes,
+		pv.Spec.ClaimRef.Name,
+		volumeHandler,
+		requestName,
+		pvcNamespace,
+		cr)
 	if err != nil {
 		log.ErrorLogMsg("failed to regenerate journal %s", err)
 
