@@ -26,4 +26,4 @@ func (v *SyncBuffer) Release() {
 
 // Sync asserts that changes in the C buffer are available in the data
 // slice
-func (v *SyncBuffer) Sync() {}
+func (*SyncBuffer) Sync() {}

@@ -706,15 +706,13 @@ func (image *Image) BreakLock(client string, cookie string) error {
 	return getError(C.rbd_break_lock(image.image, cClient, cCookie))
 }
 
-// ssize_t rbd_read(rbd_image_t image, uint64_t ofs, size_t len, char *buf);
-// TODO: int64_t rbd_read_iterate(rbd_image_t image, uint64_t ofs, size_t len,
-//              int (*cb)(uint64_t, size_t, const char *, void *), void *arg);
-// TODO: int rbd_read_iterate2(rbd_image_t image, uint64_t ofs, uint64_t len,
-//               int (*cb)(uint64_t, size_t, const char *, void *), void *arg);
-// TODO: int rbd_diff_iterate(rbd_image_t image,
-//              const char *fromsnapname,
-//              uint64_t ofs, uint64_t len,
-//              int (*cb)(uint64_t, size_t, int, void *), void *arg);
+// Read data from the image. The length of the read is determined by the length
+// of the buffer slice. The position of the read is determined by an internal
+// offset which is not safe in concurrent code. Prefer ReadAt when possible.
+//
+// Implements:
+//  ssize_t rbd_read(rbd_image_t image, uint64_t ofs, size_t len,
+//                   char *buf);
 func (image *Image) Read(data []byte) (int, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -742,7 +740,13 @@ func (image *Image) Read(data []byte) (int, error) {
 	return ret, nil
 }
 
-// ssize_t rbd_write(rbd_image_t image, uint64_t ofs, size_t len, const char *buf);
+// Write data to an image. The length of the write is determined by the length of
+// the buffer slice. The position of the write is determined by an internal
+// offset which is not safe in concurrent code. Prefer WriteAt when possible.
+//
+// Implements:
+//  ssize_t rbd_write(rbd_image_t image, uint64_t ofs, size_t len,
+//                    const char *buf);
 func (image *Image) Write(data []byte) (n int, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err

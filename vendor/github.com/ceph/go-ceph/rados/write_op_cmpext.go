@@ -1,6 +1,3 @@
-//go:build ceph_preview
-// +build ceph_preview
-
 package rados
 
 // #cgo LDFLAGS: -lrados
@@ -40,7 +37,6 @@ func newWriteOpCmpExtStep() *WriteOpCmpExtStep {
 }
 
 // CmpExt ensures that given object range (extent) satisfies comparison.
-//  PREVIEW
 //
 // Implements:
 //  void rados_write_op_cmpext(rados_write_op_t write_op,
