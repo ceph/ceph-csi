@@ -452,6 +452,12 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 		}
 	}
 
+	// Set metadata on restart of provisioner pod when image exist
+	err := rbdVol.setVolumeMetadata(req.GetParameters())
+	if err != nil {
+		return nil, err
+	}
+
 	return buildCreateVolumeResponse(req, rbdVol), nil
 }
 
