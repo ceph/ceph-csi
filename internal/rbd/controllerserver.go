@@ -329,6 +329,12 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, err
 	}
 
+	// Set Metadata on PV Create
+	err = rbdVol.setVolumeMetadata(req.GetParameters())
+	if err != nil {
+		return nil, err
+	}
+
 	return buildCreateVolumeResponse(req, rbdVol), nil
 }
 
