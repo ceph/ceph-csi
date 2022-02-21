@@ -63,3 +63,19 @@ func GetVolumeMetadata(parameters map[string]string) map[string]string {
 
 	return newParam
 }
+
+// PrepareVolumeMetadata return PV/PVC/PVCNamespace metadata based on inputs.
+func PrepareVolumeMetadata(pvcName, pvcNamespace, pvName string) map[string]string {
+	newParam := map[string]string{}
+	if pvcName != "" {
+		newParam[pvcNameKey] = pvcName
+	}
+	if pvcNamespace != "" {
+		newParam[pvcNamespaceKey] = pvcNamespace
+	}
+	if pvName != "" {
+		newParam[pvNameKey] = pvName
+	}
+
+	return newParam
+}

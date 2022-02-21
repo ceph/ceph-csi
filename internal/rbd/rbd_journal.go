@@ -23,6 +23,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
@@ -533,9 +534,13 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // Generate new volume Handler
 // The volume handler won't remain same as its contains poolID,clusterID etc
 // which are not same across clusters.
+// nolint:gocyclo,cyclop // TODO: reduce complexity
 func RegenerateJournal(
 	volumeAttributes map[string]string,
-	volumeID, requestName, owner string,
+	claimName,
+	volumeID,
+	requestName,
+	owner string,
 	cr *util.Credentials) (string, error) {
 	ctx := context.Background()
 	var (
@@ -598,15 +603,23 @@ func RegenerateJournal(
 	if err != nil {
 		return "", err
 	}
+
 	if imageData != nil {
 		rbdVol.ReservedID = imageData.ImageUUID
 		rbdVol.ImageID = imageData.ImageAttributes.ImageID
 		rbdVol.Owner = imageData.ImageAttributes.Owner
+		rbdVol.RbdImageName = imageData.ImageAttributes.ImageName
 		if rbdVol.ImageID == "" {
 			err = rbdVol.storeImageID(ctx, j)
 			if err != nil {
 				return "", err
 			}
+		}
+		// Update Metadata on reattach of the same old PV
+		parameters := k8s.PrepareVolumeMetadata(claimName, rbdVol.Owner, "")
+		err = rbdVol.setVolumeMetadata(parameters)
+		if err != nil {
+			return "", fmt.Errorf("failed to set volume metadata: %w", err)
 		}
 		// As the omap already exists for this image ID return nil.
 		rbdVol.VolID, err = util.GenerateVolID(ctx, rbdVol.Monitors, cr, imagePoolID, rbdVol.Pool,
