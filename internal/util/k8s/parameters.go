@@ -23,7 +23,12 @@ import (
 // to the driver on CreateVolumeRequest/CreateSnapshotRequest calls.
 const (
 	csiParameterPrefix = "csi.storage.k8s.io/"
-	pvcNamespaceKey    = "csi.storage.k8s.io/pvc/namespace"
+
+	// PV and PVC metadata keys used by external provisioner as part of
+	// create requests as parameters, when `extra-create-metadata` is true.
+	pvcNameKey      = "csi.storage.k8s.io/pvc/name"
+	pvcNamespaceKey = "csi.storage.k8s.io/pvc/namespace"
+	pvNameKey       = "csi.storage.k8s.io/pv/name"
 )
 
 // RemoveCSIPrefixedParameters removes parameters prefixed with csiParameterPrefix.
@@ -42,4 +47,19 @@ func RemoveCSIPrefixedParameters(param map[string]string) map[string]string {
 // GetOwner returns the pvc namespace name from the parameter.
 func GetOwner(param map[string]string) string {
 	return param[pvcNamespaceKey]
+}
+
+// GetVolumeMetadata filter parameters, only return PV/PVC/PVCNamespace metadata.
+func GetVolumeMetadata(parameters map[string]string) map[string]string {
+	keys := []string{pvcNameKey, pvcNamespaceKey, pvNameKey}
+	newParam := map[string]string{}
+	for k, v := range parameters {
+		for _, key := range keys {
+			if strings.Contains(k, key) {
+				newParam[k] = v
+			}
+		}
+	}
+
+	return newParam
 }
