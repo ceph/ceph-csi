@@ -29,6 +29,7 @@ import (
 	. "github.com/onsi/ginkgo" // nolint
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -89,6 +90,12 @@ var (
 
 	nbdMapOptions             = "nbd:debug-rbd=20"
 	e2eDefaultCephLogStrategy = "preserve"
+
+	// PV and PVC metadata keys used by external provisioner as part of
+	// create requests as parameters, when `extra-create-metadata` is true.
+	pvcNameKey      = "csi.storage.k8s.io/pvc/name"
+	pvcNamespaceKey = "csi.storage.k8s.io/pvc/namespace"
+	pvNameKey       = "csi.storage.k8s.io/pv/name"
 )
 
 func deployRBDPlugin() {
@@ -394,6 +401,187 @@ var _ = Describe("RBD", func() {
 					}
 				})
 			}
+
+			By("create a PVC and check PVC/PV metadata on RBD image", func() {
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+
+				imageList, err := listRBDImages(f, defaultRBDPool)
+				if err != nil {
+					e2elog.Failf("failed to list rbd images: %v", err)
+				}
+
+				pvcName, stdErr, err := execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s/%s %s",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNameKey),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					e2elog.Failf("failed to get PVC name %s/%s %s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNameKey, err, stdErr)
+				}
+				pvcName = strings.TrimSuffix(pvcName, "\n")
+				if pvcName != pvc.Name {
+					e2elog.Failf("expected pvcName %q got %q", pvc.Name, pvcName)
+				}
+
+				pvcNamespace, stdErr, err := execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s/%s %s",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNamespaceKey),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					e2elog.Failf("failed to get PVC namespace %s/%s %s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNamespaceKey, err, stdErr)
+				}
+				pvcNamespace = strings.TrimSuffix(pvcNamespace, "\n")
+				if pvcNamespace != pvc.Namespace {
+					e2elog.Failf("expected pvcNamespace %q got %q", pvc.Namespace, pvcNamespace)
+				}
+
+				pvcObj, err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(
+					context.TODO(),
+					pvc.Name,
+					metav1.GetOptions{})
+				if err != nil {
+					e2elog.Logf("error getting pvc %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
+				}
+				if pvcObj.Spec.VolumeName == "" {
+					e2elog.Logf("pv name is empty %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
+				}
+				pvName, stdErr, err := execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s/%s %s",
+						rbdOptions(defaultRBDPool), imageList[0], pvNameKey),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					e2elog.Failf("failed to get PV name %s/%s %s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvNameKey, err, stdErr)
+				}
+				pvName = strings.TrimSuffix(pvName, "\n")
+				if pvName != pvcObj.Spec.VolumeName {
+					e2elog.Failf("expected pvName %q got %q", pvcObj.Spec.VolumeName, pvName)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc: %v", err)
+				}
+				validateRBDImageCount(f, 0, defaultRBDPool)
+			})
+
+			By("reattach the old PV to a new PVC and check if PVC metadata is updated on RBD image", func() {
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+
+				imageList, err := listRBDImages(f, defaultRBDPool)
+				if err != nil {
+					e2elog.Failf("failed to list rbd images: %v", err)
+				}
+
+				pvcName, stdErr, err := execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s/%s %s",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNameKey),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					e2elog.Failf("failed to get PVC name %s/%s %s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNameKey, err, stdErr)
+				}
+				pvcName = strings.TrimSuffix(pvcName, "\n")
+				if pvcName != pvc.Name {
+					e2elog.Failf("expected pvcName %q got %q", pvc.Name, pvcName)
+				}
+
+				pvcObj, err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(
+					context.TODO(),
+					pvc.Name,
+					metav1.GetOptions{})
+				if err != nil {
+					e2elog.Logf("error getting pvc %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
+				}
+				if pvcObj.Spec.VolumeName == "" {
+					e2elog.Logf("pv name is empty %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
+				}
+
+				patchBytes := []byte(`{"spec":{"persistentVolumeReclaimPolicy": "Retain", "claimRef": null}}`)
+				_, err = c.CoreV1().PersistentVolumes().Patch(
+					context.TODO(),
+					pvcObj.Spec.VolumeName,
+					types.StrategicMergePatchType,
+					patchBytes,
+					metav1.PatchOptions{})
+				if err != nil {
+					e2elog.Logf("error Patching PV %q for persistentVolumeReclaimPolicy and claimRef: %v",
+						pvcObj.Spec.VolumeName, err)
+				}
+
+				err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(
+					context.TODO(),
+					pvc.Name,
+					metav1.DeleteOptions{})
+				if err != nil {
+					e2elog.Logf("failed to delete pvc: %w", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+
+				pvc.Name = "rbd-pvc-new"
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create new PVC: %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+
+				pvcName, stdErr, err = execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s/%s %s",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNameKey),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					e2elog.Failf("failed to get PVC name %s/%s %s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNameKey, err, stdErr)
+				}
+				pvcName = strings.TrimSuffix(pvcName, "\n")
+				if pvcName != pvc.Name {
+					e2elog.Failf("expected pvcName %q got %q", pvc.Name, pvcName)
+				}
+
+				patchBytes = []byte(`{"spec":{"persistentVolumeReclaimPolicy": "Delete"}}`)
+				_, err = c.CoreV1().PersistentVolumes().Patch(
+					context.TODO(),
+					pvcObj.Spec.VolumeName,
+					types.StrategicMergePatchType,
+					patchBytes,
+					metav1.PatchOptions{})
+				if err != nil {
+					e2elog.Logf("error Patching PV %q for persistentVolumeReclaimPolicy: %v", pvcObj.Spec.VolumeName, err)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc: %v", err)
+				}
+				validateRBDImageCount(f, 0, defaultRBDPool)
+			})
+
 			By("verify generic ephemeral volume support", func() {
 				// generic ephemeral volume support is supported from 1.21
 				if k8sVersionGreaterEquals(f.ClientSet, 1, 21) {
