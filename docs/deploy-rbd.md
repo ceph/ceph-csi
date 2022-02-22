@@ -47,6 +47,7 @@ make image-cephcsi
 | `--rbdsoftmaxclonedepth` | `4`                           | Soft limit for maximum number of nested volume clones that are taken before a flatten occurs                                                                                                                                                                                         |
 | `--skipforceflatten`     | `false`                       | skip image flattening on kernel < 5.2 which support mapping of rbd images which has the deep-flatten feature                                                                                                                                                                         |
 | `--maxsnapshotsonimage`  | `450`                         | Maximum number of snapshots allowed on rbd image without flattening                                                                                                                                                                                                                  |
+| `--setmetadata`          | `false`                       | Set metadata on volume                                                                                                                                                                                                                                                               |
 
 **Available volume parameters:**
 
