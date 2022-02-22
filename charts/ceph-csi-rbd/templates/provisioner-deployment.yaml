@@ -155,6 +155,7 @@ spec:
             {{- if .Values.provisioner.clustername }}
             - "--clustername={{ .Values.provisioner.clustername }}"
             {{- end }}
+            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
           env:
             - name: POD_IP
               valueFrom:
@@ -205,6 +206,7 @@ spec:
             {{- if .Values.provisioner.clustername }}
             - "--clustername={{ .Values.provisioner.clustername }}"
             {{- end }}
+            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
           env:
             - name: DRIVER_NAMESPACE
               valueFrom:
