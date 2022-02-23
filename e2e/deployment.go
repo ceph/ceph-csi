@@ -23,6 +23,7 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -60,6 +61,10 @@ func loadAppDeployment(path string) (*appsv1.Deployment, error) {
 	deploy := appsv1.Deployment{}
 	if err := unmarshal(path, &deploy); err != nil {
 		return nil, err
+	}
+
+	for i := range deploy.Spec.Template.Spec.Containers {
+		deploy.Spec.Template.Spec.Containers[i].ImagePullPolicy = v1.PullIfNotPresent
 	}
 
 	return &deploy, nil
