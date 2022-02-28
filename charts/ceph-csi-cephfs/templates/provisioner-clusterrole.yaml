@@ -48,12 +48,10 @@ rules:
     resources: ["volumeattachments/status"]
     verbs: ["patch"]
 {{- end -}}
-{{- if semverCompare ">=1.15" .Capabilities.KubeVersion.Version -}}
 {{- if .Values.provisioner.resizer.enabled }}
   - apiGroups: [""]
     resources: ["persistentvolumeclaims/status"]
     verbs: ["update", "patch"]
-{{- end -}}
 {{- end -}}
 {{- if .Values.topology.enabled }}
   - apiGroups: [""]

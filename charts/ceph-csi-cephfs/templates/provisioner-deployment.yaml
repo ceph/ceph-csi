@@ -107,7 +107,6 @@ spec:
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- end }}
-{{- if semverCompare ">=1.15" .Capabilities.KubeVersion.Version -}}
 {{- if .Values.provisioner.resizer.enabled }}
         - name: csi-resizer
           image: "{{ .Values.provisioner.resizer.image.repository }}:{{ .Values.provisioner.resizer.image.tag }}"
@@ -127,7 +126,6 @@ spec:
               mountPath: /csi
           resources:
 {{ toYaml .Values.provisioner.resizer.resources | indent 12 }}
-{{- end }}
 {{- end }}
         - name: csi-cephfsplugin
           image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
