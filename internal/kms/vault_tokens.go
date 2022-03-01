@@ -27,6 +27,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 
 	"github.com/hashicorp/vault/api"
+	loss "github.com/libopenstorage/secrets"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -596,7 +597,61 @@ func (vtc *vaultTenantConnection) parseTenantConfig() (map[string]interface{}, e
 		return nil, nil
 	}
 
+	vtc.setTenantAuthNamespace(config)
+
 	return config, nil
+}
+
+// setTenantAuthNamespace configures the vaultAuthNamespace for the tenant.
+// vaultAuthNamespace defaults to vaultNamespace from the global configuration,
+// even if the tenant has vaultNamespace configured. Users expect to have the
+// vaultAuthNamespace updated when they configure vaultNamespace, if
+// vaultAuthNamespace was not explicitly set in the global configuration.
+func (vtc *vaultTenantConnection) setTenantAuthNamespace(tenantConfig map[string]interface{}) {
+	vaultAuthNamespace, ok := vtc.keyContext[loss.KeyVaultNamespace]
+	if !ok {
+		// nothing to do, global connection config does not have the
+		// vaultAuthNamespace set
+		return
+	}
+
+	vaultNamespace, ok := vtc.vaultConfig[api.EnvVaultNamespace]
+	if !ok {
+		// nothing to do, global connection config does not have the
+		// vaultNamespace set, not overriding vaultAuthNamespace with
+		// vaultNamespace from the tenant
+		return
+	}
+
+	if vaultAuthNamespace != vaultNamespace {
+		// vaultAuthNamespace and vaultNamespace have been configured
+		// differently in the global connection. Not going to override
+		// those pre-defined options if the tenantConfig does not have
+		// them set.
+		return
+	}
+
+	// if we reached here, we need to make sure that the vaultAuthNamespace
+	// gets configured for the tenant, in case the tenant config has
+	// vaultNamespace set
+
+	_, ok = tenantConfig["vaultAuthNamespace"]
+	if ok {
+		// the tenant already has vaultAuthNamespace configured, no
+		// action needed
+		return
+	}
+
+	tenantNamespace, ok := tenantConfig["vaultNamespace"]
+	if !ok {
+		// the tenant does not have vaultNamespace configured, no need
+		// to set vaultAuthNamespace either
+		return
+	}
+
+	// the tenant has vaultNamespace configured, use that for
+	// vaultAuthNamespace as well
+	tenantConfig["vaultAuthNamespace"] = tenantNamespace
 }
 
 // fetchTenantConfig fetches the configuration for the tenant if it exists.
