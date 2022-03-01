@@ -281,8 +281,9 @@ storageClass:
 
   # (optional) RBD image features, CSI creates image with image-format 2 CSI
   # RBD currently supports `layering`, `journaling`, `exclusive-lock`,
-  # `object-map`, `fast-diff`, `deep-flatten` features. If `journaling` is
-  # enabled, must enable `exclusive-lock` too.
+  # `object-map`, `fast-diff`, `deep-flatten` features.
+  # Refer https://docs.ceph.com/en/latest/rbd/rbd-config-ref/#image-features
+  # for image feature dependencies.
   # imageFeatures: layering,journaling,exclusive-lock,object-map,fast-diff
   imageFeatures: "layering"
 
