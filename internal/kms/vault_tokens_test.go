@@ -235,3 +235,96 @@ func TestVaultTokensKMSRegistered(t *testing.T) {
 	_, ok := kmsManager.providers[kmsTypeVaultTokens]
 	assert.True(t, ok)
 }
+
+func TestSetTenantAuthNamespace(t *testing.T) {
+	t.Parallel()
+
+	vaultNamespace := "tenant"
+
+	t.Run("override vaultAuthNamespace", func(tt *testing.T) {
+		tt.Parallel()
+
+		kms := &vaultTenantConnection{}
+		kms.keyContext = map[string]string{
+			loss.KeyVaultNamespace: "global",
+		}
+		kms.vaultConfig = map[string]interface{}{
+			api.EnvVaultNamespace: "global",
+		}
+
+		config := map[string]interface{}{
+			"vaultNamespace": vaultNamespace,
+		}
+
+		kms.setTenantAuthNamespace(config)
+
+		assert.Equal(tt, vaultNamespace, config["vaultAuthNamespace"])
+	})
+
+	t.Run("inherit vaultAuthNamespace", func(tt *testing.T) {
+		tt.Parallel()
+
+		vaultAuthNamespace := "configured"
+
+		kms := &vaultTenantConnection{}
+		kms.keyContext = map[string]string{
+			loss.KeyVaultNamespace: vaultAuthNamespace,
+		}
+		kms.vaultConfig = map[string]interface{}{
+			api.EnvVaultNamespace: "global",
+		}
+
+		config := map[string]interface{}{
+			"vaultNamespace": vaultNamespace,
+		}
+
+		kms.setTenantAuthNamespace(config)
+
+		// when inheriting from the global config, the config of the
+		// tenant should not have vaultAuthNamespace configured
+		assert.Equal(tt, nil, config["vaultAuthNamespace"])
+	})
+
+	t.Run("unset vaultAuthNamespace", func(tt *testing.T) {
+		tt.Parallel()
+
+		kms := &vaultTenantConnection{}
+		kms.keyContext = map[string]string{
+			// no vaultAuthNamespace configured
+		}
+		kms.vaultConfig = map[string]interface{}{
+			api.EnvVaultNamespace: "global",
+		}
+
+		config := map[string]interface{}{
+			"vaultNamespace": vaultNamespace,
+		}
+
+		kms.setTenantAuthNamespace(config)
+
+		// global vaultAuthNamespace is not set, tenant
+		// vaultAuthNamespace will be configured as vaultNamespace by
+		// default
+		assert.Equal(tt, nil, config["vaultAuthNamespace"])
+	})
+
+	t.Run("no vaultNamespace", func(tt *testing.T) {
+		tt.Parallel()
+
+		kms := &vaultTenantConnection{}
+		kms.keyContext = map[string]string{
+			// no vaultAuthNamespace configured
+		}
+		kms.vaultConfig = map[string]interface{}{
+			// no vaultNamespace configured
+		}
+
+		config := map[string]interface{}{
+			// no tenant namespaces configured
+		}
+
+		kms.setTenantAuthNamespace(config)
+
+		assert.Equal(tt, nil, config["vaultAuthNamespace"])
+	})
+}
