@@ -15,10 +15,14 @@
 .PHONY: all
 all: \
 	scc.yaml \
+	nfs/kubernetes/csidriver.yaml \
 	rbd/kubernetes/csidriver.yaml \
 	rbd/kubernetes/csi-config-map.yaml
 
 scc.yaml: ../api/deploy/ocp/scc.yaml ../api/deploy/ocp/scc.go
+	$(MAKE) -C ../tools generate-deploy
+
+nfs/kubernetes/csidriver.yaml: ../api/deploy/kubernetes/nfs/csidriver.yaml ../api/deploy/kubernetes/nfs/csidriver.go
 	$(MAKE) -C ../tools generate-deploy
 
 rbd/kubernetes/csidriver.yaml: ../api/deploy/kubernetes/rbd/csidriver.yaml ../api/deploy/kubernetes/rbd/csidriver.go
