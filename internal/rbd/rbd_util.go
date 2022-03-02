@@ -1933,3 +1933,16 @@ func (rv *rbdVolume) setVolumeMetadata(parameters map[string]string) error {
 
 	return nil
 }
+
+// setSnapshotMetadata Set snapshot-name/snapshot-namespace/snapshotcontent-name metadata
+// on RBD image.
+func (rv *rbdVolume) setSnapshotMetadata(parameters map[string]string) error {
+	for k, v := range k8s.GetSnapshotMetadata(parameters) {
+		err := rv.SetMetadata(k, v)
+		if err != nil {
+			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w", k, v, err)
+		}
+	}
+
+	return nil
+}

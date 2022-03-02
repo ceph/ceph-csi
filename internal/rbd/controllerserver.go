@@ -963,6 +963,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 }
 
 // CreateSnapshot creates the snapshot in backend and stores metadata in store.
+// nolint:cyclop // TODO: reduce complexity
 func (cs *ControllerServer) CreateSnapshot(
 	ctx context.Context,
 	req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
@@ -1036,7 +1037,7 @@ func (cs *ControllerServer) CreateSnapshot(
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	if found {
-		return cloneFromSnapshot(ctx, rbdVol, rbdSnap, cr)
+		return cloneFromSnapshot(ctx, rbdVol, rbdSnap, cr, req.GetParameters())
 	}
 
 	err = flattenTemporaryClonedImages(ctx, rbdVol, cr)
@@ -1062,6 +1063,16 @@ func (cs *ControllerServer) CreateSnapshot(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// Update the metadata on snapshot not on the original image
+	rbdVol.RbdImageName = rbdSnap.RbdSnapName
+
+	// Set snapshot-name/snapshot-namespace/snapshotcontent-name details
+	// on RBD backend image as metadata on create
+	err = rbdVol.setSnapshotMetadata(req.GetParameters())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
 			SizeBytes:      vol.VolSize,
@@ -1079,7 +1090,8 @@ func cloneFromSnapshot(
 	ctx context.Context,
 	rbdVol *rbdVolume,
 	rbdSnap *rbdSnapshot,
-	cr *util.Credentials) (*csi.CreateSnapshotResponse, error) {
+	cr *util.Credentials,
+	parameters map[string]string) (*csi.CreateSnapshotResponse, error) {
 	vol := generateVolFromSnap(rbdSnap)
 	err := vol.Connect(cr)
 	if err != nil {
@@ -1110,6 +1122,15 @@ func cloneFromSnapshot(
 		}
 
 		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	// Update snapshot-name/snapshot-namespace/snapshotcontent-name details on
+	// RBD backend image as metadata on restart of provisioner pod when image exist
+	if len(parameters) != 0 {
+		err = rbdVol.setSnapshotMetadata(parameters)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	return &csi.CreateSnapshotResponse{
