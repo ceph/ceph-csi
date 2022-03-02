@@ -19,8 +19,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"reflect"
 
+	"github.com/ceph/ceph-csi/api/deploy/kubernetes/nfs"
 	"github.com/ceph/ceph-csi/api/deploy/kubernetes/rbd"
 	"github.com/ceph/ceph-csi/api/deploy/ocp"
 )
@@ -47,6 +49,11 @@ var yamlArtifacts = []deploymentArtifact{
 		reflect.ValueOf(ocp.SecurityContextConstraintsDefaults),
 	},
 	{
+		"../deploy/nfs/kubernetes/csidriver.yaml",
+		reflect.ValueOf(nfs.NewCSIDriverYAML),
+		reflect.ValueOf(nfs.CSIDriverDefaults),
+	},
+	{
 		"../deploy/rbd/kubernetes/csidriver.yaml",
 		reflect.ValueOf(rbd.NewCSIDriverYAML),
 		reflect.ValueOf(rbd.CSIDriverDefaults),
@@ -66,6 +73,15 @@ func main() {
 
 func writeArtifact(artifact deploymentArtifact) {
 	fmt.Printf("creating %q...", artifact.filename)
+
+	dir := path.Dir(artifact.filename)
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0o775)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create directory %q: %v", dir, err))
+		}
+	}
 
 	f, err := os.Create(artifact.filename)
 	if err != nil {
