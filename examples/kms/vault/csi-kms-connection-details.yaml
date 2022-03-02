@@ -69,5 +69,10 @@ data:
       "IBM_KP_TOKEN_URL": "https://iam.cloud.ibm.com/oidc/token",
       "IBM_KP_REGION": "us-south-2",
     }
+  aws-sts-metadata-test: |-
+    {
+      "encryptionKMSType": "aws-sts-metadata",
+      "secretName": "ceph-csi-aws-credentials"
+    }
 metadata:
   name: csi-kms-connection-details
