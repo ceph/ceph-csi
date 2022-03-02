@@ -29,6 +29,11 @@ const (
 	pvcNameKey      = "csi.storage.k8s.io/pvc/name"
 	pvcNamespaceKey = "csi.storage.k8s.io/pvc/namespace"
 	pvNameKey       = "csi.storage.k8s.io/pv/name"
+
+	// snapshot metadata keys.
+	volSnapNameKey        = "csi.storage.k8s.io/volumesnapshot/name"
+	volSnapNamespaceKey   = "csi.storage.k8s.io/volumesnapshot/namespace"
+	volSnapContentNameKey = "csi.storage.k8s.io/volumesnapshotcontent/name"
 )
 
 // RemoveCSIPrefixedParameters removes parameters prefixed with csiParameterPrefix.
@@ -75,6 +80,22 @@ func PrepareVolumeMetadata(pvcName, pvcNamespace, pvName string) map[string]stri
 	}
 	if pvName != "" {
 		newParam[pvNameKey] = pvName
+	}
+
+	return newParam
+}
+
+// GetSnapshotMetadata filter parameters, only return
+// snapshot-name/snapshot-namespace/snapshotcontent-name metadata.
+func GetSnapshotMetadata(parameters map[string]string) map[string]string {
+	keys := []string{volSnapNameKey, volSnapNamespaceKey, volSnapContentNameKey}
+	newParam := map[string]string{}
+	for k, v := range parameters {
+		for _, key := range keys {
+			if strings.Contains(k, key) {
+				newParam[k] = v
+			}
+		}
 	}
 
 	return newParam
