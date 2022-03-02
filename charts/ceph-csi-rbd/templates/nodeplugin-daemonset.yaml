@@ -133,6 +133,9 @@ spec:
               mountPath: /tmp/csi/keys
             - name: ceph-logdir
               mountPath: /var/log/ceph
+            - name: oidc-token
+              mountPath: /var/run/secrets/tokens
+              readOnly: true
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
 {{- if .Values.nodeplugin.httpMetrics.enabled }}
@@ -221,6 +224,13 @@ spec:
           emptyDir: {
             medium: "Memory"
           }
+        - name: oidc-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: oidc-token
+                  expirationSeconds: 3600
+                  audience: ceph-csi-kms
 {{- if .Values.nodeplugin.affinity }}
       affinity:
 {{ toYaml .Values.nodeplugin.affinity | indent 8 -}}

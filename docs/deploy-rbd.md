@@ -382,6 +382,34 @@ the AWS KMS is expected to contain:
 This Secret is expected to be created by the administrator who deployed
 Ceph-CSI.
 
+#### Configuring Amazon KMS with Amazon STS
+
+Ceph-CSI can be configured to use
+[Amazon STS](https://docs.aws.amazon.com/STS/latest/APIReference/welcome.html),
+when kubernetes cluster is configured with OIDC identity provider to fetch
+credentials to access Amazon KMS. Other functionalities is the same as
+[Amazon KMS encryption](#configuring-amazon-kms).
+
+There are a few settings that need to be included in the [KMS configuration
+file](../examples/kms/vault/kms-config.yaml):
+
+1. `encryptionKMSType`: should be set to `aws-sts-metadata`.
+1. `secretName`: name of the Kubernetes Secret (in the Namespace where
+   PVC is created) which contains the credentials for communicating with
+   AWS. This defaults to `ceph-csi-aws-credentials`.
+
+The [Secret with credentials](../examples/kms/vault/aws-sts-credentials.yaml) for
+the AWS KMS is expected to contain:
+
+1. `awsRoleARN`: Role which will be used access credentials from AWS STS
+    and access AWS KMS for encryption.
+1. `awsCMKARN`: Custom Master Key, ARN for the key used to encrypt the
+   passphrase
+1. `awsRegion`: the region where the AWS STS and KMS service is available.
+
+This Secret is expected to be created by the tenant/user in each namespace where
+Ceph-CSI is used to create encrypted rbd volumes.
+
 ### Encryption prerequisites
 
 In order for encryption to work you need to make sure that `dm-crypt` kernel

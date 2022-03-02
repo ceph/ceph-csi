@@ -96,6 +96,10 @@ data:
         "secretName": "ceph-csi-kp-credentials",
         "keyProtectRegionKey": "us-south-2",
         "keyProtectServiceInstanceID": "7abef064-01dd-4237-9ea5-8b3890970be3"
+      },
+      "aws-sts-metadata-test": {
+        "encryptionKMSType": "aws-sts-metadata",
+        "secretName": "ceph-csi-aws-credentials"
       }
     }
 metadata:
