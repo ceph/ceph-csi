@@ -127,11 +127,11 @@ func (rsns *ReclaimSpaceNodeServer) NodeReclaimSpace(
 		return nil, status.Error(codes.Unimplemented, "multi-node space reclaim is not supported")
 	}
 
-	cmd := "fstrim"
 	if isBlock {
-		cmd = "blkdiscard"
+		return nil, status.Error(codes.Unimplemented, "block-mode space reclaim is not supported")
 	}
 
+	cmd := "fstrim"
 	_, stderr, err := util.ExecCommand(ctx, cmd, path)
 	if err != nil {
 		return nil, status.Errorf(
