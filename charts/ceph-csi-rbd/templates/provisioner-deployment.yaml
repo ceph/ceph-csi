@@ -102,6 +102,7 @@ spec:
             - "--v={{ .Values.logLevel }}"
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election=true"
+            - "--extra-create-metadata=true"
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
