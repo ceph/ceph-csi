@@ -73,6 +73,7 @@ spec:
             - "--v=5"
             - "--timeout=150s"
             - "--leader-election=true"
+            - "--extra-create-metadata=true"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
