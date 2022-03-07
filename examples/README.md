@@ -2,6 +2,12 @@
 
 ## Deploying Ceph-CSI services
 
+Create [ceph-config](./ceph-conf.yaml) configmap using the following command.
+
+```bash
+kubectl apply -f ./ceph-conf.yaml
+```
+
 Both `rbd` and `cephfs` directories contain `plugin-deploy.sh` and
 `plugin-teardown.sh` helper scripts.  You can use those to help you
 deploy/teardown RBACs, sidecar containers and the plugin in one go.
