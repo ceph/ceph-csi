@@ -6,7 +6,7 @@ StorageClass:
 
 SnapshotClass:
   # Must be set to enable snapshotting tests
-  FromName: false
+  FromName: true
 
 DriverInfo:
   # Internal name of the driver, display name in the test case and test objects
@@ -34,7 +34,7 @@ DriverInfo:
     persistence: true
 
     # Volume ownership via fsGroup
-    fsGroup: false
+    fsGroup: true
 
     # Raw block mode
     block: false
@@ -46,10 +46,10 @@ DriverInfo:
     volumeLimits: false
 
     # Support for volume expansion in controllers
-    controllerExpansion: false
+    controllerExpansion: true
 
     # Support for volume expansion in nodes
-    nodeExpansion: false
+    nodeExpansion: true
 
     # Support volume that can run on single node only (like hostpath)
     singleNodeVolume: false
@@ -61,7 +61,7 @@ DriverInfo:
     topology: false
 
     # Support populate data from snapshot
-    snapshotDataSource: false
+    snapshotDataSource: true
 
     # Support populated data from PVC
-    pvcDataSource: false
+    pvcDataSource: true

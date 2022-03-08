@@ -39,7 +39,7 @@ DriverInfo:
     persistence: true
 
     # Volume ownership via fsGroup
-    fsGroup: false
+    fsGroup: true
 
     # Raw block mode
     block: true
@@ -48,10 +48,10 @@ DriverInfo:
     exec: true
 
     # Support for volume limits
-    volumeLimits: false
+    volumeLimits: true
 
     # Support for volume expansion in controllers
-    controllerExpansion: false
+    controllerExpansion: true
 
     # Support for volume expansion in nodes
     nodeExpansion: true
@@ -63,10 +63,10 @@ DriverInfo:
     RWX: false
 
     # Support topology
-    topology: false
+    topology: true
 
     # Support populate data from snapshot
-    snapshotDataSource: false
+    snapshotDataSource: true
 
     # Support populated data from PVC
-    pvcDataSource: false
+    pvcDataSource: true
