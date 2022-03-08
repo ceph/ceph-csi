@@ -267,7 +267,7 @@ func (rv *rbdVolume) Exists(ctx context.Context, parentVol *rbdVolume) (bool, er
 	rv.RbdImageName = imageData.ImageAttributes.ImageName
 	rv.ImageID = imageData.ImageAttributes.ImageID
 	// check if topology constraints match what is found
-	rv.Topology, err = util.MatchTopologyForPool(rv.TopologyPools, rv.TopologyRequirement,
+	_, _, rv.Topology, err = util.MatchPoolAndTopology(rv.TopologyPools, rv.TopologyRequirement,
 		imageData.ImagePool)
 	if err != nil {
 		// TODO check if need any undo operation here, or ErrVolNameConflict
@@ -412,7 +412,10 @@ func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 	var err error
 	if rbdSnap != nil {
 		// check if topology constraints matches snapshot pool
-		rbdVol.Topology, err = util.MatchTopologyForPool(rbdVol.TopologyPools,
+		var poolName string
+		var dataPoolName string
+
+		poolName, dataPoolName, rbdVol.Topology, err = util.MatchPoolAndTopology(rbdVol.TopologyPools,
 			rbdVol.TopologyRequirement, rbdSnap.Pool)
 		if err != nil {
 			return err
@@ -420,7 +423,8 @@ func updateTopologyConstraints(rbdVol *rbdVolume, rbdSnap *rbdSnapshot) error {
 
 		// update Pool, if it was topology constrained
 		if rbdVol.Topology != nil {
-			rbdVol.Pool = rbdSnap.Pool
+			rbdVol.Pool = poolName
+			rbdVol.DataPool = dataPoolName
 		}
 
 		return nil
