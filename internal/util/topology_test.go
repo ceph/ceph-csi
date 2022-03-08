@@ -37,7 +37,7 @@ func checkAndReportError(t *testing.T, msg string, err error) {
 	}
 }
 
-// TestFindPoolAndTopology also tests MatchTopologyForPool.
+// TestFindPoolAndTopology also tests MatchPoolAndTopology.
 func TestFindPoolAndTopology(t *testing.T) {
 	t.Parallel()
 	var err error
@@ -319,15 +319,15 @@ func TestFindPoolAndTopology(t *testing.T) {
 		t.Errorf("expected data pool to be named ec-%s, got %s", poolName, dataPoolName)
 	}
 
-	// TEST: MatchTopologyForPool
+	// TEST: MatchPoolAndTopology
 	// check for non-existent pool
-	_, err = MatchTopologyForPool(&validMultipleTopoPools, &validAccReq, pool1+"fuzz")
+	_, _, _, err = MatchPoolAndTopology(&validMultipleTopoPools, &validAccReq, pool1+"fuzz")
 	if err == nil {
 		t.Errorf("expected failure due to non-existent pool name (%s) got success", pool1+"fuzz")
 	}
 
 	// check for existing pool
-	topoSegment, err = MatchTopologyForPool(&validMultipleTopoPools, &validAccReq, pool1)
+	_, _, topoSegment, err = MatchPoolAndTopology(&validMultipleTopoPools, &validAccReq, pool1)
 	err = checkOutput(err, pool1, topoSegment)
 	checkAndReportError(t, "expected success got:", err)
 }

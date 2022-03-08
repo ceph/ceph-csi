@@ -168,14 +168,14 @@ func GetTopologyFromRequest(
 	return &topologyPools, accessibilityRequirements, nil
 }
 
-// MatchTopologyForPool returns the topology map, if the passed in pool matches any
+// MatchPoolAndTopology returns the topology map, if the passed in pool matches any
 // passed in accessibility constraints.
-func MatchTopologyForPool(topologyPools *[]TopologyConstrainedPool,
-	accessibilityRequirements *csi.TopologyRequirement, poolName string) (map[string]string, error) {
+func MatchPoolAndTopology(topologyPools *[]TopologyConstrainedPool,
+	accessibilityRequirements *csi.TopologyRequirement, poolName string) (string, string, map[string]string, error) {
 	var topologyPool []TopologyConstrainedPool
 
 	if topologyPools == nil || accessibilityRequirements == nil {
-		return nil, nil
+		return "", "", nil, nil
 	}
 
 	// find the pool in the list of topology based pools
@@ -187,13 +187,11 @@ func MatchTopologyForPool(topologyPools *[]TopologyConstrainedPool,
 		}
 	}
 	if len(topologyPool) == 0 {
-		return nil, fmt.Errorf("none of the configured topology pools (%+v) matched passed in pool name (%s)",
+		return "", "", nil, fmt.Errorf("none of the configured topology pools (%+v) matched passed in pool name (%s)",
 			topologyPools, poolName)
 	}
 
-	_, _, topology, err := FindPoolAndTopology(&topologyPool, accessibilityRequirements)
-
-	return topology, err
+	return FindPoolAndTopology(&topologyPool, accessibilityRequirements)
 }
 
 // FindPoolAndTopology loops through passed in "topologyPools" and also related
