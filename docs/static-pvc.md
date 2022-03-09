@@ -228,7 +228,7 @@ static CephFS PV
 | :----------: | :--------------------------------------------------------------------------------------------------------------------------------------------------: | :------: |
 |  clusterID   | The clusterID is used by the CSI plugin to uniquely identify and use a Ceph cluster (this is the key in configmap created duing ceph-csi deployment) |   Yes    |
 |    fsName    |                                      CephFS filesystem name into which the subvolume should be created/present                                       |   Yes    |
-| staticVolume |                                           Value must be set to `true` to mount and unmount static rbd PVC                                            |   Yes    |
+| staticVolume |                                           Value must be set to `true` to mount and unmount static cephFS PVC                                         |   Yes    |
 |   rootPath   |                     Actual path of the subvolume in ceph cluster, can be retrieved by issuing getpath command as described above                     |   Yes    |
 
 **Note** ceph-csi does not supports CephFS subvolume deletion for static PV.
