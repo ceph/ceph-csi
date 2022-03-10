@@ -32,20 +32,6 @@ type DefaultNodeServer struct {
 	Type   string
 }
 
-// NodeStageVolume returns unimplemented response.
-func (ns *DefaultNodeServer) NodeStageVolume(
-	ctx context.Context,
-	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// NodeUnstageVolume returns unimplemented response.
-func (ns *DefaultNodeServer) NodeUnstageVolume(
-	ctx context.Context,
-	req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
 // NodeExpandVolume returns unimplemented response.
 func (ns *DefaultNodeServer) NodeExpandVolume(
 	ctx context.Context,
@@ -86,13 +72,6 @@ func (ns *DefaultNodeServer) NodeGetCapabilities(
 			},
 		},
 	}, nil
-}
-
-// NodeGetVolumeStats returns volume stats.
-func (ns *DefaultNodeServer) NodeGetVolumeStats(
-	ctx context.Context,
-	req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // ConstructMountOptions returns only unique mount options in slice.
