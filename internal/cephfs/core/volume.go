@@ -39,12 +39,6 @@ import (
 // taken through this additional cluster information.
 var clusterAdditionalInfo = make(map[string]*localClusterState)
 
-const (
-	// modeAllRWX can be used for setting permissions to Read-Write-eXecute
-	// for User, Group and Other.
-	modeAllRWX = 0o777
-)
-
 // Subvolume holds subvolume information. This includes only the needed members
 // from fsAdmin.SubVolumeInfo.
 type Subvolume struct {
@@ -231,7 +225,6 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 
 	opts := fsAdmin.SubVolumeOptions{
 		Size: fsAdmin.ByteCount(s.Size),
-		Mode: modeAllRWX,
 	}
 	if s.Pool != "" {
 		opts.PoolLayout = s.Pool

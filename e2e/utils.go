@@ -339,6 +339,7 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 		return err
 	}
 	var user int64 = 2000
+	onRootMismatch := v1.FSGroupChangeOnRootMismatch
 	app := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -352,7 +353,7 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 			},
 		},
 		Spec: v1.PodSpec{
-			SecurityContext: &v1.PodSecurityContext{FSGroup: &user},
+			SecurityContext: &v1.PodSecurityContext{FSGroup: &user, FSGroupChangePolicy: &(onRootMismatch)},
 			Containers: []v1.Container{
 				{
 					Name:    "write-pod",
