@@ -237,7 +237,6 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 		opts.PoolLayout = s.Pool
 	}
 
-	fmt.Println("this is for debugging ")
 	// FIXME: check if the right credentials are used ("-n", cephEntityClientPrefix + cr.ID)
 	err = ca.CreateSubVolume(s.FsName, s.SubvolumeGroup, s.VolID, &opts)
 	if err != nil {
