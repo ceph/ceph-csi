@@ -45,13 +45,6 @@ func (cs *DefaultControllerServer) ControllerUnpublishVolume(
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-// ControllerExpandVolume expand volume.
-func (cs *DefaultControllerServer) ControllerExpandVolume(
-	ctx context.Context,
-	req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
 // ListVolumes lists volumes.
 func (cs *DefaultControllerServer) ListVolumes(
 	ctx context.Context,
@@ -79,20 +72,6 @@ func (cs *DefaultControllerServer) ControllerGetCapabilities(
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: cs.Driver.capabilities,
 	}, nil
-}
-
-// CreateSnapshot creates snapshot.
-func (cs *DefaultControllerServer) CreateSnapshot(
-	ctx context.Context,
-	req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
-}
-
-// DeleteSnapshot deletes snapshot.
-func (cs *DefaultControllerServer) DeleteSnapshot(
-	ctx context.Context,
-	req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // ListSnapshots lists snapshots.
