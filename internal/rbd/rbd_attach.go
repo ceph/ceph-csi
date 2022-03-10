@@ -228,21 +228,19 @@ func setRbdNbdToolFeatures() {
 // returns mounter specific options.
 func parseMapOptions(mapOptions string) (string, string, error) {
 	var krbdMapOptions, nbdMapOptions string
-	const (
-		noKeyLength = 1
-		validLength = 2
-	)
 	for _, item := range strings.Split(mapOptions, ";") {
 		var mounter, options string
 		if item == "" {
 			continue
 		}
-		s := strings.Split(item, ":")
-		switch len(s) {
-		case noKeyLength:
+		s := strings.SplitN(item, ":", 2)
+		if len(s) == 1 {
 			options = strings.TrimSpace(s[0])
 			krbdMapOptions = options
-		case validLength:
+		} else {
+			// options might also contain values delimited with ":", in this
+			// case mounter type MUST be specified.
+			// ex: krbd:read_from_replica=localize,crush_location=zone:zone1;
 			mounter = strings.TrimSpace(s[0])
 			options = strings.TrimSpace(s[1])
 			switch strings.ToLower(mounter) {
@@ -251,10 +249,8 @@ func parseMapOptions(mapOptions string) (string, string, error) {
 			case accessTypeNbd:
 				nbdMapOptions = options
 			default:
-				return "", "", fmt.Errorf("unknown mounter type: %q", mounter)
+				return "", "", fmt.Errorf("unknown mounter type: %q, please specify mounter type", mounter)
 			}
-		default:
-			return "", "", fmt.Errorf("badly formatted map/unmap options: %q", mapOptions)
 		}
 	}
 

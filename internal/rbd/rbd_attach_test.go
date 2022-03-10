@@ -60,18 +60,25 @@ func TestParseMapOptions(t *testing.T) {
 			expectErr:         "",
 		},
 		{
-			name:              "unknown mounter used",
-			mapOption:         "xyz:xOp1,xOp2",
+			name:              "with `:` delimiter used with in the options",
+			mapOption:         "krbd:kOp1,kOp2=kOp21:kOp22;nbd:nOp1,nOp2=nOp21:nOp22",
+			expectKrbdOptions: "kOp1,kOp2=kOp21:kOp22",
+			expectNbdOptions:  "nOp1,nOp2=nOp21:nOp22",
+			expectErr:         "",
+		},
+		{
+			name:              "with `:` delimiter used with in the options, without mounter label",
+			mapOption:         "kOp1,kOp2=kOp21:kOp22;nbd:nOp1,nOp2",
 			expectKrbdOptions: "",
 			expectNbdOptions:  "",
 			expectErr:         "unknown mounter type",
 		},
 		{
-			name:              "bad formatted options",
-			mapOption:         "nbd:nOp1:nOp2;",
+			name:              "unknown mounter used",
+			mapOption:         "xyz:xOp1,xOp2",
 			expectKrbdOptions: "",
 			expectNbdOptions:  "",
-			expectErr:         "badly formatted map/unmap options",
+			expectErr:         "unknown mounter type",
 		},
 	}
 	for _, tt := range tests {
