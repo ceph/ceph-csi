@@ -29,6 +29,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
+	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
@@ -54,6 +55,11 @@ type VolumeOptions struct {
 	TopologyRequirement  *csi.TopologyRequirement
 	Topology             map[string]string
 	FscID                int64
+
+	// Encryption provides access to optional VolumeEncryption functions
+	Encryption *util.VolumeEncryption
+	// Owner is the creator (tenant, Kubernetes Namespace) of the volume
+	Owner string
 
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection
@@ -773,4 +779,59 @@ func GenSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (*S
 	}
 
 	return cephfsSnap, nil
+}
+
+// MaybeInitKMS initializes the Ceph CSI key management if it is enabled in the volume options.
+func (vo *VolumeOptions) MaybeInitKMS(ctx context.Context, volOptions,
+	credentials map[string]string, mountPoint string,
+) error {
+	var (
+		err              error
+		ok               bool
+		encrypted, kmsID string
+	)
+
+	encrypted, ok = volOptions["encrypted"]
+	if !ok {
+		return nil
+	}
+
+	kmsID, err = util.FetchEncryptionKMSID(encrypted, volOptions["encryptionKMSID"])
+	if err != nil {
+		log.ErrorLog(ctx, "fetch encryption kmsid failed %+v: %v", volOptions, err)
+
+		return err
+	}
+
+	vo.Owner, ok = volOptions["csi.storage.k8s.io/pvc/namespace"]
+	if !ok {
+		log.DebugLog(ctx, "could not detect owner for %s", vo)
+	}
+
+	kms, err := kmsapi.GetKMS(vo.Owner, kmsID, credentials)
+	if err != nil {
+		log.ErrorLog(ctx, "get KMS failed %+v: %v", vo, err)
+
+		return err
+	}
+
+	vo.Encryption, err = util.NewVolumeEncryption(kmsID, kms)
+
+	if errors.Is(err, util.ErrDEKStoreNeeded) {
+		// fscrypt uses secrets directly from the KMS.
+		// Therefore we do not support an additional DEK
+		// store. Since not all "metadata" KMS support
+		// GetSecret, test for support here. Postpone any
+		// other error handling
+		_, err := vo.Encryption.KMS.GetSecret("")
+		if errors.Is(err, kmsapi.ErrGetSecretUnsupported) {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (vo *VolumeOptions) IsEncrypted() bool {
+	return vo.Encryption != nil
 }

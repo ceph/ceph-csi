@@ -37,6 +37,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	encryptionPassphraseSize = 64
+)
+
 // NodeServer struct of ceph CSI driver with supported methods of CSI
 // node server spec.
 type NodeServer struct {
@@ -143,6 +147,12 @@ func (ns *NodeServer) NodeStageVolume(
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	if err = volOptions.MaybeInitKMS(ctx, req.GetVolumeContext(), req.GetSecrets(), stagingTargetPath); err != nil {
+		log.DebugLog(ctx, "cephfs: maybe init failed %s %+v %s", volID, req.GetVolumeContext(), stagingTargetPath)
+
+		return nil, err
+	}
+
 	defer volOptions.Destroy()
 
 	// Skip extracting NetNamespaceFilePath if the clusterID is empty.
@@ -170,6 +180,15 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	if volOptions.IsEncrypted() {
+		if _, isFuse := mnt.(*mounter.FuseMounter); isFuse {
+			return nil, status.Errorf(codes.Internal, "FUSE mounter does not support encryption")
+		}
+		if err = ns.InitializeFscrypt(ctx, volOptions, stagingTargetPath, volID); err != nil {
+			return nil, status.Errorf(codes.Internal, err.Error())
+		}
+	}
+
 	// Check if the volume is already mounted
 
 	if err = ns.tryRestoreFuseMountInNodeStage(ctx, mnt, stagingTargetPath); err != nil {
@@ -185,7 +204,9 @@ func (ns *NodeServer) NodeStageVolume(
 
 	if isMnt {
 		log.DebugLog(ctx, "cephfs: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
-
+		if err = ns.MaybeFscryptUnlock(ctx, volOptions, stagingTargetPath, volID); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
@@ -201,6 +222,10 @@ func (ns *NodeServer) NodeStageVolume(
 		req.GetVolumeCapability(),
 	); err != nil {
 		return nil, err
+	}
+
+	if err = ns.MaybeFscryptUnlock(ctx, volOptions, stagingTargetPath, volID); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	log.DebugLog(ctx, "cephfs: successfully mounted volume %s to %s", volID, stagingTargetPath)
@@ -452,6 +477,16 @@ func (ns *NodeServer) NodePublishVolume(
 	}
 
 	// It's not, mount now
+	encrypted, err := IsEncrypted(req.GetVolumeContext())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if encrypted {
+		stagingTargetPath = path.Join(stagingTargetPath, FscryptSubdir)
+		if err = ns.IsDirectoryUnlockedFscrypt(stagingTargetPath); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
 
 	if err = mounter.BindMount(
 		ctx,
@@ -580,6 +615,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 	if err = mounter.UnmountAll(ctx, stagingTargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	// XXX forget all the keys?
 
 	log.DebugLog(ctx, "cephfs: successfully unmounted volume %s from %s", req.GetVolumeId(), stagingTargetPath)
 

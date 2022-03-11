@@ -226,3 +226,7 @@ func (kms *awsMetadataKMS) DecryptDEK(volumeID, encryptedDEK string) (string, er
 
 	return string(result.Plaintext), nil
 }
+
+func (kms *awsMetadataKMS) GetSecret(volumeID string) (string, error) {
+	return "", ErrGetSecretUnsupported
+}
