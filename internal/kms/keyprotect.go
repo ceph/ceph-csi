@@ -242,3 +242,7 @@ func (kms *keyProtectKMS) DecryptDEK(volumeID, encryptedDEK string) (string, err
 
 	return string(result), nil
 }
+
+func (kms *keyProtectKMS) GetSecret(volumeID string) (string, error) {
+	return "", ErrGetSecretUnsupported
+}

@@ -19,6 +19,7 @@ package kms
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -51,6 +52,11 @@ const (
 
 	// Default KMS type.
 	DefaultKMSType = "default"
+)
+
+var (
+	ErrGetSecretUnsupported = errors.New("KMS does not support access to user provided secret")
+	ErrGetSecretIntegrated  = errors.New("integrated DEK stores do not allow GetSecret")
 )
 
 // GetKMS returns an instance of Key Management System.
@@ -332,6 +338,11 @@ type EncryptionKMS interface {
 	// function does not need to do anything except return the encyptedDEK
 	// as it was received.
 	DecryptDEK(volumeID, encyptedDEK string) (string, error)
+
+	// GetSecret allows external key management systems to
+	// retrieve keys used in EncryptDEK / DecryptDEK to use them
+	// directly. Example: fscrypt uses this to unlock raw protectors
+	GetSecret(volumeID string) (string, error)
 }
 
 // DEKStoreType describes what DEKStore needs to be configured when using a
@@ -375,6 +386,10 @@ func (i integratedDEK) EncryptDEK(volumeID, plainDEK string) (string, error) {
 
 func (i integratedDEK) DecryptDEK(volumeID, encyptedDEK string) (string, error) {
 	return encyptedDEK, nil
+}
+
+func (i integratedDEK) GetSecret(volumeID string) (string, error) {
+	return "", ErrGetSecretIntegrated
 }
 
 // getKeys takes a map that uses strings for keys and returns a slice with the
