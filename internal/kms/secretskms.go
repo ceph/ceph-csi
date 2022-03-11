@@ -263,6 +263,11 @@ func (kms secretsMetadataKMS) DecryptDEK(volumeID, encryptedDEK string) (string,
 	return string(dek), nil
 }
 
+func (kms secretsMetadataKMS) GetSecret(volumeID string) (string, error) {
+	// use the passphrase from the secretKMS
+	return kms.secretsKMS.FetchDEK(volumeID)
+}
+
 // generateCipher returns a AEAD cipher based on a passphrase and salt
 // (volumeID). The cipher can then be used to encrypt/decrypt the DEK.
 func generateCipher(passphrase, salt string) (cipher.AEAD, error) {
