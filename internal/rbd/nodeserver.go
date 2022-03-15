@@ -147,8 +147,7 @@ func healerStageTransaction(ctx context.Context, cr *util.Credentials, volOps *r
 func populateRbdVol(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
-	cr *util.Credentials,
-	secrets map[string]string) (*rbdVolume, error) {
+	cr *util.Credentials) (*rbdVolume, error) {
 	var err error
 	var j *journal.Connection
 	volID := req.GetVolumeId()
@@ -173,7 +172,7 @@ func populateRbdVol(
 		disableInUseChecks = true
 	}
 
-	rv, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), secrets, disableInUseChecks, true)
+	rv, err := genVolFromVolumeOptions(ctx, req.GetVolumeContext(), disableInUseChecks, true)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -213,6 +212,8 @@ func populateRbdVol(
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		rv.RbdImageName = imageAttributes.ImageName
+		// set owner after extracting the owner name from the journal
+		rv.Owner = imageAttributes.Owner
 	}
 
 	err = rv.Connect(cr)
@@ -232,6 +233,11 @@ func populateRbdVol(
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get image details %s: %v", rv, err)
 
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	err = rv.initKMS(ctx, req.GetVolumeContext(), req.GetSecrets())
+	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -320,7 +326,7 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 
 	isStaticVol := parseBoolOption(ctx, req.GetVolumeContext(), staticVol, false)
-	rv, err := populateRbdVol(ctx, req, cr, req.GetSecrets())
+	rv, err := populateRbdVol(ctx, req, cr)
 	if err != nil {
 		return nil, err
 	}

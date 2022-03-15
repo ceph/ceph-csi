@@ -124,9 +124,23 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	rbdVol, err := genVolFromVolumeOptions(
 		ctx,
 		req.GetParameters(),
-		req.GetSecrets(),
 		isMultiWriter && isBlock,
 		false)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// if the KMS is of type VaultToken, additional metadata is needed
+	// depending on the tenant, the KMS can be configured with other
+	// options
+	// FIXME: this works only on Kubernetes, how do other CO supply metadata?
+	// namespace is derived from the `csi.storage.k8s.io/pvc/namespace`
+	// parameter.
+
+	// get the owner of the PVC which is required for few encryption related operations
+	rbdVol.Owner = k8s.GetOwner(req.GetParameters())
+
+	err = rbdVol.initKMS(ctx, req.GetParameters(), req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

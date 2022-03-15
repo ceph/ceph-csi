@@ -531,7 +531,7 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // which are not same across clusters.
 func RegenerateJournal(
 	volumeAttributes map[string]string,
-	volumeID, requestName string,
+	volumeID, requestName, owner string,
 	cr *util.Credentials) (string, error) {
 	ctx := context.Background()
 	var (
@@ -550,6 +550,8 @@ func RegenerateJournal(
 		return "", fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
 			ErrInvalidVolID, err, rbdVol.VolID)
 	}
+
+	rbdVol.Owner = owner
 
 	kmsID, err = rbdVol.ParseEncryptionOpts(ctx, volumeAttributes)
 	if err != nil {
