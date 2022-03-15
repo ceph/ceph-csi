@@ -27,6 +27,7 @@ import (
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -267,7 +268,8 @@ func (cs *ControllerServer) CreateVolume(
 			}
 		}
 
-		volumeContext := req.GetParameters()
+		// remove kubernetes csi prefixed parameters.
+		volumeContext := k8s.RemoveCSIPrefixedParameters(req.GetParameters())
 		volumeContext["subvolumeName"] = vID.FsSubvolName
 		volumeContext["subvolumePath"] = volOptions.RootPath
 		volume := &csi.Volume{
@@ -340,7 +342,8 @@ func (cs *ControllerServer) CreateVolume(
 
 	log.DebugLog(ctx, "cephfs: successfully created backing volume named %s for request name %s",
 		vID.FsSubvolName, requestName)
-	volumeContext := req.GetParameters()
+	// remove kubernetes csi prefixed parameters.
+	volumeContext := k8s.RemoveCSIPrefixedParameters(req.GetParameters())
 	volumeContext["subvolumeName"] = vID.FsSubvolName
 	volumeContext["subvolumePath"] = volOptions.RootPath
 	volume := &csi.Volume{
