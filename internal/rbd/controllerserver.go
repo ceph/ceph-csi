@@ -22,6 +22,7 @@ import (
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	librbd "github.com/ceph/go-ceph/rbd"
@@ -159,7 +160,8 @@ func (cs *ControllerServer) parseVolCreateRequest(
 }
 
 func buildCreateVolumeResponse(req *csi.CreateVolumeRequest, rbdVol *rbdVolume) *csi.CreateVolumeResponse {
-	volumeContext := req.GetParameters()
+	// remove kubernetes csi prefixed parameters.
+	volumeContext := k8s.RemoveCSIPrefixedParameters(req.GetParameters())
 	volumeContext["pool"] = rbdVol.Pool
 	volumeContext["journalPool"] = rbdVol.JournalPool
 	volumeContext["imageName"] = rbdVol.RbdImageName
