@@ -139,6 +139,12 @@ func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.
 	if pv.Spec.CSI == nil || pv.Spec.CSI.Driver != r.config.DriverName {
 		return nil
 	}
+	// PV is not attached to any PVC
+	if pv.Spec.ClaimRef == nil {
+		return nil
+	}
+
+	pvcNamespace := pv.Spec.ClaimRef.Namespace
 	requestName := pv.Name
 	volumeHandler := pv.Spec.CSI.VolumeHandle
 	secretName := ""
@@ -171,7 +177,7 @@ func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.
 	}
 	defer cr.DeleteCredentials()
 
-	rbdVolID, err := rbd.RegenerateJournal(pv.Spec.CSI.VolumeAttributes, volumeHandler, requestName, cr)
+	rbdVolID, err := rbd.RegenerateJournal(pv.Spec.CSI.VolumeAttributes, volumeHandler, requestName, pvcNamespace, cr)
 	if err != nil {
 		log.ErrorLogMsg("failed to regenerate journal %s", err)
 

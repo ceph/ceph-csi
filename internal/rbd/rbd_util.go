@@ -1142,7 +1142,7 @@ func generateVolumeFromMapping(
 
 func genVolFromVolumeOptions(
 	ctx context.Context,
-	volOptions, credentials map[string]string,
+	volOptions map[string]string,
 	disableInUseChecks, checkClusterIDMapping bool) (*rbdVolume, error) {
 	var (
 		ok         bool
@@ -1194,11 +1194,6 @@ func genVolFromVolumeOptions(
 		rbdVol.ImageFeatureSet.Names(),
 		rbdVol.Mounter)
 	rbdVol.DisableInUseChecks = disableInUseChecks
-
-	err = rbdVol.initKMS(ctx, volOptions, credentials)
-	if err != nil {
-		return nil, err
-	}
 
 	return rbdVol, nil
 }

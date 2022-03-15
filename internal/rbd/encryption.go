@@ -265,22 +265,14 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 }
 
 // ParseEncryptionOpts returns kmsID and sets Owner attribute.
-func (ri *rbdImage) ParseEncryptionOpts(ctx context.Context, volOptions map[string]string) (string, error) {
+func (ri *rbdImage) ParseEncryptionOpts(
+	ctx context.Context,
+	volOptions map[string]string) (string, error) {
 	var (
 		err              error
 		ok               bool
 		encrypted, kmsID string
 	)
-
-	// if the KMS is of type VaultToken, additional metadata is needed
-	// depending on the tenant, the KMS can be configured with other
-	// options
-	// FIXME: this works only on Kubernetes, how do other CO supply metadata?
-	ri.Owner, ok = volOptions["csi.storage.k8s.io/pvc/namespace"]
-	if !ok {
-		log.DebugLog(ctx, "could not detect owner for %s", ri)
-	}
-
 	encrypted, ok = volOptions["encrypted"]
 	if !ok {
 		return "", nil
