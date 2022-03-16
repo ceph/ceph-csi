@@ -60,3 +60,36 @@ func TestRemoveCSIPrefixedParameters(t *testing.T) {
 		})
 	}
 }
+
+func TestGetOwner(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		args map[string]string
+		want string
+	}{
+		{
+			name: "namespace is not present in the parameters",
+			args: map[string]string{
+				"foo": "bar",
+			},
+			want: "",
+		},
+		{
+			name: "namespace is present in the parameters",
+			args: map[string]string{
+				"csi.storage.k8s.io/pvc/namespace": "bar",
+			},
+			want: "bar",
+		},
+	}
+	for _, tt := range tests {
+		ts := tt
+		t.Run(ts.name, func(t *testing.T) {
+			t.Parallel()
+			if got := GetOwner(ts.args); got != ts.want {
+				t.Errorf("GetOwner() = %v, want %v", got, ts.want)
+			}
+		})
+	}
+}
