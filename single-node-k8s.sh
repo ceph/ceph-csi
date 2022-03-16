@@ -100,7 +100,13 @@ function install_minikube()
     MINIKUBE_VERSION="${MINIKUBE_VERSION}" KUBE_VERSION="${k8s_version}" ${GOPATH}/src/github.com/ceph/ceph-csi/scripts/minikube.sh up
 
     # copy kubectl from minikube to /usr/bin
-    cp ~/.minikube/cache/linux/"${k8s_version}"/kubectl /usr/bin/
+    if [ -x ~/.minikube/cache/linux/"${k8s_version}"/kubectl ]
+    then
+        cp ~/.minikube/cache/linux/"${k8s_version}"/kubectl /usr/bin/
+    else
+        # minikube 1.25.2 adds the GOARCH to the path ("amd64" in our CI)
+        cp ~/.minikube/cache/linux/amd64/"${k8s_version}"/kubectl /usr/bin/
+    fi
 
     # scan for extra disks
     minikube ssh 'echo 1 | sudo tee /sys/bus/pci/rescan > /dev/null ; dmesg | grep virtio_blk'
