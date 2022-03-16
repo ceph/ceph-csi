@@ -29,6 +29,8 @@ RUN dnf -y install \
 	librados-devel \
 	librbd-devel \
     && dnf -y update \
+    && dnf clean all \
+    && rm -rf /var/cache/yum \
     && true
 
 WORKDIR "/go/src/github.com/ceph/ceph-csi"

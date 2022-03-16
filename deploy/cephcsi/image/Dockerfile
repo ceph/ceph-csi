@@ -33,6 +33,8 @@ RUN dnf -y install \
 	/usr/bin/cc \
 	make \
 	git \
+	&& dnf clean all \
+	&& rm -rf /var/cache/yum \
     && true
 
 ENV GOROOT=${GOROOT} \
