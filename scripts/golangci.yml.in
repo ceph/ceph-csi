@@ -169,7 +169,11 @@ linters:
     - funlen
     - testpackage
     - exhaustivestruct
-    # TODO: enable goerr113, see: https://github.com/ceph/ceph-csi/issues/1227
+    # This requires extra addition of unnecessary code. Hence, we
+    # prefer to disable this linter. But, it can be enabled if we
+    # have better resolution. For more details check the
+    # issue below.
+    # see: https://github.com/ceph/ceph-csi/issues/1227
     - goerr113
     - forbidigo
     # TODO: enable gomoddirectives
