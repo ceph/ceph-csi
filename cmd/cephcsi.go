@@ -156,16 +156,20 @@ func getDriverName() string {
 	}
 }
 
+func printVersion() {
+	fmt.Println("Cephcsi Version:", util.DriverVersion)
+	fmt.Println("Git Commit:", util.GitCommit)
+	fmt.Println("Go Version:", runtime.Version())
+	fmt.Println("Compiler:", runtime.Compiler)
+	fmt.Printf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+	if kv, err := util.GetKernelVersion(); err == nil {
+		fmt.Println("Kernel:", kv)
+	}
+}
+
 func main() {
 	if conf.Version {
-		fmt.Println("Cephcsi Version:", util.DriverVersion)
-		fmt.Println("Git Commit:", util.GitCommit)
-		fmt.Println("Go Version:", runtime.Version())
-		fmt.Println("Compiler:", runtime.Compiler)
-		fmt.Printf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-		if kv, err := util.GetKernelVersion(); err == nil {
-			fmt.Println("Kernel:", kv)
-		}
+		printVersion()
 		os.Exit(0)
 	}
 	log.DefaultLog("Driver version: %s and Git version: %s", util.DriverVersion, util.GitCommit)
