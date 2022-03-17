@@ -41,3 +41,4 @@ rules:
       - rebase
       - revert
       - util
+      - nfs
