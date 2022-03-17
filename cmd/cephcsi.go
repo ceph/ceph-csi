@@ -27,6 +27,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/controller"
 	"github.com/ceph/ceph-csi/internal/controller/persistentvolume"
 	"github.com/ceph/ceph-csi/internal/liveness"
+	nfsdriver "github.com/ceph/ceph-csi/internal/nfs/driver"
 	rbddriver "github.com/ceph/ceph-csi/internal/rbd/driver"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -37,11 +38,13 @@ import (
 const (
 	rbdType        = "rbd"
 	cephFSType     = "cephfs"
+	nfsType        = "nfs"
 	livenessType   = "liveness"
 	controllerType = "controller"
 
 	rbdDefaultName      = "rbd.csi.ceph.com"
 	cephFSDefaultName   = "cephfs.csi.ceph.com"
+	nfsDefaultName      = "nfs.csi.ceph.com"
 	livenessDefaultName = "liveness.csi.ceph.com"
 
 	pollTime     = 60 // seconds
@@ -58,7 +61,7 @@ var conf util.Config
 
 func init() {
 	// common flags
-	flag.StringVar(&conf.Vtype, "type", "", "driver type [rbd|cephfs|liveness|controller]")
+	flag.StringVar(&conf.Vtype, "type", "", "driver type [rbd|cephfs|nfs|liveness|controller]")
 	flag.StringVar(&conf.Endpoint, "endpoint", "unix:///tmp/csi.sock", "CSI endpoint")
 	flag.StringVar(&conf.DriverName, "drivername", "", "name of the driver")
 	flag.StringVar(&conf.DriverNamespace, "drivernamespace", defaultNS, "namespace in which driver is deployed")
@@ -149,6 +152,8 @@ func getDriverName() string {
 		return rbdDefaultName
 	case cephFSType:
 		return cephFSDefaultName
+	case nfsType:
+		return nfsDefaultName
 	case livenessType:
 		return livenessDefaultName
 	default:
@@ -231,6 +236,10 @@ func main() {
 
 	case cephFSType:
 		driver := cephfs.NewDriver()
+		driver.Run(&conf)
+
+	case nfsType:
+		driver := nfsdriver.NewDriver()
 		driver.Run(&conf)
 
 	case livenessType:
