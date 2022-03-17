@@ -143,7 +143,7 @@ func main() {
 				}
 
 				statusList := filterStatusList(rs)
-
+				failedTestFound := false
 				for _, r := range statusList {
 					log.Printf("found context %s with status %s\n", r.GetContext(), r.GetState())
 					if contains([]string{"failed", "failure"}, r.GetState()) {
@@ -176,6 +176,20 @@ func main() {
 							log.Printf("failed to create comment %v\n", err)
 							continue
 						}
+						failedTestFound = true
+					}
+				}
+
+				if failedTestFound {
+					// comment `@Mergifyio refresh` so mergifyio adds the pr back into the queue.
+					msg := "@Mergifyio refresh"
+					comment := &github.IssueComment{
+						Body: github.String(msg),
+					}
+					_, _, err = c.client.Issues.CreateComment(context.TODO(), c.owner, c.repo, prNumber, comment)
+					if err != nil {
+						log.Printf("failed to create comment %q: %v\n", msg, err)
+						continue
 					}
 				}
 			}
