@@ -309,6 +309,13 @@ pull_request_rules:
       label:
         add:
           - component/cephfs
+  - name: title contains NFS
+    conditions:
+      - "title~=nfs: "
+    actions:
+      label:
+        add:
+          - component/nfs
   - name: title contains RBD
     conditions:
       - "title~=rbd: "
