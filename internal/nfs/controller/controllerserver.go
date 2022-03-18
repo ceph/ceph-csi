@@ -91,7 +91,7 @@ func (cs *Server) CreateVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	nfsVolume, err := NewNFSVolume(backend.VolumeId)
+	nfsVolume, err := NewNFSVolume(ctx, backend.VolumeId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -128,7 +128,7 @@ func (cs *Server) DeleteVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	nfsVolume, err := NewNFSVolume(req.GetVolumeId())
+	nfsVolume, err := NewNFSVolume(ctx, req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
