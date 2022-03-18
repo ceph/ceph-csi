@@ -30,6 +30,9 @@ import (
 // modify and delete the NFS-exported CephFS volume. Instances of this struct
 // are short lived, they only exist as long as a CSI-procedure is active.
 type NFSVolume struct {
+	// ctx is the context for this short living volume object
+	ctx context.Context
+
 	volumeID  string
 	clusterID string
 	mons      string
@@ -41,7 +44,7 @@ type NFSVolume struct {
 
 // NewNFSVolume create a new NFSVolume instance for the currently executing
 // CSI-procedure.
-func NewNFSVolume(volumeID string) (*NFSVolume, error) {
+func NewNFSVolume(ctx context.Context, volumeID string) (*NFSVolume, error) {
 	// TODO: validate volume.VolumeContext parameters
 	vi := util.CSIIdentifier{}
 
@@ -51,6 +54,7 @@ func NewNFSVolume(volumeID string) (*NFSVolume, error) {
 	}
 
 	return &NFSVolume{
+		ctx:      ctx,
 		volumeID: volumeID,
 	}, nil
 }
@@ -117,7 +121,7 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	}
 
 	// TODO: use new go-ceph API
-	_, stderr, err := util.ExecCommand(context.TODO(), "ceph", args...)
+	_, stderr, err := util.ExecCommand(nv.ctx, "ceph", args...)
 	if err != nil {
 		return fmt.Errorf("executing ceph export command failed (%w): %s", err, stderr)
 	}
@@ -142,7 +146,7 @@ func (nv *NFSVolume) getNFSCluster() (string, error) {
 		"ls",
 	}
 
-	nfsCluster, _, err := util.ExecCommand(context.TODO(), "ceph", args...)
+	nfsCluster, _, err := util.ExecCommand(nv.ctx, "ceph", args...)
 	if err != nil {
 		return "", fmt.Errorf("executing ceph export command failed: %w", err)
 	}
@@ -174,7 +178,7 @@ func (nv *NFSVolume) DeleteExport() error {
 	}
 
 	// TODO: use new go-ceph API
-	_, stderr, err := util.ExecCommand(context.TODO(), "ceph", args...)
+	_, stderr, err := util.ExecCommand(nv.ctx, "ceph", args...)
 	if err != nil {
 		return fmt.Errorf("executing ceph export command failed (%w): %s", err, stderr)
 	}
