@@ -12,7 +12,7 @@ jobs:
       # path to the retest action
       - uses: ceph/ceph-csi/actions/retest@devel
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           required-label: "ci/retry/e2e"
           max-retry: "5"
           required-approve-count: "2"
