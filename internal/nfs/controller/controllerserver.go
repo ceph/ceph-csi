@@ -100,6 +100,7 @@ func (cs *Server) CreateVolume(
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to connect: %v", err)
 	}
+	defer nfsVolume.Destroy()
 
 	err = nfsVolume.CreateExport(backend)
 	if err != nil {
@@ -137,6 +138,7 @@ func (cs *Server) DeleteVolume(
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to connect: %v", err)
 	}
+	defer nfsVolume.Destroy()
 
 	err = nfsVolume.DeleteExport()
 	// TODO: if the export does not exist, but the backend does, delete the backend
