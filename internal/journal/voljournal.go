@@ -742,6 +742,36 @@ func (conn *Connection) StoreImageID(ctx context.Context, pool, reservedUUID, im
 	return nil
 }
 
+// StoreAttribute stores an attribute (key/value) in omap.
+func (conn *Connection) StoreAttribute(ctx context.Context, pool, reservedUUID, attribute, value string) error {
+	key := conn.config.commonPrefix + attribute
+	err := setOMapKeys(ctx, conn, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID,
+		map[string]string{key: value})
+	if err != nil {
+		return fmt.Errorf("failed to set key %q to %q: %w", key, value, err)
+	}
+
+	return nil
+}
+
+// FetchAttribute fetches an attribute (key) in omap.
+func (conn *Connection) FetchAttribute(ctx context.Context, pool, reservedUUID, attribute string) (string, error) {
+	key := conn.config.commonPrefix + attribute
+	values, err := getOMapValues(
+		ctx, conn, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID,
+		conn.config.commonPrefix, []string{key})
+	if err != nil {
+		return "", fmt.Errorf("failed to get values for key %q from OMAP: %w", key, err)
+	}
+
+	value, ok := values[key]
+	if !ok {
+		return "", fmt.Errorf("failed to find key %q in returned map: %v", key, values)
+	}
+
+	return value, nil
+}
+
 // Destroy frees any resources and invalidates the journal connection.
 func (conn *Connection) Destroy() {
 	// invalidate cluster connection metadata
