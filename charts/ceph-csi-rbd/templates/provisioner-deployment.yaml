@@ -184,7 +184,7 @@ spec:
             - name: keys-tmp-dir
               mountPath: /tmp/csi/keys
             - name: oidc-token
-              mountPath: /var/run/secrets/tokens
+              mountPath: /run/secrets/tokens
               readOnly: true
           resources:
 {{ toYaml .Values.nodeplugin.plugin.resources | indent 12 }}
