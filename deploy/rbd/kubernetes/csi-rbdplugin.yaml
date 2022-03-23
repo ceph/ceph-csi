@@ -119,7 +119,7 @@ spec:
             - name: ceph-config
               mountPath: /etc/ceph/
             - name: oidc-token
-              mountPath: /var/run/secrets/tokens
+              mountPath: /run/secrets/tokens
               readOnly: true
         - name: liveness-prometheus
           securityContext:

@@ -60,7 +60,7 @@ const (
 	// tokenFilePath is the path to the file containing the OIDC token.
 	//
 	// #nosec:G101, value not credential, just path to the token.
-	tokenFilePath = "/var/run/secrets/tokens/oidc-token"
+	tokenFilePath = "/run/secrets/tokens/oidc-token"
 )
 
 var _ = RegisterProvider(Provider{
