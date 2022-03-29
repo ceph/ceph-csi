@@ -823,10 +823,10 @@ func (cs *ControllerServer) DeleteSnapshot(
 			// success as deletion is complete
 			return &csi.DeleteSnapshotResponse{}, nil
 		case errors.Is(err, cerrors.ErrSnapNotFound):
-			err = store.UndoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
+			err = store.UndoSnapReservation(ctx, volOpt, *sid, sid.RequestName, cr)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
-					sid.FsSubvolName, sid.FsSnapshotName, err)
+					sid.RequestName, sid.FsSnapshotName, err)
 
 				return nil, status.Error(codes.Internal, err.Error())
 			}
@@ -836,10 +836,10 @@ func (cs *ControllerServer) DeleteSnapshot(
 			// if the error is ErrVolumeNotFound, the subvolume is already deleted
 			// from backend, Hence undo the omap entries and return success
 			log.ErrorLog(ctx, "Volume not present")
-			err = store.UndoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
+			err = store.UndoSnapReservation(ctx, volOpt, *sid, sid.RequestName, cr)
 			if err != nil {
 				log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
-					sid.FsSubvolName, sid.FsSnapshotName, err)
+					sid.RequestName, sid.FsSnapshotName, err)
 
 				return nil, status.Error(codes.Internal, err.Error())
 			}
@@ -874,7 +874,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	err = store.UndoSnapReservation(ctx, volOpt, *sid, sid.FsSnapshotName, cr)
+	err = store.UndoSnapReservation(ctx, volOpt, *sid, sid.RequestName, cr)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to remove reservation for snapname (%s) with backing snap (%s) (%s)",
 			sid.RequestName, sid.FsSnapshotName, err)
