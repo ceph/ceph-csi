@@ -88,8 +88,8 @@ func (ri *rbdImage) promoteImage(force bool) error {
 	return nil
 }
 
-// forcePromoteImage promotes image to primary with force option with 1 minute
-// timeout. If there is no response within 1 minute,the rbd CLI process will be
+// forcePromoteImage promotes image to primary with force option with 2 minutes
+// timeout. If there is no response within 2 minutes,the rbd CLI process will be
 // killed and an error is returned.
 func (rv *rbdVolume) forcePromoteImage(cr *util.Credentials) error {
 	promoteArgs := []string{
@@ -102,7 +102,8 @@ func (rv *rbdVolume) forcePromoteImage(cr *util.Credentials) error {
 	}
 	_, stderr, err := util.ExecCommandWithTimeout(
 		context.TODO(),
-		time.Minute,
+		// 2 minutes timeout as the Replication RPC timeout is 2.5 minutes.
+		2*time.Minute,
 		"rbd",
 		promoteArgs...,
 	)
