@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	fscore "github.com/ceph/ceph-csi/internal/cephfs/core"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
@@ -134,8 +135,60 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 		return fmt.Errorf("failed to set NFS-cluster: %w", err)
 	}
 
-	// ceph nfs export create cephfs ${FS} ${NFS} /${EXPORT} ${SUBVOL_PATH}
-	args := []string{
+	// TODO: use new go-ceph API, see ceph/ceph-csi#2977
+	// new versions of Ceph use a different command, and the go-ceph API
+	// also seems to be different :-/
+	//
+	// run the new command, but fall back to the previous one in case of an
+	// error
+	cmds := [][]string{
+		// ceph nfs export create cephfs --cluster-id <cluster_id>
+		//     --pseudo-path <pseudo_path> --fsname <fsname>
+		//     [--readonly] [--path=/path/in/cephfs]
+		nv.createExportCommand("--cluster-id="+nfsCluster,
+			"--fsname="+fs, "--pseudo-path="+nv.GetExportPath(),
+			"--path="+path),
+		// ceph nfs export create cephfs ${FS} ${NFS} /${EXPORT} ${SUBVOL_PATH}
+		nv.createExportCommand(nfsCluster, fs, nv.GetExportPath(), path),
+	}
+
+	stderr, err := nv.retryIfInvalid(cmds)
+	if err != nil {
+		return fmt.Errorf("failed to create export %q in NFS-cluster %q"+
+			"(%v): %s", nv, nfsCluster, err, stderr)
+	}
+
+	return nil
+}
+
+// retryIfInvalid executes the "ceph" command, and falls back to the next cmd
+// in case the error is EINVAL.
+func (nv *NFSVolume) retryIfInvalid(cmds [][]string) (string, error) {
+	var (
+		stderr string
+		err    error
+	)
+	for _, cmd := range cmds {
+		_, stderr, err = util.ExecCommand(nv.ctx, "ceph", cmd...)
+		// in case of an invalid command, fallback to the next one
+		if strings.Contains(stderr, "Error EINVAL: invalid command") {
+			continue
+		}
+
+		// If we get here, either no error, or an unexpected error
+		// happened. There is no need to retry an other command.
+		break
+	}
+
+	return stderr, err
+}
+
+// createExportCommand returns the "ceph nfs export create ..." command
+// arguments (without "ceph"). The order of the parameters matches old Ceph
+// releases, new Ceph releases added --option formats, which can be added  when
+// passing the parameters to this function.
+func (nv *NFSVolume) createExportCommand(nfsCluster, fs, export, path string) []string {
+	return []string{
 		"--id", nv.cr.ID,
 		"--keyfile=" + nv.cr.KeyFile,
 		"-m", nv.mons,
@@ -145,17 +198,9 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 		"cephfs",
 		fs,
 		nfsCluster,
-		nv.GetExportPath(),
+		export,
 		path,
 	}
-
-	// TODO: use new go-ceph API
-	_, stderr, err := util.ExecCommand(nv.ctx, "ceph", args...)
-	if err != nil {
-		return fmt.Errorf("executing ceph export command failed (%w): %s", err, stderr)
-	}
-
-	return nil
 }
 
 // DeleteExport removes the NFS-export from the Ceph managed NFS-server.
@@ -169,25 +214,42 @@ func (nv *NFSVolume) DeleteExport() error {
 		return fmt.Errorf("failed to identify NFS cluster: %w", err)
 	}
 
-	// ceph nfs export rm <cluster_id> <pseudo_path>
-	args := []string{
+	// TODO: use new go-ceph API, see ceph/ceph-csi#2977
+	// new versions of Ceph use a different command, and the go-ceph API
+	// also seems to be different :-/
+	//
+	// run the new command, but fall back to the previous one in case of an
+	// error
+	cmds := [][]string{
+		// ceph nfs export rm <cluster_id> <pseudo_path>
+		nv.deleteExportCommand("rm", nfsCluster),
+		// ceph nfs export delete <cluster_id> <pseudo_path>
+		nv.deleteExportCommand("delete", nfsCluster),
+	}
+
+	stderr, err := nv.retryIfInvalid(cmds)
+	if err != nil {
+		return fmt.Errorf("failed to delete export %q from NFS-cluster"+
+			"%q (%v): %s", nv, nfsCluster, err, stderr)
+	}
+
+	return nil
+}
+
+// deleteExportCommand returns the "ceph nfs export delete ..." command
+// arguments (without "ceph"). Old releases of Ceph expect "delete" as cmd,
+// newer releases use "rm".
+func (nv *NFSVolume) deleteExportCommand(cmd, nfsCluster string) []string {
+	return []string{
 		"--id", nv.cr.ID,
 		"--keyfile=" + nv.cr.KeyFile,
 		"-m", nv.mons,
 		"nfs",
 		"export",
-		"delete",
+		cmd,
 		nfsCluster,
 		nv.GetExportPath(),
 	}
-
-	// TODO: use new go-ceph API
-	_, stderr, err := util.ExecCommand(nv.ctx, "ceph", args...)
-	if err != nil {
-		return fmt.Errorf("executing ceph export command failed (%w): %s", err, stderr)
-	}
-
-	return nil
 }
 
 // getNFSCluster fetches the NFS-cluster name from the CephFS journal.
