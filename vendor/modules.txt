@@ -116,15 +116,17 @@ github.com/cenkalti/backoff/v3
 github.com/ceph/ceph-csi/api/deploy/kubernetes/nfs
 github.com/ceph/ceph-csi/api/deploy/kubernetes/rbd
 github.com/ceph/ceph-csi/api/deploy/ocp
-# github.com/ceph/go-ceph v0.14.0
+# github.com/ceph/go-ceph v0.15.0
 ## explicit; go 1.12
 github.com/ceph/go-ceph/cephfs/admin
 github.com/ceph/go-ceph/common/admin/manager
+github.com/ceph/go-ceph/common/admin/nfs
 github.com/ceph/go-ceph/common/commands
 github.com/ceph/go-ceph/internal/callbacks
 github.com/ceph/go-ceph/internal/commands
 github.com/ceph/go-ceph/internal/cutil
 github.com/ceph/go-ceph/internal/errutil
+github.com/ceph/go-ceph/internal/log
 github.com/ceph/go-ceph/internal/retry
 github.com/ceph/go-ceph/internal/timespec
 github.com/ceph/go-ceph/rados
