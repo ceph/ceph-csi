@@ -19,6 +19,8 @@ import (
 	"sync"
 	"time"
 	"unsafe"
+
+	"github.com/ceph/go-ceph/internal/log"
 )
 
 type (
@@ -340,14 +342,6 @@ func decodeNotifyResponse(response *C.char, len C.size_t) ([]NotifyAck, []Notify
 //export watchNotifyCb
 func watchNotifyCb(_ unsafe.Pointer, notifyID C.uint64_t, id C.uint64_t,
 	notifierID C.uint64_t, cData unsafe.Pointer, dataLen C.size_t) {
-	watchersMtx.RLock()
-	w, ok := watchers[WatcherID(id)]
-	watchersMtx.RUnlock()
-	if !ok {
-		// usually this should not happen, but who knows
-		// TODO: some log message (once we have logging)
-		return
-	}
 	ev := NotifyEvent{
 		ID:         NotifyID(notifyID),
 		WatcherID:  WatcherID(id),
@@ -355,6 +349,14 @@ func watchNotifyCb(_ unsafe.Pointer, notifyID C.uint64_t, id C.uint64_t,
 	}
 	if dataLen > 0 {
 		ev.Data = C.GoBytes(cData, C.int(dataLen))
+	}
+	watchersMtx.RLock()
+	w, ok := watchers[WatcherID(id)]
+	watchersMtx.RUnlock()
+	if !ok {
+		// usually this should not happen, but who knows
+		log.Warnf("received notification for unknown watcher ID: %#v", ev)
+		return
 	}
 	select {
 	case <-w.done: // unblock when deleted
@@ -369,7 +371,7 @@ func watchErrorCb(_ unsafe.Pointer, id C.uint64_t, err C.int) {
 	watchersMtx.RUnlock()
 	if !ok {
 		// usually this should not happen, but who knows
-		// TODO: some log message (once we have logging)
+		log.Warnf("received error for unknown watcher ID: id=%d err=%#v", id, err)
 		return
 	}
 	select {
