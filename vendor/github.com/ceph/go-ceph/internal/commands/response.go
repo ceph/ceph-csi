@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -152,6 +153,18 @@ func (r Response) FilterSuffix(s string) Response {
 	}
 	if strings.HasSuffix(r.status, s) {
 		return Response{r.body, "", r.err}
+	}
+	return r
+}
+
+// FilterBodyPrefix sets the body value equivalent to an empty string if the
+// body value contains the given prefix string.
+func (r Response) FilterBodyPrefix(p string) Response {
+	if !r.Ok() {
+		return r
+	}
+	if bytes.HasPrefix(r.body, []byte(p)) {
+		return Response{[]byte(""), r.status, r.err}
 	}
 	return r
 }

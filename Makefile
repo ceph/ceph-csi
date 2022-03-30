@@ -48,7 +48,8 @@ GO_PROJECT=github.com/ceph/ceph-csi
 
 CEPH_VERSION ?= $(shell . $(CURDIR)/build.env ; echo $${CEPH_VERSION})
 # TODO: ceph_preview tag may be removed with go-ceph 0.16.0
-GO_TAGS_LIST ?= $(CEPH_VERSION) ceph_preview
+# TODO: ceph_ci_untested is added for NFS-export management (go-ceph#655)
+GO_TAGS_LIST ?= $(CEPH_VERSION) ceph_preview ceph_ci_untested
 
 # go build flags
 LDFLAGS ?=

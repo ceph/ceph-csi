@@ -10,68 +10,7 @@ import "C"
 import (
 	"runtime"
 	"unsafe"
-
-	"github.com/ceph/go-ceph/internal/cutil"
 )
-
-// setOmapStep is a write op step. It holds C memory used in the operation.
-type setOmapStep struct {
-	withRefs
-	withoutUpdate
-
-	// C arguments
-	cKeys    cutil.CPtrCSlice
-	cValues  cutil.CPtrCSlice
-	cLengths cutil.SizeTCSlice
-	cNum     C.size_t
-}
-
-func newSetOmapStep(pairs map[string][]byte) *setOmapStep {
-
-	maplen := len(pairs)
-	cKeys := cutil.NewCPtrCSlice(maplen)
-	cValues := cutil.NewCPtrCSlice(maplen)
-	cLengths := cutil.NewSizeTCSlice(maplen)
-
-	sos := &setOmapStep{
-		cKeys:    cKeys,
-		cValues:  cValues,
-		cLengths: cLengths,
-		cNum:     C.size_t(maplen),
-	}
-
-	var i uintptr
-	for key, value := range pairs {
-		// key
-		ck := C.CString(key)
-		sos.add(unsafe.Pointer(ck))
-		cKeys[i] = cutil.CPtr(ck)
-
-		// value and its length
-		vlen := cutil.SizeT(len(value))
-		if vlen > 0 {
-			cv := C.CBytes(value)
-			sos.add(cv)
-			cValues[i] = cutil.CPtr(cv)
-		} else {
-			cValues[i] = nil
-		}
-
-		cLengths[i] = vlen
-
-		i++
-	}
-
-	runtime.SetFinalizer(sos, opStepFinalizer)
-	return sos
-}
-
-func (sos *setOmapStep) free() {
-	sos.cKeys.Free()
-	sos.cValues.Free()
-	sos.cLengths.Free()
-	sos.withRefs.free()
-}
 
 // OmapKeyValue items are returned by the GetOmapStep's Next call.
 type OmapKeyValue struct {
@@ -88,15 +27,6 @@ type OmapKeyValue struct {
 // Release method is called the public methods of the step must no longer be
 // used and may return errors.
 type GetOmapStep struct {
-	// inputs:
-	startAfter   string
-	filterPrefix string
-	maxReturn    uint64
-
-	// arguments:
-	cStartAfter   *C.char
-	cFilterPrefix *C.char
-
 	// C returned data:
 	iter C.rados_omap_iter_t
 	more *C.uchar
@@ -109,15 +39,10 @@ type GetOmapStep struct {
 	canIterate bool
 }
 
-func newGetOmapStep(startAfter, filterPrefix string, maxReturn uint64) *GetOmapStep {
+func newGetOmapStep() *GetOmapStep {
 	gos := &GetOmapStep{
-		startAfter:    startAfter,
-		filterPrefix:  filterPrefix,
-		maxReturn:     maxReturn,
-		cStartAfter:   C.CString(startAfter),
-		cFilterPrefix: C.CString(filterPrefix),
-		more:          (*C.uchar)(C.malloc(C.sizeof_uchar)),
-		rval:          (*C.int)(C.malloc(C.sizeof_int)),
+		more: (*C.uchar)(C.malloc(C.sizeof_uchar)),
+		rval: (*C.int)(C.malloc(C.sizeof_int)),
 	}
 	runtime.SetFinalizer(gos, opStepFinalizer)
 	return gos
@@ -133,10 +58,6 @@ func (gos *GetOmapStep) free() {
 	gos.more = nil
 	C.free(unsafe.Pointer(gos.rval))
 	gos.rval = nil
-	C.free(unsafe.Pointer(gos.cStartAfter))
-	gos.cStartAfter = nil
-	C.free(unsafe.Pointer(gos.cFilterPrefix))
-	gos.cFilterPrefix = nil
 }
 
 func (gos *GetOmapStep) update() error {
@@ -151,11 +72,12 @@ func (gos *GetOmapStep) Next() (*OmapKeyValue, error) {
 		return nil, ErrOperationIncomplete
 	}
 	var (
-		cKey *C.char
-		cVal *C.char
-		cLen C.size_t
+		cKey    *C.char
+		cVal    *C.char
+		cKeyLen C.size_t
+		cValLen C.size_t
 	)
-	ret := C.rados_omap_get_next(gos.iter, &cKey, &cVal, &cLen)
+	ret := C.rados_omap_get_next2(gos.iter, &cKey, &cVal, &cKeyLen, &cValLen)
 	if ret != 0 {
 		return nil, getError(ret)
 	}
@@ -163,8 +85,8 @@ func (gos *GetOmapStep) Next() (*OmapKeyValue, error) {
 		return nil, nil
 	}
 	return &OmapKeyValue{
-		Key:   C.GoString(cKey),
-		Value: C.GoBytes(unsafe.Pointer(cVal), C.int(cLen)),
+		Key:   string(C.GoBytes(unsafe.Pointer(cKey), C.int(cKeyLen))),
+		Value: C.GoBytes(unsafe.Pointer(cVal), C.int(cValLen)),
 	}, nil
 }
 
@@ -173,40 +95,6 @@ func (gos *GetOmapStep) More() bool {
 	// tad bit hacky, but go can't automatically convert from
 	// unsigned char to bool
 	return *gos.more != 0
-}
-
-// removeOmapKeysStep is a write operation step used to track state, especially
-// C memory, across the setup and use of a WriteOp.
-type removeOmapKeysStep struct {
-	withRefs
-	withoutUpdate
-
-	// arguments:
-	cKeys cutil.CPtrCSlice
-	cNum  C.size_t
-}
-
-func newRemoveOmapKeysStep(keys []string) *removeOmapKeysStep {
-	cKeys := cutil.NewCPtrCSlice(len(keys))
-	roks := &removeOmapKeysStep{
-		cKeys: cKeys,
-		cNum:  C.size_t(len(keys)),
-	}
-
-	i := 0
-	for _, key := range keys {
-		cKeys[i] = cutil.CPtr(C.CString(key))
-		roks.add(unsafe.Pointer(cKeys[i]))
-		i++
-	}
-
-	runtime.SetFinalizer(roks, opStepFinalizer)
-	return roks
-}
-
-func (roks *removeOmapKeysStep) free() {
-	roks.cKeys.Free()
-	roks.withRefs.free()
 }
 
 // SetOmap appends the map `pairs` to the omap `oid`
