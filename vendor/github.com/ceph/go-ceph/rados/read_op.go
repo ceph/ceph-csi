@@ -69,13 +69,19 @@ func (r *ReadOp) AssertExists() {
 // function. The GetOmapStep may be used to iterate over the key-value
 // pairs after the Operate call has been performed.
 func (r *ReadOp) GetOmapValues(startAfter, filterPrefix string, maxReturn uint64) *GetOmapStep {
-	gos := newGetOmapStep(startAfter, filterPrefix, maxReturn)
+	gos := newGetOmapStep()
 	r.steps = append(r.steps, gos)
+
+	cStartAfter := C.CString(startAfter)
+	cFilterPrefix := C.CString(filterPrefix)
+	defer C.free(unsafe.Pointer(cStartAfter))
+	defer C.free(unsafe.Pointer(cFilterPrefix))
+
 	C.rados_read_op_omap_get_vals2(
 		r.op,
-		gos.cStartAfter,
-		gos.cFilterPrefix,
-		C.uint64_t(gos.maxReturn),
+		cStartAfter,
+		cFilterPrefix,
+		C.uint64_t(maxReturn),
 		&gos.iter,
 		gos.more,
 		gos.rval,

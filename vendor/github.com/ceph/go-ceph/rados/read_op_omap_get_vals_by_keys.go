@@ -11,6 +11,8 @@ import "C"
 
 import (
 	"unsafe"
+
+	"github.com/ceph/go-ceph/internal/cutil"
 )
 
 // ReadOpOmapGetValsByKeysStep holds the result of the
@@ -65,10 +67,11 @@ func (s *ReadOpOmapGetValsByKeysStep) Next() (*OmapKeyValue, error) {
 	var (
 		cKey    *C.char
 		cVal    *C.char
+		cKeyLen C.size_t
 		cValLen C.size_t
 	)
 
-	ret := C.rados_omap_get_next(s.iter, &cKey, &cVal, &cValLen)
+	ret := C.rados_omap_get_next2(s.iter, &cKey, &cVal, &cKeyLen, &cValLen)
 	if ret != 0 {
 		return nil, getError(ret)
 	}
@@ -79,7 +82,7 @@ func (s *ReadOpOmapGetValsByKeysStep) Next() (*OmapKeyValue, error) {
 	}
 
 	return &OmapKeyValue{
-		Key:   C.GoString(cKey),
+		Key:   string(C.GoBytes(unsafe.Pointer(cKey), C.int(cKeyLen))),
 		Value: C.GoBytes(unsafe.Pointer(cVal), C.int(cValLen)),
 	}, nil
 }
@@ -88,30 +91,24 @@ func (s *ReadOpOmapGetValsByKeysStep) Next() (*OmapKeyValue, error) {
 //  PREVIEW
 //
 // Implements:
-//  void rados_read_op_omap_get_vals_by_keys(rados_read_op_t read_op,
-//                                           char const * const * keys,
-//                                           size_t keys_len,
-//                                           rados_omap_iter_t * iter,
-//                                           int * prval)
+//  void rados_read_op_omap_get_vals_by_keys2(rados_read_op_t read_op,
+//                                            char const * const * keys,
+//                                            size_t num_keys,
+//                                            const size_t * key_lens,
+//                                            rados_omap_iter_t * iter,
+//                                            int * prval)
 func (r *ReadOp) GetOmapValuesByKeys(keys []string) *ReadOpOmapGetValsByKeysStep {
 	s := newReadOpOmapGetValsByKeysStep()
 	r.steps = append(r.steps, s)
 
-	cKeys := make([]*C.char, len(keys))
-	defer func() {
-		for _, cKeyPtr := range cKeys {
-			C.free(unsafe.Pointer(cKeyPtr))
-		}
-	}()
+	cKeys := cutil.NewBufferGroupStrings(keys)
+	defer cKeys.Free()
 
-	for i, key := range keys {
-		cKeys[i] = C.CString(key)
-	}
-
-	C.rados_read_op_omap_get_vals_by_keys(
+	C.rados_read_op_omap_get_vals_by_keys2(
 		r.op,
-		&cKeys[0],
+		(**C.char)(cKeys.BuffersPtr()),
 		C.size_t(len(keys)),
+		(*C.size_t)(cKeys.LengthsPtr()),
 		&s.iter,
 		s.prval,
 	)
