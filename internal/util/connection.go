@@ -22,6 +22,7 @@ import (
 	"time"
 
 	ca "github.com/ceph/go-ceph/cephfs/admin"
+	"github.com/ceph/go-ceph/common/admin/nfs"
 	"github.com/ceph/go-ceph/rados"
 	ra "github.com/ceph/go-ceph/rbd/admin"
 )
@@ -139,4 +140,14 @@ func (cc *ClusterConnection) GetTaskAdmin() (*ra.TaskAdmin, error) {
 	}
 
 	return rbdAdmin.Task(), nil
+}
+
+// GetNFSAdmin returns an Admin type that can be used to interact with the
+// NFS-cluster that is managed by Ceph.
+func (cc *ClusterConnection) GetNFSAdmin() (*nfs.Admin, error) {
+	if cc.conn == nil {
+		return nil, errors.New("cluster is not connected yet")
+	}
+
+	return nfs.NewFromConn(cc.conn), nil
 }
