@@ -1,0 +1,123 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-nfsplugin-provisioner
+  labels:
+    app: csi-metrics
+spec:
+  selector:
+    app: csi-nfsplugin-provisioner
+  ports:
+    - name: http-metrics
+      port: 8080
+      protocol: TCP
+      targetPort: 8682
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csi-nfsplugin-provisioner
+spec:
+  selector:
+    matchLabels:
+      app: csi-nfsplugin-provisioner
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: csi-nfsplugin-provisioner
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - csi-nfsplugin-provisioner
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: csi-provisioner
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v3.1.0
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+            - "--timeout=150s"
+            - "--leader-election=true"
+            - "--retry-interval-start=500ms"
+          env:
+            - name: ADDRESS
+              value: unix:///csi/csi-provisioner.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+        - name: csi-nfsplugin
+          # for stable functionality replace canary with latest release version
+          image: quay.io/cephcsi/cephcsi:canary
+          args:
+            - "--nodeid=$(NODE_ID)"
+            - "--type=nfs"
+            - "--controllerserver=true"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--v=5"
+            - "--drivername=nfs.csi.ceph.com"
+            - "--pidlimit=-1"
+            - "--enableprofiling=false"
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi-provisioner.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+            - name: host-sys
+              mountPath: /sys
+            - name: ceph-csi-config
+              mountPath: /etc/ceph-csi-config/
+            - name: keys-tmp-dir
+              mountPath: /tmp/csi/keys
+        - name: liveness-prometheus
+          image: quay.io/cephcsi/cephcsi:canary
+          args:
+            - "--type=liveness"
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--metricsport=8682"
+            - "--metricspath=/metrics"
+            - "--polltime=60s"
+            - "--timeout=3s"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi-provisioner.sock
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          imagePullPolicy: "IfNotPresent"
+      serviceAccountName: nfs-csi-provisioner
+      volumes:
+        - emptyDir:
+            medium: Memory
+          name: socket-dir
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: ceph-csi-config
+          configMap:
+            name: ceph-csi-config
+        - emptyDir:
+            medium: Memory
+          name: keys-tmp-dir

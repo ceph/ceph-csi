@@ -54,6 +54,11 @@ var yamlArtifacts = []deploymentArtifact{
 		reflect.ValueOf(nfs.CSIDriverDefaults),
 	},
 	{
+		"../deploy/nfs/kubernetes/csi-config-map.yaml",
+		reflect.ValueOf(nfs.NewCSIConfigMapYAML),
+		reflect.ValueOf(nfs.CSIConfigMapDefaults),
+	},
+	{
 		"../deploy/rbd/kubernetes/csidriver.yaml",
 		reflect.ValueOf(rbd.NewCSIDriverYAML),
 		reflect.ValueOf(rbd.CSIDriverDefaults),

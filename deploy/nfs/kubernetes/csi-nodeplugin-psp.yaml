@@ -1,0 +1,75 @@
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: nfs-csi-nodeplugin-psp
+spec:
+  allowPrivilegeEscalation: true
+  allowedCapabilities:
+    - 'SYS_ADMIN'
+  fsGroup:
+    rule: RunAsAny
+  privileged: true
+  hostNetwork: true
+  hostPID: true
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'hostPath'
+  allowedHostPaths:
+    - pathPrefix: '/dev'
+      readOnly: false
+    - pathPrefix: '/run/mount'
+      readOnly: false
+    - pathPrefix: '/sys'
+      readOnly: false
+    - pathPrefix: '/etc/selinux'
+      readOnly: true
+    - pathPrefix: '/lib/modules'
+      readOnly: true
+    - pathPrefix: '/var/lib/kubelet/pods'
+      readOnly: false
+    - pathPrefix: '/var/lib/kubelet/plugins/nfs.csi.ceph.com'
+      readOnly: false
+    - pathPrefix: '/var/lib/kubelet/plugins_registry'
+      readOnly: false
+    - pathPrefix: '/var/lib/kubelet/plugins'
+      readOnly: false
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nfs-csi-nodeplugin-psp
+  # replace with non-default namespace name
+  namespace: default
+rules:
+  - apiGroups: ['policy']
+    resources: ['podsecuritypolicies']
+    verbs: ['use']
+    resourceNames: ['nfs-csi-nodeplugin-psp']
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nfs-csi-nodeplugin-psp
+  # replace with non-default namespace name
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: nfs-csi-nodeplugin
+    # replace with non-default namespace name
+    namespace: default
+roleRef:
+  kind: Role
+  name: nfs-csi-nodeplugin-psp
+  apiGroup: rbac.authorization.k8s.io
