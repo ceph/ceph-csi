@@ -27,6 +27,7 @@ serviceAccounts:
 #       - "<MONValue2>"
 #     cephFS:
 #       subvolumeGroup: "csi"
+#     netNamespaceFilePath: "{{ .kubeletDir }}/plugins/{{ .driverName }}/net"
 csiConfig: []
 
 # Set logging level for csi containers.
