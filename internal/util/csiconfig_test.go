@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 )
@@ -136,5 +137,71 @@ func TestCSIConfig(t *testing.T) {
 	err = os.WriteFile(basePath+"/"+csiClusters, []byte(data), 0o600)
 	if err != nil {
 		t.Errorf("Test setup error %s", err)
+	}
+}
+
+func TestGetNetNamespaceFilePath(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		clusterID string
+		want      string
+	}{
+		{
+			name:      "get NetNamespaceFilePath for cluster-1",
+			clusterID: "cluster-1",
+			want:      "/var/lib/kubelet/plugins/rbd.ceph.csi.com/cluster1-net",
+		},
+		{
+			name:      "get NetNamespaceFilePath for cluster-2",
+			clusterID: "cluster-2",
+			want:      "/var/lib/kubelet/plugins/rbd.ceph.csi.com/cluster2-net",
+		},
+		{
+			name:      "when NetNamespaceFilePath is empty",
+			clusterID: "cluster-3",
+			want:      "",
+		},
+	}
+
+	csiConfig := []ClusterInfo{
+		{
+			ClusterID:            "cluster-1",
+			Monitors:             []string{"ip-1", "ip-2"},
+			NetNamespaceFilePath: "/var/lib/kubelet/plugins/rbd.ceph.csi.com/cluster1-net",
+		},
+		{
+			ClusterID:            "cluster-2",
+			Monitors:             []string{"ip-3", "ip-4"},
+			NetNamespaceFilePath: "/var/lib/kubelet/plugins/rbd.ceph.csi.com/cluster2-net",
+		},
+		{
+			ClusterID: "cluster-3",
+			Monitors:  []string{"ip-5", "ip-6"},
+		},
+	}
+	csiConfigFileContent, err := json.Marshal(csiConfig)
+	if err != nil {
+		t.Errorf("failed to marshal csi config info %v", err)
+	}
+	tmpConfPath := t.TempDir() + "/ceph-csi.json"
+	err = os.WriteFile(tmpConfPath, csiConfigFileContent, 0o600)
+	if err != nil {
+		t.Errorf("failed to write %s file content: %v", CsiConfigFile, err)
+	}
+	for _, tt := range tests {
+		ts := tt
+		t.Run(ts.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := GetNetNamespaceFilePath(tmpConfPath, ts.clusterID)
+			if err != nil {
+				t.Errorf("GetNetNamespaceFilePath() error = %v", err)
+
+				return
+			}
+			if got != ts.want {
+				t.Errorf("GetNetNamespaceFilePath() = %v, want %v", got, ts.want)
+			}
+		})
 	}
 }

@@ -156,6 +156,8 @@ type rbdVolume struct {
 	LogStrategy        string
 	VolName            string
 	MonValueFromSecret string
+	// Network namespace file path to execute nsenter command
+	NetNamespaceFilePath string
 	// RequestedVolSize has the size of the volume requested by the user and
 	// this value will not be updated when doing getImageInfo() on rbdVolume.
 	RequestedVolSize   int64

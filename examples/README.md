@@ -50,6 +50,42 @@ kubectl replace -f ./csi-config-map-sample.yaml
 Storage class and snapshot class, using `<cluster-id>` as the value for the
 option `clusterID`, can now be created on the cluster.
 
+## Running CephCSI with pod networking
+
+The current problem with Pod Networking, is when a CephFS/RBD volume is mounted
+in a pod using Ceph CSI and then the CSI CephFS/RBD plugin is restarted or
+terminated (e.g. by restarting or deleting its DaemonSet), all operations on
+the volume become blocked, even after restarting the CSI pods.
+
+The only workaround is to restart the node where the Ceph CSI plugin pod was
+restarted. This can be mitigated by running the `rbd map`/`mount -t` commands
+in a different network namespace which does not get deleted when the CSI
+CephFS/RBD plugin is restarted or terminated.
+
+If someone wants to run the CephCSI with the pod networking they can still do
+by setting the `netNamespaceFilePath`. If this path is set CephCSI will execute
+the `rbd map`/`mount -t` commands after entering the [network
+namespace](https://man7.org/linux/man-pages/man7/network_namespaces.7.html)
+specified by `netNamespaceFilePath` with the
+[nsenter](https://man7.org/linux/man-pages/man1/nsenter.1.html) command.
+
+`netNamespaceFilePath` should point to the network namespace of some
+long-running process, typically it would be a symlink to
+`/proc/<long running process id>/ns/net`.
+
+The long-running process can also be another pod which is a Daemonset which
+never restarts. This Pod should only be stopped and restarted when a node is
+stopped so that volume operations do not become blocked. The new DaemonSet pod
+can contain a single container, responsible for holding its pod network alive.
+It is used as a passthrough by the CephCSI plugin pod which when mounting or
+mapping will use the network namespace of this pod.
+
+Once the pod is created get its PID and create a symlink to
+`/proc/<PID>/ns/net` in the hostPath volume shared with the csi-plugin pod and
+specify the path in the `netNamespaceFilePath` option.
+
+*Note* This Pod should have `hostPID: true` in the Pod Spec.
+
 ## Deploying the storage class
 
 Once the plugin is successfully deployed, you'll need to customize

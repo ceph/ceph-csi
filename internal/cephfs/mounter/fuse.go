@@ -65,12 +65,20 @@ func mountFuse(ctx context.Context, mountPoint string, cr *util.Credentials, vol
 	if volOptions.FsName != "" {
 		args = append(args, "--client_mds_namespace="+volOptions.FsName)
 	}
+	var (
+		stderr string
+		err    error
+	)
 
-	_, stderr, err := util.ExecCommand(ctx, "ceph-fuse", args[:]...)
+	if volOptions.NetNamespaceFilePath != "" {
+		_, stderr, err = util.ExecuteCommandWithNSEnter(ctx, volOptions.NetNamespaceFilePath, "ceph-fuse", args[:]...)
+	} else {
+		_, stderr, err = util.ExecCommand(ctx, "ceph-fuse", args[:]...)
+	}
+
 	if err != nil {
 		return fmt.Errorf("%w stderr: %s", err, stderr)
 	}
-
 	// Parse the output:
 	// We need "starting fuse" meaning the mount is ok
 	// and PID of the ceph-fuse daemon for unmount

@@ -50,6 +50,8 @@ type VolumeOptions struct {
 	ProvisionVolume    bool   `json:"provisionVolume"`
 	KernelMountOptions string `json:"kernelMountOptions"`
 	FuseMountOptions   string `json:"fuseMountOptions"`
+	// Network namespace file path to execute nsenter command
+	NetNamespaceFilePath string
 
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection
