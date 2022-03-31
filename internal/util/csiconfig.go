@@ -49,6 +49,8 @@ type ClusterInfo struct {
 		// SubvolumeGroup contains the name of the SubvolumeGroup for CSI volumes
 		SubvolumeGroup string `json:"subvolumeGroup"`
 	} `json:"cephFS"`
+	// symlink filepath for the network namespace where we need to execute commands.
+	NetNamespaceFilePath string `json:"netNamespaceFilePath"`
 }
 
 // Expected JSON structure in the passed in config file is,
@@ -160,4 +162,13 @@ func GetClusterID(options map[string]string) (string, error) {
 	}
 
 	return clusterID, nil
+}
+
+func GetNetNamespaceFilePath(pathToConfig, clusterID string) (string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return "", err
+	}
+
+	return cluster.NetNamespaceFilePath, nil
 }

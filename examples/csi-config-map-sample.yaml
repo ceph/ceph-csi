@@ -20,6 +20,12 @@ kind: ConfigMap
 # NOTE: Make sure you don't add radosNamespace option to a currently in use
 # configuration as it will cause issues.
 # The field "cephFS.subvolumeGroup" is optional and defaults to "csi".
+# The <netNamespaceFilePath#> fields are the various network namespace
+# path for the Ceph cluster identified by the <cluster-id>, This will be used
+# by the CSI plugin to execute the rbd map/unmap and mount -t commands in the
+# network namespace specified by the <netNamespaceFilePath#>.
+# If a CSI plugin is using more than one Ceph cluster, repeat the section for
+# each such cluster in use.
 # NOTE: Changes to the configmap is automatically updated in the running pods,
 # thus restarting existing pods using the configmap is NOT required on edits
 # to the configmap.
@@ -37,6 +43,7 @@ data:
       {
         "clusterID": "<cluster-id>",
         "radosNamespace": "<rados-namespace>",
+        "netNamespaceFilePath": "<kubeletRootPath>/plugins/rbd.csi.ceph.com/net",
         "monitors": [
           "<MONValue1>",
           "<MONValue2>",
