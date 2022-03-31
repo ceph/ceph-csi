@@ -457,8 +457,17 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 		mapArgs = append(mapArgs, "--read-only")
 	}
 
-	// Execute map
-	stdout, stderr, err := util.ExecCommand(ctx, cli, mapArgs...)
+	var (
+		stdout string
+		stderr string
+		err    error
+	)
+
+	if volOpt.NetNamespaceFilePath != "" {
+		stdout, stderr, err = util.ExecuteCommandWithNSEnter(ctx, volOpt.NetNamespaceFilePath, cli, mapArgs...)
+	} else {
+		stdout, stderr, err = util.ExecCommand(ctx, cli, mapArgs...)
+	}
 	if err != nil {
 		log.WarningLog(ctx, "rbd: map error %v, rbd output: %s", err, stderr)
 		// unmap rbd image if connection timeout

@@ -332,6 +332,10 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 	defer rv.Destroy()
 
+	rv.NetNamespaceFilePath, err = util.GetNetNamespaceFilePath(util.CsiConfigFile, rv.ClusterID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	if isHealer {
 		err = healerStageTransaction(ctx, cr, rv, stagingParentPath)
 		if err != nil {

@@ -51,7 +51,16 @@ func mountKernel(ctx context.Context, mountPoint string, cr *util.Credentials, v
 
 	args = append(args, "-o", optionsStr)
 
-	_, stderr, err := util.ExecCommand(ctx, "mount", args[:]...)
+	var (
+		stderr string
+		err    error
+	)
+
+	if volOptions.NetNamespaceFilePath != "" {
+		_, stderr, err = util.ExecuteCommandWithNSEnter(ctx, volOptions.NetNamespaceFilePath, "mount", args[:]...)
+	} else {
+		_, stderr, err = util.ExecCommand(ctx, "mount", args[:]...)
+	}
 	if err != nil {
 		return fmt.Errorf("%w stderr: %s", err, stderr)
 	}

@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"time"
 
@@ -31,6 +32,47 @@ import (
 
 // InvalidPoolID used to denote an invalid pool.
 const InvalidPoolID int64 = -1
+
+// ExecuteCommandWithNSEnter executes passed in program with args with nsenter
+// and returns separate stdout and stderr streams. In case ctx is not set to
+// context.TODO(), the command will be logged after it was executed.
+func ExecuteCommandWithNSEnter(ctx context.Context, netPath, program string, args ...string) (string, string, error) {
+	var (
+		sanitizedArgs = StripSecretInArgs(args)
+		stdoutBuf     bytes.Buffer
+		stderrBuf     bytes.Buffer
+	)
+
+	// check netPath exists
+	if _, err := os.Stat(netPath); err != nil {
+		return "", "", fmt.Errorf("failed to get stat for %s %w", netPath, err)
+	}
+	//  nsenter --net=%s -- <program> <args>
+	args = append([]string{fmt.Sprintf("--net=%s", netPath), "--", program}, args...)
+	cmd := exec.Command("nsenter", args...) // #nosec:G204, commands executing not vulnerable.
+
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	err := cmd.Run()
+	stdout := stdoutBuf.String()
+	stderr := stderrBuf.String()
+
+	if err != nil {
+		err = fmt.Errorf("an error (%w) occurred while running %s args: %v", err, program, sanitizedArgs)
+		if ctx != context.TODO() {
+			log.UsefulLog(ctx, "%s", err)
+		}
+
+		return stdout, stderr, err
+	}
+
+	if ctx != context.TODO() {
+		log.UsefulLog(ctx, "command succeeded: %s %v", program, sanitizedArgs)
+	}
+
+	return stdout, stderr, nil
+}
 
 // ExecCommand executes passed in program with args and returns separate stdout
 // and stderr streams. In case ctx is not set to context.TODO(), the command
