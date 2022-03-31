@@ -8,14 +8,14 @@
 
 # ceph-csi devel
 docker.io/rook/ceph:v1.8.2	rook/ceph:v1.8.2
-quay.io/ceph/ceph:v17		ceph/ceph:v17
+quay.io/ceph/ceph:v17		quay.io/ceph/ceph:v17
 
 # ceph-csi v3.5
-quay.io/ceph/ceph:v16		ceph/ceph:v16
+quay.io/ceph/ceph:v16		quay.io/ceph/ceph:v16
 docker.io/rook/ceph:v1.6.2	rook/ceph:v1.6.2
 
 # ceph-csi v3.3
-quay.io/ceph/ceph:v15		ceph/ceph:v15
+quay.io/ceph/ceph:v15		quay.io/ceph/ceph:v15
 docker.io/rook/ceph:v1.4.9	rook/ceph:v1.4.9
 
 # e2e testing
