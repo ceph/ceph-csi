@@ -71,6 +71,25 @@ const (
 var (
 	hasNBD              = true
 	hasNBDCookieSupport = false
+
+	kernelCookieSupport = []util.KernelVersion{
+		{
+			Version:      5,
+			PatchLevel:   14,
+			SubLevel:     0,
+			ExtraVersion: 0,
+			Distribution: "",
+			Backport:     false,
+		}, // standard 5.14+ versions
+		{
+			Version:      4,
+			PatchLevel:   18,
+			SubLevel:     0,
+			ExtraVersion: 365,
+			Distribution: ".el8",
+			Backport:     true,
+		}, // CentOS-8.x
+	}
 )
 
 func init() {
@@ -207,21 +226,42 @@ func setRbdNbdToolFeatures() {
 		_, stderr, err = util.ExecCommand(context.TODO(), "modprobe", moduleNbd)
 		if err != nil {
 			hasNBD = false
-			log.WarningLogMsg("rbd-nbd: nbd modprobe failed (%v): %q", err, stderr)
+			log.WarningLogMsg("nbd modprobe failed (%v): %q", err, stderr)
+
+			return
 		}
 	}
+	log.DefaultLog("nbd module loaded")
 
+	// fetch the current running kernel info
+	release, err := util.GetKernelVersion()
+	if err != nil {
+		log.WarningLogMsg("fetching current kernel version failed (%v)", err)
+
+		return
+	}
+	if !util.CheckKernelSupport(release, kernelCookieSupport) {
+		log.WarningLogMsg("kernel version %q doesn't support cookie feature", release)
+
+		return
+	}
+	log.DefaultLog("kernel version %q supports cookie feature", release)
+
+	// check if the rbd-nbd tool supports cookie
 	stdout, stderr, err := util.ExecCommand(context.TODO(), rbdTonbd, "--help")
 	if err != nil || stderr != "" {
 		hasNBD = false
 		log.WarningLogMsg("running rbd-nbd --help failed with error:%v, stderr:%s", err, stderr)
-	}
 
-	if strings.Contains(stdout, "--cookie") {
-		hasNBDCookieSupport = true
+		return
 	}
+	if !strings.Contains(stdout, "--cookie") {
+		log.WarningLogMsg("rbd-nbd tool doesn't support cookie feature")
 
-	log.DefaultLog("NBD module loaded: %t, rbd-nbd supported features, cookie: %t", hasNBD, hasNBDCookieSupport)
+		return
+	}
+	hasNBDCookieSupport = true
+	log.DefaultLog("rbd-nbd tool supports cookie feature")
 }
 
 // parseMapOptions helps parse formatted mapOptions and unmapOptions and
