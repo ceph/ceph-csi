@@ -69,6 +69,15 @@ func GetVolumeMetadata(parameters map[string]string) map[string]string {
 	return newParam
 }
 
+// GetVolumeMetadataKeys return volume metadata keys.
+func GetVolumeMetadataKeys() []string {
+	return []string{
+		pvcNameKey,
+		pvcNamespaceKey,
+		pvNameKey,
+	}
+}
+
 // PrepareVolumeMetadata return PV/PVC/PVCNamespace metadata based on inputs.
 func PrepareVolumeMetadata(pvcName, pvcNamespace, pvName string) map[string]string {
 	newParam := map[string]string{}
@@ -99,4 +108,13 @@ func GetSnapshotMetadata(parameters map[string]string) map[string]string {
 	}
 
 	return newParam
+}
+
+// GetSnapshotMetadataKeys return snapshot metadata keys.
+func GetSnapshotMetadataKeys() []string {
+	return []string{
+		volSnapNameKey,
+		volSnapNamespaceKey,
+		volSnapContentNameKey,
+	}
 }
