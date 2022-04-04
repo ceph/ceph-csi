@@ -971,7 +971,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 }
 
 // CreateSnapshot creates the snapshot in backend and stores metadata in store.
-// nolint:cyclop // TODO: reduce complexity
+// nolint:gocyclo,cyclop // TODO: reduce complexity.
 func (cs *ControllerServer) CreateSnapshot(
 	ctx context.Context,
 	req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
@@ -1074,6 +1074,10 @@ func (cs *ControllerServer) CreateSnapshot(
 	// Update the metadata on snapshot not on the original image
 	rbdVol.RbdImageName = rbdSnap.RbdSnapName
 
+	err = rbdVol.unsetAllMetadata(k8s.GetVolumeMetadataKeys())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	// Set snapshot-name/snapshot-namespace/snapshotcontent-name details
 	// on RBD backend image as metadata on create
 	metadata := k8s.GetSnapshotMetadata(req.GetParameters())
