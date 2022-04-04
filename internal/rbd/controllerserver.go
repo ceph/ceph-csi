@@ -591,6 +591,12 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 
 		return err
 	}
+	err = rbdVol.unsetAllMetadata(k8s.GetSnapshotMetadataKeys())
+	if err != nil {
+		log.ErrorLog(ctx, "failed to unset snapshot metadata on rbd image %q: %v", rbdVol, err)
+
+		return err
+	}
 
 	log.DebugLog(ctx, "create volume %s from snapshot %s", rbdVol, rbdSnap)
 
