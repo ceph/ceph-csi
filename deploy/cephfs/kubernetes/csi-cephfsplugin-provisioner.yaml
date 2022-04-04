@@ -104,7 +104,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-cephfsplugin
-          # for stable functionality replace v3.6.0 with latest release version
+          # for stable functionality replace canary with latest release version
           image: quay.io/cephcsi/cephcsi:v3.6.0
           args:
             - "--nodeid=$(NODE_ID)"
