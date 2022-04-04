@@ -1923,3 +1923,16 @@ func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
 
 	return nil
 }
+
+// unsetAllMetadata unset all the metadata from arg keys on RBD image.
+func (rv *rbdVolume) unsetAllMetadata(keys []string) error {
+	for _, key := range keys {
+		err := rv.RemoveMetadata(key)
+		// TODO: replace string comparison with errno.
+		if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+			return fmt.Errorf("failed to unset metadata key %q on %q: %w", key, rv, err)
+		}
+	}
+
+	return nil
+}
