@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -29,6 +30,7 @@ import (
 	. "github.com/onsi/ginkgo" // nolint
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -2026,6 +2028,41 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to get server version: %v", err)
 				}
+
+				deploymentPatch, err := json.Marshal(map[string]interface{}{
+					"spec": map[string]interface{}{
+						"template": map[string]interface{}{
+							"spec": map[string]interface{}{
+								"containers": [1]map[string]interface{}{{
+									"args": []string{
+										"--csi-address=$(ADDRESS)",
+										"--v=5",
+										"--timeout=150s",
+										"--retry-interval-start=500ms",
+										"--leader-election=true",
+										"--feature-gates=Topology=True",
+										"--default-fstype=ext4",
+										"--extra-create-metadata=false",
+									},
+									"name": "csi-provisioner",
+								}},
+							},
+						},
+					},
+				})
+				if err != nil {
+					e2elog.Failf("failed to Marshal Deployment JSON patch: %v", err)
+				}
+				_, err = f.ClientSet.AppsV1().Deployments(cephCSINamespace).Patch(
+					context.TODO(),
+					rbdDeploymentName,
+					types.StrategicMergePatchType,
+					[]byte(deploymentPatch),
+					metav1.PatchOptions{})
+				if err != nil {
+					e2elog.Logf("error Patching Deployment %q: %v", rbdDeploymentName, err)
+				}
+
 				validatePVCClone(
 					defaultCloneCount,
 					rawPvcPath,
@@ -2036,6 +2073,39 @@ var _ = Describe("RBD", func() {
 					noKMS,
 					noPVCValidation,
 					f)
+				deploymentPatch, err = json.Marshal(map[string]interface{}{
+					"spec": map[string]interface{}{
+						"template": map[string]interface{}{
+							"spec": map[string]interface{}{
+								"containers": [1]map[string]interface{}{{
+									"args": []string{
+										"--csi-address=$(ADDRESS)",
+										"--v=5",
+										"--timeout=150s",
+										"--retry-interval-start=500ms",
+										"--leader-election=true",
+										"--feature-gates=Topology=True",
+										"--default-fstype=ext4",
+										"--extra-create-metadata=true",
+									},
+									"name": "csi-provisioner",
+								}},
+							},
+						},
+					},
+				})
+				if err != nil {
+					e2elog.Failf("failed to Marshal Deployment with JSON patch: %v", err)
+				}
+				_, err = f.ClientSet.AppsV1().Deployments(cephCSINamespace).Patch(
+					context.TODO(),
+					rbdDeploymentName,
+					types.StrategicMergePatchType,
+					[]byte(deploymentPatch),
+					metav1.PatchOptions{})
+				if err != nil {
+					e2elog.Logf("error Patching Deployment %q: %v", rbdDeploymentName, err)
+				}
 			})
 			By("create/delete multiple PVCs and Apps", func() {
 				totalCount := 2
