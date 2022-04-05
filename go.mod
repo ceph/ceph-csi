@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/IBM/keyprotect-go-client v0.7.0
-	github.com/aws/aws-sdk-go v1.43.22
+	github.com/aws/aws-sdk-go v1.43.32
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.0
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	github.com/ceph/go-ceph v0.14.0
