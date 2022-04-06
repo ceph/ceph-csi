@@ -393,7 +393,7 @@ func reserveSnap(ctx context.Context, rbdSnap *rbdSnapshot, rbdVol *rbdVolume, c
 
 	rbdSnap.ReservedID, rbdSnap.RbdSnapName, err = j.ReserveName(
 		ctx, rbdSnap.JournalPool, journalPoolID, rbdSnap.Pool, imagePoolID,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, kmsID, rbdSnap.ReservedID, rbdVol.Owner)
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdVol.RbdImageName, kmsID, rbdSnap.ReservedID, rbdVol.Owner, "")
 	if err != nil {
 		return err
 	}
@@ -473,7 +473,7 @@ func reserveVol(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr
 
 	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
 		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
-		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, rbdVol.ReservedID, rbdVol.Owner)
+		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, rbdVol.ReservedID, rbdVol.Owner, "")
 	if err != nil {
 		return err
 	}
@@ -637,7 +637,7 @@ func RegenerateJournal(
 
 	rbdVol.ReservedID, rbdVol.RbdImageName, err = j.ReserveName(
 		ctx, rbdVol.JournalPool, journalPoolID, rbdVol.Pool, imagePoolID,
-		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, vi.ObjectUUID, rbdVol.Owner)
+		rbdVol.RequestName, rbdVol.NamePrefix, "", kmsID, vi.ObjectUUID, rbdVol.Owner, "")
 	if err != nil {
 		return "", err
 	}
