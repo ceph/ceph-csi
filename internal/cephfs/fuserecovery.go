@@ -192,7 +192,7 @@ func (ns *NodeServer) tryRestoreFuseMountsInNodePublish(
 	// Unmount and mount the volume.
 
 	if stagingTargetMs != msMounted {
-		if err := mounter.UnmountVolume(ctx, stagingTargetPath); err != nil {
+		if err := mounter.UnmountAll(ctx, stagingTargetPath); err != nil {
 			return err
 		}
 
@@ -269,5 +269,5 @@ func (ns *NodeServer) tryRestoreFuseMountInNodeStage(
 
 	// Restoration here means only unmounting the volume.
 	// NodeStageVolume should take care of the rest.
-	return mounter.UnmountVolume(ctx, stagingTargetPath)
+	return mounter.UnmountAll(ctx, stagingTargetPath)
 }

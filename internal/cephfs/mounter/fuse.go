@@ -118,8 +118,8 @@ func (m *FuseMounter) Mount(
 
 func (m *FuseMounter) Name() string { return "Ceph FUSE driver" }
 
-func UnmountVolume(ctx context.Context, mountPoint string) error {
-	if _, stderr, err := util.ExecCommand(ctx, "umount", mountPoint); err != nil {
+func UnmountVolume(ctx context.Context, mountPoint string, opts ...string) error {
+	if _, stderr, err := util.ExecCommand(ctx, "umount", append([]string{mountPoint}, opts...)...); err != nil {
 		err = fmt.Errorf("%w stderr: %s", err, stderr)
 		if strings.Contains(err.Error(), fmt.Sprintf("umount: %s: not mounted", mountPoint)) ||
 			strings.Contains(err.Error(), "No such file or directory") {
@@ -148,4 +148,8 @@ func UnmountVolume(ctx context.Context, mountPoint string) error {
 	}
 
 	return nil
+}
+
+func UnmountAll(ctx context.Context, mountPoint string) error {
+	return UnmountVolume(ctx, mountPoint, "--all-targets")
 }

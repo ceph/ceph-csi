@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
@@ -101,6 +102,20 @@ func (ns *NodeServer) getVolumeOptions(
 	return volOptions, nil
 }
 
+func validateSnapshotBackedVolCapability(volCap *csi.VolumeCapability) error {
+	// Snapshot-backed volumes may be used with read-only volume access modes only.
+
+	mode := volCap.AccessMode.Mode
+
+	if mode != csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY &&
+		mode != csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
+		return status.Error(codes.InvalidArgument,
+			"snapshot-backed volume supports only read-only access mode")
+	}
+
+	return nil
+}
+
 // NodeStageVolume mounts the volume to a staging path on the node.
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
@@ -137,6 +152,12 @@ func (ns *NodeServer) NodeStageVolume(
 			volOptions.ClusterID)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
+	if volOptions.BackingSnapshot {
+		if err = validateSnapshotBackedVolCapability(req.GetVolumeCapability()); err != nil {
+			return nil, err
 		}
 	}
 
@@ -192,7 +213,7 @@ func (ns *NodeServer) NodeStageVolume(
 			log.ErrorLog(ctx, "cephfs: failed to write NodeStageMountinfo for volume %s: %v", volID, err)
 
 			// Try to clean node stage mount.
-			if unmountErr := mounter.UnmountVolume(ctx, stagingTargetPath); unmountErr != nil {
+			if unmountErr := mounter.UnmountAll(ctx, stagingTargetPath); unmountErr != nil {
 				log.ErrorLog(ctx, "cephfs: failed to unmount %s in WriteNodeStageMountinfo clean up: %v",
 					stagingTargetPath, unmountErr)
 			}
@@ -223,7 +244,7 @@ func (*NodeServer) mount(
 
 	log.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, mnt.Name())
 
-	readOnly := "ro"
+	const readOnly = "ro"
 
 	if volCap.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
 		volCap.AccessMode.Mode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
@@ -248,7 +269,110 @@ func (*NodeServer) mount(
 		return status.Error(codes.Internal, err.Error())
 	}
 
+	defer func() {
+		if err == nil {
+			return
+		}
+
+		unmountErr := mounter.UnmountAll(ctx, stagingTargetPath)
+		if unmountErr != nil {
+			log.ErrorLog(ctx, "failed to clean up mounts in rollback procedure: %v", unmountErr)
+		}
+	}()
+
+	if volOptions.BackingSnapshot {
+		snapshotRoot, err := getBackingSnapshotRoot(ctx, volOptions, stagingTargetPath)
+		if err != nil {
+			return err
+		}
+
+		absoluteSnapshotRoot := path.Join(stagingTargetPath, snapshotRoot)
+		err = mounter.BindMount(
+			ctx,
+			absoluteSnapshotRoot,
+			stagingTargetPath,
+			true,
+			[]string{"bind", "_netdev"},
+		)
+
+		if err != nil {
+			log.ErrorLog(ctx,
+				"failed to bind mount snapshot root %s: %v", absoluteSnapshotRoot, err)
+
+			return status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	return nil
+}
+
+func getBackingSnapshotRoot(
+	ctx context.Context,
+	volOptions *store.VolumeOptions,
+	stagingTargetPath string,
+) (string, error) {
+	if volOptions.ProvisionVolume {
+		// Provisioned snapshot-backed volumes should have their BackingSnapshotRoot
+		// already populated.
+		return volOptions.BackingSnapshotRoot, nil
+	}
+
+	// Pre-provisioned snapshot-backed volumes are more involved:
+	//
+	// Snapshots created with `ceph fs subvolume snapshot create` have following
+	// snap directory name format inside <root path>/.snap:
+	//
+	//   _<snapshot>_<snapshot inode number>
+	//
+	// We don't know what <snapshot inode number> is, and so <root path>/.snap
+	// needs to be traversed in order to determine the full snapshot directory name.
+
+	snapshotsBase := path.Join(stagingTargetPath, ".snap")
+
+	dir, err := os.Open(snapshotsBase)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to open %s when searching for snapshot root: %v", snapshotsBase, err)
+
+		return "", status.Errorf(codes.Internal, err.Error())
+	}
+
+	// Read the contents of <root path>/.snap directory into a string slice.
+
+	contents, err := dir.Readdirnames(0)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to read %s when searching for snapshot root: %v", snapshotsBase, err)
+
+		return "", status.Errorf(codes.Internal, err.Error())
+	}
+
+	var (
+		found           bool
+		snapshotDirName string
+	)
+
+	// Look through the directory's contents and try to find the correct snapshot
+	// dir name. The search must be exhaustive to catch possible ambiguous results.
+
+	for i := range contents {
+		if !strings.Contains(contents[i], volOptions.BackingSnapshotID) {
+			continue
+		}
+
+		if !found {
+			found = true
+			snapshotDirName = contents[i]
+		} else {
+			return "", status.Errorf(codes.InvalidArgument, "ambiguous backingSnapshotID %s in %s",
+				volOptions.BackingSnapshotID, snapshotsBase)
+		}
+	}
+
+	if !found {
+		return "", status.Errorf(codes.InvalidArgument, "no snapshot with backingSnapshotID %s found in %s",
+			volOptions.BackingSnapshotID, snapshotsBase)
+	}
+
+	return path.Join(".snap", snapshotDirName), nil
 }
 
 // NodePublishVolume mounts the volume mounted to the staging path to the target
@@ -444,7 +568,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		return &csi.NodeUnstageVolumeResponse{}, nil
 	}
 	// Unmount the volume
-	if err = mounter.UnmountVolume(ctx, stagingTargetPath); err != nil {
+	if err = mounter.UnmountAll(ctx, stagingTargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

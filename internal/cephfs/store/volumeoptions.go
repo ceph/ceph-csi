@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
@@ -34,27 +35,31 @@ import (
 
 type VolumeOptions struct {
 	core.SubVolume
-	TopologyPools       *[]util.TopologyConstrainedPool
-	TopologyRequirement *csi.TopologyRequirement
-	Topology            map[string]string
-	RequestName         string
-	NamePrefix          string
-	ClusterID           string
-	FscID               int64
-	MetadataPool        string
+
+	RequestName  string
+	NamePrefix   string
+	ClusterID    string
+	MetadataPool string
 	// ReservedID represents the ID reserved for a subvolume
-	ReservedID         string
-	Monitors           string `json:"monitors"`
-	RootPath           string `json:"rootPath"`
-	Mounter            string `json:"mounter"`
-	ProvisionVolume    bool   `json:"provisionVolume"`
-	KernelMountOptions string `json:"kernelMountOptions"`
-	FuseMountOptions   string `json:"fuseMountOptions"`
-	// Network namespace file path to execute nsenter command
+	ReservedID           string
+	Monitors             string `json:"monitors"`
+	RootPath             string `json:"rootPath"`
+	Mounter              string `json:"mounter"`
+	BackingSnapshotRoot  string // Snapshot root relative to RootPath.
+	BackingSnapshotID    string
+	KernelMountOptions   string `json:"kernelMountOptions"`
+	FuseMountOptions     string `json:"fuseMountOptions"`
 	NetNamespaceFilePath string
+	TopologyPools        *[]util.TopologyConstrainedPool
+	TopologyRequirement  *csi.TopologyRequirement
+	Topology             map[string]string
+	FscID                int64
 
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection
+
+	ProvisionVolume bool `json:"provisionVolume"`
+	BackingSnapshot bool `json:"backingSnapshot"`
 }
 
 // Connect a CephFS volume to the Ceph cluster.
@@ -184,14 +189,20 @@ func (vo *VolumeOptions) GetConnection() *util.ClusterConnection {
 	return vo.conn
 }
 
+func fmtBackingSnapshotOptionMismatch(optName, expected, actual string) error {
+	return fmt.Errorf("%s option mismatch with backing snapshot: got %s, expected %s",
+		optName, actual, expected)
+}
+
 // NewVolumeOptions generates a new instance of volumeOptions from the provided
 // CSI request parameters.
 func NewVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVolumeRequest,
 	cr *util.Credentials,
 ) (*VolumeOptions, error) {
 	var (
-		opts VolumeOptions
-		err  error
+		opts                VolumeOptions
+		backingSnapshotBool string
+		err                 error
 	)
 
 	volOptions := req.GetParameters()
@@ -228,6 +239,16 @@ func NewVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 		return nil, err
 	}
 
+	if err = extractOptionalOption(&backingSnapshotBool, "backingSnapshot", volOptions); err != nil {
+		return nil, err
+	}
+
+	if backingSnapshotBool != "" {
+		if opts.BackingSnapshot, err = strconv.ParseBool(backingSnapshotBool); err != nil {
+			return nil, fmt.Errorf("failed to parse backingSnapshot: %w", err)
+		}
+	}
+
 	opts.RequestName = requestName
 
 	err = opts.Connect(cr)
@@ -260,6 +281,19 @@ func NewVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 	}
 
 	opts.ProvisionVolume = true
+
+	if opts.BackingSnapshot {
+		if req.GetVolumeContentSource() == nil || req.GetVolumeContentSource().GetSnapshot() == nil {
+			return nil, errors.New("backingSnapshot option requires snapshot volume source")
+		}
+
+		opts.BackingSnapshotID = req.GetVolumeContentSource().GetSnapshot().GetSnapshotId()
+
+		err = opts.populateVolumeOptionsFromBackingSnapshot(ctx, cr)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return &opts, nil
 }
@@ -364,21 +398,107 @@ func NewVolumeOptionsFromVolID(
 		}
 	}
 
-	volOptions.ProvisionVolume = true
-	volOptions.SubVolume.VolID = vid.FsSubvolName
-	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID)
-	info, err := vol.GetSubVolumeInfo(ctx)
-	if err == nil {
-		volOptions.RootPath = info.Path
-		volOptions.Features = info.Features
-		volOptions.Size = info.BytesQuota
+	if imageAttributes.BackingSnapshotID != "" || volOptions.BackingSnapshotID != "" {
+		volOptions.BackingSnapshot = true
+		volOptions.BackingSnapshotID = imageAttributes.BackingSnapshotID
 	}
 
-	if errors.Is(err, cerrors.ErrInvalidCommand) {
-		volOptions.RootPath, err = vol.GetVolumeRootPathCeph(ctx)
+	volOptions.ProvisionVolume = true
+	volOptions.SubVolume.VolID = vid.FsSubvolName
+
+	if volOptions.BackingSnapshot {
+		err = volOptions.populateVolumeOptionsFromBackingSnapshot(ctx, cr)
+	} else {
+		err = volOptions.populateVolumeOptionsFromSubvolume(ctx)
 	}
 
 	return &volOptions, &vid, err
+}
+
+func (vo *VolumeOptions) populateVolumeOptionsFromSubvolume(ctx context.Context) error {
+	vol := core.NewSubVolume(vo.conn, &vo.SubVolume, vo.ClusterID)
+
+	var info *core.Subvolume
+	info, err := vol.GetSubVolumeInfo(ctx)
+	if err == nil {
+		vo.RootPath = info.Path
+		vo.Features = info.Features
+		vo.Size = info.BytesQuota
+	}
+
+	if errors.Is(err, cerrors.ErrInvalidCommand) {
+		vo.RootPath, err = vol.GetVolumeRootPathCeph(ctx)
+	}
+
+	return err
+}
+
+func (vo *VolumeOptions) populateVolumeOptionsFromBackingSnapshot(
+	ctx context.Context,
+	cr *util.Credentials,
+) error {
+	// As of CephFS snapshot v2 API, snapshots may be found in two locations:
+	//
+	// (a) /volumes/<volume group>/<subvolume>/.snap/<snapshot>/<UUID>
+	// (b) /volumes/<volume group>/<subvolume>/<UUID>/.snap/_<snapshot>_<snapshot inode number>
+
+	if !vo.ProvisionVolume {
+		// Case (b)
+		//
+		// If the volume is not provisioned by us, we assume that we have access only
+		// to snapshot's parent volume root. In this case, o.RootPath is expected to
+		// be already set in the volume context.
+
+		// BackingSnapshotRoot cannot be determined at this stage, because the
+		// full directory name is not known (see snapshot path format for case
+		// (b) above). RootPath/.snap must be traversed in order to find out
+		// the snapshot directory name.
+
+		return nil
+	}
+
+	parentBackingSnapVolOpts, _, snapID, err := NewSnapshotOptionsFromID(ctx, vo.BackingSnapshotID, cr)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve backing snapshot %s: %w", vo.BackingSnapshotID, err)
+	}
+
+	// Ensure that backing snapshot parent's volume options match the context.
+	// Snapshot-backed volume inherits all its parent's (parent of the snapshot) options.
+
+	if vo.ClusterID != parentBackingSnapVolOpts.ClusterID {
+		return fmtBackingSnapshotOptionMismatch("clusterID", vo.ClusterID, parentBackingSnapVolOpts.ClusterID)
+	}
+
+	if vo.Pool != "" {
+		return errors.New("cannot set pool for snapshot-backed volume")
+	}
+
+	if vo.MetadataPool != parentBackingSnapVolOpts.MetadataPool {
+		return fmtBackingSnapshotOptionMismatch("MetadataPool", vo.MetadataPool, parentBackingSnapVolOpts.MetadataPool)
+	}
+
+	if vo.FsName != parentBackingSnapVolOpts.FsName {
+		return fmtBackingSnapshotOptionMismatch("fsName", vo.FsName, parentBackingSnapVolOpts.FsName)
+	}
+
+	if vo.SubvolumeGroup != parentBackingSnapVolOpts.SubvolumeGroup {
+		return fmtBackingSnapshotOptionMismatch("SubvolumeGroup", vo.SubvolumeGroup, parentBackingSnapVolOpts.SubvolumeGroup)
+	}
+
+	vo.Features = parentBackingSnapVolOpts.Features
+	vo.Size = parentBackingSnapVolOpts.Size
+
+	// For case (a) (o.ProvisionVolume==true is assumed), snapshot root path
+	// can be built out of subvolume root path, which is in following format:
+	//
+	//   /volumes/<volume group>/<subvolume>/<subvolume UUID>
+
+	subvolRoot, subvolUUID := path.Split(parentBackingSnapVolOpts.RootPath)
+
+	vo.RootPath = subvolRoot
+	vo.BackingSnapshotRoot = path.Join(".snap", snapID.FsSnapshotName, subvolUUID)
+
+	return nil
 }
 
 // NewVolumeOptionsFromMonitorList generates a new instance of VolumeOptions and
@@ -438,8 +558,16 @@ func NewVolumeOptionsFromMonitorList(
 		return nil, nil, err
 	}
 
+	if err = extractOptionalOption(&opts.BackingSnapshotID, "backingSnapshotID", options); err != nil {
+		return nil, nil, err
+	}
+
 	vid.FsSubvolName = volID
 	vid.VolumeID = volID
+
+	if opts.BackingSnapshotID != "" {
+		opts.BackingSnapshot = true
+	}
 
 	return &opts, &vid, nil
 }
@@ -510,6 +638,10 @@ func NewVolumeOptionsFromStaticVolume(
 
 	vid.FsSubvolName = opts.RootPath
 	vid.VolumeID = volID
+
+	if opts.BackingSnapshotID != "" {
+		opts.BackingSnapshot = true
+	}
 
 	return &opts, &vid, nil
 }
@@ -599,6 +731,7 @@ func NewSnapshotOptionsFromID(
 	}
 	volOptions.Features = subvolInfo.Features
 	volOptions.Size = subvolInfo.BytesQuota
+	volOptions.RootPath = subvolInfo.Path
 	snap := core.NewSnapshot(volOptions.conn, sid.FsSnapshotName, &volOptions.SubVolume)
 	info, err := snap.GetSnapshotInfo(ctx)
 	if err != nil {
