@@ -47,6 +47,11 @@ parameters:
   # If omitted, defaults to "csi-vol-".
   # volumeNamePrefix: "foo-bar-"
 
+  # (optional) Boolean value. The PVC shall be backed by the CephFS snapshot
+  # specified in its data source. `pool` parameter must not be specified.
+  # (defaults to `false`)
+  # backingSnapshot: "true"
+
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 mountOptions:
