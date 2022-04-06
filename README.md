@@ -128,10 +128,10 @@ in the Kubernetes documentation.
 | v3.6.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.6.0    |
 | v3.5.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.5.1    |
 | v3.5.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.5.0    |
-| v3.4.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.4.0    |
 
 | Deprecated Ceph CSI Release/Branch | Container image name | Image Tag |
 | ----------------------- | --------------------------------| --------- |
+| v3.4.0 (Release)        | quay.io/cephcsi/cephcsi         | v3.4.0    |
 | v3.3.1 (Release)        | quay.io/cephcsi/cephcsi         | v3.3.1    |
 | v3.3.0 (Release)        | quay.io/cephcsi/cephcsi         | v3.3.0    |
 | v3.2.2 (Release)        | quay.io/cephcsi/cephcsi         | v3.2.2    |
