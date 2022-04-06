@@ -42,6 +42,7 @@ spec:
           # created by privileged CSI driver container.
           securityContext:
             privileged: true
+            allowPrivilegeEscalation: true
           image: "{{ .Values.nodeplugin.registrar.image.repository }}:{{ .Values.nodeplugin.registrar.image.tag }}"
           imagePullPolicy: {{ .Values.nodeplugin.registrar.image.pullPolicy }}
           args:
@@ -142,6 +143,7 @@ spec:
         - name: liveness-prometheus
           securityContext:
             privileged: true
+            allowPrivilegeEscalation: true
           image: "{{ .Values.nodeplugin.plugin.image.repository }}:{{ .Values.nodeplugin.plugin.image.tag }}"
           imagePullPolicy: {{ .Values.nodeplugin.plugin.image.pullPolicy }}
           args:
