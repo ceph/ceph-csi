@@ -152,7 +152,7 @@ type Config struct {
 	// ownerKey is used to identify the owner of the volume, can be used with some KMS configurations
 	ownerKey string
 
-	// backingSnapshotIDKey is snapshot ID on which a shallow CephFS volume is based.
+	// backingSnapshotIDKey ID of the snapshot on which the CephFS snapshot-backed volume is based
 	backingSnapshotIDKey string
 
 	// commonPrefix is the prefix common to all omap keys for this Config
@@ -532,7 +532,7 @@ Input arguments:
 	- kmsConf: Name of the key management service used to encrypt the image (optional)
 	- volUUID: UUID need to be reserved instead of auto-generating one (this is useful for mirroring and metro-DR)
 	- owner: the owner of the volume (optional)
-	- backingSnapshotID:  (optional)
+	- backingSnapshotID: ID of the snapshot on which the CephFS snapshot-backed volume is based (optional)
 
 Return values:
 	- string: Contains the UUID that was reserved for the passed in reqName
@@ -645,7 +645,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 		omapValues[cj.cephSnapSourceKey] = parentName
 	}
 
-	// Update backing snapshot ID for shallow CephFS volume
+	// Update backing snapshot ID for snapshot-backed CephFS volume
 	if backingSnapshotID != "" {
 		omapValues[cj.backingSnapshotIDKey] = backingSnapshotID
 	}
@@ -667,7 +667,7 @@ type ImageAttributes struct {
 	Owner             string // Contains the owner to be used in combination with KmsID (for some KMS)
 	ImageID           string // Contains the image id
 	JournalPoolID     int64  // Pool ID of the CSI journal pool, stored in big endian format (on-disk data)
-	BackingSnapshotID string // ID of the backing snapshot of a shallow CephFS volume
+	BackingSnapshotID string // ID of the snapshot on which the CephFS snapshot-backed volume is based
 }
 
 // GetImageAttributes fetches all keys and their values, from a UUID directory, returning ImageAttributes structure.
