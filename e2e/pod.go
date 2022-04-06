@@ -428,6 +428,25 @@ func calculateSHA512sum(f *framework.Framework, app *v1.Pod, filePath string, op
 	return checkSum, nil
 }
 
+func appendToFileInContainer(
+	f *framework.Framework,
+	app *v1.Pod,
+	filePath,
+	toAppend string,
+	opt *metav1.ListOptions,
+) error {
+	cmd := fmt.Sprintf("echo %q >> %s", toAppend, filePath)
+	_, stdErr, err := execCommandInPod(f, cmd, app.Namespace, opt)
+	if err != nil {
+		return fmt.Errorf("could not append to file %s: %w ; stderr: %s", filePath, err, stdErr)
+	}
+	if stdErr != "" {
+		return fmt.Errorf("could not append to file %s: %v", filePath, stdErr)
+	}
+
+	return nil
+}
+
 // getKernelVersionFromDaemonset gets the kernel version from the specified container.
 func getKernelVersionFromDaemonset(f *framework.Framework, ns, dsn, cn string) (string, error) {
 	selector, err := getDaemonSetLabelSelector(f, ns, dsn)

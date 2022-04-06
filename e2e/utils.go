@@ -62,8 +62,9 @@ const (
 	// deletePolicy is the default policy in E2E.
 	deletePolicy = v1.PersistentVolumeReclaimDelete
 	// Default key and label for Listoptions.
-	appKey   = "app"
-	appLabel = "write-data-in-pod"
+	appKey        = "app"
+	appLabel      = "write-data-in-pod"
+	appCloneLabel = "app-clone"
 
 	noError = ""
 	// labels/selector used to list/delete rbd pods.
