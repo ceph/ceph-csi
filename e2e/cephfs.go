@@ -1378,6 +1378,16 @@ var _ = Describe("cephfs", func() {
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 			})
 
+			// FIXME: in case NFS testing is done, prevent deletion
+			// of the CephFS filesystem and related pool. This can
+			// probably be addressed in a nicer way, making sure
+			// everything is tested, always.
+			if testNFS {
+				e2elog.Logf("skipping CephFS destructive tests, allow NFS to run")
+
+				return
+			}
+
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and delete PVC when backend pool deleted", func() {

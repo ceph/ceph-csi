@@ -192,6 +192,9 @@ type ResourceDeployer interface {
 type yamlResource struct {
 	filename string
 
+	// namespace defaults to cephCSINamespace if not set
+	namespace string
+
 	// allowMissing prevents a failure in case the file is missing.
 	allowMissing bool
 }
@@ -206,7 +209,12 @@ func (yr *yamlResource) Do(action kubectlAction) error {
 		return fmt.Errorf("failed to read content from %q: %w", yr.filename, err)
 	}
 
-	err = retryKubectlInput(cephCSINamespace, action, string(data), deployTimeout)
+	ns := cephCSINamespace
+	if yr.namespace != "" {
+		ns = yr.namespace
+	}
+
+	err = retryKubectlInput(ns, action, string(data), deployTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to %s resource %q: %w", action, yr.filename, err)
 	}
@@ -250,6 +258,40 @@ func (yrn *yamlResourceNamespaced) Do(action kubectlAction) error {
 	err = retryKubectlInput(yrn.namespace, action, data, deployTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to %s resource %q in namespace %q: %w", action, yrn.filename, yrn.namespace, err)
+	}
+
+	return nil
+}
+
+type rookNFSResource struct {
+	f           *framework.Framework
+	modules     []string
+	orchBackend string
+}
+
+func (rnr *rookNFSResource) Do(action kubectlAction) error {
+	if action != kubectlCreate {
+		// we won't disabled modules
+		return nil
+	}
+
+	for _, module := range rnr.modules {
+		cmd := fmt.Sprintf("ceph mgr module enable %s", module)
+		_, _, err := execCommandInToolBoxPod(rnr.f, cmd, rookNamespace)
+		if err != nil {
+			// depending on the Ceph/Rook version, modules are
+			// enabled by default
+			e2elog.Logf("enabling module %q failed: %v", module, err)
+		}
+	}
+
+	if rnr.orchBackend != "" {
+		// this is not required for all Rook versions, allow failing
+		cmd := fmt.Sprintf("ceph orch set backend %s", rnr.orchBackend)
+		_, _, err := execCommandInToolBoxPod(rnr.f, cmd, rookNamespace)
+		if err != nil {
+			e2elog.Logf("setting orch backend %q failed: %v", rnr.orchBackend, err)
+		}
 	}
 
 	return nil
