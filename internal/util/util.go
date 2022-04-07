@@ -90,7 +90,7 @@ type Config struct {
 	EnableGRPCMetrics bool          // option to enable grpc metrics
 
 	EnableProfiling    bool // flag to enable profiling
-	IsControllerServer bool // if set to true start provisoner server
+	IsControllerServer bool // if set to true start provisioner server
 	IsNodeServer       bool // if set to true start node server
 	Version            bool // cephcsi version
 
@@ -164,7 +164,7 @@ type KernelVersion struct {
 	SubLevel     int
 	ExtraVersion int    // prefix of the part after the first "-"
 	Distribution string // component of full extraversion
-	Backport     bool   // backports have a fixed version/patchlevel/sublevel
+	Backport     bool   // backport have a fixed version/patchlevel/sublevel
 }
 
 // parseKernelRelease parses a kernel release version string into:
@@ -202,9 +202,9 @@ func parseKernelRelease(release string) (int, int, int, int, error) {
 
 // CheckKernelSupport checks the running kernel and comparing it to known
 // versions that have support for required features . Distributors of
-// enterprise Linux have backported quota support to previous versions. This
+// enterprise Linux have backport quota support to previous versions. This
 // function checks if the running kernel is one of the versions that have the
-// feature/fixes backported.
+// feature/fixes backport.
 //
 // `uname -r` (or Uname().Utsname.Release has a format like 1.2.3-rc.vendor
 // This can be slit up in the following components: - version (1) - patchlevel
