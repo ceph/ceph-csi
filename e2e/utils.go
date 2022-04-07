@@ -69,8 +69,10 @@ var (
 	deployTimeout    int
 	deployCephFS     bool
 	deployRBD        bool
+	deployNFS        bool
 	testCephFS       bool
 	testRBD          bool
+	testNFS          bool
 	helmTest         bool
 	upgradeTesting   bool
 	upgradeVersion   string
