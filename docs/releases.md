@@ -41,7 +41,7 @@ and it must be backward compatible.
 
 - When `MAJOR` increases, the new release adds **new features,
   bug fixes, or both** and which *changes the behavior from
-  the previous release* (may be backward incompatible).
+  the previous release* (maybe backward incompatible).
 
 ## Tagging repositories
 

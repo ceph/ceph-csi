@@ -25,7 +25,7 @@ it is **highly** encouraged to:
    package](https://github.com/ceph/go-ceph). It is required to install the
    Ceph C headers in order to compile Ceph-CSI. The packages are called
    `librados-devel` and `librbd-devel` on many Linux distributions. See the
-   [go-ceph installaton
+   [go-ceph installation
    instructions](https://github.com/ceph/go-ceph#installation) for more
    details.
 * Run
@@ -169,7 +169,7 @@ The `component` in the subject of the commit message can be one of the following
 * `doc`: documentation updates
 * `util`: utilities shared between components use `cephfs` or `rbd` if the
    change is only relevant for one of the type of storage
-* `journal`: any of the journalling functionalities
+* `journal`: any of the journaling functionalities
 * `helm`: deployment changes for the Helm charts
 * `deploy`: updates to Kubernetes templates for deploying components
 * `build`: anything related to building Ceph-CSI, the executable or container
@@ -312,12 +312,12 @@ Right now, we also have below commands to manually retrigger the CI jobs
 **Caution**: Please do not retrigger the CI jobs without an understanding of
              the root cause, because:
 
-* We may miss some of the important corner cases which are true negatives,
+* We may miss some important corner cases which are true negatives,
   and hard to reproduce
 * Retriggering jobs for known failures can unnecessarily put CI resources
   under pressure
 
-Hence it is recommended that you please go through the CI logs first, if you
+Hence, it is recommended that you please go through the CI logs first, if you
 are certain about the flaky test failure behavior, then comment on the PR
 indicating the logs about a particular test that went flaky and use the
 appropriate command to retrigger the job[s].
