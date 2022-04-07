@@ -47,7 +47,7 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 
 	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to exec command in toolbox: %w", err)
 	}
 	if stdErr != "" {
 		return fmt.Errorf("error getting fsid %v", stdErr)
