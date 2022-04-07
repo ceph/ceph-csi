@@ -102,6 +102,7 @@ are available while running tests:
 | timeout           | Panic test binary after duration d (default 0, timeout disabled)              |
 | v                 | Verbose: print additional output                                              |
 | filesystem        | Name of the CephFS filesystem (default: "myfs")                               |
+| is-openshift      | Run in OpenShift compatibility mode, skips certain new feature tests          |
 
 ## E2E for snapshot
 
