@@ -40,7 +40,7 @@ const (
 
 // validateSubvolumegroup validates whether subvolumegroup is present.
 func validateSubvolumegroup(f *framework.Framework, subvolgrp string) error {
-	cmd := fmt.Sprintf("ceph fs subvolumegroup getpath myfs %s", subvolgrp)
+	cmd := fmt.Sprintf("ceph fs subvolumegroup getpath %s %s", fileSystemName, subvolgrp)
 	stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to exec command in toolbox: %w", err)
@@ -67,7 +67,7 @@ func createCephfsStorageClass(
 	if err != nil {
 		return err
 	}
-	sc.Parameters["fsName"] = "myfs"
+	sc.Parameters["fsName"] = fileSystemName
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-name"] = cephFSProvisionerSecretName
 

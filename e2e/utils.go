@@ -526,7 +526,7 @@ func pvcDeleteWhenPoolNotFound(pvcPath string, cephFS bool, f *framework.Framewo
 			return err
 		}
 		// delete cephFS filesystem
-		err = deletePool("myfs", cephFS, f)
+		err = deletePool(fileSystemName, cephFS, f)
 		if err != nil {
 			return err
 		}

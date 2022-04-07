@@ -331,7 +331,6 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	var (
 		cephFsVolName = "testSubVol"
 		groupName     = "testGroup"
-		fsName        = "myfs"
 		pvName        = "pv-name"
 		pvcName       = "pvc-name"
 		namespace     = f.UniqueName
@@ -361,7 +360,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	size := "4294967296"
 
 	// create subvolumegroup, command will work even if group is already present.
-	cmd := fmt.Sprintf("ceph fs subvolumegroup create %s %s", fsName, groupName)
+	cmd := fmt.Sprintf("ceph fs subvolumegroup create %s %s", fileSystemName, groupName)
 
 	_, e, err = execCommandInPod(f, cmd, rookNamespace, &listOpt)
 	if err != nil {
@@ -372,7 +371,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	}
 
 	// create subvolume
-	cmd = fmt.Sprintf("ceph fs subvolume create %s %s %s --size %s", fsName, cephFsVolName, groupName, size)
+	cmd = fmt.Sprintf("ceph fs subvolume create %s %s %s --size %s", fileSystemName, cephFsVolName, groupName, size)
 	_, e, err = execCommandInPod(f, cmd, rookNamespace, &listOpt)
 	if err != nil {
 		return err
@@ -382,7 +381,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	}
 
 	// get rootpath
-	cmd = fmt.Sprintf("ceph fs subvolume getpath %s %s %s", fsName, cephFsVolName, groupName)
+	cmd = fmt.Sprintf("ceph fs subvolume getpath %s %s %s", fileSystemName, cephFsVolName, groupName)
 	rootPath, e, err := execCommandInPod(f, cmd, rookNamespace, &listOpt)
 	if err != nil {
 		return err
@@ -415,7 +414,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	}
 
 	opt["clusterID"] = fsID
-	opt["fsName"] = fsName
+	opt["fsName"] = fileSystemName
 	opt["staticVolume"] = strconv.FormatBool(true)
 	opt["rootPath"] = rootPath
 	pv := getStaticPV(
@@ -474,7 +473,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	}
 
 	// delete subvolume
-	cmd = fmt.Sprintf("ceph fs subvolume rm %s %s %s", fsName, cephFsVolName, groupName)
+	cmd = fmt.Sprintf("ceph fs subvolume rm %s %s %s", fileSystemName, cephFsVolName, groupName)
 	_, e, err = execCommandInPod(f, cmd, rookNamespace, &listOpt)
 	if err != nil {
 		return err
@@ -484,7 +483,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	}
 
 	// delete subvolume group
-	cmd = fmt.Sprintf("ceph fs subvolumegroup rm %s %s", fsName, groupName)
+	cmd = fmt.Sprintf("ceph fs subvolumegroup rm %s %s", fileSystemName, groupName)
 	_, e, err = execCommandInPod(f, cmd, rookNamespace, &listOpt)
 	if err != nil {
 		return err

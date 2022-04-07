@@ -101,6 +101,7 @@ are available while running tests:
 | kubeconfig        | Path to kubeconfig containing embedded authinfo (default: $HOME/.kube/config) |
 | timeout           | Panic test binary after duration d (default 0, timeout disabled)              |
 | v                 | Verbose: print additional output                                              |
+| filesystem        | Name of the CephFS filesystem (default: "myfs")                               |
 
 ## E2E for snapshot
 
