@@ -79,6 +79,7 @@ var (
 	radosNamespace   string
 	poll             = 2 * time.Second
 	isOpenShift      bool
+	clusterID        string
 )
 
 func getMons(ns string, c kubernetes.Interface) ([]string, error) {
@@ -122,6 +123,10 @@ func getMonsHash(mons string) string {
 }
 
 func getClusterID(f *framework.Framework) (string, error) {
+	if clusterID != "" {
+		return clusterID, nil
+	}
+
 	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
 	if err != nil {
 		return "", fmt.Errorf("failed getting clusterID through toolbox: %w", err)

@@ -87,22 +87,23 @@ Thanks to [minikube](../scripts/minikube.sh) script for the handy `deploy-rook` 
 In addition to standard go tests parameters, the following custom parameters
 are available while running tests:
 
-| flag              | description                                                                   |
-| ----------------- | ----------------------------------------------------------------------------- |
-| deploy-timeout    | Timeout to wait for created kubernetes resources (default: 10 minutes)        |
-| deploy-cephfs     | Deploy cephFS CSI driver as part of E2E (default: true)                       |
-| deploy-rbd        | Deploy rbd CSI driver as part of E2E (default: true)                          |
-| test-cephfs       | Test cephFS CSI driver as part of E2E (default: true)                         |
-| upgrade-testing   | Perform upgrade testing (default: false)                                      |
-| upgrade-version   | Target version for upgrade testing (default: "v3.5.1")                        |
-| test-rbd          | Test rbd CSI driver as part of E2E (default: true)                            |
-| cephcsi-namespace | The namespace in which cephcsi driver will be created (default: "default")    |
-| rook-namespace    | The namespace in which rook operator is installed (default: "rook-ceph")      |
-| kubeconfig        | Path to kubeconfig containing embedded authinfo (default: $HOME/.kube/config) |
-| timeout           | Panic test binary after duration d (default 0, timeout disabled)              |
-| v                 | Verbose: print additional output                                              |
-| is-openshift      | Run in OpenShift compatibility mode, skips certain new feature tests          |
-| filesystem        | Name of the CephFS filesystem (default: "myfs")                               |
+| flag              | description                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| deploy-timeout    | Timeout to wait for created kubernetes resources (default: 10 minutes)                            |
+| deploy-cephfs     | Deploy cephFS CSI driver as part of E2E (default: true)                                           |
+| deploy-rbd        | Deploy rbd CSI driver as part of E2E (default: true)                                              |
+| test-cephfs       | Test cephFS CSI driver as part of E2E (default: true)                                             |
+| upgrade-testing   | Perform upgrade testing (default: false)                                                          |
+| upgrade-version   | Target version for upgrade testing (default: "v3.5.1")                                            |
+| test-rbd          | Test rbd CSI driver as part of E2E (default: true)                                                |
+| cephcsi-namespace | The namespace in which cephcsi driver will be created (default: "default")                        |
+| rook-namespace    | The namespace in which rook operator is installed (default: "rook-ceph")                          |
+| kubeconfig        | Path to kubeconfig containing embedded authinfo (default: $HOME/.kube/config)                     |
+| timeout           | Panic test binary after duration d (default 0, timeout disabled)                                  |
+| v                 | Verbose: print additional output                                                                  |
+| is-openshift      | Run in OpenShift compatibility mode, skips certain new feature tests                              |
+| filesystem        | Name of the CephFS filesystem (default: "myfs")                                                   |
+| clusterid         | Use the Ceph cluster id in the StorageClasses and SnapshotClasses (default: `ceph fsid` detected) |
 
 ## E2E for snapshot
 
