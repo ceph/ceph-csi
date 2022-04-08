@@ -45,6 +45,7 @@ func init() {
 	flag.StringVar(&rookNamespace, "rook-namespace", "rook-ceph", "namespace in which rook is deployed")
 	flag.BoolVar(&isOpenShift, "is-openshift", false, "disables certain checks on OpenShift")
 	flag.StringVar(&fileSystemName, "filesystem", "myfs", "CephFS filesystem to use")
+	flag.StringVar(&clusterID, "clusterid", "", "Ceph cluster ID to use (defaults to `ceph fsid` detection)")
 	setDefaultKubeconfig()
 
 	// Register framework flags, then handle flags
