@@ -92,14 +92,12 @@ func createCephfsStorageClass(
 
 	// fetch and set fsID from the cluster if not set in params
 	if _, found := params["clusterID"]; !found {
-		fsID, stdErr, failErr := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
-		if failErr != nil {
-			return failErr
+		var fsID string
+		fsID, err = getClusterID(f)
+		if err != nil {
+			return fmt.Errorf("failed to get clusterID: %w", err)
 		}
-		if stdErr != "" {
-			return fmt.Errorf("error getting fsid %v", stdErr)
-		}
-		sc.Parameters["clusterID"] = strings.Trim(fsID, "\n")
+		sc.Parameters["clusterID"] = fsID
 	}
 	sc.Namespace = cephCSINamespace
 

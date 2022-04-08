@@ -19,7 +19,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
@@ -158,14 +157,10 @@ func createRBDSnapshotClass(f *framework.Framework) error {
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-name"] = rbdProvisionerSecretName
 
-	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+	fsID, err := getClusterID(f)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get clusterID: %w", err)
 	}
-	if stdErr != "" {
-		return fmt.Errorf("failed to get fsid from ceph cluster %s", stdErr)
-	}
-	fsID = strings.Trim(fsID, "\n")
 	sc.Parameters["clusterID"] = fsID
 	sclient, err := newSnapshotClient()
 	if err != nil {
@@ -193,14 +188,11 @@ func createCephFSSnapshotClass(f *framework.Framework) error {
 	sc := getSnapshotClass(scPath)
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
 	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-name"] = cephFSProvisionerSecretName
-	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+
+	fsID, err := getClusterID(f)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get clusterID: %w", err)
 	}
-	if stdErr != "" {
-		return fmt.Errorf("failed to get fsid from ceph cluster %s", stdErr)
-	}
-	fsID = strings.Trim(fsID, "\n")
 	sc.Parameters["clusterID"] = fsID
 	sclient, err := newSnapshotClient()
 	if err != nil {
