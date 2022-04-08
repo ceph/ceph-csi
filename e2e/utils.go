@@ -121,6 +121,18 @@ func getMonsHash(mons string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(mons))) //nolint:gosec // hash generation
 }
 
+func getClusterID(f *framework.Framework) (string, error) {
+	fsID, stdErr, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+	if err != nil {
+		return "", fmt.Errorf("failed getting clusterID through toolbox: %w", err)
+	}
+	if stdErr != "" {
+		return "", fmt.Errorf("error getting fsid: %s", stdErr)
+	}
+	// remove new line present in fsID
+	return strings.Trim(fsID, "\n"), nil
+}
+
 func getStorageClass(path string) (scv1.StorageClass, error) {
 	sc := scv1.StorageClass{}
 	err := unmarshal(path, &sc)

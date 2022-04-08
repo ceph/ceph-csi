@@ -127,15 +127,11 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 
 	c := f.ClientSet
 
-	fsID, e, err := execCommandInToolBoxPod(f, "ceph fsid", rookNamespace)
+	fsID, err := getClusterID(f)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get clusterID: %w", err)
 	}
-	if e != "" {
-		return fmt.Errorf("failed to get fsid from ceph cluster %s", e)
-	}
-	// remove new line present in fsID
-	fsID = strings.Trim(fsID, "\n")
+
 	size := staticPVSize
 	// create rbd image
 	cmd := fmt.Sprintf(
@@ -144,7 +140,7 @@ func validateRBDStaticPV(f *framework.Framework, appPath string, isBlock, checkI
 		staticPVSize,
 		rbdOptions(defaultRBDPool))
 
-	_, e, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
+	_, e, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if err != nil {
 		return err
 	}
@@ -346,15 +342,10 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 		LabelSelector: "app=rook-ceph-tools",
 	}
 
-	fsID, e, err := execCommandInPod(f, "ceph fsid", rookNamespace, &listOpt)
+	fsID, err := getClusterID(f)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get clusterID: %w", err)
 	}
-	if e != "" {
-		return fmt.Errorf("failed to get fsid from ceph cluster %s", e)
-	}
-	// remove new line present in fsID
-	fsID = strings.Trim(fsID, "\n")
 
 	// 4GiB in bytes
 	size := "4294967296"
@@ -362,7 +353,7 @@ func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) erro
 	// create subvolumegroup, command will work even if group is already present.
 	cmd := fmt.Sprintf("ceph fs subvolumegroup create %s %s", fileSystemName, groupName)
 
-	_, e, err = execCommandInPod(f, cmd, rookNamespace, &listOpt)
+	_, e, err := execCommandInPod(f, cmd, rookNamespace, &listOpt)
 	if err != nil {
 		return err
 	}
