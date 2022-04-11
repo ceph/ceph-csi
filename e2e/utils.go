@@ -1492,3 +1492,22 @@ func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...str
 		return true, nil
 	})
 }
+
+// rwopSupported indicates that a test using RWOP is expected to succeed. If
+// the accessMode is reported as invalid, rwopSupported will be set to false.
+var rwopSupported = true
+
+// rwopMayFail returns true if the accessMode is not valid. k8s v1.22 requires
+// a feature gate, which might not be set. In case the accessMode is invalid,
+// the featuregate is not set, and testing RWOP is not possible.
+func rwopMayFail(err error) bool {
+	if !rwopSupported {
+		return true
+	}
+
+	if strings.Contains(err.Error(), `invalid: spec.accessModes: Unsupported value: "ReadWriteOncePod"`) {
+		rwopSupported = false
+	}
+
+	return !rwopSupported
+}

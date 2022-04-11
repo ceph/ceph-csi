@@ -794,6 +794,11 @@ var _ = Describe("RBD", func() {
 					baseAppName := app.Name
 					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 					if err != nil {
+						if rwopMayFail(err) {
+							e2elog.Logf("RWOP is not supported: %v", err)
+
+							return
+						}
 						e2elog.Failf("failed to create PVC: %v", err)
 					}
 					// validate created backend rbd images
@@ -828,6 +833,11 @@ var _ = Describe("RBD", func() {
 					baseAppName := app.Name
 					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 					if err != nil {
+						if rwopMayFail(err) {
+							e2elog.Logf("RWOP is not supported: %v", err)
+
+							return
+						}
 						e2elog.Failf("failed to create PVC: %v", err)
 					}
 					// validate created backend rbd images
