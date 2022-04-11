@@ -20,6 +20,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util/log"
 
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	clientConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -59,9 +60,10 @@ func Start(config Config) error {
 	opts := manager.Options{
 		LeaderElection: true,
 		// disable metrics
-		MetricsBindAddress:      "0",
-		LeaderElectionNamespace: config.Namespace,
-		LeaderElectionID:        electionID,
+		MetricsBindAddress:         "0",
+		LeaderElectionNamespace:    config.Namespace,
+		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
+		LeaderElectionID:           electionID,
 	}
 	mgr, err := manager.New(clientConfig.GetConfigOrDie(), opts)
 	if err != nil {
