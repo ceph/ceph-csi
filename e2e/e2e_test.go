@@ -77,4 +77,14 @@ func handleFlags() {
 	framework.RegisterClusterFlags(flag.CommandLine)
 	testing.Init()
 	flag.Parse()
+
+	// testNFS will automatically be enabled when testCephFS is enabled,
+	// this makes sure the NFS tests run in the CI where there are
+	// different jobs for CephFS and RBD. With a dedicated testNFS
+	// variable, it is still possible to only run the NFS tests, when both
+	// CephFS and RBD are disabled.
+	if testCephFS {
+		testNFS = testCephFS
+		deployNFS = deployCephFS
+	}
 }
