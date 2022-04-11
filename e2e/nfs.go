@@ -239,7 +239,7 @@ var _ = Describe("nfs", func() {
 	var c clientset.Interface
 	// deploy CephFS CSI
 	BeforeEach(func() {
-		if !testNFS || upgradeTesting {
+		if !testNFS || upgradeTesting || helmTest {
 			Skip("Skipping NFS E2E")
 		}
 		c = f.ClientSet
