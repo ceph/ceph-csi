@@ -40,7 +40,7 @@ func init() {
 	flag.BoolVar(&testRBD, "test-rbd", true, "test rbd csi driver")
 	flag.BoolVar(&helmTest, "helm-test", false, "tests running on deployment via helm")
 	flag.BoolVar(&upgradeTesting, "upgrade-testing", false, "perform upgrade testing")
-	flag.StringVar(&upgradeVersion, "upgrade-version", "v3.3.1", "target version for upgrade testing")
+	flag.StringVar(&upgradeVersion, "upgrade-version", "v3.5.1", "target version for upgrade testing")
 	flag.StringVar(&cephCSINamespace, "cephcsi-namespace", defaultNs, "namespace in which cephcsi deployed")
 	flag.StringVar(&rookNamespace, "rook-namespace", "rook-ceph", "namespace in which rook is deployed")
 	setDefaultKubeconfig()
