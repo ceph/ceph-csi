@@ -121,6 +121,9 @@ type Config struct {
 
 	// CSI-Addons endpoint
 	CSIAddonsEndpoint string
+
+	// Cluster name
+	ClusterName string
 }
 
 // ValidateDriverName validates the driver name.

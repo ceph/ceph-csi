@@ -78,6 +78,9 @@ const (
 
 	// krbd attribute file to check supported features.
 	krbdSupportedFeaturesFile = "/sys/bus/rbd/supported_features"
+
+	// clusterNameKey cluster Key, set on RBD image.
+	clusterNameKey = "csi.ceph.com/cluster/name"
 )
 
 // rbdImage contains common attributes and methods for the rbdVolume and
@@ -120,6 +123,9 @@ type rbdImage struct {
 	ImageFeatureSet librbd.FeatureSet
 	// Primary represent if the image is primary or not.
 	Primary bool
+
+	// Cluster name
+	ClusterName string
 
 	// encryption provides access to optional VolumeEncryption functions
 	encryption *util.VolumeEncryption
@@ -1998,6 +2004,14 @@ func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
 		err := rv.SetMetadata(k, v)
 		if err != nil {
 			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w", k, v, err)
+		}
+	}
+
+	if rv.ClusterName != "" {
+		err := rv.SetMetadata(clusterNameKey, rv.ClusterName)
+		if err != nil {
+			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w",
+				clusterNameKey, rv.ClusterName, err)
 		}
 	}
 
