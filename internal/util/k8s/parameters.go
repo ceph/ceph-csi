@@ -26,14 +26,14 @@ const (
 
 	// PV and PVC metadata keys used by external provisioner as part of
 	// create requests as parameters, when `extra-create-metadata` is true.
-	pvcNameKey      = "csi.storage.k8s.io/pvc/name"
-	pvcNamespaceKey = "csi.storage.k8s.io/pvc/namespace"
-	pvNameKey       = "csi.storage.k8s.io/pv/name"
+	pvcNameKey      = csiParameterPrefix + "pvc/name"
+	pvcNamespaceKey = csiParameterPrefix + "pvc/namespace"
+	pvNameKey       = csiParameterPrefix + "pv/name"
 
 	// snapshot metadata keys.
-	volSnapNameKey        = "csi.storage.k8s.io/volumesnapshot/name"
-	volSnapNamespaceKey   = "csi.storage.k8s.io/volumesnapshot/namespace"
-	volSnapContentNameKey = "csi.storage.k8s.io/volumesnapshotcontent/name"
+	volSnapNameKey        = csiParameterPrefix + "volumesnapshot/name"
+	volSnapNamespaceKey   = csiParameterPrefix + "volumesnapshot/namespace"
+	volSnapContentNameKey = csiParameterPrefix + "volumesnapshotcontent/name"
 )
 
 // RemoveCSIPrefixedParameters removes parameters prefixed with csiParameterPrefix.
