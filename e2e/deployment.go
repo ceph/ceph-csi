@@ -24,6 +24,7 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -293,6 +294,183 @@ func (rnr *rookNFSResource) Do(action kubectlAction) error {
 		if err != nil {
 			e2elog.Logf("setting orch backend %q failed: %v", rnr.orchBackend, err)
 		}
+	}
+
+	return nil
+}
+
+func waitForDeploymentUpdateScale(
+	c kubernetes.Interface,
+	ns,
+	deploymentName string,
+	scale *autoscalingv1.Scale,
+	timeout int,
+) error {
+	t := time.Duration(timeout) * time.Minute
+	start := time.Now()
+	err := wait.PollImmediate(poll, t, func() (bool, error) {
+		scaleResult, upsErr := c.AppsV1().Deployments(ns).UpdateScale(context.TODO(),
+			deploymentName, scale, metav1.UpdateOptions{})
+		if upsErr != nil {
+			if isRetryableAPIError(upsErr) {
+				return false, nil
+			}
+			e2elog.Logf(
+				"Deployment UpdateScale %s/%s has not completed yet (%d seconds elapsed)",
+				ns, deploymentName, int(time.Since(start).Seconds()))
+
+			return false, fmt.Errorf("error update scale deployment %s/%s: %w", ns, deploymentName, upsErr)
+		}
+		if scaleResult.Spec.Replicas != scale.Spec.Replicas {
+			e2elog.Logf("scale result not matching for deployment %s/%s, desired scale %d, got %d",
+				ns, deploymentName, scale.Spec.Replicas, scaleResult.Spec.Replicas)
+
+			return false, fmt.Errorf("error scale not matching in deployment %s/%s: %w", ns, deploymentName, upsErr)
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed update scale deployment %s/%s: %w", ns, deploymentName, err)
+	}
+
+	return nil
+}
+
+func waitForDeploymentUpdate(
+	c kubernetes.Interface,
+	deployment *appsv1.Deployment,
+	timeout int,
+) error {
+	t := time.Duration(timeout) * time.Minute
+	start := time.Now()
+	err := wait.PollImmediate(poll, t, func() (bool, error) {
+		_, upErr := c.AppsV1().Deployments(deployment.Namespace).Update(
+			context.TODO(), deployment, metav1.UpdateOptions{})
+		if upErr != nil {
+			if isRetryableAPIError(upErr) {
+				return false, nil
+			}
+			e2elog.Logf(
+				"Deployment Update %s/%s has not completed yet (%d seconds elapsed)",
+				deployment.Namespace, deployment.Name, int(time.Since(start).Seconds()))
+
+			return false, fmt.Errorf("error updating deployment %s/%s: %w",
+				deployment.Namespace, deployment.Name, upErr)
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed update deployment %s/%s: %w", deployment.Namespace, deployment.Name, err)
+	}
+
+	return nil
+}
+
+// contains check if slice contains string.
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+
+	return false
+}
+
+func waitForContainersArgsUpdate(
+	c kubernetes.Interface,
+	ns,
+	deploymentName,
+	key,
+	value string,
+	containers []string,
+	timeout int,
+) error {
+	e2elog.Logf("waiting for deployment updates %s/%s", ns, deploymentName)
+
+	// Scale down to 0.
+	scale, err := c.AppsV1().Deployments(ns).GetScale(context.TODO(), deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error get scale deployment %s/%s: %w", ns, deploymentName, err)
+	}
+	count := scale.Spec.Replicas
+	scale.ResourceVersion = "" // indicate the scale update should be unconditional
+	scale.Spec.Replicas = 0
+	err = waitForDeploymentUpdateScale(c, ns, deploymentName, scale, timeout)
+	if err != nil {
+		return err
+	}
+
+	// Update deployment.
+	deployment, err := c.AppsV1().Deployments(ns).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error get deployment %s/%s: %w", ns, deploymentName, err)
+	}
+	cid := deployment.Spec.Template.Spec.Containers // cid: read as containers in deployment
+	for i := range cid {
+		if contains(containers, cid[i].Name) {
+			match := false
+			for j, ak := range cid[i].Args {
+				if ak == key {
+					// do replacement of value
+					match = true
+					cid[i].Args[j] = fmt.Sprintf("--%s=%s", key, value)
+
+					break
+				}
+			}
+			if !match {
+				// append a new key value
+				cid[i].Args = append(cid[i].Args, fmt.Sprintf("--%s=%s", key, value))
+			}
+			deployment.Spec.Template.Spec.Containers[i].Args = cid[i].Args
+		}
+	}
+	// clear creationTimestamp, generation, resourceVersion, and uid
+	deployment.CreationTimestamp = metav1.Time{}
+	deployment.Generation = 0
+	deployment.ResourceVersion = "0"
+	deployment.UID = ""
+	err = waitForDeploymentUpdate(c, deployment, timeout)
+	if err != nil {
+		return err
+	}
+
+	// Scale up to count.
+	scale.Spec.Replicas = count
+	err = waitForDeploymentUpdateScale(c, ns, deploymentName, scale, timeout)
+	if err != nil {
+		return err
+	}
+
+	// wait for scale to become count
+	t := time.Duration(timeout) * time.Minute
+	start := time.Now()
+	err = wait.PollImmediate(poll, t, func() (bool, error) {
+		deploy, getErr := c.AppsV1().Deployments(ns).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+		if getErr != nil {
+			if isRetryableAPIError(getErr) {
+				return false, nil
+			}
+			e2elog.Logf(
+				"Deployment Get %s/%s has not completed yet (%d seconds elapsed)",
+				ns, deploymentName, int(time.Since(start).Seconds()))
+
+			return false, fmt.Errorf("error getting deployment %s/%s: %w", ns, deploymentName, getErr)
+		}
+		if deploy.Status.Replicas != count {
+			e2elog.Logf("Expected deployment %s/%s replicas %d, got %d", ns, deploymentName, count, deploy.Status.Replicas)
+
+			return false, fmt.Errorf("error expected deployment %s/%s replicas %d, got %d",
+				ns, deploymentName, count, deploy.Status.Replicas)
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed getting deployment %s/%s: %w", ns, deploymentName, err)
 	}
 
 	return nil
