@@ -153,6 +153,8 @@ func (r *Driver) Run(conf *util.Config) {
 			log.FatalLogMsg(err.Error())
 		}
 		rbd.SetGlobalInt("krbdFeatures", krbdFeatures)
+
+		rbd.SetRbdNbdToolFeatures()
 	}
 
 	if conf.IsControllerServer {
