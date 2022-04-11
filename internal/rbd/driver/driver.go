@@ -161,6 +161,7 @@ func (r *Driver) Run(conf *util.Config) {
 
 	if conf.IsControllerServer {
 		r.cs = NewControllerServer(r.cd)
+		r.cs.ClusterName = conf.ClusterName
 		r.rs = NewReplicationServer(r.cs)
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {

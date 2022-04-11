@@ -68,6 +68,7 @@ func init() {
 	flag.StringVar(&conf.NodeID, "nodeid", "", "node id")
 	flag.StringVar(&conf.PluginPath, "pluginpath", defaultPluginPath, "plugin path")
 	flag.StringVar(&conf.StagingPath, "stagingpath", defaultStagingPath, "staging path")
+	flag.StringVar(&conf.ClusterName, "clustername", "", "name of the cluster")
 	flag.StringVar(&conf.InstanceID, "instanceid", "", "Unique ID distinguishing this instance of Ceph CSI among other"+
 		" instances, when sharing Ceph clusters across CSI instances for provisioning")
 	flag.IntVar(&conf.PidLimit, "pidlimit", 0, "the PID limit to configure through cgroups")
@@ -247,8 +248,9 @@ func main() {
 
 	case controllerType:
 		cfg := controller.Config{
-			DriverName: dname,
-			Namespace:  conf.DriverNamespace,
+			DriverName:  dname,
+			Namespace:   conf.DriverNamespace,
+			ClusterName: conf.ClusterName,
 		}
 		// initialize all controllers before starting.
 		initControllers()

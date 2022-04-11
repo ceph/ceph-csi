@@ -51,6 +51,9 @@ type ControllerServer struct {
 
 	// A map storing all volumes/snapshots with ongoing operations.
 	OperationLocks *util.OperationLock
+
+	// Cluster name
+	ClusterName string
 }
 
 func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.CreateVolumeRequest) error {
@@ -131,6 +134,8 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+
+	rbdVol.ClusterName = cs.ClusterName
 
 	// if the KMS is of type VaultToken, additional metadata is needed
 	// depending on the tenant, the KMS can be configured with other
@@ -1090,6 +1095,7 @@ func (cs *ControllerServer) CreateSnapshot(
 
 	// Update the metadata on snapshot not on the original image
 	rbdVol.RbdImageName = rbdSnap.RbdSnapName
+	rbdVol.ClusterName = cs.ClusterName
 
 	err = rbdVol.unsetAllMetadata(k8s.GetVolumeMetadataKeys())
 	if err != nil {

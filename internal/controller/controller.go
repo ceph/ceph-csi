@@ -35,8 +35,9 @@ type Manager interface {
 
 // Config holds the drivername and namespace name.
 type Config struct {
-	DriverName string
-	Namespace  string
+	DriverName  string
+	Namespace   string
+	ClusterName string
 }
 
 // ControllerList holds the list of managers need to be started.
