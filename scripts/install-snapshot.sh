@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# This script can be used to install/delete snapshotcontroller and snapshot beta CRD
+# This script can be used to install/delete snapshotcontroller and snapshot CRD
 
 SCRIPT_DIR="$(dirname "${0}")"
 

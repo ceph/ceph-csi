@@ -106,30 +106,6 @@ are available while running tests:
 
 After the support for snapshot/clone has been added to ceph-csi,
 you need to follow these steps before running e2e.
-Please note that the snapshot operation works only if the Kubernetes version
-is greater than or equal to 1.17.0.
-
-- Delete Alpha snapshot CRD created by ceph-csi in rook.
-  - Check if you have any `v1alpha1` CRD created in our Kubernetes cluster
-
-      ```bash
-      $ kubectl get crd volumesnapshotclasses.snapshot.storage.k8s.io -o yaml |grep v1alpha1
-        - name: v1alpha1
-        - v1alpha1
-      $ kubectl get crd volumesnapshotcontents.snapshot.storage.k8s.io -o yaml |grep v1alpha1
-        - name: v1alpha1
-        - v1alpha1
-      $ kubectl get crd volumesnapshots.snapshot.storage.k8s.io -o yaml |grep v1alpha1
-        - name: v1alpha1
-        - v1alpha1
-      ```
-
-  - If you have Alpha CRD, delete it as from Kubernetes 1.17.0+ the snapshot
-    should be `v1beta1`
-
-    ```console
-    ./scripts/install-snapshot.sh delete-crd
-    ```
 
 - Install snapshot controller and Beta snapshot CRD
 
