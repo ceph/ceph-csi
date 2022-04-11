@@ -90,12 +90,12 @@ are available while running tests:
 | flag              | description                                                                   |
 | ----------------- | ----------------------------------------------------------------------------- |
 | deploy-timeout    | Timeout to wait for created kubernetes resources (default: 10 minutes)        |
-| deploy-cephfs     | Deploy cephFS csi driver as part of E2E (default: true)                       |
-| deploy-rbd        | Deploy rbd csi driver as part of E2E (default: true)                          |
-| test-cephfs       | Test cephFS csi driver as part of E2E (default: true)                         |
+| deploy-cephfs     | Deploy cephFS CSI driver as part of E2E (default: true)                       |
+| deploy-rbd        | Deploy rbd CSI driver as part of E2E (default: true)                          |
+| test-cephfs       | Test cephFS CSI driver as part of E2E (default: true)                         |
 | upgrade-testing   | Perform upgrade testing (default: false)                                      |
 | upgrade-version   | Target version for upgrade testing (default: "v3.3.1")                        |
-| test-rbd          | Test rbd csi driver as part of E2E (default: true)                            |
+| test-rbd          | Test rbd CSI driver as part of E2E (default: true)                            |
 | cephcsi-namespace | The namespace in which cephcsi driver will be created (default: "default")    |
 | rook-namespace    | The namespace in which rook operator is installed (default: "rook-ceph")      |
 | kubeconfig        | Path to kubeconfig containing embedded authinfo (default: $HOME/.kube/config) |
