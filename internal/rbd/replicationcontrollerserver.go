@@ -615,8 +615,9 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 }
 
 // checkHealthyPrimary checks if the image is a healhty primary or not.
-// healthy primary image will be in up+stopped state, for states other
-// than this it returns an error message.
+// healthy primary image will be in up+stopped state in local cluster and
+// up+replaying in the remote clusters, for states other than this it returns
+// an error message.
 func checkHealthyPrimary(ctx context.Context, rbdVol *rbdVolume) error {
 	mirrorStatus, err := rbdVol.getImageMirroringStatus()
 	if err != nil {
@@ -638,6 +639,26 @@ func checkHealthyPrimary(ctx context.Context, rbdVol *rbdVolume) error {
 			ErrUnHealthyMirroredImage,
 			localStatus.Up,
 			localStatus.State)
+	}
+
+	// Remote image should be in up+replaying state.
+	for _, s := range mirrorStatus.SiteStatuses {
+		log.UsefulLog(
+			ctx,
+			"peer site mirrorUUID=%q, daemon up=%t, mirroring state=%q, description=%q and lastUpdate=%d",
+			s.MirrorUUID,
+			s.Up,
+			s.State,
+			s.Description,
+			s.LastUpdate)
+		if s.MirrorUUID != "" {
+			if !s.Up && s.State != librbd.MirrorImageStatusStateReplaying {
+				return fmt.Errorf("remote image %s is not healthy. State is up=%t, state=%q",
+					rbdVol,
+					s.Up,
+					s.State)
+			}
+		}
 	}
 
 	return nil
