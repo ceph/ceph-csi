@@ -338,7 +338,6 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete pvc and application: %v", err)
 				}
-
 			})
 
 			By("Create clone from existing PVC", func() {
