@@ -31,7 +31,7 @@ const (
 
 // kmsConfig is an interface that should be used when passing a configuration
 // for a KMS to validation functions. This allows the validation functions to
-// work independently from the actual KMS.
+// work independently of the actual KMS.
 type kmsConfig interface {
 	canGetPassphrase() bool
 	getPassphrase(f *framework.Framework, key string) (string, string)

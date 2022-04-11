@@ -456,7 +456,7 @@ var _ = Describe("cephfs", func() {
 				// clean up after ourselves
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
-					e2elog.Failf("failed to  delete PVC: %v", err)
+					e2elog.Failf("failed to delete PVC: %v", err)
 				}
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
@@ -575,7 +575,7 @@ var _ = Describe("cephfs", func() {
 				if err != nil {
 					e2elog.Failf("killall command failed: err %v, stderr %s", err, stdErr)
 				}
-				// Verify Pod podName2 that stat()-ing the mountpoint results in ENOTCONN.
+				// Verify Pod pod2Name that stat()-ing the mountpoint results in ENOTCONN.
 				stdErr, err = doStat(pod2Name)
 				if err == nil || !strings.Contains(stdErr, "not connected") {
 					e2elog.Failf(
@@ -583,7 +583,7 @@ var _ = Describe("cephfs", func() {
 						err, stdErr,
 					)
 				}
-				// Delete podName2 Pod. This serves two purposes: it verifies that deleting pods with
+				// Delete pod2Name Pod. This serves two purposes: it verifies that deleting pods with
 				// corrupted ceph-fuse mountpoints works, and it lets the replicaset controller recreate
 				// the pod with hopefully mounts working again.
 				err = deletePod(pod2Name, depl.Namespace, c, deployTimeout)
@@ -616,7 +616,7 @@ var _ = Describe("cephfs", func() {
 					}
 					e2elog.Failf("no new replica found ; found replicas %v", podNames)
 				}
-				// Verify Pod podName3 has its ceph-fuse mount working again.
+				// Verify Pod pod2Name has its ceph-fuse mount working again.
 				err = ensureStatSucceeds(pod2Name)
 				if err != nil {
 					e2elog.Failf(err.Error())
