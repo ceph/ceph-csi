@@ -525,7 +525,8 @@ var _ = Describe("RBD", func() {
 					e2elog.Logf("pv name is empty %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
 				}
 
-				patchBytes := []byte(`{"spec":{"persistentVolumeReclaimPolicy": "Retain", "claimRef": null}}`)
+				// patch PV to Retain it after deleting the PVC.
+				patchBytes := []byte(`{"spec":{"persistentVolumeReclaimPolicy": "Retain"}}`)
 				_, err = c.CoreV1().PersistentVolumes().Patch(
 					context.TODO(),
 					pvcObj.Spec.VolumeName,
@@ -533,7 +534,7 @@ var _ = Describe("RBD", func() {
 					patchBytes,
 					metav1.PatchOptions{})
 				if err != nil {
-					e2elog.Logf("error Patching PV %q for persistentVolumeReclaimPolicy and claimRef: %v",
+					e2elog.Logf("error Patching PV %q for persistentVolumeReclaimPolicy: %v",
 						pvcObj.Spec.VolumeName, err)
 				}
 
@@ -543,6 +544,19 @@ var _ = Describe("RBD", func() {
 					metav1.DeleteOptions{})
 				if err != nil {
 					e2elog.Logf("failed to delete pvc: %w", err)
+				}
+
+				// Remove the claimRef to bind this PV to a new PVC.
+				patchBytes = []byte(`{"spec":{"claimRef": null}}`)
+				_, err = c.CoreV1().PersistentVolumes().Patch(
+					context.TODO(),
+					pvcObj.Spec.VolumeName,
+					types.StrategicMergePatchType,
+					patchBytes,
+					metav1.PatchOptions{})
+				if err != nil {
+					e2elog.Logf("error Patching PV %q for claimRef: %v",
+						pvcObj.Spec.VolumeName, err)
 				}
 
 				// validate created backend rbd images
