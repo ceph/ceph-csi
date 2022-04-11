@@ -70,6 +70,10 @@ const (
 	rbdPodLabels = "app in (ceph-csi-rbd, csi-rbdplugin, csi-rbdplugin-provisioner)"
 
 	exitOneErr = "command terminated with exit code 1"
+
+	// cluster Name, set by user.
+	clusterNameKey     = "csi.ceph.com/cluster/name"
+	defaultClusterName = "k8s-cluster-1"
 )
 
 var (

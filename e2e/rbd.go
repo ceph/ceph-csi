@@ -211,6 +211,37 @@ func checkGetKeyError(err error, stdErr string) bool {
 	return false
 }
 
+// checkClusternameInMetadata check for cluster name metadata on RBD image.
+// nolint:nilerr // intentionally returning nil on error in the retry loop.
+func checkClusternameInMetadata(f *framework.Framework, ns, pool, image string) {
+	t := time.Duration(deployTimeout) * time.Minute
+	var (
+		coName  string
+		stdErr  string
+		execErr error
+	)
+	err := wait.PollImmediate(poll, t, func() (bool, error) {
+		coName, stdErr, execErr = execCommandInToolBoxPod(f,
+			fmt.Sprintf("rbd image-meta get %s --image=%s %s", rbdOptions(pool), image, clusterNameKey),
+			ns)
+		if execErr != nil || stdErr != "" {
+			e2elog.Logf("failed to get cluster name %s/%s %s: err=%v stdErr=%q",
+				rbdOptions(pool), image, clusterNameKey, execErr, stdErr)
+
+			return false, nil
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		e2elog.Failf("could not get cluster name %s/%s %s: %v", rbdOptions(pool), image, clusterNameKey, err)
+	}
+	coName = strings.TrimSuffix(coName, "\n")
+	if coName != defaultClusterName {
+		e2elog.Failf("expected coName %q got %q", defaultClusterName, coName)
+	}
+}
+
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework(rbdType)
 	var c clientset.Interface
@@ -289,6 +320,14 @@ var _ = Describe("RBD", func() {
 		// default io-timeout=0, needs kernel >= 5.4
 		if !util.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
 			nbdMapOptions = "nbd:debug-rbd=20,io-timeout=330"
+		}
+
+		// wait for cluster name update in deployment
+		containers := []string{"csi-rbdplugin", "csi-rbdplugin-controller"}
+		err = waitForContainersArgsUpdate(c, cephCSINamespace, rbdDeploymentName,
+			"clustername", defaultClusterName, containers, deployTimeout)
+		if err != nil {
+			e2elog.Failf("timeout waiting for deployment update %s/%s: %v", cephCSINamespace, rbdDeploymentName, err)
 		}
 	})
 
@@ -452,6 +491,8 @@ var _ = Describe("RBD", func() {
 				if pvName != pvcObj.Spec.VolumeName {
 					e2elog.Failf("expected pvName %q got %q", pvcObj.Spec.VolumeName, pvName)
 				}
+
+				checkClusternameInMetadata(f, rookNamespace, defaultRBDPool, imageList[0])
 
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
@@ -701,6 +742,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("PV name found on %s/%s %s=%s: err=%v stdErr=%q",
 						rbdOptions(defaultRBDPool), imageList[0], pvNameKey, pvName, err, stdErr)
 				}
+				checkClusternameInMetadata(f, rookNamespace, defaultRBDPool, imageList[0])
 
 				err = deleteSnapshot(&snap, deployTimeout)
 				if err != nil {
