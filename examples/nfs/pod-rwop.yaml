@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: csi-nfs-demo-rwop-pod
+spec:
+  containers:
+    - name: web-server
+      image: docker.io/library/nginx:latest
+      volumeMounts:
+        - name: mypvc
+          mountPath: /var/lib/www
+  volumes:
+    - name: mypvc
+      persistentVolumeClaim:
+        claimName: csi-nfs-rwop-pvc
+        readOnly: false
