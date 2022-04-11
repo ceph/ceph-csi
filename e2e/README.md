@@ -94,7 +94,7 @@ are available while running tests:
 | deploy-rbd        | Deploy rbd CSI driver as part of E2E (default: true)                          |
 | test-cephfs       | Test cephFS CSI driver as part of E2E (default: true)                         |
 | upgrade-testing   | Perform upgrade testing (default: false)                                      |
-| upgrade-version   | Target version for upgrade testing (default: "v3.3.1")                        |
+| upgrade-version   | Target version for upgrade testing (default: "v3.5.1")                        |
 | test-rbd          | Test rbd CSI driver as part of E2E (default: true)                            |
 | cephcsi-namespace | The namespace in which cephcsi driver will be created (default: "default")    |
 | rook-namespace    | The namespace in which rook operator is installed (default: "rook-ceph")      |
