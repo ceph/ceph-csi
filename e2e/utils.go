@@ -82,6 +82,7 @@ var (
 	poll             = 2 * time.Second
 	isOpenShift      bool
 	clusterID        string
+	nfsDriverName    string
 )
 
 func getMons(ns string, c kubernetes.Interface) ([]string, error) {
