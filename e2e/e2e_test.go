@@ -48,6 +48,7 @@ func init() {
 	flag.BoolVar(&isOpenShift, "is-openshift", false, "disables certain checks on OpenShift")
 	flag.StringVar(&fileSystemName, "filesystem", "myfs", "CephFS filesystem to use")
 	flag.StringVar(&clusterID, "clusterid", "", "Ceph cluster ID to use (defaults to `ceph fsid` detection)")
+	flag.StringVar(&nfsDriverName, "nfs-driver", "nfs.csi.ceph.com", "name of the driver for NFS-volumes")
 	setDefaultKubeconfig()
 
 	// Register framework flags, then handle flags

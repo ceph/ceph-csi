@@ -104,6 +104,7 @@ are available while running tests:
 | is-openshift      | Run in OpenShift compatibility mode, skips certain new feature tests                              |
 | filesystem        | Name of the CephFS filesystem (default: "myfs")                                                   |
 | clusterid         | Use the Ceph cluster id in the StorageClasses and SnapshotClasses (default: `ceph fsid` detected) |
+| nfs-driver        | Name of the driver to use for provisioning NFS-volumes (default: "nfs.csi.ceph.com")              |
 
 ## E2E for snapshot
 
