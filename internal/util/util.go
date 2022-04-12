@@ -101,6 +101,8 @@ type Config struct {
 	// cephfs related flags
 	ForceKernelCephFS bool // force to use the ceph kernel client even if the kernel is < 4.17
 
+	SetMetadata bool // set metadata on the volume
+
 	// RbdHardMaxCloneDepth is the hard limit for maximum number of nested volume clones that are taken before a flatten
 	// occurs
 	RbdHardMaxCloneDepth uint
