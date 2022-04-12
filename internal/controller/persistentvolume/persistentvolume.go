@@ -185,6 +185,7 @@ func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.
 		requestName,
 		pvcNamespace,
 		r.config.ClusterName,
+		r.config.SetMetadata,
 		cr)
 	if err != nil {
 		log.ErrorLogMsg("failed to regenerate journal %s", err)

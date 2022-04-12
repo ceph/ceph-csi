@@ -55,6 +55,9 @@ type ControllerServer struct {
 
 	// Cluster name
 	ClusterName string
+
+	// Set metadata on volume
+	SetMetadata bool
 }
 
 func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.CreateVolumeRequest) error {
@@ -173,7 +176,10 @@ func (cs *ControllerServer) parseVolCreateRequest(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// set cluster name on volume
 	rbdVol.ClusterName = cs.ClusterName
+	// set metadata on volume
+	rbdVol.EnableMetadata = cs.SetMetadata
 
 	// if the KMS is of type VaultToken, additional metadata is needed
 	// depending on the tenant, the KMS can be configured with other
@@ -1061,6 +1067,7 @@ func (cs *ControllerServer) CreateSnapshot(
 
 		return nil, err
 	}
+	rbdVol.EnableMetadata = cs.SetMetadata
 
 	// Check if source volume was created with required image features for snaps
 	if !rbdVol.hasSnapshotFeature() {

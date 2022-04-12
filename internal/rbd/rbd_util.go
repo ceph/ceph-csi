@@ -132,6 +132,8 @@ type rbdImage struct {
 
 	// Cluster name
 	ClusterName string
+	// Set metadata on volume
+	EnableMetadata bool
 
 	// encryption provides access to optional VolumeEncryption functions
 	encryption *util.VolumeEncryption
@@ -2061,6 +2063,10 @@ func genVolFromVolIDWithMigration(
 
 // setAllMetadata set all the metadata from arg parameters on RBD image.
 func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
+	if !rv.EnableMetadata {
+		return nil
+	}
+
 	for k, v := range parameters {
 		err := rv.SetMetadata(k, v)
 		if err != nil {
@@ -2081,6 +2087,10 @@ func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
 
 // unsetAllMetadata unset all the metadata from arg keys on RBD image.
 func (rv *rbdVolume) unsetAllMetadata(keys []string) error {
+	if !rv.EnableMetadata {
+		return nil
+	}
+
 	for _, key := range keys {
 		err := rv.RemoveMetadata(key)
 		// TODO: replace string comparison with errno.

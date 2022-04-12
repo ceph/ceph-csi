@@ -38,6 +38,7 @@ type Config struct {
 	DriverName  string
 	Namespace   string
 	ClusterName string
+	SetMetadata bool
 }
 
 // ControllerList holds the list of managers need to be started.
