@@ -144,6 +144,8 @@ provisioner:
   deployController: true
   # Timeout for waiting for creation or deletion of a volume
   timeout: 60s
+  # cluster name to set on the RBD image
+  # clustername: "k8s-cluster-1"
   # Hard limit for maximum number of nested volume clones that are taken before
   # a flatten occurs
   hardMaxCloneDepth: 8
