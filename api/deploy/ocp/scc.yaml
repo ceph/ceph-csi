@@ -41,3 +41,5 @@ users:
   - "system:serviceaccount:{{ .Namespace }}:{{ .Prefix }}csi-cephfs-plugin-sa"
   # yamllint disable-line rule:line-length
   - "system:serviceaccount:{{ .Namespace }}:{{ .Prefix }}csi-cephfs-provisioner-sa"
+  - "system:serviceaccount:{{ .Namespace }}:{{ .Prefix }}csi-nfs-plugin-sa"
+  - "system:serviceaccount:{{ .Namespace }}:{{ .Prefix }}csi-nfs-provisioner-sa"
