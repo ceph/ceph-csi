@@ -17,7 +17,9 @@ limitations under the License.
 package rbddriver
 
 import (
+	"errors"
 	"fmt"
+	"os"
 
 	casrbd "github.com/ceph/ceph-csi/internal/csi-addons/rbd"
 	csiaddons "github.com/ceph/ceph-csi/internal/csi-addons/server"
@@ -144,7 +146,7 @@ func (r *Driver) Run(conf *util.Config) {
 		}
 		var attr string
 		attr, err = rbd.GetKrbdSupportedFeatures()
-		if err != nil {
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			log.FatalLogMsg(err.Error())
 		}
 		var krbdFeatures uint
