@@ -339,7 +339,7 @@ func getMetricsForPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, t i
 			return false, nil
 		}
 		if stdOut == "" {
-			e2elog.Logf("no metrics received from kublet on IP %s", kubelet)
+			e2elog.Logf("no metrics received from kubelet on IP %s", kubelet)
 
 			return false, nil
 		}

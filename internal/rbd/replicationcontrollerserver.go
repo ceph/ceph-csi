@@ -464,7 +464,7 @@ func disableVolumeReplication(rbdVol *rbdVolume,
 		// Local image is in up+replaying state
 
 		// If the image is in a secondary and its state is  up+replaying means
-		// its an healthy secondary and the image is primary somewhere in the
+		// its a healthy secondary and the image is primary somewhere in the
 		// remote cluster and the local image is getting replayed. Return
 		// success for the Disabling mirroring as we cannot disable mirroring
 		// on the secondary image, when the image on the primary site gets

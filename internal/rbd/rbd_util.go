@@ -942,7 +942,7 @@ func genSnapFromSnapID(
 	return err
 }
 
-// updateSnapshotDetails will copies the details from the rbdVolume to the
+// updateSnapshotDetails will copy the details from the rbdVolume to the
 // rbdSnapshot. example copying size from rbdVolume to rbdSnapshot.
 func updateSnapshotDetails(rbdSnap *rbdSnapshot) error {
 	vol := generateVolFromSnap(rbdSnap)

@@ -148,7 +148,7 @@ func (ri *rbdImage) resyncImage() error {
 	return nil
 }
 
-// getImageMirroingStatus get the mirroring status of an image.
+// getImageMirroringStatus get the mirroring status of an image.
 func (ri *rbdImage) getImageMirroringStatus() (*librbd.GlobalMirrorImageStatus, error) {
 	image, err := ri.open()
 	if err != nil {

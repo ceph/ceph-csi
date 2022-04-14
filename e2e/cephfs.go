@@ -296,7 +296,7 @@ var _ = Describe("cephfs", func() {
 				}
 			})
 
-			By("checking nodeplugin deamonset pods are running", func() {
+			By("checking nodeplugin daemonset pods are running", func() {
 				err := waitForDaemonSets(cephFSDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
 					e2elog.Failf("timeout waiting for daemonset %s: %v", cephFSDeamonSetName, err)
