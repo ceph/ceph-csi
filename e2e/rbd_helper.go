@@ -167,9 +167,22 @@ func createRBDStorageClass(
 		sc.MountOptions = append(sc.MountOptions, mOpt...)
 	}
 	sc.ReclaimPolicy = &policy
-	_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 
-	return err
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+		if err != nil {
+			e2elog.Logf("error creating StorageClass %q: %v", sc.Name, err)
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to create StorageClass %q: %w", sc.Name, err)
+		}
+
+		return true, nil
+	})
 }
 
 func createRadosNamespace(f *framework.Framework) error {
