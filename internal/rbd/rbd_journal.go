@@ -524,7 +524,7 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // complete omap mapping between imageName and volumeID.
 
 // RegenerateJournal performs below operations
-// Extract clusterID, Mons after checkig clusterID mapping
+// Extract clusterID, Mons after checking clusterID mapping
 // Extract parameters journalPool, pool from volumeAttributes
 // Extract optional parameters volumeNamePrefix, kmsID, owner from volumeAttributes
 // Extract information from volumeID
