@@ -86,7 +86,7 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
-          image: mcr.microsoft.com/k8s/csi/nfs-csi:v3.1.0
+          image: k8s.gcr.io/sig-storage/nfsplugin:v3.1.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 5
