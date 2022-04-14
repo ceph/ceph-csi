@@ -38,9 +38,9 @@ const InvalidPoolID int64 = -1
 // context.TODO(), the command will be logged after it was executed.
 func ExecuteCommandWithNSEnter(ctx context.Context, netPath, program string, args ...string) (string, string, error) {
 	var (
-		sanitizedArgs = StripSecretInArgs(args)
-		stdoutBuf     bytes.Buffer
-		stderrBuf     bytes.Buffer
+		stdoutBuf bytes.Buffer
+		stderrBuf bytes.Buffer
+		nsenter   = "nsenter"
 	)
 
 	// check netPath exists
@@ -49,8 +49,8 @@ func ExecuteCommandWithNSEnter(ctx context.Context, netPath, program string, arg
 	}
 	//  nsenter --net=%s -- <program> <args>
 	args = append([]string{fmt.Sprintf("--net=%s", netPath), "--", program}, args...)
-	cmd := exec.Command("nsenter", args...) // #nosec:G204, commands executing not vulnerable.
-
+	sanitizedArgs := StripSecretInArgs(args)
+	cmd := exec.Command(nsenter, args...) // #nosec:G204, commands executing not vulnerable.
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
 
@@ -59,7 +59,7 @@ func ExecuteCommandWithNSEnter(ctx context.Context, netPath, program string, arg
 	stderr := stderrBuf.String()
 
 	if err != nil {
-		err = fmt.Errorf("an error (%w) occurred while running %s args: %v", err, program, sanitizedArgs)
+		err = fmt.Errorf("an error (%w) occurred while running %s args: %v", err, nsenter, sanitizedArgs)
 		if ctx != context.TODO() {
 			log.UsefulLog(ctx, "%s", err)
 		}
@@ -68,7 +68,7 @@ func ExecuteCommandWithNSEnter(ctx context.Context, netPath, program string, arg
 	}
 
 	if ctx != context.TODO() {
-		log.UsefulLog(ctx, "command succeeded: %s %v", program, sanitizedArgs)
+		log.UsefulLog(ctx, "command succeeded: %s %v", nsenter, sanitizedArgs)
 	}
 
 	return stdout, stderr, nil
