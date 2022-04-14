@@ -26,7 +26,6 @@ import (
 
 	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -109,11 +108,8 @@ func createCephfsStorageClass(
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 		if err != nil {
-			e2elog.Logf("error creating StorageClass %q in namespace %q: %v", sc.Name, sc.Namespace, err)
+			e2elog.Logf("error creating StorageClass %q: %v", sc.Name, err)
 			if isRetryableAPIError(err) {
-				return false, nil
-			}
-			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
 
