@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ceph/ceph-csi/internal/cephfs"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
@@ -75,7 +74,7 @@ func (cs *Server) CreateVolume(
 	req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	res, err := cs.backendServer.CreateVolume(ctx, req)
 	if err != nil {
-		return res, fmt.Errorf("failed to create CephFS volume: %w", err)
+		return nil, err
 	}
 
 	backend := res.Volume
