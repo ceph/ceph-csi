@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -174,6 +175,81 @@ func waitForDeploymentComplete(clientSet kubernetes.Interface, name, ns string, 
 	}
 	if err != nil {
 		return fmt.Errorf("error waiting for deployment %q status to match desired state: %w", name, err)
+	}
+
+	return nil
+}
+
+// ResourceDeployer provides a generic interface for deploying different
+// resources.
+type ResourceDeployer interface {
+	// Do is used to create/delete a resource with kubectl.
+	Do(action kubectlAction) error
+}
+
+// yamlResource reads a YAML file and creates/deletes the resource with
+// kubectl.
+type yamlResource struct {
+	filename string
+
+	// allowMissing prevents a failure in case the file is missing.
+	allowMissing bool
+}
+
+func (yr *yamlResource) Do(action kubectlAction) error {
+	data, err := os.ReadFile(yr.filename)
+	if err != nil {
+		if os.IsNotExist(err) && yr.allowMissing {
+			return nil
+		}
+
+		return fmt.Errorf("failed to read content from %q: %w", yr.filename, err)
+	}
+
+	err = retryKubectlInput(cephCSINamespace, action, string(data), deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to %s resource %q: %w", action, yr.filename, err)
+	}
+
+	return nil
+}
+
+// yamlResourceNamespaced takes a filename and calls
+// replaceNamespaceInTemplate() on it. There are several options for adjusting
+// templates, each has their own comment.
+type yamlResourceNamespaced struct {
+	filename  string
+	namespace string
+
+	// set the number of replicas in a Deployment to 1.
+	oneReplica bool
+
+	// enable topology support (for RBD)
+	enableTopology bool
+	domainLabel    string
+}
+
+func (yrn *yamlResourceNamespaced) Do(action kubectlAction) error {
+	data, err := replaceNamespaceInTemplate(yrn.filename)
+	if err != nil {
+		return fmt.Errorf("failed to read content from %q: %w", yrn.filename, err)
+	}
+
+	if yrn.oneReplica {
+		data = oneReplicaDeployYaml(data)
+	}
+
+	if yrn.enableTopology {
+		data = enableTopologyInTemplate(data)
+	}
+
+	if yrn.domainLabel != "" {
+		data = addTopologyDomainsToDSYaml(data, yrn.domainLabel)
+	}
+
+	err = retryKubectlInput(yrn.namespace, action, data, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to %s resource %q in namespace %q: %w", action, yrn.filename, yrn.namespace, err)
 	}
 
 	return nil
