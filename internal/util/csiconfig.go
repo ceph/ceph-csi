@@ -60,24 +60,22 @@ type ClusterInfo struct {
 }
 
 // Expected JSON structure in the passed in config file is,
-// [
-// 	{
-//      "clusterID": "<cluster-id>",
-//      "rbd": {
-//		   "radosNamespace": "<rados-namespace>"
-//       },
-//      "monitors":
-//       [
-//         "<monitor-value>",
-//         "<monitor-value>",
-// 				...
-// 			],
-//         "cephFS": {
-//           "subvolumeGroup": "<subvolumegroup for cephfs volumes>"
-//         }
-// 	},
-// 	...
-// ].
+// nolint:godot // example json content should not contain unwanted dot.
+/*
+[{
+	"clusterID": "<cluster-id>",
+	"rbd": {
+		"radosNamespace": "<rados-namespace>"
+	},
+	"monitors": [
+		"<monitor-value>",
+		"<monitor-value>"
+	],
+	"cephFS": {
+		"subvolumeGroup": "<subvolumegroup for cephfs volumes>"
+	}
+}]
+*/
 func readClusterInfo(pathToConfig, clusterID string) (*ClusterInfo, error) {
 	var config []ClusterInfo
 
