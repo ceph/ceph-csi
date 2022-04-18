@@ -126,6 +126,12 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 	defer volOptions.Destroy()
 
+	volOptions.NetNamespaceFilePath, err = util.GetCephFSNetNamespaceFilePath(
+		util.CsiConfigFile,
+		volOptions.ClusterID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	mnt, err := mounter.New(volOptions)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create mounter for volume %s: %v", volID, err)
