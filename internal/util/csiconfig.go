@@ -46,6 +46,8 @@ type ClusterInfo struct {
 	Monitors []string `json:"monitors"`
 	// CephFS contains CephFS specific options
 	CephFS struct {
+		// symlink filepath for the network namespace where we need to execute commands.
+		NetNamespaceFilePath string `json:"netNamespaceFilePath"`
 		// SubvolumeGroup contains the name of the SubvolumeGroup for CSI volumes
 		SubvolumeGroup string `json:"subvolumeGroup"`
 	} `json:"cephFS"`
@@ -181,4 +183,14 @@ func GetRBDNetNamespaceFilePath(pathToConfig, clusterID string) (string, error) 
 	}
 
 	return cluster.RBD.NetNamespaceFilePath, nil
+}
+
+// GetCephFSNetNamespaceFilePath returns the netNamespaceFilePath for CephFS volumes.
+func GetCephFSNetNamespaceFilePath(pathToConfig, clusterID string) (string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return "", err
+	}
+
+	return cluster.CephFS.NetNamespaceFilePath, nil
 }
