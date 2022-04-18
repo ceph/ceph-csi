@@ -13,9 +13,9 @@ kind: ConfigMap
 # each such cluster in use.
 # To add more clusters or edit MON addresses in an existing configmap, use
 # the `kubectl replace` command.
-# The <rados-namespace> is optional and represents a radosNamespace in the pool.
-# If any given, all of the rbd images, snapshots, and other metadata will be
-# stored within the radosNamespace.
+# The "rbd.rados-namespace" is optional and represents a radosNamespace in the
+# pool. If any given, all of the rbd images, snapshots, and other metadata will
+# be stored within the radosNamespace.
 # NOTE: The given radosNamespace must already exists in the pool.
 # NOTE: Make sure you don't add radosNamespace option to a currently in use
 # configuration as it will cause issues.
@@ -42,9 +42,9 @@ data:
     [
       {
         "clusterID": "<cluster-id>",
-        "radosNamespace": "<rados-namespace>",
         "rbd": {
            "netNamespaceFilePath": "<kubeletRootPath>/plugins/rbd.csi.ceph.com/net",
+           "radosNamespace": "<rados-namespace>",
         },
         "monitors": [
           "<MONValue1>",

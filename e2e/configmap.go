@@ -60,9 +60,14 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 		return err
 	}
 	conmap := []util.ClusterInfo{{
-		ClusterID:      fsID,
-		Monitors:       mons,
-		RadosNamespace: radosNamespace,
+		ClusterID: fsID,
+		Monitors:  mons,
+		RBD: struct {
+			NetNamespaceFilePath string `json:"netNamespaceFilePath"`
+			RadosNamespace       string `json:"radosNamespace"`
+		}{
+			RadosNamespace: radosNamespace,
+		},
 	}}
 	if upgradeTesting {
 		subvolumegroup = "csi"
@@ -132,7 +137,7 @@ func createCustomConfigMap(
 			case "radosNamespace":
 				for c := range conmap {
 					if conmap[c].ClusterID == cluster {
-						conmap[c].RadosNamespace = j
+						conmap[c].RBD.RadosNamespace = j
 					}
 				}
 			}
