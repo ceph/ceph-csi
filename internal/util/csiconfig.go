@@ -41,7 +41,7 @@ type ClusterInfo struct {
 	// ClusterID is used for unique identification
 	ClusterID string `json:"clusterID"`
 	// RadosNamespace is a rados namespace in the pool
-	RadosNamespace string `json:"radosNamespace"`
+	RadosNamespace string `json:"radosNamespace"` // For backward compatibility. TODO: Remove this in 3.7.0
 	// Monitors is monitor list for corresponding cluster ID
 	Monitors []string `json:"monitors"`
 	// CephFS contains CephFS specific options
@@ -54,18 +54,22 @@ type ClusterInfo struct {
 	RBD struct {
 		// symlink filepath for the network namespace where we need to execute commands.
 		NetNamespaceFilePath string `json:"netNamespaceFilePath"`
+		// RadosNamespace is a rados namespace in the pool
+		RadosNamespace string `json:"radosNamespace"`
 	} `json:"rbd"`
 }
 
 // Expected JSON structure in the passed in config file is,
 // [
 // 	{
-// 		"clusterID": "<cluster-id>",
-//		"radosNamespace": "<rados-namespace>",
-// 		"monitors":
-// 			[
-// 				"<monitor-value>",
-// 				"<monitor-value>",
+//      "clusterID": "<cluster-id>",
+//      "rbd": {
+//		   "radosNamespace": "<rados-namespace>"
+//       },
+//      "monitors":
+//       [
+//         "<monitor-value>",
+//         "<monitor-value>",
 // 				...
 // 			],
 //         "cephFS": {
@@ -119,6 +123,10 @@ func GetRadosNamespace(pathToConfig, clusterID string) (string, error) {
 	cluster, err := readClusterInfo(pathToConfig, clusterID)
 	if err != nil {
 		return "", err
+	}
+
+	if cluster.RBD.RadosNamespace != "" {
+		return cluster.RBD.RadosNamespace, nil
 	}
 
 	return cluster.RadosNamespace, nil

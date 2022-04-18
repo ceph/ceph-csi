@@ -44,7 +44,9 @@ data:
     [
       {
        "clusterID": "rook-ceph",
-       "radosNamespace": "<rados-namespace>",
+       "rbd": {
+          "radosNamespace": "<rados-namespace>",
+       },
        "monitors": [
          "192.168.39.82:6789"
        ],
@@ -54,7 +56,9 @@ data:
       },
       {
        "clusterID": "fs-id",
-       "radosNamespace": "<rados-namespace>",
+       "rbd": {
+          "radosNamespace": "<rados-namespace>",
+       },
        "monitors": [
          "192.168.39.83:6789"
        ],
