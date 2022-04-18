@@ -170,6 +170,7 @@ func TestGetRBDNetNamespaceFilePath(t *testing.T) {
 			Monitors:  []string{"ip-1", "ip-2"},
 			RBD: struct {
 				NetNamespaceFilePath string `json:"netNamespaceFilePath"`
+				RadosNamespace       string `json:"radosNamespace"`
 			}{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/rbd.ceph.csi.com/cluster1-net",
 			},
@@ -179,6 +180,7 @@ func TestGetRBDNetNamespaceFilePath(t *testing.T) {
 			Monitors:  []string{"ip-3", "ip-4"},
 			RBD: struct {
 				NetNamespaceFilePath string `json:"netNamespaceFilePath"`
+				RadosNamespace       string `json:"radosNamespace"`
 			}{
 				NetNamespaceFilePath: "/var/lib/kubelet/plugins/rbd.ceph.csi.com/cluster2-net",
 			},
