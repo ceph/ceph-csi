@@ -332,7 +332,7 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 	defer rv.Destroy()
 
-	rv.NetNamespaceFilePath, err = util.GetNetNamespaceFilePath(util.CsiConfigFile, rv.ClusterID)
+	rv.NetNamespaceFilePath, err = util.GetRBDNetNamespaceFilePath(util.CsiConfigFile, rv.ClusterID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
