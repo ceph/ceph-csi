@@ -80,7 +80,7 @@ nodeplugin:
 
   registrar:
     image:
-      repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
+      repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
       tag: v2.4.0
       pullPolicy: IfNotPresent
     resources: {}
@@ -161,7 +161,7 @@ provisioner:
 
   provisioner:
     image:
-      repository: k8s.gcr.io/sig-storage/csi-provisioner
+      repository: registry.k8s.io/sig-storage/csi-provisioner
       tag: v3.1.0
       pullPolicy: IfNotPresent
     resources: {}
@@ -170,7 +170,7 @@ provisioner:
     name: attacher
     enabled: true
     image:
-      repository: k8s.gcr.io/sig-storage/csi-attacher
+      repository: registry.k8s.io/sig-storage/csi-attacher
       tag: v3.4.0
       pullPolicy: IfNotPresent
     resources: {}
@@ -179,14 +179,14 @@ provisioner:
     name: resizer
     enabled: true
     image:
-      repository: k8s.gcr.io/sig-storage/csi-resizer
+      repository: registry.k8s.io/sig-storage/csi-resizer
       tag: v1.4.0
       pullPolicy: IfNotPresent
     resources: {}
 
   snapshotter:
     image:
-      repository: k8s.gcr.io/sig-storage/csi-snapshotter
+      repository: registry.k8s.io/sig-storage/csi-snapshotter
       tag: v4.2.0
       pullPolicy: IfNotPresent
     resources: {}
