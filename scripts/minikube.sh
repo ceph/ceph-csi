@@ -162,7 +162,7 @@ NUM_DISKS=${NUM_DISKS:-"1"}
 DISK_SIZE=${DISK_SIZE:-"32g"}
 #configure image repo
 CEPHCSI_IMAGE_REPO=${CEPHCSI_IMAGE_REPO:-"quay.io/cephcsi"}
-K8S_IMAGE_REPO=${K8S_IMAGE_REPO:-"k8s.gcr.io/sig-storage"}
+K8S_IMAGE_REPO=${K8S_IMAGE_REPO:-"registry.k8s.io/sig-storage"}
 DISK="sda1"
 if [[ "${VM_DRIVER}" == "kvm2" ]]; then
     # use vda1 instead of sda1 when running with the libvirt driver
