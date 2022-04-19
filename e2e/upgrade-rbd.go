@@ -176,6 +176,10 @@ var _ = Describe("RBD Upgrade Testing", func() {
 	})
 
 	Context("Test RBD CSI", func() {
+		if !testRBD || !upgradeTesting {
+			return
+		}
+
 		It("Test RBD CSI", func() {
 			pvcPath := rbdExamplePath + "pvc.yaml"
 			appPath := rbdExamplePath + "pod.yaml"

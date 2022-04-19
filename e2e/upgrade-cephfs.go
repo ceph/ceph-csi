@@ -162,6 +162,10 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 	})
 
 	Context("Cephfs Upgrade Test", func() {
+		if !upgradeTesting || !testCephFS {
+			return
+		}
+
 		It("Cephfs Upgrade Test", func() {
 			By("checking provisioner deployment is running", func() {
 				err = waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)

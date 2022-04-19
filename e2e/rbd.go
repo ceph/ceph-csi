@@ -380,6 +380,10 @@ var _ = Describe("RBD", func() {
 	})
 
 	Context("Test RBD CSI", func() {
+		if !testRBD || upgradeTesting {
+			return
+		}
+
 		It("Test RBD CSI", func() {
 			// test only if ceph-csi is deployed via helm
 			if helmTest {
