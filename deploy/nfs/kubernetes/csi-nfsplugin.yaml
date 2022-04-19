@@ -18,7 +18,7 @@ spec:
             - --probe-timeout=3s
             - --health-port=29653
             - --v=2
-          image: k8s.gcr.io/sig-storage/livenessprobe:v2.5.0
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.5.0
           imagePullPolicy: IfNotPresent
           name: liveness-probe
           resources:
@@ -44,7 +44,7 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: spec.nodeName
-          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.4.0
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.4.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             exec:
@@ -86,7 +86,7 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
-          image: k8s.gcr.io/sig-storage/nfsplugin:v3.1.0
+          image: registry.k8s.io/sig-storage/nfsplugin:v3.1.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 5
