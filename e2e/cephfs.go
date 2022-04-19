@@ -277,6 +277,10 @@ var _ = Describe("cephfs", func() {
 	})
 
 	Context("Test CephFS CSI", func() {
+		if !testCephFS || upgradeTesting {
+			return
+		}
+
 		It("Test CephFS CSI", func() {
 			pvcPath := cephFSExamplePath + "pvc.yaml"
 			appPath := cephFSExamplePath + "pod.yaml"
