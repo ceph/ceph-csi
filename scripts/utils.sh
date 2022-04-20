@@ -11,7 +11,7 @@ kubectl_retry() {
     stdout=$(mktemp rook-kubectl-stdout.XXXXXXXX)
     stderr=$(mktemp rook-kubectl-stderr.XXXXXXXX)
 
-    while ! kubectl "${action}" "${@}" 2>"${stderr}" 1>"${stdout}"
+    while ! ( kubectl "${action}" "${@}" 2>"${stderr}" 1>"${stdout}" )
     do
         # in case of a failure when running "create", ignore errors with "AlreadyExists"
         if [ "${action}" == 'create' ]
@@ -47,7 +47,7 @@ kubectl_retry() {
 	# log stderr and empty the tmpfile
 	cat "${stderr}" > /dev/stderr
 	true > "${stderr}"
-	echo "kubectl_retry ${*} failed, will retry in ${KUBECTL_RETRY_DELAY} seconds"
+	echo "$(date): 'kubectl_retry ${*}' failed (${retries}/${KUBECTL_RETRY}), will retry in ${KUBECTL_RETRY_DELAY} seconds" > /dev/stderr
 
         sleep ${KUBECTL_RETRY_DELAY}
 
@@ -55,6 +55,8 @@ kubectl_retry() {
 	# return of the function
         ret=0
     done
+
+    echo "$(date): 'kubectl_retry ${*}' done (ret=${ret})" > /dev/stderr
 
     # write output so that calling functions can consume it
     cat "${stdout}" > /dev/stdout
