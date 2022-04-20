@@ -1,0 +1,4 @@
+clusterID: rook-ceph
+pool: replicapool
+imageFormat: "2"
+imageFeatures: layering
