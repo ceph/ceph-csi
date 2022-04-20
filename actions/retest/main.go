@@ -181,8 +181,8 @@ func main() {
 				}
 
 				if failedTestFound {
-					// comment `@Mergifyio refresh` so mergifyio adds the pr back into the queue.
-					msg := "@Mergifyio refresh"
+					// comment `@Mergifyio requeue` so mergifyio adds the pr back into the queue.
+					msg := "@Mergifyio requeue"
 					comment := &github.IssueComment{
 						Body: github.String(msg),
 					}
