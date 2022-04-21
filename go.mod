@@ -19,7 +19,7 @@ require (
 	github.com/kubernetes-csi/csi-lib-utils v0.11.0
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
-	github.com/onsi/ginkgo v1.16.5
+	github.com/onsi/ginkgo/v2 v2.1.3
 	github.com/onsi/gomega v1.19.0
 	github.com/pborman/uuid v1.2.1
 	github.com/prometheus/client_golang v1.12.1
@@ -109,6 +109,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oklog/run v1.0.0 // indirect
+	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/runc v1.0.2 // indirect
 	github.com/opencontainers/selinux v1.8.2 // indirect
