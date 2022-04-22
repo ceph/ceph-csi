@@ -177,14 +177,14 @@ A regular dev standup takes place every [Monday,Tuesday and Thursday at
 timezone by executing command `date -d "12:00 UTC"` on terminal
 
 Any changes to the meeting schedule will be added to the [agenda
-doc](https://docs.google.com/document/d/1K1aerdMpraIh56-skdoEoVF9RZrO4NUcbHtjN-f3u1s).
+doc](https://hackmd.io/6GL90WFGQL-L4DcIfIAKeQ).
 
 Anyone who wants to discuss the direction of the project, design and
 implementation reviews, or general questions with the broader community is
 welcome and encouraged to join.
 
 - Meeting link: <https://meet.google.com/nnn-txfp-cge>
-- [Current agenda](https://docs.google.com/document/d/1K1aerdMpraIh56-skdoEoVF9RZrO4NUcbHtjN-f3u1s)
+- [Current agenda](https://hackmd.io/6GL90WFGQL-L4DcIfIAKeQ)
 
 ## Contact
 
