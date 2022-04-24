@@ -16,8 +16,8 @@ kubectl_retry() {
         # in case of a failure when running "create", ignore errors with "AlreadyExists"
         if [ "${action}" == 'create' ]
         then
-            # count lines in stderr that do not have "AlreadyExists"
-            ret=$(grep -cvw 'AlreadyExists' "${stderr}")
+            # count lines in stderr that do not have "AlreadyExists" or "Warning"
+            ret=$(grep -cvw -e 'AlreadyExists' -e '^Warning:' "${stderr}")
             if [ "${ret}" -eq 0 ]
             then
                 # Success! stderr is empty after removing all "AlreadyExists" lines.
@@ -28,8 +28,8 @@ kubectl_retry() {
         # in case of a failure when running "delete", ignore errors with "NotFound"
         if [ "${action}" == 'delete' ]
         then
-            # count lines in stderr that do not have "NotFound"
-            ret=$(grep -cvw 'NotFound' "${stderr}")
+            # count lines in stderr that do not have "NotFound" or "Warning"
+            ret=$(grep -cvw -e 'NotFound' -e '^Warning:' "${stderr}")
             if [ "${ret}" -eq 0 ]
             then
                 # Success! stderr is empty after removing all "NotFound" lines.
