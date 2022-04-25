@@ -144,11 +144,9 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		return err
 	}
 
-	if parentVol.isEncrypted() {
-		err = parentVol.copyEncryptionConfig(&rv.rbdImage, false)
-		if err != nil {
-			return fmt.Errorf("failed to copy encryption config for %q: %w", rv, err)
-		}
+	err = parentVol.copyEncryptionConfig(&rv.rbdImage, true)
+	if err != nil {
+		return fmt.Errorf("failed to copy encryption config for %q: %w", rv, err)
 	}
 
 	err = j.StoreImageID(ctx, rv.JournalPool, rv.ReservedID, rv.ImageID)
@@ -214,6 +212,11 @@ func (rv *rbdVolume) doSnapClone(ctx context.Context, parentVol *rbdVolume) erro
 	errClone = createRBDClone(ctx, tempClone, rv, cloneSnap)
 	if errClone != nil {
 		return errClone
+	}
+
+	err = parentVol.copyEncryptionConfig(&rv.rbdImage, true)
+	if err != nil {
+		return fmt.Errorf("failed to copy encryption config for %q: %w", rv, err)
 	}
 
 	return nil

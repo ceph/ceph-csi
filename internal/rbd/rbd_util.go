@@ -1366,15 +1366,6 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 		}
 	}()
 
-	if pSnapOpts.isEncrypted() {
-		pSnapOpts.conn = rv.conn.Copy()
-
-		err = pSnapOpts.copyEncryptionConfig(&rv.rbdImage, true)
-		if err != nil {
-			return fmt.Errorf("failed to clone encryption config: %w", err)
-		}
-	}
-
 	// get image latest information
 	err = rv.getImageInfo()
 	if err != nil {
