@@ -154,8 +154,8 @@ func validateSubvolumePath(f *framework.Framework, pvcName, pvcNamespace, fileSy
 	return nil
 }
 
-var _ = Describe("cephfs", func() {
-	f := framework.NewDefaultFramework("cephfs")
+var _ = Describe(cephfsType, func() {
+	f := framework.NewDefaultFramework(cephfsType)
 	var c clientset.Interface
 	// deploy CephFS CSI
 	BeforeEach(func() {
@@ -259,6 +259,12 @@ var _ = Describe("cephfs", func() {
 			snapshotPath := cephFSExamplePath + "snapshot.yaml"
 			appEphemeralPath := cephFSExamplePath + "pod-ephemeral.yaml"
 			pvcRWOPPath := cephFSExamplePath + "pvc-rwop.yaml"
+
+			metadataPool, getErr := getCephFSMetadataPoolName(f, fileSystemName)
+			if getErr != nil {
+				e2elog.Failf("failed getting cephFS metadata pool name: %v", getErr)
+			}
+
 			By("checking provisioner deployment is running", func() {
 				err := waitForDeploymentComplete(f.ClientSet, cephFSDeploymentName, cephCSINamespace, deployTimeout)
 				if err != nil {
@@ -309,12 +315,14 @@ var _ = Describe("cephfs", func() {
 						e2elog.Failf("failed to create application: %v", err)
 					}
 					validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
+					validateOmapCount(f, 1, cephfsType, metadataPool, volumesType)
 					// delete pod
 					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to delete application: %v", err)
 					}
 					validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+					validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 					err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 					if err != nil {
 						e2elog.Failf("failed to delete CephFS storageclass: %v", err)
@@ -356,12 +364,14 @@ var _ = Describe("cephfs", func() {
 						e2elog.Failf("failed to create application: %v", err)
 					}
 					validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
+					validateOmapCount(f, 1, cephfsType, metadataPool, volumesType)
 
 					err = validateRWOPPodCreation(f, pvc, app, baseAppName)
 					if err != nil {
 						e2elog.Failf("failed to validate RWOP pod creation: %v", err)
 					}
 					validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+					validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 					err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 					if err != nil {
 						e2elog.Failf("failed to delete CephFS storageclass: %v", err)
@@ -414,6 +424,7 @@ var _ = Describe("cephfs", func() {
 				}
 
 				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 1, cephfsType, metadataPool, volumesType)
 				// list subvolumes and check if one of them has the same prefix
 				foundIt := false
 				subvolumes, err := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
@@ -434,6 +445,7 @@ var _ = Describe("cephfs", func() {
 					e2elog.Failf("failed to delete PVC: %v", err)
 				}
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -653,6 +665,7 @@ var _ = Describe("cephfs", func() {
 				}
 
 				validateSubvolumeCount(f, totalCount, fileSystemName, subvolumegroup)
+				validateOmapCount(f, totalCount, cephfsType, metadataPool, volumesType)
 				// delete PVC and app
 				for i := 0; i < totalCount; i++ {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
@@ -663,6 +676,7 @@ var _ = Describe("cephfs", func() {
 
 				}
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 			})
 
 			By("check data persist after recreating pod", func() {
@@ -1077,6 +1091,8 @@ var _ = Describe("cephfs", func() {
 				}
 
 				validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
+				validateOmapCount(f, totalSubvolumes, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, totalCount, cephfsType, metadataPool, snapsType)
 
 				wg.Add(totalCount)
 				// delete clone and app
@@ -1103,6 +1119,8 @@ var _ = Describe("cephfs", func() {
 
 				parentPVCCount := totalSubvolumes - totalCount
 				validateSubvolumeCount(f, parentPVCCount, fileSystemName, subvolumegroup)
+				validateOmapCount(f, parentPVCCount, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, totalCount, cephfsType, metadataPool, snapsType)
 				// create clones from different snapshots and bind it to an
 				// app
 				wg.Add(totalCount)
@@ -1134,6 +1152,8 @@ var _ = Describe("cephfs", func() {
 				}
 
 				validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
+				validateOmapCount(f, totalSubvolumes, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, totalCount, cephfsType, metadataPool, snapsType)
 
 				wg.Add(totalCount)
 				// delete snapshot
@@ -1181,6 +1201,8 @@ var _ = Describe("cephfs", func() {
 				}
 
 				validateSubvolumeCount(f, parentPVCCount, fileSystemName, subvolumegroup)
+				validateOmapCount(f, parentPVCCount, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, 0, cephfsType, metadataPool, snapsType)
 				// delete parent pvc
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
@@ -1188,6 +1210,8 @@ var _ = Describe("cephfs", func() {
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, 0, cephfsType, metadataPool, snapsType)
 			})
 
 			By("create a PVC-PVC clone and bind it to an app", func() {
@@ -1259,6 +1283,7 @@ var _ = Describe("cephfs", func() {
 				}
 
 				validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
+				validateOmapCount(f, totalSubvolumes, cephfsType, metadataPool, volumesType)
 
 				// delete parent pvc
 				err = deletePVCAndApp("", f, pvc, app)
@@ -1290,6 +1315,7 @@ var _ = Describe("cephfs", func() {
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 			})
 
 			By("Create ROX PVC and bind it to an app", func() {
@@ -1368,6 +1394,7 @@ var _ = Describe("cephfs", func() {
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 			})
 
 			By("clone PVC to a bigger size PVC", func() {
@@ -1381,6 +1408,7 @@ var _ = Describe("cephfs", func() {
 				}
 
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 			})
 
 			// FIXME: in case NFS testing is done, prevent deletion
