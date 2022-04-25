@@ -212,7 +212,7 @@ func checkGetKeyError(err error, stdErr string) bool {
 }
 
 var _ = Describe("RBD", func() {
-	f := framework.NewDefaultFramework("rbd")
+	f := framework.NewDefaultFramework(rbdType)
 	var c clientset.Interface
 	var kernelRelease string
 	// deploy RBD CSI
@@ -373,6 +373,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 					//  Deleting the storageclass and secret created by helm
 					err = deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
@@ -403,6 +404,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				imageList, err := listRBDImages(f, defaultRBDPool)
 				if err != nil {
@@ -456,6 +458,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to delete pvc: %v", err)
 				}
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("reattach the old PV to a new PVC and check if PVC metadata is updated on RBD image", func() {
@@ -471,6 +474,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				imageList, err := listRBDImages(f, defaultRBDPool)
 				if err != nil {
@@ -537,6 +541,7 @@ var _ = Describe("RBD", func() {
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				pvcObj.Name = "rbd-pvc-new"
 				// unset the resource version as should not be set on objects to be created
@@ -548,6 +553,7 @@ var _ = Describe("RBD", func() {
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				pvcName, stdErr, err = execCommandInToolBoxPod(f,
 					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
@@ -577,6 +583,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to delete pvc: %v", err)
 				}
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("create a snapshot and check metadata on RBD snapshot image", func() {
@@ -597,6 +604,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 				// delete pod as we should not create snapshot for in-use pvc
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
@@ -615,6 +623,8 @@ var _ = Describe("RBD", func() {
 				// parent PVC + snapshot
 				totalImages := 2
 				validateRBDImageCount(f, totalImages, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 
 				imageList, err := listRBDImages(f, defaultRBDPool)
 				if err != nil {
@@ -701,6 +711,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to delete pvc: %v", err)
 				}
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("verify generic ephemeral volume support", func() {
@@ -718,12 +729,14 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 1, defaultRBDPool)
+					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to delete application: %v", err)
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 					// validate images in trash
 					err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
 					if err != nil {
@@ -743,6 +756,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				// Block PVC resize
 				err = resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
@@ -781,6 +795,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = tearDownMigrationSetup(f)
 				if err != nil {
 					e2elog.Failf("failed to tear down migration setup: %v", err)
@@ -798,6 +813,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("create a PVC and bind it to an app", func() {
@@ -807,6 +823,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("create a PVC and bind it to an app with normal user", func() {
@@ -816,6 +833,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("create a Block mode RWOP PVC and bind it to more than one app", func() {
@@ -843,6 +861,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 1, defaultRBDPool)
+					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 					err = createApp(f.ClientSet, app, deployTimeout)
 					if err != nil {
@@ -854,6 +873,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				}
 			})
 
@@ -882,6 +902,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 1, defaultRBDPool)
+					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 					err = createApp(f.ClientSet, app, deployTimeout)
 					if err != nil {
@@ -893,6 +914,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				}
 			})
 
@@ -928,6 +950,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("create an erasure coded PVC and validate snapshot restore", func() {
@@ -987,6 +1010,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1022,6 +1046,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1060,6 +1085,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 					// FileSystem PVC resize
 					err = resizePVCAndValidateSize(pvcPath, appPath, f)
@@ -1068,6 +1094,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 					err = deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
 						e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1104,6 +1131,7 @@ var _ = Describe("RBD", func() {
 						}
 						// validate created backend rbd images
 						validateRBDImageCount(f, 0, defaultRBDPool)
+						validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 						err = deleteResource(rbdExamplePath + "storageclass.yaml")
 						if err != nil {
 							e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1145,6 +1173,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 1, defaultRBDPool)
+					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 					if util.CheckKernelSupport(kernelRelease, deepFlattenSupport) {
 						app, aErr := loadApp(appPath)
@@ -1170,6 +1199,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				})
 
 			By("create PVC with layering,deep-flatten image-features and bind it to an app",
@@ -1202,6 +1232,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 1, defaultRBDPool)
+					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 					// checking the minimal kernel version for fast-diff as its
 					// higher kernel version than other default image features.
@@ -1229,6 +1260,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				})
 
 			By("create PVC with journaling,fast-diff image-features and bind it to an app using rbd-nbd mounter",
@@ -1258,6 +1290,7 @@ var _ = Describe("RBD", func() {
 						}
 						// validate created backend rbd images
 						validateRBDImageCount(f, 0, defaultRBDPool)
+						validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 						err = deleteResource(rbdExamplePath + "storageclass.yaml")
 						if err != nil {
 							e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1340,6 +1373,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				// validate images in trash
 				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
 				if err != nil {
@@ -1393,6 +1427,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to delete application: %v", err)
@@ -1425,6 +1460,7 @@ var _ = Describe("RBD", func() {
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 3, defaultRBDPool)
+				validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
 
 				filePath := appClone.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				cmd := fmt.Sprintf("echo 'Hello World' > %s", filePath)
@@ -1462,6 +1498,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				// validate images in trash
 				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
 				if err != nil {
@@ -1515,6 +1552,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to delete application: %v", err)
@@ -1549,6 +1587,7 @@ var _ = Describe("RBD", func() {
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 3, defaultRBDPool)
+				validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
 
 				devPath := appClone.Spec.Template.Spec.Containers[0].VolumeDevices[0].DevicePath
 				cmd := fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10", devPath)
@@ -1585,6 +1624,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				// validate images in trash
 				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
 				if err != nil {
@@ -1659,6 +1699,7 @@ var _ = Describe("RBD", func() {
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
 				if err != nil {
@@ -1752,6 +1793,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1789,6 +1831,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1820,6 +1863,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1853,6 +1897,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				// Block PVC resize
 				err = resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
@@ -1861,6 +1906,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -1891,6 +1937,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1934,6 +1981,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				// delete the Secret of the Tenant
 				err = c.CoreV1().Secrets(tenant).Delete(context.TODO(), token.Name, metav1.DeleteOptions{})
@@ -1977,6 +2025,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -2006,6 +2055,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -2045,6 +2095,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				// delete user secret
 				err = retryKubectlFile(namespace,
@@ -2097,6 +2148,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 					// delete user secret
 					err = retryKubectlFile(
@@ -2261,6 +2313,7 @@ var _ = Describe("RBD", func() {
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 				if err != nil {
@@ -2445,6 +2498,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, totalCount, defaultRBDPool)
+				validateOmapCount(f, totalCount, rbdType, defaultRBDPool, volumesType)
 				// delete PVC and app
 				for i := 0; i < totalCount; i++ {
 					name := fmt.Sprintf("%s%d", f.UniqueName, i)
@@ -2457,6 +2511,7 @@ var _ = Describe("RBD", func() {
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("check data persist after recreating pod", func() {
@@ -2466,6 +2521,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("Resize Filesystem PVC and check application directory size", func() {
@@ -2494,6 +2550,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("Resize Block PVC and check Device size", func() {
@@ -2503,6 +2560,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("Test unmount after nodeplugin restart", func() {
@@ -2524,6 +2582,7 @@ var _ = Describe("RBD", func() {
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 				// delete rbd nodeplugin pods
 				err = deletePodWithLabel("app=csi-rbdplugin", cephCSINamespace, false)
 				if err != nil {
@@ -2541,6 +2600,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("create PVC in storageClass with volumeNamePrefix", func() {
@@ -2572,6 +2632,7 @@ var _ = Describe("RBD", func() {
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 				// list RBD images and check if one of them has the same prefix
 				foundIt := false
 				images, err := listRBDImages(f, defaultRBDPool)
@@ -2594,6 +2655,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
@@ -2615,6 +2677,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("validate RBD static Block PVC", func() {
@@ -2624,6 +2687,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("validate failure of RBD static PVC without imageFeatures parameter", func() {
@@ -2633,6 +2697,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("validate mount options in app pod", func() {
@@ -2643,6 +2708,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("creating an app with a PVC, using a topology constrained StorageClass", func() {
@@ -2677,6 +2743,7 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to create PVC and application: %v", err)
 				}
+
 				By("ensuring created PV has required node selector values populated")
 				err = checkPVSelectorValuesForPVC(f, pvc)
 				if err != nil {
@@ -2704,6 +2771,8 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to delete PVC and application: %v", err)
 				}
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				By("checking if data pool parameter is honored", func() {
 					err = deleteResource(rbdExamplePath + "storageclass.yaml")
@@ -2743,6 +2812,8 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						e2elog.Failf("failed to delete PVC and application: %v", err)
 					}
+					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				})
 
 				// cleanup and undo changes made by the test
@@ -2754,6 +2825,8 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					e2elog.Failf("failed to create storageclass: %v", err)
 				}
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			// Mount pvc to pod with invalid mount option,expected that
@@ -2790,6 +2863,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				// create an app and wait for 1 min for it to go to running state
 				err = createApp(f.ClientSet, app, 1)
@@ -2803,6 +2877,7 @@ var _ = Describe("RBD", func() {
 
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -2899,6 +2974,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 				// delete pod as we should not create snapshot for in-use pvc
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
@@ -2917,6 +2993,8 @@ var _ = Describe("RBD", func() {
 				// parent PVC + snapshot
 				totalImages := 2
 				validateRBDImageCount(f, totalImages, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
 					e2elog.Failf("failed to load PVC: %v", err)
@@ -2933,6 +3011,8 @@ var _ = Describe("RBD", func() {
 				// parent pvc+ snapshot + clone
 				totalImages = 3
 				validateRBDImageCount(f, totalImages, defaultRBDPool)
+				validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 
 				appClone, err := loadApp(appClonePath)
 				if err != nil {
@@ -3001,6 +3081,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("validate PVC mounting if snapshot and parent PVC are deleted", func() {
@@ -3033,6 +3114,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				snap := getSnapshot(snapshotPath)
 				snap.Namespace = f.UniqueName
@@ -3046,6 +3128,8 @@ var _ = Describe("RBD", func() {
 				// parent PVC + snapshot
 				totalImages := 2
 				validateRBDImageCount(f, totalImages, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
 					e2elog.Failf("failed to load PVC: %v", err)
@@ -3058,6 +3142,8 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 
 				// create clone PVC
 				pvcClone.Namespace = f.UniqueName
@@ -3068,6 +3154,8 @@ var _ = Describe("RBD", func() {
 				// validate created backend rbd images = snapshot + clone
 				totalImages = 2
 				validateRBDImageCount(f, totalImages, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 
 				// delete snapshot
 				err = deleteSnapshot(&snap, deployTimeout)
@@ -3078,6 +3166,8 @@ var _ = Describe("RBD", func() {
 				// validate created backend rbd images = clone
 				totalImages = 1
 				validateRBDImageCount(f, totalImages, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
 
 				appClone, err := loadApp(appClonePath)
 				if err != nil {
@@ -3103,6 +3193,8 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
 			})
 
 			By(
@@ -3167,6 +3259,7 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 1, defaultRBDPool)
+					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 					for i := 0; i < snapChainDepth; i++ {
 						var pvcClone *v1.PersistentVolumeClaim
 						snap := getSnapshot(snapshotPath)
@@ -3182,6 +3275,8 @@ var _ = Describe("RBD", func() {
 						// parent PVC + snapshot
 						totalImages := 2
 						validateRBDImageCount(f, totalImages, defaultRBDPool)
+						validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+						validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 						pvcClone, err = loadPVC(pvcClonePath)
 						if err != nil {
 							e2elog.Failf("failed to load PVC: %v", err)
@@ -3194,6 +3289,8 @@ var _ = Describe("RBD", func() {
 						}
 						// validate created backend rbd images
 						validateRBDImageCount(f, 1, defaultRBDPool)
+						validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+						validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 
 						// create clone PVC
 						pvcClone.Name = fmt.Sprintf("%s-%d", pvcClone.Name, i)
@@ -3206,6 +3303,8 @@ var _ = Describe("RBD", func() {
 						// validate created backend rbd images = snapshot + clone
 						totalImages = 2
 						validateRBDImageCount(f, totalImages, defaultRBDPool)
+						validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+						validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 
 						// delete snapshot
 						err = deleteSnapshot(&snap, deployTimeout)
@@ -3216,6 +3315,8 @@ var _ = Describe("RBD", func() {
 						// validate created backend rbd images = clone
 						totalImages = 1
 						validateRBDImageCount(f, totalImages, defaultRBDPool)
+						validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+						validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
 
 						app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 						// create application
@@ -3238,6 +3339,8 @@ var _ = Describe("RBD", func() {
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
 				})
 
 			By("validate PVC Clone chained with depth 2", func() {
@@ -3290,6 +3393,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				for i := 0; i < cloneChainDepth; i++ {
 					var pvcClone *v1.PersistentVolumeClaim
@@ -3334,6 +3438,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("ensuring all operations will work within a rados namespace", func() {
@@ -3419,6 +3524,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				// Create a PVC and bind it to an app within the namesapce
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
@@ -3462,6 +3568,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				snap := getSnapshot(snapshotPath)
 				snap.Namespace = f.UniqueName
@@ -3471,6 +3578,8 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to create snapshot: %v", err)
 				}
 				validateRBDImageCount(f, 2, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
 
 				err = validatePVCAndAppBinding(pvcClonePath, appClonePath, f)
 				if err != nil {
@@ -3482,12 +3591,16 @@ var _ = Describe("RBD", func() {
 				}
 				// as snapshot is deleted the image count should be one
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
 
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to delete PVC: %v", err)
 				}
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
 
 				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
 				if err != nil {
@@ -3554,6 +3667,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 
 				opt := metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("app=%s", app.Name),
@@ -3577,6 +3691,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
 			By("create a PVC and Bind it to an app for mapped rbd image with options", func() {
@@ -3622,6 +3737,7 @@ var _ = Describe("RBD", func() {
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass : %v", err)
@@ -3631,6 +3747,7 @@ var _ = Describe("RBD", func() {
 			By("validate image deletion when it is moved to trash", func() {
 				// make sure pool is empty
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				err := createRBDSnapshotClass(f)
 				if err != nil {
@@ -3724,6 +3841,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
 				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
 				if err != nil {
@@ -3835,6 +3953,7 @@ var _ = Describe("RBD", func() {
 
 				By("validate image deletion", func() {
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 					err := waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to validate rbd images in pool %s trash: %v", defaultRBDPool, err)
@@ -3906,6 +4025,7 @@ var _ = Describe("RBD", func() {
 
 				By("validate image deletion", func() {
 					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 					err := waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to validate rbd images in pool %s trash: %v", defaultRBDPool, err)
