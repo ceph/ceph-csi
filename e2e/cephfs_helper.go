@@ -154,7 +154,7 @@ func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error 
 		"umount /var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount",
 		pod.UID,
 		pvc.Spec.VolumeName)
-	_, stdErr, err := execCommandInDaemonsetPod(
+	stdErr, err := execCommandInDaemonsetPod(
 		f,
 		cmd,
 		cephFSDeamonSetName,
