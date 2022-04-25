@@ -1415,7 +1415,10 @@ func retryKubectlInput(namespace string, action kubectlAction, data string, t in
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
-			if isAlreadyExistsCLIError(err) {
+			if action == kubectlCreate && isAlreadyExistsCLIError(err) {
+				return true, nil
+			}
+			if action == kubectlDelete && isNotFoundCLIError(err) {
 				return true, nil
 			}
 			e2elog.Logf(
@@ -1451,7 +1454,10 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
-			if isAlreadyExistsCLIError(err) {
+			if action == kubectlCreate && isAlreadyExistsCLIError(err) {
+				return true, nil
+			}
+			if action == kubectlDelete && isNotFoundCLIError(err) {
 				return true, nil
 			}
 			e2elog.Logf(
@@ -1484,7 +1490,10 @@ func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...str
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
-			if isAlreadyExistsCLIError(err) {
+			if action == kubectlCreate && isAlreadyExistsCLIError(err) {
+				return true, nil
+			}
+			if action == kubectlDelete && isNotFoundCLIError(err) {
 				return true, nil
 			}
 			e2elog.Logf(
