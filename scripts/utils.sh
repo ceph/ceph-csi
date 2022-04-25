@@ -3,6 +3,20 @@
 KUBECTL_RETRY=5
 KUBECTL_RETRY_DELAY=10
 
+# kubectl_retry calls `kubectl` with the passed arguments. In case of a
+# failure, the `kubectl` command will be retried for `KUBECTL_RETRY` times,
+# with a delay of `KUBECTL_RETRY_DELAY` between them.
+#
+# Upon creation failures, `AlreadyExists` and `Warning` are ignored, making
+# sure the create succeeds in case some objects were created successfully in a
+# previous try.
+#
+# Upon deletion failures, the same applies as for creation, except that
+# NotFound is ignored.
+#
+# Logs from `kubectl` are passed on to stdout, so that a calling function can
+# capture it. During the function, logs are written to stderr as to not
+# interfere with the log parsing of the calling function.
 kubectl_retry() {
     local retries=0 action="${1}" ret=0 stdout stderr
     shift
@@ -11,7 +25,7 @@ kubectl_retry() {
     stdout=$(mktemp rook-kubectl-stdout.XXXXXXXX)
     stderr=$(mktemp rook-kubectl-stderr.XXXXXXXX)
 
-    while ! ( kubectl "${action}" "${@}" 2>"${stderr}" 1>"${stdout}" )
+    while ! ( kubectl "${action}" "${@}" 2>"${stderr}" 1>>"${stdout}" )
     do
         # in case of a failure when running "create", ignore errors with "AlreadyExists"
         if [ "${action}" == 'create' ]
@@ -44,7 +58,8 @@ kubectl_retry() {
             break
         fi
 
-	# log stderr and empty the tmpfile
+	# write logs to stderr and empty stderr (only)
+	cat "${stdout}" > /dev/stderr
 	cat "${stderr}" > /dev/stderr
 	true > "${stderr}"
 	echo "$(date): 'kubectl_retry ${*}' failed (${retries}/${KUBECTL_RETRY}), will retry in ${KUBECTL_RETRY_DELAY} seconds" > /dev/stderr
