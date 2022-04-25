@@ -19,6 +19,7 @@ package rbd
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -579,6 +580,11 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 
 	log.DebugLog(ctx, "create volume %s from snapshot %s", rbdVol, rbdSnap)
 
+	err = parentVol.copyEncryptionConfig(&rbdVol.rbdImage, true)
+	if err != nil {
+		return fmt.Errorf("failed to copy encryption config for %q: %w", rbdVol, err)
+	}
+
 	// resize the volume if the size is different
 	// expand the image if the requested size is greater than the current size
 	err = rbdVol.expand()
@@ -1080,11 +1086,9 @@ func cloneFromSnapshot(
 	}
 	defer vol.Destroy()
 
-	if rbdVol.isEncrypted() {
-		err = rbdVol.copyEncryptionConfig(&vol.rbdImage, false)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+	err = rbdVol.copyEncryptionConfig(&vol.rbdImage, false)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	err = vol.flattenRbdImage(ctx, false, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
@@ -1174,14 +1178,12 @@ func (cs *ControllerServer) doSnapshotClone(
 		}
 	}()
 
-	if parentVol.isEncrypted() {
-		cryptErr := parentVol.copyEncryptionConfig(&cloneRbd.rbdImage, false)
-		if cryptErr != nil {
-			log.WarningLog(ctx, "failed copy encryption "+
-				"config for %q: %v", cloneRbd, cryptErr)
+	err = parentVol.copyEncryptionConfig(&cloneRbd.rbdImage, false)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to copy encryption "+
+			"config for %q: %v", cloneRbd, err)
 
-			return nil, err
-		}
+		return nil, err
 	}
 
 	err = cloneRbd.createSnapshot(ctx, rbdSnap)
