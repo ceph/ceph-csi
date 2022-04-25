@@ -49,6 +49,12 @@ const (
 	defaultNs     = "default"
 	defaultSCName = ""
 
+	rbdType    = "rbd"
+	cephfsType = "cephfs"
+
+	volumesType = "volumes"
+	snapsType   = "snaps"
+
 	rookToolBoxPodLabel = "app=rook-ceph-tools"
 	rbdMountOptions     = "mountOptions"
 
@@ -62,6 +68,8 @@ const (
 	noError = ""
 	// labels/selector used to list/delete rbd pods.
 	rbdPodLabels = "app in (ceph-csi-rbd, csi-rbdplugin, csi-rbdplugin-provisioner)"
+
+	exitOneErr = "command terminated with exit code 1"
 )
 
 var (
@@ -84,6 +92,142 @@ var (
 	clusterID        string
 	nfsDriverName    string
 )
+
+type cephfsFilesystem struct {
+	Name         string `json:"name"`
+	MetadataPool string `json:"metadata_pool"`
+}
+
+// listCephFSFileSystems list CephFS filesystems in json format.
+func listCephFSFileSystems(f *framework.Framework) ([]cephfsFilesystem, error) {
+	var fsList []cephfsFilesystem
+
+	stdout, stdErr, err := execCommandInToolBoxPod(
+		f,
+		"ceph fs ls --format=json",
+		rookNamespace)
+	if err != nil {
+		return fsList, err
+	}
+	if stdErr != "" {
+		return fsList, fmt.Errorf("error listing fs %v", stdErr)
+	}
+
+	err = json.Unmarshal([]byte(stdout), &fsList)
+	if err != nil {
+		return fsList, err
+	}
+
+	return fsList, nil
+}
+
+// getCephFSMetadataPoolName get CephFS pool name from filesystem name.
+func getCephFSMetadataPoolName(f *framework.Framework, filesystem string) (string, error) {
+	fsList, err := listCephFSFileSystems(f)
+	if err != nil {
+		return "", fmt.Errorf("list CephFS filesystem failed: %w", err)
+	}
+	for _, v := range fsList {
+		if v.Name != filesystem {
+			continue
+		}
+
+		return v.MetadataPool, nil
+	}
+
+	return "", fmt.Errorf("metadata pool name not found for filesystem: %s", filesystem)
+}
+
+func compareStdoutWithCount(stdOut string, count int) error {
+	stdOut = strings.TrimSuffix(stdOut, "\n")
+	res, err := strconv.Atoi(stdOut)
+	if err != nil {
+		return fmt.Errorf("failed to convert string to int: %v", stdOut)
+	}
+	if res != count {
+		return fmt.Errorf("expected omap object count %d, got %d", count, res)
+	}
+
+	return nil
+}
+
+// validateOmapCount validates no of OMAP entries on the given pool.
+// Works with Cephfs and RBD drivers and mode can be snapsType or volumesType.
+func validateOmapCount(f *framework.Framework, count int, driver, pool, mode string) {
+	type radosListCommand struct {
+		volumeMode                           string
+		driverType                           string
+		radosLsCmd, radosLsCmdFilter         string
+		radosLsKeysCmd, radosLsKeysCmdFilter string
+	}
+
+	radosListCommands := []radosListCommand{
+		{
+			volumeMode: volumesType,
+			driverType: cephfsType,
+			radosLsCmd: fmt.Sprintf("rados ls --pool=%s --namespace csi", pool),
+			radosLsCmdFilter: fmt.Sprintf("rados ls --pool=%s --namespace csi | grep -v default | grep -c ^csi.volume.",
+				pool),
+			radosLsKeysCmd: fmt.Sprintf("rados listomapkeys csi.volumes.default --pool=%s --namespace csi", pool),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.volumes.default --pool=%s --namespace csi|wc -l",
+				pool),
+		},
+		{
+			volumeMode:           volumesType,
+			driverType:           rbdType,
+			radosLsCmd:           fmt.Sprintf("rados ls %s", rbdOptions(pool)),
+			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.volume.", rbdOptions(pool)),
+			radosLsKeysCmd:       fmt.Sprintf("rados listomapkeys csi.volumes.default %s", rbdOptions(pool)),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.volumes.default %s | wc -l", rbdOptions(pool)),
+		},
+		{
+			volumeMode: snapsType,
+			driverType: cephfsType,
+			radosLsCmd: fmt.Sprintf("rados ls --pool=%s --namespace csi", pool),
+			radosLsCmdFilter: fmt.Sprintf("rados ls --pool=%s --namespace csi | grep -v default | grep -c ^csi.snap.",
+				pool),
+			radosLsKeysCmd: fmt.Sprintf("rados listomapkeys csi.snaps.default --pool=%s --namespace csi", pool),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.snaps.default --pool=%s --namespace csi|wc -l",
+				pool),
+		},
+		{
+			volumeMode:           snapsType,
+			driverType:           rbdType,
+			radosLsCmd:           fmt.Sprintf("rados ls %s", rbdOptions(pool)),
+			radosLsCmdFilter:     fmt.Sprintf("rados ls %s | grep -v default | grep -c ^csi.snap.", rbdOptions(pool)),
+			radosLsKeysCmd:       fmt.Sprintf("rados listomapkeys csi.snaps.default %s", rbdOptions(pool)),
+			radosLsKeysCmdFilter: fmt.Sprintf("rados listomapkeys csi.snaps.default %s | wc -l", rbdOptions(pool)),
+		},
+	}
+
+	for _, cmds := range radosListCommands {
+		if !strings.EqualFold(cmds.volumeMode, mode) || !strings.EqualFold(cmds.driverType, driver) {
+			continue
+		}
+		filterCmds := []string{cmds.radosLsCmdFilter, cmds.radosLsKeysCmdFilter}
+		filterLessCmds := []string{cmds.radosLsCmd, cmds.radosLsKeysCmd}
+		for i, cmd := range filterCmds {
+			stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
+			if err != nil || stdErr != "" {
+				if !strings.Contains(err.Error(), exitOneErr) {
+					e2elog.Failf("failed to execute rados command '%s' : err=%v stdErr=%s", cmd, err, stdErr)
+				}
+			}
+			err = compareStdoutWithCount(stdOut, count)
+			if err == nil {
+				continue
+			}
+			saveErr := err
+			if strings.Contains(err.Error(), "expected omap object count") {
+				stdOut, stdErr, err = execCommandInToolBoxPod(f, filterLessCmds[i], rookNamespace)
+				if err == nil {
+					e2elog.Logf("additional debug info: rados ls command output: %s, stdErr: %s", stdOut, stdErr)
+				}
+			}
+			e2elog.Failf("%v", saveErr)
+		}
+	}
+}
 
 func getMons(ns string, c kubernetes.Interface) ([]string, error) {
 	opt := metav1.ListOptions{
