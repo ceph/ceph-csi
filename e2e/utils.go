@@ -651,6 +651,7 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 func validatePVCClone(
 	totalCount int,
 	sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath,
+	restoreSCName,
 	dataPool string,
 	kms kmsConfig,
 	validatePVC validateFunc,
@@ -702,6 +703,10 @@ func validatePVCClone(
 	}
 	pvcClone.Spec.DataSource.Name = pvc.Name
 	pvcClone.Namespace = f.UniqueName
+	if restoreSCName != "" {
+		pvcClone.Spec.StorageClassName = &restoreSCName
+	}
+
 	appClone, err := loadApp(clonePvcAppPath)
 	if err != nil {
 		e2elog.Failf("failed to load application: %v", err)
