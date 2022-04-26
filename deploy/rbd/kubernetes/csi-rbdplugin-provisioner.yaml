@@ -47,7 +47,11 @@ spec:
       priorityClassName: system-cluster-critical
       containers:
         - name: csi-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v3.1.0
+          # TODO: replace with released image version.
+          # Canary image is being to be used to test pvc-pvc clone
+          # with differe sc feature.
+          # see: https://github.com/kubernetes-csi/external-provisioner/pull/699
+          image: gcr.io/k8s-staging-sig-storage/csi-provisioner:canary
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
