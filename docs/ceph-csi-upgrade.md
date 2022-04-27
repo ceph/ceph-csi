@@ -155,9 +155,6 @@ nodeplugin daemonset
 ```bash
 $ kubectl apply -f deploy/cephfs/kubernetes/csi-nodeplugin-rbac.yaml
 serviceaccount/cephfs-csi-nodeplugin configured
-clusterrole.rbac.authorization.k8s.io/cephfs-csi-nodeplugin configured
-clusterrole.rbac.authorization.k8s.io/cephfs-csi-nodeplugin-rules configured
-clusterrolebinding.rbac.authorization.k8s.io/cephfs-csi-nodeplugin configured
 ```
 
 If you determined in [Pre-upgrade considerations](#pre-upgrade-considerations)
