@@ -1,4 +1,4 @@
-#!/bin/bash -E
+#!/bin/bash
 
 KUBECTL_RETRY=5
 KUBECTL_RETRY_DELAY=10
@@ -27,14 +27,20 @@ kubectl_retry() {
 
     while ! ( kubectl "${action}" "${@}" 2>"${stderr}" 1>>"${stdout}" )
     do
+        # write logs to stderr and empty stderr (only)
+        cat "${stdout}" > /dev/stderr
+        cat "${stderr}" > /dev/stderr
+        echo "$(date): 'kubectl_retry ${action} ${*}' try #${retries} failed, checking errors" > /dev/stderr
+
         # in case of a failure when running "create", ignore errors with "AlreadyExists"
         if [ "${action}" == 'create' ]
         then
             # count lines in stderr that do not have "AlreadyExists" or "Warning"
-            ret=$(grep -cvw -e 'AlreadyExists' -e '^Warning:' "${stderr}")
+            ret=$(grep -cvw -e 'AlreadyExists' -e '^Warning:' "${stderr}" || true)
             if [ "${ret}" -eq 0 ]
             then
                 # Success! stderr is empty after removing all "AlreadyExists" lines.
+                echo "$(date): 'kubectl_retry ${action} ${*}' succeeded without unknown errors" > /dev/stderr
                 break
             fi
         fi
@@ -43,10 +49,11 @@ kubectl_retry() {
         if [ "${action}" == 'delete' ]
         then
             # count lines in stderr that do not have "NotFound" or "Warning"
-            ret=$(grep -cvw -e 'NotFound' -e '^Warning:' "${stderr}")
+            ret=$(grep -cvw -e 'NotFound' -e '^Warning:' "${stderr}" || true)
             if [ "${ret}" -eq 0 ]
             then
                 # Success! stderr is empty after removing all "NotFound" lines.
+                echo "$(date): 'kubectl_retry ${action} ${*}' succeeded without unknown errors" > /dev/stderr
                 break
             fi
         fi
@@ -54,24 +61,23 @@ kubectl_retry() {
         retries=$((retries+1))
         if [ ${retries} -eq ${KUBECTL_RETRY} ]
         then
+            echo "$(date): 'kubectl_retry ${action} ${*}' failed, no more retries left (${retries}/${KUBECTL_RETRY})" > /dev/stderr
             ret=1
             break
         fi
 
-	# write logs to stderr and empty stderr (only)
-	cat "${stdout}" > /dev/stderr
-	cat "${stderr}" > /dev/stderr
-	true > "${stderr}"
-	echo "$(date): 'kubectl_retry ${*}' failed (${retries}/${KUBECTL_RETRY}), will retry in ${KUBECTL_RETRY_DELAY} seconds" > /dev/stderr
+        # empty stderr for the next loop
+        true > "${stderr}"
+        echo "$(date): 'kubectl_retry ${action} ${*}' failed (${retries}/${KUBECTL_RETRY}), will retry in ${KUBECTL_RETRY_DELAY} seconds" > /dev/stderr
 
         sleep ${KUBECTL_RETRY_DELAY}
 
-	# reset ret so that a next working kubectl does not cause a non-zero
-	# return of the function
+        # reset ret so that a next working kubectl does not cause a non-zero
+        # return of the function
         ret=0
     done
 
-    echo "$(date): 'kubectl_retry ${*}' done (ret=${ret})" > /dev/stderr
+    echo "$(date): 'kubectl_retry ${action} ${*}' done (ret=${ret})" > /dev/stderr
 
     # write output so that calling functions can consume it
     cat "${stdout}" > /dev/stdout
