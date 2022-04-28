@@ -91,13 +91,31 @@ func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 }
 
 func findPodAndContainerName(f *framework.Framework, ns, cn string, opt *metav1.ListOptions) (string, string, error) {
-	podList, err := f.PodClientNS(ns).List(context.TODO(), *opt)
-	if err != nil {
-		return "", "", err
-	}
+	timeout := time.Duration(deployTimeout) * time.Minute
 
-	if len(podList.Items) == 0 {
-		return "", "", errors.New("podlist is empty")
+	var (
+		podList *v1.PodList
+		listErr error
+	)
+	err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		podList, listErr = f.PodClientNS(ns).List(context.TODO(), *opt)
+		if listErr != nil {
+			if isRetryableAPIError(listErr) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to list Pods: %w", listErr)
+		}
+
+		if len(podList.Items) == 0 {
+			// retry in case the pods have not been (re)started yet
+			return false, nil
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		return "", "", fmt.Errorf("failed to find pod for %v: %w", opt, err)
 	}
 
 	if cn != "" {
