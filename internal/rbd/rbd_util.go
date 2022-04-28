@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
-	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/ceph/go-ceph/rados"
@@ -1913,22 +1912,9 @@ func genVolFromVolIDWithMigration(
 	return rv, err
 }
 
-// setVolumeMetadata set PV/PVC/PVCNamespace metadata on RBD image.
-func (rv *rbdVolume) setVolumeMetadata(parameters map[string]string) error {
-	for k, v := range k8s.GetVolumeMetadata(parameters) {
-		err := rv.SetMetadata(k, v)
-		if err != nil {
-			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w", k, v, err)
-		}
-	}
-
-	return nil
-}
-
-// setSnapshotMetadata Set snapshot-name/snapshot-namespace/snapshotcontent-name metadata
-// on RBD image.
-func (rv *rbdVolume) setSnapshotMetadata(parameters map[string]string) error {
-	for k, v := range k8s.GetSnapshotMetadata(parameters) {
+// setAllMetadata set all the metadata from arg parameters on RBD image.
+func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
+	for k, v := range parameters {
 		err := rv.SetMetadata(k, v)
 		if err != nil {
 			return fmt.Errorf("failed to set metadata key %q, value %q on image: %w", k, v, err)

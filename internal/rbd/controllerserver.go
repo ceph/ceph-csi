@@ -331,7 +331,8 @@ func (cs *ControllerServer) CreateVolume(
 	}
 
 	// Set Metadata on PV Create
-	err = rbdVol.setVolumeMetadata(req.GetParameters())
+	metadata := k8s.GetVolumeMetadata(req.GetParameters())
+	err = rbdVol.setAllMetadata(metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -454,7 +455,8 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 	}
 
 	// Set metadata on restart of provisioner pod when image exist
-	err := rbdVol.setVolumeMetadata(req.GetParameters())
+	metadata := k8s.GetVolumeMetadata(req.GetParameters())
+	err := rbdVol.setAllMetadata(metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -1074,7 +1076,8 @@ func (cs *ControllerServer) CreateSnapshot(
 
 	// Set snapshot-name/snapshot-namespace/snapshotcontent-name details
 	// on RBD backend image as metadata on create
-	err = rbdVol.setSnapshotMetadata(req.GetParameters())
+	metadata := k8s.GetSnapshotMetadata(req.GetParameters())
+	err = rbdVol.setAllMetadata(metadata)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -1131,7 +1134,8 @@ func cloneFromSnapshot(
 	// Update snapshot-name/snapshot-namespace/snapshotcontent-name details on
 	// RBD backend image as metadata on restart of provisioner pod when image exist
 	if len(parameters) != 0 {
-		err = rbdVol.setSnapshotMetadata(parameters)
+		metadata := k8s.GetSnapshotMetadata(parameters)
+		err = rbdVol.setAllMetadata(metadata)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
