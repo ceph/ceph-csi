@@ -21,6 +21,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,8 +57,9 @@ type secretsKMS struct {
 }
 
 var _ = RegisterProvider(Provider{
-	UniqueID:    DefaultKMSType,
-	Initializer: newSecretsKMS,
+	UniqueID:        DefaultKMSType,
+	Initializer:     newSecretsKMS,
+	CreateTestDummy: newTestDummy,
 })
 
 // newSecretsKMS initializes a secretsKMS that uses the passphrase from the
@@ -70,6 +72,11 @@ func newSecretsKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	}
 
 	return secretsKMS{passphrase: passphraseValue}, nil
+}
+
+func newTestDummy() EncryptionKMS {
+	return secretsKMS{passphrase: base64.URLEncoding.EncodeToString(
+		[]byte("test dummy passphrase"))}
 }
 
 // Destroy frees all used resources.
@@ -101,8 +108,9 @@ type secretsMetadataKMS struct {
 }
 
 var _ = RegisterProvider(Provider{
-	UniqueID:    kmsTypeSecretsMetadata,
-	Initializer: initSecretsMetadataKMS,
+	UniqueID:        kmsTypeSecretsMetadata,
+	Initializer:     initSecretsMetadataKMS,
+	CreateTestDummy: newSecretsMetadataTestDummy,
 })
 
 // initSecretsMetadataKMS initializes a secretsMetadataKMS that wraps a secretKMS,
@@ -133,6 +141,14 @@ func initSecretsMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 	smKMS.secretsKMS = secretsKMS{passphrase: encryptionPassphrase}
 
 	return smKMS, nil
+}
+
+func newSecretsMetadataTestDummy() EncryptionKMS {
+	smKMS := secretsMetadataKMS{}
+	smKMS.secretsKMS = secretsKMS{passphrase: base64.URLEncoding.EncodeToString(
+		[]byte("test dummy passphrase"))}
+
+	return smKMS
 }
 
 // fetchEncryptionPassphrase fetches encryptionPassphrase from user provided secret.

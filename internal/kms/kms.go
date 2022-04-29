@@ -93,6 +93,15 @@ func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, err
 	return kmsManager.buildKMS(tenant, kmsConfig, secrets)
 }
 
+func GetKMSTestDummy(kmsID string) EncryptionKMS {
+	provider, ok := kmsManager.providers[kmsID]
+	if !ok {
+		return nil
+	}
+
+	return provider.CreateTestDummy()
+}
+
 // getKMSConfiguration reads the configuration file from the filesystem, or if
 // that fails the ConfigMap directly. The returned map contains all the KMS
 // configuration sections, each keyed by its own kmsID.
@@ -233,10 +242,12 @@ type ProviderInitArgs struct {
 // ProviderInitFunc gets called when the Provider needs to be
 // instantiated.
 type ProviderInitFunc func(args ProviderInitArgs) (EncryptionKMS, error)
+type TestDummyFunc func() EncryptionKMS
 
 type Provider struct {
-	UniqueID    string
-	Initializer ProviderInitFunc
+	UniqueID        string
+	Initializer     ProviderInitFunc
+	CreateTestDummy TestDummyFunc
 }
 
 type kmsProviderList struct {
@@ -265,8 +276,11 @@ func RegisterProvider(provider Provider) bool {
 	}
 
 	kmsManager.providers[provider.UniqueID] = provider
-
 	return true
+}
+
+func GetKMSProviderList() map[string]Provider {
+	return kmsManager.providers
 }
 
 // buildKMS creates a new Provider instance, based on the configuration that
