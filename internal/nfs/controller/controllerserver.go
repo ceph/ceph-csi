@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"strings"
 
 	"github.com/ceph/ceph-csi/internal/cephfs"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
@@ -140,8 +141,8 @@ func (cs *Server) DeleteVolume(
 	defer nfsVolume.Destroy()
 
 	err = nfsVolume.DeleteExport()
-	// TODO: if the export does not exist, but the backend does, delete the backend
-	if err != nil {
+	// if the export does not exist, continue with deleting the backend volume
+	if err != nil && !strings.Contains(err.Error(), "Export does not exist") {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to delete export: %v", err)
 	}
 
