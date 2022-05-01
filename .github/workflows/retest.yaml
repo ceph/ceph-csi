@@ -5,6 +5,10 @@ on:
   schedule:
     # Run the retest action every 30 minutes
     - cron: "30 * * * *"
+
+permissions:
+  contents: read
+
 jobs:
   retest:
     runs-on: ubuntu-latest
