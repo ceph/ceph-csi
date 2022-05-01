@@ -9,6 +9,9 @@ on:
       - devel
       # Push events to branches matching refs/heads/release-v*
       - 'release-v*'
+permissions:
+  contents: read
+
 jobs:
   push:
     name: Publish artifacts

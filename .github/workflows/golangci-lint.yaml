@@ -5,6 +5,9 @@ on:
   pull_request:
     branches:
       - '*'
+permissions:
+  contents: read
+
 jobs:
   golangci-lint:
     name: golangci-lint
