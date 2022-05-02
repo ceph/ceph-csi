@@ -556,6 +556,13 @@ var _ = Describe("nfs", func() {
 			if err != nil {
 				e2elog.Failf("failed to delete user %s: %v", keyringCephFSNodePluginUsername, err)
 			}
+
+			By("Resize PVC and check application directory size", func() {
+				err := resizePVCAndValidateSize(pvcPath, appPath, f)
+				if err != nil {
+					e2elog.Failf("failed to resize PVC: %v", err)
+				}
+			})
 		})
 	})
 })
