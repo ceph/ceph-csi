@@ -46,4 +46,4 @@ parameters:
   volumeNamePrefix: nfs-export-
 
 reclaimPolicy: Delete
-allowVolumeExpansion: false
+allowVolumeExpansion: true
