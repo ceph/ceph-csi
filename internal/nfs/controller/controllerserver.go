@@ -150,3 +150,12 @@ func (cs *Server) DeleteVolume(
 
 	return cs.backendServer.DeleteVolume(ctx, req)
 }
+
+// ControllerExpandVolume calls the backend (CephFS) procedure to expand the
+// volume. There is no interaction with the NFS-server needed to publish the
+// new size.
+func (cs *Server) ControllerExpandVolume(
+	ctx context.Context,
+	req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+	return cs.backendServer.ControllerExpandVolume(ctx, req)
+}
