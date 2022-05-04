@@ -352,7 +352,7 @@ func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 
 	kms.vaultConfig[vault.AuthMountPath], err = detectAuthMountPath(vaultAuthPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set %s in Vault config: %w", vault.AuthMountPath, err)
+		return nil, fmt.Errorf("failed to set \"vaultAuthPath\" in Vault config: %w", err)
 	}
 
 	vaultRole := vaultDefaultRole
