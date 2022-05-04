@@ -241,7 +241,7 @@ func populateRbdVol(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if req.GetVolumeContext()["mounter"] == rbdDefaultMounter &&
+	if rv.Mounter == rbdDefaultMounter &&
 		!isKrbdFeatureSupported(ctx, strings.Join(rv.ImageFeatureSet.Names(), ",")) {
 		if !parseBoolOption(ctx, req.GetVolumeContext(), tryOtherMounters, false) {
 			log.ErrorLog(ctx, "unsupported krbd Feature, set `tryOtherMounters:true` or fix krbd driver")
@@ -251,8 +251,6 @@ func populateRbdVol(
 		}
 		// fallback to rbd-nbd,
 		rv.Mounter = rbdNbdMounter
-	} else {
-		rv.Mounter = req.GetVolumeContext()["mounter"]
 	}
 
 	err = getMapOptions(req, rv)
