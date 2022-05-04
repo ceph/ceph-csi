@@ -229,6 +229,7 @@ func getVolumeSnapshotContent(namespace, snapshotName string) (*snapapi.VolumeSn
 	return volumeSnapshotContent, nil
 }
 
+// nolint:gocyclo,cyclop // reduce complexity
 func validateBiggerPVCFromSnapshot(f *framework.Framework,
 	pvcPath,
 	appPath,
@@ -304,6 +305,43 @@ func validateBiggerPVCFromSnapshot(f *framework.Framework,
 		err = checkDeviceSize(appClone, f, &opt, newSize)
 		if err != nil {
 			return fmt.Errorf("failed to validate device size: %w", err)
+		}
+
+		// make sure we had unset snapshot metadata on CreateVolume
+		// from snapshot
+		var (
+			volSnapName        string
+			volSnapNamespace   string
+			volSnapContentName string
+			stdErr             string
+			imageList          []string
+		)
+		imageList, err = listRBDImages(f, defaultRBDPool)
+		if err != nil {
+			e2elog.Failf("failed to list rbd images: %v", err)
+		}
+		e2elog.Logf("list of rbd images: %v", imageList)
+		volSnapName, stdErr, err = execCommandInToolBoxPod(f,
+			formatImageMetaGetCmd(defaultRBDPool, imageList[0], volSnapNameKey),
+			rookNamespace)
+		if checkGetKeyError(err, stdErr) {
+			e2elog.Failf("found volume snapshot name %s/%s %s=%s: err=%v stdErr=%q",
+				rbdOptions(defaultRBDPool), imageList[0], volSnapNameKey, volSnapName, err, stdErr)
+		}
+		volSnapNamespace, stdErr, err = execCommandInToolBoxPod(f,
+			formatImageMetaGetCmd(defaultRBDPool, imageList[0], volSnapNamespaceKey),
+			rookNamespace)
+		if checkGetKeyError(err, stdErr) {
+			e2elog.Failf("found volume snapshot namespace %s/%s %s=%s: err=%v stdErr=%q",
+				rbdOptions(defaultRBDPool), imageList[0], volSnapNamespaceKey, volSnapNamespace, err, stdErr)
+		}
+		volSnapContentName, stdErr, err = execCommandInToolBoxPod(f,
+			formatImageMetaGetCmd(defaultRBDPool, imageList[0], volSnapContentNameKey),
+			rookNamespace)
+		if checkGetKeyError(err, stdErr) {
+			e2elog.Failf("found snapshotcontent name %s/%s %s=%s: err=%v stdErr=%q",
+				rbdOptions(defaultRBDPool), imageList[0], volSnapContentNameKey,
+				volSnapContentName, err, stdErr)
 		}
 	}
 	err = deletePVCAndApp("", f, pvcClone, appClone)
