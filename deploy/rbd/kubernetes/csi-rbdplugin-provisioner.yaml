@@ -108,6 +108,8 @@ spec:
             - "--leader-election"
             - "--retry-interval-start=500ms"
             - "--handle-volume-inuse-error=false"
+            #  set it to true to try volume expansion recovery
+            - "--feature-gates=AnnotateFsResize=true"
           env:
             - name: ADDRESS
               value: unix:///csi/csi-provisioner.sock
