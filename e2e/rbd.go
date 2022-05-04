@@ -196,6 +196,21 @@ func validateRBDImageCount(f *framework.Framework, count int, pool string) {
 	}
 }
 
+func formatImageMetaGetCmd(pool, image, key string) string {
+	return fmt.Sprintf("rbd image-meta get %s --image=%s %s", rbdOptions(pool), image, key)
+}
+
+// checkGetKeyError check for error conditions returned by get image-meta key,
+// returns true if key exists.
+func checkGetKeyError(err error, stdErr string) bool {
+	if err == nil || !strings.Contains(err.Error(), "command terminated with exit code 2") ||
+		!strings.Contains(stdErr, "failed to get metadata") {
+		return true
+	}
+
+	return false
+}
+
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework("rbd")
 	var c clientset.Interface
@@ -395,8 +410,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				pvcName, stdErr, err := execCommandInToolBoxPod(f,
-					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
-						rbdOptions(defaultRBDPool), imageList[0], pvcNameKey),
+					formatImageMetaGetCmd(defaultRBDPool, imageList[0], pvcNameKey),
 					rookNamespace)
 				if err != nil || stdErr != "" {
 					e2elog.Failf("failed to get PVC name %s/%s %s: err=%v stdErr=%q",
@@ -408,8 +422,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				pvcNamespace, stdErr, err := execCommandInToolBoxPod(f,
-					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
-						rbdOptions(defaultRBDPool), imageList[0], pvcNamespaceKey),
+					formatImageMetaGetCmd(defaultRBDPool, imageList[0], pvcNamespaceKey),
 					rookNamespace)
 				if err != nil || stdErr != "" {
 					e2elog.Failf("failed to get PVC namespace %s/%s %s: err=%v stdErr=%q",
@@ -427,8 +440,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Logf("pv name is empty %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
 				}
 				pvName, stdErr, err := execCommandInToolBoxPod(f,
-					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
-						rbdOptions(defaultRBDPool), imageList[0], pvNameKey),
+					formatImageMetaGetCmd(defaultRBDPool, imageList[0], pvNameKey),
 					rookNamespace)
 				if err != nil || stdErr != "" {
 					e2elog.Failf("failed to get PV name %s/%s %s: err=%v stdErr=%q",
@@ -651,6 +663,33 @@ var _ = Describe("RBD", func() {
 				volSnapContentName = strings.TrimSuffix(volSnapContentName, "\n")
 				if volSnapContentName != content.Name {
 					e2elog.Failf("expected volSnapContentName %q got %q", content.Name, volSnapContentName)
+				}
+
+				// make sure we had unset the PVC metadata on the rbd image created
+				// for the snapshot
+				pvcName, stdErr, err := execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNameKey),
+					rookNamespace)
+				if checkGetKeyError(err, stdErr) {
+					e2elog.Failf("PVC name found on %s/%s %s=%s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNameKey, pvcName, err, stdErr)
+				}
+				pvcNamespace, stdErr, err := execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNamespaceKey),
+					rookNamespace)
+				if checkGetKeyError(err, stdErr) {
+					e2elog.Failf("PVC namespace found on %s/%s %s=%s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNamespaceKey, pvcNamespace, err, stdErr)
+				}
+				pvName, stdErr, err := execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
+						rbdOptions(defaultRBDPool), imageList[0], pvNameKey),
+					rookNamespace)
+				if checkGetKeyError(err, stdErr) {
+					e2elog.Failf("PV name found on %s/%s %s=%s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvNameKey, pvName, err, stdErr)
 				}
 
 				err = deleteSnapshot(&snap, deployTimeout)
