@@ -149,7 +149,6 @@ func createRBDStorageClass(
 			delete(sc.Parameters, k)
 		}
 	}
-	sc.Namespace = cephCSINamespace
 
 	if scOptions["volumeBindingMode"] == "WaitForFirstConsumer" {
 		value := scv1.VolumeBindingWaitForFirstConsumer
