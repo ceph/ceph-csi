@@ -27,16 +27,19 @@ import (
 )
 
 const (
-	procCgroup    = "/proc/self/cgroup"
-	sysPidsMaxFmt = "/sys/fs/cgroup/pids%s/pids.max"
+	procCgroup            = "/proc/self/cgroup"
+	sysPidsMaxFmtCgroupV1 = "/sys/fs/cgroup/pids%s/pids.max"
+	sysPidsMaxFmtCgroupV2 = "/sys/fs/cgroup%s/pids.max"
 )
 
-// return the cgouprs "pids.max" file of the current process
-//
-// find the line containing the pids group from the /proc/self/cgroup file
-// $ grep 'pids' /proc/self/cgroup
+// getCgroupPidsFile return the cgroups "pids.max" file of the
+// current process
+// For cgroup v1, find the line containing the pids group from the /proc/self/cgroup file
+// $ grep ':pids:' /proc/self/cgroup
 // 7:pids:/kubepods.slice/kubepods-besteffort.slice/....scope
 // $ cat /sys/fs/cgroup/pids + *.scope + /pids.max.
+// The entry for cgroup v2 is always in the format "0::...scope", no subsystem given.
+// (see https://www.kernel.org/doc/Documentation/cgroup-v2.txt)
 func getCgroupPidsFile() (string, error) {
 	cgroup, err := os.Open(procCgroup)
 	if err != nil {
@@ -44,6 +47,7 @@ func getCgroupPidsFile() (string, error) {
 	}
 	defer cgroup.Close() // #nosec: error on close is not critical here
 
+	pidsMax := ""
 	scanner := bufio.NewScanner(cgroup)
 	var slice string
 	for scanner.Scan() {
@@ -51,8 +55,16 @@ func getCgroupPidsFile() (string, error) {
 		if parts == nil || len(parts) < 3 {
 			continue
 		}
+		// No cgroup subsystem given, then it is cgroupv2
+		if parts[0] == "0" && parts[1] == "" {
+			slice = parts[2]
+			pidsMax = fmt.Sprintf(sysPidsMaxFmtCgroupV2, slice)
+
+			break
+		}
 		if parts[1] == "pids" {
 			slice = parts[2]
+			pidsMax = fmt.Sprintf(sysPidsMaxFmtCgroupV1, slice)
 
 			break
 		}
@@ -60,8 +72,6 @@ func getCgroupPidsFile() (string, error) {
 	if slice == "" {
 		return "", fmt.Errorf("could not find a cgroup for 'pids'")
 	}
-
-	pidsMax := fmt.Sprintf(sysPidsMaxFmt, slice)
 
 	return pidsMax, nil
 }
