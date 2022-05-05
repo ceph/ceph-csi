@@ -230,6 +230,11 @@ up)
         # if kubernetes version is greater than 1.22 enable RWOP feature gate
         K8S_FEATURE_GATES="${K8S_FEATURE_GATES},ReadWriteOncePod=true"
     fi
+    # Disable PodSecurity feature-gate
+    if [ "${KUBE_MAJOR}" -eq 1 ] && [ "${KUBE_MINOR}" -ge 22 ];then
+        # if kubernetes version is greater than 1.22 disable PodSecurity feature gate
+        K8S_FEATURE_GATES="${K8S_FEATURE_GATES},PodSecurity=false"
+    fi
     # shellcheck disable=SC2086
     ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG} ${EXTRA_CONFIG_PSP} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
 
