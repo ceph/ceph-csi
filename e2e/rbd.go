@@ -2767,6 +2767,10 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to check csi journal in pool: %v", err)
 				}
 
+				err = deleteJournalInfoInPool(f, pvc, "replicapool")
+				if err != nil {
+					e2elog.Failf("failed to delete omap data: %v", err)
+				}
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
 					e2elog.Failf("failed to delete PVC and application: %v", err)
@@ -2807,6 +2811,10 @@ var _ = Describe("RBD", func() {
 						e2elog.Failf("failed to check data pool for image: %v", err)
 					}
 
+					err = deleteJournalInfoInPool(f, pvc, "replicapool")
+					if err != nil {
+						e2elog.Failf("failed to delete omap data: %v", err)
+					}
 					// cleanup and undo changes made by the test
 					err = deletePVCAndApp("", f, pvc, app)
 					if err != nil {
