@@ -10,6 +10,6 @@ jobs:
     name: mod-check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: mod-check
         run: CONTAINER_CMD=docker make containerized-test TARGET=mod-check

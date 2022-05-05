@@ -10,6 +10,6 @@ jobs:
     name: lint-extras
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: lint-extras
         run: CONTAINER_CMD=docker make containerized-test TARGET=lint-extras
