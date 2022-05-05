@@ -99,7 +99,6 @@ func createCephfsStorageClass(
 		}
 		sc.Parameters["clusterID"] = fsID
 	}
-	sc.Namespace = cephCSINamespace
 
 	timeout := time.Duration(deployTimeout) * time.Minute
 
