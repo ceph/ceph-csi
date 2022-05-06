@@ -414,11 +414,7 @@ var _ = Describe("RBD", func() {
 				if pvcNamespace != pvc.Namespace {
 					e2elog.Failf("expected pvcNamespace %q got %q", pvc.Namespace, pvcNamespace)
 				}
-
-				pvcObj, err := c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(
-					context.TODO(),
-					pvc.Name,
-					metav1.GetOptions{})
+				pvcObj, err := getPersistentVolumeClaim(c, pvc.Namespace, pvc.Name)
 				if err != nil {
 					e2elog.Logf("error getting pvc %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
 				}

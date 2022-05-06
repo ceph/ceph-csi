@@ -145,9 +145,7 @@ func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error 
 
 		return fmt.Errorf("failed to get pod: %w", err)
 	}
-	pvc, err := f.ClientSet.CoreV1().
-		PersistentVolumeClaims(f.UniqueName).
-		Get(context.TODO(), pvcName, metav1.GetOptions{})
+	pvc, err := getPersistentVolumeClaim(f.ClientSet, f.UniqueName, pvcName)
 	if err != nil {
 		e2elog.Logf("Error occurred getting PVC %s in namespace %s", pvcName, f.UniqueName)
 
