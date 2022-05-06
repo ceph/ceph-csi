@@ -214,6 +214,29 @@ func getPersistentVolumeClaim(c kubernetes.Interface, namespace, name string) (*
 	return pvc, err
 }
 
+// getPersistentVolume returns the PersistentVolume with the given
+// name and retries if there is any API error.
+func getPersistentVolume(c kubernetes.Interface, name string) (*v1.PersistentVolume, error) {
+	var pv *v1.PersistentVolume
+	var err error
+	timeout := time.Duration(deployTimeout) * time.Minute
+	err = wait.PollImmediate(1*time.Second, timeout, func() (bool, error) {
+		pv, err = c.CoreV1().PersistentVolumes().Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			e2elog.Logf("Error getting pv %q: %v", name, err)
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to get pv: %w", err)
+		}
+
+		return true, err
+	})
+
+	return pv, err
+}
+
 func getPVCAndPV(
 	c kubernetes.Interface,
 	pvcName, pvcNamespace string) (*v1.PersistentVolumeClaim, *v1.PersistentVolume, error) {
@@ -221,7 +244,7 @@ func getPVCAndPV(
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get PVC: %w", err)
 	}
-	pv, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
+	pv, err := getPersistentVolume(c, pvc.Spec.VolumeName)
 	if err != nil {
 		return pvc, nil, fmt.Errorf("failed to get PV: %w", err)
 	}
@@ -240,7 +263,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	if err != nil {
 		return fmt.Errorf("failed to get pvc: %w", err)
 	}
-	pv, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
+	pv, err := getPersistentVolume(c, pvc.Spec.VolumeName)
 	if err != nil {
 		return fmt.Errorf("failed to get pv: %w", err)
 	}
