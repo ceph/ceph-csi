@@ -191,10 +191,33 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 	})
 }
 
+// getPersistentVolumeClaim returns the PersistentVolumeClaim with the given
+// name in the given namespace and retries if there is any API error.
+func getPersistentVolumeClaim(c kubernetes.Interface, namespace, name string) (*v1.PersistentVolumeClaim, error) {
+	var pvc *v1.PersistentVolumeClaim
+	var err error
+	timeout := time.Duration(deployTimeout) * time.Minute
+	err = wait.PollImmediate(1*time.Second, timeout, func() (bool, error) {
+		pvc, err = c.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			e2elog.Logf("Error getting pvc %q in namespace %q: %v", name, namespace, err)
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to get pvc: %w", err)
+		}
+
+		return true, err
+	})
+
+	return pvc, err
+}
+
 func getPVCAndPV(
 	c kubernetes.Interface,
 	pvcName, pvcNamespace string) (*v1.PersistentVolumeClaim, *v1.PersistentVolume, error) {
-	pvc, err := c.CoreV1().PersistentVolumeClaims(pvcNamespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
+	pvc, err := getPersistentVolumeClaim(c, pvcNamespace, pvcName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get PVC: %w", err)
 	}
@@ -213,7 +236,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 	var err error
 	e2elog.Logf("Deleting PersistentVolumeClaim %v on namespace %v", name, nameSpace)
 
-	pvc, err = c.CoreV1().PersistentVolumeClaims(nameSpace).Get(context.TODO(), name, metav1.GetOptions{})
+	pvc, err = getPersistentVolumeClaim(c, nameSpace, name)
 	if err != nil {
 		return fmt.Errorf("failed to get pvc: %w", err)
 	}
@@ -265,9 +288,7 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 // getBoundPV returns a PV details.
 func getBoundPV(client kubernetes.Interface, pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
 	// Get new copy of the claim
-	claim, err := client.CoreV1().
-		PersistentVolumeClaims(pvc.Namespace).
-		Get(context.TODO(), pvc.Name, metav1.GetOptions{})
+	claim, err := getPersistentVolumeClaim(client, pvc.Namespace, pvc.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pvc: %w", err)
 	}

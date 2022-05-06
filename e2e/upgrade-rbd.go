@@ -401,9 +401,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
 				}
 				var err error
-				pvc, err = f.ClientSet.CoreV1().
-					PersistentVolumeClaims(pvc.Namespace).
-					Get(context.TODO(), pvc.Name, metav1.GetOptions{})
+				pvc, err = getPersistentVolumeClaim(f.ClientSet, pvc.Namespace, pvc.Name)
 				if err != nil {
 					e2elog.Failf("failed to get pvc: %v", err)
 				}

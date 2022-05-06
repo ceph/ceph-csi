@@ -36,10 +36,7 @@ import (
 func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size string, t int) error {
 	pvcName := pvc.Name
 	pvcNamespace := pvc.Namespace
-
-	updatedPVC, err := c.CoreV1().
-		PersistentVolumeClaims(pvcNamespace).
-		Get(context.TODO(), pvcName, metav1.GetOptions{})
+	updatedPVC, err := getPersistentVolumeClaim(c, pvcNamespace, pvcName)
 	if err != nil {
 		return fmt.Errorf("error fetching pvc %q with %w", pvcName, err)
 	}
@@ -120,10 +117,7 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 	opt := metav1.ListOptions{
 		LabelSelector: "app=resize-pvc",
 	}
-
-	pvc, err = f.ClientSet.CoreV1().
-		PersistentVolumeClaims(pvc.Namespace).
-		Get(context.TODO(), pvc.Name, metav1.GetOptions{})
+	pvc, err = getPersistentVolumeClaim(f.ClientSet, pvc.Namespace, pvc.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get pvc: %w", err)
 	}
