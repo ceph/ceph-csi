@@ -192,28 +192,83 @@ type migrationVolID struct {
 	clusterID string
 }
 
-var supportedFeatures = map[string]imageFeature{
-	librbd.FeatureNameLayering: {
-		needRbdNbd: false,
-	},
-	librbd.FeatureNameExclusiveLock: {
-		needRbdNbd: false,
-	},
-	librbd.FeatureNameObjectMap: {
-		needRbdNbd: false,
-		dependsOn:  []string{librbd.FeatureNameExclusiveLock},
-	},
-	librbd.FeatureNameFastDiff: {
-		needRbdNbd: false,
-		dependsOn:  []string{librbd.FeatureNameObjectMap},
-	},
-	librbd.FeatureNameJournaling: {
-		needRbdNbd: true,
-		dependsOn:  []string{librbd.FeatureNameExclusiveLock},
-	},
-	librbd.FeatureNameDeepFlatten: {
-		needRbdNbd: false,
-	},
+var (
+	supportedFeatures = map[string]imageFeature{
+		librbd.FeatureNameLayering: {
+			needRbdNbd: false,
+		},
+		librbd.FeatureNameExclusiveLock: {
+			needRbdNbd: false,
+		},
+		librbd.FeatureNameObjectMap: {
+			needRbdNbd: false,
+			dependsOn:  []string{librbd.FeatureNameExclusiveLock},
+		},
+		librbd.FeatureNameFastDiff: {
+			needRbdNbd: false,
+			dependsOn:  []string{librbd.FeatureNameObjectMap},
+		},
+		librbd.FeatureNameJournaling: {
+			needRbdNbd: true,
+			dependsOn:  []string{librbd.FeatureNameExclusiveLock},
+		},
+		librbd.FeatureNameDeepFlatten: {
+			needRbdNbd: false,
+		},
+	}
+
+	krbdLayeringSupport = []util.KernelVersion{
+		{
+			Version:    3,
+			PatchLevel: 8,
+			SubLevel:   0,
+		},
+	}
+	krbdStripingV2Support = []util.KernelVersion{
+		{
+			Version:    3,
+			PatchLevel: 10,
+			SubLevel:   0,
+		},
+	}
+	krbdExclusiveLockSupport = []util.KernelVersion{
+		{
+			Version:    4,
+			PatchLevel: 9,
+			SubLevel:   0,
+		},
+	}
+	krbdDataPoolSupport = []util.KernelVersion{
+		{
+			Version:    4,
+			PatchLevel: 11,
+			SubLevel:   0,
+		},
+	}
+)
+
+// prepareKrbdFeatureAttrs prepare krbd fearure set based on kernel version.
+// Minimum kernel version should be 3.8, else it will return error.
+func prepareKrbdFeatureAttrs() (uint64, error) {
+	// fetch the current running kernel info
+	release, err := util.GetKernelVersion()
+	if err != nil {
+		return 0, fmt.Errorf("fetching current kernel version failed: %w", err)
+	}
+
+	switch {
+	case util.CheckKernelSupport(release, krbdDataPoolSupport):
+		return librbd.FeatureDataPool, nil
+	case util.CheckKernelSupport(release, krbdExclusiveLockSupport):
+		return librbd.FeatureExclusiveLock, nil
+	case util.CheckKernelSupport(release, krbdStripingV2Support):
+		return librbd.FeatureStripingV2, nil
+	case util.CheckKernelSupport(release, krbdLayeringSupport):
+		return librbd.FeatureLayering, nil
+	}
+	log.ErrorLogMsg("kernel version is too old: %q", release)
+
+	return 0, os.ErrNotExist
 }
 
 // GetKrbdSupportedFeatures load the module if needed and return supported
@@ -238,9 +293,19 @@ func GetKrbdSupportedFeatures() (string, error) {
 	}
 	val, err := os.ReadFile(krbdSupportedFeaturesFile)
 	if err != nil {
-		log.ErrorLogMsg("reading file %q failed: %v", krbdSupportedFeaturesFile, err)
+		if !errors.Is(err, os.ErrNotExist) {
+			log.ErrorLogMsg("reading file %q failed: %v", krbdSupportedFeaturesFile, err)
 
-		return "", err
+			return "", err
+		}
+		attrs, err := prepareKrbdFeatureAttrs()
+		if err != nil {
+			log.ErrorLogMsg("preparing krbd feature attributes failed, %v", err)
+
+			return "", err
+		}
+
+		return strconv.FormatUint(attrs, 16), nil
 	}
 
 	return strings.TrimSuffix(string(val), "\n"), nil
