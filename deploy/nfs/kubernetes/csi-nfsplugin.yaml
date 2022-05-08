@@ -86,7 +86,7 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
-          image: registry.k8s.io/sig-storage/nfsplugin:v3.1.0
+          image: registry.k8s.io/sig-storage/nfsplugin:v4.0.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 5
