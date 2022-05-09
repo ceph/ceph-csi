@@ -18,6 +18,7 @@ ENV \
  GOPATH=${GOPATH} \
  GOROOT=${GOROOT} \
  GO111MODULE=on \
+ CEPHCSIPATH=/go/src/github.com/ceph/ceph-csi \
  PATH="${GOPATH}/bin:${GOROOT}/bin:/opt/commitlint/node_modules/.bin:${PATH}"
 
 COPY build.env /
@@ -53,6 +54,7 @@ RUN source /build.env \
     && npm init -y \
     && npm install @commitlint/cli@"${COMMITLINT_VERSION}" \
     && popd \
+    && git config --global --add safe.directory ${CEPHCSIPATH} \
     && true
 
-WORKDIR /go/src/github.com/ceph/ceph-csi
+WORKDIR ${CEPHCSIPATH}
