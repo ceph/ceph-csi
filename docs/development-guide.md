@@ -251,6 +251,7 @@ A few labels interact with automation around the pull requests:
 * ready-to-merge: This PR is ready to be merged and it doesn't need second review
 * DNM: DO NOT MERGE (Mergify will not merge this PR)
 * ci/skip/e2e: skip running e2e CI jobs
+* ci/skip/multi-arch-build: skip building container images for different architectures
 
 **Review Process:**
 Once your PR has been submitted for review the following criteria will
