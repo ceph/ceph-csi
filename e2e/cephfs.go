@@ -69,6 +69,7 @@ func deleteCephfsPlugin() {
 
 func createORDeleteCephfsResources(action kubectlAction) {
 	resources := []ResourceDeployer{
+		// shared resources
 		&yamlResource{
 			filename:     cephFSDirPath + csiDriverObject,
 			allowMissing: true,
@@ -77,11 +78,7 @@ func createORDeleteCephfsResources(action kubectlAction) {
 			filename:     examplePath + cephConfconfigMap,
 			allowMissing: true,
 		},
-		&yamlResourceNamespaced{
-			filename:   cephFSDirPath + cephFSProvisioner,
-			namespace:  cephCSINamespace,
-			oneReplica: true,
-		},
+		// dependencies for provisioner
 		&yamlResourceNamespaced{
 			filename:  cephFSDirPath + cephFSProvisionerRBAC,
 			namespace: cephCSINamespace,
@@ -90,16 +87,24 @@ func createORDeleteCephfsResources(action kubectlAction) {
 			filename:  cephFSDirPath + cephFSProvisionerPSP,
 			namespace: cephCSINamespace,
 		},
+		// the provisioner itself
 		&yamlResourceNamespaced{
-			filename:  cephFSDirPath + cephFSNodePlugin,
-			namespace: cephCSINamespace,
+			filename:   cephFSDirPath + cephFSProvisioner,
+			namespace:  cephCSINamespace,
+			oneReplica: true,
 		},
+		// dependencies for the node-plugin
 		&yamlResourceNamespaced{
 			filename:  cephFSDirPath + cephFSNodePluginRBAC,
 			namespace: cephCSINamespace,
 		},
 		&yamlResourceNamespaced{
 			filename:  cephFSDirPath + cephFSNodePluginPSP,
+			namespace: cephCSINamespace,
+		},
+		// the node-plugin itself
+		&yamlResourceNamespaced{
+			filename:  cephFSDirPath + cephFSNodePlugin,
 			namespace: cephCSINamespace,
 		},
 	}
