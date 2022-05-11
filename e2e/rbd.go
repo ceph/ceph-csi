@@ -131,6 +131,7 @@ func deleteRBDPlugin() {
 
 func createORDeleteRbdResources(action kubectlAction) {
 	resources := []ResourceDeployer{
+		// shared resources
 		&yamlResource{
 			filename:     rbdDirPath + csiDriverObject,
 			allowMissing: true,
@@ -139,12 +140,7 @@ func createORDeleteRbdResources(action kubectlAction) {
 			filename:     examplePath + cephConfconfigMap,
 			allowMissing: true,
 		},
-		&yamlResourceNamespaced{
-			filename:       rbdDirPath + rbdProvisioner,
-			namespace:      cephCSINamespace,
-			oneReplica:     true,
-			enableTopology: true,
-		},
+		// dependencies for provisioner
 		&yamlResourceNamespaced{
 			filename:  rbdDirPath + rbdProvisionerRBAC,
 			namespace: cephCSINamespace,
@@ -153,11 +149,14 @@ func createORDeleteRbdResources(action kubectlAction) {
 			filename:  rbdDirPath + rbdProvisionerPSP,
 			namespace: cephCSINamespace,
 		},
+		// the provisioner itself
 		&yamlResourceNamespaced{
-			filename:    rbdDirPath + rbdNodePlugin,
-			namespace:   cephCSINamespace,
-			domainLabel: nodeRegionLabel + "," + nodeZoneLabel,
+			filename:       rbdDirPath + rbdProvisioner,
+			namespace:      cephCSINamespace,
+			oneReplica:     true,
+			enableTopology: true,
 		},
+		// dependencies for the node-plugin
 		&yamlResourceNamespaced{
 			filename:  rbdDirPath + rbdNodePluginRBAC,
 			namespace: cephCSINamespace,
@@ -165,6 +164,12 @@ func createORDeleteRbdResources(action kubectlAction) {
 		&yamlResourceNamespaced{
 			filename:  rbdDirPath + rbdNodePluginPSP,
 			namespace: cephCSINamespace,
+		},
+		// the node-plugin itself
+		&yamlResourceNamespaced{
+			filename:    rbdDirPath + rbdNodePlugin,
+			namespace:   cephCSINamespace,
+			domainLabel: nodeRegionLabel + "," + nodeZoneLabel,
 		},
 	}
 

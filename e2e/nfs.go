@@ -78,6 +78,7 @@ func deleteNFSPlugin() {
 
 func createORDeleteNFSResources(f *framework.Framework, action kubectlAction) {
 	resources := []ResourceDeployer{
+		// shared resources
 		&yamlResource{
 			filename:     nfsDirPath + csiDriverObject,
 			allowMissing: true,
@@ -86,6 +87,7 @@ func createORDeleteNFSResources(f *framework.Framework, action kubectlAction) {
 			filename:     examplePath + cephConfconfigMap,
 			allowMissing: true,
 		},
+		// dependencies for provisioner
 		&yamlResourceNamespaced{
 			filename:  nfsDirPath + nfsProvisionerRBAC,
 			namespace: cephCSINamespace,
@@ -94,11 +96,13 @@ func createORDeleteNFSResources(f *framework.Framework, action kubectlAction) {
 			filename:  nfsDirPath + nfsProvisionerPSP,
 			namespace: cephCSINamespace,
 		},
+		// the provisioner itself
 		&yamlResourceNamespaced{
 			filename:   nfsDirPath + nfsProvisioner,
 			namespace:  cephCSINamespace,
 			oneReplica: true,
 		},
+		// dependencies for the node-plugin
 		&yamlResourceNamespaced{
 			filename:  nfsDirPath + nfsNodePluginRBAC,
 			namespace: cephCSINamespace,
@@ -107,10 +111,12 @@ func createORDeleteNFSResources(f *framework.Framework, action kubectlAction) {
 			filename:  nfsDirPath + nfsNodePluginPSP,
 			namespace: cephCSINamespace,
 		},
+		// the node-plugin itself
 		&yamlResourceNamespaced{
 			filename:  nfsDirPath + nfsNodePlugin,
 			namespace: cephCSINamespace,
 		},
+		// NFS-export management by Rook
 		&rookNFSResource{
 			f:           f,
 			modules:     []string{"rook", "nfs"},
