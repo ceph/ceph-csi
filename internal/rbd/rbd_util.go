@@ -328,7 +328,12 @@ func HexStringToInteger(hexString string) (uint, error) {
 
 // isKrbdFeatureSupported checks if a given Image Feature is supported by krbd
 // driver or not.
-func isKrbdFeatureSupported(ctx context.Context, imageFeatures string) bool {
+func isKrbdFeatureSupported(ctx context.Context, imageFeatures string) (bool, error) {
+	// return false when /sys/bus/rbd/supported_features is absent and we are
+	// not in a position to prepare krbd feature attributes, i.e. if kernel <= 3.8
+	if krbdFeatures == 0 {
+		return false, os.ErrNotExist
+	}
 	arr := strings.Split(imageFeatures, ",")
 	log.UsefulLog(ctx, "checking for ImageFeatures: %v", arr)
 	imageFeatureSet := librbd.FeatureSetFromNames(arr)
@@ -343,7 +348,7 @@ func isKrbdFeatureSupported(ctx context.Context, imageFeatures string) bool {
 		}
 	}
 
-	return supported
+	return supported, nil
 }
 
 // Connect an rbdVolume to the Ceph cluster.

@@ -144,6 +144,7 @@ func healerStageTransaction(ctx context.Context, cr *util.Credentials, volOps *r
 // this function also receive the credentials and secrets args as it differs in its data.
 // The credentials are used directly by functions like voljournal.Connect() and other functions
 // like genVolFromVolumeOptions() make use of secrets.
+// nolint:gocyclo,cyclop // reduce complexity
 func populateRbdVol(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
@@ -241,8 +242,15 @@ func populateRbdVol(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if rv.Mounter == rbdDefaultMounter &&
-		!isKrbdFeatureSupported(ctx, strings.Join(rv.ImageFeatureSet.Names(), ",")) {
+	features := strings.Join(rv.ImageFeatureSet.Names(), ",")
+	isFeatureExist, err := isKrbdFeatureSupported(ctx, features)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.ErrorLog(ctx, "failed checking krbd features %q: %v", features, err)
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if rv.Mounter == rbdDefaultMounter && !isFeatureExist {
 		if !parseBoolOption(ctx, req.GetVolumeContext(), tryOtherMounters, false) {
 			log.ErrorLog(ctx, "unsupported krbd Feature, set `tryOtherMounters:true` or fix krbd driver")
 			err = errors.New("unsupported krbd Feature")
