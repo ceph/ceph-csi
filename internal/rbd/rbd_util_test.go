@@ -18,6 +18,7 @@ package rbd
 
 import (
 	"context"
+	"errors"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -346,8 +347,13 @@ func TestIsKrbdFeatureSupported(t *testing.T) {
 			if err != nil {
 				t.Errorf("HexStringToInteger(%s) failed", krbdSupportedFeaturesAttr)
 			}
-			supported := isKrbdFeatureSupported(ctx, tc.featureName)
-			if supported != tc.isSupported {
+			// In case /sys/bus/rbd/supported_features is absent and we are
+			// not in a position to prepare krbd feature attributes,
+			// isKrbdFeatureSupported returns error ErrNotExist
+			supported, err := isKrbdFeatureSupported(ctx, tc.featureName)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				t.Errorf("isKrbdFeatureSupported(%s) returned error: %v", tc.featureName, err)
+			} else if supported != tc.isSupported {
 				t.Errorf("isKrbdFeatureSupported(%s) returned supported status, expected: %t, got: %t",
 					tc.featureName, tc.isSupported, supported)
 			}
