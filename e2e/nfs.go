@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	snapapi "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	. "github.com/onsi/ginkgo" // nolint
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -345,6 +346,9 @@ var _ = Describe("nfs", func() {
 			pvcRWOPPath := nfsExamplePath + "pvc-rwop.yaml"
 			pvcSmartClonePath := nfsExamplePath + "pvc-clone.yaml"
 			appSmartClonePath := nfsExamplePath + "pod-clone.yaml"
+			pvcClonePath := nfsExamplePath + "pvc-restore.yaml"
+			appClonePath := nfsExamplePath + "pod-restore.yaml"
+			snapshotPath := nfsExamplePath + "snapshot.yaml"
 
 			metadataPool, getErr := getCephFSMetadataPoolName(f, fileSystemName)
 			if getErr != nil {
@@ -571,6 +575,287 @@ var _ = Describe("nfs", func() {
 				if err != nil {
 					e2elog.Failf("failed to resize PVC: %v", err)
 				}
+			})
+
+			By("create a PVC clone and bind it to an app", func() {
+				var wg sync.WaitGroup
+				totalCount := 3
+				wgErrs := make([]error, totalCount)
+				chErrs := make([]error, totalCount)
+				// totalSubvolumes represents the subvolumes in backend
+				// always totalCount+parentPVC
+				totalSubvolumes := totalCount + 1
+				wg.Add(totalCount)
+				err := createNFSSnapshotClass(f)
+				if err != nil {
+					e2elog.Failf("failed to delete NFS snapshotclass: %v", err)
+				}
+				defer func() {
+					err = deleteNFSSnapshotClass()
+					if err != nil {
+						e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
+					}
+				}()
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC: %v", err)
+				}
+
+				app, err := loadApp(appPath)
+				if err != nil {
+					e2elog.Failf("failed to load application: %v", err)
+				}
+
+				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+				label := make(map[string]string)
+				label[appKey] = appLabel
+				app.Labels = label
+				opt := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+				}
+				checkSum, err := writeDataAndCalChecksum(app, &opt, f)
+				if err != nil {
+					e2elog.Failf("failed to calculate checksum: %v", err)
+				}
+
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				// create snapshot
+				for i := 0; i < totalCount; i++ {
+					go func(n int, s snapapi.VolumeSnapshot) {
+						s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+						wgErrs[n] = createSnapshot(&s, deployTimeout)
+						wg.Done()
+					}(i, snap)
+				}
+				wg.Wait()
+
+				failed := 0
+				for i, err := range wgErrs {
+					if err != nil {
+						// not using Failf() as it aborts the test and does not log other errors
+						e2elog.Logf("failed to create snapshot (%s%d): %v", f.UniqueName, i, err)
+						failed++
+					}
+				}
+				if failed != 0 {
+					e2elog.Failf("creating snapshots failed, %d errors were logged", failed)
+				}
+
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				appClone, err := loadApp(appClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load application: %v", err)
+				}
+				pvcClone.Namespace = f.UniqueName
+				appClone.Namespace = f.UniqueName
+				pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
+				appClone.Labels = label
+
+				// create multiple PVC from same snapshot
+				wg.Add(totalCount)
+				for i := 0; i < totalCount; i++ {
+					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+						if wgErrs[n] == nil {
+							err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, subvolumegroup)
+							if err != nil {
+								wgErrs[n] = err
+							}
+							filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+							var checkSumClone string
+							e2elog.Logf("Calculating checksum clone for filepath %s", filePath)
+							checkSumClone, chErrs[n] = calculateSHA512sum(f, &a, filePath, &opt)
+							e2elog.Logf("checksum for clone is %s", checkSumClone)
+							if chErrs[n] != nil {
+								e2elog.Logf("Failed calculating checksum clone %s", chErrs[n])
+							}
+							if checkSumClone != checkSum {
+								e2elog.Logf("checksum didn't match. checksum=%s and checksumclone=%s", checkSum, checkSumClone)
+							}
+						}
+						wg.Done()
+					}(i, *pvcClone, *appClone)
+				}
+				wg.Wait()
+
+				for i, err := range wgErrs {
+					if err != nil {
+						// not using Failf() as it aborts the test and does not log other errors
+						e2elog.Logf("failed to create PVC and app (%s%d): %v", f.UniqueName, i, err)
+						failed++
+					}
+				}
+				if failed != 0 {
+					e2elog.Failf("creating PVCs and apps failed, %d errors were logged", failed)
+				}
+
+				for i, err := range chErrs {
+					if err != nil {
+						// not using Failf() as it aborts the test and does not log other errors
+						e2elog.Logf("failed to calculate checksum (%s%d): %v", f.UniqueName, i, err)
+						failed++
+					}
+				}
+				if failed != 0 {
+					e2elog.Failf("calculating checksum failed, %d errors were logged", failed)
+				}
+
+				validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
+				validateOmapCount(f, totalSubvolumes, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, totalCount, cephfsType, metadataPool, snapsType)
+
+				wg.Add(totalCount)
+				// delete clone and app
+				for i := 0; i < totalCount; i++ {
+					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						p.Spec.DataSource.Name = name
+						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
+						wg.Done()
+					}(i, *pvcClone, *appClone)
+				}
+				wg.Wait()
+
+				for i, err := range wgErrs {
+					if err != nil {
+						// not using Failf() as it aborts the test and does not log other errors
+						e2elog.Logf("failed to delete PVC and app (%s%d): %v", f.UniqueName, i, err)
+						failed++
+					}
+				}
+				if failed != 0 {
+					e2elog.Failf("deleting PVCs and apps failed, %d errors were logged", failed)
+				}
+
+				parentPVCCount := totalSubvolumes - totalCount
+				validateSubvolumeCount(f, parentPVCCount, fileSystemName, subvolumegroup)
+				validateOmapCount(f, parentPVCCount, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, totalCount, cephfsType, metadataPool, snapsType)
+				// create clones from different snapshots and bind it to an app
+				wg.Add(totalCount)
+				for i := 0; i < totalCount; i++ {
+					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						p.Spec.DataSource.Name = name
+						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
+						if wgErrs[n] == nil {
+							err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, subvolumegroup)
+							if err != nil {
+								wgErrs[n] = err
+							}
+							filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+							var checkSumClone string
+							e2elog.Logf("Calculating checksum clone for filepath %s", filePath)
+							checkSumClone, chErrs[n] = calculateSHA512sum(f, &a, filePath, &opt)
+							e2elog.Logf("checksum for clone is %s", checkSumClone)
+							if chErrs[n] != nil {
+								e2elog.Logf("Failed calculating checksum clone %s", chErrs[n])
+							}
+							if checkSumClone != checkSum {
+								e2elog.Logf("checksum didn't match. checksum=%s and checksumclone=%s", checkSum, checkSumClone)
+							}
+						}
+						wg.Done()
+					}(i, *pvcClone, *appClone)
+				}
+				wg.Wait()
+
+				for i, err := range wgErrs {
+					if err != nil {
+						// not using Failf() as it aborts the test and does not log other errors
+						e2elog.Logf("failed to create PVC and app (%s%d): %v", f.UniqueName, i, err)
+						failed++
+					}
+				}
+				if failed != 0 {
+					e2elog.Failf("creating PVCs and apps failed, %d errors were logged", failed)
+				}
+
+				for i, err := range chErrs {
+					if err != nil {
+						// not using Failf() as it aborts the test and does not log other errors
+						e2elog.Logf("failed to calculate checksum (%s%d): %v", f.UniqueName, i, err)
+						failed++
+					}
+				}
+				if failed != 0 {
+					e2elog.Failf("calculating checksum failed, %d errors were logged", failed)
+				}
+
+				validateSubvolumeCount(f, totalSubvolumes, fileSystemName, subvolumegroup)
+				validateOmapCount(f, totalSubvolumes, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, totalCount, cephfsType, metadataPool, snapsType)
+
+				wg.Add(totalCount)
+				// delete snapshot
+				for i := 0; i < totalCount; i++ {
+					go func(n int, s snapapi.VolumeSnapshot) {
+						s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+						wgErrs[n] = deleteSnapshot(&s, deployTimeout)
+						wg.Done()
+					}(i, snap)
+				}
+				wg.Wait()
+
+				for i, err := range wgErrs {
+					if err != nil {
+						// not using Failf() as it aborts the test and does not log other errors
+						e2elog.Logf("failed to delete snapshot (%s%d): %v", f.UniqueName, i, err)
+						failed++
+					}
+				}
+				if failed != 0 {
+					e2elog.Failf("deleting snapshots failed, %d errors were logged", failed)
+				}
+
+				wg.Add(totalCount)
+				// delete clone and app
+				for i := 0; i < totalCount; i++ {
+					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
+						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						p.Spec.DataSource.Name = name
+						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
+						wg.Done()
+					}(i, *pvcClone, *appClone)
+				}
+				wg.Wait()
+
+				for i, err := range wgErrs {
+					if err != nil {
+						// not using Failf() as it aborts the test and does not log other errors
+						e2elog.Logf("failed to delete PVC and app (%s%d): %v", f.UniqueName, i, err)
+						failed++
+					}
+				}
+				if failed != 0 {
+					e2elog.Failf("deleting PVCs and apps failed, %d errors were logged", failed)
+				}
+
+				validateSubvolumeCount(f, parentPVCCount, fileSystemName, subvolumegroup)
+				validateOmapCount(f, parentPVCCount, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, 0, cephfsType, metadataPool, snapsType)
+				// delete parent pvc
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC or application: %v", err)
+				}
+
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+				validateOmapCount(f, 0, cephfsType, metadataPool, snapsType)
 			})
 
 			By("create a PVC-PVC clone and bind it to an app", func() {
