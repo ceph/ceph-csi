@@ -48,6 +48,7 @@ func (fs *Driver) Run(conf *util.Config) {
 		csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
 		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
+		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	})
 	// VolumeCapabilities are validated by the CephFS Controller
 	cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
