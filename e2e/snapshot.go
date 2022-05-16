@@ -206,6 +206,71 @@ func createCephFSSnapshotClass(f *framework.Framework) error {
 	return err
 }
 
+func createNFSSnapshotClass(f *framework.Framework) error {
+	scPath := fmt.Sprintf("%s/%s", nfsExamplePath, "snapshotclass.yaml")
+	sc := getSnapshotClass(scPath)
+	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-namespace"] = cephCSINamespace
+	sc.Parameters["csi.storage.k8s.io/snapshotter-secret-name"] = cephFSProvisionerSecretName
+
+	fsID, err := getClusterID(f)
+	if err != nil {
+		return fmt.Errorf("failed to get clusterID: %w", err)
+	}
+	sc.Parameters["clusterID"] = fsID
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return err
+	}
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		_, err = sclient.VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
+		if err != nil {
+			e2elog.Logf("error creating SnapshotClass %q: %v", sc.Name, err)
+			if apierrs.IsAlreadyExists(err) {
+				return true, nil
+			}
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to create SnapshotClass %q: %w", sc.Name, err)
+		}
+
+		return true, nil
+	})
+}
+
+func deleteNFSSnapshotClass() error {
+	scPath := fmt.Sprintf("%s/%s", nfsExamplePath, "snapshotclass.yaml")
+	sc := getSnapshotClass(scPath)
+
+	sclient, err := newSnapshotClient()
+	if err != nil {
+		return err
+	}
+
+	timeout := time.Duration(deployTimeout) * time.Minute
+
+	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+		err = sclient.VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
+		if err != nil {
+			e2elog.Logf("error deleting SnapshotClass %q: %v", sc.Name, err)
+			if apierrs.IsNotFound(err) {
+				return true, nil
+			}
+			if isRetryableAPIError(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to delete SnapshotClass %q: %w", sc.Name, err)
+		}
+
+		return true, nil
+	})
+}
+
 func getVolumeSnapshotContent(namespace, snapshotName string) (*snapapi.VolumeSnapshotContent, error) {
 	sclient, err := newSnapshotClient()
 	if err != nil {
