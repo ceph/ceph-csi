@@ -482,13 +482,6 @@ var _ = Describe("nfs", func() {
 			})
 
 			By("Create PVC, bind it to an app, unmount volume and check app deletion", func() {
-				// TODO: update nfs node-plugin that has kubernetes-csi/csi-driver-nfs#319
-				if true {
-					e2elog.Logf("skipping test, needs kubernetes-csi/csi-driver-nfs#319")
-
-					return
-				}
-
 				pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC or application: %v", err)
