@@ -114,6 +114,9 @@ for its support details.
 |        | Dynamically provision, de-provision File mode ROX volume  | Alpha          | >= v3.6.0          | >= v1.0.0        | Pacific (>=16.2.0)   | >= v1.14.0         |
 |        | Dynamically provision, de-provision File mode RWOP volume | Alpha          | >= v3.6.0          | >= v1.5.0        | Pacific (>=16.2.0)   | >= v1.22.0         |
 |        | Expand volume                                             | Alpha          | >= v3.7.0          | >= v1.1.0        | Pacific (>=16.2.0)   | >= v1.15.0         |
+|        | Creating and deleting snapshot                            | Alpha          | >= v3.7.0          | >= v1.1.0        | Pacific (>=16.2.0)   | >= v1.17.0         |
+|        | Provision volume from snapshot                            | Alpha          | >= v3.7.0          | >= v1.1.0        | Pacific (>=16.2.0)   | >= v1.17.0         |
+|        | Provision volume from another volume                      | Alpha          | >= v3.7.0          | >= v1.1.0        | Pacific (>=16.2.0)   | >= v1.16.0         |
 
 `NOTE`: The `Alpha` status reflects possible non-backward
 compatible changes in the future, and is thus not recommended
