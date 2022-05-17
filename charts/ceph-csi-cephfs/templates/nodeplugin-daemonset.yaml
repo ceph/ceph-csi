@@ -75,9 +75,6 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
-{{- if .Values.topology.enabled }}
-            - "--domainlabels={{ .Values.topology.domainLabels | join "," }}"
-{{- end }}
 {{- if .Values.nodeplugin.profiling.enabled }}
             - "--enableprofiling={{ .Values.nodeplugin.profiling.enabled }}"
 {{- end }}
