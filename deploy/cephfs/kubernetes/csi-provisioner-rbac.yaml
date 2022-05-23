@@ -11,9 +11,6 @@ metadata:
   name: cephfs-external-provisioner-runner
 rules:
   - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list"]
   - apiGroups: [""]
@@ -36,7 +33,7 @@ rules:
     verbs: ["get", "list", "patch"]
   - apiGroups: ["snapshot.storage.k8s.io"]
     resources: ["volumesnapshotcontents"]
-    verbs: ["create", "get", "list", "watch", "update", "delete", "patch"]
+    verbs: ["get", "list", "watch", "update", "patch"]
   - apiGroups: ["snapshot.storage.k8s.io"]
     resources: ["volumesnapshotclasses"]
     verbs: ["get", "list", "watch"]
@@ -77,10 +74,6 @@ metadata:
   namespace: default
   name: cephfs-external-provisioner-cfg
 rules:
-  # remove this once we stop supporting v1.0.0
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get", "list", "create", "delete"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "watch", "list", "delete", "update", "create"]
