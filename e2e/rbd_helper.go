@@ -942,3 +942,69 @@ func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int)
 
 	return err
 }
+
+// imageInfo strongly typed JSON spec for image info.
+type imageInfo struct {
+	Name        string `json:"name"`
+	StripeUnit  int    `json:"stripe_unit"`
+	StripeCount int    `json:"stripe_count"`
+	ObjectSize  int    `json:"object_size"`
+}
+
+// getImageInfo queries rbd about the given image and returns its metadata, and returns
+// error if provided image is not found.
+func getImageInfo(f *framework.Framework, imageName, poolName string) (imageInfo, error) {
+	// rbd --format=json info [image-spec | snap-spec]
+	var imgInfo imageInfo
+
+	stdOut, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf("rbd info %s %s --format json", rbdOptions(poolName), imageName),
+		rookNamespace)
+	if err != nil {
+		return imgInfo, fmt.Errorf("failed to get rbd info: %w", err)
+	}
+	if stdErr != "" {
+		return imgInfo, fmt.Errorf("failed to get rbd info: %v", stdErr)
+	}
+	err = json.Unmarshal([]byte(stdOut), &imgInfo)
+	if err != nil {
+		return imgInfo, fmt.Errorf("unmarshal failed: %w. raw buffer response: %s",
+			err, stdOut)
+	}
+
+	return imgInfo, nil
+}
+
+// validateStripe validate the stripe count, stripe unit and object size of the
+// image.
+func validateStripe(f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	stripeUnit,
+	stripeCount,
+	objectSize int,
+) error {
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	imgInfo, err := getImageInfo(f, imageData.imageName, defaultRBDPool)
+	if err != nil {
+		return err
+	}
+
+	if imgInfo.ObjectSize != objectSize {
+		return fmt.Errorf("objectSize %d does not match expected %d", imgInfo.ObjectSize, objectSize)
+	}
+
+	if imgInfo.StripeUnit != stripeUnit {
+		return fmt.Errorf("stripeUnit %d does not match expected %d", imgInfo.StripeUnit, stripeUnit)
+	}
+
+	if imgInfo.StripeCount != stripeCount {
+		return fmt.Errorf("stripeCount %d does not match expected %d", imgInfo.StripeCount, stripeCount)
+	}
+
+	return nil
+}

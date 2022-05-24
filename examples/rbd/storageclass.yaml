@@ -134,6 +134,14 @@ parameters:
    #       {"domainLabel":"zone","value":"zone1"}]}
    #   ]
 
+   # Image striping, Refer https://docs.ceph.com/en/latest/man/8/rbd/#striping
+   # For more details
+   # (optional) stripe unit in bytes.
+   # stripeUnit: <>
+   # (optional) objects to stripe over before looping.
+   # stripeCount: <>
+   # (optional) The object size in bytes.
+   # objectSize: <>
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 mountOptions:
