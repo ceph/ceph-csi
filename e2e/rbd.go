@@ -4080,6 +4080,153 @@ var _ = Describe("RBD", func() {
 				})
 			})
 
+			By("validate rbd image stripe", func() {
+				stripeUnit := 4096
+				stripeCount := 8
+				objectSize := 131072
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{
+						"stripeUnit":  fmt.Sprintf("%d", stripeUnit),
+						"stripeCount": fmt.Sprintf("%d", stripeCount),
+						"objectSize":  fmt.Sprintf("%d", objectSize),
+					},
+					deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+				defer func() {
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+				}()
+
+				err = createRBDSnapshotClass(f)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+				defer func() {
+					err = deleteRBDSnapshotClass()
+					if err != nil {
+						e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
+					}
+				}()
+
+				// create PVC and bind it to an app
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+
+				pvc.Namespace = f.UniqueName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC and application: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				err = validateStripe(f, pvc, stripeUnit, stripeCount, objectSize)
+				if err != nil {
+					e2elog.Failf("failed to validate stripe: %v", err)
+				}
+
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create snapshot: %v", err)
+				}
+				// validate created backend rbd images
+				// parent PVC + snapshot
+				totalImages := 2
+				validateRBDImageCount(f, totalImages, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+
+				// create clone PVC as ROX
+				pvcClone.Namespace = f.UniqueName
+				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC: %v", err)
+				}
+				// validate created backend rbd images
+				// parent pvc + snapshot + clone
+				totalImages = 3
+				validateRBDImageCount(f, totalImages, defaultRBDPool)
+				validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
+				err = validateStripe(f, pvcClone, stripeUnit, stripeCount, objectSize)
+				if err != nil {
+					e2elog.Failf("failed to validate stripe for clone: %v", err)
+				}
+				// delete snapshot
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete snapshot: %v", err)
+				}
+				// delete clone pvc
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC: %v", err)
+				}
+
+				pvcSmartClone, err := loadPVC(pvcSmartClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load pvcSmartClone: %v", err)
+				}
+				pvcSmartClone.Namespace = f.UniqueName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create pvc: %v", err)
+				}
+				// validate created backend rbd images
+				// parent pvc + temp clone + clone
+				totalImages = 3
+				validateRBDImageCount(f, totalImages, defaultRBDPool)
+				validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
+				err = validateStripe(f, pvcSmartClone, stripeUnit, stripeCount, objectSize)
+				if err != nil {
+					e2elog.Failf("failed to validate stripe for clone: %v", err)
+				}
+				// delete parent pvc
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC: %v", err)
+				}
+
+				// delete clone pvc
+				err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+			})
+
 			// Make sure this should be last testcase in this file, because
 			// it deletes pool
 			By("Create a PVC and delete PVC when backend pool deleted", func() {

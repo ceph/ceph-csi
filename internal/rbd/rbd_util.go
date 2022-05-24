@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -98,6 +99,11 @@ type rbdImage struct {
 
 	// VolSize is the size of the RBD image backing this rbdImage.
 	VolSize int64
+
+	// image striping configurations.
+	StripeCount uint64
+	StripeUnit  uint64
+	ObjectSize  uint64
 
 	Monitors string
 	// JournalPool is the ceph pool in which the CSI Journal/CSI snapshot Journal is
@@ -408,27 +414,19 @@ func (rs *rbdSnapshot) String() string {
 // createImage creates a new ceph image with provision and volume options.
 func createImage(ctx context.Context, pOpts *rbdVolume, cr *util.Credentials) error {
 	volSzMiB := fmt.Sprintf("%dM", util.RoundOffVolSize(pOpts.VolSize))
-	options := librbd.NewRbdImageOptions()
 
-	logMsg := "rbd: create %s size %s (features: %s) using mon %s"
-	if pOpts.DataPool != "" {
-		logMsg += fmt.Sprintf(", data pool %s", pOpts.DataPool)
-		err := options.SetString(librbd.RbdImageOptionDataPool, pOpts.DataPool)
-		if err != nil {
-			return fmt.Errorf("failed to set data pool: %w", err)
-		}
-	}
-	log.DebugLog(ctx, logMsg,
+	log.DebugLog(ctx, "rbd: create %s size %s (features: %s) using mon %s",
 		pOpts, volSzMiB, pOpts.ImageFeatureSet.Names(), pOpts.Monitors)
 
-	if pOpts.ImageFeatureSet != 0 {
-		err := options.SetUint64(librbd.RbdImageOptionFeatures, uint64(pOpts.ImageFeatureSet))
-		if err != nil {
-			return fmt.Errorf("failed to set image features: %w", err)
-		}
+	options := librbd.NewRbdImageOptions()
+	defer options.Destroy()
+
+	err := pOpts.setImageOptions(ctx, options)
+	if err != nil {
+		return err
 	}
 
-	err := pOpts.Connect(cr)
+	err = pOpts.Connect(cr)
 	if err != nil {
 		return err
 	}
@@ -1280,7 +1278,38 @@ func genVolFromVolumeOptions(
 		rbdVol.Mounter)
 	rbdVol.DisableInUseChecks = disableInUseChecks
 
+	err = rbdVol.setStripeConfiguration(volOptions)
+	if err != nil {
+		return nil, err
+	}
+
 	return rbdVol, nil
+}
+
+func (ri *rbdImage) setStripeConfiguration(options map[string]string) error {
+	var err error
+	if val, ok := options["stripeUnit"]; ok {
+		ri.StripeUnit, err = strconv.ParseUint(val, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse stripeUnit %s: %w", val, err)
+		}
+	}
+
+	if val, ok := options["stripeCount"]; ok {
+		ri.StripeCount, err = strconv.ParseUint(val, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse stripeCount %s: %w", val, err)
+		}
+	}
+
+	if val, ok := options["objectSize"]; ok {
+		ri.ObjectSize, err = strconv.ParseUint(val, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse objectSize %s: %w", val, err)
+		}
+	}
+
+	return nil
 }
 
 func (rv *rbdVolume) validateImageFeatures(imageFeatures string) error {
@@ -1384,7 +1413,8 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 	parentVol *rbdVolume,
 ) error {
 	var err error
-	logMsg := "rbd: clone %s %s (features: %s) using mon %s"
+	log.DebugLog(ctx, "rbd: clone %s %s (features: %s) using mon %s",
+		pSnapOpts, rv, rv.ImageFeatureSet.Names(), rv.Monitors)
 
 	err = parentVol.openIoctx()
 	if err != nil {
@@ -1397,30 +1427,15 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 
 	options := librbd.NewRbdImageOptions()
 	defer options.Destroy()
-
-	if rv.DataPool != "" {
-		logMsg += fmt.Sprintf(", data pool %s", rv.DataPool)
-		err = options.SetString(librbd.RbdImageOptionDataPool, rv.DataPool)
-		if err != nil {
-			return fmt.Errorf("failed to set data pool: %w", err)
-		}
-	}
-
-	log.DebugLog(ctx, logMsg,
-		pSnapOpts, rv, rv.ImageFeatureSet.Names(), rv.Monitors)
-
-	if rv.ImageFeatureSet != 0 {
-		err = options.SetUint64(librbd.RbdImageOptionFeatures, uint64(rv.ImageFeatureSet))
-		if err != nil {
-			return fmt.Errorf("failed to set image features: %w", err)
-		}
+	err = rv.setImageOptions(ctx, options)
+	if err != nil {
+		return err
 	}
 
 	err = options.SetUint64(librbd.ImageOptionCloneFormat, 2)
 	if err != nil {
-		return fmt.Errorf("failed to set image features: %w", err)
+		return err
 	}
-
 	// As the clone is yet to be created, open the Ioctx.
 	err = rv.openIoctx()
 	if err != nil {
@@ -1457,6 +1472,52 @@ func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 
 	// Success! Do not delete the cloned image now :)
 	deleteClone = false
+
+	return nil
+}
+
+// setImageOptions sets the image options.
+func (rv *rbdVolume) setImageOptions(ctx context.Context, options *librbd.ImageOptions) error {
+	var err error
+
+	logMsg := fmt.Sprintf("setting image options on %s", rv)
+	if rv.DataPool != "" {
+		logMsg += fmt.Sprintf(", data pool %s", rv.DataPool)
+		err = options.SetString(librbd.RbdImageOptionDataPool, rv.DataPool)
+		if err != nil {
+			return fmt.Errorf("failed to set data pool: %w", err)
+		}
+	}
+
+	if rv.ImageFeatureSet != 0 {
+		err = options.SetUint64(librbd.RbdImageOptionFeatures, uint64(rv.ImageFeatureSet))
+		if err != nil {
+			return fmt.Errorf("failed to set image features: %w", err)
+		}
+	}
+
+	if rv.StripeCount != 0 {
+		logMsg += fmt.Sprintf(", stripe count %d, stripe unit %d", rv.StripeCount, rv.StripeUnit)
+		err = options.SetUint64(librbd.RbdImageOptionStripeCount, rv.StripeCount)
+		if err != nil {
+			return fmt.Errorf("failed to set stripe count: %w", err)
+		}
+		err = options.SetUint64(librbd.RbdImageOptionStripeUnit, rv.StripeUnit)
+		if err != nil {
+			return fmt.Errorf("failed to set stripe unit: %w", err)
+		}
+	}
+
+	if rv.ObjectSize != 0 {
+		order := uint64(math.Log2(float64(rv.ObjectSize)))
+		logMsg += fmt.Sprintf(", object size %d, order %d", rv.ObjectSize, order)
+		err = options.SetUint64(librbd.RbdImageOptionOrder, order)
+		if err != nil {
+			return fmt.Errorf("failed to set object size: %w", err)
+		}
+	}
+
+	log.DebugLog(ctx, logMsg)
 
 	return nil
 }

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -92,6 +93,43 @@ func (cs *ControllerServer) validateVolumeReq(ctx context.Context, req *csi.Crea
 	err := util.CheckReadOnlyManyIsSupported(req)
 	if err != nil {
 		return err
+	}
+
+	err = validateStriping(req.Parameters)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	return nil
+}
+
+func validateStriping(parameters map[string]string) error {
+	stripeUnit := parameters["stripeUnit"]
+	stripeCount := parameters["stripeCount"]
+	if stripeUnit != "" && stripeCount == "" {
+		return errors.New("stripeCount must be specified when stripeUnit is specified")
+	}
+
+	if stripeUnit == "" && stripeCount != "" {
+		return errors.New("stripeUnit must be specified when stripeCount is specified")
+	}
+
+	objectSize := parameters["objectSize"]
+	if objectSize != "" {
+		objSize, err := strconv.ParseUint(objectSize, 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse objectSize %s: %w", objectSize, err)
+		}
+		// check objectSize is power of 2
+		/*
+			Take 2^3=8 for example.
+			x & (x-1)
+			8 & 7
+			1000 & 0111 = 0000
+		*/
+		if objSize == 0 || (objSize&(objSize-1)) != 0 {
+			return fmt.Errorf("objectSize %s is not power of 2", objectSize)
+		}
 	}
 
 	return nil
