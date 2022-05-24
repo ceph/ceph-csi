@@ -72,6 +72,11 @@ type SubVolumeClient interface {
 	CreateCloneFromSnapshot(ctx context.Context, snap Snapshot) error
 	// CleanupSnapshotFromSubvolume removes the snapshot from the subvolume.
 	CleanupSnapshotFromSubvolume(ctx context.Context, parentVol *SubVolume) error
+
+	// SetAllMetadata set all the metadata from arg parameters on Ssubvolume.
+	SetAllMetadata(parameters map[string]string) error
+	// UnsetAllMetadata unset all the metadata from arg keys on subvolume.
+	UnsetAllMetadata(keys []string) error
 }
 
 // subVolumeClient implements SubVolumeClient interface.
