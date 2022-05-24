@@ -287,9 +287,10 @@ func (cs *ControllerServer) CreateVolume(
 	}
 	// TODO return error message if requested vol size greater than found volume return error
 
+	metadata := k8s.GetVolumeMetadata(req.GetParameters())
 	if vID != nil {
+		volClient := core.NewSubVolume(volOptions.GetConnection(), &volOptions.SubVolume, volOptions.ClusterID)
 		if sID != nil || pvID != nil && !volOptions.BackingSnapshot {
-			volClient := core.NewSubVolume(volOptions.GetConnection(), &volOptions.SubVolume, volOptions.ClusterID)
 			err = volClient.ExpandVolume(ctx, volOptions.Size)
 			if err != nil {
 				purgeErr := volClient.PurgeVolume(ctx, false)
@@ -307,6 +308,14 @@ func (cs *ControllerServer) CreateVolume(
 				}
 				log.ErrorLog(ctx, "failed to expand volume %s: %v", fsutil.VolumeID(vID.FsSubvolName), err)
 
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
+
+		if !volOptions.BackingSnapshot {
+			// Set metadata on restart of provisioner pod when subvolume exist
+			err = volClient.SetAllMetadata(metadata)
+			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 		}
@@ -388,7 +397,6 @@ func (cs *ControllerServer) CreateVolume(
 		}
 
 		// Set Metadata on PV Create
-		metadata := k8s.GetVolumeMetadata(req.GetParameters())
 		err = volClient.SetAllMetadata(metadata)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
