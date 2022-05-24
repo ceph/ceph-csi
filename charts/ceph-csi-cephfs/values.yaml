@@ -187,7 +187,7 @@ provisioner:
   snapshotter:
     image:
       repository: registry.k8s.io/sig-storage/csi-snapshotter
-      tag: v4.2.0
+      tag: v6.0.0
       pullPolicy: IfNotPresent
     resources: {}
 
