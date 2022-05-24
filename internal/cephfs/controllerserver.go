@@ -386,6 +386,13 @@ func (cs *ControllerServer) CreateVolume(
 
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+
+		// Set Metadata on PV Create
+		metadata := k8s.GetVolumeMetadata(req.GetParameters())
+		err = volClient.SetAllMetadata(metadata)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	log.DebugLog(ctx, "cephfs: successfully created backing volume named %s for request name %s",
