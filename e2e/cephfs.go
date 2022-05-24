@@ -397,6 +397,64 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			By("create a PVC and check PVC/PV metadata on CephFS subvolume", func() {
+				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
+				if err != nil {
+					e2elog.Failf("failed to create CephFS storageclass: %v", err)
+				}
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC: %v", err)
+				}
+
+				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 1, cephfsType, metadataPool, volumesType)
+
+				pvcObj, err := getPersistentVolumeClaim(c, pvc.Namespace, pvc.Name)
+				if err != nil {
+					e2elog.Logf("error getting pvc %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
+				}
+				if pvcObj.Spec.VolumeName == "" {
+					e2elog.Logf("pv name is empty %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
+				}
+				subvol, err := listCephFSSubVolumes(f, fileSystemName, subvolumegroup)
+				if err != nil {
+					e2elog.Failf("failed to list CephFS subvolumes: %v", err)
+				}
+				if len(subvol) == 0 {
+					e2elog.Failf("cephFS subvolumes list is empty %s", fileSystemName)
+				}
+				metadata, err := listCephFSSubvolumeMetadata(f, fileSystemName, subvol[0].Name, subvolumegroup)
+				if err != nil {
+					e2elog.Failf("failed to list subvolume metadata: %v", err)
+				}
+
+				if metadata.PVCNameKey != pvc.Name {
+					e2elog.Failf("expected pvcName %q got %q", pvc.Name, metadata.PVCNameKey)
+				} else if metadata.PVCNamespaceKey != pvc.Namespace {
+					e2elog.Failf("expected pvcNamespace %q got %q", pvc.Namespace, metadata.PVCNamespaceKey)
+				} else if metadata.PVNameKey != pvcObj.Spec.VolumeName {
+					e2elog.Failf("expected pvName %q got %q", pvcObj.Spec.VolumeName, metadata.PVNameKey)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC: %v", err)
+				}
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+			})
+
 			By("create PVC in storageClass with volumeNamePrefix", func() {
 				volumeNamePrefix := "foo-bar-"
 				err := createCephfsStorageClass(
