@@ -212,6 +212,38 @@ func listCephFSSubVolumes(f *framework.Framework, filesystem, groupname string) 
 	return subVols, nil
 }
 
+type cephfsSubvolumeMetadata struct {
+	PVCNameKey      string `json:"csi.storage.k8s.io/pvc/name"`
+	PVCNamespaceKey string `json:"csi.storage.k8s.io/pvc/namespace"`
+	PVNameKey       string `json:"csi.storage.k8s.io/pv/name"`
+}
+
+func listCephFSSubvolumeMetadata(
+	f *framework.Framework,
+	filesystem,
+	subvolume,
+	groupname string,
+) (cephfsSubvolumeMetadata, error) {
+	var metadata cephfsSubvolumeMetadata
+	stdout, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf("ceph fs subvolume metadata ls %s %s --group_name=%s --format=json", filesystem, subvolume, groupname),
+		rookNamespace)
+	if err != nil {
+		return metadata, err
+	}
+	if stdErr != "" {
+		return metadata, fmt.Errorf("error listing subvolume metadata %v", stdErr)
+	}
+
+	err = json.Unmarshal([]byte(stdout), &metadata)
+	if err != nil {
+		return metadata, err
+	}
+
+	return metadata, nil
+}
+
 // getSubvolumepath validates whether subvolumegroup is present.
 func getSubvolumePath(f *framework.Framework, filesystem, subvolgrp, subvolume string) (string, error) {
 	cmd := fmt.Sprintf("ceph fs subvolume getpath %s %s --group_name=%s", filesystem, subvolume, subvolgrp)
