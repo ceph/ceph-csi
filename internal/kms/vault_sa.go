@@ -208,7 +208,7 @@ func (kms *vaultTenantSA) parseConfig(config map[string]interface{}) error {
 	} else if err == nil {
 		kms.vaultConfig[vault.AuthMountPath], err = detectAuthMountPath(vaultAuthPath)
 		if err != nil {
-			return fmt.Errorf("failed to set %s in Vault config: %w", vault.AuthMountPath, err)
+			return fmt.Errorf("failed to set \"vaultAuthPath\" in Vault config: %w", err)
 		}
 	}
 
