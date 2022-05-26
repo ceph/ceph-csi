@@ -111,7 +111,7 @@ are available while running tests:
 After the support for snapshot/clone has been added to ceph-csi,
 you need to follow these steps before running e2e.
 
-- Install snapshot controller and Beta snapshot CRD
+- Install snapshot controller and snapshot CRD
 
     ```console
     ./scripts/install-snapshot.sh install
