@@ -715,33 +715,30 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("verify generic ephemeral volume support", func() {
-				// generic ephemeral volume support is supported from 1.21
-				if k8sVersionGreaterEquals(f.ClientSet, 1, 21) {
-					// create application
-					app, err := loadApp(appEphemeralPath)
-					if err != nil {
-						e2elog.Failf("failed to load application: %v", err)
-					}
-					app.Namespace = f.UniqueName
-					err = createApp(f.ClientSet, app, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to create application: %v", err)
-					}
-					// validate created backend rbd images
-					validateRBDImageCount(f, 1, defaultRBDPool)
-					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
-					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to delete application: %v", err)
-					}
-					// validate created backend rbd images
-					validateRBDImageCount(f, 0, defaultRBDPool)
-					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-					// validate images in trash
-					err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to validate rbd images in pool %s trash: %v", defaultRBDPool, err)
-					}
+				// create application
+				app, err := loadApp(appEphemeralPath)
+				if err != nil {
+					e2elog.Failf("failed to load application: %v", err)
+				}
+				app.Namespace = f.UniqueName
+				err = createApp(f.ClientSet, app, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create application: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete application: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+				// validate images in trash
+				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to validate rbd images in pool %s trash: %v", defaultRBDPool, err)
 				}
 			})
 
