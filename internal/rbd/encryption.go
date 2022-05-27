@@ -63,6 +63,11 @@ const (
 	oldMetadataDEK = ".rbd.csi.ceph.com/dek"
 
 	encryptionPassphraseSize = 20
+
+	// rbdDefaultEncryptionType is the default to use when the
+	// user did not specify an "encryptionType", but set
+	// "encryption": true.
+	rbdDefaultEncryptionType = util.EncryptionTypeBlock
 )
 
 // checkRbdImageEncrypted verifies if rbd image was encrypted when created.
@@ -98,9 +103,18 @@ func (ri *rbdImage) isBlockEncrypted() bool {
 	return ri.blockEncryption != nil
 }
 
-// isBlockDeviceEncrypted returns `true` if the filesystem on the rbdImage is (or needs to be) encrypted.
+// isFileEncrypted returns `true` if the filesystem on the rbdImage is (or needs to be) encrypted.
 func (ri *rbdImage) isFileEncrypted() bool {
 	return ri.fileEncryption != nil
+}
+
+func IsFileEncrypted(ctx context.Context, volOptions map[string]string) (bool, error) {
+	_, encType, err := ParseEncryptionOpts(ctx, volOptions)
+	if err != nil {
+		return false, err
+	}
+
+	return encType == util.EncryptionTypeFile, nil
 }
 
 // setupBlockEncryption configures the metadata of the RBD image for encryption:
@@ -137,7 +151,7 @@ func (ri *rbdImage) setupBlockEncryption(ctx context.Context) error {
 // (Usecase: Restoring snapshot into a storageclass with different encryption config).
 func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage, copyOnlyPassphrase bool) error {
 	// nothing to do if parent image is not encrypted.
-	if !ri.isBlockEncrypted() {
+	if !ri.isBlockEncrypted() || !ri.isFileEncrypted() {
 		return nil
 	}
 
@@ -146,25 +160,54 @@ func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage, copyOnlyPassphrase bool) 
 			"set!? Call stack: %s", ri, cp, ri.VolID, util.CallStack())
 	}
 
-	// get the unencrypted passphrase
-	passphrase, err := ri.blockEncryption.GetCryptoPassphrase(ri.VolID)
-	if err != nil {
-		return fmt.Errorf("failed to fetch passphrase for %q: %w",
-			ri, err)
-	}
+	if ri.isBlockEncrypted() {
+		// get the unencrypted passphrase
+		passphrase, err := ri.blockEncryption.GetCryptoPassphrase(ri.VolID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch passphrase for %q: %w",
+				ri, err)
+		}
 
-	if !copyOnlyPassphrase {
-		cp.blockEncryption, err = util.NewVolumeEncryption(ri.blockEncryption.GetID(), ri.blockEncryption.KMS)
-		if errors.Is(err, util.ErrDEKStoreNeeded) {
-			cp.blockEncryption.SetDEKStore(cp)
+		if !copyOnlyPassphrase {
+			cp.blockEncryption, err = util.NewVolumeEncryption(ri.blockEncryption.GetID(), ri.blockEncryption.KMS)
+			if errors.Is(err, util.ErrDEKStoreNeeded) {
+				cp.blockEncryption.SetDEKStore(cp)
+			}
+		}
+
+		// re-encrypt the plain passphrase for the cloned volume
+		err = cp.blockEncryption.StoreCryptoPassphrase(cp.VolID, passphrase)
+		if err != nil {
+			return fmt.Errorf("failed to store passphrase for %q: %w",
+				cp, err)
 		}
 	}
 
-	// re-encrypt the plain passphrase for the cloned volume
-	err = cp.blockEncryption.StoreCryptoPassphrase(cp.VolID, passphrase)
-	if err != nil {
-		return fmt.Errorf("failed to store passphrase for %q: %w",
-			cp, err)
+	if ri.isFileEncrypted() && !copyOnlyPassphrase {
+		var err error
+		cp.fileEncryption, err = util.NewVolumeEncryption(ri.fileEncryption.GetID(), ri.fileEncryption.KMS)
+		if errors.Is(err, util.ErrDEKStoreNeeded) {
+			_, err := ri.fileEncryption.KMS.GetSecret("")
+			if errors.Is(err, kmsapi.ErrGetSecretUnsupported) {
+				return err
+			}
+		}
+	}
+
+	if ri.isFileEncrypted() && ri.fileEncryption.KMS.RequiresDEKStore() == kmsapi.DEKStoreIntegrated {
+		// get the unencrypted passphrase
+		passphrase, err := ri.fileEncryption.GetCryptoPassphrase(ri.VolID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch passphrase for %q: %w",
+				ri, err)
+		}
+
+		// re-encrypt the plain passphrase for the cloned volume
+		err = cp.fileEncryption.StoreCryptoPassphrase(cp.VolID, passphrase)
+		if err != nil {
+			return fmt.Errorf("failed to store passphrase for %q: %w",
+				cp, err)
+		}
 	}
 
 	// copy encryption status for the original volume
@@ -173,6 +216,7 @@ func (ri *rbdImage) copyEncryptionConfig(cp *rbdImage, copyOnlyPassphrase bool) 
 		return fmt.Errorf("failed to get encryption status for %q: %w",
 			ri, err)
 	}
+
 	err = cp.ensureEncryptionMetadataSet(status)
 	if err != nil {
 		return fmt.Errorf("failed to store encryption status for %q: "+
@@ -262,14 +306,21 @@ func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string)
 }
 
 func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[string]string) error {
-	kmsID, err := ri.ParseEncryptionOpts(ctx, volOptions)
+	kmsID, encType, err := ParseEncryptionOpts(ctx, volOptions)
 	if err != nil {
 		return err
 	} else if kmsID == "" {
 		return nil
 	}
 
-	err = ri.configureBlockDeviceEncryption(kmsID, credentials)
+	if encType == util.EncryptionTypeBlock {
+		err = ri.configureBlockEncryption(kmsID, credentials)
+	} else if encType == util.EncryptionTypeFile {
+		err = ri.configureFileEncryption(kmsID, credentials)
+	} else {
+		return fmt.Errorf("invalid encryption type")
+	}
+
 	if err != nil {
 		return fmt.Errorf("invalid encryption kms configuration: %w", err)
 	}
@@ -278,10 +329,10 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 }
 
 // ParseEncryptionOpts returns kmsID and sets Owner attribute.
-func (ri *rbdImage) ParseEncryptionOpts(
+func ParseEncryptionOpts(
 	ctx context.Context,
 	volOptions map[string]string,
-) (string, error) {
+) (string, util.EncryptionType, error) {
 	var (
 		err              error
 		ok               bool
@@ -289,14 +340,16 @@ func (ri *rbdImage) ParseEncryptionOpts(
 	)
 	encrypted, ok = volOptions["encrypted"]
 	if !ok {
-		return "", nil
+		return "", util.EncryptionTypeInvalid, err
 	}
 	kmsID, err = util.FetchEncryptionKMSID(encrypted, volOptions["encryptionKMSID"])
 	if err != nil {
-		return "", err
+		return "", util.EncryptionTypeInvalid, err
 	}
 
-	return kmsID, nil
+	encType := util.FetchEncryptionType(volOptions, rbdDefaultEncryptionType)
+
+	return kmsID, encType, nil
 }
 
 // configureBlockDeviceEncryption sets up the VolumeEncryption for this rbdImage. Once
@@ -313,6 +366,31 @@ func (ri *rbdImage) configureBlockEncryption(kmsID string, credentials map[strin
 	// metadata of the RBD image itself
 	if errors.Is(err, util.ErrDEKStoreNeeded) {
 		ri.blockEncryption.SetDEKStore(ri)
+	}
+
+	return nil
+}
+
+// configureBlockDeviceEncryption sets up the VolumeEncryption for this rbdImage. Once
+// configured, use isEncrypted() to see if the volume supports encryption.
+func (ri *rbdImage) configureFileEncryption(kmsID string, credentials map[string]string) error {
+	kms, err := kmsapi.GetKMS(ri.Owner, kmsID, credentials)
+	if err != nil {
+		return err
+	}
+
+	ri.fileEncryption, err = util.NewVolumeEncryption(kmsID, kms)
+
+	if errors.Is(err, util.ErrDEKStoreNeeded) {
+		// fscrypt uses secrets directly from the KMS.
+		// Therefore we do not support an additional DEK
+		// store. Since not all "metadata" KMS support
+		// GetSecret, test for support here. Postpone any
+		// other error handling
+		_, err := ri.fileEncryption.KMS.GetSecret("")
+		if errors.Is(err, kmsapi.ErrGetSecretUnsupported) {
+			return err
+		}
 	}
 
 	return nil
