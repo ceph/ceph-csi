@@ -1,4 +1,17 @@
-package cephfs
+/*
+Copyright 2022 SUSE LLC.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package fscrypt
 
 import (
 	"context"
@@ -9,15 +22,15 @@ import (
 	"path"
 	"strconv"
 	"time"
+	"unsafe"
 
 	fscryptactions "github.com/google/fscrypt/actions"
 	fscryptcrypto "github.com/google/fscrypt/crypto"
 	fscryptfilesystem "github.com/google/fscrypt/filesystem"
 	fscryptmetadata "github.com/google/fscrypt/metadata"
 	"github.com/pkg/xattr"
+	"golang.org/x/sys/unix"
 
-	"github.com/ceph/ceph-csi/internal/cephfs/store"
-	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	"github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -27,6 +40,7 @@ const (
 	FscryptHashingTimeTarget = 1 * time.Second
 	FscryptProtectorPrefix   = "ceph-csi"
 	FscryptSubdir            = "ceph-csi-encrypted"
+	encryptionPassphraseSize = 64
 )
 
 func IsEncrypted(volOptions map[string]string) (bool, error) {
@@ -42,8 +56,12 @@ func IsEncrypted(volOptions map[string]string) (bool, error) {
 	return false, nil
 }
 
+func AppendEncyptedSubdirectory(dir string) string {
+	return path.Join(dir, FscryptSubdir)
+}
+
 // getPassphrase returns the passphrase from the configured Ceph CSI KMS to be used as a protector key in fscrypt.
-func getPassphrase(ctx context.Context, encryption util.VolumeEncryption, volID fsutil.VolumeID) (string, error) {
+func getPassphrase(ctx context.Context, encryption util.VolumeEncryption, volID string) (string, error) {
 	var (
 		passphrase string
 		err        error
@@ -51,14 +69,14 @@ func getPassphrase(ctx context.Context, encryption util.VolumeEncryption, volID 
 
 	switch encryption.KMS.RequiresDEKStore() {
 	case kms.DEKStoreIntegrated:
-		passphrase, err = encryption.GetCryptoPassphrase(string(volID))
+		passphrase, err = encryption.GetCryptoPassphrase(volID)
 		if err != nil {
 			log.ErrorLog(ctx, "fscrypt: failed to get passphrase from KMS: %v", err)
 
 			return "", err
 		}
 	case kms.DEKStoreMetadata:
-		passphrase, err = encryption.KMS.GetSecret(string(volID))
+		passphrase, err = encryption.KMS.GetSecret(volID)
 		if err != nil {
 			log.ErrorLog(ctx, "fscrypt: failed to GetSecret: %v", err)
 
@@ -71,8 +89,10 @@ func getPassphrase(ctx context.Context, encryption util.VolumeEncryption, volID 
 
 // createKeyFuncFromVolumeEncryption returns an fscrypt key function returning
 // encryption keys form a VolumeEncryption struct.
-func createKeyFuncFromVolumeEncryption(ctx context.Context, encryption util.VolumeEncryption,
-	volID fsutil.VolumeID,
+func createKeyFuncFromVolumeEncryption(
+	ctx context.Context,
+	encryption util.VolumeEncryption,
+	volID string,
 ) (func(fscryptactions.ProtectorInfo, bool) (*fscryptcrypto.Key, error), error) {
 	passphrase, err := getPassphrase(ctx, encryption, volID)
 	if err != nil {
@@ -90,8 +110,11 @@ func createKeyFuncFromVolumeEncryption(ctx context.Context, encryption util.Volu
 }
 
 // unlockExisting tries to unlock an already set up fscrypt directory using keys from Ceph CSI.
-func unlockExisting(ctx context.Context, fscryptContext *fscryptactions.Context, encryptedPath string,
-	protectorName string, keyFn func(fscryptactions.ProtectorInfo, bool) (*fscryptcrypto.Key, error),
+func unlockExisting(
+	ctx context.Context,
+	fscryptContext *fscryptactions.Context,
+	encryptedPath string, protectorName string,
+	keyFn func(fscryptactions.ProtectorInfo, bool) (*fscryptcrypto.Key, error),
 ) error {
 	var err error
 
@@ -136,8 +159,11 @@ func unlockExisting(ctx context.Context, fscryptContext *fscryptactions.Context,
 	return nil
 }
 
-func initializeAndUnlock(ctx context.Context, fscryptContext *fscryptactions.Context, encryptedPath string,
-	protectorName string, keyFn func(fscryptactions.ProtectorInfo, bool) (*fscryptcrypto.Key, error),
+func initializeAndUnlock(
+	ctx context.Context,
+	fscryptContext *fscryptactions.Context,
+	encryptedPath string, protectorName string,
+	keyFn func(fscryptactions.ProtectorInfo, bool) (*fscryptcrypto.Key, error),
 ) error {
 	var owner *user.User
 	var err error
@@ -197,8 +223,30 @@ func initializeAndUnlock(ctx context.Context, fscryptContext *fscryptactions.Con
 	return nil
 }
 
-// IsDirectoryUnlockedFscrypt checks if a directory is an unlocked fscrypted directory.
-func (*NodeServer) IsDirectoryUnlockedFscrypt(directoryPath string) error {
+// getInodeEncryptedAttribute returns the inode's encrypt attribute similar to lsattr(1)
+func getInodeEncryptedAttribute(p string) (bool, error) {
+	file, err := os.Open(p)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	var attr int
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, file.Fd(), unix.FS_IOC_GETFLAGS,
+		uintptr(unsafe.Pointer(&attr)))
+	if errno != 0 {
+		return false, fmt.Errorf("error calling ioctl_iflags: %w", errno)
+	}
+
+	if attr&C.FS_ENCRYPT_FL != 0 {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// IsDirectoryUnlocked checks if a directory is an unlocked fscrypted directory.
+func IsDirectoryUnlocked(directoryPath string) error {
 	if _, err := fscryptmetadata.GetPolicy(directoryPath); err != nil {
 		return fmt.Errorf("no fscrypt policy set on directory %q: %w", directoryPath, err)
 	}
@@ -211,11 +259,9 @@ func (*NodeServer) IsDirectoryUnlockedFscrypt(directoryPath string) error {
 	return nil
 }
 
-// MaybeInitializeFscrypt performs once per nodeserver initialization
+// InitializeNode performs once per nodeserver initialization
 // required by the fscrypt library. Creates /etc/fscrypt.conf.
-func (*NodeServer) InitializeFscrypt(ctx context.Context, volOptions *store.VolumeOptions,
-	stagingTargetPath string, volID fsutil.VolumeID,
-) error {
+func InitializeNode(ctx context.Context) error {
 	err := fscryptactions.CreateConfigFile(FscryptHashingTimeTarget, 2)
 	if err != nil {
 		existsError := &fscryptactions.ErrConfigFileExists{}
@@ -232,16 +278,14 @@ func (*NodeServer) InitializeFscrypt(ctx context.Context, volOptions *store.Volu
 	return nil
 }
 
-// MaybeFscryptUnlock unlocks possilby creating fresh fscrypt metadata
+// FscryptUnlock unlocks possilby creating fresh fscrypt metadata
 // iff a volume is encrypted. Otherwise return immediately Calling
 // this function requires that InitializeFscrypt ran once on this node.
-func (*NodeServer) MaybeFscryptUnlock(ctx context.Context, volOptions *store.VolumeOptions,
-	stagingTargetPath string, volID fsutil.VolumeID,
+func Unlock(
+	ctx context.Context,
+	volEncryption *util.VolumeEncryption,
+	stagingTargetPath string, volID string,
 ) error {
-	if !volOptions.IsEncrypted() {
-		return nil
-	}
-
 	fscryptContext, err := fscryptactions.NewContextFromMountpoint(stagingTargetPath, nil)
 	if err != nil {
 		log.ErrorLog(ctx, "fscrypt: failed to create context from mountpoint %v: %w", stagingTargetPath)
@@ -285,16 +329,16 @@ func (*NodeServer) MaybeFscryptUnlock(ctx context.Context, volOptions *store.Vol
 			metadataDirExists, kernelPolicyExists)
 	}
 
-	keyFn, err := createKeyFuncFromVolumeEncryption(ctx, *volOptions.Encryption, volID)
+	keyFn, err := createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID)
 	if err != nil {
 		log.ErrorLog(ctx, "fscrypt: could not create key function: %v", err)
 
 		return err
 	}
 
-	protectorName := fmt.Sprintf("%s-%s", FscryptProtectorPrefix, volOptions.Encryption.GetID())
+	protectorName := fmt.Sprintf("%s-%s", FscryptProtectorPrefix, volEncryption.GetID())
 
-	switch volOptions.Encryption.KMS.RequiresDEKStore() {
+	switch volEncryption.KMS.RequiresDEKStore() {
 	case kms.DEKStoreMetadata:
 		// Metadata style KMS use the KMS secret as a custom
 		// passphrase directly in fscrypt, circumenting key
@@ -313,8 +357,8 @@ func (*NodeServer) MaybeFscryptUnlock(ctx context.Context, volOptions *store.Vol
 
 	if !kernelPolicyExists && !metadataDirExists {
 		log.DebugLog(ctx, "fscrypt: Creating new protector and policy")
-		if volOptions.Encryption.KMS.RequiresDEKStore() == kms.DEKStoreIntegrated {
-			if err := volOptions.Encryption.StoreNewCryptoPassphrase(string(volID), encryptionPassphraseSize); err != nil {
+		if volEncryption.KMS.RequiresDEKStore() == kms.DEKStoreIntegrated {
+			if err := volEncryption.StoreNewCryptoPassphrase(volID, encryptionPassphraseSize); err != nil {
 				log.ErrorLog(ctx, "fscrypt: store new crypto passphrase failed: %v", err)
 
 				return err

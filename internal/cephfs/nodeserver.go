@@ -30,15 +30,12 @@ import (
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/fscrypt"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-)
-
-const (
-	encryptionPassphraseSize = 64
 )
 
 // NodeServer struct of ceph CSI driver with supported methods of CSI
@@ -122,6 +119,17 @@ func validateSnapshotBackedVolCapability(volCap *csi.VolumeCapability) error {
 	return nil
 }
 
+// maybeFscryptUnlock unlocks fscrypt on stagingTargetPath, iff volOptions enable encryption.
+func maybeFscryptUnlock(ctx context.Context, volOptions *store.VolumeOptions,
+	stagingTargetPath string, volID fsutil.VolumeID,
+) error {
+	if volOptions.IsEncrypted() {
+		return fscrypt.Unlock(ctx, volOptions.Encryption, stagingTargetPath, string(volID))
+	}
+
+	return nil
+}
+
 // NodeStageVolume mounts the volume to a staging path on the node.
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
@@ -184,7 +192,7 @@ func (ns *NodeServer) NodeStageVolume(
 		if _, isFuse := mnt.(*mounter.FuseMounter); isFuse {
 			return nil, status.Errorf(codes.Internal, "FUSE mounter does not support encryption")
 		}
-		if err = ns.InitializeFscrypt(ctx, volOptions, stagingTargetPath, volID); err != nil {
+		if err = fscrypt.InitializeNode(ctx); err != nil {
 			return nil, status.Errorf(codes.Internal, err.Error())
 		}
 	}
@@ -204,9 +212,10 @@ func (ns *NodeServer) NodeStageVolume(
 
 	if isMnt {
 		log.DebugLog(ctx, "cephfs: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
-		if err = ns.MaybeFscryptUnlock(ctx, volOptions, stagingTargetPath, volID); err != nil {
+		if err = maybeFscryptUnlock(ctx, volOptions, stagingTargetPath, volID); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
@@ -224,7 +233,7 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, err
 	}
 
-	if err = ns.MaybeFscryptUnlock(ctx, volOptions, stagingTargetPath, volID); err != nil {
+	if err = maybeFscryptUnlock(ctx, volOptions, stagingTargetPath, volID); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -477,13 +486,13 @@ func (ns *NodeServer) NodePublishVolume(
 	}
 
 	// It's not, mount now
-	encrypted, err := IsEncrypted(req.GetVolumeContext())
+	encrypted, err := fscrypt.IsEncrypted(req.GetVolumeContext())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if encrypted {
-		stagingTargetPath = path.Join(stagingTargetPath, FscryptSubdir)
-		if err = ns.IsDirectoryUnlockedFscrypt(stagingTargetPath); err != nil {
+		stagingTargetPath = fscrypt.AppendEncyptedSubdirectory(stagingTargetPath)
+		if err = fscrypt.IsDirectoryUnlocked(stagingTargetPath); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
