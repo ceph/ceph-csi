@@ -137,7 +137,7 @@ type rbdImage struct {
 	// fileEncryption provides access to optional VolumeEncryption functions (e.g fscrypt)
 	fileEncryption *util.VolumeEncryption
 
-	CreatedAt  *timestamp.Timestamp
+	CreatedAt *timestamp.Timestamp
 
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection
@@ -393,6 +393,9 @@ func (ri *rbdImage) Destroy() {
 	if ri.isBlockEncrypted() {
 		ri.blockEncryption.Destroy()
 	}
+	if ri.isFileEncrypted() {
+		ri.fileEncryption.Destroy()
+	}
 }
 
 // String returns the image-spec (pool/{namespace/}image) format of the image.
@@ -631,9 +634,16 @@ func (ri *rbdImage) deleteImage(ctx context.Context) error {
 	}
 
 	if ri.isBlockEncrypted() {
-		log.DebugLog(ctx, "rbd: going to remove DEK for %q", ri)
+		log.DebugLog(ctx, "rbd: going to remove DEK for %q (block encryption)", ri)
 		if err = ri.blockEncryption.RemoveDEK(ri.VolID); err != nil {
-			log.WarningLog(ctx, "failed to clean the passphrase for volume %s: %s", ri.VolID, err)
+			log.WarningLog(ctx, "failed to clean the passphrase for volume %s (block encryption): %s", ri.VolID, err)
+		}
+	}
+
+	if ri.isFileEncrypted() {
+		log.DebugLog(ctx, "rbd: going to remove DEK for %q (file encryption)", ri)
+		if err = ri.fileEncryption.RemoveDEK(ri.VolID); err != nil {
+			log.WarningLog(ctx, "failed to clean the passphrase for volume %s (file encryption): %s", ri.VolID, err)
 		}
 	}
 
@@ -1967,11 +1977,13 @@ func (ri *rbdImage) getOrigSnapName(snapID uint64) (string, error) {
 }
 
 func (ri *rbdImage) isCompatibleEncryption(dst *rbdImage) error {
+	riEncrypted := ri.isBlockEncrypted() || ri.isFileEncrypted()
+	dstEncrypted := dst.isBlockEncrypted() || dst.isFileEncrypted()
 	switch {
-	case ri.isBlockEncrypted() && !dst.isBlockEncrypted():
+	case riEncrypted && !dstEncrypted:
 		return fmt.Errorf("cannot create unencrypted volume from encrypted volume %q", ri)
 
-	case !ri.isBlockEncrypted() && dst.isBlockEncrypted():
+	case !riEncrypted && dstEncrypted:
 		return fmt.Errorf("cannot create encrypted volume from unencrypted volume %q", ri)
 	}
 
