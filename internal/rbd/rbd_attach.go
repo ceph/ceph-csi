@@ -473,7 +473,7 @@ func createPath(ctx context.Context, volOpt *rbdVolume, device string, cr *util.
 				imageOrDeviceSpec: imagePath,
 				isImageSpec:       true,
 				isNbd:             isNbd,
-				encrypted:         volOpt.isEncrypted(),
+				encrypted:         volOpt.isBlockEncrypted(),
 				volumeID:          volOpt.VolID,
 				unmapOptions:      volOpt.UnmapOptions,
 				logDir:            volOpt.LogDir,

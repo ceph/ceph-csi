@@ -111,7 +111,7 @@ func generateVolFromSnap(rbdSnap *rbdSnapshot) *rbdVolume {
 	// copyEncryptionConfig cannot be used here because the volume and the
 	// snapshot will have the same volumeID which cases the panic in
 	// copyEncryptionConfig function.
-	vol.encryption = rbdSnap.encryption
+	vol.blockEncryption = rbdSnap.blockEncryption
 
 	return vol
 }
