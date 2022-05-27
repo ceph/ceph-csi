@@ -1556,7 +1556,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 	// 2. Block VolumeMode with Encryption
 	// Hence set nodeExpansion flag based on VolumeMode and Encryption status
 	nodeExpansion := true
-	if req.GetVolumeCapability().GetBlock() != nil && !rbdVol.isEncrypted() {
+	if req.GetVolumeCapability().GetBlock() != nil && !rbdVol.isBlockEncrypted() {
 		nodeExpansion = false
 	}
 

@@ -55,8 +55,8 @@ type stageTransaction struct {
 	isStagePathCreated bool
 	// isMounted represents if the volume was mounted or not
 	isMounted bool
-	// isEncrypted represents if the volume was encrypted or not
-	isEncrypted bool
+	// isBlockEncrypted represents if the volume was encrypted or not
+	isBlockEncrypted bool
 	// devicePath represents the path where rbd device is mapped
 	devicePath string
 }
@@ -425,12 +425,12 @@ func (ns *NodeServer) stageTransaction(
 		}
 	}
 
-	if volOptions.isEncrypted() {
+	if volOptions.isBlockEncrypted() {
 		devicePath, err = ns.processEncryptedDevice(ctx, volOptions, devicePath)
 		if err != nil {
 			return transaction, err
 		}
-		transaction.isEncrypted = true
+		transaction.isBlockEncrypted = true
 	}
 
 	stagingTargetPath := getStagingTargetPath(req)
@@ -475,13 +475,13 @@ func resizeNodeStagePath(ctx context.Context,
 	var ok bool
 
 	// if its a non encrypted block device we dont need any expansion
-	if isBlock && !transaction.isEncrypted {
+	if isBlock && !transaction.isBlockEncrypted {
 		return nil
 	}
 
 	resizer := mount.NewResizeFs(utilexec.New())
 
-	if transaction.isEncrypted {
+	if transaction.isBlockEncrypted {
 		devicePath, err = resizeEncryptedDevice(ctx, volID, stagingTargetPath, devicePath)
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
@@ -611,7 +611,7 @@ func (ns *NodeServer) undoStagingTransaction(
 
 	// Unmapping rbd device
 	if transaction.devicePath != "" {
-		err = detachRBDDevice(ctx, transaction.devicePath, volID, volOptions.UnmapOptions, transaction.isEncrypted)
+		err = detachRBDDevice(ctx, transaction.devicePath, volID, volOptions.UnmapOptions, transaction.isBlockEncrypted)
 		if err != nil {
 			log.ErrorLog(
 				ctx,
@@ -1146,7 +1146,7 @@ func (ns *NodeServer) processEncryptedDevice(
 		// CreateVolume.
 		// Use the same setupEncryption() as CreateVolume does, and
 		// continue with the common process to crypt-format the device.
-		err = volOptions.setupEncryption(ctx)
+		err = volOptions.setupBlockEncryption(ctx)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to setup encryption for rbd"+
 				"image %s: %v", imageSpec, err)
