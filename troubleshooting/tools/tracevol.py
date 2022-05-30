@@ -185,7 +185,7 @@ def check_pv_name_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
     """
     validate pvc information in rados
     """
-    omapkey = 'csi.volume.%s' % pvc_name
+    omapkey = f'csi.volume.{pvc_name}'
     cmd = ['rados', 'getomapval', 'csi.volumes.default',
            omapkey, "--pool", pool_name]
     if not arg.userkey:
@@ -212,8 +212,8 @@ def check_pv_name_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
             name += part[-1]
     if name.decode() != image_id:
         if arg.debug:
-            print("expected image Id %s found Id in rados %s" %
-                  (image_id, name.decode()))
+            decoded_name = name.decode()
+            print(f"expected image Id {image_id} found Id in rados {decoded_name}")
         return False
     return True
 
@@ -246,7 +246,7 @@ def check_image_uuid_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
     """
     validate image uuid in rados
     """
-    omapkey = 'csi.volume.%s' % image_id
+    omapkey = f'csi.volume.{image_id}'
     cmd = ['rados', 'getomapval', omapkey, "csi.volname", "--pool", pool_name]
     if not arg.userkey:
         cmd += ["--id", arg.userid, "--key", arg.userkey]
@@ -276,8 +276,8 @@ def check_image_uuid_in_rados(arg, image_id, pvc_name, pool_name, is_rbd):
             name += part[-1]
     if name.decode() != pvc_name:
         if arg.debug:
-            print("expected image Id %s found Id in rados %s" %
-                  (pvc_name, name.decode()))
+            decoded_name = name.decode()
+            print(f"expected image Id {pvc_name} found Id in rados {decoded_name}")
         return False
     return True
 
@@ -565,7 +565,7 @@ def get_fsname_from_pvdata(arg, pvdata):
 if __name__ == "__main__":
     ARGS = PARSER.parse_args()
     if ARGS.command not in ["kubectl", "oc"]:
-        print("%s command not supported" % ARGS.command)
+        print(f"{ARGS.command} command not supported")
         sys.exit(1)
     if sys.version_info[0] < 3:
         print("python version less than 3 is not supported.")
