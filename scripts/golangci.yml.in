@@ -190,3 +190,7 @@ linters:
     - tagliatelle
     - varnamelen
     - nilnil
+    # TODO enable linters added in golangci-lint 1.46
+    - maintidx
+    - exhaustruct
+    - containedctx
