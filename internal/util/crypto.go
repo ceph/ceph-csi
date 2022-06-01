@@ -187,9 +187,9 @@ func generateNewEncryptionPassphrase() (string, error) {
 }
 
 // VolumeMapper returns file name and it's path to where encrypted device should be open.
-func VolumeMapper(volumeID string) (mapperFile, mapperFilePath string) {
-	mapperFile = mapperFilePrefix + volumeID
-	mapperFilePath = path.Join(mapperFilePathPrefix, mapperFile)
+func VolumeMapper(volumeID string) (string, string) {
+	mapperFile := mapperFilePrefix + volumeID
+	mapperFilePath := path.Join(mapperFilePathPrefix, mapperFile)
 
 	return mapperFile, mapperFilePath
 }
@@ -248,7 +248,7 @@ func IsDeviceOpen(ctx context.Context, device string) (bool, error) {
 // DeviceEncryptionStatus looks to identify if the passed device is a LUKS mapping
 // and if so what the device is and the mapper name as used by LUKS.
 // If not, just returns the original device and an empty string.
-func DeviceEncryptionStatus(ctx context.Context, devicePath string) (mappedDevice, mapper string, err error) {
+func DeviceEncryptionStatus(ctx context.Context, devicePath string) (string, string, error) {
 	if !strings.HasPrefix(devicePath, mapperFilePathPrefix) {
 		return devicePath, "", nil
 	}
@@ -274,7 +274,7 @@ func DeviceEncryptionStatus(ctx context.Context, devicePath string) (mappedDevic
 			return "", "", fmt.Errorf("device encryption status output for %s is badly formatted: %s",
 				devicePath, lines[i])
 		}
-		if strings.Compare(kv[0], "device") == 0 {
+		if kv[0] == "device" {
 			return strings.TrimSpace(kv[1]), mapPath, nil
 		}
 	}

@@ -107,7 +107,8 @@ func (m *FuseMounter) Mount(
 	ctx context.Context,
 	mountPoint string,
 	cr *util.Credentials,
-	volOptions *store.VolumeOptions) error {
+	volOptions *store.VolumeOptions,
+) error {
 	if err := util.CreateMountPoint(mountPoint); err != nil {
 		return err
 	}

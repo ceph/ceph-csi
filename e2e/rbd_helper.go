@@ -117,7 +117,8 @@ func createRBDStorageClass(
 	f *framework.Framework,
 	name string,
 	scOptions, parameters map[string]string,
-	policy v1.PersistentVolumeReclaimPolicy) error {
+	policy v1.PersistentVolumeReclaimPolicy,
+) error {
 	scPath := fmt.Sprintf("%s/%s", rbdExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
 	if err != nil {
@@ -281,7 +282,7 @@ func getImageMeta(rbdImageSpec, metaKey string, f *framework.Framework) (string,
 		return "", err
 	}
 	if stdErr != "" {
-		return strings.TrimSpace(stdOut), fmt.Errorf(stdErr)
+		return strings.TrimSpace(stdOut), fmt.Errorf("%s", stdErr)
 	}
 
 	return strings.TrimSpace(stdOut), nil
@@ -757,7 +758,8 @@ func checkPVCImageInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim, 
 func checkPVCDataPoolForImageInPool(
 	f *framework.Framework,
 	pvc *v1.PersistentVolumeClaim,
-	pool, dataPool string) error {
+	pool, dataPool string,
+) error {
 	stdOut, err := getPVCImageInfoInPool(f, pvc, pool)
 	if err != nil {
 		return err

@@ -27,7 +27,8 @@ import (
 func createRBDClone(
 	ctx context.Context,
 	parentVol, cloneRbdVol *rbdVolume,
-	snap *rbdSnapshot) error {
+	snap *rbdSnapshot,
+) error {
 	// create snapshot
 	err := parentVol.createSnapshot(ctx, snap)
 	if err != nil {
@@ -72,7 +73,8 @@ func cleanUpSnapshot(
 	ctx context.Context,
 	parentVol *rbdVolume,
 	rbdSnap *rbdSnapshot,
-	rbdVol *rbdVolume) error {
+	rbdVol *rbdVolume,
+) error {
 	err := parentVol.deleteSnapshot(ctx, rbdSnap)
 	if err != nil {
 		if !errors.Is(err, ErrSnapNotFound) {
@@ -119,7 +121,8 @@ func undoSnapshotCloning(
 	parentVol *rbdVolume,
 	rbdSnap *rbdSnapshot,
 	cloneVol *rbdVolume,
-	cr *util.Credentials) error {
+	cr *util.Credentials,
+) error {
 	err := cleanUpSnapshot(ctx, parentVol, rbdSnap, cloneVol)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to clean up  %s or %s: %v", cloneVol, rbdSnap, err)

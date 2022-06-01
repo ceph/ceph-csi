@@ -40,7 +40,8 @@ func NewIdentityServer(d *csicommon.CSIDriver) *Server {
 // GetPluginCapabilities returns available capabilities of the ceph driver.
 func (is *Server) GetPluginCapabilities(
 	ctx context.Context,
-	req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
+	req *csi.GetPluginCapabilitiesRequest,
+) (*csi.GetPluginCapabilitiesResponse, error) {
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
 			{

@@ -39,7 +39,8 @@ func NewNetworkFence(
 	ctx context.Context,
 	cr *util.Credentials,
 	cidrs []*fence.CIDR,
-	fenceOptions map[string]string) (*NetworkFence, error) {
+	fenceOptions map[string]string,
+) (*NetworkFence, error) {
 	var err error
 	nwFence := &NetworkFence{}
 

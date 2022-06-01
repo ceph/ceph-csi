@@ -55,7 +55,7 @@ func TestNewSecurityContextConstraints(t *testing.T) {
 
 		rookValues := SecurityContextConstraintsValues{
 			Namespace: "rook-ceph",
-			Deployer: "rook",
+			Deployer:  "rook",
 		}
 
 		getSCC := func() {
@@ -77,7 +77,7 @@ func TestNewSecurityContextConstraintsYAML(t *testing.T) {
 	t.Parallel()
 
 	var (
-		err error
+		err  error
 		yaml string
 	)
 

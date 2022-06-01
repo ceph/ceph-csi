@@ -300,7 +300,8 @@ func validateBiggerPVCFromSnapshot(f *framework.Framework,
 	appPath,
 	snapPath,
 	pvcClonePath,
-	appClonePath string) error {
+	appClonePath string,
+) error {
 	const (
 		size    = "1Gi"
 		newSize = "2Gi"

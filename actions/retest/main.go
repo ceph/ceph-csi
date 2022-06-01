@@ -59,7 +59,6 @@ func getConfig() *retestConfig {
 			if len(strings.Split(os.Getenv("GITHUB_REPOSITORY"), "/")) == 2 {
 				return strings.Split(os.Getenv("GITHUB_REPOSITORY"), "/")[0], strings.Split(os.Getenv("GITHUB_REPOSITORY"), "/")[1]
 			}
-
 		}
 		return "", ""
 	}()
@@ -168,7 +167,7 @@ func main() {
 							log.Printf("failed to create comment %v\n", err)
 							continue
 						}
-						//Post comment with target URL for retesting
+						// Post comment with target URL for retesting
 						msg = fmt.Sprintf("@%s %q test failed. Logs are available at [location](%s) for debugging", re.GetUser().GetLogin(), r.GetContext(), r.GetTargetURL())
 						comment.Body = github.String(msg)
 						_, _, err = c.client.Issues.CreateComment(context.TODO(), c.owner, c.repo, prNumber, comment)

@@ -35,14 +35,16 @@ type DefaultNodeServer struct {
 // NodeExpandVolume returns unimplemented response.
 func (ns *DefaultNodeServer) NodeExpandVolume(
 	ctx context.Context,
-	req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+	req *csi.NodeExpandVolumeRequest,
+) (*csi.NodeExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // NodeGetInfo returns node ID.
 func (ns *DefaultNodeServer) NodeGetInfo(
 	ctx context.Context,
-	req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+	req *csi.NodeGetInfoRequest,
+) (*csi.NodeGetInfoResponse, error) {
 	log.TraceLog(ctx, "Using default NodeGetInfo")
 
 	csiTopology := &csi.Topology{
@@ -58,7 +60,8 @@ func (ns *DefaultNodeServer) NodeGetInfo(
 // NodeGetCapabilities returns RPC unknown capability.
 func (ns *DefaultNodeServer) NodeGetCapabilities(
 	ctx context.Context,
-	req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+	req *csi.NodeGetCapabilitiesRequest,
+) (*csi.NodeGetCapabilitiesResponse, error) {
 	log.TraceLog(ctx, "Using default NodeGetCapabilities")
 
 	return &csi.NodeGetCapabilitiesResponse{

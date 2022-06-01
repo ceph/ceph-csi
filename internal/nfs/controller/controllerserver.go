@@ -57,7 +57,8 @@ func NewControllerServer(d *csicommon.CSIDriver) *Server {
 // capabilities that were set in the Driver.Run() function.
 func (cs *Server) ControllerGetCapabilities(
 	ctx context.Context,
-	req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
+	req *csi.ControllerGetCapabilitiesRequest,
+) (*csi.ControllerGetCapabilitiesResponse, error) {
 	return cs.backendServer.ControllerGetCapabilities(ctx, req)
 }
 
@@ -65,7 +66,8 @@ func (cs *Server) ControllerGetCapabilities(
 // are supported.
 func (cs *Server) ValidateVolumeCapabilities(
 	ctx context.Context,
-	req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	req *csi.ValidateVolumeCapabilitiesRequest,
+) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	return cs.backendServer.ValidateVolumeCapabilities(ctx, req)
 }
 
@@ -73,7 +75,8 @@ func (cs *Server) ValidateVolumeCapabilities(
 // created entities.
 func (cs *Server) CreateVolume(
 	ctx context.Context,
-	req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+	req *csi.CreateVolumeRequest,
+) (*csi.CreateVolumeResponse, error) {
 	res, err := cs.backendServer.CreateVolume(ctx, req)
 	if err != nil {
 		return nil, err
@@ -120,7 +123,8 @@ func (cs *Server) CreateVolume(
 // DeleteVolume deletes the volume in backend and its reservation.
 func (cs *Server) DeleteVolume(
 	ctx context.Context,
-	req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+	req *csi.DeleteVolumeRequest,
+) (*csi.DeleteVolumeResponse, error) {
 	secret := req.GetSecrets()
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
@@ -157,7 +161,8 @@ func (cs *Server) DeleteVolume(
 // new size.
 func (cs *Server) ControllerExpandVolume(
 	ctx context.Context,
-	req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+	req *csi.ControllerExpandVolumeRequest,
+) (*csi.ControllerExpandVolumeResponse, error) {
 	return cs.backendServer.ControllerExpandVolume(ctx, req)
 }
 
@@ -165,7 +170,8 @@ func (cs *Server) ControllerExpandVolume(
 // There is no interaction with the NFS-server needed for snapshot creation.
 func (cs *Server) CreateSnapshot(
 	ctx context.Context,
-	req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
+	req *csi.CreateSnapshotRequest,
+) (*csi.CreateSnapshotResponse, error) {
 	return cs.backendServer.CreateSnapshot(ctx, req)
 }
 
@@ -173,6 +179,7 @@ func (cs *Server) CreateSnapshot(
 // There is no interaction with the NFS-server needed for snapshot creation.
 func (cs *Server) DeleteSnapshot(
 	ctx context.Context,
-	req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+	req *csi.DeleteSnapshotRequest,
+) (*csi.DeleteSnapshotResponse, error) {
 	return cs.backendServer.DeleteSnapshot(ctx, req)
 }

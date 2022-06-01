@@ -269,7 +269,8 @@ func RegisterProvider(provider Provider) bool {
 func (kf *kmsProviderList) buildKMS(
 	tenant string,
 	config map[string]interface{},
-	secrets map[string]string) (EncryptionKMS, error) {
+	secrets map[string]string,
+) (EncryptionKMS, error) {
 	providerName, err := getProvider(config)
 	if err != nil {
 		return nil, err

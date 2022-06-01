@@ -173,7 +173,8 @@ func contextIDInjector(
 	ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler) (resp interface{}, err error) {
+	handler grpc.UnaryHandler,
+) (interface{}, error) {
 	atomic.AddUint64(&id, 1)
 	ctx = context.WithValue(ctx, log.CtxKey, id)
 	if reqID := getReqID(req); reqID != "" {
@@ -187,7 +188,8 @@ func logGRPC(
 	ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler) (interface{}, error) {
+	handler grpc.UnaryHandler,
+) (interface{}, error) {
 	log.ExtendedLog(ctx, "GRPC call: %s", info.FullMethod)
 	if isReplicationRequest(req) {
 		log.TraceLog(ctx, "GRPC request: %s", rp.StripReplicationSecrets(req))
@@ -205,11 +207,13 @@ func logGRPC(
 	return resp, err
 }
 
+//nolint:nonamedreturns // named return used to send recovered panic error.
 func panicHandler(
 	ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler) (resp interface{}, err error) {
+	handler grpc.UnaryHandler,
+) (resp interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			klog.Errorf("panic occurred: %v", r)

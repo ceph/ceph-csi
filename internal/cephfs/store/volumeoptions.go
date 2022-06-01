@@ -187,7 +187,8 @@ func (vo *VolumeOptions) GetConnection() *util.ClusterConnection {
 // NewVolumeOptions generates a new instance of volumeOptions from the provided
 // CSI request parameters.
 func NewVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVolumeRequest,
-	cr *util.Credentials) (*VolumeOptions, error) {
+	cr *util.Credentials,
+) (*VolumeOptions, error) {
 	var (
 		opts VolumeOptions
 		err  error
@@ -268,7 +269,8 @@ func NewVolumeOptions(ctx context.Context, requestName string, req *csi.CreateVo
 func NewVolumeOptionsFromVolID(
 	ctx context.Context,
 	volID string,
-	volOpt, secrets map[string]string) (*VolumeOptions, *VolumeIdentifier, error) {
+	volOpt, secrets map[string]string,
+) (*VolumeOptions, *VolumeIdentifier, error) {
 	var (
 		vi         util.CSIIdentifier
 		volOptions VolumeOptions
@@ -383,7 +385,8 @@ func NewVolumeOptionsFromVolID(
 // VolumeIdentifier from the provided CSI volume context.
 func NewVolumeOptionsFromMonitorList(
 	volID string,
-	options, secrets map[string]string) (*VolumeOptions, *VolumeIdentifier, error) {
+	options, secrets map[string]string,
+) (*VolumeOptions, *VolumeIdentifier, error) {
 	var (
 		opts                VolumeOptions
 		vid                 VolumeIdentifier
@@ -446,7 +449,8 @@ func NewVolumeOptionsFromMonitorList(
 // detected to be a statically provisioned volume.
 func NewVolumeOptionsFromStaticVolume(
 	volID string,
-	options map[string]string) (*VolumeOptions, *VolumeIdentifier, error) {
+	options map[string]string,
+) (*VolumeOptions, *VolumeIdentifier, error) {
 	var (
 		opts      VolumeOptions
 		vid       VolumeIdentifier
@@ -515,7 +519,8 @@ func NewVolumeOptionsFromStaticVolume(
 func NewSnapshotOptionsFromID(
 	ctx context.Context,
 	snapID string,
-	cr *util.Credentials) (*VolumeOptions, *core.SnapshotInfo, *SnapshotIdentifier, error) {
+	cr *util.Credentials,
+) (*VolumeOptions, *core.SnapshotInfo, *SnapshotIdentifier, error) {
 	var (
 		vi         util.CSIIdentifier
 		volOptions VolumeOptions

@@ -275,7 +275,8 @@ Return values:
 	- error: non-nil in case of any errors
 */
 func (conn *Connection) CheckReservation(ctx context.Context,
-	journalPool, reqName, namePrefix, snapParentName, kmsConfig string) (*ImageData, error) {
+	journalPool, reqName, namePrefix, snapParentName, kmsConfig string,
+) (*ImageData, error) {
 	var (
 		snapSource       bool
 		objUUID          string
@@ -415,7 +416,8 @@ Input arguments:
 	  different if image is created in a topology constrained pool)
 */
 func (conn *Connection) UndoReservation(ctx context.Context,
-	csiJournalPool, volJournalPool, volName, reqName string) error {
+	csiJournalPool, volJournalPool, volName, reqName string,
+) error {
 	// delete volume UUID omap (first, inverse of create order)
 
 	cj := conn.config
@@ -467,7 +469,8 @@ func reserveOMapName(
 	ctx context.Context,
 	monitors string,
 	cr *util.Credentials,
-	pool, namespace, oMapNamePrefix, volUUID string) (string, error) {
+	pool, namespace, oMapNamePrefix, volUUID string,
+) (string, error) {
 	var iterUUID string
 
 	maxAttempts := 5
@@ -534,7 +537,8 @@ Return values:
 func (conn *Connection) ReserveName(ctx context.Context,
 	journalPool string, journalPoolID int64,
 	imagePool string, imagePoolID int64,
-	reqName, namePrefix, parentName, kmsConf, volUUID, owner string) (string, string, error) {
+	reqName, namePrefix, parentName, kmsConf, volUUID, owner string,
+) (string, string, error) {
 	// TODO: Take in-arg as ImageAttributes?
 	var (
 		snapSource bool
@@ -658,7 +662,8 @@ type ImageAttributes struct {
 func (conn *Connection) GetImageAttributes(
 	ctx context.Context,
 	pool, objectUUID string,
-	snapSource bool) (*ImageAttributes, error) {
+	snapSource bool,
+) (*ImageAttributes, error) {
 	var (
 		err             error
 		imageAttributes = &ImageAttributes{}
@@ -782,7 +787,8 @@ func (conn *Connection) Destroy() {
 // CheckNewUUIDMapping checks is there any UUID mapping between old
 // volumeHandle and the newly generated volumeHandle.
 func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
-	journalPool, volumeHandle string) (string, error) {
+	journalPool, volumeHandle string,
+) (string, error) {
 	cj := conn.config
 
 	// check if request name is already part of the directory omap
@@ -812,7 +818,8 @@ func (conn *Connection) CheckNewUUIDMapping(ctx context.Context,
 // secondary cluster cephcsi will generate the new mapping and keep it for
 // internal reference.
 func (conn *Connection) ReserveNewUUIDMapping(ctx context.Context,
-	journalPool, oldVolumeHandle, newVolumeHandle string) error {
+	journalPool, oldVolumeHandle, newVolumeHandle string,
+) error {
 	cj := conn.config
 
 	setKeys := map[string]string{

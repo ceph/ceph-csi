@@ -100,7 +100,8 @@ func (d *CSIDriver) AddControllerServiceCapabilities(cl []csi.ControllerServiceC
 
 // AddVolumeCapabilityAccessModes stores volume access modes.
 func (d *CSIDriver) AddVolumeCapabilityAccessModes(
-	vc []csi.VolumeCapability_AccessMode_Mode) []*csi.VolumeCapability_AccessMode {
+	vc []csi.VolumeCapability_AccessMode_Mode,
+) []*csi.VolumeCapability_AccessMode {
 	vca := make([]*csi.VolumeCapability_AccessMode, 0, len(vc))
 	for _, c := range vc {
 		log.DefaultLog("Enabling volume access mode: %v", c.String())

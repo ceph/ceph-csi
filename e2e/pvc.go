@@ -239,7 +239,8 @@ func getPersistentVolume(c kubernetes.Interface, name string) (*v1.PersistentVol
 
 func getPVCAndPV(
 	c kubernetes.Interface,
-	pvcName, pvcNamespace string) (*v1.PersistentVolumeClaim, *v1.PersistentVolume, error) {
+	pvcName, pvcNamespace string,
+) (*v1.PersistentVolumeClaim, *v1.PersistentVolume, error) {
 	pvc, err := getPersistentVolumeClaim(c, pvcNamespace, pvcName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get PVC: %w", err)

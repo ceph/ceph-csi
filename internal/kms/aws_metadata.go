@@ -199,8 +199,7 @@ func (kms *awsMetadataKMS) EncryptDEK(volumeID, plainDEK string) (string, error)
 
 	// base64 encode the encrypted DEK, so that storing it should not have
 	// issues
-	encryptedDEK :=
-		base64.StdEncoding.EncodeToString(result.CiphertextBlob)
+	encryptedDEK := base64.StdEncoding.EncodeToString(result.CiphertextBlob)
 
 	return encryptedDEK, nil
 }

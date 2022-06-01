@@ -116,7 +116,8 @@ func checkSnapCloneExists(
 	ctx context.Context,
 	parentVol *rbdVolume,
 	rbdSnap *rbdSnapshot,
-	cr *util.Credentials) (bool, error) {
+	cr *util.Credentials,
+) (bool, error) {
 	err := validateRbdSnap(rbdSnap)
 	if err != nil {
 		return false, err
@@ -541,7 +542,8 @@ func RegenerateJournal(
 	volumeID,
 	requestName,
 	owner string,
-	cr *util.Credentials) (string, error) {
+	cr *util.Credentials,
+) (string, error) {
 	ctx := context.Background()
 	var (
 		vi     util.CSIIdentifier
