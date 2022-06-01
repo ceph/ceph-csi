@@ -90,20 +90,6 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
-        - name: csi-cephfsplugin-attacher
-          image: registry.k8s.io/sig-storage/csi-attacher:v3.4.0
-          args:
-            - "--v=5"
-            - "--csi-address=$(ADDRESS)"
-            - "--leader-election=true"
-            - "--retry-interval-start=500ms"
-          env:
-            - name: ADDRESS
-              value: /csi/csi-provisioner.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /csi
         - name: csi-cephfsplugin
           # for stable functionality replace canary with latest release version
           image: quay.io/cephcsi/cephcsi:canary

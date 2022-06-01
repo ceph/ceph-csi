@@ -166,15 +166,6 @@ provisioner:
       pullPolicy: IfNotPresent
     resources: {}
 
-  attacher:
-    name: attacher
-    enabled: true
-    image:
-      repository: registry.k8s.io/sig-storage/csi-attacher
-      tag: v3.4.0
-      pullPolicy: IfNotPresent
-    resources: {}
-
   resizer:
     name: resizer
     enabled: true

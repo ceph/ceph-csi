@@ -40,14 +40,6 @@ rules:
   - apiGroups: ["snapshot.storage.k8s.io"]
     resources: ["volumesnapshotcontents/status"]
     verbs: ["update", "patch"]
-{{- if .Values.provisioner.attacher.enabled }}
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments"]
-    verbs: ["get", "list", "watch", "update", "patch"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments/status"]
-    verbs: ["patch"]
-{{- end -}}
 {{- if .Values.provisioner.resizer.enabled }}
   - apiGroups: [""]
     resources: ["persistentvolumeclaims/status"]
