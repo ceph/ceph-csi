@@ -457,7 +457,8 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 
 func disableVolumeReplication(rbdVol *rbdVolume,
 	mirroringInfo *librbd.MirrorImageInfo,
-	force bool) (*replication.DisableVolumeReplicationResponse, error) {
+	force bool,
+) (*replication.DisableVolumeReplicationResponse, error) {
 	if !mirroringInfo.Primary {
 		// Return success if the below condition is met
 		// Local image is secondary
@@ -913,9 +914,8 @@ func resyncRequired(localStatus librbd.SiteMirrorImageStatus) bool {
 	// In some corner cases like `re-player shutdown` the local image will not
 	// be in an error state. It would be also worth considering the `description`
 	// field to make sure about split-brain.
-	splitBrain := "split-brain"
 	if localStatus.State == librbd.MirrorImageStatusStateError ||
-		strings.Contains(localStatus.Description, splitBrain) {
+		strings.Contains(localStatus.Description, "split-brain") {
 		return true
 	}
 

@@ -49,7 +49,8 @@ func (is *IdentityServer) RegisterService(server grpc.ServiceRegistrar) {
 // GetIdentity returns available capabilities of the rbd driver.
 func (is *IdentityServer) GetIdentity(
 	ctx context.Context,
-	req *identity.GetIdentityRequest) (*identity.GetIdentityResponse, error) {
+	req *identity.GetIdentityRequest,
+) (*identity.GetIdentityResponse, error) {
 	// only include Name and VendorVersion, Manifest is optional
 	res := &identity.GetIdentityResponse{
 		Name:          is.config.DriverName,
@@ -62,7 +63,8 @@ func (is *IdentityServer) GetIdentity(
 // GetCapabilities returns available capabilities of the rbd driver.
 func (is *IdentityServer) GetCapabilities(
 	ctx context.Context,
-	req *identity.GetCapabilitiesRequest) (*identity.GetCapabilitiesResponse, error) {
+	req *identity.GetCapabilitiesRequest,
+) (*identity.GetCapabilitiesResponse, error) {
 	// build the list of capabilities, depending on the config
 	caps := make([]*identity.Capability, 0)
 
@@ -121,7 +123,8 @@ func (is *IdentityServer) GetCapabilities(
 // still healthy.
 func (is *IdentityServer) Probe(
 	ctx context.Context,
-	req *identity.ProbeRequest) (*identity.ProbeResponse, error) {
+	req *identity.ProbeRequest,
+) (*identity.ProbeResponse, error) {
 	// there is nothing that would cause a delay in getting ready
 	res := &identity.ProbeResponse{
 		Ready: &wrapperspb.BoolValue{Value: true},

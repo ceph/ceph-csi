@@ -99,7 +99,7 @@ func (ci CSIIdentifier) ComposeCSIID() (string, error) {
 /*
 DecomposeCSIID composes a CSIIdentifier from passed in string.
 */
-func (ci *CSIIdentifier) DecomposeCSIID(composedCSIID string) (err error) {
+func (ci *CSIIdentifier) DecomposeCSIID(composedCSIID string) error {
 	bytesToProcess := uint16(len(composedCSIID))
 
 	// if length is less that expected constant elements, then bail out!

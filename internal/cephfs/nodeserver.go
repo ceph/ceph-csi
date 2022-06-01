@@ -47,7 +47,8 @@ type NodeServer struct {
 
 func getCredentialsForVolume(
 	volOptions *store.VolumeOptions,
-	secrets map[string]string) (*util.Credentials, error) {
+	secrets map[string]string,
+) (*util.Credentials, error) {
 	var (
 		err error
 		cr  *util.Credentials
@@ -103,7 +104,8 @@ func (ns *NodeServer) getVolumeOptions(
 // NodeStageVolume mounts the volume to a staging path on the node.
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
-	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+	req *csi.NodeStageVolumeRequest,
+) (*csi.NodeStageVolumeResponse, error) {
 	if err := util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
 	}
@@ -253,7 +255,8 @@ func (*NodeServer) mount(
 // path.
 func (ns *NodeServer) NodePublishVolume(
 	ctx context.Context,
-	req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+	req *csi.NodePublishVolumeRequest,
+) (*csi.NodePublishVolumeResponse, error) {
 	mountOptions := []string{"bind", "_netdev"}
 	if err := util.ValidateNodePublishVolumeRequest(req); err != nil {
 		return nil, err
@@ -336,7 +339,8 @@ func (ns *NodeServer) NodePublishVolume(
 // NodeUnpublishVolume unmounts the volume from the target path.
 func (ns *NodeServer) NodeUnpublishVolume(
 	ctx context.Context,
-	req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+	req *csi.NodeUnpublishVolumeRequest,
+) (*csi.NodeUnpublishVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeUnpublishVolumeRequest(req); err != nil {
 		return nil, err
@@ -391,7 +395,8 @@ func (ns *NodeServer) NodeUnpublishVolume(
 // NodeUnstageVolume unstages the volume from the staging path.
 func (ns *NodeServer) NodeUnstageVolume(
 	ctx context.Context,
-	req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+	req *csi.NodeUnstageVolumeRequest,
+) (*csi.NodeUnstageVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeUnstageVolumeRequest(req); err != nil {
 		return nil, err
@@ -451,7 +456,8 @@ func (ns *NodeServer) NodeUnstageVolume(
 // NodeGetCapabilities returns the supported capabilities of the node server.
 func (ns *NodeServer) NodeGetCapabilities(
 	ctx context.Context,
-	req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+	req *csi.NodeGetCapabilitiesRequest,
+) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
 			{
@@ -482,7 +488,8 @@ func (ns *NodeServer) NodeGetCapabilities(
 // NodeGetVolumeStats returns volume stats.
 func (ns *NodeServer) NodeGetVolumeStats(
 	ctx context.Context,
-	req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	req *csi.NodeGetVolumeStatsRequest,
+) (*csi.NodeGetVolumeStatsResponse, error) {
 	var err error
 	targetPath := req.GetVolumePath()
 	if targetPath == "" {

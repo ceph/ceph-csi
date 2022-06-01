@@ -260,7 +260,8 @@ func GenerateVolID(
 	cr *Credentials,
 	locationID int64,
 	pool, clusterID, objUUID string,
-	volIDVersion uint16) (string, error) {
+	volIDVersion uint16,
+) (string, error) {
 	var err error
 
 	if locationID == InvalidPoolID {

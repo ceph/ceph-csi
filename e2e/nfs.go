@@ -143,7 +143,8 @@ func createNFSStorageClass(
 	c clientset.Interface,
 	f *framework.Framework,
 	enablePool bool,
-	params map[string]string) error {
+	params map[string]string,
+) error {
 	scPath := fmt.Sprintf("%s/%s", nfsExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
 	if err != nil {

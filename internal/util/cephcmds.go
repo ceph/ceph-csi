@@ -119,7 +119,8 @@ func ExecCommandWithTimeout(
 	args ...string) (
 	string,
 	string,
-	error) {
+	error,
+) {
 	var (
 		sanitizedArgs = StripSecretInArgs(args)
 		stdoutBuf     bytes.Buffer

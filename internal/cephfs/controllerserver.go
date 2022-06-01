@@ -59,7 +59,8 @@ func (cs *ControllerServer) createBackingVolume(
 	volOptions,
 	parentVolOpt *store.VolumeOptions,
 	pvID *store.VolumeIdentifier,
-	sID *store.SnapshotIdentifier) error {
+	sID *store.SnapshotIdentifier,
+) error {
 	var err error
 	volClient := core.NewSubVolume(volOptions.GetConnection(), &volOptions.SubVolume, volOptions.ClusterID)
 
@@ -113,7 +114,8 @@ func (cs *ControllerServer) createBackingVolume(
 func checkContentSource(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
-	cr *util.Credentials) (*store.VolumeOptions, *store.VolumeIdentifier, *store.SnapshotIdentifier, error) {
+	cr *util.Credentials,
+) (*store.VolumeOptions, *store.VolumeIdentifier, *store.SnapshotIdentifier, error) {
 	if req.VolumeContentSource == nil {
 		return nil, nil, nil, nil
 	}
@@ -155,7 +157,8 @@ func checkValidCreateVolumeRequest(
 	vol,
 	parentVol *store.VolumeOptions,
 	pvID *store.VolumeIdentifier,
-	sID *store.SnapshotIdentifier) error {
+	sID *store.SnapshotIdentifier,
+) error {
 	switch {
 	case pvID != nil:
 		if vol.Size < parentVol.Size {
@@ -182,7 +185,8 @@ func checkValidCreateVolumeRequest(
 // nolint:gocognit,gocyclo,nestif,cyclop // TODO: reduce complexity
 func (cs *ControllerServer) CreateVolume(
 	ctx context.Context,
-	req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+	req *csi.CreateVolumeRequest,
+) (*csi.CreateVolumeResponse, error) {
 	if err := cs.validateCreateVolumeRequest(req); err != nil {
 		log.ErrorLog(ctx, "CreateVolumeRequest validation failed: %v", err)
 
@@ -279,12 +283,11 @@ func (cs *ControllerServer) CreateVolume(
 			VolumeContext: volumeContext,
 		}
 		if volOptions.Topology != nil {
-			volume.AccessibleTopology =
-				[]*csi.Topology{
-					{
-						Segments: volOptions.Topology,
-					},
-				}
+			volume.AccessibleTopology = []*csi.Topology{
+				{
+					Segments: volOptions.Topology,
+				},
+			}
 		}
 
 		return &csi.CreateVolumeResponse{Volume: volume}, nil
@@ -353,12 +356,11 @@ func (cs *ControllerServer) CreateVolume(
 		VolumeContext: volumeContext,
 	}
 	if volOptions.Topology != nil {
-		volume.AccessibleTopology =
-			[]*csi.Topology{
-				{
-					Segments: volOptions.Topology,
-				},
-			}
+		volume.AccessibleTopology = []*csi.Topology{
+			{
+				Segments: volOptions.Topology,
+			},
+		}
 	}
 
 	return &csi.CreateVolumeResponse{Volume: volume}, nil
@@ -367,7 +369,8 @@ func (cs *ControllerServer) CreateVolume(
 // DeleteVolume deletes the volume in backend and its reservation.
 func (cs *ControllerServer) DeleteVolume(
 	ctx context.Context,
-	req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+	req *csi.DeleteVolumeRequest,
+) (*csi.DeleteVolumeResponse, error) {
 	if err := cs.validateDeleteVolumeRequest(); err != nil {
 		log.ErrorLog(ctx, "DeleteVolumeRequest validation failed: %v", err)
 
@@ -474,7 +477,8 @@ func (cs *ControllerServer) DeleteVolume(
 // are supported.
 func (cs *ControllerServer) ValidateVolumeCapabilities(
 	ctx context.Context,
-	req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	req *csi.ValidateVolumeCapabilitiesRequest,
+) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	// Cephfs doesn't support Block volume
 	for _, capability := range req.VolumeCapabilities {
 		if capability.GetBlock() != nil {
@@ -492,7 +496,8 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 // ControllerExpandVolume expands CephFS Volumes on demand based on resizer request.
 func (cs *ControllerServer) ControllerExpandVolume(
 	ctx context.Context,
-	req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+	req *csi.ControllerExpandVolumeRequest,
+) (*csi.ControllerExpandVolumeResponse, error) {
 	if err := cs.validateExpandVolumeRequest(req); err != nil {
 		log.ErrorLog(ctx, "ControllerExpandVolumeRequest validation failed: %v", err)
 
@@ -551,7 +556,8 @@ func (cs *ControllerServer) ControllerExpandVolume(
 // nolint:gocyclo,cyclop // golangci-lint did not catch this earlier, needs to get fixed late
 func (cs *ControllerServer) CreateSnapshot(
 	ctx context.Context,
-	req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
+	req *csi.CreateSnapshotRequest,
+) (*csi.CreateSnapshotResponse, error) {
 	if err := cs.validateSnapshotReq(ctx, req); err != nil {
 		return nil, err
 	}
@@ -714,7 +720,8 @@ func (cs *ControllerServer) CreateSnapshot(
 func doSnapshot(
 	ctx context.Context,
 	volOpt *store.VolumeOptions,
-	snapshotName string) (core.SnapshotInfo, error) {
+	snapshotName string,
+) (core.SnapshotInfo, error) {
 	snapID := fsutil.VolumeID(snapshotName)
 	snap := core.SnapshotInfo{}
 	snapClient := core.NewSnapshot(volOpt.GetConnection(), snapshotName, &volOpt.SubVolume)
@@ -775,7 +782,8 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 // snapshot metadata from store.
 func (cs *ControllerServer) DeleteSnapshot(
 	ctx context.Context,
-	req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+	req *csi.DeleteSnapshotRequest,
+) (*csi.DeleteSnapshotResponse, error) {
 	if err := cs.Driver.ValidateControllerServiceRequest(
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
 		log.ErrorLog(ctx, "invalid delete snapshot req: %v", protosanitizer.StripSecrets(req))

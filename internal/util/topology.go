@@ -141,7 +141,8 @@ type TopologyConstrainedPool struct {
 // GetTopologyFromRequest extracts TopologyConstrainedPools and passed in accessibility constraints
 // from a CSI CreateVolume request.
 func GetTopologyFromRequest(
-	req *csi.CreateVolumeRequest) (*[]TopologyConstrainedPool, *csi.TopologyRequirement, error) {
+	req *csi.CreateVolumeRequest,
+) (*[]TopologyConstrainedPool, *csi.TopologyRequirement, error) {
 	var topologyPools []TopologyConstrainedPool
 
 	// check if parameters have pool configuration pertaining to topology
@@ -171,7 +172,8 @@ func GetTopologyFromRequest(
 // MatchPoolAndTopology returns the topology map, if the passed in pool matches any
 // passed in accessibility constraints.
 func MatchPoolAndTopology(topologyPools *[]TopologyConstrainedPool,
-	accessibilityRequirements *csi.TopologyRequirement, poolName string) (string, string, map[string]string, error) {
+	accessibilityRequirements *csi.TopologyRequirement, poolName string,
+) (string, string, map[string]string, error) {
 	var topologyPool []TopologyConstrainedPool
 
 	if topologyPools == nil || accessibilityRequirements == nil {
@@ -199,7 +201,8 @@ func MatchPoolAndTopology(topologyPools *[]TopologyConstrainedPool,
 // The return variables are, image poolname, data poolname, and topology map of
 // matched requirement.
 func FindPoolAndTopology(topologyPools *[]TopologyConstrainedPool,
-	accessibilityRequirements *csi.TopologyRequirement) (string, string, map[string]string, error) {
+	accessibilityRequirements *csi.TopologyRequirement,
+) (string, string, map[string]string, error) {
 	if topologyPools == nil || accessibilityRequirements == nil {
 		return "", "", nil, nil
 	}

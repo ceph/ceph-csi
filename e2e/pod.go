@@ -136,7 +136,8 @@ func findPodAndContainerName(f *framework.Framework, ns, cn string, opt *metav1.
 func getCommandInPodOpts(
 	f *framework.Framework,
 	c, ns, cn string,
-	opt *metav1.ListOptions) (framework.ExecOptions, error) {
+	opt *metav1.ListOptions,
+) (framework.ExecOptions, error) {
 	cmd := []string{"/bin/sh", "-c", c}
 	pName, cName, err := findPodAndContainerName(f, ns, cn, opt)
 	if err != nil {
@@ -161,7 +162,8 @@ func getCommandInPodOpts(
 // stderr is returned as a string, and err will be set on a failure.
 func execCommandInDaemonsetPod(
 	f *framework.Framework,
-	c, daemonsetName, nodeName, containerName, ns string) (string, error) {
+	c, daemonsetName, nodeName, containerName, ns string,
+) (string, error) {
 	selector, err := getDaemonSetLabelSelector(f, ns, daemonsetName)
 	if err != nil {
 		return "", err
@@ -224,7 +226,8 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 }
 
 func execCommandInContainer(
-	f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions) (string, string, error) {
+	f *framework.Framework, c, ns, cn string, opt *metav1.ListOptions,
+) (string, string, error) {
 	podOpt, err := getCommandInPodOpts(f, c, ns, cn, opt)
 	if err != nil {
 		return "", "", err
@@ -468,7 +471,8 @@ func validateRWOPPodCreation(
 	f *framework.Framework,
 	pvc *v1.PersistentVolumeClaim,
 	app *v1.Pod,
-	baseAppName string) error {
+	baseAppName string,
+) error {
 	var err error
 	// create one more  app with same PVC
 	name := fmt.Sprintf("%s%d", f.UniqueName, deployTimeout)

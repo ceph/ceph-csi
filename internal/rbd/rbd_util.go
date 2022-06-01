@@ -722,7 +722,8 @@ func flattenClonedRbdImages(
 	ctx context.Context,
 	snaps []librbd.SnapInfo,
 	pool, monitors, rbdImageName string,
-	cr *util.Credentials) error {
+	cr *util.Credentials,
+) error {
 	rv := &rbdVolume{}
 	rv.Monitors = monitors
 	rv.Pool = pool
@@ -769,7 +770,8 @@ func flattenClonedRbdImages(
 func (ri *rbdImage) flattenRbdImage(
 	ctx context.Context,
 	forceFlatten bool,
-	hardlimit, softlimit uint) error {
+	hardlimit, softlimit uint,
+) error {
 	var depth uint
 	var err error
 
@@ -926,7 +928,8 @@ func genSnapFromSnapID(
 	rbdSnap *rbdSnapshot,
 	snapshotID string,
 	cr *util.Credentials,
-	secrets map[string]string) error {
+	secrets map[string]string,
+) error {
 	var vi util.CSIIdentifier
 
 	rbdSnap.VolID = snapshotID
@@ -1036,7 +1039,8 @@ func generateVolumeFromVolumeID(
 	volumeID string,
 	vi util.CSIIdentifier,
 	cr *util.Credentials,
-	secrets map[string]string) (*rbdVolume, error) {
+	secrets map[string]string,
+) (*rbdVolume, error) {
 	var (
 		rbdVol *rbdVolume
 		err    error
@@ -1123,7 +1127,8 @@ func GenVolFromVolID(
 	ctx context.Context,
 	volumeID string,
 	cr *util.Credentials,
-	secrets map[string]string) (*rbdVolume, error) {
+	secrets map[string]string,
+) (*rbdVolume, error) {
 	var (
 		vi  util.CSIIdentifier
 		vol *rbdVolume
@@ -1165,7 +1170,8 @@ func generateVolumeFromMapping(
 	volumeID string,
 	vi util.CSIIdentifier,
 	cr *util.Credentials,
-	secrets map[string]string) (*rbdVolume, error) {
+	secrets map[string]string,
+) (*rbdVolume, error) {
 	nvi := vi
 	vol := &rbdVolume{}
 	// extract clusterID mapping
@@ -1215,7 +1221,8 @@ func generateVolumeFromMapping(
 func genVolFromVolumeOptions(
 	ctx context.Context,
 	volOptions map[string]string,
-	disableInUseChecks, checkClusterIDMapping bool) (*rbdVolume, error) {
+	disableInUseChecks, checkClusterIDMapping bool,
+) (*rbdVolume, error) {
 	var (
 		ok         bool
 		err        error
@@ -1368,7 +1375,8 @@ func (ri *rbdImage) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) erro
 func (rv *rbdVolume) cloneRbdImageFromSnapshot(
 	ctx context.Context,
 	pSnapOpts *rbdSnapshot,
-	parentVol *rbdVolume) error {
+	parentVol *rbdVolume,
+) error {
 	var err error
 	logMsg := "rbd: clone %s %s (features: %s) using mon %s"
 
@@ -1904,7 +1912,8 @@ func (ri *rbdImage) isCompabitableClone(dst *rbdImage) error {
 
 func (ri *rbdImage) addSnapshotScheduling(
 	interval admin.Interval,
-	startTime admin.StartTime) error {
+	startTime admin.StartTime,
+) error {
 	ls := admin.NewLevelSpec(ri.Pool, ri.RadosNamespace, ri.RbdImageName)
 	ra, err := ri.conn.GetRBDAdmin()
 	if err != nil {
@@ -1965,7 +1974,8 @@ func strategicActionOnLogFile(ctx context.Context, logStrategy, logFile string) 
 
 // genVolFromVolIDWithMigration populate a rbdVol structure based on the volID format.
 func genVolFromVolIDWithMigration(
-	ctx context.Context, volID string, cr *util.Credentials, secrets map[string]string) (*rbdVolume, error) {
+	ctx context.Context, volID string, cr *util.Credentials, secrets map[string]string,
+) (*rbdVolume, error) {
 	if isMigrationVolID(volID) {
 		pmVolID, pErr := parseMigrationVolID(volID)
 		if pErr != nil {

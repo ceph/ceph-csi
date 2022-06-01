@@ -95,7 +95,8 @@ func createConfigMap(pluginPath string, c kubernetes.Interface, f *framework.Fra
 func createCustomConfigMap(
 	c kubernetes.Interface,
 	pluginPath string,
-	clusterInfo map[string]map[string]string) error {
+	clusterInfo map[string]map[string]string,
+) error {
 	path := pluginPath + configMap
 	cm := v1.ConfigMap{}
 	err := unmarshal(path, &cm)

@@ -34,7 +34,8 @@ const chunkSize int64 = 512
 func getOMapValues(
 	ctx context.Context,
 	conn *Connection,
-	poolName, namespace, oid, prefix string, keys []string) (map[string]string, error) {
+	poolName, namespace, oid, prefix string, keys []string,
+) (map[string]string, error) {
 	// fetch and configure the rados ioctx
 	ioctx, err := conn.conn.GetIoctx(poolName)
 	if err != nil {
@@ -93,7 +94,8 @@ func getOMapValues(
 func removeMapKeys(
 	ctx context.Context,
 	conn *Connection,
-	poolName, namespace, oid string, keys []string) error {
+	poolName, namespace, oid string, keys []string,
+) error {
 	// fetch and configure the rados ioctx
 	ioctx, err := conn.conn.GetIoctx(poolName)
 	if err != nil {
@@ -129,7 +131,8 @@ func removeMapKeys(
 func setOMapKeys(
 	ctx context.Context,
 	conn *Connection,
-	poolName, namespace, oid string, pairs map[string]string) error {
+	poolName, namespace, oid string, pairs map[string]string,
+) error {
 	// fetch and configure the rados ioctx
 	ioctx, err := conn.conn.GetIoctx(poolName)
 	if err != nil {

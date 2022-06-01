@@ -538,7 +538,8 @@ func detachRBDDevice(ctx context.Context, devicePath, volumeID, unmapOptions str
 // when imageSpec is used to decide if image is already unmapped.
 func detachRBDImageOrDeviceSpec(
 	ctx context.Context,
-	dArgs *detachRBDImageArgs) error {
+	dArgs *detachRBDImageArgs,
+) error {
 	if dArgs.encrypted {
 		mapperFile, mapperPath := util.VolumeMapper(dArgs.volumeID)
 		mappedDevice, mapper, err := util.DeviceEncryptionStatus(ctx, mapperPath)

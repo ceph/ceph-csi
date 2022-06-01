@@ -139,7 +139,8 @@ func GetMappedID(key, value, id string) string {
 
 // fetchMappedClusterIDAndMons returns monitors and clusterID info after checking cluster mapping.
 func fetchMappedClusterIDAndMons(ctx context.Context,
-	clusterID, clusterMappingConfigFile, csiConfigFile string) (string, string, error) {
+	clusterID, clusterMappingConfigFile, csiConfigFile string,
+) (string, string, error) {
 	var mons string
 	clusterMappingInfo, err := getClusterMappingInfo(clusterID, clusterMappingConfigFile)
 	if err != nil {

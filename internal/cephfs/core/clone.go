@@ -64,7 +64,8 @@ func (cs cephFSCloneState) toError() error {
 // CreateCloneFromSubvolume creates a clone from a subvolume.
 func (s *subVolumeClient) CreateCloneFromSubvolume(
 	ctx context.Context,
-	parentvolOpt *SubVolume) error {
+	parentvolOpt *SubVolume,
+) error {
 	snapshotID := s.VolID
 	snapClient := NewSnapshot(s.conn, snapshotID, parentvolOpt)
 	err := snapClient.CreateSnapshot(ctx)
@@ -159,7 +160,8 @@ func (s *subVolumeClient) CreateCloneFromSubvolume(
 
 // CleanupSnapshotFromSubvolume	removes the snapshot from the subvolume.
 func (s *subVolumeClient) CleanupSnapshotFromSubvolume(
-	ctx context.Context, parentVol *SubVolume) error {
+	ctx context.Context, parentVol *SubVolume,
+) error {
 	// snapshot name is same as clone name as we need a name which can be
 	// identified during PVC-PVC cloning.
 	snapShotID := s.VolID
@@ -193,7 +195,8 @@ func (s *subVolumeClient) CleanupSnapshotFromSubvolume(
 
 // CreateSnapshotFromSubvolume creates a clone from subvolume snapshot.
 func (s *subVolumeClient) CreateCloneFromSnapshot(
-	ctx context.Context, snap Snapshot) error {
+	ctx context.Context, snap Snapshot,
+) error {
 	snapID := snap.SnapshotID
 	snapClient := NewSnapshot(s.conn, snapID, snap.SubVolume)
 	err := snapClient.CloneSnapshot(ctx, s.SubVolume)

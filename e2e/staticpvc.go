@@ -41,7 +41,8 @@ const (
 func getStaticPV(
 	name, volName, size, secretName, secretNS, sc, driverName string,
 	blockPV bool,
-	options, annotations map[string]string, policy v1.PersistentVolumeReclaimPolicy) *v1.PersistentVolume {
+	options, annotations map[string]string, policy v1.PersistentVolumeReclaimPolicy,
+) *v1.PersistentVolume {
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -491,7 +492,8 @@ func validateRBDStaticResize(
 	app *v1.Pod,
 	appOpt *metav1.ListOptions,
 	pvc *v1.PersistentVolumeClaim,
-	rbdImageName string) error {
+	rbdImageName string,
+) error {
 	// resize rbd image
 	size := staticPVNewSize
 	cmd := fmt.Sprintf(

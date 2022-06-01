@@ -60,7 +60,8 @@ func validateNetworkFenceReq(fenceClients []*fence.CIDR, options map[string]stri
 // to the malicious clients to prevent data corruption.
 func (fcs *FenceControllerServer) FenceClusterNetwork(
 	ctx context.Context,
-	req *fence.FenceClusterNetworkRequest) (*fence.FenceClusterNetworkResponse, error) {
+	req *fence.FenceClusterNetworkRequest,
+) (*fence.FenceClusterNetworkResponse, error) {
 	err := validateNetworkFenceReq(req.GetCidrs(), req.Parameters)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -88,7 +89,8 @@ func (fcs *FenceControllerServer) FenceClusterNetwork(
 // UnfenceClusterNetwork unblocks the access to a CIDR block by removing the network fence.
 func (fcs *FenceControllerServer) UnfenceClusterNetwork(
 	ctx context.Context,
-	req *fence.UnfenceClusterNetworkRequest) (*fence.UnfenceClusterNetworkResponse, error) {
+	req *fence.UnfenceClusterNetworkRequest,
+) (*fence.UnfenceClusterNetworkResponse, error) {
 	err := validateNetworkFenceReq(req.GetCidrs(), req.Parameters)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())

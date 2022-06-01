@@ -77,7 +77,8 @@ func CheckVolExists(ctx context.Context,
 
 	pvID *VolumeIdentifier,
 	sID *SnapshotIdentifier,
-	cr *util.Credentials) (*VolumeIdentifier, error) {
+	cr *util.Credentials,
+) (*VolumeIdentifier, error) {
 	var vid VolumeIdentifier
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := VolJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
@@ -205,7 +206,8 @@ func UndoVolReservation(
 	ctx context.Context,
 	volOptions *VolumeOptions,
 	vid VolumeIdentifier,
-	secret map[string]string) error {
+	secret map[string]string,
+) error {
 	cr, err := util.NewAdminCredentials(secret)
 	if err != nil {
 		return err
@@ -294,7 +296,8 @@ func ReserveSnap(
 	volOptions *VolumeOptions,
 	parentSubVolName string,
 	snap *SnapshotOption,
-	cr *util.Credentials) (*SnapshotIdentifier, error) {
+	cr *util.Credentials,
+) (*SnapshotIdentifier, error) {
 	var (
 		vid       SnapshotIdentifier
 		imageUUID string
@@ -335,7 +338,8 @@ func UndoSnapReservation(
 	volOptions *VolumeOptions,
 	vid SnapshotIdentifier,
 	snapName string,
-	cr *util.Credentials) error {
+	cr *util.Credentials,
+) error {
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
 	if err != nil {
@@ -367,7 +371,8 @@ func CheckSnapExists(
 	ctx context.Context,
 	volOptions *VolumeOptions,
 	snap *SnapshotOption,
-	cr *util.Credentials) (*SnapshotIdentifier, *core.SnapshotInfo, error) {
+	cr *util.Credentials,
+) (*SnapshotIdentifier, *core.SnapshotInfo, error) {
 	// Connect to cephfs' default radosNamespace (csi)
 	j, err := SnapJournal.Connect(volOptions.Monitors, fsutil.RadosNamespace, cr)
 	if err != nil {

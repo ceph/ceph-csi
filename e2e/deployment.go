@@ -40,7 +40,8 @@ func execCommandInPodWithName(
 	cmdString,
 	podName,
 	containerName,
-	nameSpace string) (string, string, error) {
+	nameSpace string,
+) (string, string, error) {
 	cmd := []string{"/bin/sh", "-c", cmdString}
 	podOpt := framework.ExecOptions{
 		Command:            cmd,

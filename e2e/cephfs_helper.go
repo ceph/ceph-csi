@@ -60,7 +60,8 @@ func createCephfsStorageClass(
 	c kubernetes.Interface,
 	f *framework.Framework,
 	enablePool bool,
-	params map[string]string) error {
+	params map[string]string,
+) error {
 	scPath := fmt.Sprintf("%s/%s", cephFSExamplePath, "storageclass.yaml")
 	sc, err := getStorageClass(scPath)
 	if err != nil {
@@ -253,7 +254,8 @@ func getSnapName(snapNamespace, snapName string) (string, error) {
 func deleteBackingCephFSSubvolumeSnapshot(
 	f *framework.Framework,
 	pvc *v1.PersistentVolumeClaim,
-	snap *snapapi.VolumeSnapshot) error {
+	snap *snapapi.VolumeSnapshot,
+) error {
 	snapshotName, err := getSnapName(snap.Namespace, snap.Name)
 	if err != nil {
 		return err

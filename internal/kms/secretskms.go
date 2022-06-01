@@ -138,7 +138,8 @@ func initSecretsMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 // fetchEncryptionPassphrase fetches encryptionPassphrase from user provided secret.
 func (kms secretsMetadataKMS) fetchEncryptionPassphrase(
 	config map[string]interface{},
-	defaultNamespace string) (string, error) {
+	defaultNamespace string,
+) (string, error) {
 	var (
 		secretName      string
 		secretNamespace string

@@ -148,7 +148,8 @@ func healerStageTransaction(ctx context.Context, cr *util.Credentials, volOps *r
 func populateRbdVol(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
-	cr *util.Credentials) (*rbdVolume, error) {
+	cr *util.Credentials,
+) (*rbdVolume, error) {
 	var err error
 	var j *journal.Connection
 	volID := req.GetVolumeId()
@@ -295,7 +296,8 @@ func populateRbdVol(
 //   - Stage the device (mount the device mapped for image)
 func (ns *NodeServer) NodeStageVolume(
 	ctx context.Context,
-	req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+	req *csi.NodeStageVolumeRequest,
+) (*csi.NodeStageVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeStageVolumeRequest(req); err != nil {
 		return nil, err
@@ -384,7 +386,8 @@ func (ns *NodeServer) stageTransaction(
 	req *csi.NodeStageVolumeRequest,
 	cr *util.Credentials,
 	volOptions *rbdVolume,
-	staticVol bool) (*stageTransaction, error) {
+	staticVol bool,
+) (*stageTransaction, error) {
 	transaction := &stageTransaction{}
 
 	var err error
@@ -466,7 +469,8 @@ func resizeNodeStagePath(ctx context.Context,
 	isBlock bool,
 	transaction *stageTransaction,
 	volID,
-	stagingTargetPath string) error {
+	stagingTargetPath string,
+) error {
 	var err error
 	devicePath := transaction.devicePath
 	var ok bool
@@ -543,7 +547,8 @@ func resizeEncryptedDevice(ctx context.Context, volID, stagingTargetPath, device
 
 func flattenImageBeforeMapping(
 	ctx context.Context,
-	volOptions *rbdVolume) error {
+	volOptions *rbdVolume,
+) error {
 	var err error
 	var feature bool
 	var depth uint
@@ -579,7 +584,8 @@ func (ns *NodeServer) undoStagingTransaction(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
 	transaction *stageTransaction,
-	volOptions *rbdVolume) {
+	volOptions *rbdVolume,
+) {
 	var err error
 
 	stagingTargetPath := getStagingTargetPath(req)
@@ -661,7 +667,8 @@ func (ns *NodeServer) createStageMountPoint(ctx context.Context, mountPath strin
 // path.
 func (ns *NodeServer) NodePublishVolume(
 	ctx context.Context,
-	req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+	req *csi.NodePublishVolumeRequest,
+) (*csi.NodePublishVolumeResponse, error) {
 	err := util.ValidateNodePublishVolumeRequest(req)
 	if err != nil {
 		return nil, err
@@ -700,7 +707,8 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
 	staticVol bool,
-	stagingPath, devicePath string) error {
+	stagingPath, devicePath string,
+) error {
 	readOnly := false
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	diskMounter := &mount.SafeFormatAndMount{Interface: ns.Mounter, Exec: utilexec.New()}
@@ -841,7 +849,8 @@ func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath strin
 // NodeUnpublishVolume unmounts the volume from the target path.
 func (ns *NodeServer) NodeUnpublishVolume(
 	ctx context.Context,
-	req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+	req *csi.NodeUnpublishVolumeRequest,
+) (*csi.NodeUnpublishVolumeResponse, error) {
 	err := util.ValidateNodeUnpublishVolumeRequest(req)
 	if err != nil {
 		return nil, err
@@ -898,7 +907,8 @@ func getStagingTargetPath(req interface{}) string {
 // NodeUnstageVolume unstages the volume from the staging path.
 func (ns *NodeServer) NodeUnstageVolume(
 	ctx context.Context,
-	req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+	req *csi.NodeUnstageVolumeRequest,
+) (*csi.NodeUnstageVolumeResponse, error) {
 	var err error
 	if err = util.ValidateNodeUnstageVolumeRequest(req); err != nil {
 		return nil, err
@@ -1004,7 +1014,8 @@ func (ns *NodeServer) NodeUnstageVolume(
 // NodeExpandVolume resizes rbd volumes.
 func (ns *NodeServer) NodeExpandVolume(
 	ctx context.Context,
-	req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+	req *csi.NodeExpandVolumeRequest,
+) (*csi.NodeExpandVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "volume ID must be provided")
@@ -1078,7 +1089,8 @@ func (ns *NodeServer) NodeExpandVolume(
 // NodeGetCapabilities returns the supported capabilities of the node server.
 func (ns *NodeServer) NodeGetCapabilities(
 	ctx context.Context,
-	req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+	req *csi.NodeGetCapabilitiesRequest,
+) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
 			{
@@ -1116,7 +1128,8 @@ func (ns *NodeServer) NodeGetCapabilities(
 func (ns *NodeServer) processEncryptedDevice(
 	ctx context.Context,
 	volOptions *rbdVolume,
-	devicePath string) (string, error) {
+	devicePath string,
+) (string, error) {
 	imageSpec := volOptions.String()
 	encrypted, err := volOptions.checkRbdImageEncrypted(ctx)
 	if err != nil {
@@ -1212,7 +1225,8 @@ func (ns *NodeServer) xfsSupportsReflink() bool {
 // NodeGetVolumeStats returns volume stats.
 func (ns *NodeServer) NodeGetVolumeStats(
 	ctx context.Context,
-	req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	req *csi.NodeGetVolumeStatsRequest,
+) (*csi.NodeGetVolumeStatsResponse, error) {
 	var err error
 	targetPath := req.GetVolumePath()
 	if targetPath == "" {

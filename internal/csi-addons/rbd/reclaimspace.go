@@ -49,7 +49,8 @@ func (rscs *ReclaimSpaceControllerServer) RegisterService(server grpc.ServiceReg
 
 func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 	ctx context.Context,
-	req *rs.ControllerReclaimSpaceRequest) (*rs.ControllerReclaimSpaceResponse, error) {
+	req *rs.ControllerReclaimSpaceRequest,
+) (*rs.ControllerReclaimSpaceResponse, error) {
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
@@ -97,10 +98,10 @@ func (rsns *ReclaimSpaceNodeServer) RegisterService(server grpc.ServiceRegistrar
 // an error is returned to prevent potential data corruption.
 func (rsns *ReclaimSpaceNodeServer) NodeReclaimSpace(
 	ctx context.Context,
-	req *rs.NodeReclaimSpaceRequest) (*rs.NodeReclaimSpaceResponse, error) {
+	req *rs.NodeReclaimSpaceRequest,
+) (*rs.NodeReclaimSpaceResponse, error) {
 	// volumeID is a required attribute, it is part of the path to run the
 	// space reducing command on
-	// nolint:ifshort // volumeID is incorrectly assumed to be used only once
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")

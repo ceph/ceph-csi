@@ -120,6 +120,7 @@ func TestInitVaultTokensKMS(t *testing.T) {
 	// add tenant "bob"
 	bob := make(map[string]interface{})
 	bob["vaultAddress"] = "https://vault.bob.example.org"
+	//nolint:forcetypeassert // as its a test we dont need to check assertion here.
 	args.Config["tenants"].(map[string]interface{})["bob"] = bob
 
 	_, err = initVaultTokensKMS(args)

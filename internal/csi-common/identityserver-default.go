@@ -34,7 +34,8 @@ type DefaultIdentityServer struct {
 // GetPluginInfo returns plugin information.
 func (ids *DefaultIdentityServer) GetPluginInfo(
 	ctx context.Context,
-	req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
+	req *csi.GetPluginInfoRequest,
+) (*csi.GetPluginInfoResponse, error) {
 	log.TraceLog(ctx, "Using default GetPluginInfo")
 
 	if ids.Driver.name == "" {
@@ -59,7 +60,8 @@ func (ids *DefaultIdentityServer) Probe(ctx context.Context, req *csi.ProbeReque
 // GetPluginCapabilities returns plugin capabilities.
 func (ids *DefaultIdentityServer) GetPluginCapabilities(
 	ctx context.Context,
-	req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
+	req *csi.GetPluginCapabilitiesRequest,
+) (*csi.GetPluginCapabilitiesResponse, error) {
 	log.TraceLog(ctx, "Using default capabilities")
 
 	return &csi.GetPluginCapabilitiesResponse{

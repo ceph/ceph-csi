@@ -273,7 +273,8 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 // ParseEncryptionOpts returns kmsID and sets Owner attribute.
 func (ri *rbdImage) ParseEncryptionOpts(
 	ctx context.Context,
-	volOptions map[string]string) (string, error) {
+	volOptions map[string]string,
+) (string, error) {
 	var (
 		err              error
 		ok               bool

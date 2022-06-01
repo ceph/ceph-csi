@@ -341,7 +341,8 @@ func createPVCAndApp(
 	f *framework.Framework,
 	pvc *v1.PersistentVolumeClaim,
 	app *v1.Pod,
-	pvcTimeout int) error {
+	pvcTimeout int,
+) error {
 	if name != "" {
 		pvc.Name = name
 		app.Name = name
@@ -361,7 +362,8 @@ func createPVCAndDeploymentApp(
 	f *framework.Framework,
 	pvc *v1.PersistentVolumeClaim,
 	app *appsv1.Deployment,
-	pvcTimeout int) error {
+	pvcTimeout int,
+) error {
 	err := createPVCAndvalidatePV(f.ClientSet, pvc, pvcTimeout)
 	if err != nil {
 		return err
@@ -414,7 +416,8 @@ func validatePVCAndDeploymentAppBinding(
 func deletePVCAndDeploymentApp(
 	f *framework.Framework,
 	pvc *v1.PersistentVolumeClaim,
-	app *appsv1.Deployment) error {
+	app *appsv1.Deployment,
+) error {
 	err := deleteDeploymentApp(f.ClientSet, app.Name, app.Namespace, deployTimeout)
 	if err != nil {
 		return err
@@ -445,7 +448,8 @@ func deletePVCAndApp(name string, f *framework.Framework, pvc *v1.PersistentVolu
 func createPVCAndAppBinding(
 	pvcPath, appPath string,
 	f *framework.Framework,
-	pvcTimeout int) (*v1.PersistentVolumeClaim, *v1.Pod, error) {
+	pvcTimeout int,
+) (*v1.PersistentVolumeClaim, *v1.Pod, error) {
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
 		return nil, nil, err
@@ -486,7 +490,7 @@ func getMountType(selector, mountPath string, f *framework.Framework) (string, e
 		return "", err
 	}
 	if stdErr != "" {
-		return strings.TrimSpace(stdOut), fmt.Errorf(stdErr)
+		return strings.TrimSpace(stdOut), fmt.Errorf("%s", stdErr)
 	}
 
 	return strings.TrimSpace(stdOut), nil
@@ -802,7 +806,8 @@ func validatePVCClone(
 	dataPool string,
 	kms kmsConfig,
 	validatePVC validateFunc,
-	f *framework.Framework) {
+	f *framework.Framework,
+) {
 	var wg sync.WaitGroup
 	wgErrs := make([]error, totalCount)
 	chErrs := make([]error, totalCount)
@@ -1013,7 +1018,8 @@ func validatePVCSnapshot(
 	totalCount int,
 	pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string,
 	kms, restoreKMS kmsConfig, restoreSCName,
-	dataPool string, f *framework.Framework) {
+	dataPool string, f *framework.Framework,
+) {
 	var wg sync.WaitGroup
 	wgErrs := make([]error, totalCount)
 	chErrs := make([]error, totalCount)
@@ -1358,7 +1364,8 @@ func validatePVCSnapshot(
 func validateController(
 	f *framework.Framework,
 	pvcPath, appPath, scPath string,
-	scOptions, scParams map[string]string) error {
+	scOptions, scParams map[string]string,
+) error {
 	size := "1Gi"
 	poolName := defaultRBDPool
 	expandSize := "10Gi"

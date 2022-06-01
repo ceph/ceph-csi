@@ -514,8 +514,8 @@ var _ = Describe(cephfsType, func() {
 					e2elog.Failf("failed to list pods for Deployment: %v", err)
 				}
 
-				doStat := func(podName string) (stdErr string, err error) {
-					_, stdErr, err = execCommandInContainerByPodName(
+				doStat := func(podName string) (string, error) {
+					_, stdErr, execErr := execCommandInContainerByPodName(
 						f,
 						fmt.Sprintf("stat %s", depl.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath),
 						depl.Namespace,
@@ -523,7 +523,7 @@ var _ = Describe(cephfsType, func() {
 						depl.Spec.Template.Spec.Containers[0].Name,
 					)
 
-					return stdErr, err
+					return stdErr, execErr
 				}
 				ensureStatSucceeds := func(podName string) error {
 					stdErr, statErr := doStat(podName)
