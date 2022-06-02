@@ -13,6 +13,11 @@ limitations under the License.
 
 package fscrypt
 
+/*
+#include <linux/fs.h>
+*/
+import "C"
+
 import (
 	"context"
 	"errors"
@@ -245,15 +250,28 @@ func getInodeEncryptedAttribute(p string) (bool, error) {
 	return false, nil
 }
 
-// IsDirectoryUnlocked checks if a directory is an unlocked fscrypted directory.
-func IsDirectoryUnlocked(directoryPath string) error {
+// IsDirectoryUnlockedFscrypt checks if a directory is an unlocked fscrypted directory.
+func IsDirectoryUnlocked(directoryPath, filesystem string) error {
 	if _, err := fscryptmetadata.GetPolicy(directoryPath); err != nil {
 		return fmt.Errorf("no fscrypt policy set on directory %q: %w", directoryPath, err)
 	}
 
-	_, err := xattr.Get(directoryPath, "ceph.fscrypt.auth")
-	if err != nil {
-		return fmt.Errorf("error reading ceph.fscrypt.auth xattr on %q: %w", directoryPath, err)
+	switch filesystem {
+	case "ceph":
+		_, err := xattr.Get(directoryPath, "ceph.fscrypt.auth")
+		if err != nil {
+			return fmt.Errorf("error reading ceph.fscrypt.auth xattr on %q: %w", directoryPath, err)
+		}
+	case "ext4":
+		encrypted, err := getInodeEncryptedAttribute(directoryPath)
+		if err != nil {
+			return err
+		}
+
+		if !encrypted {
+			return fmt.Errorf("path %s does not have the encrypted inode flag set. Encryption init must have failed",
+				directoryPath)
+		}
 	}
 
 	return nil

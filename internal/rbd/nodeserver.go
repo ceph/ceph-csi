@@ -711,7 +711,7 @@ func (ns *NodeServer) NodePublishVolume(
 	}
 	if fileEncrypted {
 		stagingPath = fscrypt.AppendEncyptedSubdirectory(stagingPath)
-		if err = fscrypt.IsDirectoryUnlocked(stagingPath); err != nil {
+		if err = fscrypt.IsDirectoryUnlocked(stagingPath, req.GetVolumeCapability().GetMount().GetFsType()); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}

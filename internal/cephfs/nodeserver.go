@@ -492,7 +492,7 @@ func (ns *NodeServer) NodePublishVolume(
 	}
 	if encrypted {
 		stagingTargetPath = fscrypt.AppendEncyptedSubdirectory(stagingTargetPath)
-		if err = fscrypt.IsDirectoryUnlocked(stagingTargetPath); err != nil {
+		if err = fscrypt.IsDirectoryUnlocked(stagingTargetPath, "ceph"); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
