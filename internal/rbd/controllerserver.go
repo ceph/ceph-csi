@@ -644,6 +644,17 @@ func (cs *ControllerServer) createVolumeFromSnapshot(
 
 		return err
 	}
+
+	defer func() {
+		if err != nil {
+			log.DebugLog(ctx, "Removing clone image %q", rbdVol)
+			errDefer := rbdVol.deleteImage(ctx)
+			if errDefer != nil {
+				log.ErrorLog(ctx, "failed to delete clone image %q: %v", rbdVol, errDefer)
+			}
+		}
+	}()
+
 	err = rbdVol.unsetAllMetadata(k8s.GetSnapshotMetadataKeys())
 	if err != nil {
 		log.ErrorLog(ctx, "failed to unset snapshot metadata on rbd image %q: %v", rbdVol, err)
@@ -1141,6 +1152,16 @@ func (cs *ControllerServer) CreateSnapshot(
 	// Update the metadata on snapshot not on the original image
 	rbdVol.RbdImageName = rbdSnap.RbdSnapName
 	rbdVol.ClusterName = cs.ClusterName
+
+	defer func() {
+		if err != nil {
+			log.DebugLog(ctx, "Removing clone image %q", rbdVol)
+			errDefer := rbdVol.deleteImage(ctx)
+			if errDefer != nil {
+				log.ErrorLog(ctx, "failed to delete clone image %q: %v", rbdVol, errDefer)
+			}
+		}
+	}()
 
 	err = rbdVol.unsetAllMetadata(k8s.GetVolumeMetadataKeys())
 	if err != nil {
