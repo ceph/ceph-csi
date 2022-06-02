@@ -138,6 +138,16 @@ func (rv *rbdVolume) createCloneFromImage(ctx context.Context, parentVol *rbdVol
 		return err
 	}
 
+	defer func() {
+		if err != nil {
+			log.DebugLog(ctx, "Removing clone image %q", rv)
+			errDefer := rv.deleteImage(ctx)
+			if errDefer != nil {
+				log.ErrorLog(ctx, "failed to delete clone image %q: %v", rv, errDefer)
+			}
+		}
+	}()
+
 	err = rv.getImageID()
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get volume id %s: %v", rv, err)
