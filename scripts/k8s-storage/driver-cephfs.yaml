@@ -46,7 +46,7 @@ DriverInfo:
     volumeLimits: false
 
     # Support for volume expansion in controllers
-    controllerExpansion: false
+    controllerExpansion: true
 
     # Support for volume expansion in nodes
     nodeExpansion: false
