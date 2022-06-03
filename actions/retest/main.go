@@ -198,7 +198,8 @@ func main() {
 
 // checkPRRequiredApproval check PullRequest has required approvals.
 func (c *retestConfig) checkPRRequiredApproval(prNumber int) bool {
-	rev, _, err := c.client.PullRequests.ListReviews(context.TODO(), c.owner, c.repo, prNumber, &github.ListOptions{})
+	opts := github.ListOptions{PerPage: 100} // defaults to 30 reviews, too few sometimes
+	rev, _, err := c.client.PullRequests.ListReviews(context.TODO(), c.owner, c.repo, prNumber, &opts)
 	if err != nil {
 		log.Printf("failed to list reviews %v\n", err)
 		return false
