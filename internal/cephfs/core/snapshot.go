@@ -51,6 +51,12 @@ type SnapshotClient interface {
 	UnprotectSnapshot(ctx context.Context) error
 	// CloneSnapshot clones the snapshot of the subvolume.
 	CloneSnapshot(ctx context.Context, cloneVolOptions *SubVolume) error
+	// SetAllSnapshotMetadata set all the metadata from arg parameters on
+	// subvolume snapshot.
+	SetAllSnapshotMetadata(parameters map[string]string) error
+	// UnsetAllSnapshotMetadata unset all the metadata from arg keys on
+	// subvolume snapshot.
+	UnsetAllSnapshotMetadata(keys []string) error
 }
 
 // snapshotClient is the implementation of SnapshotClient interface.
