@@ -205,6 +205,11 @@ function check_rbd_stat() {
 			RBD_POOL_NAME="device_health_metrics"
 		fi
 
+		# Rook v1.9.x creates pool with name .mgr for builtin-mgr CephBlockPool CR
+		if [[ "${RBD_POOL_NAME}" == "builtin-mgr" ]]; then
+			RBD_POOL_NAME=".mgr"
+		fi
+
 		echo "Checking RBD ($RBD_POOL_NAME) stats... ${retry}s" && sleep 5
 
 		TOOLBOX_POD=$(kubectl_retry -n rook-ceph get pods -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
