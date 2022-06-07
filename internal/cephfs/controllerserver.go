@@ -854,7 +854,8 @@ func (cs *ControllerServer) CreateSnapshot(
 			}
 		}
 	}()
-	snap, err := doSnapshot(ctx, parentVolOptions, sID.FsSnapshotName)
+	metadata := k8s.GetSnapshotMetadata(req.GetParameters())
+	snap, err := doSnapshot(ctx, parentVolOptions, sID.FsSnapshotName, metadata)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -874,6 +875,7 @@ func doSnapshot(
 	ctx context.Context,
 	volOpt *store.VolumeOptions,
 	snapshotName string,
+	metadata map[string]string,
 ) (core.SnapshotInfo, error) {
 	snapID := fsutil.VolumeID(snapshotName)
 	snap := core.SnapshotInfo{}
@@ -907,6 +909,15 @@ func doSnapshot(
 	err = snapClient.ProtectSnapshot(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to protect snapshot %s %v", snapID, err)
+	}
+
+	// Set snapshot-name/snapshot-namespace/snapshotcontent-name details
+	// on subvolume snapshot as metadata on create
+	if len(metadata) != 0 {
+		err = snapClient.SetAllSnapshotMetadata(metadata)
+		if err != nil {
+			return snap, err
+		}
 	}
 
 	return snap, err
