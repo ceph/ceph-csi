@@ -70,5 +70,8 @@ rules:
     resources: ["csinodes"]
     verbs: ["get", "list", "watch"]
 {{- end }}
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    verbs: ["create"]
 
 {{- end -}}
