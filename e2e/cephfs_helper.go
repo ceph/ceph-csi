@@ -201,7 +201,7 @@ func listCephFSSubVolumes(f *framework.Framework, filesystem, groupname string) 
 		return subVols, err
 	}
 	if stdErr != "" {
-		return subVols, fmt.Errorf("error listing subolumes %v", stdErr)
+		return subVols, fmt.Errorf("error listing subvolumes %v", stdErr)
 	}
 
 	err = json.Unmarshal([]byte(stdout), &subVols)
@@ -224,25 +224,84 @@ func listCephFSSubvolumeMetadata(
 	filesystem,
 	subvolume,
 	groupname string,
-) (cephfsSubvolumeMetadata, error) {
-	var metadata cephfsSubvolumeMetadata
+) (*cephfsSubvolumeMetadata, error) {
 	stdout, stdErr, err := execCommandInToolBoxPod(
 		f,
 		fmt.Sprintf("ceph fs subvolume metadata ls %s %s --group_name=%s --format=json", filesystem, subvolume, groupname),
 		rookNamespace)
 	if err != nil {
-		return metadata, err
+		return nil, err
 	}
 	if stdErr != "" {
-		return metadata, fmt.Errorf("error listing subvolume metadata %v", stdErr)
+		return nil, fmt.Errorf("error listing subvolume metadata %v", stdErr)
 	}
 
-	err = json.Unmarshal([]byte(stdout), &metadata)
+	metadata := &cephfsSubvolumeMetadata{}
+	err = json.Unmarshal([]byte(stdout), metadata)
 	if err != nil {
 		return metadata, err
 	}
 
 	return metadata, nil
+}
+
+type cephfsSnapshotMetadata struct {
+	VolSnapNameKey        string `json:"csi.storage.k8s.io/volumesnapshot/name"`
+	VolSnapNamespaceKey   string `json:"csi.storage.k8s.io/volumesnapshot/namespace"`
+	VolSnapContentNameKey string `json:"csi.storage.k8s.io/volumesnapshotcontent/name"`
+}
+
+func listCephFSSnapshotMetadata(
+	f *framework.Framework,
+	filesystem,
+	subvolume,
+	snapname,
+	groupname string,
+) (*cephfsSnapshotMetadata, error) {
+	stdout, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf("ceph fs subvolume snapshot metadata ls %s %s %s --group_name=%s --format=json",
+			filesystem, subvolume, snapname, groupname),
+		rookNamespace)
+	if err != nil {
+		return nil, err
+	}
+	if stdErr != "" {
+		return nil, fmt.Errorf("error listing subvolume snapshots metadata %v", stdErr)
+	}
+
+	metadata := &cephfsSnapshotMetadata{}
+	err = json.Unmarshal([]byte(stdout), metadata)
+	if err != nil {
+		return metadata, err
+	}
+
+	return metadata, nil
+}
+
+type cephfsSnapshot struct {
+	Name string `json:"name"`
+}
+
+func listCephFSSnapshots(f *framework.Framework, filesystem, subvolume, groupname string) ([]cephfsSnapshot, error) {
+	var snaps []cephfsSnapshot
+	stdout, stdErr, err := execCommandInToolBoxPod(
+		f,
+		fmt.Sprintf("ceph fs subvolume snapshot ls %s %s --group_name=%s --format=json", filesystem, subvolume, groupname),
+		rookNamespace)
+	if err != nil {
+		return snaps, err
+	}
+	if stdErr != "" {
+		return snaps, fmt.Errorf("error listing subolume snapshots %v", stdErr)
+	}
+
+	err = json.Unmarshal([]byte(stdout), &snaps)
+	if err != nil {
+		return snaps, err
+	}
+
+	return snaps, nil
 }
 
 // getSubvolumepath validates whether subvolumegroup is present.

@@ -916,6 +916,82 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			By("Test subvolume snapshot metadata feature", func() {
+				err := createCephFSSnapshotClass(f)
+				if err != nil {
+					e2elog.Failf("failed to create CephFS snapshotclass: %v", err)
+				}
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC: %v", err)
+				}
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				// create snapshot
+				snap.Name = f.UniqueName
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create snapshot (%s): %v", snap.Name, err)
+				}
+				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+				if err != nil {
+					e2elog.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+				}
+				subVolumeName := pv.Spec.CSI.VolumeAttributes["subvolumeName"]
+				snaps, err := listCephFSSnapshots(f, fileSystemName, subVolumeName, subvolumegroup)
+				if err != nil {
+					e2elog.Failf("failed to list subvolume snapshots: %v", err)
+				}
+				if len(snaps) == 0 {
+					e2elog.Failf("cephFS snapshots list is empty %s/%s", fileSystemName, subVolumeName)
+				}
+
+				content, err := getVolumeSnapshotContent(snap.Namespace, snap.Name)
+				if err != nil {
+					e2elog.Failf("failed to get snapshotcontent for %s in namespace %s: %v",
+						snap.Name, snap.Namespace, err)
+				}
+
+				metadata, err := listCephFSSnapshotMetadata(f,
+					fileSystemName, subVolumeName, snaps[0].Name, subvolumegroup)
+				if err != nil {
+					e2elog.Failf("failed to list subvolume snapshots metadata: %v", err)
+				}
+				if metadata.VolSnapNameKey != snap.Name {
+					e2elog.Failf("failed, snapname expected:%s got:%s",
+						snap.Name, metadata.VolSnapNameKey)
+				} else if metadata.VolSnapNamespaceKey != snap.Namespace {
+					e2elog.Failf("failed, snapnamespace expected:%s got:%s",
+						snap.Namespace, metadata.VolSnapNamespaceKey)
+				} else if metadata.VolSnapContentNameKey != content.Name {
+					e2elog.Failf("failed, contentname expected:%s got:%s",
+						content.Name, metadata.VolSnapContentNameKey)
+				}
+
+				// delete snapshot
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete snapshot (%s): %v", f.UniqueName, err)
+				}
+				// Delete the parent pvc
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC: %v", err)
+				}
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+				err = deleteResource(cephFSExamplePath + "snapshotclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete CephFS snapshotclass: %v", err)
+				}
+			})
+
 			By("Delete snapshot after deleting subvolume and snapshot from backend", func() {
 				err := createCephFSSnapshotClass(f)
 				if err != nil {
