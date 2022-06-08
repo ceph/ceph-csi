@@ -699,7 +699,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
-// nolint:gocyclo,cyclop // golangci-lint did not catch this earlier, needs to get fixed late
+// nolint:gocognit,gocyclo,cyclop // golangci-lint did not catch this earlier, needs to get fixed late
 func (cs *ControllerServer) CreateSnapshot(
 	ctx context.Context,
 	req *csi.CreateSnapshotRequest,
@@ -815,17 +815,26 @@ func (cs *ControllerServer) CreateSnapshot(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	metadata := k8s.GetSnapshotMetadata(req.GetParameters())
 	if sid != nil {
 		// check snapshot is protected
 		protected := true
+		snapClient := core.NewSnapshot(parentVolOptions.GetConnection(), sid.FsSnapshotName, &parentVolOptions.SubVolume)
 		if !(snapInfo.Protected == core.SnapshotIsProtected) {
-			snapClient := core.NewSnapshot(parentVolOptions.GetConnection(),
-				sid.FsSnapshotName, &parentVolOptions.SubVolume)
 			err = snapClient.ProtectSnapshot(ctx)
 			if err != nil {
 				protected = false
 				log.WarningLog(ctx, "failed to protect snapshot of snapshot: %s (%s)",
 					sid.FsSnapshotName, err)
+			}
+		}
+
+		// Update snapshot-name/snapshot-namespace/snapshotcontent-name details on
+		// subvolume snapshot as metadata in case snapshot already exist
+		if len(metadata) != 0 {
+			err = snapClient.SetAllSnapshotMetadata(metadata)
+			if err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
 			}
 		}
 
@@ -854,7 +863,6 @@ func (cs *ControllerServer) CreateSnapshot(
 			}
 		}
 	}()
-	metadata := k8s.GetSnapshotMetadata(req.GetParameters())
 	snap, err := doSnapshot(ctx, parentVolOptions, sID.FsSnapshotName, metadata)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
