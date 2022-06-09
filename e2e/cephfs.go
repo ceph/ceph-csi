@@ -916,7 +916,7 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
-			By("Test subvolume snapshot metadata feature", func() {
+			By("Test subvolume snapshot and restored PVC metadata", func() {
 				err := createCephFSSnapshotClass(f)
 				if err != nil {
 					e2elog.Failf("failed to create CephFS snapshotclass: %v", err)
@@ -951,13 +951,11 @@ var _ = Describe(cephfsType, func() {
 				if len(snaps) == 0 {
 					e2elog.Failf("cephFS snapshots list is empty %s/%s", fileSystemName, subVolumeName)
 				}
-
 				content, err := getVolumeSnapshotContent(snap.Namespace, snap.Name)
 				if err != nil {
 					e2elog.Failf("failed to get snapshotcontent for %s in namespace %s: %v",
 						snap.Name, snap.Namespace, err)
 				}
-
 				metadata, err := listCephFSSnapshotMetadata(f,
 					fileSystemName, subVolumeName, snaps[0].Name, subvolumegroup)
 				if err != nil {
@@ -973,16 +971,51 @@ var _ = Describe(cephfsType, func() {
 					e2elog.Failf("failed, contentname expected:%s got:%s",
 						content.Name, metadata.VolSnapContentNameKey)
 				}
+				// Delete the parent pvc before restoring
+				// another one from snapshot.
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC: %v", err)
+				}
 
+				// Test Restore snapshot
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvcClone.Namespace = f.UniqueName
+				pvcClone.Spec.DataSource.Name = snap.Name
+				// create PVC from the snapshot
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create pvc clone: %v", err)
+				}
+				pvcCloneObj, pvCloneObj, err := getPVCAndPV(f.ClientSet, pvcClone.Name, pvcClone.Namespace)
+				if err != nil {
+					e2elog.Logf("error getting pvc %q in namespace %q: %v", pvcClone.Name, pvcClone.Namespace, err)
+				}
+				subVolumeCloneName := pvCloneObj.Spec.CSI.VolumeAttributes["subvolumeName"]
+				cloneMetadata, err := listCephFSSubvolumeMetadata(f, fileSystemName, subVolumeCloneName, subvolumegroup)
+				if err != nil {
+					e2elog.Failf("failed to list subvolume clone metadata: %v", err)
+				}
+				if cloneMetadata.PVCNameKey != pvcClone.Name {
+					e2elog.Failf("expected pvcName %q got %q", pvcClone.Name, cloneMetadata.PVCNameKey)
+				} else if cloneMetadata.PVCNamespaceKey != pvcClone.Namespace {
+					e2elog.Failf("expected pvcNamespace %q got %q", pvcClone.Namespace, cloneMetadata.PVCNamespaceKey)
+				} else if cloneMetadata.PVNameKey != pvcCloneObj.Spec.VolumeName {
+					e2elog.Failf("expected pvName %q got %q", pvcCloneObj.Spec.VolumeName, cloneMetadata.PVNameKey)
+				}
+
+				// delete clone
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc clone: %v", err)
+				}
 				// delete snapshot
 				err = deleteSnapshot(&snap, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to delete snapshot (%s): %v", f.UniqueName, err)
-				}
-				// Delete the parent pvc
-				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to delete PVC: %v", err)
 				}
 				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
 				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
@@ -990,6 +1023,58 @@ var _ = Describe(cephfsType, func() {
 				if err != nil {
 					e2elog.Failf("failed to delete CephFS snapshotclass: %v", err)
 				}
+			})
+
+			By("Test Clone metadata", func() {
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create pvc: %v", err)
+				}
+
+				pvcClone, err := loadPVC(pvcSmartClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvcClone.Namespace = f.UniqueName
+				pvcClone.Spec.DataSource.Name = pvc.Name
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create pvc clone: %v", err)
+				}
+				// delete parent PVC
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc: %v", err)
+				}
+
+				pvcCloneObj, pvCloneObj, err := getPVCAndPV(f.ClientSet, pvcClone.Name, pvcClone.Namespace)
+				if err != nil {
+					e2elog.Logf("error getting pvc %q in namespace %q: %v", pvcClone.Name, pvcClone.Namespace, err)
+				}
+				subVolumeCloneName := pvCloneObj.Spec.CSI.VolumeAttributes["subvolumeName"]
+				cloneMetadata, err := listCephFSSubvolumeMetadata(f, fileSystemName, subVolumeCloneName, subvolumegroup)
+				if err != nil {
+					e2elog.Failf("failed to list subvolume clone metadata: %v", err)
+				}
+				if cloneMetadata.PVCNameKey != pvcClone.Name {
+					e2elog.Failf("expected pvcName %q got %q", pvc.Name, cloneMetadata.PVCNameKey)
+				} else if cloneMetadata.PVCNamespaceKey != pvcClone.Namespace {
+					e2elog.Failf("expected pvcNamespace %q got %q", pvc.Namespace, cloneMetadata.PVCNamespaceKey)
+				} else if cloneMetadata.PVNameKey != pvcCloneObj.Spec.VolumeName {
+					e2elog.Failf("expected pvName %q got %q", pvcCloneObj.Spec.VolumeName, cloneMetadata.PVNameKey)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc clone: %v", err)
+				}
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
 			})
 
 			By("Delete snapshot after deleting subvolume and snapshot from backend", func() {
