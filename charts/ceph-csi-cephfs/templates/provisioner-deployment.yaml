@@ -48,6 +48,7 @@ spec:
               topologyKey: "kubernetes.io/hostname"
 {{- end }}
       serviceAccountName: {{ include "ceph-csi-cephfs.serviceAccountName.provisioner" . }}
+      hostNetwork: {{ .Values.provisioner.enableHostNetwork }}
 {{- if .Values.provisioner.priorityClassName }}
       priorityClassName: {{ .Values.provisioner.priorityClassName }}
 {{- end }}

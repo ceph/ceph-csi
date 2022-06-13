@@ -125,6 +125,10 @@ provisioner:
   # system-cluster-critical which is less priority than system-node-critical
   priorityClassName: system-cluster-critical
 
+  # enable hostnetwork for provisioner pod. default is false
+  # useful for deployments where the podNetwork has no access to ceph
+  enableHostNetwork: false
+
   httpMetrics:
     # Metrics only available for cephcsi/cephcsi => 1.2.0
     # Specifies whether http metrics should be exposed
