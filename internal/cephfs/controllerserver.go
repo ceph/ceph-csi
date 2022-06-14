@@ -205,23 +205,7 @@ func checkValidCreateVolumeRequest(
 			return errors.New("cloning snapshot-backed volumes is currently not supported")
 		}
 	case sID != nil:
-		if vol.Size < parentVol.Size {
-			return fmt.Errorf(
-				"cannot restore from snapshot %s: volume size %d is smaller than source volume size %d",
-				sID.SnapshotID,
-				parentVol.Size,
-				vol.Size)
-		}
-
 		if vol.BackingSnapshot {
-			if vol.Size != parentVol.Size {
-				return fmt.Errorf(
-					"cannot create snapshot-backed volume of different size: expected %d bytes, got %d bytes",
-					parentVol.Size,
-					vol.Size,
-				)
-			}
-
 			volCaps := req.GetVolumeCapabilities()
 			for _, volCap := range volCaps {
 				mode := volCap.AccessMode.Mode
