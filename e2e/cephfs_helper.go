@@ -216,6 +216,7 @@ type cephfsSubvolumeMetadata struct {
 	PVCNameKey      string `json:"csi.storage.k8s.io/pvc/name"`
 	PVCNamespaceKey string `json:"csi.storage.k8s.io/pvc/namespace"`
 	PVNameKey       string `json:"csi.storage.k8s.io/pv/name"`
+	ClusterNameKey  string `json:"csi.ceph.com/cluster/name"`
 }
 
 func listCephFSSubvolumeMetadata(
