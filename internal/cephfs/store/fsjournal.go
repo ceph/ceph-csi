@@ -78,6 +78,7 @@ func CheckVolExists(ctx context.Context,
 	pvID *VolumeIdentifier,
 	sID *SnapshotIdentifier,
 	cr *util.Credentials,
+	clusterName string,
 ) (*VolumeIdentifier, error) {
 	var vid VolumeIdentifier
 	// Connect to cephfs' default radosNamespace (csi)
@@ -99,7 +100,7 @@ func CheckVolExists(ctx context.Context,
 	vid.FsSubvolName = imageData.ImageAttributes.ImageName
 	volOptions.VolID = vid.FsSubvolName
 
-	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID)
+	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID, clusterName)
 	if (sID != nil || pvID != nil) && imageData.ImageAttributes.BackingSnapshotID == "" {
 		cloneState, cloneStateErr := vol.GetCloneState(ctx)
 		if cloneStateErr != nil {
