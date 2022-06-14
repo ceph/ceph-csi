@@ -78,5 +78,11 @@ func (s *subVolumeClient) UnsetAllMetadata(keys []string) error {
 		}
 	}
 
+	err := s.removeMetadata(clusterNameKey)
+	// TODO: replace string comparison with errno.
+	if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+		return fmt.Errorf("failed to unset metadata key %q on subvolume %v: %w", clusterNameKey, s, err)
+	}
+
 	return nil
 }
