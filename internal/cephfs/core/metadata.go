@@ -21,6 +21,11 @@ import (
 	"strings"
 )
 
+const (
+	// clusterNameKey cluster Key, set on cephfs subvolume.
+	clusterNameKey = "csi.ceph.com/cluster/name"
+)
+
 // setMetadata sets custom metadata on the subvolume in a volume as a
 // key-value pair.
 func (s *subVolumeClient) setMetadata(key, value string) error {
@@ -49,6 +54,14 @@ func (s *subVolumeClient) SetAllMetadata(parameters map[string]string) error {
 		err := s.setMetadata(k, v)
 		if err != nil {
 			return fmt.Errorf("failed to set metadata key %q, value %q on subvolume %v: %w", k, v, s, err)
+		}
+	}
+
+	if s.clusterName != "" {
+		err := s.setMetadata(clusterNameKey, s.clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to set metadata key %q, value %q on subvolume %v: %w",
+				clusterNameKey, s.clusterName, s, err)
 		}
 	}
 

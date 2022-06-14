@@ -34,6 +34,7 @@ func fmtBackingSnapshotReftrackerName(backingSnapID string) string {
 func AddSnapshotBackedVolumeRef(
 	ctx context.Context,
 	volOptions *VolumeOptions,
+	clusterName string,
 ) error {
 	ioctx, err := volOptions.conn.GetIoctx(volOptions.MetadataPool)
 	if err != nil {
@@ -95,7 +96,7 @@ func AddSnapshotBackedVolumeRef(
 	// There may have been a race between adding a ref to the reftracker and
 	// deleting the backing snapshot. Make sure the snapshot still exists by
 	// trying to retrieve it again.
-	_, _, _, err = NewSnapshotOptionsFromID(ctx, volOptions.BackingSnapshotID, volOptions.conn.Creds)
+	_, _, _, err = NewSnapshotOptionsFromID(ctx, volOptions.BackingSnapshotID, volOptions.conn.Creds, clusterName)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to get backing snapshot %s: %v", volOptions.BackingSnapshotID, err)
 	}

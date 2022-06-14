@@ -135,6 +135,7 @@ func (fs *Driver) Run(conf *util.Config) {
 
 	if conf.IsControllerServer {
 		fs.cs = NewControllerServer(fs.cd)
+		fs.cs.ClusterName = conf.ClusterName
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {
 		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
