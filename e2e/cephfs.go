@@ -194,6 +194,14 @@ var _ = Describe(cephfsType, func() {
 		if err != nil {
 			e2elog.Failf("failed to create node secret: %v", err)
 		}
+
+		// wait for cluster name update in deployment
+		containers := []string{cephFSContainerName}
+		err = waitForContainersArgsUpdate(c, cephCSINamespace, cephFSDeploymentName,
+			"clustername", defaultClusterName, containers, deployTimeout)
+		if err != nil {
+			e2elog.Failf("timeout waiting for deployment update %s/%s: %v", cephCSINamespace, cephFSDeploymentName, err)
+		}
 	})
 
 	AfterEach(func() {
@@ -441,6 +449,8 @@ var _ = Describe(cephfsType, func() {
 					e2elog.Failf("expected pvcNamespace %q got %q", pvc.Namespace, metadata.PVCNamespaceKey)
 				} else if metadata.PVNameKey != pvcObj.Spec.VolumeName {
 					e2elog.Failf("expected pvName %q got %q", pvcObj.Spec.VolumeName, metadata.PVNameKey)
+				} else if metadata.ClusterNameKey != defaultClusterName {
+					e2elog.Failf("expected clusterName %q got %q", defaultClusterName, metadata.ClusterNameKey)
 				}
 
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
