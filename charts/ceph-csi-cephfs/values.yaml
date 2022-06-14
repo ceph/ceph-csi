@@ -125,6 +125,8 @@ provisioner:
       maxUnavailable: 50%
   # Timeout for waiting for creation or deletion of a volume
   timeout: 60s
+  # cluster name to set on the subvolume
+  # clustername: "k8s-cluster-1"
 
   # set user created priorityclassName for csi provisioner pods. default is
   # system-cluster-critical which is less priority than system-node-critical
