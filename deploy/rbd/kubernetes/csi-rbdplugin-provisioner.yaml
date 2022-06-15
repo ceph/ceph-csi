@@ -47,11 +47,7 @@ spec:
       priorityClassName: system-cluster-critical
       containers:
         - name: csi-provisioner
-          # TODO: replace with released image version.
-          # Canary image is being to be used to test pvc-pvc clone
-          # with differe sc feature.
-          # see: https://github.com/kubernetes-csi/external-provisioner/pull/699
-          image: gcr.io/k8s-staging-sig-storage/csi-provisioner:canary
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v3.2.1
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=5"
@@ -60,6 +56,8 @@ spec:
             - "--leader-election=true"
             #  set it to true to use topology based provisioning
             - "--feature-gates=Topology=false"
+            - "--feature-gates=HonorPVReclaimPolicy=true"
+            - "--prevent-volume-mode-conversion=true"
             # if fstype is not specified in storageclass, ext4 is default
             - "--default-fstype=ext4"
             - "--extra-create-metadata=true"
