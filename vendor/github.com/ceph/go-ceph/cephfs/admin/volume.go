@@ -2,6 +2,7 @@ package admin
 
 import (
 	"bytes"
+	"encoding/json"
 )
 
 var (
@@ -114,8 +115,40 @@ type VolumeStatus struct {
 	Pools      []VolumePool `json:"pools"`
 }
 
-func parseVolumeStatus(res response) (*VolumeStatus, error) {
-	var vs VolumeStatus
+type mdsVersionField struct {
+	Version string
+	Items   []struct {
+		Version string `json:"version"`
+	}
+}
+
+func (m *mdsVersionField) UnmarshalJSON(data []byte) (err error) {
+	if err = json.Unmarshal(data, &m.Version); err == nil {
+		return
+	}
+	return json.Unmarshal(data, &m.Items)
+}
+
+// volumeStatusResponse deals with the changing output of the mgr
+// api json
+type volumeStatusResponse struct {
+	Pools      []VolumePool    `json:"pools"`
+	MDSVersion mdsVersionField `json:"mds_version"`
+}
+
+func (v *volumeStatusResponse) volumeStatus() *VolumeStatus {
+	vstatus := &VolumeStatus{}
+	vstatus.Pools = v.Pools
+	if v.MDSVersion.Version != "" {
+		vstatus.MDSVersion = v.MDSVersion.Version
+	} else if len(v.MDSVersion.Items) > 0 {
+		vstatus.MDSVersion = v.MDSVersion.Items[0].Version
+	}
+	return vstatus
+}
+
+func parseVolumeStatus(res response) (*volumeStatusResponse, error) {
+	var vs volumeStatusResponse
 	res = res.NoStatus()
 	if !res.Ok() {
 		return nil, res.End()
@@ -142,5 +175,9 @@ func (fsa *FSAdmin) VolumeStatus(name string) (*VolumeStatus, error) {
 		"prefix": "fs status",
 		"format": "json",
 	})
-	return parseVolumeStatus(res)
+	v, err := parseVolumeStatus(res)
+	if err != nil {
+		return nil, err
+	}
+	return v.volumeStatus(), nil
 }

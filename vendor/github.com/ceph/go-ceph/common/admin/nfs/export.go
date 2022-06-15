@@ -1,5 +1,5 @@
-//go:build !(nautilus || octopus) && ceph_preview && ceph_ci_untested
-// +build !nautilus,!octopus,ceph_preview,ceph_ci_untested
+//go:build !(nautilus || octopus) && ceph_preview
+// +build !nautilus,!octopus,ceph_preview
 
 package nfs
 
@@ -108,7 +108,6 @@ func parseExportInfo(res commands.Response) (ExportInfo, error) {
 }
 
 // CreateCephFSExport will create a new NFS export for a CephFS file system.
-//  PREVIEW
 //
 // Similar To:
 //  ceph nfs export create cephfs
@@ -126,7 +125,6 @@ func (nfsa *Admin) CreateCephFSExport(spec CephFSExportSpec) (
 const delSucc = "Successfully deleted export"
 
 // RemoveExport will remove an NFS export based on the pseudo-path of the export.
-//  PREVIEW
 //
 // Similar To:
 //  ceph nfs export rm
@@ -142,7 +140,6 @@ func (nfsa *Admin) RemoveExport(clusterID, pseudoPath string) error {
 }
 
 // ListDetailedExports will return a list of exports with details.
-//  PREVIEW
 //
 // Similar To:
 //  ceph nfs export ls --detailed
@@ -166,7 +163,6 @@ func (nfsa *Admin) ListDetailedExports(clusterID string) ([]ExportInfo, error) {
 
 // ExportInfo will return a structure describing the export specified by it's
 // pseudo-path.
-//  PREVIEW
 //
 // Similar To:
 //  ceph nfs export info

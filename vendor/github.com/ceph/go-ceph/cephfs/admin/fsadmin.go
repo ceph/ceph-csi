@@ -93,6 +93,15 @@ func parseListNames(res response) ([]string, error) {
 	return vl, nil
 }
 
+func parseListKeyValues(res response) (map[string]string, error) {
+	var x map[string]string
+	if err := res.NoStatus().Unmarshal(&x).End(); err != nil {
+		return nil, err
+	}
+
+	return x, nil
+}
+
 // parsePathResponse returns a cleaned up path from requests that get a path
 // unless an error is encountered, then an error is returned.
 func parsePathResponse(res response) (string, error) {

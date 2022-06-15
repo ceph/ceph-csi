@@ -84,16 +84,29 @@ type CloneSource struct {
 type CloneStatus struct {
 	State  CloneState  `json:"state"`
 	Source CloneSource `json:"source"`
+
+	// failure can be obtained through .GetFailure()
+	failure *CloneFailure
+}
+
+// CloneFailure reports details of a failure after a subvolume clone failed.
+type CloneFailure struct {
+	Errno  string `json:"errno"`
+	ErrStr string `json:"errstr"`
 }
 
 type cloneStatusWrapper struct {
-	Status CloneStatus `json:"status"`
+	Status  CloneStatus  `json:"status"`
+	Failure CloneFailure `json:"failure"`
 }
 
 func parseCloneStatus(res response) (*CloneStatus, error) {
 	var status cloneStatusWrapper
 	if err := res.NoStatus().Unmarshal(&status).End(); err != nil {
 		return nil, err
+	}
+	if status.Failure.Errno != "" || status.Failure.ErrStr != "" {
+		status.Status.failure = &status.Failure
 	}
 	return &status.Status, nil
 }
