@@ -205,12 +205,8 @@ provisioner:
 
   provisioner:
     image:
-      # TODO: replace with released image version.
-      # canary image is being to be used to test pvc-pvc clone
-      # with differe sc feature.
-      # see: https://github.com/kubernetes-csi/external-provisioner/pull/699
       repository: gcr.io/k8s-staging-sig-storage/csi-provisioner
-      tag: canary
+      tag: v3.2.1
       pullPolicy: IfNotPresent
     resources: {}
 

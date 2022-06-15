@@ -171,7 +171,7 @@ provisioner:
   provisioner:
     image:
       repository: registry.k8s.io/sig-storage/csi-provisioner
-      tag: v3.1.0
+      tag: v3.2.1
       pullPolicy: IfNotPresent
     resources: {}
 

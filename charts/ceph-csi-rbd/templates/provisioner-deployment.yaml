@@ -64,6 +64,8 @@ spec:
             - "--retry-interval-start=500ms"
             - "--default-fstype={{ .Values.provisioner.defaultFSType }}"
             - "--extra-create-metadata=true"
+            - "--feature-gates=HonorPVReclaimPolicy=true"
+            - "--prevent-volume-mode-conversion=true"
 {{- if .Values.topology.enabled }}
             - "--feature-gates=Topology=true"
 {{- end }}
