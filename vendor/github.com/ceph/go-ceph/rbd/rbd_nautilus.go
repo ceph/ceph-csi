@@ -13,30 +13,28 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/ceph/go-ceph/internal/retry"
 	ts "github.com/ceph/go-ceph/internal/timespec"
 	"github.com/ceph/go-ceph/rados"
 )
 
 // GetImageNames returns the list of current RBD images.
 func GetImageNames(ioctx *rados.IOContext) ([]string, error) {
-	var (
-		err    error
-		images []C.rbd_image_spec_t
-		size   C.size_t
-	)
-	retry.WithSizes(32, 4096, func(s int) retry.Hint {
-		size = C.size_t(s)
+	var images []C.rbd_image_spec_t
+	size := C.size_t(4096)
+	for {
 		images = make([]C.rbd_image_spec_t, size)
 		ret := C.rbd_list2(
 			cephIoctx(ioctx),
 			(*C.rbd_image_spec_t)(unsafe.Pointer(&images[0])),
 			&size)
-		err = getErrorIfNegative(ret)
-		return retry.Size(int(size)).If(err == errRange)
-	})
-	if err != nil {
-		return nil, err
+		err := getErrorIfNegative(ret)
+		if err != nil {
+			if err == errRange {
+				continue
+			}
+			return nil, err
+		}
+		break
 	}
 	defer C.rbd_image_spec_list_cleanup((*C.rbd_image_spec_t)(unsafe.Pointer(&images[0])), size)
 

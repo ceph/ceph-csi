@@ -1,6 +1,3 @@
-//go:build ceph_preview
-// +build ceph_preview
-
 package rados
 
 // #cgo LDFLAGS: -lrados
@@ -58,7 +55,6 @@ func (s *ReadOpOmapGetValsByKeysStep) update() error {
 // ReadOpOmapGetValsByKeysStep's internal iterator.
 // If there are no more elements to retrieve, (nil, nil) is returned.
 // May be called only after Operate() finished.
-//  PREVIEW
 func (s *ReadOpOmapGetValsByKeysStep) Next() (*OmapKeyValue, error) {
 	if !s.canIterate {
 		return nil, ErrOperationIncomplete
@@ -88,7 +84,6 @@ func (s *ReadOpOmapGetValsByKeysStep) Next() (*OmapKeyValue, error) {
 }
 
 // GetOmapValuesByKeys starts iterating over specific key/value pairs.
-//  PREVIEW
 //
 // Implements:
 //  void rados_read_op_omap_get_vals_by_keys2(rados_read_op_t read_op,

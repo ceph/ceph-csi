@@ -1,6 +1,3 @@
-//go:build ceph_preview
-// +build ceph_preview
-
 package rados
 
 // #cgo LDFLAGS: -lrados
@@ -49,7 +46,6 @@ func newReadOpReadStep() *ReadOpReadStep {
 // Read bytes from offset into buffer.
 // len(buffer) is the maximum number of bytes read from the object.
 // buffer[:ReadOpReadStep.BytesRead] then contains object data.
-//  PREVIEW
 //
 // Implements:
 //  void rados_read_op_read(rados_read_op_t read_op,

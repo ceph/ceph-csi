@@ -1,6 +1,3 @@
-//go:build ceph_preview
-// +build ceph_preview
-
 package rados
 
 // #cgo LDFLAGS: -lrados
@@ -14,7 +11,6 @@ import (
 )
 
 // SetXattr sets an xattr.
-//  PREVIEW
 //
 // Implements:
 //  void rados_write_op_setxattr(rados_write_op_t write_op,

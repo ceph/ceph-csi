@@ -1,5 +1,5 @@
-//go:build !(nautilus || octopus) && ceph_preview && ceph_ci_untested
-// +build !nautilus,!octopus,ceph_preview,ceph_ci_untested
+//go:build !(nautilus || octopus) && ceph_preview
+// +build !nautilus,!octopus,ceph_preview
 
 package nfs
 
@@ -15,7 +15,6 @@ type Admin struct {
 // NewFromConn creates an new management object from a preexisting
 // rados connection. The existing connection can be rados.Conn or any
 // type implementing the RadosCommander interface.
-//  PREVIEW
 func NewFromConn(conn ccom.RadosCommander) *Admin {
 	return &Admin{conn}
 }

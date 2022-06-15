@@ -43,6 +43,11 @@ const (
 	// CreateIdempotent if used with IOContext.Create() and the object
 	// already exists, the function will not return an error.
 	CreateIdempotent = C.LIBRADOS_CREATE_IDEMPOTENT
+
+	defaultListObjectsResultSize = 1000
+	// listEndSentinel is the value returned by rados_list_object_list_is_end
+	// when a cursor has reached the end of a pool
+	listEndSentinel = 1
 )
 
 //revive:disable:var-naming old-yet-exported public api
@@ -302,22 +307,36 @@ type ObjectListFunc func(oid string)
 // RadosAllNamespaces before calling this function to return objects from all
 // namespaces
 func (ioctx *IOContext) ListObjects(listFn ObjectListFunc) error {
-	var ctx C.rados_list_ctx_t
-	ret := C.rados_nobjects_list_open(ioctx.ioctx, &ctx)
-	if ret < 0 {
-		return getError(ret)
+	pageResults := C.size_t(defaultListObjectsResultSize)
+	var filterLen C.size_t
+	results := make([]C.rados_object_list_item, pageResults)
+
+	next := C.rados_object_list_begin(ioctx.ioctx)
+	if next == nil {
+		return ErrNotFound
 	}
-	defer func() { C.rados_nobjects_list_close(ctx) }()
+	defer C.rados_object_list_cursor_free(ioctx.ioctx, next)
+	finish := C.rados_object_list_end(ioctx.ioctx)
+	if finish == nil {
+		return ErrNotFound
+	}
+	defer C.rados_object_list_cursor_free(ioctx.ioctx, finish)
 
 	for {
-		var cEntry *C.char
-		ret := C.rados_nobjects_list_next(ctx, &cEntry, nil, nil)
-		if ret == -C.ENOENT {
-			return nil
-		} else if ret < 0 {
+		ret := C.rados_object_list(ioctx.ioctx, next, finish, pageResults, nil, filterLen, (*C.rados_object_list_item)(unsafe.Pointer(&results[0])), &next)
+		if ret < 0 {
 			return getError(ret)
 		}
-		listFn(C.GoString(cEntry))
+
+		numEntries := int(ret)
+		for i := 0; i < numEntries; i++ {
+			item := results[i]
+			listFn(C.GoStringN(item.oid, (C.int)(item.oid_length)))
+		}
+
+		if C.rados_object_list_is_end(ioctx.ioctx, next) == listEndSentinel {
+			return nil
+		}
 	}
 }
 
