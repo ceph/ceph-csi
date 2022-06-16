@@ -52,11 +52,11 @@ var (
 // Init will add the ReconcilePersistentVolume to the list.
 func Init() {
 	// add ReconcilePersistentVolume to the list
-	ctrl.ControllerList = append(ctrl.ControllerList, ReconcilePersistentVolume{})
+	ctrl.ControllerList = append(ctrl.ControllerList, &ReconcilePersistentVolume{})
 }
 
 // Add adds the newPVReconciler.
-func (r ReconcilePersistentVolume) Add(mgr manager.Manager, config ctrl.Config) error {
+func (r *ReconcilePersistentVolume) Add(mgr manager.Manager, config ctrl.Config) error {
 	return add(mgr, newPVReconciler(mgr, config))
 }
 
@@ -132,7 +132,7 @@ func checkStaticVolume(pv *corev1.PersistentVolume) bool {
 
 // reconcilePV will extract the image details from the pv spec and regenerates
 // the omap data.
-func (r ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.Object) error {
+func (r *ReconcilePersistentVolume) reconcilePV(ctx context.Context, obj runtime.Object) error {
 	pv, ok := obj.(*corev1.PersistentVolume)
 	if !ok {
 		return nil
