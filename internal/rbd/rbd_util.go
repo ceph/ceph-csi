@@ -95,16 +95,7 @@ type rbdImage struct {
 	ImageID string
 	// VolID is the volume ID that is exchanged with CSI drivers,
 	// identifying this rbd image
-	VolID string `json:"volID"`
-
-	// VolSize is the size of the RBD image backing this rbdImage.
-	VolSize int64
-
-	// image striping configurations.
-	StripeCount uint64
-	StripeUnit  uint64
-	ObjectSize  uint64
-
+	VolID    string `json:"volID"`
 	Monitors string
 	// JournalPool is the ceph pool in which the CSI Journal/CSI snapshot Journal is
 	// stored
@@ -121,31 +112,36 @@ type rbdImage struct {
 	// config maps in v1.0.0
 	RequestName string
 	NamePrefix  string
-
 	// ParentName represents the parent image name of the image.
 	ParentName string
 	// Parent Pool is the pool that contains the parent image.
-	ParentPool      string
-	ImageFeatureSet librbd.FeatureSet
-	// Primary represent if the image is primary or not.
-	Primary bool
-
+	ParentPool string
 	// Cluster name
 	ClusterName string
-	// Set metadata on volume
-	EnableMetadata bool
-
-	// encryption provides access to optional VolumeEncryption functions
-	encryption *util.VolumeEncryption
 	// Owner is the creator (tenant, Kubernetes Namespace) of the volume
 	Owner string
 
-	CreatedAt *timestamp.Timestamp
+	// VolSize is the size of the RBD image backing this rbdImage.
+	VolSize int64
 
+	// image striping configurations.
+	StripeCount uint64
+	StripeUnit  uint64
+	ObjectSize  uint64
+
+	ImageFeatureSet librbd.FeatureSet
+	// encryption provides access to optional VolumeEncryption functions
+	encryption *util.VolumeEncryption
+	CreatedAt  *timestamp.Timestamp
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection
 	// an opened IOContext, call .openIoctx() before using
 	ioctx *rados.IOContext
+
+	// Primary represent if the image is primary or not.
+	Primary bool
+	// Set metadata on volume
+	EnableMetadata bool
 }
 
 // rbdVolume represents a CSI volume and its RBD image specifics.
