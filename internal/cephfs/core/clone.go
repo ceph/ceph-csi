@@ -19,43 +19,42 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	"github.com/ceph/ceph-csi/internal/util/log"
+
+	"github.com/ceph/go-ceph/cephfs/admin"
 )
 
 // cephFSCloneState describes the status of the clone.
-type cephFSCloneState string
+type cephFSCloneState struct {
+	state    admin.CloneState
+	errno    string
+	errorMsg string
+}
 
 const (
-	// CephFSCloneError indicates that fetching the clone state returned an error.
-	CephFSCloneError = cephFSCloneState("")
-	// CephFSCloneFailed indicates that clone is in failed state.
-	CephFSCloneFailed = cephFSCloneState("failed")
-	// CephFSClonePending indicates that clone is in pending state.
-	CephFSClonePending = cephFSCloneState("pending")
-	// CephFSCloneInprogress indicates that clone is in in-progress state.
-	CephFSCloneInprogress = cephFSCloneState("in-progress")
-	// CephFSCloneComplete indicates that clone is in complete state.
-	CephFSCloneComplete = cephFSCloneState("complete")
-
 	// SnapshotIsProtected string indicates that the snapshot is currently protected.
 	SnapshotIsProtected = "yes"
 )
 
-// toError checks the state of the clone if it's not cephFSCloneComplete.
-func (cs cephFSCloneState) toError() error {
-	switch cs {
-	case CephFSCloneComplete:
+// CephFSCloneError indicates that fetching the clone state returned an error.
+var CephFSCloneError = cephFSCloneState{}
+
+// ToError checks the state of the clone if it's not cephFSCloneComplete.
+func (cs cephFSCloneState) ToError() error {
+	switch cs.state {
+	case admin.CloneComplete:
 		return nil
-	case CephFSCloneError:
-		return cerrors.ErrInvalidClone
-	case CephFSCloneInprogress:
+	case CephFSCloneError.state:
+		return fmt.Errorf("%w: %s (%s)", cerrors.ErrInvalidClone, cs.errorMsg, cs.errno)
+	case admin.CloneInProgress:
 		return cerrors.ErrCloneInProgress
-	case CephFSClonePending:
+	case admin.ClonePending:
 		return cerrors.ErrClonePending
-	case CephFSCloneFailed:
-		return cerrors.ErrCloneFailed
+	case admin.CloneFailed:
+		return fmt.Errorf("%w: %s (%s)", cerrors.ErrCloneFailed, cs.errorMsg, cs.errno)
 	}
 
 	return nil
@@ -125,10 +124,11 @@ func (s *subVolumeClient) CreateCloneFromSubvolume(
 		return cloneErr
 	}
 
-	if cloneState != CephFSCloneComplete {
-		log.ErrorLog(ctx, "clone %s did not complete: %v", s.VolID, cloneState.toError())
+	err = cloneState.ToError()
+	if err != nil {
+		log.ErrorLog(ctx, "clone %s did not complete: %v", s.VolID, err)
 
-		return cloneState.toError()
+		return err
 	}
 
 	err = s.ExpandVolume(ctx, s.Size)
@@ -220,8 +220,9 @@ func (s *subVolumeClient) CreateCloneFromSnapshot(
 		return err
 	}
 
-	if cloneState != CephFSCloneComplete {
-		return cloneState.toError()
+	err = cloneState.ToError()
+	if err != nil {
+		return err
 	}
 
 	err = s.ExpandVolume(ctx, s.Size)
@@ -255,5 +256,18 @@ func (s *subVolumeClient) GetCloneState(ctx context.Context) (cephFSCloneState, 
 		return CephFSCloneError, err
 	}
 
-	return cephFSCloneState(cs.State), nil
+	errno := ""
+	errStr := ""
+	if failure := cs.GetFailure(); failure != nil {
+		errno = failure.Errno
+		errStr = failure.ErrStr
+	}
+
+	state := cephFSCloneState{
+		state:    cs.State,
+		errno:    errno,
+		errorMsg: errStr,
+	}
+
+	return state, nil
 }
