@@ -119,15 +119,17 @@ func CheckVolExists(ctx context.Context,
 
 			return nil, err
 		}
-		if cloneState == core.CephFSCloneInprogress {
-			return nil, cerrors.ErrCloneInProgress
+		err = cloneState.ToError()
+		if errors.Is(err, cerrors.ErrCloneInProgress) {
+			return nil, err
 		}
-		if cloneState == core.CephFSClonePending {
-			return nil, cerrors.ErrClonePending
+		if errors.Is(err, cerrors.ErrClonePending) {
+			return nil, err
 		}
-		if cloneState == core.CephFSCloneFailed {
+		if errors.Is(err, cerrors.ErrCloneFailed) {
 			log.ErrorLog(ctx,
-				"clone failed, deleting subvolume clone. vol=%s, subvol=%s subvolgroup=%s",
+				"clone failed (%v), deleting subvolume clone. vol=%s, subvol=%s subvolgroup=%s",
+				err,
 				volOptions.FsName,
 				vid.FsSubvolName,
 				volOptions.SubvolumeGroup)
@@ -149,8 +151,8 @@ func CheckVolExists(ctx context.Context,
 
 			return nil, err
 		}
-		if cloneState != core.CephFSCloneComplete {
-			return nil, fmt.Errorf("clone is not in complete state for %s", vid.FsSubvolName)
+		if err != nil {
+			return nil, fmt.Errorf("clone is not in complete state for %s: %w", vid.FsSubvolName, err)
 		}
 	}
 
