@@ -855,18 +855,11 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		ready = checkRemoteSiteStatus(ctx, mirrorStatus)
 	}
 
-	if resyncRequired(localStatus) {
-		err = rbdVol.resyncImage()
-		if err != nil {
-			log.ErrorLog(ctx, err.Error())
+	err = resyncVolume(localStatus, rbdVol, req.Force)
+	if err != nil {
+		log.ErrorLog(ctx, err.Error())
 
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
-		// If we issued a resync, return a non-final error as image needs to be recreated
-		// locally. Caller retries till RBD syncs an initial version of the image to
-		// report its status in the resync request.
-		return nil, status.Error(codes.Unavailable, "awaiting initial resync due to split brain")
+		return nil, err
 	}
 
 	err = checkVolumeResyncStatus(localStatus)
@@ -884,6 +877,29 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	}
 
 	return resp, nil
+}
+
+func resyncVolume(localStatus librbd.SiteMirrorImageStatus, rbdVol *rbdVolume, force bool) error {
+	if resyncRequired(localStatus) {
+		// If the force option is not set return the error message to retry
+		// with Force option.
+		if !force {
+			return status.Errorf(codes.FailedPrecondition,
+				"image is in %q state, description (%s). Force resync to recover volume",
+				localStatus.State, localStatus.Description)
+		}
+		err := rbdVol.resyncImage()
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		// If we issued a resync, return a non-final error as image needs to be recreated
+		// locally. Caller retries till RBD syncs an initial version of the image to
+		// report its status in the resync request.
+		return status.Error(codes.Unavailable, "awaiting initial resync due to split brain")
+	}
+
+	return nil
 }
 
 func checkVolumeResyncStatus(localStatus librbd.SiteMirrorImageStatus) error {
