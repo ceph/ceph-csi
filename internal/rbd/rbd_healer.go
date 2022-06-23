@@ -18,6 +18,9 @@ package rbd
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
+	"path/filepath"
 	"sync"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -70,11 +73,39 @@ func getSecret(c *k8s.Clientset, ns, name string) (map[string]string, error) {
 	return deviceSecret, nil
 }
 
+// formatStagingTargetPath returns the path where the volume is expected to be
+// mounted (or the block-device is attached/mapped). Different Kubernetes
+// version use different paths.
+func formatStagingTargetPath(c *k8s.Clientset, pv *v1.PersistentVolume, stagingPath string) (string, error) {
+	// Kubernetes 1.24+ uses a hash of the volume-id in the path name
+	unique := sha256.Sum256([]byte(pv.Spec.CSI.VolumeHandle))
+	targetPath := filepath.Join(stagingPath, pv.Spec.CSI.Driver, fmt.Sprintf("%x", unique), "globalmount")
+
+	major, minor, err := kubeclient.GetServerVersion(c)
+	if err != nil {
+		return "", fmt.Errorf("failed to get server version: %w", err)
+	}
+
+	// 'encode' major/minor in a single integer
+	legacyVersion := 1024 // Kubernetes 1.24 => 1 * 1000 + 24
+	if ((major * 1000) + minor) < (legacyVersion) {
+		// path in Kubernetes < 1.24
+		targetPath = filepath.Join(stagingPath, "pv", pv.Name, "globalmount")
+	}
+
+	return targetPath, nil
+}
+
 func callNodeStageVolume(ns *NodeServer, c *k8s.Clientset, pv *v1.PersistentVolume, stagingPath string) error {
 	publishContext := make(map[string]string)
 
 	volID := pv.Spec.PersistentVolumeSource.CSI.VolumeHandle
-	stagingParentPath := stagingPath + pv.Name + "/globalmount"
+	stagingParentPath, err := formatStagingTargetPath(c, pv, stagingPath)
+	if err != nil {
+		log.ErrorLogMsg("formatStagingTargetPath failed volID: %s, err: %v", volID, err)
+
+		return err
+	}
 
 	log.DefaultLog("sending nodeStageVolume for volID: %s, stagingPath: %s",
 		volID, stagingParentPath)
