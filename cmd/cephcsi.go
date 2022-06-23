@@ -54,7 +54,7 @@ const (
 	defaultNS = "default"
 
 	defaultPluginPath  = "/var/lib/kubelet/plugins"
-	defaultStagingPath = defaultPluginPath + "/kubernetes.io/csi/pv/"
+	defaultStagingPath = defaultPluginPath + "/kubernetes.io/csi/"
 )
 
 var conf util.Config
