@@ -67,7 +67,7 @@ spec:
           args:
             - "--nodeid=$(NODE_ID)"
             - "--pluginpath={{ .Values.kubeletDir }}/plugins"
-            - "--stagingpath={{ .Values.kubeletDir }}/plugins/kubernetes.io/csi/pv/"
+            - "--stagingpath={{ .Values.kubeletDir }}/plugins/kubernetes.io/csi/"
             - "--type=rbd"
             - "--nodeserver=true"
             - "--pidlimit=-1"

@@ -55,7 +55,7 @@ spec:
           args:
             - "--nodeid=$(NODE_ID)"
             - "--pluginpath=/var/lib/kubelet/plugins"
-            - "--stagingpath=/var/lib/kubelet/plugins/kubernetes.io/csi/pv/"
+            - "--stagingpath=/var/lib/kubelet/plugins/kubernetes.io/csi/"
             - "--type=rbd"
             - "--nodeserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
