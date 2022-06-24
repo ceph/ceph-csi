@@ -138,8 +138,8 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 			pvcToDelete.Status.String(),
 			int(time.Since(start).Seconds()))
 		pvcToDelete, err = c.CoreV1().
-			PersistentVolumeClaims(pvcToDelete.Namespace).
-			Get(context.TODO(), pvcToDelete.Name, metav1.GetOptions{})
+			PersistentVolumeClaims(pvc.Namespace).
+			Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 		if err == nil {
 			if pvcToDelete.Status.Phase == "" {
 				// this is unexpected, an empty Phase is not defined
@@ -176,7 +176,7 @@ func deletePVCAndPV(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, pv *v
 			pvToDelete.Status.String(),
 			int(time.Since(start).Seconds()))
 
-		pvToDelete, err = c.CoreV1().PersistentVolumes().Get(context.TODO(), pvToDelete.Name, metav1.GetOptions{})
+		pvToDelete, err = c.CoreV1().PersistentVolumes().Get(context.TODO(), pv.Name, metav1.GetOptions{})
 		if err == nil {
 			return false, nil
 		}
