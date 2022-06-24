@@ -147,6 +147,19 @@ func main() {
 					log.Printf("found context %s with status %s\n", r.GetContext(), r.GetState())
 					if contains([]string{"failed", "failure"}, r.GetState()) {
 						log.Printf("found failed test %s\n", r.GetContext())
+						failedTestFound = true
+						// rebase the pr if it is behind the devel branch.
+						if *re.MergeableState == "BEHIND" {
+							comment := &github.IssueComment{
+								Body: github.String("@mergifyio rebase"),
+							}
+							_, _, err := c.client.Issues.CreateComment(context.TODO(), c.owner, c.repo, prNumber, comment)
+							if err != nil {
+								log.Printf("failed to create comment %v\n", err)
+							}
+							break
+						}
+
 						// check if retest limit is reached
 						msg := fmt.Sprintf("/retest %s", r.GetContext())
 						ok, err := c.checkRetestLimitReached(prNumber, msg)
@@ -175,7 +188,6 @@ func main() {
 							log.Printf("failed to create comment %v\n", err)
 							continue
 						}
-						failedTestFound = true
 					}
 				}
 
@@ -188,8 +200,10 @@ func main() {
 					_, _, err = c.client.Issues.CreateComment(context.TODO(), c.owner, c.repo, prNumber, comment)
 					if err != nil {
 						log.Printf("failed to create comment %q: %v\n", msg, err)
-						continue
 					}
+					// exit after adding retests to a pr once to avoid retesting multiple prs
+					// at the same time.
+					break
 				}
 			}
 		}
