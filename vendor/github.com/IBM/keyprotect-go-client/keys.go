@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -37,6 +38,17 @@ var (
 
 // PreferReturn designates the value for the "Prefer" header.
 type PreferReturn int
+
+type KeyState uint32
+
+// https://cloud.ibm.com/docs/key-protect?topic=key-protect-key-states
+const (
+	Active KeyState = iota + 1
+	Suspended
+	Deactivated
+	_
+	Destroyed
+)
 
 // Key represents a key as returned by the KP API.
 type Key struct {
@@ -65,6 +77,9 @@ type Key struct {
 	Deleted             *bool       `json:"deleted,omitempty"`
 	DeletedBy           *string     `json:"deletedBy,omitempty"`
 	DeletionDate        *time.Time  `json:"deletionDate,omitempty"`
+	PurgeAllowed        *bool       `json:"purgeAllowed,omitempty"`
+	PurgeAllowedFrom    *time.Time  `json:"purgeAllowedFrom,omitempty"`
+	PurgeScheduledOn    *time.Time  `json:"purgeScheduledOn,omitempty"`
 	DualAuthDelete      *DualAuth   `json:"dualAuthDelete,omitempty"`
 }
 
@@ -80,13 +95,27 @@ type Keys struct {
 	Keys     []Key        `json:"resources"`
 }
 
+type KeyVersionsMetadata struct {
+	CollectionType  string  `json:"collectionType"`
+	CollectionTotal *uint32 `json:"collectionTotal"`
+	TotalCount      *uint32 `json:"totalCount,omitempty"`
+}
+
+type KeyVersions struct {
+	Metadata   KeyVersionsMetadata `json:"metadata"`
+	KeyVersion []KeyVersion        `json:"resources"`
+}
+
 // KeysActionRequest represents request parameters for a key action
 // API call.
 type KeysActionRequest struct {
-	PlainText  string   `json:"plaintext,omitempty"`
-	AAD        []string `json:"aad,omitempty"`
-	CipherText string   `json:"ciphertext,omitempty"`
-	Payload    string   `json:"payload,omitempty"`
+	PlainText           string   `json:"plaintext,omitempty"`
+	AAD                 []string `json:"aad,omitempty"`
+	CipherText          string   `json:"ciphertext,omitempty"`
+	Payload             string   `json:"payload,omitempty"`
+	EncryptedNonce      string   `json:"encryptedNonce,omitempty"`
+	IV                  string   `json:"iv,omitempty"`
+	EncryptionAlgorithm string   `json:"encryptionAlgorithm,omitempty"`
 }
 
 type KeyVersion struct {
@@ -101,23 +130,14 @@ func (c *Client) CreateKey(ctx context.Context, name string, expiration *time.Ti
 
 // CreateImportedKey creates a new KP key from the given key material.
 func (c *Client) CreateImportedKey(ctx context.Context, name string, expiration *time.Time, payload, encryptedNonce, iv string, extractable bool) (*Key, error) {
-	key := Key{
-		Name:        name,
-		Type:        keyType,
-		Extractable: extractable,
-		Payload:     payload,
-	}
+	key := c.createKeyTemplate(ctx, name, expiration, payload, encryptedNonce, iv, extractable, nil, AlgorithmRSAOAEP256)
+	return c.createKey(ctx, key)
+}
 
-	if payload != "" && encryptedNonce != "" && iv != "" {
-		key.EncryptedNonce = encryptedNonce
-		key.IV = iv
-		key.EncryptionAlgorithm = importTokenEncAlgo
-	}
-
-	if expiration != nil {
-		key.Expiration = expiration
-	}
-
+// CreateImportedKeyWithSHA1 creates a new KP key from the given key material
+// using RSAES OAEP SHA 1 as encryption algorithm.
+func (c *Client) CreateImportedKeyWithSHA1(ctx context.Context, name string, expiration *time.Time, payload, encryptedNonce, iv string, extractable bool, aliases []string) (*Key, error) {
+	key := c.createKeyTemplate(ctx, name, expiration, payload, encryptedNonce, iv, extractable, aliases, AlgorithmRSAOAEP1)
 	return c.createKey(ctx, key)
 }
 
@@ -160,25 +180,33 @@ func (c *Client) CreateKeyWithAliases(ctx context.Context, name string, expirati
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-import-root-keys#import-root-key-api
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-import-standard-keys#import-standard-key-gui
 func (c *Client) CreateImportedKeyWithAliases(ctx context.Context, name string, expiration *time.Time, payload, encryptedNonce, iv string, extractable bool, aliases []string) (*Key, error) {
+	key := c.createKeyTemplate(ctx, name, expiration, payload, encryptedNonce, iv, extractable, aliases, AlgorithmRSAOAEP256)
+	return c.createKey(ctx, key)
+}
+
+func (c *Client) createKeyTemplate(ctx context.Context, name string, expiration *time.Time, payload, encryptedNonce, iv string, extractable bool, aliases []string, encryptionAlgorithm string) Key {
 	key := Key{
 		Name:        name,
 		Type:        keyType,
 		Extractable: extractable,
 		Payload:     payload,
-		Aliases:     aliases,
+	}
+
+	if aliases != nil {
+		key.Aliases = aliases
 	}
 
 	if !extractable && payload != "" && encryptedNonce != "" && iv != "" {
 		key.EncryptedNonce = encryptedNonce
 		key.IV = iv
-		key.EncryptionAlgorithm = importTokenEncAlgo
+		key.EncryptionAlgorithm = encryptionAlgorithm
 	}
 
 	if expiration != nil {
 		key.Expiration = expiration
 	}
 
-	return c.createKey(ctx, key)
+	return key
 }
 
 func (c *Client) createKey(ctx context.Context, key Key) (*Key, error) {
@@ -201,6 +229,36 @@ func (c *Client) createKey(ctx context.Context, key Key) (*Key, error) {
 	}
 
 	return &keysResponse.Keys[0], nil
+}
+
+// SetKeyRing method transfers a key associated with one key ring to another key ring
+// For more information please refer to the link below:
+// https://cloud.ibm.com/docs/key-protect?topic=key-protect-grouping-keys#transfer-key-key-ring
+func (c *Client) SetKeyRing(ctx context.Context, idOrAlias, newKeyRingID string) (*Key, error) {
+	if idOrAlias == "" {
+		return nil, fmt.Errorf("Please provide a valid key ID or alias")
+	}
+
+	if newKeyRingID == "" {
+		return nil, fmt.Errorf("Please provide a valid key ring id")
+	}
+
+	keyRingRequestBody := struct {
+		KeyRingID string
+	}{
+		KeyRingID: newKeyRingID,
+	}
+
+	req, err := c.newRequest("PATCH", fmt.Sprintf("keys/%s", idOrAlias), keyRingRequestBody)
+	if err != nil {
+		return nil, err
+	}
+
+	response := Keys{}
+	if _, err := c.do(ctx, req, &response); err != nil {
+		return nil, err
+	}
+	return &response.Keys[0], nil
 }
 
 // GetKeys retrieves a collection of keys that can be paged through.
@@ -228,6 +286,55 @@ func (c *Client) GetKeys(ctx context.Context, limit int, offset int) (*Keys, err
 	return &keys, nil
 }
 
+//ListKeysOptions struct to add the query parameters for the List Keys function
+type ListKeysOptions struct {
+	Extractable *bool
+	Limit       *uint32
+	Offset      *uint32
+	State       []KeyState
+}
+
+// ListKeys retrieves a list of keys that are stored in your Key Protect service instance.
+// https://cloud.ibm.com/apidocs/key-protect#getkeys
+func (c *Client) ListKeys(ctx context.Context, listKeysOptions *ListKeysOptions) (*Keys, error) {
+
+	req, err := c.newRequest("GET", "keys", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// extracting the query parameters and encoding the same in the request url
+	if listKeysOptions != nil {
+		values := req.URL.Query()
+		if listKeysOptions.Limit != nil {
+			values.Set("limit", fmt.Sprint(*listKeysOptions.Limit))
+		}
+		if listKeysOptions.Offset != nil {
+			values.Set("offset", fmt.Sprint(*listKeysOptions.Offset))
+		}
+		if listKeysOptions.State != nil {
+			var states []string
+			for _, i := range listKeysOptions.State {
+				states = append(states, strconv.Itoa(int(i)))
+			}
+
+			values.Set("state", strings.Join(states, ","))
+		}
+		if listKeysOptions.Extractable != nil {
+			values.Set("extractable", fmt.Sprint(*listKeysOptions.Extractable))
+		}
+		req.URL.RawQuery = values.Encode()
+	}
+
+	keys := Keys{}
+	_, err = c.do(ctx, req, &keys)
+	if err != nil {
+		return nil, err
+	}
+
+	return &keys, nil
+}
+
 // GetKey retrieves a key by ID or alias name.
 // For more information on Key Alias please refer to the link below
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-retrieve-key
@@ -245,10 +352,10 @@ func (c *Client) GetKeyMetadata(ctx context.Context, idOrAlias string) (*Key, er
 	return c.getKey(ctx, idOrAlias, "keys/%s/metadata")
 }
 
-func (c *Client) getKey(ctx context.Context, id string, path string) (*Key, error) {
+func (c *Client) getKey(ctx context.Context, idOrAlias string, path string) (*Key, error) {
 	keys := Keys{}
 
-	req, err := c.newRequest("GET", fmt.Sprintf(path, id), nil)
+	req, err := c.newRequest("GET", fmt.Sprintf(path, idOrAlias), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -267,10 +374,51 @@ type ForceOpt struct {
 	Force bool
 }
 
-// DeleteKey deletes a key resource by specifying the ID of the key.
-func (c *Client) DeleteKey(ctx context.Context, id string, prefer PreferReturn, callOpts ...CallOpt) (*Key, error) {
+// ListKeyVersionsOptions struct to add the query parameters for the ListKeyVersions function
+type ListKeyVersionsOptions struct {
+	Limit      *uint32
+	Offset     *uint32
+	TotalCount *bool
+}
 
-	req, err := c.newRequest("DELETE", fmt.Sprintf("keys/%s", id), nil)
+// ListKeyVersions gets all the versions of the key resource by specifying ID of the key and/or optional parameters
+// https://cloud.ibm.com/apidocs/key-protect#getkeyversions
+func (c *Client) ListKeyVersions(ctx context.Context, idOrAlias string, listKeyVersionsOptions *ListKeyVersionsOptions) (*KeyVersions, error) {
+	keyVersion := KeyVersions{}
+	// forming the request
+	req, err := c.newRequest("GET", fmt.Sprintf("keys/%s/versions", idOrAlias), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// extracting the query parameters and encoding the same in the request url
+	if listKeyVersionsOptions != nil {
+		values := req.URL.Query()
+		if listKeyVersionsOptions.Limit != nil {
+			values.Set("limit", fmt.Sprint(*listKeyVersionsOptions.Limit))
+		}
+		if listKeyVersionsOptions.Offset != nil {
+			values.Set("offset", fmt.Sprint(*listKeyVersionsOptions.Offset))
+		}
+		if listKeyVersionsOptions.TotalCount != nil {
+			values.Set("totalCount", fmt.Sprint(*listKeyVersionsOptions.TotalCount))
+		}
+		req.URL.RawQuery = values.Encode()
+	}
+
+	//making a request
+	_, err = c.do(ctx, req, &keyVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	return &keyVersion, nil
+}
+
+// DeleteKey deletes a key resource by specifying the ID of the key.
+func (c *Client) DeleteKey(ctx context.Context, idOrAlias string, prefer PreferReturn, callOpts ...CallOpt) (*Key, error) {
+
+	req, err := c.newRequest("DELETE", fmt.Sprintf("keys/%s", idOrAlias), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -301,12 +449,37 @@ func (c *Client) DeleteKey(ctx context.Context, id string, prefer PreferReturn, 
 	return nil, nil
 }
 
+// Purge key method shreds all the metadata and registrations associated with a key that has been
+// deleted. The purge operation is allowed to be performed on a key from 4 hours after its deletion
+// and its action is irreversible.
+// For more information please refer to the link below:
+// https://cloud.ibm.com/docs/key-protect?topic=key-protect-delete-keys#delete-keys-key-purge
+func (c *Client) PurgeKey(ctx context.Context, idOrAlias string, prefer PreferReturn) (*Key, error) {
+	req, err := c.newRequest("DELETE", fmt.Sprintf("keys/%s/purge", idOrAlias), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Prefer", preferHeaders[prefer])
+
+	keys := Keys{}
+	_, err = c.do(ctx, req, &keys)
+	if err != nil {
+		return nil, err
+	}
+	if len(keys.Keys) > 0 {
+		return &keys.Keys[0], nil
+	}
+
+	return nil, nil
+}
+
 // RestoreKey method reverts a delete key status to active key
 // This method performs restore of any key from deleted state to active state.
 // For more information please refer to the link below:
-// https://cloud.ibm.com/dowcs/key-protect?topic=key-protect-restore-keys
-func (c *Client) RestoreKey(ctx context.Context, id string) (*Key, error) {
-	req, err := c.newRequest("POST", fmt.Sprintf("keys/%s/restore", id), nil)
+// https://cloud.ibm.com/docs/key-protect?topic=key-protect-restore-keys
+func (c *Client) RestoreKey(ctx context.Context, idOrAlias string) (*Key, error) {
+	req, err := c.newRequest("POST", fmt.Sprintf("keys/%s/restore", idOrAlias), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -322,17 +495,17 @@ func (c *Client) RestoreKey(ctx context.Context, id string) (*Key, error) {
 }
 
 // Wrap calls the wrap action with the given plain text.
-func (c *Client) Wrap(ctx context.Context, id string, plainText []byte, additionalAuthData *[]string) ([]byte, error) {
-	_, ct, err := c.wrap(ctx, id, plainText, additionalAuthData)
+func (c *Client) Wrap(ctx context.Context, idOrAlias string, plainText []byte, additionalAuthData *[]string) ([]byte, error) {
+	_, ct, err := c.wrap(ctx, idOrAlias, plainText, additionalAuthData)
 	return ct, err
 }
 
 // WrapCreateDEK calls the wrap action without plain text.
-func (c *Client) WrapCreateDEK(ctx context.Context, id string, additionalAuthData *[]string) ([]byte, []byte, error) {
-	return c.wrap(ctx, id, nil, additionalAuthData)
+func (c *Client) WrapCreateDEK(ctx context.Context, idOrAlias string, additionalAuthData *[]string) ([]byte, []byte, error) {
+	return c.wrap(ctx, idOrAlias, nil, additionalAuthData)
 }
 
-func (c *Client) wrap(ctx context.Context, id string, plainText []byte, additionalAuthData *[]string) ([]byte, []byte, error) {
+func (c *Client) wrap(ctx context.Context, idOrAlias string, plainText []byte, additionalAuthData *[]string) ([]byte, []byte, error) {
 	keysActionReq := &KeysActionRequest{}
 
 	if plainText != nil {
@@ -347,7 +520,7 @@ func (c *Client) wrap(ctx context.Context, id string, plainText []byte, addition
 		keysActionReq.AAD = *additionalAuthData
 	}
 
-	keysAction, err := c.doKeysAction(ctx, id, "wrap", keysActionReq)
+	keysAction, err := c.doKeysAction(ctx, idOrAlias, "wrap", keysActionReq)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -359,8 +532,8 @@ func (c *Client) wrap(ctx context.Context, id string, plainText []byte, addition
 }
 
 // Unwrap is deprecated since it returns only plaintext and doesn't know how to handle rotation.
-func (c *Client) Unwrap(ctx context.Context, id string, cipherText []byte, additionalAuthData *[]string) ([]byte, error) {
-	plainText, _, err := c.UnwrapV2(ctx, id, cipherText, additionalAuthData)
+func (c *Client) Unwrap(ctx context.Context, idOrAlias string, cipherText []byte, additionalAuthData *[]string) ([]byte, error) {
+	plainText, _, err := c.UnwrapV2(ctx, idOrAlias, cipherText, additionalAuthData)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +541,7 @@ func (c *Client) Unwrap(ctx context.Context, id string, cipherText []byte, addit
 }
 
 // Unwrap with rotation support.
-func (c *Client) UnwrapV2(ctx context.Context, id string, cipherText []byte, additionalAuthData *[]string) ([]byte, []byte, error) {
+func (c *Client) UnwrapV2(ctx context.Context, idOrAlias string, cipherText []byte, additionalAuthData *[]string) ([]byte, []byte, error) {
 
 	keysAction := &KeysActionRequest{
 		CipherText: string(cipherText),
@@ -378,7 +551,7 @@ func (c *Client) UnwrapV2(ctx context.Context, id string, cipherText []byte, add
 		keysAction.AAD = *additionalAuthData
 	}
 
-	respAction, err := c.doKeysAction(ctx, id, "unwrap", keysAction)
+	respAction, err := c.doKeysAction(ctx, idOrAlias, "unwrap", keysAction)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -390,13 +563,13 @@ func (c *Client) UnwrapV2(ctx context.Context, id string, cipherText []byte, add
 }
 
 // Rotate rotates a CRK.
-func (c *Client) Rotate(ctx context.Context, id, payload string) error {
+func (c *Client) Rotate(ctx context.Context, idOrAlias, payload string) error {
 
 	actionReq := &KeysActionRequest{
 		Payload: payload,
 	}
 
-	_, err := c.doKeysAction(ctx, id, "rotate", actionReq)
+	_, err := c.doKeysAction(ctx, idOrAlias, "rotate", actionReq)
 	if err != nil {
 		return err
 	}
@@ -404,12 +577,78 @@ func (c *Client) Rotate(ctx context.Context, id, payload string) error {
 	return nil
 }
 
+type KeyPayload struct {
+	payload             string
+	encryptedNonce      string
+	iv                  string
+	encryptionAlgorithm string
+}
+
+func NewKeyPayload(payload, encryptedNonce, iv string) KeyPayload {
+	kp := KeyPayload{
+		payload:        payload,
+		encryptedNonce: encryptedNonce,
+		iv:             iv,
+	}
+	return kp
+}
+
+// EncryptWithRSA256 sets the encryption algorithm for key create to RSAES_OAEP_SHA_256
+// This is the default algorithm for key creation under Key Protect service
+func (kp KeyPayload) WithRSA256() KeyPayload {
+	kp.encryptionAlgorithm = "RSAES_OAEP_SHA_256"
+	return kp
+}
+
+// EncryptWithRSA1 sets the encryption algorithm for key create to RSAES_OAEP_SHA_1
+// This algorithm is only supported by the Hyper Protect(HPCS) service
+func (kp KeyPayload) WithRSA1() KeyPayload {
+	kp.encryptionAlgorithm = "RSAES_OAEP_SHA_1"
+	return kp
+}
+
+// RotateV2 methods supports rotation of a root key with or without payload and also rotate a
+// securely imported root key.
+func (c *Client) RotateV2(ctx context.Context, idOrAlias string, new_key *KeyPayload) error {
+	var actionReq *KeysActionRequest
+	if new_key != nil {
+		actionReq = &KeysActionRequest{
+			Payload:             new_key.payload,
+			EncryptedNonce:      new_key.encryptedNonce,
+			IV:                  new_key.iv,
+			EncryptionAlgorithm: new_key.encryptionAlgorithm,
+		}
+	}
+
+	_, err := c.doKeysAction(ctx, idOrAlias, "rotate", actionReq)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SyncAssociatedResources method executes the sync request which verifies and updates
+// the resources associated with the key.
+// For more information please refer to the link below
+// https://cloud.ibm.com/docs/key-protect?topic=key-protect-sync-associated-resources
+func (c *Client) SyncAssociatedResources(ctx context.Context, idOrAlias string) error {
+	req, err := c.newRequest("POST", fmt.Sprintf("keys/%s/actions/sync", idOrAlias), nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.do(ctx, req, nil)
+
+	return err
+}
+
 // Disable a key. The key will not be deleted but it will not be active
 // and key operations cannot be performed on a disabled key.
 // For more information can refer to the Key Protect docs in the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-disable-keys
-func (c *Client) DisableKey(ctx context.Context, id string) error {
-	_, err := c.doKeysAction(ctx, id, "disable", nil)
+func (c *Client) DisableKey(ctx context.Context, idOrAlias string) error {
+	_, err := c.doKeysAction(ctx, idOrAlias, "disable", nil)
 	return err
 }
 
@@ -418,8 +657,8 @@ func (c *Client) DisableKey(ctx context.Context, id string) error {
 // Note: This does not recover Deleted keys.
 // For more information can refer to the Key Protect docs in the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-disable-keys#enable-api
-func (c *Client) EnableKey(ctx context.Context, id string) error {
-	_, err := c.doKeysAction(ctx, id, "enable", nil)
+func (c *Client) EnableKey(ctx context.Context, idOrAlias string) error {
+	_, err := c.doKeysAction(ctx, idOrAlias, "enable", nil)
 	return err
 }
 
@@ -427,8 +666,8 @@ func (c *Client) EnableKey(ctx context.Context, id string) error {
 // After the key is set to deletion it can be deleted by another user who has Manager access.
 // For more information refer to the Key Protect docs in the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-delete-dual-auth-keys#set-key-deletion-api
-func (c *Client) InitiateDualAuthDelete(ctx context.Context, id string) error {
-	_, err := c.doKeysAction(ctx, id, "setKeyForDeletion", nil)
+func (c *Client) InitiateDualAuthDelete(ctx context.Context, idOrAlias string) error {
+	_, err := c.doKeysAction(ctx, idOrAlias, "setKeyForDeletion", nil)
 	return err
 }
 
@@ -436,24 +675,19 @@ func (c *Client) InitiateDualAuthDelete(ctx context.Context, id string) error {
 // be prevented from getting deleted by unsetting the key for deletion.
 // For more information refer to the Key Protect docs in the link below:
 //https://cloud.ibm.com/docs/key-protect?topic=key-protect-delete-dual-auth-keys#unset-key-deletion-api
-func (c *Client) CancelDualAuthDelete(ctx context.Context, id string) error {
-	_, err := c.doKeysAction(ctx, id, "unsetKeyForDeletion", nil)
+func (c *Client) CancelDualAuthDelete(ctx context.Context, idOrAlias string) error {
+	_, err := c.doKeysAction(ctx, idOrAlias, "unsetKeyForDeletion", nil)
 	return err
 }
 
 // doKeysAction calls the KP Client to perform an action on a key.
-func (c *Client) doKeysAction(ctx context.Context, id string, action string, keysActionReq *KeysActionRequest) (*KeysActionRequest, error) {
+func (c *Client) doKeysAction(ctx context.Context, idOrAlias string, action string, keysActionReq *KeysActionRequest) (*KeysActionRequest, error) {
 	keyActionRsp := KeysActionRequest{}
 
-	v := url.Values{}
-	v.Set("action", action)
-
-	req, err := c.newRequest("POST", fmt.Sprintf("keys/%s", id), keysActionReq)
+	req, err := c.newRequest("POST", fmt.Sprintf("keys/%s/actions/%s", idOrAlias, action), keysActionReq)
 	if err != nil {
 		return nil, err
 	}
-
-	req.URL.RawQuery = v.Encode()
 
 	_, err = c.do(ctx, req, &keyActionRsp)
 	if err != nil {

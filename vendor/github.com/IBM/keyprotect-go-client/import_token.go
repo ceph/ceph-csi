@@ -32,7 +32,13 @@ import (
 	"time"
 )
 
-const importTokenEncAlgo = "RSAES_OAEP_SHA_256" // currently the only one supported
+// EncryptionAlgorithm represents the encryption algorithm used for key creation
+const (
+	// AlgorithmRSAOAEP256 denotes RSA OAEP SHA 256 encryption, supported by KP
+	AlgorithmRSAOAEP256 string = "RSAES_OAEP_SHA_256"
+	// AlgorithmRSAOAEP1 denotes RSA OAEP SHA 1 encryption, supported by HPCS
+	AlgorithmRSAOAEP1 string = "RSAES_OAEP_SHA_1"
+)
 
 // ImportTokenCreateRequest represents request parameters for creating a
 // ImportToken.

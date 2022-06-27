@@ -33,9 +33,9 @@ type KeyAliases struct {
 // An alias name acts as an identifier just like key ID
 // For more information please refer to the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-create-key-alias#create-key-alias-api
-func (c *Client) CreateKeyAlias(ctx context.Context, aliasName, keyID string) (*KeyAlias, error) {
+func (c *Client) CreateKeyAlias(ctx context.Context, aliasName, idOrAlias string) (*KeyAlias, error) {
 
-	req, err := c.newRequest("POST", fmt.Sprintf(requestPath, keyID, aliasName), nil)
+	req, err := c.newRequest("POST", fmt.Sprintf(requestPath, idOrAlias, aliasName), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +56,9 @@ func (c *Client) CreateKeyAlias(ctx context.Context, aliasName, keyID string) (*
 // DeleteKeyAlias deletes an alias name associated with a key
 // For more information please refer to the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-create-key-alias#delete-key-alias
-func (c *Client) DeleteKeyAlias(ctx context.Context, aliasName, keyID string) error {
+func (c *Client) DeleteKeyAlias(ctx context.Context, aliasName, idOrAlias string) error {
 
-	req, err := c.newRequest("DELETE", fmt.Sprintf(requestPath, keyID, aliasName), nil)
+	req, err := c.newRequest("DELETE", fmt.Sprintf(requestPath, idOrAlias, aliasName), nil)
 	if err != nil {
 		return err
 	}
