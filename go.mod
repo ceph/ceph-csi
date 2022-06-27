@@ -3,7 +3,7 @@ module github.com/ceph/ceph-csi
 go 1.17
 
 require (
-	github.com/IBM/keyprotect-go-client v0.7.0
+	github.com/IBM/keyprotect-go-client v0.8.0
 	github.com/aws/aws-sdk-go v1.44.28
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.7
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
@@ -75,7 +75,7 @@ require (
 	github.com/google/gnostic v0.5.7-v3refs // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
-	github.com/google/uuid v1.1.2 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -83,7 +83,7 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
-	github.com/hashicorp/go-retryablehttp v0.6.6 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.0 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.1 // indirect
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.6 // indirect

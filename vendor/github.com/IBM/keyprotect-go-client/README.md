@@ -119,18 +119,18 @@ crkID := key.ID
 myDEK := []byte{"thisisadataencryptionkey"}
 // Do some encryption with myDEK
 // Wrap the DEK so we can safely store it
-wrappedDEK, err := client.Wrap(ctx, crkID, myDEK, nil)
+wrappedDEK, err := client.Wrap(ctx, crkIDOrAlias, myDEK, nil)
 
 
 // Unwrap the DEK
-dek, err := client.Unwrap(ctx, crkID, wrappedDEK, nil)
+dek, err := client.Unwrap(ctx, crkIDOrAlias, wrappedDEK, nil)
 // Do some encryption/decryption using the DEK
 // Discard the DEK
 dek = nil
 ```
 
 Note you can also pass additional authentication data (AAD) to wrap and unwrap calls
-to provide another level of protection for your DEK.  The AAD is a string array with 
+to provide another level of protection for your DEK.  The AAD is a string array with
 each element up to 255 chars.  For example:
 
 ```go
@@ -138,11 +138,11 @@ myAAD := []string{"First aad string", "second aad string", "third aad string"}
 myDEK := []byte{"thisisadataencryptionkey"}
 // Do some encryption with myDEK
 // Wrap the DEK so we can safely store it
-wrappedDEK, err := client.Wrap(ctx, crkID, myDEK, &myAAD)
+wrappedDEK, err := client.Wrap(ctx, crkIDOrAlias, myDEK, &myAAD)
 
 
 // Unwrap the DEK
-dek, err := client.Unwrap(ctx, crkID, wrappedDEK, &myAAD)
+dek, err := client.Unwrap(ctx, crkIDOrAlias, wrappedDEK, &myAAD)
 // Do some encryption/decryption using the DEK
 // Discard the DEK
 dek = nil
@@ -151,7 +151,7 @@ dek = nil
 Have key protect create a DEK for you:
 
 ```go
-dek, wrappedDek, err := client.WrapCreateDEK(ctx, crkID, nil)
+dek, wrappedDek, err := client.WrapCreateDEK(ctx, crkIDOrAlias, nil)
 // Do some encrypt/decrypt with the dek
 // Discard the DEK
 dek = nil
@@ -163,11 +163,54 @@ Can also specify AAD:
 
 ```go
 myAAD := []string{"First aad string", "second aad string", "third aad string"}
-dek, wrappedDek, err := client.WrapCreateDEK(ctx, crkID, &myAAD)
+dek, wrappedDek, err := client.WrapCreateDEK(ctx, crkIDOrAlias, &myAAD)
 // Do some encrypt/decrypt with the dek
 // Discard the DEK
 dek = nil
 
 // Save the wrapped DEK for later.  Call Unwrap to use it, make
 // sure to specify the same AAD.
+```
+### Fetching List Key Versions With Parameters.
+
+```go
+
+limit := uint32(2)
+offset := uint32(0)
+totalCount := true
+
+listkeyVersionsOptions := &kp.ListKeyVersionsOptions{
+  Limit : &limit,
+  Offset : &offset,
+  TotalCount : &totalCount,
+}
+
+keyVersions, err := client.ListKeyVersions(ctx, "key_id_or_alias", listkeyVersionsOptions)
+if err != nil {
+    fmt.Println(err)
+}
+fmt.Println(keyVersions)
+```
+
+### Fetching List Key With Parameters.
+
+```go
+
+limit := uint32(5)
+offset := uint32(0)
+extractable := false
+keyStates := []kp.KeyState{kp.KeyState(kp.Active), kp.KeyState(kp.Suspended)}
+
+listKeysOptions := &kp.ListKeysOptions{
+  Limit : &limit,
+  Offset : &offset,
+  Extractable : &extractable,
+  State : keyStates,
+}
+
+keys, err := client.ListKeys(ctx, listKeysOptions)
+if err != nil {
+    fmt.Println(err)
+}
+fmt.Println(keys)
 ```

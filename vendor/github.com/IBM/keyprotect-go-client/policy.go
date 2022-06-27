@@ -59,15 +59,15 @@ type Policies struct {
 	Policies []Policy         `json:"resources"`
 }
 
-// GetPolicy retrieves a policy by Key ID. This function is
+// GetPolicy retrieves a policy by Key ID or alias. This function is
 // deprecated, as it only returns one policy and does not let you
 // select which policy set it will return. It is kept for backward
 // compatibility on keys with only one rotation policy. Please update
 // to use the new GetPolicies or Get<type>Policy functions.
-func (c *Client) GetPolicy(ctx context.Context, id string) (*Policy, error) {
+func (c *Client) GetPolicy(ctx context.Context, idOrAlias string) (*Policy, error) {
 	policyresponse := Policies{}
 
-	req, err := c.newRequest("GET", fmt.Sprintf("keys/%s/policies", id), nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("keys/%s/policies", idOrAlias), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (c *Client) GetPolicy(ctx context.Context, id string) (*Policy, error) {
 // the rotation interval needed. This function is deprecated as it will only
 // let you set key rotation  policies. To set dual auth and other newer policies
 // on a key, please use the new SetPolicies of Set<type>Policy functions.
-func (c *Client) SetPolicy(ctx context.Context, id string, prefer PreferReturn, rotationInterval int) (*Policy, error) {
+func (c *Client) SetPolicy(ctx context.Context, idOrAlias string, prefer PreferReturn, rotationInterval int) (*Policy, error) {
 
 	policy := Policy{
 		Type: policyType,
@@ -103,7 +103,7 @@ func (c *Client) SetPolicy(ctx context.Context, id string, prefer PreferReturn, 
 
 	policyresponse := Policies{}
 
-	req, err := c.newRequest("PUT", fmt.Sprintf("keys/%s/policies", id), &policyRequest)
+	req, err := c.newRequest("PUT", fmt.Sprintf("keys/%s/policies", idOrAlias), &policyRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -118,11 +118,11 @@ func (c *Client) SetPolicy(ctx context.Context, id string, prefer PreferReturn, 
 	return &policyresponse.Policies[0], nil
 }
 
-// GetPolicies retrieves all policies details associated with a Key ID.
-func (c *Client) GetPolicies(ctx context.Context, id string) ([]Policy, error) {
+// GetPolicies retrieves all policies details associated with a Key ID or alias.
+func (c *Client) GetPolicies(ctx context.Context, idOrAlias string) ([]Policy, error) {
 	policyresponse := Policies{}
 
-	req, err := c.newRequest("GET", fmt.Sprintf("keys/%s/policies", id), nil)
+	req, err := c.newRequest("GET", fmt.Sprintf("keys/%s/policies", idOrAlias), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -155,10 +155,10 @@ func (c *Client) getPolicy(ctx context.Context, id, policyType string, policyres
 // GetRotationPolivy method retrieves rotation policy details of a key
 // For more information can refet the Key Protect docs in the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-set-rotation-policy#view-rotation-policy-api
-func (c *Client) GetRotationPolicy(ctx context.Context, id string) (*Policy, error) {
+func (c *Client) GetRotationPolicy(ctx context.Context, idOrAlias string) (*Policy, error) {
 	policyresponse := Policies{}
 
-	err := c.getPolicy(ctx, id, RotationPolicy, &policyresponse)
+	err := c.getPolicy(ctx, idOrAlias, RotationPolicy, &policyresponse)
 	if err != nil {
 		return nil, err
 	}
@@ -173,10 +173,10 @@ func (c *Client) GetRotationPolicy(ctx context.Context, id string) (*Policy, err
 // GetDualAuthDeletePolicy method retrieves dual auth delete policy details of a key
 // For more information can refer the Key Protect docs in the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-set-dual-auth-key-policy#view-dual-auth-key-policy-api
-func (c *Client) GetDualAuthDeletePolicy(ctx context.Context, id string) (*Policy, error) {
+func (c *Client) GetDualAuthDeletePolicy(ctx context.Context, idOrAlias string) (*Policy, error) {
 	policyresponse := Policies{}
 
-	err := c.getPolicy(ctx, id, DualAuthDelete, &policyresponse)
+	err := c.getPolicy(ctx, idOrAlias, DualAuthDelete, &policyresponse)
 	if err != nil {
 		return nil, err
 	}
@@ -188,10 +188,10 @@ func (c *Client) GetDualAuthDeletePolicy(ctx context.Context, id string) (*Polic
 	return &policyresponse.Policies[0], nil
 }
 
-func (c *Client) setPolicy(ctx context.Context, id, policyType string, policyRequest Policies) (*Policies, error) {
+func (c *Client) setPolicy(ctx context.Context, idOrAlias, policyType string, policyRequest Policies) (*Policies, error) {
 	policyresponse := Policies{}
 
-	req, err := c.newRequest("PUT", fmt.Sprintf("keys/%s/policies", id), &policyRequest)
+	req, err := c.newRequest("PUT", fmt.Sprintf("keys/%s/policies", idOrAlias), &policyRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -207,10 +207,10 @@ func (c *Client) setPolicy(ctx context.Context, id, policyType string, policyReq
 	return &policyresponse, nil
 }
 
-// SetRotationPolicy updates the rotation policy associated with a key by specifying key ID and rotation interval.
+// SetRotationPolicy updates the rotation policy associated with a key by specifying key ID  or alias and rotation interval.
 // For more information can refer the Key Protect docs in the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-set-rotation-policy#update-rotation-policy-api
-func (c *Client) SetRotationPolicy(ctx context.Context, id string, rotationInterval int) (*Policy, error) {
+func (c *Client) SetRotationPolicy(ctx context.Context, idOrAlias string, rotationInterval int) (*Policy, error) {
 	policy := Policy{
 		Type: policyType,
 		Rotation: &Rotation{
@@ -226,7 +226,7 @@ func (c *Client) SetRotationPolicy(ctx context.Context, id string, rotationInter
 		Policies: []Policy{policy},
 	}
 
-	policyresponse, err := c.setPolicy(ctx, id, RotationPolicy, policyRequest)
+	policyresponse, err := c.setPolicy(ctx, idOrAlias, RotationPolicy, policyRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -238,10 +238,10 @@ func (c *Client) SetRotationPolicy(ctx context.Context, id string, rotationInter
 	return &policyresponse.Policies[0], nil
 }
 
-// SetDualAuthDeletePolicy updates the dual auth delete policy by passing the key ID and enable detail
+// SetDualAuthDeletePolicy updates the dual auth delete policy by passing the key ID  or alias and enable detail
 // For more information can refer the Key Protect docs in the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-set-dual-auth-key-policy#create-dual-auth-key-policy-api
-func (c *Client) SetDualAuthDeletePolicy(ctx context.Context, id string, enabled bool) (*Policy, error) {
+func (c *Client) SetDualAuthDeletePolicy(ctx context.Context, idOrAlias string, enabled bool) (*Policy, error) {
 	policy := Policy{
 		Type: policyType,
 		DualAuth: &DualAuth{
@@ -257,7 +257,7 @@ func (c *Client) SetDualAuthDeletePolicy(ctx context.Context, id string, enabled
 		Policies: []Policy{policy},
 	}
 
-	policyresponse, err := c.setPolicy(ctx, id, DualAuthDelete, policyRequest)
+	policyresponse, err := c.setPolicy(ctx, idOrAlias, DualAuthDelete, policyRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +273,7 @@ func (c *Client) SetDualAuthDeletePolicy(ctx context.Context, id string, enabled
 // To set rotation policy for the key pass the setRotationPolicy parameter as true and set the rotationInterval detail.
 // To set dual auth delete policy for the key pass the setDualAuthDeletePolicy parameter as true and set the dualAuthEnable detail.
 // Both the policies can be set or either of the policies can be set.
-func (c *Client) SetPolicies(ctx context.Context, id string, setRotationPolicy bool, rotationInterval int, setDualAuthDeletePolicy, dualAuthEnable bool) ([]Policy, error) {
+func (c *Client) SetPolicies(ctx context.Context, idOrAlias string, setRotationPolicy bool, rotationInterval int, setDualAuthDeletePolicy, dualAuthEnable bool) ([]Policy, error) {
 	policies := []Policy{}
 	if setRotationPolicy {
 		rotationPolicy := Policy{
@@ -304,7 +304,7 @@ func (c *Client) SetPolicies(ctx context.Context, id string, setRotationPolicy b
 
 	policyresponse := Policies{}
 
-	req, err := c.newRequest("PUT", fmt.Sprintf("keys/%s/policies", id), &policyRequest)
+	req, err := c.newRequest("PUT", fmt.Sprintf("keys/%s/policies", idOrAlias), &policyRequest)
 	if err != nil {
 		return nil, err
 	}
