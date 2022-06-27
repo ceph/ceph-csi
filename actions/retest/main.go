@@ -116,7 +116,7 @@ func main() {
 		log.Fatalf("failed to list pull requests %v\n", err)
 	}
 	for _, re := range req {
-		if *re.State == "open" {
+		if (re.State != nil) && (*re.State == "open") {
 			prNumber := re.GetNumber()
 			log.Printf("PR with ID %d with Title %q is open\n", prNumber, re.GetTitle())
 			for _, l := range re.Labels {
@@ -149,7 +149,7 @@ func main() {
 						log.Printf("found failed test %s\n", r.GetContext())
 						failedTestFound = true
 						// rebase the pr if it is behind the devel branch.
-						if *re.MergeableState == "BEHIND" {
+						if (re.MergeableState != nil) && (*re.MergeableState == "BEHIND") {
 							comment := &github.IssueComment{
 								Body: github.String("@mergifyio rebase"),
 							}
