@@ -580,7 +580,12 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 		}
 	}
 
-	err = checkHealthyPrimary(ctx, rbdVol)
+	mirrorStatus, err := rbdVol.getImageMirroringStatus()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	err = checkHealthyPrimary(ctx, rbdVol, mirrorStatus)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -617,11 +622,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 // checkHealthyPrimary checks if the image is a healhty primary or not.
 // healthy primary image will be in up+stopped state, for states other
 // than this it returns an error message.
-func checkHealthyPrimary(ctx context.Context, rbdVol *rbdVolume) error {
-	mirrorStatus, err := rbdVol.getImageMirroringStatus()
-	if err != nil {
-		return err
-	}
+func checkHealthyPrimary(ctx context.Context, rbdVol *rbdVolume, mirrorStatus *librbd.GlobalMirrorImageStatus) error {
 	localStatus, err := mirrorStatus.LocalStatus()
 	if err != nil {
 		// LocalStatus can fail if the local site status is not found in
