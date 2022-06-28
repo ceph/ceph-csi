@@ -632,7 +632,7 @@ func checkHealthyPrimary(ctx context.Context, rbdVol *rbdVolume) error {
 		return fmt.Errorf("failed to get local status: %w", err)
 	}
 
-	if !localStatus.Up && localStatus.State != librbd.MirrorImageStatusStateStopped {
+	if !localStatus.Up || localStatus.State != librbd.MirrorImageStatusStateStopped {
 		return fmt.Errorf("%s %w. State is up=%t, state=%q",
 			rbdVol,
 			ErrUnHealthyMirroredImage,
