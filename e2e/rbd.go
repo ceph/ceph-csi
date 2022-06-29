@@ -3747,8 +3747,9 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to delete storageclass: %v", err)
 				}
 				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, map[string]string{
-					"mapOptions":   "lock_on_read,queue_depth=1024",
-					"unmapOptions": "force",
+					"imageFeatures": "exclusive-lock",
+					"mapOptions":    "lock_on_read,queue_depth=1024",
+					"unmapOptions":  "force",
 				}, deletePolicy)
 				if err != nil {
 					e2elog.Failf("failed to create storageclass: %v", err)
