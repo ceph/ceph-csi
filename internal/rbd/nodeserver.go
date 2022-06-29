@@ -773,7 +773,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 
 	if isBlock {
 		opt = append(opt, "bind")
-		err = diskMounter.Mount(devicePath, stagingPath, fsType, opt)
+		err = diskMounter.MountSensitiveWithoutSystemd(devicePath, stagingPath, fsType, opt, nil)
 	} else {
 		err = diskMounter.FormatAndMount(devicePath, stagingPath, fsType, opt)
 	}
