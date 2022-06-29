@@ -85,7 +85,7 @@ var (
 	snapshotPath           = rbdExamplePath + "snapshot.yaml"
 	deployFSAppPath        = e2eTemplatesPath + "rbd-fs-deployment.yaml"
 	deployBlockAppPath     = e2eTemplatesPath + "rbd-block-deployment.yaml"
-	defaultCloneCount      = 10
+	defaultCloneCount      = 3 // TODO: set to 10 once issues#2327 is fixed
 
 	nbdMapOptions             = "nbd:debug-rbd=20"
 	e2eDefaultCephLogStrategy = "preserve"
