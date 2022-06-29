@@ -330,7 +330,7 @@ func ReadMountInfoForProc(proc string) ([]mount.MountInfo, error) {
 func Mount(source, target, fstype string, options []string) error {
 	dummyMount := mount.New("")
 
-	return dummyMount.Mount(source, target, fstype, options)
+	return dummyMount.MountSensitiveWithoutSystemd(source, target, fstype, options, nil)
 }
 
 // MountOptionsAdd adds the `add` mount options to the `options` and returns a
