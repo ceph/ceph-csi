@@ -681,6 +681,7 @@ func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
 	vol.Pool = ri.Pool
 	vol.Monitors = ri.Monitors
 	vol.RbdImageName = ri.RbdImageName
+	vol.RadosNamespace = ri.RadosNamespace
 	vol.conn = ri.conn.Copy()
 
 	for {
