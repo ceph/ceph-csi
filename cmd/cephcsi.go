@@ -88,6 +88,16 @@ func init() {
 		"forcecephkernelclient",
 		false,
 		"enable Ceph Kernel clients on kernel < 4.17 which support quotas")
+	flag.StringVar(
+		&conf.KernelMountOptions,
+		"kernelmountoptions",
+		"",
+		"Comma separated string of mount options accepted by cephfs kernel mounter")
+	flag.StringVar(
+		&conf.FuseMountOptions,
+		"fusemountoptions",
+		"",
+		"Comma separated string of mount options accepted by ceph-fuse mounter")
 
 	// liveness/grpc metrics related flags
 	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/grpc metrics requests")

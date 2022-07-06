@@ -43,7 +43,9 @@ type NodeServer struct {
 	*csicommon.DefaultNodeServer
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID) return an Aborted error
-	VolumeLocks *util.VolumeLocks
+	VolumeLocks        *util.VolumeLocks
+	kernelMountOptions string
+	fuseMountOptions   string
 }
 
 func getCredentialsForVolume(
@@ -225,7 +227,7 @@ func (ns *NodeServer) NodeStageVolume(
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (*NodeServer) mount(
+func (ns *NodeServer) mount(
 	ctx context.Context,
 	mnt mounter.VolumeMounter,
 	volOptions *store.VolumeOptions,
@@ -243,6 +245,13 @@ func (*NodeServer) mount(
 	defer cr.DeleteCredentials()
 
 	log.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, mnt.Name())
+
+	switch mnt.(type) {
+	case *mounter.FuseMounter:
+		volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, ns.fuseMountOptions)
+	case *mounter.KernelMounter:
+		volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, ns.kernelMountOptions)
+	}
 
 	const readOnly = "ro"
 
