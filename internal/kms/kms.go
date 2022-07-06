@@ -276,6 +276,7 @@ func RegisterProvider(provider Provider) bool {
 	}
 
 	kmsManager.providers[provider.UniqueID] = provider
+
 	return true
 }
 

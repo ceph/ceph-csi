@@ -653,6 +653,7 @@ func (ns *NodeServer) createStageMountPoint(ctx context.Context, mountPath strin
 		pathFile, err := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0o600)
 		if err != nil {
 			log.ErrorLog(ctx, "failed to create mountPath:%s with error: %v", mountPath, err)
+
 			return status.Error(codes.Internal, err.Error())
 		}
 		if err = pathFile.Close(); err != nil {
