@@ -64,10 +64,18 @@ func NewControllerServer(d *csicommon.CSIDriver) *ControllerServer {
 }
 
 // NewNodeServer initialize a node server for ceph CSI driver.
-func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string) *NodeServer {
+func NewNodeServer(
+	d *csicommon.CSIDriver,
+	t string,
+	topology map[string]string,
+	kernelMountOptions string,
+	fuseMountOptions string,
+) *NodeServer {
 	return &NodeServer{
-		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, topology),
-		VolumeLocks:       util.NewVolumeLocks(),
+		DefaultNodeServer:  csicommon.NewDefaultNodeServer(d, t, topology),
+		VolumeLocks:        util.NewVolumeLocks(),
+		kernelMountOptions: kernelMountOptions,
+		fuseMountOptions:   fuseMountOptions,
 	}
 }
 
@@ -122,7 +130,7 @@ func (fs *Driver) Run(conf *util.Config) {
 		if err != nil {
 			log.FatalLogMsg(err.Error())
 		}
-		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology)
+		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology, conf.KernelMountOptions, conf.FuseMountOptions)
 	}
 
 	if conf.IsControllerServer {
@@ -133,7 +141,7 @@ func (fs *Driver) Run(conf *util.Config) {
 		if err != nil {
 			log.FatalLogMsg(err.Error())
 		}
-		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology)
+		fs.ns = NewNodeServer(fs.cd, conf.Vtype, topology, conf.KernelMountOptions, conf.FuseMountOptions)
 		fs.cs = NewControllerServer(fs.cd)
 	}
 

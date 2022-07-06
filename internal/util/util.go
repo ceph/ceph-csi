@@ -98,7 +98,12 @@ type Config struct {
 	MetricsPath     string // path of prometheus endpoint where metrics will be available
 	HistogramOption string // Histogram option for grpc metrics, should be comma separated value,
 	// ex:= "0.5,2,6" where start=0.5 factor=2, count=6
-	MetricsIP         string        // TCP port for liveness/ metrics requests
+	MetricsIP string // TCP port for liveness/ metrics requests
+
+	// mount option related flags
+	KernelMountOptions string // Comma separated string of mount options accepted by cephfs kernel mounter
+	FuseMountOptions   string // Comma separated string of mount options accepted by ceph-fuse mounter
+
 	PidLimit          int           // PID limit to configure through cgroups")
 	MetricsPort       int           // TCP port for liveness/grpc metrics requests
 	PollTime          time.Duration // time interval in seconds between each poll

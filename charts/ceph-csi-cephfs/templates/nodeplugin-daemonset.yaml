@@ -72,6 +72,8 @@ spec:
 {{- if .Values.nodeplugin.forcecephkernelclient }}
             - "--forcecephkernelclient={{ .Values.nodeplugin.forcecephkernelclient }}"
 {{- end }}
+            - "--kernelmountoptions={{ .Values.nodeplugin.kernelmountoptions }}"
+            - "--fusemountoptions={{ .Values.nodeplugin.fusemountoptions }}"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v={{ .Values.logLevel }}"
             - "--drivername=$(DRIVER_NAME)"
