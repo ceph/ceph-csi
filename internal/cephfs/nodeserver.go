@@ -119,12 +119,41 @@ func validateSnapshotBackedVolCapability(volCap *csi.VolumeCapability) error {
 	return nil
 }
 
-// maybeFscryptUnlock unlocks fscrypt on stagingTargetPath, iff volOptions enable encryption.
-func maybeFscryptUnlock(ctx context.Context, volOptions *store.VolumeOptions,
-	stagingTargetPath string, volID fsutil.VolumeID,
+// maybeUnlockFileEncryption unlocks fscrypt on stagingTargetPath, iff volOptions enable encryption.
+func maybeUnlockFileEncryption(
+	ctx context.Context,
+	volOptions *store.VolumeOptions,
+	stagingTargetPath string,
+	volID fsutil.VolumeID,
 ) error {
 	if volOptions.IsEncrypted() {
 		return fscrypt.Unlock(ctx, volOptions.Encryption, stagingTargetPath, string(volID))
+	}
+
+	return nil
+}
+
+// maybeInitializeFileEncryption initializes KMS and node specifics, iff volContext enables encryption.
+func maybeInitializeFileEncryption(
+	ctx context.Context,
+	mnt mounter.VolumeMounter,
+	volOptions *store.VolumeOptions,
+	volContext, credentials map[string]string,
+	stagingTargetPath string,
+) error {
+	if err := volOptions.MaybeInitKMS(ctx, volContext, credentials, stagingTargetPath); err != nil {
+		log.DebugLog(ctx, "cephfs: maybe init failed %+v %s", volContext, stagingTargetPath)
+
+		return err
+	}
+
+	if volOptions.IsEncrypted() {
+		if _, isFuse := mnt.(*mounter.FuseMounter); isFuse {
+			return fmt.Errorf("FUSE mounter does not support encryption")
+		}
+		if err := fscrypt.InitializeNode(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -155,12 +184,6 @@ func (ns *NodeServer) NodeStageVolume(
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if err = volOptions.MaybeInitKMS(ctx, req.GetVolumeContext(), req.GetSecrets(), stagingTargetPath); err != nil {
-		log.DebugLog(ctx, "cephfs: maybe init failed %s %+v %s", volID, req.GetVolumeContext(), stagingTargetPath)
-
-		return nil, err
-	}
-
 	defer volOptions.Destroy()
 
 	// Skip extracting NetNamespaceFilePath if the clusterID is empty.
@@ -188,13 +211,9 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if volOptions.IsEncrypted() {
-		if _, isFuse := mnt.(*mounter.FuseMounter); isFuse {
-			return nil, status.Errorf(codes.Internal, "FUSE mounter does not support encryption")
-		}
-		if err = fscrypt.InitializeNode(ctx); err != nil {
-			return nil, status.Errorf(codes.Internal, err.Error())
-		}
+	err = maybeInitializeFileEncryption(ctx, mnt, volOptions, req.GetVolumeContext(), req.GetSecrets(), stagingTargetPath)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// Check if the volume is already mounted
@@ -212,7 +231,7 @@ func (ns *NodeServer) NodeStageVolume(
 
 	if isMnt {
 		log.DebugLog(ctx, "cephfs: volume %s is already mounted to %s, skipping", volID, stagingTargetPath)
-		if err = maybeFscryptUnlock(ctx, volOptions, stagingTargetPath, volID); err != nil {
+		if err = maybeUnlockFileEncryption(ctx, volOptions, stagingTargetPath, volID); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
@@ -233,7 +252,7 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, err
 	}
 
-	if err = maybeFscryptUnlock(ctx, volOptions, stagingTargetPath, volID); err != nil {
+	if err = maybeUnlockFileEncryption(ctx, volOptions, stagingTargetPath, volID); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
