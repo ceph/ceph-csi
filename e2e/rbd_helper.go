@@ -531,6 +531,55 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, kms kmsConfig, f
 	return nil
 }
 
+func validateEncryptedFilesystemAndAppBinding(pvcPath, appPath string, kms kmsConfig, f *framework.Framework) error {
+	pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
+	if err != nil {
+		return err
+	}
+	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+
+	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
+	err = validateEncryptedFilesystem(f, rbdImageSpec, imageData.pvName, app.Name)
+	if err != nil {
+		return err
+	}
+
+	if kms != noKMS && kms.canGetPassphrase() {
+		// check new passphrase created
+		_, stdErr := kms.getPassphrase(f, imageData.csiVolumeHandle)
+		if stdErr != "" {
+			return fmt.Errorf("failed to read passphrase from vault: %s", stdErr)
+		}
+	}
+
+	err = deletePVCAndApp("", f, pvc, app)
+	if err != nil {
+		return err
+	}
+
+	if kms != noKMS && kms.canGetPassphrase() {
+		// check new passphrase created
+		stdOut, _ := kms.getPassphrase(f, imageData.csiVolumeHandle)
+		if stdOut != "" {
+			return fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
+		}
+	}
+
+	if kms != noKMS && kms.canVerifyKeyDestroyed() {
+		destroyed, msg := kms.verifyKeyDestroyed(f, imageData.csiVolumeHandle)
+		if !destroyed {
+			return fmt.Errorf("passphrased was not destroyed: %s", msg)
+		} else if msg != "" {
+			e2elog.Logf("passphrase destroyed, but message returned: %s", msg)
+		}
+	}
+
+	return nil
+}
+
 type validateFunc func(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error
 
 // noPVCValidation can be used to pass to validatePVCClone when no extra
@@ -578,6 +627,47 @@ func validateEncryptedImage(f *framework.Framework, rbdImageSpec, pvName, appNam
 	}
 	if mountType != "crypt" {
 		return fmt.Errorf("%v not equal to crypt", mountType)
+	}
+
+	return nil
+}
+
+func validateEncryptedFilesystem(f *framework.Framework, rbdImageSpec, pvName, appName string) error {
+	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get pod %q in namespace %q: %w", appName, f.UniqueName, err)
+	}
+	volumeMountPath := fmt.Sprintf(
+		"/var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount",
+		pod.UID,
+		pvName)
+
+	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
+	if err != nil {
+		return fmt.Errorf("failed to get labels: %w", err)
+	}
+	opt := metav1.ListOptions{
+		LabelSelector: selector,
+	}
+	cmd := fmt.Sprintf("lsattr -la %s | grep -E '%s/.\\s+Encrypted'", volumeMountPath, volumeMountPath)
+	_, _, err = execCommandInContainer(f, cmd, cephCSINamespace, "csi-rbdplugin", &opt)
+	if err != nil {
+		cmd = fmt.Sprintf("lsattr -lRa %s", volumeMountPath)
+		stdOut, stdErr, listErr := execCommandInContainer(f, cmd, cephCSINamespace, "csi-rbdplugin", &opt)
+		if listErr == nil {
+			return fmt.Errorf("error checking file encrypted attribute of %q. listing filesystem+attrs: %s %s",
+				volumeMountPath, stdOut, stdErr)
+		}
+		return fmt.Errorf("error checking file encrypted attribute: %w", err)
+	}
+
+	mountType, err := getMountType(selector, volumeMountPath, f)
+	if err != nil {
+		return err
+	}
+	if mountType == "crypt" {
+		return fmt.Errorf("mount type of %q is %v suggesting that the block device was encrypted,"+
+			" when it must not have been", volumeMountPath, mountType)
 	}
 
 	return nil
