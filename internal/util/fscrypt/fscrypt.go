@@ -48,6 +48,17 @@ const (
 	encryptionPassphraseSize = 64
 )
 
+var policyV2Support = []util.KernelVersion{
+	{
+		Version:      5,
+		PatchLevel:   4,
+		SubLevel:     0,
+		ExtraVersion: 0,
+		Distribution: "",
+		Backport:     false,
+	},
+}
+
 func IsEncrypted(volOptions map[string]string) (bool, error) {
 	if val, ok := volOptions["encrypted"]; ok {
 		encrypted, err := strconv.ParseBool(val)
@@ -277,10 +288,30 @@ func IsDirectoryUnlocked(directoryPath, filesystem string) error {
 	return nil
 }
 
+func getBestPolicyVersion() (int64, error) {
+	// fetch the current running kernel info
+	release, err := util.GetKernelVersion()
+	if err != nil {
+		return 0, fmt.Errorf("fetching current kernel version failed: %w", err)
+	}
+
+	switch {
+	case util.CheckKernelSupport(release, policyV2Support):
+		return 2, nil
+	default:
+		return 1, nil
+	}
+}
+
 // InitializeNode performs once per nodeserver initialization
 // required by the fscrypt library. Creates /etc/fscrypt.conf.
 func InitializeNode(ctx context.Context) error {
-	err := fscryptactions.CreateConfigFile(FscryptHashingTimeTarget, 2)
+	policyVersion, err := getBestPolicyVersion()
+	if err != nil {
+		return err
+	}
+
+	err = fscryptactions.CreateConfigFile(FscryptHashingTimeTarget, policyVersion)
 	if err != nil {
 		existsError := &fscryptactions.ErrConfigFileExists{}
 		if errors.As(err, &existsError) {
