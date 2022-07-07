@@ -108,6 +108,12 @@ parameters:
    # A string is expected here, i.e. "true", not true.
    # encrypted: "true"
 
+   # (optional) Select the encryption type when encrypted: "true"
+   # above. Defaults to "block". Valid values are: "file": Enable file
+   # encryption on the mounted filesystem; "block": Encrypt RBD block
+   # device
+   # encryptionType: "block"
+
    # (optional) Use external key management system for encryption passphrases by
    # specifying a unique ID matching KMS ConfigMap. The ID is only used for
    # correlation to configmap entry.
