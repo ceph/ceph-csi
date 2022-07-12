@@ -58,6 +58,22 @@ func RoundOffBytes(bytes int64) int64 {
 	return num
 }
 
+// RoundOffCephFSVolSize rounds up the bytes to 4MiB if the request is less
+// than 4MiB or if its greater it rounds up to multiple of 4MiB.
+func RoundOffCephFSVolSize(bytes int64) int64 {
+	// Minimum supported size is 1MiB in CephCSI, if the request is <4MiB,
+	// round off to 4MiB.
+	if bytes < helpers.MiB {
+		return 4 * helpers.MiB
+	}
+
+	bytes /= helpers.MiB
+
+	bytes = int64(math.Ceil(float64(bytes)/4) * 4)
+
+	return RoundOffBytes(bytes * helpers.MiB)
+}
+
 // variables which will be set during the build time.
 var (
 	// GitCommit tell the latest git commit image is built from.
