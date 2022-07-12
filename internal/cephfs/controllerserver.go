@@ -277,7 +277,7 @@ func (cs *ControllerServer) CreateVolume(
 	defer volOptions.Destroy()
 
 	if req.GetCapacityRange() != nil {
-		volOptions.Size = util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
+		volOptions.Size = util.RoundOffCephFSVolSize(req.GetCapacityRange().GetRequiredBytes())
 	}
 
 	parentVol, pvID, sID, err := checkContentSource(ctx, req, cr)
@@ -672,7 +672,8 @@ func (cs *ControllerServer) ControllerExpandVolume(
 		return nil, status.Error(codes.InvalidArgument, "cannot expand snapshot-backed volume")
 	}
 
-	RoundOffSize := util.RoundOffBytes(req.GetCapacityRange().GetRequiredBytes())
+	RoundOffSize := util.RoundOffCephFSVolSize(req.GetCapacityRange().GetRequiredBytes())
+
 	volClient := core.NewSubVolume(volOptions.GetConnection(), &volOptions.SubVolume, volOptions.ClusterID)
 	if err = volClient.ResizeVolume(ctx, RoundOffSize); err != nil {
 		log.ErrorLog(ctx, "failed to expand volume %s: %v", fsutil.VolumeID(volIdentifier.FsSubvolName), err)

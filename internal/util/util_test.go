@@ -352,3 +352,52 @@ func TestCheckKernelSupport(t *testing.T) {
 		}
 	}
 }
+
+func TestRoundOffCephFSVolSize(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		size int64
+		want int64
+	}{
+		{
+			"1000kiB conversion",
+			1000,
+			4194304, // 4 MiB
+		},
+		{
+			"1MiB conversions",
+			1048576,
+			4194304, // 4 MiB
+		},
+		{
+			"1.5Mib conversion",
+			1677722,
+			4194304, // 4 MiB
+		},
+		{
+			"1023MiB conversion",
+			1072693248,
+			1073741824, // 1024 MiB
+		},
+		{
+			"1.5GiB conversion",
+			1585446912,
+			2147483648, // 2 GiB
+		},
+		{
+			"1555MiB conversion",
+			1630535680,
+			2147483648, // 2 GiB
+		},
+	}
+	for _, tt := range tests {
+		ts := tt
+		t.Run(ts.name, func(t *testing.T) {
+			t.Parallel()
+			if got := RoundOffCephFSVolSize(ts.size); got != ts.want {
+				t.Errorf("RoundOffCephFSVolSize() = %v, want %v", got, ts.want)
+			}
+		})
+	}
+}
