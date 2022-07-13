@@ -80,6 +80,33 @@ func FetchEncryptionKMSID(encrypted, kmsID string) (string, error) {
 	return kmsID, nil
 }
 
+type EncryptionType int
+
+const (
+	EncryptionTypeInvalid EncryptionType = iota
+	EncryptionTypeBlock                  = iota
+	EncryptionTypeFile                   = iota
+)
+
+// FetchEncryptionType returns encryptionType specified in volOptions.
+// If not specified, use fallback. If specified but invalid, return
+// invalid.
+func FetchEncryptionType(volOptions map[string]string, fallback EncryptionType) EncryptionType {
+	encType, ok := volOptions["encryptionType"]
+	if !ok {
+		return fallback
+	}
+
+	switch encType {
+	case "block":
+		return EncryptionTypeBlock
+	case "file":
+		return EncryptionTypeFile
+	default:
+		return EncryptionTypeInvalid
+	}
+}
+
 // NewVolumeEncryption creates a new instance of VolumeEncryption and
 // configures the DEKStore. If the KMS does not provide a DEKStore interface,
 // the VolumeEncryption will be created *and* a ErrDEKStoreNeeded is returned.
