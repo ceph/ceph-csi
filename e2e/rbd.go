@@ -242,6 +242,12 @@ func checkClusternameInMetadata(f *framework.Framework, ns, pool, image string) 
 	}
 }
 
+// ByFileAndBlockEncryption wraps ginkgo's By to run the test body using file and block encryption specific validators.
+func ByFileAndBlockEncryption(text string, callback func(validator encryptionValidateFunc, encryptionType string)) {
+	By(text+" (block)", func() { callback(validateEncryptedPVCAndAppBinding, "block") })
+	By(text+" (file)", func() { callback(validateEncryptedFilesystemAndAppBinding, "file") })
+}
+
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework(rbdType)
 	var c clientset.Interface
