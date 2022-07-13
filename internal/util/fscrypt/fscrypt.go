@@ -25,7 +25,6 @@ import (
 	"os"
 	"os/user"
 	"path"
-	"strconv"
 	"time"
 	"unsafe"
 
@@ -57,19 +56,6 @@ var policyV2Support = []util.KernelVersion{
 		Distribution: "",
 		Backport:     false,
 	},
-}
-
-func IsEncrypted(volOptions map[string]string) (bool, error) {
-	if val, ok := volOptions["encrypted"]; ok {
-		encrypted, err := strconv.ParseBool(val)
-		if err != nil {
-			return false, err
-		}
-
-		return encrypted, nil
-	}
-
-	return false, nil
 }
 
 func AppendEncyptedSubdirectory(dir string) string {

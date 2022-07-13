@@ -34,6 +34,10 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 )
 
+const (
+	cephfsDefaultEncryptionType = util.EncryptionTypeFile
+)
+
 type VolumeOptions struct {
 	core.SubVolume
 
@@ -781,26 +785,54 @@ func GenSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (*S
 	return cephfsSnap, nil
 }
 
-// MaybeInitKMS initializes the Ceph CSI key management if it is enabled in the volume options.
-func (vo *VolumeOptions) MaybeInitKMS(ctx context.Context, volOptions,
-	credentials map[string]string, mountPoint string,
-) error {
+func parseEncryptionOpts(volOptions map[string]string) (string, util.EncryptionType, error) {
 	var (
 		err              error
 		ok               bool
 		encrypted, kmsID string
 	)
-
 	encrypted, ok = volOptions["encrypted"]
 	if !ok {
+		return "", util.EncryptionTypeInvalid, err
+	}
+	kmsID, err = util.FetchEncryptionKMSID(encrypted, volOptions["encryptionKMSID"])
+	if err != nil {
+		return "", util.EncryptionTypeInvalid, err
+	}
+
+	encType := util.FetchEncryptionType(volOptions, cephfsDefaultEncryptionType)
+
+	return kmsID, encType, nil
+}
+
+// IsEncrypted returns true if volOptions enables file encryption.
+func IsEncrypted(ctx context.Context, volOptions map[string]string) (bool, error) {
+	_, encType, err := parseEncryptionOpts(volOptions)
+	if err != nil {
+		return false, err
+	}
+
+	return encType == util.EncryptionTypeFile, nil
+}
+
+// MaybeInitKMS initializes the Ceph CSI key management if it is enabled in the volume options.
+func (vo *VolumeOptions) MaybeInitKMS(ctx context.Context, volOptions,
+	credentials map[string]string, mountPoint string,
+) error {
+	var (
+		err error
+		ok  bool
+	)
+
+	kmsID, encType, err := parseEncryptionOpts(volOptions)
+	if err != nil {
+		return err
+	} else if kmsID == "" {
 		return nil
 	}
 
-	kmsID, err = util.FetchEncryptionKMSID(encrypted, volOptions["encryptionKMSID"])
-	if err != nil {
-		log.ErrorLog(ctx, "fetch encryption kmsid failed %+v: %v", volOptions, err)
-
-		return err
+	if encType != util.EncryptionTypeFile {
+		return fmt.Errorf("unsupported encryption type %v. only supported type is 'file'.", encType)
 	}
 
 	vo.Owner, ok = volOptions["csi.storage.k8s.io/pvc/namespace"]

@@ -505,7 +505,7 @@ func (ns *NodeServer) NodePublishVolume(
 	}
 
 	// It's not, mount now
-	encrypted, err := fscrypt.IsEncrypted(req.GetVolumeContext())
+	encrypted, err := store.IsEncrypted(ctx, req.GetVolumeContext())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
