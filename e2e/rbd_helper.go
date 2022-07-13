@@ -482,6 +482,8 @@ func validateCloneInDifferentPool(f *framework.Framework, snapshotPool, cloneSc,
 	return nil
 }
 
+type encryptionValidateFunc func(pvcPath, appPath string, kms kmsConfig, f *framework.Framework) error
+
 func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, kms kmsConfig, f *framework.Framework) error {
 	pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
 	if err != nil {
