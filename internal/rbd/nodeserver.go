@@ -814,7 +814,7 @@ func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *
 
 func (ns *NodeServer) createTargetMountPath(ctx context.Context, mountPath string, isBlock bool) (bool, error) {
 	// Check if that mount path exists properly
-	notMnt, err := mount.IsNotMountPoint(ns.Mounter, mountPath)
+	notMnt, err := ns.Mounter.IsLikelyNotMountPoint(mountPath)
 	if err == nil {
 		return notMnt, nil
 	}
