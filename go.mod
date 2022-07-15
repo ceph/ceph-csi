@@ -25,7 +25,7 @@ require (
 	github.com/prometheus/client_golang v1.12.2
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
-	golang.org/x/sys v0.0.0-20220209214540-3681064d5158
+	golang.org/x/sys v0.0.0-20220319134239-a9b59b0215f8
 	google.golang.org/grpc v1.48.0
 	google.golang.org/protobuf v1.28.0
 	k8s.io/api v0.24.3
@@ -38,7 +38,7 @@ require (
 	//
 	k8s.io/kubernetes v1.24.3
 	k8s.io/mount-utils v0.24.3
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
+	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
 	sigs.k8s.io/controller-runtime v0.11.0-beta.0.0.20211208212546-f236f0345ad2
 )
 
@@ -64,7 +64,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
-	github.com/go-logr/logr v1.2.0 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.14 // indirect
@@ -111,6 +111,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.1 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
+	github.com/moby/sys/mountinfo v0.6.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -197,7 +198,7 @@ replace (
 	k8s.io/kubelet => k8s.io/kubelet v0.24.3
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.24.3
 	k8s.io/metrics => k8s.io/metrics v0.24.3
-	k8s.io/mount-utils => k8s.io/mount-utils v0.24.3
+	k8s.io/mount-utils => k8s.io/mount-utils v0.25.0-alpha.3.0.20220801203918-ff562e546084
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.24.3
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.24.3
 	// layeh.com seems to be misbehaving
