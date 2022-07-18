@@ -38,6 +38,7 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/volume"
+	mount "k8s.io/mount-utils"
 )
 
 func parseEndpoint(ep string) (string, string, error) {
@@ -61,8 +62,9 @@ func NewDefaultNodeServer(d *CSIDriver, t string, topology map[string]string) *D
 	d.topology = topology
 
 	return &DefaultNodeServer{
-		Driver: d,
-		Type:   t,
+		Driver:  d,
+		Type:    t,
+		Mounter: mount.New(""),
 	}
 }
 
@@ -229,8 +231,12 @@ func panicHandler(
 // requested by the NodeGetVolumeStats CSI procedure.
 // It is shared for FileMode volumes, both the CephFS and RBD NodeServers call
 // this.
-func FilesystemNodeGetVolumeStats(ctx context.Context, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
-	isMnt, err := util.IsMountPoint(targetPath)
+func FilesystemNodeGetVolumeStats(
+	ctx context.Context,
+	mounter mount.Interface,
+	targetPath string,
+) (*csi.NodeGetVolumeStatsResponse, error) {
+	isMnt, err := util.IsMountPoint(mounter, targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s does not exist", targetPath)

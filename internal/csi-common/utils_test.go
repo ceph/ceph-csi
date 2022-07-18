@@ -26,6 +26,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mount "k8s.io/mount-utils"
 )
 
 var fakeID = "fake-id"
@@ -87,7 +88,7 @@ func TestFilesystemNodeGetVolumeStats(t *testing.T) {
 
 	// retry until a mountpoint is found
 	for {
-		stats, err := FilesystemNodeGetVolumeStats(context.TODO(), cwd)
+		stats, err := FilesystemNodeGetVolumeStats(context.TODO(), mount.New(""), cwd)
 		if err != nil && cwd != "/" && strings.HasSuffix(err.Error(), "is not mounted") {
 			// try again with the parent directory
 			cwd = filepath.Dir(cwd)

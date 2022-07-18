@@ -42,7 +42,6 @@ import (
 // node server spec.
 type NodeServer struct {
 	*csicommon.DefaultNodeServer
-	Mounter mount.Interface
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID) return an Aborted error
 	VolumeLocks *util.VolumeLocks
@@ -806,7 +805,7 @@ func (ns *NodeServer) mountVolume(ctx context.Context, stagingPath string, req *
 	if readOnly {
 		mountOptions = append(mountOptions, "ro")
 	}
-	if err := util.Mount(stagingPath, targetPath, fsType, mountOptions); err != nil {
+	if err := util.Mount(ns.Mounter, stagingPath, targetPath, fsType, mountOptions); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -1241,7 +1240,7 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	}
 
 	if stat.Mode().IsDir() {
-		return csicommon.FilesystemNodeGetVolumeStats(ctx, targetPath)
+		return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath)
 	} else if (stat.Mode() & os.ModeDevice) == os.ModeDevice {
 		return blockNodeGetVolumeStats(ctx, targetPath)
 	}

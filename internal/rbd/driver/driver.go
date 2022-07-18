@@ -29,7 +29,6 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	mount "k8s.io/mount-utils"
 )
 
 // Driver contains the default identity,node and controller struct.
@@ -73,11 +72,8 @@ func NewReplicationServer(c *rbd.ControllerServer) *rbd.ReplicationServer {
 
 // NewNodeServer initialize a node server for rbd CSI driver.
 func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string) (*rbd.NodeServer, error) {
-	mounter := mount.New("")
-
 	return &rbd.NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, topology),
-		Mounter:           mounter,
 		VolumeLocks:       util.NewVolumeLocks(),
 	}, nil
 }

@@ -176,7 +176,7 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Errorf(codes.Internal, "failed to try to restore FUSE mounts: %v", err)
 	}
 
-	isMnt, err := util.IsMountPoint(stagingTargetPath)
+	isMnt, err := util.IsMountPoint(ns.Mounter, stagingTargetPath)
 	if err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
 
@@ -426,7 +426,7 @@ func (ns *NodeServer) NodePublishVolume(
 
 	// Ensure staging target path is a mountpoint.
 
-	if isMnt, err := util.IsMountPoint(stagingTargetPath); err != nil {
+	if isMnt, err := util.IsMountPoint(ns.Mounter, stagingTargetPath); err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
 
 		return nil, status.Error(codes.Internal, err.Error())
@@ -438,7 +438,7 @@ func (ns *NodeServer) NodePublishVolume(
 
 	// Check if the volume is already mounted
 
-	isMnt, err := util.IsMountPoint(targetPath)
+	isMnt, err := util.IsMountPoint(ns.Mounter, targetPath)
 	if err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
 
@@ -482,7 +482,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	// considering kubelet make sure node operations like unpublish/unstage...etc can not be called
 	// at same time, an explicit locking at time of nodeunpublish is not required.
 	targetPath := req.GetTargetPath()
-	isMnt, err := util.IsMountPoint(targetPath)
+	isMnt, err := util.IsMountPoint(ns.Mounter, targetPath)
 	if err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
 
@@ -551,7 +551,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	isMnt, err := util.IsMountPoint(stagingTargetPath)
+	isMnt, err := util.IsMountPoint(ns.Mounter, stagingTargetPath)
 	if err != nil {
 		log.ErrorLog(ctx, "stat failed: %v", err)
 
@@ -637,7 +637,7 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	}
 
 	if stat.Mode().IsDir() {
-		return csicommon.FilesystemNodeGetVolumeStats(ctx, targetPath)
+		return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath)
 	}
 
 	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
