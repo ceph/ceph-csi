@@ -64,7 +64,7 @@ func NewDefaultNodeServer(d *CSIDriver, t string, topology map[string]string) *D
 	return &DefaultNodeServer{
 		Driver:  d,
 		Type:    t,
-		Mounter: mount.New(""),
+		Mounter: mount.NewWithoutSystemd(""),
 	}
 }
 
