@@ -24,12 +24,14 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	mount "k8s.io/mount-utils"
 )
 
 // DefaultNodeServer stores driver object.
 type DefaultNodeServer struct {
-	Driver *CSIDriver
-	Type   string
+	Driver  *CSIDriver
+	Type    string
+	Mounter mount.Interface
 }
 
 // NodeExpandVolume returns unimplemented response.

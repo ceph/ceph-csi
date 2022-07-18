@@ -51,8 +51,8 @@ func (ms mountState) String() string {
 	}[int(ms)]
 }
 
-func getMountState(path string) (mountState, error) {
-	isMnt, err := util.IsMountPoint(path)
+func (ns *NodeServer) getMountState(path string) (mountState, error) {
+	isMnt, err := util.IsMountPoint(ns.Mounter, path)
 	if err != nil {
 		if util.IsCorruptedMountError(err) {
 			return msCorrupted, nil
@@ -117,12 +117,12 @@ func (ns *NodeServer) tryRestoreFuseMountsInNodePublish(
 ) error {
 	// Check if there is anything to restore.
 
-	stagingTargetMs, err := getMountState(stagingTargetPath)
+	stagingTargetMs, err := ns.getMountState(stagingTargetPath)
 	if err != nil {
 		return err
 	}
 
-	targetMs, err := getMountState(targetPath)
+	targetMs, err := ns.getMountState(targetPath)
 	if err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func (ns *NodeServer) tryRestoreFuseMountInNodeStage(
 ) error {
 	// Check if there is anything to restore.
 
-	stagingTargetMs, err := getMountState(stagingTargetPath)
+	stagingTargetMs, err := ns.getMountState(stagingTargetPath)
 	if err != nil {
 		return err
 	}

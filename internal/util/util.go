@@ -325,9 +325,8 @@ func checkDirExists(p string) bool {
 }
 
 // IsMountPoint checks if the given path is mountpoint or not.
-func IsMountPoint(p string) (bool, error) {
-	dummyMount := mount.New("")
-	notMnt, err := dummyMount.IsLikelyNotMountPoint(p)
+func IsMountPoint(mounter mount.Interface, p string) (bool, error) {
+	notMnt, err := mounter.IsLikelyNotMountPoint(p)
 	if err != nil {
 		return false, err
 	}
@@ -348,10 +347,8 @@ func ReadMountInfoForProc(proc string) ([]mount.MountInfo, error) {
 }
 
 // Mount mounts the source to target path.
-func Mount(source, target, fstype string, options []string) error {
-	dummyMount := mount.New("")
-
-	return dummyMount.MountSensitiveWithoutSystemd(source, target, fstype, options, nil)
+func Mount(mounter mount.Interface, source, target, fstype string, options []string) error {
+	return mounter.MountSensitiveWithoutSystemd(source, target, fstype, options, nil)
 }
 
 // MountOptionsAdd adds the `add` mount options to the `options` and returns a
