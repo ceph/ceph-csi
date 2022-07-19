@@ -2,7 +2,6 @@ package cephfs
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -52,22 +51,12 @@ func getPassphrase(ctx context.Context, encryption util.VolumeEncryption, volID 
 
 	switch encryption.KMS.RequiresDEKStore() {
 	case kms.DEKStoreIntegrated:
-		var passphraseb64 string
-		passphraseb64, err = encryption.GetCryptoPassphrase(string(volID))
+		passphrase, err = encryption.GetCryptoPassphrase(string(volID))
 		if err != nil {
 			log.ErrorLog(ctx, "fscrypt: failed to get passphrase from KMS: %v", err)
 
 			return "", err
 		}
-
-		var passphraseBytes []byte
-		passphraseBytes, err = base64.URLEncoding.DecodeString(passphraseb64)
-		if err != nil {
-			log.ErrorLog(ctx, "failed to decode base64-encoded passphrase: %s", err)
-
-			return "", err
-		}
-		passphrase = string(passphraseBytes)
 	case kms.DEKStoreMetadata:
 		passphrase, err = encryption.KMS.GetSecret(string(volID))
 		if err != nil {
