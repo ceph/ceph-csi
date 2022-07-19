@@ -177,7 +177,8 @@ func initializeAndUnlock(
 
 	protector, err := fscryptactions.CreateProtector(fscryptContext, protectorName, keyFn, owner)
 	if err != nil {
-		log.ErrorLog(ctx, "fscrypt: protector name=%s create failed: %v", protectorName, err)
+		log.ErrorLog(ctx, "fscrypt: protector name=%s create failed: %v. reverting.", protectorName, err)
+		protector.Revert()
 
 		return err
 	}
