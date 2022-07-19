@@ -191,7 +191,8 @@ const (
 type localClusterState struct {
 	// set the enum value i.e., unknown, supported,
 	// unsupported as per the state of the cluster.
-	resizeState operationState
+	resizeState         operationState
+	subVolMetadataState operationState
 	// set true once a subvolumegroup is created
 	// for corresponding cluster.
 	subVolumeGroupCreated bool
