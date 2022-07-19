@@ -124,7 +124,7 @@ func (nv *NFSVolume) GetExportPath() string {
 // a new NFS-export for the volume on the Ceph managed NFS-server.
 func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	if !nv.connected {
-		return fmt.Errorf("can not created export for %q: not connected", nv)
+		return fmt.Errorf("can not created export for %q: %w", nv, ErrNotConnected)
 	}
 
 	fs := backend.VolumeContext["fsName"]
@@ -213,6 +213,8 @@ func (nv *NFSVolume) DeleteExport() error {
 		return nil
 	case strings.Contains(err.Error(), "API call not implemented"): // try with the old command
 		break
+	case strings.Contains(err.Error(), "Export does not exist"):
+		return ErrExportNotFound
 	default: // any other error
 		return fmt.Errorf("failed to remove %q from NFS-cluster %q: "+
 			"%w", nv, nfsCluster, err)
@@ -251,18 +253,18 @@ func (nv *NFSVolume) deleteExportCommand(cmd, nfsCluster string) []string {
 // getNFSCluster fetches the NFS-cluster name from the CephFS journal.
 func (nv *NFSVolume) getNFSCluster() (string, error) {
 	if !nv.connected {
-		return "", fmt.Errorf("can not get NFS-cluster for %q: not connected", nv)
+		return "", fmt.Errorf("can not get NFS-cluster for %q: %w", nv, ErrNotConnected)
 	}
 
 	fs := fscore.NewFileSystem(nv.conn)
 	fsName, err := fs.GetFsName(nv.ctx, nv.fscID)
 	if err != nil {
-		return "", fmt.Errorf("failed to get filesystem name for ID %x: %w", nv.fscID, err)
+		return "", fmt.Errorf("filesystem name for ID %x %w: %v", nv.fscID, ErrNotFound, err)
 	}
 
 	mdPool, err := fs.GetMetadataPool(nv.ctx, fsName)
 	if err != nil {
-		return "", fmt.Errorf("failed to get metadata pool for %q: %w", fsName, err)
+		return "", fmt.Errorf("metadata pool for %q %w: %v", fsName, ErrNotFound, err)
 	}
 
 	// Connect to cephfs' default radosNamespace (csi)
@@ -274,7 +276,7 @@ func (nv *NFSVolume) getNFSCluster() (string, error) {
 
 	clusterName, err := j.FetchAttribute(nv.ctx, mdPool, nv.objectUUID, clusterNameKey)
 	if err != nil {
-		return "", fmt.Errorf("failed to get cluster name: %w", err)
+		return "", fmt.Errorf("cluster name for %q %w: %v", nv.objectUUID, ErrNotFound, err)
 	}
 
 	return clusterName, nil
@@ -283,18 +285,18 @@ func (nv *NFSVolume) getNFSCluster() (string, error) {
 // setNFSCluster stores the NFS-cluster name in the CephFS journal.
 func (nv *NFSVolume) setNFSCluster(clusterName string) error {
 	if !nv.connected {
-		return fmt.Errorf("can not set NFS-cluster for %q: not connected", nv)
+		return fmt.Errorf("can not set NFS-cluster for %q: %w", nv, ErrNotConnected)
 	}
 
 	fs := fscore.NewFileSystem(nv.conn)
 	fsName, err := fs.GetFsName(nv.ctx, nv.fscID)
 	if err != nil {
-		return fmt.Errorf("failed to get filesystem name for ID %x: %w", nv.fscID, err)
+		return fmt.Errorf("filesystem name for ID %x %w: %v", nv.fscID, ErrNotFound, err)
 	}
 
 	mdPool, err := fs.GetMetadataPool(nv.ctx, fsName)
 	if err != nil {
-		return fmt.Errorf("failed to get metadata pool for %q: %w", fsName, err)
+		return fmt.Errorf("metadata pool for %q %w: %v", fsName, ErrNotFound, err)
 	}
 
 	// Connect to cephfs' default radosNamespace (csi)
