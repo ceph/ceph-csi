@@ -85,13 +85,13 @@ func createKeyFuncFromVolumeEncryption(
 	encryption util.VolumeEncryption,
 	volID string,
 ) (func(fscryptactions.ProtectorInfo, bool) (*fscryptcrypto.Key, error), error) {
-	passphrase, err := getPassphrase(ctx, encryption, volID)
-	if err != nil {
-		return nil, err
-	}
-
 	keyFunc := func(info fscryptactions.ProtectorInfo, retry bool) (*fscryptcrypto.Key, error) {
-		key, err := fscryptcrypto.NewBlankKey(32)
+		passphrase, err := getPassphrase(ctx, encryption, volID)
+		if err != nil {
+			return nil, err
+		}
+
+		key, err := fscryptcrypto.NewBlankKey(encryptionPassphraseSize / 2)
 		copy(key.Data(), passphrase)
 
 		return key, err
