@@ -398,7 +398,7 @@ func CheckSnapExists(
 	snapUUID := snapData.ImageUUID
 	snapID := snapData.ImageAttributes.ImageName
 	sid.FsSnapshotName = snapData.ImageAttributes.ImageName
-	snapClient := core.NewSnapshot(volOptions.conn, snapID, &volOptions.SubVolume)
+	snapClient := core.NewSnapshot(volOptions.conn, snapID, volOptions.ClusterID, &volOptions.SubVolume)
 	snapInfo, err := snapClient.GetSnapshotInfo(ctx)
 	if err != nil {
 		if errors.Is(err, cerrors.ErrSnapNotFound) {

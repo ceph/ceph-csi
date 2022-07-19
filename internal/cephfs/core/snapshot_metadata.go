@@ -17,30 +17,75 @@ limitations under the License.
 package core
 
 import (
+	"errors"
 	"fmt"
 	"strings"
+
+	fsAdmin "github.com/ceph/go-ceph/cephfs/admin"
 )
+
+// ErrSubVolSnapMetadataNotSupported is returned when set/get/list/remove
+// subvolume snapshot metadata options are not supported.
+var ErrSubVolSnapMetadataNotSupported = errors.New("subvolume snapshot metadata operations are not supported")
+
+func (s *snapshotClient) supportsSubVolSnapMetadata() bool {
+	if _, keyPresent := clusterAdditionalInfo[s.clusterID]; !keyPresent {
+		clusterAdditionalInfo[s.clusterID] = &localClusterState{}
+	}
+
+	return clusterAdditionalInfo[s.clusterID].subVolSnapshotMetadataState != unsupported
+}
+
+func (s *snapshotClient) isUnsupportedSubVolSnapMetadata(err error) bool {
+	var invalid fsAdmin.NotImplementedError
+	if err != nil && errors.Is(err, &invalid) {
+		// In case the error is other than invalid command return error to
+		// the caller.
+		clusterAdditionalInfo[s.clusterID].subVolSnapshotMetadataState = unsupported
+
+		return false
+	}
+	clusterAdditionalInfo[s.clusterID].subVolSnapshotMetadataState = supported
+
+	return true
+}
 
 // setSnapshotMetadata sets custom metadata on the subvolume snapshot in a
 // volume as a key-value pair.
 func (s *snapshotClient) setSnapshotMetadata(key, value string) error {
+	if !s.supportsSubVolSnapMetadata() {
+		return ErrSubVolSnapMetadataNotSupported
+	}
 	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		return err
 	}
 
-	return fsa.SetSnapshotMetadata(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID, key, value)
+	err = fsa.SetSnapshotMetadata(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID, key, value)
+	if !s.isUnsupportedSubVolSnapMetadata(err) {
+		return ErrSubVolSnapMetadataNotSupported
+	}
+
+	return err
 }
 
 // removeSnapshotMetadata removes custom metadata set on the subvolume
 // snapshot in a volume using the metadata key.
 func (s *snapshotClient) removeSnapshotMetadata(key string) error {
+	if !s.supportsSubVolSnapMetadata() {
+		return ErrSubVolSnapMetadataNotSupported
+	}
 	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		return err
 	}
 
-	return fsa.RemoveSnapshotMetadata(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID, key)
+	err = fsa.RemoveSnapshotMetadata(s.FsName, s.SubvolumeGroup, s.VolID, s.SnapshotID, key)
+	if !s.isUnsupportedSubVolSnapMetadata(err) {
+		return ErrSubVolSnapMetadataNotSupported
+	}
+
+	return err
 }
 
 // SetAllSnapshotMetadata set all the metadata from arg parameters on

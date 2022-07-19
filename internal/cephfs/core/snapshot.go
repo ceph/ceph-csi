@@ -62,6 +62,7 @@ type SnapshotClient interface {
 // snapshotClient is the implementation of SnapshotClient interface.
 type snapshotClient struct {
 	*Snapshot                         // Embedded snapshot struct.
+	clusterID string                  // Cluster ID.
 	conn      *util.ClusterConnection // Cluster connection.
 }
 
@@ -72,13 +73,14 @@ type Snapshot struct {
 }
 
 // NewSnapshot creates a new snapshot client.
-func NewSnapshot(conn *util.ClusterConnection, snapshotID string, vol *SubVolume) SnapshotClient {
+func NewSnapshot(conn *util.ClusterConnection, snapshotID, clusterID string, vol *SubVolume) SnapshotClient {
 	return &snapshotClient{
 		Snapshot: &Snapshot{
 			SnapshotID: snapshotID,
 			SubVolume:  vol,
 		},
-		conn: conn,
+		clusterID: clusterID,
+		conn:      conn,
 	}
 }
 
