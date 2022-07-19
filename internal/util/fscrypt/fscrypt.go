@@ -294,9 +294,17 @@ func Unlock(
 	volEncryption *util.VolumeEncryption,
 	stagingTargetPath string, volID string,
 ) error {
+	// Fetches keys from KMS. Do this first to catch KMS errors before setting up anything.
+	keyFn, err := createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID)
+	if err != nil {
+		log.ErrorLog(ctx, "fscrypt: could not create key function: %v", err)
+
+		return err
+	}
+
 	fscryptContext, err := fscryptactions.NewContextFromMountpoint(stagingTargetPath, nil)
 	if err != nil {
-		log.ErrorLog(ctx, "fscrypt: failed to create context from mountpoint %v: %w", stagingTargetPath)
+		log.ErrorLog(ctx, "fscrypt: failed to create context from mountpoint %v: %w", stagingTargetPath, err)
 
 		return err
 	}
@@ -318,7 +326,7 @@ func Unlock(
 	if err = fscryptContext.Mount.Setup(0o755); err != nil {
 		alreadySetupErr := &fscryptfilesystem.ErrAlreadySetup{}
 		if errors.As(err, &alreadySetupErr) {
-			log.DebugLog(ctx, "fscrypt: metadata directory %q already set up", alreadySetupErr.Mount.Path)
+			log.DebugLog(ctx, "fscrypt: metadata directory in %q already set up", alreadySetupErr.Mount.Path)
 			metadataDirExists = true
 		} else {
 			log.ErrorLog(ctx, "fscrypt: mount setup failed: %v", err)
@@ -337,13 +345,6 @@ func Unlock(
 	if metadataDirExists != kernelPolicyExists {
 		return fmt.Errorf("fscrypt: unsupported state metadata=%t kernel_policy=%t",
 			metadataDirExists, kernelPolicyExists)
-	}
-
-	keyFn, err := createKeyFuncFromVolumeEncryption(ctx, *volEncryption, volID)
-	if err != nil {
-		log.ErrorLog(ctx, "fscrypt: could not create key function: %v", err)
-
-		return err
 	}
 
 	protectorName := fmt.Sprintf("%s-%s", FscryptProtectorPrefix, volEncryption.GetID())
