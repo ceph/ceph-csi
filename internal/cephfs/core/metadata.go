@@ -17,8 +17,11 @@ limitations under the License.
 package core
 
 import (
+	"errors"
 	"fmt"
 	"strings"
+
+	fsAdmin "github.com/ceph/go-ceph/cephfs/admin"
 )
 
 const (
@@ -26,26 +29,66 @@ const (
 	clusterNameKey = "csi.ceph.com/cluster/name"
 )
 
+// ErrSubVolMetadataNotSupported is returned when set/get/list/remove subvolume metadata options are not supported.
+var ErrSubVolMetadataNotSupported = errors.New("subvolume metadata operations are not supported")
+
+func (s *subVolumeClient) supportsSubVolMetadata() bool {
+	if _, keyPresent := clusterAdditionalInfo[s.clusterID]; !keyPresent {
+		clusterAdditionalInfo[s.clusterID] = &localClusterState{}
+	}
+
+	return clusterAdditionalInfo[s.clusterID].subVolMetadataState != unsupported
+}
+
+func (s *subVolumeClient) isUnsupportedSubVolMetadata(err error) bool {
+	var invalid fsAdmin.NotImplementedError
+	if err != nil && errors.Is(err, &invalid) {
+		// In case the error is other than invalid command return error to the caller.
+		clusterAdditionalInfo[s.clusterID].subVolMetadataState = unsupported
+
+		return false
+	}
+	clusterAdditionalInfo[s.clusterID].subVolMetadataState = supported
+
+	return true
+}
+
 // setMetadata sets custom metadata on the subvolume in a volume as a
 // key-value pair.
 func (s *subVolumeClient) setMetadata(key, value string) error {
+	var err error
+	if !s.supportsSubVolMetadata() {
+		return ErrSubVolMetadataNotSupported
+	}
 	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		return err
 	}
+	err = fsa.SetMetadata(s.FsName, s.SubvolumeGroup, s.VolID, key, value)
+	if !s.isUnsupportedSubVolMetadata(err) {
+		return ErrSubVolMetadataNotSupported
+	}
 
-	return fsa.SetMetadata(s.FsName, s.SubvolumeGroup, s.VolID, key, value)
+	return err
 }
 
 // removeMetadata removes custom metadata set on the subvolume in a volume
 // using the metadata key.
 func (s *subVolumeClient) removeMetadata(key string) error {
+	var err error
+	if !s.supportsSubVolMetadata() {
+		return ErrSubVolMetadataNotSupported
+	}
 	fsa, err := s.conn.GetFSAdmin()
 	if err != nil {
 		return err
 	}
+	err = fsa.RemoveMetadata(s.FsName, s.SubvolumeGroup, s.VolID, key)
+	if !s.isUnsupportedSubVolMetadata(err) {
+		return ErrSubVolMetadataNotSupported
+	}
 
-	return fsa.RemoveMetadata(s.FsName, s.SubvolumeGroup, s.VolID, key)
+	return err
 }
 
 // SetAllMetadata set all the metadata from arg parameters on Ssubvolume.
