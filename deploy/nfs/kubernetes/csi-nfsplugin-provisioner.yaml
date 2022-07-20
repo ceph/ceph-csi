@@ -47,9 +47,7 @@ spec:
             - "--timeout=150s"
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
-            # TODO: enable the feature-gate once error has been handled in nfs.
-            # Issue #3230
-            # - "--feature-gates=HonorPVReclaimPolicy=true"
+            - "--feature-gates=HonorPVReclaimPolicy=true"
             - "--prevent-volume-mode-conversion=true"
           env:
             - name: ADDRESS
