@@ -149,6 +149,9 @@ type Config struct {
 	// encryptKMS in which encryption passphrase was saved, default is no encryption
 	encryptKMSKey string
 
+	// encryptKMS in which encryption passphrase was saved, default is no encryption
+	encryptionType string
+
 	// ownerKey is used to identify the owner of the volume, can be used with some KMS configurations
 	ownerKey string
 
@@ -172,6 +175,7 @@ func NewCSIVolumeJournal(suffix string) *Config {
 		namespace:               "",
 		csiImageIDKey:           "csi.imageid",
 		encryptKMSKey:           "csi.volume.encryptKMS",
+		encryptionType:          "csi.volume.encryptionType",
 		ownerKey:                "csi.volume.owner",
 		backingSnapshotIDKey:    "csi.volume.backingsnapshotid",
 		commonPrefix:            "csi.",
@@ -191,6 +195,7 @@ func NewCSISnapshotJournal(suffix string) *Config {
 		namespace:               "",
 		csiImageIDKey:           "csi.imageid",
 		encryptKMSKey:           "csi.volume.encryptKMS",
+		encryptionType:          "csi.volume.encryptionType",
 		ownerKey:                "csi.volume.owner",
 		commonPrefix:            "csi.",
 	}
@@ -280,6 +285,7 @@ Return values:
 */
 func (conn *Connection) CheckReservation(ctx context.Context,
 	journalPool, reqName, namePrefix, snapParentName, kmsConfig string,
+	encryptionType util.EncryptionType,
 ) (*ImageData, error) {
 	var (
 		snapSource       bool
@@ -374,6 +380,14 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 			return nil, fmt.Errorf("internal state inconsistent, omap encryption KMS"+
 				" mismatch, request KMS (%s) volume UUID (%s) volume omap KMS (%s)",
 				kmsConfig, objUUID, savedImageAttributes.KmsID)
+		}
+	}
+
+	if encryptionType != util.EncryptionTypeInvalid {
+		if savedImageAttributes.EncryptionType != encryptionType {
+			return nil, fmt.Errorf("internal state inconsistent, omap encryption type"+
+				" mismatch, request KMS (%s) volume UUID (%s) volume omap KMS (%d)",
+				kmsConfig, objUUID, savedImageAttributes.EncryptionType)
 		}
 	}
 
@@ -530,6 +544,7 @@ Input arguments:
 	- namePrefix: Prefix to use when generating the image/subvolume name (suffix is an auto-generated UUID)
 	- parentName: Name of the parent image/subvolume if reservation is for a snapshot (optional)
 	- kmsConf: Name of the key management service used to encrypt the image (optional)
+	- encryptionType: Type of encryption used when kmsConf is set (optional)
 	- volUUID: UUID need to be reserved instead of auto-generating one (this is useful for mirroring and metro-DR)
 	- owner: the owner of the volume (optional)
 	- backingSnapshotID: ID of the snapshot on which the CephFS snapshot-backed volume is based (optional)
@@ -544,6 +559,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	imagePool string, imagePoolID int64,
 	reqName, namePrefix, parentName, kmsConf, volUUID, owner,
 	backingSnapshotID string,
+	encryptionType util.EncryptionType,
 ) (string, string, error) {
 	// TODO: Take in-arg as ImageAttributes?
 	var (
@@ -624,6 +640,7 @@ func (conn *Connection) ReserveName(ctx context.Context,
 	// Update UUID directory to store encryption values
 	if kmsConf != "" {
 		omapValues[cj.encryptKMSKey] = kmsConf
+		omapValues[cj.encryptionType] = util.EncryptionTypeString(encryptionType)
 	}
 
 	// if owner is passed, set it in the UUID directory too
@@ -660,14 +677,15 @@ func (conn *Connection) ReserveName(ctx context.Context,
 
 // ImageAttributes contains all CSI stored image attributes, typically as OMap keys.
 type ImageAttributes struct {
-	RequestName       string // Contains the request name for the passed in UUID
-	SourceName        string // Contains the parent image name for the passed in UUID, if it is a snapshot
-	ImageName         string // Contains the image or subvolume name for the passed in UUID
-	KmsID             string // Contains encryption KMS, if it is an encrypted image
-	Owner             string // Contains the owner to be used in combination with KmsID (for some KMS)
-	ImageID           string // Contains the image id
-	JournalPoolID     int64  // Pool ID of the CSI journal pool, stored in big endian format (on-disk data)
-	BackingSnapshotID string // ID of the snapshot on which the CephFS snapshot-backed volume is based
+	RequestName       string              // Contains the request name for the passed in UUID
+	SourceName        string              // Contains the parent image name for the passed in UUID, if it is a snapshot
+	ImageName         string              // Contains the image or subvolume name for the passed in UUID
+	KmsID             string              // Contains encryption KMS, if it is an encrypted image
+	EncryptionType    util.EncryptionType // Type of encryption used, if image encrypted
+	Owner             string              // Contains the owner to be used in combination with KmsID (for some KMS)
+	ImageID           string              // Contains the image id
+	JournalPoolID     int64               // Pool ID of the CSI journal pool, stored in big endian format (on-disk data)
+	BackingSnapshotID string              // ID of the snapshot on which the CephFS snapshot-backed volume is based
 }
 
 // GetImageAttributes fetches all keys and their values, from a UUID directory, returning ImageAttributes structure.
@@ -692,6 +710,7 @@ func (conn *Connection) GetImageAttributes(
 		cj.csiNameKey,
 		cj.csiImageKey,
 		cj.encryptKMSKey,
+		cj.encryptionType,
 		cj.csiJournalPool,
 		cj.cephSnapSourceKey,
 		cj.csiImageIDKey,
@@ -711,6 +730,7 @@ func (conn *Connection) GetImageAttributes(
 	var found bool
 	imageAttributes.RequestName = values[cj.csiNameKey]
 	imageAttributes.KmsID = values[cj.encryptKMSKey]
+	imageAttributes.EncryptionType = util.ParseEncryptionType(values[cj.encryptionType])
 	imageAttributes.Owner = values[cj.ownerKey]
 	imageAttributes.ImageID = values[cj.csiImageIDKey]
 	imageAttributes.BackingSnapshotID = values[cj.backingSnapshotIDKey]
