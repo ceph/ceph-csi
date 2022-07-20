@@ -88,6 +88,28 @@ const (
 	EncryptionTypeFile                   = iota
 )
 
+func ParseEncryptionType(typeStr string) EncryptionType {
+	switch typeStr {
+	case "block":
+		return EncryptionTypeBlock
+	case "file":
+		return EncryptionTypeFile
+	default:
+		return EncryptionTypeInvalid
+	}
+}
+
+func EncryptionTypeString(encType EncryptionType) string {
+	switch encType {
+	case EncryptionTypeBlock:
+		return "block"
+	case EncryptionTypeFile:
+		return "file"
+	default:
+		return ""
+	}
+}
+
 // FetchEncryptionType returns encryptionType specified in volOptions.
 // If not specified, use fallback. If specified but invalid, return
 // invalid.
@@ -97,14 +119,7 @@ func FetchEncryptionType(volOptions map[string]string, fallback EncryptionType) 
 		return fallback
 	}
 
-	switch encType {
-	case "block":
-		return EncryptionTypeBlock
-	case "file":
-		return EncryptionTypeFile
-	default:
-		return EncryptionTypeInvalid
-	}
+	return ParseEncryptionType(encType)
 }
 
 // NewVolumeEncryption creates a new instance of VolumeEncryption and
