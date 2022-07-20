@@ -90,7 +90,7 @@ func CheckVolExists(ctx context.Context,
 	defer j.Destroy()
 
 	imageData, err := j.CheckReservation(
-		ctx, volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "")
+		ctx, volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "", util.EncryptionTypeNone)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func ReserveVol(ctx context.Context, volOptions *VolumeOptions, secret map[strin
 	imageUUID, vid.FsSubvolName, err = j.ReserveName(
 		ctx, volOptions.MetadataPool, util.InvalidPoolID,
 		volOptions.MetadataPool, util.InvalidPoolID, volOptions.RequestName,
-		volOptions.NamePrefix, "", "", volOptions.ReservedID, "", volOptions.BackingSnapshotID)
+		volOptions.NamePrefix, "", "", volOptions.ReservedID, "", volOptions.BackingSnapshotID, util.EncryptionTypeNone)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +321,7 @@ func ReserveSnap(
 	imageUUID, vid.FsSnapshotName, err = j.ReserveName(
 		ctx, volOptions.MetadataPool, util.InvalidPoolID,
 		volOptions.MetadataPool, util.InvalidPoolID, snap.RequestName,
-		snap.NamePrefix, parentSubVolName, "", snap.ReservedID, "", "")
+		snap.NamePrefix, parentSubVolName, "", snap.ReservedID, "", "", util.EncryptionTypeNone)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +390,7 @@ func CheckSnapExists(
 	defer j.Destroy()
 
 	snapData, err := j.CheckReservation(
-		ctx, volOptions.MetadataPool, snap.RequestName, snap.NamePrefix, volOptions.VolID, "")
+		ctx, volOptions.MetadataPool, snap.RequestName, snap.NamePrefix, volOptions.VolID, "", util.EncryptionTypeNone)
 	if err != nil {
 		return nil, nil, err
 	}
