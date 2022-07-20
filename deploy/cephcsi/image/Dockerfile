@@ -23,10 +23,10 @@ RUN source /build.env && \
 # test if the downloaded version of Golang works (different arch?)
 RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
 
-# FIXME: Ceph does not need Apache Arrow anymore, some container images may
-# still have the repository enabled. Disabling the repository can be removed in
-# the future, see https://github.com/ceph/ceph-container/pull/1990 .
-RUN dnf config-manager --disable apache-arrow-centos || true
+# TODO: remove the following cmd, when issue
+# https://github.com/ceph/ceph-container/issues/2034 is fixed.
+RUN dnf config-manager --disable \
+    tcmu-runner,tcmu-runner-source,tcmu-runner-noarch || true
 
 RUN dnf -y install \
 	librados-devel librbd-devel \
