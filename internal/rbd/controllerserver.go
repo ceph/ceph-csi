@@ -1587,3 +1587,36 @@ func (cs *ControllerServer) ControllerExpandVolume(
 		NodeExpansionRequired: nodeExpansion,
 	}, nil
 }
+
+// ControllerPublishVolume is a dummy publish implementation to mimic a successful attach operation being a NOOP.
+func (cs *ControllerServer) ControllerPublishVolume(
+	ctx context.Context,
+	req *csi.ControllerPublishVolumeRequest,
+) (*csi.ControllerPublishVolumeResponse, error) {
+	if req.GetVolumeId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
+	}
+	if req.GetNodeId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "Node ID cannot be empty")
+	}
+	if req.GetVolumeCapability() == nil {
+		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities cannot be empty")
+	}
+
+	return &csi.ControllerPublishVolumeResponse{
+		// the dummy response carry an empty map in its response.
+		PublishContext: map[string]string{},
+	}, nil
+}
+
+// ControllerUnPublishVolume is a dummy unpublish implementation to mimic a successful attach operation being a NOOP.
+func (cs *ControllerServer) ControllerUnpublishVolume(
+	ctx context.Context,
+	req *csi.ControllerUnpublishVolumeRequest,
+) (*csi.ControllerUnpublishVolumeResponse, error) {
+	if req.GetVolumeId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID cannot be empty")
+	}
+
+	return &csi.ControllerUnpublishVolumeResponse{}, nil
+}
