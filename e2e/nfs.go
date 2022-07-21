@@ -373,7 +373,7 @@ var _ = Describe("nfs", func() {
 			By("verify RWOP volume support", func() {
 				err := createNFSStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
-					e2elog.Failf("failed to create CephFS storageclass: %v", err)
+					e2elog.Failf("failed to create NFS storageclass: %v", err)
 				}
 				pvc, err := loadPVC(pvcRWOPPath)
 				if err != nil {
@@ -411,40 +411,40 @@ var _ = Describe("nfs", func() {
 				validateSubvolumeCount(f, 0, fileSystemName, defaultSubvolumegroup)
 				err = deleteResource(nfsExamplePath + "storageclass.yaml")
 				if err != nil {
-					e2elog.Failf("failed to delete CephFS storageclass: %v", err)
+					e2elog.Failf("failed to delete NFS storageclass: %v", err)
 				}
 			})
 
 			By("create a storageclass with pool and a PVC then bind it to an app", func() {
 				err := createNFSStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
-					e2elog.Failf("failed to create CephFS storageclass: %v", err)
+					e2elog.Failf("failed to create NFS storageclass: %v", err)
 				}
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
-					e2elog.Failf("failed to validate CephFS pvc and application binding: %v", err)
+					e2elog.Failf("failed to validate NFS pvc and application binding: %v", err)
 				}
 				err = deleteResource(nfsExamplePath + "storageclass.yaml")
 				if err != nil {
-					e2elog.Failf("failed to delete CephFS storageclass: %v", err)
+					e2elog.Failf("failed to delete NFS storageclass: %v", err)
 				}
 			})
 
 			By("create a PVC and bind it to an app", func() {
 				err := createNFSStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
-					e2elog.Failf("failed to create CephFS storageclass: %v", err)
+					e2elog.Failf("failed to create NFS storageclass: %v", err)
 				}
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
-					e2elog.Failf("failed to validate CephFS pvc and application  binding: %v", err)
+					e2elog.Failf("failed to validate NFS pvc and application  binding: %v", err)
 				}
 			})
 
 			By("create a PVC and bind it to an app with normal user", func() {
 				err := validateNormalUserPVCAccess(pvcPath, f)
 				if err != nil {
-					e2elog.Failf("failed to validate normal user CephFS pvc and application binding: %v", err)
+					e2elog.Failf("failed to validate normal user NFS pvc and application binding: %v", err)
 				}
 			})
 
