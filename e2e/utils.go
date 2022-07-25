@@ -578,7 +578,7 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 	if pvc.Spec.VolumeMode != nil {
 		isBlockMode = (*pvc.Spec.VolumeMode == v1.PersistentVolumeBlock)
 	}
-	if (!isBlockMode || k8sVersionGreaterEquals(f.ClientSet, 1, 22)) && !isOpenShift {
+	if !isBlockMode && !isOpenShift {
 		err = getMetricsForPVC(f, pvc, deployTimeout)
 		if err != nil {
 			return err
