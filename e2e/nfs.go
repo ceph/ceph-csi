@@ -371,49 +371,47 @@ var _ = Describe("nfs", func() {
 			})
 
 			By("verify RWOP volume support", func() {
-				if k8sVersionGreaterEquals(f.ClientSet, 1, 22) {
-					err := createNFSStorageClass(f.ClientSet, f, false, nil)
-					if err != nil {
-						e2elog.Failf("failed to create CephFS storageclass: %v", err)
-					}
-					pvc, err := loadPVC(pvcRWOPPath)
-					if err != nil {
-						e2elog.Failf("failed to load PVC: %v", err)
-					}
-					pvc.Namespace = f.UniqueName
+				err := createNFSStorageClass(f.ClientSet, f, false, nil)
+				if err != nil {
+					e2elog.Failf("failed to create CephFS storageclass: %v", err)
+				}
+				pvc, err := loadPVC(pvcRWOPPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
 
-					// create application
-					app, err := loadApp(appRWOPPath)
-					if err != nil {
-						e2elog.Failf("failed to load application: %v", err)
-					}
-					app.Namespace = f.UniqueName
-					baseAppName := app.Name
+				// create application
+				app, err := loadApp(appRWOPPath)
+				if err != nil {
+					e2elog.Failf("failed to load application: %v", err)
+				}
+				app.Namespace = f.UniqueName
+				baseAppName := app.Name
 
-					err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-					if err != nil {
-						if rwopMayFail(err) {
-							e2elog.Logf("RWOP is not supported: %v", err)
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					if rwopMayFail(err) {
+						e2elog.Logf("RWOP is not supported: %v", err)
 
-							return
-						}
-						e2elog.Failf("failed to create PVC: %v", err)
+						return
 					}
-					err = createApp(f.ClientSet, app, deployTimeout)
-					if err != nil {
-						e2elog.Failf("failed to create application: %v", err)
-					}
-					validateSubvolumeCount(f, 1, fileSystemName, defaultSubvolumegroup)
+					e2elog.Failf("failed to create PVC: %v", err)
+				}
+				err = createApp(f.ClientSet, app, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create application: %v", err)
+				}
+				validateSubvolumeCount(f, 1, fileSystemName, defaultSubvolumegroup)
 
-					err = validateRWOPPodCreation(f, pvc, app, baseAppName)
-					if err != nil {
-						e2elog.Failf("failed to validate RWOP pod creation: %v", err)
-					}
-					validateSubvolumeCount(f, 0, fileSystemName, defaultSubvolumegroup)
-					err = deleteResource(nfsExamplePath + "storageclass.yaml")
-					if err != nil {
-						e2elog.Failf("failed to delete CephFS storageclass: %v", err)
-					}
+				err = validateRWOPPodCreation(f, pvc, app, baseAppName)
+				if err != nil {
+					e2elog.Failf("failed to validate RWOP pod creation: %v", err)
+				}
+				validateSubvolumeCount(f, 0, fileSystemName, defaultSubvolumegroup)
+				err = deleteResource(nfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete CephFS storageclass: %v", err)
 				}
 			})
 
