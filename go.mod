@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/IBM/keyprotect-go-client v0.8.0
-	github.com/aws/aws-sdk-go v1.44.28
+	github.com/aws/aws-sdk-go v1.44.62
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.9
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	// TODO: API for managing subvolume metadata and snapshot metadata requires `ceph_ci_untested` build-tag
