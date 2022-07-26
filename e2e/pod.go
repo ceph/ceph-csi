@@ -197,7 +197,7 @@ func execCommandInDaemonsetPod(
 		CaptureStderr: true,
 	}
 
-	_ /* stdout */, stderr, err := f.ExecWithOptions(podOpt)
+	_ /* stdout */, stderr, err := execWithRetry(f, &podOpt)
 
 	return stderr, err
 }
@@ -212,12 +212,35 @@ func listPods(f *framework.Framework, ns string, opt *metav1.ListOptions) ([]v1.
 	return podList.Items, err
 }
 
+func execWithRetry(f *framework.Framework, opts *framework.ExecOptions) (string, string, error) {
+	timeout := time.Duration(deployTimeout) * time.Minute
+	var stdOut, stdErr string
+	err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		var execErr error
+		stdOut, stdErr, execErr = f.ExecWithOptions(*opts)
+		if execErr != nil {
+			if isRetryableAPIError(execErr) {
+				return false, nil
+			}
+
+			e2elog.Logf("failed to execute command: %v", execErr)
+
+			return false, fmt.Errorf("failed to execute command: %w", execErr)
+		}
+
+		return true, nil
+	})
+
+	return stdOut, stdErr, err
+}
+
 func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOptions) (string, string, error) {
 	podOpt, err := getCommandInPodOpts(f, c, ns, "", opt)
 	if err != nil {
 		return "", "", err
 	}
-	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
+
+	stdOut, stdErr, err := execWithRetry(f, &podOpt)
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
@@ -232,7 +255,8 @@ func execCommandInContainer(
 	if err != nil {
 		return "", "", err
 	}
-	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
+
+	stdOut, stdErr, err := execWithRetry(f, &podOpt)
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
@@ -255,7 +279,7 @@ func execCommandInContainerByPodName(
 		PreserveWhitespace: true,
 	}
 
-	stdOut, stdErr, err := f.ExecWithOptions(execOpts)
+	stdOut, stdErr, err := execWithRetry(f, &execOpts)
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
@@ -271,7 +295,8 @@ func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, stri
 	if err != nil {
 		return "", "", err
 	}
-	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
+
+	stdOut, stdErr, err := execWithRetry(f, &podOpt)
 	if stdErr != "" {
 		e2elog.Logf("stdErr occurred: %v", stdErr)
 	}
@@ -284,7 +309,8 @@ func execCommandInPodAndAllowFail(f *framework.Framework, c, ns string, opt *met
 	if err != nil {
 		return "", err.Error()
 	}
-	stdOut, stdErr, err := f.ExecWithOptions(podOpt)
+
+	stdOut, stdErr, err := execWithRetry(f, &podOpt)
 	if err != nil {
 		e2elog.Logf("command %s failed: %v", c, err)
 	}

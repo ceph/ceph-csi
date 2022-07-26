@@ -41,6 +41,11 @@ func isRetryableAPIError(err error) bool {
 		return true
 	}
 
+	// "unable to upgrade connection" happens occasionally when executing commands in Pods
+	if strings.Contains(err.Error(), "unable to upgrade connection") {
+		return true
+	}
+
 	// "transport is closing" is an internal gRPC err, we can not use ErrConnClosing
 	if strings.Contains(err.Error(), "transport is closing") {
 		return true
