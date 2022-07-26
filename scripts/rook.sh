@@ -86,6 +86,9 @@ function deploy_rook() {
 		check_ceph_cluster_health
 	fi
 
+	# Make sure Ceph Mgr is running
+	check_ceph_mgr
+
 	# Check if CephFileSystem is empty
 	if ! kubectl_retry -n rook-ceph get cephfilesystems -oyaml | grep 'items: \[\]' &>/dev/null; then
 		check_mds_stat
@@ -161,6 +164,22 @@ function check_ceph_cluster_health() {
 
 	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
 		echo "[Timeout] CEPH cluster not in a healthy state (timeout)"
+		return 1
+	fi
+	echo ""
+}
+
+function check_ceph_mgr() {
+	for ((retry = 0; retry <= ROOK_DEPLOY_TIMEOUT; retry = retry + 5)); do
+		echo "Waiting for Ceph Mgr... ${retry}s" && sleep 5
+
+		MGR_POD=$(kubectl_retry -n rook-ceph get pods -l app=rook-ceph-mgr -o jsonpath='{.items[0].metadata.name}')
+		MGR_POD_STATUS=$(kubectl_retry -n rook-ceph get pod "$MGR_POD" -ojsonpath='{.status.phase}')
+		[[ "$MGR_POD_STATUS" = "Running" ]] && break
+	done
+
+	if [ "$retry" -gt "$ROOK_DEPLOY_TIMEOUT" ]; then
+		echo "[Timeout] Ceph Mgr is not running (timeout)"
 		return 1
 	fi
 	echo ""
