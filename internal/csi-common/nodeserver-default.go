@@ -29,6 +29,7 @@ import (
 
 // DefaultNodeServer stores driver object.
 type DefaultNodeServer struct {
+	csi.UnimplementedNodeServer
 	Driver  *CSIDriver
 	Type    string
 	Mounter mount.Interface

@@ -59,6 +59,11 @@ type ClusterInfo struct {
 		// RadosNamespace is a rados namespace in the pool
 		RadosNamespace string `json:"radosNamespace"`
 	} `json:"rbd"`
+	// NFS contains NFS specific options
+	NFS struct {
+		// symlink filepath for the network namespace where we need to execute commands.
+		NetNamespaceFilePath string `json:"netNamespaceFilePath"`
+	} `json:"nfs"`
 }
 
 // Expected JSON structure in the passed in config file is,
@@ -193,4 +198,14 @@ func GetCephFSNetNamespaceFilePath(pathToConfig, clusterID string) (string, erro
 	}
 
 	return cluster.CephFS.NetNamespaceFilePath, nil
+}
+
+// GetNFSNetNamespaceFilePath returns the netNamespaceFilePath for NFS volumes.
+func GetNFSNetNamespaceFilePath(pathToConfig, clusterID string) (string, error) {
+	cluster, err := readClusterInfo(pathToConfig, clusterID)
+	if err != nil {
+		return "", err
+	}
+
+	return cluster.NFS.NetNamespaceFilePath, nil
 }
