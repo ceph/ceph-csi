@@ -33,7 +33,7 @@ spec:
             - mountPath: /csi
               name: socket-dir
         - args:
-            - --v=5
+            - --v=1
             - --csi-address=/csi/csi.sock
             - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
           env:
@@ -74,7 +74,7 @@ spec:
             - mountPath: /registration
               name: registration-dir
         - args:
-            - -v=5
+            - -v=1
             - --drivername=nfs.csi.ceph.com
             - --nodeid=$(NODE_ID)
             - --endpoint=$(CSI_ENDPOINT)
