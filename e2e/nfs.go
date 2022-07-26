@@ -43,7 +43,7 @@ var (
 	nfsNodePluginPSP   = "csi-nodeplugin-psp.yaml"
 	nfsRookCephNFS     = "rook-nfs.yaml"
 	nfsDeploymentName  = "csi-nfsplugin-provisioner"
-	nfsDeamonSetName   = "csi-nfs-node"
+	nfsDeamonSetName   = "csi-nfsplugin"
 	nfsDirPath         = "../deploy/nfs/kubernetes/"
 	nfsExamplePath     = examplePath + "nfs/"
 	nfsPoolName        = ".nfs"
@@ -235,7 +235,7 @@ func unmountNFSVolume(f *framework.Framework, appName, pvcName string) error {
 		cmd,
 		nfsDeamonSetName,
 		pod.Spec.NodeName,
-		"nfs", // name of the container
+		"csi-nfsplugin", // name of the container
 		cephCSINamespace)
 	if stdErr != "" {
 		e2elog.Logf("StdErr occurred: %s", stdErr)
@@ -299,7 +299,7 @@ var _ = Describe("nfs", func() {
 			// log provisioner
 			logsCSIPods("app=csi-nfsplugin-provisioner", c)
 			// log node plugin
-			logsCSIPods("app=csi-nfs-node", c)
+			logsCSIPods("app=csi-nfsplugin", c)
 
 			// log all details from the namespace where Ceph-CSI is deployed
 			framework.DumpAllNamespaceInfo(c, cephCSINamespace)

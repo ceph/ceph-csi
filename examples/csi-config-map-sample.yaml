@@ -24,6 +24,10 @@ kind: ConfigMap
 # path for the Ceph cluster identified by the <cluster-id>, This will be used
 # by the CephFS CSI plugin to execute the mount -t in the
 # network namespace specified by the "cephFS.netNamespaceFilePath".
+# The "nfs.netNamespaceFilePath" fields are the various network namespace
+# path for the Ceph cluster identified by the <cluster-id>, This will be used
+# by the NFS CSI plugin to execute the mount -t in the
+# network namespace specified by the "nfs.netNamespaceFilePath".
 # The "rbd.netNamespaceFilePath" fields are the various network namespace
 # path for the Ceph cluster identified by the <cluster-id>, This will be used
 # by the RBD CSI plugin to execute the rbd map/unmap in the
@@ -59,6 +63,9 @@ data:
         "cephFS": {
           "subvolumeGroup": "<subvolumegroup for cephFS volumes>"
           "netNamespaceFilePath": "<kubeletRootPath>/plugins/cephfs.csi.ceph.com/net",
+        }
+        "nfs": {
+          "netNamespaceFilePath": "<kubeletRootPath>/plugins/nfs.csi.ceph.com/net",
         }
       }
     ]
