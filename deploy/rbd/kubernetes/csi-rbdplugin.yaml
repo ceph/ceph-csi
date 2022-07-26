@@ -31,7 +31,7 @@ spec:
             allowPrivilegeEscalation: true
           image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.5.1
           args:
-            - "--v=5"
+            - "--v=1"
             - "--csi-address=/csi/csi.sock"
             - "--kubelet-registration-path=/var/lib/kubelet/plugins/rbd.csi.ceph.com/csi.sock"
           env:

@@ -33,7 +33,10 @@ csiConfig: []
 # Set logging level for csi containers.
 # Supported values from 0 to 5. 0 for general useful logs,
 # 5 for trace level verbosity.
+# logLevel is the variable for CSI driver containers's log level
 logLevel: 5
+# sidecarLogLevel is the variable for Kubernetes sidecar container's log level
+sidecarLogLevel: 1
 
 nodeplugin:
   name: nodeplugin

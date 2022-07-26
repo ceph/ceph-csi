@@ -58,7 +58,7 @@ spec:
           imagePullPolicy: {{ .Values.provisioner.provisioner.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
-            - "--v={{ .Values.logLevel }}"
+            - "--v={{ .Values.sidecarLogLevel }}"
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
@@ -78,7 +78,7 @@ spec:
           imagePullPolicy: {{ .Values.provisioner.snapshotter.image.pullPolicy }}
           args:
             - "--csi-address=$(ADDRESS)"
-            - "--v={{ .Values.logLevel }}"
+            - "--v={{ .Values.sidecarLogLevel }}"
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election=true"
           env:
@@ -94,7 +94,7 @@ spec:
           image: "{{ .Values.provisioner.resizer.image.repository }}:{{ .Values.provisioner.resizer.image.tag }}"
           imagePullPolicy: {{ .Values.provisioner.resizer.image.pullPolicy }}
           args:
-            - "--v={{ .Values.logLevel }}"
+            - "--v={{ .Values.sidecarLogLevel }}"
             - "--csi-address=$(ADDRESS)"
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election"
