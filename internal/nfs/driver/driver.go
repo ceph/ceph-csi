@@ -20,6 +20,7 @@ import (
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/nfs/controller"
 	"github.com/ceph/ceph-csi/internal/nfs/identity"
+	"github.com/ceph/ceph-csi/internal/nfs/nodeserver"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
@@ -43,27 +44,39 @@ func (fs *Driver) Run(conf *util.Config) {
 		log.FatalLogMsg("failed to initialize CSI driver")
 	}
 
-	cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
-		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-		csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
-		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
-		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
-		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
-	})
-	// VolumeCapabilities are validated by the CephFS Controller
-	cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
-		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-		csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
-		csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
-	})
+	if conf.IsControllerServer || !conf.IsNodeServer {
+		cd.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
+			csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+			csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
+			csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
+			csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
+			csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
+		})
+		// VolumeCapabilities are validated by the CephFS Controller
+		cd.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
+			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+			csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+			csi.VolumeCapability_AccessMode_SINGLE_NODE_MULTI_WRITER,
+			csi.VolumeCapability_AccessMode_SINGLE_NODE_SINGLE_WRITER,
+		})
+	}
 
 	// Create gRPC servers
 	server := csicommon.NewNonBlockingGRPCServer()
 	srv := csicommon.Servers{
 		IS: identity.NewIdentityServer(cd),
-		CS: controller.NewControllerServer(cd),
 	}
+
+	switch {
+	case conf.IsNodeServer:
+		srv.NS = nodeserver.NewNodeServer(cd, conf.Vtype)
+	case conf.IsControllerServer:
+		srv.CS = controller.NewControllerServer(cd)
+	default:
+		srv.NS = nodeserver.NewNodeServer(cd, conf.Vtype)
+		srv.CS = controller.NewControllerServer(cd)
+	}
+
 	server.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {
 		log.WarningLogMsg("EnableGRPCMetrics is deprecated")
