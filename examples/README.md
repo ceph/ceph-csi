@@ -52,15 +52,15 @@ option `clusterID`, can now be created on the cluster.
 
 ## Running CephCSI with pod networking
 
-The current problem with Pod Networking, is when a CephFS/RBD volume is mounted
-in a pod using Ceph CSI and then the CSI CephFS/RBD plugin is restarted or
+The current problem with Pod Networking, is when a CephFS/RBD/NFS volume is mounted
+in a pod using Ceph CSI and then the CSI CephFS/RBD/NFS plugin is restarted or
 terminated (e.g. by restarting or deleting its DaemonSet), all operations on
 the volume become blocked, even after restarting the CSI pods.
 
 The only workaround is to restart the node where the Ceph CSI plugin pod was
 restarted. This can be mitigated by running the `rbd map`/`mount -t` commands
 in a different network namespace which does not get deleted when the CSI
-CephFS/RBD plugin is restarted or terminated.
+CephFS/RBD/NFS plugin is restarted or terminated.
 
 If someone wants to run the CephCSI with the pod networking they can still do
 by setting the `netNamespaceFilePath`. If this path is set CephCSI will execute
