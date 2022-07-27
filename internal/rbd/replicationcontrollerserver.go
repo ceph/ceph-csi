@@ -581,16 +581,6 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 		}
 	}
 
-	mirrorStatus, err := rbdVol.getImageMirroringStatus()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	err = checkHealthyPrimary(ctx, rbdVol, mirrorStatus)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
 	var mode librbd.ImageMirrorMode
 	mode, err = getMirroringMode(ctx, req.GetParameters())
 	if err != nil {
@@ -618,31 +608,6 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	}
 
 	return &replication.PromoteVolumeResponse{}, nil
-}
-
-// checkHealthyPrimary checks if the image is a healhty primary or not.
-// healthy primary image will be in up+stopped state, for states other
-// than this it returns an error message.
-func checkHealthyPrimary(ctx context.Context, rbdVol *rbdVolume, mirrorStatus *librbd.GlobalMirrorImageStatus) error {
-	localStatus, err := mirrorStatus.LocalStatus()
-	if err != nil {
-		// LocalStatus can fail if the local site status is not found in
-		// mirroring status. Log complete sites status to debug why getting
-		// local status failed
-		log.ErrorLog(ctx, "mirroring status is %+v", mirrorStatus)
-
-		return fmt.Errorf("failed to get local status: %w", err)
-	}
-
-	if !localStatus.Up || localStatus.State != librbd.MirrorImageStatusStateStopped {
-		return fmt.Errorf("%s %w. State is up=%t, state=%q",
-			rbdVol,
-			ErrUnHealthyMirroredImage,
-			localStatus.Up,
-			localStatus.State)
-	}
-
-	return nil
 }
 
 // DemoteVolume extracts the RBD volume information from the
