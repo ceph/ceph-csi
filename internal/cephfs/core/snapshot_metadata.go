@@ -91,6 +91,10 @@ func (s *snapshotClient) removeSnapshotMetadata(key string) error {
 // SetAllSnapshotMetadata set all the metadata from arg parameters on
 // subvolume snapshot.
 func (s *snapshotClient) SetAllSnapshotMetadata(parameters map[string]string) error {
+	if !s.enableMetadata {
+		return nil
+	}
+
 	for k, v := range parameters {
 		err := s.setSnapshotMetadata(k, v)
 		if err != nil {
@@ -113,6 +117,10 @@ func (s *snapshotClient) SetAllSnapshotMetadata(parameters map[string]string) er
 // UnsetAllSnapshotMetadata unset all the metadata from arg keys on subvolume
 // snapshot.
 func (s *snapshotClient) UnsetAllSnapshotMetadata(keys []string) error {
+	if !s.enableMetadata {
+		return nil
+	}
+
 	for _, key := range keys {
 		err := s.removeSnapshotMetadata(key)
 		// TODO: replace string comparison with errno.

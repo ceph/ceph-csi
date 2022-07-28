@@ -66,7 +66,7 @@ func (s *subVolumeClient) CreateCloneFromSubvolume(
 	parentvolOpt *SubVolume,
 ) error {
 	snapshotID := s.VolID
-	snapClient := NewSnapshot(s.conn, snapshotID, s.clusterID, s.clusterName, parentvolOpt)
+	snapClient := NewSnapshot(s.conn, snapshotID, s.clusterID, s.clusterName, s.enableMetadata, parentvolOpt)
 	err := snapClient.CreateSnapshot(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create snapshot %s %v", snapshotID, err)
@@ -165,7 +165,7 @@ func (s *subVolumeClient) CleanupSnapshotFromSubvolume(
 	// snapshot name is same as clone name as we need a name which can be
 	// identified during PVC-PVC cloning.
 	snapShotID := s.VolID
-	snapClient := NewSnapshot(s.conn, snapShotID, s.clusterID, s.clusterName, parentVol)
+	snapClient := NewSnapshot(s.conn, snapShotID, s.clusterID, s.clusterName, s.enableMetadata, parentVol)
 	snapInfo, err := snapClient.GetSnapshotInfo(ctx)
 	if err != nil {
 		if errors.Is(err, cerrors.ErrSnapNotFound) {
@@ -198,7 +198,7 @@ func (s *subVolumeClient) CreateCloneFromSnapshot(
 	ctx context.Context, snap Snapshot,
 ) error {
 	snapID := snap.SnapshotID
-	snapClient := NewSnapshot(s.conn, snapID, s.clusterID, s.clusterName, snap.SubVolume)
+	snapClient := NewSnapshot(s.conn, snapID, s.clusterID, s.clusterName, s.enableMetadata, snap.SubVolume)
 	err := snapClient.CloneSnapshot(ctx, s.SubVolume)
 	if err != nil {
 		return err

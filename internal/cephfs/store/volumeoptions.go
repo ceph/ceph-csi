@@ -749,7 +749,7 @@ func NewSnapshotOptionsFromID(
 	volOptions.Size = subvolInfo.BytesQuota
 	volOptions.RootPath = subvolInfo.Path
 	snap := core.NewSnapshot(volOptions.conn, sid.FsSnapshotName,
-		volOptions.ClusterID, clusterName, &volOptions.SubVolume)
+		volOptions.ClusterID, clusterName, setMetadata, &volOptions.SubVolume)
 	info, err := snap.GetSnapshotInfo(ctx)
 	if err != nil {
 		return &volOptions, nil, &sid, err

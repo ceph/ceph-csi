@@ -379,6 +379,7 @@ func CheckSnapExists(
 	volOptions *VolumeOptions,
 	snap *SnapshotOption,
 	clusterName string,
+	setMetadata bool,
 	cr *util.Credentials,
 ) (*SnapshotIdentifier, *core.SnapshotInfo, error) {
 	// Connect to cephfs' default radosNamespace (csi)
@@ -400,7 +401,8 @@ func CheckSnapExists(
 	snapUUID := snapData.ImageUUID
 	snapID := snapData.ImageAttributes.ImageName
 	sid.FsSnapshotName = snapData.ImageAttributes.ImageName
-	snapClient := core.NewSnapshot(volOptions.conn, snapID, volOptions.ClusterID, clusterName, &volOptions.SubVolume)
+	snapClient := core.NewSnapshot(volOptions.conn, snapID,
+		volOptions.ClusterID, clusterName, setMetadata, &volOptions.SubVolume)
 	snapInfo, err := snapClient.GetSnapshotInfo(ctx)
 	if err != nil {
 		if errors.Is(err, cerrors.ErrSnapNotFound) {
