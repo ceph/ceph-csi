@@ -99,6 +99,14 @@ func (s *snapshotClient) SetAllSnapshotMetadata(parameters map[string]string) er
 		}
 	}
 
+	if s.clusterName != "" {
+		err := s.setSnapshotMetadata(clusterNameKey, s.clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to set metadata key %q, value %q on subvolume snapshot %s %s in fs %s: %w",
+				clusterNameKey, s.clusterName, s.SnapshotID, s.VolID, s.FsName, err)
+		}
+	}
+
 	return nil
 }
 
@@ -112,6 +120,13 @@ func (s *snapshotClient) UnsetAllSnapshotMetadata(keys []string) error {
 			return fmt.Errorf("failed to unset metadata key %q on subvolume snapshot %s %s in fs %s: %w",
 				key, s.SnapshotID, s.VolID, s.FsName, err)
 		}
+	}
+
+	err := s.removeSnapshotMetadata(clusterNameKey)
+	// TODO: replace string comparison with errno.
+	if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
+		return fmt.Errorf("failed to unset metadata key %q on subvolume snapshot %s %s in fs %s: %w",
+			clusterNameKey, s.SnapshotID, s.VolID, s.FsName, err)
 	}
 
 	return nil
