@@ -81,10 +81,11 @@ type SubVolumeClient interface {
 
 // subVolumeClient implements SubVolumeClient interface.
 type subVolumeClient struct {
-	*SubVolume                          // Embedded SubVolume struct.
-	clusterID   string                  // Cluster ID to check subvolumegroup and resize functionality.
-	clusterName string                  // Cluster name
-	conn        *util.ClusterConnection // Cluster connection.
+	*SubVolume                             // Embedded SubVolume struct.
+	clusterID      string                  // Cluster ID to check subvolumegroup and resize functionality.
+	clusterName    string                  // Cluster name
+	enableMetadata bool                    // Set metadata on volume
+	conn           *util.ClusterConnection // Cluster connection.
 }
 
 // SubVolume holds the information about the subvolume.
@@ -98,12 +99,19 @@ type SubVolume struct {
 }
 
 // NewSubVolume returns a new subvolume client.
-func NewSubVolume(conn *util.ClusterConnection, vol *SubVolume, clusterID, clusterName string) SubVolumeClient {
+func NewSubVolume(
+	conn *util.ClusterConnection,
+	vol *SubVolume,
+	clusterID,
+	clusterName string,
+	setMetadata bool,
+) SubVolumeClient {
 	return &subVolumeClient{
-		SubVolume:   vol,
-		clusterID:   clusterID,
-		clusterName: clusterName,
-		conn:        conn,
+		SubVolume:      vol,
+		clusterID:      clusterID,
+		clusterName:    clusterName,
+		enableMetadata: setMetadata,
+		conn:           conn,
 	}
 }
 
