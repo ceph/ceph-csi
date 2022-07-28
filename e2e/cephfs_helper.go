@@ -249,6 +249,7 @@ type cephfsSnapshotMetadata struct {
 	VolSnapNameKey        string `json:"csi.storage.k8s.io/volumesnapshot/name"`
 	VolSnapNamespaceKey   string `json:"csi.storage.k8s.io/volumesnapshot/namespace"`
 	VolSnapContentNameKey string `json:"csi.storage.k8s.io/volumesnapshotcontent/name"`
+	ClusterNameKey        string `json:"csi.ceph.com/cluster/name"`
 }
 
 func listCephFSSnapshotMetadata(
