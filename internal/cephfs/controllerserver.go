@@ -601,13 +601,8 @@ func (cs *ControllerServer) cleanUpBackingVolume(
 			return status.Error(codes.Internal, err.Error())
 		}
 	} else {
-		snapClient := core.NewSnapshot(
-			snapParentVolOptions.GetConnection(),
-			snapID.FsSnapshotName,
-			volOptions.ClusterID,
-			cs.ClusterName,
-			&snapParentVolOptions.SubVolume,
-		)
+		snapClient := core.NewSnapshot(snapParentVolOptions.GetConnection(), snapID.FsSnapshotName,
+			volOptions.ClusterID, cs.ClusterName, cs.SetMetadata, &snapParentVolOptions.SubVolume)
 
 		err = deleteSnapshotAndUndoReservation(ctx, snapClient, snapParentVolOptions, snapID, cr)
 		if err != nil {
@@ -785,7 +780,7 @@ func (cs *ControllerServer) CreateSnapshot(
 	}
 	defer cs.VolumeLocks.Release(sourceVolID)
 	snapName := req.GetName()
-	sid, snapInfo, err := store.CheckSnapExists(ctx, parentVolOptions, cephfsSnap, cs.ClusterName, cr)
+	sid, snapInfo, err := store.CheckSnapExists(ctx, parentVolOptions, cephfsSnap, cs.ClusterName, cs.SetMetadata, cr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -823,12 +818,8 @@ func (cs *ControllerServer) CreateSnapshot(
 	if sid != nil {
 		// check snapshot is protected
 		protected := true
-		snapClient := core.NewSnapshot(
-			parentVolOptions.GetConnection(),
-			sid.FsSnapshotName,
-			parentVolOptions.ClusterID,
-			cs.ClusterName,
-			&parentVolOptions.SubVolume)
+		snapClient := core.NewSnapshot(parentVolOptions.GetConnection(), sid.FsSnapshotName,
+			parentVolOptions.ClusterID, cs.ClusterName, cs.SetMetadata, &parentVolOptions.SubVolume)
 		if !(snapInfo.Protected == core.SnapshotIsProtected) {
 			err = snapClient.ProtectSnapshot(ctx)
 			if err != nil {
@@ -872,7 +863,7 @@ func (cs *ControllerServer) CreateSnapshot(
 			}
 		}
 	}()
-	snap, err := doSnapshot(ctx, parentVolOptions, sID.FsSnapshotName, cs.ClusterName, metadata)
+	snap, err := cs.doSnapshot(ctx, parentVolOptions, sID.FsSnapshotName, metadata)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -888,17 +879,16 @@ func (cs *ControllerServer) CreateSnapshot(
 	}, nil
 }
 
-func doSnapshot(
+func (cs *ControllerServer) doSnapshot(
 	ctx context.Context,
 	volOpt *store.VolumeOptions,
-	snapshotName,
-	clusterName string,
+	snapshotName string,
 	metadata map[string]string,
 ) (core.SnapshotInfo, error) {
 	snapID := fsutil.VolumeID(snapshotName)
 	snap := core.SnapshotInfo{}
 	snapClient := core.NewSnapshot(volOpt.GetConnection(), snapshotName,
-		volOpt.ClusterID, clusterName, &volOpt.SubVolume)
+		volOpt.ClusterID, cs.ClusterName, cs.SetMetadata, &volOpt.SubVolume)
 	err := snapClient.CreateSnapshot(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create snapshot %s %v", snapID, err)
@@ -1056,7 +1046,7 @@ func (cs *ControllerServer) DeleteSnapshot(
 		return nil, status.Errorf(codes.FailedPrecondition, "snapshot %s has pending clones", snapshotID)
 	}
 	snapClient := core.NewSnapshot(volOpt.GetConnection(), sid.FsSnapshotName,
-		volOpt.ClusterID, cs.ClusterName, &volOpt.SubVolume)
+		volOpt.ClusterID, cs.ClusterName, cs.SetMetadata, &volOpt.SubVolume)
 	if snapInfo.Protected == core.SnapshotIsProtected {
 		err = snapClient.UnprotectSnapshot(ctx)
 		if err != nil {
