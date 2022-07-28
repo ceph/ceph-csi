@@ -93,6 +93,10 @@ func (s *subVolumeClient) removeMetadata(key string) error {
 
 // SetAllMetadata set all the metadata from arg parameters on Ssubvolume.
 func (s *subVolumeClient) SetAllMetadata(parameters map[string]string) error {
+	if !s.enableMetadata {
+		return nil
+	}
+
 	for k, v := range parameters {
 		err := s.setMetadata(k, v)
 		if err != nil {
@@ -113,6 +117,10 @@ func (s *subVolumeClient) SetAllMetadata(parameters map[string]string) error {
 
 // UnsetAllMetadata unset all the metadata from arg keys on subvolume.
 func (s *subVolumeClient) UnsetAllMetadata(keys []string) error {
+	if !s.enableMetadata {
+		return nil
+	}
+
 	for _, key := range keys {
 		err := s.removeMetadata(key)
 		// TODO: replace string comparison with errno.

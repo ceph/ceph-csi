@@ -82,7 +82,7 @@ func (ns *NodeServer) getVolumeOptions(
 	volContext,
 	volSecrets map[string]string,
 ) (*store.VolumeOptions, error) {
-	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, string(volID), volContext, volSecrets, "")
+	volOptions, _, err := store.NewVolumeOptionsFromVolID(ctx, string(volID), volContext, volSecrets, "", false)
 	if err != nil {
 		if !errors.Is(err, cerrors.ErrInvalidVolID) {
 			return nil, status.Error(codes.Internal, err.Error())
