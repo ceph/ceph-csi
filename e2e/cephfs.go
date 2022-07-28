@@ -970,7 +970,10 @@ var _ = Describe(cephfsType, func() {
 				} else if metadata.VolSnapContentNameKey != content.Name {
 					e2elog.Failf("failed, contentname expected:%s got:%s",
 						content.Name, metadata.VolSnapContentNameKey)
+				} else if metadata.ClusterNameKey != defaultClusterName {
+					e2elog.Failf("expected clusterName %q got %q", defaultClusterName, metadata.ClusterNameKey)
 				}
+
 				// Delete the parent pvc before restoring
 				// another one from snapshot.
 				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
@@ -1005,6 +1008,8 @@ var _ = Describe(cephfsType, func() {
 					e2elog.Failf("expected pvcNamespace %q got %q", pvcClone.Namespace, cloneMetadata.PVCNamespaceKey)
 				} else if cloneMetadata.PVNameKey != pvcCloneObj.Spec.VolumeName {
 					e2elog.Failf("expected pvName %q got %q", pvcCloneObj.Spec.VolumeName, cloneMetadata.PVNameKey)
+				} else if cloneMetadata.ClusterNameKey != defaultClusterName {
+					e2elog.Failf("expected clusterName %q got %q", defaultClusterName, cloneMetadata.ClusterNameKey)
 				}
 
 				// delete clone
@@ -1067,6 +1072,8 @@ var _ = Describe(cephfsType, func() {
 					e2elog.Failf("expected pvcNamespace %q got %q", pvc.Namespace, cloneMetadata.PVCNamespaceKey)
 				} else if cloneMetadata.PVNameKey != pvcCloneObj.Spec.VolumeName {
 					e2elog.Failf("expected pvName %q got %q", pvcCloneObj.Spec.VolumeName, cloneMetadata.PVNameKey)
+				} else if cloneMetadata.ClusterNameKey != defaultClusterName {
+					e2elog.Failf("expected clusterName %q got %q", defaultClusterName, cloneMetadata.ClusterNameKey)
 				}
 
 				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
