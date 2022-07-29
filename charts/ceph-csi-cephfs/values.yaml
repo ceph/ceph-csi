@@ -180,6 +180,9 @@ provisioner:
       pullPolicy: IfNotPresent
     resources: {}
 
+  # set metadata on volume
+  setmetadata: true
+
   resizer:
     name: resizer
     enabled: true

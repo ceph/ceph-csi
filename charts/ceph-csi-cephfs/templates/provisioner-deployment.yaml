@@ -128,6 +128,7 @@ spec:
 {{- if .Values.provisioner.clustername }}
             - "--clustername={{ .Values.provisioner.clustername }}"
 {{- end }}
+            - "--setmetadata={{ .Values.provisioner.setmetadata }}"
           env:
             - name: POD_IP
               valueFrom:
