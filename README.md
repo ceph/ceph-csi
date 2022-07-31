@@ -21,15 +21,15 @@ Card](https://goreportcard.com/badge/github.com/ceph/ceph-csi)](https://goreport
   - [Dev standup](#dev-standup)
   - [Contact](#contact)
 
-This repo contains Ceph
+This repo contains the Ceph
 [Container Storage Interface (CSI)](https://github.com/container-storage-interface/)
-driver for RBD, CephFS and kubernetes sidecar deployment yamls of provisioner,
-attacher, resizer, driver-registrar and snapshotter for supporting CSI functionalities.
+driver for RBD, CephFS and Kubernetes sidecar deployment YAMLs to support CSI
+functionality:  provisioner, attacher, resizer, driver-registrar and snapshotter.
 
 ## Overview
 
-Ceph CSI plugins implement an interface between CSI enabled Container Orchestrator
-(CO) and Ceph cluster. It allows dynamically provisioning Ceph volumes and
+Ceph CSI plugins implement an interface between a CSI-enabled Container Orchestrator
+(CO) and Ceph clusters. They enable dynamically provisioning Ceph volumes and
 attaching them to workloads.
 
 Independent CSI plugins are provided to support RBD and CephFS backed volumes,
@@ -38,7 +38,7 @@ Independent CSI plugins are provided to support RBD and CephFS backed volumes,
   [rbd doc](https://github.com/ceph/ceph-csi/blob/devel/docs/deploy-rbd.md) and
   for CephFS plugin configuration and deployment please
   refer [cephFS doc](https://github.com/ceph/ceph-csi/blob/devel/docs/deploy-cephfs.md).
-- For example usage of RBD and CephFS CSI plugins, see examples in `examples/`.
+- For example usage of the RBD and CephFS CSI plugins, see examples in `examples/`.
 - Stale resource cleanup, please refer [cleanup doc](docs/resource-cleanup.md).
 
 NOTE:
@@ -51,7 +51,7 @@ Status: **GA**
 
 ## Known to work CO platforms
 
-Ceph CSI drivers are currently developed and tested **exclusively** on Kubernetes
+Ceph CSI drivers are currently developed and tested **exclusively** in Kubernetes
 environments.
 
 | Ceph CSI Version | Container Orchestrator Name | Version Tested|
@@ -62,18 +62,17 @@ environments.
 | v3.5.0 | Kubernetes | v1.21, v1.22, v1.23|
 | v3.4.0 | Kubernetes | v1.20, v1.21, v1.22|
 
-There is work in progress to make this CO independent and thus
-support other orchestration environments (Nomad, Mesos..etc) in the future.
+There is work in progress to make this CO-independent and thus
+support other orchestration environments (Nomad, Mesos..etc).
 
 NOTE:
 
-The supported window of Ceph CSI versions  is known as "N.(x-1)":
+The supported window of Ceph CSI versions is "N.(x-1)":
 (N (Latest major release) . (x (Latest minor release) - 1)).
 
-For example, if Ceph CSI latest major version is `3.6.0` today, support is
+For example, if the Ceph CSI latest major version is `3.6.0` today, support is
 provided for the versions above `3.5.0`. If users are running an unsupported
-Ceph CSI version, they will be asked to upgrade when requesting support for the
-cluster.
+Ceph CSI version, they will be asked to upgrade when requesting support.
 
 ## Support Matrix
 
