@@ -1,6 +1,7 @@
 # Capabilities of a user required for ceph-csi in a Ceph cluster
 
-Ceph uses the term capabilities to describe authorizing an authenticated user
+Ceph uses the term _capabilities_ to describe authorizations for an
+authenticated user
 to exercise the functionality of the monitors, OSDs and metadata servers.
 Capabilities can also restrict access to data within a pool or pool namespace.
 A Ceph administrative user sets a user's capabilities when creating or
@@ -10,9 +11,9 @@ Hence, those capabilities are documented below.
 
 ## RBD
 
-We have provisioner, controller expand and node stage secrets in storage class.
-For the provisioner and controller expand stage secret in storageclass, the
-user needs to have the  below mentioned ceph capabilities.
+We have provisioner, controller expand and node stage secrets in storageclass.
+For the provisioner and controller expand stage secrets in storageclass, the
+user needs to have the below Ceph capabilities.
 
 ```
 "mon", "profile rbd",
@@ -50,7 +51,7 @@ the below mentioned ceph capabilities.
 "mds", "allow rw"
 ```
 
-To get more insights on capabilities of cephfs you can refer
+To get more insights on capabilities of CephFS you can refer
 [this document](https://ceph.readthedocs.io/en/latest/cephfs/client-auth/)
 
 ## Command to a create user with required capabilities
