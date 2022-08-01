@@ -27,21 +27,12 @@ sudo scripts/minikube.sh create-block-pool
 # pull docker images to speed up e2e
 sudo scripts/minikube.sh cephcsi
 sudo scripts/minikube.sh k8s-sidecar
-KUBE_MAJOR=$(kube_version 1)
-KUBE_MINOR=$(kube_version 2)
-# skip snapshot operation if kube version is less than 1.17.0
-if [[ "${KUBE_MAJOR}" -ge 1 ]] && [[ "${KUBE_MINOR}" -ge 17 ]]; then
-    # delete snapshot CRD created by ceph-csi in rook
-    scripts/install-snapshot.sh delete-crd
-    # install snapshot controller
-    scripts/install-snapshot.sh install
-fi
+# install snapshot controller and create snapshot CRD
+scripts/install-snapshot.sh install
 
 # functional tests
 make run-e2e E2E_ARGS="${*}"
 
-if [[ "${KUBE_MAJOR}" -ge 1 ]] && [[ "${KUBE_MINOR}" -ge 17 ]]; then
-    # delete snapshot CRD
-    scripts/install-snapshot.sh cleanup
-fi
+# cleanup
+scripts/install-snapshot.sh cleanup
 sudo scripts/minikube.sh clean

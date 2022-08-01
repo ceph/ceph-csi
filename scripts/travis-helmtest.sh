@@ -35,15 +35,8 @@ sudo scripts/minikube.sh k8s-sidecar
 NAMESPACE=cephcsi-e2e-$RANDOM
 # create ns for e2e
 kubectl create ns ${NAMESPACE}
-KUBE_MAJOR=$(kube_version 1)
-KUBE_MINOR=$(kube_version 2)
-# skip snapshot operation if kube version is less than 1.17.0
-if [[ "${KUBE_MAJOR}" -ge 1 ]] && [[ "${KUBE_MINOR}" -ge 17 ]]; then
-    # delete snapshot CRD created by ceph-csi in rook
-    scripts/install-snapshot.sh delete-crd
-    # install snapshot controller
-    scripts/install-snapshot.sh install
-fi
+# install snapshot controller and create snapshot CRD
+scripts/install-snapshot.sh install
 # set up helm
 scripts/install-helm.sh up
 # install cephcsi helm charts
@@ -51,12 +44,8 @@ scripts/install-helm.sh install-cephcsi --namespace ${NAMESPACE}
 # functional tests
 make run-e2e NAMESPACE="${NAMESPACE}" E2E_ARGS="--deploy-cephfs=false --deploy-rbd=false ${*}"
 
-#cleanup
-# skip snapshot operation if kube version is less than 1.17.0
-if [[ "${KUBE_MAJOR}" -ge 1 ]] && [[ "${KUBE_MINOR}" -ge 17 ]]; then
-    # delete snapshot CRD
-    scripts/install-snapshot.sh cleanup
-fi
+# cleanup
+scripts/install-snapshot.sh cleanup
 scripts/install-helm.sh cleanup-cephcsi --namespace ${NAMESPACE}
 scripts/install-helm.sh clean
 kubectl delete ns ${NAMESPACE}
