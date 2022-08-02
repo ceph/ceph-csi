@@ -858,7 +858,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 	targetPath := req.GetTargetPath()
 	// considering kubelet make sure node operations like unpublish/unstage...etc can not be called
 	// at same time, an explicit locking at time of nodeunpublish is not required.
-	notMnt, err := mount.IsNotMountPoint(ns.Mounter, targetPath)
+	isMnt, err := ns.Mounter.IsMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// targetPath has already been deleted
@@ -869,7 +869,7 @@ func (ns *NodeServer) NodeUnpublishVolume(
 
 		return nil, status.Error(codes.NotFound, err.Error())
 	}
-	if notMnt {
+	if !isMnt {
 		if err = os.RemoveAll(targetPath); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -925,15 +925,15 @@ func (ns *NodeServer) NodeUnstageVolume(
 	stagingParentPath := req.GetStagingTargetPath()
 	stagingTargetPath := getStagingTargetPath(req)
 
-	notMnt, err := mount.IsNotMountPoint(ns.Mounter, stagingTargetPath)
+	isMnt, err := ns.Mounter.IsMountPoint(stagingTargetPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
 		// Continue on ENOENT errors as we may still have the image mapped
-		notMnt = true
+		isMnt = false
 	}
-	if !notMnt {
+	if isMnt {
 		// Unmounting the image
 		err = ns.Mounter.Unmount(stagingTargetPath)
 		if err != nil {
@@ -961,7 +961,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		log.UsefulLog(ctx, "failed to find image metadata: %v", err)
 		// It is an error if it was mounted, as we should have found the image metadata file with
 		// no errors
-		if !notMnt {
+		if isMnt {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
