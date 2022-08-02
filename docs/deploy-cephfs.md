@@ -164,7 +164,7 @@ for more information.
 **Deploy Ceph configuration ConfigMap for CSI pods:**
 
 ```bash
-kubectl create -f ../example/ceph-config.yaml
+kubectl create -f ../../../example/ceph-config.yaml
 ```
 
 **Deploy CSI sidecar containers:**
