@@ -554,12 +554,12 @@ func checkValidImageFeatures(imageFeatures string, ok bool) bool {
 // isNotMountPoint checks whether MountPoint does not exists and
 // also discards error indicating mountPoint exists.
 func isNotMountPoint(mounter mount.Interface, stagingTargetPath string) (bool, error) {
-	isNotMnt, err := mount.IsNotMountPoint(mounter, stagingTargetPath)
+	isMnt, err := mounter.IsMountPoint(stagingTargetPath)
 	if os.IsNotExist(err) {
 		err = nil
 	}
 
-	return isNotMnt, err
+	return !isMnt, err
 }
 
 // isCephMgrSupported determines if the cluster has support for MGR based operation
