@@ -333,6 +333,11 @@ func Unlock(
 		return err
 	}
 
+	err = fscryptfilesystem.UpdateMountInfo()
+	if err != nil {
+		return err
+	}
+
 	fscryptContext, err := fscryptactions.NewContextFromMountpoint(stagingTargetPath, nil)
 	if err != nil {
 		log.ErrorLog(ctx, "fscrypt: failed to create context from mountpoint %v: %w", stagingTargetPath, err)
