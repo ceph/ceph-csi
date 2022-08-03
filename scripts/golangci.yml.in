@@ -169,6 +169,7 @@ linters:
     - funlen
     - testpackage
     - exhaustivestruct
+    - nosnakecase
     # This requires extra addition of unnecessary code. Hence, we
     # prefer to disable this linter. But, it can be enabled if we
     # have better resolution. For more details check the
