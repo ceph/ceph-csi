@@ -1025,6 +1025,7 @@ func validatePVCSnapshot(
 	pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string,
 	kms, restoreKMS kmsConfig, restoreSCName,
 	dataPool string, f *framework.Framework,
+	isEncryptedPVC validateFunc,
 ) {
 	var wg sync.WaitGroup
 	wgErrs := make([]error, totalCount)
@@ -1448,7 +1449,7 @@ func validateController(
 	}
 	if scParams["encrypted"] == strconv.FormatBool(true) {
 		// check encryption
-		err = isEncryptedPVC(f, resizePvc, app)
+		err = isBlockEncryptedPVC(f, resizePvc, app)
 		if err != nil {
 			return err
 		}
