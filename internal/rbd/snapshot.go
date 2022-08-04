@@ -112,6 +112,7 @@ func generateVolFromSnap(rbdSnap *rbdSnapshot) *rbdVolume {
 	// snapshot will have the same volumeID which cases the panic in
 	// copyEncryptionConfig function.
 	vol.blockEncryption = rbdSnap.blockEncryption
+	vol.fileEncryption = rbdSnap.fileEncryption
 
 	return vol
 }

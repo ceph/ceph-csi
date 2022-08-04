@@ -1024,10 +1024,17 @@ func genSnapFromSnapID(
 			rbdSnap, err)
 	}
 
-	if imageAttributes.KmsID != "" {
+	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeBlock {
 		err = rbdSnap.configureBlockEncryption(imageAttributes.KmsID, secrets)
 		if err != nil {
-			return fmt.Errorf("failed to configure encryption for "+
+			return fmt.Errorf("failed to configure block encryption for "+
+				"%q: %w", rbdSnap, err)
+		}
+	}
+	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeFile {
+		err = rbdSnap.configureFileEncryption(imageAttributes.KmsID, secrets)
+		if err != nil {
+			return fmt.Errorf("failed to configure file encryption for "+
 				"%q: %w", rbdSnap, err)
 		}
 	}
@@ -1119,8 +1126,14 @@ func generateVolumeFromVolumeID(
 	rbdVol.ImageID = imageAttributes.ImageID
 	rbdVol.Owner = imageAttributes.Owner
 
-	if imageAttributes.KmsID != "" {
+	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeBlock {
 		err = rbdVol.configureBlockEncryption(imageAttributes.KmsID, secrets)
+		if err != nil {
+			return rbdVol, err
+		}
+	}
+	if imageAttributes.KmsID != "" && imageAttributes.EncryptionType == util.EncryptionTypeFile {
+		err = rbdVol.configureFileEncryption(imageAttributes.KmsID, secrets)
 		if err != nil {
 			return rbdVol, err
 		}
