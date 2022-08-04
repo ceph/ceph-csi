@@ -568,7 +568,7 @@ func RegenerateJournal(
 
 	rbdVol.Owner = owner
 
-	kmsID, _, err = ParseEncryptionOpts(ctx, volumeAttributes)
+	kmsID, encryptionType, err = ParseEncryptionOpts(ctx, volumeAttributes, util.EncryptionTypeInvalid)
 	if err != nil {
 		return "", err
 	}

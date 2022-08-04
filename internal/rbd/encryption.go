@@ -109,7 +109,7 @@ func (ri *rbdImage) isFileEncrypted() bool {
 }
 
 func IsFileEncrypted(ctx context.Context, volOptions map[string]string) (bool, error) {
-	_, encType, err := ParseEncryptionOpts(ctx, volOptions)
+	_, encType, err := ParseEncryptionOpts(ctx, volOptions, util.EncryptionTypeInvalid)
 	if err != nil {
 		return false, err
 	}
@@ -306,7 +306,7 @@ func (rv *rbdVolume) openEncryptedDevice(ctx context.Context, devicePath string)
 }
 
 func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[string]string) error {
-	kmsID, encType, err := ParseEncryptionOpts(ctx, volOptions)
+	kmsID, encType, err := ParseEncryptionOpts(ctx, volOptions, rbdDefaultEncryptionType)
 	if err != nil {
 		return err
 	} else if kmsID == "" {
@@ -333,6 +333,7 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 func ParseEncryptionOpts(
 	ctx context.Context,
 	volOptions map[string]string,
+	fallbackEncType util.EncryptionType,
 ) (string, util.EncryptionType, error) {
 	var (
 		err              error
@@ -348,7 +349,7 @@ func ParseEncryptionOpts(
 		return "", util.EncryptionTypeInvalid, err
 	}
 
-	encType := util.FetchEncryptionType(volOptions, rbdDefaultEncryptionType)
+	encType := util.FetchEncryptionType(volOptions, fallbackEncType)
 
 	return kmsID, encType, nil
 }
