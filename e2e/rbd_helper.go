@@ -588,14 +588,24 @@ type validateFunc func(f *framework.Framework, pvc *v1.PersistentVolumeClaim, ap
 // validation of the PVC is needed.
 var noPVCValidation validateFunc
 
-func isEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+type imageValidateFunc func(f *framework.Framework, rbdImageSpec, pvName, appName string) error
+
+func isEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod, validateFunc imageValidateFunc) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
 		return err
 	}
 	rbdImageSpec := imageSpec(defaultRBDPool, imageData.imageName)
 
-	return validateEncryptedImage(f, rbdImageSpec, imageData.pvName, app.Name)
+	return validateFunc(f, rbdImageSpec, imageData.pvName, app.Name)
+}
+
+func isBlockEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+	return isEncryptedPVC(f, pvc, app, validateEncryptedImage)
+}
+
+func isFileEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod) error {
+	return isEncryptedPVC(f, pvc, app, validateEncryptedFilesystem)
 }
 
 // validateEncryptedImage verifies that the RBD image is encrypted. The
