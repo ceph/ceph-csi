@@ -100,9 +100,9 @@ func readClusterInfo(pathToConfig, clusterID string) (*ClusterInfo, error) {
 			err, string(content))
 	}
 
-	for _, cluster := range config {
-		if cluster.ClusterID == clusterID {
-			return &cluster, nil
+	for i := range config {
+		if config[i].ClusterID == clusterID {
+			return &config[i], nil
 		}
 	}
 
