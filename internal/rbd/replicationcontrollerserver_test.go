@@ -213,9 +213,18 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "test when rbd mirror daemon is not running",
+			args: librbd.SiteMirrorImageStatus{
+				State: librbd.MirrorImageStatusStateUnknown,
+				Up:    false,
+			},
+			wantErr: true,
+		},
+		{
 			name: "test for unknown state",
 			args: librbd.SiteMirrorImageStatus{
 				State: librbd.MirrorImageStatusStateUnknown,
+				Up:    true,
 			},
 			wantErr: false,
 		},
@@ -223,6 +232,7 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 			name: "test for error state",
 			args: librbd.SiteMirrorImageStatus{
 				State: librbd.MirrorImageStatusStateError,
+				Up:    true,
 			},
 			wantErr: true,
 		},
@@ -230,6 +240,7 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 			name: "test for syncing state",
 			args: librbd.SiteMirrorImageStatus{
 				State: librbd.MirrorImageStatusStateSyncing,
+				Up:    true,
 			},
 			wantErr: true,
 		},
@@ -237,6 +248,7 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 			name: "test for starting_replay state",
 			args: librbd.SiteMirrorImageStatus{
 				State: librbd.MirrorImageStatusStateStartingReplay,
+				Up:    true,
 			},
 			wantErr: true,
 		},
@@ -244,6 +256,7 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 			name: "test for replaying state",
 			args: librbd.SiteMirrorImageStatus{
 				State: librbd.MirrorImageStatusStateReplaying,
+				Up:    true,
 			},
 			wantErr: false,
 		},
@@ -251,6 +264,7 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 			name: "test for stopping_replay state",
 			args: librbd.SiteMirrorImageStatus{
 				State: librbd.MirrorImageStatusStateStoppingReplay,
+				Up:    true,
 			},
 			wantErr: true,
 		},
@@ -258,6 +272,7 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 			name: "test for stopped state",
 			args: librbd.SiteMirrorImageStatus{
 				State: librbd.MirrorImageStatusStateStopped,
+				Up:    true,
 			},
 			wantErr: true,
 		},
@@ -265,6 +280,7 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 			name: "test for invalid state",
 			args: librbd.SiteMirrorImageStatus{
 				State: librbd.MirrorImageStatusState(100),
+				Up:    true,
 			},
 			wantErr: true,
 		},
