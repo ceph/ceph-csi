@@ -14,3 +14,4 @@ spec:
   attachRequired: false
   volumeLifecycleModes:
     - Persistent
+  fsGroupPolicy: File
