@@ -2,7 +2,7 @@
 defaults:
   actions:
     # mergify.io has removed bot_account from its free open source plan.
-    comment:
+    # comment:
     # bot_account: ceph-csi-bot # mergify[bot] will be commenting.
     queue:
       # merge_bot_account: ceph-csi-bot #mergify[bot] will be merging prs.
