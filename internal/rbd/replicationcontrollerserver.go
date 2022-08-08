@@ -680,6 +680,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 // It returns true if the state of the remote cluster is up and unknown.
 func checkRemoteSiteStatus(ctx context.Context, mirrorStatus *librbd.GlobalMirrorImageStatus) bool {
 	ready := true
+	found := false
 	for _, s := range mirrorStatus.SiteStatuses {
 		log.UsefulLog(
 			ctx,
@@ -690,13 +691,16 @@ func checkRemoteSiteStatus(ctx context.Context, mirrorStatus *librbd.GlobalMirro
 			s.Description,
 			s.LastUpdate)
 		if s.MirrorUUID != "" {
-			if s.State != librbd.MirrorImageStatusStateUnknown && !s.Up {
+			found = true
+			// If ready is already "false" do not flip it based on another remote peer status
+			if ready && (s.State != librbd.MirrorImageStatusStateUnknown || !s.Up) {
 				ready = false
 			}
 		}
 	}
 
-	return ready
+	// Return readiness only if at least one remote peer status was processed
+	return found && ready
 }
 
 // ResyncVolume extracts the RBD volume information from the volumeID, If the
