@@ -856,12 +856,13 @@ func checkVolumeResyncStatus(localStatus librbd.SiteMirrorImageStatus) error {
 
 	// If the state is Replaying means the resync is going on.
 	// Once the volume on remote cluster is demoted and resync
-	// is completed the image state will be moved to UNKNOWN .
-	if localStatus.State != librbd.MirrorImageStatusStateReplaying &&
-		localStatus.State != librbd.MirrorImageStatusStateUnknown {
+	// is completed the image state will be moved to UNKNOWN.
+	// RBD mirror daemon should be always running on the primary cluster.
+	if !localStatus.Up || (localStatus.State != librbd.MirrorImageStatusStateReplaying &&
+		localStatus.State != librbd.MirrorImageStatusStateUnknown) {
 		return fmt.Errorf(
-			"not resyncing. image is in %q state",
-			localStatus.State)
+			"not resyncing. Local status: daemon up=%t image is in %q state",
+			localStatus.Up, localStatus.State)
 	}
 
 	return nil
