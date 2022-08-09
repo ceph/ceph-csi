@@ -383,7 +383,7 @@ func Unlock(
 			metadataDirExists, kernelPolicyExists)
 	}
 
-	protectorName := fmt.Sprintf("%s-%s", FscryptProtectorPrefix, volEncryption.GetID())
+	protectorName := FscryptProtectorPrefix
 
 	switch volEncryption.KMS.RequiresDEKStore() {
 	case kms.DEKStoreMetadata:
