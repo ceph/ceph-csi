@@ -15,6 +15,7 @@ require (
 	github.com/gemalto/kmip-go v0.0.8-0.20220721195433-3fe83e2d3f26
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
+	github.com/google/fscrypt v0.3.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/vault/api v1.7.2
@@ -23,6 +24,7 @@ require (
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
 	github.com/onsi/ginkgo/v2 v2.1.6
 	github.com/onsi/gomega v1.20.1
+	github.com/pkg/xattr v0.4.7
 	github.com/prometheus/client_golang v1.12.2
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
