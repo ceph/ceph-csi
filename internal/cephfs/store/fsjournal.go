@@ -90,8 +90,10 @@ func CheckVolExists(ctx context.Context,
 	}
 	defer j.Destroy()
 
+	kmsID, encryptionType := getEncryptionConfig(volOptions)
+
 	imageData, err := j.CheckReservation(
-		ctx, volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", "", util.EncryptionTypeNone)
+		ctx, volOptions.MetadataPool, volOptions.RequestName, volOptions.NamePrefix, "", kmsID, encryptionType)
 	if err != nil {
 		return nil, err
 	}
@@ -249,6 +251,14 @@ func updateTopologyConstraints(volOpts *VolumeOptions) error {
 	return nil
 }
 
+func getEncryptionConfig(volOptions *VolumeOptions) (string, util.EncryptionType) {
+	if volOptions.IsEncrypted() {
+		return volOptions.Encryption.GetID(), util.EncryptionTypeFile
+	}
+
+	return "", util.EncryptionTypeNone
+}
+
 // ReserveVol is a helper routine to request a UUID reservation for the CSI VolumeName and,
 // to generate the volume identifier for the reserved UUID.
 func ReserveVol(ctx context.Context, volOptions *VolumeOptions, secret map[string]string) (*VolumeIdentifier, error) {
@@ -276,10 +286,13 @@ func ReserveVol(ctx context.Context, volOptions *VolumeOptions, secret map[strin
 	}
 	defer j.Destroy()
 
+	kmsID, encryptionType := getEncryptionConfig(volOptions)
+
 	imageUUID, vid.FsSubvolName, err = j.ReserveName(
 		ctx, volOptions.MetadataPool, util.InvalidPoolID,
 		volOptions.MetadataPool, util.InvalidPoolID, volOptions.RequestName,
-		volOptions.NamePrefix, "", "", volOptions.ReservedID, "", volOptions.BackingSnapshotID, util.EncryptionTypeNone)
+		volOptions.NamePrefix, "", kmsID, volOptions.ReservedID, volOptions.Owner,
+		volOptions.BackingSnapshotID, encryptionType)
 	if err != nil {
 		return nil, err
 	}
@@ -319,10 +332,13 @@ func ReserveSnap(
 	}
 	defer j.Destroy()
 
+	kmsID, encryptionType := getEncryptionConfig(volOptions)
+
 	imageUUID, vid.FsSnapshotName, err = j.ReserveName(
 		ctx, volOptions.MetadataPool, util.InvalidPoolID,
 		volOptions.MetadataPool, util.InvalidPoolID, snap.RequestName,
-		snap.NamePrefix, parentSubVolName, "", snap.ReservedID, "", "", util.EncryptionTypeNone)
+		snap.NamePrefix, parentSubVolName, kmsID, snap.ReservedID, "",
+		volOptions.Owner, encryptionType)
 	if err != nil {
 		return nil, err
 	}
@@ -390,8 +406,10 @@ func CheckSnapExists(
 	}
 	defer j.Destroy()
 
+	kmsID, encryptionType := getEncryptionConfig(volOptions)
+
 	snapData, err := j.CheckReservation(
-		ctx, volOptions.MetadataPool, snap.RequestName, snap.NamePrefix, volOptions.VolID, "", util.EncryptionTypeNone)
+		ctx, volOptions.MetadataPool, snap.RequestName, snap.NamePrefix, volOptions.VolID, kmsID, encryptionType)
 	if err != nil {
 		return nil, nil, err
 	}
