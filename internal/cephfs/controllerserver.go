@@ -26,6 +26,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	"github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -66,18 +67,29 @@ func (cs *ControllerServer) createBackingVolume(
 	ctx context.Context,
 	volOptions,
 	parentVolOpt *store.VolumeOptions,
-	pvID *store.VolumeIdentifier,
+	vID, pvID *store.VolumeIdentifier,
 	sID *store.SnapshotIdentifier,
+	secrets map[string]string,
 ) error {
 	var err error
 	volClient := core.NewSubVolume(volOptions.GetConnection(),
 		&volOptions.SubVolume, volOptions.ClusterID, cs.ClusterName, cs.SetMetadata)
 
 	if sID != nil {
-		return cs.createBackingVolumeFromSnapshotSource(ctx, volOptions, parentVolOpt, volClient, sID)
+		err = parentVolOpt.CopyEncryptionConfig(volOptions, sID.SnapshotID, vID.VolumeID)
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
+		return cs.createBackingVolumeFromSnapshotSource(ctx, volOptions, parentVolOpt, volClient, sID, secrets)
 	}
 
 	if parentVolOpt != nil {
+		err = parentVolOpt.CopyEncryptionConfig(volOptions, pvID.VolumeID, vID.VolumeID)
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+
 		return cs.createBackingVolumeFromVolumeSource(ctx, parentVolOpt, volClient, pvID)
 	}
 
@@ -96,6 +108,7 @@ func (cs *ControllerServer) createBackingVolumeFromSnapshotSource(
 	parentVolOpt *store.VolumeOptions,
 	volClient core.SubVolumeClient,
 	sID *store.SnapshotIdentifier,
+	secrets map[string]string,
 ) error {
 	if err := cs.OperationLocks.GetRestoreLock(sID.SnapshotID); err != nil {
 		log.ErrorLog(ctx, err.Error())
@@ -105,7 +118,7 @@ func (cs *ControllerServer) createBackingVolumeFromSnapshotSource(
 	defer cs.OperationLocks.ReleaseRestoreLock(sID.SnapshotID)
 
 	if volOptions.BackingSnapshot {
-		if err := store.AddSnapshotBackedVolumeRef(ctx, volOptions, cs.ClusterName, cs.SetMetadata); err != nil {
+		if err := store.AddSnapshotBackedVolumeRef(ctx, volOptions, cs.ClusterName, cs.SetMetadata, secrets); err != nil {
 			log.ErrorLog(ctx, "failed to create snapshot-backed volume from snapshot %s: %v",
 				sID.FsSnapshotName, err)
 
@@ -162,7 +175,8 @@ func (cs *ControllerServer) checkContentSource(
 	switch volumeSource.Type.(type) {
 	case *csi.VolumeContentSource_Snapshot:
 		snapshotID := req.VolumeContentSource.GetSnapshot().GetSnapshotId()
-		volOpt, _, sid, err := store.NewSnapshotOptionsFromID(ctx, snapshotID, cr, cs.ClusterName, cs.SetMetadata)
+		volOpt, _, sid, err := store.NewSnapshotOptionsFromID(ctx, snapshotID, cr,
+			req.GetSecrets(), cs.ClusterName, cs.SetMetadata)
 		if err != nil {
 			if errors.Is(err, cerrors.ErrSnapNotFound) {
 				return nil, nil, nil, status.Error(codes.NotFound, err.Error())
@@ -294,6 +308,7 @@ func (cs *ControllerServer) CreateVolume(
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
 	// TODO return error message if requested vol size greater than found volume return error
 
 	metadata := k8s.GetVolumeMetadata(req.GetParameters())
@@ -370,7 +385,7 @@ func (cs *ControllerServer) CreateVolume(
 	}()
 
 	// Create a volume
-	err = cs.createBackingVolume(ctx, volOptions, parentVol, pvID, sID)
+	err = cs.createBackingVolume(ctx, volOptions, parentVol, vID, pvID, sID, req.GetSecrets())
 	if err != nil {
 		if cerrors.IsCloneRetryError(err) {
 			return nil, status.Error(codes.Aborted, err.Error())
@@ -529,7 +544,7 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 	defer cr.DeleteCredentials()
 
-	if err := cs.cleanUpBackingVolume(ctx, volOptions, vID, cr); err != nil {
+	if err := cs.cleanUpBackingVolume(ctx, volOptions, vID, cr, secrets); err != nil {
 		return nil, err
 	}
 
@@ -547,7 +562,19 @@ func (cs *ControllerServer) cleanUpBackingVolume(
 	volOptions *store.VolumeOptions,
 	volID *store.VolumeIdentifier,
 	cr *util.Credentials,
+	secrets map[string]string,
 ) error {
+	if volOptions.IsEncrypted() && volOptions.Encryption.KMS.RequiresDEKStore() == kms.DEKStoreIntegrated {
+		// Only remove DEK when the KMS stores it itself. On
+		// GetSecret enabled KMS the DEKs are stored by
+		// fscrypt on the volume that is going to be deleted anyway.
+		log.DebugLog(ctx, "going to remove DEK for integrated store %q (fscrypt)", volOptions.Encryption.GetID())
+		if err := volOptions.Encryption.RemoveDEK(volID.VolumeID); err != nil {
+			log.WarningLog(ctx, "failed to clean the passphrase for volume %q (file encryption): %s",
+				volOptions.VolID, err)
+		}
+	}
+
 	if !volOptions.BackingSnapshot {
 		// Regular volumes need to be purged.
 
@@ -585,7 +612,7 @@ func (cs *ControllerServer) cleanUpBackingVolume(
 	}
 
 	snapParentVolOptions, _, snapID, err := store.NewSnapshotOptionsFromID(ctx,
-		volOptions.BackingSnapshotID, cr, cs.ClusterName, cs.SetMetadata)
+		volOptions.BackingSnapshotID, cr, secrets, cs.ClusterName, cs.SetMetadata)
 	if err != nil {
 		absorbErrs := []error{
 			util.ErrPoolNotFound,
@@ -874,6 +901,14 @@ func (cs *ControllerServer) CreateSnapshot(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// Use same encryption KMS than source volume and copy the passphrase. The passphrase becomes
+	// available under the snapshot id for CreateVolume to use this snap as a backing volume
+	snapVolOptions := store.VolumeOptions{}
+	err = parentVolOptions.CopyEncryptionConfig(&snapVolOptions, sourceVolID, sID.SnapshotID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
 			SizeBytes:      info.BytesQuota,
@@ -991,7 +1026,8 @@ func (cs *ControllerServer) DeleteSnapshot(
 	}
 	defer cs.OperationLocks.ReleaseDeleteLock(snapshotID)
 
-	volOpt, snapInfo, sid, err := store.NewSnapshotOptionsFromID(ctx, snapshotID, cr, cs.ClusterName, cs.SetMetadata)
+	volOpt, snapInfo, sid, err := store.NewSnapshotOptionsFromID(ctx, snapshotID, cr,
+		req.GetSecrets(), cs.ClusterName, cs.SetMetadata)
 	if err != nil {
 		switch {
 		case errors.Is(err, util.ErrPoolNotFound):

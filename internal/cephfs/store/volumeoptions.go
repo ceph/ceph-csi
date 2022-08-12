@@ -29,8 +29,14 @@ import (
 	"github.com/ceph/ceph-csi/internal/cephfs/core"
 	cerrors "github.com/ceph/ceph-csi/internal/cephfs/errors"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
+	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/k8s"
 	"github.com/ceph/ceph-csi/internal/util/log"
+)
+
+const (
+	cephfsDefaultEncryptionType = util.EncryptionTypeFile
 )
 
 type VolumeOptions struct {
@@ -54,6 +60,11 @@ type VolumeOptions struct {
 	TopologyRequirement  *csi.TopologyRequirement
 	Topology             map[string]string
 	FscID                int64
+
+	// Encryption provides access to optional VolumeEncryption functions
+	Encryption *util.VolumeEncryption
+	// Owner is the creator (tenant, Kubernetes Namespace) of the volume
+	Owner string
 
 	// conn is a connection to the Ceph cluster obtained from a ConnPool
 	conn *util.ClusterConnection
@@ -83,6 +94,9 @@ func (vo *VolumeOptions) Connect(cr *util.Credentials) error {
 func (vo *VolumeOptions) Destroy() {
 	if vo.conn != nil {
 		vo.conn.Destroy()
+	}
+	if vo.IsEncrypted() {
+		vo.Encryption.Destroy()
 	}
 }
 
@@ -219,6 +233,7 @@ func NewVolumeOptions(
 	opts.ClusterID = clusterData.ClusterID
 	opts.Monitors = strings.Join(clusterData.Monitors, ",")
 	opts.SubvolumeGroup = clusterData.CephFS.SubvolumeGroup
+	opts.Owner = k8s.GetOwner(volOptions)
 
 	if err = extractOptionalOption(&opts.Pool, "pool", volOptions); err != nil {
 		return nil, err
@@ -246,6 +261,10 @@ func NewVolumeOptions(
 
 	if err = extractOptionalOption(&backingSnapshotBool, "backingSnapshot", volOptions); err != nil {
 		return nil, err
+	}
+
+	if err = opts.InitKMS(ctx, volOptions, req.GetSecrets()); err != nil {
+		return nil, fmt.Errorf("failed to init KMS: %w", err)
 	}
 
 	if backingSnapshotBool != "" {
@@ -294,7 +313,7 @@ func NewVolumeOptions(
 
 		opts.BackingSnapshotID = req.GetVolumeContentSource().GetSnapshot().GetSnapshotId()
 
-		err = opts.populateVolumeOptionsFromBackingSnapshot(ctx, cr, clusterName, setMetadata)
+		err = opts.populateVolumeOptionsFromBackingSnapshot(ctx, cr, req.GetSecrets(), clusterName, setMetadata)
 		if err != nil {
 			return nil, err
 		}
@@ -382,6 +401,7 @@ func NewVolumeOptionsFromVolID(
 	}
 	volOptions.RequestName = imageAttributes.RequestName
 	vid.FsSubvolName = imageAttributes.ImageName
+	volOptions.Owner = imageAttributes.Owner
 
 	if volOpt != nil {
 		if err = extractOptionalOption(&volOptions.Pool, "pool", volOpt); err != nil {
@@ -403,6 +423,10 @@ func NewVolumeOptionsFromVolID(
 		if err = extractMounter(&volOptions.Mounter, volOpt); err != nil {
 			return nil, nil, err
 		}
+
+		if err = volOptions.InitKMS(ctx, volOpt, secrets); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	if imageAttributes.BackingSnapshotID != "" || volOptions.BackingSnapshotID != "" {
@@ -414,9 +438,16 @@ func NewVolumeOptionsFromVolID(
 	volOptions.SubVolume.VolID = vid.FsSubvolName
 
 	if volOptions.BackingSnapshot {
-		err = volOptions.populateVolumeOptionsFromBackingSnapshot(ctx, cr, clusterName, setMetadata)
+		err = volOptions.populateVolumeOptionsFromBackingSnapshot(ctx, cr, secrets, clusterName, setMetadata)
 	} else {
 		err = volOptions.populateVolumeOptionsFromSubvolume(ctx, clusterName, setMetadata)
+	}
+
+	if volOpt == nil && imageAttributes.KmsID != "" && volOptions.Encryption == nil {
+		err = volOptions.ConfigureEncryption(ctx, imageAttributes.KmsID, secrets)
+		if err != nil {
+			return &volOptions, &vid, err
+		}
 	}
 
 	return &volOptions, &vid, err
@@ -447,6 +478,7 @@ func (vo *VolumeOptions) populateVolumeOptionsFromSubvolume(
 func (vo *VolumeOptions) populateVolumeOptionsFromBackingSnapshot(
 	ctx context.Context,
 	cr *util.Credentials,
+	secrets map[string]string,
 	clusterName string,
 	setMetadata bool,
 ) error {
@@ -471,7 +503,7 @@ func (vo *VolumeOptions) populateVolumeOptionsFromBackingSnapshot(
 	}
 
 	parentBackingSnapVolOpts, _, snapID, err := NewSnapshotOptionsFromID(ctx,
-		vo.BackingSnapshotID, cr, clusterName, setMetadata)
+		vo.BackingSnapshotID, cr, secrets, clusterName, setMetadata)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve backing snapshot %s: %w", vo.BackingSnapshotID, err)
 	}
@@ -576,6 +608,11 @@ func NewVolumeOptionsFromMonitorList(
 		return nil, nil, err
 	}
 
+	opts.Owner = k8s.GetOwner(options)
+	if err = opts.InitKMS(context.TODO(), options, secrets); err != nil {
+		return nil, nil, err
+	}
+
 	vid.FsSubvolName = volID
 	vid.VolumeID = volID
 
@@ -591,7 +628,7 @@ func NewVolumeOptionsFromMonitorList(
 // detected to be a statically provisioned volume.
 func NewVolumeOptionsFromStaticVolume(
 	volID string,
-	options map[string]string,
+	options, secrets map[string]string,
 ) (*VolumeOptions, *VolumeIdentifier, error) {
 	var (
 		opts      VolumeOptions
@@ -625,6 +662,7 @@ func NewVolumeOptionsFromStaticVolume(
 	opts.ClusterID = clusterData.ClusterID
 	opts.Monitors = strings.Join(clusterData.Monitors, ",")
 	opts.SubvolumeGroup = clusterData.CephFS.SubvolumeGroup
+	opts.Owner = k8s.GetOwner(options)
 
 	if err = extractOption(&opts.RootPath, "rootPath", options); err != nil {
 		return nil, nil, err
@@ -650,6 +688,10 @@ func NewVolumeOptionsFromStaticVolume(
 		return nil, nil, err
 	}
 
+	if err = opts.InitKMS(context.TODO(), options, secrets); err != nil {
+		return nil, nil, err
+	}
+
 	vid.FsSubvolName = opts.RootPath
 	vid.VolumeID = volID
 
@@ -666,6 +708,7 @@ func NewSnapshotOptionsFromID(
 	ctx context.Context,
 	snapID string,
 	cr *util.Credentials,
+	secrets map[string]string,
 	clusterName string,
 	setMetadata bool,
 ) (*VolumeOptions, *core.SnapshotInfo, *SnapshotIdentifier, error) {
@@ -739,7 +782,15 @@ func NewSnapshotOptionsFromID(
 	sid.FsSubvolName = imageAttributes.SourceName
 
 	volOptions.SubVolume.VolID = sid.FsSubvolName
+	volOptions.Owner = imageAttributes.Owner
 	vol := core.NewSubVolume(volOptions.conn, &volOptions.SubVolume, volOptions.ClusterID, clusterName, setMetadata)
+
+	if imageAttributes.KmsID != "" && volOptions.Encryption == nil {
+		err = volOptions.ConfigureEncryption(ctx, imageAttributes.KmsID, secrets)
+		if err != nil {
+			return &volOptions, nil, &sid, err
+		}
+	}
 
 	subvolInfo, err := vol.GetSubVolumeInfo(ctx)
 	if err != nil {
@@ -787,4 +838,140 @@ func GenSnapFromOptions(ctx context.Context, req *csi.CreateSnapshotRequest) (*S
 	}
 
 	return cephfsSnap, nil
+}
+
+func parseEncryptionOpts(volOptions map[string]string) (string, util.EncryptionType, error) {
+	var (
+		err              error
+		ok               bool
+		encrypted, kmsID string
+	)
+	encrypted, ok = volOptions["encrypted"]
+	if !ok {
+		return "", util.EncryptionTypeNone, nil
+	}
+	kmsID, err = util.FetchEncryptionKMSID(encrypted, volOptions["encryptionKMSID"])
+	if err != nil {
+		return "", util.EncryptionTypeInvalid, err
+	}
+
+	encType := util.FetchEncryptionType(volOptions, cephfsDefaultEncryptionType)
+
+	return kmsID, encType, nil
+}
+
+// IsEncrypted returns true if volOptions enables file encryption.
+func IsEncrypted(ctx context.Context, volOptions map[string]string) (bool, error) {
+	_, encType, err := parseEncryptionOpts(volOptions)
+	if err != nil {
+		return false, err
+	}
+
+	return encType == util.EncryptionTypeFile, nil
+}
+
+// CopyEncryptionConfig copies passphrases and initializes a fresh
+// Encryption struct if necessary from (vo, vID) to (cp, cpVID).
+func (vo *VolumeOptions) CopyEncryptionConfig(cp *VolumeOptions, vID, cpVID string) error {
+	var err error
+
+	if !vo.IsEncrypted() {
+		return nil
+	}
+
+	if vID == cpVID {
+		return fmt.Errorf("BUG: %v and %v have the same VolID %q "+
+			"set!? Call stack: %s", vo, cp, vID, util.CallStack())
+	}
+
+	if cp.Encryption == nil {
+		cp.Encryption, err = util.NewVolumeEncryption(vo.Encryption.GetID(), vo.Encryption.KMS)
+		if errors.Is(err, util.ErrDEKStoreNeeded) {
+			_, err := vo.Encryption.KMS.GetSecret("")
+			if errors.Is(err, kmsapi.ErrGetSecretUnsupported) {
+				return err
+			}
+		}
+	}
+
+	if vo.Encryption.KMS.RequiresDEKStore() == kmsapi.DEKStoreIntegrated {
+		passphrase, err := vo.Encryption.GetCryptoPassphrase(vID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch passphrase for %q (%+v): %w",
+				vID, vo, err)
+		}
+
+		err = cp.Encryption.StoreCryptoPassphrase(cpVID, passphrase)
+		if err != nil {
+			return fmt.Errorf("failed to store passphrase for %q (%+v): %w",
+				cpVID, cp, err)
+		}
+	}
+
+	return nil
+}
+
+// ConfigureEncryption initializes the Ceph CSI key management from
+// kmsID and credentials. Sets vo.Encryption on success.
+func (vo *VolumeOptions) ConfigureEncryption(
+	ctx context.Context,
+	kmsID string,
+	credentials map[string]string,
+) error {
+	kms, err := kmsapi.GetKMS(vo.Owner, kmsID, credentials)
+	if err != nil {
+		log.ErrorLog(ctx, "get KMS failed %+v: %v", vo, err)
+
+		return err
+	}
+
+	vo.Encryption, err = util.NewVolumeEncryption(kmsID, kms)
+
+	if errors.Is(err, util.ErrDEKStoreNeeded) {
+		// fscrypt uses secrets directly from the KMS.
+		// Therefore we do not support an additional DEK
+		// store. Since not all "metadata" KMS support
+		// GetSecret, test for support here. Postpone any
+		// other error handling
+		_, err := vo.Encryption.KMS.GetSecret("")
+		if errors.Is(err, kmsapi.ErrGetSecretUnsupported) {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// InitKMS initialized the Ceph CSI key management by parsing the
+// configuration from volume options + credentials. Sets vo.Encryption
+// on success.
+func (vo *VolumeOptions) InitKMS(
+	ctx context.Context,
+	volOptions, credentials map[string]string,
+) error {
+	var err error
+
+	kmsID, encType, err := parseEncryptionOpts(volOptions)
+	if err != nil {
+		return err
+	}
+
+	if encType == util.EncryptionTypeNone {
+		return nil
+	}
+
+	if encType != util.EncryptionTypeFile {
+		return fmt.Errorf("unsupported encryption type %v. only supported type is 'file'", encType)
+	}
+
+	err = vo.ConfigureEncryption(ctx, kmsID, credentials)
+	if err != nil {
+		return fmt.Errorf("invalid encryption kms configuration: %w", err)
+	}
+
+	return nil
+}
+
+func (vo *VolumeOptions) IsEncrypted() bool {
+	return vo.Encryption != nil
 }
