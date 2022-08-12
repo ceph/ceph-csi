@@ -111,6 +111,20 @@ func createKeyFuncFromVolumeEncryption(
 	return keyFunc, nil
 }
 
+// fsyncEncryptedDirectory calls sync on dirPath. It is intended to
+// work around the fscrypt library not syncing the directory it sets a
+// policy on.
+// TODO Remove when the fscrypt dependency has https://github.com/google/fscrypt/pull/359
+func fsyncEncryptedDirectory(dirPath string) error {
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+
+	return dir.Sync()
+}
+
 // unlockExisting tries to unlock an already set up fscrypt directory using keys from Ceph CSI.
 func unlockExisting(
 	ctx context.Context,
@@ -221,6 +235,12 @@ func initializeAndUnlock(
 		if err = policy.Deprovision(false); err != nil {
 			log.ErrorLog(ctx, "fscrypt: Policy cleanup response to failing apply failed: %w", err)
 		}
+
+		return err
+	}
+
+	if err = fsyncEncryptedDirectory(encryptedPath); err != nil {
+		log.ErrorLog(ctx, "fscrypt: fsync encrypted dir - to flush kernel policy to disk failed %v", err)
 
 		return err
 	}
