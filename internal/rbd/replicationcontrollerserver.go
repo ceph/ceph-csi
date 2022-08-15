@@ -32,6 +32,7 @@ import (
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
 	"github.com/csi-addons/spec/lib/go/replication"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -89,6 +90,10 @@ type ReplicationServer struct {
 	*replication.UnimplementedControllerServer
 	// Embed ControllerServer as it implements helper functions
 	*ControllerServer
+}
+
+func (rs *ReplicationServer) RegisterService(server grpc.ServiceRegistrar) {
+	replication.RegisterControllerServer(server, rs)
 }
 
 // getForceOption extracts the force option from the GRPC request parameters.
