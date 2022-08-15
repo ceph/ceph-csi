@@ -59,7 +59,7 @@ github.com/aws/aws-sdk-go/service/sso
 github.com/aws/aws-sdk-go/service/sso/ssoiface
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
-# github.com/aws/aws-sdk-go-v2 v1.16.7
+# github.com/aws/aws-sdk-go-v2 v1.16.11
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/aws
 github.com/aws/aws-sdk-go-v2/aws/defaults
@@ -76,21 +76,21 @@ github.com/aws/aws-sdk-go-v2/internal/sdk
 github.com/aws/aws-sdk-go-v2/internal/strings
 github.com/aws/aws-sdk-go-v2/internal/sync/singleflight
 github.com/aws/aws-sdk-go-v2/internal/timeconv
-# github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.14
+# github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.18
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/internal/configsources
-# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.8
+# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.12
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
-# github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.8
+# github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.12
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
-# github.com/aws/aws-sdk-go-v2/service/sts v1.16.9
+# github.com/aws/aws-sdk-go-v2/service/sts v1.16.13
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
-# github.com/aws/smithy-go v1.12.0
+# github.com/aws/smithy-go v1.12.1
 ## explicit; go 1.15
 github.com/aws/smithy-go
 github.com/aws/smithy-go/document
