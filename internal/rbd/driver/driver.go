@@ -159,6 +159,8 @@ func (r *Driver) Run(conf *util.Config) {
 		r.cs = NewControllerServer(r.cd)
 		r.cs.ClusterName = conf.ClusterName
 		r.cs.SetMetadata = conf.SetMetadata
+		log.WarningLogMsg("replication service running on controller server is deprecated " +
+			"and replaced by CSI-Addons, see https://github.com/ceph/ceph-csi/issues/3314 for more details")
 		r.rs = NewReplicationServer(r.cs)
 	}
 	if !conf.IsControllerServer && !conf.IsNodeServer {
@@ -223,6 +225,9 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 
 		fcs := casrbd.NewFenceControllerServer()
 		r.cas.RegisterService(fcs)
+
+		rcs := NewReplicationServer(NewControllerServer(r.cd))
+		r.cas.RegisterService(rcs)
 	}
 
 	if conf.IsNodeServer {

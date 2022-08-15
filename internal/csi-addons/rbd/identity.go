@@ -90,6 +90,12 @@ func (is *IdentityServer) GetCapabilities(
 						Type: identity.Capability_NetworkFence_NETWORK_FENCE,
 					},
 				},
+			}, &identity.Capability{
+				Type: &identity.Capability_VolumeReplication_{
+					VolumeReplication: &identity.Capability_VolumeReplication{
+						Type: identity.Capability_VolumeReplication_VOLUME_REPLICATION,
+					},
+				},
 			})
 	}
 
