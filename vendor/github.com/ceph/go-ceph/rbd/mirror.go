@@ -1,11 +1,6 @@
 //go:build !nautilus
 // +build !nautilus
 
-// Initially, we're only providing mirroring related functions for octopus as
-// that version of ceph deprecated a number of the functions in nautilus. If
-// you need mirroring on an earlier supported version of ceph please file an
-// issue in our tracker.
-
 package rbd
 
 // #cgo LDFLAGS: -lrbd

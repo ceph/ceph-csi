@@ -1,9 +1,7 @@
-//go:build !(nautilus || octopus) && ceph_preview && ceph_ci_untested
-// +build !nautilus,!octopus,ceph_preview,ceph_ci_untested
+//go:build !(nautilus || octopus) && ceph_preview && ceph_pre_quincy
+// +build !nautilus,!octopus,ceph_preview,ceph_pre_quincy
 
 package admin
-
-import "C"
 
 // GetMetadata gets custom metadata on the subvolume in a volume belonging to
 // an optional subvolume group based on provided key name.

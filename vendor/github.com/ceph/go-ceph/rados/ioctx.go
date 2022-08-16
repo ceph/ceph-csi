@@ -99,6 +99,11 @@ type LockInfo struct {
 // IOContext represents a context for performing I/O within a pool.
 type IOContext struct {
 	ioctx C.rados_ioctx_t
+
+	// Hold a reference back to the connection that the ioctx depends on so
+	// that Go's GC doesn't trigger the Conn's finalizer before this
+	// IOContext is destroyed.
+	conn *Conn
 }
 
 // validate returns an error if the ioctx is not ready to be used

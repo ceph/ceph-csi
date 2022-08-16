@@ -9,6 +9,8 @@ import "C"
 import (
 	"runtime"
 	"unsafe"
+
+	"github.com/ceph/go-ceph/internal/log"
 )
 
 const (
@@ -120,6 +122,7 @@ func NewConnWithClusterAndUser(clusterName string, userName string) (*Conn, erro
 // called.
 func freeConn(conn *Conn) {
 	if conn.cluster != nil {
+		log.Warnf("unreachable Conn object has not been shut down. Cleaning up.")
 		C.rados_shutdown(conn.cluster)
 		// prevent calling rados_shutdown() more than once
 		conn.cluster = nil

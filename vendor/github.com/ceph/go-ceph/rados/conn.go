@@ -100,7 +100,7 @@ func (c *Conn) ReadDefaultConfigFile() error {
 func (c *Conn) OpenIOContext(pool string) (*IOContext, error) {
 	cPool := C.CString(pool)
 	defer C.free(unsafe.Pointer(cPool))
-	ioctx := &IOContext{}
+	ioctx := &IOContext{conn: c}
 	ret := C.rados_ioctx_create(c.cluster, cPool, &ioctx.ioctx)
 	if ret == 0 {
 		return ioctx, nil

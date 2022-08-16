@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"unsafe"
+
+	"github.com/ceph/go-ceph/internal/log"
 )
 
 // The file operation.go exists to support both read op and write op types that
@@ -116,6 +118,7 @@ func (o *operation) update(kind opKind, ret C.int) error {
 
 func opStepFinalizer(s opStep) {
 	if s != nil {
+		log.Warnf("unreachable opStep object found. Cleaning up.")
 		s.free()
 	}
 }
