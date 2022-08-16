@@ -1,0 +1,235 @@
+# This file contains all available configuration options
+# with their default values.
+
+# options for analysis running
+run:
+  tests: true
+  skip-files:
+    - requests.go
+
+# output configuration options
+output:
+  # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
+  format: colored-line-number
+
+  # print lines of code with issue, default is true
+  print-issued-lines: true
+
+  # print linter name in the end of issue text, default is true
+  print-linter-name: true
+
+
+# all available settings of specific linters
+linters-settings:
+  govet:
+    # report about shadowed variables
+    check-shadowing: false
+  dupl:
+    # tokens count to trigger issue, 150 by default
+    threshold: 100
+  exhaustive:
+    default-signifies-exhaustive: true
+  goconst:
+    # minimal length of string constant, 3 by default
+    min-len: 3
+    # minimal occurrences count to trigger, 3 by default
+    min-occurrences: 3
+  depguard:
+    list-type: blacklist
+    include-go-root: false
+    packages:
+      - github.com/magiconair/properties/assert
+      - gopkg.in/go-playground/assert.v1
+      - github.com/pborman/uuid #replace with github.com/google/uuid
+    inTests:
+      - github.com/davecgh/go-spew/spew
+      - github.com/stretchr/testify
+  misspell:
+    # Correct spellings using locale preferences for US or UK.
+    # Default is to use a neutral variety of English.
+    # Setting locale to US will correct the British spelling of 'colour' to 'color'.
+    locale: US
+  unused:
+    # treat code as a program (not a library) and report unused exported identifiers; default is false.
+    # XXX: if you enable this setting, unused will report a lot of false-positives in text editors:
+    # if it's called for subdir of a project it can't find funcs usages. All text editor integrations
+    # with golangci-lint call it on a directory with the changed file.
+    check-exported: false
+  gocritic:
+    # Which checks should be disabled; can't be combined with 'enabled-checks'; default is empty
+    disabled-checks:
+      - commentFormatting
+  revive:
+    ignore-generated-header: true
+  wsl:
+    allow-cuddle-declarations: true
+    allow-separated-leading-comment: true
+    allow-assign-and-anything: true
+
+linters:
+  # to try out individual linters: golangci-lint run -E gocyclo,gosimple
+  enable:
+    # default linters
+    - staticcheck
+    - deadcode
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - structcheck
+    - unused
+    - varcheck
+
+    # additional linters
+    - asciicheck
+    - bidichk
+##    - bodyclose          # its all false positives with requester and sling, which both close the body already
+    - containedctx
+    - contextcheck
+#    - cyclop              # need to analyze findings
+    - decorder
+    - depguard
+##    - dogsled            # checks for too many blank identifiers.  don't care
+    - dupl
+    - durationcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
+##    - funlen              # checks function length.  don't care
+#    - gci                  # not sure why this is complaining
+##    - gochecknoglobals    # too common
+    - gochecknoinits
+#    - gocognit          # too many findings, will take time to evaluate
+    - goconst
+    - gocritic
+##    - gocyclo             # checks cyclomatic complexity.  don't care
+#    - godot               # too many false positives
+#    - godox               # doesn't allow TODO comments.  We allow those to be committed.
+#    - goerr113             # good practice, but it doesn't recognize that we're already wrapping errors with merry
+##    - gofmt               # checks code is formatted, handled by make prep
+    - gofumpt
+    - goheader
+##    - goimports           # checks import order.  We're not using goimports
+#    - gomnd                # too aggressive
+    - gomoddirectives
+#    - gomodguard
+    - goprintffuncname
+    - gosec
+    - grouper
+    - ifshort
+    - importas
+#    - ireturn              # there are valid use cases for this pattern.  too strict.
+##    - lll                 # checks line length.  not enforced
+#    - maintidx             # look at this later
+    - makezero
+##    - maligned            # optimizies struct field order, but structs are usually ordered for legibility
+    - misspell
+    - nakedret
+#    - nestif               # need to evaluate the findings
+    - nilerr
+    - nilnil
+#    - nlreturn             # a little too aggressive.  wsl covers the same ground.
+    - noctx
+    - nolintlint
+#    - paralleltest        # look at this later
+#    - prealloc            # slice optimizations, but promotes too much premature optimization
+    - predeclared
+    - promlinter
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - stylecheck
+    - tagliatelle
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+#    - varnamelen        # take a look later
+    - wastedassign
+    - whitespace
+#    - wrapcheck           # way too aggressive
+    - wsl
+##    - unparam            # too many false positives
+##    - whitespace         # not enforced
+  disable-all: true
+#  presets:
+#    - bugs
+#    - unused
+#  fast: false
+
+
+issues:
+  # List of regexps of issue texts to exclude, empty list by default.
+  # But independently from this option we use default exclude patterns,
+  # it can be disabled by `exclude-use-default: false`. To list all
+  # excluded by default patterns execute `golangci-lint run --help`
+#  exclude:
+#    - abcdef
+
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    # Explicitly exclude the typecheck plugin.  There is some bug in golangci which is
+    # enabling this checker, even though it isn't listed above.
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - exportloopref
+        - gochecknoinits
+        - gochecknoglobals
+        - wsl
+        - nlreturn
+        - errchkjson
+        - forcetypeassert
+    - path: cmd
+      linters:
+        # init(), globals, and prints are pretty common in main packages
+        - gochecknoinits
+        - gochecknoglobals
+        - forbidigo
+
+    # Exclude known linters from partially hard-vendored code,
+    # which is impossible to exclude via "nolint" comments.
+#    - path: internal/hmac/
+#      text: "weak cryptographic primitive"
+#      linters:
+#        - gosec
+
+    # Exclude some staticcheck messages
+#    - linters:
+#        - staticcheck
+#      text: "SA9003:"
+
+
+  # Independently from option `exclude` we use default exclude patterns,
+  # it can be disabled by this option. To list all
+  # excluded by default patterns execute `golangci-lint run --help`.
+  # Default value for this option is true.
+#  exclude-use-default: false
+
+  # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
+#  max-issues-per-linter: 0
+
+  # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
+#  max-same-issues: 0
+
+  # Show only new issues: if there are unstaged changes or untracked files,
+  # only those changes are analyzed, else only changes in HEAD~ are analyzed.
+  # It's a super-useful option for integration of golangci-lint into existing
+  # large codebase. It's not practical to fix all existing issues at the moment
+  # of integration: much better don't allow issues in new code.
+  # Default is false.
+  new: false
+
+  # Show only new issues created after git revision `REV`
+#  new-from-rev: REV
+
+  # Show only new issues created in git patch with set file path.
+#  new-from-patch: path/to/patch/file
