@@ -74,5 +74,14 @@ data:
       "encryptionKMSType": "aws-sts-metadata",
       "secretName": "ceph-csi-aws-credentials"
     }
+  kmip-test: |-
+    {
+      "KMS_PROVIDER": "kmip",
+      "KMIP_ENDPOINT": "kmip:5696",
+      "KMIP_SECRET_NAME": "ceph-csi-kmip-credentials",
+      "TLS_SERVER_NAME": "kmip.ciphertrustmanager.local",
+      "READ_TIMEOUT": 10,
+      "WRITE_TIMEOUT": 10
+    }
 metadata:
   name: csi-kms-connection-details
