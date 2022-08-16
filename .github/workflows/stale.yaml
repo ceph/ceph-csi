@@ -15,7 +15,7 @@ jobs:
     permissions:
       issues: write  # for actions/stale to close stale issues
       pull-requests: write  # for actions/stale to close stale PRs
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     if: github.repository == 'ceph/ceph-csi'
     steps:
       - uses: actions/stale@v5
