@@ -415,6 +415,38 @@ the AWS KMS is expected to contain:
 This Secret is expected to be created by the tenant/user in each namespace where
 Ceph-CSI is used to create encrypted rbd volumes.
 
+#### Configuring KMIP KMS
+
+The Key Management Interoperability Protocol (KMIP) is an extensible
+communication protocol that defines message formats for the manipulation
+of cryptographic keys on a key management server.
+Ceph-CSI can be configured to connect to various KMS servers using
+[KMIP](https://en.wikipedia.org/wiki/Key_Management_Interoperability_Protocol)
+for encrypting RBD volumes.
+
+There are a few settings that need to be included in the [KMS configuration
+file](../examples/kms/vault/kms-config.yaml):
+
+1. `KMS_PROVIDER`: should be set to `kmip`.
+1. `KMIP_ENDPOINT` KMIP endpoint address.
+1. `KMIP_SECRET_NAME`(optional): name of the Kubernetes Secret which contains
+   the credentials for communicating with KMIP server, defaults to
+   `ceph-csi-kmip-credentials`.
+1. `TLS_SERVER_NAME`(optional): The endpoint server name. Useful when the
+   KMIP endpoint does not have a DNS entry.
+1. `READ_TIMEOUT`(optional): Network read timeout, in seconds. The default
+   value is 10.
+1. `WRITE_TIMEOUT`(optional): Network write timeout, in seconds. The default
+   value is 10.
+
+The [Secret with credentials](../examples/kms/vault/kmip-credentials.yaml) for
+the KMIP KMS is expected to contain:
+
+1. `CA_CERT`: CA certificate that will be used to connect to KMIP server.
+1. `CLIENT_CERT`: Client certificate that will be used to connect to KMIP server.
+1. `CLIENT_KEY`: Client key that will be used to connect to KMIP server.
+1. `UNIQUE_IDENTIFIER`: Unique ID of the key to use for encrypting/decrypting.
+
 ### Encryption prerequisites
 
 In order for encryption to work you need to make sure that `dm-crypt` kernel
