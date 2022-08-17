@@ -49,7 +49,7 @@ GO_PROJECT=github.com/ceph/ceph-csi
 CEPH_VERSION ?= $(shell . $(CURDIR)/build.env ; echo $${CEPH_VERSION})
 # TODO: ceph_preview tag may be removed with go-ceph 0.17.0
 # TODO: ceph_ci_untested is added for subvolume metadata (go-ceph#691) and snapshot metadata management (go-ceph#698)
-GO_TAGS_LIST ?= $(CEPH_VERSION) ceph_preview ceph_ci_untested
+GO_TAGS_LIST ?= $(CEPH_VERSION) ceph_preview ceph_ci_untested ceph_pre_quincy
 
 # go build flags
 LDFLAGS ?=
