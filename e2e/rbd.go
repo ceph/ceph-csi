@@ -4317,14 +4317,38 @@ var _ = Describe("RBD", func() {
 				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
-			// Make sure this should be last testcase in this file, because
-			// it deletes pool
-			By("Create a PVC and delete PVC when backend pool deleted", func() {
-				err := pvcDeleteWhenPoolNotFound(pvcPath, false, f)
+			By("create a PVC and bind it to an app with encrypted RBD volume (default type setting)", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
-					e2elog.Failf("failed to delete PVC when pool not found: %v", err)
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{"encrypted": "true"},
+					deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+				err = validateEncryptedPVCAndAppBinding(pvcPath, appPath, noKMS, f)
+				if err != nil {
+					e2elog.Failf("failed to validate encrypted pvc: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					e2elog.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
 				}
 			})
+
 			// delete RBD provisioner secret
 			err := deleteCephUser(f, keyringRBDProvisionerUsername)
 			if err != nil {
@@ -4335,6 +4359,15 @@ var _ = Describe("RBD", func() {
 			if err != nil {
 				e2elog.Failf("failed to delete user %s: %v", keyringRBDNodePluginUsername, err)
 			}
+
+			// Make sure this should be last testcase in this file, because
+			// it deletes pool
+			By("Create a PVC and delete PVC when backend pool deleted", func() {
+				err := pvcDeleteWhenPoolNotFound(pvcPath, false, f)
+				if err != nil {
+					e2elog.Failf("failed to delete PVC when pool not found: %v", err)
+				}
+			})
 		})
 	})
 })
