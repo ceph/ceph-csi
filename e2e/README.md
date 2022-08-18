@@ -10,18 +10,18 @@
 
 ## Introduction
 
-End-to-end (e2e) in cephcsi provides a mechanism to test the end-to-end
-behavior of the system, These tests will interact with live instances of ceph
-cluster just like how a user would.
+End-to-end (e2e) in cephcsi provides a mechanism to test the end-to-end behavior
+of the system, These tests will interact with live instances of ceph cluster
+just like how a user would.
 
 The primary objectives of the e2e tests are to ensure a consistent and reliable
-behavior of the cephcsi code base and to catch hard-to-test bugs before
-users do when unit and integration tests are insufficient.
+behavior of the cephcsi code base and to catch hard-to-test bugs before users do
+when unit and integration tests are insufficient.
 
-The Test framework is designed
-to install Rook, run cephcsi tests, and uninstall Rook.
+The Test framework is designed to install Rook, run cephcsi tests, and uninstall
+Rook.
 
-The e2e test are  built on top of  [Ginkgo](http://onsi.github.io/ginkgo/) and
+The e2e test are built on top of  [Ginkgo](http://onsi.github.io/ginkgo/) and
 [Gomega](http://onsi.github.io/gomega/)
 
 ## Install Kubernetes
@@ -30,7 +30,7 @@ The cephcsi also provides a script for starting Kubernetes using
 [minikube](../scripts/minikube.sh) so users can quickly spin up a Kubernetes
 cluster.
 
-the following parameters are available to configure  kubernetes cluster
+the following parameters are available to configure kubernetes cluster
 
 | flag              | description                                                   |
 | ----------------- | ------------------------------------------------------------- |
@@ -45,7 +45,8 @@ the following parameters are available to configure  kubernetes cluster
 | cephcsi           | Copy built docker images to kubernetes cluster                |
 | k8s-sidecar       | Copy kubernetes sidecar docker images to kubernetes cluster   |
 
-following environment variables can be exported to customize kubernetes deployment
+following environment variables can be exported to customize kubernetes
+deployment
 
 | ENV                  | Description                                      | Default                                                            |
 |----------------------|--------------------------------------------------|--------------------------------------------------------------------|
@@ -58,9 +59,9 @@ following environment variables can be exported to customize kubernetes deployme
 | K8S_FEATURE_GATES    | Feature gates to enable on kubernetes cluster    | BlockVolume=true,CSIBlockVolume=true,VolumeSnapshotDataSource=true |
 | ROOK_BLOCK_POOL_NAME | Block pool name to create in the rook instance   | newrbdpool                                                         |
 
-- creating kubernetes  cluster
+- creating kubernetes cluster
 
-    From the ceph-csi root directory, run:
+  From the ceph-csi root directory, run:
 
     ```console
     ./scripts/minikube.sh up
@@ -74,9 +75,11 @@ following environment variables can be exported to customize kubernetes deployme
 
 ## Deploy Rook
 
-The cephcsi E2E tests expects that you already have rook running in your cluster.
+The cephcsi E2E tests expects that you already have rook running in your
+cluster.
 
-Thanks to [minikube](../scripts/minikube.sh) script for the handy `deploy-rook` option.
+Thanks to [minikube](../scripts/minikube.sh) script for the handy `deploy-rook`
+option.
 
 ```console
 ./scripts/minikube.sh deploy-rook
@@ -84,8 +87,8 @@ Thanks to [minikube](../scripts/minikube.sh) script for the handy `deploy-rook` 
 
 ## Test parameters
 
-In addition to standard go tests parameters, the following custom parameters
-are available while running tests:
+In addition to standard go tests parameters, the following custom parameters are
+available while running tests:
 
 | flag              | description                                                                                       |
 | ----------------- | ------------------------------------------------------------------------------------------------- |
@@ -108,8 +111,8 @@ are available while running tests:
 
 ## E2E for snapshot
 
-After the support for snapshot/clone has been added to ceph-csi,
-you need to follow these steps before running e2e.
+After the support for snapshot/clone has been added to ceph-csi, you need to
+follow these steps before running e2e.
 
 - Install snapshot controller and snapshot CRD
 
@@ -117,7 +120,7 @@ you need to follow these steps before running e2e.
     ./scripts/install-snapshot.sh install
     ```
 
-    Once you are done running e2e please perform the cleanup by running following:
+  Once you are done running e2e please perform the cleanup by running following:
 
     ```console
     ./scripts/install-snapshot.sh cleanup
@@ -126,9 +129,9 @@ you need to follow these steps before running e2e.
 ## Running E2E
 
 `
-Note:- Prior to running the tests, you may need to copy the kubernetes configuration
-file to `$HOME/.kube/config` which is required to communicate with kubernetes
-cluster or you can pass `kubeconfig`flag while running tests.
+Note:- Prior to running the tests, you may need to copy the kubernetes
+configuration file to `$HOME/.kube/config` which is required to communicate with
+kubernetes cluster or you can pass `kubeconfig` flag while running tests.
 `
 
 Functional tests are run by the `go test` command.
