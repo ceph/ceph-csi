@@ -56,6 +56,7 @@ environments.
 
 | Ceph CSI Version | Container Orchestrator Name | Version Tested|
 | -----------------| --------------------------- | --------------|
+| v3.7.0 | Kubernetes | v1.22, v1.23, v1.24|
 | v3.6.1 | Kubernetes | v1.21, v1.22, v1.23|
 | v3.6.0 | Kubernetes | v1.21, v1.22, v1.23|
 | v3.5.1 | Kubernetes | v1.21, v1.22, v1.23|
@@ -70,8 +71,8 @@ NOTE:
 The supported window of Ceph CSI versions is "N.(x-1)":
 (N (Latest major release) . (x (Latest minor release) - 1)).
 
-For example, if the Ceph CSI latest major version is `3.6.0` today, support is
-provided for the versions above `3.5.0`. If users are running an unsupported
+For example, if the Ceph CSI latest major version is `3.7.0` today, support is
+provided for the versions above `3.6.0`. If users are running an unsupported
 Ceph CSI version, they will be asked to upgrade when requesting support.
 
 ## Support Matrix
@@ -131,6 +132,7 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | devel (Branch)          | quay.io/cephcsi/cephcsi      | canary    |
+| v3.7.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.7.0    |
 | v3.6.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.6.1    |
 | v3.6.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.6.0    |
 | v3.5.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.5.1    |
