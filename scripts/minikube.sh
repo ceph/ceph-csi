@@ -177,7 +177,7 @@ else
 fi
 
 # configure csi image version
-CSI_IMAGE_VERSION=${CSI_IMAGE_VERSION:-"canary"}
+CSI_IMAGE_VERSION=${CSI_IMAGE_VERSION:-"v3.7.0"}
 
 #feature-gates for kube
 K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-""}
