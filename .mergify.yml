@@ -161,14 +161,6 @@ pull_request_rules:
       queue:
         name: default
       delete_head_branch: {}
-  - name: backport patches to release-v3.5 branch
-    conditions:
-      - base=devel
-      - label=backport-to-release-v3.5
-    actions:
-      backport:
-        branches:
-          - release-v3.5
   - name: backport patches to release-v3.6 branch
     conditions:
       - base=devel
