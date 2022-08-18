@@ -8,6 +8,7 @@
   - [Upgrading from v3.3 to v3.4](#upgrading-from-v33-to-v34)
   - [Upgrading from v3.4 to v3.5](#upgrading-from-v34-to-v35)
   - [Upgrading from v3.5 to v3.6](#upgrading-from-v35-to-v36)
+  - [Upgrading from v3.6 to v3.7](#upgrading-from-v36-to-v37)
     - [Upgrading CephFS](#upgrading-cephfs)
       - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
         - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -79,6 +80,11 @@ to upgrade from cephcsi v3.4 to v3.5
 
 ## Upgrading from v3.5 to v3.6
 
+Refer [upgrade-from-v3.5-v3.6](https://github.com/ceph/ceph-csi/blob/v3.6.1/docs/ceph-csi-upgrade.md)
+to upgrade from cephcsi v3.5 to v3.6
+
+## Upgrading from v3.6 to v3.7
+
 **Ceph-csi releases from devel are expressly unsupported.** It is strongly
 recommended that you use [official
 releases](https://github.com/ceph/ceph-csi/releases) of Ceph-csi. Unreleased
@@ -87,15 +93,15 @@ that will not be supported in the official releases. Builds from the devel
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-**Also, we do not recommend any direct upgrades to 3.6 except from 3.5 to 3.6.**
-For example, upgrading from 3.4 to 3.6 is not recommended.
+**Also, we do not recommend any direct upgrades to 3.7 except from 3.6 to 3.7.**
+For example, upgrading from 3.5 to 3.7 is not recommended.
 
-git checkout v3.6.1 tag
+git checkout v3.7.0 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.6.1
+git checkout v3.7.0
 ```
 
 ```console
@@ -217,7 +223,7 @@ For each node:
   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
-we have successfully upgraded cephfs csi from v3.5 to v3.6
+we have successfully upgraded cephfs csi from v3.6 to v3.7
 
 ### Upgrading RBD
 
@@ -283,7 +289,7 @@ daemonset.apps/csi-rbdplugin configured
 service/csi-metrics-rbdplugin configured
 ```
 
-we have successfully upgraded RBD csi from v3.5 to v3.6
+we have successfully upgraded RBD csi from v3.6 to v3.7
 
 ### CSI Sidecar containers consideration
 
