@@ -500,6 +500,10 @@ func (kms *kmipKMS) verifyResponse(
 	return &batchItem, nil
 }
 
+func (kms *kmipKMS) GetSecret(volumeID string) (string, error) {
+	return "", ErrGetSecretUnsupported
+}
+
 // TODO: use the following structs from https://github.com/gemalto/kmip-go
 // when https://github.com/ThalesGroup/kmip-go/issues/21 is resolved.
 // refer: https://docs.oasis-open.org/kmip/spec/v1.4/kmip-spec-v1.4.html.
