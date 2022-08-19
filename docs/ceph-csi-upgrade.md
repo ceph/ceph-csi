@@ -24,6 +24,14 @@
       - [4. Upgrade RBD Nodeplugin resources](#4-upgrade-rbd-nodeplugin-resources)
         - [4.1 Update the RBD Nodeplugin RBAC](#41-update-the-rbd-nodeplugin-rbac)
         - [4.2 Update the RBD Nodeplugin daemonset](#42-update-the-rbd-nodeplugin-daemonset)
+    - [Upgrading NFS](#upgrading-nfs)
+      - [5. Upgrade NFS Provisioner resources](#5-upgrade-nfs-provisioner-resources)
+        - [5.1 Update the NFS Provisioner RBAC](#51-update-the-nfs-provisioner-rbac)
+        - [5.2 Update the NFS Provisioner deployment](#52-update-the-nfs-provisioner-deployment)
+      - [6. Upgrade NFS Nodeplugin resources](#6-upgrade-nfs-nodeplugin-resources)
+        - [6.1 Update the NFS Nodeplugin RBAC](#61-update-the-nfs-nodeplugin-rbac)
+        - [6.2 Update the NFS Nodeplugin daemonset](#62-update-the-nfs-nodeplugin-daemonset)
+        - [6.3 Delete the old NFS Nodeplugin daemonset](#63-delete-the-old-nfs-nodeplugin-daemonset)
     - [CSI Sidecar containers consideration](#csi-sidecar-containers-consideration)
 
 ## Pre-upgrade considerations
@@ -290,6 +298,75 @@ service/csi-metrics-rbdplugin configured
 ```
 
 we have successfully upgraded RBD csi from v3.6 to v3.7
+
+### Upgrading NFS
+
+Upgrading nfs csi includes upgrade of nfs driver and as well as
+kubernetes sidecar containers and also the permissions required for the
+kubernetes sidecar containers, lets upgrade the things one by one
+
+#### 5. Upgrade NFS Provisioner resources
+
+Upgrade provisioner resources include updating the provisioner RBAC and
+Provisioner deployment
+
+##### 5.1 Update the NFS Provisioner RBAC
+
+```bash
+$ kubectl apply -f deploy/nfs/kubernetes/csi-provisioner-rbac.yaml
+serviceaccount/nfs-csi-provisioner configured
+clusterrole.rbac.authorization.k8s.io/nfs-external-provisioner-runner configured
+clusterrolebinding.rbac.authorization.k8s.io/nfs-csi-provisioner-role configured
+role.rbac.authorization.k8s.io/nfs-external-provisioner-cfg configured
+rolebinding.rbac.authorization.k8s.io/nfs-csi-provisioner-role-cfg configured
+```
+
+##### 5.2 Update the NFS Provisioner deployment
+
+```bash
+$ kubectl apply -f deploy/nfs/kubernetes/csi-nfsplugin-provisioner.yaml
+service/csi-nfsplugin-provisioner configured
+deployment.apps/csi-nfsplugin-provisioner configured
+```
+
+wait for the deployment to complete
+
+```bash
+$ kubectl get deployment
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
+csi-nfsplugin-provisioner      5/5     1            5           104m
+```
+
+deployment UP-TO-DATE value must be same as READY
+
+#### 6. Upgrade NFS Nodeplugin resources
+
+Upgrading nodeplugin resources include updating the nodeplugin RBAC and
+nodeplugin daemonset
+
+##### 6.1 Update the NFS Nodeplugin RBAC
+
+```bash
+$ kubectl apply -f deploy/nfs/kubernetes/csi-nodeplugin-rbac.yaml
+serviceaccount/nfs-csi-nodeplugin configured
+```
+
+##### 6.2 Update the NFS Nodeplugin daemonset
+
+```bash
+$ kubectl apply -f deploy/nfs/kubernetes/csi-nfsplugin.yaml
+daemonset.apps/csi-nfsplugin configured
+service/csi-metrics-nfsplugin configured
+```
+
+##### 6.3 Delete the old NFS Nodeplugin daemonset
+
+```bash
+$ kubectl delete daemonsets.apps csi-nfs-node
+daemonset.apps "csi-nfs-node" deleted
+```
+
+we have successfully upgraded nfs csi from v3.6 to v3.7
 
 ### CSI Sidecar containers consideration
 
