@@ -294,6 +294,7 @@ pull_request_rules:
         add:
           - component/docs
           - ci/skip/e2e
+          - ci/skip/multi-arch-build
   - name: title contains Mergify
     conditions:
       - "title~=(?i)mergify"
@@ -302,3 +303,4 @@ pull_request_rules:
         add:
           - Repo activity
           - ci/skip/e2e
+          - ci/skip/multi-arch-build
