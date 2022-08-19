@@ -74,6 +74,12 @@ spec:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          # - name: KMS_CONFIGMAP_NAME
+          #   value: encryptionConfig
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
@@ -104,6 +110,8 @@ spec:
               mountPath: /tmp/csi/keys
             - name: ceph-csi-mountinfo
               mountPath: /csi/mountinfo
+            - name: ceph-csi-encryption-kms-config
+              mountPath: /etc/ceph-csi-encryption-kms-config/
         - name: liveness-prometheus
           securityContext:
             privileged: true
@@ -173,6 +181,9 @@ spec:
           hostPath:
             path: /var/lib/kubelet/plugins/cephfs.csi.ceph.com/mountinfo
             type: DirectoryOrCreate
+        - name: ceph-csi-encryption-kms-config
+          configMap:
+            name: ceph-csi-encryption-kms-config
 ---
 # This is a service to expose the liveness metrics
 apiVersion: v1
