@@ -203,6 +203,7 @@ var _ = Describe(cephfsType, func() {
 		if err != nil {
 			e2elog.Failf("failed to create node secret: %v", err)
 		}
+		deployVault(f.ClientSet, deployTimeout)
 
 		// wait for cluster name update in deployment
 		containers := []string{cephFSContainerName}
@@ -248,6 +249,8 @@ var _ = Describe(cephfsType, func() {
 		if err != nil {
 			e2elog.Failf("failed to delete storageclass: %v", err)
 		}
+		deleteVault()
+
 		if deployCephFS {
 			deleteCephfsPlugin()
 			if cephCSINamespace != defaultNs {
