@@ -417,6 +417,67 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			if testCephFSFscrypt {
+				kmsToTest := map[string]kmsConfig{
+					"secrets-metadata-test": secretsMetadataKMS,
+					"vault-test":            vaultKMS,
+					"vault-tokens-test":     vaultTokensKMS,
+					"vault-tenant-sa-test":  vaultTenantSAKMS,
+				}
+
+				for kmsID, kmsConf := range kmsToTest {
+					kmsID := kmsID
+					kmsConf := kmsConf
+					By("create a storageclass with pool and an encrypted PVC then bind it to an app with "+kmsID, func() {
+						scOpts := map[string]string{
+							"encrypted":       "true",
+							"encryptionKMSID": kmsID,
+						}
+						err := createCephfsStorageClass(f.ClientSet, f, true, scOpts)
+						if err != nil {
+							e2elog.Failf("failed to create CephFS storageclass: %v", err)
+						}
+
+						if kmsID == "vault-tokens-test" {
+							var token v1.Secret
+							tenant := f.UniqueName
+							token, err = getSecret(vaultExamplePath + "tenant-token.yaml")
+							if err != nil {
+								e2elog.Failf("failed to load tenant token from secret: %v", err)
+							}
+							_, err = c.CoreV1().Secrets(tenant).Create(context.TODO(), &token, metav1.CreateOptions{})
+							if err != nil {
+								e2elog.Failf("failed to create Secret with tenant token: %v", err)
+							}
+							defer func() {
+								err = c.CoreV1().Secrets(tenant).Delete(context.TODO(), token.Name, metav1.DeleteOptions{})
+								if err != nil {
+									e2elog.Failf("failed to delete Secret with tenant token: %v", err)
+								}
+							}()
+
+						}
+						if kmsID == "vault-tenant-sa-test" {
+							err = createTenantServiceAccount(f.ClientSet, f.UniqueName)
+							if err != nil {
+								e2elog.Failf("failed to create ServiceAccount: %v", err)
+							}
+							defer deleteTenantServiceAccount(f.UniqueName)
+						}
+
+						err = validateFscryptAndAppBinding(pvcPath, appPath, kmsConf, f)
+						if err != nil {
+							e2elog.Failf("failed to validate CephFS pvc and application binding: %v", err)
+						}
+
+						err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete CephFS storageclass: %v", err)
+						}
+					})
+				}
+			}
+
 			By("create a PVC and check PVC/PV metadata on CephFS subvolume", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
