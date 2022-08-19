@@ -27,7 +27,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/log"
 
-	"github.com/pborman/uuid"
+	"github.com/google/uuid"
 )
 
 // Length of string representation of uuid, xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx is 36 bytes.
@@ -431,8 +431,8 @@ func (conn *Connection) UndoReservation(ctx context.Context,
 		}
 
 		imageUUID := volName[len(volName)-36:]
-		if valid := uuid.Parse(imageUUID); valid == nil {
-			return fmt.Errorf("failed parsing UUID in %s", volName)
+		if _, err := uuid.Parse(imageUUID); err != nil {
+			return fmt.Errorf("failed parsing UUID in %s: %w", volName, err)
 		}
 
 		err := util.RemoveObject(
@@ -484,7 +484,7 @@ func reserveOMapName(
 			iterUUID = volUUID
 		} else {
 			// generate a uuid for the image name
-			iterUUID = uuid.NewUUID().String()
+			iterUUID = uuid.New().String()
 		}
 
 		err := util.CreateObject(ctx, monitors, cr, pool, namespace, oMapNamePrefix+iterUUID)
