@@ -480,9 +480,6 @@ github.com/opencontainers/selinux/pkg/pwalkdir
 # github.com/openshift/api v0.0.0-20210927171657-636513e97fda
 ## explicit; go 1.16
 github.com/openshift/api/security/v1
-# github.com/pborman/uuid v1.2.1
-## explicit
-github.com/pborman/uuid
 # github.com/pierrec/lz4 v2.5.2+incompatible
 ## explicit
 github.com/pierrec/lz4
