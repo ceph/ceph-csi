@@ -373,3 +373,198 @@ func deleteBackingCephFSSubvolumeSnapshot(
 
 	return nil
 }
+
+func validateEncryptedCephfs(f *framework.Framework, pvName, appName string) error {
+	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get pod %q in namespace %q: %w", appName, f.UniqueName, err)
+	}
+	volumeMountPath := fmt.Sprintf(
+		"/var/lib/kubelet/pods/%s/volumes/kubernetes.io~csi/%s/mount",
+		pod.UID,
+		pvName)
+
+	selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, cephFSDeamonSetName)
+	if err != nil {
+		return fmt.Errorf("failed to get labels: %w", err)
+	}
+	opt := metav1.ListOptions{
+		LabelSelector: selector,
+	}
+
+	cmd := fmt.Sprintf("getfattr --name=ceph.fscrypt.auth --only-values %s", volumeMountPath)
+	_, _, err = execCommandInContainer(f, cmd, cephCSINamespace, "csi-cephfsplugin", &opt)
+	if err != nil {
+		cmd = fmt.Sprintf("getfattr --recursive --dump %s", volumeMountPath)
+		stdOut, stdErr, listErr := execCommandInContainer(f, cmd, cephCSINamespace, "csi-cephfsplugin", &opt)
+		if listErr == nil {
+			return fmt.Errorf("error checking for cephfs fscrypt xattr on %q. listing: %s %s",
+				volumeMountPath, stdOut, stdErr)
+		}
+
+		return fmt.Errorf("error checking file xattr: %w", err)
+	}
+
+	return nil
+}
+
+func getInfoFromPVC(pvcNamespace, pvcName string, f *framework.Framework) (string, string, error) {
+	c := f.ClientSet.CoreV1()
+	pvc, err := c.PersistentVolumeClaims(pvcNamespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get pvc: %w", err)
+	}
+
+	pv, err := c.PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metav1.GetOptions{})
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get pv: %w", err)
+	}
+
+	return pv.Name, pv.Spec.CSI.VolumeHandle, nil
+}
+
+func validateFscryptAndAppBinding(pvcPath, appPath string, kms kmsConfig, f *framework.Framework) error {
+	pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, deployTimeout)
+	if err != nil {
+		return err
+	}
+
+	pvName, csiVolumeHandle, err := getInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return err
+	}
+	err = validateEncryptedCephfs(f, pvName, app.Name)
+	if err != nil {
+		return err
+	}
+
+	if kms != noKMS && kms.canGetPassphrase() {
+		// check new passphrase created
+		_, stdErr := kms.getPassphrase(f, csiVolumeHandle)
+		if stdErr != "" {
+			return fmt.Errorf("failed to read passphrase from vault: %s", stdErr)
+		}
+	}
+
+	err = deletePVCAndApp("", f, pvc, app)
+	if err != nil {
+		return err
+	}
+
+	if kms != noKMS && kms.canGetPassphrase() {
+		// check new passphrase created
+		stdOut, _ := kms.getPassphrase(f, csiVolumeHandle)
+		if stdOut != "" {
+			return fmt.Errorf("passphrase found in vault while should be deleted: %s", stdOut)
+		}
+	}
+
+	if kms != noKMS && kms.canVerifyKeyDestroyed() {
+		destroyed, msg := kms.verifyKeyDestroyed(f, csiVolumeHandle)
+		if !destroyed {
+			return fmt.Errorf("passphrased was not destroyed: %s", msg)
+		} else if msg != "" {
+			e2elog.Logf("passphrase destroyed, but message returned: %s", msg)
+		}
+	}
+
+	return nil
+}
+
+//nolint:gocyclo,cyclop // test function
+func validateFscryptClone(
+	pvcPath, appPath, pvcSmartClonePath, appSmartClonePath string,
+	kms kmsConfig,
+	f *framework.Framework,
+) {
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		e2elog.Failf("failed to load PVC: %v", err)
+	}
+
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		e2elog.Failf("failed to create PVC: %v", err)
+	}
+	app, err := loadApp(appPath)
+	if err != nil {
+		e2elog.Failf("failed to load application: %v", err)
+	}
+	label := make(map[string]string)
+	label[appKey] = appLabel
+	app.Namespace = f.UniqueName
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+	app.Labels = label
+	opt := metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
+	}
+	wErr := writeDataInPod(app, &opt, f)
+	if wErr != nil {
+		e2elog.Failf("failed to write data from application %v", wErr)
+	}
+
+	pvcClone, err := loadPVC(pvcSmartClonePath)
+	if err != nil {
+		e2elog.Failf("failed to load PVC: %v", err)
+	}
+	pvcClone.Spec.DataSource.Name = pvc.Name
+	pvcClone.Namespace = f.UniqueName
+	appClone, err := loadApp(appSmartClonePath)
+	if err != nil {
+		e2elog.Failf("failed to load application: %v", err)
+	}
+	appClone.Namespace = f.UniqueName
+	appClone.Labels = map[string]string{
+		appKey: f.UniqueName,
+	}
+
+	err = createPVCAndApp(f.UniqueName, f, pvcClone, appClone, deployTimeout)
+	if err != nil {
+		e2elog.Failf("failed to create PVC or application (%s): %v", f.UniqueName, err)
+	}
+
+	_, csiVolumeHandle, err := getInfoFromPVC(pvcClone.Namespace, pvcClone.Name, f)
+	if err != nil {
+		e2elog.Failf("failed to get pvc info: %s", err)
+	}
+
+	if kms != noKMS && kms.canGetPassphrase() {
+		// check new passphrase created
+		stdOut, stdErr := kms.getPassphrase(f, csiVolumeHandle)
+		if stdOut != "" {
+			e2elog.Logf("successfully read the passphrase from vault: %s", stdOut)
+		}
+		if stdErr != "" {
+			e2elog.Failf("failed to read passphrase from vault: %s", stdErr)
+		}
+	}
+
+	// delete parent pvc
+	err = deletePVCAndApp("", f, pvc, app)
+	if err != nil {
+		e2elog.Failf("failed to delete PVC or application: %v", err)
+	}
+
+	err = deletePVCAndApp(f.UniqueName, f, pvcClone, appClone)
+	if err != nil {
+		e2elog.Failf("failed to delete PVC or application (%s): %v", f.UniqueName, err)
+	}
+
+	if kms != noKMS && kms.canGetPassphrase() {
+		// check passphrase deleted
+		stdOut, _ := kms.getPassphrase(f, csiVolumeHandle)
+		if stdOut != "" {
+			e2elog.Failf("passphrase found in vault while should be deleted: %s", stdOut)
+		}
+	}
+
+	if kms != noKMS && kms.canVerifyKeyDestroyed() {
+		destroyed, msg := kms.verifyKeyDestroyed(f, csiVolumeHandle)
+		if !destroyed {
+			e2elog.Failf("passphrased was not destroyed: %s", msg)
+		} else if msg != "" {
+			e2elog.Logf("passphrase destroyed, but message returned: %s", msg)
+		}
+	}
+}
