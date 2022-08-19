@@ -52,6 +52,17 @@ parameters:
   # (defaults to `false`)
   # backingSnapshot: "true"
 
+  # (optional) Instruct the plugin it has to encrypt the volume
+  # By default it is disabled. Valid values are "true" or "false".
+  # A string is expected here, i.e. "true", not true.
+  # encrypted: "true"
+
+  # (optional) Use external key management system for encryption passphrases by
+  # specifying a unique ID matching KMS ConfigMap. The ID is only used for
+  # correlation to configmap entry.
+  # encryptionKMSID: <kms-config-id>
+
+
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 mountOptions:

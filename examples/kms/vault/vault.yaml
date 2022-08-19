@@ -169,7 +169,7 @@ spec:
             - name: PLUGIN_ROLE
               value: csi-kubernetes
             - name: SERVICE_ACCOUNTS
-              value: rbd-csi-nodeplugin,rbd-csi-provisioner,csi-rbdplugin,csi-rbdplugin-provisioner
+              value: rbd-csi-nodeplugin,rbd-csi-provisioner,csi-rbdplugin,csi-rbdplugin-provisioner,cephfs-csi-nodeplugin,cephfs-csi-provisioner,csi-cephfsplugin,csi-cephfsplugin-provisioner
             - name: SERVICE_ACCOUNTS_NAMESPACE
               value: default
             - name: VAULT_ADDR
