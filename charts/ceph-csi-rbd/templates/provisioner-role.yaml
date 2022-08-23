@@ -17,10 +17,4 @@ rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "watch", "list", "delete", "update", "create"]
-{{- if .Values.provisioner.podSecurityPolicy.enabled }}
-  - apiGroups: ['policy']
-    resources: ['podsecuritypolicies']
-    verbs: ['use']
-    resourceNames: ['{{ include "ceph-csi-rbd.provisioner.fullname" . }}']
-{{- end -}}
 {{- end -}}

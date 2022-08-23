@@ -61,7 +61,7 @@ storageclass yaml
       ```
 
     - For standard templates edit [csi-rbdplugin.yaml](../deploy/rbd/kubernetes/csi-rbdplugin.yaml)
-      to update `hostPath` for `ceph-logdir`, also edit psp [csi-nodeplugin-psp.yaml](../deploy/rbd/kubernetes/csi-nodeplugin-psp.yaml)
+      to update `hostPath` for `ceph-logdir`.
       to update `pathPrefix` spec entries.
   - Update the StorageClass with the customized log directory path
     - Now update rbd StorageClass for `cephLogDir`, for example
