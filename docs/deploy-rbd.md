@@ -109,16 +109,6 @@ Those manifests deploy service accounts, cluster roles and cluster role
 bindings. These are shared for both RBD and CephFS CSI plugins, as they require
 the same permissions.
 
-**Deploy PodSecurityPolicy resources for sidecar containers and node plugins:**
-
-**NOTE:** These manifests are required only if [PodSecurityPolicy](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#podsecuritypolicy)
-admission controller is active on your cluster.
-
-```bash
-kubectl create -f csi-provisioner-psp.yaml
-kubectl create -f csi-nodeplugin-psp.yaml
-```
-
 **Deploy ConfigMap for CSI plugins:**
 
 ```bash

@@ -182,9 +182,6 @@ CSI_IMAGE_VERSION=${CSI_IMAGE_VERSION:-"canary"}
 #feature-gates for kube
 K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-""}
 
-#extra-config for kube https://minikube.sigs.k8s.io/docs/reference/configuration/kubernetes/
-EXTRA_CONFIG_PSP="--extra-config=apiserver.enable-admission-plugins=PodSecurityPolicy --addons=pod-security-policy"
-
 # kubelet.resolv-conf needs to point to a file, not a symlink
 # the default minikube VM has /etc/resolv.conf -> /run/systemd/resolve/resolv.conf
 RESOLV_CONF='/run/systemd/resolve/resolv.conf'
@@ -233,7 +230,7 @@ up)
         K8S_FEATURE_GATES="${K8S_FEATURE_GATES},RecoverVolumeExpansionFailure=true"
     fi
     # shellcheck disable=SC2086
-    ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG} ${EXTRA_CONFIG_PSP} --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
+    ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG}  --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
 
     # create a link so the default dataDirHostPath will work for this
     # environment
