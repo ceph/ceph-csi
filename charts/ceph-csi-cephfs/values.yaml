@@ -110,11 +110,6 @@ nodeplugin:
   kernelmountoptions: ""
   fusemountoptions: ""
 
-  # If true, create & use Pod Security Policy resources
-  # https://kubernetes.io/docs/concepts/policy/pod-security-policy/
-  podSecurityPolicy:
-    enabled: false
-
 provisioner:
   name: provisioner
   replicaCount: 3
@@ -204,11 +199,6 @@ provisioner:
   tolerations: []
 
   affinity: {}
-
-  # If true, create & use Pod Security Policy resources
-  # https://kubernetes.io/docs/concepts/policy/pod-security-policy/
-  podSecurityPolicy:
-    enabled: false
 
 # Mount the host /etc/selinux inside pods to support
 # selinux-enabled filesystems

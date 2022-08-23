@@ -38,10 +38,8 @@ import (
 var (
 	rbdProvisioner     = "csi-rbdplugin-provisioner.yaml"
 	rbdProvisionerRBAC = "csi-provisioner-rbac.yaml"
-	rbdProvisionerPSP  = "csi-provisioner-psp.yaml"
 	rbdNodePlugin      = "csi-rbdplugin.yaml"
 	rbdNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
-	rbdNodePluginPSP   = "csi-nodeplugin-psp.yaml"
 	configMap          = "csi-config-map.yaml"
 	cephConfconfigMap  = "ceph-conf.yaml"
 	csiDriverObject    = "csidriver.yaml"
@@ -145,10 +143,6 @@ func createORDeleteRbdResources(action kubectlAction) {
 			filename:  rbdDirPath + rbdProvisionerRBAC,
 			namespace: cephCSINamespace,
 		},
-		&yamlResourceNamespaced{
-			filename:  rbdDirPath + rbdProvisionerPSP,
-			namespace: cephCSINamespace,
-		},
 		// the provisioner itself
 		&yamlResourceNamespaced{
 			filename:       rbdDirPath + rbdProvisioner,
@@ -159,10 +153,6 @@ func createORDeleteRbdResources(action kubectlAction) {
 		// dependencies for the node-plugin
 		&yamlResourceNamespaced{
 			filename:  rbdDirPath + rbdNodePluginRBAC,
-			namespace: cephCSINamespace,
-		},
-		&yamlResourceNamespaced{
-			filename:  rbdDirPath + rbdNodePluginPSP,
 			namespace: cephCSINamespace,
 		},
 		// the node-plugin itself

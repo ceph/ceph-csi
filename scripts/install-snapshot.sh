@@ -61,17 +61,14 @@ function create_or_delete_resource() {
     local namespace=$2
     temp_rbac=${TEMP_DIR}/snapshot-rbac.yaml
     temp_snap_controller=${TEMP_DIR}/snapshot-controller.yaml
-    snapshotter_psp="${SCRIPT_DIR}/snapshot-controller-psp.yaml"
     mkdir -p "${TEMP_DIR}"
     curl -o "${temp_rbac}" "${SNAPSHOT_RBAC}"
     curl -o "${temp_snap_controller}" "${SNAPSHOT_CONTROLLER}"
     sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${temp_rbac}"
     sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${temp_snap_controller}"
-    sed -i "s/namespace: kube-system/namespace: ${namespace}/g" "${snapshotter_psp}"
     sed -i "s/canary/${SNAPSHOT_VERSION}/g" "${temp_snap_controller}"
 
     kubectl "${operation}" -f "${temp_rbac}"
-    kubectl "${operation}" -f "${snapshotter_psp}"
     kubectl "${operation}" -f "${temp_snap_controller}" -n "${namespace}"
     kubectl "${operation}" -f "${SNAPSHOTCLASS}"
     kubectl "${operation}" -f "${VOLUME_SNAPSHOT_CONTENT}"
