@@ -37,10 +37,8 @@ import (
 var (
 	nfsProvisioner     = "csi-nfsplugin-provisioner.yaml"
 	nfsProvisionerRBAC = "csi-provisioner-rbac.yaml"
-	nfsProvisionerPSP  = "csi-provisioner-psp.yaml"
 	nfsNodePlugin      = "csi-nfsplugin.yaml"
 	nfsNodePluginRBAC  = "csi-nodeplugin-rbac.yaml"
-	nfsNodePluginPSP   = "csi-nodeplugin-psp.yaml"
 	nfsRookCephNFS     = "rook-nfs.yaml"
 	nfsDeploymentName  = "csi-nfsplugin-provisioner"
 	nfsDeamonSetName   = "csi-nfsplugin"
@@ -95,10 +93,6 @@ func createORDeleteNFSResources(f *framework.Framework, action kubectlAction) {
 			filename:  nfsDirPath + nfsProvisionerRBAC,
 			namespace: cephCSINamespace,
 		},
-		&yamlResourceNamespaced{
-			filename:  nfsDirPath + nfsProvisionerPSP,
-			namespace: cephCSINamespace,
-		},
 		// the provisioner itself
 		&yamlResourceNamespaced{
 			filename:   nfsDirPath + nfsProvisioner,
@@ -108,10 +102,6 @@ func createORDeleteNFSResources(f *framework.Framework, action kubectlAction) {
 		// dependencies for the node-plugin
 		&yamlResourceNamespaced{
 			filename:  nfsDirPath + nfsNodePluginRBAC,
-			namespace: cephCSINamespace,
-		},
-		&yamlResourceNamespaced{
-			filename:  nfsDirPath + nfsNodePluginPSP,
 			namespace: cephCSINamespace,
 		},
 		// the node-plugin itself
