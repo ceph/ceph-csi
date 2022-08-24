@@ -255,7 +255,7 @@ func (kms *kmipKMS) DecryptDEK(_, encryptedDEK string) (string, error) {
 		DecryptRequestPayload{
 			UniqueIdentifier: kms.uniqueIdentifier,
 			Data:             emd.DEK,
-			IVCounterNonce:   emd.DEK,
+			IVCounterNonce:   emd.Nonce,
 			CryptographicParameters: kmip.CryptographicParameters{
 				PaddingMethod:          kmip14.PaddingMethodPKCS5,
 				CryptographicAlgorithm: kmip14.CryptographicAlgorithmAES,
