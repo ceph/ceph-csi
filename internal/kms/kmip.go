@@ -474,24 +474,27 @@ func (kms *kmipKMS) verifyResponse(
 	uniqueBatchItemID []byte,
 ) (*kmip.ResponseBatchItem, error) {
 	if respMsg.ResponseHeader.BatchCount != 1 {
-		return nil, fmt.Errorf("batch count %v should be 1", respMsg.ResponseHeader.BatchCount)
+		return nil, fmt.Errorf("batch count %q should be \"1\"",
+			respMsg.ResponseHeader.BatchCount)
 	}
 	if len(respMsg.BatchItem) != 1 {
-		return nil, fmt.Errorf("batch Intems list len %v should be 1",
+		return nil, fmt.Errorf("batch Intems list len %q should be \"1\"",
 			len(respMsg.BatchItem))
 	}
 	batchItem := respMsg.BatchItem[0]
 	if operation != batchItem.Operation {
-		return nil, fmt.Errorf("unexpected operation, real %v expected %v",
+		return nil, fmt.Errorf("unexpected operation, real %q expected %q",
 			batchItem.Operation, operation)
 	}
 	if !bytes.Equal(uniqueBatchItemID, batchItem.UniqueBatchItemID) {
-		return nil, fmt.Errorf("unexpected uniqueBatchItemID, real %v expected %v",
+		return nil, fmt.Errorf("unexpected uniqueBatchItemID, real %q expected %q",
 			batchItem.UniqueBatchItemID, uniqueBatchItemID)
 	}
 	if kmip14.ResultStatusSuccess != batchItem.ResultStatus {
-		return nil, fmt.Errorf("unexpected result status %v expected success %v",
-			batchItem.ResultStatus, kmip14.ResultStatusSuccess)
+		return nil, fmt.Errorf("unexpected result status %q expected success %q,"+
+			"result reason %q, result message %q",
+			batchItem.ResultStatus, kmip14.ResultStatusSuccess,
+			batchItem.ResultReason, batchItem.ResultMessage)
 	}
 
 	return &batchItem, nil
