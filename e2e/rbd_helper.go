@@ -590,7 +590,12 @@ var noPVCValidation validateFunc
 
 type imageValidateFunc func(f *framework.Framework, rbdImageSpec, pvName, appName string) error
 
-func isEncryptedPVC(f *framework.Framework, pvc *v1.PersistentVolumeClaim, app *v1.Pod, validateFunc imageValidateFunc) error {
+func isEncryptedPVC(
+	f *framework.Framework,
+	pvc *v1.PersistentVolumeClaim,
+	app *v1.Pod,
+	validateFunc imageValidateFunc,
+) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
 		return err
@@ -670,6 +675,7 @@ func validateEncryptedFilesystem(f *framework.Framework, rbdImageSpec, pvName, a
 			return fmt.Errorf("error checking file encrypted attribute of %q. listing filesystem+attrs: %s %s",
 				volumeMountPath, stdOut, stdErr)
 		}
+
 		return fmt.Errorf("error checking file encrypted attribute: %w", err)
 	}
 
