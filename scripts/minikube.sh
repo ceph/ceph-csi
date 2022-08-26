@@ -180,6 +180,7 @@ function disable_storage_addons() {
 # configure minikube
 MINIKUBE_ARCH=${MINIKUBE_ARCH:-"amd64"}
 MINIKUBE_VERSION=${MINIKUBE_VERSION:-"latest"}
+MINIKUBE_ISO_URL=${MINIKUBE_ISO_URL:-""}
 KUBE_VERSION=${KUBE_VERSION:-"latest"}
 CONTAINER_CMD=${CONTAINER_CMD:-"docker"}
 MEMORY=${MEMORY:-"4096"}
@@ -204,6 +205,10 @@ if [[ "${VM_DRIVER}" == "kvm2" ]] || [[ "${VM_DRIVER}" == "hyperkit" ]]; then
     DISK_CONFIG=${DISK_CONFIG:-" --extra-disks=${NUM_DISKS} --disk-size=${DISK_SIZE} "}
 else
     DISK_CONFIG=""
+fi
+
+if [[ -n "${MINIKUBE_ISO_URL}" ]]; then
+    EXTRA_CONFIG="${EXTRA_CONFIG} --iso-url ${MINIKUBE_ISO_URL}"
 fi
 
 # configure csi image version
