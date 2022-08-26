@@ -1680,6 +1680,44 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			if testCephFSFscrypt {
+				kmsToTest := map[string]kmsConfig{
+					"secrets-metadata-test": secretsMetadataKMS,
+					"vault-test":            vaultKMS,
+				}
+				for kmsID, kmsConf := range kmsToTest {
+					kmsID := kmsID
+					kmsConf := kmsConf
+					By("create an encrypted PVC-PVC clone and bind it to an app with "+kmsID, func() {
+						err := deleteResource(cephFSExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete storageclass: %v", err)
+						}
+
+						scOpts := map[string]string{
+							"encrypted":       "true",
+							"encryptionKMSID": kmsID,
+						}
+
+						err = createCephfsStorageClass(f.ClientSet, f, true, scOpts)
+						if err != nil {
+							e2elog.Failf("failed to create CephFS storageclass: %v", err)
+						}
+
+						validateFscryptClone(pvcPath, appPath, pvcSmartClonePath, appSmartClonePath, kmsConf, f)
+
+						err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete storageclass: %v", err)
+						}
+						err = createCephfsStorageClass(f.ClientSet, f, false, nil)
+						if err != nil {
+							e2elog.Failf("failed to create CephFS storageclass: %v", err)
+						}
+					})
+				}
+			}
+
 			By("create a PVC-PVC clone and bind it to an app", func() {
 				var wg sync.WaitGroup
 				totalCount := 3
