@@ -193,12 +193,18 @@ func logGRPC(
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
 	log.ExtendedLog(ctx, "GRPC call: %s", info.FullMethod)
+	// TODO: remove the following check for next release
+	// refer to https://github.com/ceph/ceph-csi/issues/3314.
 	if isReplicationRequest(req) {
-		log.TraceLog(ctx, "GRPC request: %s", rp.StripReplicationSecrets(req))
+		strippedMessage := protosanitizer.StripSecrets(req).String()
+		if !strings.Contains(strippedMessage, "***stripped***") {
+			strippedMessage = rp.StripReplicationSecrets(req).String()
+		}
+
+		log.TraceLog(ctx, "GRPC request: %s", strippedMessage)
 	} else {
 		log.TraceLog(ctx, "GRPC request: %s", protosanitizer.StripSecrets(req))
 	}
-
 	resp, err := handler(ctx, req)
 	if err != nil {
 		klog.Errorf(log.Log(ctx, "GRPC error: %v"), err)
