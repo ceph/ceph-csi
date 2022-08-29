@@ -97,7 +97,7 @@ function install_minikube()
     dnf -y install socat
 
     # deploy minikube
-    MINIKUBE_VERSION="${MINIKUBE_VERSION}" KUBE_VERSION="${k8s_version}" ${GOPATH}/src/github.com/ceph/ceph-csi/scripts/minikube.sh up
+    MINIKUBE_VERSION="${MINIKUBE_VERSION}" MINIKUBE_ISO_URL="${MINIKUBE_ISO_URL}" KUBE_VERSION="${k8s_version}" ${GOPATH}/src/github.com/ceph/ceph-csi/scripts/minikube.sh up
 
     # copy kubectl from minikube to /usr/bin
     if [ -x ~/.minikube/cache/linux/"${k8s_version}"/kubectl ]
