@@ -150,7 +150,7 @@ github.com/container-storage-interface/spec/lib/go/csi
 # github.com/csi-addons/replication-lib-utils v0.2.0
 ## explicit; go 1.15
 github.com/csi-addons/replication-lib-utils/protosanitizer
-# github.com/csi-addons/spec v0.1.2-0.20220804080457-522edd16192e
+# github.com/csi-addons/spec v0.1.2-0.20220829042231-b27a0d84b50b
 ## explicit
 github.com/csi-addons/spec/lib/go/fence
 github.com/csi-addons/spec/lib/go/identity
