@@ -99,6 +99,10 @@ func (s *subVolumeClient) SetAllMetadata(parameters map[string]string) error {
 
 	for k, v := range parameters {
 		err := s.setMetadata(k, v)
+		// If setMetadata is not supported return nil
+		if errors.Is(err, ErrSubVolMetadataNotSupported) {
+			return nil
+		}
 		if err != nil {
 			return fmt.Errorf("failed to set metadata key %q, value %q on subvolume %v: %w", k, v, s, err)
 		}
@@ -106,6 +110,10 @@ func (s *subVolumeClient) SetAllMetadata(parameters map[string]string) error {
 
 	if s.clusterName != "" {
 		err := s.setMetadata(clusterNameKey, s.clusterName)
+		// If setMetadata is not supported return nil
+		if errors.Is(err, ErrSubVolMetadataNotSupported) {
+			return nil
+		}
 		if err != nil {
 			return fmt.Errorf("failed to set metadata key %q, value %q on subvolume %v: %w",
 				clusterNameKey, s.clusterName, s, err)
@@ -123,6 +131,10 @@ func (s *subVolumeClient) UnsetAllMetadata(keys []string) error {
 
 	for _, key := range keys {
 		err := s.removeMetadata(key)
+		// If setMetadata is not supported return nil
+		if errors.Is(err, ErrSubVolMetadataNotSupported) {
+			return nil
+		}
 		// TODO: replace string comparison with errno.
 		if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
 			return fmt.Errorf("failed to unset metadata key %q on subvolume %v: %w", key, s, err)
@@ -130,6 +142,10 @@ func (s *subVolumeClient) UnsetAllMetadata(keys []string) error {
 	}
 
 	err := s.removeMetadata(clusterNameKey)
+	// If setMetadata is not supported return nil
+	if errors.Is(err, ErrSubVolMetadataNotSupported) {
+		return nil
+	}
 	// TODO: replace string comparison with errno.
 	if err != nil && !strings.Contains(err.Error(), "No such file or directory") {
 		return fmt.Errorf("failed to unset metadata key %q on subvolume %v: %w", clusterNameKey, s, err)
