@@ -261,7 +261,7 @@ up)
     KUBE_MAJOR=$(kube_version 1)
     KUBE_MINOR=$(kube_version 2)
     if [ "${KUBE_MAJOR}" -eq 1 ] && [ "${KUBE_MINOR}" -ge 22 ];then
-        K8S_FEATURE_GATES="${K8S_FEATURE_GATES},ReadWriteOncePod=true,PodSecurity=false"
+        K8S_FEATURE_GATES="${K8S_FEATURE_GATES},ReadWriteOncePod=true"
     fi
     if [ "${KUBE_MAJOR}" -eq 1 ] && [ "${KUBE_MINOR}" -ge 23 ];then
         K8S_FEATURE_GATES="${K8S_FEATURE_GATES},RecoverVolumeExpansionFailure=true"
