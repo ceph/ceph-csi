@@ -31,6 +31,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/utils/pointer"
 )
 
 const errRWOPConflict = "node has pod using PersistentVolumeClaim with the same name and ReadWriteOncePod access mode."
@@ -323,8 +324,24 @@ func loadApp(path string) (*v1.Pod, error) {
 	if err := unmarshal(path, &app); err != nil {
 		return nil, err
 	}
+
+	if app.Spec.SecurityContext == nil {
+		app.Spec.SecurityContext = &v1.PodSecurityContext{}
+	}
+	app.Spec.SecurityContext.RunAsNonRoot = pointer.BoolPtr(true)
+	app.Spec.SecurityContext.SeccompProfile = &v1.SeccompProfile{Type: v1.SeccompProfileTypeRuntimeDefault}
+
 	for i := range app.Spec.Containers {
 		app.Spec.Containers[i].ImagePullPolicy = v1.PullIfNotPresent
+		if app.Spec.Containers[i].SecurityContext == nil {
+			app.Spec.Containers[i].SecurityContext = &v1.SecurityContext{}
+		}
+		app.Spec.Containers[i].SecurityContext.Privileged = pointer.BoolPtr(false)
+		app.Spec.Containers[i].SecurityContext.RunAsNonRoot = pointer.BoolPtr(true)
+		if app.Spec.Containers[i].SecurityContext.Capabilities == nil {
+			app.Spec.Containers[i].SecurityContext.Capabilities = &v1.Capabilities{}
+		}
+		app.Spec.Containers[i].SecurityContext.Capabilities.Drop = []v1.Capability{"ALL"}
 	}
 
 	return &app, nil
