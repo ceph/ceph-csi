@@ -197,6 +197,7 @@ func checkAppMntSize(f *framework.Framework, opt *metav1.ListOptions, size, cmd,
 
 			return false, nil
 		}
+		e2elog.Logf("%s the output is %s", cmd, output)
 		s := resource.MustParse(strings.TrimSpace(output))
 		actualSize, err := helpers.RoundUpToGiB(s)
 		if err != nil {
