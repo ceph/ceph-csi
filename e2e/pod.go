@@ -224,7 +224,7 @@ func execWithRetry(f *framework.Framework, opts *framework.ExecOptions) (string,
 				return false, nil
 			}
 
-			e2elog.Logf("failed to execute command: %v", execErr)
+			e2elog.Logf("failed to execute command: %v, stdError: %s", execErr, stdErr)
 
 			return false, fmt.Errorf("failed to execute command: %w", execErr)
 		}
