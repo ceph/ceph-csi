@@ -325,11 +325,13 @@ func loadApp(path string) (*v1.Pod, error) {
 		return nil, err
 	}
 
+	var user int64 = 2000
 	if app.Spec.SecurityContext == nil {
 		app.Spec.SecurityContext = &v1.PodSecurityContext{}
 	}
 	app.Spec.SecurityContext.RunAsNonRoot = pointer.BoolPtr(true)
 	app.Spec.SecurityContext.SeccompProfile = &v1.SeccompProfile{Type: v1.SeccompProfileTypeRuntimeDefault}
+	app.Spec.SecurityContext.FSGroup = &user
 
 	for i := range app.Spec.Containers {
 		app.Spec.Containers[i].ImagePullPolicy = v1.PullIfNotPresent
@@ -340,8 +342,10 @@ func loadApp(path string) (*v1.Pod, error) {
 		app.Spec.Containers[i].SecurityContext.RunAsNonRoot = pointer.BoolPtr(true)
 		if app.Spec.Containers[i].SecurityContext.Capabilities == nil {
 			app.Spec.Containers[i].SecurityContext.Capabilities = &v1.Capabilities{}
+			app.Spec.Containers[i].SecurityContext.RunAsUser = &user
 		}
 		app.Spec.Containers[i].SecurityContext.Capabilities.Drop = []v1.Capability{"ALL"}
+		app.Spec.Containers[i].SecurityContext.AllowPrivilegeEscalation = pointer.BoolPtr(false)
 	}
 
 	return &app, nil
