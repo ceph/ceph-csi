@@ -215,10 +215,13 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 		filterLessCmds := []string{cmds.radosLsCmd, cmds.radosLsKeysCmd}
 		for i, cmd := range filterCmds {
 			stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
-			if err != nil || stdErr != "" {
+			if err != nil {
 				if !strings.Contains(err.Error(), exitOneErr) {
 					e2elog.Failf("failed to execute rados command '%s' : err=%v stdErr=%s", cmd, err, stdErr)
 				}
+			}
+			if stdErr != "" {
+				e2elog.Failf("failed to execute rados command '%s' : stdErr=%s", cmd, stdErr)
 			}
 			err = compareStdoutWithCount(stdOut, count)
 			if err == nil {
