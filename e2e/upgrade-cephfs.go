@@ -30,10 +30,12 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/pod-security-admission/api"
 )
 
 var _ = Describe("CephFS Upgrade Testing", func() {
 	f := framework.NewDefaultFramework("upgrade-test-cephfs")
+	f.NamespacePodSecurityEnforceLevel = api.LevelPrivileged
 	var (
 		c        clientset.Interface
 		pvc      *v1.PersistentVolumeClaim

@@ -32,6 +32,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/pod-security-admission/api"
 )
 
 var (
@@ -236,6 +237,7 @@ func unmountNFSVolume(f *framework.Framework, appName, pvcName string) error {
 
 var _ = Describe("nfs", func() {
 	f := framework.NewDefaultFramework("nfs")
+	f.NamespacePodSecurityEnforceLevel = api.LevelPrivileged
 	var c clientset.Interface
 	// deploy CephFS CSI
 	BeforeEach(func() {
