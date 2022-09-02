@@ -33,6 +33,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/pod-security-admission/api"
 )
 
 var (
@@ -234,6 +235,7 @@ func checkClusternameInMetadata(f *framework.Framework, ns, pool, image string) 
 
 var _ = Describe("RBD", func() {
 	f := framework.NewDefaultFramework(rbdType)
+	f.NamespacePodSecurityEnforceLevel = api.LevelPrivileged
 	var c clientset.Interface
 	var kernelRelease string
 	// deploy RBD CSI

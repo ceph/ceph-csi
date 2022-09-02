@@ -30,10 +30,12 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/pod-security-admission/api"
 )
 
 var _ = Describe("RBD Upgrade Testing", func() {
 	f := framework.NewDefaultFramework("upgrade-test-rbd")
+	f.NamespacePodSecurityEnforceLevel = api.LevelPrivileged
 	var (
 		// cwd stores the initial working directory.
 		cwd string
