@@ -29,6 +29,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/pod-security-admission/api"
 )
 
 var (
@@ -146,6 +147,7 @@ func validateSubvolumePath(f *framework.Framework, pvcName, pvcNamespace, fileSy
 
 var _ = Describe(cephfsType, func() {
 	f := framework.NewDefaultFramework(cephfsType)
+	f.NamespacePodSecurityEnforceLevel = api.LevelPrivileged
 	var c clientset.Interface
 	// deploy CephFS CSI
 	BeforeEach(func() {
