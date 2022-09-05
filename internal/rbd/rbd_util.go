@@ -138,8 +138,6 @@ type rbdImage struct {
 	// an opened IOContext, call .openIoctx() before using
 	ioctx *rados.IOContext
 
-	// Primary represent if the image is primary or not.
-	Primary bool
 	// Set metadata on volume
 	EnableMetadata bool
 }
@@ -512,6 +510,10 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 
 // isInUse checks if there is a watcher on the image. It returns true if there
 // is a watcher on the image, otherwise returns false.
+// In case of mirroring, the image should be primary to check watchers if the
+// image is secondary it returns an error.
+// isInUse is called with exponential backoff to check the image is used by
+// anyone else the returned bool value is discarded if its a RWX access.
 func (ri *rbdImage) isInUse() (bool, error) {
 	image, err := ri.open()
 	if err != nil {
@@ -532,11 +534,16 @@ func (ri *rbdImage) isInUse() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	ri.Primary = mirrorInfo.Primary
+
+	if mirrorInfo.State == librbd.MirrorImageEnabled && !mirrorInfo.Primary {
+		// Mapping secondary image can cause issues.returning error as the
+		// bool value is discarded if it its RWX access.
+		return false, fmt.Errorf("cannot map image %s it is not primary", ri)
+	}
 
 	// because we opened the image, there is at least one watcher
 	defaultWatchers := 1
-	if ri.Primary {
+	if mirrorInfo.Primary {
 		// if rbd mirror daemon is running, a watcher will be added by the rbd
 		// mirror daemon for mirrored images.
 		defaultWatchers++
