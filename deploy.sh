@@ -77,7 +77,8 @@ push_helm_charts() {
 	fi
 
 	mkdir -p "${CHARTDIR}/csi-charts/docs/${PACKAGE}"
-	cp -R "./charts/ceph-csi-${PACKAGE}" "${CHARTDIR}/csi-charts/docs/${PACKAGE}"
+	# Use rsync to remove files from  destination when source file is deleted.
+	rsync -avh "./charts/ceph-csi-${PACKAGE}" "${CHARTDIR}/csi-charts/docs/${PACKAGE}" --delete
 	pushd "${CHARTDIR}/csi-charts/docs/${PACKAGE}" >/dev/null
 	helm package "ceph-csi-${PACKAGE}"
 	popd >/dev/null
