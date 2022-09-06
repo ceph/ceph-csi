@@ -383,11 +383,13 @@ func (conn *Connection) CheckReservation(ctx context.Context,
 		}
 	}
 
-	if encryptionType != util.EncryptionTypeInvalid {
+	if encryptionType != util.EncryptionTypeNone {
 		if savedImageAttributes.EncryptionType != encryptionType {
 			return nil, fmt.Errorf("internal state inconsistent, omap encryption type"+
-				" mismatch, request KMS (%s) volume UUID (%s) volume omap KMS (%d)",
-				kmsConfig, objUUID, savedImageAttributes.EncryptionType)
+				" mismatch, request type %q(%d) volume UUID (%s) volume omap encryption type %q (%d)",
+				util.EncryptionTypeString(encryptionType), encryptionType,
+				objUUID, util.EncryptionTypeString(savedImageAttributes.EncryptionType),
+				savedImageAttributes.EncryptionType)
 		}
 	}
 
