@@ -83,17 +83,29 @@ func FetchEncryptionKMSID(encrypted, kmsID string) (string, error) {
 type EncryptionType int
 
 const (
+	// EncryptionTypeInvalid signals invalid or unsupported configuration.
 	EncryptionTypeInvalid EncryptionType = iota
-	EncryptionTypeBlock                  = iota
-	EncryptionTypeFile                   = iota
+	// EncryptionTypeNone disables encryption.
+	EncryptionTypeNone
+	// EncryptionTypeBlock enables block encryption.
+	EncryptionTypeBlock
+	// EncryptionTypeBlock enables file encryption (fscrypt).
+	EncryptionTypeFile
+)
+
+const (
+	encryptionTypeBlockString = "block"
+	encryptionTypeFileString  = "file"
 )
 
 func ParseEncryptionType(typeStr string) EncryptionType {
 	switch typeStr {
-	case "block":
+	case encryptionTypeBlockString:
 		return EncryptionTypeBlock
-	case "file":
+	case encryptionTypeFileString:
 		return EncryptionTypeFile
+	case "":
+		return EncryptionTypeNone
 	default:
 		return EncryptionTypeInvalid
 	}
@@ -102,13 +114,15 @@ func ParseEncryptionType(typeStr string) EncryptionType {
 func EncryptionTypeString(encType EncryptionType) string {
 	switch encType {
 	case EncryptionTypeBlock:
-		return "block"
+		return encryptionTypeBlockString
 	case EncryptionTypeFile:
-		return "file"
+		return encryptionTypeFileString
+	case EncryptionTypeNone:
+		return ""
 	case EncryptionTypeInvalid:
-		return ""
+		return "INVALID"
 	default:
-		return ""
+		return "UNKNOWN"
 	}
 }
 
@@ -119,6 +133,10 @@ func FetchEncryptionType(volOptions map[string]string, fallback EncryptionType) 
 	encType, ok := volOptions["encryptionType"]
 	if !ok {
 		return fallback
+	}
+
+	if encType == "" {
+		return EncryptionTypeInvalid
 	}
 
 	return ParseEncryptionType(encType)
