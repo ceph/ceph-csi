@@ -436,7 +436,7 @@ func (ns *NodeServer) stageTransaction(
 
 	if volOptions.isFileEncrypted() {
 		if err = fscrypt.InitializeNode(ctx); err != nil {
-			return transaction, err
+			return transaction, fmt.Errorf("file encryption setup for %s failed: %w", volOptions.VolID, err)
 		}
 	}
 
@@ -458,10 +458,11 @@ func (ns *NodeServer) stageTransaction(
 	transaction.isMounted = true
 
 	if volOptions.isFileEncrypted() {
-		log.DebugLog(ctx, "rbd fscrypt: trying to unlock filesystem on %s image %q", stagingTargetPath, volOptions.VolID)
+		log.DebugLog(ctx, "rbd fscrypt: trying to unlock filesystem on %s image %s", stagingTargetPath, volOptions.VolID)
 		err = fscrypt.Unlock(ctx, volOptions.fileEncryption, stagingTargetPath, volOptions.VolID)
 		if err != nil {
-			return transaction, err
+			return transaction, fmt.Errorf("file system encryption unlock in %s image %s failed: %w",
+				stagingTargetPath, volOptions.VolID, err)
 		}
 	}
 
