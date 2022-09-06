@@ -309,8 +309,6 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 	kmsID, encType, err := ParseEncryptionOpts(ctx, volOptions, rbdDefaultEncryptionType)
 	if err != nil {
 		return err
-	} else if kmsID == "" {
-		return nil
 	}
 
 	switch encType {
@@ -320,6 +318,8 @@ func (ri *rbdImage) initKMS(ctx context.Context, volOptions, credentials map[str
 		err = ri.configureFileEncryption(kmsID, credentials)
 	case util.EncryptionTypeInvalid:
 		return fmt.Errorf("invalid encryption type")
+	case util.EncryptionTypeNone:
+		return nil
 	}
 
 	if err != nil {
@@ -342,7 +342,7 @@ func ParseEncryptionOpts(
 	)
 	encrypted, ok = volOptions["encrypted"]
 	if !ok {
-		return "", util.EncryptionTypeInvalid, err
+		return "", util.EncryptionTypeNone, nil
 	}
 	kmsID, err = util.FetchEncryptionKMSID(encrypted, volOptions["encryptionKMSID"])
 	if err != nil {
