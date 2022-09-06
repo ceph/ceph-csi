@@ -94,7 +94,7 @@ func getEncryptionConfig(rbdVol *rbdVolume) (string, util.EncryptionType) {
 	case rbdVol.isFileEncrypted():
 		return rbdVol.fileEncryption.GetID(), util.EncryptionTypeFile
 	default:
-		return "", util.EncryptionTypeInvalid
+		return "", util.EncryptionTypeNone
 	}
 }
 
@@ -141,7 +141,7 @@ func checkSnapCloneExists(
 	defer j.Destroy()
 
 	snapData, err := j.CheckReservation(ctx, rbdSnap.JournalPool,
-		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "", util.EncryptionTypeInvalid)
+		rbdSnap.RequestName, rbdSnap.NamePrefix, rbdSnap.RbdImageName, "", util.EncryptionTypeNone)
 	if err != nil {
 		return false, err
 	}
@@ -572,7 +572,7 @@ func RegenerateJournal(
 
 	rbdVol.Owner = owner
 
-	kmsID, encryptionType, err = ParseEncryptionOpts(ctx, volumeAttributes, util.EncryptionTypeInvalid)
+	kmsID, encryptionType, err = ParseEncryptionOpts(ctx, volumeAttributes, util.EncryptionTypeNone)
 	if err != nil {
 		return "", err
 	}
