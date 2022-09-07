@@ -259,6 +259,12 @@ func (s *subVolumeClient) CreateVolume(ctx context.Context) error {
 	if err != nil {
 		log.ErrorLog(ctx, "failed to create subvolume %s in fs %s: %s", s.VolID, s.FsName, err)
 
+		if errors.Is(err, rados.ErrNotFound) {
+			// Reset the subVolumeGroupsCreated so that we can try again to create the
+			// subvolumegroup in next request if the error is Not Found.
+			clusterAdditionalInfo[s.clusterID].subVolumeGroupsCreated[s.FsName] = false
+		}
+
 		return err
 	}
 
