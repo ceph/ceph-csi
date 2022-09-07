@@ -29,9 +29,7 @@ import (
 var ErrSubVolSnapMetadataNotSupported = errors.New("subvolume snapshot metadata operations are not supported")
 
 func (s *snapshotClient) supportsSubVolSnapMetadata() bool {
-	if _, keyPresent := clusterAdditionalInfo[s.clusterID]; !keyPresent {
-		clusterAdditionalInfo[s.clusterID] = &localClusterState{}
-	}
+	newLocalClusterState(s.clusterID)
 
 	return clusterAdditionalInfo[s.clusterID].subVolSnapshotMetadataState != unsupported
 }

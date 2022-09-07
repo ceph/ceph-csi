@@ -33,9 +33,7 @@ const (
 var ErrSubVolMetadataNotSupported = errors.New("subvolume metadata operations are not supported")
 
 func (s *subVolumeClient) supportsSubVolMetadata() bool {
-	if _, keyPresent := clusterAdditionalInfo[s.clusterID]; !keyPresent {
-		clusterAdditionalInfo[s.clusterID] = &localClusterState{}
-	}
+	newLocalClusterState(s.clusterID)
 
 	return clusterAdditionalInfo[s.clusterID].subVolMetadataState != unsupported
 }
