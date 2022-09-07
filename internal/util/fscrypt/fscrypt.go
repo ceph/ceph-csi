@@ -379,7 +379,7 @@ func Unlock(
 
 	// 1. Do we have a metadata directory (.fscrypt) set up?
 	metadataDirExists := false
-	if err = fscryptContext.Mount.Setup(0o755); err != nil {
+	if err = fscryptContext.Mount.Setup(fscryptfilesystem.SingleUserWritable); err != nil {
 		alreadySetupErr := &fscryptfilesystem.ErrAlreadySetup{}
 		if errors.As(err, &alreadySetupErr) {
 			log.DebugLog(ctx, "fscrypt: metadata directory in %q already set up", alreadySetupErr.Mount.Path)
