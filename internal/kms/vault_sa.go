@@ -23,8 +23,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/ceph/ceph-csi/internal/util/k8s"
-
 	"github.com/libopenstorage/secrets/vault"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -39,9 +37,6 @@ const (
 	// should be available in the Tenants namespace. This ServiceAccount
 	// will be used to connect to Hashicorp Vault.
 	vaultTenantSAName = "ceph-csi-vault-sa"
-	// Kubernetes version which requires ServiceAccount token creation.
-	// Kubernetes 1.24 => 1 * 1000 + 24.
-	kubeMinVersionForCreateToken = 1024
 )
 
 /*
@@ -298,6 +293,15 @@ func (kms *vaultTenantSA) getToken() (string, error) {
 			kms.tenantSAName, err)
 	}
 
+	// From Kubernetes v1.24+, secret for service account tokens are not
+	// automatically created. Trying to fetch tokens from service account secret references will fail
+	// refer: https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.24.md \
+	// #no-really-you-must-read-this-before-you-upgrade-1.
+	token, err := kms.createToken(sa, c)
+	if err == nil {
+		return token, nil
+	}
+
 	for _, secretRef := range sa.Secrets {
 		secret, sErr := c.CoreV1().Secrets(kms.Tenant).Get(context.TODO(), secretRef.Name, metav1.GetOptions{})
 		if sErr != nil {
@@ -310,7 +314,7 @@ func (kms *vaultTenantSA) getToken() (string, error) {
 		}
 	}
 
-	return kms.createToken(sa, c)
+	return "", fmt.Errorf("failed to find/create ServiceAccount token %s/%s: %w", kms.Tenant, kms.tenantSAName, err)
 }
 
 // getTokenPath creates a temporary directory structure that contains the token
@@ -335,32 +339,18 @@ func (kms *vaultTenantSA) getTokenPath() (string, error) {
 	return dir + "/token", nil
 }
 
-// createToken creates required service account token for kubernetes 1.24+,
-// else returns error.
-// From kubernetes v1.24+, secret for service account tokens are not
-// automatically created. Hence, use the create token api to fetch it.
-// refer: https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.24.md \
-// #no-really-you-must-read-this-before-you-upgrade-1 .
+// createToken creates required service account token using the TokenRequest API.
 func (kms *vaultTenantSA) createToken(sa *corev1.ServiceAccount, client *kubernetes.Clientset) (string, error) {
-	major, minor, err := k8s.GetServerVersion(client)
+	tokenRequest := &authenticationv1.TokenRequest{}
+	token, err := client.CoreV1().ServiceAccounts(kms.Tenant).CreateToken(
+		context.TODO(),
+		sa.Name,
+		tokenRequest,
+		metav1.CreateOptions{},
+	)
 	if err != nil {
-		return "", fmt.Errorf("failed to get server version: %w", err)
+		return "", fmt.Errorf("failed to create token for service account %s/%s: %w", kms.Tenant, sa.Name, err)
 	}
 
-	if (major*1000 + minor) >= kubeMinVersionForCreateToken {
-		tokenRequest := &authenticationv1.TokenRequest{}
-		token, err := client.CoreV1().ServiceAccounts(kms.Tenant).CreateToken(
-			context.TODO(),
-			sa.Name,
-			tokenRequest,
-			metav1.CreateOptions{},
-		)
-		if err != nil {
-			return "", fmt.Errorf("failed to create token for service account %s/%s: %w", kms.Tenant, sa.Name, err)
-		}
-
-		return token.Status.Token, nil
-	}
-
-	return "", fmt.Errorf("failed to find token in ServiceAccount %s/%s", kms.Tenant, kms.tenantSAName)
+	return token.Status.Token, nil
 }
