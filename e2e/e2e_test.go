@@ -38,6 +38,7 @@ func init() {
 	flag.BoolVar(&deployRBD, "deploy-rbd", true, "deploy rbd csi driver")
 	flag.BoolVar(&deployNFS, "deploy-nfs", false, "deploy nfs csi driver")
 	flag.BoolVar(&testCephFS, "test-cephfs", true, "test cephFS csi driver")
+	flag.BoolVar(&testCephFSFscrypt, "test-cephfs-fscrypt", false, "test CephFS csi driver fscrypt support")
 	flag.BoolVar(&testRBD, "test-rbd", true, "test rbd csi driver")
 	flag.BoolVar(&testRBDFSCrypt, "test-rbd-fscrypt", false, "test rbd csi driver fscrypt support")
 	flag.BoolVar(&testNBD, "test-nbd", false, "test rbd csi driver with rbd-nbd mounter")
