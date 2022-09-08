@@ -79,25 +79,26 @@ const (
 
 var (
 	// cli flags.
-	deployTimeout    int
-	deployCephFS     bool
-	deployRBD        bool
-	deployNFS        bool
-	testCephFS       bool
-	testRBD          bool
-	testRBDFSCrypt   bool
-	testNBD          bool
-	testNFS          bool
-	helmTest         bool
-	upgradeTesting   bool
-	upgradeVersion   string
-	cephCSINamespace string
-	rookNamespace    string
-	radosNamespace   string
-	poll             = 2 * time.Second
-	isOpenShift      bool
-	clusterID        string
-	nfsDriverName    string
+	deployTimeout     int
+	deployCephFS      bool
+	deployRBD         bool
+	deployNFS         bool
+	testCephFS        bool
+	testCephFSFscrypt bool
+	testRBD           bool
+	testRBDFSCrypt    bool
+	testNBD           bool
+	testNFS           bool
+	helmTest          bool
+	upgradeTesting    bool
+	upgradeVersion    string
+	cephCSINamespace  string
+	rookNamespace     string
+	radosNamespace    string
+	poll              = 2 * time.Second
+	isOpenShift       bool
+	clusterID         string
+	nfsDriverName     string
 )
 
 type cephfsFilesystem struct {
