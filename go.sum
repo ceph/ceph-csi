@@ -280,6 +280,8 @@ github.com/csi-addons/replication-lib-utils v0.2.0/go.mod h1:ROQlEsc2EerVtc/K/C+
 github.com/csi-addons/spec v0.1.0/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
 github.com/csi-addons/spec v0.1.2-0.20220829042231-b27a0d84b50b h1:C5KgryC4RwQVSF8L/pgcKftgn7Z1zHFZlACJukPlCxs=
 github.com/csi-addons/spec v0.1.2-0.20220829042231-b27a0d84b50b/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
+github.com/csi-addons/spec v0.1.2-0.20220906123848-52ce69f90900 h1:zX0138DipZsZqxK1UwAmaRZmL89OuQMkwh7FtvTDgFw=
+github.com/csi-addons/spec v0.1.2-0.20220906123848-52ce69f90900/go.mod h1:Mwq4iLiUV4s+K1bszcWU6aMsR5KPsbIYzzszJ6+56vI=
 github.com/cyphar/filepath-securejoin v0.2.3/go.mod h1:aPGpWjXOXUn2NCNjFvBE6aRxGGx79pTxQpKOJNYHHl4=
 github.com/dave/dst v0.26.2/go.mod h1:UMDJuIRPfyUCC78eFuB+SV/WI8oDeyFDvM/JR6NI3IU=
 github.com/dave/gopackages v0.0.0-20170318123100-46e7023ec56e/go.mod h1:i00+b/gKdIDIxuLDFob7ustLAVqhsZRk2qVZrArELGQ=

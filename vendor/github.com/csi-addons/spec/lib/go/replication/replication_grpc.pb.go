@@ -28,6 +28,9 @@ type ControllerClient interface {
 	DemoteVolume(ctx context.Context, in *DemoteVolumeRequest, opts ...grpc.CallOption) (*DemoteVolumeResponse, error)
 	// ResyncVolume RPC call to resync the volume.
 	ResyncVolume(ctx context.Context, in *ResyncVolumeRequest, opts ...grpc.CallOption) (*ResyncVolumeResponse, error)
+	// GetVolumeReplicationInfo RPC call to get the volume replication
+	// information.
+	GetVolumeReplicationInfo(ctx context.Context, in *GetVolumeReplicationInfoRequest, opts ...grpc.CallOption) (*GetVolumeReplicationInfoResponse, error)
 }
 
 type controllerClient struct {
@@ -83,6 +86,15 @@ func (c *controllerClient) ResyncVolume(ctx context.Context, in *ResyncVolumeReq
 	return out, nil
 }
 
+func (c *controllerClient) GetVolumeReplicationInfo(ctx context.Context, in *GetVolumeReplicationInfoRequest, opts ...grpc.CallOption) (*GetVolumeReplicationInfoResponse, error) {
+	out := new(GetVolumeReplicationInfoResponse)
+	err := c.cc.Invoke(ctx, "/replication.Controller/GetVolumeReplicationInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ControllerServer is the server API for Controller service.
 // All implementations must embed UnimplementedControllerServer
 // for forward compatibility
@@ -97,6 +109,9 @@ type ControllerServer interface {
 	DemoteVolume(context.Context, *DemoteVolumeRequest) (*DemoteVolumeResponse, error)
 	// ResyncVolume RPC call to resync the volume.
 	ResyncVolume(context.Context, *ResyncVolumeRequest) (*ResyncVolumeResponse, error)
+	// GetVolumeReplicationInfo RPC call to get the volume replication
+	// information.
+	GetVolumeReplicationInfo(context.Context, *GetVolumeReplicationInfoRequest) (*GetVolumeReplicationInfoResponse, error)
 	mustEmbedUnimplementedControllerServer()
 }
 
@@ -118,6 +133,9 @@ func (UnimplementedControllerServer) DemoteVolume(context.Context, *DemoteVolume
 }
 func (UnimplementedControllerServer) ResyncVolume(context.Context, *ResyncVolumeRequest) (*ResyncVolumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResyncVolume not implemented")
+}
+func (UnimplementedControllerServer) GetVolumeReplicationInfo(context.Context, *GetVolumeReplicationInfoRequest) (*GetVolumeReplicationInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVolumeReplicationInfo not implemented")
 }
 func (UnimplementedControllerServer) mustEmbedUnimplementedControllerServer() {}
 
@@ -222,6 +240,24 @@ func _Controller_ResyncVolume_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Controller_GetVolumeReplicationInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVolumeReplicationInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServer).GetVolumeReplicationInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/replication.Controller/GetVolumeReplicationInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServer).GetVolumeReplicationInfo(ctx, req.(*GetVolumeReplicationInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Controller_ServiceDesc is the grpc.ServiceDesc for Controller service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -248,6 +284,10 @@ var Controller_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResyncVolume",
 			Handler:    _Controller_ResyncVolume_Handler,
+		},
+		{
+			MethodName: "GetVolumeReplicationInfo",
+			Handler:    _Controller_GetVolumeReplicationInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

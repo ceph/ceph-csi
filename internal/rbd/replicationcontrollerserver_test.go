@@ -19,10 +19,13 @@ package rbd
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestValidateSchedulingInterval(t *testing.T) {
@@ -428,6 +431,57 @@ func TestCheckRemoteSiteStatus(t *testing.T) {
 			t.Parallel()
 			if ready := checkRemoteSiteStatus(context.TODO(), &ts.args); ready != ts.wantReady {
 				t.Errorf("checkRemoteSiteStatus() ready = %v, expect ready = %v", ready, ts.wantReady)
+			}
+		})
+	}
+}
+
+func TestValidateLastSyncTime(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		description string
+		timestamp   *timestamppb.Timestamp
+		expectedErr string
+	}{
+		{
+			"valid description",
+			//nolint:lll // sample output cannot be split into multiple lines.
+			`replaying,{"bytes_per_second":0.0,"bytes_per_snapshot":149504.0,"local_snapshot_timestamp":1662655501,"remote_snapshot_timestamp":1662655501}`,
+			timestamppb.New(time.Unix(1662655501, 0)),
+			"",
+		},
+		{
+			"empty description",
+			"",
+			nil,
+			"",
+		},
+		{
+			"description without local_snapshot_timestamp",
+			`replaying,{"bytes_per_second":0.0,"bytes_per_snapshot":149504.0,"remote_snapshot_timestamp":1662655501}`,
+			nil,
+			"",
+		},
+		{
+			"description with invalid JSON",
+			`replaying,{"bytes_per_second":0.0,"bytes_per_snapshot":149504.0","remote_snapshot_timestamp":1662655501`,
+			nil,
+			"failed to unmarshal description",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ts, err := getLastSyncTime(tt.description)
+			if err != nil && !strings.Contains(err.Error(), tt.expectedErr) {
+				// returned error
+				t.Errorf("getLastSyncTime() returned error, expected: %v, got: %v",
+					tt.expectedErr, err)
+			}
+			if !ts.AsTime().Equal(tt.timestamp.AsTime()) {
+				t.Errorf("getLastSyncTime() %v, expected %v", ts, tt.timestamp)
 			}
 		})
 	}
