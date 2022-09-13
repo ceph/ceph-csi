@@ -106,12 +106,12 @@ compatibility support and without prior notice.
 **Also, we do not recommend any direct upgrades to 3.7 except from 3.6 to 3.7.**
 For example, upgrading from 3.5 to 3.7 is not recommended.
 
-git checkout v3.7.0 tag
+git checkout v3.7.1 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.7.0
+git checkout v3.7.1
 ```
 
 ```console
