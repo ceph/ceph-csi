@@ -21,7 +21,6 @@ import (
 	"log"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -276,55 +275,6 @@ func (c *Client) GetKeys(ctx context.Context, limit int, offset int) (*Keys, err
 	v.Set("limit", strconv.Itoa(limit))
 	v.Set("offset", strconv.Itoa(offset))
 	req.URL.RawQuery = v.Encode()
-
-	keys := Keys{}
-	_, err = c.do(ctx, req, &keys)
-	if err != nil {
-		return nil, err
-	}
-
-	return &keys, nil
-}
-
-//ListKeysOptions struct to add the query parameters for the List Keys function
-type ListKeysOptions struct {
-	Extractable *bool
-	Limit       *uint32
-	Offset      *uint32
-	State       []KeyState
-}
-
-// ListKeys retrieves a list of keys that are stored in your Key Protect service instance.
-// https://cloud.ibm.com/apidocs/key-protect#getkeys
-func (c *Client) ListKeys(ctx context.Context, listKeysOptions *ListKeysOptions) (*Keys, error) {
-
-	req, err := c.newRequest("GET", "keys", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// extracting the query parameters and encoding the same in the request url
-	if listKeysOptions != nil {
-		values := req.URL.Query()
-		if listKeysOptions.Limit != nil {
-			values.Set("limit", fmt.Sprint(*listKeysOptions.Limit))
-		}
-		if listKeysOptions.Offset != nil {
-			values.Set("offset", fmt.Sprint(*listKeysOptions.Offset))
-		}
-		if listKeysOptions.State != nil {
-			var states []string
-			for _, i := range listKeysOptions.State {
-				states = append(states, strconv.Itoa(int(i)))
-			}
-
-			values.Set("state", strings.Join(states, ","))
-		}
-		if listKeysOptions.Extractable != nil {
-			values.Set("extractable", fmt.Sprint(*listKeysOptions.Extractable))
-		}
-		req.URL.RawQuery = values.Encode()
-	}
 
 	keys := Keys{}
 	_, err = c.do(ctx, req, &keys)
