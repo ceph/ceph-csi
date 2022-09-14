@@ -469,6 +469,12 @@ func TestValidateLastSyncTime(t *testing.T) {
 			nil,
 			"failed to unmarshal description",
 		},
+		{
+			"description with no JSON",
+			`replaying`,
+			nil,
+			"",
+		},
 	}
 	for _, tt := range tests {
 		tt := tt

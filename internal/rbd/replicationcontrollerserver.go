@@ -898,14 +898,14 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	localStatus, err := mirrorStatus.LocalStatus()
+	remoteStatus, err := RemoteStatus(mirrorStatus)
 	if err != nil {
 		log.ErrorLog(ctx, err.Error())
 
-		return nil, fmt.Errorf("failed to get local status: %w", err)
+		return nil, fmt.Errorf("failed to get remote status: %w", err)
 	}
 
-	description := localStatus.Description
+	description := remoteStatus.Description
 	lastSyncTime, err := getLastSyncTime(description)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get last sync time: %w", err)
@@ -916,6 +916,26 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	}
 
 	return resp, nil
+}
+
+// RemoteStatus returns one SiteMirrorImageStatus item from the SiteStatuses
+// slice that corresponds to the remote site's status. If the remote status
+// is not found than the error ErrNotExist will be returned.
+func RemoteStatus(gmis *librbd.GlobalMirrorImageStatus) (librbd.SiteMirrorImageStatus, error) {
+	var (
+		ss  librbd.SiteMirrorImageStatus
+		err error = librbd.ErrNotExist
+	)
+	for i := range gmis.SiteStatuses {
+		if gmis.SiteStatuses[i].MirrorUUID != "" {
+			ss = gmis.SiteStatuses[i]
+			err = nil
+
+			break
+		}
+	}
+
+	return ss, err
 }
 
 // This function gets the local snapshot time from the description
@@ -930,6 +950,9 @@ func getLastSyncTime(description string) (*timestamppb.Timestamp, error) {
 		return nil, nil
 	}
 	splittedString := strings.SplitN(description, ",", 2)
+	if len(splittedString) == 1 {
+		return nil, nil
+	}
 	type localStatus struct {
 		LocalSnapshotTime int64 `json:"local_snapshot_timestamp"`
 	}
