@@ -27,7 +27,7 @@ This client expects that you have an existing IBM Cloud Key Protect Service Inst
 
 Build a client with `ClientConfig` and `New`, then use the client to do some operations.
 ```go
-import "github.com/IBM/keyprotect-go-client"
+import kp "github.com/IBM/keyprotect-go-client"
 
 // Use your IAM API Key and your KeyProtect Service Instance GUID/UUID to create a ClientConfig
 cc := kp.ClientConfig{
@@ -213,4 +213,57 @@ if err != nil {
     fmt.Println(err)
 }
 fmt.Println(keys)
+```
+
+### Fetching List Key In Sorted Ascending Order Based On Paramaeters.
+
+```go
+srtStr, _ := kp.GetKeySortStr(kp.WithCreationDate(), kp.WithImported())
+
+listKeysOptions := &kp.ListKeysOptions{
+  Sort:srtStr,
+}
+
+keys, err := client.ListKeys(ctx, listKeysOptions)
+if err != nil {
+    fmt.Println(err)
+}
+fmt.Println(keys)
+```
+
+### Fetching List Key In Sorted Descending Order Based On Paramaeters.
+
+```go
+srtStr, _ := GetKeySortStr(WithCreationDateDesc(), WithImportedDesc())
+
+listKeysOptions := &ListKeysOptions{
+  Sort: srtStr,
+}
+
+keys, err := client.ListKeys(ctx, listKeysOptions)
+if err != nil {
+    fmt.Println(err)
+}
+fmt.Println(keys)
+```
+
+For more information about KeySearch visit: https://cloud.ibm.com/apidocs/key-protect#kp-get-key-search-api
+
+### Using Search functionality in list Keys API
+
+```go
+
+searchStr := "foobar"
+srcStr2, _ := kp.GetKeySearchQuery(&searchStr, kp.ApplyNot(), kp.AddAliasScope())
+
+listKeysOptions := &kp.ListKeysOptions{
+		Search: srcStr2,
+	}
+
+keys, err := client.ListKeys(ctx, listKeysOptions)
+if err != nil {
+		fmt.Println(err)
+	}
+fmt.Println(keys)
+
 ```
