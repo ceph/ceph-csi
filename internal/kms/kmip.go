@@ -313,9 +313,6 @@ func (kms *kmipKMS) getSecrets() (map[string]string, error) {
 		switch k {
 		case kmipClientKey, kmipCLientCert, kmipCACert, kmipUniqueIdentifier:
 			config[k] = string(v)
-		default:
-			return nil, fmt.Errorf("unsupported option for KMS "+
-				"provider %q: %s", kmsTypeKMIP, k)
 		}
 	}
 
