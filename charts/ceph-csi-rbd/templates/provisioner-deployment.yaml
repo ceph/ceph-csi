@@ -124,6 +124,7 @@ spec:
             - "--csi-address=$(ADDRESS)"
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
+            - "--default-fstype=ext4"
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"

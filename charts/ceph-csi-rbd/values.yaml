@@ -216,7 +216,7 @@ provisioner:
     enabled: true
     image:
       repository: registry.k8s.io/sig-storage/csi-attacher
-      tag: v3.5.0
+      tag: v4.0.0
       pullPolicy: IfNotPresent
     resources: {}
 
