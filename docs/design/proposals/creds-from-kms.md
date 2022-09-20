@@ -25,36 +25,12 @@ Ceph User credentials used for creating, deleting, mapping and resizing RBD volu
 Adds additional overhead as on each CSI RPC call
 a request is made to KMS for fetching credentials.
 
-## Background
-
-### Credentials Management
-
-Ceph-CSI relies on K8s CSI components for obtaining the Ceph user credentials.
-K8s CSI uses the following reserved StorageClass parameters for fetching
-credentials and passes them to Ceph-CSI RPC calls.
-
-```yaml
-csi.storage.k8s.io/controller-expand-secret-name
-csi.storage.k8s.io/controller-expand-secret-namespace
-csi.storage.k8s.io/provisioner-secret-name
-csi.storage.k8s.io/provisioner-secret-namespace
-csi.storage.k8s.io/node-stage-secret-name
-csi.storage.k8s.io/node-stage-secret-namespace
-```
-
-### KMS Implementation
-
-Ceph-CSI utilizes the `encryptionKMSID` StorageClass parameter and
-corresponding config entry in KMS ConfigMap
-(eg. [ceph-csi-encryption-kms-config](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/kms-config.yaml))
-to integrate with the KMS.
-
 ## Extending existing implementation
 
 > ### Deviation from existing approach
 >
 > - *StorageClass* parameters, such as `encryptionKMSID`,
-> cannot be used for credentials as
+> cannot be used in case of credentials as
 > they are not passed in all CSI requests e.g. DeleteVolumeRequest.
 > - Similarly, using K8s namespace as tenant name for KMS wouldn’t
 > be possible as this information not included as part of all CSI requests.
