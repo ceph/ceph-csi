@@ -10,6 +10,8 @@
           only_run_on_request: false
       - '1.25':
           only_run_on_request: true
+      - '1.26':
+          only_run_on_request: true
     jobs:
       - 'mini-e2e_k8s-{k8s_version}'
       - 'mini-e2e-helm_k8s-{k8s_version}'
