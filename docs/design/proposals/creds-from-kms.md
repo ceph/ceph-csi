@@ -3,40 +3,38 @@
 ## Proposal
 
 Ceph-CSI supports several KMS implementations for storing and
-fetching DEKs (Data Encryption Keys) to support encryption of RBD volumes.
-Focus of this proposal is to extend the existing KMS implementation to fetch
-Ceph User credentials used for creating, deleting, mapping and resizing RBD volumes.
+fetching DEKs (Data Encryption Keys) used for RBD volume encryption.
+The focus of this proposal is to leverage existing KMS implementation
+to support obtaining Ceph user keyring used while
+creating, deleting, mapping and resizing RBD volumes.
 
 ### Benefits
 
-- For Ceph-CSI setup where Ceph is deployed externally, either as
-  a standalone or through Rook, one needs to manually obtain the Ceph user keyring(s)
-  and create the K8s required secrets. With this feature,
+- For scenarios where Ceph is deployed externally, either as
+  a standalone or through Rook, one needs to obtain the Ceph keyring(s)
+  and manually create the K8s secrets needed by Ceph-CSI. With this feature,
   sensitive keyring(s) can be stored securely in an
   external secret management system such as Hashicorp Vault,
-  AWS Secret Manager, etc. and have Ceph-CSI pull these
-  sensitive keys directly from them.
-- Provides additional security in comparison with K8s secrets,
+  AWS Secret Manager, etc., and have Ceph-CSI pull these
+  keys directly from them.
+- More secure compared to K8s secrets,
   which are relatively easy to access and
   store sensitive secrets as unencrypted based64 encoded text.
 
-### Drawback
+### Drawbacks
 
-Adds additional overhead as on each CSI RPC call
-a request is made to KMS for fetching credentials.
+- Adds additional overhead as on each CSI RPC call
+  a request is made to KMS for fetching credentials.
+- Possible risk of hitting the KMS rate limit
 
 ## Extending existing implementation
 
-> ### Deviation from existing approach
->
-> - *StorageClass* parameters, such as `encryptionKMSID`,
-> cannot be used in case of credentials as
-> they are not passed in all CSI requests e.g. DeleteVolumeRequest.
-> - Similarly, using K8s namespace as tenant name for KMS wouldn’t
-> be possible as this information not included as part of all CSI requests.
-
-- KMS ID is expected to be present as part of provisioner,
-  node-stage, controller-expand secrets, along with Ceph userID.
+- KMS ID is  provided as part of the provisioner,
+  node-stage, and controller-expand secrets, along with Ceph `userID`, as shown below.
+  Having this information as part of *StorageClass* parameters,
+  like using the `encryptionKMSID` key for volume encryption,
+  wouldn't work as these parameters are not passed
+  to all CSI RPCs, e.g. `DeleteVolume`.
 
 ```yaml
 apiVersion: v1
@@ -48,7 +46,7 @@ stringData:
   kmsID: <kms-id>
  ```
 
-- A new ConfigMap named ceph-csi-creds-kms-config similar to
+- A new ConfigMap with default name `ceph-csi-creds-kms-config` similar to
   [ceph-csi-encryption-kms-config](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/kms-config.yaml)
   will be added.
 
@@ -62,10 +60,13 @@ metadata:
     name: ceph-csi-creds-kms-config
 ```
 
-- For KMS that rely on Tenant namespace, a new optional field name "tenantNamespace"
-  is added in addition to existing KMS config.
-  If "tenantNamespace" is not provided, Ceph-CSI namespace will be used to lookup
-  required ServiceAccount, ConfigMap or Secrets.
+- For KMS that rely on tenants' namespace to obtain required
+  ServiceAccount, ConfigMap, or Secrets,
+  an optional field, "tenantNamespace" will be added to the KMS config.
+  As the tenant namespace isn't available in all CSI requests,
+  value from provided in this field will be used instead.
+  If "tenantNamespace" field is absent, Ceph-CSI namespace
+  will be used as default.
 
 **Example KMS config:**
 
@@ -91,7 +92,7 @@ metadata:
 ### Backward Compatibility
 
 KMS integration will only be enabled when `ceph-csi-creds-kms-config` ConfigMap exists
-and secrets contain the `kmsID` key. In case where secrets contain
+and CSI secrets contain the `kmsID` key. In case where secrets contain
 both `kmsID` and `userKey`
 the keyring provided secrets will be used for creating the credential object.
 
