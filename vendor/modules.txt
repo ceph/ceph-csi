@@ -323,11 +323,11 @@ github.com/hashicorp/hcl/json/token
 ## explicit; go 1.13
 github.com/hashicorp/vault/command/agent/auth
 github.com/hashicorp/vault/command/agent/auth/kubernetes
-# github.com/hashicorp/vault/api v1.7.2
+# github.com/hashicorp/vault/api v1.8.0
 ## explicit; go 1.17
 github.com/hashicorp/vault/api
-# github.com/hashicorp/vault/sdk v0.5.1
-## explicit; go 1.17
+# github.com/hashicorp/vault/sdk v0.6.0
+## explicit; go 1.19
 github.com/hashicorp/vault/sdk/helper/certutil
 github.com/hashicorp/vault/sdk/helper/compressutil
 github.com/hashicorp/vault/sdk/helper/consts
