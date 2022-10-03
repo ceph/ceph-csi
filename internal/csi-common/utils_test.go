@@ -88,7 +88,7 @@ func TestFilesystemNodeGetVolumeStats(t *testing.T) {
 
 	// retry until a mountpoint is found
 	for {
-		stats, err := FilesystemNodeGetVolumeStats(context.TODO(), mount.New(""), cwd)
+		stats, err := FilesystemNodeGetVolumeStats(context.TODO(), mount.New(""), cwd, true)
 		if err != nil && cwd != "/" && strings.HasSuffix(err.Error(), "is not mounted") {
 			// try again with the parent directory
 			cwd = filepath.Dir(cwd)
