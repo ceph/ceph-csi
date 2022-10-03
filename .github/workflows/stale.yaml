@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'ceph/ceph-csi'
     steps:
-      - uses: actions/stale@v5
+      - uses: actions/stale@v6
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           days-before-issue-stale: 30
