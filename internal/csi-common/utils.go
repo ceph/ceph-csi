@@ -241,6 +241,7 @@ func FilesystemNodeGetVolumeStats(
 	ctx context.Context,
 	mounter mount.Interface,
 	targetPath string,
+	includeInodes bool,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
 	isMnt, err := util.IsMountPoint(mounter, targetPath)
 	if err != nil {
@@ -274,23 +275,8 @@ func FilesystemNodeGetVolumeStats(
 	if !ok {
 		log.ErrorLog(ctx, "failed to fetch used bytes")
 	}
-	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
-	if !ok {
-		log.ErrorLog(ctx, "failed to fetch available inodes")
 
-		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
-	}
-	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
-	if !ok {
-		log.ErrorLog(ctx, "failed to fetch free inodes")
-	}
-
-	inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
-	if !ok {
-		log.ErrorLog(ctx, "failed to fetch used inodes")
-	}
-
-	return &csi.NodeGetVolumeStatsResponse{
+	res := &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
 			{
 				Available: requirePositive(available),
@@ -298,14 +284,35 @@ func FilesystemNodeGetVolumeStats(
 				Used:      requirePositive(used),
 				Unit:      csi.VolumeUsage_BYTES,
 			},
-			{
-				Available: requirePositive(inodesFree),
-				Total:     requirePositive(inodes),
-				Used:      requirePositive(inodesUsed),
-				Unit:      csi.VolumeUsage_INODES,
-			},
 		},
-	}, nil
+	}
+
+	if includeInodes {
+		inodes, ok := (*(volMetrics.Inodes)).AsInt64()
+		if !ok {
+			log.ErrorLog(ctx, "failed to fetch available inodes")
+
+			return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
+		}
+		inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
+		if !ok {
+			log.ErrorLog(ctx, "failed to fetch free inodes")
+		}
+
+		inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
+		if !ok {
+			log.ErrorLog(ctx, "failed to fetch used inodes")
+		}
+
+		res.Usage = append(res.Usage, &csi.VolumeUsage{
+			Available: requirePositive(inodesFree),
+			Total:     requirePositive(inodes),
+			Used:      requirePositive(inodesUsed),
+			Unit:      csi.VolumeUsage_INODES,
+		})
+	}
+
+	return res, nil
 }
 
 // requirePositive returns the value for `x` when it is greater or equal to 0,

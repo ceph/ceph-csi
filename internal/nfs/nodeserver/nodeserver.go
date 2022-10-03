@@ -182,7 +182,7 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	}
 
 	if stat.Mode().IsDir() {
-		return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath)
+		return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath, false)
 	}
 
 	return nil, status.Errorf(codes.InvalidArgument,
