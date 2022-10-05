@@ -24,7 +24,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -68,18 +67,6 @@ const (
 	// (optional) StartTime is the time the snapshot schedule
 	// begins, can be specified using the ISO 8601 time format.
 	schedulingStartTimeKey = "schedulingStartTime"
-)
-
-type operation string
-
-var (
-	// pool+"/"+key to check dummy image is created.
-	dummyImageCreated operation = "dummyImageCreated"
-	// Read write lock to ensure that only one operation is happening at a time.
-	operationLock = sync.Map{}
-
-	// Lock to serialize operations on the dummy image to tickle RBD snapshot schedule.
-	dummyImageOpsLock sync.Mutex
 )
 
 // ReplicationServer struct of rbd CSI driver with supported methods of Replication
@@ -269,11 +256,6 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	err = createDummyImage(ctx, rbdVol)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create dummy image %s", err.Error())
-	}
-
 	if mirroringInfo.State != librbd.MirrorImageEnabled {
 		err = rbdVol.enableImageMirroring(mirroringMode)
 		if err != nil {
@@ -284,117 +266,6 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	}
 
 	return &replication.EnableVolumeReplicationResponse{}, nil
-}
-
-// getDummyImageName returns the csi-vol-dummy+cluster FSID as the image name.
-// each cluster should have a unique dummy image created. choosing the cluster
-// FSID for the same reason.
-func getDummyImageName(conn *util.ClusterConnection) (string, error) {
-	id, err := conn.GetFSID()
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("csi-vol-dummy-%s", id), nil
-}
-
-// getOperationName returns the operation name for the given operation type
-// combined with the pool name.
-func getOperationName(poolName string, optName operation) string {
-	return fmt.Sprintf("%s/%s", poolName, optName)
-}
-
-// createDummyImage creates a dummy image as a workaround for the rbd
-// scheduling problem.
-func createDummyImage(ctx context.Context, rbdVol *rbdVolume) error {
-	var err error
-	var imgName string
-
-	dummyImageOpsLock.Lock()
-	defer dummyImageOpsLock.Unlock()
-	optName := getOperationName(rbdVol.Pool, dummyImageCreated)
-	if _, ok := operationLock.Load(optName); !ok {
-		// create a dummy image
-		imgName, err = getDummyImageName(rbdVol.conn)
-		if err != nil {
-			return err
-		}
-		dummyVol := *rbdVol
-		dummyVol.RbdImageName = imgName
-		// dummyVol holds rbdVol details, reset ImageID or else dummy image cannot be
-		// deleted from trash during repair operation.
-		dummyVol.ImageID = ""
-		f := []string{
-			librbd.FeatureNameLayering,
-			librbd.FeatureNameObjectMap,
-			librbd.FeatureNameExclusiveLock,
-			librbd.FeatureNameFastDiff,
-		}
-		features := librbd.FeatureSetFromNames(f)
-		dummyVol.ImageFeatureSet = features
-		// create 1MiB dummy image. 1MiB=1048576 bytes
-		dummyVol.VolSize = 1048576
-		err = createImage(ctx, &dummyVol, dummyVol.conn.Creds)
-		if err != nil {
-			if strings.Contains(err.Error(), "File exists") {
-				err = repairDummyImage(ctx, &dummyVol)
-			}
-		}
-		if err == nil {
-			operationLock.Store(optName, true)
-		}
-	}
-
-	return err
-}
-
-// repairDummyImage deletes and recreates the dummy image.
-func repairDummyImage(ctx context.Context, dummyVol *rbdVolume) error {
-	// instead of checking the images features and than adding missing image
-	// features, updating the image size to 1Mib. We will delete the image
-	// and recreate it.
-
-	// deleting and recreating the dummy image will not impact anything as its
-	// a workaround to fix the scheduling problem.
-	err := dummyVol.deleteImage(ctx)
-	if err != nil {
-		return err
-	}
-
-	return createImage(ctx, dummyVol, dummyVol.conn.Creds)
-}
-
-// tickleMirroringOnDummyImage disables and reenables mirroring on the dummy image, and sets a
-// schedule of a minute for the dummy image, to force a schedule refresh for other mirrored images
-// within a minute.
-func tickleMirroringOnDummyImage(rbdVol *rbdVolume, mirroringMode librbd.ImageMirrorMode) error {
-	imgName, err := getDummyImageName(rbdVol.conn)
-	if err != nil {
-		return err
-	}
-	dummyVol := *rbdVol
-	dummyVol.RbdImageName = imgName
-
-	dummyImageOpsLock.Lock()
-	defer dummyImageOpsLock.Unlock()
-	err = dummyVol.disableImageMirroring(false)
-	if err != nil {
-		return err
-	}
-
-	err = dummyVol.enableImageMirroring(mirroringMode)
-	if err != nil {
-		return err
-	}
-
-	if mirroringMode == librbd.ImageMirrorModeSnapshot {
-		err = dummyVol.addSnapshotScheduling(admin.Interval("1m"), admin.NoStartTime)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // DisableVolumeReplication extracts the RBD volume information from the
@@ -588,12 +459,6 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 		}
 	}
 
-	var mode librbd.ImageMirrorMode
-	mode, err = getMirroringMode(ctx, req.GetParameters())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get mirroring mode %s", err.Error())
-	}
-
 	interval, startTime := getSchedulingDetails(req.GetParameters())
 	if interval != admin.NoInterval {
 		err = rbdVol.addSnapshotScheduling(interval, startTime)
@@ -606,12 +471,6 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 			interval,
 			startTime,
 			rbdVol)
-	}
-
-	log.DebugLog(ctx, "attempting to tickle dummy image for restarting RBD schedules")
-	err = tickleMirroringOnDummyImage(rbdVol, mode)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to enable mirroring on dummy image %s", err.Error())
 	}
 
 	return &replication.PromoteVolumeResponse{}, nil
