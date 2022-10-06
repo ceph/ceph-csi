@@ -143,9 +143,9 @@ func FormatInt(i int32, enumMap EnumMap) string {
 // See FormatEnum for examples of the formats which can be parsed.
 // It will also parse numeric strings.  Examples:
 //
-//     ParseEnum("UnableToCancel", registry.EnumForTag(TagCancellationResult))
-// 	   ParseEnum("0x00000002")
-// 	   ParseEnum("2")
+//	ParseEnum("UnableToCancel", registry.EnumForTag(TagCancellationResult))
+//	ParseEnum("0x00000002")
+//	ParseEnum("2")
 //
 // Returns ErrInvalidHexString if the string is invalid hex, or
 // if the hex value is less than 1 byte or more than 4 bytes (ignoring
@@ -288,7 +288,6 @@ func ParseType(s string, enumMap EnumMap) (Type, error) {
 // EnumMap defines a set of named enumeration values.  Canonical names should
 // be the name from the spec. Names should be in the normalized format
 // described in the KMIP spec (see NormalizeName()).
-//
 //
 // Value enumerations are used for encoding and decoding KMIP Enumeration values,
 // KMIP Integer bitmask values, Types, and Tags.

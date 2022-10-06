@@ -15,7 +15,7 @@ import (
 // program.
 var DefaultRegistry Registry
 
-// nolint:gochecknoinits
+//nolint:gochecknoinits
 func init() {
 	RegisterTypes(&DefaultRegistry)
 }

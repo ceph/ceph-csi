@@ -7,7 +7,6 @@ import (
 )
 
 // GetRequestPayload ////////////////////////////////////////
-//
 type GetRequestPayload struct {
 	UniqueIdentifier string
 }

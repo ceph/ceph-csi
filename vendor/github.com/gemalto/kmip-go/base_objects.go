@@ -101,17 +101,17 @@ type AttestationCredentialValue struct {
 // A Key Block object is a structure (see Table 7) used to encapsulate all of the information that is
 // closely associated with a cryptographic key. It contains a Key Value of one of the following Key Format Types:
 //
-// · Raw – This is a key that contains only cryptographic key material, encoded as a string of bytes.
-// · Opaque – This is an encoded key for which the encoding is unknown to the key management system.
-//   It is encoded as a string of bytes.
-// · PKCS1 – This is an encoded private key, expressed as a DER-encoded ASN.1 PKCS#1 object.
-// · PKCS8 – This is an encoded private key, expressed as a DER-encoded ASN.1 PKCS#8 object, supporting both
-//   the RSAPrivateKey syntax and EncryptedPrivateKey.
-// · X.509 – This is an encoded object, expressed as a DER-encoded ASN.1 X.509 object.
-// · ECPrivateKey – This is an ASN.1 encoded elliptic curve private key.
-// · Several Transparent Key types – These are algorithm-specific structures containing defined values
-//   for the various key types, as defined in Section 2.1.7.
-// · Extensions – These are vendor-specific extensions to allow for proprietary or legacy key formats.
+//   - Raw – This is a key that contains only cryptographic key material, encoded as a string of bytes.
+//   - Opaque – This is an encoded key for which the encoding is unknown to the key management system.
+//     It is encoded as a string of bytes.
+//   - PKCS1 – This is an encoded private key, expressed as a DER-encoded ASN.1 PKCS#1 object.
+//   - PKCS8 – This is an encoded private key, expressed as a DER-encoded ASN.1 PKCS#8 object, supporting both
+//     the RSAPrivateKey syntax and EncryptedPrivateKey.
+//   - X.509 – This is an encoded object, expressed as a DER-encoded ASN.1 X.509 object.
+//   - ECPrivateKey – This is an ASN.1 encoded elliptic curve private key.
+//   - Several Transparent Key types – These are algorithm-specific structures containing defined values
+//     for the various key types, as defined in Section 2.1.7.
+//   - Extensions – These are vendor-specific extensions to allow for proprietary or legacy key formats.
 //
 // The Key Block MAY contain the Key Compression Type, which indicates the format of the elliptic curve public
 // key. By default, the public key is uncompressed.
@@ -119,13 +119,12 @@ type AttestationCredentialValue struct {
 // The Key Block also has the Cryptographic Algorithm and the Cryptographic Length of the key contained
 // in the Key Value field. Some example values are:
 //
-// · RSA keys are typically 1024, 2048 or 3072 bits in length.
-// · 3DES keys are typically from 112 to 192 bits (depending upon key length and the presence of parity bits).
-// · AES keys are 128, 192 or 256 bits in length.
+//   - RSA keys are typically 1024, 2048 or 3072 bits in length.
+//   - 3DES keys are typically from 112 to 192 bits (depending upon key length and the presence of parity bits).
+//   - AES keys are 128, 192 or 256 bits in length.
 //
 // The Key Block SHALL contain a Key Wrapping Data structure if the key in the Key Value field is
 // wrapped (i.e., encrypted, or MACed/signed, or both).
-
 type KeyBlock struct {
 	KeyFormatType          kmip14.KeyFormatType
 	KeyCompressionType     kmip14.KeyCompressionType     `ttlv:",omitempty"`
@@ -139,13 +138,13 @@ type KeyBlock struct {
 //
 // The Key Value is used only inside a Key Block and is either a Byte String or a structure (see Table 8):
 //
-// · The Key Value structure contains the key material, either as a byte string or as a Transparent Key
-//   structure (see Section 2.1.7), and OPTIONAL attribute information that is associated and encapsulated
-//   with the key material. This attribute information differs from the attributes associated with Managed
-//   Objects, and is obtained via the Get Attributes operation, only by the fact that it is encapsulated with
-//   (and possibly wrapped with) the key material itself.
-// · The Key Value Byte String is either the wrapped TTLV-encoded (see Section 9.1) Key Value structure, or
-//   the wrapped un-encoded value of the Byte String Key Material field.
+//   - The Key Value structure contains the key material, either as a byte string or as a Transparent Key
+//     structure (see Section 2.1.7), and OPTIONAL attribute information that is associated and encapsulated
+//     with the key material. This attribute information differs from the attributes associated with Managed
+//     Objects, and is obtained via the Get Attributes operation, only by the fact that it is encapsulated with
+//     (and possibly wrapped with) the key material itself.
+//   - The Key Value Byte String is either the wrapped TTLV-encoded (see Section 9.1) Key Value structure, or
+//     the wrapped un-encoded value of the Byte String Key Material field.
 //
 // TODO: Unmarshaler impl which unmarshals correct KeyMaterial type.
 type KeyValue struct {
@@ -163,16 +162,16 @@ type KeyValue struct {
 //
 // This structure contains fields for:
 //
-// · A Wrapping Method, which indicates the method used to wrap the Key Value.
-// · Encryption Key Information, which contains the Unique Identifier (see 3.1) value of the encryption key
-//   and associated cryptographic parameters.
-// · MAC/Signature Key Information, which contains the Unique Identifier value of the MAC/signature key
-//   and associated cryptographic parameters.
-// · A MAC/Signature, which contains a MAC or signature of the Key Value.
-// · An IV/Counter/Nonce, if REQUIRED by the wrapping method.
-// · An Encoding Option, specifying the encoding of the Key Material within the Key Value structure of the
-//   Key Block that has been wrapped. If No Encoding is specified, then the Key Value structure SHALL NOT contain
-//   any attributes.
+//   - A Wrapping Method, which indicates the method used to wrap the Key Value.
+//   - Encryption Key Information, which contains the Unique Identifier (see 3.1) value of the encryption key
+//     and associated cryptographic parameters.
+//   - MAC/Signature Key Information, which contains the Unique Identifier value of the MAC/signature key
+//     and associated cryptographic parameters.
+//   - A MAC/Signature, which contains a MAC or signature of the Key Value.
+//   - An IV/Counter/Nonce, if REQUIRED by the wrapping method.
+//   - An Encoding Option, specifying the encoding of the Key Material within the Key Value structure of the
+//     Key Block that has been wrapped. If No Encoding is specified, then the Key Value structure SHALL NOT contain
+//     any attributes.
 //
 // If wrapping is used, then the whole Key Value structure is wrapped unless otherwise specified by the
 // Wrapping Method. The algorithms used for wrapping are given by the Cryptographic Algorithm attributes of
@@ -184,17 +183,17 @@ type KeyValue struct {
 //
 // The following wrapping methods are currently defined:
 //
-// · Encrypt only (i.e., encryption using a symmetric key or public key, or authenticated encryption algorithms that use a single key).
-// · MAC/sign only (i.e., either MACing the Key Value with a symmetric key, or signing the Key Value with a private key).
-// · Encrypt then MAC/sign.
-// · MAC/sign then encrypt.
-// · TR-31.
-// · Extensions.
+//   - Encrypt only (i.e., encryption using a symmetric key or public key, or authenticated encryption algorithms that use a single key).
+//   - MAC/sign only (i.e., either MACing the Key Value with a symmetric key, or signing the Key Value with a private key).
+//   - Encrypt then MAC/sign.
+//   - MAC/sign then encrypt.
+//   - TR-31.
+//   - Extensions.
 //
 // The following encoding options are currently defined:
 //
-// · No Encoding (i.e., the wrapped un-encoded value of the Byte String Key Material field in the Key Value structure).
-// · TTLV Encoding (i.e., the wrapped TTLV-encoded Key Value structure).
+//   - No Encoding (i.e., the wrapped un-encoded value of the Byte String Key Material field in the Key Value structure).
+//   - TTLV Encoding (i.e., the wrapped TTLV-encoded Key Value structure).
 type KeyWrappingData struct {
 	WrappingMethod             kmip14.WrappingMethod
 	EncryptionKeyInformation   *EncryptionKeyInformation
@@ -254,9 +253,9 @@ type TransparentDSAPublicKey struct {
 //
 // One of the following SHALL be present (refer to [PKCS#1]):
 //
-// · Private Exponent,
-// · P and Q (the first two prime factors of Modulus), or
-// · Prime Exponent P and Prime Exponent Q.
+//   - Private Exponent,
+//   - P and Q (the first two prime factors of Modulus), or
+//   - Prime Exponent P and Prime Exponent Q.
 type TransparentRSAPrivateKey struct {
 	Modulus                         *big.Int `validate:"required"`
 	PrivateExponent, PublicExponent *big.Int
@@ -395,10 +394,10 @@ type TransparentECPublicKey struct {
 //
 // The Template-Attribute, Common Template-Attribute, Private Key Template-Attribute, and Public Key
 // Template-Attribute structures are defined identically as follows:
-// type TemplateAttribute struct {
-//	Attribute []Attribute
-// }
-
+//
+//	type TemplateAttribute struct {
+//		Attribute []Attribute
+//	}
 type TemplateAttribute struct {
 	Name      []Name
 	Attribute []Attribute

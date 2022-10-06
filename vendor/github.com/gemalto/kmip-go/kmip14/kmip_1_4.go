@@ -12,12 +12,12 @@ import (
 	"github.com/gemalto/kmip-go/ttlv"
 )
 
-// nolint:gochecknoinits
+//nolint:gochecknoinits
 func init() {
 	Register(&ttlv.DefaultRegistry)
 }
 
-// Register registers the 1.4 enumeration values with the registry.
+// Registers the 1.4 enumeration values with the registry.
 func Register(registry *ttlv.Registry) {
 	RegisterGeneratedDefinitions(registry)
 }

@@ -40,56 +40,69 @@ var (
 // and from the inferred KMIP tag, according to these rules:
 //
 // 1. If the value is a TTLV, it is copied byte for byte
-// 2. If the value implements Marshaler, call that
-// 3. If the struct field has an "omitempty" flag, and the value is
-//    zero, skip the field:
 //
-//        type Foo struct {
-//            Comment string `ttlv:,omitempty`
-//        }
+// 2. If the value implements Marshaler, call that
+//
+// 3. If the struct field has an "omitempty" flag, and the value is
+// zero, skip the field:
+//
+//	type Foo struct {
+//	  Comment string `ttlv:,omitempty`
+//	}
 //
 // 4. If the value is a slice (except []byte)  or array, marshal all
-//    values concatenated
+// values concatenated
+//
 // 5. If a tag has not been inferred at this point, return *MarshalerError with
-//    cause ErrNoTag
+// cause ErrNoTag
+//
 // 6. If the Tag is registered as an enum, or has the "enum" struct tag flag, attempt
-//    to marshal as an Enumeration.  int, int8, int16, int32, and their uint counterparts
-//    can be marshaled as an Enumeration.  A string can be marshaled to an Enumeration
-//    if the string contains a number, a 4 byte (8 char) hex string with the prefix "0x",
-//    or the normalized name of an enum value registered to this tag.  Examples:
+// to marshal as an Enumeration.  int, int8, int16, int32, and their uint counterparts
+// can be marshaled as an Enumeration.  A string can be marshaled to an Enumeration
+// if the string contains a number, a 4 byte (8 char) hex string with the prefix "0x",
+// or the normalized name of an enum value registered to this tag.  Examples:
 //
-//         type Foo struct {
-//             CancellationResult string    // will encode as an Enumeration because
-//                                          // the tag CancellationResult is registered
-//                                          // as an enum.
-//             C int `ttlv:"Comment,enum"   // The tag Comment is not registered as an enum
-//                                          // but the enum flag will force this to encode
-//                                          // as an enumeration.
-//         }
+//	type Foo struct {
+//	  CancellationResult string    // will encode as an Enumeration because
+//	                               // the tag CancellationResult is registered
+//	                               // as an enum.
+//	  C int `ttlv:"Comment,enum"   // The tag Comment is not registered as an enum
+//	                               // but the enum flag will force this to encode
+//	                               // as an enumeration.
+//	}
 //
-//   If the string can't be interpreted as an enum value, it will be encoded as a TextString.  If
-//   the "enum" struct flag is set, the value *must* successfully encode to an Enumeration using
-//   above rules, or an error is returned.
+// If the string can't be interpreted as an enum value, it will be encoded as a TextString.  If
+// the "enum" struct flag is set, the value *must* successfully encode to an Enumeration using
+// above rules, or an error is returned.
+//
 // 7. If the Tag is registered as a bitmask, or has the "bitmask" struct tag flag, attempt
-//    to marshal to an Integer, following the same rules as for Enumerations.  The ParseInt()
-//    function is used to parse string values.
-// 9. time.Time marshals to DateTime.  If the field has the "datetimeextended" struct flag,
-//    marshal as DateTimeExtended.  Example:
+// to marshal to an Integer, following the same rules as for Enumerations.  The ParseInt()
+// function is used to parse string values.
 //
-//         type Foo struct {
-//             ActivationDate time.Time  `ttlv:",datetimeextended"`
-//         }
+// 9. time.Time marshals to DateTime.  If the field has the "datetimeextended" struct flag,
+// marshal as DateTimeExtended.  Example:
+//
+//	type Foo struct {
+//	  ActivationDate time.Time  `ttlv:",datetimeextended"`
+//	}
 //
 // 10. big.Int marshals to BigInteger
+//
 // 11. time.Duration marshals to Interval
+//
 // 12. string marshals to TextString
+//
 // 13. []byte marshals to ByteString
+//
 // 14. all int and uint variants except int64 and uint64 marshal to Integer.  If the golang
-//     value overflows the KMIP value, *MarshalerError with cause ErrIntOverflow is returned
+// value overflows the KMIP value, *MarshalerError with cause ErrIntOverflow is returned
+//
 // 15. int64 and uint64 marshal to LongInteger
+//
 // 16. bool marshals to Boolean
+//
 // 17. structs marshal to Structure.  Each field of the struct will be marshaled into the
-//     values of the Structure according to the above rules.
+// values of the Structure according to the above rules.
 //
 // Any other golang type will return *MarshalerError with cause ErrUnsupportedTypeError.
 func Marshal(v interface{}) (TTLV, error) {
