@@ -176,6 +176,12 @@ else
     DISK_CONFIG=""
 fi
 
+EXTRA_MINIKUBE_ARGS=${EXTRA_MINIKUBE_ARGS:-"--container-runtime=cri-o"}
+
+function install_crio() {
+   curl -sf https://raw.githubusercontent.com/cri-o/cri-o/main/scripts/get | PREFIX=/usr bash
+}
+
 # configure csi image version
 CSI_IMAGE_VERSION=${CSI_IMAGE_VERSION:-"canary"}
 
@@ -212,6 +218,7 @@ kubectl="$(detect_kubectl)"
 case "${1:-}" in
 up)
     install_minikube
+    install_crio
     #if driver  is 'none' install kubectl with KUBE_VERSION
     if [[ "${VM_DRIVER}" == "none" ]]; then
         mkdir -p "$HOME"/.kube "$HOME"/.minikube
@@ -229,8 +236,11 @@ up)
     if [ "${KUBE_MAJOR}" -eq 1 ] && [ "${KUBE_MINOR}" -ge 23 ];then
         K8S_FEATURE_GATES="${K8S_FEATURE_GATES},RecoverVolumeExpansionFailure=true"
     fi
+    if [[ "${VM_DRIVER}" != "none" ]]; then
+        EXTRA_MINIKUBE_ARGS="${EXTRA_MINIKUBE_ARGS} --memory=${MEMORY} --cpus=${CPUS}"
+    fi
     # shellcheck disable=SC2086
-    ${minikube} start --force --memory="${MEMORY}" --cpus="${CPUS}" -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG}  --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
+    ${minikube} start --force ${EXTRA_MINIKUBE_ARGS} -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG}  --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
 
     # create a link so the default dataDirHostPath will work for this
     # environment
