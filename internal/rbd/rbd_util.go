@@ -652,6 +652,13 @@ func (ri *rbdImage) deleteImage(ctx context.Context) error {
 		return err
 	}
 
+	// Make sure there are no snapshots for the image before removing, otherwise it's stuck in the trash.
+	err = ri.purgeSnapshots(ctx)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to purge image snapshots: %s, error: %v", ri, err)
+		return err
+	}
+
 	rbdImage := librbd.GetImage(ri.ioctx, image)
 	err = rbdImage.Trash(0)
 	if err != nil {
@@ -1440,6 +1447,30 @@ func (ri *rbdImage) deleteSnapshot(ctx context.Context, pOpts *rbdSnapshot) erro
 	}
 
 	return err
+}
+
+func (ri *rbdImage) purgeSnapshots(ctx context.Context) error {
+	rbdSnap := &rbdSnapshot{}
+
+	snaps, err := ri.listSnapshots()
+	if err != nil {
+		log.DebugLog(ctx, "rbd: failed to get list of snapshots %v", err)
+	}
+
+	for _, snap := range snaps {
+		log.DebugLog(ctx, "rbd: found image snapshot %s", snap.Name)
+		rbdSnap.RbdSnapName = snap.Name
+		rbdSnap.Monitors = ri.Monitors
+
+		err = ri.deleteSnapshot(ctx, rbdSnap)
+		if err != nil {
+			log.ErrorLog(ctx, "failed to delete rbd image snapshot: %s, error: %v", ri, err)
+
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (rv *rbdVolume) cloneRbdImageFromSnapshot(
