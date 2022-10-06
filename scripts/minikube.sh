@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o xtrace
 
 #Based on ideas from https://github.com/rook/rook/blob/master/tests/scripts/minikube.sh
 
@@ -156,7 +157,7 @@ MEMORY=${MEMORY:-"4096"}
 MINIKUBE_WAIT_TIMEOUT=${MINIKUBE_WAIT_TIMEOUT:-"10m"}
 MINIKUBE_WAIT=${MINIKUBE_WAIT:-"all"}
 CPUS=${CPUS:-"$(nproc)"}
-VM_DRIVER=${VM_DRIVER:-"virtualbox"}
+VM_DRIVER="none"
 CNI=${CNI:-"bridge"}
 NUM_DISKS=${NUM_DISKS:-"1"}
 DISK_SIZE=${DISK_SIZE:-"32g"}
@@ -176,10 +177,22 @@ else
     DISK_CONFIG=""
 fi
 
-EXTRA_MINIKUBE_ARGS=${EXTRA_MINIKUBE_ARGS:-"--container-runtime=cri-o"}
+EXTRA_MINIKUBE_ARGS=${EXTRA_MINIKUBE_ARGS:-""}
 
 function install_crio() {
-   curl -sf https://raw.githubusercontent.com/cri-o/cri-o/main/scripts/get | PREFIX=/usr bash
+    dnf -y install dnf-plugins-core
+    dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    dnf config-manager --set-disabled docker-ce-stable
+    rpm --install --nodeps --replacefiles --excludepath=/usr/bin/runc https://download.docker.com/linux/centos/8/x86_64/stable/Packages/containerd.io-1.6.8-3.1.el8.x86_64.rpm
+    dnf install --enablerepo=docker-ce-stable docker-ce conntrack -y     
+    systemctl daemon-reload
+    systemctl start docker
+    systemctl enable docker
+    swapoff -a
+    setenforce 0
+    mkdir -p /opt/cni/bin
+    curl -O -L https://github.com/containernetworking/plugins/releases/download/v1.1.1/cni-plugins-linux-amd64-v1.1.1.tgz
+    tar -C /opt/cni/bin -xzf cni-plugins-linux-amd64-v1.1.1.tgz
 }
 
 # configure csi image version
@@ -240,7 +253,7 @@ up)
         EXTRA_MINIKUBE_ARGS="${EXTRA_MINIKUBE_ARGS} --memory=${MEMORY} --cpus=${CPUS}"
     fi
     # shellcheck disable=SC2086
-    ${minikube} start --force ${EXTRA_MINIKUBE_ARGS} -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG}  --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
+    ${minikube} start --v=5 --force ${EXTRA_MINIKUBE_ARGS} -b kubeadm --kubernetes-version="${KUBE_VERSION}" --driver="${VM_DRIVER}" --feature-gates="${K8S_FEATURE_GATES}" --cni="${CNI}" ${EXTRA_CONFIG}  --wait-timeout="${MINIKUBE_WAIT_TIMEOUT}" --wait="${MINIKUBE_WAIT}" --delete-on-failure ${DISK_CONFIG}
 
     # create a link so the default dataDirHostPath will work for this
     # environment
