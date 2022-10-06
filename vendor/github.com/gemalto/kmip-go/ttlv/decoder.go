@@ -26,31 +26,31 @@ var ErrUnexpectedValue = errors.New("no field was found to unmarshal value into"
 // Unmarshal maps TTLV values to golang values according to the following
 // rules:
 //
-// 1. If the destination value is interface{}, it will be set to the result
-//    of TTLV.Value()
-// 2. If the destination implements Unmarshaler, that will be called.
-// 3. If the destination is a slice (except for []byte), append the
-//    unmarshalled value to the slice
-// 4. Structure unmarshals into a struct.  See rules
-//    below for matching struct fields to the values in the Structure.
-// 5. Interval unmarshals into an int64
-// 6. DateTime and DateTimeExtended ummarshal into time.Time
-// 7. ByteString unmarshals to a []byte
-// 8. TextString unmarshals into a string
-// 9. Boolean unmarshals into a bool
-// 10. Enumeration can unmarshal into an int, int8, int16, int32, or their
+//  1. If the destination value is interface{}, it will be set to the result
+//     of TTLV.Value()
+//  2. If the destination implements Unmarshaler, that will be called.
+//  3. If the destination is a slice (except for []byte), append the
+//     unmarshalled value to the slice
+//  4. Structure unmarshals into a struct.  See rules
+//     below for matching struct fields to the values in the Structure.
+//  5. Interval unmarshals into an int64
+//  6. DateTime and DateTimeExtended ummarshal into time.Time
+//  7. ByteString unmarshals to a []byte
+//  8. TextString unmarshals into a string
+//  9. Boolean unmarshals into a bool
+//  10. Enumeration can unmarshal into an int, int8, int16, int32, or their
 //     uint counterparts.  If the KMIP value overflows the destination, a
 //     *UnmarshalerError with cause ErrIntOverflow is returned.
-// 11. Integer can unmarshal to the same types as Enumeration, with the
+//  11. Integer can unmarshal to the same types as Enumeration, with the
 //     same overflow check.
-// 12. LongInteger unmarshals to int64 or uint64
-// 13. BitInteger unmarshals to big.Int.
+//  12. LongInteger unmarshals to int64 or uint64
+//  13. BitInteger unmarshals to big.Int.
 //
 // If the destination value is not a supported type,  an *UnmarshalerError with
 // cause ErrUnsupportedTypeError is returned.  If the source value's type is not recognized,
 // *UnmarshalerError with cause ErrInvalidType is returned.
 //
-// Unmarshaling Structure
+// # Unmarshaling Structure
 //
 // Unmarshal will try to match the values in the Structure with the fields in the
 // destination struct.  Structure is an array of values, while a struct is more like
@@ -62,55 +62,59 @@ var ErrUnexpectedValue = errors.New("no field was found to unmarshal value into"
 // and type of the field.  It uses the following rules, in order:
 //
 // 1. If the type of a field is a struct, and the struct contains a field named "TTLVTag", and the field
-//    has a "ttlv" struct tag, the value of the struct tag will be parsed using ParseTag().  If
-//    parsing fails, an error is returned.  The type and value of the TTLVTag field is ignored.
-//    In this example, the F field will map to TagDeactivationDate:
+// has a "ttlv" struct tag, the value of the struct tag will be parsed using ParseTag().  If
+// parsing fails, an error is returned.  The type and value of the TTLVTag field is ignored.
 //
-//         type Bar struct {
-//             F Foo
-//         }
-//         type Foo struct {
-//             TTLVTag struct{} `ttlv:"DeactivationDate"`
-//         }
+// In this example, the F field will map to TagDeactivationDate.
 //
-//    If Bar uses a struct tag on F indicating a different tag, it is an error:
+//	type Bar struct {
+//	  F Foo
+//	}
 //
-//         type Bar struct {
-//             F Foo `ttlv:"DerivationData"`  // this will cause an ErrTagConflict
-//                                            // because conflict Bar's field tag
-//                                            // conflicts with Foo's intrinsic tag
-//             F2 Foo `ttlv:"0x420034"`       // the value can also be hex
-//         }
+//	type Foo struct {
+//	  TTLVTag struct{} `ttlv:"DeactivationDate"`
+//	}
+//
+// If Bar uses a struct tag on F indicating a different tag, it is an error:
+//
+//	type Bar struct {
+//	  F Foo `ttlv:"DerivationData"`  // this will cause an ErrTagConflict
+//	                                 // because conflict Bar's field tag
+//	                                 // conflicts with Foo's intrinsic tag
+//	  F2 Foo `ttlv:"0x420034"`       // the value can also be hex
+//	}
+//
 // 2. If the type of the field is a struct, and the struct contains a field named "TTLVTag",
-//    and that field is of type ttlv.Tag and is not empty, the value of the field will be the
-//    inferred Tag.  For example:
+// and that field is of type ttlv.Tag and is not empty, the value of the field will be the
+// inferred Tag.  For example:
 //
-//         type Foo struct {
-//             TTLVTag ttlv.Tag
-//         }
-//         f := Foo{TTLVTag: ttlv.TagState}
+//	type Foo struct {
+//	  TTLVTag ttlv.Tag
+//	}
+//	f := Foo{TTLVTag: ttlv.TagState}
 //
-//    This allows you to dynamically set the KMIP tag that a value will marshal to.
+// This allows you to dynamically set the KMIP tag that a value will marshal to.
+//
 // 3. The "ttlv" struct tag can be used to indicate the tag for a field.  The value will
-//    be parsed with ParseTag()
+// be parsed with ParseTag():
 //
-//         type Bar struct {
-//             F Foo   `ttlv:"DerivationData"`
-//         }
+//	type Bar struct {
+//	  F Foo   `ttlv:"DerivationData"`
+//	}
 //
 // 4. The name of the field is parsed with ParseTag():
 //
-//         type Bar struct {
-//             DerivationData int
-//         }
+//	type Bar struct {
+//	  DerivationData int
+//	}
 //
 // 5. The name of the field's type is parsed with ParseTab():
 //
-//         type DerivationData int
+//	type DerivationData int
 //
-//         type Bar struct {
-//             dd DerivationData
-//         }
+//	type Bar struct {
+//	  dd DerivationData
+//	}
 //
 // If no tag value can be inferred, the field is ignored.  Multiple fields
 // *cannot* map to the same KMIP tag.  If they do, an ErrTagConflict will
@@ -122,13 +126,13 @@ var ErrUnexpectedValue = errors.New("no field was found to unmarshal value into"
 // If the value cannot be matched with a field, Unmarshal will look for
 // the first field with the "any" struct flag set and unmarshal into that:
 //
-//     type Foo struct {
-//         Comment string                            // the Comment will unmarshal into this
-//         EverythingElse []interface{}  `,any`      // all other values will unmarshal into this
-//         AnotherAny []interface{}  `,any`          // allowed, but ignored.  first any field will always match
-//         NotLegal []interface{}  `TagComment,any`  // you cannot specify a tag and the any flag.
-//                                                   // will return error
-//     }
+//	type Foo struct {
+//	    Comment string                            // the Comment will unmarshal into this
+//	    EverythingElse []interface{}  `,any`      // all other values will unmarshal into this
+//	    AnotherAny []interface{}  `,any`          // allowed, but ignored.  first any field will always match
+//	    NotLegal []interface{}  `TagComment,any`  // you cannot specify a tag and the any flag.
+//	                                              // will return error
+//	}
 //
 // If after applying these rules no destination field is found, the KMIP value is ignored.
 func Unmarshal(ttlv TTLV, v interface{}) error {
@@ -318,7 +322,7 @@ func (dec *Decoder) unmarshal(val reflect.Value, ttlv TTLV) error {
 		}
 
 		val.SetBool(ttlv.ValueBoolean())
-	// nolint:dupl
+	//nolint:dupl
 	case TypeEnumeration:
 		switch val.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
@@ -338,7 +342,7 @@ func (dec *Decoder) unmarshal(val reflect.Value, ttlv TTLV) error {
 		default:
 			return typeMismatchErr()
 		}
-	// nolint:dupl
+	//nolint:dupl
 	case TypeInteger:
 		switch val.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:

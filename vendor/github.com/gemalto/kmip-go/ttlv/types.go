@@ -94,12 +94,13 @@ func (t DateTimeExtended) MarshalTTLV(e *Encoder, tag Tag) error {
 // bytes and native go types.  It's useful in tests, or where you want to construct
 // an arbitrary TTLV structure in code without declaring a bespoke type, e.g.:
 //
-//     v := ttlv.Value{Tag: TagBatchCount, Value: Values{
-//				Value{Tag: TagComment, Value: "red"},
-//				Value{Tag: TagComment, Value: "blue"},
-//				Value{Tag: TagComment, Value: "green"},
-//          }
-//     t, err := ttlv.Marshal(v)
+//	v := ttlv.Value{
+//	       Tag: TagBatchCount, Value: Values{
+//	         Value{Tag: TagComment, Value: "red"},
+//	         Value{Tag: TagComment, Value: "blue"},
+//	         Value{Tag: TagComment, Value: "green"},
+//	       }
+//	t, err := ttlv.Marshal(v)
 //
 // KMIP Structure types are mapped to the Values go type.  When marshaling, if the Value
 // field is set to a Values{}, the resulting TTLV will be TypeStructure.  When unmarshaling

@@ -5,7 +5,6 @@ import (
 )
 
 // DestroyRequestPayload ////////////////////////////////////////
-//
 type DestroyRequestPayload struct {
 	UniqueIdentifier string
 }

@@ -58,7 +58,6 @@ linters-settings:
   gocritic:
     # Which checks should be disabled; can't be combined with 'enabled-checks'; default is empty
     disabled-checks:
-      - commentFormatting
   revive:
     ignore-generated-header: true
   wsl:
@@ -120,7 +119,6 @@ linters:
     - goprintffuncname
     - gosec
     - grouper
-    - ifshort
     - importas
 #    - ireturn              # there are valid use cases for this pattern.  too strict.
 ##    - lll                 # checks line length.  not enforced
