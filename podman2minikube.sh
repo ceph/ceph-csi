@@ -7,6 +7,12 @@
 # well.
 #
 
+# no need to ssh-copy images if there is no VM
+if [[ "${VM_DRIVER}" == "none" ]] || [[ "${VM_DRIVER}" == "podman" ]]
+then
+    exit 0
+fi
+
 # fail when a command returns an error
 set -e -o pipefail
 
