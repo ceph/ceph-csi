@@ -64,7 +64,7 @@ function set_env() {
     CSI_IMAGE_VERSION=${CSI_IMAGE_VERSION:-"canary"}
     export GO111MODULE="on"
     export TEST_COVERAGE="stdout"
-    export VM_DRIVER="kvm2"
+    export VM_DRIVER="podman"
     export MEMORY="14336"
     export NUM_DISKS="3"
     export DISK_SIZE="32gb"
@@ -86,13 +86,32 @@ function set_env() {
     export PATH=$PATH:/usr/local/bin
 }
 
+# prepare_disks uses the /dev/xvdb EBS device (40GB) and creates 3 12GB
+# partitions on it. The function uses 'fdisk' with a script that has empty
+# lines for default values while fdisk prompts for them.
+function prepare_disks() {
+    fdisk /dev/xvdb << EOS
+n
+p
+
+
++12G
+n
+p
+
+
++12G
+n
+p
+
+
++12G
+w
+EOS
+}
+
 function install_minikube()
 {
-    dnf -y groupinstall 'Virtualization Host'
-    systemctl enable --now libvirtd
-    # Warning about "No ACPI IVRS table found", not critical
-    virt-host-validate || true
-
     # minikube needs socat
     dnf -y install socat
 
@@ -107,9 +126,6 @@ function install_minikube()
         # minikube 1.25.2 adds the GOARCH to the path ("amd64" in our CI)
         cp ~/.minikube/cache/linux/amd64/"${k8s_version}"/kubectl /usr/bin/
     fi
-
-    # scan for extra disks
-    minikube ssh 'echo 1 | sudo tee /sys/bus/pci/rescan > /dev/null ; dmesg | grep virtio_blk'
 }
 
 function deploy_rook()
@@ -128,6 +144,9 @@ function deploy_rook()
 
 # Set environment variables
 set_env
+
+# create disk partitions
+prepare_disks
 
 # prepare minikube environment
 install_minikube
