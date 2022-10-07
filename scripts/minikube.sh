@@ -22,7 +22,7 @@ function copy_image_to_cluster() {
     if [ -z "$(${CONTAINER_CMD} images -q "${build_image}")" ]; then
         ${CONTAINER_CMD} pull "${build_image}"
     fi
-    if [[ "${VM_DRIVER}" == "none" ]]; then
+    if [[ "${VM_DRIVER}" == "none" ]] || [[ "${VM_DRIVER}" == "podman" ]]; then
         ${CONTAINER_CMD} tag "${build_image}" "${final_image}"
         return
     fi
@@ -139,6 +139,36 @@ function validate_sidecar() {
 done
 }
 
+# install_podman_wrapper creates /usr/bin/podman.wrapper which adds /sys
+# filesystem mount points when a privileged container is started. This makes it
+# possible to map RBD devices in the container that minikube creates when
+# VM_DRIVER=podman is used.
+function install_podman_wrapper() {
+    if [[ -e /usr/bin/podman.wrapper ]]
+    then
+        return
+    fi
+
+    # disabled single quoted check, the script should be created as is
+    # shellcheck disable=SC2016
+    echo '#!/bin/sh
+if [[ "${1}" = run ]]
+then
+    if (echo "${@}" | grep -q privileged)
+    then
+        shift
+        exec /usr/bin/podman.real run -v /sys:/sys:rw -v /dev:/dev:rw --systemd=true "${@}"
+    fi
+fi
+
+exec /usr/bin/podman.real "${@}"
+' > /usr/bin/podman.wrapper
+    chmod +x /usr/bin/podman.wrapper
+
+    mv /usr/bin/podman /usr/bin/podman.real
+    ln -s podman.wrapper /usr/bin/podman
+}
+
 # Storage providers and the default storage class is not needed for Ceph-CSI
 # testing. In order to reduce resources and potential conflicts between storage
 # plugins, disable them.
@@ -185,7 +215,7 @@ K8S_FEATURE_GATES=${K8S_FEATURE_GATES:-""}
 # kubelet.resolv-conf needs to point to a file, not a symlink
 # the default minikube VM has /etc/resolv.conf -> /run/systemd/resolve/resolv.conf
 RESOLV_CONF='/run/systemd/resolve/resolv.conf'
-if [[ "${VM_DRIVER}" == "none" ]] && [[ ! -e "${RESOLV_CONF}" ]]; then
+if { [[ "${VM_DRIVER}" == "none" ]] || [[ "${VM_DRIVER}" == "podman" ]]; } && [[ ! -e "${RESOLV_CONF}" ]]; then
 	# in case /run/systemd/resolve/resolv.conf does not exist, use the
 	# standard /etc/resolv.conf (with symlink resolved)
 	RESOLV_CONF="$(readlink -f /etc/resolv.conf)"
@@ -216,6 +246,8 @@ up)
     if [[ "${VM_DRIVER}" == "none" ]]; then
         mkdir -p "$HOME"/.kube "$HOME"/.minikube
         install_kubectl
+    elif [[ "${VM_DRIVER}" == "podman" ]]; then
+        install_podman_wrapper
     fi
 
     disable_storage_addons
@@ -234,10 +266,13 @@ up)
 
     # create a link so the default dataDirHostPath will work for this
     # environment
-    if [[ "${VM_DRIVER}" != "none" ]]; then
+    if [[ "${VM_DRIVER}" != "none" ]] && [[ "${VM_DRIVER}" != "podman" ]]; then
         wait_for_ssh
         # shellcheck disable=SC2086
         ${minikube} ssh "sudo mkdir -p /mnt/${DISK}/var/lib/rook;sudo ln -s /mnt/${DISK}/var/lib/rook /var/lib/rook"
+    fi
+    if [[ "${VM_DRIVER}" = "podman" ]]; then
+        ${minikube} ssh "sudo mount -oremount,rw /sys"
     fi
     ${minikube} kubectl -- cluster-info
     ;;
