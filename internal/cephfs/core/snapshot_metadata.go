@@ -36,7 +36,7 @@ func (s *snapshotClient) supportsSubVolSnapMetadata() bool {
 
 func (s *snapshotClient) isUnsupportedSubVolSnapMetadata(err error) bool {
 	var invalid fsAdmin.NotImplementedError
-	if err != nil && errors.Is(err, &invalid) {
+	if err != nil && errors.As(err, &invalid) {
 		// In case the error is other than invalid command return error to
 		// the caller.
 		clusterAdditionalInfo[s.clusterID].subVolSnapshotMetadataState = unsupported
