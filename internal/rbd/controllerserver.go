@@ -508,6 +508,15 @@ func (cs *ControllerServer) repairExistingVolume(ctx context.Context, req *csi.C
 
 			return nil, err
 		}
+
+	default:
+		// setup encryption again to make sure everything is in place.
+		if rbdVol.isBlockEncrypted() {
+			err := rbdVol.setupBlockEncryption(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to setup encryption for image %s: %w", rbdVol, err)
+			}
+		}
 	}
 
 	// Set metadata on restart of provisioner pod when image exist
