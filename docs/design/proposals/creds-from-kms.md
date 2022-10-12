@@ -6,7 +6,7 @@ Ceph-CSI supports several KMS implementations for storing and
 fetching DEKs (Data Encryption Keys) used for RBD volume encryption.
 The focus of this proposal is to leverage existing KMS implementation
 to support obtaining Ceph user keyring used while
-creating, deleting, mapping and resizing RBD volumes.
+creating, deleting, mapping and resizing volumes.
 
 ### Benefits
 
@@ -25,16 +25,16 @@ creating, deleting, mapping and resizing RBD volumes.
 
 - Adds additional overhead as on each CSI RPC call
   a request is made to KMS for fetching credentials.
-- Possible risk of hitting the KMS rate limit
+- Possible risk of hitting the KMS rate limit.
 
 ## Extending existing implementation
 
-- KMS ID is  provided as part of the provisioner,
+- KMS ID is provided as part of the provisioner,
   node-stage, and controller-expand secrets, along with Ceph `userID`, as shown below.
   Having this information as part of *StorageClass* parameters,
   like using the `encryptionKMSID` key for volume encryption,
   wouldn't work as these parameters are not passed
-  to all CSI RPCs, e.g. `DeleteVolume`.
+  to all CSI RPCs, e.g. `DeleteVolume`, `ControllerExpand` etc.
 
 ```yaml
 apiVersion: v1
@@ -46,19 +46,9 @@ stringData:
   kmsID: <kms-id>
  ```
 
-- A new ConfigMap with default name `ceph-csi-creds-kms-config` similar to
-  [ceph-csi-encryption-kms-config](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/kms-config.yaml)
-  will be added.
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-data:
-    config.json: |-
-        {<kms-id>: <config>}
-metadata:
-    name: ceph-csi-creds-kms-config
-```
+- KMS config entry corresponding to `kmsID` needs to be added to existing
+  KMS ConfigMap, very similar to the volume encryption config found in
+  [cph-csi-encryption-kms-config](https://github.com/ceph/ceph-csi/blob/devel/examples/kms/vault/kms-config.yaml).
 
 - For KMS that rely on tenants' namespace to obtain required
   ServiceAccount, ConfigMap, or Secrets,
@@ -94,7 +84,7 @@ metadata:
 KMS integration will only be enabled when `ceph-csi-creds-kms-config` ConfigMap exists
 and CSI secrets contain the `kmsID` key. In case where secrets contain
 both `kmsID` and `userKey`
-the keyring provided secrets will be used for creating the credential object.
+the keyring provided in the secret will be used for creating the credential object.
 
 ### Integration with Rook
 
@@ -102,7 +92,7 @@ Rook integration for KMS support for credentials would be similar
 PVC encryption.
 A new option `CSI_ENABLE_KMS_CREDS` will be added to Rook operator.
 When it is set to `true`, Rook will create
-Ceph-CSI Deployments and DaemonSets that mount the Creds KMS ConfigMap.
+Ceph-CSI Deployments and DaemonSets that mount the KMS ConfigMap.
 
 At the time of writing this proposal, Rook only
 supports storing Ceph keyring as secrets.
