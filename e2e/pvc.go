@@ -284,9 +284,13 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 			int(time.Since(start).Seconds()))
 		pvc, err = c.CoreV1().PersistentVolumeClaims(nameSpace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err == nil {
+			e2elog.Logf("PVC %s (status: %s) has not been deleted yet, rechecking...", name, pvc.Status)
+
 			return false, nil
 		}
 		if isRetryableAPIError(err) {
+			e2elog.Logf("failed to verify deletion of PVC %s (status: %s): %v", name, pvc.Status, err)
+
 			return false, nil
 		}
 		if !apierrs.IsNotFound(err) {
@@ -294,11 +298,15 @@ func deletePVCAndValidatePV(c kubernetes.Interface, pvc *v1.PersistentVolumeClai
 		}
 
 		// Examine the pv.ClaimRef and UID. Expect nil values.
-		_, err = c.CoreV1().PersistentVolumes().Get(context.TODO(), pv.Name, metav1.GetOptions{})
+		oldPV, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pv.Name, metav1.GetOptions{})
 		if err == nil {
+			e2elog.Logf("PV %s (status: %s) has not been deleted yet, rechecking...", pv.Name, oldPV.Status)
+
 			return false, nil
 		}
 		if isRetryableAPIError(err) {
+			e2elog.Logf("failed to verify deletion of PV %s (status: %s): %v", pv.Name, oldPV.Status, err)
+
 			return false, nil
 		}
 		if !apierrs.IsNotFound(err) {
