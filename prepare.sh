@@ -78,7 +78,7 @@ done
 
 set -x
 
-dnf -y install git podman make
+dnf -y install git podman make wget
 
 # minikube wants the user (everything runs as root) to be in the libvirt group
 getent group libvirt || groupadd --system libvirt
