@@ -136,7 +136,7 @@ install() {
         mkdir -p ${TEMP}
         # shellcheck disable=SC2021
         dist=$(echo "${dist}" | tr "[A-Z]" "[a-z]")
-        wget "https://get.helm.sh/helm-${HELM_VERSION}-${dist}-${arch}.tar.gz" -O "${TEMP}/helm.tar.gz"
+        wget "https://get.helm.sh/helm-${HELM_VERSION}-${dist}-${arch}.tar.gz" -O "${TEMP}/helm.tar.gz" || exit 1
         tar -C "${TEMP}" -zxvf "${TEMP}/helm.tar.gz"
     fi
     echo "Helm install successful"
