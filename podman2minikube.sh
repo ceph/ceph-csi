@@ -7,8 +7,8 @@
 # well.
 #
 
-# no need to ssh-copy images if there is no VM
-if [[ "${VM_DRIVER}" == "none" ]] || [[ "${VM_DRIVER}" == "podman" ]]
+# no need to ssh-copy images if everything runs local
+if [[ "${VM_DRIVER}" == "none" ]]
 then
     exit 0
 fi
