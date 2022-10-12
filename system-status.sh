@@ -22,6 +22,9 @@ function log() {
     echo "###" >/dev/stderr
 }
 
+# get the logs from the host
+log journalctl --boot
+
 # get the status of the VM in libvirt
 log virsh list
 
