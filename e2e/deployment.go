@@ -124,6 +124,9 @@ func waitForDeploymentInAvailableState(clientSet kubernetes.Interface, name, ns 
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
 			e2elog.Logf("%q deployment to be Available (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 
 			return false, err
@@ -389,6 +392,12 @@ func waitForContainersArgsUpdate(
 	timeout int,
 ) error {
 	e2elog.Logf("waiting for deployment updates %s/%s", ns, deploymentName)
+
+	// wait for the deployment to be available
+	err := waitForDeploymentInAvailableState(c, deploymentName, ns, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("deployment %s/%s did not become available yet: %w", ns, deploymentName, err)
+	}
 
 	// Scale down to 0.
 	scale, err := c.AppsV1().Deployments(ns).GetScale(context.TODO(), deploymentName, metav1.GetOptions{})
