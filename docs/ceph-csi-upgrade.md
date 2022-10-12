@@ -33,7 +33,6 @@
       - [6. Upgrade NFS Nodeplugin resources](#6-upgrade-nfs-nodeplugin-resources)
         - [6.1 Update the NFS Nodeplugin RBAC](#61-update-the-nfs-nodeplugin-rbac)
         - [6.2 Update the NFS Nodeplugin daemonset](#62-update-the-nfs-nodeplugin-daemonset)
-        - [6.3 Delete the old NFS Nodeplugin daemonset](#63-delete-the-old-nfs-nodeplugin-daemonset)
     - [CSI Sidecar containers consideration](#csi-sidecar-containers-consideration)
 
 ## Pre-upgrade considerations
@@ -390,13 +389,6 @@ serviceaccount/nfs-csi-nodeplugin configured
 $ kubectl apply -f deploy/nfs/kubernetes/csi-nfsplugin.yaml
 daemonset.apps/csi-nfsplugin configured
 service/csi-metrics-nfsplugin configured
-```
-
-##### 6.3 Delete the old NFS Nodeplugin daemonset
-
-```bash
-$ kubectl delete daemonsets.apps csi-nfs-node
-daemonset.apps "csi-nfs-node" deleted
 ```
 
 we have successfully upgraded nfs csi from v3.6 to v3.7
