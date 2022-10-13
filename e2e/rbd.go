@@ -1047,6 +1047,12 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create a PVC and bind it to an app using rbd-nbd mounter", func() {
+				if !testNBD {
+					e2elog.Logf("skipping NBD test")
+
+					return
+				}
+
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1083,6 +1089,12 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("Resize rbd-nbd PVC and check application directory size", func() {
+				if !testNBD {
+					e2elog.Logf("skipping NBD test")
+
+					return
+				}
+
 				if util.CheckKernelSupport(kernelRelease, nbdResizeSupport) {
 					err := deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
@@ -1290,6 +1302,12 @@ var _ = Describe("RBD", func() {
 
 			By("create PVC with journaling,fast-diff image-features and bind it to an app using rbd-nbd mounter",
 				func() {
+					if !testNBD {
+						e2elog.Logf("skipping NBD test")
+
+						return
+					}
+
 					if util.CheckKernelSupport(kernelRelease, fastDiffSupport) {
 						err := deleteResource(rbdExamplePath + "storageclass.yaml")
 						if err != nil {
@@ -1330,6 +1348,12 @@ var _ = Describe("RBD", func() {
 			// NOTE: RWX is restricted for FileSystem VolumeMode at ceph-csi,
 			// see pull#261 for more details.
 			By("Create RWX+Block Mode PVC and bind to multiple pods via deployment using rbd-nbd mounter", func() {
+				if !testNBD {
+					e2elog.Logf("skipping NBD test")
+
+					return
+				}
+
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1415,6 +1439,12 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("Create ROX+FS Mode PVC and bind to multiple pods via deployment using rbd-nbd mounter", func() {
+				if !testNBD {
+					e2elog.Logf("skipping NBD test")
+
+					return
+				}
+
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1540,6 +1570,12 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("Create ROX+Block Mode PVC and bind to multiple pods via deployment using rbd-nbd mounter", func() {
+				if !testNBD {
+					e2elog.Logf("skipping NBD test")
+
+					return
+				}
+
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1666,6 +1702,12 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("perform IO on rbd-nbd volume after nodeplugin restart", func() {
+				if !testNBD {
+					e2elog.Logf("skipping NBD test")
+
+					return
+				}
+
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -1830,6 +1872,12 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create a PVC and bind it to an app using rbd-nbd mounter with encryption", func() {
+				if !testNBD {
+					e2elog.Logf("skipping NBD test")
+
+					return
+				}
+
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
 					e2elog.Failf("failed to delete storageclass: %v", err)
@@ -2199,6 +2247,12 @@ var _ = Describe("RBD", func() {
 			By(
 				"create a PVC and Bind it to an app with journaling/exclusive-lock image-features and rbd-nbd mounter",
 				func() {
+					if !testNBD {
+						e2elog.Logf("skipping NBD test")
+
+						return
+					}
+
 					err := deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
 						e2elog.Failf("failed to delete storageclass: %v", err)
