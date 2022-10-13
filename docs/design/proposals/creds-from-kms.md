@@ -118,3 +118,14 @@ type CredStore interface {
 
 - Provider Initializers will be refactored, if required,
   to accommodate both volume encryption and credential storage requirement.
+
+- An in-memory cache of `Credentials` will be maintained on the Ceph-CSI daemons.
+  Credentials will be fetched from KMS only when there is a cache miss,
+  or when Ceph auth fails, probably due to outdated cached credentials.
+  Caching credentials majorly solves two problems;
+  (a) risk of hitting the KMS rate limit
+  (b) reduces the performance impact caused due repeated KMS GET
+  queries in the critical path of volume requests.
+
+- The credentials cache entries will be deleted when the Ceph-CSI daemon fails
+  to connect to Ceph or KMS due to connection/auth issues.
