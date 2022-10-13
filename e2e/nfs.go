@@ -408,7 +408,24 @@ var _ = Describe("nfs", func() {
 			})
 
 			By("create a storageclass with pool and a PVC then bind it to an app", func() {
-				err := createNFSStorageClass(f.ClientSet, f, false, nil)
+				err := createNFSStorageClass(f.ClientSet, f, true, nil)
+				if err != nil {
+					framework.Failf("failed to create NFS storageclass: %v", err)
+				}
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
+				if err != nil {
+					framework.Failf("failed to validate NFS pvc and application binding: %v", err)
+				}
+				err = deleteResource(nfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete NFS storageclass: %v", err)
+				}
+			})
+
+			By("create a storageclass with sys,krb5i security and a PVC then bind it to an app", func() {
+				err := createNFSStorageClass(f.ClientSet, f, false, map[string]string{
+					"secTypes": "sys,krb5i",
+				})
 				if err != nil {
 					framework.Failf("failed to create NFS storageclass: %v", err)
 				}

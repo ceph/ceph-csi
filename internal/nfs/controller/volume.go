@@ -131,6 +131,7 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	fs := backend.VolumeContext["fsName"]
 	nfsCluster := backend.VolumeContext["nfsCluster"]
 	path := backend.VolumeContext["subvolumePath"]
+	secTypes := backend.VolumeContext["secTypes"]
 
 	err := nv.setNFSCluster(nfsCluster)
 	if err != nil {
@@ -142,12 +143,21 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 		return fmt.Errorf("failed to get NFSAdmin: %w", err)
 	}
 
-	_, err = nfsa.CreateCephFSExport(nfs.CephFSExportSpec{
+	export := nfs.CephFSExportSpec{
 		FileSystemName: fs,
 		ClusterID:      nfsCluster,
 		PseudoPath:     nv.GetExportPath(),
 		Path:           path,
-	})
+	}
+
+	if secTypes != "" {
+		export.SecType = []nfs.SecType{}
+		for _, secType := range strings.Split(secTypes, ",") {
+			export.SecType = append(export.SecType, nfs.SecType(secType))
+		}
+	}
+
+	_, err = nfsa.CreateCephFSExport(export)
 	switch {
 	case err == nil:
 		return nil

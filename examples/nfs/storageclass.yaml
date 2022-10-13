@@ -45,5 +45,11 @@ parameters:
   # If omitted, defaults to "csi-vol-".
   volumeNamePrefix: nfs-export-
 
+  # (optional) Security requirements for the NFS-export. Valid flavours
+  # include: none, sys, krb5, krb5i and krb5p. The <sectype-list> is a comma
+  # delimited string, for example "sys,krb5".
+  # This option is available with Ceph v17.2.6 and newer.
+  # secTypes: <sectype-list>
+
 reclaimPolicy: Delete
 allowVolumeExpansion: true
