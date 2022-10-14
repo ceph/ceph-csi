@@ -384,6 +384,10 @@ func (cs *ControllerServer) CreateVolume(
 	metadata := k8s.GetVolumeMetadata(req.GetParameters())
 	err = rbdVol.setAllMetadata(metadata)
 	if err != nil {
+		if deleteErr := rbdVol.deleteImage(ctx); deleteErr != nil {
+			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", rbdVol, deleteErr)
+		}
+
 		return nil, err
 	}
 
