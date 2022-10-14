@@ -85,6 +85,7 @@ var (
 	deployNFS        bool
 	testCephFS       bool
 	testRBD          bool
+	testRBDFSCrypt   bool
 	testNBD          bool
 	testNFS          bool
 	helmTest         bool

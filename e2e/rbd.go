@@ -241,6 +241,11 @@ func ByFileAndBlockEncryption(
 		callback(validateEncryptedPVCAndAppBinding, isBlockEncryptedPVC, util.EncryptionTypeBlock)
 	})
 	By(text+" (file)", func() {
+		if !testRBDFSCrypt {
+			e2elog.Logf("skipping RBD fscrypt file encryption test")
+
+			return
+		}
 		callback(validateEncryptedFilesystemAndAppBinding, isFileEncryptedPVC, util.EncryptionTypeFile)
 	})
 }
