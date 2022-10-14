@@ -409,6 +409,11 @@ func (cs *ControllerServer) CreateVolume(
 		// Set Metadata on PV Create
 		err = volClient.SetAllMetadata(metadata)
 		if err != nil {
+			purgeErr := volClient.PurgeVolume(ctx, true)
+			if purgeErr != nil {
+				log.ErrorLog(ctx, "failed to delete volume %s: %v", vID.FsSubvolName, purgeErr)
+			}
+
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
