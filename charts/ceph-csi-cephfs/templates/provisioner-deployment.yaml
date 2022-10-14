@@ -9,6 +9,7 @@ metadata:
     component: {{ .Values.provisioner.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   replicas: {{ .Values.provisioner.replicaCount }}
   strategy:
@@ -30,6 +31,7 @@ spec:
         component: {{ .Values.provisioner.name }}
         release: {{ .Release.Name }}
         heritage: {{ .Release.Service }}
+        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
 {{- if gt (int .Values.provisioner.replicaCount) 1 }}
       affinity:

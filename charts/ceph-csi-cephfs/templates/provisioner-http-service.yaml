@@ -14,6 +14,7 @@ metadata:
     component: {{ .Values.provisioner.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
 {{- if .Values.provisioner.httpMetrics.service.clusterIP }}
   clusterIP: "{{ .Values.provisioner.httpMetrics.service.clusterIP }}"
