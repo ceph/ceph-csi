@@ -10,6 +10,7 @@ metadata:
     component: {{ .Values.provisioner.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 subjects:
   - kind: ServiceAccount
     name: {{ include "ceph-csi-cephfs.serviceAccountName.provisioner" . }}

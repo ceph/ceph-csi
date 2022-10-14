@@ -12,6 +12,7 @@ metadata:
     chart: {{ include "ceph-csi-cephfs.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 provisioner: {{ .Values.driverName }}
 parameters:
   clusterID: {{ .Values.storageClass.clusterID }}

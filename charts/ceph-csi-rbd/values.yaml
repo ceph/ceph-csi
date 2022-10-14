@@ -53,6 +53,9 @@ csiMapping: []
 #     vaultCAVerify: "false"
 encryptionKMSConfig: {}
 
+# Labels to apply to all resources
+commonLabels: {}
+
 # Set logging level for csi containers.
 # Supported values from 0 to 5. 0 for general useful logs,
 # 5 for trace level verbosity.
