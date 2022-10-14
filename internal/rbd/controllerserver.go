@@ -388,7 +388,7 @@ func (cs *ControllerServer) CreateVolume(
 			log.ErrorLog(ctx, "failed to delete rbd image: %s with error: %v", rbdVol, deleteErr)
 		}
 
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return buildCreateVolumeResponse(req, rbdVol), nil
