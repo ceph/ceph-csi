@@ -1218,6 +1218,7 @@ var _ = Describe("RBD", func() {
 							e2elog.Failf("failed to load application: %v", aErr)
 						}
 						app.Namespace = f.UniqueName
+						app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 						err = createApp(f.ClientSet, app, deployTimeout)
 						if err != nil {
 							e2elog.Failf("failed to create application: %v", err)
@@ -1279,6 +1280,7 @@ var _ = Describe("RBD", func() {
 							e2elog.Failf("failed to load application: %v", aErr)
 						}
 						app.Namespace = f.UniqueName
+						app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 						err = createApp(f.ClientSet, app, deployTimeout)
 						if err != nil {
 							e2elog.Failf("failed to create application: %v", err)
@@ -1385,6 +1387,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to load application deployment: %v", err)
 				}
 				app.Namespace = f.UniqueName
+				app.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 
 				err = createPVCAndDeploymentApp(f, pvc, app, deployTimeout)
 				if err != nil {
@@ -1476,6 +1479,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC and application: %v", err)
@@ -1607,6 +1611,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC and application: %v", err)
@@ -2568,7 +2573,7 @@ var _ = Describe("RBD", func() {
 				app.Namespace = f.UniqueName
 				// create PVC and app
 				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", f.UniqueName, i)
 					err := createPVCAndApp(name, f, pvc, app, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to create PVC and application: %v", err)
@@ -2580,7 +2585,7 @@ var _ = Describe("RBD", func() {
 				validateOmapCount(f, totalCount, rbdType, defaultRBDPool, volumesType)
 				// delete PVC and app
 				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", f.UniqueName, i)
 					err := deletePVCAndApp(name, f, pvc, app)
 					if err != nil {
 						e2elog.Failf("failed to delete PVC and application: %v", err)
@@ -2654,6 +2659,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to  load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC and application: %v", err)
@@ -2944,6 +2950,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC: %v", err)
@@ -3055,6 +3062,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC and application: %v", err)
@@ -3112,7 +3120,7 @@ var _ = Describe("RBD", func() {
 
 				// create PVC and app
 				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", f.UniqueName, i)
 					label := map[string]string{
 						"app": name,
 					}
@@ -3125,7 +3133,7 @@ var _ = Describe("RBD", func() {
 				}
 
 				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", f.UniqueName, i)
 					opt := metav1.ListOptions{
 						LabelSelector: fmt.Sprintf("app=%s", name),
 					}
@@ -3144,7 +3152,7 @@ var _ = Describe("RBD", func() {
 
 				// delete app
 				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", f.UniqueName, i)
 					appClone.Name = name
 					err = deletePod(appClone.Name, appClone.Namespace, f.ClientSet, deployTimeout)
 					if err != nil {
@@ -3195,6 +3203,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC and application: %v", err)
@@ -3340,6 +3349,7 @@ var _ = Describe("RBD", func() {
 						e2elog.Failf("failed to load application: %v", err)
 					}
 					app.Namespace = f.UniqueName
+					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 					err = createPVCAndApp("", f, pvc, app, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to create PVC and application: %v", err)
@@ -3474,6 +3484,7 @@ var _ = Describe("RBD", func() {
 					e2elog.Failf("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC and application: %v", err)

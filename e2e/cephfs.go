@@ -342,6 +342,7 @@ var _ = Describe(cephfsType, func() {
 					e2elog.Failf("failed to load application: %v", err)
 				}
 				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				baseAppName := app.Name
 
 				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
@@ -706,7 +707,7 @@ var _ = Describe(cephfsType, func() {
 				app.Namespace = f.UniqueName
 				// create PVC and app
 				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", f.UniqueName, i)
 					err = createPVCAndApp(name, f, pvc, app, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to create PVC or application: %v", err)
@@ -721,7 +722,7 @@ var _ = Describe(cephfsType, func() {
 				validateOmapCount(f, totalCount, cephfsType, metadataPool, volumesType)
 				// delete PVC and app
 				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", f.UniqueName, i)
 					err = deletePVCAndApp(name, f, pvc, app)
 					if err != nil {
 						e2elog.Failf("failed to delete PVC or application: %v", err)
@@ -1178,6 +1179,7 @@ var _ = Describe(cephfsType, func() {
 
 				pvcClone.Namespace = f.UniqueName
 				appClone.Namespace = f.UniqueName
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				pvcClone.Spec.DataSource.Name = snap.Name
 
 				// create PVC from the snapshot
@@ -1252,7 +1254,7 @@ var _ = Describe(cephfsType, func() {
 				// create snapshot
 				for i := 0; i < totalCount; i++ {
 					go func(n int, s snapapi.VolumeSnapshot) {
-						s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+						s.Name = fmt.Sprintf("%s-%d", f.UniqueName, n)
 						wgErrs[n] = createSnapshot(&s, deployTimeout)
 						wg.Done()
 					}(i, snap)
@@ -1281,13 +1283,13 @@ var _ = Describe(cephfsType, func() {
 				}
 				pvcClone.Namespace = f.UniqueName
 				appClone.Namespace = f.UniqueName
-				pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
+				pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s-%d", f.UniqueName, 0)
 
 				// create multiple PVC from same snapshot
 				wg.Add(totalCount)
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 						if wgErrs[n] == nil {
 							err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, subvolumegroup)
@@ -1319,7 +1321,7 @@ var _ = Describe(cephfsType, func() {
 				// delete clone and app
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 						wg.Done()
@@ -1347,7 +1349,7 @@ var _ = Describe(cephfsType, func() {
 				wg.Add(totalCount)
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 						if wgErrs[n] == nil {
@@ -1380,7 +1382,7 @@ var _ = Describe(cephfsType, func() {
 				// delete snapshot
 				for i := 0; i < totalCount; i++ {
 					go func(n int, s snapapi.VolumeSnapshot) {
-						s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+						s.Name = fmt.Sprintf("%s-%d", f.UniqueName, n)
 						wgErrs[n] = deleteSnapshot(&s, deployTimeout)
 						wg.Done()
 					}(i, snap)
@@ -1402,7 +1404,7 @@ var _ = Describe(cephfsType, func() {
 				// delete clone and app
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 						wg.Done()
@@ -1524,6 +1526,7 @@ var _ = Describe(cephfsType, func() {
 				}
 				pvcClone.Namespace = f.UniqueName
 				appClone.Namespace = f.UniqueName
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create PVC and app: %v", err)
@@ -1620,7 +1623,7 @@ var _ = Describe(cephfsType, func() {
 				// create clone and bind it to an app
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 						wg.Done()
 					}(i, *pvcClone, *appClone)
@@ -1652,7 +1655,7 @@ var _ = Describe(cephfsType, func() {
 				// delete clone and app
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 						wg.Done()

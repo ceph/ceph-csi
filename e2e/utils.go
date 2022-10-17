@@ -404,7 +404,7 @@ func validatePVCAndDeploymentAppBinding(
 	if replicas != nil {
 		depl.Spec.Replicas = replicas
 	}
-
+	depl.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 	err = createPVCAndDeploymentApp(f, pvc, depl, pvcTimeout)
 	if err != nil {
 		return nil, nil, err
@@ -467,6 +467,7 @@ func createPVCAndAppBinding(
 		return nil, nil, err
 	}
 	app.Namespace = f.UniqueName
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 
 	err = createPVCAndApp("", f, pvc, app, pvcTimeout)
 	if err != nil {
@@ -639,6 +640,7 @@ func checkDataPersist(pvcPath, appPath string, f *framework.Framework) error {
 	}
 	app.Labels = map[string]string{"app": "validate-data"}
 	app.Namespace = f.UniqueName
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 
 	err = createPVCAndApp("", f, pvc, app, deployTimeout)
 	if err != nil {
@@ -735,6 +737,7 @@ func checkMountOptions(pvcPath, appPath string, f *framework.Framework, mountFla
 	}
 	app.Labels = map[string]string{"app": "validate-mount-opt"}
 	app.Namespace = f.UniqueName
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 
 	err = createPVCAndApp("", f, pvc, app, deployTimeout)
 	if err != nil {
@@ -868,12 +871,13 @@ func validatePVCClone(
 		e2elog.Failf("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
+	appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 	wg.Add(totalCount)
 	// create clone and bind it to an app
 	for i := 0; i < totalCount; i++ {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
 			label := make(map[string]string)
+			name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 			label[appKey] = name
 			a.Labels = label
 			opt := metav1.ListOptions{
@@ -965,7 +969,7 @@ func validatePVCClone(
 	// delete clone and app
 	for i := 0; i < totalCount; i++ {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
 			var imageData imageInfoFromPVC
 			var sErr error
@@ -1075,7 +1079,7 @@ func validatePVCSnapshot(
 	// create snapshot
 	for i := 0; i < totalCount; i++ {
 		go func(n int, s snapapi.VolumeSnapshot) {
-			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+			s.Name = fmt.Sprintf("%s-%d", f.UniqueName, n)
 			wgErrs[n] = createSnapshot(&s, deployTimeout)
 			if wgErrs[n] == nil && kms != noKMS {
 				if kms.canGetPassphrase() {
@@ -1124,7 +1128,7 @@ func validatePVCSnapshot(
 	}
 	pvcClone.Namespace = f.UniqueName
 	appClone.Namespace = f.UniqueName
-	pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
+	pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s-%d", f.UniqueName, 0)
 	if restoreSCName != "" {
 		pvcClone.Spec.StorageClassName = &restoreSCName
 	}
@@ -1133,7 +1137,7 @@ func validatePVCSnapshot(
 	wg.Add(totalCount)
 	for i := 0; i < totalCount; i++ {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 			label := make(map[string]string)
 			label[appKey] = name
 			a.Labels = label
@@ -1211,7 +1215,7 @@ func validatePVCSnapshot(
 	// delete clone and app
 	for i := 0; i < totalCount; i++ {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 			wg.Done()
@@ -1238,7 +1242,7 @@ func validatePVCSnapshot(
 	wg.Add(totalCount)
 	for i := 0; i < totalCount; i++ {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 			if wgErrs[n] == nil && dataPool != noDataPool {
@@ -1278,7 +1282,7 @@ func validatePVCSnapshot(
 	// delete snapshot
 	for i := 0; i < totalCount; i++ {
 		go func(n int, s snapapi.VolumeSnapshot) {
-			s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+			s.Name = fmt.Sprintf("%s-%d", f.UniqueName, n)
 			content := &snapapi.VolumeSnapshotContent{}
 			var err error
 			if kms != noKMS {
@@ -1332,7 +1336,7 @@ func validatePVCSnapshot(
 	// delete clone and app
 	for i := 0; i < totalCount; i++ {
 		go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-			name := fmt.Sprintf("%s%d", f.UniqueName, n)
+			name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 			p.Spec.DataSource.Name = name
 			wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 			wg.Done()

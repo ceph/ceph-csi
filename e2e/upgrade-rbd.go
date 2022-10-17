@@ -218,6 +218,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				app.Namespace = f.UniqueName
 				app.Labels = label
 				pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create pvc: %v", err)
@@ -316,6 +317,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				appClone.Namespace = f.UniqueName
 				appClone.Name = "app-clone-from-snap"
 				appClone.Labels = label
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create pvc: %v", err)
@@ -364,6 +366,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				appClone.Namespace = f.UniqueName
 				appClone.Name = "appclone"
 				appClone.Labels = label
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create pvc: %v", err)

@@ -520,7 +520,7 @@ func validateRWOPPodCreation(
 ) error {
 	var err error
 	// create one more  app with same PVC
-	name := fmt.Sprintf("%s%d", f.UniqueName, deployTimeout)
+	name := fmt.Sprintf("%s-%d", f.UniqueName, deployTimeout)
 	app.Name = name
 
 	err = createAppErr(f.ClientSet, app, deployTimeout, errRWOPConflict)

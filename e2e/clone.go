@@ -50,6 +50,7 @@ func validateBiggerCloneFromPVC(f *framework.Framework,
 	label[appKey] = appLabel
 	app.Namespace = f.UniqueName
 	app.Labels = label
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 	opt := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
 	}
@@ -71,6 +72,7 @@ func validateBiggerCloneFromPVC(f *framework.Framework,
 	}
 	appClone.Namespace = f.UniqueName
 	appClone.Labels = label
+	appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 	err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to create pvc clone and application: %w", err)

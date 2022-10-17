@@ -294,6 +294,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				appClone.Namespace = f.UniqueName
 				appClone.Name = "snap-clone-cephfs"
 				appClone.Labels = label
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create pvc and application: %v", err)
@@ -353,6 +354,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 				appClone.Namespace = f.UniqueName
 				appClone.Name = "appclone"
 				appClone.Labels = label
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
 					e2elog.Failf("failed to create pvc and application: %v", err)

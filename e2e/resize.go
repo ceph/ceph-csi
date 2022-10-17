@@ -108,6 +108,7 @@ func resizePVCAndValidateSize(pvcPath, appPath string, f *framework.Framework) e
 	pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(size)
 	app.Labels = map[string]string{"app": "resize-pvc"}
 	app.Namespace = f.UniqueName
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 
 	err = createPVCAndApp("", f, pvc, app, deployTimeout)
 	if err != nil {

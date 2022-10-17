@@ -453,7 +453,7 @@ var _ = Describe("nfs", func() {
 				app.Namespace = f.UniqueName
 				// create PVC and app
 				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", f.UniqueName, i)
 					err = createPVCAndApp(name, f, pvc, app, deployTimeout)
 					if err != nil {
 						e2elog.Failf("failed to create PVC or application: %v", err)
@@ -467,7 +467,7 @@ var _ = Describe("nfs", func() {
 				validateSubvolumeCount(f, totalCount, fileSystemName, defaultSubvolumegroup)
 				// delete PVC and app
 				for i := 0; i < totalCount; i++ {
-					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					name := fmt.Sprintf("%s-%d", f.UniqueName, i)
 					err = deletePVCAndApp(name, f, pvc, app)
 					if err != nil {
 						e2elog.Failf("failed to delete PVC or application: %v", err)
@@ -620,7 +620,7 @@ var _ = Describe("nfs", func() {
 				// create snapshot
 				for i := 0; i < totalCount; i++ {
 					go func(n int, s snapapi.VolumeSnapshot) {
-						s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+						s.Name = fmt.Sprintf("%s-%d", f.UniqueName, n)
 						wgErrs[n] = createSnapshot(&s, deployTimeout)
 						wg.Done()
 					}(i, snap)
@@ -649,14 +649,14 @@ var _ = Describe("nfs", func() {
 				}
 				pvcClone.Namespace = f.UniqueName
 				appClone.Namespace = f.UniqueName
-				pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s%d", f.UniqueName, 0)
+				pvcClone.Spec.DataSource.Name = fmt.Sprintf("%s-%d", f.UniqueName, 0)
 				appClone.Labels = label
 
 				// create multiple PVC from same snapshot
 				wg.Add(totalCount)
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 						if wgErrs[n] == nil {
 							err = validateSubvolumePath(f, p.Name, p.Namespace, fileSystemName, subvolumegroup)
@@ -710,7 +710,7 @@ var _ = Describe("nfs", func() {
 				// delete clone and app
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 						wg.Done()
@@ -737,7 +737,7 @@ var _ = Describe("nfs", func() {
 				wg.Add(totalCount)
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 						if wgErrs[n] == nil {
@@ -792,7 +792,7 @@ var _ = Describe("nfs", func() {
 				// delete snapshot
 				for i := 0; i < totalCount; i++ {
 					go func(n int, s snapapi.VolumeSnapshot) {
-						s.Name = fmt.Sprintf("%s%d", f.UniqueName, n)
+						s.Name = fmt.Sprintf("%s-%d", f.UniqueName, n)
 						wgErrs[n] = deleteSnapshot(&s, deployTimeout)
 						wg.Done()
 					}(i, snap)
@@ -814,7 +814,7 @@ var _ = Describe("nfs", func() {
 				// delete clone and app
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 						wg.Done()
@@ -898,7 +898,7 @@ var _ = Describe("nfs", func() {
 				// create clone and bind it to an app
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						wgErrs[n] = createPVCAndApp(name, f, &p, &a, deployTimeout)
 						if wgErrs[n] == nil {
 							filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
@@ -954,7 +954,7 @@ var _ = Describe("nfs", func() {
 				// delete clone and app
 				for i := 0; i < totalCount; i++ {
 					go func(n int, p v1.PersistentVolumeClaim, a v1.Pod) {
-						name := fmt.Sprintf("%s%d", f.UniqueName, n)
+						name := fmt.Sprintf("%s-%d", f.UniqueName, n)
 						p.Spec.DataSource.Name = name
 						wgErrs[n] = deletePVCAndApp(name, f, &p, &a)
 						wg.Done()

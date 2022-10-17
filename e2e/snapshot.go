@@ -319,6 +319,7 @@ func validateBiggerPVCFromSnapshot(f *framework.Framework,
 	}
 	label[appKey] = appLabel
 	app.Namespace = f.UniqueName
+	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 	app.Labels = label
 	opt := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
@@ -351,6 +352,7 @@ func validateBiggerPVCFromSnapshot(f *framework.Framework,
 		e2elog.Failf("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
+	appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
 	appClone.Labels = label
 	err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 	if err != nil {
