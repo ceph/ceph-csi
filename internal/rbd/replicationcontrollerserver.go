@@ -834,6 +834,142 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	return resp, nil
 }
 
+<<<<<<< HEAD
+=======
+// GetVolumeReplicationInfo extracts the RBD volume information from the volumeID, If the
+// image is present, mirroring is enabled and the image is in primary state.
+func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
+	req *replication.GetVolumeReplicationInfoRequest,
+) (*replication.GetVolumeReplicationInfoResponse, error) {
+	volumeID := req.GetVolumeId()
+	if volumeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty volume ID in request")
+	}
+	cr, err := util.NewUserCredentials(req.GetSecrets())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer cr.DeleteCredentials()
+
+	if acquired := rs.VolumeLocks.TryAcquire(volumeID); !acquired {
+		log.ErrorLog(ctx, util.VolumeOperationAlreadyExistsFmt, volumeID)
+
+		return nil, status.Errorf(codes.Aborted, util.VolumeOperationAlreadyExistsFmt, volumeID)
+	}
+	defer rs.VolumeLocks.Release(volumeID)
+	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
+	defer rbdVol.Destroy()
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrImageNotFound):
+			err = status.Errorf(codes.NotFound, "volume %s not found", volumeID)
+		case errors.Is(err, util.ErrPoolNotFound):
+			err = status.Errorf(codes.NotFound, "pool %s not found for %s", rbdVol.Pool, volumeID)
+		default:
+			err = status.Errorf(codes.Internal, err.Error())
+		}
+
+		return nil, err
+	}
+
+	mirroringInfo, err := rbdVol.getImageMirroringInfo()
+	if err != nil {
+		log.ErrorLog(ctx, err.Error())
+
+		return nil, status.Error(codes.Aborted, err.Error())
+	}
+
+	if mirroringInfo.State != librbd.MirrorImageEnabled {
+		return nil, status.Error(codes.InvalidArgument, "image mirroring is not enabled")
+	}
+
+	// return error if the image is not in primary state
+	if !mirroringInfo.Primary {
+		return nil, status.Error(codes.InvalidArgument, "image is not in primary state")
+	}
+
+	mirrorStatus, err := rbdVol.getImageMirroringStatus()
+	if err != nil {
+		if errors.Is(err, ErrImageNotFound) {
+			return nil, status.Error(codes.Aborted, err.Error())
+		}
+		log.ErrorLog(ctx, err.Error())
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	remoteStatus, err := RemoteStatus(mirrorStatus)
+	if err != nil {
+		log.ErrorLog(ctx, err.Error())
+
+		return nil, status.Errorf(codes.Internal, "failed to get remote status: %v", err)
+	}
+
+	description := remoteStatus.Description
+	lastSyncTime, err := getLastSyncTime(description)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get last sync time: %v", err)
+	}
+
+	resp := &replication.GetVolumeReplicationInfoResponse{
+		LastSyncTime: lastSyncTime,
+	}
+
+	return resp, nil
+}
+
+// RemoteStatus returns one SiteMirrorImageStatus item from the SiteStatuses
+// slice that corresponds to the remote site's status. If the remote status
+// is not found than the error ErrNotExist will be returned.
+func RemoteStatus(gmis *librbd.GlobalMirrorImageStatus) (librbd.SiteMirrorImageStatus, error) {
+	var (
+		ss  librbd.SiteMirrorImageStatus
+		err error = librbd.ErrNotExist
+	)
+	for i := range gmis.SiteStatuses {
+		if gmis.SiteStatuses[i].MirrorUUID != "" {
+			ss = gmis.SiteStatuses[i]
+			err = nil
+
+			break
+		}
+	}
+
+	return ss, err
+}
+
+// This function gets the local snapshot time from the description
+// of localStatus and converts it into required type.
+func getLastSyncTime(description string) (*timestamppb.Timestamp, error) {
+	// Format of the description will be as followed:
+	// description = "replaying,{"bytes_per_second":0.0,
+	// "bytes_per_snapshot":149504.0,"local_snapshot_timestamp":1662655501
+	// ,"remote_snapshot_timestamp":1662655501}"
+	// In case there is no local snapshot timestamp we can pass the default value
+	if description == "" {
+		return nil, nil
+	}
+	splittedString := strings.SplitN(description, ",", 2)
+	if len(splittedString) == 1 {
+		return nil, nil
+	}
+	type localStatus struct {
+		LocalSnapshotTime int64 `json:"local_snapshot_timestamp"`
+	}
+
+	var localSnapTime localStatus
+	err := json.Unmarshal([]byte(splittedString[1]), &localSnapTime)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal description: %w", err)
+	}
+
+	lastUpdateTime := time.Unix(localSnapTime.LocalSnapshotTime, 0)
+	lastSyncTime := timestamppb.New(lastUpdateTime)
+
+	return lastSyncTime, nil
+}
+
+>>>>>>> f12fa3ee5 (rbd: return GRPC error from GRPC method)
 func resyncVolume(localStatus librbd.SiteMirrorImageStatus, rbdVol *rbdVolume, force bool) error {
 	if resyncRequired(localStatus) {
 		// If the force option is not set return the error message to retry
