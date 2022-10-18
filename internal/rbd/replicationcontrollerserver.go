@@ -761,13 +761,13 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	if err != nil {
 		log.ErrorLog(ctx, err.Error())
 
-		return nil, fmt.Errorf("failed to get remote status: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to get remote status: %v", err)
 	}
 
 	description := remoteStatus.Description
 	lastSyncTime, err := getLastSyncTime(description)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get last sync time: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to get last sync time: %v", err)
 	}
 
 	resp := &replication.GetVolumeReplicationInfoResponse{
