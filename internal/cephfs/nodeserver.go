@@ -633,6 +633,17 @@ func (ns *NodeServer) NodeGetVolumeStats(
 
 	stat, err := os.Stat(targetPath)
 	if err != nil {
+		if util.IsCorruptedMountError(err) {
+			log.WarningLog(ctx, "corrupted mount detected in %q: %v", targetPath, err)
+
+			return &csi.NodeGetVolumeStatsResponse{
+				VolumeCondition: &csi.VolumeCondition{
+					Abnormal: true,
+					Message:  err.Error(),
+				},
+			}, nil
+		}
+
 		return nil, status.Errorf(codes.InvalidArgument, "failed to get stat for targetpath %q: %v", targetPath, err)
 	}
 
