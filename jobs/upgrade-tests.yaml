@@ -2,6 +2,7 @@
 - project:
     name: upgrade-tests
     k8s_version: '1.21'
+    only_run_on_request: true
     test_type:
       - 'cephfs'
       - 'rbd'
@@ -52,6 +53,7 @@
           status-context: 'ci/centos/upgrade-tests-{test_type}'
           # yamllint disable-line rule:line-length
           trigger-phrase: '/(re)?test ((all)|(ci/centos/upgrade-tests(-{test_type})?))'
+          only-trigger-phrase: '{only_run_on_request}'
           permit-all: true
           github-hooks: true
           black-list-target-branches:
