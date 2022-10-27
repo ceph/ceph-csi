@@ -535,7 +535,7 @@ func undoVolReservation(ctx context.Context, rbdVol *rbdVolume, cr *util.Credent
 // Generate new volume Handler
 // The volume handler won't remain same as its contains poolID,clusterID etc
 // which are not same across clusters.
-// nolint:gocyclo,cyclop // TODO: reduce complexity
+// nolint:gocyclo,cyclop,nestif // TODO: reduce complexity
 func RegenerateJournal(
 	volumeAttributes map[string]string,
 	claimName,
@@ -617,6 +617,12 @@ func RegenerateJournal(
 		rbdVol.RbdImageName = imageData.ImageAttributes.ImageName
 		if rbdVol.ImageID == "" {
 			err = rbdVol.storeImageID(ctx, j)
+			if err != nil {
+				return "", err
+			}
+		}
+		if rbdVol.Owner != owner {
+			err = j.ResetVolumeOwner(ctx, rbdVol.JournalPool, rbdVol.ReservedID, owner)
 			if err != nil {
 				return "", err
 			}
