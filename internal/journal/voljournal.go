@@ -864,3 +864,9 @@ func (conn *Connection) ReserveNewUUIDMapping(ctx context.Context,
 
 	return setOMapKeys(ctx, conn, journalPool, cj.namespace, cj.csiDirectory, setKeys)
 }
+
+// ResetVolumeOwner updates the owner in the rados object.
+func (conn *Connection) ResetVolumeOwner(ctx context.Context, pool, reservedUUID, owner string) error {
+	return setOMapKeys(ctx, conn, pool, conn.config.namespace, conn.config.cephUUIDDirectoryPrefix+reservedUUID,
+		map[string]string{conn.config.ownerKey: owner})
+}
