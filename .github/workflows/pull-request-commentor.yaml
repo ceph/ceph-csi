@@ -15,13 +15,6 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - name: Add comment to trigger external storage tests for Kubernetes 1.22
-        uses: peter-evans/create-or-update-comment@v2
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            /test ci/centos/k8s-e2e-external-storage/1.22
-
       - name: Add comment to trigger external storage tests for Kubernetes 1.23
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -36,13 +29,6 @@ jobs:
           body: |
             /test ci/centos/k8s-e2e-external-storage/1.24
 
-      - name: Add comment to trigger helm E2E tests for Kubernetes 1.22
-        uses: peter-evans/create-or-update-comment@v2
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            /test ci/centos/mini-e2e-helm/k8s-1.22
-
       - name: Add comment to trigger helm E2E tests for Kubernetes 1.23
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -56,13 +42,6 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/mini-e2e-helm/k8s-1.24
-
-      - name: Add comment to trigger E2E tests for Kubernetes 1.22
-        uses: peter-evans/create-or-update-comment@v2
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            /test ci/centos/mini-e2e/k8s-1.22
 
       - name: Add comment to trigger E2E tests for Kubernetes 1.23
         uses: peter-evans/create-or-update-comment@v2
