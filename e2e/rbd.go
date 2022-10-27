@@ -513,6 +513,7 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("reattach the old PV to a new PVC and check if PVC metadata is updated on RBD image", func() {
+				reattachPVCNamespace := fmt.Sprintf("%s-2", f.Namespace.Name)
 				pvc, err := loadPVC(pvcPath)
 				if err != nil {
 					e2elog.Failf("failed to load PVC: %v", err)
@@ -593,8 +594,15 @@ var _ = Describe("RBD", func() {
 				// validate created backend rbd images
 				validateRBDImageCount(f, 1, defaultRBDPool)
 				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				// create namespace for reattach PVC, deletion will be taken care by framework
+				ns, err := f.CreateNamespace(reattachPVCNamespace, nil)
+				if err != nil {
+					e2elog.Failf("failed to create namespace: %v", err)
+				}
 
 				pvcObj.Name = "rbd-pvc-new"
+				pvcObj.Namespace = ns.Name
+
 				// unset the resource version as should not be set on objects to be created
 				pvcObj.ResourceVersion = ""
 				err = createPVCAndvalidatePV(f.ClientSet, pvcObj, deployTimeout)
@@ -617,6 +625,19 @@ var _ = Describe("RBD", func() {
 				pvcName = strings.TrimSuffix(pvcName, "\n")
 				if pvcName != pvcObj.Name {
 					e2elog.Failf("expected pvcName %q got %q", pvcObj.Name, pvcName)
+				}
+
+				owner, stdErr, err := execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNamespaceKey),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					e2elog.Failf("failed to get owner name %s/%s %s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNamespaceKey, err, stdErr)
+				}
+				owner = strings.TrimSuffix(owner, "\n")
+				if owner != pvcObj.Namespace {
+					e2elog.Failf("expected pvcNamespace name %q got %q", pvcObj.Namespace, owner)
 				}
 
 				patchBytes = []byte(`{"spec":{"persistentVolumeReclaimPolicy": "Delete"}}`)
