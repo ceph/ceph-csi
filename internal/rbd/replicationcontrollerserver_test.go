@@ -455,7 +455,7 @@ func TestValidateLastSyncTime(t *testing.T) {
 			"empty description",
 			"",
 			nil,
-			"",
+			"empty description",
 		},
 		{
 			"description without local_snapshot_timestamp",
@@ -473,7 +473,7 @@ func TestValidateLastSyncTime(t *testing.T) {
 			"description with no JSON",
 			`replaying`,
 			nil,
-			"",
+			"no local snapshot timestamp",
 		},
 	}
 	for _, tt := range tests {

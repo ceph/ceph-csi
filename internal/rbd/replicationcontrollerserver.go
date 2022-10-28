@@ -804,13 +804,14 @@ func getLastSyncTime(description string) (*timestamppb.Timestamp, error) {
 	// description = "replaying,{"bytes_per_second":0.0,
 	// "bytes_per_snapshot":149504.0,"local_snapshot_timestamp":1662655501
 	// ,"remote_snapshot_timestamp":1662655501}"
-	// In case there is no local snapshot timestamp we can pass the default value
+	// In case there is no local snapshot timestamp return an error as the
+	// LastSyncTime is required.
 	if description == "" {
-		return nil, nil
+		return nil, errors.New("empty description")
 	}
 	splittedString := strings.SplitN(description, ",", 2)
 	if len(splittedString) == 1 {
-		return nil, nil
+		return nil, errors.New("no local snapshot timestamp")
 	}
 	type localStatus struct {
 		LocalSnapshotTime int64 `json:"local_snapshot_timestamp"`
