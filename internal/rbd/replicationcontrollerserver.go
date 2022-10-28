@@ -767,6 +767,11 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	description := remoteStatus.Description
 	lastSyncTime, err := getLastSyncTime(description)
 	if err != nil {
+		if errors.Is(err, ErrLastSyncTimeNotFound) {
+			return nil, status.Errorf(codes.NotFound, "failed to get last sync time: %v", err)
+		}
+		log.ErrorLog(ctx, err.Error())
+
 		return nil, status.Errorf(codes.Internal, "failed to get last sync time: %v", err)
 	}
 
@@ -804,13 +809,14 @@ func getLastSyncTime(description string) (*timestamppb.Timestamp, error) {
 	// description = "replaying,{"bytes_per_second":0.0,
 	// "bytes_per_snapshot":149504.0,"local_snapshot_timestamp":1662655501
 	// ,"remote_snapshot_timestamp":1662655501}"
-	// In case there is no local snapshot timestamp we can pass the default value
+	// In case there is no local snapshot timestamp return an error as the
+	// LastSyncTime is required.
 	if description == "" {
-		return nil, nil
+		return nil, fmt.Errorf("empty description: %w", ErrLastSyncTimeNotFound)
 	}
 	splittedString := strings.SplitN(description, ",", 2)
 	if len(splittedString) == 1 {
-		return nil, nil
+		return nil, fmt.Errorf("no local snapshot timestamp: %w", ErrLastSyncTimeNotFound)
 	}
 	type localStatus struct {
 		LocalSnapshotTime int64 `json:"local_snapshot_timestamp"`

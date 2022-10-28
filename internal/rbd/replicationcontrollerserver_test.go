@@ -455,7 +455,7 @@ func TestValidateLastSyncTime(t *testing.T) {
 			"empty description",
 			"",
 			nil,
-			"",
+			ErrLastSyncTimeNotFound.Error(),
 		},
 		{
 			"description without local_snapshot_timestamp",
@@ -467,13 +467,13 @@ func TestValidateLastSyncTime(t *testing.T) {
 			"description with invalid JSON",
 			`replaying,{"bytes_per_second":0.0,"bytes_per_snapshot":149504.0","remote_snapshot_timestamp":1662655501`,
 			nil,
-			"failed to unmarshal description",
+			"failed to unmarshal",
 		},
 		{
 			"description with no JSON",
 			`replaying`,
 			nil,
-			"",
+			ErrLastSyncTimeNotFound.Error(),
 		},
 	}
 	for _, tt := range tests {
