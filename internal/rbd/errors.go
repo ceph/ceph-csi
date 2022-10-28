@@ -42,4 +42,7 @@ var (
 	ErrMissingImageNameInVolID = errors.New("rbd image name information can not be empty in volID")
 	// ErrDecodeClusterIDFromMonsInVolID is returned when mons hash decoding on migration volID.
 	ErrDecodeClusterIDFromMonsInVolID = errors.New("failed to get clusterID from monitors hash in volID")
+	// ErrLastSyncTimeNotFound is returned when last sync time is not found for
+	// the image.
+	ErrLastSyncTimeNotFound = errors.New("last sync time not found")
 )
