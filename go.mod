@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/IBM/keyprotect-go-client v0.8.1
-	github.com/aws/aws-sdk-go v1.44.122
+	github.com/aws/aws-sdk-go v1.44.127
 	github.com/aws/aws-sdk-go-v2/service/sts v1.17.1
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	// TODO: API for managing subvolume metadata and snapshot metadata requires `ceph_ci_untested` build-tag
@@ -42,6 +42,7 @@ require (
 	//
 	k8s.io/kubernetes v1.25.0
 	k8s.io/mount-utils v0.25.0
+	k8s.io/pod-security-admission v0.0.0
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
 	sigs.k8s.io/controller-runtime v0.11.0-beta.0.0.20211208212546-f236f0345ad2
 )
@@ -167,7 +168,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 // indirect
 	k8s.io/kubectl v0.0.0 // indirect
 	k8s.io/kubelet v0.0.0 // indirect
-	k8s.io/pod-security-admission v0.0.0 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.32 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
