@@ -11,7 +11,7 @@ require (
 	github.com/ceph/go-ceph v0.17.0
 	github.com/container-storage-interface/spec v1.6.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
-	github.com/csi-addons/spec v0.1.2-0.20220906123848-52ce69f90900
+	github.com/csi-addons/spec v0.1.2-0.20221101132540-98eff76b0ff8
 	github.com/gemalto/kmip-go v0.0.8
 	github.com/golang/protobuf v1.5.2
 	github.com/google/fscrypt v0.3.3
