@@ -98,6 +98,12 @@ the Docker daemon of the cluster nodes must allow shared mounts.
 
 YAML manifests are located in `deploy/rbd/kubernetes`.
 
+**Create CSIDriver object:**
+
+```bash
+kubectl create -f csidriver.yaml
+```
+
 **Deploy RBACs for sidecar containers and node plugins:**
 
 ```bash
