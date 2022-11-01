@@ -828,6 +828,12 @@ func getLastSyncTime(description string) (*timestamppb.Timestamp, error) {
 		return nil, fmt.Errorf("failed to unmarshal description: %w", err)
 	}
 
+	// If the json unmarsal is successful but the local snapshot time is 0, we
+	// need to consider it as an error as the LastSyncTime is required.
+	if localSnapTime.LocalSnapshotTime == 0 {
+		return nil, fmt.Errorf("empty local snapshot timestamp: %w", ErrLastSyncTimeNotFound)
+	}
+
 	lastUpdateTime := time.Unix(localSnapTime.LocalSnapshotTime, 0)
 	lastSyncTime := timestamppb.New(lastUpdateTime)
 
