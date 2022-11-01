@@ -286,8 +286,8 @@ github.com/hashicorp/go-immutable-radix
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/go-plugin v1.4.3
-## explicit; go 1.13
+# github.com/hashicorp/go-plugin v1.4.5
+## explicit; go 1.17
 github.com/hashicorp/go-plugin
 github.com/hashicorp/go-plugin/internal/plugin
 # github.com/hashicorp/go-retryablehttp v0.7.0
@@ -333,8 +333,8 @@ github.com/hashicorp/hcl/json/token
 ## explicit; go 1.13
 github.com/hashicorp/vault/command/agent/auth
 github.com/hashicorp/vault/command/agent/auth/kubernetes
-# github.com/hashicorp/vault/api v1.8.1
-## explicit; go 1.17
+# github.com/hashicorp/vault/api v1.8.2
+## explicit; go 1.19
 github.com/hashicorp/vault/api
 # github.com/hashicorp/vault/sdk v0.6.0
 ## explicit; go 1.19
