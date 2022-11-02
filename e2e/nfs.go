@@ -616,6 +616,11 @@ var _ = Describe("nfs", func() {
 					e2elog.Failf("failed to calculate checksum: %v", err)
 				}
 
+				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+				if err != nil {
+					e2elog.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+				}
+
 				snap := getSnapshot(snapshotPath)
 				snap.Namespace = f.UniqueName
 				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
@@ -640,6 +645,7 @@ var _ = Describe("nfs", func() {
 				if failed != 0 {
 					e2elog.Failf("creating snapshots failed, %d errors were logged", failed)
 				}
+				validateCephFSSnapshotCount(f, totalCount, defaultSubvolumegroup, pv)
 
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
@@ -811,6 +817,8 @@ var _ = Describe("nfs", func() {
 				if failed != 0 {
 					e2elog.Failf("deleting snapshots failed, %d errors were logged", failed)
 				}
+
+				validateCephFSSnapshotCount(f, 0, defaultSubvolumegroup, pv)
 
 				wg.Add(totalCount)
 				// delete clone and app
