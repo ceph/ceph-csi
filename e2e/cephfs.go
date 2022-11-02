@@ -114,7 +114,7 @@ func validateSubvolumeCount(f *framework.Framework, count int, fileSystemName, s
 		e2elog.Failf("failed to list CephFS subvolumes: %v", err)
 	}
 	if len(subVol) != count {
-		e2elog.Failf("subvolumes [%v]. subvolume count %d not matching expected count %v", subVol, len(subVol), count)
+		e2elog.Failf("subvolumes [%v]. subvolume count %d not matching expected count %d", subVol, len(subVol), count)
 	}
 }
 
