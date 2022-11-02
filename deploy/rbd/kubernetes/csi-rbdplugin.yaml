@@ -29,7 +29,7 @@ spec:
           securityContext:
             privileged: true
             allowPrivilegeEscalation: true
-          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.5.1
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.6.0
           args:
             - "--v=1"
             - "--csi-address=/csi/csi.sock"
