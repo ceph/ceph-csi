@@ -113,6 +113,31 @@ fmt.Println(key.ID, key.Name)
 crkID := key.ID
 ```
 
+### Generating a root key with policy overrides (CRK)
+
+```go
+enable := true
+// Specify policy data
+policy := kp.Policy{
+  Rotation: &kp.Rotation{
+    Enabled:  &enable,
+    Interval: 3,
+  },
+  DualAuth: &kp.DualAuth{
+    Enabled:  &enable,
+  },
+}
+
+// Create a root key named MyRootKey with a rotation and a dualAuthDelete policy
+key, err := client.CreateRootKeyWithPolicyOverrides(ctx, "MyRootKey", nil, nil, policy)
+if err != nil {
+    fmt.Println(err)
+}
+fmt.Println(key.ID, key.Name)
+
+crkID := key.ID
+```
+
 ### Wrapping and Unwrapping a DEK using a specific Root Key.
 
 ```go
@@ -171,7 +196,51 @@ dek = nil
 // Save the wrapped DEK for later.  Call Unwrap to use it, make
 // sure to specify the same AAD.
 ```
-### Fetching List Key Versions With Parameters.
+
+### Fetching keys based on query parameters
+
+```go
+
+limit := uint32(5)
+offset := uint32(0)
+extractable := false
+keyStates := []kp.KeyState{kp.KeyState(kp.Active), kp.KeyState(kp.Suspended)}
+searchStr := "foobar"
+searchQuery, _ := kp.GetKeySearchQuery(&searchStr, kp.ApplyNot(), kp.AddAliasScope())
+
+listKeysOptions := &kp.ListKeysOptions{
+  Limit : &limit,
+  Offset : &offset,
+  Extractable : &extractable,
+  State : keyStates,
+  Search: searchQuery,
+}
+
+keys, err := client.ListKeys(ctx, listKeysOptions)
+if err != nil {
+    fmt.Println(err)
+}
+fmt.Println(keys)
+```
+
+### Fetching keys in ascending or descending sorted order of parameters
+
+```go
+srtStr, _ := kp.GetKeySortStr(kp.WithCreationDate(), WithImportedDesc())
+
+listKeysOptions := &kp.ListKeysOptions{
+  Sort:srtStr,
+}
+
+keys, err := client.ListKeys(ctx, listKeysOptions)
+if err != nil {
+    fmt.Println(err)
+}
+fmt.Println(keys)
+```
+For more information about KeySearch visit: https://cloud.ibm.com/apidocs/key-protect#kp-get-key-search-api
+
+### Fetching key versions based on query parameters
 
 ```go
 
@@ -192,20 +261,57 @@ if err != nil {
 fmt.Println(keyVersions)
 ```
 
-### Fetching List Key With Parameters.
+### Enable instance rotation policy
 
 ```go
 
-limit := uint32(5)
-offset := uint32(0)
-extractable := false
-keyStates := []kp.KeyState{kp.KeyState(kp.Active), kp.KeyState(kp.Suspended)}
+intervalMonth := 3
+enable := true
+
+err := client.SetRotationInstancePolicy(context.Background(), enable, &intervalMonth)
+if err != nil {
+    fmt.Println(err)
+}
+
+rotationInstancePolicy, err := client.GetRotationInstancePolicy(context.Background())
+if err != nil {
+  fmt.Println(err)
+}
+fmt.Println(rotationInstancePolicy)
+```
+
+### Set key rotation policy
+
+```go
+
+rotationInterval := 3
+enabled := true
+keyRotationPolicy, err := client.SetRotationPolicy(context.Background(), "key_id_or_alias", rotationInterval, enabled)
+if err != nil {
+  fmt.Println(err)
+}
+fmt.Println(keyRotationPolicy)
+```
+
+### Enable key rotation policy
+
+```go
+
+keyRotationPolicy, err := client.EnableRotationPolicy(context.Background(), "key_id_or_alias")
+if err != nil {
+  fmt.Println(err)
+}
+fmt.Println(keyRotationPolicy)
+```
+
+### List keys based on filter properties
+
+```go
+// Option-1 - Directly passing the filter query in the format that the API supports.
+filterQuery := "creationDate=gt:\"2022-07-05T00:00:00Z\" state=1,5 extractable=false"
 
 listKeysOptions := &kp.ListKeysOptions{
-  Limit : &limit,
-  Offset : &offset,
-  Extractable : &extractable,
-  State : keyStates,
+  Filter:&filterQuery,
 }
 
 keys, err := client.ListKeys(ctx, listKeysOptions)
@@ -213,15 +319,18 @@ if err != nil {
     fmt.Println(err)
 }
 fmt.Println(keys)
-```
 
-### Fetching List Key In Sorted Ascending Order Based On Paramaeters.
+// Option-2 - Using the builder provided by SDK to construct the filter query
+fb := kp.GetFilterQueryBuilder()
+dateQ := time.Date(2022, 07, 04, 07, 43, 23, 100, time.UTC)
 
-```go
-srtStr, _ := kp.GetKeySortStr(kp.WithCreationDate(), kp.WithImported())
+filterQuery := fb.CreationDate().GreaterThan(dateQ).
+	State([]kp.KeyState{kp.KeyState(kp.Destroyed), kp.KeyState(kp.Active)}).
+	Extractable(true).
+	Build()
 
 listKeysOptions := &kp.ListKeysOptions{
-  Sort:srtStr,
+  Filter:&filterQuery,
 }
 
 keys, err := client.ListKeys(ctx, listKeysOptions)
@@ -229,41 +338,4 @@ if err != nil {
     fmt.Println(err)
 }
 fmt.Println(keys)
-```
-
-### Fetching List Key In Sorted Descending Order Based On Paramaeters.
-
-```go
-srtStr, _ := GetKeySortStr(WithCreationDateDesc(), WithImportedDesc())
-
-listKeysOptions := &ListKeysOptions{
-  Sort: srtStr,
-}
-
-keys, err := client.ListKeys(ctx, listKeysOptions)
-if err != nil {
-    fmt.Println(err)
-}
-fmt.Println(keys)
-```
-
-For more information about KeySearch visit: https://cloud.ibm.com/apidocs/key-protect#kp-get-key-search-api
-
-### Using Search functionality in list Keys API
-
-```go
-
-searchStr := "foobar"
-srcStr2, _ := kp.GetKeySearchQuery(&searchStr, kp.ApplyNot(), kp.AddAliasScope())
-
-listKeysOptions := &kp.ListKeysOptions{
-		Search: srcStr2,
-	}
-
-keys, err := client.ListKeys(ctx, listKeysOptions)
-if err != nil {
-		fmt.Println(err)
-	}
-fmt.Println(keys)
-
 ```

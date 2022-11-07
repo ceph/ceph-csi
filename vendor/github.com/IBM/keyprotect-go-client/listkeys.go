@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //ListKeysOptions struct to add the query parameters for the List Keys function
@@ -30,6 +31,7 @@ type ListKeysOptions struct {
 	State       []KeyState
 	Sort        *string
 	Search      *string
+	Filter      *string
 }
 
 // ListKeys retrieves a list of keys that are stored in your Key Protect service instance.
@@ -66,6 +68,9 @@ func (c *Client) ListKeys(ctx context.Context, listKeysOptions *ListKeysOptions)
 		}
 		if listKeysOptions.Sort != nil {
 			values.Set("sort", fmt.Sprint(*listKeysOptions.Sort))
+		}
+		if listKeysOptions.Filter != nil {
+			values.Set("filter", fmt.Sprint(*listKeysOptions.Filter))
 		}
 		req.URL.RawQuery = values.Encode()
 	}
@@ -210,4 +215,98 @@ func AddAliasScope() SearchOpts {
 
 func AddKeyNameScope() SearchOpts {
 	return buildSearcOpts("name")
+}
+
+// Filter related functions
+type filterQuery struct {
+	queryStr string
+}
+
+type FilterQueryBuilder struct {
+	filterQueryString filterQuery
+}
+
+func GetFilterQueryBuilder() *FilterQueryBuilder {
+	return &FilterQueryBuilder{filterQuery{queryStr: ""}}
+}
+
+func (fq *FilterQueryBuilder) Build() string {
+	return fq.filterQueryString.queryStr
+}
+
+func (fq *FilterQueryBuilder) CreationDate() *FilterQueryBuilder {
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + " creationDate="
+	return fq
+}
+
+func (fq *FilterQueryBuilder) ExpirationDate() *FilterQueryBuilder {
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + " expirationDate="
+	return fq
+}
+
+func (fq *FilterQueryBuilder) LastRotationDate() *FilterQueryBuilder {
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + " lastRotateDate="
+	return fq
+}
+
+func (fq *FilterQueryBuilder) DeletionDate() *FilterQueryBuilder {
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + " deletionDate="
+	return fq
+}
+
+func (fq *FilterQueryBuilder) LastUpdateDate() *FilterQueryBuilder {
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + " lastUpdateDate="
+	return fq
+}
+
+func (fq *FilterQueryBuilder) State(states []KeyState) *FilterQueryBuilder {
+	str := " state="
+	for _, val := range states {
+		str += strconv.Itoa(int(val)) + ","
+	}
+	// remove the extra comma appended at the end of the string
+	str = strings.TrimSuffix(str, ",")
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + str
+	return fq
+}
+
+func (fq *FilterQueryBuilder) Extractable(val bool) *FilterQueryBuilder {
+	extractable := " extractable=" + strconv.FormatBool(val)
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + extractable
+	return fq
+}
+
+func (fq *FilterQueryBuilder) GreaterThan(dateInput time.Time) *FilterQueryBuilder {
+	date := dateInput.Format(time.RFC3339Nano)
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + "gt:" + "\"" + date + "\""
+	return fq
+}
+
+func (fq *FilterQueryBuilder) GreaterThanOrEqual(dateInput time.Time) *FilterQueryBuilder {
+	date := dateInput.Format(time.RFC3339Nano)
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + "gte:" + "\"" + date + "\""
+	return fq
+}
+
+func (fq *FilterQueryBuilder) LessThan(dateInput time.Time) *FilterQueryBuilder {
+	date := dateInput.Format(time.RFC3339Nano)
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + "lt:" + "\"" + date + "\""
+	return fq
+}
+
+func (fq *FilterQueryBuilder) LessThanOrEqual(dateInput time.Time) *FilterQueryBuilder {
+	date := dateInput.Format(time.RFC3339Nano)
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + "lte:" + "\"" + date + "\""
+	return fq
+}
+
+func (fq *FilterQueryBuilder) Equal(dateInput time.Time) *FilterQueryBuilder {
+	date := dateInput.Format(time.RFC3339Nano)
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + "\"" + date + "\""
+	return fq
+}
+
+func (fq *FilterQueryBuilder) None() *FilterQueryBuilder {
+	fq.filterQueryString.queryStr = fq.filterQueryString.queryStr + "none"
+	return fq
 }
