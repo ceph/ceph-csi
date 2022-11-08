@@ -11,10 +11,6 @@ metadata:
   name: cephfs-csi-nodeplugin
 rules:
   - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get"]
-  # allow to read Vault Token and connection options from the Tenants namespace
-  - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get"]
   - apiGroups: [""]
@@ -23,12 +19,6 @@ rules:
   - apiGroups: [""]
     resources: ["serviceaccounts"]
     verbs: ["get"]
-  - apiGroups: [""]
-    resources: ["persistentvolumes"]
-    verbs: ["get"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments"]
-    verbs: ["list", "get"]
   - apiGroups: [""]
     resources: ["serviceaccounts/token"]
     verbs: ["create"]
