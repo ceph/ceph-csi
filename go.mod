@@ -24,7 +24,7 @@ require (
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
 	github.com/onsi/ginkgo/v2 v2.4.0
 	github.com/onsi/gomega v1.23.0
-	github.com/pkg/xattr v0.4.7
+	github.com/pkg/xattr v0.4.9
 	github.com/prometheus/client_golang v1.12.2
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/crypto v0.1.0
