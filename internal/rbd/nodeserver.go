@@ -1307,9 +1307,6 @@ func getDeviceSize(ctx context.Context, devicePath string) (uint64, error) {
 	}
 
 	outStr := strings.TrimSpace(output)
-	if err != nil {
-		return 0, fmt.Errorf("failed to read size of device %s: %s: %w", devicePath, outStr, err)
-	}
 	size, err := strconv.ParseUint(outStr, 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse size of device %s %s: %w", devicePath, outStr, err)
