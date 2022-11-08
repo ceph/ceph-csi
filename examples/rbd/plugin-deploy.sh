@@ -10,7 +10,7 @@ fi
 
 pushd "${deployment_base}" >/dev/null || exit 1
 
-objects=(csi-provisioner-rbac csi-nodeplugin-rbac csi-config-map csi-rbdplugin-provisioner csi-rbdplugin)
+objects=(csi-provisioner-rbac csi-nodeplugin-rbac csi-config-map csi-rbdplugin-provisioner csi-rbdplugin csidriver)
 
 for obj in "${objects[@]}"; do
 	kubectl create -f "./${obj}.yaml"
