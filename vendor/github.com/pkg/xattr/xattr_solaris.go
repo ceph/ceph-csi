@@ -131,7 +131,7 @@ func llistxattr(path string, data []byte) (int, error) {
 func flistxattr(f *os.File, data []byte) (int, error) {
 	fd, err := unix.Openat(int(f.Fd()), ".", unix.O_RDONLY|unix.O_XATTR, 0)
 	if err != nil {
-		return 0, err
+		return 0, unix.ENOTSUP
 	}
 	xf := os.NewFile(uintptr(fd), f.Name())
 	defer func() {

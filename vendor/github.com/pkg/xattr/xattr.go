@@ -29,6 +29,8 @@ type Error struct {
 	Err  error
 }
 
+func (e *Error) Unwrap() error { return e.Err }
+
 func (e *Error) Error() (errstr string) {
 	if e.Op != "" {
 		errstr += e.Op
