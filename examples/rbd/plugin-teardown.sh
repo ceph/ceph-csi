@@ -10,7 +10,7 @@ fi
 
 pushd "${deployment_base}" >/dev/null || exit 1
 
-objects=(csi-rbdplugin-provisioner csi-rbdplugin csi-config-map csi-provisioner-rbac csi-nodeplugin-rbac)
+objects=(csi-rbdplugin-provisioner csi-rbdplugin csi-config-map csi-provisioner-rbac csi-nodeplugin-rbac csidriver)
 
 for obj in "${objects[@]}"; do
 	kubectl delete -f "./${obj}.yaml"
