@@ -220,9 +220,9 @@ possible to encrypt them with ceph-csi by using LUKS encryption.
 * volume is attached to provisioner container
 * on first time attachment
   (no file system on the attached device, checked with blkid)
-  * passphrase is retrieved from selected KMS if KMS is in use
-  * device is encrypted with LUKS using a passphrase from K8s Secret or KMS
-  * image-meta updated to "encrypted" in Ceph
+   * passphrase is retrieved from selected KMS if KMS is in use
+   * device is encrypted with LUKS using a passphrase from K8s Secret or KMS
+   * image-meta updated to "encrypted" in Ceph
 * passphrase is retrieved from selected KMS if KMS is in use
 * device is open and device path is changed to use a mapper device
 * mapper device is used instead of original one with usual workflow

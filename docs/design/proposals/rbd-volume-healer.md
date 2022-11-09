@@ -85,16 +85,16 @@ Volume healer does the below,
   NodeStage, NodeUnstage, NodePublish, NodeUnPublish operations. Hence none of
   the operations happen in parallel.
 - Any issues if the NodeUnstage is issued by kubelet?
-  - This can not be a problem as we take a lock at the Ceph-CSI level
-    - If the NodeUnstage success, Ceph-CSI will return StagingPath not found
+   - This can not be a problem as we take a lock at the Ceph-CSI level
+      - If the NodeUnstage success, Ceph-CSI will return StagingPath not found
       error, we can then skip
-    - If the NodeUnstage fails with an operation already going on, in the next
+      - If the NodeUnstage fails with an operation already going on, in the next
       NodeUnstage the volume gets unmounted
 - What if the PVC is deleted?
-  - If the PVC is deleted, the volume attachment list might already get
+   - If the PVC is deleted, the volume attachment list might already get
     refreshed and entry will be skipped/deleted at the healer.
-    - For any reason, If the request bails out with Error NotFound, skip the
+      - For any reason, If the request bails out with Error NotFound, skip the
       PVC, assuming it might have deleted or the NodeUnstage might have already
       happened.
-  - The Volume healer currently works with rbd-nbd, but the design can
+   - The Volume healer currently works with rbd-nbd, but the design can
     accommodate other userspace mounters (may be ceph-fuse).

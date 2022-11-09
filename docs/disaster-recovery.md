@@ -226,13 +226,13 @@ status:
 
 * Take a backup of PVC and PV object on primary cluster(cluster-1)
 
-  * Take backup of the PVC `rbd-pvc`
+   * Take backup of the PVC `rbd-pvc`
 
     ```bash
     kubectl get pvc rbd-pvc -oyaml >pvc-backup.yaml
     ```
 
-  * Take a backup of the PV, corresponding to the PVC
+   * Take a backup of the PV, corresponding to the PVC
 
     ```bash
     kubectl get pv/pvc-65dc0aac-5e15-4474-90f4-7a3532c621ec -oyaml >pv_backup.yaml
@@ -243,7 +243,7 @@ status:
 
 * Restoring on the secondary cluster(cluster-2)
 
-  * Create storageclass on the secondary cluster
+   * Create storageclass on the secondary cluster
 
   ```bash
     kubectl create -f examples/rbd/storageclass.yaml --context=cluster-2
@@ -251,7 +251,7 @@ status:
    storageclass.storage.k8s.io/csi-rbd-sc created
   ```
 
-  * Create VolumeReplicationClass on the secondary cluster
+   * Create VolumeReplicationClass on the secondary cluster
 
   ```bash
         cat <<EOF | kubectl --context=cluster-2 apply -f -
@@ -270,7 +270,7 @@ status:
   volumereplicationclass.replication.storage.openshift.io/rbd-volumereplicationclass created
   ```
 
-  * If Persistent Volumes and Claims are created manually
+   * If Persistent Volumes and Claims are created manually
    on the secondary cluster, remove the `claimRef` on the
    backed up PV objects in yaml files; so that the PV can
    get bound to the new claim on the secondary cluster.
@@ -350,7 +350,7 @@ Follow the below steps for planned migration of workload from primary
 * Create the VolumeReplicationClass on the secondary site.
 * Create the VolumeReplications for all the PVC’s for which mirroring
  is enabled
-  * `replicationState` should be `primary` for all the PVC’s on
+   * `replicationState` should be `primary` for all the PVC’s on
    the secondary site.
 * Check whether the image is marked `primary` on the secondary site
  by verifying it in VolumeReplication CR status.

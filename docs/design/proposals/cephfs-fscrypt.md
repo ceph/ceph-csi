@@ -19,8 +19,8 @@ Work is in progress to add fscrypt support to CephFS for filesystem-level encryp
 
 - [FSCrypt Kernel Documentation](https://www.kernel.org/doc/html/latest/filesystems/fscrypt.html)
 - Management Tools
-  - [`fscrypt`](https://github.com/google/fscrypt)
-  - [`fscryptctl`](https://github.com/google/fscryptctl)
+   - [`fscrypt`](https://github.com/google/fscrypt)
+   - [`fscryptctl`](https://github.com/google/fscryptctl)
 - [Ceph Feature Tracker: "Add fscrypt support to the kernel CephFS client"](https://tracker.ceph.com/issues/46690)
 - [`fscrypt` design document](https://goo.gl/55cCrI)
 

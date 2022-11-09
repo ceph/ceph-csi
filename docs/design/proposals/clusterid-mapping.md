@@ -79,13 +79,13 @@ volume is present in the pool.
 ## Problems with volumeID Replication
 
 * The clusterID can be different
-  * as the clusterID is the namespace where rook is deployed, the Rook might
+   * as the clusterID is the namespace where rook is deployed, the Rook might
     be deployed in the different namespace on a secondary cluster
-  * In standalone Ceph-CSI the clusterID is fsID and fsID is unique per
+   * In standalone Ceph-CSI the clusterID is fsID and fsID is unique per
     cluster
 
 * The poolID can be different
-  * PoolID which is encoded in the volumeID won't remain the same across
+   * PoolID which is encoded in the volumeID won't remain the same across
     clusters
 
 To solve this problem we need to have a new mapping between clusterID's and the

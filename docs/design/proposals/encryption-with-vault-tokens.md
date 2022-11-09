@@ -54,7 +54,7 @@ Encryption Key (DEK) for PVC encryption:
 
 - when creating the PVC the Ceph-CSI provisioner needs to store the Kubernetes
   Namespace of the PVC in its metadata
-  - stores the `csi.volume.owner` (name of Tenant) in the metadata of the
+   - stores the `csi.volume.owner` (name of Tenant) in the metadata of the
     volume and sets it as `rbdVolume.Owner`
 - the Ceph-CSI node-plugin needs to request the Vault Token in the NodeStage
   CSI operation and create/get the key for the PVC
@@ -87,8 +87,8 @@ Kubernetes and other Container Orchestration frameworks is tracked in
 - configuration of the VaultTokenKMS can be very similar to VaultKMS for common
   settings
 - the configuration can override the defaults for each Tenant separately
-  - Vault Service connection details (address, TLS options, ...)
-  - name of the Kubernetes Secret that can be looked up per tenant
+   - Vault Service connection details (address, TLS options, ...)
+   - name of the Kubernetes Secret that can be looked up per tenant
 - the configuration points to a Kubernetes Secret per Tenant that contains the
   Vault Token
 - the configuration points to an optional Kubernetes ConfigMap per Tenant that

@@ -1,12 +1,12 @@
 # End-to-End Testing
 
 - [End-to-End Testing](#end-to-end-testing)
-  - [Introduction](#introduction)
-  - [Install Kubernetes](#install-kubernetes)
-  - [Deploy Rook](#deploy-rook)
-  - [Test parameters](#test-parameters)
-  - [E2E for snapshot](#e2e-for-snapshot)
-  - [Running E2E](#running-e2e)
+   - [Introduction](#introduction)
+   - [Install Kubernetes](#install-kubernetes)
+   - [Deploy Rook](#deploy-rook)
+   - [Test parameters](#test-parameters)
+   - [E2E for snapshot](#e2e-for-snapshot)
+   - [Running E2E](#running-e2e)
 
 ## Introduction
 

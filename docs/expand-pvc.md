@@ -1,12 +1,12 @@
 # Dynamically Expand Volume
 
 - [Dynamically Expand Volume](#dynamically-expand-volume)
-  - [Prerequisite](#prerequisite)
-    - [Expand RBD PVCs](#expand-rbd-pvcs)
-      - [Expand RBD Filesystem PVC](#expand-rbd-filesystem-pvc)
-      - [Expand RBD Block PVC](#expand-rbd-block-pvc)
-    - [Expand CephFS PVC](#expand-cephfs-pvc)
-      - [Expand CephFS Filesystem PVC](#expand-cephfs-filesystem-pvc)
+   - [Prerequisite](#prerequisite)
+      - [Expand RBD PVCs](#expand-rbd-pvcs)
+         - [Expand RBD Filesystem PVC](#expand-rbd-filesystem-pvc)
+         - [Expand RBD Block PVC](#expand-rbd-block-pvc)
+      - [Expand CephFS PVC](#expand-cephfs-pvc)
+         - [Expand CephFS Filesystem PVC](#expand-cephfs-filesystem-pvc)
 
 ## Prerequisite
 

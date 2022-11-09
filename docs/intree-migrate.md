@@ -10,11 +10,11 @@ corresponding CSI (`rbd.csi.ceph.com`) driver.
 
 - [Prerequisite](#prerequisite)
 - [Volume operations after enabling CSI migration](#volume-operations-after-enabling-csi-migration)
-  - [Create volume](#create-volume)
-  - [Mount volume to a POD](#mount-volume-to-a-pod)
-  - [Resize volume](#resize-volume)
-  - [Unmount volume](#unmount-volume)
-  - [Delete volume](#delete-volume)
+   - [Create volume](#create-volume)
+   - [Mount volume to a POD](#mount-volume-to-a-pod)
+   - [Resize volume](#resize-volume)
+   - [Unmount volume](#unmount-volume)
+   - [Delete volume](#delete-volume)
 - [References](#additional-references)
 
 ### Prerequisite
@@ -140,4 +140,3 @@ To know more about in-tree to CSI migration:
 
 - [design doc](./design/proposals/intree-migrate.md)
 - [Kubernetes 1.17 Feature: Kubernetes In-Tree to CSI Volume Migration Moves to Beta](https://Kubernetes.io/blog/2019/12/09/Kubernetes-1-17-feature-csi-migration-beta/)
-
