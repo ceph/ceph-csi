@@ -738,37 +738,6 @@ type rbdDuImageList struct {
 }
 
 //nolint:deadcode,unused // required for reclaimspace e2e.
-// getRbdDu runs 'rbd du' on the RBD image and returns a rbdDuImage struct with
-// the result.
-func getRbdDu(f *framework.Framework, pvc *v1.PersistentVolumeClaim) (*rbdDuImage, error) {
-	rdil := rbdDuImageList{}
-
-	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
-	if err != nil {
-		return nil, err
-	}
-
-	cmd := fmt.Sprintf("rbd du --format=json %s %s", rbdOptions(defaultRBDPool), imageData.imageName)
-	stdout, _, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal([]byte(stdout), &rdil)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, image := range rdil.Images {
-		if image.Name == imageData.imageName {
-			return image, nil
-		}
-	}
-
-	return nil, fmt.Errorf("image %s not found", imageData.imageName)
-}
-
-//nolint:deadcode,unused // required for reclaimspace e2e.
 // sparsifyBackingRBDImage runs `rbd sparsify` on the RBD image. Once done, all
 // data blocks that contain zeros are discarded/trimmed/unmapped and do not
 // take up any space anymore. This can be used to verify that an empty, but
