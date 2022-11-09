@@ -200,7 +200,7 @@ var _ = Describe(cephfsType, func() {
 		if !testCephFS || upgradeTesting {
 			Skip("Skipping CephFS E2E")
 		}
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			// log pods created by helm chart
 			logsCSIPods("app=ceph-csi-cephfs", c)
 			// log provisioner

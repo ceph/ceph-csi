@@ -115,7 +115,7 @@ var _ = Describe("CephFS Upgrade Testing", func() {
 		if !testCephFS || !upgradeTesting {
 			Skip("Skipping CephFS Upgrade Test")
 		}
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			// log pods created by helm chart
 			logsCSIPods("app=ceph-csi-cephfs", c)
 			// log provisoner

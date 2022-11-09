@@ -121,7 +121,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if !testRBD || !upgradeTesting {
 			Skip("Skipping RBD Upgrade Testing")
 		}
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			// log pods created by helm chart
 			logsCSIPods("app=ceph-csi-rbd", c)
 			// log provisoner
