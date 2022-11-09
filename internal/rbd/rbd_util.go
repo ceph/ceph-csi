@@ -2116,3 +2116,31 @@ func genVolFromVolIDWithMigration(
 
 	return rv, err
 }
+
+func NewRbdVol(pool string, monitor string, clusterId string, imageName string) *rbdVolume {
+	vol := &rbdVolume{}
+	vol.Pool = pool
+	vol.Monitors = monitor
+	vol.ClusterID = clusterId
+	vol.RbdImageName = imageName
+	return vol
+}
+
+func (rv *rbdVolume) GetSnapshotName(cr *util.Credentials) (string, error) {
+	defer rv.Destroy()
+	err := rv.Connect(cr)
+	if err != nil {
+		return "", err
+	}
+	rbdImage, err := rv.open()
+	if err != nil {
+		return "", err
+	}
+	defer rbdImage.Close()
+
+	parentInfo, err := rbdImage.GetParent()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s@%s", parentInfo.Image.ImageName, parentInfo.Snap.SnapName), nil
+}

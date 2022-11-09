@@ -119,6 +119,13 @@ type Config struct {
 	// reached cephcsi will start flattening the older rbd images.
 	MinSnapshotsOnImage uint
 
+	SecretName      string
+	SecretNamespace string
+	ClusterId       string
+
+	TrashSchedule string
+	// 是否计算屏蔽快照大小
+	DisableSnapSize bool
 	// CSI-Addons endpoint
 	CSIAddonsEndpoint string
 }

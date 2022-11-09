@@ -14,6 +14,11 @@ ARG GIT_COMMIT
 ARG GOROOT=/usr/local/go
 
 COPY build.env /
+RUN cd /etc/yum.repos.d \
+ && mkdir bak \
+ && mv CentOS* bak \
+ && mv tcmu-runner.repo bak
+COPY CentOS-8-reg.repo /etc/yum.repos.d/CentOS-Linux-BaseOS.repo
 
 RUN source /build.env && \
     ( test -n "${GO_ARCH}" && exit 0; echo -e "\n\nMissing GO_ARCH argument for building image, install Golang or run: make image-cephcsi GOARCH=amd64\n\n"; exit 1 ) && \
@@ -54,6 +59,8 @@ RUN make cephcsi
 
 #-- Final container
 FROM ${BASE_IMAGE}
+
+RUN dnf -y install nc
 
 ARG SRC_DIR
 

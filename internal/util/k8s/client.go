@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	snapclient "github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned/typed/volumesnapshot/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -27,6 +28,31 @@ import (
 
 // NewK8sClient create kubernetes client.
 func NewK8sClient() (*kubernetes.Clientset, error) {
+	config, err := getRestConfig()
+	if err != nil {
+		return nil, err
+	}
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create client: %w", err)
+	}
+
+	return client, nil
+}
+
+func NewSnapClient() (*snapclient.SnapshotV1Client, error) {
+	config, err := getRestConfig()
+	if err != nil {
+		return nil, err
+	}
+	client, err := snapclient.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create client: %w", err)
+	}
+	return client, nil
+}
+
+func getRestConfig() (*rest.Config, error) {
 	var cfg *rest.Config
 	var err error
 	cPath := os.Getenv("KUBERNETES_CONFIG_PATH")
@@ -41,10 +67,5 @@ func NewK8sClient() (*kubernetes.Clientset, error) {
 			return nil, fmt.Errorf("failed to get cluster config: %w", err)
 		}
 	}
-	client, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %w", err)
-	}
-
-	return client, nil
+	return cfg, nil
 }

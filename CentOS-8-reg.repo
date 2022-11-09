@@ -1,0 +1,54 @@
+# CentOS-Base.repo
+#
+# The mirror system uses the connecting IP address of the client and the
+# update status of each mirror to pick mirrors that are updated to and
+# geographically close to the client.  You should use this for CentOS updates
+# unless you are manually picking other mirrors.
+#
+# If the mirrorlist= does not work for you, as a fall back you can try the
+# remarked out baseurl= line instead.
+#
+#
+
+[BaseOS]
+name=CentOS-$releasever - Base - repo.huaweicloud.com
+baseurl=https://repo.huaweicloud.com/centos-vault/8.5.2111/BaseOS/$basearch/os/
+#mirrorlist=https://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo=BaseOS&infra=$infra
+gpgcheck=1
+gpgkey=https://repo.huaweicloud.com/centos/RPM-GPG-KEY-CentOS-Official
+
+#released updates
+[AppStream]
+name=CentOS-8.5.2111 - AppStream - mirrors.aliyun.com
+baseurl=http://mirrors.aliyun.com/centos-vault/8.5.2111/AppStream/$basearch/os/
+        http://mirrors.aliyuncs.com/centos-vault/8.5.2111/AppStream/$basearch/os/
+        http://mirrors.cloud.aliyuncs.com/centos-vault/8.5.2111/AppStream/$basearch/os/
+mirrorlist=https://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo=BaseOS&infra=$infra
+gpgcheck=0
+enabled=1
+
+[PowerTools]
+name=CentOS-$releasever - PowerTools - repo.huaweicloud.com
+baseurl=https://repo.huaweicloud.com/centos-vault/8.5.2111/PowerTools/$basearch/os/
+#mirrorlist=https://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo=PowerTools&infra=$infra
+gpgcheck=1
+gpgkey=https://repo.huaweicloud.com/centos/RPM-GPG-KEY-CentOS-Official
+
+
+#additional packages that may be useful
+[extras]
+name=CentOS-$releasever - Extras - repo.huaweicloud.com
+baseurl=https://repo.huaweicloud.com/centos-vault/8.5.2111/extras/$basearch/os/
+#mirrorlist=https://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo=extras
+gpgcheck=1
+gpgkey=https://repo.huaweicloud.com/centos/RPM-GPG-KEY-CentOS-Official
+
+
+#additional packages that extend functionality of existing packages
+[centosplus]
+name=CentOS-$releasever - Plus - repo.huaweicloud.com
+baseurl=https://repo.huaweicloud.com/centos-vault/8.5.2111/centosplus/$basearch/os/
+#mirrorlist=https://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo=centosplus
+gpgcheck=1
+enabled=0
+gpgkey=https://repo.huaweicloud.com/centos/RPM-GPG-KEY-CentOS-Official
