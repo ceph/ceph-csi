@@ -723,23 +723,6 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 	return err
 }
 
-//nolint:deadcode,unused // required for reclaimspace e2e.
-// sparsifyBackingRBDImage runs `rbd sparsify` on the RBD image. Once done, all
-// data blocks that contain zeros are discarded/trimmed/unmapped and do not
-// take up any space anymore. This can be used to verify that an empty, but
-// allocated (with zerofill) extents have been released.
-func sparsifyBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
-	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
-	if err != nil {
-		return err
-	}
-
-	cmd := fmt.Sprintf("rbd sparsify %s %s", rbdOptions(defaultRBDPool), imageData.imageName)
-	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
-
-	return err
-}
-
 func deletePool(name string, cephFS bool, f *framework.Framework) error {
 	cmds := []string{}
 	if cephFS {
