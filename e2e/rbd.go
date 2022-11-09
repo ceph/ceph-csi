@@ -345,7 +345,7 @@ var _ = Describe("RBD", func() {
 		if !testRBD || upgradeTesting {
 			Skip("Skipping RBD E2E")
 		}
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			// log pods created by helm chart
 			logsCSIPods("app=ceph-csi-rbd", c)
 			// log provisioner

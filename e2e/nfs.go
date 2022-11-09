@@ -285,7 +285,7 @@ var _ = Describe("nfs", func() {
 		if !testNFS || upgradeTesting {
 			Skip("Skipping NFS E2E")
 		}
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			// log pods created by helm chart
 			logsCSIPods("app=ceph-csi-nfs", c)
 			// log provisioner
