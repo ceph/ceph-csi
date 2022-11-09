@@ -11,7 +11,7 @@ function check_file_present() {
     local file=$1
     for FILE in "${FILES[@]}"; do
         if [[ $file =~ $FILE ]]; then
-            if [[ $file =~ (minikube.sh|travis-functest.sh) ]]; then
+            if [[ $file =~ (minikube.sh) ]]; then
                 continue
             fi
             return 0
