@@ -21,12 +21,12 @@ For provisioning new snapshot-backed volumes, following configuration must be
 set for storage class(es) and their PVCs respectively:
 
 * StorageClass:
-  * Specify `backingSnapshot: "true"` parameter.
+   * Specify `backingSnapshot: "true"` parameter.
 * PersistentVolumeClaim:
-  * Set `storageClassName` to point to your storage class with backing
+   * Set `storageClassName` to point to your storage class with backing
     snapshots enabled.
-  * Define `spec.dataSource` for your desired source volume snapshot.
-  * Set `spec.accessModes` to `ReadOnlyMany`. This is the only access mode that
+   * Define `spec.dataSource` for your desired source volume snapshot.
+   * Set `spec.accessModes` to `ReadOnlyMany`. This is the only access mode that
     is supported by this feature.
 
 ### Mounting snapshots from pre-provisioned volumes

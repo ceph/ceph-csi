@@ -1,39 +1,39 @@
 # Ceph-csi Upgrade
 
 - [Ceph-csi Upgrade](#ceph-csi-upgrade)
-  - [Pre-upgrade considerations](#pre-upgrade-considerations)
-    - [Snapshot-controller and snapshot crd](#snapshot-controller-and-snapshot-crd)
-      - [Snapshot API version support matrix](#snapshot-api-version-support-matrix)
-  - [Upgrading from v3.2 to v3.3](#upgrading-from-v32-to-v33)
-  - [Upgrading from v3.3 to v3.4](#upgrading-from-v33-to-v34)
-  - [Upgrading from v3.4 to v3.5](#upgrading-from-v34-to-v35)
-  - [Upgrading from v3.5 to v3.6](#upgrading-from-v35-to-v36)
-  - [Upgrading from v3.6 to v3.7](#upgrading-from-v36-to-v37)
-    - [Upgrading CephFS](#upgrading-cephfs)
-      - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
-        - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
-        - [1.2 Update the CephFS Provisioner deployment](#12-update-the-cephfs-provisioner-deployment)
-      - [2. Upgrade CephFS Nodeplugin resources](#2-upgrade-cephfs-nodeplugin-resources)
-        - [2.1 Update the CephFS Nodeplugin RBAC](#21-update-the-cephfs-nodeplugin-rbac)
-        - [2.2 Update the CephFS Nodeplugin daemonset](#22-update-the-cephfs-nodeplugin-daemonset)
-        - [2.3 Manual deletion of CephFS Nodeplugin daemonset pods](#23-manual-deletion-of-cephfs-nodeplugin-daemonset-pods)
-      - [Delete removed CephFS PSP, Role and RoleBinding](#delete-removed-cephfs-psp-role-and-rolebinding)
-    - [Upgrading RBD](#upgrading-rbd)
-      - [3. Upgrade RBD Provisioner resources](#3-upgrade-rbd-provisioner-resources)
-        - [3.1 Update the RBD Provisioner RBAC](#31-update-the-rbd-provisioner-rbac)
-        - [3.2 Update the RBD Provisioner deployment](#32-update-the-rbd-provisioner-deployment)
-      - [4. Upgrade RBD Nodeplugin resources](#4-upgrade-rbd-nodeplugin-resources)
-        - [4.1 Update the RBD Nodeplugin RBAC](#41-update-the-rbd-nodeplugin-rbac)
-        - [4.2 Update the RBD Nodeplugin daemonset](#42-update-the-rbd-nodeplugin-daemonset)
-      - [Delete removed RBD PSP, Role and RoleBinding](#delete-removed-rbd-psp-role-and-rolebinding)
-    - [Upgrading NFS](#upgrading-nfs)
-      - [5. Upgrade NFS Provisioner resources](#5-upgrade-nfs-provisioner-resources)
-        - [5.1 Update the NFS Provisioner RBAC](#51-update-the-nfs-provisioner-rbac)
-        - [5.2 Update the NFS Provisioner deployment](#52-update-the-nfs-provisioner-deployment)
-      - [6. Upgrade NFS Nodeplugin resources](#6-upgrade-nfs-nodeplugin-resources)
-        - [6.1 Update the NFS Nodeplugin RBAC](#61-update-the-nfs-nodeplugin-rbac)
-        - [6.2 Update the NFS Nodeplugin daemonset](#62-update-the-nfs-nodeplugin-daemonset)
-    - [CSI Sidecar containers consideration](#csi-sidecar-containers-consideration)
+   - [Pre-upgrade considerations](#pre-upgrade-considerations)
+      - [Snapshot-controller and snapshot crd](#snapshot-controller-and-snapshot-crd)
+         - [Snapshot API version support matrix](#snapshot-api-version-support-matrix)
+   - [Upgrading from v3.2 to v3.3](#upgrading-from-v32-to-v33)
+   - [Upgrading from v3.3 to v3.4](#upgrading-from-v33-to-v34)
+   - [Upgrading from v3.4 to v3.5](#upgrading-from-v34-to-v35)
+   - [Upgrading from v3.5 to v3.6](#upgrading-from-v35-to-v36)
+   - [Upgrading from v3.6 to v3.7](#upgrading-from-v36-to-v37)
+      - [Upgrading CephFS](#upgrading-cephfs)
+         - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
+            - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
+            - [1.2 Update the CephFS Provisioner deployment](#12-update-the-cephfs-provisioner-deployment)
+         - [2. Upgrade CephFS Nodeplugin resources](#2-upgrade-cephfs-nodeplugin-resources)
+            - [2.1 Update the CephFS Nodeplugin RBAC](#21-update-the-cephfs-nodeplugin-rbac)
+            - [2.2 Update the CephFS Nodeplugin daemonset](#22-update-the-cephfs-nodeplugin-daemonset)
+            - [2.3 Manual deletion of CephFS Nodeplugin daemonset pods](#23-manual-deletion-of-cephfs-nodeplugin-daemonset-pods)
+         - [Delete removed CephFS PSP, Role and RoleBinding](#delete-removed-cephfs-psp-role-and-rolebinding)
+      - [Upgrading RBD](#upgrading-rbd)
+         - [3. Upgrade RBD Provisioner resources](#3-upgrade-rbd-provisioner-resources)
+            - [3.1 Update the RBD Provisioner RBAC](#31-update-the-rbd-provisioner-rbac)
+            - [3.2 Update the RBD Provisioner deployment](#32-update-the-rbd-provisioner-deployment)
+         - [4. Upgrade RBD Nodeplugin resources](#4-upgrade-rbd-nodeplugin-resources)
+            - [4.1 Update the RBD Nodeplugin RBAC](#41-update-the-rbd-nodeplugin-rbac)
+            - [4.2 Update the RBD Nodeplugin daemonset](#42-update-the-rbd-nodeplugin-daemonset)
+         - [Delete removed RBD PSP, Role and RoleBinding](#delete-removed-rbd-psp-role-and-rolebinding)
+      - [Upgrading NFS](#upgrading-nfs)
+         - [5. Upgrade NFS Provisioner resources](#5-upgrade-nfs-provisioner-resources)
+            - [5.1 Update the NFS Provisioner RBAC](#51-update-the-nfs-provisioner-rbac)
+            - [5.2 Update the NFS Provisioner deployment](#52-update-the-nfs-provisioner-deployment)
+         - [6. Upgrade NFS Nodeplugin resources](#6-upgrade-nfs-nodeplugin-resources)
+            - [6.1 Update the NFS Nodeplugin RBAC](#61-update-the-nfs-nodeplugin-rbac)
+            - [6.2 Update the NFS Nodeplugin daemonset](#62-update-the-nfs-nodeplugin-daemonset)
+      - [CSI Sidecar containers consideration](#csi-sidecar-containers-consideration)
 
 ## Pre-upgrade considerations
 
@@ -226,10 +226,10 @@ For each node:
 
 - Drain your application pods from the node
 - Delete the CSI driver pods on the node
-  - The pods to delete will be named with a csi-cephfsplugin prefix and have a
+   - The pods to delete will be named with a csi-cephfsplugin prefix and have a
     random suffix on each node. However, no need to delete the provisioner
     pods: csi-cephfsplugin-provisioner-* .
-  - The pod deletion causes the pods to be restarted and updated automatically
+   - The pod deletion causes the pods to be restarted and updated automatically
     on the node.
 
 #### Delete removed CephFS PSP, Role and RoleBinding

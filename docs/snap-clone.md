@@ -2,15 +2,15 @@
 
 - [Prerequisite](#prerequisite)
 - [Create CephFS Snapshot and Clone Volume](#create-cephfs-snapshot-and-clone-volume)
-  - [Create CephFS SnapshotClass](#create-cephfs-snapshotclass)
-  - [Create CephFS Snapshot](#create-cephfs-snapshot)
-  - [Restore CephFS Snapshot to a new PVC](#restore-cephfs-snapshot)
-  - [Clone CephFS PVC](#clone-cephfs-pvc)
+   - [Create CephFS SnapshotClass](#create-cephfs-snapshotclass)
+   - [Create CephFS Snapshot](#create-cephfs-snapshot)
+   - [Restore CephFS Snapshot to a new PVC](#restore-cephfs-snapshot)
+   - [Clone CephFS PVC](#clone-cephfs-pvc)
 - [Create RBD Snapshot and Clone Volume](#create-rbd-snapshot-and-clone-volume)
-  - [Create RBD SnapshotClass](#create-rbd-snapshotclass)
-  - [Create RBD Snapshot](#create-rbd-snapshot)
-  - [Restore RBD Snapshot to a new PVC](#restore-rbd-snapshot)
-  - [Clone RBD PVC](#clone-rbd-pvc)
+   - [Create RBD SnapshotClass](#create-rbd-snapshotclass)
+   - [Create RBD Snapshot](#create-rbd-snapshot)
+   - [Restore RBD Snapshot to a new PVC](#restore-rbd-snapshot)
+   - [Clone RBD PVC](#clone-rbd-pvc)
 
 ## Prerequisite
 
@@ -23,7 +23,7 @@
   be a `volumesnapshotclass` object present in the cluster
   for snapshot request to be satisfied.
 
-  - To install snapshot controller and CRD
+   - To install snapshot controller and CRD
 
     ```console
     ./scripts/install-snapshot.sh install
@@ -36,7 +36,7 @@
     SNAPSHOT_VERSION="v5.0.1" ./scripts/install-snapshot.sh install
     ```
 
-  - In the future, you can choose to cleanup by running
+   - In the future, you can choose to cleanup by running
 
     ```console
     ./scripts/install-snapshot.sh cleanup

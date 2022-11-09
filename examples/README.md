@@ -30,12 +30,12 @@ the required monitor details for the same, as in the provided [sample config
 Gather the following information from the Ceph cluster(s) of choice,
 
 * Ceph monitor list
-  * Typically in the output of `ceph mon dump`
-  * Used to prepare a list of `monitors` in the CSI configuration file
+   * Typically in the output of `ceph mon dump`
+   * Used to prepare a list of `monitors` in the CSI configuration file
 * Ceph Cluster fsid
-  * If choosing to use the Ceph cluster fsid as the unique value of clusterID,
-    * Output of `ceph fsid`
-  * Alternatively, choose a `<cluster-id>` value that is distinct per Ceph
+   * If choosing to use the Ceph cluster fsid as the unique value of clusterID,
+      * Output of `ceph fsid`
+   * Alternatively, choose a `<cluster-id>` value that is distinct per Ceph
     cluster in use by this kubernetes cluster
 
 Update the [sample configmap](./csi-config-map-sample.yaml) with values

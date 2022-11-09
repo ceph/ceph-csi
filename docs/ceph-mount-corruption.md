@@ -77,13 +77,16 @@ following errors:
 
 More details about the error codes can be found [here](https://www.gnu.org/software/libc/manual/html_node/Error-Codes.html)
 
-For such mounts, The CephCSI nodeplugin returns volume_condition as abnormal for `NodeGetVolumeStats` RPC call.
+For such mounts, The CephCSI nodeplugin returns volume_condition as
+abnormal for `NodeGetVolumeStats` RPC call.
 
 ### kernel client recovery
 
-Once a mountpoint corruption is detected, Below are the two methods to recover from it.
+Once a mountpoint corruption is detected,
+Below are the two methods to recover from it.
 
 * Reboot the node where the abnormal volume behavior is observed.
-* Scale down all the applications using the CephFS PVC on the node where abnormal mounts
-  are present. Once all the applications are deleted, scale up the application
+* Scale down all the applications using the CephFS PVC
+  on the node where abnormal mounts are present.
+  Once all the applications are deleted, scale up the application
   to remount the CephFS PVC to application pods.

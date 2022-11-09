@@ -33,10 +33,10 @@ requirement by using dm-crypt module through cryptsetup cli interface.
   [here](https://wiki.archlinux.org/index.php/Dm-crypt/Device_encryption#Encrypting_devices_with_cryptsetup)
   Functions to implement necessary interaction are implemented in a separate
   `cryptsetup.go` file.
-  * LuksFormat
-  * LuksOpen
-  * LuksClose
-  * LuksStatus
+   * LuksFormat
+   * LuksOpen
+   * LuksClose
+   * LuksStatus
 
 * `CreateVolume`: refactored to prepare for encryption (tag image that it
   requires encryption later), before returning, if encrypted volume option is

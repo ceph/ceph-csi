@@ -1,18 +1,18 @@
 # Static PVC with ceph-csi
 
 - [Static PVC with ceph-csi](#static-pvc-with-ceph-csi)
-  - [RBD static PVC](#rbd-static-pvc)
-    - [Create RBD image](#create-rbd-image)
-    - [Create RBD static PV](#create-rbd-static-pv)
-    - [RBD Volume Attributes in PV](#rbd-volume-attributes-in-pv)
-    - [Create RBD static PVC](#create-rbd-static-pvc)
-    - [Resize RBD image](#resize-rbd-image)
-  - [CephFS static PVC](#cephfs-static-pvc)
-    - [Create CephFS subvolume](#create-cephfs-subvolume)
-    - [Create CephFS static PV](#create-cephfs-static-pv)
-    - [Node stage secret ref in CephFS PV](#node-stage-secret-ref-in-cephfs-pv)
-    - [CephFS volume attributes in PV](#cephfs-volume-attributes-in-pv)
-    - [Create CephFS static PVC](#create-cephfs-static-pvc)
+   - [RBD static PVC](#rbd-static-pvc)
+      - [Create RBD image](#create-rbd-image)
+      - [Create RBD static PV](#create-rbd-static-pv)
+      - [RBD Volume Attributes in PV](#rbd-volume-attributes-in-pv)
+      - [Create RBD static PVC](#create-rbd-static-pvc)
+      - [Resize RBD image](#resize-rbd-image)
+   - [CephFS static PVC](#cephfs-static-pvc)
+      - [Create CephFS subvolume](#create-cephfs-subvolume)
+      - [Create CephFS static PV](#create-cephfs-static-pv)
+      - [Node stage secret ref in CephFS PV](#node-stage-secret-ref-in-cephfs-pv)
+      - [CephFS volume attributes in PV](#cephfs-volume-attributes-in-pv)
+      - [Create CephFS static PVC](#create-cephfs-static-pvc)
 
 This document outlines how to create static PV and static PVC from
 existing rbd image/cephFS volume.

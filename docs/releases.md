@@ -1,10 +1,10 @@
 # Ceph CSI driver Release Process
 
 - [Ceph CSI driver Release Process](#ceph-csi-driver-release-process)
-  - [Introduction](#introduction)
-  - [Versioning](#versioning)
-  - [Tagging repositories](#tagging-repositories)
-  - [Release process [TBD]](#release-process-tbd)
+   - [Introduction](#introduction)
+   - [Versioning](#versioning)
+   - [Tagging repositories](#tagging-repositories)
+   - [Release process [TBD]](#release-process-tbd)
 
 ## Introduction
 
