@@ -723,20 +723,6 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 	return err
 }
 
-//nolint:unused // required for reclaimspace e2e.
-// rbdDuImage contains the disk-usage statistics of an RBD image.
-type rbdDuImage struct {
-	Name            string `json:"name"`
-	ProvisionedSize uint64 `json:"provisioned_size"`
-	UsedSize        uint64 `json:"used_size"`
-}
-
-//nolint:unused // required for reclaimspace e2e.
-// rbdDuImageList contains the list of images returned by 'rbd du'.
-type rbdDuImageList struct {
-	Images []*rbdDuImage `json:"images"`
-}
-
 //nolint:deadcode,unused // required for reclaimspace e2e.
 // sparsifyBackingRBDImage runs `rbd sparsify` on the RBD image. Once done, all
 // data blocks that contain zeros are discarded/trimmed/unmapped and do not
