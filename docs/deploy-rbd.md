@@ -124,7 +124,7 @@ kubectl create -f csi-config-map.yaml
 The configmap deploys an empty CSI configuration that is mounted as a volume
 within the Ceph CSI plugin pods. To add a specific Ceph clusters configuration
 details, refer to [Creating CSI configuration for RBD based
-provisioning](../examples/README.md#creating-csi-configuration-for-rbd-based-provisioning)
+provisioning](../examples/README.md#creating-csi-configuration)
 for more information.
 
 **Deploy Ceph configuration ConfigMap for CSI pods:**
