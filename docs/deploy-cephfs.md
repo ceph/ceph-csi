@@ -27,20 +27,6 @@ make image-cephcsi
 
 ## Configuration
 
-**NOTE:** To make CephFS CSI driver version >= 1.1.0 work with Ceph v14.2.2
-cluster (not deployed by rook), you need to add the following settings in the
-`mgr` section of the ceph.conf used by the Ceph manager daemon, and restart the
-Ceph manager daemon.
-
-```
-[mgr]
-client mount uid = 0
-client mount gid = 0
-```
-
-This is due to an [issue](http://tracker.ceph.com/issues/40927) in Ceph v14.2.2
-that should be resolved in v14.2.3.
-
 **Available command line arguments:**
 
 | Option                    | Default value               | Description                                                                                                                                                                                                                                                                          |
