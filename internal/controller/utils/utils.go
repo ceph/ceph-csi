@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	`github.com/ceph/ceph-csi/internal/util/log`
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/ceph/ceph-csi/internal/util"
@@ -38,7 +39,7 @@ func GetCredentials(
 
 	if name == "" || namespace == "" {
 		errStr := "secret name or secret namespace is empty"
-		util.ErrorLogMsg(errStr)
+		log.ErrorLogMsg(errStr)
 
 		return nil, errors.New(errStr)
 	}
@@ -55,7 +56,7 @@ func GetCredentials(
 
 	cr, err = util.NewUserCredentials(credentials)
 	if err != nil {
-		util.ErrorLogMsg("failed to get user credentials %s", err)
+		log.ErrorLogMsg("failed to get user credentials %s", err)
 
 		return nil, err
 	}

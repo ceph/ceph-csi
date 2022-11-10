@@ -21,14 +21,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os/exec"
+	"strconv"
+	"strings"
+
 	"github.com/ceph/ceph-csi/internal/controller/utils"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"os/exec"
-	"strconv"
-	"strings"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -1103,6 +1104,8 @@ func (cs *ControllerServer) CreateSnapshot(
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	// 标记需要获取快照大小
+	labelWhenCreate(ctx, rbdVol, rbdSnap, cr)
 
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
@@ -1410,8 +1413,16 @@ func (cs *ControllerServer) DeleteSnapshot(
 
 	rbdVol.ImageID = rbdSnap.ImageID
 	// update parent name to delete the snapshot
-	rbdSnap.RbdImageName = rbdVol.RbdImageName
-	err = cleanUpSnapshot(ctx, rbdVol, rbdSnap, rbdVol)
+	// rbdSnap.RbdImageName = rbdVol.RbdImageName
+	parentVol := generateVolFromSnap(rbdSnap)
+	parentVol.RbdImageName = rbdSnap.RbdImageName
+	err = parentVol.Connect(cr)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer parentVol.Destroy()
+	nextSnapName, found := getNextSnapBeforeDelete(ctx, parentVol, rbdSnap.RbdSnapName)
+	err = cleanUpSnapshot(ctx, parentVol, rbdSnap, rbdVol)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to delete image: %v", err)
 
@@ -1424,7 +1435,11 @@ func (cs *ControllerServer) DeleteSnapshot(
 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
+	// 标记需要获取快照大小
+	if found {
+		log.UsefulLog(ctx, "%s/%s updateSizeWhenDelete", rbdSnap.RbdImageName, rbdSnap.RbdSnapName)
+		labelWhenDelete(ctx, parentVol, cr, nextSnapName)
+	}
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 
@@ -1600,6 +1615,39 @@ func purgeSnapshot(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials)
 	return
 }
 
+//  打上标记，等待controller计算大小
+func labelWhenCreate(ctx context.Context, rbdVol *rbdVolume, rbdSnap *rbdSnapshot, cr *util.Credentials) (err error) {
+	log.UsefulLog(ctx, "label snapshotName %s", rbdVol.RequestName)
+	contentName := strings.Replace(rbdSnap.RequestName, "snapshot-", "snapcontent-", 1)
+	err = labelVolumeSnapshotContent(ctx, contentName)
+	return
+}
+
+// 删除快照前，查询被删除快照下一个快照名，用于更新快照大小
+func getNextSnapBeforeDelete(ctx context.Context, rbdVol *rbdVolume, snapName string) (nextSnapshotName string, ok bool) {
+	if rbdVol == nil {
+		return
+	}
+	snapshots, err := rbdVol.listSnapshots()
+	if err != nil {
+		log.ErrorLog(ctx, "listSnapshots failed:%s", err.Error())
+		return
+	}
+	curIdx := -1
+	for idx, snapshot := range snapshots {
+		if snapshot.Name == snapName {
+			curIdx = idx
+		}
+	}
+	if curIdx == -1 {
+		return
+	}
+	if curIdx+1 < len(snapshots) {
+		return snapshots[curIdx+1].Name, true
+	}
+	return
+}
+
 //  刷新快照大小
 func UpdateSize(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials, snapName string) (err error) {
 	rbdDU, err := getImageList(rbdVol, cr)
@@ -1643,6 +1691,34 @@ func UpdateSize(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials, sn
 	return
 }
 
+func labelVolumeSnapshotContent(ctx context.Context, contentName string) (err error) {
+	snapClient, err := k8s.NewSnapClient()
+	if err != nil {
+		return
+	}
+	content, err := snapClient.VolumeSnapshotContents().Get(ctx, contentName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if val, ok := content.Labels[needToUpdateLabel]; ok {
+		if val == "true" {
+			return
+		}
+	}
+	contentNew := content.DeepCopy()
+	label := map[string]string{
+		needToUpdateLabel: "true",
+	}
+	contentNew.Labels = label
+	contentBytes, err := json.Marshal(contentNew)
+	if err != nil {
+		return err
+	}
+	_, err = snapClient.VolumeSnapshotContents().Patch(ctx, contentName, types.MergePatchType,
+		contentBytes, metav1.PatchOptions{})
+	return
+}
+
 func getImageList(rbdVol *rbdVolume, cr *util.Credentials) (rbdDU rbdDuImageList, err error) {
 	cmdArg := fmt.Sprintf("%s %s --format=json %s/%s --id %s --keyfile=%s -m %s", utils.RBDVolCmd, utils.RBDDUArg,
 		rbdVol.Pool, rbdVol.RbdImageName, cr.ID, cr.KeyFile, rbdVol.Monitors)
@@ -1678,6 +1754,27 @@ type rbdDuImage struct {
 // rbdDuImageList contains the list of images returned by 'rbd du'.
 type rbdDuImageList struct {
 	Images []*rbdDuImage `json:"images"`
+}
+
+//  删除快照后, 打上标记，等待controller计算大小
+func labelWhenDelete(ctx context.Context, rbdVol *rbdVolume, cr *util.Credentials, nextSnapName string) (err error) {
+	volJournal = journal.NewCSISnapshotJournal(CSIInstanceID)
+	j, err := volJournal.Connect(rbdVol.Monitors, rbdVol.RadosNamespace, cr)
+	if err != nil {
+		return
+	}
+	defer j.Destroy()
+	log.UsefulLog(ctx, "imageName %s label snapshotName %s", rbdVol.RbdImageName, nextSnapName)
+	keyName := strings.Replace(nextSnapName, "csi-snap-", "", 1)
+	attributes, err := j.GetImageAttributes(ctx, rbdVol.Pool, keyName, true)
+	if err != nil {
+		log.ErrorLog(ctx, "GetImageAttributes  err%s", err)
+		return err
+	}
+	log.UsefulLog(ctx, "attributes: %v", attributes)
+	contentName := strings.Replace(attributes.RequestName, "snapshot-", "snapcontent-", 1)
+	err = labelVolumeSnapshotContent(ctx, contentName)
+	return
 }
 
 func updateVolumeSnapshotContent(ctx context.Context, contentName string, usedSize uint64) (err error) {
