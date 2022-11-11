@@ -12,6 +12,6 @@ metadata:
   name: "nfs.csi.ceph.com"
 spec:
   attachRequired: false
+  fsGroupPolicy: File
   volumeLifecycleModes:
     - Persistent
-  fsGroupPolicy: File
