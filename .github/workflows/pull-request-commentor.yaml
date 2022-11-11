@@ -10,7 +10,8 @@ on:
       - labeled
 jobs:
   add-comment:
-    if: github.event.label.name == 'ok-to-test'
+    # yamllint disable-line rule:line-length
+    if: github.event.label.name == 'ok-to-test' && github.event.pull_request.merged != 'true'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
