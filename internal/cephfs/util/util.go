@@ -16,16 +16,6 @@ limitations under the License.
 
 package util
 
-import (
-	"context"
-	"time"
-
-	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
-)
-
 // VolumeID string representation.
 type VolumeID string
 
@@ -36,14 +26,3 @@ const (
 	// RadosNamespace to store CSI specific objects and keys.
 	RadosNamespace = "csi"
 )
-
-func ParseTime(ctx context.Context, createTime time.Time) (*timestamp.Timestamp, error) {
-	tm, err := ptypes.TimestampProto(createTime)
-	if err != nil {
-		log.ErrorLog(ctx, "failed to convert time %s %v", createTime, err)
-
-		return tm, err
-	}
-
-	return tm, nil
-}

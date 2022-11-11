@@ -32,7 +32,8 @@ import (
 	rterrors "github.com/ceph/ceph-csi/internal/util/reftracker/errors"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -914,12 +915,7 @@ func (cs *ControllerServer) doSnapshot(
 
 		return snap, fmt.Errorf("failed to get snapshot info for snapshot:%s", snapID)
 	}
-	var t *timestamp.Timestamp
-	t, err = fsutil.ParseTime(ctx, snap.CreatedAt)
-	if err != nil {
-		return snap, err
-	}
-	snap.CreationTime = t
+	snap.CreationTime = timestamppb.New(snap.CreatedAt)
 	err = snapClient.ProtectSnapshot(ctx)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to protect snapshot %s %v", snapID, err)
