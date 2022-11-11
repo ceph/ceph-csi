@@ -50,10 +50,10 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: weekly
-    rebase-strategy: disabled
+      interval: "weekly"
+    rebase-strategy: "disabled"
     labels:
       - rebase
       - ci/skip/e2e
     commit-message:
-      prefix: rebase
+      prefix: "rebase"
