@@ -46,7 +46,7 @@ it is **highly** encouraged to:
 * Set up a pre-commit hook to catch issues locally.
 
    ```console
-   pip install pre-commit==2.5.1
+   pip install pre-commit
    pre-commit install
    ```
 
@@ -338,7 +338,7 @@ fresh PRs, rebase of PRs and force pushing changes to existing PRs.
 In case of failed we already documented steps  to manually
 [retrigger](#retriggering-the-ci-jobs) the CI jobs. Sometime the tests might be
 flaky which required manually retriggering always. We have newly added a github
-action which runs periodically to retest the failed PR's. Below are the cretia
+action which runs periodically to retest the failed PR's. Below are the criteria
 for auto retesting the failed PR.
 
 * Analyze the logs and make sure its a flaky test.
