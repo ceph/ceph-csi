@@ -4361,6 +4361,202 @@ var _ = Describe("RBD", func() {
 				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 			})
 
+			By("create a PVC and check PVC/PV metadata on RBD image after setmetadata is set to false", func() {
+				err := createRBDSnapshotClass(f)
+				if err != nil {
+					e2elog.Failf("failed to create storageclass: %v", err)
+				}
+				defer func() {
+					err = deleteRBDSnapshotClass()
+					if err != nil {
+						e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
+					}
+				}()
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC: %v", err)
+				}
+				imageList, err := listRBDImages(f, defaultRBDPool)
+				if err != nil {
+					e2elog.Failf("failed to list rbd images: %v", err)
+				}
+
+				pvcName, stdErr, err := execCommandInToolBoxPod(f,
+					formatImageMetaGetCmd(defaultRBDPool, imageList[0], pvcNameKey),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					e2elog.Failf("failed to get PVC name %s/%s %s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNameKey, err, stdErr)
+				}
+				pvcName = strings.TrimSuffix(pvcName, "\n")
+				if pvcName != pvc.Name {
+					e2elog.Failf("expected pvcName %q got %q", pvc.Name, pvcName)
+				}
+
+				pvcNamespace, stdErr, err := execCommandInToolBoxPod(f,
+					formatImageMetaGetCmd(defaultRBDPool, imageList[0], pvcNamespaceKey),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					e2elog.Failf("failed to get PVC namespace %s/%s %s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvcNamespaceKey, err, stdErr)
+				}
+				pvcNamespace = strings.TrimSuffix(pvcNamespace, "\n")
+				if pvcNamespace != pvc.Namespace {
+					e2elog.Failf("expected pvcNamespace %q got %q", pvc.Namespace, pvcNamespace)
+				}
+				pvcObj, err := getPersistentVolumeClaim(c, pvc.Namespace, pvc.Name)
+				if err != nil {
+					e2elog.Logf("error getting pvc %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
+				}
+				if pvcObj.Spec.VolumeName == "" {
+					e2elog.Logf("pv name is empty %q in namespace %q: %v", pvc.Name, pvc.Namespace, err)
+				}
+				pvName, stdErr, err := execCommandInToolBoxPod(f,
+					formatImageMetaGetCmd(defaultRBDPool, imageList[0], pvNameKey),
+					rookNamespace)
+				if err != nil || stdErr != "" {
+					e2elog.Failf("failed to get PV name %s/%s %s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageList[0], pvNameKey, err, stdErr)
+				}
+				pvName = strings.TrimSuffix(pvName, "\n")
+				if pvName != pvcObj.Spec.VolumeName {
+					e2elog.Failf("expected pvName %q got %q", pvcObj.Spec.VolumeName, pvName)
+				}
+
+				checkClusternameInMetadata(f, rookNamespace, defaultRBDPool, imageList[0])
+
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create snapshot: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 2, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, snapsType)
+
+				// wait for cluster name update in deployment
+				containers := []string{"csi-rbdplugin", "csi-rbdplugin-controller"}
+				err = waitForContainersArgsUpdate(c, cephCSINamespace, rbdDeploymentName,
+					"setmetadata", "false", containers, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for deployment update %s/%s: %v", cephCSINamespace, rbdDeploymentName, err)
+				}
+				pvcSmartClone, err := loadPVC(pvcSmartClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvcSmartClone.Spec.DataSource.Name = pvc.Name
+				pvcSmartClone.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC: %v", err)
+				}
+				_, smartPV, err := getPVCAndPV(f.ClientSet, pvcSmartClone.Name, pvcSmartClone.Namespace)
+				imageName := smartPV.Spec.CSI.VolumeAttributes["imageName"]
+				// make sure we had unset the PVC metadata on the rbd image created
+				// for the snapshot
+				pvcName, stdErr, err = execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
+						rbdOptions(defaultRBDPool), imageName, pvcNameKey),
+					rookNamespace)
+				if checkGetKeyError(err, stdErr) {
+					e2elog.Failf("PVC name found on %s/%s %s=%s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageName, pvcNameKey, pvcName, err, stdErr)
+				}
+				pvcNamespace, stdErr, err = execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
+						rbdOptions(defaultRBDPool), imageName, pvcNamespaceKey),
+					rookNamespace)
+				if checkGetKeyError(err, stdErr) {
+					e2elog.Failf("PVC namespace found on %s/%s %s=%s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageName, pvcNamespaceKey, pvcNamespace, err, stdErr)
+				}
+				pvName, stdErr, err = execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
+						rbdOptions(defaultRBDPool), imageName, pvNameKey),
+					rookNamespace)
+				if checkGetKeyError(err, stdErr) {
+					e2elog.Failf("PV name found on %s/%s %s=%s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageName, pvNameKey, pvName, err, stdErr)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvcSmartClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc: %v", err)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc: %v", err)
+				}
+
+				// Test Restore snapshot
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					e2elog.Failf("failed to load PVC: %v", err)
+				}
+				pvcClone.Namespace = f.UniqueName
+				pvcClone.Spec.DataSource.Name = snap.Name
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to create PVC: %v", err)
+				}
+				_, restorePV, err := getPVCAndPV(f.ClientSet, pvcClone.Name, pvcClone.Namespace)
+				imageName = restorePV.Spec.CSI.VolumeAttributes["imageName"]
+				// make sure we had unset the PVC metadata on the rbd image created
+				// for the snapshot
+				pvcName, stdErr, err = execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
+						rbdOptions(defaultRBDPool), imageName, pvcNameKey),
+					rookNamespace)
+				if checkGetKeyError(err, stdErr) {
+					e2elog.Failf("PVC name found on %s/%s %s=%s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageName, pvcNameKey, pvcName, err, stdErr)
+				}
+				pvcNamespace, stdErr, err = execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
+						rbdOptions(defaultRBDPool), imageName, pvcNamespaceKey),
+					rookNamespace)
+				if checkGetKeyError(err, stdErr) {
+					e2elog.Failf("PVC namespace found on %s/%s %s=%s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageName, pvcNamespaceKey, pvcNamespace, err, stdErr)
+				}
+				pvName, stdErr, err = execCommandInToolBoxPod(f,
+					fmt.Sprintf("rbd image-meta get %s --image=%s %s",
+						rbdOptions(defaultRBDPool), imageName, pvNameKey),
+					rookNamespace)
+				if checkGetKeyError(err, stdErr) {
+					e2elog.Failf("PV name found on %s/%s %s=%s: err=%v stdErr=%q",
+						rbdOptions(defaultRBDPool), imageName, pvNameKey, pvName, err, stdErr)
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete pvc: %v", err)
+				}
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					e2elog.Failf("failed to delete snapshot: %v", err)
+				}
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, snapsType)
+				// wait for cluster name update in deployment
+				err = waitForContainersArgsUpdate(c, cephCSINamespace, rbdDeploymentName,
+					"setmetadata", "true", containers, deployTimeout)
+				if err != nil {
+					e2elog.Failf("timeout waiting for deployment update %s/%s: %v", cephCSINamespace, rbdDeploymentName, err)
+				}
+			})
+
 			By("create a PVC and bind it to an app with encrypted RBD volume (default type setting)", func() {
 				err := deleteResource(rbdExamplePath + "storageclass.yaml")
 				if err != nil {
