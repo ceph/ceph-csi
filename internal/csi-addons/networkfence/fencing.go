@@ -91,9 +91,6 @@ func (nf *NetworkFence) addCephBlocklist(ctx context.Context, ip string, useRang
 	if err != nil {
 		return fmt.Errorf("failed to blocklist IP %q: %w stderr: %q", ip, err, stdErr)
 	}
-	if stdErr != "" {
-		return fmt.Errorf("failed to blocklist IP %q: %q", ip, stdErr)
-	}
 	log.DebugLog(ctx, "blocklisted IP %q successfully", ip)
 
 	return nil
@@ -194,9 +191,6 @@ func (nf *NetworkFence) removeCephBlocklist(ctx context.Context, ip string, useR
 	_, stdErr, err := util.ExecCommand(ctx, "ceph", cmd...)
 	if err != nil {
 		return fmt.Errorf("failed to unblock IP %q: %v %w", ip, stdErr, err)
-	}
-	if stdErr != "" {
-		return fmt.Errorf("failed to unblock IP %q: %q", ip, stdErr)
 	}
 	log.DebugLog(ctx, "unblocked IP %q successfully", ip)
 
