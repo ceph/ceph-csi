@@ -1,6 +1,3 @@
-//go:build ceph_preview
-// +build ceph_preview
-
 package admin
 
 // GetFailure returns details about the CloneStatus when in CloneFailed state.
