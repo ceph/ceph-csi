@@ -1,5 +1,5 @@
-//go:build !(nautilus || octopus) && ceph_preview
-// +build !nautilus,!octopus,ceph_preview
+//go:build !(nautilus || octopus)
+// +build !nautilus,!octopus
 
 package nfs
 

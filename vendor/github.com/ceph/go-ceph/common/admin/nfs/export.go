@@ -1,5 +1,5 @@
-//go:build !(nautilus || octopus) && ceph_preview
-// +build !nautilus,!octopus,ceph_preview
+//go:build !(nautilus || octopus)
+// +build !nautilus,!octopus
 
 package nfs
 
@@ -26,6 +26,18 @@ const (
 	Unspecifiedquash SquashMode = ""
 )
 
+// SecType indicates the kind of security/authentication to be used by an export.
+type SecType string
+
+// src: https://github.com/nfs-ganesha/nfs-ganesha/blob/next/src/config_samples/export.txt
+const (
+	SysSec   SecType = "sys"
+	NoneSec  SecType = "none"
+	Krb5Sec  SecType = "krb5"
+	Krb5iSec SecType = "krb5i"
+	Krb5pSec SecType = "krb5p"
+)
+
 // CephFSExportSpec is used to specify the parameters used to create a new
 // CephFS based export.
 type CephFSExportSpec struct {
@@ -36,6 +48,7 @@ type CephFSExportSpec struct {
 	ReadOnly       bool       `json:"readonly"`
 	ClientAddr     []string   `json:"client_addr,omitempty"`
 	Squash         SquashMode `json:"squash,omitempty"`
+	SecType        []SecType  `json:"sectype,omitempty"`
 }
 
 // ExportResult is returned along with newly created exports.
@@ -81,6 +94,7 @@ type ExportInfo struct {
 	Transports    []string     `json:"transports"`
 	FSAL          FSALInfo     `json:"fsal"`
 	Clients       []ClientInfo `json:"clients"`
+	SecType       []SecType    `json:"sectype"`
 }
 
 func parseExportResult(res commands.Response) (*ExportResult, error) {
