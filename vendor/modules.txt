@@ -211,7 +211,7 @@ github.com/gogo/protobuf/sortkeys
 # github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 ## explicit
 github.com/golang/groupcache/lru
-# github.com/golang/protobuf v1.5.2 => github.com/golang/protobuf v1.4.3
+# github.com/golang/protobuf v1.5.2
 ## explicit; go 1.9
 github.com/golang/protobuf/descriptor
 github.com/golang/protobuf/jsonpb
@@ -1392,7 +1392,6 @@ sigs.k8s.io/structured-merge-diff/v4/value
 sigs.k8s.io/yaml
 # code.cloudfoundry.org/gofileutils => github.com/cloudfoundry/gofileutils v0.0.0-20170111115228-4d0c80011a0f
 # github.com/ceph/ceph-csi/api => ./api
-# github.com/golang/protobuf => github.com/golang/protobuf v1.4.3
 # github.com/portworx/sched-ops => github.com/portworx/sched-ops v0.20.4-openstorage-rc3
 # gomodules.xyz/jsonpatch/v2 => github.com/gomodules/jsonpatch/v2 v2.2.0
 # k8s.io/api => k8s.io/api v0.25.3

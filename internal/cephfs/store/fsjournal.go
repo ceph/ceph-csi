@@ -29,6 +29,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -430,12 +431,8 @@ func CheckSnapExists(
 			}
 		}
 	}()
-	tm, err := fsutil.ParseTime(ctx, snapInfo.CreatedAt)
-	if err != nil {
-		return nil, nil, err
-	}
+	sid.CreationTime = timestamppb.New(snapInfo.CreatedAt)
 
-	sid.CreationTime = tm
 	// found a snapshot already available, process and return it!
 	sid.SnapshotID, err = util.GenerateVolID(ctx, volOptions.Monitors, cr, volOptions.FscID,
 		"", volOptions.ClusterID, snapUUID, fsutil.VolIDVersion)
