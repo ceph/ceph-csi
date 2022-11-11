@@ -2091,10 +2091,6 @@ func (rv *rbdVolume) setAllMetadata(parameters map[string]string) error {
 
 // unsetAllMetadata unset all the metadata from arg keys on RBD image.
 func (rv *rbdVolume) unsetAllMetadata(keys []string) error {
-	if !rv.EnableMetadata {
-		return nil
-	}
-
 	for _, key := range keys {
 		err := rv.RemoveMetadata(key)
 		// TODO: replace string comparison with errno.
