@@ -28,7 +28,8 @@ RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
 RUN dnf config-manager --disable \
     tcmu-runner,tcmu-runner-source,tcmu-runner-noarch || true
 
-RUN dnf -y install \
+RUN dnf -y update \
+        && dnf -y install --nodocs \
 	librados-devel librbd-devel \
 	/usr/bin/cc \
 	make \
