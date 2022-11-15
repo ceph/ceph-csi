@@ -1,0 +1,33 @@
+---
+name: Trivy vulnerability scanner
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - devel
+  pull_request:
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install go
+        uses: actions/setup-go@v3.3.1
+        with:
+          go-version: ^1.18
+
+      - name: Build an image from Dockerfile
+        run: |
+          CONTAINER_CMD=docker make containerized-build
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'quay.io/cephcsi/cephcsi:devel'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN'
