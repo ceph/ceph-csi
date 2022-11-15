@@ -33,6 +33,7 @@ RUN source /build.env \
 	findutils \
 	librados-devel \
 	librbd-devel \
+	openssl \
 	rubygems \
 	ShellCheck \
 	codespell \
