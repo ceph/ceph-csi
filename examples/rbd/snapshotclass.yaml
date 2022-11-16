@@ -1,19 +1,11 @@
 ---
-# Snapshot API version compatibility matrix:
-# v1beta1:
-#   v1.17 =< k8s < v1.20
-#   2.x =< snapshot-controller < v4.x
-# v1:
-#   k8s >= v1.20
-#   snapshot-controller >= v4.x
-# We recommend to use {sidecar, controller, crds} of same version
 apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
   name: csi-rbdplugin-snapclass
 driver: rbd.csi.ceph.com
 parameters:
-  # String representing a Ceph cluster to provision storage from.
+  # String representing a Ceph cluster to provision storage snapshot from.
   # Should be unique across all Ceph clusters in use for provisioning,
   # cannot be greater than 36 bytes in length, and should remain immutable for
   # the lifetime of the StorageClass in use.
