@@ -1,16 +1,11 @@
 package util
 
 import (
-	"net"
+	"github.com/ceph/ceph-csi/internal/util/log"
 	"net/http"
 	"net/http/pprof"
 	"net/url"
 	runtime_pprof "runtime/pprof"
-	"strconv"
-
-	"github.com/ceph/ceph-csi/internal/util/log"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // ValidateURL validates the url.
@@ -18,16 +13,6 @@ func ValidateURL(c *Config) error {
 	_, err := url.Parse(c.MetricsPath)
 
 	return err
-}
-
-// StartMetricsServer starts http server.
-func StartMetricsServer(c *Config) {
-	addr := net.JoinHostPort(c.MetricsIP, strconv.Itoa(c.MetricsPort))
-	http.Handle(c.MetricsPath, promhttp.Handler())
-	err := http.ListenAndServe(addr, nil)
-	if err != nil {
-		log.FatalLogMsg("failed to listen on address %v: %s", addr, err)
-	}
 }
 
 func addPath(name string, handler http.Handler) {

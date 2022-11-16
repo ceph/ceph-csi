@@ -99,24 +99,8 @@ func init() {
 		"",
 		"Comma separated string of mount options accepted by ceph-fuse mounter")
 
-	// liveness/grpc metrics related flags
-	flag.IntVar(&conf.MetricsPort, "metricsport", 8080, "TCP port for liveness/grpc metrics requests")
-	flag.StringVar(
-		&conf.MetricsPath,
-		"metricspath",
-		"/metrics",
-		"path of prometheus endpoint where metrics will be available")
 	flag.DurationVar(&conf.PollTime, "polltime", time.Second*pollTime, "time interval in seconds between each poll")
 	flag.DurationVar(&conf.PoolTimeout, "timeout", time.Second*probeTimeout, "probe timeout in seconds")
-
-	flag.BoolVar(&conf.EnableGRPCMetrics, "enablegrpcmetrics", false, "[DEPRECATED] enable grpc metrics")
-	flag.StringVar(
-		&conf.HistogramOption,
-		"histogramoption",
-		"0.5,2,6",
-		"[DEPRECATED] Histogram option for grpc metrics, should be comma separated value, "+
-			"ex:= 0.5,2,6 where start=0.5 factor=2, count=6")
-
 	flag.UintVar(
 		&conf.RbdHardMaxCloneDepth,
 		"rbdhardmaxclonedepth",
@@ -219,21 +203,6 @@ func main() {
 			}
 		}
 	}
-
-	if conf.EnableGRPCMetrics || conf.Vtype == livenessType {
-		// validate metrics endpoint
-		conf.MetricsIP = os.Getenv("POD_IP")
-
-		if conf.MetricsIP == "" {
-			klog.Warning("missing POD_IP env var defaulting to 0.0.0.0")
-			conf.MetricsIP = "0.0.0.0"
-		}
-		err = util.ValidateURL(&conf)
-		if err != nil {
-			logAndExit(err.Error())
-		}
-	}
-
 	if err = util.WriteCephConfig(); err != nil {
 		log.FatalLogMsg("failed to write ceph configuration file (%v)", err)
 	}

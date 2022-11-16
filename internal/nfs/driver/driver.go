@@ -77,17 +77,5 @@ func (fs *Driver) Run(conf *util.Config) {
 		srv.CS = controller.NewControllerServer(cd)
 	}
 
-	server.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
-	if conf.EnableGRPCMetrics {
-		log.WarningLogMsg("EnableGRPCMetrics is deprecated")
-		go util.StartMetricsServer(conf)
-	}
-	if conf.EnableProfiling {
-		if !conf.EnableGRPCMetrics {
-			go util.StartMetricsServer(conf)
-		}
-		log.DebugLogMsg("Registering profiling handler")
-		go util.EnableProfiling()
-	}
 	server.Wait()
 }
