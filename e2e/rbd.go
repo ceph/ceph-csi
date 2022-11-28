@@ -923,8 +923,6 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					if rwopMayFail(err) {
 						e2elog.Logf("RWOP is not supported: %v", err)
-
-						return
 					}
 					e2elog.Failf("failed to create PVC: %v", err)
 				}
@@ -962,8 +960,6 @@ var _ = Describe("RBD", func() {
 				if err != nil {
 					if rwopMayFail(err) {
 						e2elog.Logf("RWOP is not supported: %v", err)
-
-						return
 					}
 					e2elog.Failf("failed to create PVC: %v", err)
 				}
@@ -1089,60 +1085,13 @@ var _ = Describe("RBD", func() {
 			})
 
 			By("create a PVC and bind it to an app using rbd-nbd mounter", func() {
-				if !testNBD {
-					e2elog.Logf("skipping NBD test")
+				if testNBD {
+					e2elog.Logf("running NBD test")
 
-					return
-				}
-
-				err := deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				err = createRBDStorageClass(
-					f.ClientSet,
-					f,
-					defaultSCName,
-					nil,
-					map[string]string{
-						"mounter":         "rbd-nbd",
-						"mapOptions":      nbdMapOptions,
-						"cephLogStrategy": e2eDefaultCephLogStrategy,
-					},
-					deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
-				}
-				err = validatePVCAndAppBinding(pvcPath, appPath, f)
-				if err != nil {
-					e2elog.Failf("failed to validate pvc and application binding: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
-				}
-			})
-
-			By("Resize rbd-nbd PVC and check application directory size", func() {
-				if !testNBD {
-					e2elog.Logf("skipping NBD test")
-
-					return
-				}
-
-				if util.CheckKernelSupport(kernelRelease, nbdResizeSupport) {
 					err := deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
 						e2elog.Failf("failed to delete storageclass: %v", err)
 					}
-					// Storage class with rbd-nbd mounter
 					err = createRBDStorageClass(
 						f.ClientSet,
 						f,
@@ -1157,19 +1106,9 @@ var _ = Describe("RBD", func() {
 					if err != nil {
 						e2elog.Failf("failed to create storageclass: %v", err)
 					}
-					// Block PVC resize
-					err = resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
+					err = validatePVCAndAppBinding(pvcPath, appPath, f)
 					if err != nil {
-						e2elog.Failf("failed to resize block PVC: %v", err)
-					}
-					// validate created backend rbd images
-					validateRBDImageCount(f, 0, defaultRBDPool)
-					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-
-					// FileSystem PVC resize
-					err = resizePVCAndValidateSize(pvcPath, appPath, f)
-					if err != nil {
-						e2elog.Failf("failed to resize filesystem PVC: %v", err)
+						e2elog.Failf("failed to validate pvc and application binding: %v", err)
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
@@ -1181,6 +1120,59 @@ var _ = Describe("RBD", func() {
 					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 					if err != nil {
 						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+				}
+			})
+
+			By("Resize rbd-nbd PVC and check application directory size", func() {
+				if testNBD {
+					e2elog.Logf("running NBD test")
+
+					if util.CheckKernelSupport(kernelRelease, nbdResizeSupport) {
+						err := deleteResource(rbdExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete storageclass: %v", err)
+						}
+						// Storage class with rbd-nbd mounter
+						err = createRBDStorageClass(
+							f.ClientSet,
+							f,
+							defaultSCName,
+							nil,
+							map[string]string{
+								"mounter":         "rbd-nbd",
+								"mapOptions":      nbdMapOptions,
+								"cephLogStrategy": e2eDefaultCephLogStrategy,
+							},
+							deletePolicy)
+						if err != nil {
+							e2elog.Failf("failed to create storageclass: %v", err)
+						}
+						// Block PVC resize
+						err = resizePVCAndValidateSize(rawPvcPath, rawAppPath, f)
+						if err != nil {
+							e2elog.Failf("failed to resize block PVC: %v", err)
+						}
+						// validate created backend rbd images
+						validateRBDImageCount(f, 0, defaultRBDPool)
+						validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+						// FileSystem PVC resize
+						err = resizePVCAndValidateSize(pvcPath, appPath, f)
+						if err != nil {
+							e2elog.Failf("failed to resize filesystem PVC: %v", err)
+						}
+						// validate created backend rbd images
+						validateRBDImageCount(f, 0, defaultRBDPool)
+						validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+						err = deleteResource(rbdExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete storageclass: %v", err)
+						}
+						err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+						if err != nil {
+							e2elog.Failf("failed to create storageclass: %v", err)
+						}
 					}
 				}
 			})
@@ -1344,45 +1336,43 @@ var _ = Describe("RBD", func() {
 
 			By("create PVC with journaling,fast-diff image-features and bind it to an app using rbd-nbd mounter",
 				func() {
-					if !testNBD {
-						e2elog.Logf("skipping NBD test")
+					if testNBD {
+						e2elog.Logf("running NBD test")
 
-						return
-					}
-
-					if util.CheckKernelSupport(kernelRelease, fastDiffSupport) {
-						err := deleteResource(rbdExamplePath + "storageclass.yaml")
-						if err != nil {
-							e2elog.Failf("failed to delete storageclass: %v", err)
-						}
-						// Storage class with rbd-nbd mounter
-						err = createRBDStorageClass(
-							f.ClientSet,
-							f,
-							defaultSCName,
-							nil,
-							map[string]string{
-								"mounter":       "rbd-nbd",
-								"imageFeatures": "layering,journaling,exclusive-lock,object-map,fast-diff",
-							},
-							deletePolicy)
-						if err != nil {
-							e2elog.Failf("failed to create storageclass: %v", err)
-						}
-						err = validatePVCAndAppBinding(pvcPath, appPath, f)
-						if err != nil {
-							e2elog.Failf("failed to validate CephFS pvc and application binding: %v", err)
-						}
-						// validate created backend rbd images
-						validateRBDImageCount(f, 0, defaultRBDPool)
-						validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-						err = deleteResource(rbdExamplePath + "storageclass.yaml")
-						if err != nil {
-							e2elog.Failf("failed to delete storageclass: %v", err)
-						}
-						err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-						if err != nil {
-							e2elog.Failf("failed to create storageclass: %v", err)
+						if util.CheckKernelSupport(kernelRelease, fastDiffSupport) {
+							err := deleteResource(rbdExamplePath + "storageclass.yaml")
+							if err != nil {
+								e2elog.Failf("failed to delete storageclass: %v", err)
+							}
+							// Storage class with rbd-nbd mounter
+							err = createRBDStorageClass(
+								f.ClientSet,
+								f,
+								defaultSCName,
+								nil,
+								map[string]string{
+									"mounter":       "rbd-nbd",
+									"imageFeatures": "layering,journaling,exclusive-lock,object-map,fast-diff",
+								},
+								deletePolicy)
+							if err != nil {
+								e2elog.Failf("failed to create storageclass: %v", err)
+							}
+							err = validatePVCAndAppBinding(pvcPath, appPath, f)
+							if err != nil {
+								e2elog.Failf("failed to validate CephFS pvc and application binding: %v", err)
+							}
+							// validate created backend rbd images
+							validateRBDImageCount(f, 0, defaultRBDPool)
+							validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+							err = deleteResource(rbdExamplePath + "storageclass.yaml")
+							if err != nil {
+								e2elog.Failf("failed to delete storageclass: %v", err)
+							}
+							err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+							if err != nil {
+								e2elog.Failf("failed to create storageclass: %v", err)
+							}
 						}
 					}
 				})
@@ -1390,572 +1380,563 @@ var _ = Describe("RBD", func() {
 			// NOTE: RWX is restricted for FileSystem VolumeMode at ceph-csi,
 			// see pull#261 for more details.
 			By("Create RWX+Block Mode PVC and bind to multiple pods via deployment using rbd-nbd mounter", func() {
-				if !testNBD {
-					e2elog.Logf("skipping NBD test")
+				if testNBD {
+					e2elog.Logf("running NBD test")
 
-					return
-				}
-
-				err := deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				// Storage class with rbd-nbd mounter
-				err = createRBDStorageClass(
-					f.ClientSet,
-					f,
-					defaultSCName,
-					nil,
-					map[string]string{
-						"mounter":         "rbd-nbd",
-						"mapOptions":      nbdMapOptions,
-						"cephLogStrategy": e2eDefaultCephLogStrategy,
-					},
-					deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
-				}
-				pvc, err := loadPVC(rawPvcPath)
-				if err != nil {
-					e2elog.Failf("failed to load PVC: %v", err)
-				}
-				pvc.Namespace = f.UniqueName
-				pvc.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteMany}
-
-				app, err := loadAppDeployment(deployBlockAppPath)
-				if err != nil {
-					e2elog.Failf("failed to load application deployment: %v", err)
-				}
-				app.Namespace = f.UniqueName
-
-				err = createPVCAndDeploymentApp(f, pvc, app, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create PVC and application: %v", err)
-				}
-
-				err = waitForDeploymentComplete(f.ClientSet, app.Name, app.Namespace, deployTimeout)
-				if err != nil {
-					e2elog.Failf("timeout waiting for deployment to be in running state: %v", err)
-				}
-
-				devPath := app.Spec.Template.Spec.Containers[0].VolumeDevices[0].DevicePath
-				cmd := fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10", devPath)
-
-				opt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", app.Name),
-				}
-				podList, err := f.PodClientNS(app.Namespace).List(context.TODO(), opt)
-				if err != nil {
-					e2elog.Failf("get pod list failed: %v", err)
-				}
-				if len(podList.Items) != int(*app.Spec.Replicas) {
-					e2elog.Failf("podlist contains %d items, expected %d items", len(podList.Items), *app.Spec.Replicas)
-				}
-				for _, pod := range podList.Items {
-					_, _, err = execCommandInPodWithName(f, cmd, pod.Name, pod.Spec.Containers[0].Name, app.Namespace)
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
-						e2elog.Failf("command %q failed: %v", cmd, err)
+						e2elog.Failf("failed to delete storageclass: %v", err)
 					}
-				}
+					// Storage class with rbd-nbd mounter
+					err = createRBDStorageClass(
+						f.ClientSet,
+						f,
+						defaultSCName,
+						nil,
+						map[string]string{
+							"mounter":         "rbd-nbd",
+							"mapOptions":      nbdMapOptions,
+							"cephLogStrategy": e2eDefaultCephLogStrategy,
+						},
+						deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+					pvc, err := loadPVC(rawPvcPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC: %v", err)
+					}
+					pvc.Namespace = f.UniqueName
+					pvc.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteMany}
 
-				err = deletePVCAndDeploymentApp(f, pvc, app)
-				if err != nil {
-					e2elog.Failf("failed to delete PVC and application: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-				// validate images in trash
-				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to validate rbd images in pool %s trash: %v", rbdOptions(defaultRBDPool), err)
-				}
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
+					app, err := loadAppDeployment(deployBlockAppPath)
+					if err != nil {
+						e2elog.Failf("failed to load application deployment: %v", err)
+					}
+					app.Namespace = f.UniqueName
+
+					err = createPVCAndDeploymentApp(f, pvc, app, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC and application: %v", err)
+					}
+
+					err = waitForDeploymentComplete(f.ClientSet, app.Name, app.Namespace, deployTimeout)
+					if err != nil {
+						e2elog.Failf("timeout waiting for deployment to be in running state: %v", err)
+					}
+
+					devPath := app.Spec.Template.Spec.Containers[0].VolumeDevices[0].DevicePath
+					cmd := fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10", devPath)
+
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("app=%s", app.Name),
+					}
+					podList, err := f.PodClientNS(app.Namespace).List(context.TODO(), opt)
+					if err != nil {
+						e2elog.Failf("get pod list failed: %v", err)
+					}
+					if len(podList.Items) != int(*app.Spec.Replicas) {
+						e2elog.Failf("podlist contains %d items, expected %d items", len(podList.Items), *app.Spec.Replicas)
+					}
+					for _, pod := range podList.Items {
+						_, _, err = execCommandInPodWithName(f, cmd, pod.Name, pod.Spec.Containers[0].Name, app.Namespace)
+						if err != nil {
+							e2elog.Failf("command %q failed: %v", cmd, err)
+						}
+					}
+
+					err = deletePVCAndDeploymentApp(f, pvc, app)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC and application: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+					// validate images in trash
+					err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to validate rbd images in pool %s trash: %v", rbdOptions(defaultRBDPool), err)
+					}
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
 				}
 			})
 
 			By("Create ROX+FS Mode PVC and bind to multiple pods via deployment using rbd-nbd mounter", func() {
-				if !testNBD {
-					e2elog.Logf("skipping NBD test")
+				if testNBD {
+					e2elog.Logf("running NBD test")
 
-					return
-				}
-
-				err := deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				// Storage class with rbd-nbd mounter
-				err = createRBDStorageClass(
-					f.ClientSet,
-					f,
-					defaultSCName,
-					nil,
-					map[string]string{
-						"mounter":         "rbd-nbd",
-						"mapOptions":      nbdMapOptions,
-						"cephLogStrategy": e2eDefaultCephLogStrategy,
-					},
-					deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
-				}
-
-				// create PVC and bind it to an app
-				pvc, err := loadPVC(pvcPath)
-				if err != nil {
-					e2elog.Failf("failed to load PVC: %v", err)
-				}
-				pvc.Namespace = f.UniqueName
-				app, err := loadApp(appPath)
-				if err != nil {
-					e2elog.Failf("failed to load application: %v", err)
-				}
-				app.Namespace = f.UniqueName
-				err = createPVCAndApp("", f, pvc, app, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create PVC and application: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 1, defaultRBDPool)
-				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
-				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to delete application: %v", err)
-				}
-
-				// create clone PVC as ROX
-				pvcClone, err := loadPVC(pvcSmartClonePath)
-				if err != nil {
-					e2elog.Failf("failed to load PVC: %v", err)
-				}
-				pvcClone.Spec.DataSource.Name = pvc.Name
-				pvcClone.Namespace = f.UniqueName
-				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
-				appClone, err := loadAppDeployment(deployFSAppPath)
-				if err != nil {
-					e2elog.Failf("failed to load application deployment: %v", err)
-				}
-				appClone.Namespace = f.UniqueName
-				appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
-				appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
-				err = createPVCAndDeploymentApp(f, pvcClone, appClone, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create PVC and application: %v", err)
-				}
-
-				err = waitForDeploymentComplete(f.ClientSet, appClone.Name, appClone.Namespace, deployTimeout)
-				if err != nil {
-					e2elog.Failf("timeout waiting for deployment to be in running state: %v", err)
-				}
-
-				// validate created backend rbd images
-				validateRBDImageCount(f, 3, defaultRBDPool)
-				validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
-
-				filePath := appClone.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-				cmd := fmt.Sprintf("echo 'Hello World' > %s", filePath)
-
-				opt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", appClone.Name),
-				}
-				podList, err := f.PodClientNS(appClone.Namespace).List(context.TODO(), opt)
-				if err != nil {
-					e2elog.Failf("get pod list failed: %v", err)
-				}
-				if len(podList.Items) != int(*appClone.Spec.Replicas) {
-					e2elog.Failf("podlist contains %d items, expected %d items", len(podList.Items), *appClone.Spec.Replicas)
-				}
-				for _, pod := range podList.Items {
-					var stdErr string
-					_, stdErr, err = execCommandInPodWithName(f, cmd, pod.Name, pod.Spec.Containers[0].Name, appClone.Namespace)
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
-						e2elog.Logf("command %q failed: %v", cmd, err)
+						e2elog.Failf("failed to delete storageclass: %v", err)
 					}
-					readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
-					if !strings.Contains(stdErr, readOnlyErr) {
-						e2elog.Failf(stdErr)
+					// Storage class with rbd-nbd mounter
+					err = createRBDStorageClass(
+						f.ClientSet,
+						f,
+						defaultSCName,
+						nil,
+						map[string]string{
+							"mounter":         "rbd-nbd",
+							"mapOptions":      nbdMapOptions,
+							"cephLogStrategy": e2eDefaultCephLogStrategy,
+						},
+						deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
 					}
-				}
 
-				err = deletePVCAndDeploymentApp(f, pvcClone, appClone)
-				if err != nil {
-					e2elog.Failf("failed to delete PVC and application: %v", err)
-				}
-				// delete parent pvc
-				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to delete PVC: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-				// validate images in trash
-				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to validate rbd images in pool %s trash: %v", rbdOptions(defaultRBDPool), err)
-				}
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
+					// create PVC and bind it to an app
+					pvc, err := loadPVC(pvcPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC: %v", err)
+					}
+					pvc.Namespace = f.UniqueName
+					app, err := loadApp(appPath)
+					if err != nil {
+						e2elog.Failf("failed to load application: %v", err)
+					}
+					app.Namespace = f.UniqueName
+					err = createPVCAndApp("", f, pvc, app, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC and application: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 1, defaultRBDPool)
+					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete application: %v", err)
+					}
+
+					// create clone PVC as ROX
+					pvcClone, err := loadPVC(pvcSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC: %v", err)
+					}
+					pvcClone.Spec.DataSource.Name = pvc.Name
+					pvcClone.Namespace = f.UniqueName
+					pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+					appClone, err := loadAppDeployment(deployFSAppPath)
+					if err != nil {
+						e2elog.Failf("failed to load application deployment: %v", err)
+					}
+					appClone.Namespace = f.UniqueName
+					appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+					appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
+					err = createPVCAndDeploymentApp(f, pvcClone, appClone, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC and application: %v", err)
+					}
+
+					err = waitForDeploymentComplete(f.ClientSet, appClone.Name, appClone.Namespace, deployTimeout)
+					if err != nil {
+						e2elog.Failf("timeout waiting for deployment to be in running state: %v", err)
+					}
+
+					// validate created backend rbd images
+					validateRBDImageCount(f, 3, defaultRBDPool)
+					validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
+
+					filePath := appClone.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+					cmd := fmt.Sprintf("echo 'Hello World' > %s", filePath)
+
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("app=%s", appClone.Name),
+					}
+					podList, err := f.PodClientNS(appClone.Namespace).List(context.TODO(), opt)
+					if err != nil {
+						e2elog.Failf("get pod list failed: %v", err)
+					}
+					if len(podList.Items) != int(*appClone.Spec.Replicas) {
+						e2elog.Failf("podlist contains %d items, expected %d items", len(podList.Items), *appClone.Spec.Replicas)
+					}
+					for _, pod := range podList.Items {
+						var stdErr string
+						_, stdErr, err = execCommandInPodWithName(f, cmd, pod.Name, pod.Spec.Containers[0].Name, appClone.Namespace)
+						if err != nil {
+							e2elog.Logf("command %q failed: %v", cmd, err)
+						}
+						readOnlyErr := fmt.Sprintf("cannot create %s: Read-only file system", filePath)
+						if !strings.Contains(stdErr, readOnlyErr) {
+							e2elog.Failf(stdErr)
+						}
+					}
+
+					err = deletePVCAndDeploymentApp(f, pvcClone, appClone)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC and application: %v", err)
+					}
+					// delete parent pvc
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+					// validate images in trash
+					err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to validate rbd images in pool %s trash: %v", rbdOptions(defaultRBDPool), err)
+					}
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
 				}
 			})
 
 			By("Create ROX+Block Mode PVC and bind to multiple pods via deployment using rbd-nbd mounter", func() {
-				if !testNBD {
-					e2elog.Logf("skipping NBD test")
+				if testNBD {
+					e2elog.Logf("running NBD test")
 
-					return
-				}
-
-				err := deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				// Storage class with rbd-nbd mounter
-				err = createRBDStorageClass(
-					f.ClientSet,
-					f,
-					defaultSCName,
-					nil,
-					map[string]string{
-						"mounter":         "rbd-nbd",
-						"mapOptions":      nbdMapOptions,
-						"cephLogStrategy": e2eDefaultCephLogStrategy,
-					},
-					deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
-				}
-
-				// create PVC and bind it to an app
-				pvc, err := loadPVC(rawPvcPath)
-				if err != nil {
-					e2elog.Failf("failed to load PVC: %v", err)
-				}
-				pvc.Namespace = f.UniqueName
-				app, err := loadApp(rawAppPath)
-				if err != nil {
-					e2elog.Failf("failed to load application: %v", err)
-				}
-				app.Namespace = f.UniqueName
-				err = createPVCAndApp("", f, pvc, app, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create PVC and application: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 1, defaultRBDPool)
-				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
-				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to delete application: %v", err)
-				}
-
-				// create clone PVC as ROX
-				pvcClone, err := loadPVC(pvcBlockSmartClonePath)
-				if err != nil {
-					e2elog.Failf("failed to load PVC: %v", err)
-				}
-				pvcClone.Spec.DataSource.Name = pvc.Name
-				pvcClone.Namespace = f.UniqueName
-				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
-				volumeMode := v1.PersistentVolumeBlock
-				pvcClone.Spec.VolumeMode = &volumeMode
-				appClone, err := loadAppDeployment(deployBlockAppPath)
-				if err != nil {
-					e2elog.Failf("failed to load application deployment: %v", err)
-				}
-				appClone.Namespace = f.UniqueName
-				appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
-				appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
-				err = createPVCAndDeploymentApp(f, pvcClone, appClone, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create PVC and application: %v", err)
-				}
-
-				err = waitForDeploymentComplete(f.ClientSet, appClone.Name, appClone.Namespace, deployTimeout)
-				if err != nil {
-					e2elog.Failf("timeout waiting for deployment to be in running state: %v", err)
-				}
-
-				// validate created backend rbd images
-				validateRBDImageCount(f, 3, defaultRBDPool)
-				validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
-
-				devPath := appClone.Spec.Template.Spec.Containers[0].VolumeDevices[0].DevicePath
-				cmd := fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10", devPath)
-
-				opt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", appClone.Name),
-				}
-				podList, err := f.PodClientNS(appClone.Namespace).List(context.TODO(), opt)
-				if err != nil {
-					e2elog.Failf("get pod list failed: %v", err)
-				}
-				if len(podList.Items) != int(*appClone.Spec.Replicas) {
-					e2elog.Failf("podlist contains %d items, expected %d items", len(podList.Items), *appClone.Spec.Replicas)
-				}
-				for _, pod := range podList.Items {
-					var stdErr string
-					_, stdErr, err = execCommandInPodWithName(f, cmd, pod.Name, pod.Spec.Containers[0].Name, appClone.Namespace)
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
-						e2elog.Logf("command %q failed: %v", cmd, err)
+						e2elog.Failf("failed to delete storageclass: %v", err)
 					}
-					readOnlyErr := fmt.Sprintf("'%s': Operation not permitted", devPath)
-					if !strings.Contains(stdErr, readOnlyErr) {
-						e2elog.Failf(stdErr)
+					// Storage class with rbd-nbd mounter
+					err = createRBDStorageClass(
+						f.ClientSet,
+						f,
+						defaultSCName,
+						nil,
+						map[string]string{
+							"mounter":         "rbd-nbd",
+							"mapOptions":      nbdMapOptions,
+							"cephLogStrategy": e2eDefaultCephLogStrategy,
+						},
+						deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
 					}
-				}
-				err = deletePVCAndDeploymentApp(f, pvcClone, appClone)
-				if err != nil {
-					e2elog.Failf("failed to delete PVC and application: %v", err)
-				}
-				// delete parent pvc
-				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to delete PVC: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-				// validate images in trash
-				err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to validate rbd images in pool %s trash: %v", rbdOptions(defaultRBDPool), err)
-				}
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
+
+					// create PVC and bind it to an app
+					pvc, err := loadPVC(rawPvcPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC: %v", err)
+					}
+					pvc.Namespace = f.UniqueName
+					app, err := loadApp(rawAppPath)
+					if err != nil {
+						e2elog.Failf("failed to load application: %v", err)
+					}
+					app.Namespace = f.UniqueName
+					err = createPVCAndApp("", f, pvc, app, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC and application: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 1, defaultRBDPool)
+					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+					err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete application: %v", err)
+					}
+
+					// create clone PVC as ROX
+					pvcClone, err := loadPVC(pvcBlockSmartClonePath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC: %v", err)
+					}
+					pvcClone.Spec.DataSource.Name = pvc.Name
+					pvcClone.Namespace = f.UniqueName
+					pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+					volumeMode := v1.PersistentVolumeBlock
+					pvcClone.Spec.VolumeMode = &volumeMode
+					appClone, err := loadAppDeployment(deployBlockAppPath)
+					if err != nil {
+						e2elog.Failf("failed to load application deployment: %v", err)
+					}
+					appClone.Namespace = f.UniqueName
+					appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcClone.Name
+					appClone.Spec.Template.Spec.Volumes[0].PersistentVolumeClaim.ReadOnly = true
+					err = createPVCAndDeploymentApp(f, pvcClone, appClone, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC and application: %v", err)
+					}
+
+					err = waitForDeploymentComplete(f.ClientSet, appClone.Name, appClone.Namespace, deployTimeout)
+					if err != nil {
+						e2elog.Failf("timeout waiting for deployment to be in running state: %v", err)
+					}
+
+					// validate created backend rbd images
+					validateRBDImageCount(f, 3, defaultRBDPool)
+					validateOmapCount(f, 2, rbdType, defaultRBDPool, volumesType)
+
+					devPath := appClone.Spec.Template.Spec.Containers[0].VolumeDevices[0].DevicePath
+					cmd := fmt.Sprintf("dd if=/dev/zero of=%s bs=1M count=10", devPath)
+
+					opt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("app=%s", appClone.Name),
+					}
+					podList, err := f.PodClientNS(appClone.Namespace).List(context.TODO(), opt)
+					if err != nil {
+						e2elog.Failf("get pod list failed: %v", err)
+					}
+					if len(podList.Items) != int(*appClone.Spec.Replicas) {
+						e2elog.Failf("podlist contains %d items, expected %d items", len(podList.Items), *appClone.Spec.Replicas)
+					}
+					for _, pod := range podList.Items {
+						var stdErr string
+						_, stdErr, err = execCommandInPodWithName(f, cmd, pod.Name, pod.Spec.Containers[0].Name, appClone.Namespace)
+						if err != nil {
+							e2elog.Logf("command %q failed: %v", cmd, err)
+						}
+						readOnlyErr := fmt.Sprintf("'%s': Operation not permitted", devPath)
+						if !strings.Contains(stdErr, readOnlyErr) {
+							e2elog.Failf(stdErr)
+						}
+					}
+					err = deletePVCAndDeploymentApp(f, pvcClone, appClone)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC and application: %v", err)
+					}
+					// delete parent pvc
+					err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+					// validate images in trash
+					err = waitToRemoveImagesFromTrash(f, defaultRBDPool, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to validate rbd images in pool %s trash: %v", rbdOptions(defaultRBDPool), err)
+					}
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
 				}
 			})
 
 			By("perform IO on rbd-nbd volume after nodeplugin restart", func() {
-				if !testNBD {
-					e2elog.Logf("skipping NBD test")
+				if testNBD {
+					e2elog.Logf("running NBD test")
 
-					return
-				}
-
-				err := deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				// Storage class with rbd-nbd mounter
-				err = createRBDStorageClass(
-					f.ClientSet,
-					f,
-					defaultSCName,
-					nil,
-					map[string]string{
-						"mounter":         "rbd-nbd",
-						"mapOptions":      nbdMapOptions,
-						"cephLogStrategy": e2eDefaultCephLogStrategy,
-					},
-					deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
-				}
-				pvc, err := loadPVC(pvcPath)
-				if err != nil {
-					e2elog.Failf("failed to load PVC: %v", err)
-				}
-				pvc.Namespace = f.UniqueName
-
-				app, err := loadApp(appPath)
-				if err != nil {
-					e2elog.Failf("failed to load application: %v", err)
-				}
-
-				app.Namespace = f.UniqueName
-				label := map[string]string{
-					"app": app.Name,
-				}
-				app.Labels = label
-				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
-				err = createPVCAndApp("", f, pvc, app, deployTimeout)
-				if err != nil {
-					e2elog.Failf("failed to create PVC and application: %v", err)
-				}
-
-				appOpt := metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("app=%s", app.Name),
-				}
-				// TODO: Remove this once we ensure that rbd-nbd can sync data
-				// from Filesystem layer to backend rbd image as part of its
-				// detach or SIGTERM signal handler
-				_, stdErr, err := execCommandInPod(
-					f,
-					fmt.Sprintf("sync %s", app.Spec.Containers[0].VolumeMounts[0].MountPath),
-					app.Namespace,
-					&appOpt)
-				if err != nil || stdErr != "" {
-					e2elog.Failf("failed to sync, err: %v, stdErr: %v ", err, stdErr)
-				}
-
-				// validate created backend rbd images
-				validateRBDImageCount(f, 1, defaultRBDPool)
-				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
-
-				selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
-				if err != nil {
-					e2elog.Failf("failed to get the labels: %v", err)
-				}
-				// delete rbd nodeplugin pods
-				err = deletePodWithLabel(selector, cephCSINamespace, false)
-				if err != nil {
-					e2elog.Failf("fail to delete pod: %v", err)
-				}
-
-				// wait for nodeplugin pods to come up
-				err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
-				if err != nil {
-					e2elog.Failf("timeout waiting for daemonset pods: %v", err)
-				}
-
-				opt := metav1.ListOptions{
-					LabelSelector: selector,
-				}
-				uname, stdErr, err := execCommandInContainer(f, "uname -a", cephCSINamespace, "csi-rbdplugin", &opt)
-				if err != nil || stdErr != "" {
-					e2elog.Failf("failed to run uname cmd : %v, stdErr: %v ", err, stdErr)
-				}
-				e2elog.Logf("uname -a: %v", uname)
-				rpmv, stdErr, err := execCommandInContainer(
-					f,
-					"rpm -qa | grep rbd-nbd",
-					cephCSINamespace,
-					"csi-rbdplugin",
-					&opt)
-				if err != nil || stdErr != "" {
-					e2elog.Failf("failed to run rpm -qa cmd : %v, stdErr: %v ", err, stdErr)
-				}
-				e2elog.Logf("rbd-nbd package version: %v", rpmv)
-
-				timeout := time.Duration(deployTimeout) * time.Minute
-				var reason string
-				err = wait.PollImmediate(poll, timeout, func() (bool, error) {
-					var runningAttachCmd string
-					runningAttachCmd, stdErr, err = execCommandInContainer(
-						f,
-						"pstree --arguments | grep [r]bd-nbd",
-						cephCSINamespace,
-						"csi-rbdplugin",
-						&opt)
-					// if the rbd-nbd process is not running the 'grep' command
-					// will return with exit code 1
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
 					if err != nil {
-						if strings.Contains(err.Error(), "command terminated with exit code 1") {
-							reason = fmt.Sprintf("rbd-nbd process is not running yet: %v", err)
-						} else if stdErr != "" {
-							reason = fmt.Sprintf("failed to run ps cmd : %v, stdErr: %v", err, stdErr)
-						}
-						e2elog.Logf("%s", reason)
-
-						return false, nil
+						e2elog.Failf("failed to delete storageclass: %v", err)
 					}
-					e2elog.Logf("attach command running after restart, runningAttachCmd: %v", runningAttachCmd)
-
-					return true, nil
-				})
-
-				if errors.Is(err, wait.ErrWaitTimeout) {
-					e2elog.Failf("timed out waiting for the rbd-nbd process: %s", reason)
-				}
-				if err != nil {
-					e2elog.Failf("failed to poll: %v", err)
-				}
-
-				// Writes on kernel < 5.4 are failing due to a bug in NBD driver,
-				// NBD zero cmd timeout handling is fixed with kernel >= 5.4
-				// see https://github.com/ceph/ceph-csi/issues/2204#issuecomment-930941047
-				if util.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
-					filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
-					_, stdErr, err = execCommandInPod(
+					// Storage class with rbd-nbd mounter
+					err = createRBDStorageClass(
+						f.ClientSet,
 						f,
-						fmt.Sprintf("echo 'Hello World' > %s", filePath),
+						defaultSCName,
+						nil,
+						map[string]string{
+							"mounter":         "rbd-nbd",
+							"mapOptions":      nbdMapOptions,
+							"cephLogStrategy": e2eDefaultCephLogStrategy,
+						},
+						deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+					pvc, err := loadPVC(pvcPath)
+					if err != nil {
+						e2elog.Failf("failed to load PVC: %v", err)
+					}
+					pvc.Namespace = f.UniqueName
+
+					app, err := loadApp(appPath)
+					if err != nil {
+						e2elog.Failf("failed to load application: %v", err)
+					}
+
+					app.Namespace = f.UniqueName
+					label := map[string]string{
+						"app": app.Name,
+					}
+					app.Labels = label
+					app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+					err = createPVCAndApp("", f, pvc, app, deployTimeout)
+					if err != nil {
+						e2elog.Failf("failed to create PVC and application: %v", err)
+					}
+
+					appOpt := metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("app=%s", app.Name),
+					}
+					// TODO: Remove this once we ensure that rbd-nbd can sync data
+					// from Filesystem layer to backend rbd image as part of its
+					// detach or SIGTERM signal handler
+					_, stdErr, err := execCommandInPod(
+						f,
+						fmt.Sprintf("sync %s", app.Spec.Containers[0].VolumeMounts[0].MountPath),
 						app.Namespace,
 						&appOpt)
 					if err != nil || stdErr != "" {
-						e2elog.Failf("failed to write IO, err: %v, stdErr: %v ", err, stdErr)
+						e2elog.Failf("failed to sync, err: %v, stdErr: %v ", err, stdErr)
 					}
-				} else {
-					e2elog.Logf("kernel %q does not meet recommendation, skipping IO test", kernelRelease)
-				}
 
-				err = deletePVCAndApp("", f, pvc, app)
-				if err != nil {
-					e2elog.Failf("failed to delete PVC and application: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
+					// validate created backend rbd images
+					validateRBDImageCount(f, 1, defaultRBDPool)
+					validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+
+					selector, err := getDaemonSetLabelSelector(f, cephCSINamespace, rbdDaemonsetName)
+					if err != nil {
+						e2elog.Failf("failed to get the labels: %v", err)
+					}
+					// delete rbd nodeplugin pods
+					err = deletePodWithLabel(selector, cephCSINamespace, false)
+					if err != nil {
+						e2elog.Failf("fail to delete pod: %v", err)
+					}
+
+					// wait for nodeplugin pods to come up
+					err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
+					if err != nil {
+						e2elog.Failf("timeout waiting for daemonset pods: %v", err)
+					}
+
+					opt := metav1.ListOptions{
+						LabelSelector: selector,
+					}
+					uname, stdErr, err := execCommandInContainer(f, "uname -a", cephCSINamespace, "csi-rbdplugin", &opt)
+					if err != nil || stdErr != "" {
+						e2elog.Failf("failed to run uname cmd : %v, stdErr: %v ", err, stdErr)
+					}
+					e2elog.Logf("uname -a: %v", uname)
+					rpmv, stdErr, err := execCommandInContainer(
+						f,
+						"rpm -qa | grep rbd-nbd",
+						cephCSINamespace,
+						"csi-rbdplugin",
+						&opt)
+					if err != nil || stdErr != "" {
+						e2elog.Failf("failed to run rpm -qa cmd : %v, stdErr: %v ", err, stdErr)
+					}
+					e2elog.Logf("rbd-nbd package version: %v", rpmv)
+
+					timeout := time.Duration(deployTimeout) * time.Minute
+					var reason string
+					err = wait.PollImmediate(poll, timeout, func() (bool, error) {
+						var runningAttachCmd string
+						runningAttachCmd, stdErr, err = execCommandInContainer(
+							f,
+							"pstree --arguments | grep [r]bd-nbd",
+							cephCSINamespace,
+							"csi-rbdplugin",
+							&opt)
+						// if the rbd-nbd process is not running the 'grep' command
+						// will return with exit code 1
+						if err != nil {
+							if strings.Contains(err.Error(), "command terminated with exit code 1") {
+								reason = fmt.Sprintf("rbd-nbd process is not running yet: %v", err)
+							} else if stdErr != "" {
+								reason = fmt.Sprintf("failed to run ps cmd : %v, stdErr: %v", err, stdErr)
+							}
+							e2elog.Logf("%s", reason)
+
+							return false, nil
+						}
+						e2elog.Logf("attach command running after restart, runningAttachCmd: %v", runningAttachCmd)
+
+						return true, nil
+					})
+
+					if errors.Is(err, wait.ErrWaitTimeout) {
+						e2elog.Failf("timed out waiting for the rbd-nbd process: %s", reason)
+					}
+					if err != nil {
+						e2elog.Failf("failed to poll: %v", err)
+					}
+
+					// Writes on kernel < 5.4 are failing due to a bug in NBD driver,
+					// NBD zero cmd timeout handling is fixed with kernel >= 5.4
+					// see https://github.com/ceph/ceph-csi/issues/2204#issuecomment-930941047
+					if util.CheckKernelSupport(kernelRelease, nbdZeroIOtimeoutSupport) {
+						filePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+						_, stdErr, err = execCommandInPod(
+							f,
+							fmt.Sprintf("echo 'Hello World' > %s", filePath),
+							app.Namespace,
+							&appOpt)
+						if err != nil || stdErr != "" {
+							e2elog.Failf("failed to write IO, err: %v, stdErr: %v ", err, stdErr)
+						}
+					} else {
+						e2elog.Logf("kernel %q does not meet recommendation, skipping IO test", kernelRelease)
+					}
+
+					err = deletePVCAndApp("", f, pvc, app)
+					if err != nil {
+						e2elog.Failf("failed to delete PVC and application: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
 				}
 			})
 
 			ByFileAndBlockEncryption("create a PVC and bind it to an app using rbd-nbd mounter with encryption", func(
 				validator encryptionValidateFunc, _ validateFunc, encType util.EncryptionType,
 			) {
-				if !testNBD {
-					e2elog.Logf("skipping NBD test")
+				if testNBD {
+					e2elog.Logf("running NBD test")
 
-					return
-				}
-				err := deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				// Storage class with rbd-nbd mounter
-				err = createRBDStorageClass(
-					f.ClientSet,
-					f,
-					defaultSCName,
-					nil,
-					map[string]string{
-						"mounter":         "rbd-nbd",
-						"mapOptions":      nbdMapOptions,
-						"cephLogStrategy": e2eDefaultCephLogStrategy,
-						"encrypted":       "true",
-						"encryptionType":  util.EncryptionTypeString(encType),
-					},
-					deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
-				}
-				err = validator(pvcPath, appPath, noKMS, f)
-				if err != nil {
-					e2elog.Failf("failed to validate encrypted pvc: %v", err)
-				}
-				// validate created backend rbd images
-				validateRBDImageCount(f, 0, defaultRBDPool)
-				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
-				err = deleteResource(rbdExamplePath + "storageclass.yaml")
-				if err != nil {
-					e2elog.Failf("failed to delete storageclass: %v", err)
-				}
-				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-				if err != nil {
-					e2elog.Failf("failed to create storageclass: %v", err)
+					err := deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					// Storage class with rbd-nbd mounter
+					err = createRBDStorageClass(
+						f.ClientSet,
+						f,
+						defaultSCName,
+						nil,
+						map[string]string{
+							"mounter":         "rbd-nbd",
+							"mapOptions":      nbdMapOptions,
+							"cephLogStrategy": e2eDefaultCephLogStrategy,
+							"encrypted":       "true",
+							"encryptionType":  util.EncryptionTypeString(encType),
+						},
+						deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
+					err = validator(pvcPath, appPath, noKMS, f)
+					if err != nil {
+						e2elog.Failf("failed to validate encrypted pvc: %v", err)
+					}
+					// validate created backend rbd images
+					validateRBDImageCount(f, 0, defaultRBDPool)
+					validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+					err = deleteResource(rbdExamplePath + "storageclass.yaml")
+					if err != nil {
+						e2elog.Failf("failed to delete storageclass: %v", err)
+					}
+					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+					if err != nil {
+						e2elog.Failf("failed to create storageclass: %v", err)
+					}
 				}
 			})
 
@@ -2311,42 +2292,40 @@ var _ = Describe("RBD", func() {
 			By(
 				"create a PVC and Bind it to an app with journaling/exclusive-lock image-features and rbd-nbd mounter",
 				func() {
-					if !testNBD {
-						e2elog.Logf("skipping NBD test")
+					if testNBD {
+						e2elog.Logf("running NBD test")
 
-						return
-					}
-
-					err := deleteResource(rbdExamplePath + "storageclass.yaml")
-					if err != nil {
-						e2elog.Failf("failed to delete storageclass: %v", err)
-					}
-					err = createRBDStorageClass(
-						f.ClientSet,
-						f,
-						defaultSCName,
-						nil,
-						map[string]string{
-							"imageFeatures":   "layering,journaling,exclusive-lock",
-							"mounter":         "rbd-nbd",
-							"mapOptions":      nbdMapOptions,
-							"cephLogStrategy": e2eDefaultCephLogStrategy,
-						},
-						deletePolicy)
-					if err != nil {
-						e2elog.Failf("failed to create storageclass: %v", err)
-					}
-					err = validatePVCAndAppBinding(pvcPath, appPath, f)
-					if err != nil {
-						e2elog.Failf("failed to validate pvc and application binding: %v", err)
-					}
-					err = deleteResource(rbdExamplePath + "storageclass.yaml")
-					if err != nil {
-						e2elog.Failf("failed to delete storageclass: %v", err)
-					}
-					err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
-					if err != nil {
-						e2elog.Failf("failed to create storageclass: %v", err)
+						err := deleteResource(rbdExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete storageclass: %v", err)
+						}
+						err = createRBDStorageClass(
+							f.ClientSet,
+							f,
+							defaultSCName,
+							nil,
+							map[string]string{
+								"imageFeatures":   "layering,journaling,exclusive-lock",
+								"mounter":         "rbd-nbd",
+								"mapOptions":      nbdMapOptions,
+								"cephLogStrategy": e2eDefaultCephLogStrategy,
+							},
+							deletePolicy)
+						if err != nil {
+							e2elog.Failf("failed to create storageclass: %v", err)
+						}
+						err = validatePVCAndAppBinding(pvcPath, appPath, f)
+						if err != nil {
+							e2elog.Failf("failed to validate pvc and application binding: %v", err)
+						}
+						err = deleteResource(rbdExamplePath + "storageclass.yaml")
+						if err != nil {
+							e2elog.Failf("failed to delete storageclass: %v", err)
+						}
+						err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+						if err != nil {
+							e2elog.Failf("failed to create storageclass: %v", err)
+						}
 					}
 				},
 			)
