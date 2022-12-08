@@ -461,7 +461,7 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 
 	interval, startTime := getSchedulingDetails(req.GetParameters())
 	if interval != admin.NoInterval {
-		err = rbdVol.addSnapshotScheduling(interval, startTime)
+		err = rbdVol.addSnapshotScheduling(ctx, interval, startTime)
 		if err != nil {
 			return nil, err
 		}
@@ -686,6 +686,20 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	err = repairResyncedImageID(ctx, rbdVol, ready)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to resync Image ID: %s", err.Error())
+	}
+
+	interval, startTime := getSchedulingDetails(req.GetParameters())
+	if interval != admin.NoInterval {
+		err = rbdVol.addSnapshotScheduling(ctx, interval, startTime)
+		if err != nil {
+			return nil, err
+		}
+		log.DebugLog(
+			ctx,
+			"Added scheduling at interval %s, start time %s for volume %s",
+			interval,
+			startTime,
+			rbdVol)
 	}
 
 	resp := &replication.ResyncVolumeResponse{

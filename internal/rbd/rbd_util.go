@@ -2010,7 +2010,7 @@ func (ri *rbdImage) isCompabitableClone(dst *rbdImage) error {
 	return nil
 }
 
-func (ri *rbdImage) addSnapshotScheduling(
+func (ri *rbdImage) addSnapshotScheduling(ctx context.Context,
 	interval admin.Interval,
 	startTime admin.StartTime,
 ) error {
@@ -2020,6 +2020,28 @@ func (ri *rbdImage) addSnapshotScheduling(
 		return err
 	}
 	adminConn := ra.MirrorSnashotSchedule()
+
+	schedules, err := adminConn.List(ls)
+	if err != nil {
+		return err
+	}
+
+	for _, schedule := range schedules {
+		log.DebugLog(ctx, "found snapshot schedule for image %q: schedule level %v name %v", ri, schedule.LevelSpecID, schedule.Name)
+		for _, spec := range schedule.Schedule {
+			log.DebugLog(ctx, "found snapshot schedule for image %q: schedule %v %v", ri, spec.Interval, spec.StartTime)
+			if spec.Interval == interval && spec.StartTime == startTime {
+				// schedule already exists
+				log.DebugLog(ctx, "found matching schedule for image %q: %v %v", ri, interval, startTime)
+				return nil
+			}
+		}
+		if len(schedule.Schedule) > 0 {
+			// image already has a schedule, but it is different
+			log.DebugLog(ctx, "image %q already has a snapshot schedule", ri)
+			return nil
+		}
+	}
 	err = adminConn.Add(ls, interval, startTime)
 	if err != nil {
 		return err
