@@ -87,7 +87,7 @@ nodeplugin:
   registrar:
     image:
       repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-      tag: v2.6.0
+      tag: v2.6.2
       pullPolicy: IfNotPresent
     resources: {}
 
