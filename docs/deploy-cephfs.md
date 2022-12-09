@@ -63,7 +63,7 @@ you're running it inside a k8s cluster and find the config itself).
 **Available volume parameters:**
 
 | Parameter                                                                                           | Required       | Description                                                                                                                                                                                                             |
-| --------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|-----------------------------------------------------------------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `clusterID`                                                                                         | yes            | String representing a Ceph cluster, must be unique across all Ceph clusters in use for provisioning, cannot be greater than 36 bytes in length, and should remain immutable for the lifetime of the Ceph cluster in use |
 | `fsName`                                                                                            | yes            | CephFS filesystem name into which the volume shall be created                                                                                                                                                           |
 | `mounter`                                                                                           | no             | Mount method to be used for this volume. Available options are `kernel` for Ceph kernel client and `fuse` for Ceph FUSE driver. Defaults to "default mounter".                                                          |
@@ -75,6 +75,8 @@ you're running it inside a k8s cluster and find the config itself).
 | `fuseMountOptions`                                                                                  | no             | Comma separated string of mount options accepted by ceph-fuse mounter, by default no options are passed.                                                                                                                |
 | `csi.storage.k8s.io/provisioner-secret-name`, `csi.storage.k8s.io/node-stage-secret-name`           | for Kubernetes | Name of the Kubernetes Secret object containing Ceph client credentials. Both parameters should have the same value                                                                                                     |
 | `csi.storage.k8s.io/provisioner-secret-namespace`, `csi.storage.k8s.io/node-stage-secret-namespace` | for Kubernetes | Namespaces of the above Secret objects                                                                                                                                                                                  |
+| `encrypted`                                                                                         | no             | disabled by default, use `"true"` to enable fscrypt encryption on PVC and `"false"` to disable it. **Do not change for existing storageclasses**                                                                          |
+| `encryptionKMSID`                                                                                   | no             | required if encryption is enabled and a kms is used to store passphrases                                                                                                                                                |
 
 **NOTE:** An accompanying CSI configuration file, needs to be provided to the
 running pods. Refer to [Creating CSI configuration](../examples/README.md#creating-csi-configuration)
@@ -217,3 +219,20 @@ The Helm chart is located in `charts/ceph-csi-cephfs`.
 **Deploy Helm Chart:**
 
 [See the Helm chart readme for installation instructions.](../charts/ceph-csi-cephfs/README.md)
+
+## CephFS Volume Encryption
+
+Requires fscrypt support in the Linux kernel and Ceph.
+
+Key management is compatible with the
+[fscrypt](https://github.com/google/fscrypt) userspace tool. See the
+design doc [Ceph Filesystem fscrypt
+Support](design/proposals/cephfs-fscrypt.md) for details.
+
+In general the KMS configuration is the same as for RBD encryption and
+can even be shared.
+
+However, not all KMS are supported in order to be compatible with
+[fscrypt](https://github.com/google/fscrypt). In general KMS that
+either store secrets to use directly (Vault), or allow access to the
+plain password (Kubernets Secrets) work.
