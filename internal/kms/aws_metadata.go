@@ -125,13 +125,13 @@ func initAWSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 }
 
 func (kms *awsMetadataKMS) getSecrets() (map[string]interface{}, error) {
-	c, err := k8s.NewK8sClient()
+	client, err := k8s.NewK8sClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
 			"get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
 	}
 
-	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
+	secret, err := client.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
 		kms.secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Secret %s/%s: %w",

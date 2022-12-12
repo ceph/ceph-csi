@@ -58,13 +58,13 @@ func fmtNodeStageMountinfoFilename(volID VolumeID) string {
 }
 
 func (mi *NodeStageMountinfo) toNodeStageMountinfoRecord() (*nodeStageMountinfoRecord, error) {
-	bs, err := protojson.Marshal(proto.MessageV2(mi.VolumeCapability))
+	data, err := protojson.Marshal(proto.MessageV2(mi.VolumeCapability))
 	if err != nil {
 		return nil, err
 	}
 
 	return &nodeStageMountinfoRecord{
-		VolumeCapabilityProtoJSON: string(bs),
+		VolumeCapabilityProtoJSON: string(data),
 		MountOptions:              mi.MountOptions,
 		Secrets:                   mi.Secrets,
 	}, nil
@@ -92,14 +92,14 @@ func WriteNodeStageMountinfo(volID VolumeID, mi *NodeStageMountinfo) error {
 		return err
 	}
 
-	bs, err := json.Marshal(r)
+	data, err := json.Marshal(r)
 	if err != nil {
 		return err
 	}
 
 	// Write the byte slice into file.
 
-	err = os.WriteFile(fmtNodeStageMountinfoFilename(volID), bs, 0o600)
+	err = os.WriteFile(fmtNodeStageMountinfoFilename(volID), data, 0o600)
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -112,7 +112,7 @@ func WriteNodeStageMountinfo(volID VolumeID, mi *NodeStageMountinfo) error {
 func GetNodeStageMountinfo(volID VolumeID) (*NodeStageMountinfo, error) {
 	// Read the file.
 
-	bs, err := os.ReadFile(fmtNodeStageMountinfoFilename(volID))
+	data, err := os.ReadFile(fmtNodeStageMountinfoFilename(volID))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -124,7 +124,7 @@ func GetNodeStageMountinfo(volID VolumeID) (*NodeStageMountinfo, error) {
 	// Unmarshall JSON-formatted byte slice into NodeStageMountinfo struct.
 
 	r := &nodeStageMountinfoRecord{}
-	if err = json.Unmarshal(bs, r); err != nil {
+	if err = json.Unmarshal(data, r); err != nil {
 		return nil, err
 	}
 

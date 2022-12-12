@@ -295,13 +295,13 @@ func (kms *kmipKMS) RequiresDEKStore() DEKStoreType {
 
 // getSecrets returns required options from the Kubernetes Secret.
 func (kms *kmipKMS) getSecrets() (map[string]string, error) {
-	c, err := k8s.NewK8sClient()
+	client, err := k8s.NewK8sClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
 			"get Secret %s/%s: %w", kms.namespace, kms.secretName, err)
 	}
 
-	secret, err := c.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
+	secret, err := client.CoreV1().Secrets(kms.namespace).Get(context.TODO(),
 		kms.secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Secret %s/%s: %w",

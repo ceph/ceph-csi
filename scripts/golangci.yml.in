@@ -156,7 +156,71 @@ linters-settings:
     max-blank-identifiers: 3
   nestif:
     min-complexity: 7
-
+  varnamelen:
+    ignore-names:
+      - f 
+      - ok
+      - v
+      - k 
+      - ns 
+      - sa 
+      - sv 
+      - cc 
+      - cm 
+      - vc
+      - a 
+      - gf
+      - s
+      - cr 
+      - cj
+      - w 
+      - j 
+      - fs 
+      - vi
+      - cp 
+      - to 
+      - i 
+      - d 
+      - t 
+      - pv 
+      - r 
+      - c 
+      - cd 
+      - sc 
+      - wg 
+      - ds 
+      - e 
+      - tt
+      - n 
+      - p 
+      - cn 
+      - cs 
+      - co 
+      - ca 
+      - bc 
+      - ts 
+      - ip 
+      - u 
+      - id 
+      - ho 
+      - m 
+      - ss 
+      - ep 
+      - tc 
+      - rv 
+      - mh 
+      - sf 
+      - m 
+      - rc
+      - va 
+      - ls 
+      - id 
+      - ve 
+      - kv 
+      - mt 
+      - ce 
+      - op  
+      
 linters:
   enable-all: true
   disable:
@@ -189,7 +253,6 @@ linters:
     - gomnd
     - ireturn
     - tagliatelle
-    - varnamelen
     - nilnil
     # TODO enable linters added in golangci-lint 1.46
     - maintidx

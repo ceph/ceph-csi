@@ -483,7 +483,7 @@ func detectAuthMountPath(path string) (string, error) {
 // createTempFile writes data to a temporary file that contains the pattern in
 // the filename (see ioutil.TempFile for details).
 func createTempFile(pattern string, data []byte) (string, error) {
-	t, err := ioutil.TempFile("", pattern)
+	tempFile, err := ioutil.TempFile("", pattern)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary file: %w", err)
 	}
@@ -492,18 +492,18 @@ func createTempFile(pattern string, data []byte) (string, error) {
 	defer func() {
 		if err != nil {
 			// ignore error on failure to remove tmpfile (gosec complains)
-			_ = os.Remove(t.Name())
+			_ = os.Remove(tempFile.Name())
 		}
 	}()
 
-	s, err := t.Write(data)
+	s, err := tempFile.Write(data)
 	if err != nil || s != len(data) {
 		return "", fmt.Errorf("failed to write temporary file: %w", err)
 	}
-	err = t.Close()
+	err = tempFile.Close()
 	if err != nil {
 		return "", fmt.Errorf("failed to close temporary file: %w", err)
 	}
 
-	return t.Name(), nil
+	return tempFile.Name(), nil
 }

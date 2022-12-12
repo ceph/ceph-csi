@@ -262,13 +262,13 @@ func (kms *vaultTenantSA) setServiceAccountName(config map[string]interface{}) e
 // getServiceAccount returns the Tenants ServiceAccount with the name
 // configured in the vaultTenantSA.
 func (kms *vaultTenantSA) getServiceAccount() (*corev1.ServiceAccount, error) {
-	c, err := kms.getK8sClient()
+	client, err := kms.getK8sClient()
 	if err != nil {
 		return nil, fmt.Errorf("can not get ServiceAccount %s/%s, "+
 			"failed to connect to Kubernetes: %w", kms.Tenant, kms.tenantSAName, err)
 	}
 
-	sa, err := c.CoreV1().ServiceAccounts(kms.Tenant).Get(context.TODO(),
+	sa, err := client.CoreV1().ServiceAccounts(kms.Tenant).Get(context.TODO(),
 		kms.tenantSAName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ServiceAccount %s/%s: %w", kms.Tenant, kms.tenantSAName, err)
@@ -286,7 +286,7 @@ func (kms *vaultTenantSA) getToken() (string, error) {
 		return "", err
 	}
 
-	c, err := kms.getK8sClient()
+	client, err := kms.getK8sClient()
 	if err != nil {
 		return "", fmt.Errorf("can not get ServiceAccount %s/%s, failed "+
 			"to connect to Kubernetes: %w", kms.Tenant,
@@ -297,13 +297,13 @@ func (kms *vaultTenantSA) getToken() (string, error) {
 	// automatically created. Trying to fetch tokens from service account secret references will fail
 	// refer: https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.24.md \
 	// #no-really-you-must-read-this-before-you-upgrade-1.
-	token, err := kms.createToken(sa, c)
+	token, err := kms.createToken(sa, client)
 	if err == nil {
 		return token, nil
 	}
 
 	for _, secretRef := range sa.Secrets {
-		secret, sErr := c.CoreV1().Secrets(kms.Tenant).Get(context.TODO(), secretRef.Name, metav1.GetOptions{})
+		secret, sErr := client.CoreV1().Secrets(kms.Tenant).Get(context.TODO(), secretRef.Name, metav1.GetOptions{})
 		if sErr != nil {
 			return "", fmt.Errorf("failed to get Secret %s/%s: %w", kms.Tenant, secretRef.Name, sErr)
 		}

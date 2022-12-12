@@ -117,13 +117,13 @@ func initAWSSTSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
 
 // getSecrets returns required STS configuration options from the Kubernetes Secret.
 func (as *awsSTSMetadataKMS) getSecrets() (map[string]string, error) {
-	c, err := k8s.NewK8sClient()
+	client, err := k8s.NewK8sClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Kubernetes to "+
 			"get Secret %s/%s: %w", as.namespace, as.secretName, err)
 	}
 
-	secret, err := c.CoreV1().Secrets(as.namespace).Get(context.TODO(),
+	secret, err := client.CoreV1().Secrets(as.namespace).Get(context.TODO(),
 		as.secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Secret %s/%s: %w",
