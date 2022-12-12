@@ -1,26 +1,47 @@
 language: go
-dist: xenial
+
+dist: bionic
 
 go:
- - 1.17.x
- - 1.18.x
- - 1.19.x
+- 1.17.x
+- 1.18.x
+- 1.19.x
 
 env:
-  - GO111MODULE=on
+  global:
+    - GO111MODULE=on
+
+before_install:
+  - sudo apt-get update
+  - pyenv global 3.8
 
 before_script:
   - GO111MODULE=off go get -u github.com/haya14busa/goverage
 
 install:
   - go build ./...
+  - curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $(go env GOPATH)/bin v1.49.0
+  - curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
 
 script:
   - $GOPATH/bin/goverage -v -race -coverprofile=cover.out $(go list ./... | grep -v '/vendor|/scripts')
   - go tool cover -func=cover.out
   - go tool cover -html=cover.out -o=cover.html
 
-# FIXME: these scripts don't exist in this repo
-# after_success:
-#   - ./scripts/calculateCoverage.sh
-#   - ./scripts/publishCoverage.sh
+# To enable semantic-release, uncomment these sections.
+before_deploy:
+  - nvm install 14
+  - npm install -g npm@6.x
+  - npm install @semantic-release/changelog
+  - npm install @semantic-release/exec
+  - npm install @semantic-release/git
+  - npm install @semantic-release/github
+  - pip install --user bump2version
+#
+deploy:
+  - provider: script
+    script: npx semantic-release
+    skip_cleanup: true
+    on:
+      go: '1.18.x'
+      branch: master
