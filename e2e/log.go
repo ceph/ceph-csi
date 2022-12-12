@@ -22,7 +22,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework"
 	frameworkPod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
@@ -32,7 +32,7 @@ func logsCSIPods(label string, c clientset.Interface) {
 	}
 	podList, err := c.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
 	if err != nil {
-		e2elog.Logf("failed to list pods with selector %s %v", label, err)
+		framework.Logf("failed to list pods with selector %s %v", label, err)
 
 		return
 	}
@@ -50,11 +50,11 @@ func kubectlLogPod(c clientset.Interface, pod *v1.Pod) {
 		if err != nil {
 			logs, err = getPreviousPodLogs(c, pod.Namespace, pod.Name, container[i].Name)
 			if err != nil {
-				e2elog.Logf("Failed to get logs of pod %v, container %v, err: %v", pod.Name, container[i].Name, err)
+				framework.Logf("Failed to get logs of pod %v, container %v, err: %v", pod.Name, container[i].Name, err)
 			}
 		}
-		e2elog.Logf("Logs of %v/%v:%v on node %v\n", pod.Namespace, pod.Name, container[i].Name, pod.Spec.NodeName)
-		e2elog.Logf("STARTLOG\n\n%s\n\nENDLOG for container %v:%v:%v", logs, pod.Namespace, pod.Name, container[i].Name)
+		framework.Logf("Logs of %v/%v:%v on node %v\n", pod.Namespace, pod.Name, container[i].Name, pod.Spec.NodeName)
+		framework.Logf("STARTLOG\n\n%s\n\nENDLOG for container %v:%v:%v", logs, pod.Namespace, pod.Name, container[i].Name)
 	}
 }
 

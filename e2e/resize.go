@@ -30,7 +30,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/cloud-provider/volume/helpers"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size string, t int) error {
@@ -49,15 +48,15 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 	Expect(err).Should(BeNil())
 
 	start := time.Now()
-	e2elog.Logf("Waiting up to %v to be in Resized state", pvc)
+	framework.Logf("Waiting up to %v to be in Resized state", pvc)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		e2elog.Logf("waiting for PVC %s (%d seconds elapsed)", pvcName, int(time.Since(start).Seconds()))
+		framework.Logf("waiting for PVC %s (%d seconds elapsed)", pvcName, int(time.Since(start).Seconds()))
 		updatedPVC, err = c.CoreV1().
 			PersistentVolumeClaims(pvcNamespace).
 			Get(context.TODO(), pvcName, metav1.GetOptions{})
 		if err != nil {
-			e2elog.Logf("Error getting pvc in namespace: '%s': %v", pvcNamespace, err)
+			framework.Logf("Error getting pvc in namespace: '%s': %v", pvcNamespace, err)
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
@@ -66,7 +65,7 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 		}
 		pvcConditions := updatedPVC.Status.Conditions
 		if len(pvcConditions) > 0 {
-			e2elog.Logf("pvc state %v", pvcConditions[0].Type)
+			framework.Logf("pvc state %v", pvcConditions[0].Type)
 			if pvcConditions[0].Type == v1.PersistentVolumeClaimResizing ||
 				pvcConditions[0].Type == v1.PersistentVolumeClaimFileSystemResizePending {
 				return false, nil
@@ -74,7 +73,7 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 		}
 
 		if !updatedPVC.Status.Capacity[v1.ResourceStorage].Equal(resource.MustParse(size)) {
-			e2elog.Logf(
+			framework.Logf(
 				"current size in status %v,expected size %v",
 				updatedPVC.Status.Capacity[v1.ResourceStorage],
 				resource.MustParse(size))
@@ -187,13 +186,13 @@ func checkAppMntSize(f *framework.Framework, opt *metav1.ListOptions, size, cmd,
 	start := time.Now()
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		e2elog.Logf("executing cmd %s (%d seconds elapsed)", cmd, int(time.Since(start).Seconds()))
+		framework.Logf("executing cmd %s (%d seconds elapsed)", cmd, int(time.Since(start).Seconds()))
 		output, stdErr, err := execCommandInPod(f, cmd, ns, opt)
 		if err != nil {
 			return false, err
 		}
 		if stdErr != "" {
-			e2elog.Logf("failed to execute command in app pod %v", stdErr)
+			framework.Logf("failed to execute command in app pod %v", stdErr)
 
 			return false, nil
 		}
@@ -208,7 +207,7 @@ func checkAppMntSize(f *framework.Framework, opt *metav1.ListOptions, size, cmd,
 			return false, err
 		}
 		if actualSize != expectedSize {
-			e2elog.Logf("expected size %s found %s information", size, output)
+			framework.Logf("expected size %s found %s information", size, output)
 
 			return false, nil
 		}

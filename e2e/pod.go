@@ -30,7 +30,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const errRWOPConflict = "node has pod using PersistentVolumeClaim with the same name and ReadWriteOncePod access mode."
@@ -40,17 +39,17 @@ const errRWOPConflict = "node has pod using PersistentVolumeClaim with the same 
 func getDaemonSetLabelSelector(f *framework.Framework, ns, daemonSetName string) (string, error) {
 	ds, err := f.ClientSet.AppsV1().DaemonSets(ns).Get(context.TODO(), daemonSetName, metav1.GetOptions{})
 	if err != nil {
-		e2elog.Logf("Error getting daemonsets with name %s in namespace %s", daemonSetName, ns)
+		framework.Logf("Error getting daemonsets with name %s in namespace %s", daemonSetName, ns)
 
 		return "", err
 	}
 	s, err := metav1.LabelSelectorAsSelector(ds.Spec.Selector)
 	if err != nil {
-		e2elog.Logf("Error parsing %s daemonset selector in namespace %s", daemonSetName, ns)
+		framework.Logf("Error parsing %s daemonset selector in namespace %s", daemonSetName, ns)
 
 		return "", err
 	}
-	e2elog.Logf("LabelSelector for %s daemonsets in namespace %s: %s", daemonSetName, ns, s.String())
+	framework.Logf("LabelSelector for %s daemonsets in namespace %s: %s", daemonSetName, ns, s.String())
 
 	return s.String(), nil
 }
@@ -58,12 +57,12 @@ func getDaemonSetLabelSelector(f *framework.Framework, ns, daemonSetName string)
 func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	e2elog.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start", timeout, ns)
+	framework.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start", timeout, ns)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		ds, err := c.AppsV1().DaemonSets(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
-			e2elog.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
+			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
 			if strings.Contains(err.Error(), "not found") {
 				return false, nil
 			}
@@ -75,7 +74,7 @@ func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 		}
 		dNum := ds.Status.DesiredNumberScheduled
 		ready := ds.Status.NumberReady
-		e2elog.Logf(
+		framework.Logf(
 			"%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)",
 			ready,
 			dNum,
@@ -223,7 +222,7 @@ func execWithRetry(f *framework.Framework, opts *framework.ExecOptions) (string,
 				return false, nil
 			}
 
-			e2elog.Logf("failed to execute command: %v", execErr)
+			framework.Logf("failed to execute command: %v", execErr)
 
 			return false, fmt.Errorf("failed to execute command: %w", execErr)
 		}
@@ -242,7 +241,7 @@ func execCommandInPod(f *framework.Framework, c, ns string, opt *metav1.ListOpti
 
 	stdOut, stdErr, err := execWithRetry(f, &podOpt)
 	if stdErr != "" {
-		e2elog.Logf("stdErr occurred: %v", stdErr)
+		framework.Logf("stdErr occurred: %v", stdErr)
 	}
 
 	return stdOut, stdErr, err
@@ -258,7 +257,7 @@ func execCommandInContainer(
 
 	stdOut, stdErr, err := execWithRetry(f, &podOpt)
 	if stdErr != "" {
-		e2elog.Logf("stdErr occurred: %v", stdErr)
+		framework.Logf("stdErr occurred: %v", stdErr)
 	}
 
 	return stdOut, stdErr, err
@@ -281,7 +280,7 @@ func execCommandInContainerByPodName(
 
 	stdOut, stdErr, err := execWithRetry(f, &execOpts)
 	if stdErr != "" {
-		e2elog.Logf("stdErr occurred: %v", stdErr)
+		framework.Logf("stdErr occurred: %v", stdErr)
 	}
 
 	return stdOut, stdErr, err
@@ -298,7 +297,7 @@ func execCommandInToolBoxPod(f *framework.Framework, c, ns string) (string, stri
 
 	stdOut, stdErr, err := execWithRetry(f, &podOpt)
 	if stdErr != "" {
-		e2elog.Logf("stdErr occurred: %v", stdErr)
+		framework.Logf("stdErr occurred: %v", stdErr)
 	}
 
 	return stdOut, stdErr, err
@@ -312,7 +311,7 @@ func execCommandInPodAndAllowFail(f *framework.Framework, c, ns string, opt *met
 
 	stdOut, stdErr, err := execWithRetry(f, &podOpt)
 	if err != nil {
-		e2elog.Logf("command %s failed: %v", c, err)
+		framework.Logf("command %s failed: %v", c, err)
 	}
 
 	return stdOut, stdErr
@@ -351,7 +350,7 @@ func createAppErr(c kubernetes.Interface, app *v1.Pod, timeout int, errString st
 func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, expectedError string) error {
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
-	e2elog.Logf("Waiting up to %v to be in Running state", name)
+	framework.Logf("Waiting up to %v to be in Running state", name)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{})
@@ -376,13 +375,13 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 					return false, err
 				}
 				if strings.Contains(events.String(), expectedError) {
-					e2elog.Logf("Expected Error %q found successfully", expectedError)
+					framework.Logf("Expected Error %q found successfully", expectedError)
 
 					return true, err
 				}
 			}
 		case v1.PodUnknown:
-			e2elog.Logf(
+			framework.Logf(
 				"%s app  is in %s phase expected to be in Running  state (%d seconds elapsed)",
 				name,
 				pod.Status.Phase,
@@ -400,7 +399,7 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 		return fmt.Errorf("failed to delete app: %w", err)
 	}
 	start := time.Now()
-	e2elog.Logf("Waiting for pod %v to be deleted", name)
+	framework.Logf("Waiting for pod %v to be deleted", name)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err := c.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{})
@@ -411,7 +410,7 @@ func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 			if apierrs.IsNotFound(err) {
 				return true, nil
 			}
-			e2elog.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+			framework.Logf("%s app  to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 
 			return false, fmt.Errorf("failed to get app: %w", err)
 		}
@@ -431,7 +430,7 @@ func deletePodWithLabel(label, ns string, skipNotFound bool) error {
 		label,
 		fmt.Sprintf("--ignore-not-found=%t", skipNotFound))
 	if err != nil {
-		e2elog.Logf("failed to delete pod %v", err)
+		framework.Logf("failed to delete pod %v", err)
 	}
 
 	return err
@@ -449,7 +448,7 @@ func calculateSHA512sum(f *framework.Framework, app *v1.Pod, filePath string, op
 	}
 	// extract checksum from sha512sum output.
 	checkSum := strings.Split(sha512sumOut, "")[0]
-	e2elog.Logf("Calculated checksum  %s", checkSum)
+	framework.Logf("Calculated checksum  %s", checkSum)
 
 	return checkSum, nil
 }

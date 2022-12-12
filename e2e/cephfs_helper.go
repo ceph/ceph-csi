@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 const (
@@ -106,7 +105,7 @@ func createCephfsStorageClass(
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 		if err != nil {
-			e2elog.Logf("error creating StorageClass %q: %v", sc.Name, err)
+			framework.Logf("error creating StorageClass %q: %v", sc.Name, err)
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
@@ -141,13 +140,13 @@ func createCephfsSecret(f *framework.Framework, secretName, userName, userKey st
 func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error {
 	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), appName, metav1.GetOptions{})
 	if err != nil {
-		e2elog.Logf("Error occurred getting pod %s in namespace %s", appName, f.UniqueName)
+		framework.Logf("Error occurred getting pod %s in namespace %s", appName, f.UniqueName)
 
 		return fmt.Errorf("failed to get pod: %w", err)
 	}
 	pvc, err := getPersistentVolumeClaim(f.ClientSet, f.UniqueName, pvcName)
 	if err != nil {
-		e2elog.Logf("Error occurred getting PVC %s in namespace %s", pvcName, f.UniqueName)
+		framework.Logf("Error occurred getting PVC %s in namespace %s", pvcName, f.UniqueName)
 
 		return fmt.Errorf("failed to get pvc: %w", err)
 	}
@@ -163,7 +162,7 @@ func unmountCephFSVolume(f *framework.Framework, appName, pvcName string) error 
 		cephFSContainerName,
 		cephCSINamespace)
 	if stdErr != "" {
-		e2elog.Logf("StdErr occurred: %s", stdErr)
+		framework.Logf("StdErr occurred: %s", stdErr)
 	}
 
 	return err
@@ -339,7 +338,7 @@ func getSnapName(snapNamespace, snapName string) (string, error) {
 	snapIDRegex := regexp.MustCompile(`(\w+\-?){5}$`)
 	snapID := snapIDRegex.FindString(*sc.Status.SnapshotHandle)
 	snapshotName := fmt.Sprintf("csi-snap-%s", snapID)
-	e2elog.Logf("snapshotName= %s", snapshotName)
+	framework.Logf("snapshotName= %s", snapshotName)
 
 	return snapshotName, nil
 }
@@ -464,7 +463,7 @@ func validateFscryptAndAppBinding(pvcPath, appPath string, kms kmsConfig, f *fra
 		if !destroyed {
 			return fmt.Errorf("passphrased was not destroyed: %s", msg)
 		} else if msg != "" {
-			e2elog.Logf("passphrase destroyed, but message returned: %s", msg)
+			framework.Logf("passphrase destroyed, but message returned: %s", msg)
 		}
 	}
 
@@ -479,17 +478,17 @@ func validateFscryptClone(
 ) {
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC: %v", err)
+		framework.Failf("failed to load PVC: %v", err)
 	}
 
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to create PVC: %v", err)
+		framework.Failf("failed to create PVC: %v", err)
 	}
 	app, err := loadApp(appPath)
 	if err != nil {
-		e2elog.Failf("failed to load application: %v", err)
+		framework.Failf("failed to load application: %v", err)
 	}
 	label := make(map[string]string)
 	label[appKey] = appLabel
@@ -501,18 +500,18 @@ func validateFscryptClone(
 	}
 	wErr := writeDataInPod(app, &opt, f)
 	if wErr != nil {
-		e2elog.Failf("failed to write data from application %v", wErr)
+		framework.Failf("failed to write data from application %v", wErr)
 	}
 
 	pvcClone, err := loadPVC(pvcSmartClonePath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC: %v", err)
+		framework.Failf("failed to load PVC: %v", err)
 	}
 	pvcClone.Spec.DataSource.Name = pvc.Name
 	pvcClone.Namespace = f.UniqueName
 	appClone, err := loadApp(appSmartClonePath)
 	if err != nil {
-		e2elog.Failf("failed to load application: %v", err)
+		framework.Failf("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
 	appClone.Labels = map[string]string{
@@ -521,50 +520,50 @@ func validateFscryptClone(
 
 	err = createPVCAndApp(f.UniqueName, f, pvcClone, appClone, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to create PVC or application (%s): %v", f.UniqueName, err)
+		framework.Failf("failed to create PVC or application (%s): %v", f.UniqueName, err)
 	}
 
 	_, csiVolumeHandle, err := getInfoFromPVC(pvcClone.Namespace, pvcClone.Name, f)
 	if err != nil {
-		e2elog.Failf("failed to get pvc info: %s", err)
+		framework.Failf("failed to get pvc info: %s", err)
 	}
 
 	if kms != noKMS && kms.canGetPassphrase() {
 		// check new passphrase created
 		stdOut, stdErr := kms.getPassphrase(f, csiVolumeHandle)
 		if stdOut != "" {
-			e2elog.Logf("successfully read the passphrase from vault: %s", stdOut)
+			framework.Logf("successfully read the passphrase from vault: %s", stdOut)
 		}
 		if stdErr != "" {
-			e2elog.Failf("failed to read passphrase from vault: %s", stdErr)
+			framework.Failf("failed to read passphrase from vault: %s", stdErr)
 		}
 	}
 
 	// delete parent pvc
 	err = deletePVCAndApp("", f, pvc, app)
 	if err != nil {
-		e2elog.Failf("failed to delete PVC or application: %v", err)
+		framework.Failf("failed to delete PVC or application: %v", err)
 	}
 
 	err = deletePVCAndApp(f.UniqueName, f, pvcClone, appClone)
 	if err != nil {
-		e2elog.Failf("failed to delete PVC or application (%s): %v", f.UniqueName, err)
+		framework.Failf("failed to delete PVC or application (%s): %v", f.UniqueName, err)
 	}
 
 	if kms != noKMS && kms.canGetPassphrase() {
 		// check passphrase deleted
 		stdOut, _ := kms.getPassphrase(f, csiVolumeHandle)
 		if stdOut != "" {
-			e2elog.Failf("passphrase found in vault while should be deleted: %s", stdOut)
+			framework.Failf("passphrase found in vault while should be deleted: %s", stdOut)
 		}
 	}
 
 	if kms != noKMS && kms.canVerifyKeyDestroyed() {
 		destroyed, msg := kms.verifyKeyDestroyed(f, csiVolumeHandle)
 		if !destroyed {
-			e2elog.Failf("passphrased was not destroyed: %s", msg)
+			framework.Failf("passphrased was not destroyed: %s", msg)
 		} else if msg != "" {
-			e2elog.Logf("passphrase destroyed, but message returned: %s", msg)
+			framework.Logf("passphrase destroyed, but message returned: %s", msg)
 		}
 	}
 }

@@ -28,7 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 func createNamespace(c kubernetes.Interface, name string) error {
@@ -46,7 +46,7 @@ func createNamespace(c kubernetes.Interface, name string) error {
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err := c.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
-			e2elog.Logf("Error getting namespace: '%s': %v", name, err)
+			framework.Logf("Error getting namespace: '%s': %v", name, err)
 			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
@@ -74,7 +74,7 @@ func deleteNamespace(c kubernetes.Interface, name string) error {
 			if apierrs.IsNotFound(err) {
 				return true, nil
 			}
-			e2elog.Logf("Error getting namespace: '%s': %v", name, err)
+			framework.Logf("Error getting namespace: '%s': %v", name, err)
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
