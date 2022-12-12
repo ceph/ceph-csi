@@ -42,3 +42,18 @@ cover.*
 **/coverage.out
 **/coverage.tmp
 *.coverprofile
+
+.env
+
+# SDK generator
+.openapi-generator-ignore
+.openapi-generator/VERSION
+
+# IDE files
+*.idea
+*.log
+
+# files produced by "npm install" commands during build
+package.json
+package-lock.json
+node_modules/
