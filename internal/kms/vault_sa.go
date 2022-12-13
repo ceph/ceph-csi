@@ -86,7 +86,7 @@ var _ = RegisterProvider(Provider{
 
 // initVaultTenantSA returns an interface to HashiCorp Vault KMS where Tenants
 // use their ServiceAccount to access the service.
-func initVaultTenantSA(args ProviderInitArgs) (EncryptionKMS, error) {
+func initVaultTenantSA(args ProviderInitArgs) (EncryptionKMS, error) { //nolint:ireturn
 	var err error
 
 	config := args.Config

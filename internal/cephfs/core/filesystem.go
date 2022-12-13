@@ -42,7 +42,7 @@ type fileSystem struct {
 }
 
 // NewFileSystem returns a new instance of fileSystem.
-func NewFileSystem(conn *util.ClusterConnection) FileSystem {
+func NewFileSystem(conn *util.ClusterConnection) FileSystem { //nolint:ireturn
 	return &fileSystem{
 		conn: conn,
 	}

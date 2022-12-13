@@ -94,7 +94,7 @@ type kmipKMS struct {
 	writeTimeout     uint8
 }
 
-func initKMIPKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+func initKMIPKMS(args ProviderInitArgs) (EncryptionKMS, error) { //nolint:ireturn
 	kms := &kmipKMS{
 		namespace: args.Namespace,
 	}

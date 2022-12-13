@@ -34,7 +34,7 @@ func RegisterTestProvider(provider ProviderTest) bool {
 	return true
 }
 
-func GetKMSTestDummy(kmsID string) EncryptionKMS {
+func GetKMSTestDummy(kmsID string) EncryptionKMS { //nolint:ireturn
 	provider, ok := kmsTestManager.providers[kmsID]
 	if !ok {
 		return nil
@@ -47,12 +47,12 @@ func GetKMSTestProvider() map[string]ProviderTest {
 	return kmsTestManager.providers
 }
 
-func newDefaultTestDummy() EncryptionKMS {
+func newDefaultTestDummy() EncryptionKMS { //nolint:ireturn
 	return secretsKMS{passphrase: base64.URLEncoding.EncodeToString(
 		[]byte("test dummy passphrase"))}
 }
 
-func newSecretsMetadataTestDummy() EncryptionKMS {
+func newSecretsMetadataTestDummy() EncryptionKMS { //nolint:ireturn
 	smKMS := secretsMetadataKMS{}
 	smKMS.secretsKMS = secretsKMS{passphrase: base64.URLEncoding.EncodeToString(
 		[]byte("test dummy passphrase"))}

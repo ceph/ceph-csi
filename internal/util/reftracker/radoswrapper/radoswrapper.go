@@ -42,7 +42,7 @@ type (
 
 var _ IOContextW = &IOContext{}
 
-func NewIOContext(ioctx *rados.IOContext) IOContextW {
+func NewIOContext(ioctx *rados.IOContext) IOContextW { //nolint:ireturn
 	return &IOContext{
 		IOContext: ioctx,
 	}
@@ -56,14 +56,14 @@ func (c *IOContext) GetXattr(oid, key string, data []byte) (int, error) {
 	return c.IOContext.GetXattr(oid, key, data)
 }
 
-func (c *IOContext) CreateWriteOp() WriteOpW {
+func (c *IOContext) CreateWriteOp() WriteOpW { //nolint:ireturn
 	return &WriteOp{
 		IoCtx:   c.IOContext,
 		WriteOp: rados.CreateWriteOp(),
 	}
 }
 
-func (c *IOContext) CreateReadOp() ReadOpW {
+func (c *IOContext) CreateReadOp() ReadOpW { //nolint:ireturn
 	return &ReadOp{
 		IoCtx:  c.IOContext,
 		ReadOp: rados.CreateReadOp(),
@@ -110,7 +110,7 @@ func (r *ReadOp) Read(offset uint64, buffer []byte) *rados.ReadOpReadStep {
 	return r.ReadOp.Read(offset, buffer)
 }
 
-func (r *ReadOp) GetOmapValuesByKeys(keys []string) ReadOpOmapGetValsByKeysStepW {
+func (r *ReadOp) GetOmapValuesByKeys(keys []string) ReadOpOmapGetValsByKeysStepW { //nolint:ireturn
 	return &ReadOpOmapGetValsByKeysStep{
 		ReadOpOmapGetValsByKeysStep: r.ReadOp.GetOmapValuesByKeys(keys),
 	}

@@ -66,7 +66,7 @@ var (
 // - kmsID is the service name of the KMS configuration
 // - secrets contain additional details, like TLS certificates to connect to
 //   the KMS
-func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, error) {
+func GetKMS(tenant, kmsID string, secrets map[string]string) (EncryptionKMS, error) { //nolint:ireturn
 	if kmsID == "" || kmsID == DefaultKMSType {
 		return GetDefaultKMS(secrets)
 	}
@@ -272,7 +272,7 @@ func RegisterProvider(provider Provider) bool {
 // buildKMS creates a new Provider instance, based on the configuration that
 // was passed. This uses getProvider() internally to identify the
 // Provider to instantiate.
-func (kf *kmsProviderList) buildKMS(
+func (kf *kmsProviderList) buildKMS( //nolint:ireturn
 	tenant string,
 	config map[string]interface{},
 	secrets map[string]string,
@@ -304,7 +304,7 @@ func (kf *kmsProviderList) buildKMS(
 	return provider.Initializer(kmsInitArgs)
 }
 
-func GetDefaultKMS(secrets map[string]string) (EncryptionKMS, error) {
+func GetDefaultKMS(secrets map[string]string) (EncryptionKMS, error) { //nolint:ireturn
 	provider, ok := kmsManager.providers[DefaultKMSType]
 	if !ok {
 		return nil, fmt.Errorf("could not find KMS provider %q", DefaultKMSType)

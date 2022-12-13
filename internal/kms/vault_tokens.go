@@ -216,7 +216,7 @@ var _ = RegisterProvider(Provider{
 })
 
 // InitVaultTokensKMS returns an interface to HashiCorp Vault KMS.
-func initVaultTokensKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+func initVaultTokensKMS(args ProviderInitArgs) (EncryptionKMS, error) { //nolint:ireturn
 	var err error
 
 	config := args.Config

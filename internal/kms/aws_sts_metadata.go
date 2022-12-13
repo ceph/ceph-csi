@@ -75,7 +75,7 @@ type awsSTSMetadataKMS struct {
 	role string
 }
 
-func initAWSSTSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+func initAWSSTSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) { //nolint:ireturn
 	kms := &awsSTSMetadataKMS{
 		awsMetadataKMS: awsMetadataKMS{
 			namespace: args.Tenant,

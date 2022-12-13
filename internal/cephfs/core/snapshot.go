@@ -75,7 +75,7 @@ type Snapshot struct {
 }
 
 // NewSnapshot creates a new snapshot client.
-func NewSnapshot(
+func NewSnapshot( //nolint:ireturn
 	conn *util.ClusterConnection,
 	snapshotID,
 	clusterID,

@@ -187,7 +187,6 @@ linters:
     # TODO: enable linters added in golangci-lint 1.43
     - contextcheck
     - gomnd
-    - ireturn
     - tagliatelle
     - varnamelen
     - nilnil

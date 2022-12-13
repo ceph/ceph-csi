@@ -79,7 +79,7 @@ type keyProtectKMS struct {
 	crk               string
 }
 
-func initKeyProtectKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+func initKeyProtectKMS(args ProviderInitArgs) (EncryptionKMS, error) { //nolint:ireturn
 	kms := &keyProtectKMS{
 		namespace: args.Namespace,
 	}

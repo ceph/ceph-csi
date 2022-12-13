@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func noinitKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+func noinitKMS(args ProviderInitArgs) (EncryptionKMS, error) { //nolint:ireturn
 	return nil, nil
 }
 

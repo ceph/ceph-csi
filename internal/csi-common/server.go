@@ -54,7 +54,7 @@ type Servers struct {
 }
 
 // NewNonBlockingGRPCServer return non-blocking GRPC.
-func NewNonBlockingGRPCServer() NonBlockingGRPCServer {
+func NewNonBlockingGRPCServer() NonBlockingGRPCServer { //nolint:ireturn
 	return &nonBlockingGRPCServer{}
 }
 

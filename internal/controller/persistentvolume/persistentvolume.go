@@ -61,7 +61,7 @@ func (r *ReconcilePersistentVolume) Add(mgr manager.Manager, config ctrl.Config)
 }
 
 // newReconciler returns a ReconcilePersistentVolume.
-func newPVReconciler(mgr manager.Manager, config ctrl.Config) reconcile.Reconciler {
+func newPVReconciler(mgr manager.Manager, config ctrl.Config) reconcile.Reconciler { //nolint:ireturn
 	r := &ReconcilePersistentVolume{
 		client: mgr.GetClient(),
 		config: config,

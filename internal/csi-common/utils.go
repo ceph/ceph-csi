@@ -111,7 +111,7 @@ func isReplicationRequest(req interface{}) bool {
 
 // NewMiddlewareServerOption creates a new grpc.ServerOption that configures a
 // common format for log messages and other gRPC related handlers.
-func NewMiddlewareServerOption(withMetrics bool) grpc.ServerOption {
+func NewMiddlewareServerOption(withMetrics bool) grpc.ServerOption { //nolint:ireturn
 	middleWare := []grpc.UnaryServerInterceptor{contextIDInjector, logGRPC, panicHandler}
 
 	if withMetrics {

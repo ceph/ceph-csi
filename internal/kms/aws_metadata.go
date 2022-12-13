@@ -78,7 +78,7 @@ type awsMetadataKMS struct {
 	cmk             string
 }
 
-func initAWSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+func initAWSMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) { //nolint:ireturn
 	kms := &awsMetadataKMS{
 		namespace: args.Namespace,
 	}

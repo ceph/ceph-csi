@@ -63,7 +63,7 @@ var _ = RegisterProvider(Provider{
 // newSecretsKMS initializes a secretsKMS that uses the passphrase from the
 // secret that is configured for the StorageClass. This KMS provider uses a
 // single (LUKS) passhprase for all volumes.
-func newSecretsKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+func newSecretsKMS(args ProviderInitArgs) (EncryptionKMS, error) { //nolint:ireturn
 	passphraseValue, ok := args.Secrets[encryptionPassphraseKey]
 	if !ok {
 		return nil, errors.New("missing encryption passphrase in secrets")
@@ -108,7 +108,7 @@ var _ = RegisterProvider(Provider{
 // initSecretsMetadataKMS initializes a secretsMetadataKMS that wraps a secretKMS,
 // so that the passphrase from the user provided or StorageClass secrets can be used
 // for encrypting/decrypting DEKs that are stored in a detached DEKStore.
-func initSecretsMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+func initSecretsMetadataKMS(args ProviderInitArgs) (EncryptionKMS, error) { //nolint:ireturn
 	var (
 		smKMS                secretsMetadataKMS
 		encryptionPassphrase string

@@ -99,7 +99,7 @@ type SubVolume struct {
 }
 
 // NewSubVolume returns a new subvolume client.
-func NewSubVolume(
+func NewSubVolume( //nolint:ireturn
 	conn *util.ClusterConnection,
 	vol *SubVolume,
 	clusterID,

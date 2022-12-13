@@ -333,7 +333,7 @@ var _ = RegisterProvider(Provider{
 })
 
 // InitVaultKMS returns an interface to HashiCorp Vault KMS.
-func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) {
+func initVaultKMS(args ProviderInitArgs) (EncryptionKMS, error) { //nolint:ireturn
 	kms := &vaultKMS{}
 	err := kms.initConnection(args.Config)
 	if err != nil {

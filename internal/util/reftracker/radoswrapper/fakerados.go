@@ -158,7 +158,7 @@ func (c *FakeIOContext) GetXattr(oid, key string, data []byte) (int, error) {
 	return len(xattr), nil
 }
 
-func (c *FakeIOContext) CreateWriteOp() WriteOpW {
+func (c *FakeIOContext) CreateWriteOp() WriteOpW { //nolint:ireturn
 	return &FakeWriteOp{
 		IoCtx: c,
 		steps: make(map[fakeWriteOpStepExecutorIdx]fakeWriteOpStepExecutor),
@@ -193,7 +193,7 @@ func (w *FakeWriteOp) Operate(oid string) error {
 
 func (w *FakeWriteOp) Release() {}
 
-func (c *FakeIOContext) CreateReadOp() ReadOpW {
+func (c *FakeIOContext) CreateReadOp() ReadOpW { //nolint:ireturn
 	return &FakeReadOp{
 		IoCtx: c,
 		steps: make(map[fakeReadOpStepExecutorIdx]fakeReadOpStepExecutor),
@@ -497,7 +497,7 @@ func (s *FakeReadOpOmapGetValsByKeysStep) Next() (*rados.OmapKeyValue, error) {
 	return omapKeyValue, nil
 }
 
-func (r *FakeReadOp) GetOmapValuesByKeys(keys []string) ReadOpOmapGetValsByKeysStepW {
+func (r *FakeReadOp) GetOmapValuesByKeys(keys []string) ReadOpOmapGetValsByKeysStepW { //nolint:ireturn
 	keysCopy := append([]string(nil), keys...)
 
 	s := &FakeReadOpOmapGetValsByKeysStep{}

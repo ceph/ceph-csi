@@ -103,7 +103,7 @@ type VolumeMounter interface {
 	Name() string
 }
 
-func New(volOptions *store.VolumeOptions) (VolumeMounter, error) {
+func New(volOptions *store.VolumeOptions) (VolumeMounter, error) { //nolint:ireturn
 	// Get the mounter from the configuration
 
 	wantMounter := volOptions.Mounter
