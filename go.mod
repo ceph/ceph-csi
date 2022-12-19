@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/IBM/keyprotect-go-client v0.9.2
 	github.com/aws/aws-sdk-go v1.44.146
-	github.com/aws/aws-sdk-go-v2/service/sts v1.17.6
+	github.com/aws/aws-sdk-go-v2/service/sts v1.17.7
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	// TODO: API for managing subvolume metadata and snapshot metadata requires `ceph_ci_untested` build-tag
 	github.com/ceph/go-ceph v0.18.0
@@ -52,10 +52,10 @@ require (
 	github.com/ansel1/merry/v2 v2.0.1 // indirect
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.17.2 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.26 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.20 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.20 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.17.3 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.27 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.21 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.21 // indirect
 	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
