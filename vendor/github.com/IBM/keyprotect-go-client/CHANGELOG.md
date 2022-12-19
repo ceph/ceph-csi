@@ -1,3 +1,10 @@
+## [0.9.2](https://github.com/IBM/keyprotect-go-client/compare/v0.9.1...v0.9.2) (2022-12-14)
+
+
+### Bug Fixes
+
+* **build:**  Support for Custom-Header ([#102](https://github.com/IBM/keyprotect-go-client/issues/102)) & wrap() with key version ([d6df84a](https://github.com/IBM/keyprotect-go-client/commit/d6df84af4c56ddcb1543eb91151942db5d5f1d28))
+
 ## [0.9.1](https://github.com/IBM/keyprotect-go-client/compare/v0.9.0...v0.9.1) (2022-12-06)
 
 
