@@ -299,7 +299,7 @@ func (cs *ControllerServer) CreateVolume(
 	if vID != nil {
 		volClient := core.NewSubVolume(volOptions.GetConnection(), &volOptions.SubVolume,
 			volOptions.ClusterID, cs.ClusterName, cs.SetMetadata)
-		if sID != nil || pvID != nil && !volOptions.BackingSnapshot {
+		if (sID != nil || pvID != nil) && !volOptions.BackingSnapshot {
 			err = volClient.ExpandVolume(ctx, volOptions.Size)
 			if err != nil {
 				purgeErr := volClient.PurgeVolume(ctx, false)
