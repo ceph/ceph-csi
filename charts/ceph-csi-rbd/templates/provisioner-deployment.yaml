@@ -71,6 +71,9 @@ spec:
 {{- if .Values.topology.enabled }}
             - "--feature-gates=Topology=true"
 {{- end }}
+{{- range .Values.provisioner.provisioner.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
@@ -91,6 +94,9 @@ spec:
             - "--retry-interval-start=500ms"
             - "--handle-volume-inuse-error=false"
             - "--feature-gates=RecoverVolumeExpansionFailure=true"
+{{- range .Values.provisioner.resizer.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
@@ -109,6 +115,9 @@ spec:
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election=true"
             - "--extra-create-metadata=true"
+{{- range .Values.provisioner.snapshotter.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
@@ -127,6 +136,9 @@ spec:
             - "--leader-election=true"
             - "--retry-interval-start=500ms"
             - "--default-fstype=ext4"
+{{- range .Values.provisioner.attacher.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"

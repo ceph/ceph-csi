@@ -177,6 +177,9 @@ provisioner:
       tag: v3.3.0
       pullPolicy: IfNotPresent
     resources: {}
+    ## For further options, check
+    ## https://github.com/kubernetes-csi/external-provisioner#command-line-options
+    extraArgs: []
 
   # set metadata on volume
   setmetadata: true
@@ -189,6 +192,9 @@ provisioner:
       tag: v1.6.0
       pullPolicy: IfNotPresent
     resources: {}
+    ## For further options, check
+    ## https://github.com/kubernetes-csi/external-resizer#recommended-optional-arguments
+    extraArgs: []
 
   snapshotter:
     image:
@@ -196,6 +202,9 @@ provisioner:
       tag: v6.1.0
       pullPolicy: IfNotPresent
     resources: {}
+    ## For further options, check
+    ## https://github.com/kubernetes-csi/external-snapshotter#csi-external-snapshotter-sidecar-command-line-options
+    extraArgs: []
 
   nodeSelector: {}
 
