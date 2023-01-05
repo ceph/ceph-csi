@@ -67,6 +67,9 @@ spec:
             - "--extra-create-metadata=true"
             - "--feature-gates=HonorPVReclaimPolicy=true"
             - "--prevent-volume-mode-conversion=true"
+{{- range .Values.provisioner.provisioner.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
@@ -84,6 +87,9 @@ spec:
             - "--timeout={{ .Values.provisioner.timeout }}"
             - "--leader-election=true"
             - "--extra-create-metadata=true"
+{{- range .Values.provisioner.snapshotter.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
@@ -104,6 +110,9 @@ spec:
             - "--retry-interval-start=500ms"
             - "--handle-volume-inuse-error=false"
             - "--feature-gates=RecoverVolumeExpansionFailure=true"
+{{- range .Values.provisioner.resizer.extraArgs }}
+            - "--{{ . }}"
+{{- end }}
           env:
             - name: ADDRESS
               value: "unix:///csi/{{ .Values.provisionerSocketFile }}"
