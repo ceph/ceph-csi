@@ -984,7 +984,7 @@ func GetTrashList(ioctx *rados.IOContext) ([]TrashInfo, error) {
 		count   C.size_t
 		entries []C.rbd_trash_image_info_t
 	)
-	retry.WithSizes(32, 1024, func(size int) retry.Hint {
+	retry.WithSizes(32, 10240, func(size int) retry.Hint {
 		count = C.size_t(size)
 		entries = make([]C.rbd_trash_image_info_t, count)
 		ret := C.rbd_trash_list(cephIoctx(ioctx), &entries[0], &count)
