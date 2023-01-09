@@ -20,7 +20,7 @@ NAMESPACE="${1}"
 set -e
 
 TOOLBOX_POD=$(kubectl -n rook-ceph get pods -l app=rook-ceph-tools -o=jsonpath='{.items[0].metadata.name}')
-FS_ID=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" ceph fsid)
+FS_ID=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" -- ceph fsid)
 MONITOR=$(kubectl -n rook-ceph get services -l app=rook-ceph-mon -o=jsonpath='{.items[0].spec.clusterIP}:{.items[0].spec.ports[0].port}')
 
 # in case the ConfigMap already exists, remove it before recreating

@@ -18,7 +18,7 @@ set -e
 WORKDIR=$(dirname "${0}")
 
 TOOLBOX_POD=$(kubectl -n rook-ceph get pods --no-headers -l app=rook-ceph-tools -o=jsonpath='{.items[0].metadata.name}')
-FS_ID=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" ceph fsid)
+FS_ID=$(kubectl -n rook-ceph exec "${TOOLBOX_POD}" -- ceph fsid)
 
 for sc in "${WORKDIR}"/sc-*.yaml.in
 do
