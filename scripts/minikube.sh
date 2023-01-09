@@ -85,7 +85,7 @@ function install_minikube() {
     fi
 
     echo "Installing minikube. Version: ${MINIKUBE_VERSION}"
-    curl -Lo minikube https://storage.googleapis.com/minikube/releases/"${MINIKUBE_VERSION}"/minikube-linux-"${MINIKUBE_ARCH}" && chmod +x minikube && mv minikube /usr/local/bin/
+    curl -Lo minikube https://storage.googleapis.com/minikube/releases/"${MINIKUBE_VERSION}"/minikube-linux-"${MINIKUBE_ARCH}" && chmod +x minikube && sudo mv minikube /usr/local/bin/
 }
 
 function detect_kubectl() {
