@@ -200,6 +200,8 @@ func populateRbdVol(
 		}
 	}
 
+	rv.DisableInUseChecks = disableInUseChecks
+
 	err = rv.Connect(cr)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to connect to volume %s: %v", rv, err)
