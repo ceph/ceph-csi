@@ -25,8 +25,8 @@ import (
 	librbd "github.com/ceph/go-ceph/rbd"
 )
 
-// enableImageMirroring enables mirroring on an image.
-func (ri *rbdImage) enableImageMirroring(mode librbd.ImageMirrorMode) error {
+// EnableImageMirroring enables mirroring on an image.
+func (ri *rbdImage) EnableImageMirroring(mode librbd.ImageMirrorMode) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -41,8 +41,8 @@ func (ri *rbdImage) enableImageMirroring(mode librbd.ImageMirrorMode) error {
 	return nil
 }
 
-// disableImageMirroring disables mirroring on an image.
-func (ri *rbdImage) disableImageMirroring(force bool) error {
+// DisableImageMirroring disables mirroring on an image.
+func (ri *rbdImage) DisableImageMirroring(force bool) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -57,8 +57,8 @@ func (ri *rbdImage) disableImageMirroring(force bool) error {
 	return nil
 }
 
-// getImageMirroringInfo gets mirroring information of an image.
-func (ri *rbdImage) getImageMirroringInfo() (*librbd.MirrorImageInfo, error) {
+// GetImageMirroringInfo gets mirroring information of an image.
+func (ri *rbdImage) GetImageMirroringInfo() (*librbd.MirrorImageInfo, error) {
 	image, err := ri.open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -73,8 +73,8 @@ func (ri *rbdImage) getImageMirroringInfo() (*librbd.MirrorImageInfo, error) {
 	return info, nil
 }
 
-// promoteImage promotes image to primary.
-func (ri *rbdImage) promoteImage(force bool) error {
+// PromoteImage promotes image to primary.
+func (ri *rbdImage) PromoteImage(force bool) error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -88,10 +88,10 @@ func (ri *rbdImage) promoteImage(force bool) error {
 	return nil
 }
 
-// forcePromoteImage promotes image to primary with force option with 2 minutes
+// ForcePromoteImage promotes image to primary with force option with 2 minutes
 // timeout. If there is no response within 2 minutes,the rbd CLI process will be
 // killed and an error is returned.
-func (rv *rbdVolume) forcePromoteImage(cr *util.Credentials) error {
+func (rv *rbdVolume) ForcePromoteImage(cr *util.Credentials) error {
 	promoteArgs := []string{
 		"mirror", "image", "promote",
 		rv.String(),
@@ -118,8 +118,8 @@ func (rv *rbdVolume) forcePromoteImage(cr *util.Credentials) error {
 	return nil
 }
 
-// demoteImage demotes image to secondary.
-func (ri *rbdImage) demoteImage() error {
+// DemoteImage demotes image to secondary.
+func (ri *rbdImage) DemoteImage() error {
 	image, err := ri.open()
 	if err != nil {
 		return fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -148,8 +148,8 @@ func (ri *rbdImage) resyncImage() error {
 	return nil
 }
 
-// getImageMirroringStatus get the mirroring status of an image.
-func (ri *rbdImage) getImageMirroringStatus() (*librbd.GlobalMirrorImageStatus, error) {
+// GetImageMirroringStatus get the mirroring status of an image.
+func (ri *rbdImage) GetImageMirroringStatus() (*librbd.GlobalMirrorImageStatus, error) {
 	image, err := ri.open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %q with error: %w", ri, err)
@@ -163,8 +163,8 @@ func (ri *rbdImage) getImageMirroringStatus() (*librbd.GlobalMirrorImageStatus, 
 	return &statusInfo, nil
 }
 
-// getLocalState returns the local state of the image.
-func (ri *rbdImage) getLocalState() (librbd.SiteMirrorImageStatus, error) {
+// GetLocalState returns the local state of the image.
+func (ri *rbdImage) GetLocalState() (librbd.SiteMirrorImageStatus, error) {
 	localStatus := librbd.SiteMirrorImageStatus{}
 	image, err := ri.open()
 	if err != nil {

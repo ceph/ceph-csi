@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	corerbd "github.com/ceph/ceph-csi/internal/rbd"
+
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -455,7 +457,7 @@ func TestValidateLastSyncTime(t *testing.T) {
 			"empty description",
 			"",
 			nil,
-			ErrLastSyncTimeNotFound.Error(),
+			corerbd.ErrLastSyncTimeNotFound.Error(),
 		},
 		{
 			"description without local_snapshot_timestamp",
@@ -473,7 +475,7 @@ func TestValidateLastSyncTime(t *testing.T) {
 			"description with no JSON",
 			`replaying`,
 			nil,
-			ErrLastSyncTimeNotFound.Error(),
+			corerbd.ErrLastSyncTimeNotFound.Error(),
 		},
 	}
 	for _, tt := range tests {
