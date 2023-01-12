@@ -38,7 +38,7 @@ type Driver struct {
 	ids *rbd.IdentityServer
 	ns  *rbd.NodeServer
 	cs  *rbd.ControllerServer
-	rs  *rbd.ReplicationServer
+	rs  *casrbd.ReplicationServer
 
 	// cas is the CSIAddonsServer where CSI-Addons services are handled
 	cas *csiaddons.CSIAddonsServer
@@ -66,8 +66,8 @@ func NewControllerServer(d *csicommon.CSIDriver) *rbd.ControllerServer {
 	}
 }
 
-func NewReplicationServer(c *rbd.ControllerServer) *rbd.ReplicationServer {
-	return &rbd.ReplicationServer{ControllerServer: c}
+func NewReplicationServer(c *rbd.ControllerServer) *casrbd.ReplicationServer {
+	return &casrbd.ReplicationServer{ControllerServer: c}
 }
 
 // NewNodeServer initialize a node server for rbd CSI driver.

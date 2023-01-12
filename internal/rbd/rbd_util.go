@@ -2018,7 +2018,7 @@ func (ri *rbdImage) isCompabitableClone(dst *rbdImage) error {
 	return nil
 }
 
-func (ri *rbdImage) addSnapshotScheduling(
+func (ri *rbdImage) AddSnapshotScheduling(
 	interval admin.Interval,
 	startTime admin.StartTime,
 ) error {
