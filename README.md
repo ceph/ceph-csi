@@ -28,7 +28,8 @@ following files:
      and configuration to request a bare-metal machine
   1. checkout the `centos/ci` branch of the repository, which contains scripts
      for provisioning and preparing the environment for running tests
-  1. reserve a bare-metal machine with `cico` (configured on the Jenkins Slave)
+  1. reserve a bare-metal machine with `duffy` (configured on the Jenkins
+     Slave)
   1. provision the reserved bare-metal machine with additional tools and
      dependencies to run the test (see `prepare.sh` below)
   1. run `make containerized-tests` and `make containerized-build` in parallel
