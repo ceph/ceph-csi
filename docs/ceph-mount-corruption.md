@@ -64,7 +64,7 @@ sh-4.4# ls /var/lib/kubelet/plugins/kubernetes.io/csi/cephfs.csi.ceph.com/bc0146
 ls: cannot access '/var/lib/kubelet/plugins/kubernetes.io/csi/cephfs.csi.ceph.com/bc0146ec2b5d9a9db62e698abbe0adcae19c0e01f5cf15d3d593ed33c7bc1a8d/globalmount': Permission denied
 ```
 
-### kernel clinet corruption detection
+### kernel client corruption detection
 
 A mountpoint is deemed corrupted if `stat()`-ing it returns one of the
 following errors:
