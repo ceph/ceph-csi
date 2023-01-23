@@ -842,7 +842,8 @@ func (cs *ControllerServer) checkErrAndUndoReserve(
 	if errors.Is(err, ErrImageNotFound) {
 		err = rbdVol.ensureImageCleanup(ctx)
 		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+			log.ErrorLog(ctx, "failed to ensure image %q is cleaned up",
+				rbdVol.RbdImageName, err)
 		}
 	} else {
 		// All errors other than ErrImageNotFound should return an error back to the caller
@@ -1002,7 +1003,8 @@ func cleanupRBDImage(ctx context.Context,
 		if errors.Is(err, ErrImageNotFound) {
 			err = tempClone.ensureImageCleanup(ctx)
 			if err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
+				log.ErrorLog(ctx, "failed to ensure image %q is cleaned up",
+					tempClone.RbdImageName, err)
 			}
 		} else {
 			// return error if it is not ErrImageNotFound
@@ -1498,9 +1500,8 @@ func cleanUpImageAndSnapReservation(ctx context.Context, rbdSnap *rbdSnapshot, c
 	// cleanup the image from trash if the error is image not found.
 	err = rbdVol.ensureImageCleanup(ctx)
 	if err != nil {
-		log.ErrorLog(ctx, "failed to delete rbd image: %q with error: %v", rbdVol.Pool, rbdVol.VolName, err)
-
-		return status.Error(codes.Internal, err.Error())
+		log.ErrorLog(ctx, "failed to ensure image %q is cleaned up",
+			rbdVol.RbdImageName, err)
 	}
 	err = undoSnapReservation(ctx, rbdSnap, cr)
 	if err != nil {
