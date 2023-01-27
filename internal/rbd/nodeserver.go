@@ -269,11 +269,11 @@ func populateRbdVol(
 // Implementation notes:
 // - stagingTargetPath is the directory passed in the request where the volume needs to be staged
 //   - We stage the volume into a directory, named after the VolumeID inside stagingTargetPath if
-//    it is a file system
+//     it is a file system
 //   - We stage the volume into a file, named after the VolumeID inside stagingTargetPath if it is
-//    a block volume
-// - Order of operation execution: (useful for defer stacking and when Unstaging to ensure steps
-//	are done in reverse, this is done in undoStagingTransaction)
+//     a block volume
+//   - Order of operation execution: (useful for defer stacking and when Unstaging to ensure steps
+//     are done in reverse, this is done in undoStagingTransaction)
 //   - Stash image metadata under staging path
 //   - Map the image (creates a device)
 //   - Create the staging file/directory under staging path
@@ -1026,6 +1026,29 @@ func (ns *NodeServer) NodeUnstageVolume(
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
+// getStagingPath returns the staging path for the volume from the volume path.
+// The staingTargetPath looks like
+// /var/lib/kubelet/plugins/kubernetes.io/csi/pv/pvc-08937eb8-7e00-4033-b6ce-bc36147b4ed0/
+// globalmount/0001-0009-rook-ceph-0000000000000002-50d53503-9da1-11ed-847e-bacf8f2f1297
+// the last directory is the volumeID returned in the NodeStageVolumeRespose.
+// The image-meta.json file is present in the staging path without volumeID.
+func (ns *NodeServer) getStagingPath(volPath string) (string, error) {
+	mounts, err := ns.Mounter.GetMountRefs(volPath)
+	if err != nil {
+		return "", err
+	}
+	for _, mount := range mounts {
+		// strip the last directory from the staging path
+		stp := strings.Split(mount, "/")
+		stagingTargetPath := strings.Join(stp[:len(stp)-1], "/")
+		if checkRBDImageMetadataStashExists(stagingTargetPath) {
+			return stagingTargetPath, nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to get staging path for volume %s", volPath)
+}
+
 // NodeExpandVolume resizes rbd volumes.
 func (ns *NodeServer) NodeExpandVolume(
 	ctx context.Context,
@@ -1042,8 +1065,18 @@ func (ns *NodeServer) NodeExpandVolume(
 	volumePath := req.GetStagingTargetPath()
 	if volumePath == "" {
 		// If Kubernetes version < v1.19.0 the volume_path would be
-		// having the staging_target_path information
-		volumePath = req.GetVolumePath()
+		// having the staging_target_path information.
+		// stagingTargetPath is optional parameter in NodeExpandVolumeRequest request
+		// Kubernetes will not send the staging_target_path in the volume_path in some cases
+		// Refer https://github.com/kubernetes/kubernetes/issues/115343
+		var err error
+		volumePath, err = ns.getStagingPath(req.GetVolumePath())
+		if err != nil {
+			// If stagingTargetPath is not found in volumePath then use
+			// volumePath
+			volumePath = req.GetVolumePath()
+			log.UsefulLog(ctx, "failed to find stagingTargetPath from volumePath %v: %v", volumePath, err)
+		}
 	}
 	if volumePath == "" {
 		return nil, status.Error(codes.InvalidArgument, "volume path must be provided")

@@ -1731,6 +1731,14 @@ func stashRBDImageMetadata(volOptions *rbdVolume, metaDataPath string) error {
 	return nil
 }
 
+// checkRBDImageMetadataStashExists checks if the stashFile exists at the passed in path.
+func checkRBDImageMetadataStashExists(metaDataPath string) bool {
+	imageMetaPath := filepath.Join(metaDataPath, stashFileName)
+	_, err := os.Stat(imageMetaPath)
+
+	return err == nil
+}
+
 // lookupRBDImageMetadataStash reads and returns stashed image metadata at passed in path.
 func lookupRBDImageMetadataStash(metaDataPath string) (rbdImageMetadataStash, error) {
 	var imgMeta rbdImageMetadataStash
