@@ -11,6 +11,7 @@ fail() {
 # exit in case a command fails
 set -e
 
+git config --global --add safe.directory ${PWD}
 git init .
 git remote add origin "${GIT_REPO}"
 git fetch origin "${GIT_REF}"
