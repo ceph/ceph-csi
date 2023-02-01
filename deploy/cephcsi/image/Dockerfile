@@ -2,7 +2,13 @@ ARG SRC_DIR="/go/src/github.com/ceph/ceph-csi/"
 ARG GO_ARCH
 ARG BASE_IMAGE
 
-FROM ${BASE_IMAGE} as builder
+FROM ${BASE_IMAGE} as updated_base
+
+RUN dnf -y update \
+       && dnf clean all \
+       && rm -rf /var/cache/yum
+
+FROM updated_base as builder
 
 LABEL stage="build"
 
@@ -28,8 +34,7 @@ RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
 RUN dnf config-manager --disable \
     tcmu-runner,tcmu-runner-source,tcmu-runner-noarch || true
 
-RUN dnf -y update \
-        && dnf -y install --nodocs \
+RUN dnf -y install --nodocs \
 	librados-devel librbd-devel \
 	/usr/bin/cc \
 	make \
@@ -56,7 +61,7 @@ COPY . ${SRC_DIR}
 RUN make cephcsi
 
 #-- Final container
-FROM ${BASE_IMAGE}
+FROM updated_base
 
 ARG SRC_DIR
 
