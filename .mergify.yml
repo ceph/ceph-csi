@@ -9,9 +9,13 @@ defaults:
       method: rebase
       rebase_fallback: merge
       update_method: rebase
-    rebase:
+      # For rebasing Mergify uses the author of the PR. Ideally we use the
+      # ceph-csi-bot for that, but this is a feature that needs a paid
+      # subscription.
+      #
+      # rebase:
       # Use ceph-csi-bot for rebasing, not the account of the PR owner.
-      bot_account: ceph-csi-bot
+      # bot_account: ceph-csi-bot
 
 queue_rules:
   - name: default
