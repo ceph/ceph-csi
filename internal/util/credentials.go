@@ -19,7 +19,6 @@ package util
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 )
 
@@ -43,7 +42,7 @@ type Credentials struct {
 }
 
 func storeKey(key string) (string, error) {
-	tmpfile, err := ioutil.TempFile(tmpKeyFileLocation, tmpKeyFileNamePrefix)
+	tmpfile, err := os.CreateTemp(tmpKeyFileLocation, tmpKeyFileNamePrefix)
 	if err != nil {
 		return "", fmt.Errorf("error creating a temporary keyfile: %w", err)
 	}

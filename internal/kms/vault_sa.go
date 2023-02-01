@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/libopenstorage/secrets/vault"
@@ -321,7 +320,7 @@ func (kms *vaultTenantSA) getToken() (string, error) {
 // linked from the ServiceAccount. This path can then be used in place of the
 // standard `/var/run/secrets/kubernetes.io/serviceaccount/token` location.
 func (kms *vaultTenantSA) getTokenPath() (string, error) {
-	dir, err := ioutil.TempDir("", kms.tenantSAName)
+	dir, err := os.MkdirTemp("", kms.tenantSAName)
 	if err != nil {
 		return "", fmt.Errorf("failed to create directory for ServiceAccount %s/%s: %w", kms.tenantSAName, kms.Tenant, err)
 	}
