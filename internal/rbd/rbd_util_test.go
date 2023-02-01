@@ -19,7 +19,6 @@ package rbd
 import (
 	"context"
 	"errors"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -252,7 +251,7 @@ func TestStrategicActionOnLogFile(t *testing.T) {
 
 	var logFile [3]string
 	for i := 0; i < 3; i++ {
-		f, err := ioutil.TempFile(tmpDir, "rbd-*.log")
+		f, err := os.CreateTemp(tmpDir, "rbd-*.log")
 		if err != nil {
 			t.Errorf("creating tempfile failed: %v", err)
 		}

@@ -19,7 +19,6 @@ package log
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -28,7 +27,7 @@ import (
 func TestGzipLogFile(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	logFile, err := ioutil.TempFile(tmpDir, "rbd-*.log")
+	logFile, err := os.CreateTemp(tmpDir, "rbd-*.log")
 	if err != nil {
 		fmt.Println(err)
 	}

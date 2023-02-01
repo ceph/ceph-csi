@@ -19,7 +19,6 @@ package kms
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -254,7 +253,6 @@ func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 // initCertificates sets VAULT_* environment variables in the vc.vaultConfig map,
 // these settings will be used when connecting to the Vault service with
 // vc.connectVault().
-//
 func (vc *vaultConnection) initCertificates(config map[string]interface{}, secrets map[string]string) error {
 	vaultConfig := make(map[string]interface{})
 
@@ -481,9 +479,9 @@ func detectAuthMountPath(path string) (string, error) {
 }
 
 // createTempFile writes data to a temporary file that contains the pattern in
-// the filename (see ioutil.TempFile for details).
+// the filename (see os.CreateTemp for details).
 func createTempFile(pattern string, data []byte) (string, error) {
-	t, err := ioutil.TempFile("", pattern)
+	t, err := os.CreateTemp("", pattern)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary file: %w", err)
 	}
