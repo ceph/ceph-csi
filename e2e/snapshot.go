@@ -30,7 +30,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func getSnapshotClass(path string) snapapi.VolumeSnapshotClass {
@@ -74,20 +73,20 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	if err != nil {
 		return fmt.Errorf("failed to create volumesnapshot: %w", err)
 	}
-	e2elog.Logf("snapshot with name %v created in %v namespace", snap.Name, snap.Namespace)
+	framework.Logf("snapshot with name %v created in %v namespace", snap.Name, snap.Namespace)
 
 	timeout := time.Duration(t) * time.Minute
 	name := snap.Name
 	start := time.Now()
-	e2elog.Logf("waiting for %v to be in ready state", snap)
+	framework.Logf("waiting for %v to be in ready state", snap)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		e2elog.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
+		framework.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
 		snaps, err := sclient.
 			VolumeSnapshots(snap.Namespace).
 			Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
-			e2elog.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
+			framework.Logf("Error getting snapshot in namespace: '%s': %v", snap.Namespace, err)
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
@@ -103,7 +102,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 		if *snaps.Status.ReadyToUse {
 			return true, nil
 		}
-		e2elog.Logf("snapshot %s in %v state", snap.Name, *snaps.Status.ReadyToUse)
+		framework.Logf("snapshot %s in %v state", snap.Name, *snaps.Status.ReadyToUse)
 
 		return false, nil
 	})
@@ -125,10 +124,10 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	timeout := time.Duration(t) * time.Minute
 	name := snap.Name
 	start := time.Now()
-	e2elog.Logf("Waiting up to %v to be deleted", snap)
+	framework.Logf("Waiting up to %v to be deleted", snap)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		e2elog.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+		framework.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 		_, err := sclient.
 			VolumeSnapshots(snap.Namespace).
 			Get(context.TODO(), name, metav1.GetOptions{})
@@ -227,7 +226,7 @@ func createNFSSnapshotClass(f *framework.Framework) error {
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err = sclient.VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 		if err != nil {
-			e2elog.Logf("error creating SnapshotClass %q: %v", sc.Name, err)
+			framework.Logf("error creating SnapshotClass %q: %v", sc.Name, err)
 			if apierrs.IsAlreadyExists(err) {
 				return true, nil
 			}
@@ -256,7 +255,7 @@ func deleteNFSSnapshotClass() error {
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		err = sclient.VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
 		if err != nil {
-			e2elog.Logf("error deleting SnapshotClass %q: %v", sc.Name, err)
+			framework.Logf("error deleting SnapshotClass %q: %v", sc.Name, err)
 			if apierrs.IsNotFound(err) {
 				return true, nil
 			}
@@ -341,14 +340,14 @@ func validateBiggerPVCFromSnapshot(f *framework.Framework,
 	}
 	pvcClone, err := loadPVC(pvcClonePath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC: %v", err)
+		framework.Failf("failed to load PVC: %v", err)
 	}
 	pvcClone.Namespace = f.UniqueName
 	pvcClone.Spec.DataSource.Name = snap.Name
 	pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(newSize)
 	appClone, err := loadApp(appClonePath)
 	if err != nil {
-		e2elog.Failf("failed to load application: %v", err)
+		framework.Failf("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
 	appClone.Labels = label
@@ -384,28 +383,28 @@ func validateBiggerPVCFromSnapshot(f *framework.Framework,
 		)
 		imageList, err = listRBDImages(f, defaultRBDPool)
 		if err != nil {
-			e2elog.Failf("failed to list rbd images: %v", err)
+			framework.Failf("failed to list rbd images: %v", err)
 		}
-		e2elog.Logf("list of rbd images: %v", imageList)
+		framework.Logf("list of rbd images: %v", imageList)
 		volSnapName, stdErr, err = execCommandInToolBoxPod(f,
 			formatImageMetaGetCmd(defaultRBDPool, imageList[0], volSnapNameKey),
 			rookNamespace)
 		if checkGetKeyError(err, stdErr) {
-			e2elog.Failf("found volume snapshot name %s/%s %s=%s: err=%v stdErr=%q",
+			framework.Failf("found volume snapshot name %s/%s %s=%s: err=%v stdErr=%q",
 				rbdOptions(defaultRBDPool), imageList[0], volSnapNameKey, volSnapName, err, stdErr)
 		}
 		volSnapNamespace, stdErr, err = execCommandInToolBoxPod(f,
 			formatImageMetaGetCmd(defaultRBDPool, imageList[0], volSnapNamespaceKey),
 			rookNamespace)
 		if checkGetKeyError(err, stdErr) {
-			e2elog.Failf("found volume snapshot namespace %s/%s %s=%s: err=%v stdErr=%q",
+			framework.Failf("found volume snapshot namespace %s/%s %s=%s: err=%v stdErr=%q",
 				rbdOptions(defaultRBDPool), imageList[0], volSnapNamespaceKey, volSnapNamespace, err, stdErr)
 		}
 		volSnapContentName, stdErr, err = execCommandInToolBoxPod(f,
 			formatImageMetaGetCmd(defaultRBDPool, imageList[0], volSnapContentNameKey),
 			rookNamespace)
 		if checkGetKeyError(err, stdErr) {
-			e2elog.Failf("found snapshotcontent name %s/%s %s=%s: err=%v stdErr=%q",
+			framework.Failf("found snapshotcontent name %s/%s %s=%s: err=%v stdErr=%q",
 				rbdOptions(defaultRBDPool), imageList[0], volSnapContentNameKey,
 				volSnapContentName, err, stdErr)
 		}

@@ -29,7 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	e2edebug "k8s.io/kubernetes/test/e2e/framework/debug"
 	"k8s.io/pod-security-admission/api"
 )
 
@@ -60,7 +60,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		if cephCSINamespace != defaultNs {
 			err := createNamespace(c, cephCSINamespace)
 			if err != nil {
-				e2elog.Failf("failed to create namespace: %v", err)
+				framework.Failf("failed to create namespace: %v", err)
 			}
 		}
 
@@ -69,52 +69,52 @@ var _ = Describe("RBD Upgrade Testing", func() {
 		var err error
 		cwd, err = os.Getwd()
 		if err != nil {
-			e2elog.Failf("failed to do  getwd: %v", err)
+			framework.Failf("failed to do  getwd: %v", err)
 		}
 
 		deployVault(f.ClientSet, deployTimeout)
 		err = upgradeAndDeployCSI(upgradeVersion, "rbd")
 		if err != nil {
-			e2elog.Failf("failed to upgrade and deploy CSI: %v", err)
+			framework.Failf("failed to upgrade and deploy CSI: %v", err)
 		}
 		err = createConfigMap(rbdDirPath, f.ClientSet, f)
 		if err != nil {
-			e2elog.Failf("failed to create configmap: %v", err)
+			framework.Failf("failed to create configmap: %v", err)
 		}
 		err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
 		if err != nil {
-			e2elog.Failf("failed to create storageclass: %v", err)
+			framework.Failf("failed to create storageclass: %v", err)
 		}
 		// create rbd provisioner secret
 		key, err := createCephUser(f, keyringRBDProvisionerUsername, rbdProvisionerCaps("", ""))
 		if err != nil {
-			e2elog.Failf("failed to create user %s: %v", keyringRBDProvisionerUsername, err)
+			framework.Failf("failed to create user %s: %v", keyringRBDProvisionerUsername, err)
 		}
 		err = createRBDSecret(f, rbdProvisionerSecretName, keyringRBDProvisionerUsername, key)
 		if err != nil {
-			e2elog.Failf("failed to create provisioner secret: %v", err)
+			framework.Failf("failed to create provisioner secret: %v", err)
 		}
 		// create rbd plugin secret
 		key, err = createCephUser(f, keyringRBDNodePluginUsername, rbdNodePluginCaps("", ""))
 		if err != nil {
-			e2elog.Failf("failed to create user %s: %v", keyringRBDNodePluginUsername, err)
+			framework.Failf("failed to create user %s: %v", keyringRBDNodePluginUsername, err)
 		}
 		err = createRBDSecret(f, rbdNodePluginSecretName, keyringRBDNodePluginUsername, key)
 		if err != nil {
-			e2elog.Failf("failed to create node secret: %v", err)
+			framework.Failf("failed to create node secret: %v", err)
 		}
 		err = createRBDSnapshotClass(f)
 		if err != nil {
-			e2elog.Failf("failed to create snapshotclass: %v", err)
+			framework.Failf("failed to create snapshotclass: %v", err)
 		}
 
 		err = createNodeLabel(f, nodeRegionLabel, regionValue)
 		if err != nil {
-			e2elog.Failf("failed to create node label: %v", err)
+			framework.Failf("failed to create node label: %v", err)
 		}
 		err = createNodeLabel(f, nodeZoneLabel, zoneValue)
 		if err != nil {
-			e2elog.Failf("failed to create node label: %v", err)
+			framework.Failf("failed to create node label: %v", err)
 		}
 	})
 	AfterEach(func() {
@@ -130,32 +130,32 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			logsCSIPods("app=csi-rbdplugin", c)
 
 			// log all details from the namespace where Ceph-CSI is deployed
-			framework.DumpAllNamespaceInfo(c, cephCSINamespace)
+			e2edebug.DumpAllNamespaceInfo(c, cephCSINamespace)
 		}
 
 		err := deleteConfigMap(rbdDirPath)
 		if err != nil {
-			e2elog.Failf("failed to delete configmap: %v", err)
+			framework.Failf("failed to delete configmap: %v", err)
 		}
 		err = c.CoreV1().
 			Secrets(cephCSINamespace).
 			Delete(context.TODO(), rbdProvisionerSecretName, metav1.DeleteOptions{})
 		if err != nil {
-			e2elog.Failf("failed to delete provisioner secret: %v", err)
+			framework.Failf("failed to delete provisioner secret: %v", err)
 		}
 		err = c.CoreV1().
 			Secrets(cephCSINamespace).
 			Delete(context.TODO(), rbdNodePluginSecretName, metav1.DeleteOptions{})
 		if err != nil {
-			e2elog.Failf("failed to delete node secret: %v", err)
+			framework.Failf("failed to delete node secret: %v", err)
 		}
 		err = deleteResource(rbdExamplePath + "storageclass.yaml")
 		if err != nil {
-			e2elog.Failf("failed to delete storageclass: %v", err)
+			framework.Failf("failed to delete storageclass: %v", err)
 		}
 		err = deleteResource(rbdExamplePath + "snapshotclass.yaml")
 		if err != nil {
-			e2elog.Failf("failed to delete snapshotclass: %v", err)
+			framework.Failf("failed to delete snapshotclass: %v", err)
 		}
 		deleteVault()
 		if deployRBD {
@@ -163,17 +163,17 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			if cephCSINamespace != defaultNs {
 				err = deleteNamespace(c, cephCSINamespace)
 				if err != nil {
-					e2elog.Failf("failed to delete namespace: %v", err)
+					framework.Failf("failed to delete namespace: %v", err)
 				}
 			}
 		}
 		err = deleteNodeLabel(c, nodeRegionLabel)
 		if err != nil {
-			e2elog.Failf("failed to delete node label: %v", err)
+			framework.Failf("failed to delete node label: %v", err)
 		}
 		err = deleteNodeLabel(c, nodeZoneLabel)
 		if err != nil {
-			e2elog.Failf("failed to delete node label: %v", err)
+			framework.Failf("failed to delete node label: %v", err)
 		}
 	})
 
@@ -189,14 +189,14 @@ var _ = Describe("RBD Upgrade Testing", func() {
 			By("checking provisioner deployment is running", func() {
 				err := waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
 				if err != nil {
-					e2elog.Failf("timeout waiting for deployment %s: %v", rbdDeploymentName, err)
+					framework.Failf("timeout waiting for deployment %s: %v", rbdDeploymentName, err)
 				}
 			})
 
 			By("checking nodeplugin deamonset pods are running", func() {
 				err := waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					e2elog.Failf("timeout waiting for daemonset %s: %v", rbdDaemonsetName, err)
+					framework.Failf("timeout waiting for daemonset %s: %v", rbdDaemonsetName, err)
 				}
 			})
 
@@ -208,13 +208,13 @@ var _ = Describe("RBD Upgrade Testing", func() {
 
 				pvc, err = loadPVC(pvcPath)
 				if err != nil {
-					e2elog.Failf("failed to load pvc: %v", err)
+					framework.Failf("failed to load pvc: %v", err)
 				}
 				pvc.Namespace = f.UniqueName
 
 				app, err = loadApp(appPath)
 				if err != nil {
-					e2elog.Failf("failed to load application: %v", err)
+					framework.Failf("failed to load application: %v", err)
 				}
 				label[appKey] = appLabel
 				app.Namespace = f.UniqueName
@@ -222,7 +222,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				pvc.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
 				err = createPVCAndApp("", f, pvc, app, deployTimeout)
 				if err != nil {
-					e2elog.Failf("failed to create pvc: %v", err)
+					framework.Failf("failed to create pvc: %v", err)
 				}
 				opt := metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
@@ -238,22 +238,22 @@ var _ = Describe("RBD Upgrade Testing", func() {
 					app.Namespace,
 					&opt)
 				if stdErr != "" {
-					e2elog.Failf("failed to write data to a file %s", stdErr)
+					framework.Failf("failed to write data to a file %s", stdErr)
 				}
 
 				// force an immediate write of all cached data to disk.
 				_, stdErr = execCommandInPodAndAllowFail(f, fmt.Sprintf("sync %s", filePath), app.Namespace, &opt)
 				if stdErr != "" {
-					e2elog.Failf("failed to sync data to a disk %s", stdErr)
+					framework.Failf("failed to sync data to a disk %s", stdErr)
 				}
 
 				opt = metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("app=%s", appLabel),
 				}
-				e2elog.Logf("Calculating checksum of %s", filePath)
+				framework.Logf("Calculating checksum of %s", filePath)
 				checkSum, err = calculateSHA512sum(f, app, filePath, &opt)
 				if err != nil {
-					e2elog.Failf("failed to calculate checksum: %v", err)
+					framework.Failf("failed to calculate checksum: %v", err)
 				}
 
 				// Create snapshot of the pvc
@@ -264,30 +264,30 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
 				err = createSnapshot(&snap, deployTimeout)
 				if err != nil {
-					e2elog.Failf("failed to create snapshot %v", err)
+					framework.Failf("failed to create snapshot %v", err)
 				}
 
 				err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					e2elog.Failf("failed to delete application: %v", err)
+					framework.Failf("failed to delete application: %v", err)
 				}
 				deleteRBDPlugin()
 
 				err = os.Chdir(cwd)
 				if err != nil {
-					e2elog.Failf("failed to change directory: %v", err)
+					framework.Failf("failed to change directory: %v", err)
 				}
 
 				deployRBDPlugin()
 
 				err = waitForDeploymentComplete(f.ClientSet, rbdDeploymentName, cephCSINamespace, deployTimeout)
 				if err != nil {
-					e2elog.Failf("timeout waiting for upgraded deployment %s: %v", rbdDeploymentName, err)
+					framework.Failf("timeout waiting for upgraded deployment %s: %v", rbdDeploymentName, err)
 				}
 
 				err = waitForDaemonSets(rbdDaemonsetName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
-					e2elog.Failf("timeout waiting for upgraded daemonset %s: %v", rbdDaemonsetName, err)
+					framework.Failf("timeout waiting for upgraded daemonset %s: %v", rbdDaemonsetName, err)
 				}
 
 				// validate if the app gets bound to a pvc created by
@@ -295,7 +295,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				app.Labels = label
 				err = createApp(f.ClientSet, app, deployTimeout)
 				if err != nil {
-					e2elog.Failf("failed to create application: %v", err)
+					framework.Failf("failed to create application: %v", err)
 				}
 			})
 
@@ -305,14 +305,14 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				label := make(map[string]string)
 				pvcClone, err := loadPVC(pvcClonePath)
 				if err != nil {
-					e2elog.Failf("failed to load pvc: %v", err)
+					framework.Failf("failed to load pvc: %v", err)
 				}
 				pvcClone.Namespace = f.UniqueName
 				pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
 				pvcClone.Spec.DataSource.Name = "rbd-pvc-snapshot"
 				appClone, err := loadApp(appClonePath)
 				if err != nil {
-					e2elog.Failf("failed to load application: %v", err)
+					framework.Failf("failed to load application: %v", err)
 				}
 				label[appKey] = "validate-snap-clone"
 				appClone.Namespace = f.UniqueName
@@ -320,7 +320,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				appClone.Labels = label
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
-					e2elog.Failf("failed to create pvc: %v", err)
+					framework.Failf("failed to create pvc: %v", err)
 				}
 				opt := metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
@@ -329,20 +329,20 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				testFilePath := filepath.Join(mountPath, "testClone")
 				newCheckSum, err := calculateSHA512sum(f, appClone, testFilePath, &opt)
 				if err != nil {
-					e2elog.Failf("failed to calculate checksum: %v", err)
+					framework.Failf("failed to calculate checksum: %v", err)
 				}
 				if strings.Compare(newCheckSum, checkSum) != 0 {
-					e2elog.Failf(
+					framework.Failf(
 						"The checksum of files did not match, expected %s received %s",
 						checkSum,
 						newCheckSum)
 				}
-				e2elog.Logf("The checksum of files matched")
+				framework.Logf("The checksum of files matched")
 
 				// delete cloned pvc and pod
 				err = deletePVCAndApp("", f, pvcClone, appClone)
 				if err != nil {
-					e2elog.Failf("failed to delete pvc and application: %v", err)
+					framework.Failf("failed to delete pvc and application: %v", err)
 				}
 			})
 
@@ -353,14 +353,14 @@ var _ = Describe("RBD Upgrade Testing", func() {
 
 				pvcClone, err := loadPVC(pvcSmartClonePath)
 				if err != nil {
-					e2elog.Failf("failed to load pvc: %v", err)
+					framework.Failf("failed to load pvc: %v", err)
 				}
 				pvcClone.Spec.DataSource.Name = pvc.Name
 				pvcClone.Namespace = f.UniqueName
 				pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(pvcSize)
 				appClone, err := loadApp(appSmartClonePath)
 				if err != nil {
-					e2elog.Failf("failed to load application: %v", err)
+					framework.Failf("failed to load application: %v", err)
 				}
 				label[appKey] = "validate-clone"
 				appClone.Namespace = f.UniqueName
@@ -368,7 +368,7 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				appClone.Labels = label
 				err = createPVCAndApp("", f, pvcClone, appClone, deployTimeout)
 				if err != nil {
-					e2elog.Failf("failed to create pvc: %v", err)
+					framework.Failf("failed to create pvc: %v", err)
 				}
 				opt := metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("%s=%s", appKey, label[appKey]),
@@ -377,20 +377,20 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				testFilePath := filepath.Join(mountPath, "testClone")
 				newCheckSum, err := calculateSHA512sum(f, appClone, testFilePath, &opt)
 				if err != nil {
-					e2elog.Failf("failed to calculate checksum: %v", err)
+					framework.Failf("failed to calculate checksum: %v", err)
 				}
 				if strings.Compare(newCheckSum, checkSum) != 0 {
-					e2elog.Failf(
+					framework.Failf(
 						"The checksum of files did not match, expected %s received %s",
 						checkSum,
 						newCheckSum)
 				}
-				e2elog.Logf("The checksum of files matched")
+				framework.Logf("The checksum of files matched")
 
 				// delete cloned pvc and pod
 				err = deletePVCAndApp("", f, pvcClone, appClone)
 				if err != nil {
-					e2elog.Failf("failed to delete pvc and application: %v", err)
+					framework.Failf("failed to delete pvc and application: %v", err)
 				}
 			})
 
@@ -405,41 +405,41 @@ var _ = Describe("RBD Upgrade Testing", func() {
 				var err error
 				pvc, err = getPersistentVolumeClaim(f.ClientSet, pvc.Namespace, pvc.Name)
 				if err != nil {
-					e2elog.Failf("failed to get pvc: %v", err)
+					framework.Failf("failed to get pvc: %v", err)
 				}
 
 				// resize PVC
 				err = expandPVCSize(f.ClientSet, pvc, pvcExpandSize, deployTimeout)
 				if err != nil {
-					e2elog.Failf("failed to expand pvc: %v", err)
+					framework.Failf("failed to expand pvc: %v", err)
 				}
 				// wait for application pod to come up after resize
 				err = waitForPodInRunningState(app.Name, app.Namespace, f.ClientSet, deployTimeout, noError)
 				if err != nil {
-					e2elog.Failf("timeout waiting for pod to be in running state: %v", err)
+					framework.Failf("timeout waiting for pod to be in running state: %v", err)
 				}
 				// validate if resize is successful.
 				err = checkDirSize(app, f, &opt, pvcExpandSize)
 				if err != nil {
-					e2elog.Failf("failed to check directory size: %v", err)
+					framework.Failf("failed to check directory size: %v", err)
 				}
 			})
 
 			By("delete pvc and app", func() {
 				err := deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					e2elog.Failf("failed to delete pvc and application: %v", err)
+					framework.Failf("failed to delete pvc and application: %v", err)
 				}
 			})
 			// delete RBD provisioner secret
 			err := deleteCephUser(f, keyringRBDProvisionerUsername)
 			if err != nil {
-				e2elog.Failf("failed to delete user %s: %v", keyringRBDProvisionerUsername, err)
+				framework.Failf("failed to delete user %s: %v", keyringRBDProvisionerUsername, err)
 			}
 			// delete RBD plugin secret
 			err = deleteCephUser(f, keyringRBDNodePluginUsername)
 			if err != nil {
-				e2elog.Failf("failed to delete user %s: %v", keyringRBDNodePluginUsername, err)
+				framework.Failf("failed to delete user %s: %v", keyringRBDNodePluginUsername, err)
 			}
 		})
 	})

@@ -41,7 +41,7 @@ import (
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	e2ekubectl "k8s.io/kubernetes/test/e2e/framework/kubectl"
 )
 
 /* #nosec:G101, values not credentials, just a reference to the location.*/
@@ -218,11 +218,11 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 			stdOut, stdErr, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 			if err != nil {
 				if !strings.Contains(err.Error(), exitOneErr) {
-					e2elog.Failf("failed to execute rados command '%s' : err=%v stdErr=%s", cmd, err, stdErr)
+					framework.Failf("failed to execute rados command '%s' : err=%v stdErr=%s", cmd, err, stdErr)
 				}
 			}
 			if stdErr != "" {
-				e2elog.Failf("failed to execute rados command '%s' : stdErr=%s", cmd, stdErr)
+				framework.Failf("failed to execute rados command '%s' : stdErr=%s", cmd, stdErr)
 			}
 			err = compareStdoutWithCount(stdOut, count)
 			if err == nil {
@@ -232,10 +232,10 @@ func validateOmapCount(f *framework.Framework, count int, driver, pool, mode str
 			if strings.Contains(err.Error(), "expected omap object count") {
 				stdOut, stdErr, err = execCommandInToolBoxPod(f, filterLessCmds[i], rookNamespace)
 				if err == nil {
-					e2elog.Logf("additional debug info: rados ls command output: %s, stdErr: %s", stdOut, stdErr)
+					framework.Logf("additional debug info: rados ls command output: %s, stdErr: %s", stdOut, stdErr)
 				}
 			}
-			e2elog.Failf("%v", saveErr)
+			framework.Failf("%v", saveErr)
 		}
 	}
 }
@@ -320,11 +320,11 @@ func getSecret(path string) (v1.Secret, error) {
 func deleteResource(scPath string) error {
 	data, err := replaceNamespaceInTemplate(scPath)
 	if err != nil {
-		e2elog.Logf("failed to read content from %s %v", scPath, err)
+		framework.Logf("failed to read content from %s %v", scPath, err)
 	}
 	err = retryKubectlInput(cephCSINamespace, kubectlDelete, data, deployTimeout, "--ignore-not-found=true")
 	if err != nil {
-		e2elog.Logf("failed to delete %s %v", scPath, err)
+		framework.Logf("failed to delete %s %v", scPath, err)
 	}
 
 	return err
@@ -789,21 +789,21 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 	// write data in PVC
 	err := writeDataInPod(app, opt, f)
 	if err != nil {
-		e2elog.Logf("failed to write data in the pod: %v", err)
+		framework.Logf("failed to write data in the pod: %v", err)
 
 		return "", err
 	}
 
 	checkSum, err := calculateSHA512sum(f, app, filePath, opt)
 	if err != nil {
-		e2elog.Logf("failed to calculate checksum: %v", err)
+		framework.Logf("failed to calculate checksum: %v", err)
 
 		return checkSum, err
 	}
 
 	err = deletePod(app.Name, app.Namespace, f.ClientSet, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to delete pod: %v", err)
+		framework.Failf("failed to delete pod: %v", err)
 	}
 
 	return checkSum, nil
@@ -824,18 +824,18 @@ func validatePVCClone(
 	chErrs := make([]error, totalCount)
 	pvc, err := loadPVC(sourcePvcPath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC: %v", err)
+		framework.Failf("failed to load PVC: %v", err)
 	}
 
 	label := make(map[string]string)
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to create PVC: %v", err)
+		framework.Failf("failed to create PVC: %v", err)
 	}
 	app, err := loadApp(sourceAppPath)
 	if err != nil {
-		e2elog.Failf("failed to load app: %v", err)
+		framework.Failf("failed to load app: %v", err)
 	}
 	label[appKey] = appLabel
 	app.Namespace = f.UniqueName
@@ -848,19 +848,19 @@ func validatePVCClone(
 	checkSum := ""
 	pvc, err = getPersistentVolumeClaim(f.ClientSet, pvc.Namespace, pvc.Name)
 	if err != nil {
-		e2elog.Failf("failed to get pvc %v", err)
+		framework.Failf("failed to get pvc %v", err)
 	}
 	if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem {
 		checkSum, err = writeDataAndCalChecksum(app, &opt, f)
 		if err != nil {
-			e2elog.Failf("failed to calculate checksum: %v", err)
+			framework.Failf("failed to calculate checksum: %v", err)
 		}
 	}
 	// validate created backend rbd images
 	validateRBDImageCount(f, 1, defaultRBDPool)
 	pvcClone, err := loadPVC(clonePvcPath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC: %v", err)
+		framework.Failf("failed to load PVC: %v", err)
 	}
 	pvcClone.Spec.DataSource.Name = pvc.Name
 	pvcClone.Namespace = f.UniqueName
@@ -870,7 +870,7 @@ func validatePVCClone(
 
 	appClone, err := loadApp(clonePvcAppPath)
 	if err != nil {
-		e2elog.Failf("failed to load application: %v", err)
+		framework.Failf("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
 	wg.Add(totalCount)
@@ -902,7 +902,7 @@ func validatePVCClone(
 						// check new passphrase created
 						stdOut, stdErr := kms.getPassphrase(f, imageData.csiVolumeHandle)
 						if stdOut != "" {
-							e2elog.Logf("successfully read the passphrase from vault: %s", stdOut)
+							framework.Logf("successfully read the passphrase from vault: %s", stdOut)
 						}
 						if stdErr != "" {
 							wgErrs[n] = fmt.Errorf("failed to read passphrase from vault: %s", stdErr)
@@ -913,14 +913,14 @@ func validatePVCClone(
 			if *pvc.Spec.VolumeMode == v1.PersistentVolumeFilesystem && wgErrs[n] == nil {
 				filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				var checkSumClone string
-				e2elog.Logf("Calculating checksum clone for filepath %s", filePath)
+				framework.Logf("Calculating checksum clone for filepath %s", filePath)
 				checkSumClone, chErrs[n] = calculateSHA512sum(f, &a, filePath, &opt)
-				e2elog.Logf("checksum for clone is %s", checkSumClone)
+				framework.Logf("checksum for clone is %s", checkSumClone)
 				if chErrs[n] != nil {
-					e2elog.Logf("Failed calculating checksum clone %s", chErrs[n])
+					framework.Logf("Failed calculating checksum clone %s", chErrs[n])
 				}
 				if checkSumClone != checkSum {
-					e2elog.Logf("checksum didn't match. checksum=%s and checksumclone=%s", checkSum, checkSumClone)
+					framework.Logf("checksum didn't match. checksum=%s and checksumclone=%s", checkSum, checkSumClone)
 				}
 			}
 			if wgErrs[n] == nil && validatePVC != nil && kms != noKMS {
@@ -935,23 +935,23 @@ func validatePVCClone(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to create PVC (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to create PVC (%s%d): %v", f.UniqueName, i, err)
 			failed++
 		}
 	}
 	if failed != 0 {
-		e2elog.Failf("creating PVCs failed, %d errors were logged", failed)
+		framework.Failf("creating PVCs failed, %d errors were logged", failed)
 	}
 
 	for i, err := range chErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to calculate checksum (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to calculate checksum (%s%d): %v", f.UniqueName, i, err)
 			failed++
 		}
 	}
 	if failed != 0 {
-		e2elog.Failf("calculating checksum failed, %d errors were logged", failed)
+		framework.Failf("calculating checksum failed, %d errors were logged", failed)
 	}
 
 	// total images in cluster is 1 parent rbd image+ total
@@ -961,7 +961,7 @@ func validatePVCClone(
 	// delete parent pvc
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to delete PVC: %v", err)
+		framework.Failf("failed to delete PVC: %v", err)
 	}
 
 	totalCloneCount = totalCount + totalCount
@@ -1013,12 +1013,12 @@ func validatePVCClone(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
 			failed++
 		}
 	}
 	if failed != 0 {
-		e2elog.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
+		framework.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
 	}
 
 	validateRBDImageCount(f, 0, defaultRBDPool)
@@ -1037,28 +1037,28 @@ func validatePVCSnapshot(
 	chErrs := make([]error, totalCount)
 	err := createRBDSnapshotClass(f)
 	if err != nil {
-		e2elog.Failf("failed to create storageclass: %v", err)
+		framework.Failf("failed to create storageclass: %v", err)
 	}
 	defer func() {
 		err = deleteRBDSnapshotClass()
 		if err != nil {
-			e2elog.Failf("failed to delete VolumeSnapshotClass: %v", err)
+			framework.Failf("failed to delete VolumeSnapshotClass: %v", err)
 		}
 	}()
 
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC: %v", err)
+		framework.Failf("failed to load PVC: %v", err)
 	}
 	label := make(map[string]string)
 	pvc.Namespace = f.UniqueName
 	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to create PVC: %v", err)
+		framework.Failf("failed to create PVC: %v", err)
 	}
 	app, err := loadApp(appPath)
 	if err != nil {
-		e2elog.Failf("failed to load app: %v", err)
+		framework.Failf("failed to load app: %v", err)
 	}
 	// write data in PVC
 	label[appKey] = appLabel
@@ -1070,7 +1070,7 @@ func validatePVCSnapshot(
 	app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
 	checkSum, err := writeDataAndCalChecksum(app, &opt, f)
 	if err != nil {
-		e2elog.Failf("failed to calculate checksum: %v", err)
+		framework.Failf("failed to calculate checksum: %v", err)
 	}
 	validateRBDImageCount(f, 1, defaultRBDPool)
 	snap := getSnapshot(snapshotPath)
@@ -1110,23 +1110,23 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to create snapshot (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to create snapshot (%s%d): %v", f.UniqueName, i, err)
 			failed++
 		}
 	}
 	if failed != 0 {
-		e2elog.Failf("creating snapshots failed, %d errors were logged", failed)
+		framework.Failf("creating snapshots failed, %d errors were logged", failed)
 	}
 
 	// total images in cluster is 1 parent rbd image+ total snaps
 	validateRBDImageCount(f, totalCount+1, defaultRBDPool)
 	pvcClone, err := loadPVC(pvcClonePath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC: %v", err)
+		framework.Failf("failed to load PVC: %v", err)
 	}
 	appClone, err := loadApp(appClonePath)
 	if err != nil {
-		e2elog.Failf("failed to load application: %v", err)
+		framework.Failf("failed to load application: %v", err)
 	}
 	pvcClone.Namespace = f.UniqueName
 	appClone.Namespace = f.UniqueName
@@ -1170,14 +1170,14 @@ func validatePVCSnapshot(
 			if wgErrs[n] == nil {
 				filePath := a.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
 				var checkSumClone string
-				e2elog.Logf("calculating checksum clone for filepath %s", filePath)
+				framework.Logf("calculating checksum clone for filepath %s", filePath)
 				checkSumClone, chErrs[n] = calculateSHA512sum(f, &a, filePath, &opt)
-				e2elog.Logf("checksum value for the clone is %s with pod name %s", checkSumClone, name)
+				framework.Logf("checksum value for the clone is %s with pod name %s", checkSumClone, name)
 				if chErrs[n] != nil {
-					e2elog.Logf("failed to calculte checksum for clone: %s", chErrs[n])
+					framework.Logf("failed to calculte checksum for clone: %s", chErrs[n])
 				}
 				if checkSumClone != checkSum {
-					e2elog.Logf(
+					framework.Logf(
 						"checksum value didn't match. checksum=%s and checksumclone=%s",
 						checkSum,
 						checkSumClone)
@@ -1191,23 +1191,23 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to create PVC and application (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to create PVC and application (%s%d): %v", f.UniqueName, i, err)
 			failed++
 		}
 	}
 	if failed != 0 {
-		e2elog.Failf("creating PVCs and applications failed, %d errors were logged", failed)
+		framework.Failf("creating PVCs and applications failed, %d errors were logged", failed)
 	}
 
 	for i, err := range chErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to calculate checksum (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to calculate checksum (%s%d): %v", f.UniqueName, i, err)
 			failed++
 		}
 	}
 	if failed != 0 {
-		e2elog.Failf("calculating checksum failed, %d errors were logged", failed)
+		framework.Failf("calculating checksum failed, %d errors were logged", failed)
 	}
 	// total images in cluster is 1 parent rbd image+ total
 	// snaps+ total clones
@@ -1228,12 +1228,12 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
 			failed++
 		}
 	}
 	if failed != 0 {
-		e2elog.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
+		framework.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
 	}
 
 	// total images in cluster is 1 parent rbd image+ total
@@ -1259,12 +1259,12 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to create PVC and application (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to create PVC and application (%s%d): %v", f.UniqueName, i, err)
 			failed++
 		}
 	}
 	if failed != 0 {
-		e2elog.Failf("creating PVCs and applications failed, %d errors were logged", failed)
+		framework.Failf("creating PVCs and applications failed, %d errors were logged", failed)
 	}
 
 	// total images in cluster is 1 parent rbd image+ total
@@ -1274,7 +1274,7 @@ func validatePVCSnapshot(
 	// delete parent pvc
 	err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to delete PVC: %v", err)
+		framework.Failf("failed to delete PVC: %v", err)
 	}
 
 	// total images in cluster is total snaps+ total clones
@@ -1325,12 +1325,12 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to delete snapshot (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to delete snapshot (%s%d): %v", f.UniqueName, i, err)
 			failed++
 		}
 	}
 	if failed != 0 {
-		e2elog.Failf("deleting snapshots failed, %d errors were logged", failed)
+		framework.Failf("deleting snapshots failed, %d errors were logged", failed)
 	}
 
 	validateRBDImageCount(f, totalCount, defaultRBDPool)
@@ -1349,12 +1349,12 @@ func validatePVCSnapshot(
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
+			framework.Logf("failed to delete PVC and application (%s%d): %v", f.UniqueName, i, err)
 			failed++
 		}
 	}
 	if failed != 0 {
-		e2elog.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
+		framework.Failf("deleting PVCs and applications failed, %d errors were logged", failed)
 	}
 
 	// validate created backend rbd images
@@ -1436,7 +1436,7 @@ func validateController(
 	pv.ResourceVersion = ""
 	err = createPVCAndPV(f.ClientSet, pvc, pv)
 	if err != nil {
-		e2elog.Failf("failed to create PVC or PV: %v", err)
+		framework.Failf("failed to create PVC or PV: %v", err)
 	}
 	// bind PVC to application
 	app, err := loadApp(appPath)
@@ -1496,7 +1496,7 @@ func validateController(
 func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
 	v, err := c.Discovery().ServerVersion()
 	if err != nil {
-		e2elog.Failf("failed to get server version: %v", err)
+		framework.Failf("failed to get server version: %v", err)
 		// Failf() marks the case as failure, and returns from the
 		// Go-routine that runs the case. This function will not have a
 		// return value.
@@ -1514,7 +1514,7 @@ func waitForJobCompletion(c kubernetes.Interface, ns, job string, timeout int) e
 	t := time.Duration(timeout) * time.Minute
 	start := time.Now()
 
-	e2elog.Logf("waiting for Job %s/%s to be in state %q", ns, job, batch.JobComplete)
+	framework.Logf("waiting for Job %s/%s to be in state %q", ns, job, batch.JobComplete)
 
 	return wait.PollImmediate(poll, t, func() (bool, error) {
 		j, err := c.BatchV1().Jobs(ns).Get(context.TODO(), job, metav1.GetOptions{})
@@ -1531,7 +1531,7 @@ func waitForJobCompletion(c kubernetes.Interface, ns, job string, timeout int) e
 			return true, nil
 		}
 
-		e2elog.Logf(
+		framework.Logf(
 			"Job %s/%s has not completed yet (%d seconds elapsed)",
 			ns, job, int(time.Since(start).Seconds()))
 
@@ -1561,7 +1561,7 @@ func (ka kubectlAction) String() string {
 // no error occurred, or the timeout passed.
 func retryKubectlInput(namespace string, action kubectlAction, data string, t int, args ...string) error {
 	timeout := time.Duration(t) * time.Minute
-	e2elog.Logf("waiting for kubectl (%s -f args %s) to finish", action, args)
+	framework.Logf("waiting for kubectl (%s -f args %s) to finish", action, args)
 	start := time.Now()
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
@@ -1571,7 +1571,7 @@ func retryKubectlInput(namespace string, action kubectlAction, data string, t in
 		}
 		cmd = append(cmd, []string{string(action), "-f", "-"}...)
 
-		_, err := framework.RunKubectlInput(namespace, data, cmd...)
+		_, err := e2ekubectl.RunKubectlInput(namespace, data, cmd...)
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
@@ -1582,7 +1582,7 @@ func retryKubectlInput(namespace string, action kubectlAction, data string, t in
 			if action == kubectlDelete && isNotFoundCLIError(err) {
 				return true, nil
 			}
-			e2elog.Logf(
+			framework.Logf(
 				"will run kubectl (%s) args (%s) again (%d seconds elapsed)",
 				action,
 				args,
@@ -1600,7 +1600,7 @@ func retryKubectlInput(namespace string, action kubectlAction, data string, t in
 // occurred, or the timeout passed.
 func retryKubectlFile(namespace string, action kubectlAction, filename string, t int, args ...string) error {
 	timeout := time.Duration(t) * time.Minute
-	e2elog.Logf("waiting for kubectl (%s -f %q args %s) to finish", action, filename, args)
+	framework.Logf("waiting for kubectl (%s -f %q args %s) to finish", action, filename, args)
 	start := time.Now()
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
@@ -1610,7 +1610,7 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 		}
 		cmd = append(cmd, []string{string(action), "-f", filename}...)
 
-		_, err := framework.RunKubectl(namespace, cmd...)
+		_, err := e2ekubectl.RunKubectl(namespace, cmd...)
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
@@ -1621,7 +1621,7 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 			if action == kubectlDelete && isNotFoundCLIError(err) {
 				return true, nil
 			}
-			e2elog.Logf(
+			framework.Logf(
 				"will run kubectl (%s -f %q args %s) again (%d seconds elapsed)",
 				action,
 				filename,
@@ -1642,11 +1642,11 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...string) error {
 	timeout := time.Duration(t) * time.Minute
 	args = append([]string{string(action)}, args...)
-	e2elog.Logf("waiting for kubectl (%s args) to finish", args)
+	framework.Logf("waiting for kubectl (%s args) to finish", args)
 	start := time.Now()
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
-		_, err := framework.RunKubectl(namespace, args...)
+		_, err := e2ekubectl.RunKubectl(namespace, args...)
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
@@ -1657,7 +1657,7 @@ func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...str
 			if action == kubectlDelete && isNotFoundCLIError(err) {
 				return true, nil
 			}
-			e2elog.Logf(
+			framework.Logf(
 				"will run kubectl (%s) again (%d seconds elapsed)",
 				args,
 				int(time.Since(start).Seconds()))
