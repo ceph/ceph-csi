@@ -33,14 +33,14 @@ const (
 // VolumeLocks implements a map with atomic operations. It stores a set of all volume IDs
 // with an ongoing operation.
 type VolumeLocks struct {
-	locks sets.String
+	locks sets.Set[string]
 	mux   sync.Mutex
 }
 
 // NewVolumeLocks returns new VolumeLocks.
 func NewVolumeLocks() *VolumeLocks {
 	return &VolumeLocks{
-		locks: sets.NewString(),
+		locks: sets.New[string](),
 	}
 }
 
