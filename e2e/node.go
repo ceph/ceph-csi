@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
 )
 
 func createNodeLabel(f *framework.Framework, labelKey, labelValue string) error {
@@ -35,7 +36,7 @@ func createNodeLabel(f *framework.Framework, labelKey, labelValue string) error 
 		return fmt.Errorf("failed to list node: %w", err)
 	}
 	for i := range nodes.Items {
-		framework.AddOrUpdateLabelOnNode(f.ClientSet, nodes.Items[i].Name, labelKey, labelValue)
+		e2enode.AddOrUpdateLabelOnNode(f.ClientSet, nodes.Items[i].Name, labelKey, labelValue)
 	}
 
 	return nil
@@ -47,7 +48,7 @@ func deleteNodeLabel(c kubernetes.Interface, labelKey string) error {
 		return fmt.Errorf("failed to list node: %w", err)
 	}
 	for i := range nodes.Items {
-		framework.RemoveLabelOffNode(c, nodes.Items[i].Name, labelKey)
+		e2enode.RemoveLabelOffNode(c, nodes.Items[i].Name, labelKey)
 	}
 
 	return nil
@@ -59,7 +60,7 @@ func checkNodeHasLabel(c kubernetes.Interface, labelKey, labelValue string) erro
 		return fmt.Errorf("failed to list node: %w", err)
 	}
 	for i := range nodes.Items {
-		framework.ExpectNodeHasLabel(c, nodes.Items[i].Name, labelKey, labelValue)
+		e2enode.ExpectNodeHasLabel(c, nodes.Items[i].Name, labelKey, labelValue)
 	}
 
 	return nil

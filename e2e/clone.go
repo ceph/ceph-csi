@@ -23,7 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 func validateBiggerCloneFromPVC(f *framework.Framework,
@@ -60,14 +59,14 @@ func validateBiggerCloneFromPVC(f *framework.Framework,
 
 	pvcClone, err := loadPVC(pvcClonePath)
 	if err != nil {
-		e2elog.Failf("failed to load PVC: %v", err)
+		framework.Failf("failed to load PVC: %v", err)
 	}
 	pvcClone.Namespace = f.UniqueName
 	pvcClone.Spec.DataSource.Name = pvc.Name
 	pvcClone.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(newSize)
 	appClone, err := loadApp(appClonePath)
 	if err != nil {
-		e2elog.Failf("failed to load application: %v", err)
+		framework.Failf("failed to load application: %v", err)
 	}
 	appClone.Namespace = f.UniqueName
 	appClone.Labels = label

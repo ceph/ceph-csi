@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/gomega" // nolint
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 var (
@@ -69,7 +69,7 @@ func deleteVault() {
 func createORDeleteVault(action kubectlAction) {
 	data, err := replaceNamespaceInTemplate(vaultExamplePath + vaultServicePath)
 	if err != nil {
-		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultServicePath, err)
+		framework.Failf("failed to read content from %s %v", vaultExamplePath+vaultServicePath, err)
 	}
 
 	data = strings.ReplaceAll(data, "vault.default", "vault."+cephCSINamespace)
@@ -77,26 +77,26 @@ func createORDeleteVault(action kubectlAction) {
 	data = strings.ReplaceAll(data, "value: default", "value: "+cephCSINamespace)
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to %s vault statefulset %v", action, err)
+		framework.Failf("failed to %s vault statefulset %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultRBACPath)
 	if err != nil {
-		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultRBACPath, err)
+		framework.Failf("failed to read content from %s %v", vaultExamplePath+vaultRBACPath, err)
 	}
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to %s vault statefulset %v", action, err)
+		framework.Failf("failed to %s vault statefulset %v", action, err)
 	}
 
 	data, err = replaceNamespaceInTemplate(vaultExamplePath + vaultConfigPath)
 	if err != nil {
-		e2elog.Failf("failed to read content from %s %v", vaultExamplePath+vaultConfigPath, err)
+		framework.Failf("failed to read content from %s %v", vaultExamplePath+vaultConfigPath, err)
 	}
 	data = strings.ReplaceAll(data, "default", cephCSINamespace)
 	err = retryKubectlInput(cephCSINamespace, action, data, deployTimeout)
 	if err != nil {
-		e2elog.Failf("failed to %s vault configmap %v", action, err)
+		framework.Failf("failed to %s vault configmap %v", action, err)
 	}
 }
 

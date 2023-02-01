@@ -32,7 +32,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
 // execCommandInPodWithName run command in pod using podName.
@@ -44,7 +44,7 @@ func execCommandInPodWithName(
 	nameSpace string,
 ) (string, string, error) {
 	cmd := []string{"/bin/sh", "-c", cmdString}
-	podOpt := framework.ExecOptions{
+	podOpt := e2epod.ExecOptions{
 		Command:            cmd,
 		PodName:            podName,
 		Namespace:          nameSpace,
@@ -55,7 +55,7 @@ func execCommandInPodWithName(
 		PreserveWhitespace: true,
 	}
 
-	return f.ExecWithOptions(podOpt)
+	return e2epod.ExecWithOptions(f, podOpt)
 }
 
 // loadAppDeployment loads the deployment app config and return deployment
@@ -92,7 +92,7 @@ func deleteDeploymentApp(clientSet kubernetes.Interface, name, ns string, deploy
 		return fmt.Errorf("failed to delete deployment: %w", err)
 	}
 	start := time.Now()
-	e2elog.Logf("Waiting for deployment %q to be deleted", name)
+	framework.Logf("Waiting for deployment %q to be deleted", name)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err := clientSet.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
@@ -103,7 +103,7 @@ func deleteDeploymentApp(clientSet kubernetes.Interface, name, ns string, deploy
 			if apierrs.IsNotFound(err) {
 				return true, nil
 			}
-			e2elog.Logf("%q deployment to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+			framework.Logf("%q deployment to be deleted (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 
 			return false, fmt.Errorf("failed to get deployment: %w", err)
 		}
@@ -116,7 +116,7 @@ func deleteDeploymentApp(clientSet kubernetes.Interface, name, ns string, deploy
 func waitForDeploymentInAvailableState(clientSet kubernetes.Interface, name, ns string, deployTimeout int) error {
 	timeout := time.Duration(deployTimeout) * time.Minute
 	start := time.Now()
-	e2elog.Logf("Waiting up to %q to be in Available state", name)
+	framework.Logf("Waiting up to %q to be in Available state", name)
 
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		d, err := clientSet.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
@@ -127,7 +127,7 @@ func waitForDeploymentInAvailableState(clientSet kubernetes.Interface, name, ns 
 			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
-			e2elog.Logf("%q deployment to be Available (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
+			framework.Logf("%q deployment to be Available (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 
 			return false, err
 		}
@@ -154,7 +154,7 @@ func waitForDeploymentComplete(clientSet kubernetes.Interface, name, ns string, 
 			if apierrs.IsNotFound(err) {
 				return false, nil
 			}
-			e2elog.Logf("deployment error: %v", err)
+			framework.Logf("deployment error: %v", err)
 
 			return false, err
 		}
@@ -166,7 +166,7 @@ func waitForDeploymentComplete(clientSet kubernetes.Interface, name, ns string, 
 		if deployment.Status.Replicas == deployment.Status.ReadyReplicas {
 			return true, nil
 		}
-		e2elog.Logf(
+		framework.Logf(
 			"deployment status: expected replica count %d running replica count %d",
 			deployment.Status.Replicas,
 			deployment.Status.ReadyReplicas)
@@ -286,7 +286,7 @@ func (rnr *rookNFSResource) Do(action kubectlAction) error {
 		if err != nil {
 			// depending on the Ceph/Rook version, modules are
 			// enabled by default
-			e2elog.Logf("enabling module %q failed: %v", module, err)
+			framework.Logf("enabling module %q failed: %v", module, err)
 		}
 	}
 
@@ -295,7 +295,7 @@ func (rnr *rookNFSResource) Do(action kubectlAction) error {
 		cmd := fmt.Sprintf("ceph orch set backend %s", rnr.orchBackend)
 		_, _, err := execCommandInToolBoxPod(rnr.f, cmd, rookNamespace)
 		if err != nil {
-			e2elog.Logf("setting orch backend %q failed: %v", rnr.orchBackend, err)
+			framework.Logf("setting orch backend %q failed: %v", rnr.orchBackend, err)
 		}
 	}
 
@@ -318,14 +318,14 @@ func waitForDeploymentUpdateScale(
 			if isRetryableAPIError(upsErr) {
 				return false, nil
 			}
-			e2elog.Logf(
+			framework.Logf(
 				"Deployment UpdateScale %s/%s has not completed yet (%d seconds elapsed)",
 				ns, deploymentName, int(time.Since(start).Seconds()))
 
 			return false, fmt.Errorf("error update scale deployment %s/%s: %w", ns, deploymentName, upsErr)
 		}
 		if scaleResult.Spec.Replicas != scale.Spec.Replicas {
-			e2elog.Logf("scale result not matching for deployment %s/%s, desired scale %d, got %d",
+			framework.Logf("scale result not matching for deployment %s/%s, desired scale %d, got %d",
 				ns, deploymentName, scale.Spec.Replicas, scaleResult.Spec.Replicas)
 
 			return false, fmt.Errorf("error scale not matching in deployment %s/%s: %w", ns, deploymentName, upsErr)
@@ -354,7 +354,7 @@ func waitForDeploymentUpdate(
 			if isRetryableAPIError(upErr) {
 				return false, nil
 			}
-			e2elog.Logf(
+			framework.Logf(
 				"Deployment Update %s/%s has not completed yet (%d seconds elapsed)",
 				deployment.Namespace, deployment.Name, int(time.Since(start).Seconds()))
 
@@ -391,7 +391,7 @@ func waitForContainersArgsUpdate(
 	containers []string,
 	timeout int,
 ) error {
-	e2elog.Logf("waiting for deployment updates %s/%s", ns, deploymentName)
+	framework.Logf("waiting for deployment updates %s/%s", ns, deploymentName)
 
 	// wait for the deployment to be available
 	err := waitForDeploymentInAvailableState(c, deploymentName, ns, deployTimeout)
@@ -463,14 +463,14 @@ func waitForContainersArgsUpdate(
 			if isRetryableAPIError(getErr) {
 				return false, nil
 			}
-			e2elog.Logf(
+			framework.Logf(
 				"Deployment Get %s/%s has not completed yet (%d seconds elapsed)",
 				ns, deploymentName, int(time.Since(start).Seconds()))
 
 			return false, fmt.Errorf("error getting deployment %s/%s: %w", ns, deploymentName, getErr)
 		}
 		if deploy.Status.Replicas != count {
-			e2elog.Logf("Expected deployment %s/%s replicas %d, got %d", ns, deploymentName, count, deploy.Status.Replicas)
+			framework.Logf("Expected deployment %s/%s replicas %d, got %d", ns, deploymentName, count, deploy.Status.Replicas)
 
 			return false, fmt.Errorf("error expected deployment %s/%s replicas %d, got %d",
 				ns, deploymentName, count, deploy.Status.Replicas)

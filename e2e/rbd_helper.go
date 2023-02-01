@@ -35,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 )
 
 // nolint:gomnd // numbers specify Kernel versions.
@@ -168,7 +167,7 @@ func createRBDStorageClass(
 	return wait.PollImmediate(poll, timeout, func() (bool, error) {
 		_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 		if err != nil {
-			e2elog.Logf("error creating StorageClass %q: %v", sc.Name, err)
+			framework.Logf("error creating StorageClass %q: %v", sc.Name, err)
 			if isRetryableAPIError(err) {
 				return false, nil
 			}
@@ -326,13 +325,13 @@ func validateImageOwner(pvcPath string, f *framework.Framework) error {
 	}
 
 	if radosNamespace != "" {
-		e2elog.Logf(
+		framework.Logf(
 			"found image journal %s in pool %s namespace %s",
 			"csi.volume."+imageData.imageID,
 			defaultRBDPool,
 			radosNamespace)
 	} else {
-		e2elog.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, defaultRBDPool)
+		framework.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, defaultRBDPool)
 	}
 
 	if !strings.Contains(stdOut, pvc.Namespace) {
@@ -347,7 +346,7 @@ func logErrors(f *framework.Framework, msg string, wgErrs []error) int {
 	for i, err := range wgErrs {
 		if err != nil {
 			// not using Failf() as it aborts the test and does not log other errors
-			e2elog.Logf("%s (%s%d): %v", msg, f.UniqueName, i, err)
+			framework.Logf("%s (%s%d): %v", msg, f.UniqueName, i, err)
 			failures++
 		}
 	}
@@ -526,7 +525,7 @@ func validateEncryptedPVCAndAppBinding(pvcPath, appPath string, kms kmsConfig, f
 		if !destroyed {
 			return fmt.Errorf("passphrased was not destroyed: %s", msg)
 		} else if msg != "" {
-			e2elog.Logf("passphrase destroyed, but message returned: %s", msg)
+			framework.Logf("passphrase destroyed, but message returned: %s", msg)
 		}
 	}
 
@@ -575,7 +574,7 @@ func validateEncryptedFilesystemAndAppBinding(pvcPath, appPath string, kms kmsCo
 		if !destroyed {
 			return fmt.Errorf("passphrased was not destroyed: %s", msg)
 		} else if msg != "" {
-			e2elog.Logf("passphrase destroyed, but message returned: %s", msg)
+			framework.Logf("passphrase destroyed, but message returned: %s", msg)
 		}
 	}
 
@@ -723,23 +722,26 @@ func deleteBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 	return err
 }
 
-//nolint:unused // required for reclaimspace e2e.
 // rbdDuImage contains the disk-usage statistics of an RBD image.
+//
+//nolint:unused // required for reclaimspace e2e.
 type rbdDuImage struct {
 	Name            string `json:"name"`
 	ProvisionedSize uint64 `json:"provisioned_size"`
 	UsedSize        uint64 `json:"used_size"`
 }
 
-//nolint:unused // required for reclaimspace e2e.
 // rbdDuImageList contains the list of images returned by 'rbd du'.
+//
+//nolint:unused // required for reclaimspace e2e.
 type rbdDuImageList struct {
 	Images []*rbdDuImage `json:"images"`
 }
 
-//nolint:deadcode,unused // required for reclaimspace e2e.
 // getRbdDu runs 'rbd du' on the RBD image and returns a rbdDuImage struct with
 // the result.
+//
+//nolint:deadcode,unused // required for reclaimspace e2e.
 func getRbdDu(f *framework.Framework, pvc *v1.PersistentVolumeClaim) (*rbdDuImage, error) {
 	rdil := rbdDuImageList{}
 
@@ -768,11 +770,12 @@ func getRbdDu(f *framework.Framework, pvc *v1.PersistentVolumeClaim) (*rbdDuImag
 	return nil, fmt.Errorf("image %s not found", imageData.imageName)
 }
 
-//nolint:deadcode,unused // required for reclaimspace e2e.
 // sparsifyBackingRBDImage runs `rbd sparsify` on the RBD image. Once done, all
 // data blocks that contain zeros are discarded/trimmed/unmapped and do not
 // take up any space anymore. This can be used to verify that an empty, but
 // allocated (with zerofill) extents have been released.
+//
+//nolint:deadcode,unused // required for reclaimspace e2e.
 func sparsifyBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeClaim) error {
 	imageData, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
 	if err != nil {
@@ -849,9 +852,9 @@ func getPVCImageInfoInPool(f *framework.Framework, pvc *v1.PersistentVolumeClaim
 	}
 
 	if radosNamespace != "" {
-		e2elog.Logf("found image %s in pool %s namespace %s", imageData.imageName, pool, radosNamespace)
+		framework.Logf("found image %s in pool %s namespace %s", imageData.imageName, pool, radosNamespace)
 	} else {
-		e2elog.Logf("found image %s in pool %s", imageData.imageName, pool)
+		framework.Logf("found image %s in pool %s", imageData.imageName, pool)
 	}
 
 	return stdOut, nil
@@ -896,13 +899,13 @@ func checkPVCImageJournalInPool(f *framework.Framework, pvc *v1.PersistentVolume
 	}
 
 	if radosNamespace != "" {
-		e2elog.Logf(
+		framework.Logf(
 			"found image journal %s in pool %s namespace %s",
 			"csi.volume."+imageData.imageID,
 			pool,
 			radosNamespace)
 	} else {
-		e2elog.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, pool)
+		framework.Logf("found image journal %s in pool %s", "csi.volume."+imageData.imageID, pool)
 	}
 
 	return nil
@@ -931,13 +934,13 @@ func checkPVCCSIJournalInPool(f *framework.Framework, pvc *v1.PersistentVolumeCl
 	}
 
 	if radosNamespace != "" {
-		e2elog.Logf(
+		framework.Logf(
 			"found CSI journal entry %s in pool %s namespace %s",
 			"csi.volume."+imageData.pvName,
 			pool,
 			radosNamespace)
 	} else {
-		e2elog.Logf("found CSI journal entry %s in pool %s", "csi.volume."+imageData.pvName, pool)
+		framework.Logf("found CSI journal entry %s in pool %s", "csi.volume."+imageData.pvName, pool)
 	}
 
 	return nil
@@ -1039,7 +1042,7 @@ func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int)
 			return true, nil
 		}
 		errReason = fmt.Errorf("found %d images found in trash. Image details %v", len(imagesInTrash), imagesInTrash)
-		e2elog.Logf(errReason.Error())
+		framework.Logf(errReason.Error())
 
 		return false, nil
 	})
