@@ -45,6 +45,8 @@ type NodeServer struct {
 	// A map storing all volumes with ongoing operations so that additional operations
 	// for that same volume (as defined by VolumeID) return an Aborted error
 	VolumeLocks *util.VolumeLocks
+	// readAffinityMapOptions contains map options to enable read affinity.
+	readAffinityMapOptions string
 }
 
 // stageTransaction struct represents the state a transaction was when it either completed
@@ -143,7 +145,7 @@ func healerStageTransaction(ctx context.Context, cr *util.Credentials, volOps *r
 // this function also receive the credentials and secrets args as it differs in its data.
 // The credentials are used directly by functions like voljournal.Connect() and other functions
 // like genVolFromVolumeOptions() make use of secrets.
-func populateRbdVol(
+func (ns *NodeServer) populateRbdVol(
 	ctx context.Context,
 	req *csi.NodeStageVolumeRequest,
 	cr *util.Credentials,
@@ -250,6 +252,7 @@ func populateRbdVol(
 	if err != nil {
 		return nil, err
 	}
+	ns.appendReadAffinityMapOptions(rv)
 
 	rv.VolID = volID
 
@@ -263,6 +266,19 @@ func populateRbdVol(
 	}
 
 	return rv, err
+}
+
+// appendReadAffinityMapOptions appends readAffinityMapOptions to mapOptions
+// if mounter is rbdDefaultMounter and readAffinityMapOptions is not empty.
+func (ns NodeServer) appendReadAffinityMapOptions(rv *rbdVolume) {
+	switch {
+	case ns.readAffinityMapOptions == "" || rv.Mounter != rbdDefaultMounter:
+		return
+	case rv.MapOptions != "":
+		rv.MapOptions += "," + ns.readAffinityMapOptions
+	default:
+		rv.MapOptions = ns.readAffinityMapOptions
+	}
 }
 
 // NodeStageVolume mounts the volume to a staging path on the node.
@@ -318,7 +334,7 @@ func (ns *NodeServer) NodeStageVolume(
 	}
 
 	isStaticVol := parseBoolOption(ctx, req.GetVolumeContext(), staticVol, false)
-	rv, err := populateRbdVol(ctx, req, cr)
+	rv, err := ns.populateRbdVol(ctx, req, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -1348,4 +1364,23 @@ func getDeviceSize(ctx context.Context, devicePath string) (uint64, error) {
 	}
 
 	return size, nil
+}
+
+func (ns *NodeServer) SetReadAffinityMapOptions(crushLocationMap map[string]string) {
+	if len(crushLocationMap) == 0 {
+		return
+	}
+
+	var b strings.Builder
+	b.WriteString("read_from_replica=localize,crush_location=")
+	first := true
+	for key, val := range crushLocationMap {
+		if first {
+			b.WriteString(fmt.Sprintf("%s:%s", key, val))
+			first = false
+		} else {
+			b.WriteString(fmt.Sprintf("|%s:%s", key, val))
+		}
+	}
+	ns.readAffinityMapOptions = b.String()
 }

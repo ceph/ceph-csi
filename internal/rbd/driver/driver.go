@@ -71,11 +71,19 @@ func NewReplicationServer(c *rbd.ControllerServer) *rbd.ReplicationServer {
 }
 
 // NewNodeServer initialize a node server for rbd CSI driver.
-func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string) (*rbd.NodeServer, error) {
-	return &rbd.NodeServer{
+func NewNodeServer(
+	d *csicommon.CSIDriver,
+	t string,
+	topology map[string]string,
+	crushLocationMap map[string]string,
+) (*rbd.NodeServer, error) {
+	ns := rbd.NodeServer{
 		DefaultNodeServer: csicommon.NewDefaultNodeServer(d, t, topology),
 		VolumeLocks:       util.NewVolumeLocks(),
-	}, nil
+	}
+	ns.SetReadAffinityMapOptions(crushLocationMap)
+
+	return &ns, nil
 }
 
 // Run start a non-blocking grpc controller,node and identityserver for
@@ -84,9 +92,10 @@ func NewNodeServer(d *csicommon.CSIDriver, t string, topology map[string]string)
 // This also configures and starts a new CSI-Addons service, by calling
 // setupCSIAddonsServer().
 func (r *Driver) Run(conf *util.Config) {
-	var err error
-	var topology map[string]string
-
+	var (
+		err                        error
+		topology, crushLocationMap map[string]string
+	)
 	// update clone soft and hard limit
 	rbd.SetGlobalInt("rbdHardMaxCloneDepth", conf.RbdHardMaxCloneDepth)
 	rbd.SetGlobalInt("rbdSoftMaxCloneDepth", conf.RbdSoftMaxCloneDepth)
@@ -128,6 +137,13 @@ func (r *Driver) Run(conf *util.Config) {
 			})
 	}
 
+	if conf.EnableReadAffinity {
+		crushLocationMap, err = util.GetCrushLocationMap(conf.CrushLocationLabels, conf.NodeID)
+		if err != nil {
+			log.FatalLogMsg(err.Error())
+		}
+	}
+
 	// Create GRPC servers
 	r.ids = NewIdentityServer(r.cd)
 
@@ -136,7 +152,7 @@ func (r *Driver) Run(conf *util.Config) {
 		if err != nil {
 			log.FatalLogMsg(err.Error())
 		}
-		r.ns, err = NewNodeServer(r.cd, conf.Vtype, topology)
+		r.ns, err = NewNodeServer(r.cd, conf.Vtype, topology, crushLocationMap)
 		if err != nil {
 			log.FatalLogMsg("failed to start node server, err %v\n", err)
 		}
@@ -162,17 +178,6 @@ func (r *Driver) Run(conf *util.Config) {
 		log.WarningLogMsg("replication service running on controller server is deprecated " +
 			"and replaced by CSI-Addons, see https://github.com/ceph/ceph-csi/issues/3314 for more details")
 		r.rs = NewReplicationServer(r.cs)
-	}
-	if !conf.IsControllerServer && !conf.IsNodeServer {
-		topology, err = util.GetTopologyFromDomainLabels(conf.DomainLabels, conf.NodeID, conf.DriverName)
-		if err != nil {
-			log.FatalLogMsg(err.Error())
-		}
-		r.ns, err = NewNodeServer(r.cd, conf.Vtype, topology)
-		if err != nil {
-			log.FatalLogMsg("failed to start node server, err %v\n", err)
-		}
-		r.cs = NewControllerServer(r.cd)
 	}
 
 	s := csicommon.NewNonBlockingGRPCServer()

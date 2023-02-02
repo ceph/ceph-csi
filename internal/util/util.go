@@ -147,6 +147,10 @@ type Config struct {
 
 	// Cluster name
 	ClusterName string
+
+	// Read affinity related options
+	EnableReadAffinity  bool   // enable OSD read affinity.
+	CrushLocationLabels string // list of CRUSH location labels to read from the node.
 }
 
 // ValidateDriverName validates the driver name.
