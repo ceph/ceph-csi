@@ -79,8 +79,15 @@ func init() {
 		&conf.DomainLabels,
 		"domainlabels",
 		"",
-		"list of kubernetes node labels, that determines the topology"+
+		"list of Kubernetes node labels, that determines the topology"+
 			" domain the node belongs to, separated by ','")
+	flag.BoolVar(&conf.EnableReadAffinity, "enable-read-affinity", false, "enable read affinity")
+	flag.StringVar(
+		&conf.CrushLocationLabels,
+		"crush-location-labels",
+		"",
+		"list of Kubernetes node labels, that determines the"+
+			" CRUSH location the node belongs to, separated by ','")
 
 	// cephfs related flags
 	flag.BoolVar(
