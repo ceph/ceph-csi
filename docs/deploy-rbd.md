@@ -48,6 +48,8 @@ make image-cephcsi
 | `--skipforceflatten`     | `false`                       | skip image flattening on kernel < 5.2 which support mapping of rbd images which has the deep-flatten feature                                                                                                                                                                         |
 | `--maxsnapshotsonimage`  | `450`                         | Maximum number of snapshots allowed on rbd image without flattening                                                                                                                                                                                                                  |
 | `--setmetadata`          | `false`                       | Set metadata on volume                                                                                                                                                                                                                                                               |
+| `--enable-read-affinity` | `false`                       | enable read affinity                                                                                                                                                                                                                                                                 |
+| `--crush-location-labels`| _empty_                       | Kubernetes node labels that determine the CRUSH location the node belongs to, separated by ','                                                                                                                                                                                       |
 
 **Available volume parameters:**
 
@@ -195,6 +197,29 @@ The Helm chart is located in `charts/ceph-csi-rbd`.
 **Deploy Helm Chart:**
 
 [See the Helm chart readme for installation instructions.](../charts/ceph-csi-rbd/README.md)
+
+## Read Affinity using crush locations for RBD volumes
+
+Ceph CSI supports mapping RBD volumes with krbd options
+`"read_from_replica=localize,crush_location=type1:value1|type2:value2"` to
+allow serving reads from the most local OSD (according to OSD locations as
+defined in the CRUSH map).
+Refer [krbd-options](https://docs.ceph.com/en/latest/man/8/rbd/#kernel-rbd-krbd-options)
+for more details.
+
+This can be enabled by adding labels to Kubernetes nodes like
+`"topology.io/region=east"` and `"topology.io/zone=east-zone1"` and
+passing command line arguments `"--enable-read-affinity=true"` and
+`"--crush-location-labels=topology.io/zone,topology.io/region"` to Ceph CSI
+RBD daemonset pod "csi-rbdplugin" container, resulting in Ceph CSI adding
+`"--options read_from_replica=localize,crush_location=zone:east-zone1|region:east"`
+krbd options during rbd map operation.
+If enabled, this option will be added to all RBD volumes mapped by Ceph CSI.
+Well known labels can be found
+[here](https://kubernetes.io/docs/reference/labels-annotations-taints/).
+
+>Note: Label values will have all its dots `"."` normalized with dashes `"-"`
+in order for it to work with ceph CRUSH map.
 
 ## Encryption for RBD volumes
 

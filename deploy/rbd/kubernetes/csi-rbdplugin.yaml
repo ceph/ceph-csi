@@ -68,6 +68,15 @@ spec:
             # and pass the label names below, for CSI to consume and advertise
             # its equivalent topology domain
             # - "--domainlabels=failure-domain/region,failure-domain/zone"
+            #
+            # Options to enable read affinity.
+            # If enabled Ceph CSI will fetch labels from kubernetes node and
+            # pass `read_from_replica=localize,crush_location=type:value` during
+            # rbd map command. refer:
+            # https://docs.ceph.com/en/latest/man/8/rbd/#kernel-rbd-krbd-options
+            # for more details.
+            # - "--enable-read-affinity=true"
+            # - "--crush-location-labels=topology.io/zone,topology.io/rack"
           env:
             - name: POD_IP
               valueFrom:
