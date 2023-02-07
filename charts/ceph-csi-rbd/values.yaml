@@ -462,12 +462,12 @@ cephLogDirHostPath: /var/log/ceph
 # Name of the csi-driver
 driverName: rbd.csi.ceph.com
 # Name of the configmap used for state
-configMapName: ceph-csi-config
+configMapName: ceph-csi-config-rbd
 # Key to use in the Configmap if not config.json
 # configMapKey:
 # Use an externally provided configmap
 externallyManagedConfigmap: false
 # Name of the configmap used for ceph.conf
-cephConfConfigMapName: ceph-config
+cephConfConfigMapName: ceph-config-rbd
 # Name of the configmap used for encryption kms configuration
 kmsConfigMapName: ceph-csi-encryption-kms-config
