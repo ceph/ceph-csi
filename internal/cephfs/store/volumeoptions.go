@@ -235,6 +235,7 @@ func NewVolumeOptions(
 	opts.Monitors = strings.Join(clusterData.Monitors, ",")
 	opts.SubvolumeGroup = clusterData.CephFS.SubvolumeGroup
 	opts.Owner = k8s.GetOwner(volOptions)
+	opts.BackingSnapshot = IsShallowVolumeSupported(req)
 
 	if err = extractOptionalOption(&opts.Pool, "pool", volOptions); err != nil {
 		return nil, err
@@ -321,6 +322,28 @@ func NewVolumeOptions(
 	}
 
 	return &opts, nil
+}
+
+// IsShallowVolumeSupported returns true only for ReadOnly volume requests
+// with datasource as snapshot.
+func IsShallowVolumeSupported(req *csi.CreateVolumeRequest) bool {
+	isRO := IsVolumeCreateRO(req.VolumeCapabilities)
+
+	return isRO && (req.GetVolumeContentSource() != nil && req.GetVolumeContentSource().GetSnapshot() != nil)
+}
+
+func IsVolumeCreateRO(caps []*csi.VolumeCapability) bool {
+	for _, cap := range caps {
+		if cap.AccessMode != nil {
+			switch cap.AccessMode.Mode { //nolint:exhaustive // only check what we want
+			case csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
+				csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY:
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // newVolumeOptionsFromVolID generates a new instance of volumeOptions and VolumeIdentifier

@@ -49,8 +49,8 @@ parameters:
 
   # (optional) Boolean value. The PVC shall be backed by the CephFS snapshot
   # specified in its data source. `pool` parameter must not be specified.
-  # (defaults to `false`)
-  # backingSnapshot: "true"
+  # (defaults to `true`)
+  # backingSnapshot: "false"
 
   # (optional) Instruct the plugin it has to encrypt the volume
   # By default it is disabled. Valid values are "true" or "false".
