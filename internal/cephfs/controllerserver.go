@@ -230,12 +230,9 @@ func checkValidCreateVolumeRequest(
 	case sID != nil:
 		if vol.BackingSnapshot {
 			volCaps := req.GetVolumeCapabilities()
-			for _, volCap := range volCaps {
-				mode := volCap.AccessMode.Mode
-				if mode != csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY &&
-					mode != csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY {
-					return errors.New("backingSnapshot may be used only with read-only access modes")
-				}
+			isRO := store.IsVolumeCreateRO(volCaps)
+			if !isRO {
+				return errors.New("backingSnapshot may be used only with read-only access modes")
 			}
 		}
 	}

@@ -77,6 +77,8 @@ func (cs *Server) CreateVolume(
 	ctx context.Context,
 	req *csi.CreateVolumeRequest,
 ) (*csi.CreateVolumeResponse, error) {
+	// nfs does not supports shallow snapshots
+	req.Parameters["backingSnapshot"] = "false"
 	res, err := cs.backendServer.CreateVolume(ctx, req)
 	if err != nil {
 		return nil, err
