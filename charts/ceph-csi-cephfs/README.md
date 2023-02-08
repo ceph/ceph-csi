@@ -50,6 +50,36 @@ After installation succeeds, you can get a status of Chart
 helm status "ceph-csi-cephfs"
 ```
 
+### Upgrade Chart
+
+If you want to upgrade your Chart, use the following commands.
+
+```bash
+helm repo update ceph-csi
+helm upgrade --namespace ceph-csi-cephfs ceph-csi-cephfs ceph-csi/ceph-csi-cephfs
+```
+
+For upgrading to a specific version, provide the flag `--version` and the
+version.
+
+**Do not forget to include your values**, if they differ from the default values.
+We recommend not to use `--reuse-values` in case there are new defaults AND
+compare your currently used values with the new default values.
+
+#### Known Issues Upgrading
+
+- When upgrading to version >=3.7.0, you might encounter an error that the
+  CephFS CSI Driver cannot be updated. Please refer to
+  [issue](https://github.com/ceph/ceph-csi/issues/3397) for more details.
+  This is due to the CSIDriver resource not being updatable. To work around this
+  you can delete the CSIDriver object by running:
+
+  ```bash
+  kubectl delete csidriver cephfs.csi.ceph.com
+  ```
+
+  Then rerun your `helm upgrade` command.
+
 ### Delete Chart
 
 If you want to delete your Chart, use this command
