@@ -63,9 +63,6 @@ pull_request_rules:
       dismiss_reviews:
         approved: true
         changes_requested: false
-      label:
-        remove:
-          - ok-to-test
 
   - name: ask to resolve conflict
     conditions:
