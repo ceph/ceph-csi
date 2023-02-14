@@ -1702,7 +1702,7 @@ var _ = Describe(cephfsType, func() {
 			By("checking snapshot-backed volume", func() {
 				err := createCephFSSnapshotClass(f)
 				if err != nil {
-					framework.Failf("failed to delete CephFS storageclass: %v", err)
+					framework.Failf("failed to create CephFS snapshotclass: %v", err)
 				}
 
 				pvc, err := loadPVC(pvcPath)
