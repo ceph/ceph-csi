@@ -7,7 +7,6 @@ defaults:
       # credentials of users with write access to repo to rebase prs.
       name: default
       method: rebase
-      rebase_fallback: merge
       update_method: rebase
       # For rebasing Mergify uses the author of the PR. Ideally we use the
       # ceph-csi-bot for that, but this is a feature that needs a paid
