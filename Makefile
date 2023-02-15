@@ -106,6 +106,8 @@ go-test-api: check-env
 mod-check: check-env
 	@echo 'running: go mod verify'
 	@go mod verify && [ "$(shell sha512sum go.mod)" = "`sha512sum go.mod`" ] || ( echo "ERROR: go.mod was modified by 'go mod verify'" && false )
+	@echo 'running: go list -mod=readonly -m all'
+	@go list -mod=readonly -m all 1> /dev/null
 
 scripts/golangci.yml: scripts/golangci.yml.in
 	rm -f scripts/golangci.yml.buildtags.in
