@@ -27,9 +27,9 @@ require (
 	github.com/pkg/xattr v0.4.9
 	github.com/prometheus/client_golang v1.14.0
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/crypto v0.5.0
-	golang.org/x/net v0.5.0
-	golang.org/x/sys v0.4.0
+	golang.org/x/crypto v0.6.0
+	golang.org/x/net v0.6.0
+	golang.org/x/sys v0.5.0
 	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.28.1
 	k8s.io/api v0.26.1
@@ -138,8 +138,8 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/oauth2 v0.4.0 // indirect
-	golang.org/x/term v0.4.0 // indirect
-	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
