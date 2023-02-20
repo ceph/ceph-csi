@@ -19,6 +19,7 @@ package connection
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"strings"
@@ -39,6 +40,15 @@ const (
 )
 
 const terminationLogPath = "/dev/termination-log"
+
+var maxLogChar int = -1
+
+// SetMaxGRPCLogLength set the maximum character count for GRPC logging.
+// If characterCount is set to anything smaller than or equal to 0 then there's no limit on log length.
+// The default log length limit is unlimited.
+func SetMaxGRPCLogLength(characterCount int) {
+	maxLogChar = characterCount
+}
 
 // Connect opens insecure gRPC connection to a CSI driver. Address must be either absolute path to UNIX domain socket
 // file or have format '<protocol>://', following gRPC name resolution mechanism at
@@ -183,7 +193,11 @@ func LogGRPC(ctx context.Context, method string, req, reply interface{}, cc *grp
 	klog.V(5).Infof("GRPC call: %s", method)
 	klog.V(5).Infof("GRPC request: %s", protosanitizer.StripSecrets(req))
 	err := invoker(ctx, method, req, reply, cc, opts...)
-	klog.V(5).Infof("GRPC response: %s", protosanitizer.StripSecrets(reply))
+	cappedStr := fmt.Sprintf("%s", protosanitizer.StripSecrets(reply))
+	if maxLogChar > 0 && len(cappedStr) > maxLogChar {
+		cappedStr = cappedStr[:maxLogChar] + fmt.Sprintf(" [response body too large, log capped to %d chars]", maxLogChar)
+	}
+	klog.V(5).Infof("GRPC response: %s", cappedStr)
 	klog.V(5).Infof("GRPC error: %v", err)
 	return err
 }

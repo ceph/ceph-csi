@@ -179,12 +179,20 @@ func WithProcessStartTime(registerProcessStartTime bool) MetricsManagerOption {
 	}
 }
 
+// WithCustomRegistry allow user to use custom pre-created registry instead of a new created one.
+func WithCustomRegistry(registry metrics.KubeRegistry) MetricsManagerOption {
+	return func(cmm *csiMetricsManager) {
+		cmm.registry = registry
+	}
+}
+
 // NewCSIMetricsManagerForSidecar creates and registers metrics for CSI Sidecars and
 // returns an object that can be used to trigger the metrics. It uses "csi_sidecar"
 // as subsystem.
 //
 // driverName - Name of the CSI driver against which this operation was executed.
-//              If unknown, leave empty, and use SetDriverName method to update later.
+//
+//	If unknown, leave empty, and use SetDriverName method to update later.
 func NewCSIMetricsManagerForSidecar(driverName string) CSIMetricsManager {
 	return NewCSIMetricsManagerWithOptions(driverName)
 }
@@ -197,7 +205,8 @@ var NewCSIMetricsManager = NewCSIMetricsManagerForSidecar
 // as subsystem.
 //
 // driverName - Name of the CSI driver against which this operation was executed.
-//              If unknown, leave empty, and use SetDriverName method to update later.
+//
+//	If unknown, leave empty, and use SetDriverName method to update later.
 func NewCSIMetricsManagerForPlugin(driverName string) CSIMetricsManager {
 	return NewCSIMetricsManagerWithOptions(driverName,
 		WithSubsystem(SubsystemPlugin),
@@ -208,7 +217,8 @@ func NewCSIMetricsManagerForPlugin(driverName string) CSIMetricsManager {
 // if there are special needs like changing the default subsystems.
 //
 // driverName - Name of the CSI driver against which this operation was executed.
-//              If unknown, leave empty, and use SetDriverName method to update later.
+//
+//	If unknown, leave empty, and use SetDriverName method to update later.
 func NewCSIMetricsManagerWithOptions(driverName string, options ...MetricsManagerOption) CSIMetricsManager {
 	cmm := csiMetricsManager{
 		registry:                 metrics.NewKubeRegistry(),

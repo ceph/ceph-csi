@@ -335,8 +335,8 @@ github.com/josharian/intern
 github.com/json-iterator/go
 # github.com/kr/pretty v0.2.1
 ## explicit; go 1.12
-# github.com/kubernetes-csi/csi-lib-utils v0.11.0
-## explicit; go 1.16
+# github.com/kubernetes-csi/csi-lib-utils v0.13.0
+## explicit; go 1.18
 github.com/kubernetes-csi/csi-lib-utils/connection
 github.com/kubernetes-csi/csi-lib-utils/metrics
 github.com/kubernetes-csi/csi-lib-utils/protosanitizer
