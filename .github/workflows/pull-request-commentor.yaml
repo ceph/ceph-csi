@@ -113,3 +113,14 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/upgrade-tests-rbd
+
+      - name: remove ok-to-test-label after commenting
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.removeLabel({
+              issue_number: github.event.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: ["ok-to-test"]
+            })
