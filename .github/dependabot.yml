@@ -45,6 +45,7 @@ updates:
     labels:
       - rebase
       - ci/skip/e2e
+      - ci/skip/multi-arch-build
     commit-message:
       prefix: "rebase"
   - package-ecosystem: "gomod"
