@@ -4,6 +4,8 @@
 package nfs
 
 import (
+	"errors"
+
 	"github.com/ceph/go-ceph/internal/commands"
 )
 
@@ -24,6 +26,10 @@ const (
 	NoRootSquash = NoneSquash
 	// Unspecifiedquash
 	Unspecifiedquash SquashMode = ""
+)
+
+var (
+	errNoExportInfo = errors.New("No export info found")
 )
 
 // SecType indicates the kind of security/authentication to be used by an export.
@@ -115,6 +121,11 @@ func parseExportsList(res commands.Response) ([]ExportInfo, error) {
 
 func parseExportInfo(res commands.Response) (ExportInfo, error) {
 	i := ExportInfo{}
+	// different versions of ceph may return nothing or empty json.
+	// detect these cases and return a specific error
+	if res.NoStatus().EmptyBody().Ok() {
+		return i, errNoExportInfo
+	}
 	if err := res.NoStatus().Unmarshal(&i).End(); err != nil {
 		return i, err
 	}
