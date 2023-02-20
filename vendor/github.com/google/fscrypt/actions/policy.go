@@ -25,8 +25,8 @@ import (
 	"os"
 	"os/user"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/google/fscrypt/crypto"
 	"github.com/google/fscrypt/filesystem"

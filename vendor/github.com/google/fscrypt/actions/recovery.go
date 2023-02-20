@@ -23,6 +23,8 @@ import (
 	"os"
 	"strconv"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/google/fscrypt/crypto"
 	"github.com/google/fscrypt/metadata"
 	"github.com/google/fscrypt/util"
@@ -31,10 +33,10 @@ import (
 // modifiedContextWithSource returns a copy of ctx with the protector source
 // replaced by source.
 func modifiedContextWithSource(ctx *Context, source metadata.SourceType) *Context {
-	modifiedConfig := *ctx.Config
+	modifiedConfig := proto.Clone(ctx.Config).(*metadata.Config)
 	modifiedConfig.Source = source
 	modifiedCtx := *ctx
-	modifiedCtx.Config = &modifiedConfig
+	modifiedCtx.Config = modifiedConfig
 	return &modifiedCtx
 }
 

@@ -19,15 +19,20 @@
  * the License.
  */
 
-// If you modify this file, be sure to run "go generate" on this package.
+// If the *.proto file is modified, be sure to run "make gen" (at the project
+// root) to recreate the *.pb.go file.
 syntax = "proto3";
 package metadata;
+
+option go_package = "github.com/google/fscrypt/metadata";
 
 // Cost parameters to be used in our hashing functions.
 message HashingCosts {
   int64 time = 2;
   int64 memory = 3;
   int64 parallelism = 4;
+  // If true, parallelism should no longer be truncated to 8 bits.
+  bool truncation_fixed = 5;
 }
 
 // This structure is used for our authenticated wrapping/unwrapping of keys.
@@ -73,6 +78,7 @@ message EncryptionOptions {
     AES_128_CBC = 5;
     AES_128_CTS = 6;
     Adiantum = 9;
+    AES_256_HCTR2 = 10;
   }
 
   Mode contents = 2;

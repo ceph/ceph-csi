@@ -35,7 +35,6 @@ package filesystem
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/user"
@@ -45,9 +44,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/google/fscrypt/metadata"
 	"github.com/google/fscrypt/util"
@@ -335,7 +334,7 @@ func (m *Mount) PolicyPath(descriptor string) string {
 // directory and returns a temporary Mount which represents this temporary
 // directory. The caller is responsible for removing this temporary directory.
 func (m *Mount) tempMount() (*Mount, error) {
-	tempDir, err := ioutil.TempDir(filepath.Dir(m.BaseDir()), tempPrefix)
+	tempDir, err := os.MkdirTemp(filepath.Dir(m.BaseDir()), tempPrefix)
 	return &Mount{Path: tempDir}, err
 }
 
@@ -393,7 +392,7 @@ func (m *Mount) isFscryptSetupAllowed() bool {
 		return true
 	}
 	switch m.FilesystemType {
-	case "ext4", "f2fs", "ubifs", "btrfs", "ceph", "xfs":
+	case "ext4", "f2fs", "ubifs", "btrfs", "ceph", "xfs", "lustre":
 		return true
 	default:
 		return false
@@ -635,7 +634,7 @@ func (m *Mount) writeData(path string, data []byte, owner *user.User, mode os.Fi
 	// Write the data to a temporary file, sync it, then rename into place
 	// so that the operation will be atomic.
 	dirPath := filepath.Dir(path)
-	tempFile, err := ioutil.TempFile(dirPath, tempPrefix)
+	tempFile, err := os.CreateTemp(dirPath, tempPrefix)
 	if err != nil {
 		log.Print(err)
 		if os.IsPermission(err) {
@@ -767,7 +766,7 @@ func readMetadataFileSafe(path string, trustedUser *user.User) ([]byte, int64, e
 	}
 	// Read the file contents, allowing at most maxMetadataFileSize bytes.
 	reader := &io.LimitedReader{R: file, N: maxMetadataFileSize + 1}
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, -1, err
 	}
