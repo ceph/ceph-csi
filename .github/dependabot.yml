@@ -47,6 +47,17 @@ updates:
       - ci/skip/e2e
     commit-message:
       prefix: "rebase"
+  - package-ecosystem: "gomod"
+    directory: "/api"
+    schedule:
+      interval: "weekly"
+    rebase-strategy: "disabled"
+    labels:
+      - rebase
+      - ci/skip/e2e
+      - ci/skip/multi-arch-build
+    commit-message:
+      prefix: "rebase"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
