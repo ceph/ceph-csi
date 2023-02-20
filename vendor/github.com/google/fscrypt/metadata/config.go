@@ -29,31 +29,39 @@ package metadata
 import (
 	"io"
 
-	"github.com/golang/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // WriteConfig outputs the Config data as nicely formatted JSON
 func WriteConfig(config *Config, out io.Writer) error {
-	m := jsonpb.Marshaler{
-		EmitDefaults: true,
-		EnumsAsInts:  false,
-		Indent:       "\t",
-		OrigName:     true,
+	m := protojson.MarshalOptions{
+		Multiline:       true,
+		Indent:          "\t",
+		UseProtoNames:   true,
+		UseEnumNumbers:  false,
+		EmitUnpopulated: true,
 	}
-	if err := m.Marshal(out, config); err != nil {
+	bytes, err := m.Marshal(config)
+	if err != nil {
 		return err
 	}
-
-	_, err := out.Write([]byte{'\n'})
+	if _, err = out.Write(bytes); err != nil {
+		return err
+	}
+	_, err = out.Write([]byte{'\n'})
 	return err
 }
 
 // ReadConfig writes the JSON data into the config structure
 func ReadConfig(in io.Reader) (*Config, error) {
-	config := new(Config)
-	// Allow (and ignore) unknown fields for forwards compatibility.
-	u := jsonpb.Unmarshaler{
-		AllowUnknownFields: true,
+	bytes, err := io.ReadAll(in)
+	if err != nil {
+		return nil, err
 	}
-	return config, u.Unmarshal(in, config)
+	config := new(Config)
+	// Discard unknown fields for forwards compatibility.
+	u := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+	}
+	return config, u.Unmarshal(bytes, config)
 }

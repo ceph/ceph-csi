@@ -20,8 +20,11 @@
 package metadata
 
 import (
-	"github.com/golang/protobuf/proto"
+	"log"
+	"math"
+
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/google/fscrypt/util"
 )
@@ -57,20 +60,37 @@ func (s SourceType) CheckValidity() error {
 	return nil
 }
 
+// MaxParallelism is the maximum allowed value for HashingCosts.Parallelism.
+const MaxParallelism = math.MaxUint8
+
 // CheckValidity ensures the hash costs will be accepted by Argon2.
 func (h *HashingCosts) CheckValidity() error {
 	if h == nil {
 		return errNotInitialized
 	}
-	if h.Time <= 0 {
-		return errors.Errorf("time=%d is not positive", h.Time)
+
+	minP := int64(1)
+	p := uint8(h.Parallelism)
+	if h.Parallelism < minP || h.Parallelism > MaxParallelism {
+		if h.TruncationFixed || p == 0 {
+			return errors.Errorf("parallelism cost %d is not in range [%d, %d]",
+				h.Parallelism, minP, MaxParallelism)
+		}
+		// Previously we unconditionally casted costs.Parallelism to a uint8,
+		// so we replicate this behavior for backwards compatibility.
+		log.Printf("WARNING: Truncating parallelism cost of %d to %d", h.Parallelism, p)
 	}
-	if h.Parallelism <= 0 {
-		return errors.Errorf("parallelism=%d is not positive", h.Parallelism)
+
+	minT := int64(1)
+	maxT := int64(math.MaxUint32)
+	if h.Time < minT || h.Time > maxT {
+		return errors.Errorf("time cost %d is not in range [%d, %d]", h.Time, minT, maxT)
 	}
-	minMemory := 8 * h.Parallelism
-	if h.Memory < minMemory {
-		return errors.Errorf("memory=%d is less than minimum (%d)", h.Memory, minMemory)
+
+	minM := 8 * int64(p)
+	maxM := int64(math.MaxUint32)
+	if h.Memory < minM || h.Memory > maxM {
+		return errors.Errorf("memory cost %d KiB is not in range [%d, %d]", h.Memory, minM, maxM)
 	}
 	return nil
 }

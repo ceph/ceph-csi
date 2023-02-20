@@ -94,12 +94,25 @@ func (err *ErrNotEncrypted) Error() string {
 	return fmt.Sprintf("file or directory %q is not encrypted", err.Path)
 }
 
-func policyIoctl(file *os.File, request uintptr, arg unsafe.Pointer) error {
+func getPolicyIoctl(file *os.File, request uintptr, arg unsafe.Pointer) error {
 	_, _, errno := unix.Syscall(unix.SYS_IOCTL, file.Fd(), request, uintptr(arg))
 	if errno == 0 {
 		return nil
 	}
 	return errno
+}
+
+func setPolicy(file *os.File, arg unsafe.Pointer) error {
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, file.Fd(), unix.FS_IOC_SET_ENCRYPTION_POLICY, uintptr(arg))
+	if errno != 0 {
+		return errno
+	}
+
+	if err := file.Sync(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Maps EncryptionOptions.Padding <-> FSCRYPT_POLICY_FLAGS
@@ -159,10 +172,10 @@ func GetPolicy(path string) (*PolicyData, error) {
 	var arg unix.FscryptGetPolicyExArg
 	arg.Size = uint64(unsafe.Sizeof(arg.Policy))
 	policyPtr := util.Ptr(arg.Policy[:])
-	err = policyIoctl(file, unix.FS_IOC_GET_ENCRYPTION_POLICY_EX, unsafe.Pointer(&arg))
+	err = getPolicyIoctl(file, unix.FS_IOC_GET_ENCRYPTION_POLICY_EX, unsafe.Pointer(&arg))
 	if err == unix.ENOTTY {
 		// Fall back to the old version of the ioctl. This works for v1 policies only.
-		err = policyIoctl(file, unix.FS_IOC_GET_ENCRYPTION_POLICY, policyPtr)
+		err = getPolicyIoctl(file, unix.FS_IOC_GET_ENCRYPTION_POLICY, policyPtr)
 		arg.Size = uint64(unsafe.Sizeof(unix.FscryptPolicyV1{}))
 	}
 	switch err {
@@ -235,7 +248,7 @@ func setV1Policy(file *os.File, options *EncryptionOptions, descriptorBytes []by
 	}
 	copy(policy.Master_key_descriptor[:], descriptorBytes)
 
-	return policyIoctl(file, unix.FS_IOC_SET_ENCRYPTION_POLICY, unsafe.Pointer(&policy))
+	return setPolicy(file, unsafe.Pointer(&policy))
 }
 
 func setV2Policy(file *os.File, options *EncryptionOptions, descriptorBytes []byte) error {
@@ -252,7 +265,7 @@ func setV2Policy(file *os.File, options *EncryptionOptions, descriptorBytes []by
 	}
 	copy(policy.Master_key_identifier[:], descriptorBytes)
 
-	return policyIoctl(file, unix.FS_IOC_SET_ENCRYPTION_POLICY, unsafe.Pointer(&policy))
+	return setPolicy(file, unsafe.Pointer(&policy))
 }
 
 // SetPolicy sets up the specified directory to be encrypted with the specified
@@ -332,7 +345,7 @@ func CheckSupport(path string) error {
 		Flags:                     math.MaxUint8,
 	}
 
-	err = policyIoctl(file, unix.FS_IOC_SET_ENCRYPTION_POLICY, unsafe.Pointer(&badPolicy))
+	err = setPolicy(file, unsafe.Pointer(&badPolicy))
 	switch err {
 	case nil:
 		log.Panicf(`FS_IOC_SET_ENCRYPTION_POLICY succeeded when it should have failed.

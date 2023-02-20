@@ -228,8 +228,8 @@ github.com/golang/protobuf/ptypes/wrappers
 # github.com/golang/snappy v0.0.4
 ## explicit
 github.com/golang/snappy
-# github.com/google/fscrypt v0.3.3
-## explicit; go 1.11
+# github.com/google/fscrypt v0.3.4
+## explicit; go 1.16
 github.com/google/fscrypt/actions
 github.com/google/fscrypt/crypto
 github.com/google/fscrypt/filesystem

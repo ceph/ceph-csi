@@ -25,7 +25,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -537,11 +536,15 @@ func getMountFromLink(link string) (*Mount, error) {
 }
 
 func (mnt *Mount) getFilesystemUUID() (string, error) {
-	dirContents, err := ioutil.ReadDir(uuidDirectory)
+	dirEntries, err := os.ReadDir(uuidDirectory)
 	if err != nil {
 		return "", err
 	}
-	for _, fileInfo := range dirContents {
+	for _, dirEntry := range dirEntries {
+		fileInfo, err := dirEntry.Info()
+		if err != nil {
+			continue
+		}
 		if fileInfo.Mode()&os.ModeSymlink == 0 {
 			continue // Only interested in UUID symlinks
 		}
