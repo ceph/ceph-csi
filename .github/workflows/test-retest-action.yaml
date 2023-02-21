@@ -4,6 +4,9 @@ name: test-retest-action
 on:
   pull_request:
     branches: [devel]
+    paths:
+      - 'actions/retest/**'
+      - '.github/workflows/test-retest-action.yaml'
 
 permissions:
   contents: read
