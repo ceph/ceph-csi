@@ -56,11 +56,10 @@ environments.
 
 | Ceph CSI Version | Container Orchestrator Name | Version Tested|
 | -----------------| --------------------------- | --------------|
+| v3.8.0 | Kubernetes | v1.24, v1.25, v1.26|
 | v3.7.2 | Kubernetes | v1.22, v1.23, v1.24|
 | v3.7.1 | Kubernetes | v1.22, v1.23, v1.24|
 | v3.7.0 | Kubernetes | v1.22, v1.23, v1.24|
-| v3.6.1 | Kubernetes | v1.21, v1.22, v1.23|
-| v3.6.0 | Kubernetes | v1.21, v1.22, v1.23|
 
 There is work in progress to make this CO-independent and thus
 support other orchestration environments (Nomad, Mesos..etc).
@@ -70,8 +69,8 @@ NOTE:
 The supported window of Ceph CSI versions is "N.(x-1)":
 (N (Latest major release) . (x (Latest minor release) - 1)).
 
-For example, if the Ceph CSI latest major version is `3.7.0` today, support is
-provided for the versions above `3.6.0`. If users are running an unsupported
+For example, if the Ceph CSI latest major version is `3.8.0` today, support is
+provided for the versions above `3.7.0`. If users are running an unsupported
 Ceph CSI version, they will be asked to upgrade when requesting support.
 
 ## Support Matrix
@@ -131,14 +130,15 @@ in the Kubernetes documentation.
 | Ceph CSI Release/Branch | Container image name         | Image Tag |
 | ----------------------- | ---------------------------- | --------- |
 | devel (Branch)          | quay.io/cephcsi/cephcsi      | canary    |
+| v3.8.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.8.0    |
 | v3.7.2 (Release)        | quay.io/cephcsi/cephcsi      | v3.7.2    |
 | v3.7.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.7.1    |
 | v3.7.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.7.0    |
-| v3.6.1 (Release)        | quay.io/cephcsi/cephcsi      | v3.6.1    |
-| v3.6.0 (Release)        | quay.io/cephcsi/cephcsi      | v3.6.0    |
 
 | Deprecated Ceph CSI Release/Branch | Container image name | Image Tag |
 | ----------------------- | --------------------------------| --------- |
+| v3.6.1 (Release)        | quay.io/cephcsi/cephcsi         | v3.6.1    |
+| v3.6.0 (Release)        | quay.io/cephcsi/cephcsi         | v3.6.0    |
 | v3.5.1 (Release)        | quay.io/cephcsi/cephcsi         | v3.5.1    |
 | v3.5.0 (Release)        | quay.io/cephcsi/cephcsi         | v3.5.0    |
 | v3.4.0 (Release)        | quay.io/cephcsi/cephcsi         | v3.4.0    |
