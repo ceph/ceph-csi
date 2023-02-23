@@ -784,6 +784,15 @@ func (ns *NodeServer) mountVolumeToStagePath(
 	if existingFormat == "" && !staticVol && !readOnly {
 		args := mkfsDefaultArgs[fsType]
 
+		// if the VolumeContext contains "mkfsOptions", use those as args instead
+		volumeCtx := req.GetVolumeContext()
+		if volumeCtx != nil {
+			mkfsOptions := volumeCtx["mkfsOptions"]
+			if mkfsOptions != "" {
+				args = strings.Split(mkfsOptions, " ")
+			}
+		}
+
 		// add extra arguments depending on the filesystem
 		mkfs := "mkfs." + fsType
 		switch fsType {
