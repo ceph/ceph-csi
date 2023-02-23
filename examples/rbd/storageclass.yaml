@@ -37,6 +37,17 @@ parameters:
    # imageFeatures: layering,journaling,exclusive-lock,object-map,fast-diff
    imageFeatures: "layering"
 
+   # (optional) Options to pass to the `mkfs` command while creating the
+   # filesystem on the RBD device. Check the man-page for the `mkfs` command
+   # for the filesystem for more details. When `mkfsOptions` is set here, the
+   # defaults will not be used, consider including them in this parameter.
+   #
+   # The default options depend on the csi.storage.k8s.io/fstype setting:
+   # - ext4: "-m0 -Enodiscard,lazy_itable_init=1,lazy_journal_init=1"
+   # - xfs: "-onouuid -K"
+   #
+   # mkfsOptions: "-m0 -Ediscard -i1024"
+
    # (optional) Specifies whether to try other mounters in case if the current
    # mounter fails to mount the rbd image for any reason. True means fallback
    # to next mounter, default is set to false.
