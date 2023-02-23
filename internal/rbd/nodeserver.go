@@ -101,6 +101,15 @@ var (
 	// xfsHasReflink is set by xfsSupportsReflink(), use the function when
 	// checking the support for reflink.
 	xfsHasReflink = xfsReflinkUnset
+
+	mkfsDefaultArgs = map[string][]string{
+		"ext4": {"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1"},
+		"xfs":  {"-K"},
+	}
+
+	mountDefaultOpts = map[string][]string{
+		"xfs": {"nouuid"},
+	}
 )
 
 // parseBoolOption checks if parameters contain option and parse it. If it is
@@ -756,7 +765,8 @@ func (ns *NodeServer) mountVolumeToStagePath(
 		return err
 	}
 
-	opt := []string{"_netdev"}
+	opt := mountDefaultOpts[fsType]
+	opt = append(opt, "_netdev")
 	opt = csicommon.ConstructMountOptions(opt, req.GetVolumeCapability())
 	isBlock := req.GetVolumeCapability().GetBlock() != nil
 	rOnly := "ro"
@@ -771,34 +781,34 @@ func (ns *NodeServer) mountVolumeToStagePath(
 		readOnly = true
 	}
 
-	if fsType == "xfs" {
-		opt = append(opt, "nouuid")
-	}
-
 	if existingFormat == "" && !staticVol && !readOnly {
-		args := []string{}
+		args := mkfsDefaultArgs[fsType]
+
+		// add extra arguments depending on the filesystem
+		mkfs := "mkfs." + fsType
 		switch fsType {
 		case "ext4":
-			args = []string{"-m0", "-Enodiscard,lazy_itable_init=1,lazy_journal_init=1"}
 			if fileEncryption {
 				args = append(args, "-Oencrypt")
 			}
-			args = append(args, devicePath)
 		case "xfs":
-			args = []string{"-K", devicePath}
 			// always disable reflink
 			// TODO: make enabling an option, see ceph/ceph-csi#1256
 			if ns.xfsSupportsReflink() {
 				args = append(args, "-m", "reflink=0")
 			}
+		case "":
+			// no filesystem type specified, just use "mkfs"
+			mkfs = "mkfs"
 		}
-		if len(args) > 0 {
-			cmdOut, cmdErr := diskMounter.Exec.Command("mkfs."+fsType, args...).CombinedOutput()
-			if cmdErr != nil {
-				log.ErrorLog(ctx, "failed to run mkfs error: %v, output: %v", cmdErr, string(cmdOut))
 
-				return cmdErr
-			}
+		// add device as last argument
+		args = append(args, devicePath)
+		cmdOut, cmdErr := diskMounter.Exec.Command(mkfs, args...).CombinedOutput()
+		if cmdErr != nil {
+			log.ErrorLog(ctx, "failed to run mkfs.%s (%v) error: %v, output: %v", fsType, args, cmdErr, string(cmdOut))
+
+			return cmdErr
 		}
 	}
 
