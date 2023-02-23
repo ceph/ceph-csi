@@ -198,6 +198,15 @@ pull_request_rules:
         branches:
           - release-v3.7
 
+  - name: backport patches to release-v3.8 branch
+    conditions:
+      - base=devel
+      - label=backport-to-release-v3.8
+    actions:
+      backport:
+        branches:
+          - release-v3.8
+
   - name: remove outdated approvals on ci/centos
     conditions:
       - base=ci/centos
