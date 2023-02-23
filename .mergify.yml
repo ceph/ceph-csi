@@ -180,15 +180,6 @@ pull_request_rules:
         name: default
       delete_head_branch: {}
 
-  - name: backport patches to release-v3.6 branch
-    conditions:
-      - base=devel
-      - label=backport-to-release-v3.6
-    actions:
-      backport:
-        branches:
-          - release-v3.6
-
   - name: backport patches to release-v3.7 branch
     conditions:
       - base=devel
