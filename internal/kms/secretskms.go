@@ -29,6 +29,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/util/k8s"
 
 	"golang.org/x/crypto/scrypt"
+	"golang.org/x/sync/semaphore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -47,6 +48,8 @@ const (
 	// kubernetes secret namespace from where encryptionPassphrase is feteched.
 	metadataSecretNamespaceKey = "secretNamespace"
 )
+
+var scryptSem = semaphore.NewWeighted(int64(1))
 
 // secretsKMS is default KMS implementation that means no KMS is in use.
 type secretsKMS struct {
@@ -271,6 +274,13 @@ func (kms secretsMetadataKMS) GetSecret(volumeID string) (string, error) {
 // generateCipher returns a AEAD cipher based on a passphrase and salt
 // (volumeID). The cipher can then be used to encrypt/decrypt the DEK.
 func generateCipher(passphrase, salt string) (cipher.AEAD, error) {
+	// Note: This is memory heavy!
+	// Acquire blocks concurrent access so that only 1 worker can call scrypt.Key at a time.
+	if err := scryptSem.Acquire(context.TODO(), 1); err != nil {
+		return nil, err
+	}
+	defer scryptSem.Release(1)
+
 	key, err := scrypt.Key([]byte(passphrase), []byte(salt), 32768, 8, 1, 32)
 	if err != nil {
 		return nil, err

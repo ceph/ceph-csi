@@ -47,6 +47,8 @@ require (
 	sigs.k8s.io/controller-runtime v0.14.4
 )
 
+require golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
+
 require (
 	github.com/ansel1/merry v1.6.2 // indirect
 	github.com/ansel1/merry/v2 v2.0.1 // indirect

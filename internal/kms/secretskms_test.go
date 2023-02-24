@@ -62,6 +62,27 @@ func TestGenerateCipher(t *testing.T) {
 	assert.NotNil(t, aead)
 }
 
+func TestGenerateCipherConcurrent(t *testing.T) {
+	t.Parallel()
+	// nolint:gosec // this passphrase is intentionally hardcoded
+	passphrase := "my-cool-luks-passphrase"
+	salt := "unique-id-for-the-volume"
+
+	runGenerateCipher := func(passphrase string, salt string) {
+		aead, err := generateCipher(passphrase, salt)
+		assert.NoError(t, err)
+		assert.NotNil(t, aead)
+	}
+
+	for i := 0; i < 5; i++ {
+		go runGenerateCipher(passphrase, salt)
+	}
+
+	for i := 0; i < 5; i++ {
+		runGenerateCipher(passphrase, salt)
+	}
+}
+
 func TestInitSecretsMetadataKMS(t *testing.T) {
 	t.Parallel()
 	args := ProviderInitArgs{
