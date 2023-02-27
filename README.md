@@ -180,8 +180,8 @@ More details are available [here](https://github.com/ceph/ceph-csi/issues/463)
 
 ## Dev standup
 
-A regular dev standup takes place every [Monday,Tuesday and Thursday at
-12:00 PM UTC](https://meet.google.com/nnn-txfp-cge). Convert to your local
+A regular dev standup takes place every [Tuesday at
+12:00 PM UTC](https://meet.google.com/vit-qdhw-nyh) Convert to your local
 timezone by executing command `date -d "12:00 UTC"` on terminal
 
 Any changes to the meeting schedule will be added to the [agenda
@@ -191,7 +191,7 @@ Anyone who wants to discuss the direction of the project, design and
 implementation reviews, or general questions with the broader community is
 welcome and encouraged to join.
 
-- Meeting link: <https://meet.google.com/nnn-txfp-cge>
+- Meeting link: <https://meet.google.com/vit-qdhw-nyh>
 - [Current agenda](https://hackmd.io/6GL90WFGQL-L4DcIfIAKeQ)
 
 ## Contact
