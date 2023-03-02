@@ -419,7 +419,7 @@ var _ = Describe("RBD", func() {
 				By("verify PVC and app binding on helm installation", func() {
 					err := validatePVCAndAppBinding(pvcPath, appPath, f)
 					if err != nil {
-						framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+						framework.Failf("failed to validate RBD pvc and application binding: %v", err)
 					}
 					// validate created backend rbd images
 					validateRBDImageCount(f, 0, defaultRBDPool)
@@ -1207,7 +1207,7 @@ var _ = Describe("RBD", func() {
 						}
 						err = validatePVCAndAppBinding(pvcPath, appPath, f)
 						if err != nil {
-							framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+							framework.Failf("failed to validate RBD pvc and application binding: %v", err)
 						}
 						// validate created backend rbd images
 						validateRBDImageCount(f, 0, defaultRBDPool)
@@ -1372,7 +1372,7 @@ var _ = Describe("RBD", func() {
 						}
 						err = validatePVCAndAppBinding(pvcPath, appPath, f)
 						if err != nil {
-							framework.Failf("failed to validate CephFS pvc and application binding: %v", err)
+							framework.Failf("failed to validate RBD pvc and application binding: %v", err)
 						}
 						// validate created backend rbd images
 						validateRBDImageCount(f, 0, defaultRBDPool)
