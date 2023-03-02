@@ -1089,6 +1089,45 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("create a PVC and bind it to an app with ext4 as the FS and 1024 inodes ", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{
+						"csi.storage.k8s.io/fstype": "ext4",
+						"mkfsOptions":               "-N1024", // 1024 inodes
+					},
+					deletePolicy)
+				if err != nil {
+					framework.Failf("failed to create storageclass: %v", err)
+				}
+				err = validatePVCAndAppBinding(pvcPath, appPath, f)
+				if err != nil {
+					framework.Failf("failed to validate pvc and application binding: %v", err)
+				}
+				err = validateInodeCount(pvcPath, f, 1024)
+				if err != nil {
+					framework.Failf("failed to validate pvc and application binding: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					framework.Failf("failed to create storageclass: %v", err)
+				}
+			})
+
 			By("create a PVC and bind it to an app using rbd-nbd mounter", func() {
 				if !testNBD {
 					framework.Logf("skipping NBD test")
