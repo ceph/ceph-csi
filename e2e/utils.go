@@ -486,6 +486,7 @@ func validatePVCAndAppBinding(pvcPath, appPath string, f *framework.Framework) e
 	if err != nil {
 		return err
 	}
+
 	err = deletePVCAndApp("", f, pvc, app)
 
 	return err
@@ -508,6 +509,50 @@ func getMountType(selector, mountPath string, f *framework.Framework) (string, e
 }
 
 func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
+	writeTest := func(ns string, opts *metav1.ListOptions) error {
+		_, stdErr, err := execCommandInPod(f, "echo testing > /target/testing", ns, opts)
+		if err != nil {
+			return fmt.Errorf("failed to exec command in pod: %w", err)
+		}
+		if stdErr != "" {
+			return fmt.Errorf("failed to touch a file as non-root user %v", stdErr)
+		}
+
+		return nil
+	}
+
+	return validateNormalUserPVCAccessFunc(pvcPath, f, writeTest)
+}
+
+func validateInodeCount(pvcPath string, f *framework.Framework, inodes int) error {
+	countInodes := func(ns string, opts *metav1.ListOptions) error {
+		stdOut, stdErr, err := execCommandInPod(f, "df --output=itotal /target | tail -n1", ns, opts)
+		if err != nil {
+			return fmt.Errorf("failed to exec command in pod: %w", err)
+		}
+		if stdErr != "" {
+			return fmt.Errorf("failed to list inodes in pod: %v", stdErr)
+		}
+
+		itotal, err := strconv.Atoi(strings.TrimSpace(stdOut))
+		if err != nil {
+			return fmt.Errorf("failed to parse itotal %q to int: %w", strings.TrimSpace(stdOut), err)
+		}
+		if inodes != itotal {
+			return fmt.Errorf("expected inodes (%d) do not match itotal on volume (%d)", inodes, itotal)
+		}
+
+		return nil
+	}
+
+	return validateNormalUserPVCAccessFunc(pvcPath, f, countInodes)
+}
+
+func validateNormalUserPVCAccessFunc(
+	pvcPath string,
+	f *framework.Framework,
+	validate func(ns string, opts *metav1.ListOptions) error,
+) error {
 	pvc, err := loadPVC(pvcPath)
 	if err != nil {
 		return err
@@ -571,12 +616,10 @@ func validateNormalUserPVCAccess(pvcPath string, f *framework.Framework) error {
 	opt := metav1.ListOptions{
 		LabelSelector: "app=pod-run-as-non-root",
 	}
-	_, stdErr, err := execCommandInPod(f, "echo testing > /target/testing", app.Namespace, &opt)
+
+	err = validate(app.Namespace, &opt)
 	if err != nil {
-		return fmt.Errorf("failed to exec command in pod: %w", err)
-	}
-	if stdErr != "" {
-		return fmt.Errorf("failed to touch a file as non-root user %v", stdErr)
+		return fmt.Errorf("failed to run validation function: %w", err)
 	}
 
 	// metrics for BlockMode was added in Kubernetes 1.22
