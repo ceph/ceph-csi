@@ -781,7 +781,7 @@ func (ns *NodeServer) mountVolumeToStagePath(
 		readOnly = true
 	}
 
-	if existingFormat == "" && !staticVol && !readOnly {
+	if existingFormat == "" && !staticVol && !readOnly && !isBlock {
 		args := mkfsDefaultArgs[fsType]
 
 		// if the VolumeContext contains "mkfsOptions", use those as args instead
