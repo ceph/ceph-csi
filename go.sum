@@ -305,8 +305,8 @@ github.com/gammazero/deque v0.0.0-20190130191400-2afb3858e9c7/go.mod h1:GeIq9qoE
 github.com/gammazero/workerpool v0.0.0-20190406235159-88d534f22b56/go.mod h1:w9RqFVO2BM3xwWEcAB8Fwp0OviTBBEiRmSBDfbXnd3w=
 github.com/gemalto/flume v0.13.0 h1:EEeQvAxyFys3BH8IxEU7ZpM6Kr1sYn20HuZq6dgyMR8=
 github.com/gemalto/flume v0.13.0/go.mod h1:3iOEZiK/HD8SnFTqHCQoOHQKaHlBY0b6z55P8SLaOzk=
-github.com/gemalto/kmip-go v0.0.8 h1:RvKWTd2ACxOs7OF1f6SvPYebjmQbN0myfDHVQmX/k8g=
-github.com/gemalto/kmip-go v0.0.8/go.mod h1:7bAnjuzri8yGoJMwngnAd0HdXMRDQU+l1Zaiz12Tr68=
+github.com/gemalto/kmip-go v0.0.9 h1:PMm0j3k5l7H6BIp13+V6aq0mvp0O3YlKVHkDweLkzik=
+github.com/gemalto/kmip-go v0.0.9/go.mod h1:YBUgKtkYpGCL+xA1oClQrMYTWDvHN/A2wSh2LmT5+JY=
 github.com/getsentry/raven-go v0.2.0/go.mod h1:KungGk8q33+aIAZUIVWZDr2OfAEBsO49PX4NzFV5kcQ=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 h1:Mn26/9ZMNWSw9C9ERFA1PUxfmGpolnw2v0bKOREu5ew=

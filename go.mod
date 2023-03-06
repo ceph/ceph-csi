@@ -12,7 +12,7 @@ require (
 	github.com/container-storage-interface/spec v1.7.0
 	github.com/csi-addons/replication-lib-utils v0.2.0
 	github.com/csi-addons/spec v0.1.2-0.20221101132540-98eff76b0ff8
-	github.com/gemalto/kmip-go v0.0.8
+	github.com/gemalto/kmip-go v0.0.9
 	github.com/golang/protobuf v1.5.2
 	github.com/google/fscrypt v0.3.4
 	github.com/google/uuid v1.3.0
