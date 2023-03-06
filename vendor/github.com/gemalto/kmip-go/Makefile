@@ -3,7 +3,7 @@ BUILD_FLAGS =
 TEST_FLAGS =
 COMPOSE ?= docker-compose
 
-all: fmt build up test lint
+all: tidy fmt build up test lint
 
 build:
 	go build $(BUILD_FLAGS) ./...

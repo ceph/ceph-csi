@@ -179,7 +179,7 @@ github.com/fsnotify/fsnotify
 # github.com/gemalto/flume v0.13.0
 ## explicit; go 1.14
 github.com/gemalto/flume
-# github.com/gemalto/kmip-go v0.0.8
+# github.com/gemalto/kmip-go v0.0.9
 ## explicit; go 1.17
 github.com/gemalto/kmip-go
 github.com/gemalto/kmip-go/internal/kmiputil
