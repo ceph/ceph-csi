@@ -176,6 +176,7 @@ dek = nil
 ```
 
 Have key protect create a DEK for you:
+* To Get the **keyversion** along with DEK and wrapped DEK use **WrapCreateDEKV2()**
 
 ```go
 dek, wrappedDek, err := client.WrapCreateDEK(ctx, crkIDOrAlias, nil)
