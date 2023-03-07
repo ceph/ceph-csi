@@ -555,6 +555,11 @@ func (c *Client) wrap(ctx context.Context, idOrAlias string, plainText []byte, a
 	return pt, ct, nil
 }
 
+// WrapCreateDEKV2 supports KeyVersion details with DEK and WrapDEK
+func (c *Client) WrapCreateDEKV2(ctx context.Context, idOrAlias string, additionalAuthData *[]string) (*KeyActionResponse, error) {
+	return c.WrapV2(ctx, idOrAlias, nil, additionalAuthData)
+}
+
 // WrapWithKeyVersion function supports KeyVersion Details, PlainText and Cyphertext in response
 func (c *Client) WrapV2(ctx context.Context, idOrAlias string, plainText []byte, additionalAuthData *[]string) (*KeyActionResponse, error) {
 	keysActionReq := &KeysActionRequest{}
