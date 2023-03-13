@@ -793,10 +793,6 @@ func (cs *ControllerServer) CreateSnapshot(
 			parentVolOptions.ClusterID)
 	}
 
-	if parentVolOptions.BackingSnapshot {
-		return nil, status.Error(codes.InvalidArgument, "cannot snapshot a snapshot-backed volume")
-	}
-
 	cephfsSnap, genSnapErr := store.GenSnapFromOptions(ctx, req)
 	if genSnapErr != nil {
 		return nil, status.Error(codes.Internal, genSnapErr.Error())
@@ -823,6 +819,40 @@ func (cs *ControllerServer) CreateSnapshot(
 	// too.
 	volClient := core.NewSubVolume(parentVolOptions.GetConnection(), &parentVolOptions.SubVolume,
 		parentVolOptions.ClusterID, cs.ClusterName, cs.SetMetadata)
+
+	if parentVolOptions.BackingSnapshot {
+		// update the reference count for parent volume
+		if err = store.UpdateRefCount(ctx, parentVolOptions); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "failed to snapshot a snapshot-backed volume")
+		}
+		// Reservation
+		sID, er := store.ReserveSnap(ctx, parentVolOptions, vid.FsSubvolName, cephfsSnap, cr)
+		if er != nil {
+			return nil, status.Error(codes.Internal, er.Error())
+		}
+
+		defer func() {
+			if er != nil {
+				errDefer := store.UndoSnapReservation(ctx, parentVolOptions, *sID, snapName, cr)
+				if errDefer != nil {
+					log.WarningLog(ctx, "failed undoing reservation of snapshot: %s (%s)",
+						requestName, errDefer)
+				}
+			}
+		}()
+		// setting creation time as the current time
+		ts := timestamppb.Now()
+
+		return &csi.CreateSnapshotResponse{
+			Snapshot: &csi.Snapshot{
+				SnapshotId:     parentVolOptions.BackingSnapshotID,
+				SourceVolumeId: parentVolOptions.SubVolume.VolID,
+				CreationTime:   ts,
+				ReadyToUse:     true,
+			},
+		}, nil
+	}
+
 	info, err := volClient.GetSubVolumeInfo(ctx)
 	if err != nil {
 		// Check error code value against ErrInvalidCommand to understand the cluster

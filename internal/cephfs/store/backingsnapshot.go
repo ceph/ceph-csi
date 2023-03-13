@@ -170,3 +170,64 @@ func UnrefSelfInSnapshotBackedVolumes(
 		},
 	)
 }
+
+func UpdateRefCount(
+	ctx context.Context,
+	volOptions *VolumeOptions,
+) error {
+	ioctx, err := volOptions.conn.GetIoctx(volOptions.MetadataPool)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to create RADOS ioctx: %s", err)
+
+		return err
+	}
+	defer ioctx.Destroy()
+
+	ioctx.SetNamespace(fsutil.RadosNamespace)
+
+	var (
+		backingSnapID = volOptions.BackingSnapshotID
+		ioctxW        = radoswrapper.NewIOContext(ioctx)
+	)
+
+	created, err := reftracker.Add(
+		ioctxW,
+		fmtBackingSnapshotReftrackerName(backingSnapID),
+		map[string]struct{}{
+			backingSnapID:    {},
+			volOptions.VolID: {},
+		},
+	)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to add refs for backing snapshot %s: %v",
+			backingSnapID, err)
+	}
+
+	defer func() {
+		if err == nil {
+			return
+		}
+
+		// Clean up after failure.
+
+		deleted, er := reftracker.Remove(
+			ioctxW,
+			fmtBackingSnapshotReftrackerName(backingSnapID),
+			map[string]reftype.RefType{
+				backingSnapID:    reftype.Normal,
+				volOptions.VolID: reftype.Normal,
+			},
+		)
+		if er != nil {
+			log.ErrorLog(ctx, "failed to remove refs in cleanup procedure for backing snapshot %s: %v",
+				backingSnapID, er)
+		}
+
+		if created && !deleted {
+			log.ErrorLog(ctx, "orphaned reftracker object %s (pool %s, namespace %s)",
+				backingSnapID, volOptions.MetadataPool, fsutil.RadosNamespace)
+		}
+	}()
+
+	return err
+}

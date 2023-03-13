@@ -1962,6 +1962,264 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			By("checking snapshot creation with backing snapshot as true", func() {
+				totalCount := 2
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+				if err != nil {
+					framework.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+				}
+
+				originalSnap := getSnapshot(snapshotPath)
+				originalSnap.Namespace = f.UniqueName
+				originalSnap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				err = createSnapshot(&originalSnap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create snapshot: %v", err)
+				}
+
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				// Snapshot-backed volumes support read-only access modes only.
+				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+				pvcClone.Spec.DataSource.Name = originalSnap.Name
+				pvcClone.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvcClone.Name
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					snap.Name = name
+					err = createSnapshot(&snap, deployTimeout)
+					if err != nil {
+						framework.Failf("failed to create snapshot: %v", err)
+					}
+				}
+				validateCephFSSnapshotCount(f, 1, subvolumegroup, pv)
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					snap.Name = name
+					err = deleteSnapshot(&snap, deployTimeout)
+					if err != nil {
+						framework.Failf("failed to delete snapshot: %v", err)
+					}
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+				err = deleteSnapshot(&originalSnap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete snapshot: %v", err)
+				}
+				validateCephFSSnapshotCount(f, 0, subvolumegroup, pv)
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+
+				err = createCephfsStorageClass(f.ClientSet, f, false, nil)
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+			})
+
+			By("checking snapshot creation with backing snapshot as false", func() {
+				totalCount := 2
+				err := deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+				err = createCephfsStorageClass(f.ClientSet, f, false, map[string]string{
+					"backingSnapshot": "false",
+				})
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+				if err != nil {
+					framework.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+				}
+
+				originalSnap := getSnapshot(snapshotPath)
+				originalSnap.Namespace = f.UniqueName
+				originalSnap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				err = createSnapshot(&originalSnap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create snapshot: %v", err)
+				}
+				validateCephFSSnapshotCount(f, 1, subvolumegroup, pv)
+
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				// Snapshot-backed volumes support read-only access modes only.
+				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+				pvcClone.Spec.DataSource.Name = originalSnap.Name
+				pvcClone.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+				_, pvs, err := getPVCAndPV(f.ClientSet, pvcClone.Name, pvcClone.Namespace)
+				if err != nil {
+					framework.Failf("failed to get PV object for %s: %v", pvcClone.Name, err)
+				}
+
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvcClone.Name
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					snap.Name = name
+					err = createSnapshot(&snap, deployTimeout)
+					if err != nil {
+						framework.Failf("failed to create snapshot: %v", err)
+					}
+				}
+				validateCephFSSnapshotCount(f, totalCount, subvolumegroup, pvs)
+				for i := 0; i < totalCount; i++ {
+					name := fmt.Sprintf("%s%d", f.UniqueName, i)
+					snap.Name = name
+					err = deleteSnapshot(&snap, deployTimeout)
+					if err != nil {
+						framework.Failf("failed to delete snapshot: %v", err)
+					}
+				}
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+				err = deleteSnapshot(&originalSnap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete snapshot: %v", err)
+				}
+				validateCephFSSnapshotCount(f, 0, subvolumegroup, pv)
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+
+				err = createCephfsStorageClass(f.ClientSet, f, false, nil)
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+			})
+
+			By("checking clone of shallow snapshot", func() {
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				originalSnap := getSnapshot(snapshotPath)
+				originalSnap.Namespace = f.UniqueName
+				originalSnap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				err = createSnapshot(&originalSnap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create snapshot: %v", err)
+				}
+
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				// Snapshot-backed volumes support read-only access modes only.
+				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+				pvcClone.Spec.DataSource.Name = originalSnap.Name
+				pvcClone.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				clonedSnap := getSnapshot(snapshotPath)
+				clonedSnap.Name = "cephfs-clone-snap"
+				clonedSnap.Namespace = f.UniqueName
+				clonedSnap.Spec.Source.PersistentVolumeClaimName = &pvcClone.Name
+				err = createSnapshot(&clonedSnap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create snapshot of ROX clone: %v", err)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+
+				err = deleteSnapshot(&originalSnap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete snapshot: %v", err)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvcClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+
+				pvcRestore, err := loadPVC(pvcClonePath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+
+				pvcRestore.Spec.DataSource.Name = clonedSnap.Name
+				pvcRestore.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvcRestore, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvcRestore, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+
+				err = deleteSnapshot(&clonedSnap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete snapshot: %v", err)
+				}
+			})
+
 			if testCephFSFscrypt {
 				kmsToTest := map[string]kmsConfig{
 					"secrets-metadata-test": secretsMetadataKMS,
