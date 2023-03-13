@@ -26,7 +26,7 @@ require (
 	github.com/onsi/gomega v1.27.4
 	github.com/pkg/xattr v0.4.9
 	github.com/prometheus/client_golang v1.14.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	golang.org/x/crypto v0.6.0
 	golang.org/x/net v0.8.0
 	golang.org/x/sys v0.6.0
