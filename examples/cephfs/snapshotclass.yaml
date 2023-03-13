@@ -3,6 +3,7 @@ apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
   name: csi-cephfsplugin-snapclass
+  # if deployed via rook, the driver will be rook-ceph.cephfs.csi.ceph.com
 driver: cephfs.csi.ceph.com
 parameters:
   # String representing a Ceph cluster to provision storage snapshot from.
