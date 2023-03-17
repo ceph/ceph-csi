@@ -9,7 +9,7 @@
 # registry.
 #
 
-CI_REGISTRY='registry-ceph-csi.apps.ocp.ci.centos.org'
+CI_REGISTRY='registry-ceph-csi.apps.ocp.cloud.ci.centos.org'
 
 # get_image_entries returns the contents of images.txt without comments or empty lines
 function get_image_entries() {
