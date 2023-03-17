@@ -9,7 +9,7 @@ def git_since = "devel"
 def skip_e2e = 0
 def doc_change = 0
 def k8s_release = 'latest'
-def ci_registry = 'registry-ceph-csi.apps.ocp.ci.centos.org'
+def ci_registry = 'registry-ceph-csi.apps.ocp.cloud.ci.centos.org'
 def namespace = 'cephcsi-e2e-' + UUID.randomUUID().toString().split('-')[-1]
 def failure = null
 

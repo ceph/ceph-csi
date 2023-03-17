@@ -21,7 +21,7 @@ stringData:
   config.json: |-
     {
       "auths": {
-        "registry-ceph-csi.apps.ocp.ci.centos.org": {
+        "registry-ceph-csi.apps.ocp.cloud.ci.centos.org": {
           "auth": "@@SOME_B64ENCODED_STRING@@"
         }
       }
@@ -61,7 +61,7 @@ spec:
       volumes:
         - name: container-images
           persistentVolumeClaim:
-            claimName: ceph-csi-image-registry
+            claimName: image-registry
         - name: htpasswd
           secret:
             secretName: container-registry-auth

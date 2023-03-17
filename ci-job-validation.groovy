@@ -9,7 +9,7 @@ def git_since = 'ci/centos'
 def base = ''
 def doc_change = 0
 // private, internal container image repository
-def ci_registry = 'registry-ceph-csi.apps.ocp.ci.centos.org'
+def ci_registry = 'registry-ceph-csi.apps.ocp.cloud.ci.centos.org'
 def cached_image = 'ceph-csi'
 def use_pulled_image = 'USE_PULLED_IMAGE=yes'
 

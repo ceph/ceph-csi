@@ -10,7 +10,7 @@ def skip_e2e = 0
 def doc_change = 0
 def k8s_release = 'latest'
 def namespace = 'k8s-e2e-storage-' + UUID.randomUUID().toString().split('-')[-1]
-def ci_registry = 'registry-ceph-csi.apps.ocp.ci.centos.org'
+def ci_registry = 'registry-ceph-csi.apps.ocp.cloud.ci.centos.org'
 def failure = null
 
 def ssh(cmd) {
