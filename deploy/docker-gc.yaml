@@ -1,0 +1,44 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: docker-gc
+  labels:
+    app: docker-gc
+spec:
+  schedule: '@weekly'
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: docker-gc
+        spec:
+          containers:
+            - name: docker-gc
+              image: docker.io/library/registry:2
+              args:
+                - registry
+                - garbage-collect
+                - /config/config.yml
+                - --delete-untagged
+              volumeMounts:
+                - name: container-images
+                  mountPath: /var/lib/registry
+                - name: config
+                  mountPath: /config
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                capabilities:
+                  drop: ["ALL"]
+                seccompProfile:
+                  type: RuntimeDefault
+          volumes:
+            - name: container-images
+              persistentVolumeClaim:
+                claimName: ceph-csi-image-registry
+            - name: config
+              secret:
+                secretName: container-registry-config
+          restartPolicy: OnFailure
