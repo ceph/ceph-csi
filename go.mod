@@ -32,14 +32,14 @@ require (
 	golang.org/x/sys v0.6.0
 	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.28.1
-	k8s.io/api v0.26.2
-	k8s.io/apimachinery v0.26.2
-	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/cloud-provider v0.26.2
-	k8s.io/klog/v2 v2.90.0
 	//
 	// when updating k8s.io/kubernetes, make sure to update the replace section too
 	//
+	k8s.io/api v0.26.3
+	k8s.io/apimachinery v0.26.3
+	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/cloud-provider v0.26.2
+	k8s.io/klog/v2 v2.90.0
 	k8s.io/kubernetes v1.26.2
 	k8s.io/mount-utils v0.26.2
 	k8s.io/pod-security-admission v0.0.0
@@ -172,9 +172,9 @@ replace (
 	//
 	// k8s.io/kubernetes depends on these k8s.io packages, but unversioned
 	//
-	k8s.io/api => k8s.io/api v0.26.2
+	k8s.io/api => k8s.io/api v0.26.3
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.26.2
-	k8s.io/apimachinery => k8s.io/apimachinery v0.26.2
+	k8s.io/apimachinery => k8s.io/apimachinery v0.26.3
 	k8s.io/apiserver => k8s.io/apiserver v0.26.2
 	k8s.io/cli-runtime => k8s.io/cli-runtime v0.26.2
 	k8s.io/client-go => k8s.io/client-go v0.26.2
