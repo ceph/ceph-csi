@@ -421,7 +421,7 @@ github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/go-selinux/label
 github.com/opencontainers/selinux/pkg/pwalk
 github.com/opencontainers/selinux/pkg/pwalkdir
-# github.com/openshift/api v0.0.0-20230310143623-1b126331a735
+# github.com/openshift/api v0.0.0-20230320192226-1fc631efd341
 ## explicit; go 1.19
 github.com/openshift/api/security/v1
 # github.com/pierrec/lz4 v2.6.1+incompatible
