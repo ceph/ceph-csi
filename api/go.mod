@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/ghodss/yaml v1.0.0
-	github.com/openshift/api v3.9.0+incompatible
+	github.com/openshift/api v0.0.0-20230320192226-1fc631efd341
 	github.com/stretchr/testify v1.8.2
 	k8s.io/api v0.26.3
 )
@@ -29,3 +29,6 @@ require (
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
+
+// version 3.9 is really old, don't use that!
+exclude github.com/openshift/api v3.9.0+incompatible
