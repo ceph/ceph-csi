@@ -16,6 +16,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+<<<<<<< HEAD
       - name: Add comment to trigger external storage tests for Kubernetes 1.23
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -23,6 +24,8 @@ jobs:
           body: |
             /test ci/centos/k8s-e2e-external-storage/1.23
 
+=======
+>>>>>>> 60248ce81 (ci: remove kubernetes 1.23 from github action)
       - name: Add comment to trigger external storage tests for Kubernetes 1.24
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -44,6 +47,7 @@ jobs:
           body: |
             /test ci/centos/k8s-e2e-external-storage/1.26
 
+<<<<<<< HEAD
       - name: Add comment to trigger helm E2E tests for Kubernetes 1.23
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -51,6 +55,8 @@ jobs:
           body: |
             /test ci/centos/mini-e2e-helm/k8s-1.23
 
+=======
+>>>>>>> 60248ce81 (ci: remove kubernetes 1.23 from github action)
       - name: Add comment to trigger helm E2E tests for Kubernetes 1.24
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -72,6 +78,7 @@ jobs:
           body: |
             /test ci/centos/mini-e2e-helm/k8s-1.26
 
+<<<<<<< HEAD
       - name: Add comment to trigger E2E tests for Kubernetes 1.23
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -79,6 +86,8 @@ jobs:
           body: |
             /test ci/centos/mini-e2e/k8s-1.23
 
+=======
+>>>>>>> 60248ce81 (ci: remove kubernetes 1.23 from github action)
       - name: Add comment to trigger E2E tests for Kubernetes 1.24
         uses: peter-evans/create-or-update-comment@v2
         with:
