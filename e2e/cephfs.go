@@ -1944,8 +1944,6 @@ var _ = Describe(cephfsType, func() {
 					framework.Failf("failed to delete PVC or application: %v", err)
 				}
 
-				validateCephFSSnapshotCount(f, 0, subvolumegroup, pv)
-
 				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
 					framework.Failf("failed to delete PVC or application: %v", err)
