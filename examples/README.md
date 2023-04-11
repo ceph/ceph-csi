@@ -296,3 +296,102 @@ Units: sectors of 1 * 512 = 512 bytes
 Sector size (logical/physical): 512 bytes / 512 bytes
 I/O size (minimum/optimal): 4194304 bytes / 4194304 bytes
 ```
+
+### How to create CephFS Snapshot and Restore
+
+In the `examples/cephfs` directory you will find two files related to snapshots:
+[snapshotclass.yaml](./cephfs/snapshotclass.yaml) and
+[snapshot.yaml](./cephfs/snapshot.yaml).
+
+Once you created your CephFS volume, you'll need to customize at least
+`snapshotclass.yaml` and make sure the `clusterID` parameter matches
+your Ceph cluster setup.
+
+Note that it is recommended to create a volume snapshot or a PVC clone
+only when the PVC is not in use.
+
+After configuring everything you needed, create the snapshot class:
+
+```bash
+kubectl create -f ../examples/cephfs/snapshotclass.yaml
+```
+
+Verify that the snapshot class was created:
+
+```console
+$ kubectl get volumesnapshotclass
+NAME                         DRIVER                DELETIONPOLICY   AGE
+csi-cephfsplugin-snapclass   cephfs.csi.ceph.com   Delete           24m
+```
+
+Create a snapshot from the existing PVC:
+
+```bash
+kubectl create -f ../examples/cephfs/snapshot.yaml
+```
+
+To verify if your volume snapshot has successfully been created and to
+get the details about snapshot, run the following:
+
+```console
+$ kubectl get volumesnapshot
+NAME                  READYTOUSE   SOURCEPVC       SOURCESNAPSHOTCONTENT   RESTORESIZE   SNAPSHOTCLASS                SNAPSHOTCONTENT                                    CREATIONTIME   AGE
+cephfs-pvc-snapshot   true         csi-cephfs-pvc                          1Gi           csi-cephfsplugin-snapclass   snapcontent-34476204-a14a-4d59-bfbc-2bbba695652c   3s             6s
+```
+
+To be sure everything is OK you can run
+`ceph fs subvolume snapshot ls <vol_name> <sub_name> [<group_name>]`
+inside one of your Ceph pod.
+
+To restore the snapshot to a new PVC, deploy
+[pvc-restore.yaml](./cephfs/pvc-restore.yaml) and a testing pod
+[pod-restore.yaml](./cephfs/pod-restore.yaml):
+
+```bash
+kubectl create -f pvc-restore.yaml
+kubectl create -f pod-restore.yaml
+```
+
+### Cleanup for CephFS Snapshot and Restore
+
+Delete the testing pod and restored pvc.
+
+```bash
+kubectl delete pod <pod-restore name>
+kubectl delete pvc <pvc-restore name>
+```
+
+Now, the snapshot is no longer in use, Delete the volume snapshot
+and volume snapshot class.
+
+```bash
+kubectl delete volumesnapshot <snapshot name>
+kubectl delete volumesnapshotclass <snapshotclass name>
+```
+
+### How to Clone CephFS Volumes
+
+Create the clone from cephFS PVC:
+
+```bash
+kubectl create -f ../examples/cephfs/pvc-clone.yaml
+kubectl create -f ../examples/cephfs/pod-clone.yaml
+```
+
+To verify if your clone has successfully been created, run the following:
+
+```console
+$ kubectl get pvc
+NAME                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+csi-cephfs-pvc       Bound    pvc-1ea51547-a88b-4ab0-8b4a-812caeaf025d   1Gi        RWX            csi-cephfs-sc  20h
+cephfs-pvc-clone     Bound    pvc-b575bc35-d521-4c41-b4f9-1d733cd28fdf   1Gi        RWX            csi-cephfs-sc  39s
+```
+
+### Cleanup
+
+Delete the cloned pod and pvc:
+
+```bash
+kubectl delete pod <pod-clone name>
+kubectl delete pvc <pvc-clone name>
+```
