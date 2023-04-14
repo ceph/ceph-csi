@@ -532,21 +532,11 @@ func (c *Client) SetInstancePolicies(ctx context.Context, policies MultiplePolic
 			},
 		}
 
-		if policies.KeyCreateImportAccess.CreateRootKey {
-			policy.PolicyData.Attributes.CreateRootKey = &policies.KeyCreateImportAccess.CreateRootKey
-		}
-		if policies.KeyCreateImportAccess.CreateStandardKey {
-			policy.PolicyData.Attributes.CreateStandardKey = &policies.KeyCreateImportAccess.CreateStandardKey
-		}
-		if policies.KeyCreateImportAccess.ImportRootKey {
-			policy.PolicyData.Attributes.ImportRootKey = &policies.KeyCreateImportAccess.ImportRootKey
-		}
-		if policies.KeyCreateImportAccess.ImportStandardKey {
-			policy.PolicyData.Attributes.ImportStandardKey = &policies.KeyCreateImportAccess.ImportStandardKey
-		}
-		if policies.KeyCreateImportAccess.EnforceToken {
-			policy.PolicyData.Attributes.EnforceToken = &policies.KeyCreateImportAccess.EnforceToken
-		}
+		policy.PolicyData.Attributes.CreateRootKey = &policies.KeyCreateImportAccess.CreateRootKey
+		policy.PolicyData.Attributes.CreateStandardKey = &policies.KeyCreateImportAccess.CreateStandardKey
+		policy.PolicyData.Attributes.ImportRootKey = &policies.KeyCreateImportAccess.ImportRootKey
+		policy.PolicyData.Attributes.ImportStandardKey = &policies.KeyCreateImportAccess.ImportStandardKey
+		policy.PolicyData.Attributes.EnforceToken = &policies.KeyCreateImportAccess.EnforceToken
 
 		resPolicies = append(resPolicies, policy)
 	}
