@@ -400,9 +400,10 @@ type ForceOpt struct {
 
 // ListKeyVersionsOptions struct to add the query parameters for the ListKeyVersions function
 type ListKeyVersionsOptions struct {
-	Limit      *uint32
-	Offset     *uint32
-	TotalCount *bool
+	Limit        *uint32
+	Offset       *uint32
+	TotalCount   *bool
+	AllKeyStates *bool
 }
 
 // ListKeyVersions gets all the versions of the key resource by specifying ID of the key and/or optional parameters
@@ -426,6 +427,9 @@ func (c *Client) ListKeyVersions(ctx context.Context, idOrAlias string, listKeyV
 		}
 		if listKeyVersionsOptions.TotalCount != nil {
 			values.Set("totalCount", fmt.Sprint(*listKeyVersionsOptions.TotalCount))
+		}
+		if listKeyVersionsOptions.AllKeyStates != nil {
+			values.Set("allKeyStates", fmt.Sprint(*listKeyVersionsOptions.AllKeyStates))
 		}
 		req.URL.RawQuery = values.Encode()
 	}
@@ -740,7 +744,7 @@ func (c *Client) InitiateDualAuthDelete(ctx context.Context, idOrAlias string) e
 // CancelDualAuthDelete unsets the key for deletion. If a key is set for deletion, it can
 // be prevented from getting deleted by unsetting the key for deletion.
 // For more information refer to the Key Protect docs in the link below:
-//https://cloud.ibm.com/docs/key-protect?topic=key-protect-delete-dual-auth-keys#unset-key-deletion-api
+// https://cloud.ibm.com/docs/key-protect?topic=key-protect-delete-dual-auth-keys#unset-key-deletion-api
 func (c *Client) CancelDualAuthDelete(ctx context.Context, idOrAlias string) error {
 	_, err := c.doKeysAction(ctx, idOrAlias, "unsetKeyForDeletion", nil)
 	return err

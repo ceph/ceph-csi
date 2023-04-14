@@ -30,8 +30,8 @@ script:
 
 # To enable semantic-release, uncomment these sections.
 before_deploy:
-  - nvm install 14
-  - npm install -g npm@6.x
+  - nvm install node
+  - npm install -g npm
   - npm install @semantic-release/changelog
   - npm install @semantic-release/exec
   - npm install @semantic-release/git
