@@ -48,6 +48,14 @@ spec:
                     values:
                       - {{ .Values.provisioner.name }}
               topologyKey: "kubernetes.io/hostname"
+{{- if .Values.provisioner.affinity }}
+{{ toYaml .Values.provisioner.affinity | indent 8 -}}
+{{- end -}}
+{{- else -}}
+{{- if .Values.provisioner.affinity }}
+      affinity:
+{{ toYaml .Values.provisioner.affinity | indent 8 -}}
+{{- end -}}
 {{- end }}
       serviceAccountName: {{ include "ceph-csi-rbd.serviceAccountName.provisioner" . }}
       hostNetwork: {{ .Values.provisioner.enableHostNetwork }}
@@ -309,10 +317,6 @@ spec:
                   path: oidc-token
                   expirationSeconds: 3600
                   audience: ceph-csi-kms
-{{- if .Values.provisioner.affinity }}
-      affinity:
-{{ toYaml .Values.provisioner.affinity | indent 8 -}}
-{{- end -}}
 {{- if .Values.provisioner.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.provisioner.nodeSelector | indent 8 -}}
