@@ -138,7 +138,7 @@ github.com/ceph/go-ceph/rbd/admin
 # github.com/cespare/xxhash/v2 v2.2.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/container-storage-interface/spec v1.7.0
+# github.com/container-storage-interface/spec v1.8.0
 ## explicit; go 1.18
 github.com/container-storage-interface/spec/lib/go/csi
 # github.com/csi-addons/replication-lib-utils v0.2.0
