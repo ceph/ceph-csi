@@ -8,7 +8,7 @@ repos:
       - id: check-signoff
 
   # Catch gofmt issues, if any.
-  - repo: git://github.com/dnephin/pre-commit-golang
+  - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.3.5
     hooks:
       - id: go-fmt
