@@ -3736,7 +3736,7 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 0, defaultRBDPool)
 				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
 
-				// Create a PVC and bind it to an app within the namesapce
+				// Create a PVC and bind it to an app within the namespace
 				err = validatePVCAndAppBinding(pvcPath, appPath, f)
 				if err != nil {
 					framework.Failf("failed to validate pvc and application binding: %v", err)
