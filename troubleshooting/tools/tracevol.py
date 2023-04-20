@@ -363,7 +363,7 @@ def get_tool_box_pod_name(arg):
             print("failed to pod %s", err)
     return ""
 
-#pylint: disable=too-many-branches
+#pylint: disable=too-many-branches, E0012, W0719
 def get_pool_name(arg, vol_id, is_rbd):
     """
     get pool name from ceph backend

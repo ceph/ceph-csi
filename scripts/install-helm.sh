@@ -148,7 +148,7 @@ install_cephcsi_helm_charts() {
         NAMESPACE="default"
     fi
 
-    kubectl_retry create namespace ${NAMESPACE}
+    kubectl_retry create namespace "${NAMESPACE}"
 
     # label the nodes uniformly for domain information
     for node in $(kubectl_retry get node -o jsonpath='{.items[*].metadata.name}'); do
@@ -170,19 +170,19 @@ install_cephcsi_helm_charts() {
     # install ceph-csi-cephfs and ceph-csi-rbd charts
     # shellcheck disable=SC2086
     "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-cephfsplugin-provisioner --set nodeplugin.fullnameOverride=csi-cephfsplugin --set configMapName=ceph-csi-config --set provisioner.replicaCount=1 --set-json='commonLabels={"app.kubernetes.io/name": "ceph-csi-cephfs", "app.kubernetes.io/managed-by": "helm"}' ${SET_SC_TEMPLATE_VALUES} ${CEPHFS_SECRET_TEMPLATE_VALUES} ${CEPHFS_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-cephfs
-    check_deployment_status app=ceph-csi-cephfs ${NAMESPACE}
-    check_daemonset_status app=ceph-csi-cephfs ${NAMESPACE}
+    check_deployment_status app=ceph-csi-cephfs "${NAMESPACE}"
+    check_daemonset_status app=ceph-csi-cephfs "${NAMESPACE}"
 
     # deleting configmaps as a workaround to avoid configmap already present
     # issue when installing ceph-csi-rbd
-    kubectl_retry delete cm ceph-csi-config --namespace ${NAMESPACE}
-    kubectl_retry delete cm ceph-config --namespace ${NAMESPACE}
+    kubectl_retry delete cm ceph-csi-config --namespace "${NAMESPACE}"
+    kubectl_retry delete cm ceph-config --namespace "${NAMESPACE}"
 
     # shellcheck disable=SC2086
     "${HELM}" install --namespace ${NAMESPACE} --set provisioner.fullnameOverride=csi-rbdplugin-provisioner --set nodeplugin.fullnameOverride=csi-rbdplugin --set configMapName=ceph-csi-config --set provisioner.replicaCount=1 --set-json='commonLabels={"app.kubernetes.io/name": "ceph-csi-rbd", "app.kubernetes.io/managed-by": "helm"}' ${SET_SC_TEMPLATE_VALUES} ${RBD_SECRET_TEMPLATE_VALUES} ${RBD_CHART_NAME} "${SCRIPT_DIR}"/../charts/ceph-csi-rbd --set topology.enabled=true --set topology.domainLabels="{${NODE_LABEL_REGION},${NODE_LABEL_ZONE}}" --set provisioner.maxSnapshotsOnImage=3 --set provisioner.minSnapshotsOnImage=2
 
-    check_deployment_status app=ceph-csi-rbd ${NAMESPACE}
-    check_daemonset_status app=ceph-csi-rbd ${NAMESPACE}
+    check_deployment_status app=ceph-csi-rbd "${NAMESPACE}"
+    check_daemonset_status app=ceph-csi-rbd "${NAMESPACE}"
 
 }
 
@@ -197,9 +197,9 @@ cleanup_cephcsi_helm_charts() {
     if [ -z "$NAMESPACE" ]; then
         NAMESPACE="default"
     fi
-    "${HELM}" uninstall ${CEPHFS_CHART_NAME} --namespace ${NAMESPACE}
-    "${HELM}" uninstall ${RBD_CHART_NAME} --namespace ${NAMESPACE}
-    kubectl_retry delete namespace ${NAMESPACE}
+    "${HELM}" uninstall ${CEPHFS_CHART_NAME} --namespace "${NAMESPACE}"
+    "${HELM}" uninstall ${RBD_CHART_NAME} --namespace "${NAMESPACE}"
+    kubectl_retry delete namespace "${NAMESPACE}"
 }
 
 helm_reset() {
