@@ -218,7 +218,7 @@ function check_rbd_stat() {
 		else
 			RBD_POOL_NAME=$1
 		fi
-		# Rook creates a detault pool with name device_health_metrics for
+		# Rook creates a default pool with name device_health_metrics for
 		#  device-health-metrics CephBlockPool CR
 		if [[ "${RBD_POOL_NAME}" == "device-health-metrics" ]]; then
 			RBD_POOL_NAME="device_health_metrics"
