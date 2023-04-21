@@ -204,7 +204,7 @@ test the deployment further.
 
 ### Notes on volume deletion
 
-Dynamically povisioned volumes are deleted by the driver, when requested to
+Dynamically provisioned volumes are deleted by the driver, when requested to
 do so. Statically provisioned volumes, from plugin versions less than or
 equal to 1.0.0, are a no-op when a delete operation is performed against the
 same, and are expected to be deleted on the Ceph cluster by the user.
@@ -235,4 +235,4 @@ can even be shared.
 However, not all KMS are supported in order to be compatible with
 [fscrypt](https://github.com/google/fscrypt). In general KMS that
 either store secrets to use directly (Vault), or allow access to the
-plain password (Kubernets Secrets) work.
+plain password (Kubernetes Secrets) work.
