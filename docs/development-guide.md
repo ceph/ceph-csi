@@ -31,7 +31,7 @@ it is **highly** encouraged to:
 * Run
 
     ```console
-    go get -d github.com/ceph/ceph-csi`
+    go get -d github.com/ceph/ceph-csi
     ```
 
    This will just download the source and not build it. The downloaded source
@@ -40,7 +40,7 @@ it is **highly** encouraged to:
 * Add your fork as a git remote:
 
     ```console
-    git remote add fork https://github.com/<your-github-username>/ceph-csi`
+    git remote add fork https://github.com/<your-github-username>/ceph-csi
     ```
 
 * Set up a pre-commit hook to catch issues locally.
