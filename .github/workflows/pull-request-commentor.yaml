@@ -94,7 +94,7 @@ jobs:
             /test ci/centos/mini-e2e/k8s-1.26
 
       - name: Add comment to trigger E2E tests for Kubernetes 1.27
-        uses: peter-evans/create-or-update-comment@v2
+        uses: peter-evans/create-or-update-comment@v3
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
