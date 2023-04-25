@@ -208,24 +208,7 @@ func main() {
 		logAndExit(err.Error())
 	}
 
-	// the driver may need a higher PID limit for handling all concurrent requests
-	if conf.PidLimit != 0 {
-		currentLimit, pidErr := util.GetPIDLimit()
-		if pidErr != nil {
-			klog.Errorf("Failed to get the PID limit, can not reconfigure: %v", pidErr)
-		} else {
-			log.DefaultLog("Initial PID limit is set to %d", currentLimit)
-			err = util.SetPIDLimit(conf.PidLimit)
-			switch {
-			case err != nil:
-				klog.Errorf("Failed to set new PID limit to %d: %v", conf.PidLimit, err)
-			case conf.PidLimit == -1:
-				log.DefaultLog("Reconfigured PID limit to %d (max)", conf.PidLimit)
-			default:
-				log.DefaultLog("Reconfigured PID limit to %d", conf.PidLimit)
-			}
-		}
-	}
+	setPIDLimit(&conf)
 
 	if conf.EnableGRPCMetrics || conf.Vtype == livenessType {
 		// validate metrics endpoint
@@ -280,6 +263,28 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+func setPIDLimit(conf *util.Config) {
+	// set pidLimit only for NodeServer
+	// the driver may need a higher PID limit for handling all concurrent requests
+	if conf.IsNodeServer && conf.PidLimit != 0 {
+		currentLimit, pidErr := util.GetPIDLimit()
+		if pidErr != nil {
+			klog.Errorf("Failed to get the PID limit, can not reconfigure: %v", pidErr)
+		} else {
+			log.DefaultLog("Initial PID limit is set to %d", currentLimit)
+			err := util.SetPIDLimit(conf.PidLimit)
+			switch {
+			case err != nil:
+				klog.Errorf("Failed to set new PID limit to %d: %v", conf.PidLimit, err)
+			case conf.PidLimit == -1:
+				log.DefaultLog("Reconfigured PID limit to %d (max)", conf.PidLimit)
+			default:
+				log.DefaultLog("Reconfigured PID limit to %d", conf.PidLimit)
+			}
+		}
+	}
 }
 
 // initControllers will initialize all the controllers.
