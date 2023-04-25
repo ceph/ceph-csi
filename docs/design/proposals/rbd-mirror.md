@@ -47,7 +47,6 @@ csi:
   volumeAttributes:
     clusterID: rook-ceph
     imageFeatures: layering
-    imageFormat: "2"
     imageName: csi-vol-0c23de1c-18fb-11eb-a903-0242ac110005
     journalPool: replicapool
     pool: replicapool
