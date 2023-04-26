@@ -20,8 +20,12 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 )
+
+// Limit memory used by Argon2i PBKDF to 32 MiB.
+const cryptsetupPBKDFMemoryLimit = 32 << 10 // 32768 KiB
 
 // LuksFormat sets up volume as an encrypted LUKS partition.
 func LuksFormat(devicePath, passphrase string) (string, string, error) {
@@ -33,6 +37,8 @@ func LuksFormat(devicePath, passphrase string) (string, string, error) {
 		"luks2",
 		"--hash",
 		"sha256",
+		"--pbkdf-memory",
+		strconv.Itoa(cryptsetupPBKDFMemoryLimit),
 		devicePath,
 		"-d",
 		"/dev/stdin")
