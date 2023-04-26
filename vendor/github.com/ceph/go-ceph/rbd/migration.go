@@ -62,12 +62,12 @@ type MigrationImageStatus struct {
 // to source and making source read-only.
 //
 // Implements:
-//  int rbd_migration_prepare(rados_ioctx_t ioctx,
-//                            const char *image_name,
-//                            rados_ioctx_t dest_ioctx,
-//                            const char *dest_image_name,
-//                            rbd_image_options_t opts);
 //
+//	int rbd_migration_prepare(rados_ioctx_t ioctx,
+//	                          const char *image_name,
+//	                          rados_ioctx_t dest_ioctx,
+//	                          const char *dest_image_name,
+//	                          rbd_image_options_t opts);
 func MigrationPrepare(ioctx *rados.IOContext, sourceImageName string, destIoctx *rados.IOContext, destImageName string, rio *ImageOptions) error {
 	cSourceImageName := C.CString(sourceImageName)
 	cDestImageName := C.CString(destImageName)
@@ -90,11 +90,11 @@ func MigrationPrepare(ioctx *rados.IOContext, sourceImageName string, destIoctx 
 // from a specified source to a new target image.
 //
 // Implements:
-//  int rbd_migration_prepare_import(const char *source_spec,
-//                                   rados_ioctx_t dest_ioctx,
-//                                   const char *dest_image_name,
-//                                   rbd_image_options_t opts);
 //
+//	int rbd_migration_prepare_import(const char *source_spec,
+//	                                 rados_ioctx_t dest_ioctx,
+//	                                 const char *dest_image_name,
+//	                                 rbd_image_options_t opts);
 func MigrationPrepareImport(sourceSpec string, ioctx *rados.IOContext, destImageName string, rio *ImageOptions) error {
 	cSourceSpec := C.CString(sourceSpec)
 	cDestImageName := C.CString(destImageName)
@@ -116,9 +116,9 @@ func MigrationPrepareImport(sourceSpec string, ioctx *rados.IOContext, destImage
 // from the source image to the target image.
 //
 // Implements:
-//  int rbd_migration_execute(rados_ioctx_t ioctx,
-//                            const char *image_name);
 //
+//	int rbd_migration_execute(rados_ioctx_t ioctx,
+//	                          const char *image_name);
 func MigrationExecute(ioctx *rados.IOContext, name string) error {
 	cName := C.CString(name)
 
@@ -136,9 +136,9 @@ func MigrationExecute(ioctx *rados.IOContext, name string) error {
 // breaking the relationship of image to the source.
 //
 // Implements:
-//  int rbd_migration_commit(rados_ioctx_t ioctx,
-//                           const char *image_name);
 //
+//	int rbd_migration_commit(rados_ioctx_t ioctx,
+//	                         const char *image_name);
 func MigrationCommit(ioctx *rados.IOContext, name string) error {
 	cName := C.CString(name)
 
@@ -156,9 +156,9 @@ func MigrationCommit(ioctx *rados.IOContext, name string) error {
 // breaking the relationship of image to the source.
 //
 // Implements:
-//  int rbd_migration_abort(rados_ioctx_t ioctx,
-//                          const char *image_name);
 //
+//	int rbd_migration_abort(rados_ioctx_t ioctx,
+//	                        const char *image_name);
 func MigrationAbort(ioctx *rados.IOContext, name string) error {
 	cName := C.CString(name)
 
@@ -176,11 +176,11 @@ func MigrationAbort(ioctx *rados.IOContext, name string) error {
 // for the specified image.
 //
 // Implements:
-//  int rbd_migration_status(rados_ioctx_t ioctx,
-//                           const char *image_name,
-//                           rbd_image_migration_status_t *status,
-//                           size_t status_size);
 //
+//	int rbd_migration_status(rados_ioctx_t ioctx,
+//	                         const char *image_name,
+//	                         rbd_image_migration_status_t *status,
+//	                         size_t status_size);
 func MigrationStatus(ioctx *rados.IOContext, name string) (*MigrationImageStatus, error) {
 	cName := C.CString(name)
 

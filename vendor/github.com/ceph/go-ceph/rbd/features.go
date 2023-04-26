@@ -154,7 +154,8 @@ func (fs *FeatureSet) Names() []string {
 // GetFeatures returns the features bitmask for the rbd image.
 //
 // Implements:
-//  int rbd_get_features(rbd_image_t image, uint64_t *features);
+//
+//	int rbd_get_features(rbd_image_t image, uint64_t *features);
 func (image *Image) GetFeatures() (features uint64, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -170,8 +171,9 @@ func (image *Image) GetFeatures() (features uint64, err error) {
 // UpdateFeatures updates the features on the Image.
 //
 // Implements:
-//   int rbd_update_features(rbd_image_t image, uint64_t features,
-//                           uint8_t enabled);
+//
+//	int rbd_update_features(rbd_image_t image, uint64_t features,
+//	                        uint8_t enabled);
 func (image *Image) UpdateFeatures(features uint64, enabled bool) error {
 	if image.image == nil {
 		return RbdErrorImageNotOpen

@@ -22,7 +22,8 @@ import (
 // NamespaceCreate creates the namespace for a given Rados IOContext.
 //
 // Implements:
-//  int rbd_namespace_create(rados_ioctx_t io, const char *namespace_name);
+//
+//	int rbd_namespace_create(rados_ioctx_t io, const char *namespace_name);
 func NamespaceCreate(ioctx *rados.IOContext, namespaceName string) error {
 	if ioctx == nil {
 		return ErrNoIOContext
@@ -40,7 +41,8 @@ func NamespaceCreate(ioctx *rados.IOContext, namespaceName string) error {
 // NamespaceRemove removes a given namespace.
 //
 // Implements:
-//  int rbd_namespace_remove(rados_ioctx_t io, const char *namespace_name);
+//
+//	int rbd_namespace_remove(rados_ioctx_t io, const char *namespace_name);
 func NamespaceRemove(ioctx *rados.IOContext, namespaceName string) error {
 	if ioctx == nil {
 		return ErrNoIOContext
@@ -58,7 +60,8 @@ func NamespaceRemove(ioctx *rados.IOContext, namespaceName string) error {
 // NamespaceExists checks whether a given namespace exists or not.
 //
 // Implements:
-//  int rbd_namespace_exists(rados_ioctx_t io, const char *namespace_name, bool *exists);
+//
+//	int rbd_namespace_exists(rados_ioctx_t io, const char *namespace_name, bool *exists);
 func NamespaceExists(ioctx *rados.IOContext, namespaceName string) (bool, error) {
 	if ioctx == nil {
 		return false, ErrNoIOContext
@@ -77,7 +80,8 @@ func NamespaceExists(ioctx *rados.IOContext, namespaceName string) (bool, error)
 // NamespaceList returns a slice containing the names of existing rbd namespaces.
 //
 // Implements:
-//  int rbd_namespace_list(rados_ioctx_t io, char *namespace_names, size_t *size);
+//
+//	int rbd_namespace_list(rados_ioctx_t io, char *namespace_names, size_t *size);
 func NamespaceList(ioctx *rados.IOContext) (names []string, err error) {
 	if ioctx == nil {
 		return nil, ErrNoIOContext

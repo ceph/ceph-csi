@@ -19,9 +19,10 @@ import (
 // and snapshot-name in the byte-arrays that are passed as arguments.
 //
 // Implements:
-//   int rbd_get_parent(rbd_image_t image,
-//                      rbd_linked_image_spec_t *parent_image,
-//                      rbd_snap_spec_t *parent_snap)
+//
+//	int rbd_get_parent(rbd_image_t image,
+//	                   rbd_linked_image_spec_t *parent_image,
+//	                   rbd_snap_spec_t *parent_snap)
 func (image *Image) GetParentInfo(pool, name, snapname []byte) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -123,8 +124,9 @@ func (image *Image) GetParent() (*ParentInfo, error) {
 // used to link the two items together.
 //
 // Implements:
-//   int rbd_list_children3(rbd_image_t image, rbd_linked_image_spec_t *images,
-//                          size_t *max_images);
+//
+//	int rbd_list_children3(rbd_image_t image, rbd_linked_image_spec_t *images,
+//	                       size_t *max_images);
 func (image *Image) ListChildren() (pools []string, images []string, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return nil, nil, err
@@ -162,7 +164,8 @@ func (image *Image) ListChildren() (pools []string, images []string, err error) 
 // is the source of readable data.
 //
 // Implements:
-//  int rbd_snap_set_by_id(rbd_image_t image, uint64_t snap_id);
+//
+//	int rbd_snap_set_by_id(rbd_image_t image, uint64_t snap_id);
 func (image *Image) SetSnapByID(snapID uint64) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err

@@ -56,7 +56,8 @@ func parseTaskResponseList(res commands.Response) ([]TaskResponse, error) {
 // supplied image spec.
 //
 // Similar To:
-//  rbd task add flatten <image_spec>
+//
+//	rbd task add flatten <image_spec>
 func (ta *TaskAdmin) AddFlatten(img ImageSpec) (TaskResponse, error) {
 	m := map[string]string{
 		"prefix":     "rbd task add flatten",
@@ -70,7 +71,8 @@ func (ta *TaskAdmin) AddFlatten(img ImageSpec) (TaskResponse, error) {
 // image spec.
 //
 // Similar To:
-//  rbd task add remove <image_spec>
+//
+//	rbd task add remove <image_spec>
 func (ta *TaskAdmin) AddRemove(img ImageSpec) (TaskResponse, error) {
 	m := map[string]string{
 		"prefix":     "rbd task add remove",
@@ -84,7 +86,8 @@ func (ta *TaskAdmin) AddRemove(img ImageSpec) (TaskResponse, error) {
 // on the supplied image id spec.
 //
 // Similar To:
-//  rbd task add trash remove <image_id_spec>
+//
+//	rbd task add trash remove <image_id_spec>
 func (ta *TaskAdmin) AddTrashRemove(img ImageSpec) (TaskResponse, error) {
 	m := map[string]string{
 		"prefix":        "rbd task add trash remove",
@@ -97,7 +100,8 @@ func (ta *TaskAdmin) AddTrashRemove(img ImageSpec) (TaskResponse, error) {
 // List pending or running asynchronous tasks.
 //
 // Similar To:
-//  rbd task list
+//
+//	rbd task list
 func (ta *TaskAdmin) List() ([]TaskResponse, error) {
 	m := map[string]string{
 		"prefix": "rbd task list",
@@ -109,7 +113,8 @@ func (ta *TaskAdmin) List() ([]TaskResponse, error) {
 // GetTaskByID returns pending or running asynchronous task using id.
 //
 // Similar To:
-//  rbd task list <task_id>
+//
+//	rbd task list <task_id>
 func (ta *TaskAdmin) GetTaskByID(taskID string) (TaskResponse, error) {
 	m := map[string]string{
 		"prefix":  "rbd task list",
@@ -122,7 +127,8 @@ func (ta *TaskAdmin) GetTaskByID(taskID string) (TaskResponse, error) {
 // Cancel a pending or running asynchronous task.
 //
 // Similar To:
-//  rbd task cancel <task_id>
+//
+//	rbd task cancel <task_id>
 func (ta *TaskAdmin) Cancel(taskID string) (TaskResponse, error) {
 	m := map[string]string{
 		"prefix":  "rbd task cancel",

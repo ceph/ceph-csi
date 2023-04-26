@@ -31,11 +31,13 @@ type ImageWatcher struct {
 // and an error are returned.
 //
 // Note:
-//   Only supported in Ceph Mimic and newer.
+//
+//	Only supported in Ceph Mimic and newer.
 //
 // Implements:
-//   int rbd_watchers_list(rbd_image_t image,
-//                         rbd_image_watcher_t *watchers, size_t *max_watchers)
+//
+//	int rbd_watchers_list(rbd_image_t image,
+//	                      rbd_image_watcher_t *watchers, size_t *max_watchers)
 func (image *Image) ListWatchers() ([]ImageWatcher, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return nil, err
@@ -91,8 +93,9 @@ type Watch struct {
 // image, returning a Watch object.
 //
 // Implements:
-//  int rbd_update_watch(rbd_image_t image, uint64_t *handle,
-//                       rbd_update_callback_t watch_cb, void *arg);
+//
+//	int rbd_update_watch(rbd_image_t image, uint64_t *handle,
+//	                     rbd_update_callback_t watch_cb, void *arg);
 func (image *Image) UpdateWatch(cb WatchCallback, data interface{}) (*Watch, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return nil, err
@@ -120,7 +123,8 @@ func (image *Image) UpdateWatch(cb WatchCallback, data interface{}) (*Watch, err
 // Unwatch un-registers the image watch.
 //
 // Implements:
-//  int rbd_update_unwatch(rbd_image_t image, uint64_t handle);
+//
+//	int rbd_update_unwatch(rbd_image_t image, uint64_t handle);
 func (w *Watch) Unwatch() error {
 	if w.image == nil {
 		return ErrImageNotOpen

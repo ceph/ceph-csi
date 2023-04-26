@@ -18,7 +18,8 @@ import (
 // GroupCreate is used to create an image group.
 //
 // Implements:
-//  int rbd_group_create(rados_ioctx_t p, const char *name);
+//
+//	int rbd_group_create(rados_ioctx_t p, const char *name);
 func GroupCreate(ioctx *rados.IOContext, name string) error {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
@@ -30,7 +31,8 @@ func GroupCreate(ioctx *rados.IOContext, name string) error {
 // GroupRemove is used to remove an image group.
 //
 // Implements:
-//  int rbd_group_remove(rados_ioctx_t p, const char *name);
+//
+//	int rbd_group_remove(rados_ioctx_t p, const char *name);
 func GroupRemove(ioctx *rados.IOContext, name string) error {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
@@ -42,8 +44,9 @@ func GroupRemove(ioctx *rados.IOContext, name string) error {
 // GroupRename will rename an existing image group.
 //
 // Implements:
-//  int rbd_group_rename(rados_ioctx_t p, const char *src_name,
-//                       const char *dest_name);
+//
+//	int rbd_group_rename(rados_ioctx_t p, const char *src_name,
+//	                     const char *dest_name);
 func GroupRename(ioctx *rados.IOContext, src, dest string) error {
 	cSrc := C.CString(src)
 	defer C.free(unsafe.Pointer(cSrc))
@@ -57,7 +60,8 @@ func GroupRename(ioctx *rados.IOContext, src, dest string) error {
 // GroupList returns a slice of image group names.
 //
 // Implements:
-//  int rbd_group_list(rados_ioctx_t p, char *names, size_t *size);
+//
+//	int rbd_group_list(rados_ioctx_t p, char *names, size_t *size);
 func GroupList(ioctx *rados.IOContext) ([]string, error) {
 	var (
 		buf []byte
@@ -89,10 +93,11 @@ func GroupList(ioctx *rados.IOContext) ([]string, error) {
 // An io context must be supplied for both the group and image.
 //
 // Implements:
-//  int rbd_group_image_add(rados_ioctx_t group_p,
-//                          const char *group_name,
-//                          rados_ioctx_t image_p,
-//                          const char *image_name);
+//
+//	int rbd_group_image_add(rados_ioctx_t group_p,
+//	                        const char *group_name,
+//	                        rados_ioctx_t image_p,
+//	                        const char *image_name);
 func GroupImageAdd(groupIoctx *rados.IOContext, groupName string,
 	imageIoctx *rados.IOContext, imageName string) error {
 
@@ -113,10 +118,11 @@ func GroupImageAdd(groupIoctx *rados.IOContext, groupName string,
 // An io context must be supplied for both the group and image.
 //
 // Implements:
-//  int rbd_group_image_remove(rados_ioctx_t group_p,
-//                             const char *group_name,
-//                             rados_ioctx_t image_p,
-//                             const char *image_name);
+//
+//	int rbd_group_image_remove(rados_ioctx_t group_p,
+//	                           const char *group_name,
+//	                           rados_ioctx_t image_p,
+//	                           const char *image_name);
 func GroupImageRemove(groupIoctx *rados.IOContext, groupName string,
 	imageIoctx *rados.IOContext, imageName string) error {
 
@@ -137,10 +143,11 @@ func GroupImageRemove(groupIoctx *rados.IOContext, groupName string,
 // An io context must be supplied for both the group and image.
 //
 // Implements:
-//  CEPH_RBD_API int rbd_group_image_remove_by_id(rados_ioctx_t group_p,
-//                                               const char *group_name,
-//                                               rados_ioctx_t image_p,
-//                                               const char *image_id);
+//
+//	CEPH_RBD_API int rbd_group_image_remove_by_id(rados_ioctx_t group_p,
+//	                                             const char *group_name,
+//	                                             rados_ioctx_t image_p,
+//	                                             const char *image_id);
 func GroupImageRemoveByID(groupIoctx *rados.IOContext, groupName string,
 	imageIoctx *rados.IOContext, imageID string) error {
 
@@ -178,11 +185,12 @@ type GroupImageInfo struct {
 // images that are part of the named group.
 //
 // Implements:
-//  int rbd_group_image_list(rados_ioctx_t group_p,
-//                           const char *group_name,
-//                           rbd_group_image_info_t *images,
-//                           size_t group_image_info_size,
-//                           size_t *num_entries);
+//
+//	int rbd_group_image_list(rados_ioctx_t group_p,
+//	                         const char *group_name,
+//	                         rbd_group_image_info_t *images,
+//	                         size_t group_image_info_size,
+//	                         size_t *num_entries);
 func GroupImageList(ioctx *rados.IOContext, name string) ([]GroupImageInfo, error) {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
@@ -233,8 +241,9 @@ type GroupInfo struct {
 // GetGroup returns group info for the group this image is part of.
 //
 // Implements:
-//  int rbd_get_group(rbd_image_t image, rbd_group_info_t *group_info,
-//                    size_t group_info_size);
+//
+//	int rbd_get_group(rbd_image_t image, rbd_group_info_t *group_info,
+//	                  size_t group_info_size);
 func (image *Image) GetGroup() (GroupInfo, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return GroupInfo{}, err

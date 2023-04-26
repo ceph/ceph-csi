@@ -20,7 +20,8 @@ import (
 // GetPoolMetadata returns pool metadata associated with the given key.
 //
 // Implements:
-//  int rbd_pool_metadata_get(rados_ioctx_t io_ctx, const char *key, char *value, size_t *val_len);
+//
+//	int rbd_pool_metadata_get(rados_ioctx_t io_ctx, const char *key, char *value, size_t *val_len);
 func GetPoolMetadata(ioctx *rados.IOContext, key string) (string, error) {
 	if ioctx == nil {
 		return "", ErrNoIOContext
@@ -53,7 +54,8 @@ func GetPoolMetadata(ioctx *rados.IOContext, key string) (string, error) {
 // SetPoolMetadata updates the pool metadata string associated with the given key.
 //
 // Implements:
-//  int rbd_pool_metadata_set(rados_ioctx_t io_ctx, const char *key, const char *value);
+//
+//	int rbd_pool_metadata_set(rados_ioctx_t io_ctx, const char *key, const char *value);
 func SetPoolMetadata(ioctx *rados.IOContext, key, value string) error {
 	if ioctx == nil {
 		return ErrNoIOContext
@@ -71,7 +73,8 @@ func SetPoolMetadata(ioctx *rados.IOContext, key, value string) error {
 // RemovePoolMetadata removes the pool metadata value for a given pool metadata key.
 //
 // Implements:
-//  int rbd_pool_metadata_remove(rados_ioctx_t io_ctx, const char *key)
+//
+//	int rbd_pool_metadata_remove(rados_ioctx_t io_ctx, const char *key)
 func RemovePoolMetadata(ioctx *rados.IOContext, key string) error {
 	if ioctx == nil {
 		return ErrNoIOContext
@@ -89,7 +92,8 @@ func RemovePoolMetadata(ioctx *rados.IOContext, key string) error {
 // to host rbd images.
 //
 // Implements:
-//  int rbd_pool_init(rados_ioctx_t io, bool force)
+//
+//	int rbd_pool_init(rados_ioctx_t io, bool force)
 func PoolInit(ioctx *rados.IOContext, force bool) error {
 	if ioctx == nil {
 		return ErrNoIOContext
@@ -107,7 +111,8 @@ type poolStats struct {
 // poolStatsCreate creates a new poolStats struct.
 //
 // Implements:
-//  void rbd_pool_stats_create(rbd_pool_stats_t *stats)
+//
+//	void rbd_pool_stats_create(rbd_pool_stats_t *stats)
 func poolStatsCreate() *poolStats {
 	poolstats := &poolStats{}
 	C.rbd_pool_stats_create(&poolstats.stats)
@@ -117,7 +122,8 @@ func poolStatsCreate() *poolStats {
 // destroy a poolStats struct and free the associated resources.
 //
 // Implements:
-//  void rbd_pool_stats_destroy(rbd_pool_stats_t stats)
+//
+//	void rbd_pool_stats_destroy(rbd_pool_stats_t stats)
 func (poolstats *poolStats) destroy() {
 	C.rbd_pool_stats_destroy(poolstats.stats)
 
@@ -159,7 +165,8 @@ const (
 // addPoolStatOption adds the given PoolStatOption to PoolStats.
 //
 // Implements:
-//  int rbd_pool_stats_option_add_uint64(rbd_pool_stats_t stats, int stat_option, uint64_t* stat_val)
+//
+//	int rbd_pool_stats_option_add_uint64(rbd_pool_stats_t stats, int stat_option, uint64_t* stat_val)
 func (poolstats *poolStats) addPoolStatOption(option PoolStatOption, val *uint64) error {
 	ret := C.rbd_pool_stats_option_add_uint64(
 		poolstats.stats,
@@ -171,7 +178,8 @@ func (poolstats *poolStats) addPoolStatOption(option PoolStatOption, val *uint64
 // GetAllPoolStats returns a map of all PoolStatOption(s) to their respective values.
 //
 // Implements:
-//  int rbd_pool_stats_get(rados_ioctx_t io, rbd_pool_stats_t stats);
+//
+//	int rbd_pool_stats_get(rados_ioctx_t io, rbd_pool_stats_t stats);
 func GetAllPoolStats(ioctx *rados.IOContext) (map[PoolStatOption]uint64, error) {
 	var omap = make(map[PoolStatOption]uint64)
 	if ioctx == nil {

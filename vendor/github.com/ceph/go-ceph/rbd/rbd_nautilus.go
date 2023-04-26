@@ -48,7 +48,8 @@ func GetImageNames(ioctx *rados.IOContext) ([]string, error) {
 // GetCreateTimestamp returns the time the rbd image was created.
 //
 // Implements:
-//  int rbd_get_create_timestamp(rbd_image_t image, struct timespec *timestamp);
+//
+//	int rbd_get_create_timestamp(rbd_image_t image, struct timespec *timestamp);
 func (image *Image) GetCreateTimestamp() (Timespec, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return Timespec{}, err
@@ -66,7 +67,8 @@ func (image *Image) GetCreateTimestamp() (Timespec, error) {
 // GetAccessTimestamp returns the time the rbd image was last accessed.
 //
 // Implements:
-//  int rbd_get_access_timestamp(rbd_image_t image, struct timespec *timestamp);
+//
+//	int rbd_get_access_timestamp(rbd_image_t image, struct timespec *timestamp);
 func (image *Image) GetAccessTimestamp() (Timespec, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return Timespec{}, err
@@ -84,7 +86,8 @@ func (image *Image) GetAccessTimestamp() (Timespec, error) {
 // GetModifyTimestamp returns the time the rbd image was last modified.
 //
 // Implements:
-//  int rbd_get_modify_timestamp(rbd_image_t image, struct timespec *timestamp);
+//
+//	int rbd_get_modify_timestamp(rbd_image_t image, struct timespec *timestamp);
 func (image *Image) GetModifyTimestamp() (Timespec, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return Timespec{}, err
@@ -104,7 +107,8 @@ func (image *Image) GetModifyTimestamp() (Timespec, error) {
 // a power of two no less than 4096 and no larger than the image size.
 //
 // Implements:
-//  int rbd_sparsify(rbd_image_t image, size_t sparse_size);
+//
+//	int rbd_sparsify(rbd_image_t image, size_t sparse_size);
 func (image *Image) Sparsify(sparseSize uint) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err

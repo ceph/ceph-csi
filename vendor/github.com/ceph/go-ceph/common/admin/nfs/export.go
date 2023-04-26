@@ -135,7 +135,8 @@ func parseExportInfo(res commands.Response) (ExportInfo, error) {
 // CreateCephFSExport will create a new NFS export for a CephFS file system.
 //
 // Similar To:
-//  ceph nfs export create cephfs
+//
+//	ceph nfs export create cephfs
 func (nfsa *Admin) CreateCephFSExport(spec CephFSExportSpec) (
 	*ExportResult, error) {
 	// ---
@@ -152,7 +153,8 @@ const delSucc = "Successfully deleted export"
 // RemoveExport will remove an NFS export based on the pseudo-path of the export.
 //
 // Similar To:
-//  ceph nfs export rm
+//
+//	ceph nfs export rm
 func (nfsa *Admin) RemoveExport(clusterID, pseudoPath string) error {
 	m := map[string]string{
 		"prefix":      "nfs export rm",
@@ -167,7 +169,8 @@ func (nfsa *Admin) RemoveExport(clusterID, pseudoPath string) error {
 // ListDetailedExports will return a list of exports with details.
 //
 // Similar To:
-//  ceph nfs export ls --detailed
+//
+//	ceph nfs export ls --detailed
 func (nfsa *Admin) ListDetailedExports(clusterID string) ([]ExportInfo, error) {
 	/*
 		NOTE: there is no simple list because based on a quick reading of the code
@@ -190,7 +193,8 @@ func (nfsa *Admin) ListDetailedExports(clusterID string) ([]ExportInfo, error) {
 // pseudo-path.
 //
 // Similar To:
-//  ceph nfs export info
+//
+//	ceph nfs export info
 func (nfsa *Admin) ExportInfo(clusterID, pseudoPath string) (ExportInfo, error) {
 	m := map[string]string{
 		"prefix":      "nfs export info",

@@ -91,10 +91,11 @@ func (opts EncryptionOptionsLUKS2) allocateEncryptionOptions() cEncryptionData {
 // EncryptionFormat creates an encryption format header
 //
 // Implements:
-//  int rbd_encryption_format(rbd_image_t image,
-//                            rbd_encryption_format_t format,
-//                            rbd_encryption_options_t opts,
-//                            size_t opts_size);
+//
+//	int rbd_encryption_format(rbd_image_t image,
+//	                          rbd_encryption_format_t format,
+//	                          rbd_encryption_options_t opts,
+//	                          size_t opts_size);
 //
 // To issue an IO against the image, you need to mount the image
 // with libvirt/qemu using the LUKS format, or make a call to
@@ -119,10 +120,11 @@ func (image *Image) EncryptionFormat(opts EncryptionOptions) error {
 // EncryptionLoad enables IO on an open encrypted image
 //
 // Implements:
-//  int rbd_encryption_load(rbd_image_t image,
-//                          rbd_encryption_format_t format,
-//                          rbd_encryption_options_t opts,
-//                          size_t opts_size);
+//
+//	int rbd_encryption_load(rbd_image_t image,
+//	                        rbd_encryption_format_t format,
+//	                        rbd_encryption_options_t opts,
+//	                        size_t opts_size);
 func (image *Image) EncryptionLoad(opts EncryptionOptions) error {
 	if image.image == nil {
 		return ErrImageNotOpen
