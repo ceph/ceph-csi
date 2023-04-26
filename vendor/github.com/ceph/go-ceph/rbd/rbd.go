@@ -145,14 +145,16 @@ func GetImage(ioctx *rados.IOContext, name string) *Image {
 // Create a new rbd image.
 //
 // Implements:
-//  int rbd_create(rados_ioctx_t io, const char *name, uint64_t size, int *order);
+//
+//	int rbd_create(rados_ioctx_t io, const char *name, uint64_t size, int *order);
 //
 // Also implements (for backward compatibility):
-//  int rbd_create2(rados_ioctx_t io, const char *name, uint64_t size,
-//          uint64_t features, int *order);
-//  int rbd_create3(rados_ioctx_t io, const char *name, uint64_t size,
-//        uint64_t features, int *order,
-//        uint64_t stripe_unit, uint64_t stripe_count);
+//
+//	int rbd_create2(rados_ioctx_t io, const char *name, uint64_t size,
+//	        uint64_t features, int *order);
+//	int rbd_create3(rados_ioctx_t io, const char *name, uint64_t size,
+//	      uint64_t features, int *order,
+//	      uint64_t stripe_unit, uint64_t stripe_count);
 func Create(ioctx *rados.IOContext, name string, size uint64, order int,
 	args ...uint64) (image *Image, err error) {
 	var ret C.int
@@ -188,8 +190,9 @@ func Create(ioctx *rados.IOContext, name string, size uint64, order int,
 // Create2 creates a new rbd image using provided features.
 //
 // Implements:
-//  int rbd_create2(rados_ioctx_t io, const char *name, uint64_t size,
-//          uint64_t features, int *order);
+//
+//	int rbd_create2(rados_ioctx_t io, const char *name, uint64_t size,
+//	        uint64_t features, int *order);
 func Create2(ioctx *rados.IOContext, name string, size uint64, features uint64,
 	order int) (image *Image, err error) {
 	var ret C.int
@@ -215,9 +218,10 @@ func Create2(ioctx *rados.IOContext, name string, size uint64, features uint64,
 // parameters.
 //
 // Implements:
-//  int rbd_create3(rados_ioctx_t io, const char *name, uint64_t size,
-//        uint64_t features, int *order,
-//        uint64_t stripe_unit, uint64_t stripe_count);
+//
+//	int rbd_create3(rados_ioctx_t io, const char *name, uint64_t size,
+//	      uint64_t features, int *order,
+//	      uint64_t stripe_unit, uint64_t stripe_count);
 func Create3(ioctx *rados.IOContext, name string, size uint64, features uint64,
 	order int, stripeUnit uint64, stripeCount uint64) (image *Image, err error) {
 	var ret C.int
@@ -243,9 +247,10 @@ func Create3(ioctx *rados.IOContext, name string, size uint64, features uint64,
 // Clone a new rbd image from a snapshot.
 //
 // Implements:
-//  int rbd_clone(rados_ioctx_t p_ioctx, const char *p_name,
-//           const char *p_snapname, rados_ioctx_t c_ioctx,
-//           const char *c_name, uint64_t features, int *c_order);
+//
+//	int rbd_clone(rados_ioctx_t p_ioctx, const char *p_name,
+//	         const char *p_snapname, rados_ioctx_t c_ioctx,
+//	         const char *c_name, uint64_t features, int *c_order);
 func (image *Image) Clone(snapname string, cIoctx *rados.IOContext, cName string, features uint64, order int) (*Image, error) {
 	if err := image.validate(imageNeedsIOContext); err != nil {
 		return nil, err
@@ -281,7 +286,8 @@ func (image *Image) Clone(snapname string, cIoctx *rados.IOContext, cName string
 // Remove the specified rbd image.
 //
 // Implements:
-//  int rbd_remove(rados_ioctx_t io, const char *name);
+//
+//	int rbd_remove(rados_ioctx_t io, const char *name);
 func (image *Image) Remove() error {
 	if err := image.validate(imageNeedsIOContext | imageNeedsName | imageIsNotOpen); err != nil {
 		return err
@@ -306,7 +312,8 @@ func (image *Image) Trash(delay time.Duration) error {
 // Rename an rbd image.
 //
 // Implements:
-//  int rbd_rename(rados_ioctx_t src_io_ctx, const char *srcname, const char *destname);
+//
+//	int rbd_rename(rados_ioctx_t src_io_ctx, const char *srcname, const char *destname);
 func (image *Image) Rename(destname string) error {
 	if err := image.validate(imageNeedsIOContext | imageNeedsName); err != nil {
 		return err
@@ -370,7 +377,8 @@ func (image *Image) Open(args ...interface{}) error {
 // Close an open rbd image.
 //
 // Implements:
-//  int rbd_close(rbd_image_t image);
+//
+//	int rbd_close(rbd_image_t image);
 func (image *Image) Close() error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -387,7 +395,8 @@ func (image *Image) Close() error {
 // Resize an rbd image.
 //
 // Implements:
-//  int rbd_resize(rbd_image_t image, uint64_t size);
+//
+//	int rbd_resize(rbd_image_t image, uint64_t size);
 func (image *Image) Resize(size uint64) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -399,7 +408,8 @@ func (image *Image) Resize(size uint64) error {
 // Stat an rbd image.
 //
 // Implements:
-//  int rbd_stat(rbd_image_t image, rbd_image_info_t *info, size_t infosize);
+//
+//	int rbd_stat(rbd_image_t image, rbd_image_info_t *info, size_t infosize);
 func (image *Image) Stat() (info *ImageInfo, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return nil, err
@@ -422,7 +432,8 @@ func (image *Image) Stat() (info *ImageInfo, err error) {
 // IsOldFormat returns true if the rbd image uses the old format.
 //
 // Implements:
-//  int rbd_get_old_format(rbd_image_t image, uint8_t *old);
+//
+//	int rbd_get_old_format(rbd_image_t image, uint8_t *old);
 func (image *Image) IsOldFormat() (bool, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return false, err
@@ -441,7 +452,8 @@ func (image *Image) IsOldFormat() (bool, error) {
 // GetSize returns the size of the rbd image.
 //
 // Implements:
-//  int rbd_size(rbd_image_t image, uint64_t *size);
+//
+//	int rbd_size(rbd_image_t image, uint64_t *size);
 func (image *Image) GetSize() (size uint64, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -457,7 +469,8 @@ func (image *Image) GetSize() (size uint64, err error) {
 // GetStripeUnit returns the stripe-unit value for the rbd image.
 //
 // Implements:
-//  int rbd_get_stripe_unit(rbd_image_t image, uint64_t *stripe_unit);
+//
+//	int rbd_get_stripe_unit(rbd_image_t image, uint64_t *stripe_unit);
 func (image *Image) GetStripeUnit() (uint64, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -474,7 +487,8 @@ func (image *Image) GetStripeUnit() (uint64, error) {
 // GetStripeCount returns the stripe-count value for the rbd image.
 //
 // Implements:
-//  int rbd_get_stripe_count(rbd_image_t image, uint64_t *stripe_count);
+//
+//	int rbd_get_stripe_count(rbd_image_t image, uint64_t *stripe_count);
 func (image *Image) GetStripeCount() (uint64, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -492,7 +506,8 @@ func (image *Image) GetStripeCount() (uint64, error) {
 // parent.
 //
 // Implements:
-//  int rbd_get_overlap(rbd_image_t image, uint64_t *overlap);
+//
+//	int rbd_get_overlap(rbd_image_t image, uint64_t *overlap);
 func (image *Image) GetOverlap() (overlap uint64, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -508,7 +523,8 @@ func (image *Image) GetOverlap() (overlap uint64, err error) {
 // Copy one rbd image to another.
 //
 // Implements:
-//  int rbd_copy(rbd_image_t image, rados_ioctx_t dest_io_ctx, const char *destname);
+//
+//	int rbd_copy(rbd_image_t image, rados_ioctx_t dest_io_ctx, const char *destname);
 func (image *Image) Copy(ioctx *rados.IOContext, destname string) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -528,7 +544,8 @@ func (image *Image) Copy(ioctx *rados.IOContext, destname string) error {
 // Copy2 copies one rbd image to another, using an image handle.
 //
 // Implements:
-//  int rbd_copy2(rbd_image_t src, rbd_image_t dest);
+//
+//	int rbd_copy2(rbd_image_t src, rbd_image_t dest);
 func (image *Image) Copy2(dest *Image) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -542,8 +559,9 @@ func (image *Image) Copy2(dest *Image) error {
 // DeepCopy an rbd image to a new image with specific options.
 //
 // Implements:
-//  int rbd_deep_copy(rbd_image_t src, rados_ioctx_t dest_io_ctx,
-//          const char *destname, rbd_image_options_t dest_opts);
+//
+//	int rbd_deep_copy(rbd_image_t src, rados_ioctx_t dest_io_ctx,
+//	        const char *destname, rbd_image_options_t dest_opts);
 func (image *Image) DeepCopy(ioctx *rados.IOContext, destname string, rio *ImageOptions) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -569,7 +587,8 @@ func (image *Image) DeepCopy(ioctx *rados.IOContext, destname string, rio *Image
 // Flatten removes snapshot references from the image.
 //
 // Implements:
-//  int rbd_flatten(rbd_image_t image);
+//
+//	int rbd_flatten(rbd_image_t image);
 func (image *Image) Flatten() error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -581,11 +600,12 @@ func (image *Image) Flatten() error {
 // ListLockers returns a list of clients that have locks on the image.
 //
 // Impelemnts:
-//  ssize_t rbd_list_lockers(rbd_image_t image, int *exclusive,
-//              char *tag, size_t *tag_len,
-//              char *clients, size_t *clients_len,
-//              char *cookies, size_t *cookies_len,
-//              char *addrs, size_t *addrs_len);
+//
+//	ssize_t rbd_list_lockers(rbd_image_t image, int *exclusive,
+//	            char *tag, size_t *tag_len,
+//	            char *clients, size_t *clients_len,
+//	            char *cookies, size_t *cookies_len,
+//	            char *addrs, size_t *addrs_len);
 func (image *Image) ListLockers() (tag string, lockers []Locker, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return "", nil, err
@@ -645,7 +665,8 @@ func (image *Image) ListLockers() (tag string, lockers []Locker, err error) {
 // LockExclusive acquires an exclusive lock on the rbd image.
 //
 // Implements:
-//  int rbd_lock_exclusive(rbd_image_t image, const char *cookie);
+//
+//	int rbd_lock_exclusive(rbd_image_t image, const char *cookie);
 func (image *Image) LockExclusive(cookie string) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -660,7 +681,8 @@ func (image *Image) LockExclusive(cookie string) error {
 // LockShared acquires a shared lock on the rbd image.
 //
 // Implements:
-//  int rbd_lock_shared(rbd_image_t image, const char *cookie, const char *tag);
+//
+//	int rbd_lock_shared(rbd_image_t image, const char *cookie, const char *tag);
 func (image *Image) LockShared(cookie string, tag string) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -677,7 +699,8 @@ func (image *Image) LockShared(cookie string, tag string) error {
 // Unlock releases a lock on the image.
 //
 // Implements:
-//  int rbd_lock_shared(rbd_image_t image, const char *cookie, const char *tag);
+//
+//	int rbd_lock_shared(rbd_image_t image, const char *cookie, const char *tag);
 func (image *Image) Unlock(cookie string) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -692,7 +715,8 @@ func (image *Image) Unlock(cookie string) error {
 // BreakLock forces the release of a lock held by another client.
 //
 // Implements:
-//  int rbd_break_lock(rbd_image_t image, const char *client, const char *cookie);
+//
+//	int rbd_break_lock(rbd_image_t image, const char *client, const char *cookie);
 func (image *Image) BreakLock(client string, cookie string) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -711,8 +735,9 @@ func (image *Image) BreakLock(client string, cookie string) error {
 // offset which is not safe in concurrent code. Prefer ReadAt when possible.
 //
 // Implements:
-//  ssize_t rbd_read(rbd_image_t image, uint64_t ofs, size_t len,
-//                   char *buf);
+//
+//	ssize_t rbd_read(rbd_image_t image, uint64_t ofs, size_t len,
+//	                 char *buf);
 func (image *Image) Read(data []byte) (int, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -745,8 +770,9 @@ func (image *Image) Read(data []byte) (int, error) {
 // offset which is not safe in concurrent code. Prefer WriteAt when possible.
 //
 // Implements:
-//  ssize_t rbd_write(rbd_image_t image, uint64_t ofs, size_t len,
-//                    const char *buf);
+//
+//	ssize_t rbd_write(rbd_image_t image, uint64_t ofs, size_t len,
+//	                  const char *buf);
 func (image *Image) Write(data []byte) (n int, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -790,7 +816,8 @@ func (image *Image) Seek(offset int64, whence int) (int64, error) {
 // space.
 //
 // Implements:
-//  int rbd_discard(rbd_image_t image, uint64_t ofs, uint64_t len);
+//
+//	int rbd_discard(rbd_image_t image, uint64_t ofs, uint64_t len);
 func (image *Image) Discard(ofs uint64, length uint64) (int, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return 0, err
@@ -855,8 +882,9 @@ func (image *Image) WriteAt(data []byte, off int64) (n int, err error) {
 // been written.
 //
 // Implements:
-//  ssize_t rbd_writesame(rbd_image_t image, uint64_t ofs, size_t len,
-//                        const char *buf, size_t data_len, int op_flags);
+//
+//	ssize_t rbd_writesame(rbd_image_t image, uint64_t ofs, size_t len,
+//	                      const char *buf, size_t data_len, int op_flags);
 func (image *Image) WriteSame(ofs, n uint64, data []byte, flags rados.OpFlags) (int64, error) {
 	var err error
 
@@ -884,7 +912,8 @@ func (image *Image) WriteSame(ofs, n uint64, data []byte, flags rados.OpFlags) (
 // Flush all cached writes to storage.
 //
 // Implements:
-//  int rbd_flush(rbd_image_t image);
+//
+//	int rbd_flush(rbd_image_t image);
 func (image *Image) Flush() error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -897,7 +926,8 @@ func (image *Image) Flush() error {
 // associated with the rbd image.
 //
 // Implements:
-//  int rbd_snap_list(rbd_image_t image, rbd_snap_info_t *snaps, int *max_snaps);
+//
+//	int rbd_snap_list(rbd_image_t image, rbd_snap_info_t *snaps, int *max_snaps);
 func (image *Image) GetSnapshotNames() (snaps []SnapInfo, err error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return nil, err
@@ -929,7 +959,8 @@ func (image *Image) GetSnapshotNames() (snaps []SnapInfo, err error) {
 // GetId returns the internal image ID string.
 //
 // Implements:
-//  int rbd_get_id(rbd_image_t image, char *id, size_t id_len);
+//
+//	int rbd_get_id(rbd_image_t image, char *id, size_t id_len);
 func (image *Image) GetId() (string, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return "", err
@@ -964,7 +995,8 @@ func (image *Image) GetName() string {
 // is the source of readable data.
 //
 // Implements:
-//  int rbd_snap_set(rbd_image_t image, const char *snapname);
+//
+//	int rbd_snap_set(rbd_image_t image, const char *snapname);
 func (image *Image) SetSnapshot(snapname string) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -1033,8 +1065,9 @@ func TrashRestore(ioctx *rados.IOContext, id, name string) error {
 // snapName to explicitly indicate that no snapshot name is being provided.
 //
 // Implements:
-//  int rbd_open(rados_ioctx_t io, const char *name,
-//               rbd_image_t *image, const char *snap_name);
+//
+//	int rbd_open(rados_ioctx_t io, const char *name,
+//	             rbd_image_t *image, const char *snap_name);
 func OpenImage(ioctx *rados.IOContext, name, snapName string) (*Image, error) {
 	if ioctx == nil {
 		return nil, ErrNoIOContext
@@ -1076,8 +1109,9 @@ func OpenImage(ioctx *rados.IOContext, name, snapName string) (*Image, error) {
 // provided.
 //
 // Implements:
-//  int rbd_open_read_only(rados_ioctx_t io, const char *name,
-//                         rbd_image_t *image, const char *snap_name);
+//
+//	int rbd_open_read_only(rados_ioctx_t io, const char *name,
+//	                       rbd_image_t *image, const char *snap_name);
 func OpenImageReadOnly(ioctx *rados.IOContext, name, snapName string) (*Image, error) {
 	if ioctx == nil {
 		return nil, ErrNoIOContext
@@ -1120,8 +1154,9 @@ func OpenImageReadOnly(ioctx *rados.IOContext, name, snapName string) (*Image, e
 // that fixes https://tracker.ceph.com/issues/43178
 //
 // Implements:
-//  int rbd_open_by_id(rados_ioctx_t io, const char *id,
-//                     rbd_image_t *image, const char *snap_name);
+//
+//	int rbd_open_by_id(rados_ioctx_t io, const char *id,
+//	                   rbd_image_t *image, const char *snap_name);
 func OpenImageById(ioctx *rados.IOContext, id, snapName string) (*Image, error) {
 	if ioctx == nil {
 		return nil, ErrNoIOContext
@@ -1164,8 +1199,9 @@ func OpenImageById(ioctx *rados.IOContext, id, snapName string) (*Image, error) 
 // that fixes https://tracker.ceph.com/issues/43178
 //
 // Implements:
-//  int rbd_open_by_id_read_only(rados_ioctx_t io, const char *id,
-//                               rbd_image_t *image, const char *snap_name);
+//
+//	int rbd_open_by_id_read_only(rados_ioctx_t io, const char *id,
+//	                             rbd_image_t *image, const char *snap_name);
 func OpenImageByIdReadOnly(ioctx *rados.IOContext, id, snapName string) (*Image, error) {
 	if ioctx == nil {
 		return nil, ErrNoIOContext
@@ -1203,8 +1239,9 @@ func OpenImageByIdReadOnly(ioctx *rados.IOContext, id, snapName string) (*Image,
 // CreateImage creates a new rbd image using provided image options.
 //
 // Implements:
-//  int rbd_create4(rados_ioctx_t io, const char *name, uint64_t size,
-//                 rbd_image_options_t opts);
+//
+//	int rbd_create4(rados_ioctx_t io, const char *name, uint64_t size,
+//	               rbd_image_options_t opts);
 func CreateImage(ioctx *rados.IOContext, name string, size uint64, rio *ImageOptions) error {
 	if ioctx == nil {
 		return ErrNoIOContext
@@ -1227,7 +1264,8 @@ func CreateImage(ioctx *rados.IOContext, name string, size uint64, rio *ImageOpt
 // RemoveImage removes the specified rbd image.
 //
 // Implements:
-//  int rbd_remove(rados_ioctx_t io, const char *name);
+//
+//	int rbd_remove(rados_ioctx_t io, const char *name);
 func RemoveImage(ioctx *rados.IOContext, name string) error {
 	if ioctx == nil {
 		return ErrNoIOContext
@@ -1245,9 +1283,10 @@ func RemoveImage(ioctx *rados.IOContext, name string) error {
 // provided io-context with the given name and image options.
 //
 // Implements:
-//   int rbd_clone3(rados_ioctx_t p_ioctx, const char *p_name,
-//                  const char *p_snapname, rados_ioctx_t c_ioctx,
-//                  const char *c_name, rbd_image_options_t c_opts);
+//
+//	int rbd_clone3(rados_ioctx_t p_ioctx, const char *p_name,
+//	               const char *p_snapname, rados_ioctx_t c_ioctx,
+//	               const char *c_name, rbd_image_options_t c_opts);
 func CloneImage(ioctx *rados.IOContext, parentName, snapName string,
 	destctx *rados.IOContext, name string, rio *ImageOptions) error {
 

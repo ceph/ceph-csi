@@ -81,8 +81,9 @@ func (imm ImageMirrorMode) String() string {
 // associated with the ioctx.
 //
 // Implements:
-//  int rbd_mirror_uuid_get(rados_ioctx_t io_ctx, char *uuid, size_t
-//                          *max_len);
+//
+//	int rbd_mirror_uuid_get(rados_ioctx_t io_ctx, char *uuid, size_t
+//	                        *max_len);
 func GetMirrorUUID(ioctx *rados.IOContext) (string, error) {
 	var (
 		err   error
@@ -109,8 +110,9 @@ func GetMirrorUUID(ioctx *rados.IOContext) (string, error) {
 // an automatic or per-image behavior.
 //
 // Implements:
-//  int rbd_mirror_mode_set(rados_ioctx_t io_ctx,
-//                          rbd_mirror_mode_t mirror_mode);
+//
+//	int rbd_mirror_mode_set(rados_ioctx_t io_ctx,
+//	                        rbd_mirror_mode_t mirror_mode);
 func SetMirrorMode(ioctx *rados.IOContext, mode MirrorMode) error {
 	ret := C.rbd_mirror_mode_set(
 		cephIoctx(ioctx),
@@ -121,8 +123,9 @@ func SetMirrorMode(ioctx *rados.IOContext, mode MirrorMode) error {
 // GetMirrorMode is used to fetch the current mirroring mode for a pool.
 //
 // Implements:
-//  int rbd_mirror_mode_get(rados_ioctx_t io_ctx,
-//                          rbd_mirror_mode_t *mirror_mode);
+//
+//	int rbd_mirror_mode_get(rados_ioctx_t io_ctx,
+//	                        rbd_mirror_mode_t *mirror_mode);
 func GetMirrorMode(ioctx *rados.IOContext) (MirrorMode, error) {
 	var mode C.rbd_mirror_mode_t
 
@@ -138,8 +141,9 @@ func GetMirrorMode(ioctx *rados.IOContext) (MirrorMode, error) {
 // MirrorEnable will enable mirroring for an image using the specified mode.
 //
 // Implements:
-//  int rbd_mirror_image_enable2(rbd_image_t image,
-//                               rbd_mirror_image_mode_t mode);
+//
+//	int rbd_mirror_image_enable2(rbd_image_t image,
+//	                             rbd_mirror_image_mode_t mode);
 func (image *Image) MirrorEnable(mode ImageMirrorMode) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -151,7 +155,8 @@ func (image *Image) MirrorEnable(mode ImageMirrorMode) error {
 // MirrorDisable will disable mirroring for the image.
 //
 // Implements:
-//  int rbd_mirror_image_disable(rbd_image_t image, bool force);
+//
+//	int rbd_mirror_image_disable(rbd_image_t image, bool force);
 func (image *Image) MirrorDisable(force bool) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -163,7 +168,8 @@ func (image *Image) MirrorDisable(force bool) error {
 // MirrorPromote will promote the image to primary status.
 //
 // Implements:
-//  int rbd_mirror_image_promote(rbd_image_t image, bool force);
+//
+//	int rbd_mirror_image_promote(rbd_image_t image, bool force);
 func (image *Image) MirrorPromote(force bool) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -175,7 +181,8 @@ func (image *Image) MirrorPromote(force bool) error {
 // MirrorDemote will demote the image to secondary status.
 //
 // Implements:
-//  int rbd_mirror_image_demote(rbd_image_t image);
+//
+//	int rbd_mirror_image_demote(rbd_image_t image);
 func (image *Image) MirrorDemote() error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -188,7 +195,8 @@ func (image *Image) MirrorDemote() error {
 // resynchronization.
 //
 // Implements:
-//  int rbd_mirror_image_resync(rbd_image_t image);
+//
+//	int rbd_mirror_image_resync(rbd_image_t image);
 func (image *Image) MirrorResync() error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err
@@ -200,9 +208,10 @@ func (image *Image) MirrorResync() error {
 // MirrorInstanceID returns a string naming the instance id for the image.
 //
 // Implements:
-//  int rbd_mirror_image_get_instance_id(rbd_image_t image,
-//                                       char *instance_id,
-//                                       size_t *id_max_length);
+//
+//	int rbd_mirror_image_get_instance_id(rbd_image_t image,
+//	                                     char *instance_id,
+//	                                     size_t *id_max_length);
 func (image *Image) MirrorInstanceID() (string, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return "", err
@@ -275,9 +284,10 @@ func convertMirrorImageInfo(cInfo *C.rbd_mirror_image_info_t) MirrorImageInfo {
 // GetMirrorImageInfo fetches the mirroring status information of a RBD image.
 //
 // Implements:
-//  int rbd_mirror_image_get_info(rbd_image_t image,
-//                                rbd_mirror_image_info_t *mirror_image_info,
-//                                size_t info_size)
+//
+//	int rbd_mirror_image_get_info(rbd_image_t image,
+//	                              rbd_mirror_image_info_t *mirror_image_info,
+//	                              size_t info_size)
 func (image *Image) GetMirrorImageInfo() (*MirrorImageInfo, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return nil, err
@@ -303,7 +313,8 @@ func (image *Image) GetMirrorImageInfo() (*MirrorImageInfo, error) {
 // GetImageMirrorMode fetches the mirroring approach for an RBD image.
 //
 // Implements:
-//  int rbd_mirror_image_get_mode(rbd_image_t image, rbd_mirror_image_mode_t *mode);
+//
+//	int rbd_mirror_image_get_mode(rbd_image_t image, rbd_mirror_image_mode_t *mode);
 func (image *Image) GetImageMirrorMode() (ImageMirrorMode, error) {
 	var mode C.rbd_mirror_image_mode_t
 	if err := image.validate(imageIsOpen); err != nil {
@@ -404,10 +415,11 @@ type siteArray [cutil.MaxIdx]C.rbd_mirror_image_site_status_t
 // of the images's mirroring.
 //
 // Implements:
-//   int rbd_mirror_image_get_global_status(
-//     rbd_image_t image,
-//     rbd_mirror_image_global_status_t *mirror_image_global_status,
-//     size_t status_size);
+//
+//	int rbd_mirror_image_get_global_status(
+//	  rbd_image_t image,
+//	  rbd_mirror_image_global_status_t *mirror_image_global_status,
+//	  size_t status_size);
 func (image *Image) GetGlobalMirrorStatus() (GlobalMirrorImageStatus, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return GlobalMirrorImageStatus{}, err
@@ -453,8 +465,9 @@ func newGlobalMirrorImageStatus(
 // CreateMirrorSnapshot creates a snapshot for image propagation to mirrors.
 //
 // Implements:
-//  int rbd_mirror_image_create_snapshot(rbd_image_t image,
-//                                       uint64_t *snap_id);
+//
+//	int rbd_mirror_image_create_snapshot(rbd_image_t image,
+//	                                     uint64_t *snap_id);
 func (image *Image) CreateMirrorSnapshot() (uint64, error) {
 	var snapID C.uint64_t
 	ret := C.rbd_mirror_image_create_snapshot(
@@ -467,9 +480,10 @@ func (image *Image) CreateMirrorSnapshot() (uint64, error) {
 // of images with said status.
 //
 // Implements:
-//  int rbd_mirror_image_status_summary(
-//    rados_ioctx_t io_ctx, rbd_mirror_image_status_state_t *states, int *counts,
-//    size_t *maxlen);
+//
+//	int rbd_mirror_image_status_summary(
+//	  rados_ioctx_t io_ctx, rbd_mirror_image_status_state_t *states, int *counts,
+//	  size_t *maxlen);
 func MirrorImageStatusSummary(
 	ioctx *rados.IOContext) (map[MirrorImageStatusState]uint, error) {
 	// ideally, we already know the size of the arrays - they should be
@@ -513,8 +527,9 @@ func MirrorImageStatusSummary(
 // cluster associated with the provided rados connection.
 //
 // Implements:
-//  int rbd_mirror_site_name_set(rados_t cluster,
-//                               const char *name);
+//
+//	int rbd_mirror_site_name_set(rados_t cluster,
+//	                             const char *name);
 func SetMirrorSiteName(conn *rados.Conn, name string) error {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
@@ -530,7 +545,8 @@ func SetMirrorSiteName(conn *rados.Conn, name string) error {
 //
 // Implements:
 // int rbd_mirror_site_name_get(rados_t cluster,
-//                              char *name, size_t *max_len);
+//
+//	char *name, size_t *max_len);
 func GetMirrorSiteName(conn *rados.Conn) (string, error) {
 
 	var (
@@ -562,8 +578,9 @@ func GetMirrorSiteName(conn *rados.Conn) (string, error) {
 // pools.
 //
 // Implements:
-//  int rbd_mirror_peer_bootstrap_create(
-//    rados_ioctx_t io_ctx, char *token, size_t *max_len);
+//
+//	int rbd_mirror_peer_bootstrap_create(
+//	  rados_ioctx_t io_ctx, char *token, size_t *max_len);
 func CreateMirrorPeerBootstrapToken(ioctx *rados.IOContext) (string, error) {
 	var (
 		cioctx = cephIoctx(ioctx)
@@ -606,9 +623,10 @@ const (
 // source, destination, or both.
 //
 // Implements:
-//  int rbd_mirror_peer_bootstrap_import(
-//    rados_ioctx_t io_ctx, rbd_mirror_peer_direction_t direction,
-//    const char *token);
+//
+//	int rbd_mirror_peer_bootstrap_import(
+//	  rados_ioctx_t io_ctx, rbd_mirror_peer_direction_t direction,
+//	  const char *token);
 func ImportMirrorPeerBootstrapToken(
 	ioctx *rados.IOContext, direction MirrorPeerDirection, token string) error {
 	// instead of taking a length, rbd_mirror_peer_bootstrap_import assumes a
@@ -644,8 +662,9 @@ var iterBufSize = 64
 //
 // Implements:
 // int rbd_mirror_image_status_list(rados_ioctx_t p,
-//     const char *start_id, size_t max, char **image_ids,
-//     rbd_mirror_image_status_t *images, size_t *len)
+//
+//	const char *start_id, size_t max, char **image_ids,
+//	rbd_mirror_image_status_t *images, size_t *len)
 func MirrorImageGlobalStatusList(
 	ioctx *rados.IOContext, start string, max int) ([]GlobalMirrorImageIDAndStatus, error) {
 	var (
@@ -781,10 +800,11 @@ type MirrorImageInfoItem struct {
 //
 // Implements:
 // int rbd_mirror_image_info_list(
-//     rados_ioctx_t p, rbd_mirror_image_mode_t *mode_filter,
-//     const char *start_id, size_t max, char **image_ids,
-//     rbd_mirror_image_mode_t *mode_entries,
-//     rbd_mirror_image_info_t *info_entries, size_t *num_entries)
+//
+//	rados_ioctx_t p, rbd_mirror_image_mode_t *mode_filter,
+//	const char *start_id, size_t max, char **image_ids,
+//	rbd_mirror_image_mode_t *mode_entries,
+//	rbd_mirror_image_info_t *info_entries, size_t *num_entries)
 func MirrorImageInfoList(
 	ioctx *rados.IOContext, modeFilter ImageMirrorModeFilter, start string,
 	max int) ([]MirrorImageInfoItem, error) {
@@ -921,11 +941,12 @@ type MirrorImageInstanceIDItem struct {
 //
 // Implements:
 // int rbd_mirror_image_instance_id_list(
-// 	 	rados_ioctx_t io_ctx,
-// 	 	const char *start_id,
-// 	 	size_t max, char **image_ids,
-// 	 	char **instance_ids,
-// 	 	size_t *len)
+//
+//	rados_ioctx_t io_ctx,
+//	const char *start_id,
+//	size_t max, char **image_ids,
+//	char **instance_ids,
+//	size_t *len)
 func MirrorImageInstanceIDList(
 	ioctx *rados.IOContext, start string,
 	max int) ([]MirrorImageInstanceIDItem, error) {

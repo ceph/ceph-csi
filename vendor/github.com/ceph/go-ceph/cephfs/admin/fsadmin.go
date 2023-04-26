@@ -21,6 +21,9 @@ type FSAdmin struct {
 // configuration file. If more customization is needed, create a
 // *rados.Conn as you see fit and use NewFromConn to use that
 // connection with these administrative functions.
+//
+// Deprecated: Use NewFromConn instead of New. The New function does not expose
+// the rados connection and therefore can not be deterministically cleaned up.
 func New() (*FSAdmin, error) {
 	conn, err := rados.NewConn()
 	if err != nil {

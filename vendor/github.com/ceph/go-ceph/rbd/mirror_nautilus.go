@@ -35,7 +35,8 @@ const (
 // tag.
 //
 // Implements:
-//  int rbd_mirror_mode_get(rados_ioctx_t p, rbd_mirror_mode_t *mirror_mode)
+//
+//	int rbd_mirror_mode_get(rados_ioctx_t p, rbd_mirror_mode_t *mirror_mode)
 func MirrorModeGet(ioctx *rados.IOContext) (MirrorMode, error) {
 	var rmm C.rbd_mirror_mode_t
 
@@ -53,7 +54,8 @@ func MirrorModeGet(ioctx *rados.IOContext) (MirrorMode, error) {
 // tag.
 //
 // Implements:
-//  rbd_mirror_mode_set(rados_ioctx_t p, rbd_mirror_mode_t mirror_mode)
+//
+//	rbd_mirror_mode_set(rados_ioctx_t p, rbd_mirror_mode_t mirror_mode)
 func MirrorModeSet(ioctx *rados.IOContext, mode MirrorMode) error {
 	cMode := C.rbd_mirror_mode_t(mode)
 
@@ -70,10 +72,11 @@ func MirrorModeSet(ioctx *rados.IOContext, mode MirrorMode) error {
 // tag.
 //
 // Implements:
-//  int rbd_mirror_peer_add(rados_ioctx_t p, char *uuid,
-//  												size_t uuid_max_length,
-// 													const char *cluster_name,
-//													const char *client_name)
+//
+//	 int rbd_mirror_peer_add(rados_ioctx_t p, char *uuid,
+//	 												size_t uuid_max_length,
+//														const char *cluster_name,
+//														const char *client_name)
 func MirrorPeerAdd(ioctx *rados.IOContext, clusterName, clientName string) (string, error) {
 	// librbd uses 36-byte UUIDs with a trailing null. rbd_mirror_add_peer will
 	// return -E2BIG if we pass a UUID buffer smaller than 37 bytes.
@@ -98,7 +101,8 @@ func MirrorPeerAdd(ioctx *rados.IOContext, clusterName, clientName string) (stri
 // tag.
 //
 // Implements:
-//  int rbd_mirror_peer_remove(rados_ioctx_t io_ctx, const char *uuid)
+//
+//	int rbd_mirror_peer_remove(rados_ioctx_t io_ctx, const char *uuid)
 func MirrorPeerRemove(ioctx *rados.IOContext, uuid string) error {
 	cUUID := C.CString(uuid)
 	defer C.free(unsafe.Pointer(cUUID))
@@ -121,9 +125,10 @@ type MirrorPeerInfo struct {
 // tag.
 //
 // Implements:
-//  int rbd_mirror_peer_list(rados_ioctx_t io_ctx,
-//  												 rbd_mirror_peer_list_t *peers,
-// 										 			 int *max_peers);
+//
+//	 int rbd_mirror_peer_list(rados_ioctx_t io_ctx,
+//	 												 rbd_mirror_peer_list_t *peers,
+//											 			 int *max_peers);
 func MirrorPeerList(ioctx *rados.IOContext) ([]*MirrorPeerInfo, error) {
 	var mpi []*MirrorPeerInfo
 	cMaxPeers := C.int(5)
@@ -218,9 +223,10 @@ type MirrorImageInfo struct {
 // tag.
 //
 // Implements:
-//  rbd_mirror_image_get_info(rbd_image_t image,
-//                            rbd_mirror_image_info_t *mirror_image_info,
-//                            size_t info_size)
+//
+//	rbd_mirror_image_get_info(rbd_image_t image,
+//	                          rbd_mirror_image_info_t *mirror_image_info,
+//	                          size_t info_size)
 func (image *Image) MirrorGetImage() (*MirrorImageInfo, error) {
 	err := image.validate(imageIsOpen)
 	if err != nil {
@@ -250,11 +256,12 @@ func (image *Image) MirrorGetImage() (*MirrorImageInfo, error) {
 // tag.
 //
 // Implements:
-//  int rbd_mirror_image_status_list(rados_ioctx_t io_ctx,
-//  				      									 const char *start_id, size_t max,
-//  				      									 char **image_ids,
-//  				      									 rbd_mirror_image_status_t *images,
-//  				      									 size_t *len)
+//
+//	int rbd_mirror_image_status_list(rados_ioctx_t io_ctx,
+//					      									 const char *start_id, size_t max,
+//					      									 char **image_ids,
+//					      									 rbd_mirror_image_status_t *images,
+//					      									 size_t *len)
 func MirrorImageList(ioctx *rados.IOContext) ([]*MirrorImageInfo, error) {
 	imageInfos := make([]*MirrorImageInfo, 0)
 	const cMaxIter C.size_t = 100
@@ -327,7 +334,8 @@ func iterateImageList(ioctx *rados.IOContext, imageInfos *[]*MirrorImageInfo, st
 // tag.
 //
 // Implements:
-//  int rbd_mirror_image_enable(rbd_image_t image)
+//
+//	int rbd_mirror_image_enable(rbd_image_t image)
 func (image *Image) MirrorEnable() error {
 	err := image.validate(imageIsOpen)
 	if err != nil {
@@ -344,7 +352,8 @@ func (image *Image) MirrorEnable() error {
 // tag.
 //
 // Implements:
-//  int rbd_mirror_image_disable(rbd_image_t image, bool force)
+//
+//	int rbd_mirror_image_disable(rbd_image_t image, bool force)
 func (image *Image) MirrorDisable(force bool) error {
 	err := image.validate(imageIsOpen)
 	if err != nil {
@@ -361,7 +370,8 @@ func (image *Image) MirrorDisable(force bool) error {
 // tag.
 //
 // Implements:
-//  int rbd_mirror_image_promote(rbd_image_t image, bool force)
+//
+//	int rbd_mirror_image_promote(rbd_image_t image, bool force)
 func (image *Image) MirrorPromote(force bool) error {
 	err := image.validate(imageIsOpen)
 	if err != nil {
@@ -378,7 +388,8 @@ func (image *Image) MirrorPromote(force bool) error {
 // tag.
 //
 // Implements:
-//  int rbd_mirror_image_demote(rbd_image_t image)
+//
+//	int rbd_mirror_image_demote(rbd_image_t image)
 func (image *Image) MirrorDemote() error {
 	err := image.validate(imageIsOpen)
 	if err != nil {
@@ -396,7 +407,8 @@ func (image *Image) MirrorDemote() error {
 // tag.
 //
 // Implements:
-//  int rbd_mirror_image_resync(rbd_image_t image)
+//
+//	int rbd_mirror_image_resync(rbd_image_t image)
 func (image *Image) MirrorResync() error {
 	err := image.validate(imageIsOpen)
 	if err != nil {

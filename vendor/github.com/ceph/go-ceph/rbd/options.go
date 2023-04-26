@@ -99,7 +99,8 @@ type RbdImageOption = ImageOption
 // RbdImageOptions.Destroy() to free the resources.
 //
 // Implements:
-//  void rbd_image_options_create(rbd_image_options_t* opts)
+//
+//	void rbd_image_options_create(rbd_image_options_t* opts)
 func NewRbdImageOptions() *ImageOptions {
 	rio := &ImageOptions{}
 	C.rbd_image_options_create(&rio.options)
@@ -109,7 +110,8 @@ func NewRbdImageOptions() *ImageOptions {
 // Destroy a RbdImageOptions struct and free the associated resources.
 //
 // Implements:
-//  void rbd_image_options_destroy(rbd_image_options_t opts);
+//
+//	void rbd_image_options_destroy(rbd_image_options_t opts);
 func (rio *ImageOptions) Destroy() {
 	C.rbd_image_options_destroy(rio.options)
 }
@@ -117,8 +119,9 @@ func (rio *ImageOptions) Destroy() {
 // SetString sets the value of the RbdImageOption to the given string.
 //
 // Implements:
-//  int rbd_image_options_set_string(rbd_image_options_t opts, int optname,
-//          const char* optval);
+//
+//	int rbd_image_options_set_string(rbd_image_options_t opts, int optname,
+//	        const char* optval);
 func (rio *ImageOptions) SetString(option ImageOption, value string) error {
 	cValue := C.CString(value)
 	defer C.free(unsafe.Pointer(cValue))
@@ -135,8 +138,9 @@ func (rio *ImageOptions) SetString(option ImageOption, value string) error {
 // GetString returns the string value of the RbdImageOption.
 //
 // Implements:
-//  int rbd_image_options_get_string(rbd_image_options_t opts, int optname,
-//          char* optval, size_t maxlen);
+//
+//	int rbd_image_options_get_string(rbd_image_options_t opts, int optname,
+//	        char* optval, size_t maxlen);
 func (rio *ImageOptions) GetString(option ImageOption) (string, error) {
 	value := make([]byte, 4096)
 
@@ -153,8 +157,9 @@ func (rio *ImageOptions) GetString(option ImageOption) (string, error) {
 // SetUint64 sets the value of the RbdImageOption to the given uint64.
 //
 // Implements:
-//  int rbd_image_options_set_uint64(rbd_image_options_t opts, int optname,
-//          const uint64_t optval);
+//
+//	int rbd_image_options_set_uint64(rbd_image_options_t opts, int optname,
+//	        const uint64_t optval);
 func (rio *ImageOptions) SetUint64(option ImageOption, value uint64) error {
 	cValue := C.uint64_t(value)
 
@@ -170,8 +175,9 @@ func (rio *ImageOptions) SetUint64(option ImageOption, value uint64) error {
 // GetUint64 returns the uint64 value of the RbdImageOption.
 //
 // Implements:
-//  int rbd_image_options_get_uint64(rbd_image_options_t opts, int optname,
-//          uint64_t* optval);
+//
+//	int rbd_image_options_get_uint64(rbd_image_options_t opts, int optname,
+//	        uint64_t* optval);
 func (rio *ImageOptions) GetUint64(option ImageOption) (uint64, error) {
 	var cValue C.uint64_t
 
@@ -186,8 +192,9 @@ func (rio *ImageOptions) GetUint64(option ImageOption) (uint64, error) {
 // IsSet returns a true if the RbdImageOption is set, false otherwise.
 //
 // Implements:
-//  int rbd_image_options_is_set(rbd_image_options_t opts, int optname,
-//          bool* is_set);
+//
+//	int rbd_image_options_is_set(rbd_image_options_t opts, int optname,
+//	        bool* is_set);
 func (rio *ImageOptions) IsSet(option ImageOption) (bool, error) {
 	var cSet C.bool
 
@@ -202,7 +209,8 @@ func (rio *ImageOptions) IsSet(option ImageOption) (bool, error) {
 // Unset a given RbdImageOption.
 //
 // Implements:
-//  int rbd_image_options_unset(rbd_image_options_t opts, int optname)
+//
+//	int rbd_image_options_unset(rbd_image_options_t opts, int optname)
 func (rio *ImageOptions) Unset(option ImageOption) error {
 	ret := C.rbd_image_options_unset(rio.options, C.int(option))
 	if ret != 0 {
@@ -215,7 +223,8 @@ func (rio *ImageOptions) Unset(option ImageOption) error {
 // Clear all options in the RbdImageOptions.
 //
 // Implements:
-//  void rbd_image_options_clear(rbd_image_options_t opts)
+//
+//	void rbd_image_options_clear(rbd_image_options_t opts)
 func (rio *ImageOptions) Clear() {
 	C.rbd_image_options_clear(rio.options)
 }
@@ -224,7 +233,8 @@ func (rio *ImageOptions) Clear() {
 // false otherwise.
 //
 // Implements:
-//  int rbd_image_options_is_empty(rbd_image_options_t opts)
+//
+//	int rbd_image_options_is_empty(rbd_image_options_t opts)
 func (rio *ImageOptions) IsEmpty() bool {
 	ret := C.rbd_image_options_is_empty(rio.options)
 	return ret != 0

@@ -32,7 +32,8 @@ const (
 // returns error on failure.
 //
 // Implements:
-//  int rbd_snap_get_namespace_type(rbd_image_t image, uint64_t snap_id, rbd_snap_namespace_type_t *namespace_type)
+//
+//	int rbd_snap_get_namespace_type(rbd_image_t image, uint64_t snap_id, rbd_snap_namespace_type_t *namespace_type)
 func (image *Image) GetSnapNamespaceType(snapID uint64) (SnapNamespaceType, error) {
 	var nsType SnapNamespaceType
 
@@ -51,7 +52,8 @@ func (image *Image) GetSnapNamespaceType(snapID uint64) (SnapNamespaceType, erro
 // function belongs to a snapshot already in the Trash.
 //
 // Implements:
-//  int rbd_snap_get_trash_namespace(rbd_image_t image, uint64_t snap_id, char *original_name, size_t max_length)
+//
+//	int rbd_snap_get_trash_namespace(rbd_image_t image, uint64_t snap_id, char *original_name, size_t max_length)
 func (image *Image) GetSnapTrashNamespace(snapID uint64) (string, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return "", err

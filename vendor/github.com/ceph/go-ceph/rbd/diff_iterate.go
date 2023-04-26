@@ -84,12 +84,13 @@ const (
 // arguments to the callback and the return behavior.
 //
 // Implements:
-//  int rbd_diff_iterate2(rbd_image_t image,
-//                        const char *fromsnapname,
-//                        uint64_t ofs, uint64_t len,
-//                        uint8_t include_parent, uint8_t whole_object,
-//                        int (*cb)(uint64_t, size_t, int, void *),
-//                        void *arg);
+//
+//	int rbd_diff_iterate2(rbd_image_t image,
+//	                      const char *fromsnapname,
+//	                      uint64_t ofs, uint64_t len,
+//	                      uint8_t include_parent, uint8_t whole_object,
+//	                      int (*cb)(uint64_t, size_t, int, void *),
+//	                      void *arg);
 func (image *Image) DiffIterate(config DiffIterateConfig) error {
 	if err := image.validate(imageIsOpen); err != nil {
 		return err

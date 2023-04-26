@@ -95,8 +95,9 @@ func (c *Conn) ReadDefaultConfigFile() error {
 // OpenIOContext creates and returns a new IOContext for the given pool.
 //
 // Implements:
-//  int rados_ioctx_create(rados_t cluster, const char *pool_name,
-//                         rados_ioctx_t *ioctx);
+//
+//	int rados_ioctx_create(rados_t cluster, const char *pool_name,
+//	                       rados_ioctx_t *ioctx);
 func (c *Conn) OpenIOContext(pool string) (*IOContext, error) {
 	cPool := C.CString(pool)
 	defer C.free(unsafe.Pointer(cPool))
@@ -200,8 +201,9 @@ func (c *Conn) GetClusterStats() (stat ClusterStat, err error) {
 // argument vector.
 //
 // Implements:
-//  int rados_conf_parse_argv(rados_t cluster, int argc,
-//                            const char **argv);
+//
+//	int rados_conf_parse_argv(rados_t cluster, int argc,
+//	                          const char **argv);
 func (c *Conn) ParseConfigArgv(argv []string) error {
 	if c.cluster == nil {
 		return ErrNotConnected

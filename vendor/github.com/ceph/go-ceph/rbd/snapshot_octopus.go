@@ -17,7 +17,8 @@ import (
 // GetSnapID returns the snapshot ID for the given snapshot name.
 //
 // Implements:
-//  int rbd_snap_get_id(rbd_image_t image, const char *snapname, uint64_t *snap_id)
+//
+//	int rbd_snap_get_id(rbd_image_t image, const char *snapname, uint64_t *snap_id)
 func (image *Image) GetSnapID(snapName string) (uint64, error) {
 	var snapID C.uint64_t
 	if err := image.validate(imageIsOpen); err != nil {
@@ -37,7 +38,8 @@ func (image *Image) GetSnapID(snapName string) (uint64, error) {
 // GetSnapByID returns the snapshot name for the given snapshot ID.
 //
 // Implements:
-//  int rbd_snap_get_name(rbd_image_t image, uint64_t snap_id, char *snapname, size_t *name_len)
+//
+//	int rbd_snap_get_name(rbd_image_t image, uint64_t snap_id, char *snapname, size_t *name_len)
 func (image *Image) GetSnapByID(snapID uint64) (string, error) {
 	if err := image.validate(imageIsOpen); err != nil {
 		return "", err

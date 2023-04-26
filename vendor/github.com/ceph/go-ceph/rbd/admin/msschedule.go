@@ -40,7 +40,8 @@ func (ra *RBDAdmin) MirrorSnashotSchedule() *MirrorSnashotScheduleAdmin {
 // level spec.
 //
 // Similar To:
-//  rbd mirror snapshot schedule add <level_spec> <interval> <start_time>
+//
+//	rbd mirror snapshot schedule add <level_spec> <interval> <start_time>
 func (mss *MirrorSnashotScheduleAdmin) Add(l LevelSpec, i Interval, s StartTime) error {
 	m := map[string]string{
 		"prefix":     "rbd mirror snapshot schedule add",
@@ -59,7 +60,8 @@ func (mss *MirrorSnashotScheduleAdmin) Add(l LevelSpec, i Interval, s StartTime)
 // List the snapshot schedules based on the supplied level spec.
 //
 // Similar To:
-//  rbd mirror snapshot schedule list <level_spec>
+//
+//	rbd mirror snapshot schedule list <level_spec>
 func (mss *MirrorSnashotScheduleAdmin) List(l LevelSpec) ([]SnapshotSchedule, error) {
 	m := map[string]string{
 		"prefix":     "rbd mirror snapshot schedule list",
@@ -114,7 +116,8 @@ func parseMirrorSnapshotScheduleList(res commands.Response) (
 // Remove a snapshot schedule matching the supplied arguments.
 //
 // Similar To:
-//  rbd mirror snapshot schedule remove <level_spec> <interval> <start_time>
+//
+//	rbd mirror snapshot schedule remove <level_spec> <interval> <start_time>
 func (mss *MirrorSnashotScheduleAdmin) Remove(
 	l LevelSpec, i Interval, s StartTime) error {
 
@@ -136,7 +139,8 @@ func (mss *MirrorSnashotScheduleAdmin) Remove(
 // matching the supplied level spec.
 //
 // Similar To:
-//  rbd mirror snapshot schedule status <level_spec>
+//
+//	rbd mirror snapshot schedule status <level_spec>
 func (mss *MirrorSnashotScheduleAdmin) Status(l LevelSpec) ([]ScheduledImage, error) {
 	m := map[string]string{
 		"prefix":     "rbd mirror snapshot schedule status",
