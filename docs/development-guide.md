@@ -327,7 +327,7 @@ are certain about the flaky test failure behavior, then comment on the PR
 indicating the logs about a particular test that went flaky and use the
 appropriate command to retrigger the job[s].
 If you are uncertain about the CI failure, we prefer that you ping us on
-[Slack channel #ci](https://cephcsi.slack.com) with more details on
+[Slack channel #ceph-csi](https://ceph-storage.slack.com) with more details on
 failures before retriggering the jobs, we will be happy to help.
 
 ### Retesting failed Jobs
