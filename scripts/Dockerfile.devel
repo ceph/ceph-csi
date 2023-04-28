@@ -26,6 +26,7 @@ RUN dnf -y install \
 	git \
 	make \
 	gcc \
+	selinux-policy \
 	librados-devel \
 	librbd-devel \
     && dnf -y update \
