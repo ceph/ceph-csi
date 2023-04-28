@@ -18,7 +18,6 @@ package e2e
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -1913,7 +1912,7 @@ var _ = Describe("RBD", func() {
 					return true, nil
 				})
 
-				if errors.Is(err, wait.ErrWaitTimeout) {
+				if wait.Interrupted(err) {
 					framework.Failf("timed out waiting for the rbd-nbd process: %s", reason)
 				}
 				if err != nil {
