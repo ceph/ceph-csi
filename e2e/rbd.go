@@ -595,7 +595,7 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 1, defaultRBDPool)
 				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 				// create namespace for reattach PVC, deletion will be taken care by framework
-				ns, err := f.CreateNamespace(reattachPVCNamespace, nil)
+				ns, err := f.CreateNamespace(context.TODO(), reattachPVCNamespace, nil)
 				if err != nil {
 					framework.Failf("failed to create namespace: %v", err)
 				}
