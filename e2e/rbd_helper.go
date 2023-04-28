@@ -19,7 +19,6 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -1052,7 +1051,7 @@ func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int)
 		return false, nil
 	})
 
-	if errors.Is(err, wait.ErrWaitTimeout) {
+	if wait.Interrupted(err) {
 		err = errReason
 	}
 
