@@ -18,7 +18,6 @@ package e2e
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"time"
