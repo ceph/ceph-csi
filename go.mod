@@ -44,7 +44,7 @@ require (
 	k8s.io/mount-utils v0.27.1
 	k8s.io/pod-security-admission v0.0.0
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491
-	sigs.k8s.io/controller-runtime v0.14.6
+	sigs.k8s.io/controller-runtime v0.13.1-0.20230427153817-0ef07535542b
 )
 
 require (
@@ -77,7 +77,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gemalto/flume v0.13.0 // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
-	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.1 // indirect

@@ -73,16 +73,20 @@ func newPVReconciler(mgr manager.Manager, config ctrl.Config) reconcile.Reconcil
 
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
+	o := controller.Options{}
+	o.MaxConcurrentReconciles = 1
+	o.Reconciler = r
+
 	c, err := controller.New(
 		"persistentvolume-controller",
 		mgr,
-		controller.Options{MaxConcurrentReconciles: 1, Reconciler: r})
+		o)
 	if err != nil {
 		return err
 	}
 
 	// Watch for changes to PersistentVolumes
-	err = c.Watch(&source.Kind{Type: &corev1.PersistentVolume{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.PersistentVolume{}), &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return fmt.Errorf("failed to watch the changes: %w", err)
 	}
