@@ -1127,6 +1127,8 @@ func (ns *NodeServer) NodeExpandVolume(
 	imgInfo, err := lookupRBDImageMetadataStash(volumePath)
 	if err != nil {
 		log.ErrorLog(ctx, "failed to find image metadata: %v", err)
+
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	devicePath, found := findDeviceMappingImage(
 		ctx,
