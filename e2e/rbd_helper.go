@@ -1047,7 +1047,7 @@ func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int)
 		return false, nil
 	})
 
-	if errors.Is(err, wait.ErrWaitTimeout) {
+	if wait.Interrupted(err) {
 		err = errReason
 	}
 

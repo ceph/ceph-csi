@@ -175,7 +175,7 @@ func waitForDeploymentComplete(clientSet kubernetes.Interface, name, ns string, 
 		return false, nil
 	})
 
-	if errors.Is(err, wait.ErrWaitTimeout) {
+	if wait.Interrupted(err) {
 		err = fmt.Errorf("%s", reason)
 	}
 	if err != nil {
