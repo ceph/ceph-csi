@@ -49,10 +49,10 @@ queue_rules:
               - "status-success=ci/centos/jjb-validate"
 
 pull_request_rules:
-  - name: start CI jobs for queued PR
+  - name: start CI jobs for merge queue PRs by Mergify
     conditions:
       - base~=^(devel)|(release-.+)$
-      - "check-pending=Queue: Embarked in merge train"
+      - author=mergify
       - not:
           check-pending~=^ci/centos
       - not:
