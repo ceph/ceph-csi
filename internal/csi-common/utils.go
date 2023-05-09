@@ -118,7 +118,7 @@ func NewMiddlewareServerOption(withMetrics bool) grpc.ServerOption {
 		middleWare = append(middleWare, grpc_prometheus.UnaryServerInterceptor)
 	}
 
-	return grpc_middleware.WithUnaryServerChain(middleWare...)
+	return grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(middleWare...))
 }
 
 func getReqID(req interface{}) string {
