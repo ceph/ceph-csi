@@ -1,0 +1,16 @@
+---
+name: Mergify merge-queue labels copier
+# yamllint disable-line rule:truthy
+on:
+  pull_request_target:
+    types:
+      - opened
+
+jobs:
+  mergify-merge-queue-labels-copier:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copying labels
+        uses: Mergifyio/gha-mergify-merge-queue-labels-copier@main
+#        with:
+#          labels: comma,separated,lists,of,labels,to,copy
