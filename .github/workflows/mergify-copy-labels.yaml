@@ -13,4 +13,4 @@ jobs:
     steps:
       - name: Copying labels
         # FIXME: using local instead of Mergifyio/gha-mergify-merge-queue-labels-copier@main
-        uses: ./actions/gha-mergify-merge-queue-labels-copier.yaml
+        uses: ./actions/gha-mergify-merge-queue-labels-copier/
