@@ -14,4 +14,4 @@ jobs:
         uses: Mergifyio/gha-mergify-merge-queue-labels-copier@main
         with:
           # labels: comma,separated,lists,of,labels,to,copy
-          labels:
+          labels: ""
