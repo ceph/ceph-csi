@@ -1,0 +1,33 @@
+---
+# yamllint disable rule:line-length
+#
+# Fork of Mergifyio/gha-mergify-merge-queue-labels-copier@main with modified
+# startsWith() check.
+#
+# See: https://docs.github.com/en/actions/learn-github-actions/expressions#startswith
+#
+name: 'mergify-merge-queue-labels-copier'
+description: 'Mergify: copies pull request labels to merge queue draft PRs'
+inputs:
+  labels:
+    description: 'Comma separated list of labels to copy (all if empty)'
+    required: true
+    default: ''
+runs:
+  using: "composite"
+  steps:
+    - name: Copying labels
+      shell: bash
+      if: startsWith(github.head_ref, 'mergify/merge queue/')
+      env:
+        REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+        MERGE_QUEUE_PR_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh pr view --json body -q ".body" $MERGE_QUEUE_PR_URL | sed -n -e '/```yaml/,/```/p' | sed -e '1d;$d' | yq '.pull_requests[]|.number' | while read pr_number ; do
+          gh pr view --json labels -q '.labels[]|.name' ${REPOSITORY_URL}/pull/$pr_number | while read label ; do
+            if [[ -z "$labels" ]] || [[ ",$labels," =~ ",$label," ]]; then
+              gh pr edit --add-label "$label" $MERGE_QUEUE_PR_URL
+            if
+          done
+        done
