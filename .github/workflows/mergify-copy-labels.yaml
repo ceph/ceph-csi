@@ -1,4 +1,5 @@
 ---
+# yamllint disable rule:line-length
 name: Mergify merge-queue labels copier
 # yamllint disable-line rule:truthy
 on:
@@ -11,7 +12,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Copying labels
-        uses: Mergifyio/gha-mergify-merge-queue-labels-copier@main
-        with:
-          # FIXME: empty labels should copy all, that does not work?
-          labels: ci/skip/e2e,ci/skip/multi-arch-build
+        # FIXME: using local instead of Mergifyio/gha-mergify-merge-queue-labels-copier@main
+        uses: ./actions/gha-mergify-merge-queue-labels-copier.yaml
