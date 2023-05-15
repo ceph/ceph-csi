@@ -13,5 +13,5 @@ jobs:
       - name: Copying labels
         uses: Mergifyio/gha-mergify-merge-queue-labels-copier@main
         with:
-          # labels: comma,separated,lists,of,labels,to,copy
-          labels: ""
+          # FIXME: empty labels should copy all, that does not work?
+          labels: ci/skip/e2e,ci/skip/multi-arch-build
