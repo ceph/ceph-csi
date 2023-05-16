@@ -5,6 +5,7 @@
 # The source for the contents can be found in the api/deploy directory, make
 # your modifications there.
 #
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:

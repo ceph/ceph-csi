@@ -25,6 +25,9 @@ all: \
 scc.yaml: ../api/deploy/ocp/scc.yaml ../api/deploy/ocp/scc.go
 	$(MAKE) -C ../tools generate-deploy
 
+cephfs/kubernetes/csidriver.yaml: ../api/deploy/kubernetes/cephfs/csidriver.yaml ../api/deploy/kubernetes/cephfs/csidriver.go
+	$(MAKE) -C ../tools generate-deploy
+
 cephfs/kubernetes/csi-config-map.yaml: ../api/deploy/kubernetes/cephfs/csi-config-map.*
 	$(MAKE) -C ../tools generate-deploy
 
