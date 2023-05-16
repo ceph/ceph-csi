@@ -11,9 +11,7 @@ jobs:
   mergify-merge-queue-labels-copier:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the repository to get the local action
-        uses: actions/checkout@v3
-
       - name: Copying labels
-        # FIXME: using local instead of Mergifyio/gha-mergify-merge-queue-labels-copier@main
-        uses: ./actions/gha-mergify-merge-queue-labels-copier/
+        uses: Mergifyio/gha-mergify-merge-queue-labels-copier@main
+        with:
+          additional-labels: 'ok-to-test'
