@@ -50,6 +50,11 @@ var yamlArtifacts = []deploymentArtifact{
 		reflect.ValueOf(ocp.SecurityContextConstraintsDefaults),
 	},
 	{
+		"../deploy/cephfs/kubernetes/csidriver.yaml",
+		reflect.ValueOf(cephfs.NewCSIDriverYAML),
+		reflect.ValueOf(cephfs.CSIDriverDefaults),
+	},
+	{
 		"../deploy/cephfs/kubernetes/csi-config-map.yaml",
 		reflect.ValueOf(cephfs.NewCSIConfigMapYAML),
 		reflect.ValueOf(cephfs.CSIConfigMapDefaults),
