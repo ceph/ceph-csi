@@ -22,6 +22,7 @@ import (
 	"path"
 	"reflect"
 
+	"github.com/ceph/ceph-csi/api/deploy/kubernetes/cephfs"
 	"github.com/ceph/ceph-csi/api/deploy/kubernetes/nfs"
 	"github.com/ceph/ceph-csi/api/deploy/kubernetes/rbd"
 	"github.com/ceph/ceph-csi/api/deploy/ocp"
@@ -47,6 +48,11 @@ var yamlArtifacts = []deploymentArtifact{
 		"../deploy/scc.yaml",
 		reflect.ValueOf(ocp.NewSecurityContextConstraintsYAML),
 		reflect.ValueOf(ocp.SecurityContextConstraintsDefaults),
+	},
+	{
+		"../deploy/cephfs/kubernetes/csi-config-map.yaml",
+		reflect.ValueOf(cephfs.NewCSIConfigMapYAML),
+		reflect.ValueOf(cephfs.CSIConfigMapDefaults),
 	},
 	{
 		"../deploy/nfs/kubernetes/csidriver.yaml",
