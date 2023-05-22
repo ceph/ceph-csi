@@ -50,7 +50,7 @@ RUN source /build.env \
        | tar xzf - -C ${GOROOT} --strip-components=1 \
     && curl -sf "https://raw.githubusercontent.com/golangci/golangci-lint/${GOLANGCI_VERSION}/install.sh" \
        | bash -s -- -b ${GOPATH}/bin "${GOLANGCI_VERSION}" \
-    && curl -L https://git.io/get_helm.sh | bash -s -- --version "${HELM_VERSION}" \
+    && curl -L "${HELM_SCRIPT}" | bash -s -- --version "${HELM_VERSION}" \
     && mkdir /opt/commitlint && pushd /opt/commitlint \
     && npm init -y \
     && npm install @commitlint/cli@"${COMMITLINT_VERSION}" \
