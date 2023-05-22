@@ -104,7 +104,7 @@ CSI_CHARTS_DIR=$(mktemp -d)
 
 pushd "${CSI_CHARTS_DIR}" >/dev/null
 
-curl -L https://git.io/get_helm.sh | bash -s -- --version "${HELM_VERSION}"
+curl -L "${HELM_SCRIPT}" | bash -s -- --version "${HELM_VERSION}"
 
 build_step "cloning ceph/csi-charts repository"
 git clone https://github.com/ceph/csi-charts
