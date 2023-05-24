@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"strconv"
 
 	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -343,7 +342,7 @@ func ParseEncryptionOpts(
 	)
 	encrypted, ok = volOptions["encrypted"]
 	val, _ := strconv.ParseBool(encrypted)
-	if !ok || !val{
+	if !ok || !val {
 		return "", util.EncryptionTypeNone, nil
 	}
 	ok, err = strconv.ParseBool(encrypted)
