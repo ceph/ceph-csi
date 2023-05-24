@@ -224,7 +224,7 @@ func (ns *NodeServer) populateRbdVol(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	err = rv.initKMS(ctx, req.GetVolumeContext(), req.GetSecrets())
+	err = rv.initKMS(req.GetVolumeContext(), req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
