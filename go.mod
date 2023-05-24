@@ -22,8 +22,8 @@ require (
 	github.com/kubernetes-csi/csi-lib-utils v0.13.0
 	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.2.0
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
-	github.com/onsi/ginkgo/v2 v2.9.2
-	github.com/onsi/gomega v1.27.6
+	github.com/onsi/ginkgo/v2 v2.9.5
+	github.com/onsi/gomega v1.27.7
 	github.com/pkg/xattr v0.4.9
 	github.com/prometheus/client_golang v1.15.1
 	github.com/stretchr/testify v1.8.3
@@ -72,7 +72,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gemalto/flume v0.13.0 // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
-	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
