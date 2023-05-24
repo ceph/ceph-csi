@@ -191,7 +191,7 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	// get the owner of the PVC which is required for few encryption related operations
 	rbdVol.Owner = k8s.GetOwner(req.GetParameters())
 
-	err = rbdVol.initKMS(ctx, req.GetParameters(), req.GetSecrets())
+	err = rbdVol.initKMS(req.GetParameters(), req.GetSecrets())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
