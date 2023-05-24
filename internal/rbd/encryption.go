@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"strconv"
 
 	kmsapi "github.com/ceph/ceph-csi/internal/kms"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -341,7 +342,8 @@ func ParseEncryptionOpts(
 		encrypted, kmsID string
 	)
 	encrypted, ok = volOptions["encrypted"]
-	if !ok {
+	val, _ := strconv.ParseBool(encrypted)
+	if !ok || !val{
 		return "", util.EncryptionTypeNone, nil
 	}
 	kmsID, err = util.FetchEncryptionKMSID(encrypted, volOptions["encryptionKMSID"])
