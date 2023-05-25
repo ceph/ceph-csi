@@ -2833,6 +2833,56 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
+			By("create storageClass with encrypted as false", func() {
+				err := deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(
+					f.ClientSet,
+					f,
+					defaultSCName,
+					nil,
+					map[string]string{"encrypted": "false"},
+					deletePolicy)
+				if err != nil {
+					framework.Failf("failed to create storageclass: %v", err)
+				}
+				// set up PVC
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				// validate created backend rbd images
+				validateRBDImageCount(f, 1, defaultRBDPool)
+				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
+
+				// clean up after ourselves
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to  delete PVC: %v", err)
+				}
+				// validate created backend rbd images
+				validateRBDImageCount(f, 0, defaultRBDPool)
+				validateOmapCount(f, 0, rbdType, defaultRBDPool, volumesType)
+
+				err = deleteResource(rbdExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete storageclass: %v", err)
+				}
+				err = createRBDStorageClass(f.ClientSet, f, defaultSCName, nil, nil, deletePolicy)
+				if err != nil {
+					framework.Failf("failed to create storageclass: %v", err)
+				}
+			})
+
+
 			By("validate RBD static FileSystem PVC", func() {
 				err := validateRBDStaticPV(f, appPath, false, false)
 				if err != nil {
