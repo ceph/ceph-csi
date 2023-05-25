@@ -2921,7 +2921,6 @@ var _ = Describe("RBD", func() {
 				}
 			})
 
-
 			By("validate RBD static FileSystem PVC", func() {
 				err := validateRBDStaticPV(f, appPath, false, false)
 				if err != nil {
