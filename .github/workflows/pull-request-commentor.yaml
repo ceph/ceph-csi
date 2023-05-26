@@ -8,6 +8,7 @@ on:
       - "release-v*"
     types:
       - labeled
+      - opened
 jobs:
   add-comment:
     # yamllint disable-line rule:line-length
