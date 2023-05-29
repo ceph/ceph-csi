@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/openshift/api v0.0.0-20230320192226-1fc631efd341
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	k8s.io/api v0.26.3
 )
 
