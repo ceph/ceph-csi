@@ -11,10 +11,9 @@ on:
       - opened
 jobs:
   add-comment:
-    # yamllint disable-line rule:line-length
-    if: (github.event.pull_request.label == ok-to-test && \
+    if: (github.event.pull_request.label == 'ok-to-test' && \
          github.event.pull_request.merged != 'true') || \
-        (github.event.pull_request.action == opened && \
+        (github.event.pull_request.action == 'opened' && \
          contains(github.event.pull_request.labels.*.name,'ok-to-test'))
     runs-on: ubuntu-latest
     permissions:
