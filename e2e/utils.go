@@ -1732,3 +1732,13 @@ func rwopMayFail(err error) bool {
 
 	return !rwopSupported
 }
+
+// getConfigFile returns the passed config file location if it exists, else
+// returns the old location of the config file under 'examples/' directory.
+func getConfigFile(configFile string) string {
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		configFile = examplePath + cephConfconfigMap
+	}
+
+	return configFile
+}

@@ -2,17 +2,17 @@
 
 ## Deploying Ceph-CSI services
 
-Create [ceph-config](./ceph-conf.yaml) configmap using the following command.
+Create [ceph-config](../deploy/ceph-conf.yaml) configmap using the following command.
 
 ```bash
-kubectl apply -f ./ceph-conf.yaml
+kubectl apply -f ../deploy/ceph-conf.yaml
 ```
 
 Both `rbd` and `cephfs` directories contain `plugin-deploy.sh` and
 `plugin-teardown.sh` helper scripts.  You can use those to help you
 deploy/teardown RBACs, sidecar containers and the plugin in one go.
 By default, they look for the YAML manifests in
-`../../deploy/{rbd,cephfs}/kubernetes`.
+`../deploy/{rbd,cephfs}/kubernetes`.
 You can override this path by running
 
 ```bash
@@ -25,7 +25,7 @@ The CSI plugin requires configuration information regarding the Ceph cluster(s),
 that would host the dynamically or statically provisioned volumes. This
 is provided by adding a per-cluster identifier (referred to as clusterID), and
 the required monitor details for the same, as in the provided [sample config
- map](./csi-config-map-sample.yaml).
+ map](../deploy/csi-config-map-sample.yaml).
 
 Gather the following information from the Ceph cluster(s) of choice,
 
@@ -38,13 +38,13 @@ Gather the following information from the Ceph cluster(s) of choice,
    * Alternatively, choose a `<cluster-id>` value that is distinct per Ceph
     cluster in use by this kubernetes cluster
 
-Update the [sample configmap](./csi-config-map-sample.yaml) with values
+Update the [sample configmap](../deploy/csi-config-map-sample.yaml) with values
 from a Ceph cluster and replace `<cluster-id>` with the chosen clusterID, to
 create the manifest for the configmap which can be updated in the cluster
 using the following command,
 
 ```bash
-kubectl replace -f ./csi-config-map-sample.yaml
+kubectl replace -f ../deploy/csi-config-map-sample.yaml
 ```
 
 Storage class and snapshot class, using `<cluster-id>` as the value for the

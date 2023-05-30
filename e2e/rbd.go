@@ -44,7 +44,8 @@ var (
 	configMap          = "csi-config-map.yaml"
 	cephConfconfigMap  = "ceph-conf.yaml"
 	csiDriverObject    = "csidriver.yaml"
-	rbdDirPath         = "../deploy/rbd/kubernetes/"
+	deployPath         = "../deploy/"
+	rbdDirPath         = deployPath + "/rbd/kubernetes/"
 	examplePath        = "../examples/"
 	rbdExamplePath     = examplePath + "/rbd/"
 	e2eTemplatesPath   = "../e2e/templates/"
@@ -129,6 +130,7 @@ func deleteRBDPlugin() {
 }
 
 func createORDeleteRbdResources(action kubectlAction) {
+	cephConfigFile := getConfigFile(deployPath + cephConfconfigMap)
 	resources := []ResourceDeployer{
 		// shared resources
 		&yamlResource{
@@ -136,7 +138,7 @@ func createORDeleteRbdResources(action kubectlAction) {
 			allowMissing: true,
 		},
 		&yamlResource{
-			filename:     examplePath + cephConfconfigMap,
+			filename:     cephConfigFile,
 			allowMissing: true,
 		},
 		// dependencies for provisioner
