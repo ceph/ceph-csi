@@ -292,11 +292,18 @@ func (ns *NodeServer) mount(
 
 	log.DebugLog(ctx, "cephfs: mounting volume %s with %s", volID, mnt.Name())
 
+	var mountOptions []string
+	if m := volCap.GetMount(); m != nil {
+		mountOptions = m.GetMountFlags()
+	}
+
 	switch mnt.(type) {
 	case *mounter.FuseMounter:
 		volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, ns.fuseMountOptions)
+		volOptions.FuseMountOptions = util.MountOptionsAdd(volOptions.FuseMountOptions, mountOptions...)
 	case *mounter.KernelMounter:
 		volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, ns.kernelMountOptions)
+		volOptions.KernelMountOptions = util.MountOptionsAdd(volOptions.KernelMountOptions, mountOptions...)
 	}
 
 	const readOnly = "ro"
