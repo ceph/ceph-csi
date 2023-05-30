@@ -67,6 +67,7 @@ func deleteCephfsPlugin() {
 }
 
 func createORDeleteCephfsResources(action kubectlAction) {
+	cephConfigFile := getConfigFile(deployPath + cephConfconfigMap)
 	resources := []ResourceDeployer{
 		// shared resources
 		&yamlResource{
@@ -74,7 +75,7 @@ func createORDeleteCephfsResources(action kubectlAction) {
 			allowMissing: true,
 		},
 		&yamlResource{
-			filename:     examplePath + cephConfconfigMap,
+			filename:     cephConfigFile,
 			allowMissing: true,
 		},
 		// dependencies for provisioner

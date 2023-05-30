@@ -23,7 +23,7 @@ csi_liveness 1
 ```
 
 Promethues can be deployed through the promethues operator described [here](https://coreos.com/operators/prometheus/docs/latest/user-guides/getting-started.html).
-The [service-monitor](../examples/service-monitor.yaml) will tell promethues how
+The [service-monitor](../deploy/service-monitor.yaml) will tell promethues how
 to pull metrics out of CSI.
 
 Each CSI pod has a service to expose the endpoint to prometheus. By default, rbd
