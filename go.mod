@@ -1,6 +1,6 @@
 module github.com/ceph/ceph-csi
 
-go 1.19
+go 1.20
 
 require (
 	github.com/IBM/keyprotect-go-client v0.10.0
