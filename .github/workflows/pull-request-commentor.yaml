@@ -23,6 +23,7 @@ jobs:
       - name: Add comment to trigger external storage tests for Kubernetes 1.24
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/k8s-e2e-external-storage/1.24
@@ -30,6 +31,7 @@ jobs:
       - name: Add comment to trigger external storage tests for Kubernetes 1.25
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/k8s-e2e-external-storage/1.25
@@ -37,6 +39,7 @@ jobs:
       - name: Add comment to trigger external storage tests for Kubernetes 1.26
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/k8s-e2e-external-storage/1.26
@@ -44,6 +47,7 @@ jobs:
       - name: Add comment to trigger external storage tests for Kubernetes 1.27
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/k8s-e2e-external-storage/1.27
@@ -51,6 +55,7 @@ jobs:
       - name: Add comment to trigger helm E2E tests for Kubernetes 1.24
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/mini-e2e-helm/k8s-1.24
@@ -58,6 +63,7 @@ jobs:
       - name: Add comment to trigger helm E2E tests for Kubernetes 1.25
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/mini-e2e-helm/k8s-1.25
@@ -65,6 +71,7 @@ jobs:
       - name: Add comment to trigger helm E2E tests for Kubernetes 1.26
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/mini-e2e-helm/k8s-1.26
@@ -72,6 +79,7 @@ jobs:
       - name: Add comment to trigger helm E2E tests for Kubernetes 1.27
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/mini-e2e-helm/k8s-1.27
@@ -79,6 +87,7 @@ jobs:
       - name: Add comment to trigger E2E tests for Kubernetes 1.24
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/mini-e2e/k8s-1.24
@@ -86,6 +95,7 @@ jobs:
       - name: Add comment to trigger E2E tests for Kubernetes 1.25
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/mini-e2e/k8s-1.25
@@ -93,6 +103,7 @@ jobs:
       - name: Add comment to trigger E2E tests for Kubernetes 1.26
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/mini-e2e/k8s-1.26
@@ -100,6 +111,7 @@ jobs:
       - name: Add comment to trigger E2E tests for Kubernetes 1.27
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/mini-e2e/k8s-1.27
@@ -107,6 +119,7 @@ jobs:
       - name: Add comment to trigger cephfs upgrade tests
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/upgrade-tests-cephfs
@@ -114,6 +127,7 @@ jobs:
       - name: Add comment to trigger rbd upgrade tests
         uses: peter-evans/create-or-update-comment@v3
         with:
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             /test ci/centos/upgrade-tests-rbd
@@ -121,6 +135,7 @@ jobs:
       - name: remove ok-to-test-label after commenting
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
           script: |
             github.rest.issues.removeLabel({
               issue_number: context.issue.number,
