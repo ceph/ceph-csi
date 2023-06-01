@@ -12,7 +12,7 @@ on:
 jobs:
   add-comment:
     if: >
-      (github.event.pull_request.label == 'ok-to-test' &&
+      (github.event.label.name == 'ok-to-test' &&
       github.event.pull_request.merged != true) ||
       (github.event.pull_request.action == 'opened' &&
       contains(github.event.pull_request.labels.*.name,'ok-to-test'))
