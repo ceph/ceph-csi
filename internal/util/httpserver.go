@@ -24,6 +24,8 @@ func ValidateURL(c *Config) error {
 func StartMetricsServer(c *Config) {
 	addr := net.JoinHostPort(c.MetricsIP, strconv.Itoa(c.MetricsPort))
 	http.Handle(c.MetricsPath, promhttp.Handler())
+
+	//nolint:gosec // TODO: add support for passing timeouts
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.FatalLogMsg("failed to listen on address %v: %s", addr, err)
