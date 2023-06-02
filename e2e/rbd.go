@@ -25,7 +25,7 @@ import (
 
 	"github.com/ceph/ceph-csi/internal/util"
 
-	. "github.com/onsi/ginkgo/v2" // nolint
+	. "github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -204,7 +204,7 @@ func checkGetKeyError(err error, stdErr string) bool {
 }
 
 // checkClusternameInMetadata check for cluster name metadata on RBD image.
-// nolint:nilerr // intentionally returning nil on error in the retry loop.
+//nolint:nilerr // intentionally returning nil on error in the retry loop.
 func checkClusternameInMetadata(f *framework.Framework, ns, pool, image string) {
 	t := time.Duration(deployTimeout) * time.Minute
 	var (

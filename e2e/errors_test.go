@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-// nolint:lll // error string cannot be split into multiple lines as is a
+//nolint:lll // error string cannot be split into multiple lines as is a
 // output from kubectl.
 func TestGetStdErr(t *testing.T) {
 	t.Parallel()

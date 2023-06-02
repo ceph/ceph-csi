@@ -70,7 +70,7 @@ func TryRADOSAborted(opErr error) error {
 		return opErr
 	}
 
-	// nolint:errorlint // Can't use errors.As() because rados.radosError is private.
+	//nolint:errorlint // Can't use errors.As() because rados.radosError is private.
 	errnoErr, ok := radosOpErr.OpError.(interface{ ErrorCode() int })
 	if !ok {
 		return opErr

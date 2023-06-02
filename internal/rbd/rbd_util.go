@@ -1161,7 +1161,7 @@ func generateVolumeFromVolumeID(
 // GenVolFromVolID generates a rbdVolume structure from the provided identifier, updating
 // the structure with elements from on-disk image metadata as well.
 //
-// nolint // returns non-exported *rbdVolume, which is fine
+
 func GenVolFromVolID(
 	ctx context.Context,
 	volumeID string,
@@ -1702,7 +1702,7 @@ func (ri *rbdImageMetadataStash) String() string {
 func stashRBDImageMetadata(volOptions *rbdVolume, metaDataPath string) error {
 	imgMeta := rbdImageMetadataStash{
 		// there are no checks for this at present
-		Version:        3, // nolint:gomnd // number specifies version.
+		Version:        3, //nolint:gomnd // number specifies version.
 		Pool:           volOptions.Pool,
 		RadosNamespace: volOptions.RadosNamespace,
 		ImageName:      volOptions.RbdImageName,

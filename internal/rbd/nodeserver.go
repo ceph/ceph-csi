@@ -78,7 +78,7 @@ var (
 	kernelRelease = ""
 	// deepFlattenSupport holds the list of kernel which support mapping rbd
 	// image with deep-flatten image feature
-	// nolint:gomnd // numbers specify Kernel versions.
+	//nolint:gomnd // numbers specify Kernel versions.
 	deepFlattenSupport = []util.KernelVersion{
 		{
 			Version:      5,
@@ -114,7 +114,7 @@ var (
 
 // parseBoolOption checks if parameters contain option and parse it. If it is
 // empty or not set return default.
-// nolint:unparam // currently defValue is always false, this can change in the future
+//nolint:unparam // currently defValue is always false, this can change in the future
 func parseBoolOption(ctx context.Context, parameters map[string]string, optionName string, defValue bool) bool {
 	boolVal := defValue
 

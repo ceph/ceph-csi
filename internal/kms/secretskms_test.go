@@ -53,7 +53,7 @@ func TestGenerateNonce(t *testing.T) {
 
 func TestGenerateCipher(t *testing.T) {
 	t.Parallel()
-	// nolint:gosec // this passphrase is intentionally hardcoded
+	//nolint:gosec // this passphrase is intentionally hardcoded
 	passphrase := "my-cool-luks-passphrase"
 	salt := "unique-id-for-the-volume"
 

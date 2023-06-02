@@ -30,7 +30,7 @@ import (
 // composeIntreeMigVolID create a volID similar to intree migration volID
 // the migration volID format looks like below
 // mig-mons-<hash>-image-<UUID_<poolhash>
-// nolint:lll    // ex: "mig_mons-b7f67366bb43f32e07d8a261a7840da9_image-e0b45b52-7e09-47d3-8f1b-806995fa4412_706f6f6c5f7265706c6963615f706f6f6c
+//nolint:lll    // ex: "mig_mons-b7f67366bb43f32e07d8a261a7840da9_image-e0b45b52-7e09-47d3-8f1b-806995fa4412_706f6f6c5f7265706c6963615f706f6f6c
 func composeIntreeMigVolID(mons, rbdImageName string) string {
 	poolField := hex.EncodeToString([]byte(defaultRBDPool))
 	monsField := monsPrefix + getMonsHash(mons)
