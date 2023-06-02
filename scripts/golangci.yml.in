@@ -195,3 +195,5 @@ linters:
     - maintidx
     - exhaustruct
     - containedctx
+    # TODO: depguard requires a list of (un)acceptible imports
+    - depguard
