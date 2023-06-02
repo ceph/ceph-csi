@@ -158,6 +158,11 @@ linters-settings:
     max-blank-identifiers: 3
   nestif:
     min-complexity: 7
+  revive:
+    rules:
+      # dot-imports is already checked by golint
+      - name: dot-imports
+        disabled: true
 
 linters:
   enable-all: true
