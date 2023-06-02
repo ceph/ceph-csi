@@ -1175,7 +1175,7 @@ func GenVolFromVolID(
 
 	err := vi.DecomposeCSIID(volumeID)
 	if err != nil {
-		return vol, fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
+		return vol, fmt.Errorf("%w: error decoding volume ID (%w) (%s)",
 			ErrInvalidVolID, err, volumeID)
 	}
 

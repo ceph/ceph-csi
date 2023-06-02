@@ -567,7 +567,7 @@ func RegenerateJournal(
 
 	err = vi.DecomposeCSIID(rbdVol.VolID)
 	if err != nil {
-		return "", fmt.Errorf("%w: error decoding volume ID (%s) (%s)",
+		return "", fmt.Errorf("%w: error decoding volume ID (%w) (%s)",
 			ErrInvalidVolID, err, rbdVol.VolID)
 	}
 
