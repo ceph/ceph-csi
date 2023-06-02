@@ -163,6 +163,10 @@ linters-settings:
       # dot-imports is already checked by golint
       - name: dot-imports
         disabled: true
+  stylecheck:
+    checks:
+      # "should not use dot imports" is handled by golint
+      - "-ST1001"
 
 linters:
   enable-all: true
