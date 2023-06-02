@@ -126,6 +126,8 @@ linters-settings:
       - wrapperFunc
       - unnamedResult
       - dupImport  # https://github.com/go-critic/go-critic/issues/845
+      # TODO: uncheckedInlineErr gives many false-positives
+      - uncheckedInlineErr
   unused:
     # treat code as a program (not a library) and report unused exported
     # identifiers; default is false.
@@ -195,5 +197,5 @@ linters:
     - maintidx
     - exhaustruct
     - containedctx
-    # TODO: depguard requires a list of (un)acceptible imports
+    # TODO: depguard requires a list of (un)acceptable imports
     - depguard
