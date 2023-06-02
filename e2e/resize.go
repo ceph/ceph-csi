@@ -45,7 +45,7 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 	_, err = c.CoreV1().
 		PersistentVolumeClaims(updatedPVC.Namespace).
 		Update(context.TODO(), updatedPVC, metav1.UpdateOptions{})
-	Expect(err).Should(BeNil())
+	Expect(err).ShouldNot(HaveOccurred())
 
 	start := time.Now()
 	framework.Logf("Waiting up to %v to be in Resized state", pvc)

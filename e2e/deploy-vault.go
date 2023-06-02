@@ -47,7 +47,7 @@ func deployVault(c kubernetes.Interface, deployTimeout int) {
 		"cm",
 		"ceph-csi-encryption-kms-config",
 		"--ignore-not-found=true")
-	Expect(err).Should(BeNil())
+	Expect(err).ShouldNot(HaveOccurred())
 
 	createORDeleteVault(kubectlCreate)
 	opt := metav1.ListOptions{
@@ -55,11 +55,11 @@ func deployVault(c kubernetes.Interface, deployTimeout int) {
 	}
 
 	pods, err := c.CoreV1().Pods(cephCSINamespace).List(context.TODO(), opt)
-	Expect(err).Should(BeNil())
-	Expect(len(pods.Items)).Should(Equal(1))
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(pods.Items).Should(HaveLen(1))
 	name := pods.Items[0].Name
 	err = waitForPodInRunningState(name, cephCSINamespace, c, deployTimeout, noError)
-	Expect(err).Should(BeNil())
+	Expect(err).ShouldNot(HaveOccurred())
 }
 
 func deleteVault() {
@@ -123,7 +123,7 @@ func createTenantServiceAccount(c kubernetes.Interface, ns string) error {
 // were created with createTenantServiceAccount.
 func deleteTenantServiceAccount(ns string) {
 	err := createORDeleteTenantServiceAccount(kubectlDelete, ns)
-	Expect(err).Should(BeNil())
+	Expect(err).ShouldNot(HaveOccurred())
 }
 
 // createORDeleteTenantServiceAccount is a helper that reads the tenant-sa.yaml
