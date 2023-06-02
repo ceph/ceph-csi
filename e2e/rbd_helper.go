@@ -792,6 +792,8 @@ func sparsifyBackingRBDImage(f *framework.Framework, pvc *v1.PersistentVolumeCla
 func deletePool(name string, cephFS bool, f *framework.Framework) error {
 	cmds := []string{}
 	if cephFS {
+		//nolint:dupword // "ceph osd pool delete" requires the pool 2x
+		//
 		// ceph fs fail
 		// ceph fs rm myfs --yes-i-really-mean-it
 		// ceph osd pool delete myfs-metadata myfs-metadata
@@ -803,6 +805,8 @@ func deletePool(name string, cephFS bool, f *framework.Framework) error {
 			fmt.Sprintf("ceph osd pool delete %s-metadata %s-metadata --yes-i-really-really-mean-it", name, name),
 			fmt.Sprintf("ceph osd pool delete %s-replicated %s-replicated --yes-i-really-really-mean-it", name, name))
 	} else {
+		//nolint:dupword // "ceph osd pool delete" requires the pool 2x
+		//
 		// ceph osd pool delete replicapool replicapool
 		// --yes-i-really-mean-it
 		cmds = append(cmds, fmt.Sprintf("ceph osd pool delete %s %s --yes-i-really-really-mean-it", name, name))
