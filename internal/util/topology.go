@@ -66,7 +66,7 @@ func GetTopologyFromDomainLabels(domainLabels, nodeName, driverName string) (map
 	// driverName is validated, and we are adding a lowercase "topology." to it, so no validation for conformance
 
 	// Convert passed in labels to a map, and check for uniqueness
-	labelsToRead := strings.SplitN(domainLabels, labelSeparator, -1)
+	labelsToRead := strings.Split(domainLabels, labelSeparator)
 	log.DefaultLog("passed in node labels for processing: %+v", labelsToRead)
 
 	labelsIn := make(map[string]bool)
@@ -158,7 +158,7 @@ func GetTopologyFromRequest(
 	}
 
 	// extract topology based pools configuration
-	err := json.Unmarshal([]byte(strings.Replace(topologyPoolsStr, "\n", " ", -1)), &topologyPools)
+	err := json.Unmarshal([]byte(strings.ReplaceAll(topologyPoolsStr, "\n", " ")), &topologyPools)
 	if err != nil {
 		return nil, nil, fmt.Errorf(
 			"failed to parse JSON encoded topology constrained pools parameter (%s): %w",

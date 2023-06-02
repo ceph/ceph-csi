@@ -37,7 +37,7 @@ func TestGzipLogFile(t *testing.T) {
 		t.Errorf("GzipLogFile failed: %v", err)
 	}
 
-	newExt := strings.Replace(logFile.Name(), ".log", ".gz", -1)
+	newExt := strings.ReplaceAll(logFile.Name(), ".log", ".gz")
 	if _, err = os.Stat(newExt); errors.Is(err, os.ErrNotExist) {
 		t.Errorf("compressed logFile (%s) not found: %v", newExt, err)
 	}
