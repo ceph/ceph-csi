@@ -64,7 +64,7 @@ func getCrushLocationMap(crushLocationLabels string, nodeLabels map[string]strin
 			crushLocationType = "host"
 		}
 		// replace "." with "-" to satisfy ceph crush map.
-		value = strings.Replace(strings.TrimSpace(value), ".", "-", -1)
+		value = strings.ReplaceAll(strings.TrimSpace(value), ".", "-")
 		crushLocationMap[crushLocationType] = value
 	}
 

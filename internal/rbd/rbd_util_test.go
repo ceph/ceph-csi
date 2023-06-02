@@ -297,7 +297,7 @@ func TestStrategicActionOnLogFile(t *testing.T) {
 			var err error
 			switch tt.args.logStrategy {
 			case "compress":
-				newExt := strings.Replace(tt.args.logFile, ".log", ".gz", -1)
+				newExt := strings.ReplaceAll(tt.args.logFile, ".log", ".gz")
 				if _, err = os.Stat(newExt); os.IsNotExist(err) {
 					t.Errorf("compressed logFile (%s) not found: %v", newExt, err)
 				}

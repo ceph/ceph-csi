@@ -29,7 +29,7 @@ func GzipLogFile(pathToFile string) error {
 	}
 
 	// Replace .log extension with .gz extension.
-	newExt := strings.Replace(pathToFile, ".log", ".gz", -1)
+	newExt := strings.ReplaceAll(pathToFile, ".log", ".gz")
 
 	// Open file for writing.
 	gf, err := os.OpenFile(newExt, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o644) // #nosec:G304,G302, file inclusion & perms

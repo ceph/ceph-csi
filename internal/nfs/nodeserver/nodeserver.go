@@ -232,7 +232,7 @@ func (ns *NodeServer) mountNFS(
 		volumeID, source, mountPoint, mountOptions)
 	if netNamespaceFilePath != "" {
 		_, stderr, err = util.ExecuteCommandWithNSEnter(
-			ctx, netNamespaceFilePath, "mount", args[:]...)
+			ctx, netNamespaceFilePath, "mount", args...)
 	} else {
 		err = ns.Mounter.Mount(source, mountPoint, "nfs", mountOptions)
 	}
