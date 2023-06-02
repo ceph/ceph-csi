@@ -49,6 +49,8 @@ type Subvolume struct {
 
 // SubVolumeClient is the interface that holds the signature of subvolume methods
 // that interacts with CephFS subvolume API's.
+//
+//nolint:interfacebloat // SubVolumeClient has more than 10 methods, that is ok.
 type SubVolumeClient interface {
 	// GetVolumeRootPathCeph returns the root path of the subvolume.
 	GetVolumeRootPathCeph(ctx context.Context) (string, error)
