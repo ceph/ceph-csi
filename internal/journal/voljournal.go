@@ -279,9 +279,9 @@ NOTE: As the function manipulates omaps, it should be called with a lock against
 held, to prevent parallel operations from modifying the state of the omaps for this request name.
 
 Return values:
-	- ImageData: which contains the UUID,Pool,PoolID and ImageAttributes that were reserved for the
-     passed in reqName, empty if there was no reservation found
-	- error: non-nil in case of any errors
+  - ImageData: which contains the UUID,Pool,PoolID and ImageAttributes that were reserved for the
+    passed in reqName, empty if there was no reservation found
+  - error: non-nil in case of any errors
 */
 func (conn *Connection) CheckReservation(ctx context.Context,
 	journalPool, reqName, namePrefix, snapParentName, kmsConfig string,
@@ -431,9 +431,9 @@ NOTE: As the function manipulates omaps, it should be called with a lock against
 held, to prevent parallel operations from modifying the state of the omaps for this request name.
 
 Input arguments:
-	- csiJournalPool: Pool name that holds the CSI request name based journal
-	- volJournalPool: Pool name that holds the image/subvolume and the per-image journal (may be
-	  different if image is created in a topology constrained pool)
+  - csiJournalPool: Pool name that holds the CSI request name based journal
+  - volJournalPool: Pool name that holds the image/subvolume and the per-image journal (may be
+    different if image is created in a topology constrained pool)
 */
 func (conn *Connection) UndoReservation(ctx context.Context,
 	csiJournalPool, volJournalPool, volName, reqName string,
@@ -537,24 +537,24 @@ NOTE: As the function manipulates omaps, it should be called with a lock against
 held, to prevent parallel operations from modifying the state of the omaps for this request name.
 
 Input arguments:
-	- journalPool: Pool where the CSI journal is stored (maybe different than the pool where the
-	  image/subvolume is created due to topology constraints)
-	- journalPoolID: pool ID of the journalPool
-	- imagePool: Pool where the image/subvolume is created
-	- imagePoolID: pool ID of the imagePool
-	- reqName: Name of the volume request received
-	- namePrefix: Prefix to use when generating the image/subvolume name (suffix is an auto-generated UUID)
-	- parentName: Name of the parent image/subvolume if reservation is for a snapshot (optional)
-	- kmsConf: Name of the key management service used to encrypt the image (optional)
-	- encryptionType: Type of encryption used when kmsConf is set (optional)
-	- volUUID: UUID need to be reserved instead of auto-generating one (this is useful for mirroring and metro-DR)
-	- owner: the owner of the volume (optional)
-	- backingSnapshotID: ID of the snapshot on which the CephFS snapshot-backed volume is based (optional)
+  - journalPool: Pool where the CSI journal is stored (maybe different than the pool where the
+    image/subvolume is created due to topology constraints)
+  - journalPoolID: pool ID of the journalPool
+  - imagePool: Pool where the image/subvolume is created
+  - imagePoolID: pool ID of the imagePool
+  - reqName: Name of the volume request received
+  - namePrefix: Prefix to use when generating the image/subvolume name (suffix is an auto-generated UUID)
+  - parentName: Name of the parent image/subvolume if reservation is for a snapshot (optional)
+  - kmsConf: Name of the key management service used to encrypt the image (optional)
+  - encryptionType: Type of encryption used when kmsConf is set (optional)
+  - volUUID: UUID need to be reserved instead of auto-generating one (this is useful for mirroring and metro-DR)
+  - owner: the owner of the volume (optional)
+  - backingSnapshotID: ID of the snapshot on which the CephFS snapshot-backed volume is based (optional)
 
 Return values:
-	- string: Contains the UUID that was reserved for the passed in reqName
-	- string: Contains the image name that was reserved for the passed in reqName
-	- error: non-nil in case of any errors
+  - string: Contains the UUID that was reserved for the passed in reqName
+  - string: Contains the image name that was reserved for the passed in reqName
+  - error: non-nil in case of any errors
 */
 func (conn *Connection) ReserveName(ctx context.Context,
 	journalPool string, journalPoolID int64,

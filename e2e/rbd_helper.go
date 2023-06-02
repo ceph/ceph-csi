@@ -75,6 +75,7 @@ var deepFlattenSupport = []util.KernelVersion{
 
 // To use `io-timeout=0` we need
 // www.mail-archive.com/linux-block@vger.kernel.org/msg38060.html
+//
 //nolint:gomnd // numbers specify Kernel versions.
 var nbdZeroIOtimeoutSupport = []util.KernelVersion{
 	{

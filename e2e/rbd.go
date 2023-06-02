@@ -204,6 +204,7 @@ func checkGetKeyError(err error, stdErr string) bool {
 }
 
 // checkClusternameInMetadata check for cluster name metadata on RBD image.
+//
 //nolint:nilerr // intentionally returning nil on error in the retry loop.
 func checkClusternameInMetadata(f *framework.Framework, ns, pool, image string) {
 	t := time.Duration(deployTimeout) * time.Minute

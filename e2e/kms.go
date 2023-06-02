@@ -122,8 +122,9 @@ func (vc *vaultConfig) canGetPassphrase() bool {
 
 // getPassphrase method will execute few commands to try read the secret for
 // specified key from inside the vault container:
-//  * authenticate with vault and ignore any stdout (we do not need output)
-//  * issue get request for particular key
+//   - authenticate with vault and ignore any stdout (we do not need output)
+//   - issue get request for particular key
+//
 // resulting in stdOut (first entry in tuple) - output that contains the key
 // or stdErr (second entry in tuple) - error getting the key.
 func (vc *vaultConfig) getPassphrase(f *framework.Framework, key string) (string, string) {

@@ -241,6 +241,7 @@ func checkValidCreateVolumeRequest(
 }
 
 // CreateVolume creates a reservation and the volume in backend, if it is not already present.
+//
 //nolint:gocognit,gocyclo,nestif,cyclop // TODO: reduce complexity
 func (cs *ControllerServer) CreateVolume(
 	ctx context.Context,
@@ -730,6 +731,7 @@ func (cs *ControllerServer) ControllerExpandVolume(
 
 // CreateSnapshot creates the snapshot in backend and stores metadata
 // in store
+//
 //nolint:gocognit,gocyclo,cyclop // golangci-lint did not catch this earlier, needs to get fixed late
 func (cs *ControllerServer) CreateSnapshot(
 	ctx context.Context,
@@ -986,6 +988,7 @@ func (cs *ControllerServer) validateSnapshotReq(ctx context.Context, req *csi.Cr
 
 // DeleteSnapshot deletes the snapshot in backend and removes the
 // snapshot metadata from store.
+//
 //nolint:gocyclo,cyclop // TODO: reduce complexity
 func (cs *ControllerServer) DeleteSnapshot(
 	ctx context.Context,

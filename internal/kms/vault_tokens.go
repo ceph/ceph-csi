@@ -160,30 +160,31 @@ VaultTokens represents a Hashicorp Vault KMS configuration that provides a
 Token per tenant.
 
 Example JSON structure in the KMS config is,
-{
-    "vault-with-tokens": {
-        "encryptionKMSType": "vaulttokens",
-        "vaultAddress": "http://vault.default.svc.cluster.local:8200",
-        "vaultBackend": "kv-v2",
-        "vaultBackendPath": "secret/",
-        "vaultTLSServerName": "vault.default.svc.cluster.local",
-        "vaultCAFromSecret": "vault-ca",
-        "vaultClientCertFromSecret": "vault-client-cert",
-        "vaultClientCertKeyFromSecret": "vault-client-cert-key",
-        "vaultCAVerify": "false",
-        "tenantConfigName": "ceph-csi-kms-config",
-        "tenantTokenName": "ceph-csi-kms-token",
-        "tenants": {
-            "my-app": {
-                "vaultAddress": "https://vault.example.com",
-                "vaultCAVerify": "true"
-            },
-            "an-other-app": {
-                "tenantTokenName": "storage-encryption-token"
-            }
-	},
-	...
-}.
+
+	{
+	    "vault-with-tokens": {
+	        "encryptionKMSType": "vaulttokens",
+	        "vaultAddress": "http://vault.default.svc.cluster.local:8200",
+	        "vaultBackend": "kv-v2",
+	        "vaultBackendPath": "secret/",
+	        "vaultTLSServerName": "vault.default.svc.cluster.local",
+	        "vaultCAFromSecret": "vault-ca",
+	        "vaultClientCertFromSecret": "vault-client-cert",
+	        "vaultClientCertKeyFromSecret": "vault-client-cert-key",
+	        "vaultCAVerify": "false",
+	        "tenantConfigName": "ceph-csi-kms-config",
+	        "tenantTokenName": "ceph-csi-kms-token",
+	        "tenants": {
+	            "my-app": {
+	                "vaultAddress": "https://vault.example.com",
+	                "vaultCAVerify": "true"
+	            },
+	            "an-other-app": {
+	                "tenantTokenName": "storage-encryption-token"
+	            }
+		},
+		...
+	}.
 */
 type vaultTenantConnection struct {
 	vaultConnection

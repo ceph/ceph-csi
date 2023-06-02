@@ -32,15 +32,15 @@ The CSI identifier is composed as elaborated in the comment against ComposeCSIID
 DecomposeCSIID is the inverse of the same function.
 
 The CSIIdentifier structure carries the following fields,
-- LocationID: 64 bit integer identifier determining the location of the volume on the Ceph cluster.
-  It is the ID of the poolname or fsname, for RBD or CephFS backed volumes respectively.
-- EncodingVersion: Carries the version number of the encoding scheme used to encode the CSI ID,
-  and is preserved for any future proofing w.r.t changes in the encoding scheme, and to retain
-  ability to parse backward compatible encodings.
-- ClusterID: Is a unique ID per cluster that the CSI instance is serving and is restricted to
-  lengths that can be accommodated in the encoding scheme.
-- ObjectUUID: Is the on-disk uuid of the object (image/snapshot) name, for the CSI volume that
-  corresponds to this CSI ID.
+  - LocationID: 64 bit integer identifier determining the location of the volume on the Ceph cluster.
+    It is the ID of the poolname or fsname, for RBD or CephFS backed volumes respectively.
+  - EncodingVersion: Carries the version number of the encoding scheme used to encode the CSI ID,
+    and is preserved for any future proofing w.r.t changes in the encoding scheme, and to retain
+    ability to parse backward compatible encodings.
+  - ClusterID: Is a unique ID per cluster that the CSI instance is serving and is restricted to
+    lengths that can be accommodated in the encoding scheme.
+  - ObjectUUID: Is the on-disk uuid of the object (image/snapshot) name, for the CSI volume that
+    corresponds to this CSI ID.
 */
 type CSIIdentifier struct {
 	LocationID      int64
@@ -60,6 +60,7 @@ const (
 /*
 ComposeCSIID composes a CSI ID from passed in parameters.
 Version 1 of the encoding scheme is as follows,
+
 	[csi_id_version=1:4byte] + [-:1byte]
 	[length of clusterID=1:4byte] + [-:1byte]
 	[clusterID:36bytes (MAX)] + [-:1byte]
