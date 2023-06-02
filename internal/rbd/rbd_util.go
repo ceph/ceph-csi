@@ -1161,7 +1161,7 @@ func generateVolumeFromVolumeID(
 // GenVolFromVolID generates a rbdVolume structure from the provided identifier, updating
 // the structure with elements from on-disk image metadata as well.
 //
-
+//nolint:golint // TODO: returning unexported rbdVolume type, use an interface instead.
 func GenVolFromVolID(
 	ctx context.Context,
 	volumeID string,
