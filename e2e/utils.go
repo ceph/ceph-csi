@@ -852,7 +852,7 @@ func writeDataAndCalChecksum(app *v1.Pod, opt *metav1.ListOptions, f *framework.
 	return checkSum, nil
 }
 
-// nolint:gocyclo,gocognit,nestif,cyclop // reduce complexity
+//nolint:gocyclo,gocognit,nestif,cyclop // reduce complexity
 func validatePVCClone(
 	totalCount int,
 	sourcePvcPath, sourceAppPath, clonePvcPath, clonePvcAppPath,
@@ -1067,7 +1067,7 @@ func validatePVCClone(
 	validateRBDImageCount(f, 0, defaultRBDPool)
 }
 
-// nolint:gocyclo,gocognit,nestif,cyclop // reduce complexity
+//nolint:gocyclo,gocognit,nestif,cyclop // reduce complexity
 func validatePVCSnapshot(
 	totalCount int,
 	pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string,
@@ -1529,7 +1529,7 @@ func validateController(
 	return deleteResource(rbdExamplePath + "storageclass.yaml")
 }
 
-// nolint:deadcode,unused // Unused code will be used in future.
+//nolint:deadcode,unused // Unused code will be used in future.
 // k8sVersionGreaterEquals checks the ServerVersion of the Kubernetes cluster
 // and compares it to the major.minor version passed. In case the version of
 // the cluster is equal or higher to major.minor, `true` is returned, `false`
@@ -1681,7 +1681,7 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 // retryKubectlArgs takes a namespace and action telling kubectl what to do
 // with the passed arguments. This function retries until no error occurred, or
 // the timeout passed.
-// nolint:unparam // retryKubectlArgs will be used with kubectlDelete arg later on.
+//nolint:unparam // retryKubectlArgs will be used with kubectlDelete arg later on.
 func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...string) error {
 	timeout := time.Duration(t) * time.Minute
 	args = append([]string{string(action)}, args...)

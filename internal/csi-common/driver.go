@@ -82,7 +82,7 @@ func (d *CSIDriver) ValidateControllerServiceRequest(c csi.ControllerServiceCapa
 		}
 	}
 
-	return status.Error(codes.InvalidArgument, fmt.Sprintf("%s", c)) //nolint
+	return status.Error(codes.InvalidArgument, fmt.Sprintf("%s", c))
 }
 
 // AddControllerServiceCapabilities stores the controller capabilities

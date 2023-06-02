@@ -67,7 +67,7 @@ type ClusterInfo struct {
 }
 
 // Expected JSON structure in the passed in config file is,
-// nolint:godot // example json content should not contain unwanted dot.
+//nolint:godot // example json content should not contain unwanted dot.
 /*
 [{
 	"clusterID": "<cluster-id>",

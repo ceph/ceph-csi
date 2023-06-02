@@ -123,7 +123,7 @@ func setConfigString(option *string, config map[string]interface{}, key string) 
 // these settings will be used when connecting to the Vault service with
 // vc.connectVault().
 //
-// nolint:gocyclo,cyclop // iterating through many config options, not complex at all.
+//nolint:gocyclo,cyclop // iterating through many config options, not complex at all.
 func (vc *vaultConnection) initConnection(config map[string]interface{}) error {
 	vaultConfig := make(map[string]interface{})
 	keyContext := make(map[string]string)

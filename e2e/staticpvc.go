@@ -322,7 +322,7 @@ func validateRBDStaticMigrationPVC(f *framework.Framework, appPath, scName strin
 	return err
 }
 
-// nolint:gocyclo,cyclop // reduce complexity
+//nolint:gocyclo,cyclop // reduce complexity
 func validateCephFsStaticPV(f *framework.Framework, appPath, scPath string) error {
 	opt := make(map[string]string)
 	var (

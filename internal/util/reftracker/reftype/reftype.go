@@ -54,7 +54,7 @@ func FromBytes(bs []byte) (RefType, error) {
 	}
 
 	num := RefType(bs[0])
-	switch num { // nolint:exhaustive // reftype.Unknown is handled in default case.
+	switch num { //nolint:exhaustive // reftype.Unknown is handled in default case.
 	case Normal, Mask:
 		return num, nil
 	default:

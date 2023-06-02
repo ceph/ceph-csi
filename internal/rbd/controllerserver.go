@@ -1060,7 +1060,7 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(
 }
 
 // CreateSnapshot creates the snapshot in backend and stores metadata in store.
-// nolint:gocyclo,cyclop // TODO: reduce complexity.
+//nolint:gocyclo,cyclop // TODO: reduce complexity.
 func (cs *ControllerServer) CreateSnapshot(
 	ctx context.Context,
 	req *csi.CreateSnapshotRequest,
