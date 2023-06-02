@@ -114,6 +114,7 @@ var (
 
 // parseBoolOption checks if parameters contain option and parse it. If it is
 // empty or not set return default.
+//
 //nolint:unparam // currently defValue is always false, this can change in the future
 func parseBoolOption(ctx context.Context, parameters map[string]string, optionName string, defValue bool) bool {
 	boolVal := defValue

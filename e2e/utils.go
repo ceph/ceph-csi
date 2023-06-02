@@ -1529,13 +1529,14 @@ func validateController(
 	return deleteResource(rbdExamplePath + "storageclass.yaml")
 }
 
-//nolint:deadcode,unused // Unused code will be used in future.
 // k8sVersionGreaterEquals checks the ServerVersion of the Kubernetes cluster
 // and compares it to the major.minor version passed. In case the version of
 // the cluster is equal or higher to major.minor, `true` is returned, `false`
 // otherwise.
 // If fetching the ServerVersion of the Kubernetes cluster fails, the calling
 // test case is marked as `FAILED` and gets aborted.
+//
+//nolint:deadcode,unused // Unused code will be used in future.
 func k8sVersionGreaterEquals(c kubernetes.Interface, major, minor int) bool {
 	v, err := c.Discovery().ServerVersion()
 	if err != nil {
@@ -1681,6 +1682,7 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 // retryKubectlArgs takes a namespace and action telling kubectl what to do
 // with the passed arguments. This function retries until no error occurred, or
 // the timeout passed.
+//
 //nolint:unparam // retryKubectlArgs will be used with kubectlDelete arg later on.
 func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...string) error {
 	timeout := time.Duration(t) * time.Minute

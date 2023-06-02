@@ -96,18 +96,18 @@ func validateFsType(mountpoint, fsType string, mis []mountutil.MountInfo) bool {
 // volume moutpoints inside the NodePublishVolume call.
 //
 // Restoration is performed in following steps:
-// 1. Detection: staging target path must be a working mountpoint, and target
-//    path must not be a corrupted mountpoint (see getMountState()). If either
-//    of those checks fail, mount recovery is performed.
-// 2. Recovery preconditions:
-//    * NodeStageMountinfo is present for this volume,
-//    * if staging target path and target path are mountpoints, they must be
-//      managed by ceph-fuse,
-//    * VolumeOptions.Mounter must evaluate to "fuse".
-// 3. Recovery:
-//    * staging target path is unmounted and mounted again using ceph-fuse,
-//    * target path is only unmounted; NodePublishVolume is then expected to
-//      continue normally.
+//  1. Detection: staging target path must be a working mountpoint, and target
+//     path must not be a corrupted mountpoint (see getMountState()). If either
+//     of those checks fail, mount recovery is performed.
+//  2. Recovery preconditions:
+//     * NodeStageMountinfo is present for this volume,
+//     * if staging target path and target path are mountpoints, they must be
+//     managed by ceph-fuse,
+//     * VolumeOptions.Mounter must evaluate to "fuse".
+//  3. Recovery:
+//     * staging target path is unmounted and mounted again using ceph-fuse,
+//     * target path is only unmounted; NodePublishVolume is then expected to
+//     continue normally.
 func (ns *NodeServer) tryRestoreFuseMountsInNodePublish(
 	ctx context.Context,
 	volID fsutil.VolumeID,

@@ -44,29 +44,30 @@ ServiceAccount from the Tenant that owns the volume to store/retrieve the
 encryption passphrase of volumes.
 
 Example JSON structure in the KMS config is,
-{
-    "vault-tenant-sa": {
-        "encryptionKMSType": "vaulttenantsa",
-        "vaultAddress": "http://vault.default.svc.cluster.local:8200",
-        "vaultBackendPath": "secret/",
-        "vaultTLSServerName": "vault.default.svc.cluster.local",
-        "vaultCAFromSecret": "vault-ca",
-        "vaultClientCertFromSecret": "vault-client-cert",
-        "vaultClientCertKeyFromSecret": "vault-client-cert-key",
-        "vaultCAVerify": "false",
-        "tenantConfigName": "ceph-csi-kms-config",
-        "tenantSAName": "ceph-csi-vault-sa",
-        "tenants": {
-            "my-app": {
-                "vaultAddress": "https://vault.example.com",
-                "vaultCAVerify": "true"
-            },
-            "an-other-app": {
-                "tenantSAName": "encryped-storage-sa"
-            }
-	},
-	...
-}.
+
+	{
+	    "vault-tenant-sa": {
+	        "encryptionKMSType": "vaulttenantsa",
+	        "vaultAddress": "http://vault.default.svc.cluster.local:8200",
+	        "vaultBackendPath": "secret/",
+	        "vaultTLSServerName": "vault.default.svc.cluster.local",
+	        "vaultCAFromSecret": "vault-ca",
+	        "vaultClientCertFromSecret": "vault-client-cert",
+	        "vaultClientCertKeyFromSecret": "vault-client-cert-key",
+	        "vaultCAVerify": "false",
+	        "tenantConfigName": "ceph-csi-kms-config",
+	        "tenantSAName": "ceph-csi-vault-sa",
+	        "tenants": {
+	            "my-app": {
+	                "vaultAddress": "https://vault.example.com",
+	                "vaultCAVerify": "true"
+	            },
+	            "an-other-app": {
+	                "tenantSAName": "encryped-storage-sa"
+	            }
+		},
+		...
+	}.
 */
 type vaultTenantSA struct {
 	vaultTenantConnection

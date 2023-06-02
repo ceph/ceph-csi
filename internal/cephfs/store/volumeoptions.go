@@ -210,6 +210,7 @@ func fmtBackingSnapshotOptionMismatch(optName, expected, actual string) error {
 
 // NewVolumeOptions generates a new instance of volumeOptions from the provided
 // CSI request parameters.
+//
 //nolint:gocyclo,cyclop // TODO: reduce complexity
 func NewVolumeOptions(
 	ctx context.Context,
@@ -348,6 +349,7 @@ func IsVolumeCreateRO(caps []*csi.VolumeCapability) bool {
 
 // newVolumeOptionsFromVolID generates a new instance of volumeOptions and VolumeIdentifier
 // from the provided CSI VolumeID.
+//
 //nolint:gocyclo,cyclop // TODO: reduce complexity
 func NewVolumeOptionsFromVolID(
 	ctx context.Context,
