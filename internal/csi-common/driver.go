@@ -69,6 +69,8 @@ func NewCSIDriver(name, v, nodeID string) *CSIDriver {
 
 // ValidateControllerServiceRequest validates the controller
 // plugin capabilities.
+//
+//nolint:interfacer // c can be of type fmt.Stringer, but that does not make the API clearer
 func (d *CSIDriver) ValidateControllerServiceRequest(c csi.ControllerServiceCapability_RPC_Type) error {
 	if c == csi.ControllerServiceCapability_RPC_UNKNOWN {
 		return nil
