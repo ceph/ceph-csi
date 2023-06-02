@@ -17,8 +17,6 @@ limitations under the License.
 package csicommon
 
 import (
-	"fmt"
-
 	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -82,7 +80,7 @@ func (d *CSIDriver) ValidateControllerServiceRequest(c csi.ControllerServiceCapa
 		}
 	}
 
-	return status.Error(codes.InvalidArgument, fmt.Sprintf("%s", c))
+	return status.Error(codes.InvalidArgument, c.String())
 }
 
 // AddControllerServiceCapabilities stores the controller capabilities
