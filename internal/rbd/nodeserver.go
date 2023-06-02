@@ -1023,7 +1023,7 @@ func (ns *NodeServer) NodeUnstageVolume(
 		}
 
 		// It was not mounted and image metadata is also missing, we are done as the last step in
-		// in the staging transaction is complete
+		// the staging transaction is complete
 		return &csi.NodeUnstageVolumeResponse{}, nil
 	}
 

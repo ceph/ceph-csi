@@ -308,8 +308,8 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, err
 	}
 
-	// TODO: create/get a connection from the the ConnPool, and do not pass
-	// the credentials to any of the utility functions.
+	// TODO: create/get a connection from the ConnPool, and do not pass the
+	// credentials to any of the utility functions.
 
 	cr, err := util.NewUserCredentialsWithMigration(req.GetSecrets())
 	if err != nil {
