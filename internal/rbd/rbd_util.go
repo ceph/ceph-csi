@@ -1197,6 +1197,7 @@ func GenVolFromVolID(
 			return rbdVol, vErr
 		}
 	}
+
 	return vol, err
 }
 
