@@ -294,7 +294,7 @@ var _ = Describe("nfs", func() {
 			logsCSIPods("app=csi-nfsplugin", c)
 
 			// log all details from the namespace where Ceph-CSI is deployed
-			e2edebug.DumpAllNamespaceInfo(c, cephCSINamespace)
+			e2edebug.DumpAllNamespaceInfo(context.TODO(), c, cephCSINamespace)
 		}
 		err := deleteConfigMap(nfsDirPath)
 		if err != nil {
