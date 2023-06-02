@@ -35,7 +35,7 @@ import (
 func getSnapshotClass(path string) snapapi.VolumeSnapshotClass {
 	sc := snapapi.VolumeSnapshotClass{}
 	err := unmarshal(path, &sc)
-	Expect(err).Should(BeNil())
+	Expect(err).ShouldNot(HaveOccurred())
 
 	return sc
 }
@@ -43,7 +43,7 @@ func getSnapshotClass(path string) snapapi.VolumeSnapshotClass {
 func getSnapshot(path string) snapapi.VolumeSnapshot {
 	sc := snapapi.VolumeSnapshot{}
 	err := unmarshal(path, &sc)
-	Expect(err).Should(BeNil())
+	Expect(err).ShouldNot(HaveOccurred())
 
 	return sc
 }
