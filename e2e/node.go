@@ -60,7 +60,7 @@ func checkNodeHasLabel(c kubernetes.Interface, labelKey, labelValue string) erro
 		return fmt.Errorf("failed to list node: %w", err)
 	}
 	for i := range nodes.Items {
-		e2enode.ExpectNodeHasLabel(c, nodes.Items[i].Name, labelKey, labelValue)
+		e2enode.ExpectNodeHasLabel(context.TODO(), c, nodes.Items[i].Name, labelKey, labelValue)
 	}
 
 	return nil

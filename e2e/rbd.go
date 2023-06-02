@@ -355,7 +355,7 @@ var _ = Describe("RBD", func() {
 			logsCSIPods("app=csi-rbdplugin", c)
 
 			// log all details from the namespace where Ceph-CSI is deployed
-			e2edebug.DumpAllNamespaceInfo(c, cephCSINamespace)
+			e2edebug.DumpAllNamespaceInfo(context.TODO(), c, cephCSINamespace)
 		}
 
 		err := deleteConfigMap(rbdDirPath)
@@ -596,7 +596,7 @@ var _ = Describe("RBD", func() {
 				validateRBDImageCount(f, 1, defaultRBDPool)
 				validateOmapCount(f, 1, rbdType, defaultRBDPool, volumesType)
 				// create namespace for reattach PVC, deletion will be taken care by framework
-				ns, err := f.CreateNamespace(reattachPVCNamespace, nil)
+				ns, err := f.CreateNamespace(context.TODO(), reattachPVCNamespace, nil)
 				if err != nil {
 					framework.Failf("failed to create namespace: %v", err)
 				}

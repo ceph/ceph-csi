@@ -46,7 +46,7 @@ func logsCSIPods(label string, c clientset.Interface) {
 func kubectlLogPod(c clientset.Interface, pod *v1.Pod) {
 	container := pod.Spec.Containers
 	for i := range container {
-		logs, err := frameworkPod.GetPodLogs(c, pod.Namespace, pod.Name, container[i].Name)
+		logs, err := frameworkPod.GetPodLogs(context.TODO(), c, pod.Namespace, pod.Name, container[i].Name)
 		if err != nil {
 			logs, err = getPreviousPodLogs(c, pod.Namespace, pod.Name, container[i].Name)
 			if err != nil {
