@@ -60,8 +60,8 @@ func waitForDaemonSets(name, ns string, c kubernetes.Interface, t int) error {
 	start := time.Now()
 	framework.Logf("Waiting up to %v for all daemonsets in namespace '%s' to start", timeout, ns)
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
-		ds, err := c.AppsV1().DaemonSets(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		ds, err := c.AppsV1().DaemonSets(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			framework.Logf("Error getting daemonsets in namespace: '%s': %v", ns, err)
 			if strings.Contains(err.Error(), "not found") {
@@ -97,8 +97,8 @@ func findPodAndContainerName(f *framework.Framework, ns, cn string, opt *metav1.
 		podList *v1.PodList
 		listErr error
 	)
-	err := wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
-		podList, listErr = e2epod.PodClientNS(f, ns).List(context.TODO(), *opt)
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		podList, listErr = e2epod.PodClientNS(f, ns).List(ctx, *opt)
 		if listErr != nil {
 			if isRetryableAPIError(listErr) {
 				return false, nil
@@ -353,8 +353,8 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 	start := time.Now()
 	framework.Logf("Waiting up to %v to be in Running state", name)
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
-		pod, err := c.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		pod, err := c.CoreV1().Pods(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
@@ -369,7 +369,7 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 			return false, conditions.ErrPodCompleted
 		case v1.PodPending:
 			if expectedError != "" {
-				events, err := c.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
+				events, err := c.CoreV1().Events(ns).List(ctx, metav1.ListOptions{
 					FieldSelector: fmt.Sprintf("involvedObject.name=%s", name),
 				})
 				if err != nil {
@@ -395,15 +395,16 @@ func waitForPodInRunningState(name, ns string, c kubernetes.Interface, t int, ex
 
 func deletePod(name, ns string, c kubernetes.Interface, t int) error {
 	timeout := time.Duration(t) * time.Minute
-	err := c.CoreV1().Pods(ns).Delete(context.TODO(), name, metav1.DeleteOptions{})
+	ctx := context.TODO()
+	err := c.CoreV1().Pods(ns).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to delete app: %w", err)
 	}
 	start := time.Now()
 	framework.Logf("Waiting for pod %v to be deleted", name)
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
-		_, err := c.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	return wait.PollUntilContextTimeout(ctx, poll, timeout, true, func(ctx context.Context) (bool, error) {
+		_, err := c.CoreV1().Pods(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil

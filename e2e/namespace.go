@@ -38,13 +38,14 @@ func createNamespace(c kubernetes.Interface, name string) error {
 			Name: name,
 		},
 	}
-	_, err := c.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
+	ctx := context.TODO()
+	_, err := c.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
 	if err != nil && !apierrs.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create namespace: %w", err)
 	}
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
-		_, err := c.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
+	return wait.PollUntilContextTimeout(ctx, poll, timeout, true, func(ctx context.Context) (bool, error) {
+		_, err := c.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			framework.Logf("Error getting namespace: '%s': %v", name, err)
 			if apierrs.IsNotFound(err) {
@@ -63,13 +64,14 @@ func createNamespace(c kubernetes.Interface, name string) error {
 
 func deleteNamespace(c kubernetes.Interface, name string) error {
 	timeout := time.Duration(deployTimeout) * time.Minute
-	err := c.CoreV1().Namespaces().Delete(context.TODO(), name, metav1.DeleteOptions{})
+	ctx := context.TODO()
+	err := c.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !apierrs.IsNotFound(err) {
 		return fmt.Errorf("failed to delete namespace: %w", err)
 	}
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
-		_, err = c.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
+	return wait.PollUntilContextTimeout(ctx, poll, timeout, true, func(ctx context.Context) (bool, error) {
+		_, err = c.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if apierrs.IsNotFound(err) {
 				return true, nil

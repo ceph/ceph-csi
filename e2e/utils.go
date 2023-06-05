@@ -248,9 +248,9 @@ func getMons(ns string, c kubernetes.Interface) ([]string, error) {
 
 	var svcList *v1.ServiceList
 	t := time.Duration(deployTimeout) * time.Minute
-	err := wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(ctx context.Context) (bool, error) {
 		var svcErr error
-		svcList, svcErr = c.CoreV1().Services(ns).List(context.TODO(), opt)
+		svcList, svcErr = c.CoreV1().Services(ns).List(ctx, opt)
 		if svcErr != nil {
 			if isRetryableAPIError(svcErr) {
 				return false, nil
@@ -1560,8 +1560,8 @@ func waitForJobCompletion(c kubernetes.Interface, ns, job string, timeout int) e
 
 	framework.Logf("waiting for Job %s/%s to be in state %q", ns, job, batch.JobComplete)
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
-		j, err := c.BatchV1().Jobs(ns).Get(context.TODO(), job, metav1.GetOptions{})
+	return wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(ctx context.Context) (bool, error) {
+		j, err := c.BatchV1().Jobs(ns).Get(ctx, job, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
