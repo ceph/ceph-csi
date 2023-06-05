@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   retest:
+    if: github.repository == 'ceph/ceph-csi'
     runs-on: ubuntu-latest
     steps:
       # path to the retest action
