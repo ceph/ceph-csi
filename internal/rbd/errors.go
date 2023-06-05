@@ -45,4 +45,22 @@ var (
 	// ErrLastSyncTimeNotFound is returned when last sync time is not found for
 	// the image.
 	ErrLastSyncTimeNotFound = errors.New("last sync time not found")
+	// ErrFailedPrecondition is returned when operation is rejected because the system is not in a state
+	// required for the operation's execution.
+	ErrFailedPrecondition = errors.New("system is not in a state required for the operation's execution")
+	// ErrUnavailable is returned when the image needs to be recreated
+	// locally and may be corrected by retrying with a backoff.
+	ErrUnavailable = errors.New("image needs to be recreated")
+	// ErrAborted is returned when the operation is aborted.
+	ErrAborted = errors.New("operation got aborted")
+	// ErrInvalidArgument is returned when the client specified an invalid argument.
+	ErrInvalidArgument = errors.New("invalid arguments provided")
+	// ErrFetchingLocalState is returned when the operation to fetch local state fails.
+	ErrFetchingLocalState = errors.New("failed to get local state")
+	// ErrDisableImageMirroringFailed is returned when the operation to disable image mirroring fails.
+	ErrDisableImageMirroringFailed = errors.New("failed to disable image mirroring")
+	// ErrFetchingMirroringInfo is returned when the operation to fetch mirroring info of image fails.
+	ErrFetchingMirroringInfo = errors.New("failed to get mirroring info of image")
+	// ErrResyncImageFailed is returned when the operation to resync the image fails.
+	ErrResyncImageFailed = errors.New("failed to resync image")
 )

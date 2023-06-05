@@ -18,12 +18,10 @@ package rbd
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	librbd "github.com/ceph/go-ceph/rbd"
-	"github.com/csi-addons/spec/lib/go/replication"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func (rv *rbdVolume) ResyncVol(localStatus librbd.SiteMirrorImageStatus, force bool) error {
@@ -31,19 +29,18 @@ func (rv *rbdVolume) ResyncVol(localStatus librbd.SiteMirrorImageStatus, force b
 		// If the force option is not set return the error message to retry
 		// with Force option.
 		if !force {
-			return status.Errorf(codes.FailedPrecondition,
-				"image is in %q state, description (%s). Force resync to recover volume",
-				localStatus.State, localStatus.Description)
+			return fmt.Errorf("%w: image is in %q state, description (%s). Force resync to recover volume",
+				ErrFailedPrecondition, localStatus.State, localStatus.Description)
 		}
 		err := rv.resyncImage()
 		if err != nil {
-			return status.Error(codes.Internal, err.Error())
+			return fmt.Errorf("%w: failed to resync image: %w", ErrResyncImageFailed, err)
 		}
 
 		// If we issued a resync, return a non-final error as image needs to be recreated
 		// locally. Caller retries till RBD syncs an initial version of the image to
 		// report its status in the resync request.
-		return status.Error(codes.Unavailable, "awaiting initial resync due to split brain")
+		return fmt.Errorf("%w: awaiting initial resync due to split brain", ErrUnavailable)
 	}
 
 	return nil
@@ -85,10 +82,10 @@ func resyncRequired(localStatus librbd.SiteMirrorImageStatus) bool {
 	return false
 }
 
-func DisableVolumeReplication(rbdVol *rbdVolume,
+func (rv *rbdVolume) DisableVolumeReplication(
 	mirroringInfo *librbd.MirrorImageInfo,
 	force bool,
-) (*replication.DisableVolumeReplicationResponse, error) {
+) error {
 	if !mirroringInfo.Primary {
 		// Return success if the below condition is met
 		// Local image is secondary
@@ -102,32 +99,30 @@ func DisableVolumeReplication(rbdVol *rbdVolume,
 		// disabled the image on all the remote (secondary) clusters will get
 		// auto-deleted. This helps in garbage collecting the volume
 		// replication Kubernetes artifacts after failback operation.
-		localStatus, rErr := rbdVol.GetLocalState()
+		localStatus, rErr := rv.GetLocalState()
 		if rErr != nil {
-			return nil, status.Error(codes.Internal, rErr.Error())
+			return fmt.Errorf("%w: %w", ErrFetchingLocalState, rErr)
 		}
 		if localStatus.Up && localStatus.State == librbd.MirrorImageStatusStateReplaying {
-			return &replication.DisableVolumeReplicationResponse{}, nil
+			return nil
 		}
 
-		return nil, status.Errorf(codes.InvalidArgument,
-			"secondary image status is up=%t and state=%s",
-			localStatus.Up,
-			localStatus.State)
+		return fmt.Errorf("%w: secondary image status is up=%t and state=%s",
+			ErrInvalidArgument, localStatus.Up, localStatus.State)
 	}
-	err := rbdVol.DisableImageMirroring(force)
+	err := rv.DisableImageMirroring(force)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return fmt.Errorf("%w: %w", ErrDisableImageMirroringFailed, err)
 	}
 	// the image state can be still disabling once we disable the mirroring
 	// check the mirroring is disabled or not
-	mirroringInfo, err = rbdVol.GetImageMirroringInfo()
+	mirroringInfo, err = rv.GetImageMirroringInfo()
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return fmt.Errorf("%w: %w", ErrFetchingMirroringInfo, err)
 	}
 	if mirroringInfo.State == librbd.MirrorImageDisabling {
-		return nil, status.Errorf(codes.Aborted, "%s is in disabling state", rbdVol.VolID)
+		return fmt.Errorf("%w: %q is in disabling state", ErrAborted, rv.VolID)
 	}
 
-	return &replication.DisableVolumeReplicationResponse{}, nil
+	return nil
 }
