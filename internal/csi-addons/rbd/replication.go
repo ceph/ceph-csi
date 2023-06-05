@@ -326,7 +326,12 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	case librbd.MirrorImageDisabling:
 		return nil, status.Errorf(codes.Aborted, "%s is in disabling state", volumeID)
 	case librbd.MirrorImageEnabled:
-		return corerbd.DisableVolumeReplication(rbdVol, mirroringInfo, force)
+		err = rbdVol.DisableVolumeReplication(mirroringInfo, force)
+		if err != nil {
+			return nil, getGRPCError(err)
+		}
+
+		return &replication.DisableVolumeReplicationResponse{}, nil
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "image is in %s Mode", mirroringInfo.State)
 	}
@@ -627,9 +632,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 	err = rbdVol.ResyncVol(localStatus, req.Force)
 	if err != nil {
-		log.ErrorLog(ctx, err.Error())
-
-		return nil, err
+		return nil, getGRPCError(err)
 	}
 
 	err = checkVolumeResyncStatus(localStatus)
@@ -647,6 +650,32 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	}
 
 	return resp, nil
+}
+
+func getGRPCError(err error) error {
+	if err == nil {
+		return status.Error(codes.OK, codes.OK.String())
+	}
+
+	errorStatusMap := map[error]codes.Code{
+		corerbd.ErrFetchingLocalState:          codes.Internal,
+		corerbd.ErrResyncImageFailed:           codes.Internal,
+		corerbd.ErrDisableImageMirroringFailed: codes.Internal,
+		corerbd.ErrFetchingMirroringInfo:       codes.Internal,
+		corerbd.ErrInvalidArgument:             codes.InvalidArgument,
+		corerbd.ErrAborted:                     codes.Aborted,
+		corerbd.ErrFailedPrecondition:          codes.FailedPrecondition,
+		corerbd.ErrUnavailable:                 codes.Unavailable,
+	}
+
+	for e, code := range errorStatusMap {
+		if errors.Is(err, e) {
+			return status.Error(code, err.Error())
+		}
+	}
+
+	// Handle any other non nil error not listed in the map
+	return status.Error(codes.Unknown, err.Error())
 }
 
 // GetVolumeReplicationInfo extracts the RBD volume information from the volumeID, If the

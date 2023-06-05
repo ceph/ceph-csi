@@ -18,6 +18,7 @@ package rbd
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -27,6 +28,9 @@ import (
 
 	librbd "github.com/ceph/go-ceph/rbd"
 	"github.com/ceph/go-ceph/rbd/admin"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -491,6 +495,75 @@ func TestValidateLastSyncTime(t *testing.T) {
 			if !ts.AsTime().Equal(tt.timestamp.AsTime()) {
 				t.Errorf("getLastSyncTime() %v, expected %v", ts, tt.timestamp)
 			}
+		})
+	}
+}
+
+func TestGetGRPCError(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		err         error
+		expectedErr error
+	}{
+		{
+			name:        "FetchingLocalStateFailed",
+			err:         corerbd.ErrFetchingLocalState,
+			expectedErr: status.Error(codes.Internal, corerbd.ErrFetchingLocalState.Error()),
+		},
+		{
+			name:        "ResyncImageFailed",
+			err:         corerbd.ErrResyncImageFailed,
+			expectedErr: status.Error(codes.Internal, corerbd.ErrResyncImageFailed.Error()),
+		},
+		{
+			name:        "DisableImageMirroringFailed",
+			err:         corerbd.ErrDisableImageMirroringFailed,
+			expectedErr: status.Error(codes.Internal, corerbd.ErrDisableImageMirroringFailed.Error()),
+		},
+		{
+			name:        "FetchingMirroringInfoFailed",
+			err:         corerbd.ErrFetchingMirroringInfo,
+			expectedErr: status.Error(codes.Internal, corerbd.ErrFetchingMirroringInfo.Error()),
+		},
+		{
+			name:        "InvalidArgument",
+			err:         corerbd.ErrInvalidArgument,
+			expectedErr: status.Error(codes.InvalidArgument, corerbd.ErrInvalidArgument.Error()),
+		},
+		{
+			name:        "Aborted",
+			err:         corerbd.ErrAborted,
+			expectedErr: status.Error(codes.Aborted, corerbd.ErrAborted.Error()),
+		},
+		{
+			name:        "FailedPrecondition",
+			err:         corerbd.ErrFailedPrecondition,
+			expectedErr: status.Error(codes.FailedPrecondition, corerbd.ErrFailedPrecondition.Error()),
+		},
+		{
+			name:        "Unavailable",
+			err:         corerbd.ErrUnavailable,
+			expectedErr: status.Error(codes.Unavailable, corerbd.ErrUnavailable.Error()),
+		},
+		{
+			name:        "InvalidError",
+			err:         errors.New("some error"),
+			expectedErr: status.Error(codes.Unknown, "some error"),
+		},
+		{
+			name:        "NilError",
+			err:         nil,
+			expectedErr: status.Error(codes.OK, "ok string"),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := getGRPCError(tt.err)
+			assert.Equal(t, tt.expectedErr, result)
 		})
 	}
 }
