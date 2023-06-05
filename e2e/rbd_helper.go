@@ -164,7 +164,7 @@ func createRBDStorageClass(
 
 	timeout := time.Duration(deployTimeout) * time.Minute
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		_, err = c.StorageV1().StorageClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 		if err != nil {
 			framework.Logf("error creating StorageClass %q: %v", sc.Name, err)
@@ -1037,7 +1037,7 @@ func listRBDImagesInTrash(f *framework.Framework, poolName string) ([]trashInfo,
 func waitToRemoveImagesFromTrash(f *framework.Framework, poolName string, t int) error {
 	var errReason error
 	timeout := time.Duration(t) * time.Minute
-	err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		imagesInTrash, err := listRBDImagesInTrash(f, poolName)
 		if err != nil {
 			return false, err

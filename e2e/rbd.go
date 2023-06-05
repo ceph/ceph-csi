@@ -212,7 +212,7 @@ func checkClusternameInMetadata(f *framework.Framework, ns, pool, image string) 
 		stdErr  string
 		execErr error
 	)
-	err := wait.PollImmediate(poll, t, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
 		coName, stdErr, execErr = execCommandInToolBoxPod(f,
 			fmt.Sprintf("rbd image-meta get %s --image=%s %s", rbdOptions(pool), image, clusterNameKey),
 			ns)
@@ -1887,7 +1887,7 @@ var _ = Describe("RBD", func() {
 
 				timeout := time.Duration(deployTimeout) * time.Minute
 				var reason string
-				err = wait.PollImmediate(poll, timeout, func() (bool, error) {
+				err = wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 					var runningAttachCmd string
 					runningAttachCmd, stdErr, err = execCommandInContainer(
 						f,

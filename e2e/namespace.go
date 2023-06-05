@@ -43,7 +43,7 @@ func createNamespace(c kubernetes.Interface, name string) error {
 		return fmt.Errorf("failed to create namespace: %w", err)
 	}
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		_, err := c.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			framework.Logf("Error getting namespace: '%s': %v", name, err)
@@ -68,7 +68,7 @@ func deleteNamespace(c kubernetes.Interface, name string) error {
 		return fmt.Errorf("failed to delete namespace: %w", err)
 	}
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		_, err = c.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if apierrs.IsNotFound(err) {

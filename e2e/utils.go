@@ -248,7 +248,7 @@ func getMons(ns string, c kubernetes.Interface) ([]string, error) {
 
 	var svcList *v1.ServiceList
 	t := time.Duration(deployTimeout) * time.Minute
-	err := wait.PollImmediate(poll, t, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
 		var svcErr error
 		svcList, svcErr = c.CoreV1().Services(ns).List(context.TODO(), opt)
 		if svcErr != nil {
@@ -1560,7 +1560,7 @@ func waitForJobCompletion(c kubernetes.Interface, ns, job string, timeout int) e
 
 	framework.Logf("waiting for Job %s/%s to be in state %q", ns, job, batch.JobComplete)
 
-	return wait.PollImmediate(poll, t, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
 		j, err := c.BatchV1().Jobs(ns).Get(context.TODO(), job, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
@@ -1608,7 +1608,7 @@ func retryKubectlInput(namespace string, action kubectlAction, data string, t in
 	framework.Logf("waiting for kubectl (%s -f args %s) to finish", action, args)
 	start := time.Now()
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		cmd := []string{}
 		if len(args) != 0 {
 			cmd = append(cmd, strings.Join(args, ""))
@@ -1647,7 +1647,7 @@ func retryKubectlFile(namespace string, action kubectlAction, filename string, t
 	framework.Logf("waiting for kubectl (%s -f %q args %s) to finish", action, filename, args)
 	start := time.Now()
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		cmd := []string{}
 		if len(args) != 0 {
 			cmd = append(cmd, strings.Join(args, ""))
@@ -1690,7 +1690,7 @@ func retryKubectlArgs(namespace string, action kubectlAction, t int, args ...str
 	framework.Logf("waiting for kubectl (%s args) to finish", args)
 	start := time.Now()
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		_, err := e2ekubectl.RunKubectl(namespace, args...)
 		if err != nil {
 			if isRetryableAPIError(err) {

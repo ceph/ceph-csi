@@ -50,7 +50,7 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 	start := time.Now()
 	framework.Logf("Waiting up to %v to be in Resized state", pvc)
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		framework.Logf("waiting for PVC %s (%d seconds elapsed)", pvcName, int(time.Since(start).Seconds()))
 		updatedPVC, err = c.CoreV1().
 			PersistentVolumeClaims(pvcNamespace).
@@ -185,7 +185,7 @@ func checkAppMntSize(f *framework.Framework, opt *metav1.ListOptions, size, cmd,
 	timeout := time.Duration(t) * time.Minute
 	start := time.Now()
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		framework.Logf("executing cmd %s (%d seconds elapsed)", cmd, int(time.Since(start).Seconds()))
 		output, stdErr, err := execCommandInPod(f, cmd, ns, opt)
 		if err != nil {
