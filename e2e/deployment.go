@@ -93,7 +93,7 @@ func deleteDeploymentApp(clientSet kubernetes.Interface, name, ns string, deploy
 	start := time.Now()
 	framework.Logf("Waiting for deployment %q to be deleted", name)
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		_, err := clientSet.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
@@ -117,7 +117,7 @@ func waitForDeploymentInAvailableState(clientSet kubernetes.Interface, name, ns 
 	start := time.Now()
 	framework.Logf("Waiting up to %q to be in Available state", name)
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		d, err := clientSet.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
@@ -144,7 +144,7 @@ func waitForDeploymentComplete(clientSet kubernetes.Interface, name, ns string, 
 		err        error
 	)
 	timeout := time.Duration(deployTimeout) * time.Minute
-	err = wait.PollImmediate(poll, timeout, func() (bool, error) {
+	err = wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		deployment, err = clientSet.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
@@ -310,7 +310,7 @@ func waitForDeploymentUpdateScale(
 ) error {
 	t := time.Duration(timeout) * time.Minute
 	start := time.Now()
-	err := wait.PollImmediate(poll, t, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
 		scaleResult, upsErr := c.AppsV1().Deployments(ns).UpdateScale(context.TODO(),
 			deploymentName, scale, metav1.UpdateOptions{})
 		if upsErr != nil {
@@ -346,7 +346,7 @@ func waitForDeploymentUpdate(
 ) error {
 	t := time.Duration(timeout) * time.Minute
 	start := time.Now()
-	err := wait.PollImmediate(poll, t, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
 		_, upErr := c.AppsV1().Deployments(deployment.Namespace).Update(
 			context.TODO(), deployment, metav1.UpdateOptions{})
 		if upErr != nil {
@@ -456,7 +456,7 @@ func waitForContainersArgsUpdate(
 	// wait for scale to become count
 	t := time.Duration(timeout) * time.Minute
 	start := time.Now()
-	err = wait.PollImmediate(poll, t, func() (bool, error) {
+	err = wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
 		deploy, getErr := c.AppsV1().Deployments(ns).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 		if getErr != nil {
 			if isRetryableAPIError(getErr) {

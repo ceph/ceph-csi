@@ -80,7 +80,7 @@ func createSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	start := time.Now()
 	framework.Logf("waiting for %v to be in ready state", snap)
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		framework.Logf("waiting for snapshot %s (%d seconds elapsed)", snap.Name, int(time.Since(start).Seconds()))
 		snaps, err := sclient.
 			VolumeSnapshots(snap.Namespace).
@@ -126,7 +126,7 @@ func deleteSnapshot(snap *snapapi.VolumeSnapshot, t int) error {
 	start := time.Now()
 	framework.Logf("Waiting up to %v to be deleted", snap)
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		framework.Logf("deleting snapshot %s (%d seconds elapsed)", name, int(time.Since(start).Seconds()))
 		_, err := sclient.
 			VolumeSnapshots(snap.Namespace).
@@ -223,7 +223,7 @@ func createNFSSnapshotClass(f *framework.Framework) error {
 
 	timeout := time.Duration(deployTimeout) * time.Minute
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		_, err = sclient.VolumeSnapshotClasses().Create(context.TODO(), &sc, metav1.CreateOptions{})
 		if err != nil {
 			framework.Logf("error creating SnapshotClass %q: %v", sc.Name, err)
@@ -252,7 +252,7 @@ func deleteNFSSnapshotClass() error {
 
 	timeout := time.Duration(deployTimeout) * time.Minute
 
-	return wait.PollImmediate(poll, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
 		err = sclient.VolumeSnapshotClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{})
 		if err != nil {
 			framework.Logf("error deleting SnapshotClass %q: %v", sc.Name, err)
