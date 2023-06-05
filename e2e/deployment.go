@@ -86,15 +86,16 @@ func createDeploymentApp(clientSet kubernetes.Interface, app *appsv1.Deployment,
 // deleteDeploymentApp deletes the deployment object.
 func deleteDeploymentApp(clientSet kubernetes.Interface, name, ns string, deployTimeout int) error {
 	timeout := time.Duration(deployTimeout) * time.Minute
-	err := clientSet.AppsV1().Deployments(ns).Delete(context.TODO(), name, metav1.DeleteOptions{})
+	ctx := context.TODO()
+	err := clientSet.AppsV1().Deployments(ns).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to delete deployment: %w", err)
 	}
 	start := time.Now()
 	framework.Logf("Waiting for deployment %q to be deleted", name)
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
-		_, err := clientSet.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	return wait.PollUntilContextTimeout(ctx, poll, timeout, true, func(ctx context.Context) (bool, error) {
+		_, err := clientSet.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
@@ -117,8 +118,8 @@ func waitForDeploymentInAvailableState(clientSet kubernetes.Interface, name, ns 
 	start := time.Now()
 	framework.Logf("Waiting up to %q to be in Available state", name)
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
-		d, err := clientSet.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		d, err := clientSet.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
@@ -144,8 +145,8 @@ func waitForDeploymentComplete(clientSet kubernetes.Interface, name, ns string, 
 		err        error
 	)
 	timeout := time.Duration(deployTimeout) * time.Minute
-	err = wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
-		deployment, err = clientSet.AppsV1().Deployments(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	err = wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		deployment, err = clientSet.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
@@ -310,8 +311,8 @@ func waitForDeploymentUpdateScale(
 ) error {
 	t := time.Duration(timeout) * time.Minute
 	start := time.Now()
-	err := wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
-		scaleResult, upsErr := c.AppsV1().Deployments(ns).UpdateScale(context.TODO(),
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(ctx context.Context) (bool, error) {
+		scaleResult, upsErr := c.AppsV1().Deployments(ns).UpdateScale(ctx,
 			deploymentName, scale, metav1.UpdateOptions{})
 		if upsErr != nil {
 			if isRetryableAPIError(upsErr) {
@@ -346,9 +347,9 @@ func waitForDeploymentUpdate(
 ) error {
 	t := time.Duration(timeout) * time.Minute
 	start := time.Now()
-	err := wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(ctx context.Context) (bool, error) {
 		_, upErr := c.AppsV1().Deployments(deployment.Namespace).Update(
-			context.TODO(), deployment, metav1.UpdateOptions{})
+			ctx, deployment, metav1.UpdateOptions{})
 		if upErr != nil {
 			if isRetryableAPIError(upErr) {
 				return false, nil
@@ -391,6 +392,7 @@ func waitForContainersArgsUpdate(
 	timeout int,
 ) error {
 	framework.Logf("waiting for deployment updates %s/%s", ns, deploymentName)
+	ctx := context.TODO()
 
 	// wait for the deployment to be available
 	err := waitForDeploymentInAvailableState(c, deploymentName, ns, deployTimeout)
@@ -399,7 +401,7 @@ func waitForContainersArgsUpdate(
 	}
 
 	// Scale down to 0.
-	scale, err := c.AppsV1().Deployments(ns).GetScale(context.TODO(), deploymentName, metav1.GetOptions{})
+	scale, err := c.AppsV1().Deployments(ns).GetScale(ctx, deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("error get scale deployment %s/%s: %w", ns, deploymentName, err)
 	}
@@ -412,7 +414,7 @@ func waitForContainersArgsUpdate(
 	}
 
 	// Update deployment.
-	deployment, err := c.AppsV1().Deployments(ns).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+	deployment, err := c.AppsV1().Deployments(ns).Get(ctx, deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("error get deployment %s/%s: %w", ns, deploymentName, err)
 	}
@@ -456,8 +458,8 @@ func waitForContainersArgsUpdate(
 	// wait for scale to become count
 	t := time.Duration(timeout) * time.Minute
 	start := time.Now()
-	err = wait.PollUntilContextTimeout(context.TODO(), poll, t, true, func(_ context.Context) (bool, error) {
-		deploy, getErr := c.AppsV1().Deployments(ns).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+	err = wait.PollUntilContextTimeout(ctx, poll, t, true, func(ctx context.Context) (bool, error) {
+		deploy, getErr := c.AppsV1().Deployments(ns).Get(ctx, deploymentName, metav1.GetOptions{})
 		if getErr != nil {
 			if isRetryableAPIError(getErr) {
 				return false, nil

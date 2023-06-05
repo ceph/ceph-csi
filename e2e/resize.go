@@ -33,6 +33,7 @@ import (
 )
 
 func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size string, t int) error {
+	ctx := context.TODO()
 	pvcName := pvc.Name
 	pvcNamespace := pvc.Namespace
 	updatedPVC, err := getPersistentVolumeClaim(c, pvcNamespace, pvcName)
@@ -44,17 +45,17 @@ func expandPVCSize(c kubernetes.Interface, pvc *v1.PersistentVolumeClaim, size s
 	updatedPVC.Spec.Resources.Requests[v1.ResourceStorage] = resource.MustParse(size)
 	_, err = c.CoreV1().
 		PersistentVolumeClaims(updatedPVC.Namespace).
-		Update(context.TODO(), updatedPVC, metav1.UpdateOptions{})
+		Update(ctx, updatedPVC, metav1.UpdateOptions{})
 	Expect(err).ShouldNot(HaveOccurred())
 
 	start := time.Now()
 	framework.Logf("Waiting up to %v to be in Resized state", pvc)
 
-	return wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(_ context.Context) (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, poll, timeout, true, func(ctx context.Context) (bool, error) {
 		framework.Logf("waiting for PVC %s (%d seconds elapsed)", pvcName, int(time.Since(start).Seconds()))
 		updatedPVC, err = c.CoreV1().
 			PersistentVolumeClaims(pvcNamespace).
-			Get(context.TODO(), pvcName, metav1.GetOptions{})
+			Get(ctx, pvcName, metav1.GetOptions{})
 		if err != nil {
 			framework.Logf("Error getting pvc in namespace: '%s': %v", pvcNamespace, err)
 			if isRetryableAPIError(err) {
