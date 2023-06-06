@@ -130,7 +130,7 @@ func deleteRBDPlugin() {
 }
 
 func createORDeleteRbdResources(action kubectlAction) {
-	cephConfigFile := getConfigFile(deployPath + cephConfconfigMap)
+	cephConfigFile := getConfigFile(cephConfconfigMap, deployPath, examplePath)
 	resources := []ResourceDeployer{
 		// shared resources
 		&yamlResource{
