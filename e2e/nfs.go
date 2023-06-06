@@ -79,7 +79,7 @@ func deleteNFSPlugin() {
 }
 
 func createORDeleteNFSResources(f *framework.Framework, action kubectlAction) {
-	cephConfigFile := getConfigFile(deployPath + cephConfconfigMap)
+	cephConfigFile := getConfigFile(cephConfconfigMap, deployPath, examplePath)
 	resources := []ResourceDeployer{
 		// shared resources
 		&yamlResource{
