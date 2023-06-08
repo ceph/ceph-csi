@@ -1743,3 +1743,104 @@ func getConfigFile(filename, preferred, fallback string) string {
 
 	return configFile
 }
+
+type nfsExportsFSAL struct {
+	Name   string `json:"name"`
+	UserID string `json:"user_id"`
+	FSName string `json:"fs_name"`
+}
+
+type nfsExportsClients struct {
+	Addresses  []string `json:"addresses"`
+	AccessType string   `json:"access_type"`
+	Squash     string   `json:"squash"`
+}
+
+type cephNFSExport struct {
+	ExportID      int                 `json:"export_id"`
+	Path          string              `json:"path"`
+	ClusterID     string              `json:"cluster_id"`
+	Pseudo        string              `json:"pseudo"`
+	AccessType    string              `json:"access_type"`
+	Squash        string              `json:"squash"`
+	SecurityLabel bool                `json:"security_label"`
+	Protocols     []int               `json:"protocols"`
+	Transports    []string            `json:"transports"`
+	FSAL          nfsExportsFSAL      `json:"fsal"`
+	Clients       []nfsExportsClients `json:"clients"`
+	SecTypes      []string            `json:"secTypes"`
+}
+
+// Get list of exports for a cluster_id.
+func listExports(f *framework.Framework, clusterID string) (*[]cephNFSExport, error) {
+	var exportList []cephNFSExport
+
+	stdout, stdErr, err := execCommandInToolBoxPod(
+		f,
+		"ceph nfs export ls "+clusterID+" --detailed",
+		rookNamespace)
+	if err != nil {
+		return nil, err
+	}
+	if stdErr != "" {
+		return nil, fmt.Errorf("error listing exports in clusterID %v", stdErr)
+	}
+
+	err = json.Unmarshal([]byte(stdout), &exportList)
+	if err != nil {
+		return nil, err
+	}
+
+	return &exportList, nil
+}
+
+// Check the export for a listed ip address and confirm that the export has
+// been setup correctly.
+func checkExports(f *framework.Framework, clusterID, clientString string) bool {
+	exportList, err := listExports(f, clusterID)
+	if err != nil {
+		framework.Logf("failed to fetch list of exports: %v", err)
+
+		return false
+	}
+
+	found := false
+	for i := 0; i < len(*exportList); i++ {
+		export := (*exportList)[i]
+		for _, client := range export.Clients {
+			for _, address := range client.Addresses {
+				if address == clientString {
+					found = true
+
+					break
+				}
+			}
+			if found {
+				if client.AccessType != "rw" {
+					framework.Logf("Unexpected value for client AccessType: %s", client.AccessType)
+
+					return false
+				}
+
+				break
+			}
+		}
+		if found {
+			if export.AccessType != "none" {
+				framework.Logf("Unexpected value for default AccessType: %s", export.AccessType)
+
+				return false
+			}
+
+			break
+		}
+	}
+
+	if !found {
+		framework.Logf("Could not find the configured clients in the list of exports")
+
+		return false
+	}
+
+	return true
+}
