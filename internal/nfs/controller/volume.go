@@ -132,6 +132,7 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 	nfsCluster := backend.VolumeContext["nfsCluster"]
 	path := backend.VolumeContext["subvolumePath"]
 	secTypes := backend.VolumeContext["secTypes"]
+	clients := backend.VolumeContext["clients"]
 
 	err := nv.setNFSCluster(nfsCluster)
 	if err != nil {
@@ -155,6 +156,10 @@ func (nv *NFSVolume) CreateExport(backend *csi.Volume) error {
 		for _, secType := range strings.Split(secTypes, ",") {
 			export.SecType = append(export.SecType, nfs.SecType(secType))
 		}
+	}
+
+	if clients != "" {
+		export.ClientAddr = strings.Split(clients, ",")
 	}
 
 	_, err = nfsa.CreateCephFSExport(export)

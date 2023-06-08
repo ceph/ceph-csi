@@ -459,6 +459,38 @@ var _ = Describe("nfs", func() {
 				}
 			})
 
+			By("create a storageclass with a restricted set of clients allowed to mount it", func() {
+				clientExample := "192.168.49.29"
+				err := createNFSStorageClass(f.ClientSet, f, false, map[string]string{
+					"clients": clientExample,
+				})
+				if err != nil {
+					framework.Failf("failed to create NFS storageclass: %v", err)
+				}
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					framework.Failf("Could not create PVC: 1 %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				if !checkExports(f, "my-nfs", clientExample) {
+					framework.Failf("failed in testing exports")
+				}
+
+				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC: %v", err)
+				}
+				err = deleteResource(nfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete NFS storageclass: %v", err)
+				}
+			})
+
 			By("create a PVC and bind it to an app", func() {
 				err := createNFSStorageClass(f.ClientSet, f, false, nil)
 				if err != nil {
