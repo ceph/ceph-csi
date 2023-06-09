@@ -658,8 +658,8 @@ github.com/hashicorp/raft-snapshot v1.0.4 h1:EuDuayAJPdiDmVk1ygTDnG2zDzrs0/6/yBu
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
 github.com/hashicorp/serf v0.8.3/go.mod h1:UpNcs7fFbpKIyZaUuSW6EPiH+eZC7OuyFD+wc1oal+k=
 github.com/hashicorp/vault v1.4.2/go.mod h1:500fLOj7p92Ys4X265LizqF78MzmHJUf1jV1zNJt060=
-github.com/hashicorp/vault v1.11.9 h1:FXOmCgvvv7viyC0XNya4md3DPO7G4yno0Eav5XN+hQY=
-github.com/hashicorp/vault v1.11.9/go.mod h1:dWedGrBROl5qcVYvGoKyl1GvTI/lPklrfzStK88Z98s=
+github.com/hashicorp/vault v1.11.11 h1:OdW0rwJUIY8HzI+mUOwB6YOn4yUjhHE074kVWyBNh24=
+github.com/hashicorp/vault v1.11.11/go.mod h1:4RxhmNhz4ighw/m/9K/je8/bYNvVW4FXgccpnHENxDE=
 github.com/hashicorp/vault-plugin-auth-alicloud v0.5.5/go.mod h1:sQ+VNwPQlemgXHXikYH6onfH9gPwDZ1GUVRLz0ZvHx8=
 github.com/hashicorp/vault-plugin-auth-azure v0.5.6-0.20200422235613-1b5c70f9ef68/go.mod h1:RCVBsf8AJndh4c6iGZtvVZFui9SG0Bj9fnF0SodNIkw=
 github.com/hashicorp/vault-plugin-auth-centrify v0.5.5/go.mod h1:GfRoy7NHsuR/ogmZtbExdJXUwbfwcxPrS9xzkyy2J/c=

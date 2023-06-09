@@ -105,7 +105,7 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-3 // indirect
-	github.com/hashicorp/vault v1.11.9 // indirect
+	github.com/hashicorp/vault v1.11.11 // indirect
 	github.com/hashicorp/vault/sdk v0.7.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
