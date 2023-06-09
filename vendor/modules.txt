@@ -162,7 +162,7 @@ github.com/coreos/go-systemd/v22/journal
 # github.com/csi-addons/replication-lib-utils v0.2.0
 ## explicit; go 1.15
 github.com/csi-addons/replication-lib-utils/protosanitizer
-# github.com/csi-addons/spec v0.2.0
+# github.com/csi-addons/spec v0.2.1-0.20230606140122-d20966d2e444
 ## explicit
 github.com/csi-addons/spec/lib/go/fence
 github.com/csi-addons/spec/lib/go/identity
