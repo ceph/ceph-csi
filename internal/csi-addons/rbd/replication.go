@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -754,18 +755,14 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	}
 
 	description := remoteStatus.Description
-	lastSyncTime, err := getLastSyncTime(description)
+	resp, err := getLastSyncInfo(description)
 	if err != nil {
 		if errors.Is(err, corerbd.ErrLastSyncTimeNotFound) {
-			return nil, status.Errorf(codes.NotFound, "failed to get last sync time: %v", err)
+			return nil, status.Errorf(codes.NotFound, "failed to get last sync info: %v", err)
 		}
 		log.ErrorLog(ctx, err.Error())
 
-		return nil, status.Errorf(codes.Internal, "failed to get last sync time: %v", err)
-	}
-
-	resp := &replication.GetVolumeReplicationInfoResponse{
-		LastSyncTime: lastSyncTime,
+		return nil, status.Errorf(codes.Internal, "failed to get last sync info: %v", err)
 	}
 
 	return resp, nil
@@ -791,42 +788,71 @@ func RemoteStatus(gmis *librbd.GlobalMirrorImageStatus) (librbd.SiteMirrorImageS
 	return ss, err
 }
 
-// This function gets the local snapshot time from the description
-// of localStatus and converts it into required type.
-func getLastSyncTime(description string) (*timestamppb.Timestamp, error) {
+// This function gets the local snapshot time, last sync snapshot seconds
+// and last sync bytes from the description of localStatus and convert
+// it into required types.
+func getLastSyncInfo(description string) (*replication.GetVolumeReplicationInfoResponse, error) {
 	// Format of the description will be as followed:
-	// description = "replaying,{"bytes_per_second":0.0,
-	// "bytes_per_snapshot":149504.0,"local_snapshot_timestamp":1662655501
-	// ,"remote_snapshot_timestamp":1662655501}"
+	// description = `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,
+	// "last_snapshot_bytes":81920,"last_snapshot_sync_seconds":0,
+	// "local_snapshot_timestamp":1684675261,
+	// "remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`
+	// In case there is no last snapshot bytes returns 0 as the
+	// LastSyncBytes is optional.
+	// In case there is no last snapshot sync seconds, it returns nil as the
+	// LastSyncDuration is optional.
 	// In case there is no local snapshot timestamp return an error as the
 	// LastSyncTime is required.
+
+	var response replication.GetVolumeReplicationInfoResponse
+
 	if description == "" {
 		return nil, fmt.Errorf("empty description: %w", corerbd.ErrLastSyncTimeNotFound)
 	}
 	splittedString := strings.SplitN(description, ",", 2)
 	if len(splittedString) == 1 {
-		return nil, fmt.Errorf("no local snapshot timestamp: %w", corerbd.ErrLastSyncTimeNotFound)
+		return nil, fmt.Errorf("no snapshot details: %w", corerbd.ErrLastSyncTimeNotFound)
 	}
 	type localStatus struct {
-		LocalSnapshotTime int64 `json:"local_snapshot_timestamp"`
+		LocalSnapshotTime    int64 `json:"local_snapshot_timestamp"`
+		LastSnapshotBytes    int64 `json:"last_snapshot_bytes"`
+		LastSnapshotDuration int64 `json:"last_snapshot_sync_seconds"`
 	}
 
-	var localSnapTime localStatus
-	err := json.Unmarshal([]byte(splittedString[1]), &localSnapTime)
+	var localSnapInfo localStatus
+	err := json.Unmarshal([]byte(splittedString[1]), &localSnapInfo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal description: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal local snapshot info: %w", err)
 	}
 
 	// If the json unmarsal is successful but the local snapshot time is 0, we
 	// need to consider it as an error as the LastSyncTime is required.
-	if localSnapTime.LocalSnapshotTime == 0 {
+	if localSnapInfo.LocalSnapshotTime == 0 {
 		return nil, fmt.Errorf("empty local snapshot timestamp: %w", corerbd.ErrLastSyncTimeNotFound)
 	}
+	if localSnapInfo.LastSnapshotDuration == 0 {
+		response.LastSyncDuration = nil
+	} else {
+		// converts localSnapshotDuration of type int64 to string format with
+		// appended `s` seconds required  for time.ParseDuration
+		lastDurationTime := fmt.Sprintf("%ds", localSnapInfo.LastSnapshotDuration)
+		// parse Duration from the lastDurationTime string
+		lastDuration, err := time.ParseDuration(lastDurationTime)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse last snapshot duration: %w", err)
+		}
+		// converts time.Duration to *durationpb.Duration
+		response.LastSyncDuration = durationpb.New(lastDuration)
+	}
 
-	lastUpdateTime := time.Unix(localSnapTime.LocalSnapshotTime, 0)
+	// converts localSnapshotTime of type int64 to time.Time
+	lastUpdateTime := time.Unix(localSnapInfo.LocalSnapshotTime, 0)
 	lastSyncTime := timestamppb.New(lastUpdateTime)
 
-	return lastSyncTime, nil
+	response.LastSyncTime = lastSyncTime
+	response.LastSyncBytes = localSnapInfo.LastSnapshotBytes
+
+	return &response, nil
 }
 
 func checkVolumeResyncStatus(localStatus librbd.SiteMirrorImageStatus) error {
