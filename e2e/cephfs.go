@@ -318,6 +318,25 @@ var _ = Describe(cephfsType, func() {
 					}
 				})
 			}
+
+			By("verify mountOptions support", func() {
+				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+
+				err = verifySeLinuxMountOption(f, pvcPath, appPath,
+					cephFSDeamonSetName, cephFSContainerName, cephCSINamespace)
+				if err != nil {
+					framework.Failf("failed to verify mount options: %v", err)
+				}
+
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+			})
+
 			By("verify generic ephemeral volume support", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
