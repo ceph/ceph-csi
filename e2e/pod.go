@@ -31,6 +31,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	frameworkPod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
 
 const errRWOPConflict = "node has pod using PersistentVolumeClaim with the same name and ReadWriteOncePod access mode."
@@ -164,6 +165,28 @@ func execCommandInDaemonsetPod(
 	f *framework.Framework,
 	c, daemonsetName, nodeName, containerName, ns string,
 ) (string, error) {
+	podName, err := getDaemonsetPodOnNode(f, daemonsetName, nodeName, ns)
+	if err != nil {
+		return "", err
+	}
+
+	cmd := []string{"/bin/sh", "-c", c}
+	podOpt := e2epod.ExecOptions{
+		Command:       cmd,
+		Namespace:     ns,
+		PodName:       podName,
+		ContainerName: containerName,
+		CaptureStdout: true,
+		CaptureStderr: true,
+	}
+
+	_ /* stdout */, stderr, err := execWithRetry(f, &podOpt)
+
+	return stderr, err
+}
+
+// getDaemonsetPodOnNode returns the name of a daemonset pod on a particular node.
+func getDaemonsetPodOnNode(f *framework.Framework, daemonsetName, nodeName, ns string) (string, error) {
 	selector, err := getDaemonSetLabelSelector(f, ns, daemonsetName)
 	if err != nil {
 		return "", err
@@ -187,19 +210,7 @@ func execCommandInDaemonsetPod(
 		return "", fmt.Errorf("%s daemonset pod on node %s in namespace %s not found", daemonsetName, nodeName, ns)
 	}
 
-	cmd := []string{"/bin/sh", "-c", c}
-	podOpt := e2epod.ExecOptions{
-		Command:       cmd,
-		Namespace:     ns,
-		PodName:       podName,
-		ContainerName: containerName,
-		CaptureStdout: true,
-		CaptureStderr: true,
-	}
-
-	_ /* stdout */, stderr, err := execWithRetry(f, &podOpt)
-
-	return stderr, err
+	return podName, nil
 }
 
 // listPods returns slice of pods matching given ListOptions and namespace.
@@ -535,6 +546,76 @@ func validateRWOPPodCreation(
 	}
 
 	app.Name = baseAppName
+	err = deletePVCAndApp("", f, pvc, app)
+	if err != nil {
+		return fmt.Errorf("failed to delete PVC and application: %w", err)
+	}
+
+	return nil
+}
+
+// verifySeLinuxMountOption verifies the SeLinux context MountOption added to PV.Spec.MountOption
+// is successfully used by nodeplugin during mounting by checking for its presence in the
+// nodeplugin container logs.
+func verifySeLinuxMountOption(
+	f *framework.Framework,
+	pvcPath, appPath, daemonSetName, cn, ns string,
+) error {
+	mountOption := "context=\"system_u:object_r:container_file_t:s0:c0,c1\""
+
+	// create PVC
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return fmt.Errorf("failed to load pvc: %w", err)
+	}
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create PVC: %w", err)
+	}
+	// modify PV spec.MountOptions
+	pv, err := getBoundPV(f.ClientSet, pvc)
+	if err != nil {
+		return fmt.Errorf("failed to get PV: %w", err)
+	}
+	pv.Spec.MountOptions = []string{mountOption}
+
+	// update PV
+	_, err = f.ClientSet.CoreV1().PersistentVolumes().Update(context.TODO(), pv, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update pv: %w", err)
+	}
+
+	app, err := loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load application: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create application: %w", err)
+	}
+
+	pod, err := f.ClientSet.CoreV1().Pods(f.UniqueName).Get(context.TODO(), app.Name, metav1.GetOptions{})
+	if err != nil {
+		framework.Logf("Error occurred getting pod %s in namespace %s", app.Name, f.UniqueName)
+
+		return fmt.Errorf("failed to get pod: %w", err)
+	}
+
+	nodepluginPodName, err := getDaemonsetPodOnNode(f, daemonSetName, pod.Spec.NodeName, ns)
+	if err != nil {
+		return fmt.Errorf("failed to get daemonset pod on node: %w", err)
+	}
+	logs, err := frameworkPod.GetPodLogs(context.TODO(), f.ClientSet, ns, nodepluginPodName, cn)
+	if err != nil {
+		return fmt.Errorf("failed to get pod logs from container %s/%s/%s : %w", ns, nodepluginPodName, cn, err)
+	}
+
+	if !strings.Contains(logs, mountOption) {
+		return fmt.Errorf("mount option %s not found in logs: %s", mountOption, logs)
+	}
+
 	err = deletePVCAndApp("", f, pvc, app)
 	if err != nil {
 		return fmt.Errorf("failed to delete PVC and application: %w", err)

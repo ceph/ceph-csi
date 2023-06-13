@@ -43,6 +43,7 @@ var (
 	nfsRookCephNFS     = "rook-nfs.yaml"
 	nfsDeploymentName  = "csi-nfsplugin-provisioner"
 	nfsDeamonSetName   = "csi-nfsplugin"
+	nfsContainerName   = "csi-nfsplugin"
 	nfsDirPath         = "../deploy/nfs/kubernetes/"
 	nfsExamplePath     = examplePath + "nfs/"
 	nfsPoolName        = ".nfs"
@@ -360,6 +361,24 @@ var _ = Describe("nfs", func() {
 				err := waitForDaemonSets(nfsDeamonSetName, cephCSINamespace, f.ClientSet, deployTimeout)
 				if err != nil {
 					framework.Failf("timeout waiting for daemonset %s: %v", nfsDeamonSetName, err)
+				}
+			})
+
+			By("verify mountOptions support", func() {
+				err := createNFSStorageClass(f.ClientSet, f, false, nil)
+				if err != nil {
+					framework.Failf("failed to create NFS storageclass: %v", err)
+				}
+
+				err = verifySeLinuxMountOption(f, pvcPath, appPath,
+					nfsDeamonSetName, nfsContainerName, cephCSINamespace)
+				if err != nil {
+					framework.Failf("failed to verify mount options: %v", err)
+				}
+
+				err = deleteResource(nfsExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete NFS storageclass: %v", err)
 				}
 			})
 

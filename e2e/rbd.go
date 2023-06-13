@@ -51,6 +51,7 @@ var (
 	e2eTemplatesPath   = "../e2e/templates/"
 	rbdDeploymentName  = "csi-rbdplugin-provisioner"
 	rbdDaemonsetName   = "csi-rbdplugin"
+	rbdContainerName   = "csi-rbdplugin"
 	defaultRBDPool     = "replicapool"
 	erasureCodedPool   = "ec-pool"
 	noDataPool         = ""
@@ -442,6 +443,14 @@ var _ = Describe("RBD", func() {
 					}
 				})
 			}
+
+			By("verify mountOptions support", func() {
+				err := verifySeLinuxMountOption(f, pvcPath, appPath,
+					rbdDaemonsetName, rbdContainerName, cephCSINamespace)
+				if err != nil {
+					framework.Failf("failed to verify mount options: %v", err)
+				}
+			})
 
 			By("create a PVC and check PVC/PV metadata on RBD image", func() {
 				pvc, err := loadPVC(pvcPath)
