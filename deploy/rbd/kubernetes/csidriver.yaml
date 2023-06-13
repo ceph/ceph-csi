@@ -13,4 +13,5 @@ metadata:
 spec:
   attachRequired: true
   podInfoOnMount: false
+  seLinuxMount: true
   fsGroupPolicy: File
