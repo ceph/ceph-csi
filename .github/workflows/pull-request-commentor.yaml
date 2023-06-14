@@ -8,14 +8,11 @@ on:
       - "release-v*"
     types:
       - labeled
-      - opened
 jobs:
   add-comment:
     if: >
       (github.event.label.name == 'ok-to-test' &&
-      github.event.pull_request.merged != true) ||
-      (github.event.pull_request.action == 'opened' &&
-      contains(github.event.pull_request.labels.*.name,'ok-to-test'))
+      github.event.pull_request.merged != true)
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write

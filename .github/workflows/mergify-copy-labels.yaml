@@ -15,3 +15,4 @@ jobs:
         uses: Mergifyio/gha-mergify-merge-queue-labels-copier@main
         with:
           additional-labels: 'ok-to-test'
+          token: ${{ secrets.CEPH_CSI_BOT_TOKEN }}
