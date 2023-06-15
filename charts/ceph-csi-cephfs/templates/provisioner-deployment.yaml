@@ -62,6 +62,10 @@ spec:
 {{- if .Values.provisioner.priorityClassName }}
       priorityClassName: {{ .Values.provisioner.priorityClassName }}
 {{- end }}
+{{- if .Values.provisioner.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.provisioner.imagePullSecrets | indent 8 -}}
+{{- end }}
       containers:
         - name: csi-provisioner
           image: "{{ .Values.provisioner.provisioner.image.repository }}:{{ .Values.provisioner.provisioner.image.tag }}"

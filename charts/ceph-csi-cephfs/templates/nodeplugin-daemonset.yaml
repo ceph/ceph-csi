@@ -37,6 +37,10 @@ spec:
       # to use e.g. Rook orchestrated cluster, and mons' FQDN is
       # resolved through k8s service, set dns policy to cluster first
       dnsPolicy: ClusterFirstWithHostNet
+{{- if .Values.nodeplugin.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.nodeplugin.imagePullSecrets | indent 8 -}}
+{{- end }}
       containers:
         - name: driver-registrar
           # This is necessary only for systems with SELinux, where
