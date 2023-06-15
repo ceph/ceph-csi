@@ -2,8 +2,6 @@
 - project:
     name: mini-e2e
     k8s_version:
-      - '1.24':
-          only_run_on_request: true
       - '1.25':
           only_run_on_request: true
       - '1.26':
