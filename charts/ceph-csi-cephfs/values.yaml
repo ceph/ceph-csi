@@ -81,6 +81,11 @@ nodeplugin:
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
 
+  ## Reference to one or more secrets to be used when pulling images
+  ##
+  imagePullSecrets: []
+  # - name: "image-pull-secret"
+
   profiling:
     enabled: false
 
@@ -167,6 +172,11 @@ provisioner:
 
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
+
+  ## Reference to one or more secrets to be used when pulling images
+  ##
+  imagePullSecrets: []
+  # - name: "image-pull-secret"
 
   profiling:
     enabled: false
