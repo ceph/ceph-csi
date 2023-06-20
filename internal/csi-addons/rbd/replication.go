@@ -82,6 +82,12 @@ type ReplicationServer struct {
 	*corerbd.ControllerServer
 }
 
+// NewReplicationServer creates a new ReplicationServer which handles
+// the Replication Service requests from the CSI-Addons specification.
+func NewReplicationServer(c *corerbd.ControllerServer) *ReplicationServer {
+	return &ReplicationServer{ControllerServer: c}
+}
+
 func (rs *ReplicationServer) RegisterService(server grpc.ServiceRegistrar) {
 	replication.RegisterControllerServer(server, rs)
 }
