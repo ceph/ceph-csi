@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/IBM/keyprotect-go-client v0.10.0
-	github.com/aws/aws-sdk-go v1.44.281
+	github.com/aws/aws-sdk-go v1.44.285
 	github.com/aws/aws-sdk-go-v2/service/sts v1.19.0
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000
 	// TODO: API for managing subvolume metadata and snapshot metadata requires `ceph_ci_untested` build-tag
@@ -40,7 +40,7 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/cloud-provider v0.27.2
 	k8s.io/klog/v2 v2.100.1
-	k8s.io/kubernetes v1.27.2
+	k8s.io/kubernetes v1.27.3
 	k8s.io/mount-utils v0.27.2
 	k8s.io/pod-security-admission v0.0.0
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491
