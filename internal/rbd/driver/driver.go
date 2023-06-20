@@ -33,12 +33,10 @@ import (
 
 // Driver contains the default identity,node and controller struct.
 type Driver struct {
-	cd *csicommon.CSIDriver
-
+	cd  *csicommon.CSIDriver
 	ids *rbd.IdentityServer
 	ns  *rbd.NodeServer
 	cs  *rbd.ControllerServer
-	rs  *casrbd.ReplicationServer
 
 	// cas is the CSIAddonsServer where CSI-Addons services are handled
 	cas *csiaddons.CSIAddonsServer
@@ -64,10 +62,6 @@ func NewControllerServer(d *csicommon.CSIDriver) *rbd.ControllerServer {
 		SnapshotLocks:           util.NewVolumeLocks(),
 		OperationLocks:          util.NewOperationLock(),
 	}
-}
-
-func NewReplicationServer(c *rbd.ControllerServer) *casrbd.ReplicationServer {
-	return &casrbd.ReplicationServer{ControllerServer: c}
 }
 
 // NewNodeServer initialize a node server for rbd CSI driver.
@@ -104,12 +98,6 @@ func (r *Driver) Run(conf *util.Config) {
 	rbd.SetGlobalInt("minSnapshotsOnImageToStartFlatten", conf.MinSnapshotsOnImage)
 	// Create instances of the volume and snapshot journal
 	rbd.InitJournals(conf.InstanceID)
-
-	// configre CSI-Addons server and components
-	err = r.setupCSIAddonsServer(conf)
-	if err != nil {
-		log.FatalLogMsg(err.Error())
-	}
 
 	// Initialize default library driver
 	r.cd = csicommon.NewCSIDriver(conf.DriverName, util.DriverVersion, conf.NodeID)
@@ -175,9 +163,12 @@ func (r *Driver) Run(conf *util.Config) {
 		r.cs = NewControllerServer(r.cd)
 		r.cs.ClusterName = conf.ClusterName
 		r.cs.SetMetadata = conf.SetMetadata
-		log.WarningLogMsg("replication service running on controller server is deprecated " +
-			"and replaced by CSI-Addons, see https://github.com/ceph/ceph-csi/issues/3314 for more details")
-		r.rs = NewReplicationServer(r.cs)
+	}
+
+	// configre CSI-Addons server and components
+	err = r.setupCSIAddonsServer(conf)
+	if err != nil {
+		log.FatalLogMsg(err.Error())
 	}
 
 	s := csicommon.NewNonBlockingGRPCServer()
@@ -185,9 +176,6 @@ func (r *Driver) Run(conf *util.Config) {
 		IS: r.ids,
 		CS: r.cs,
 		NS: r.ns,
-		// Register the replication controller to expose replication
-		// operations.
-		RS: r.rs,
 	}
 	s.Start(conf.Endpoint, conf.HistogramOption, srv, conf.EnableGRPCMetrics)
 	if conf.EnableGRPCMetrics {
@@ -231,7 +219,7 @@ func (r *Driver) setupCSIAddonsServer(conf *util.Config) error {
 		fcs := casrbd.NewFenceControllerServer()
 		r.cas.RegisterService(fcs)
 
-		rcs := NewReplicationServer(NewControllerServer(r.cd))
+		rcs := casrbd.NewReplicationServer(NewControllerServer(r.cd))
 		r.cas.RegisterService(rcs)
 	}
 
