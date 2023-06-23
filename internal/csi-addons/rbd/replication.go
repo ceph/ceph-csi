@@ -814,9 +814,9 @@ func getLastSyncInfo(description string) (*replication.GetVolumeReplicationInfoR
 		return nil, fmt.Errorf("no snapshot details: %w", corerbd.ErrLastSyncTimeNotFound)
 	}
 	type localStatus struct {
-		LocalSnapshotTime    int64 `json:"local_snapshot_timestamp"`
-		LastSnapshotBytes    int64 `json:"last_snapshot_bytes"`
-		LastSnapshotDuration int64 `json:"last_snapshot_sync_seconds"`
+		LocalSnapshotTime    int64  `json:"local_snapshot_timestamp"`
+		LastSnapshotBytes    int64  `json:"last_snapshot_bytes"`
+		LastSnapshotDuration *int64 `json:"last_snapshot_sync_seconds"`
 	}
 
 	var localSnapInfo localStatus
@@ -830,12 +830,10 @@ func getLastSyncInfo(description string) (*replication.GetVolumeReplicationInfoR
 	if localSnapInfo.LocalSnapshotTime == 0 {
 		return nil, fmt.Errorf("empty local snapshot timestamp: %w", corerbd.ErrLastSyncTimeNotFound)
 	}
-	if localSnapInfo.LastSnapshotDuration == 0 {
-		response.LastSyncDuration = nil
-	} else {
+	if localSnapInfo.LastSnapshotDuration != nil {
 		// converts localSnapshotDuration of type int64 to string format with
 		// appended `s` seconds required  for time.ParseDuration
-		lastDurationTime := fmt.Sprintf("%ds", localSnapInfo.LastSnapshotDuration)
+		lastDurationTime := fmt.Sprintf("%ds", *localSnapInfo.LastSnapshotDuration)
 		// parse Duration from the lastDurationTime string
 		lastDuration, err := time.ParseDuration(lastDurationTime)
 		if err != nil {

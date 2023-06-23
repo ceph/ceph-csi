@@ -513,6 +513,18 @@ func TestValidateLastSyncInfo(t *testing.T) {
 			expectedErr: "",
 		},
 		{
+			name: "description with last_snapshot_sync_seconds = 0",
+			//nolint:lll // sample output cannot be split into multiple lines.
+			description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_sync_seconds":0,
+			"last_snapshot_bytes":81920,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
+			info: &replication.GetVolumeReplicationInfoResponse{
+				LastSyncDuration: durationpb.New(time.Duration(0)),
+				LastSyncTime:     timestamppb.New(time.Unix(1684675261, 0)),
+				LastSyncBytes:    81920,
+			},
+			expectedErr: "",
+		},
+		{
 			name: "description with invalid JSON",
 			//nolint:lll // sample output cannot be split into multiple lines.
 			description: `replaying,{"bytes_per_second":0.0,"last_snapshot_bytes":81920","bytes_per_snapshot":149504.0","remote_snapshot_timestamp":1662655501`,
