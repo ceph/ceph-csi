@@ -104,6 +104,33 @@ func GetControllerCapabilities(ctx context.Context, conn *grpc.ClientConn) (Cont
 	return caps, nil
 }
 
+// GroupControllerCapabilitySet is set of CSI groupcontroller capabilities. Only supported capabilities are in the map.
+type GroupControllerCapabilitySet map[csi.GroupControllerServiceCapability_RPC_Type]bool
+
+// GetGroupControllerCapabilities returns set of supported group controller capabilities of CSI driver.
+func GetGroupControllerCapabilities(ctx context.Context, conn *grpc.ClientConn) (GroupControllerCapabilitySet, error) {
+	client := csi.NewGroupControllerClient(conn)
+	req := csi.GroupControllerGetCapabilitiesRequest{}
+	rsp, err := client.GroupControllerGetCapabilities(ctx, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	caps := GroupControllerCapabilitySet{}
+	for _, cap := range rsp.GetCapabilities() {
+		if cap == nil {
+			continue
+		}
+		rpc := cap.GetRpc()
+		if rpc == nil {
+			continue
+		}
+		t := rpc.GetType()
+		caps[t] = true
+	}
+	return caps, nil
+}
+
 // ProbeForever calls Probe() of a CSI driver and waits until the driver becomes ready.
 // Any error other than timeout is returned.
 func ProbeForever(conn *grpc.ClientConn, singleProbeTimeout time.Duration) error {

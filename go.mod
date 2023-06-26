@@ -19,7 +19,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/vault/api v1.9.2
-	github.com/kubernetes-csi/csi-lib-utils v0.13.0
+	github.com/kubernetes-csi/csi-lib-utils v0.14.0
 	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.2.0
 	github.com/libopenstorage/secrets v0.0.0-20210908194121-a1d19aa9713a
 	github.com/onsi/ginkgo/v2 v2.10.0
