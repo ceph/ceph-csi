@@ -94,8 +94,8 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-cephfsplugin
-          # for stable functionality replace canary with latest release version
-          image: quay.io/cephcsi/cephcsi:canary
+          # for stable functionality replace v3.9.0 with latest release version
+          image: quay.io/cephcsi/cephcsi:v3.9.0
           args:
             - "--nodeid=$(NODE_ID)"
             - "--type=cephfs"
@@ -143,7 +143,7 @@ spec:
             - name: ceph-csi-encryption-kms-config
               mountPath: /etc/ceph-csi-encryption-kms-config/
         - name: liveness-prometheus
-          image: quay.io/cephcsi/cephcsi:canary
+          image: quay.io/cephcsi/cephcsi:v3.9.0
           args:
             - "--type=liveness"
             - "--endpoint=$(CSI_ENDPOINT)"
