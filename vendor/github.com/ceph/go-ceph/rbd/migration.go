@@ -1,5 +1,5 @@
-//go:build !(octopus || nautilus) && ceph_preview
-// +build !octopus,!nautilus,ceph_preview
+//go:build !(octopus || nautilus)
+// +build !octopus,!nautilus
 
 package rbd
 
