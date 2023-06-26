@@ -54,8 +54,8 @@ func SetMaxGRPCLogLength(characterCount int) {
 // file or have format '<protocol>://', following gRPC name resolution mechanism at
 // https://github.com/grpc/grpc/blob/master/doc/naming.md.
 //
-// The function tries to connect indefinitely every second until it connects. The function automatically disables TLS
-// and adds interceptor for logging of all gRPC messages at level 5.
+// The function tries to connect for 30 seconds, and returns an error if no connection has been established at that point.
+// The function automatically disables TLS and adds interceptor for logging of all gRPC messages at level 5.
 //
 // For a connection to a Unix Domain socket, the behavior after
 // loosing the connection is configurable. The default is to
@@ -70,7 +70,7 @@ func SetMaxGRPCLogLength(characterCount int) {
 // For other connections, the default behavior from gRPC is used and
 // loss of connection is not detected reliably.
 func Connect(address string, metricsManager metrics.CSIMetricsManager, options ...Option) (*grpc.ClientConn, error) {
-	return connect(address, metricsManager, []grpc.DialOption{}, options)
+	return connect(address, metricsManager, []grpc.DialOption{grpc.WithTimeout(time.Second * 30)}, options)
 }
 
 // Option is the type of all optional parameters for Connect.
