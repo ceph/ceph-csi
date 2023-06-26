@@ -4,12 +4,8 @@
    - [Pre-upgrade considerations](#pre-upgrade-considerations)
       - [Snapshot-controller and snapshot crd](#snapshot-controller-and-snapshot-crd)
          - [Snapshot API version support matrix](#snapshot-api-version-support-matrix)
-   - [Upgrading from v3.2 to v3.3](#upgrading-from-v32-to-v33)
-   - [Upgrading from v3.3 to v3.4](#upgrading-from-v33-to-v34)
-   - [Upgrading from v3.4 to v3.5](#upgrading-from-v34-to-v35)
-   - [Upgrading from v3.5 to v3.6](#upgrading-from-v35-to-v36)
-   - [Upgrading from v3.6 to v3.7](#upgrading-from-v36-to-v37)
-   - [Upgrading from v3.7 to v3.8](#upgrading-from-v37-to-v38)
+   - [Upgrading from previous releases](#upgrading-from-previous-releases)
+   - [Upgrading from v3.8 to v3.9](#upgrading-from-v38-to-v39)
       - [Upgrading CephFS](#upgrading-cephfs)
          - [1. Upgrade CephFS Provisioner resources](#1-upgrade-cephfs-provisioner-resources)
             - [1.1 Update the CephFS Provisioner RBAC](#11-update-the-cephfs-provisioner-rbac)
@@ -18,6 +14,7 @@
             - [2.1 Update the CephFS Nodeplugin RBAC](#21-update-the-cephfs-nodeplugin-rbac)
             - [2.2 Update the CephFS Nodeplugin daemonset](#22-update-the-cephfs-nodeplugin-daemonset)
             - [2.3 Manual deletion of CephFS Nodeplugin daemonset pods](#23-manual-deletion-of-cephfs-nodeplugin-daemonset-pods)
+            - [2.4 Modifying MountOptions in Storageclass and PersistentVolumes](#24-modifying-mountoptions-in-storageclass-and-persistentvolumes)
          - [Delete removed CephFS PSP, Role and RoleBinding](#delete-removed-cephfs-psp-role-and-rolebinding)
       - [Upgrading RBD](#upgrading-rbd)
          - [3. Upgrade RBD Provisioner resources](#3-upgrade-rbd-provisioner-resources)
@@ -56,7 +53,7 @@ To avoid this issue in future upgrades, we recommend that you do not use the
 fuse client as of now.
 
 This guide will walk you through the steps to upgrade the software in a cluster
-from v3.7 to v3.8
+from v3.8 to v3.9
 
 ### Snapshot-controller and snapshot crd
 
@@ -73,32 +70,24 @@ controller and snapshot CRD. more info can be found
 
 **Note:** We recommend to use {sidecar, controller, crds} of same version
 
-## Upgrading from v3.2 to v3.3
+## Upgrading from previous releases
 
-Refer [upgrade-from-v3.2-v3.3](https://github.com/ceph/ceph-csi/blob/v3.3.1/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi v3.2 to v3.3
+To upgrade from previous releases, refer to the following:
 
-## Upgrading from v3.3 to v3.4
+- [upgrade-from-v3.2-v3.3](https://github.com/ceph/ceph-csi/blob/v3.3.1/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.2 to v3.3
+- [upgrade-from-v3.3-v3.4](https://github.com/ceph/ceph-csi/blob/v3.4.0/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.3 to v3.4
+- [upgrade-from-v3.4-v3.5](https://github.com/ceph/ceph-csi/blob/v3.5.1/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.4 to v3.5
+- [upgrade-from-v3.5-v3.6](https://github.com/ceph/ceph-csi/blob/v3.6.1/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.5 to v3.6
+- [upgrade-from-v3.6-v3.7](https://github.com/ceph/ceph-csi/blob/v3.7.2/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.6 to v3.7
+- [upgrade-from-v3.7-v3.8](https://github.com/ceph/ceph-csi/blob/v3.8.0/docs/ceph-csi-upgrade.md)
+  to upgrade from cephcsi v3.7 to v3.8
 
-Refer [upgrade-from-v3.3-v3.4](https://github.com/ceph/ceph-csi/blob/v3.4.0/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi v3.3 to v3.4
-
-## Upgrading from v3.4 to v3.5
-
-Refer [upgrade-from-v3.4-v3.5](https://github.com/ceph/ceph-csi/blob/v3.5.1/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi v3.4 to v3.5
-
-## Upgrading from v3.5 to v3.6
-
-Refer [upgrade-from-v3.5-v3.6](https://github.com/ceph/ceph-csi/blob/v3.6.1/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi v3.5 to v3.6
-
-## Upgrading from v3.6 to v3.7
-
-Refer [upgrade-from-v3.6-v3.7](https://github.com/ceph/ceph-csi/blob/v3.7.2/docs/ceph-csi-upgrade.md)
-to upgrade from cephcsi v3.6 to v3.7
-
-## Upgrading from v3.7 to v3.8
+## Upgrading from v3.8 to v3.9
 
 **Ceph-csi releases from devel are expressly unsupported.** It is strongly
 recommended that you use [official
@@ -108,15 +97,15 @@ that will not be supported in the official releases. Builds from the devel
 branch can have functionality changed and even removed at any time without
 compatibility support and without prior notice.
 
-**Also, we do not recommend any direct upgrades to 3.8 except from 3.7 to 3.8.**
-For example, upgrading from 3.6 to 3.8 is not recommended.
+**Also, we do not recommend any direct upgrades to 3.9 except from 3.8 to 3.9.**
+For example, upgrading from 3.7 to 3.9 is not recommended.
 
-git checkout v3.8.0 tag
+git checkout v3.9.0 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.8.0
+git checkout v3.9.0
 ```
 
 ```console
@@ -127,6 +116,9 @@ Warning: kubectl apply should be used on resource created by either kubectl crea
 
 ### Upgrading CephFS
 
+If existing cephfs storageclasses' `MountOptions` are set, please refer to
+[modifying mount options](#24-modifying-mountoptions-in-storageclass-and-persistentvolumes)
+section.
 Upgrading cephfs csi includes upgrade of cephfs driver and as well as
 kubernetes sidecar containers and also the permissions required for the
 kubernetes sidecar containers, lets upgrade the things one by one
@@ -233,10 +225,35 @@ For each node:
 - Drain your application pods from the node
 - Delete the CSI driver pods on the node
    - The pods to delete will be named with a csi-cephfsplugin prefix and have a
-    random suffix on each node. However, no need to delete the provisioner
-    pods: csi-cephfsplugin-provisioner-* .
+     random suffix on each node. However, no need to delete the provisioner
+     pods: csi-cephfsplugin-provisioner-* .
    - The pod deletion causes the pods to be restarted and updated automatically
-    on the node.
+     on the node.
+
+##### 2.4 Modifying MountOptions in Storageclass and PersistentVolumes
+
+CephCSI, starting from release v3.9.0, will pass the options specified in the
+StorageClass's `MountOptions` during both `NodeStageVolume` (kernel cephfs or
+ceph-fuse mount operation) and `NodePublishVolume` (bind mount) operations.
+Therefore, only common options that is acceptable during both the above
+described operations needs to be set in StorageClass's `MountOptions`.
+If invalid mount options are set in StorageClass's `MountOptions`
+such as `"debug"`, the mounting of cephFS PVCs will fail.
+
+Follow the below steps to update the StorageClass's `MountOptions`:
+
+- Take a backup of the StorageClass using
+  `kubectl get sc <storageclass-name> -o yaml > sc.yaml`.
+- Edit `sc.yaml` to remove the invalid mount options from `MountOptions` field.
+- Delete the StorageClass using `kubectl delete sc <storageclass-name>`.
+- Recreate the StorageClass using `kubectl create -f sc.yaml`.
+
+Follow the below steps to update the PersistentVolume's `MountOptions`:
+
+- Identify cephFS PersistentVolumes using
+  `kubectl get pv | grep <storageclass-name>`.
+- and remove invalid mount options from `MountOptions` field
+  in the PersistentVolume's using `kubectl edit pv <pv-name>`.
 
 #### Delete removed CephFS PSP, Role and RoleBinding
 
@@ -252,7 +269,7 @@ kubectl delete role cephfs-csi-nodeplugin-psp --ignore-not-found
 kubectl delete rolebinding cephfs-csi-nodeplugin-psp --ignore-not-found
 ```
 
-we have successfully upgraded cephfs csi from v3.7 to v3.8
+we have successfully upgraded cephfs csi from v3.8 to v3.9
 
 ### Upgrading RBD
 
@@ -335,7 +352,7 @@ kubectl delete role rbd-csi-vault-token-review-psp --ignore-not-found
 kubectl delete rolebinding rbd-csi-vault-token-review-psp --ignore-not-found
 ```
 
-we have successfully upgraded RBD csi from v3.7 to v3.8
+we have successfully upgraded RBD csi from v3.8 to v3.9
 
 ### Upgrading NFS
 
@@ -397,7 +414,7 @@ daemonset.apps/csi-nfsplugin configured
 service/csi-metrics-nfsplugin configured
 ```
 
-we have successfully upgraded nfs csi from v3.7 to v3.8
+we have successfully upgraded nfs csi from v3.8 to v3.9
 
 ### CSI Sidecar containers consideration
 
