@@ -37,8 +37,8 @@ type ReclaimSpaceControllerServer struct {
 	*rs.UnimplementedReclaimSpaceControllerServer
 }
 
-// NewReclaimSpaceControllerServer creates a new IdentityServer which handles
-// the Identity Service requests from the CSI-Addons specification.
+// NewReclaimSpaceControllerServer creates a new ReclaimSpaceControllerServer which handles
+// the ReclaimSpace Service requests from the CSI-Addons specification.
 func NewReclaimSpaceControllerServer() *ReclaimSpaceControllerServer {
 	return &ReclaimSpaceControllerServer{}
 }

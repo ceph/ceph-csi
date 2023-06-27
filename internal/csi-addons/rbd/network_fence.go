@@ -32,8 +32,8 @@ type FenceControllerServer struct {
 	*fence.UnimplementedFenceControllerServer
 }
 
-// NewFenceControllerServer creates a new IdentityServer which handles
-// the Identity Service requests from the CSI-Addons specification.
+// NewFenceControllerServer creates a new FenceControllerServer which handles
+// the FenceController Service requests from the CSI-Addons specification.
 func NewFenceControllerServer() *FenceControllerServer {
 	return &FenceControllerServer{}
 }
