@@ -1,5 +1,5 @@
-//go:build !(nautilus || octopus || pacific) && ceph_preview
-// +build !nautilus,!octopus,!pacific,ceph_preview
+//go:build !(nautilus || octopus || pacific)
+// +build !nautilus,!octopus,!pacific
 
 package admin
 
