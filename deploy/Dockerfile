@@ -1,9 +1,8 @@
 FROM quay.io/centos/centos:stream9
 
-# FIXME #3946: jenkins-job-builder does not seem to work with urllib3 2.x
 RUN true \
  && dnf -y install git make python3-pip \
- && pip3 install jenkins-job-builder 'urllib3>=1.26.15,<2' \
+ && pip3 install jenkins-job-builder \
  && dnf -y clean all \
  && true
 
