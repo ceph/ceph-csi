@@ -11,3 +11,4 @@ data:
     user=ndevos-admin-edit-view
     password=<token-from-user-config-in-webui>
     url=https://jenkins-ceph-csi.apps.ci.centos.org/
+    timeout=120
