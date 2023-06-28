@@ -52,7 +52,7 @@
           status-url: $RUN_DISPLAY_URL
           status-context: 'ci/centos/upgrade-tests-{test_type}'
           # yamllint disable-line rule:line-length
-          trigger-phrase: '/(re)?test ((all)|(ci/centos/upgrade-tests(-{test_type})?))'
+          trigger-phrase: '/(re)?test ci/centos/upgrade-tests(-{test_type})?'
           only-trigger-phrase: '{only_run_on_request}'
           permit-all: true
           github-hooks: true
