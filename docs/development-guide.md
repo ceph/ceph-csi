@@ -300,12 +300,6 @@ opening fresh PRs, rebase of PRs and force pushing changes to existing PRs.
 
 Right now, we also have below commands to manually retrigger the CI jobs
 
-1. To retrigger all the CI jobs, comment the PR with command: `/retest all`
-
-   **Note**:
-
-   This will rerun all the jobs including the jobs which are already passed
-
 1. To retrigger a specific CI job, comment the PR with command: `/retest <job-name>`
 
    example:

@@ -44,7 +44,5 @@ the following bot commands in an otherwise empty comment in this PR:
 
 - `/retest ci/centos/<job-name>`: retest the `<job-name>` after unrelated
   failure (please report the failure too!)
-- `/retest all`: run this in case the CentOS CI failed to start/report any test
-  progress or results
 
 </details>
