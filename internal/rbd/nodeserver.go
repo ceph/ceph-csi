@@ -512,6 +512,14 @@ func resizeNodeStagePath(ctx context.Context,
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
+
+		// If this is a AccessType=Block volume, do not attempt
+		// filesystem resize. The application is in charge of the data
+		// on top of the raw block-device, we can not assume there is a
+		// filesystem at all.
+		if isBlock {
+			return nil
+		}
 	}
 	// check stagingPath needs resize.
 	ok, err = resizer.NeedResize(devicePath, stagingTargetPath)
