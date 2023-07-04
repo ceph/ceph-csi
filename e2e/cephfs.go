@@ -337,6 +337,26 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			By("validate fuseMountOptions", func() {
+				params := map[string]string{
+					"mounter":          "fuse",
+					"fuseMountOptions": "default_permissions",
+				}
+				err := createCephfsStorageClass(f.ClientSet, f, true, params)
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+				mountFlags := []string{"default_permissions"}
+				err = checkMountOptions(pvcPath, appPath, f, mountFlags)
+				if err != nil {
+					framework.Failf("failed to validate fuse mount options: %v", err)
+				}
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+			})
+
 			By("verify generic ephemeral volume support", func() {
 				err := createCephfsStorageClass(f.ClientSet, f, true, nil)
 				if err != nil {
