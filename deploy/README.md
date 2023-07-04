@@ -5,7 +5,7 @@ Job Builder on OpenShift and update/add Jenkins Jobs in an environment hosted
 in the same OpenShift project.
 
 The used Jenkins environment is expected to be deployed already. This is done
-by the CentOS CI team when a [request for CI resources](ci_request) is handled.
+by the CentOS CI team when a [request for CI resources][ci_request] is handled.
 The deploying and configuration of Jenkins is therefor not part of this
 document.
 
@@ -18,11 +18,11 @@ update/add jobs in a Jenkins environment.
 All `.yaml` files in this directory need to be pushed into OpenShift, use `oc
 create -f <file>` for that.
 
-- the `Dockerfile` uses `pip` to install `jenkins-jobs`, the BuildConfig object
+- The `Dockerfile` uses `pip` to install `jenkins-jobs`, the BuildConfig object
   in OpenShift can then be used to build the image
 - `checkout-repo.sh` will be included in the container image, and checks out
   the `ci/centos` branch of the repository
-- together with the `Makefile` (checked out with `checkout-repo.sh`), the
+- Together with the `Makefile` (checked out with `checkout-repo.sh`), the
   Jenkins Jobs can be validated or deployed
 - `jjb-buildconfig.yaml` creates the ImageStream and the BuildConfig objects.
   Once created with `oc create`, the OpenShift Console shows a `Build` button
