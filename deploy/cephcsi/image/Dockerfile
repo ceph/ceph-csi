@@ -4,11 +4,6 @@ ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE} as updated_base
 
-# TODO: remove the following cmd, when issue
-# https://github.com/ceph/ceph-container/issues/2034 is fixed.
-RUN dnf config-manager --disable \
-    tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi || true
-
 RUN dnf -y update \
        && dnf clean all \
        && rm -rf /var/cache/yum
@@ -33,6 +28,11 @@ RUN source /build.env && \
 
 # test if the downloaded version of Golang works (different arch?)
 RUN ${GOROOT}/bin/go version && ${GOROOT}/bin/go env
+
+# TODO: remove the following cmd, when issue
+# https://github.com/ceph/ceph-container/issues/2034 is fixed.
+RUN dnf config-manager --disable \
+    tcmu-runner,tcmu-runner-source,tcmu-runner-noarch || true
 
 RUN dnf -y install --nodocs \
 	librados-devel librbd-devel \
