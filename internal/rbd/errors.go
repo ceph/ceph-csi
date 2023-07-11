@@ -63,4 +63,6 @@ var (
 	ErrFetchingMirroringInfo = errors.New("failed to get mirroring info of image")
 	// ErrResyncImageFailed is returned when the operation to resync the image fails.
 	ErrResyncImageFailed = errors.New("failed to resync image")
+	// ErrImageInUse is returned when the image is in use.
+	ErrImageInUse = errors.New("image is in use")
 )
