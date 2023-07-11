@@ -18,11 +18,13 @@ package rbd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	rbdutil "github.com/ceph/ceph-csi/internal/rbd"
 	"github.com/ceph/ceph-csi/internal/util"
+	"github.com/ceph/ceph-csi/internal/util/log"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	rs "github.com/csi-addons/spec/lib/go/reclaimspace"
@@ -69,6 +71,13 @@ func (rscs *ReclaimSpaceControllerServer) ControllerReclaimSpace(
 	defer rbdVol.Destroy()
 
 	err = rbdVol.Sparsify()
+	if errors.Is(err, rbdutil.ErrImageInUse) {
+		// FIXME: https://github.com/csi-addons/kubernetes-csi-addons/issues/406.
+		// treat sparsify call as no-op if volume is in use.
+		log.DebugLog(ctx, fmt.Sprintf("volume with ID %q is in use, skipping sparsify operation", volumeID))
+
+		return &rs.ControllerReclaimSpaceResponse{}, nil
+	}
 	if err != nil {
 		// TODO: check for different error codes?
 		return nil, status.Errorf(codes.Internal, "failed to sparsify volume %q: %s", rbdVol, err.Error())
