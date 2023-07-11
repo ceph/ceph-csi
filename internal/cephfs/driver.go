@@ -17,9 +17,13 @@ limitations under the License.
 package cephfs
 
 import (
+	"fmt"
+
 	"github.com/ceph/ceph-csi/internal/cephfs/mounter"
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
+	casceph "github.com/ceph/ceph-csi/internal/csi-addons/cephfs"
+	csiaddons "github.com/ceph/ceph-csi/internal/csi-addons/server"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
 	"github.com/ceph/ceph-csi/internal/journal"
 	"github.com/ceph/ceph-csi/internal/util"
@@ -35,6 +39,8 @@ type Driver struct {
 	is *IdentityServer
 	ns *NodeServer
 	cs *ControllerServer
+	// cas is the CSIAddonsServer where CSI-Addons services are handled
+	cas *csiaddons.CSIAddonsServer
 }
 
 // CSIInstanceID is the instance ID that is unique to an instance of CSI, used when sharing
@@ -147,6 +153,12 @@ func (fs *Driver) Run(conf *util.Config) {
 		fs.cs = NewControllerServer(fs.cd)
 	}
 
+	// configre CSI-Addons server and components
+	err = fs.setupCSIAddonsServer(conf)
+	if err != nil {
+		log.FatalLogMsg(err.Error())
+	}
+
 	server := csicommon.NewNonBlockingGRPCServer()
 	srv := csicommon.Servers{
 		IS: fs.is,
@@ -168,4 +180,28 @@ func (fs *Driver) Run(conf *util.Config) {
 		go util.EnableProfiling()
 	}
 	server.Wait()
+}
+
+// setupCSIAddonsServer creates a new CSI-Addons Server on the given (URL)
+// endpoint. The supported CSI-Addons operations get registered as their own
+// services.
+func (fs *Driver) setupCSIAddonsServer(conf *util.Config) error {
+	var err error
+
+	fs.cas, err = csiaddons.NewCSIAddonsServer(conf.CSIAddonsEndpoint)
+	if err != nil {
+		return fmt.Errorf("failed to create CSI-Addons server: %w", err)
+	}
+
+	// register services
+	is := casceph.NewIdentityServer(conf)
+	fs.cas.RegisterService(is)
+
+	// start the server, this does not block, it runs a new go-routine
+	err = fs.cas.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start CSI-Addons server: %w", err)
+	}
+
+	return nil
 }
