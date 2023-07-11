@@ -45,4 +45,6 @@ var (
 	// ErrLastSyncTimeNotFound is returned when last sync time is not found for
 	// the image.
 	ErrLastSyncTimeNotFound = errors.New("last sync time not found")
+	// ErrImageInUse is returned when the image is in use.
+	ErrImageInUse = errors.New("image is in use")
 )
