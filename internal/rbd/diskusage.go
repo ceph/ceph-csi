@@ -23,7 +23,18 @@ import (
 // Sparsify checks the size of the objects in the RBD image and calls
 // rbd_sparify() to free zero-filled blocks and reduce the storage consumption
 // of the image.
+// This function will return ErrImageInUse if the image is in use, since
+// sparsifying an image on which i/o is in progress is not optimal.
 func (ri *rbdImage) Sparsify() error {
+	inUse, err := ri.isInUse()
+	if err != nil {
+		return fmt.Errorf("failed to check if image is in use: %w", err)
+	}
+	if inUse {
+		// if the image is in use, we should not sparsify it, return ErrImageInUse.
+		return ErrImageInUse
+	}
+
 	image, err := ri.open()
 	if err != nil {
 		return err
