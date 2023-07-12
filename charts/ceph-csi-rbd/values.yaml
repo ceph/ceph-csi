@@ -216,7 +216,7 @@ provisioner:
 
   provisioner:
     image:
-      repository: gcr.io/k8s-staging-sig-storage/csi-provisioner
+      repository: registry.k8s.io/sig-storage/csi-provisioner
       tag: v3.5.0
       pullPolicy: IfNotPresent
     resources: {}
