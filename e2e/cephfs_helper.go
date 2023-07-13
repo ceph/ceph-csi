@@ -66,11 +66,6 @@ func createCephfsStorageClass(
 	if err != nil {
 		return err
 	}
-	// TODO: remove this once the ceph-csi driver release-v3.9 is completed
-	// and upgrade tests are done from v3.9 to devel.
-	// The mountOptions from previous are not compatible with NodeStageVolume
-	// request.
-	sc.MountOptions = []string{}
 
 	sc.Parameters["fsName"] = fileSystemName
 	sc.Parameters["csi.storage.k8s.io/provisioner-secret-namespace"] = cephCSINamespace
