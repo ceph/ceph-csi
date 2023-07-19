@@ -176,6 +176,11 @@ func (cs *ControllerServer) parseVolCreateRequest(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	volOp := req.GetParameters()
+	if namePrefix, ok := volOp["volumeNamePrefix"]; ok {
+		rbdVol.NamePrefix = namePrefix
+	}
+
 	// set cluster name on volume
 	rbdVol.ClusterName = cs.ClusterName
 	// set metadata on volume
@@ -215,6 +220,9 @@ func (cs *ControllerServer) parseVolCreateRequest(
 
 	// store topology information from the request
 	rbdVol.TopologyPools, rbdVol.TopologyRequirement, err = util.GetTopologyFromRequest(req)
+	if namePrefix, ok := volOp["volumeNamePrefix"]; ok {
+		rbdVol.NamePrefix = namePrefix
+	}
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -317,6 +325,10 @@ func (cs *ControllerServer) CreateVolume(
 	}
 	defer cr.DeleteCredentials()
 	rbdVol, err := cs.parseVolCreateRequest(ctx, req)
+	volOp := req.GetParameters()
+	if namePrefix, ok := volOp["volumeNamePrefix"]; ok {
+		rbdVol.NamePrefix = namePrefix
+	}
 	if err != nil {
 		return nil, err
 	}
