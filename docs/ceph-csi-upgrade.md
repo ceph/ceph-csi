@@ -111,12 +111,12 @@ compatibility support and without prior notice.
 **Also, we do not recommend any direct upgrades to 3.8 except from 3.7 to 3.8.**
 For example, upgrading from 3.6 to 3.8 is not recommended.
 
-git checkout v3.8.0 tag
+git checkout v3.8.1 tag
 
 ```bash
 git clone https://github.com/ceph/ceph-csi.git
 cd ./ceph-csi
-git checkout v3.8.0
+git checkout v3.8.1
 ```
 
 ```console
