@@ -183,6 +183,17 @@ node('cico-workspace') {
 			podman_pull(ci_registry, "docker.io", "library/vault:1.8.5")
 			ssh "./podman2minikube.sh docker.io/library/vault:1.8.5"
 		}
+		stage("set csi-upgrade-version from build.env") {
+			def build_env_csi_upgrade_version = sh(
+				script: 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${CICO_NODE} \'source /opt/build/go/src/github.com/ceph/ceph-csi/build.env && echo ${CSI_UPGRADE_VERSION}\'',
+				returnStdout: true
+			).trim()
+
+			if (build_env_csi_upgrade_version != '') {
+				// override csi_upgrade_version with CSI_UPGRADE_VERSION value from build.env.
+				csi_upgrade_version= build_env_csi_upgrade_version
+			}
+		}
 		stage("run ${test_type} upgrade tests") {
 			timeout(time: 120, unit: 'MINUTES') {
 				upgrade_args = "--test-cephfs=false --test-rbd=true --upgrade-testing=true"
