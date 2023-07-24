@@ -108,6 +108,7 @@ metadata:
   name: fs-static-pvc
   namespace: default
 spec:
+  storageClassName: ""
   accessModes:
   # ReadWriteMany is only supported for Block PVC
   - ReadWriteOnce
