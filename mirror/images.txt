@@ -7,6 +7,10 @@
 #
 
 # ceph-csi devel
+docker.io/rook/ceph:v1.12.1      rook/ceph:v1.12.1
+quay.io/ceph/ceph:v18            quay.io/ceph/ceph:v18
+
+# ceph-csi v3.9
 docker.io/rook/ceph:v1.10.9      rook/ceph:v1.10.9
 
 # ceph-csi v3.7
