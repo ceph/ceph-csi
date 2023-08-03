@@ -216,7 +216,6 @@ func (cs *ControllerServer) parseVolCreateRequest(
 
 	// start with pool the same as journal pool, in case there is a topology
 	// based split, pool for the image will be updated subsequently
-	rbdVol.JournalPool = rbdVol.Pool
 
 	// store topology information from the request
 	rbdVol.TopologyPools, rbdVol.TopologyRequirement, err = util.GetTopologyFromRequest(req)
@@ -226,6 +225,8 @@ func (cs *ControllerServer) parseVolCreateRequest(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+
+	rbdVol.JournalPool = rbdVol.Pool
 
 	// NOTE: rbdVol does not contain VolID and RbdImageName populated, everything
 	// else is populated post create request parsing

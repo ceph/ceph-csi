@@ -2833,14 +2833,9 @@ var _ = Describe("RBD", func() {
 					framework.Failf("failed to create storageclass: %v", err)
 				}
 				// set up PVC
-				pvc, err := loadPVC(pvcPath)
+				pvc, app, err := createPVCAndAppBinding(pvcPath, appPath, f, 0)
 				if err != nil {
-					framework.Failf("failed to load PVC: %v", err)
-				}
-				pvc.Namespace = f.UniqueName
-				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
-				if err != nil {
-					framework.Failf("failed to create PVC: %v", err)
+					framework.Failf("failed to create PVC and application: %v", err)
 				}
 
 				// validate created backend rbd images
@@ -2862,9 +2857,9 @@ var _ = Describe("RBD", func() {
 				}
 
 				// clean up after ourselves
-				err = deletePVCAndValidatePV(f.ClientSet, pvc, deployTimeout)
+				err = deletePVCAndApp("", f, pvc, app)
 				if err != nil {
-					framework.Failf("failed to  delete PVC: %v", err)
+					framework.Failf("failed to delete PVC and application: %v", err)
 				}
 				// validate created backend rbd images
 				validateRBDImageCount(f, 0, defaultRBDPool)
