@@ -15,4 +15,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: lint-extras
-        run: CONTAINER_CMD=docker make containerized-test TARGET=lint-extras
+        run: make containerized-test TARGET=lint-extras

@@ -15,4 +15,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: mod-check
-        run: CONTAINER_CMD=docker make containerized-test TARGET=mod-check
+        run: make containerized-test TARGET=mod-check

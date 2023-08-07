@@ -17,4 +17,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: codespell
-        run: CONTAINER_CMD=docker make containerized-test TARGET=codespell
+        run: make containerized-test TARGET=codespell
