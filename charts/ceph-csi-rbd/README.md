@@ -47,7 +47,7 @@ To install the Chart into your Kubernetes cluster
 After installation succeeds, you can get a status of Chart
 
 ```bash
-helm status "ceph-csi-rbd"
+helm status --namespace "ceph-csi-rbd" "ceph-csi-rbd"
 ```
 
 ### Upgrade Chart
