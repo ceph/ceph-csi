@@ -19,4 +19,4 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: commitlint
         # yamllint disable-line rule:line-length
-        run: make containerized-test CONTAINER_CMD=docker TARGET=commitlint GIT_SINCE="origin/${GITHUB_BASE_REF}"
+        run: make containerized-test TARGET=commitlint GIT_SINCE="origin/${GITHUB_BASE_REF}"

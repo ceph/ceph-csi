@@ -15,4 +15,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: golangci-lint
-        run: CONTAINER_CMD=docker make containerized-test TARGET=go-lint
+        run: make containerized-test TARGET=go-lint
