@@ -47,7 +47,7 @@ To install the Chart into your Kubernetes cluster
 After installation succeeds, you can get a status of Chart
 
 ```bash
-helm status "ceph-csi-cephfs"
+helm status --namespace "ceph-csi-cephfs" "ceph-csi-cephfs"
 ```
 
 ### Upgrade Chart
