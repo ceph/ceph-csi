@@ -827,13 +827,13 @@ func createPool(f *framework.Framework, name string) error {
 		pgCount = 128
 		size    = 1
 	)
-	// ceph osd pool create replicapool
-	cmd := fmt.Sprintf("ceph osd pool create %s %d", name, pgCount)
+	// ceph osd pool create name
+	cmd := fmt.Sprintf("ceph osd pool create %s %d --yes-i-really-mean-it", name, pgCount)
 	_, _, err := execCommandInToolBoxPod(f, cmd, rookNamespace)
 	if err != nil {
 		return err
 	}
-	// ceph osd pool set replicapool size 1
+	// ceph osd pool set name size 1
 	cmd = fmt.Sprintf("ceph osd pool set %s size %d --yes-i-really-mean-it", name, size)
 	_, _, err = execCommandInToolBoxPod(f, cmd, rookNamespace)
 
