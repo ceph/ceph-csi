@@ -542,9 +542,10 @@ func (vo *VolumeOptions) populateVolumeOptionsFromBackingSnapshot(
 		return fmtBackingSnapshotOptionMismatch("clusterID", vo.ClusterID, parentBackingSnapVolOpts.ClusterID)
 	}
 
-	if vo.Pool != "" {
-		return errors.New("cannot set pool for snapshot-backed volume")
-	}
+	// Pool parameter is optional and only used to set 'pool_layout' argument for
+	// subvolume and subvolume clone create commands.
+	// Setting this to empty since it is not used with Snapshot-backed volume.
+	vo.Pool = ""
 
 	if vo.MetadataPool != parentBackingSnapVolOpts.MetadataPool {
 		return fmtBackingSnapshotOptionMismatch("MetadataPool", vo.MetadataPool, parentBackingSnapVolOpts.MetadataPool)
