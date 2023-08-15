@@ -4,10 +4,11 @@ ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE} as updated_base
 
-# TODO: remove the following cmd, when issue
-# https://github.com/ceph/ceph-container/issues/2034 is fixed.
+# TODO: remove the following cmd, when issues
+# https://github.com/ceph/ceph-container/issues/2034
+# https://github.com/ceph/ceph-container/issues/2141 are fixed.
 RUN dnf config-manager --disable \
-    tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi || true
+    tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi,ganesha || true
 
 RUN dnf -y update --nobest \
        && dnf clean all \
