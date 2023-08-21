@@ -10,6 +10,9 @@ making configuring the Ceph cluster a minimal effort.
 Ceph does not enable the NFS-service by default. In order for Rook Ceph to be
 able to configure NFS-exports, the NFS-service needs to be configured first.
 
+- Required for Ceph v16.2.7 and below
+- Optional for Ceph v16.2.8 and above
+
 In the [Rook Toolbox][rook_toolbox], run the following commands:
 
 ```console
