@@ -1,5 +1,5 @@
-//go:build !nautilus && ceph_preview
-// +build !nautilus,ceph_preview
+//go:build !nautilus
+// +build !nautilus
 
 package rbd
 
@@ -56,7 +56,8 @@ type sparsifyCallbackCtx struct {
 //	int rbd_sparsify_with_progress(rbd_image_t image, size_t sparse_size,
 //								   librbd_progress_fn_t cb, void *cbdata);
 func (image *Image) SparsifyWithProgress(
-	sparseSize uint, cb SparsifyCallback, data interface{}) error {
+	sparseSize uint, cb SparsifyCallback, data interface{},
+) error {
 	// the provided callback must be a real function
 	if cb == nil {
 		return rbdError(C.EINVAL)
@@ -80,8 +81,8 @@ func (image *Image) SparsifyWithProgress(
 
 //export sparsifyCallback
 func sparsifyCallback(
-	offset, total C.uint64_t, index uintptr) C.int {
-
+	offset, total C.uint64_t, index uintptr,
+) C.int {
 	v := sparsifyCallbacks.Lookup(index)
 	ctx := v.(sparsifyCallbackCtx)
 	return C.int(ctx.callback(uint64(offset), uint64(total), ctx.data))
