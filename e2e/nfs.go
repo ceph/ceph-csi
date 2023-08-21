@@ -72,14 +72,14 @@ func deployNFSPlugin(f *framework.Framework) {
 		framework.Failf("failed to create pool for NFS config %q: %v", nfsPoolName, err)
 	}
 
-	createORDeleteNFSResources(f, kubectlCreate)
+	createORDeleteNFSResources(kubectlCreate)
 }
 
 func deleteNFSPlugin() {
-	createORDeleteNFSResources(nil, kubectlDelete)
+	createORDeleteNFSResources(kubectlDelete)
 }
 
-func createORDeleteNFSResources(f *framework.Framework, action kubectlAction) {
+func createORDeleteNFSResources(action kubectlAction) {
 	cephConfigFile := getConfigFile(cephConfconfigMap, deployPath, examplePath)
 	resources := []ResourceDeployer{
 		// shared resources
@@ -112,12 +112,7 @@ func createORDeleteNFSResources(f *framework.Framework, action kubectlAction) {
 			filename:  nfsDirPath + nfsNodePlugin,
 			namespace: cephCSINamespace,
 		},
-		// NFS-export management by Rook
-		&rookNFSResource{
-			f:           f,
-			modules:     []string{"rook", "nfs"},
-			orchBackend: "rook",
-		},
+		// NFS server deployment
 		&yamlResourceNamespaced{
 			filename:  nfsExamplePath + nfsRookCephNFS,
 			namespace: rookNamespace,

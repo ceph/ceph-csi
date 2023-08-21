@@ -268,40 +268,6 @@ func (yrn *yamlResourceNamespaced) Do(action kubectlAction) error {
 	return nil
 }
 
-type rookNFSResource struct {
-	f           *framework.Framework
-	modules     []string
-	orchBackend string
-}
-
-func (rnr *rookNFSResource) Do(action kubectlAction) error {
-	if action != kubectlCreate {
-		// we won't disabled modules
-		return nil
-	}
-
-	for _, module := range rnr.modules {
-		cmd := fmt.Sprintf("ceph mgr module enable %s", module)
-		_, _, err := execCommandInToolBoxPod(rnr.f, cmd, rookNamespace)
-		if err != nil {
-			// depending on the Ceph/Rook version, modules are
-			// enabled by default
-			framework.Logf("enabling module %q failed: %v", module, err)
-		}
-	}
-
-	if rnr.orchBackend != "" {
-		// this is not required for all Rook versions, allow failing
-		cmd := fmt.Sprintf("ceph orch set backend %s", rnr.orchBackend)
-		_, _, err := execCommandInToolBoxPod(rnr.f, cmd, rookNamespace)
-		if err != nil {
-			framework.Logf("setting orch backend %q failed: %v", rnr.orchBackend, err)
-		}
-	}
-
-	return nil
-}
-
 func waitForDeploymentUpdateScale(
 	c kubernetes.Interface,
 	ns,
