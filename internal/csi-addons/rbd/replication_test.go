@@ -225,74 +225,26 @@ func TestCheckVolumeResyncStatus(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test when rbd mirror daemon is not running",
+			name: "test when local_snapshot_timestamp is non zero",
 			args: librbd.SiteMirrorImageStatus{
-				State: librbd.MirrorImageStatusStateUnknown,
-				Up:    false,
-			},
-			wantErr: true,
-		},
-		{
-			name: "test for unknown state",
-			args: librbd.SiteMirrorImageStatus{
-				State: librbd.MirrorImageStatusStateUnknown,
-				Up:    true,
+				//nolint:lll // sample output cannot be split into multiple lines.
+				Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":1684675261,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
 			},
 			wantErr: false,
 		},
 		{
-			name: "test for error state",
+			name: "test when local_snapshot_timestamp is zero",
+			//nolint:lll // sample output cannot be split into multiple lines.
 			args: librbd.SiteMirrorImageStatus{
-				State: librbd.MirrorImageStatusStateError,
-				Up:    true,
+				Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"local_snapshot_timestamp":0,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
 			},
 			wantErr: true,
 		},
 		{
-			name: "test for syncing state",
+			name: "test when local_snapshot_timestamp is not present",
+			//nolint:lll // sample output cannot be split into multiple lines.
 			args: librbd.SiteMirrorImageStatus{
-				State: librbd.MirrorImageStatusStateSyncing,
-				Up:    true,
-			},
-			wantErr: true,
-		},
-		{
-			name: "test for starting_replay state",
-			args: librbd.SiteMirrorImageStatus{
-				State: librbd.MirrorImageStatusStateStartingReplay,
-				Up:    true,
-			},
-			wantErr: true,
-		},
-		{
-			name: "test for replaying state",
-			args: librbd.SiteMirrorImageStatus{
-				State: librbd.MirrorImageStatusStateReplaying,
-				Up:    true,
-			},
-			wantErr: false,
-		},
-		{
-			name: "test for stopping_replay state",
-			args: librbd.SiteMirrorImageStatus{
-				State: librbd.MirrorImageStatusStateStoppingReplay,
-				Up:    true,
-			},
-			wantErr: true,
-		},
-		{
-			name: "test for stopped state",
-			args: librbd.SiteMirrorImageStatus{
-				State: librbd.MirrorImageStatusStateStopped,
-				Up:    true,
-			},
-			wantErr: true,
-		},
-		{
-			name: "test for invalid state",
-			args: librbd.SiteMirrorImageStatus{
-				State: librbd.MirrorImageStatusState(100),
-				Up:    true,
+				Description: `replaying, {"bytes_per_second":0.0,"bytes_per_snapshot":81920.0,"last_snapshot_bytes":81920,"last_snapshot_sync_seconds":56743,"remote_snapshot_timestamp":1684675261,"replay_state":"idle"}`,
 			},
 			wantErr: true,
 		},
@@ -641,6 +593,67 @@ func TestGetGRPCError(t *testing.T) {
 			t.Parallel()
 			result := getGRPCError(tt.err)
 			assert.Equal(t, tt.expectedErr, result)
+		})
+	}
+}
+
+func Test_timestampFromString(t *testing.T) {
+	tm := timestamppb.Now()
+	t.Parallel()
+	tests := []struct {
+		name      string
+		timestamp string
+		want      time.Time
+		wantErr   bool
+	}{
+		{
+			name:      "valid timestamp",
+			timestamp: timestampToString(tm),
+			want:      tm.AsTime().Local(),
+			wantErr:   false,
+		},
+		{
+			name:      "invalid timestamp",
+			timestamp: "invalid",
+			want:      time.Time{},
+			wantErr:   true,
+		},
+		{
+			name:      "empty timestamp",
+			timestamp: "",
+			want:      time.Time{},
+			wantErr:   true,
+		},
+		{
+			name:      "invalid format",
+			timestamp: "seconds:%d nanos:%d",
+			want:      time.Time{},
+			wantErr:   true,
+		},
+		{
+			name:      "missing nanos",
+			timestamp: "seconds:10",
+			want:      time.Time{},
+			wantErr:   true,
+		},
+		{
+			name:      "missing seconds",
+			timestamp: "nanos:0",
+			want:      time.Time{},
+			wantErr:   true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := timestampFromString(tt.timestamp)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("timestampFromString() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("timestampFromString() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

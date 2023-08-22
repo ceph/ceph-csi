@@ -50,6 +50,11 @@ const (
 	// imageMirrorModeJournal uses journaling to propagate RBD images between
 	// ceph clusters.
 	imageMirrorModeJournal imageMirroringMode = "journal"
+
+	// imageCreationTimeKey is the key to get/set the image creation timestamp
+	// on the image metadata. The key is starting with `.rbd` so that it will
+	// not get replicated to remote cluster.
+	imageCreationTimeKey = ".rbd.image.creation_time"
 )
 
 const (
@@ -480,6 +485,14 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 
 		return nil, err
 	}
+
+	creationTime, err := rbdVol.GetImageCreationTime()
+	if err != nil {
+		log.ErrorLog(ctx, err.Error())
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	mirroringInfo, err := rbdVol.GetImageMirroringInfo()
 	if err != nil {
 		log.ErrorLog(ctx, err.Error())
@@ -497,6 +510,17 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 
 	// demote image to secondary
 	if mirroringInfo.Primary {
+		// store the image creation time for resync
+		_, err = rbdVol.GetMetadata(imageCreationTimeKey)
+		if err != nil && errors.Is(err, librbd.ErrNotFound) {
+			err = rbdVol.SetMetadata(imageCreationTimeKey, timestampToString(creationTime))
+		}
+		if err != nil {
+			log.ErrorLog(ctx, err.Error())
+
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
 		err = rbdVol.DemoteImage()
 		if err != nil {
 			log.ErrorLog(ctx, err.Error())
@@ -538,6 +562,8 @@ func checkRemoteSiteStatus(ctx context.Context, mirrorStatus *librbd.GlobalMirro
 // ResyncVolume extracts the RBD volume information from the volumeID, If the
 // image is present, mirroring is enabled and the image is in demoted state.
 // If yes it will resync the image to correct the split-brain.
+//
+//nolint:gocyclo,cyclop // TODO: reduce complexity
 func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	req *replication.ResyncVolumeRequest,
 ) (*replication.ResyncVolumeResponse, error) {
@@ -578,7 +604,7 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		// it takes time for this operation.
 		log.ErrorLog(ctx, err.Error())
 
-		return nil, status.Error(codes.Aborted, err.Error())
+		return nil, status.Errorf(codes.Aborted, err.Error())
 	}
 
 	if mirroringInfo.State != librbd.MirrorImageEnabled {
@@ -637,14 +663,40 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 		ready = checkRemoteSiteStatus(ctx, mirrorStatus)
 	}
 
-	err = rbdVol.ResyncVol(localStatus, req.Force)
+	creationTime, err := rbdVol.GetImageCreationTime()
 	if err != nil {
-		return nil, getGRPCError(err)
+		return nil, status.Errorf(codes.Internal, "failed to get image info for %s: %s", rbdVol, err.Error())
 	}
 
-	err = checkVolumeResyncStatus(localStatus)
+	// image creation time is stored in the image metadata. it looks like
+	// `"seconds:1692879841 nanos:631526669"`
+	savedImageTime, err := rbdVol.GetMetadata(imageCreationTimeKey)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal,
+			"failed to get %s key from image metadata for %s: %s",
+			imageCreationTimeKey,
+			rbdVol,
+			err.Error())
+	}
+
+	st, err := timestampFromString(savedImageTime)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to parse image creation time: %s", err.Error())
+	}
+	log.DebugLog(ctx, "image %s, savedImageTime=%v, currentImageTime=%v", rbdVol, st, creationTime.AsTime())
+
+	if req.Force && st.Equal(creationTime.AsTime()) {
+		err = rbdVol.ResyncVol(localStatus)
+		if err != nil {
+			return nil, getGRPCError(err)
+		}
+	}
+
+	if !ready {
+		err = checkVolumeResyncStatus(localStatus)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	err = rbdVol.RepairResyncedImageID(ctx, ready)
@@ -657,6 +709,40 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	}
 
 	return resp, nil
+}
+
+// timestampToString converts the time.Time object to string.
+func timestampToString(st *timestamppb.Timestamp) string {
+	return fmt.Sprintf("seconds:%d nanos:%d", st.Seconds, st.Nanos)
+}
+
+// timestampFromString parses the timestamp string and returns the time.Time
+// object.
+func timestampFromString(timestamp string) (time.Time, error) {
+	st := time.Time{}
+	parts := strings.Fields(timestamp)
+	if len(parts) != 2 {
+		return st, fmt.Errorf("failed to parse image creation time: %s", timestamp)
+	}
+	if len(strings.Split(parts[0], ":")) != 2 || len(strings.Split(parts[1], ":")) != 2 {
+		return st, fmt.Errorf("failed to parse image creation time: %s", timestamp)
+	}
+	secondsStr := strings.Split(parts[0], ":")[1]
+	nanosStr := strings.Split(parts[1], ":")[1]
+
+	seconds, err := strconv.ParseInt(secondsStr, 10, 64)
+	if err != nil {
+		return st, fmt.Errorf("failed to parse image creation time seconds: %s", err.Error())
+	}
+
+	nanos, err := strconv.ParseInt(nanosStr, 10, 32)
+	if err != nil {
+		return st, fmt.Errorf("failed to parse image creation time nenos: %s", err.Error())
+	}
+
+	st = time.Unix(seconds, nanos)
+
+	return st, nil
 }
 
 func getGRPCError(err error) error {
@@ -854,20 +940,17 @@ func getLastSyncInfo(description string) (*replication.GetVolumeReplicationInfoR
 }
 
 func checkVolumeResyncStatus(localStatus librbd.SiteMirrorImageStatus) error {
-	// we are considering 2 states to check resync started and resync completed
-	// as below. all other states will be considered as an error state so that
-	// cephCSI can return error message and volume replication operator can
-	// mark the VolumeReplication status as not resyncing for the volume.
-
-	// If the state is Replaying means the resync is going on.
-	// Once the volume on remote cluster is demoted and resync
-	// is completed the image state will be moved to UNKNOWN.
-	// RBD mirror daemon should be always running on the primary cluster.
-	if !localStatus.Up || (localStatus.State != librbd.MirrorImageStatusStateReplaying &&
-		localStatus.State != librbd.MirrorImageStatusStateUnknown) {
-		return fmt.Errorf(
-			"not resyncing. Local status: daemon up=%t image is in %q state",
-			localStatus.Up, localStatus.State)
+	// we are considering local snapshot timestamp to check if the resync is
+	// started or not, if we dont see local_snapshot_timestamp in the
+	// description of localStatus, we are returning error. if we see the local
+	// snapshot timestamp in the description we return resyncing started.
+	description := localStatus.Description
+	resp, err := getLastSyncInfo(description)
+	if err != nil {
+		return fmt.Errorf("failed to get last sync info: %w", err)
+	}
+	if resp.LastSyncTime == nil {
+		return errors.New("last sync time is nil")
 	}
 
 	return nil
