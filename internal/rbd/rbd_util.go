@@ -706,49 +706,65 @@ func (ri *rbdImage) trashRemoveImage(ctx context.Context) error {
 	return nil
 }
 
-func (ri *rbdImage) getCloneDepth(ctx context.Context) (uint, error) {
-	var depth uint
-	vol := rbdVolume{}
+// getCloneDepth walks the parents of the image and returns the number of
+// images in the chain.
+//
+// This function re-uses the ioctx of the image to open all images in the
+// chain. There is no need to open new ioctx's for every image.
+func (ri *rbdImage) getCloneDepth() (uint, error) {
+	var (
+		depth uint
+		info  *librbd.ParentInfo
+	)
 
-	vol.Pool = ri.Pool
-	vol.Monitors = ri.Monitors
-	vol.RbdImageName = ri.RbdImageName
-	vol.ImageID = ri.ImageID
-	vol.RadosNamespace = ri.RadosNamespace
-	vol.conn = ri.conn.Copy()
+	image, err := ri.open()
+	if err != nil {
+		return 0, fmt.Errorf("failed to open image %s: %w", ri, err)
+	}
+
+	// get the librbd.ImageSpec of the parent
+	info, err = image.GetParent()
+
+	// Close this image, it is not used anymore. Using defer to close it
+	// and replacing the image with an other image can result in resource
+	// leaks according to golangci-lint.
+	image.Close()
 
 	for {
-		if vol.RbdImageName == "" {
-			return depth, nil
-		}
-		err := vol.openIoctx()
-		if err != nil {
-			return depth, err
+		if errors.Is(err, librbd.ErrNotFound) {
+			// image does not have more parents
+			break
+		} else if err != nil {
+			return 0, fmt.Errorf("failed to get parent of image %s at depth %d: %w", ri, depth, err)
 		}
 
-		err = vol.getImageInfo()
-		// FIXME: create and destroy the vol inside the loop.
-		// see https://github.com/ceph/ceph-csi/pull/1838#discussion_r598530807
-		vol.ioctx.Destroy()
-		vol.ioctx = nil
-		if err != nil {
-			// if the parent image is moved to trash the name will be present
-			// in rbd image info but the image will be in trash, in that case
-			// return the found depth
-			if errors.Is(err, ErrImageNotFound) {
-				return depth, nil
+		// if there is a parent, count it to the depth
+		depth++
+
+		// open the parent image, so that the for-loop can continue
+		// with checking for the parent of the parent
+		image, err = librbd.OpenImageById(ri.ioctx, info.Image.ImageID, info.Snap.SnapName)
+		if errors.Is(err, librbd.ErrNotFound) {
+			// image does not have more parents
+			break
+		} else if err != nil {
+			imageSpec := info.Image.ImageID
+			if info.Snap.SnapName != librbd.NoSnapshot {
+				imageSpec += "@" + info.Snap.SnapName
 			}
-			log.ErrorLog(ctx, "failed to check depth on image %s: %s", &vol, err)
 
-			return depth, err
+			return 0, fmt.Errorf("failed to open parent image ID %q, at depth %d: %w", imageSpec, depth, err)
 		}
-		if vol.ParentName != "" {
-			depth++
-		}
-		vol.RbdImageName = vol.ParentName
-		vol.ImageID = vol.ParentID
-		vol.Pool = vol.ParentPool
+
+		info, err = image.GetParent()
+		// info and err checking is done in the top of the for loop
+
+		// Using defer in a for loop seems to be problematic. Just
+		// always close the image.
+		image.Close()
 	}
+
+	return depth, nil
 }
 
 type trashSnapInfo struct {
@@ -814,7 +830,7 @@ func (ri *rbdImage) flattenRbdImage(
 
 	// skip clone depth check if request is for force flatten
 	if !forceFlatten {
-		depth, err = ri.getCloneDepth(ctx)
+		depth, err = ri.getCloneDepth()
 		if err != nil {
 			return err
 		}
