@@ -1558,6 +1558,19 @@ func (rv *rbdVolume) setImageOptions(ctx context.Context, options *librbd.ImageO
 	return nil
 }
 
+// GetImageCreationTime returns the creation time of the image. if the image
+// creation time is not set, it queries the image info and returns the creation time.
+func (ri *rbdImage) GetImageCreationTime() (*timestamppb.Timestamp, error) {
+	if ri.CreatedAt != nil {
+		return ri.CreatedAt, nil
+	}
+	if err := ri.getImageInfo(); err != nil {
+		return nil, err
+	}
+
+	return ri.CreatedAt, nil
+}
+
 // getImageInfo queries rbd about the given image and returns its metadata, and returns
 // ErrImageNotFound if provided image is not found.
 func (ri *rbdImage) getImageInfo() error {

@@ -19,31 +19,19 @@ package rbd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	librbd "github.com/ceph/go-ceph/rbd"
 )
 
-func (rv *rbdVolume) ResyncVol(localStatus librbd.SiteMirrorImageStatus, force bool) error {
-	if resyncRequired(localStatus) {
-		// If the force option is not set return the error message to retry
-		// with Force option.
-		if !force {
-			return fmt.Errorf("%w: image is in %q state, description (%s). Force resync to recover volume",
-				ErrFailedPrecondition, localStatus.State, localStatus.Description)
-		}
-		err := rv.resyncImage()
-		if err != nil {
-			return fmt.Errorf("%w: failed to resync image: %w", ErrResyncImageFailed, err)
-		}
-
-		// If we issued a resync, return a non-final error as image needs to be recreated
-		// locally. Caller retries till RBD syncs an initial version of the image to
-		// report its status in the resync request.
-		return fmt.Errorf("%w: awaiting initial resync due to split brain", ErrUnavailable)
+func (rv *rbdVolume) ResyncVol(localStatus librbd.SiteMirrorImageStatus) error {
+	if err := rv.resyncImage(); err != nil {
+		return fmt.Errorf("%w: failed to resync image: %w", ErrResyncImageFailed, err)
 	}
 
-	return nil
+	// If we issued a resync, return a non-final error as image needs to be recreated
+	// locally. Caller retries till RBD syncs an initial version of the image to
+	// report its status in the resync request.
+	return fmt.Errorf("%w: awaiting initial resync due to split brain", ErrUnavailable)
 }
 
 // repairResyncedImageID updates the existing image ID with new one.
@@ -64,22 +52,6 @@ func (rv *rbdVolume) RepairResyncedImageID(ctx context.Context, ready bool) erro
 	defer j.Destroy()
 	// reset the image ID which is stored in the existing OMAP
 	return rv.repairImageID(ctx, j, true)
-}
-
-// resyncRequired returns true if local image is in split-brain state and image
-// needs resync.
-func resyncRequired(localStatus librbd.SiteMirrorImageStatus) bool {
-	// resync is required if the image is in error state or the description
-	// contains split-brain message.
-	// In some corner cases like `re-player shutdown` the local image will not
-	// be in an error state. It would be also worth considering the `description`
-	// field to make sure about split-brain.
-	if localStatus.State == librbd.MirrorImageStatusStateError ||
-		strings.Contains(localStatus.Description, "split-brain") {
-		return true
-	}
-
-	return false
 }
 
 func (rv *rbdVolume) DisableVolumeReplication(
