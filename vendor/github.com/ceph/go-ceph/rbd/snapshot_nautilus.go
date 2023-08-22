@@ -67,8 +67,12 @@ func (image *Image) GetParentInfo(pool, name, snapname []byte) error {
 
 // ImageSpec represents the image information.
 type ImageSpec struct {
-	ImageName string
-	PoolName  string
+	ImageName     string
+	ImageID       string
+	PoolName      string
+	PoolNamespace string
+	PoolID        uint64
+	Trash         bool
 }
 
 // SnapSpec represents the snapshot infomation.
@@ -104,8 +108,12 @@ func (image *Image) GetParent() (*ParentInfo, error) {
 	defer C.rbd_snap_spec_cleanup(&parentSnap)
 
 	imageSpec := ImageSpec{
-		ImageName: C.GoString(parentImage.image_name),
-		PoolName:  C.GoString(parentImage.pool_name),
+		ImageName:     C.GoString(parentImage.image_name),
+		ImageID:       C.GoString(parentImage.image_id),
+		PoolName:      C.GoString(parentImage.pool_name),
+		PoolNamespace: C.GoString(parentImage.pool_namespace),
+		PoolID:        uint64(parentImage.pool_id),
+		Trash:         bool(parentImage.trash),
 	}
 
 	snapSpec := SnapSpec{

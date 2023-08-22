@@ -1,5 +1,5 @@
-//go:build !nautilus && ceph_preview
-// +build !nautilus,ceph_preview
+//go:build !nautilus
+// +build !nautilus
 
 package rbd
 
@@ -61,7 +61,8 @@ func (s *SiteMirrorImageStatus) UnmarshalDescriptionJSON(v interface{}) error {
 // the image status description field if available. If the embedded status JSON
 // is not found or fails to parse and error will be returned.
 func (s *SiteMirrorImageStatus) DescriptionReplayStatus() (
-	*MirrorDescriptionReplayStatus, error) {
+	*MirrorDescriptionReplayStatus, error,
+) {
 	// ---
 	mdrs := MirrorDescriptionReplayStatus{}
 	if err := s.UnmarshalDescriptionJSON(&mdrs); err != nil {

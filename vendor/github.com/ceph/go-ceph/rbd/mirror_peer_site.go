@@ -1,5 +1,5 @@
-//go:build !nautilus && ceph_preview
-// +build !nautilus,ceph_preview
+//go:build !nautilus
+// +build !nautilus
 
 package rbd
 
@@ -26,8 +26,8 @@ import (
 //								 const char *site_name,
 //								 const char *client_name);
 func AddMirrorPeerSite(ioctx *rados.IOContext, siteName string, clientName string,
-	direction MirrorPeerDirection) (string, error) {
-
+	direction MirrorPeerDirection,
+) (string, error) {
 	var (
 		err   error
 		buf   []byte
@@ -78,7 +78,6 @@ func RemoveMirrorPeerSite(ioctx *rados.IOContext, uuid string) error {
 //											size_t *max_key_len, char *values, size_t *max_val_len,
 //											size_t *key_value_count);
 func GetAttributesMirrorPeerSite(ioctx *rados.IOContext, uuid string) (map[string]string, error) {
-
 	var (
 		err     error
 		keys    []byte
