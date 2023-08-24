@@ -57,7 +57,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-resizer
-          image: registry.k8s.io/sig-storage/csi-resizer:v1.8.0
+          image: gcr.io/k8s-staging-sig-storage/csi-resizer:canary
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=1"
