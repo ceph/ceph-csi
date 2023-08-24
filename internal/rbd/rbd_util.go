@@ -707,11 +707,13 @@ func (ri *rbdImage) trashRemoveImage(ctx context.Context) error {
 }
 
 // getCloneDepth walks the parents of the image and returns the number of
-// images in the chain.
+// images in the chain. The `maxDepth` argument to the function is used to
+// specify a limit of the depth to check. When `maxDepth` depth is reached, no
+// further traversing of the depth is required.
 //
 // This function re-uses the ioctx of the image to open all images in the
 // chain. There is no need to open new ioctx's for every image.
-func (ri *rbdImage) getCloneDepth() (uint, error) {
+func (ri *rbdImage) getCloneDepth(maxDepth uint) (uint, error) {
 	var (
 		depth uint
 		info  *librbd.ParentInfo
@@ -732,20 +734,33 @@ func (ri *rbdImage) getCloneDepth() (uint, error) {
 
 	for {
 		if errors.Is(err, librbd.ErrNotFound) {
-			// image does not have more parents
+			// image does not have a parent
 			break
 		} else if err != nil {
 			return 0, fmt.Errorf("failed to get parent of image %s at depth %d: %w", ri, depth, err)
 		}
 
+		// if the parent is in trash, return maxDepth to trigger
+		// flattening
+		if info.Image.Trash {
+			return maxDepth, nil
+		}
+
 		// if there is a parent, count it to the depth
 		depth++
 
+		// if maxDepth (usually hard-limit) is reached, further
+		// traversing parents is not needed, some action (flattening)
+		// will be triggered regardless of deeper depth
+		if depth == maxDepth {
+			break
+		}
+
 		// open the parent image, so that the for-loop can continue
 		// with checking for the parent of the parent
-		image, err = librbd.OpenImageById(ri.ioctx, info.Image.ImageID, info.Snap.SnapName)
-		if errors.Is(err, librbd.ErrNotFound) {
-			// image does not have more parents
+		image, err = librbd.OpenImageByIdReadOnly(ri.ioctx, info.Image.ImageID, librbd.NoSnapshot)
+		if err != nil && errors.Is(err, librbd.ErrNotFound) {
+			// parent image does not exist, no parent after all
 			break
 		} else if err != nil {
 			imageSpec := info.Image.ImageID
@@ -830,7 +845,7 @@ func (ri *rbdImage) flattenRbdImage(
 
 	// skip clone depth check if request is for force flatten
 	if !forceFlatten {
-		depth, err = ri.getCloneDepth()
+		depth, err = ri.getCloneDepth(hardlimit)
 		if err != nil {
 			return err
 		}
