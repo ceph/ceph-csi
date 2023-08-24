@@ -24,7 +24,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	// google.golang.org/protobuf/encoding doesn't offer MessageV2().
-	"github.com/golang/protobuf/proto" //nolint:staticcheck // See comment above.
+	"github.com/golang/protobuf/proto" //nolint:all // See comment above.
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
