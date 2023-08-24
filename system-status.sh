@@ -36,11 +36,11 @@ log minikube logs
 log minikube_ssh top -b -c -n1 -w
 
 # get the logs from the VM
-log minikube_ssh journalctl --boot
+log minikube_ssh sudo journalctl --boot
 
 # get kubelet status
-log minikube_ssh systemctl status kubelet
-log minikube_ssh journalctl -xeu kubelet
+log minikube_ssh sudo systemctl status kubelet
+log minikube_ssh sudo journalctl -xeu kubelet
 
 # filesystem status for host and VM
 log df -hT
