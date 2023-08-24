@@ -198,8 +198,8 @@ provisioner:
     name: resizer
     enabled: true
     image:
-      repository: registry.k8s.io/sig-storage/csi-resizer
-      tag: v1.8.0
+      repository: gcr.io/k8s-staging-sig-storage/csi-resizer
+      tag: canary
       pullPolicy: IfNotPresent
     resources: {}
     ## For further options, check
