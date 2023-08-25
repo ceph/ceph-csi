@@ -9,7 +9,7 @@ FROM ${BASE_IMAGE} as updated_base
 RUN dnf config-manager --disable \
     tcmu-runner,tcmu-runner-source,tcmu-runner-noarch,ceph-iscsi || true
 
-RUN dnf -y update \
+RUN dnf -y update --nobest \
        && dnf clean all \
        && rm -rf /var/cache/yum
 
