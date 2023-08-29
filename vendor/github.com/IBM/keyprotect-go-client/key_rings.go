@@ -3,6 +3,8 @@ package kp
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -18,7 +20,7 @@ type KeyRing struct {
 
 type KeyRings struct {
 	Metadata KeysMetadata `json:"metadata"`
-	KeyRings    []KeyRing       `json:"resources"`
+	KeyRings []KeyRing    `json:"resources"`
 }
 
 // CreateRing method creates a key ring in the instance with the provided name
@@ -57,11 +59,24 @@ func (c *Client) GetKeyRings(ctx context.Context) (*KeyRings, error) {
 	return &rings, nil
 }
 
+type DeleteKeyRingQueryOption func(*http.Request)
+
+func WithForce(force bool) DeleteKeyRingQueryOption {
+	return func(req *http.Request) {
+		query := req.URL.Query()
+		query.Add("force", strconv.FormatBool(force))
+		req.URL.RawQuery = query.Encode()
+	}
+}
+
 // DeleteRing method deletes the key ring with the provided name in the instance
 // For information please refer to the link below:
 // https://cloud.ibm.com/docs/key-protect?topic=key-protect-managing-key-rings#delete-key-ring-api
-func (c *Client) DeleteKeyRing(ctx context.Context, id string) error {
+func (c *Client) DeleteKeyRing(ctx context.Context, id string, opts ...DeleteKeyRingQueryOption) error {
 	req, err := c.newRequest("DELETE", fmt.Sprintf(path+"/%s", id), nil)
+	for _, opt := range opts {
+		opt(req)
+	}
 	if err != nil {
 		return err
 	}
