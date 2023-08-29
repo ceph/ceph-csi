@@ -24,6 +24,7 @@ import (
 	clientConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 // Manager is the interface that will wrap Add function.
@@ -62,7 +63,7 @@ func Start(config Config) error {
 	opts := manager.Options{
 		LeaderElection: true,
 		// disable metrics
-		MetricsBindAddress:         "0",
+		Metrics:                    metricsserver.Options{BindAddress: "0"},
 		LeaderElectionNamespace:    config.Namespace,
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaderElectionID:           electionID,
