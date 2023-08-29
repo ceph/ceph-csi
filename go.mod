@@ -3,7 +3,7 @@ module github.com/ceph/ceph-csi
 go 1.20
 
 require (
-	github.com/IBM/keyprotect-go-client v0.10.0
+	github.com/IBM/keyprotect-go-client v0.12.2
 	github.com/aws/aws-sdk-go v1.44.333
 	github.com/aws/aws-sdk-go-v2/service/sts v1.21.5
 	github.com/ceph/ceph-csi/api v0.0.0-00010101000000-000000000000

@@ -1,4 +1,4 @@
-# github.com/IBM/keyprotect-go-client v0.10.0
+# github.com/IBM/keyprotect-go-client v0.12.2
 ## explicit; go 1.15
 github.com/IBM/keyprotect-go-client
 github.com/IBM/keyprotect-go-client/iam
