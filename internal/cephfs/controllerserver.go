@@ -299,6 +299,23 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// As we are trying to create RWX volume from backing snapshot, we need to
+	// retrieve the snapshot details from the backing snapshot and create a
+	// subvolume clone from the snapshot.
+	if parentVol != nil && parentVol.BackingSnapshot && !store.IsVolumeCreateRO(req.VolumeCapabilities) {
+		// unset pvID as we dont have real subvolume for the parent volumeID as its a backing snapshot
+		pvID = nil
+		parentVol, _, sID, err = store.NewSnapshotOptionsFromID(ctx, parentVol.BackingSnapshotID, cr,
+			req.GetSecrets(), cs.ClusterName, cs.SetMetadata)
+		if err != nil {
+			if errors.Is(err, cerrors.ErrSnapNotFound) {
+				return nil, status.Error(codes.NotFound, err.Error())
+			}
+
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	vID, err := store.CheckVolExists(ctx, volOptions, parentVol, pvID, sID, cr, cs.ClusterName, cs.SetMetadata)
 	if err != nil {
 		if cerrors.IsCloneRetryError(err) {
