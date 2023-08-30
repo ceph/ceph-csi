@@ -2030,6 +2030,167 @@ var _ = Describe(cephfsType, func() {
 				}
 			})
 
+			By("create RWX clone from ROX PVC", func() {
+				pvc, err := loadPVC(pvcPath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvc.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				_, pv, err := getPVCAndPV(f.ClientSet, pvc.Name, pvc.Namespace)
+				if err != nil {
+					framework.Failf("failed to get PV object for %s: %v", pvc.Name, err)
+				}
+
+				app, err := loadApp(appPath)
+				if err != nil {
+					framework.Failf("failed to load application: %v", err)
+				}
+				app.Namespace = f.UniqueName
+				app.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvc.Name
+				appLabels := map[string]string{
+					appKey: appLabel,
+				}
+				app.Labels = appLabels
+				optApp := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", appKey, appLabels[appKey]),
+				}
+				err = writeDataInPod(app, &optApp, f)
+				if err != nil {
+					framework.Failf("failed to write data: %v", err)
+				}
+
+				appTestFilePath := app.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+
+				err = appendToFileInContainer(f, app, appTestFilePath, "hello", &optApp)
+				if err != nil {
+					framework.Failf("failed to append data: %v", err)
+				}
+
+				parentFileSum, err := calculateSHA512sum(f, app, appTestFilePath, &optApp)
+				if err != nil {
+					framework.Failf("failed to get SHA512 sum for file: %v", err)
+				}
+
+				snap := getSnapshot(snapshotPath)
+				snap.Namespace = f.UniqueName
+				snap.Spec.Source.PersistentVolumeClaimName = &pvc.Name
+				err = createSnapshot(&snap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create snapshot: %v", err)
+				}
+				validateCephFSSnapshotCount(f, 1, subvolumegroup, pv)
+
+				pvcClone, err := loadPVC(pvcClonePath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				// Snapshot-backed volumes support read-only access modes only.
+				pvcClone.Spec.DataSource.Name = snap.Name
+				pvcClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadOnlyMany}
+
+				pvcClone.Namespace = f.UniqueName
+				err = createPVCAndvalidatePV(c, pvcClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC: %v", err)
+				}
+
+				validateSubvolumeCount(f, 1, fileSystemName, subvolumegroup)
+
+				// create RWX clone from ROX PVC
+				pvcRWXClone, err := loadPVC(pvcSmartClonePath)
+				if err != nil {
+					framework.Failf("failed to load PVC: %v", err)
+				}
+				pvcRWXClone.Spec.DataSource.Name = pvcClone.Name
+				pvcRWXClone.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteMany}
+				pvcRWXClone.Namespace = f.UniqueName
+
+				appClone, err := loadApp(appPath)
+				if err != nil {
+					framework.Failf("failed to load application: %v", err)
+				}
+				appCloneLabels := map[string]string{
+					appKey: appCloneLabel,
+				}
+				appClone.Name = f.UniqueName + "-app"
+				appClone.Namespace = f.UniqueName
+				appClone.Labels = appCloneLabels
+				appClone.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcRWXClone.Name
+				optAppClone := metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", appKey, appCloneLabels[appKey]),
+				}
+
+				err = createPVCAndApp("", f, pvcRWXClone, appClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to create PVC and app: %v", err)
+				}
+				// 2 subvolumes should be created 1 for parent PVC and 1 for
+				// RWX clone PVC.
+				validateSubvolumeCount(f, 2, fileSystemName, subvolumegroup)
+
+				appCloneTestFilePath := appClone.Spec.Containers[0].VolumeMounts[0].MountPath + "/test"
+
+				cloneFileSum, err := calculateSHA512sum(f, appClone, appCloneTestFilePath, &optAppClone)
+				if err != nil {
+					framework.Failf("failed to get SHA512 sum for file: %v", err)
+				}
+
+				if parentFileSum != cloneFileSum {
+					framework.Failf(
+						"SHA512 sums of files in parent and ROX should not differ. parentFileSum: %s cloneFileSum: %s",
+						parentFileSum,
+						cloneFileSum)
+				}
+
+				// Now try to write to the PVC as its a RWX PVC
+				err = appendToFileInContainer(f, app, appCloneTestFilePath, "testing", &optApp)
+				if err != nil {
+					framework.Failf("failed to append data: %v", err)
+				}
+
+				// Deleting snapshot before deleting pvcClone should succeed. It will be
+				// deleted once all volumes that are backed by this snapshot are gone.
+				err = deleteSnapshot(&snap, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete snapshot: %v", err)
+				}
+
+				// delete parent pvc and app
+				err = deletePVCAndApp("", f, pvc, app)
+				if err != nil {
+					framework.Failf("failed to delete PVC or application: %v", err)
+				}
+
+				// delete ROX clone PVC
+				err = deletePVCAndValidatePV(c, pvcClone, deployTimeout)
+				if err != nil {
+					framework.Failf("failed to delete PVC or application: %v", err)
+				}
+				// delete RWX clone PVC and app
+				err = deletePVCAndApp("", f, pvcRWXClone, appClone)
+				if err != nil {
+					framework.Failf("failed to delete PVC or application: %v", err)
+				}
+
+				validateSubvolumeCount(f, 0, fileSystemName, subvolumegroup)
+				validateOmapCount(f, 0, cephfsType, metadataPool, volumesType)
+
+				err = deleteResource(cephFSExamplePath + "storageclass.yaml")
+				if err != nil {
+					framework.Failf("failed to delete CephFS storageclass: %v", err)
+				}
+
+				err = createCephfsStorageClass(f.ClientSet, f, false, nil)
+				if err != nil {
+					framework.Failf("failed to create CephFS storageclass: %v", err)
+				}
+			})
+
 			if testCephFSFscrypt {
 				kmsToTest := map[string]kmsConfig{
 					"secrets-metadata-test": secretsMetadataKMS,
