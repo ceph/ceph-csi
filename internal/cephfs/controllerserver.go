@@ -214,6 +214,7 @@ func checkValidCreateVolumeRequest(
 	sID *store.SnapshotIdentifier,
 	req *csi.CreateVolumeRequest,
 ) error {
+	volCaps := req.GetVolumeCapabilities()
 	switch {
 	case pvID != nil:
 		if vol.Size < parentVol.Size {
@@ -224,12 +225,12 @@ func checkValidCreateVolumeRequest(
 				vol.Size)
 		}
 
-		if vol.BackingSnapshot {
-			return errors.New("cloning snapshot-backed volumes is currently not supported")
+		if parentVol.BackingSnapshot && store.IsVolumeCreateRO(volCaps) {
+			return errors.New("creating read-only clone from a snapshot-backed volume is not supported")
 		}
+
 	case sID != nil:
 		if vol.BackingSnapshot {
-			volCaps := req.GetVolumeCapabilities()
 			isRO := store.IsVolumeCreateRO(volCaps)
 			if !isRO {
 				return errors.New("backingSnapshot may be used only with read-only access modes")
