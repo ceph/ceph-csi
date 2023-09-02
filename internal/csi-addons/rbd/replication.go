@@ -513,6 +513,7 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 		// store the image creation time for resync
 		_, err = rbdVol.GetMetadata(imageCreationTimeKey)
 		if err != nil && errors.Is(err, librbd.ErrNotFound) {
+			log.DebugLog(ctx, "setting image creation time %s for %s", creationTime, rbdVol)
 			err = rbdVol.SetMetadata(imageCreationTimeKey, timestampToString(creationTime))
 		}
 		if err != nil {
@@ -670,8 +671,11 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 
 	// image creation time is stored in the image metadata. it looks like
 	// `"seconds:1692879841 nanos:631526669"`
+	// If the image gets resynced the local image creation time will be
+	// lost, if the keys is not present in the image metadata then we can
+	// assume that the image is already resynced.
 	savedImageTime, err := rbdVol.GetMetadata(imageCreationTimeKey)
-	if err != nil {
+	if err != nil && !errors.Is(err, librbd.ErrNotFound) {
 		return nil, status.Errorf(codes.Internal,
 			"failed to get %s key from image metadata for %s: %s",
 			imageCreationTimeKey,
@@ -679,16 +683,17 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 			err.Error())
 	}
 
-	st, err := timestampFromString(savedImageTime)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to parse image creation time: %s", err.Error())
-	}
-	log.DebugLog(ctx, "image %s, savedImageTime=%v, currentImageTime=%v", rbdVol, st, creationTime.AsTime())
-
-	if req.Force && st.Equal(creationTime.AsTime()) {
-		err = rbdVol.ResyncVol(localStatus)
-		if err != nil {
-			return nil, getGRPCError(err)
+	if savedImageTime != "" {
+		st, sErr := timestampFromString(savedImageTime)
+		if sErr != nil {
+			return nil, status.Errorf(codes.Internal, "failed to parse image creation time: %s", sErr.Error())
+		}
+		log.DebugLog(ctx, "image %s, savedImageTime=%v, currentImageTime=%v", rbdVol, st, creationTime.AsTime())
+		if req.Force && st.Equal(creationTime.AsTime()) {
+			err = rbdVol.ResyncVol(localStatus)
+			if err != nil {
+				return nil, getGRPCError(err)
+			}
 		}
 	}
 
