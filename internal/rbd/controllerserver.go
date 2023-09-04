@@ -922,7 +922,11 @@ func (cs *ControllerServer) DeleteVolume(
 	}
 
 	rbdVol, err := GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	defer func() {
+		if rbdVol != nil {
+			rbdVol.Destroy()
+		}
+	}()
 	if err != nil {
 		return cs.checkErrAndUndoReserve(ctx, err, volumeID, rbdVol, cr)
 	}
