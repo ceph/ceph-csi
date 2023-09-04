@@ -13,6 +13,6 @@ jobs:
     name: mod-check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: mod-check
         run: make containerized-test TARGET=mod-check
