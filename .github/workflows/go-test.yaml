@@ -13,13 +13,13 @@ jobs:
     name: go-test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: go-test
         run: make containerized-test TARGET=go-test
   go-test-api:
     name: go-test-api
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: go-test-api
         run: make containerized-test TARGET=go-test-api
