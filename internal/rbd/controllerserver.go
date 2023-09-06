@@ -1082,7 +1082,11 @@ func (cs *ControllerServer) CreateSnapshot(
 
 	// Fetch source volume information
 	rbdVol, err := GenVolFromVolID(ctx, req.GetSourceVolumeId(), cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	defer func() {
+		if rbdVol != nil {
+			rbdVol.Destroy()
+		}
+	}()
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrImageNotFound):
