@@ -243,7 +243,11 @@ func (rs *ReplicationServer) EnableVolumeReplication(ctx context.Context,
 	defer rs.VolumeLocks.Release(volumeID)
 
 	rbdVol, err := corerbd.GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	defer func() {
+		if rbdVol != nil {
+			rbdVol.Destroy()
+		}
+	}()
 	if err != nil {
 		switch {
 		case errors.Is(err, corerbd.ErrImageNotFound):
@@ -305,7 +309,11 @@ func (rs *ReplicationServer) DisableVolumeReplication(ctx context.Context,
 	defer rs.VolumeLocks.Release(volumeID)
 
 	rbdVol, err := corerbd.GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	defer func() {
+		if rbdVol != nil {
+			rbdVol.Destroy()
+		}
+	}()
 	if err != nil {
 		switch {
 		case errors.Is(err, corerbd.ErrImageNotFound):
@@ -376,7 +384,11 @@ func (rs *ReplicationServer) PromoteVolume(ctx context.Context,
 	defer rs.VolumeLocks.Release(volumeID)
 
 	rbdVol, err := corerbd.GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	defer func() {
+		if rbdVol != nil {
+			rbdVol.Destroy()
+		}
+	}()
 	if err != nil {
 		switch {
 		case errors.Is(err, corerbd.ErrImageNotFound):
@@ -472,7 +484,11 @@ func (rs *ReplicationServer) DemoteVolume(ctx context.Context,
 	defer rs.VolumeLocks.Release(volumeID)
 
 	rbdVol, err := corerbd.GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	defer func() {
+		if rbdVol != nil {
+			rbdVol.Destroy()
+		}
+	}()
 	if err != nil {
 		switch {
 		case errors.Is(err, corerbd.ErrImageNotFound):
@@ -585,7 +601,11 @@ func (rs *ReplicationServer) ResyncVolume(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 	rbdVol, err := corerbd.GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	defer func() {
+		if rbdVol != nil {
+			rbdVol.Destroy()
+		}
+	}()
 	if err != nil {
 		switch {
 		case errors.Is(err, corerbd.ErrImageNotFound):
@@ -798,7 +818,11 @@ func (rs *ReplicationServer) GetVolumeReplicationInfo(ctx context.Context,
 	}
 	defer rs.VolumeLocks.Release(volumeID)
 	rbdVol, err := corerbd.GenVolFromVolID(ctx, volumeID, cr, req.GetSecrets())
-	defer rbdVol.Destroy()
+	defer func() {
+		if rbdVol != nil {
+			rbdVol.Destroy()
+		}
+	}()
 	if err != nil {
 		switch {
 		case errors.Is(err, corerbd.ErrImageNotFound):
