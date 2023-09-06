@@ -505,7 +505,14 @@ func (ri *rbdImage) open() (*librbd.Image, error) {
 		return nil, err
 	}
 
-	image, err := librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
+	var image *librbd.Image
+
+	// try to open by id, that works for images in trash too
+	if ri.ImageID != "" {
+		image, err = librbd.OpenImageById(ri.ioctx, ri.ImageID, librbd.NoSnapshot)
+	} else {
+		image, err = librbd.OpenImage(ri.ioctx, ri.RbdImageName, librbd.NoSnapshot)
+	}
 	if err != nil {
 		if errors.Is(err, librbd.ErrNotFound) {
 			err = util.JoinErrors(ErrImageNotFound, err)
