@@ -279,6 +279,17 @@ topology:
     - failure-domain/region
     - failure-domain/zone
 
+readAffinity:
+  # Enable read affinity for RBD volumes. Recommended to
+  # set to true if running kernel 5.8 or newer.
+  enabled: false
+  # Define which node labels to use as CRUSH location.
+  # This should correspond to the values set in the CRUSH map.
+  # NOTE: the value here serves as an example
+  crushLocationLabels:
+    - topology.kubernetes.io/region
+    - topology.kubernetes.io/zone
+
 storageClass:
   # Specifies whether the storageclass should be created
   create: false
