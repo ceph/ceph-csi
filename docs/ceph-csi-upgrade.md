@@ -3,7 +3,6 @@
 - [Ceph-csi Upgrade](#ceph-csi-upgrade)
    - [Pre-upgrade considerations](#pre-upgrade-considerations)
       - [Snapshot-controller and snapshot crd](#snapshot-controller-and-snapshot-crd)
-         - [Snapshot API version support matrix](#snapshot-api-version-support-matrix)
    - [Upgrading from previous releases](#upgrading-from-previous-releases)
    - [Upgrading from v3.8 to v3.9](#upgrading-from-v38-to-v39)
       - [Upgrading CephFS](#upgrading-cephfs)
@@ -60,13 +59,6 @@ from v3.8 to v3.9
 Its kubernetes distributor responsibility to install new snapshot
 controller and snapshot CRD. more info can be found
 [here](https://github.com/kubernetes-csi/external-snapshotter/tree/master#usage)
-
-#### Snapshot API version support matrix
-
-| Snapshot API version | Kubernetes Version   | Snapshot-Controller + CRDs Version | Sidecar Version |
-| -------------------- | -------------------- | ---------------------------------- | --------------- |
-| v1beta1              | v1.17 =< k8s < v1.20 | v2.x =< snapshot-controller < v4.x | sidecar >= v2.x |
-| v1                   | k8s >= v1.20         | snapshot-controller >= v4.x        | sidecar >= v2.x |
 
 **Note:** We recommend to use {sidecar, controller, crds} of same version
 
