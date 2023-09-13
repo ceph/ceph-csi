@@ -87,8 +87,8 @@ spec:
 {{- if .Values.nodeplugin.profiling.enabled }}
             - "--enableprofiling={{ .Values.nodeplugin.profiling.enabled }}"
 {{- end }}
-            - "--enable-read-affinity={{ .Values.readAffinity.enabled }}"
-{{- if .Values.readAffinity.enabled }}
+            - "--enable-read-affinity={{ and .Values.readAffinity .Values.readAffinity.enabled }}"
+{{- if and .Values.readAffinity .Values.readAffinity.enabled }}
             - "--crush-location-labels={{ .Values.readAffinity.crushLocationLabels | join "," }}"
 {{- end }}
           env:

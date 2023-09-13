@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -614,6 +615,105 @@ func verifySeLinuxMountOption(
 
 	if !strings.Contains(logs, mountOption) {
 		return fmt.Errorf("mount option %s not found in logs: %s", mountOption, logs)
+	}
+
+	err = deletePVCAndApp("", f, pvc, app)
+	if err != nil {
+		return fmt.Errorf("failed to delete PVC and application: %w", err)
+	}
+
+	return nil
+}
+
+// verifyReadAffinity verifies if read affinity is enabled by checking if read_from_replica
+// and crush_location options are present in the device config file (/sys/devices/rbd/0/config_info).
+func verifyReadAffinity(
+	f *framework.Framework,
+	pvcPath, appPath, daemonSetName, cn, ns string,
+) error {
+	readFromReplicaOption := "read_from_replica=localize"
+	expectedCrushLocationValues := map[string]string{
+		strings.Split(crushLocationRegionLabel, "/")[1]: crushLocationRegionValue,
+		strings.Split(crushLocationZoneLabel, "/")[1]:   crushLocationZoneValue,
+	}
+
+	// create PVC
+	pvc, err := loadPVC(pvcPath)
+	if err != nil {
+		return fmt.Errorf("failed to load pvc: %w", err)
+	}
+	pvc.Namespace = f.UniqueName
+	err = createPVCAndvalidatePV(f.ClientSet, pvc, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create PVC: %w", err)
+	}
+	app, err := loadApp(appPath)
+	if err != nil {
+		return fmt.Errorf("failed to load application: %w", err)
+	}
+	app.Namespace = f.UniqueName
+	err = createApp(f.ClientSet, app, deployTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to create application: %w", err)
+	}
+
+	imageInfo, err := getImageInfoFromPVC(pvc.Namespace, pvc.Name, f)
+	if err != nil {
+		return fmt.Errorf("failed to get imageInfo: %w", err)
+	}
+
+	selector, err := getDaemonSetLabelSelector(f, ns, daemonSetName)
+	if err != nil {
+		return fmt.Errorf("failed to get selector label %w", err)
+	}
+
+	opt := metav1.ListOptions{
+		LabelSelector: selector,
+	}
+
+	command := "cat /sys/devices/rbd/*/config_info"
+	configInfos, _, err := execCommandInContainer(f, command, ns, cn, &opt)
+	if err != nil {
+		return fmt.Errorf("failed to execute command %s: %w", command, err)
+	}
+
+	var configInfo string
+	for _, config := range strings.Split(configInfos, "\n") {
+		if config == "" || !strings.Contains(config, imageInfo.imageName) {
+			continue
+		}
+		configInfo = config
+
+		break
+	}
+
+	if configInfo == "" {
+		return errors.New("failed to get config_info file")
+	}
+
+	if !strings.Contains(configInfo, readFromReplicaOption) {
+		return fmt.Errorf("option %s not found in config_info: %s", readFromReplicaOption, configInfo)
+	}
+
+	crushLocationPattern := "crush_location=([^,]+)"
+	regex := regexp.MustCompile(crushLocationPattern)
+	match := regex.FindString(configInfo)
+	if match == "" {
+		return fmt.Errorf("option crush_location not found in config_info: %s", configInfo)
+	}
+
+	crushLocationValue := strings.Split(match, "=")[1]
+	keyValues := strings.Split(crushLocationValue, "|")
+	actualCrushLocationValues := make(map[string]string)
+
+	for _, keyValue := range keyValues {
+		s := strings.Split(keyValue, ":")
+		actualCrushLocationValues[s[0]] = s[1]
+	}
+	for key, expectedValue := range expectedCrushLocationValues {
+		if actualValue, exists := actualCrushLocationValues[key]; !(exists && actualValue == expectedValue) {
+			return fmt.Errorf("crush location %s:%s not found in config_info : %s", key, expectedValue, configInfo)
+		}
 	}
 
 	err = deletePVCAndApp("", f, pvc, app)
