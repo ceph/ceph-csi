@@ -29,6 +29,7 @@ import (
 	"github.com/ceph/ceph-csi/internal/cephfs/store"
 	fsutil "github.com/ceph/ceph-csi/internal/cephfs/util"
 	csicommon "github.com/ceph/ceph-csi/internal/csi-common"
+	hc "github.com/ceph/ceph-csi/internal/health-checker"
 	"github.com/ceph/ceph-csi/internal/util"
 	"github.com/ceph/ceph-csi/internal/util/fscrypt"
 	"github.com/ceph/ceph-csi/internal/util/log"
@@ -47,6 +48,7 @@ type NodeServer struct {
 	VolumeLocks        *util.VolumeLocks
 	kernelMountOptions string
 	fuseMountOptions   string
+	healthChecker      hc.Manager
 }
 
 func getCredentialsForVolume(
@@ -228,6 +230,8 @@ func (ns *NodeServer) NodeStageVolume(
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
+		ns.healthChecker.StartChecker(stagingTargetPath)
+
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
@@ -269,6 +273,8 @@ func (ns *NodeServer) NodeStageVolume(
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
+
+	ns.healthChecker.StartChecker(stagingTargetPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
@@ -608,6 +614,8 @@ func (ns *NodeServer) NodeUnstageVolume(
 
 	stagingTargetPath := req.GetStagingTargetPath()
 
+	ns.healthChecker.StopChecker(stagingTargetPath)
+
 	if err = fsutil.RemoveNodeStageMountinfo(fsutil.VolumeID(volID)); err != nil {
 		log.ErrorLog(ctx, "cephfs: failed to remove NodeStageMountinfo for volume %s: %v", volID, err)
 
@@ -673,6 +681,13 @@ func (ns *NodeServer) NodeGetCapabilities(
 			{
 				Type: &csi.NodeServiceCapability_Rpc{
 					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_VOLUME_CONDITION,
+					},
+				},
+			},
+			{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
 						Type: csi.NodeServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
 					},
 				},
@@ -711,7 +726,21 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	}
 
 	if stat.Mode().IsDir() {
-		return csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath, false)
+		res, err := csicommon.FilesystemNodeGetVolumeStats(ctx, ns.Mounter, targetPath, false)
+		if err != nil {
+			return nil, err
+		}
+
+		healthy, msg := ns.healthChecker.IsHealthy(req.GetStagingTargetPath())
+		res.VolumeCondition = &csi.VolumeCondition{
+			Abnormal: !healthy,
+		}
+
+		if !healthy {
+			res.VolumeCondition.Message = msg.Error()
+		}
+
+		return res, nil
 	}
 
 	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
