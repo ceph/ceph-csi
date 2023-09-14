@@ -17,6 +17,7 @@ limitations under the License.
 package healthchecker
 
 import (
+	"path"
 	"testing"
 	"time"
 )
@@ -24,8 +25,12 @@ import (
 func TestFileChecker(t *testing.T) {
 	t.Parallel()
 
-	volumePath := t.TempDir()
-	fc := newFileChecker(volumePath)
+	volumePath := path.Join(t.TempDir(), "csi-health-check.d")
+	fc, err := newFileChecker(volumePath)
+	if err != nil {
+		t.Fatalf("failed to create FileChecker: %v", err)
+	}
+
 	checker := fc.(*fileChecker)
 	checker.interval = time.Second * 5
 
@@ -55,12 +60,16 @@ func TestFileChecker(t *testing.T) {
 func TestWriteReadTimestamp(t *testing.T) {
 	t.Parallel()
 
-	volumePath := t.TempDir()
-	fc := newFileChecker(volumePath)
+	volumePath := path.Join(t.TempDir(), "csi-health-check.d")
+	fc, err := newFileChecker(volumePath)
+	if err != nil {
+		t.Fatalf("failed to create FileChecker: %v", err)
+	}
+
 	checker := fc.(*fileChecker)
 	ts := time.Now()
 
-	err := checker.writeTimestamp(ts)
+	err = checker.writeTimestamp(ts)
 	if err != nil {
 		t.Fatalf("failed to write timestamp: %v", err)
 	}

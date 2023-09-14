@@ -40,6 +40,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// defaultDataRoot is a directory on the volume that will be mounted inside the
+// container during NodePublishVolume. The parent directory od defaultDataRoot
+// will be mounted during NodeStageVolume, and is available for Ceph-CSI
+// internal consumption,
+const defaultDataRoot = "data"
+
 // ControllerServer struct of CEPH CSI driver with supported methods of CSI
 // controller server spec.
 type ControllerServer struct {
@@ -365,6 +371,12 @@ func (cs *ControllerServer) CreateVolume(
 		volumeContext := k8s.RemoveCSIPrefixedParameters(req.GetParameters())
 		volumeContext["subvolumeName"] = vID.FsSubvolName
 		volumeContext["subvolumePath"] = volOptions.RootPath
+
+		if volOptions.DataRoot == "" {
+			volOptions.DataRoot = defaultDataRoot
+		}
+		volumeContext["dataRoot"] = volOptions.DataRoot
+
 		volume := &csi.Volume{
 			VolumeId:      vID.VolumeID,
 			CapacityBytes: volOptions.Size,
@@ -456,6 +468,12 @@ func (cs *ControllerServer) CreateVolume(
 	volumeContext := k8s.RemoveCSIPrefixedParameters(req.GetParameters())
 	volumeContext["subvolumeName"] = vID.FsSubvolName
 	volumeContext["subvolumePath"] = volOptions.RootPath
+
+	if volOptions.DataRoot == "" {
+		volOptions.DataRoot = defaultDataRoot
+	}
+	volumeContext["dataRoot"] = volOptions.DataRoot
+
 	volume := &csi.Volume{
 		VolumeId:      vID.VolumeID,
 		CapacityBytes: volOptions.Size,

@@ -211,6 +211,8 @@ func (ns *NodeServer) NodeStageVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	healthCheckPath := getHealthCheckPath(stagingTargetPath, req.GetVolumeContext())
+
 	// Check if the volume is already mounted
 
 	if err = ns.tryRestoreFuseMountInNodeStage(ctx, mnt, stagingTargetPath); err != nil {
@@ -230,7 +232,7 @@ func (ns *NodeServer) NodeStageVolume(
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
-		ns.healthChecker.StartChecker(stagingTargetPath)
+		ns.healthChecker.StartChecker(healthCheckPath)
 
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
@@ -274,7 +276,7 @@ func (ns *NodeServer) NodeStageVolume(
 		}
 	}
 
-	ns.healthChecker.StartChecker(stagingTargetPath)
+	ns.healthChecker.StartChecker(healthCheckPath)
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
@@ -458,6 +460,15 @@ func (ns *NodeServer) NodePublishVolume(
 	targetPath := req.GetTargetPath()
 	volID := fsutil.VolumeID(req.GetVolumeId())
 
+	// dataPath is the directory that will be bind-mounted into the
+	// container. If "dataRoot" is empty, the dataPath is the same as the
+	// stagingTargetPath.
+	dataPath := stagingTargetPath
+	dataRoot, ok := req.GetVolumeContext()["dataRoot"]
+	if ok {
+		dataPath = path.Join(dataPath, dataRoot)
+	}
+
 	// Considering kubelet make sure the stage and publish operations
 	// are serialized, we dont need any extra locking in nodePublish
 
@@ -470,7 +481,7 @@ func (ns *NodeServer) NodePublishVolume(
 	if err := ns.tryRestoreFuseMountsInNodePublish(
 		ctx,
 		volID,
-		stagingTargetPath,
+		dataPath,
 		targetPath,
 		req.GetVolumeContext(),
 	); err != nil {
@@ -516,15 +527,15 @@ func (ns *NodeServer) NodePublishVolume(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if encrypted {
-		stagingTargetPath = fscrypt.AppendEncyptedSubdirectory(stagingTargetPath)
-		if err = fscrypt.IsDirectoryUnlocked(stagingTargetPath, "ceph"); err != nil {
+		dataPath = fscrypt.AppendEncyptedSubdirectory(dataPath)
+		if err = fscrypt.IsDirectoryUnlocked(dataPath, "ceph"); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
 
 	if err = mounter.BindMount(
 		ctx,
-		stagingTargetPath,
+		dataPath,
 		targetPath,
 		req.GetReadonly(),
 		mountOptions); err != nil {
@@ -744,4 +755,13 @@ func (ns *NodeServer) NodeGetVolumeStats(
 	}
 
 	return nil, status.Errorf(codes.InvalidArgument, "targetpath %q is not a directory or device", targetPath)
+}
+
+func getHealthCheckPath(basedir string, volumeContext map[string]string) string{
+	_, ok := volumeContext["dataRoot"]
+	if !ok {
+		return path.Join(basedir, ".meta.csi")
+	}
+
+	return basedir
 }

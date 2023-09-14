@@ -61,7 +61,10 @@ func NewHealthCheckManager() Manager {
 }
 
 func (hcm *healthCheckManager) StartChecker(path string) error {
-	cc := newFileChecker(path)
+	cc, err := newFileChecker(path)
+	if err != nil {
+		return err
+	}
 
 	// load the 'old' ConditionChecker if it exists, otherwuse store 'cc'
 	old, ok := hcm.checkers.LoadOrStore(path, cc)

@@ -48,14 +48,22 @@ type fileChecker struct {
 	commands chan command
 }
 
-func newFileChecker(dir string) ConditionChecker {
+func newFileChecker(dir string) (ConditionChecker, error) {
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0755)
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	return &fileChecker{
 		filename:   path.Join(dir, "csi-volume-condition.ts"),
 		healthy:    true,
 		interval:   120 * time.Second,
 		lastUpdate: time.Now(),
 		commands:   make(chan command),
-	}
+	}, nil
 }
 
 // runChecker is an endless loop that writes a timestamp and reads it back from
