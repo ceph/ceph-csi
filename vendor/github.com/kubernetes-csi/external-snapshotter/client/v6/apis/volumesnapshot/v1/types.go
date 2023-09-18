@@ -183,6 +183,11 @@ type VolumeSnapshotStatus struct {
 	// snapshot creation. Upon success, this error field will be cleared.
 	// +optional
 	Error *VolumeSnapshotError `json:"error,omitempty" protobuf:"bytes,5,opt,name=error,casttype=VolumeSnapshotError"`
+
+	// VolumeGroupSnapshotName is the name of the VolumeGroupSnapshot of which this
+	// VolumeSnapshot is a part of.
+	// +optional
+	VolumeGroupSnapshotName *string `json:"volumeGroupSnapshotName,omitempty" protobuf:"bytes,6,opt,name=volumeGroupSnapshotName"`
 }
 
 // +genclient
@@ -415,6 +420,11 @@ type VolumeSnapshotContentStatus struct {
 	// Upon success after retry, this error field will be cleared.
 	// +optional
 	Error *VolumeSnapshotError `json:"error,omitempty" protobuf:"bytes,5,opt,name=error,casttype=VolumeSnapshotError"`
+
+	// VolumeGroupSnapshotContentName is the name of the VolumeGroupSnapshotContent of
+	// which this VolumeSnapshotContent is a part of.
+	// +optional
+	VolumeGroupSnapshotContentName *string `json:"volumeGroupSnapshotContentName,omitempty" protobuf:"bytes,6,opt,name=volumeGroupSnapshotContentName"`
 }
 
 // DeletionPolicy describes a policy for end-of-life maintenance of volume snapshot contents
