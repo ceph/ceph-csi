@@ -13,7 +13,6 @@
             - [2.1 Update the CephFS Nodeplugin RBAC](#21-update-the-cephfs-nodeplugin-rbac)
             - [2.2 Update the CephFS Nodeplugin daemonset](#22-update-the-cephfs-nodeplugin-daemonset)
             - [2.3 Manual deletion of CephFS Nodeplugin daemonset pods](#23-manual-deletion-of-cephfs-nodeplugin-daemonset-pods)
-            - [2.4 Modifying MountOptions in Storageclass and PersistentVolumes](#24-modifying-mountoptions-in-storageclass-and-persistentvolumes)
       - [Upgrading RBD](#upgrading-rbd)
          - [3. Upgrade RBD Provisioner resources](#3-upgrade-rbd-provisioner-resources)
             - [3.1 Update the RBD Provisioner RBAC](#31-update-the-rbd-provisioner-rbac)
@@ -106,9 +105,6 @@ Warning: kubectl apply should be used on resource created by either kubectl crea
 
 ### Upgrading CephFS
 
-If existing cephfs storageclasses' `MountOptions` are set, please refer to
-[modifying mount options](#24-modifying-mountoptions-in-storageclass-and-persistentvolumes)
-section.
 Upgrading cephfs csi includes upgrade of cephfs driver and as well as
 kubernetes sidecar containers and also the permissions required for the
 kubernetes sidecar containers, lets upgrade the things one by one
@@ -219,31 +215,6 @@ For each node:
      pods: csi-cephfsplugin-provisioner-* .
    - The pod deletion causes the pods to be restarted and updated automatically
      on the node.
-
-##### 2.4 Modifying MountOptions in Storageclass and PersistentVolumes
-
-CephCSI, starting from release v3.9.0, will pass the options specified in the
-StorageClass's `MountOptions` during both `NodeStageVolume` (kernel cephfs or
-ceph-fuse mount operation) and `NodePublishVolume` (bind mount) operations.
-Therefore, only common options that is acceptable during both the above
-described operations needs to be set in StorageClass's `MountOptions`.
-If invalid mount options are set in StorageClass's `MountOptions`
-such as `"debug"`, the mounting of cephFS PVCs will fail.
-
-Follow the below steps to update the StorageClass's `MountOptions`:
-
-- Take a backup of the StorageClass using
-  `kubectl get sc <storageclass-name> -o yaml > sc.yaml`.
-- Edit `sc.yaml` to remove the invalid mount options from `MountOptions` field.
-- Delete the StorageClass using `kubectl delete sc <storageclass-name>`.
-- Recreate the StorageClass using `kubectl create -f sc.yaml`.
-
-Follow the below steps to update the PersistentVolume's `MountOptions`:
-
-- Identify cephFS PersistentVolumes using
-  `kubectl get pv | grep <storageclass-name>`.
-- and remove invalid mount options from `MountOptions` field
-  in the PersistentVolume's using `kubectl edit pv <pv-name>`.
 
 we have successfully upgraded cephfs csi from v3.8 to v3.9
 
