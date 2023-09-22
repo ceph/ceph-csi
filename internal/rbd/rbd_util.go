@@ -1618,6 +1618,22 @@ func (ri *rbdImage) getImageInfo() error {
 	return nil
 }
 
+// checkChildrenExists checks if the image has any children.
+func (ri *rbdImage) checkChildrenExists() (bool, error) {
+	image, err := ri.open()
+	if err != nil {
+		return false, fmt.Errorf("failed to open image %s: %w", ri, err)
+	}
+	defer image.Close()
+
+	_, children, err := image.ListChildren()
+	if err != nil {
+		return false, fmt.Errorf("failed to list children of image %s: %w", ri, err)
+	}
+
+	return (len(children) > 0), nil
+}
+
 // getParent returns parent image if it exists.
 func (ri *rbdImage) getParent() (*rbdImage, error) {
 	err := ri.getImageInfo()

@@ -1469,7 +1469,13 @@ func (cs *ControllerServer) DeleteSnapshot(
 	}
 	defer rbdVol.Destroy()
 
-	rbdVol.ImageID = rbdSnap.ImageID
+	err = flattenSnapshotImage(ctx, rbdVol)
+	if err != nil {
+		log.ErrorLog(ctx, "failed to flatten snapshot: %v", err)
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	// update parent name to delete the snapshot
 	rbdSnap.RbdImageName = rbdVol.RbdImageName
 	err = cleanUpSnapshot(ctx, rbdVol, rbdSnap, rbdVol)

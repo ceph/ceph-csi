@@ -457,15 +457,9 @@ var _ = Describe("RBD", func() {
 				validatePVCSnapshotDeletion(
 					higherCloneCount,
 					pvcPath,
-					appPath,
 					snapshotPath,
 					pvcClonePath,
-					appClonePath,
-					noKMS, noKMS,
-					defaultSCName,
-					noDataPool,
-					f,
-					noPVCValidation)
+					f)
 			})
 
 			By("create a PVC and check PVC/PV metadata on RBD image", func() {

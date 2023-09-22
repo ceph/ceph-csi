@@ -1404,14 +1404,17 @@ func validatePVCSnapshot(
 	validateRBDImageCount(f, 0, defaultRBDPool)
 }
 
-//nolint:gocyclo,gocognit,nestif,cyclop // reduce complexity
 func validatePVCSnapshotDeletion(
 	totalCount int,
-	pvcPath, appPath, snapshotPath, pvcClonePath, appClonePath string,
-	kms, restoreKMS kmsConfig, restoreSCName,
-	dataPool string, f *framework.Framework,
-	isEncryptedPVC validateFunc,
+	pvcPath, snapshotPath, pvcClonePath string,
+	f *framework.Framework,
 ) {
+	defer func() {
+		std, stderr, err := execCommandInToolBoxPod(f, "ceph rbd task list", rookNamespace)
+		framework.Logf("ceph rbd task list output: %s : %s", std, stderr)
+		framework.Logf("ceph rbd task list error: %v", err)
+
+	}()
 	var wg sync.WaitGroup
 	wgErrs := make([]error, totalCount)
 	err := createRBDSnapshotClass(f)
@@ -1444,9 +1447,6 @@ func validatePVCSnapshotDeletion(
 		framework.Failf("failed to load PVC: %v", err)
 	}
 	pvcClone.Namespace = f.UniqueName
-	if restoreSCName != "" {
-		pvcClone.Spec.StorageClassName = &restoreSCName
-	}
 
 	// create snapshot, restore to PVC, delete snapshot
 	for i := 0; i < totalCount; i++ {

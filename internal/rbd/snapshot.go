@@ -67,6 +67,57 @@ func createRBDClone(
 	return nil
 }
 
+// flattenSnapshotImage flattens triggers flattening of the rbd image underlying
+// the snapshot if the following conditions are met:
+// - the parent rbd image still exists
+// - the parent rbd image has more snapshots than minSnapshotsOnImageToStartFlatten
+// - the rbd image underlying snapshot has children
+// FlattenInProgress error is ignored.
+// This process ensures that further snapshot creation on the parent image will
+// not fail due to existing snapshots' image being stuck in trash and
+// minSnapshotsOnImageToStartFlatten limit being reached.
+func flattenSnapshotImage(
+	ctx context.Context,
+	rbdVol *rbdVolume,
+) error {
+	parentImage, err := rbdVol.getParent()
+	if err != nil {
+		return fmt.Errorf("failed to get parent image: %w", err)
+	}
+	if parentImage == nil {
+		return nil
+	}
+	defer parentImage.Destroy()
+
+	snapList, err := parentImage.listSnapshots()
+	if err != nil {
+		return fmt.Errorf("failed to list snapshots: %w", err)
+	}
+
+	if len(snapList) <= int(minSnapshotsOnImageToStartFlatten) { // minSnapshotsOnImageToStartFlatten) {
+		return nil
+	}
+
+	exists, err := rbdVol.checkChildrenExists()
+	if err != nil {
+		return fmt.Errorf("failed to check children exists: %w", err)
+	}
+
+	if !exists {
+		return nil
+	}
+
+	log.DebugLog(ctx, "Flattening image %s", rbdVol.RbdImageName)
+	// flatten image
+	err = rbdVol.flattenRbdImage(ctx,
+		true, rbdHardMaxCloneDepth, rbdSoftMaxCloneDepth)
+	if err != nil && !errors.Is(err, ErrFlattenInProgress) {
+		return fmt.Errorf("failed to flatten image: %w", err)
+	}
+
+	return nil
+}
+
 // cleanUpSnapshot removes the RBD-snapshot (rbdSnap) from the RBD-image
 // (parentVol) and deletes the RBD-image rbdVol.
 func cleanUpSnapshot(
